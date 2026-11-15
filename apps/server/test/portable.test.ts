@@ -249,6 +249,8 @@ describe("writing a portable drive", () => {
       expect(db.prepare("SELECT count(*) AS n FROM chunks_fts WHERE chunks_fts MATCH 'wikipedia'").get()).toEqual({ n: 0 });
       expect(db.prepare("SELECT count(*) AS n FROM chunks_fts WHERE chunks_fts MATCH 'dover'").get()).toEqual({ n: 1 });
       expect(db.prepare("SELECT count(*) AS n FROM jobs").get()).toEqual({ n: 0 });
+      // A drive runs without sign-in for whoever holds it; it carries no accounts.
+      expect(db.prepare("SELECT count(*) AS n FROM users").get()).toEqual({ n: 0 });
       expect(db.prepare("SELECT value FROM settings WHERE key = 'downloads.concurrency'").get()).toEqual({ value: "4" });
     } finally {
       db.close();

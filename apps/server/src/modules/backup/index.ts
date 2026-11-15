@@ -26,8 +26,17 @@ const PENDING = "restore-pending";
 const READY_MARKER = "READY";
 /** Folders in the data directory that travel with a backup. */
 const DATA_FOLDERS = ["attachments", "extracted", "catalog"];
+/**
+ * Folders a restore puts back. Catalogue manifests are in the backup for safe keeping
+ * but are not restored: they decide which hosts Outpost will download from, and a
+ * backup file from somewhere else must not be able to change that.
+ */
+const RESTORED_FOLDERS = ["attachments", "extracted"];
 const MAX_ENTRIES = 500_000;
 const MAX_TOTAL_BYTES = 64 * 1024 * 1024 * 1024;
+/** A backup is mostly a database and images; anything that expands more than this is not one. */
+const MAX_RATIO = 200;
+const SPACE_RESERVE = 512 * 1024 * 1024;
 
 interface BackupManifest {
   format: typeof FORMAT;
@@ -62,11 +71,11 @@ export function applyPendingRestore(dataDir: string, log: (message: string) => v
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
   const aside = path.join(dataDir, `before-restore-${stamp}`);
   fs.mkdirSync(aside, { recursive: true });
-  for (const name of ["outpost.db", "outpost.db-wal", "outpost.db-shm", ...DATA_FOLDERS]) {
+  for (const name of ["outpost.db", "outpost.db-wal", "outpost.db-shm", ...RESTORED_FOLDERS]) {
     const current = path.join(dataDir, name);
     if (fs.existsSync(current)) fs.renameSync(current, path.join(aside, name));
   }
-  for (const name of ["outpost.db", ...DATA_FOLDERS]) {
+  for (const name of ["outpost.db", ...RESTORED_FOLDERS]) {
     const staged = path.join(pending, name);
     if (fs.existsSync(staged)) fs.renameSync(staged, path.join(dataDir, name));
   }
@@ -88,6 +97,9 @@ function entryStream(zip: yauzl.ZipFile, entry: yauzl.Entry): Promise<NodeJS.Rea
 /** Unpacks a backup into `target`, accepting only the entries a backup can contain. */
 async function unpack(file: string, target: string): Promise<BackupManifest> {
   const zip = await openZip(file);
+  const packedSize = (await fs.promises.stat(file)).size;
+  const space = await fs.promises.statfs(target).catch(() => undefined);
+  const room = space ? space.bavail * space.bsize - SPACE_RESERVE : Number.POSITIVE_INFINITY;
   let manifest: BackupManifest | undefined;
   let entries = 0;
   let total = 0;
@@ -100,10 +112,12 @@ async function unpack(file: string, target: string): Promise<BackupManifest> {
           entries += 1;
           total += entry.uncompressedSize;
           if (entries > MAX_ENTRIES || total > MAX_TOTAL_BYTES) throw badRequest("That backup is larger than Outpost accepts.");
+          if (total > Math.max(packedSize, 1024 * 1024) * MAX_RATIO) throw badRequest("That file expands far more than a backup does, so it was not unpacked.");
+          if (total > room) throw badRequest("There is not enough free space in the data directory to unpack that backup.");
           const name = entry.fileName;
           if (name.endsWith("/")) return zip.readEntry();
           const top = name.split("/")[0]!;
-          const allowed = name === "manifest.json" || name === "outpost.db" || DATA_FOLDERS.includes(top);
+          const allowed = name === "manifest.json" || name === "outpost.db" || RESTORED_FOLDERS.includes(top);
           // Unknown entries are skipped, not written: a backup cannot place files elsewhere.
           if (!allowed) return zip.readEntry();
           const destination = resolveInside(target, name);
@@ -139,6 +153,10 @@ export async function registerBackup(app: FastifyInstance, ctx: AppContext): Pro
   /** Streams a backup as a zip. Nothing is written to the data directory except a temporary database snapshot. */
   app.get("/api/backup/download", async (request, reply) => {
     auth.requireAdmin(request);
+    // Making a backup takes a database snapshot, which is work. A page on another site
+    // must not be able to set it off by pointing an image or a link here.
+    const site = request.headers["sec-fetch-site"];
+    if (site && site !== "same-origin" && site !== "none") throw new AppError("forbidden", "Start the backup from the Outpost app.");
     const snapshot = path.join(dataDir, `backup-snapshot-${Date.now()}.db`);
     // SQLite's online backup gives a consistent copy while the server keeps working.
     await ctx.sqlite.backup(snapshot);
@@ -172,7 +190,14 @@ export async function registerBackup(app: FastifyInstance, ctx: AppContext): Pro
 
   // The backup is sent as the raw request body and streamed straight to disk.
   app.addContentTypeParser("application/zip", (_request, payload, done) => done(null, payload));
-  app.post("/api/backup/restore", { bodyLimit: MAX_TOTAL_BYTES }, async (request) => {
+  /** Runs before the body is read, so nobody without the right can make the server receive it. */
+  const adminBeforeBody = async (request: import("fastify").FastifyRequest) => {
+    auth.requireAdmin(request);
+    if (!/^application\/zip\b/i.test(request.headers["content-type"] ?? "")) {
+      throw new AppError("unsupported", "Send the backup .zip with Content-Type application/zip.");
+    }
+  };
+  app.post("/api/backup/restore", { bodyLimit: MAX_TOTAL_BYTES, onRequest: adminBeforeBody }, async (request) => {
     auth.requireAdmin(request);
     const body = request.body as NodeJS.ReadableStream | undefined;
     if (!body || typeof body.pipe !== "function") throw badRequest("Send the backup .zip as the request body with Content-Type application/zip.");
@@ -203,6 +228,20 @@ export async function registerBackup(app: FastifyInstance, ctx: AppContext): Pro
         stagedMigrations = migrationCount(staged);
       } catch {
         throw badRequest("The database inside that backup is damaged or is not an Outpost database, so it was not restored.");
+      }
+      // A backup carries the state of the machine it was made on. Sign-ins and work in
+      // progress do not transfer: whoever holds a backup file must not thereby hold a
+      // session here, and its queued jobs must not start running on this machine.
+      const clean = new Database(staged);
+      try {
+        clean.exec(`
+          DELETE FROM sessions;
+          DELETE FROM jobs;
+          UPDATE downloads SET state = 'cancelled', job_id = NULL, error = 'This download was in progress when the backup was made.' WHERE state IN ('queued', 'running', 'verifying', 'paused');
+          UPDATE imports SET state = 'discarded' WHERE state NOT IN ('completed', 'discarded');
+        `);
+      } finally {
+        clean.close();
       }
       // An older backup is migrated forward on start. A newer one cannot be read by this version.
       if (stagedMigrations > migrationCount(path.join(dataDir, "outpost.db"))) {

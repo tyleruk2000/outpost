@@ -77,11 +77,16 @@ export async function registerSystem(app: FastifyInstance, ctx: AppContext): Pro
       if (!reply.raw.writableEnded) reply.raw.end();
     };
     request.raw.on("close", close);
+    // Removed again when the browser goes away, so reconnecting tabs do not pile up.
     ctx.onClose.push(close);
+    request.raw.on("close", () => {
+      const index = ctx.onClose.indexOf(close);
+      if (index !== -1) ctx.onClose.splice(index, 1);
+    });
   });
 
   app.get<{ Querystring: { active?: string; limit?: string } }>("/api/jobs", async (request) => {
-    const limit = Math.min(Number(request.query.limit) || 50, 200);
+    const limit = Math.min(Math.max(Math.floor(Number(request.query.limit)) || 50, 1), 200);
     const states = request.query.active === "true" ? (["queued", "running", "paused"] as const) : undefined;
     return { jobs: ctx.jobs.list({ states: states ? [...states] : undefined, limit }).map(toJobDto) };
   });

@@ -133,17 +133,20 @@ export async function registerAuth(app: FastifyInstance, ctx: AppContext): Promi
     contentToken(principal) {
       if (!config.authRequired) return OPEN_CONTENT_TOKEN;
       const expires = (Date.now() + CONTENT_TOKEN_TTL_MS).toString(36);
-      const body = `${principal.id}.${expires}`;
+      // Tied to the session, so signing out or removing the account ends it at once.
+      const body = `${principal.sessionId ?? ""}.${expires}`;
       return `${body}.${sign(body)}`;
     },
     verifyContentToken(token) {
       if (!config.authRequired) return token === OPEN_CONTENT_TOKEN;
-      const [id, expires, signature] = token.split(".");
-      if (!id || !expires || !signature) return false;
-      const expected = Buffer.from(sign(`${id}.${expires}`));
+      const [sessionId, expires, signature] = token.split(".");
+      if (!sessionId || !expires || !signature) return false;
+      const expected = Buffer.from(sign(`${sessionId}.${expires}`));
       const given = Buffer.from(signature);
       if (expected.length !== given.length || !timingSafeEqual(expected, given)) return false;
-      return Number.parseInt(expires, 36) > Date.now();
+      if (Number.parseInt(expires, 36) <= Date.now()) return false;
+      const session = db.select({ expiresAt: sessions.expiresAt }).from(sessions).where(eq(sessions.id, sessionId)).get();
+      return Boolean(session && session.expiresAt > Date.now());
     },
     get setupToken() {
       return setupToken;
@@ -216,20 +219,48 @@ export async function registerAuth(app: FastifyInstance, ctx: AppContext): Promi
     }
   });
 
-  // ── Sign-in attempts are slowed down per address after repeated failures ──
-  const failures = new Map<string, { count: number; blockedUntil: number }>();
-  function throttle(ip: string): void {
-    const entry = failures.get(ip);
-    if (entry && entry.blockedUntil > Date.now()) {
-      const seconds = Math.ceil((entry.blockedUntil - Date.now()) / 1000);
-      throw new AppError("forbidden", `Too many attempts. Try again in ${seconds} seconds.`);
+  // ── Sign-in attempts are slowed down after repeated failures ──
+  //
+  // Failures are counted per address and per account name. An attempt is counted
+  // before the password is checked, so a burst of guesses sent together cannot all
+  // slip in ahead of the count, and a correct sign-in to one account does not wipe
+  // the slate for guesses at another.
+  const failures = new Map<string, { count: number; blockedUntil: number; seen: number }>();
+  const MAX_TRACKED = 10_000;
+  const keysFor = (ip: string, username: string) => [`ip:${ip}`, `user:${username.toLowerCase()}`];
+  function throttle(keys: string[]): void {
+    const now = Date.now();
+    for (const key of keys) {
+      const entry = failures.get(key);
+      if (entry && entry.blockedUntil > now) {
+        const seconds = Math.ceil((entry.blockedUntil - now) / 1000);
+        throw new AppError("forbidden", `Too many attempts. Try again in ${seconds} seconds.`);
+      }
     }
   }
-  function recordFailure(ip: string): void {
-    const entry = failures.get(ip) ?? { count: 0, blockedUntil: 0 };
-    entry.count += 1;
-    if (entry.count >= 5) entry.blockedUntil = Date.now() + Math.min(2 ** (entry.count - 5) * 5_000, 15 * 60_000);
-    failures.set(ip, entry);
+  function countAttempt(keys: string[]): void {
+    const now = Date.now();
+    if (failures.size > MAX_TRACKED) {
+      // Forget the stalest entries rather than grow without bound.
+      for (const [key, entry] of failures) if (now - entry.seen > 60 * 60_000 || failures.size > MAX_TRACKED) failures.delete(key);
+    }
+    for (const key of keys) {
+      const entry = failures.get(key) ?? { count: 0, blockedUntil: 0, seen: now };
+      entry.count += 1;
+      entry.seen = now;
+      // An address is allowed more misses than a single account: several people may share it.
+      const allowance = key.startsWith("ip:") ? 20 : 5;
+      if (entry.count >= allowance) entry.blockedUntil = now + Math.min(2 ** (entry.count - allowance) * 5_000, 15 * 60_000);
+      failures.set(key, entry);
+    }
+  }
+  function forgive(keys: string[]): void {
+    for (const key of keys) {
+      const entry = failures.get(key);
+      if (!entry) continue;
+      entry.count = Math.max(0, entry.count - 1);
+      if (entry.count === 0) failures.delete(key);
+    }
   }
 
   function startSession(userId: string, request: FastifyRequest, reply: import("fastify").FastifyReply): void {
@@ -288,18 +319,19 @@ export async function registerAuth(app: FastifyInstance, ctx: AppContext): Promi
   });
 
   app.post("/api/auth/login", async (request, reply) => {
-    throttle(request.ip);
     const body = z.object({ username: z.string().max(64), password: z.string().max(256) }).parse(request.body);
+    const keys = keysFor(request.ip, body.username.trim());
+    throttle(keys);
+    countAttempt(keys);
     const user = db.select().from(users).where(eq(users.username, body.username.trim())).get();
     // Hash even when the user does not exist so timing does not reveal which names are real.
     const ok = user
       ? await verifyPassword(body.password, user.passwordHash)
       : (await hashPassword(body.password), false);
-    if (!user || !ok) {
-      recordFailure(request.ip);
-      throw new AppError("unauthenticated", "That username or password is not correct.");
-    }
-    failures.delete(request.ip);
+    if (!user || !ok) throw new AppError("unauthenticated", "That username or password is not correct.");
+    // This attempt was good: take it back off the count, and clear the account's own record.
+    forgive(keys);
+    failures.delete(`user:${user.username.toLowerCase()}`);
     startSession(user.id, request, reply);
     return { user: { id: user.id, username: user.username, role: user.role } };
   });
@@ -337,8 +369,16 @@ export async function registerAuth(app: FastifyInstance, ctx: AppContext): Promi
 
   app.post<{ Params: { id: string } }>("/api/users/:id/password", async (request) => {
     const principal = service.requireUser(request);
-    if (principal.id !== request.params.id) service.requireAdmin(request);
-    const body = z.object({ password: credentials.shape.password }).parse(request.body);
+    const own = principal.id === request.params.id;
+    if (!own) service.requireAdmin(request);
+    const body = z.object({ password: credentials.shape.password, currentPassword: z.string().max(256).optional() }).parse(request.body);
+    if (own) {
+      // Someone at an unattended, signed-in browser must not be able to take the account over.
+      const current = db.select().from(users).where(eq(users.id, principal.id)).get();
+      if (!current || !body.currentPassword || !(await verifyPassword(body.currentPassword, current.passwordHash))) {
+        throw new AppError("forbidden", "Your current password is not correct.");
+      }
+    }
     const result = db
       .update(users)
       .set({ passwordHash: await hashPassword(body.password) })

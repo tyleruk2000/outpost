@@ -29,6 +29,7 @@ export function UsersSection() {
   const [removing, setRemoving] = useState<User>();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
   const [role, setRole] = useState<User["role"]>("member");
   const refresh = () => client.invalidateQueries({ queryKey: ["users"] });
 
@@ -42,7 +43,7 @@ export function UsersSection() {
     },
   });
   const changePassword = useMutation({
-    mutationFn: () => api.post(`/api/users/${passwordFor!.id}/password`, { password }),
+    mutationFn: () => api.post(`/api/users/${passwordFor!.id}/password`, { password, currentPassword: currentPassword || undefined }),
     onSuccess: () => {
       toast.success(`Password changed for ${passwordFor!.username}. Their other devices were signed out.`);
       setPasswordFor(undefined);
@@ -72,7 +73,7 @@ export function UsersSection() {
                 {user.role === "admin" ? "Administrator" : "Member"}, last signed in {timeAgo(user.lastLoginAt)}
               </span>
             </span>
-            <Button variant="ghost" size="sm" onClick={() => { setPassword(""); setPasswordFor(user); }}>
+            <Button variant="ghost" size="sm" onClick={() => { setPassword(""); setCurrentPassword(""); setPasswordFor(user); }}>
               <KeyRound /> Change password
             </Button>
             {user.id !== session.data?.user?.id ? (
@@ -115,8 +116,13 @@ export function UsersSection() {
         <DialogContent title={`Change password for ${passwordFor?.username ?? ""}`} size="sm">
           <form onSubmit={(event) => { event.preventDefault(); changePassword.mutate(); }}>
             <DialogBody className="grid gap-4">
+              {passwordFor?.id === session.data?.user?.id ? (
+                <Field label="Your current password">
+                  {(ids) => <Input {...ids} type="password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} autoComplete="current-password" autoFocus required />}
+                </Field>
+              ) : null}
               <Field label="New password" hint="At least 10 characters. Signs this person out everywhere else.">
-                {(ids) => <Input {...ids} type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" minLength={10} autoFocus required />}
+                {(ids) => <Input {...ids} type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" minLength={10} required />}
               </Field>
               {changePassword.isError ? <Notice tone="danger">{errorMessage(changePassword.error)}</Notice> : null}
             </DialogBody>

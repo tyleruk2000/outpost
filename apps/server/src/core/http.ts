@@ -37,6 +37,11 @@ for (const [address, prefix] of [
   privateRanges.addSubnet(address, prefix, "ipv4");
 }
 for (const [address, prefix] of [
+  ["::", 96],
+  ["2001::", 32],
+  ["2002::", 16],
+  ["64:ff9b:1::", 48],
+  ["fec0::", 10],
   ["::", 127],
   ["64:ff9b::", 96],
   ["2001:db8::", 32],

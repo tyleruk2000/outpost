@@ -298,12 +298,17 @@ describe("the reader proxy", () => {
     expect((await get(app, `/kiwix/local.zzzz.forged/content/${BOOK}/Bowline`)).statusCode).toBe(401);
     // A signed-in person is given a token; the page then loads with no cookie at all.
     expect((await app.api("GET", "/api/kiwix/books")).status).toBe(401);
-    const principal = { id: setupResponse.body.user.id, username: "tyler", role: "admin" as const };
-    const token = app.ctx.services.auth.contentToken(principal);
+    const location = app.ctx.services.storage.getDefault();
+    await app.api("POST", "/api/kiwix/import", { locationId: location.id, relPath: `collections/zim/${BOOK}.zim` }, { headers: { cookie } });
+    const books = await app.api("GET", "/api/kiwix/books", undefined, { headers: { cookie } });
+    const token = (books.body.books[0].contentBase as string).split("/")[2]!;
     expect(token).not.toBe("open");
     expect((await get(app, `/kiwix/${token}/content/${BOOK}/Bowline`)).statusCode).toBe(200);
     const tampered = `${token.slice(0, -2)}xx`;
     expect((await get(app, `/kiwix/${tampered}/content/${BOOK}/Bowline`)).statusCode).toBe(401);
+    // Signing out ends the token with the session, long before its own expiry.
+    await app.api("POST", "/api/auth/logout", {}, { headers: { cookie } });
+    expect((await get(app, `/kiwix/${token}/content/${BOOK}/Bowline`)).statusCode).toBe(401);
     expect(cookie).toContain("outpost_session");
   });
 });

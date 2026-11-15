@@ -302,7 +302,15 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
 
   // Import accepts the exported file as the raw request body.
   app.addContentTypeParser(["application/gzip", "application/x-gzip", "application/octet-stream"], (_request, payload, done) => done(null, payload));
-  app.post("/api/semantic/import", { bodyLimit: 8 * 1024 * 1024 * 1024 }, async (request) => {
+  const adminBeforeBody = async (request: import("fastify").FastifyRequest) => {
+    // Checked before the body is read: a large upload is only accepted from an administrator,
+    // and only as one of the streamed types.
+    auth.requireAdmin(request);
+    if (!/^application\/(gzip|x-gzip|octet-stream)\b/i.test(request.headers["content-type"] ?? "")) {
+      throw new AppError("unsupported", "Send the exported .jsonl.gz file with Content-Type application/gzip.");
+    }
+  };
+  app.post("/api/semantic/import", { bodyLimit: 8 * 1024 * 1024 * 1024, onRequest: adminBeforeBody }, async (request) => {
     auth.requireAdmin(request);
     const body = request.body as Readable | undefined;
     if (!body || typeof body.pipe !== "function") throw badRequest("Send the exported .jsonl.gz file as the request body.");

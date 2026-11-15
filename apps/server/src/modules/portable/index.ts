@@ -19,7 +19,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
 import { AppError, badRequest, conflict } from "../../core/errors.ts";
-import { isInside, sizeOnDisk } from "../../core/fs-safe.ts";
+import { isInside, resolveInside, sizeOnDisk } from "../../core/fs-safe.ts";
 import { createHttpClient, type HttpClient } from "../../core/http.ts";
 import { newId } from "../../core/ids.ts";
 import { PermanentJobError, toJobDto } from "../../core/jobs.ts";
@@ -205,7 +205,7 @@ export async function registerPortable(app: FastifyInstance, ctx: AppContext): P
         } else {
           const files = stat.isDirectory() ? (await listFiles(from)).map((file) => ({ rel: path.join(row.relPath, file.rel), bytes: file.bytes })) : [{ rel: row.relPath, bytes: stat.size }];
           const location = storage.get(row.locationId);
-          const mine = files.map((file) => ({ from: path.join(location.path, file.rel), to: path.join(target, "library", file.rel), bytes: file.bytes, label: row.title }));
+          const mine = files.map((file) => ({ from: resolveInside(location.path, file.rel), to: resolveInside(path.join(target, "library"), file.rel), bytes: file.bytes, label: row.title }));
           alreadyOnDrive = (await Promise.all(mine.map(isCurrent))).every(Boolean);
           copies.push(...mine);
           includedCollectionIds.push(row.id);
@@ -230,7 +230,8 @@ export async function registerPortable(app: FastifyInstance, ctx: AppContext): P
         continue;
       }
       const location = storage.get(row.locationId);
-      copies.push({ from: path.join(location.path, row.relPath), to: path.join(target, "library", row.relPath), bytes: row.sizeBytes, label: row.title });
+      // Through resolveInside on both sides: a record must never be able to point the copy outside its folder.
+      copies.push({ from: resolveInside(location.path, row.relPath), to: resolveInside(path.join(target, "library"), row.relPath), bytes: row.sizeBytes, label: row.title });
       includedDocumentIds.push(row.id);
       documentBytes += row.sizeBytes;
     }
