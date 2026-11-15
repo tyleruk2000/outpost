@@ -264,6 +264,10 @@ export class JobQueue {
         .all();
       for (const job of next) void this.execute(job);
     }
+    this.wakeIfIdle();
+  }
+
+  private wakeIfIdle(): void {
     if (this.isIdle()) for (const waiter of this.idleWaiters.splice(0)) waiter();
   }
 
@@ -348,6 +352,8 @@ export class JobQueue {
       const final = this.get(job.id);
       if (final && ["succeeded", "failed", "cancelled"].includes(final.state)) await this.settle(final);
       this.pump();
+      // pump() does nothing during shutdown, but close() is waiting on exactly this.
+      if (this.closing) this.wakeIfIdle();
     }
   }
 
