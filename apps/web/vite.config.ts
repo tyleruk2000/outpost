@@ -9,7 +9,7 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: { alias: { "@": path.resolve(import.meta.dirname, "src") } },
   server: {
-    port: 5173,
+    port: Number(process.env.OUTPOST_WEB_PORT ?? 5173),
     strictPort: true,
     proxy: {
       "/api": { target: server, changeOrigin: false },
