@@ -2,6 +2,7 @@ import { formatBytes, type NetworkShare, type StorageKind, type StorageLocation,
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Check, CircleAlert, Ellipsis, FolderInput, HardDrive, Network, Pencil, Plus, RefreshCw, Star, Trash2, Usb } from "lucide-react";
 import { useState } from "react";
+import { Link } from "react-router";
 import { toast } from "sonner";
 import { EmptyState, ErrorState, Notice, Page, PageHeader, Section } from "@/components/page";
 import { StorageBar, usageKinds } from "@/components/storage-bar";
@@ -13,6 +14,7 @@ import { Badge, Skeleton } from "@/components/ui/misc";
 import { api, errorMessage } from "@/lib/api";
 import { useStorage } from "@/lib/queries";
 import { plural, timeAgo } from "@/lib/utils";
+import { manageLink } from "../manage/manage-data";
 import { AddLocationDialog } from "./add-location-dialog";
 import { NetworkSharesSection, useShares } from "./network-shares";
 import { PortableDriveSection } from "./portable-drive";
@@ -256,6 +258,9 @@ export default function StoragePage() {
         description="Choose where your library lives. Large collections and maps can sit on an external drive or a network share; Outpost keeps its own database on this device."
         actions={
           <>
+            <Button asChild>
+              <Link to={manageLink()}>Manage and clean up</Link>
+            </Button>
             <Button onClick={() => refresh.mutate()} loading={refresh.isPending}>
               {refresh.isPending ? null : <RefreshCw />} Check drives
             </Button>
@@ -304,7 +309,15 @@ export default function StoragePage() {
 
           <NetworkSharesSection />
 
-          <Section title="What is taking the space" description="Across every location, by kind of content.">
+          <Section
+            title="What is taking the space"
+            description="Across every location, by kind of content."
+            actions={
+              <Link to={manageLink()} className="text-small text-primary underline underline-offset-2">
+                Free up space
+              </Link>
+            }
+          >
             {totals.length === 0 ? (
               <p className="text-small text-ink-muted">
                 Your library is empty. Space used will be listed here as you add documents, collections and maps.

@@ -17,6 +17,7 @@ import { Segmented, Select, Skeleton } from "@/components/ui/misc";
 import { ApiError, api, errorMessage } from "@/lib/api";
 import { plural, timeAgo } from "@/lib/utils";
 import { useDownloads } from "../downloads/use-downloads";
+import { manageLink } from "../manage/manage-data";
 import { type CategoryChoice, countByCategory, filterEntries, type ShowFilter, type SortOrder, sortEntries } from "./catalog";
 import { type CategoryItem, CategoryNav } from "./category-nav";
 import { DownloadDialog } from "./download-dialog";
@@ -235,6 +236,9 @@ export default function ExplorePage() {
                   ? `Sizes and versions checked ${timeAgo(lastRefreshed)}`
                   : "Sizes are estimates until the catalogue is refreshed"}
               </p>
+              <Link to={manageLink("installed")} className="text-small text-primary underline underline-offset-2">
+                Manage what is downloaded
+              </Link>
             </div>
           ) : null
         }

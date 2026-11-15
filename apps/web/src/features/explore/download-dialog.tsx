@@ -18,6 +18,7 @@ import { ApiError, api, errorMessage } from "@/lib/api";
 import { useStorage } from "@/lib/queries";
 import { LocationPicker, locationProblem, preferredLocation } from "../downloads/location-picker";
 import { downloadsKey } from "../downloads/use-downloads";
+import { manageLink } from "../manage/manage-data";
 import { isIncluded, publishedDate, sizeText } from "./catalog";
 
 function Fact({ label, children }: { label: string; children: ReactNode }) {
@@ -38,7 +39,10 @@ function StartError({ error, locationName }: { error: unknown; locationName: str
       <Notice tone="warning" icon={<CircleAlert />} title={`Not enough room on ${locationName ? `“${locationName}”` : "that location"}`}>
         {Number.isFinite(required) && Number.isFinite(free)
           ? `This needs ${formatBytes(required)} and ${formatBytes(free)} is free. Choose another location, or free some space and try again.`
-          : "Choose another location, or free some space and try again."}
+          : "Choose another location, or free some space and try again."}{" "}
+        <Link to={manageLink()} className="text-primary underline underline-offset-2">
+          Free up space
+        </Link>
       </Notice>
     );
   }

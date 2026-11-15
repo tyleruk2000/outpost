@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/misc";
 import { api } from "@/lib/api";
 import { useActiveJobs } from "@/lib/queries";
 import { plural, timeAgo } from "@/lib/utils";
+import { manageLink } from "../manage/manage-data";
 import { clockAt } from "./charts/time-axis";
 import { DownloadControls, DownloadProgress, RemoveDownloadButton } from "./download-progress";
 import { describeDownload } from "./download-text";
@@ -213,9 +214,14 @@ export default function DownloadsPage() {
         description="What is being fetched, when it will be here, and what has finished. Downloads carry on in the background and continue from where they stopped."
         actions={
           nothing ? null : (
-            <Button asChild>
-              <Link to="/explore">Find more in Explore</Link>
-            </Button>
+            <>
+              <Button asChild>
+                <Link to={manageLink("installed")}>Manage what is downloaded</Link>
+              </Button>
+              <Button asChild>
+                <Link to="/explore">Find more in Explore</Link>
+              </Button>
+            </>
           )
         }
       />
