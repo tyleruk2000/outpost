@@ -55,6 +55,9 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   duplication, and a trash with restore.
 - Attachments with content-checked types.
 - Autosave with conflict detection between tabs and devices.
+- A block editor with a slash menu, Markdown shortcuts, a selection toolbar, block
+  handles, page-link pickers, a page tree with drag and drop, and a formatting bar
+  above the keyboard on phones.
 - Markdown export of one page or the whole workspace, with relative links and
   attachments.
 
@@ -87,11 +90,22 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 
 #### Reference collections
 
-- A catalogue of freely available collections in JSON manifests, with a validator and
-  a first manifest of Kiwix collections.
+- A catalogue of 173 freely available items in JSON manifests, with a validator: 123
+  Kiwix archives, and 50 official handbooks and textbooks fetched as PDFs from their
+  publishers (FAA, NASA, USGS, the US National Weather Service, FAO, WHO, Ready.gov,
+  USDA, OpenStax, UIAA), each pinned by size and SHA-256. Downloaded PDFs join the
+  document library and are searchable to the page.
+- A record of every source considered, its licence and how it is used
+  (`docs/sources.md`).
+- A catalogue refresh that does not contact a publisher about a pinned file, and a
+  maintainers' online check that paces itself to publishers' crawl delays.
 - A download manager: pause, resume, retry, resumable transfers across mirrors,
-  checksum verification against the publisher's value, a shared speed limit, a queue
-  forecast and per-download history.
+  checksum verification against the publisher's value, a shared speed limit applied
+  smoothly, a queue forecast and per-download history.
+- A Downloads screen that leads with the plan (how much is left, when it will finish,
+  what each storage location will hold afterwards, speed against the limit), and a
+  details page for every download: speed over time, each change of state, the source
+  and the mirror that served it, the checksum, and the destination.
 - Reading ZIM archives through kiwix-serve behind a sandboxing proxy, with search and
   title suggestions inside each collection.
 - Registering a ZIM archive that is already on a storage location.
@@ -107,6 +121,9 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 - Offline place search from GeoNames data.
 - Markers, GPX import and export, and coordinate parsing including British National
   Grid references.
+- A Maps screen: saved places, routes with elevation profiles, distance measuring,
+  hill shading, drawing a box to download with its exact size shown first, and a
+  three-position sheet on phones.
 
 #### Portable drives
 
