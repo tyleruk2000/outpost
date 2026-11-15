@@ -184,11 +184,11 @@ Types: `SessionInfo` in `packages/shared/src/system.ts`.
 | --- | --- | --- |
 | `GET /api/auth/session` | anyone | `{ authRequired, setupRequired, setupTokenRequired, lanAccess, user }`. `user` is null when not signed in. |
 | `POST /api/auth/setup` | anyone, once | Creates the first administrator and signs in. Body: `username`, `password` (at least 10 characters), and `setupToken` when `setupTokenRequired`. `409` once an administrator exists. |
-| `POST /api/auth/login` | anyone | Body: `username`, `password`. Sets the session cookie. Answers `{ user }`. |
+| `POST /api/auth/login` | anyone | Body: `username`, `password`. Sets the session cookie. Answers `{ user }`. After five failures from one address or against one account, answers `403 forbidden` with "Too many attempts. Try again in N seconds." for a period that doubles each time, up to 15 minutes. |
 | `POST /api/auth/logout` | signed in | Ends the session and clears the cookie. |
 | `GET /api/users` | admin | `{ users }`: id, username, role, createdAt, lastLoginAt. |
 | `POST /api/users` | admin | Creates an account. Body: `username`, `password`, `role` (`admin` or `member`). |
-| `POST /api/users/:id/password` | the account itself, or admin | Body: `password`. Ends that account's sessions on every device. |
+| `POST /api/users/:id/password` | the account itself, or admin | Body: `password`, and `currentPassword` when changing your own (an administrator changing someone else's does not need it). `403` when the current password is wrong. Ends that account's sessions on every device. |
 | `DELETE /api/users/:id` | admin | Deletes an account. Not your own, and not the last administrator. |
 
 User names are 2 to 64 letters, digits, dots, dashes or underscores.
@@ -244,6 +244,23 @@ Types: `apps/server/src/modules/retrieval/types.ts`. See [ai.md](ai.md).
 | --- | --- | --- |
 | `POST /api/retrieval/passages` | signed in | Body: `query`, `limit?`, `kinds?`, `mode?`. Answers `{ query, passages: RetrievedPassage[] }`. |
 | `POST /api/retrieval/context` | signed in | Same body plus `maxChars?`. Answers an `AssembledContext`: `text`, `citations`, `omitted`, `safetyCritical`. |
+
+### Seeing how search works
+
+These feed the **How search works** screen. They run the same code as real search and
+return what each stage produced, so nothing on that screen is a mock-up. They read
+only; nothing is changed. Types: `packages/shared/src/retrieval.ts`.
+
+| Method and path | Who | Purpose |
+| --- | --- | --- |
+| `GET /api/retrieval/overview` | signed in | `ExplainOverview`: how many things and passages are indexed, passage length distribution, passage settings, and which vector source is in use. |
+| `GET /api/retrieval/entities?q=` | signed in | `{ entities }`: indexed things whose title matches, to pick one to look inside. |
+| `GET /api/retrieval/chunks?kind=&entityId=` | signed in | `{ entity, chunks, chunkSize, chunkOverlap }`: the passages one thing was cut into, with offsets and overlaps. |
+| `POST /api/retrieval/explain` | signed in | Body: `query`, `limit?` (3 to 20, default 8). `ExplainResponse`: the query's terms, the keyword ranking with per-term scores, the vector ranking with similarities, the fusion table with each list's contribution, the assembled context, the prompt a local model would be given (shown, never sent anywhere), and timings. |
+| `POST /api/retrieval/projection` | signed in | Body: `query?`, `limit?` (20 to 800, default 300). `ProjectionResponse`: passages (and the query) placed in two dimensions by principal component analysis of their vectors. |
+
+When no embedding provider is configured, the vector stages use the built-in
+demonstration vectors and say so in the response (`ExplainVectorSource`).
 
 ## Documents
 
@@ -413,8 +430,8 @@ Types: `BackupStatus` in `packages/shared/src/semantic.ts`.
 | Method and path | Who | Purpose |
 | --- | --- | --- |
 | `GET /api/backup/status` | admin | `{ restorePending, previousData, supervised }`. |
-| `GET /api/backup/download` | admin | Streams a backup `.zip`: the database, attachments, extracted text and your own catalogue manifests. |
-| `POST /api/backup/restore` | admin | Body: the backup file itself, with `Content-Type: application/zip`. Checks it and stages it for the next start. `{ staged, createdAt, appVersion, supervised }`. |
+| `GET /api/backup/download` | admin | Streams a backup `.zip`: the database, attachments, extracted text and your own catalogue manifests. Refuses a request that another site caused the browser to make. |
+| `POST /api/backup/restore` | admin | Body: the backup file itself, with `Content-Type: application/zip`. Checks it and stages it for the next start. `{ staged, createdAt, appVersion, supervised }`. When applied, the database, attachments and extracted text are replaced; catalogue manifests in the backup are not put back; every session is ended and unfinished jobs are dropped. |
 | `DELETE /api/backup/restore` | admin | Drops a staged restore. |
 
 ## Portable drives

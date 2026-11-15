@@ -139,6 +139,19 @@ Docker Desktop use `http://host.docker.internal:11434/v1`. On Linux, add
 `extra_hosts: ["host.docker.internal:host-gateway"]` to the `outpost` service and make
 the embedding server listen on an address the container can reach.
 
+#### Demonstration ("Demonstration")
+
+Built in, with nothing to install. Each passage's vector is made from counts of its
+words (after dropping common words and trimming endings), placed in 256 positions by
+hashing. Two passages that share words point in similar directions.
+
+This is **not a language model**. It cannot know that "purify" and "boil" are related
+unless the passages share words, so its results add little to keyword search. It is
+there so that every step of vector search (cutting into passages, making vectors,
+comparing, fusing) can be seen working on your own library before you set up a real
+model. The **How search works** screen uses it automatically when no other provider
+is configured.
+
 #### Inside Outpost
 
 Outpost can run a model in its own process through the `@huggingface/transformers`
@@ -148,8 +161,9 @@ package. This has real limits:
   packaged app or portable drives. It can only be used when running from source, after
   you add the package to `apps/server` yourself. Its native runtime has no builds for
   musl Linux or Intel Macs.
-- It has not been tested with a real model. The test suite checks only that a missing
-  package or missing model is reported clearly.
+- The calls Outpost makes to the library were tried once by hand with a real model
+  (all-MiniLM-L6-v2). The test suite does not repeat that: it checks only that a
+  missing package or missing model is reported clearly.
 - Model files are read only from `<data directory>/models/`. Outpost tells the library
   never to download anything, and this version has no model downloader. Copy the
   model's files there yourself, keeping the folder layout of the model's repository,

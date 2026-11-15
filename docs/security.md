@@ -67,7 +67,7 @@ There is no two-factor authentication and no audit log.
 | Password hashing | scrypt (N = 32768, r = 8, p = 1) with a random 16-byte salt. Parameters are stored with the hash. Passwords must be at least 10 characters. | `apps/server/src/modules/auth/passwords.ts` |
 | Sessions | A random token in an `HttpOnly`, `SameSite=Lax` cookie, valid for 30 days. Only its SHA-256 hash is stored. Changing a password ends that person's sessions on every device. | `apps/server/src/modules/auth/index.ts` |
 | First-run setup token | With LAN access on, creating the first administrator needs a random token printed in the server log, so a stranger on the network cannot claim a fresh installation. | same |
-| Slowing guesses | After five failed sign-ins from one address, further attempts are refused for a period that doubles each time, from 5 seconds up to 15 minutes. Timing does not reveal whether a user name exists. | same |
+| Slowing guesses | After five failed sign-ins from one address, or against one account, further attempts are refused for a period that doubles each time, from 5 seconds up to 15 minutes. Timing does not reveal whether a user name exists. | same |
 | Roles | Administrators and members. Changing storage, starting or removing downloads, changing settings, deleting documents and collections, backup, restore and portable drives need an administrator. | `requireAdmin` in each module |
 | Safeguards | The last administrator cannot be deleted, and nobody can delete their own account. | `apps/server/src/modules/auth/index.ts` |
 
@@ -194,7 +194,11 @@ under the limits above, and checked: the manifest must be an Outpost backup, the
 database must pass SQLite's integrity check, and it must not come from a newer
 Outpost. Only then is it marked ready. It is applied at the next start, before the
 database is opened, and the data it replaces is kept in a dated folder. An upload that
-was interrupted is discarded, never applied.
+was interrupted is discarded, never applied. A restore puts back the database,
+attachments and extracted text only. Catalogue manifests in the file are ignored,
+because they name the hosts downloads may start from; sessions and unfinished jobs in
+the restored database are deleted, so a backup from another machine cannot carry a
+signed-in session or queued work with it.
 Code: `apps/server/src/modules/backup/index.ts`.
 
 ### No telemetry

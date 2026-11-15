@@ -331,10 +331,20 @@ implements them.
 text and your own catalogue manifests. It does not include documents, collections or
 maps: those stay on their storage locations, and the backup records where.
 
-Restoring replaces the database and those folders after a restart. The data they
-replace is kept in the data directory in a folder named `before-restore-<time>`. After
-a restore, add the same storage locations again (their marker files are recognised)
-to bring the content back.
+Restoring replaces the database, attachments and extracted text after a restart. The
+data they replace is kept in the data directory in a folder named
+`before-restore-<time>`. After a restore, add the same storage locations again (their
+marker files are recognised) to bring the content back.
+
+Three things a restore deliberately does not carry over:
+
+- **Catalogue manifests.** They are in the backup for safe keeping, but they decide
+  which hosts Outpost will download from, so a backup file is not allowed to change
+  them. Copy your own manifests back by hand from the `catalog` folder inside the zip.
+- **Sign-ins.** Everyone is signed out and signs in again with the accounts the backup
+  holds.
+- **Unfinished work.** Downloads and other jobs that were queued or running when the
+  backup was made do not start on the machine it is restored to.
 
 Back up the storage locations themselves with whatever you use for files: they are
 ordinary folders.

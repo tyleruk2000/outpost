@@ -450,6 +450,8 @@ value the image sets when it differs from the default.
 | `OUTPOST_DATA_DIR` | `./data` | `/data` | Database, attachments and other state Outpost owns. |
 | `OUTPOST_STORAGE_ROOTS` | see [above](#from-source) | `/storage` | Comma-separated folders in which storage locations may be created. |
 | `OUTPOST_LAN_ACCESS` | `false` | | Accept requests addressed to LAN names and addresses, and (with `OUTPOST_AUTH=auto`) require sign-in. |
+| `OUTPOST_IN_CONTAINER` | `false` | `true` | Tells the server it is inside a container, where it always listens on every interface, so `OUTPOST_HOST` says nothing about who can reach it. |
+| `OUTPOST_PUBLISHED_ADDRESS` | unset | set by Compose to the value of `OUTPOST_BIND` | Inside a container, the host address the port was published on. Unless this is a loopback address, the server refuses to start without `OUTPOST_LAN_ACCESS=true`. |
 | `OUTPOST_AUTH` | `auto` | | `auto` (on when LAN access is on), `on` or `off`. |
 | `OUTPOST_ALLOW_UNAUTHENTICATED_LAN` | `false` | | Allows LAN access with sign-in off. Without it that combination stops the server at start-up. |
 | `OUTPOST_ALLOWED_HOSTS` | empty | | Extra host names the server answers to, comma separated. |
@@ -473,7 +475,7 @@ Two more are read directly, outside `config.ts`:
 | Variable | Meaning |
 | --- | --- |
 | `OUTPOST_OPEN_BROWSER` | When `true`, the server opens the default browser once it is ready. The portable launchers set it. |
-| `OUTPOST_SUPERVISED` | When `true`, Outpost may stop itself after a restore so that whatever started it starts it again (exit code 75). The portable launchers set it. Neither the image nor `compose.yaml` sets it, so in Docker you restart the container yourself. |
+| `OUTPOST_SUPERVISED` | When `true`, Outpost may stop itself after a restore so that whatever started it starts it again (exit code 75). The portable launchers and the Docker image set it; in Compose the `restart: unless-stopped` policy is what starts the container again. If you run the image with plain `docker run`, add `--restart unless-stopped` or set `OUTPOST_SUPERVISED=false`. |
 
 Boolean variables accept `1`, `true`, `yes` or `on`.
 
@@ -486,19 +488,12 @@ Boolean variables accept `1`, `true`, `yes` or `on`.
 | `OUTPOST_MEMORY_LIMIT` | `1g` | Memory ceiling for the `outpost` container. |
 | `KIWIX_MEMORY_LIMIT` | `512m` | Memory ceiling for the `kiwix` container. |
 
-`compose.yaml` passes only these server variables from `.env` into the container:
-`OUTPOST_LAN_ACCESS`, `OUTPOST_AUTH`, `OUTPOST_ALLOWED_HOSTS`, `OUTPOST_SECURE_COOKIES`
-and `OUTPOST_MAX_UPLOAD_MB`. Any other server variable, including
-`OUTPOST_DOWNLOAD_HOSTS` and `OUTPOST_ALLOW_PRIVATE_DOWNLOADS`, has no effect until you
-add it to the `environment:` block of the `outpost` service, for example:
-
-```yaml
-services:
-  outpost:
-    environment:
-      OUTPOST_DOWNLOAD_HOSTS: ${OUTPOST_DOWNLOAD_HOSTS:-}
-      OUTPOST_ALLOW_PRIVATE_DOWNLOADS: ${OUTPOST_ALLOW_PRIVATE_DOWNLOADS:-false}
-```
+`compose.yaml` passes these server variables from `.env` into the container:
+`OUTPOST_LAN_ACCESS`, `OUTPOST_AUTH`, `OUTPOST_ALLOWED_HOSTS`, `OUTPOST_SECURE_COOKIES`,
+`OUTPOST_MAX_UPLOAD_MB`, `OUTPOST_DOWNLOAD_HOSTS` and `OUTPOST_ALLOW_PRIVATE_DOWNLOADS`.
+It sets `OUTPOST_PUBLISHED_ADDRESS` from `OUTPOST_BIND` itself. Any other server
+variable has no effect until you add it to the `environment:` block of the `outpost`
+service.
 
 Settings that people change while Outpost runs (download concurrency, search options,
 map sources) are not environment variables. They are stored in the database; see
