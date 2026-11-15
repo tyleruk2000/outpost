@@ -18,6 +18,8 @@ const NotesPage = lazy(() => import("./features/notes/notes-page"));
 const ImportPage = lazy(() => import("./features/imports/import-page"));
 const ExplorePage = lazy(() => import("./features/explore/explore-page"));
 const DownloadsPage = lazy(() => import("./features/downloads/downloads-page"));
+const DownloadPage = lazy(() => import("./features/downloads/download-page"));
+const UnderstandPage = lazy(() => import("./features/understand/understand-page"));
 const MapsPage = lazy(() => import("./features/maps/maps-page"));
 const SearchPage = lazy(() => import("./features/search/search-page"));
 const StoragePage = lazy(() => import("./features/storage/storage-page"));
@@ -70,6 +72,8 @@ export function App() {
           <Route path="notes/:id" element={<NotesPage />} />
           <Route path="import" element={<ImportPage />} />
           <Route path="downloads" element={<DownloadsPage />} />
+          <Route path="downloads/:id" element={<DownloadPage />} />
+          <Route path="search/how-it-works" element={<UnderstandPage />} />
           <Route path="storage" element={<StoragePage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="*" element={<NotFound />} />
