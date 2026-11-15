@@ -2,13 +2,16 @@ import {
   BookOpen,
   Compass,
   Download,
+  FolderInput,
   HardDrive,
   Home,
+  ListChecks,
   type LucideIcon,
   Map as MapIcon,
   NotebookText,
   Search,
   Settings,
+  Waypoints,
 } from "lucide-react";
 
 export interface NavItem {
@@ -38,3 +41,14 @@ export const upkeepNav: NavItem[] = [
 ];
 
 export const allNav = [...knowledgeNav, ...upkeepNav];
+
+/**
+ * Screens reached from inside another screen on a wide display (a button on Storage, a
+ * link under the search box). A phone has no sidebar to orient by, so its More sheet
+ * lists them outright: every screen is one tap from the bottom bar.
+ */
+export const tuckedAwayNav: Array<Omit<NavItem, "key">> = [
+  { to: "/storage/manage", label: "Manage and clean up", icon: ListChecks },
+  { to: "/import", label: "Import files", icon: FolderInput },
+  { to: "/search/how-it-works", label: "How search works", icon: Waypoints },
+];

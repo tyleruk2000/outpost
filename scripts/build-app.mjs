@@ -172,7 +172,8 @@ function follow(dir) {
   const manifest = JSON.parse(fs.readFileSync(path.join(real, "package.json"), "utf8"));
   if (!manifest.private && !NOT_SHIPPED.has(manifest.name)) {
     const stated = manifest.license ?? manifest.licenses;
-    const licence = typeof stated === "string" ? stated : Array.isArray(stated) ? stated.map((item) => item.type ?? item).join(" OR ") : stated?.type;
+    const licence =
+      typeof stated === "string" ? stated : Array.isArray(stated) ? stated.map((item) => item.type ?? item).join(" OR ") : stated?.type;
     const author = typeof manifest.author === "string" ? manifest.author : manifest.author?.name;
     const known = packages.get(manifest.name);
     packages.set(manifest.name, {
@@ -211,8 +212,11 @@ const sections = [...packages.values()]
       }
     }
     const heading = `${item.name} ${(item.versions ?? []).join(", ")}`.trim();
-    const facts = [`Licence: ${item.licence}`, item.author ? `Author: ${item.author}` : "", item.homepage ? item.homepage : ""].filter(Boolean);
-    const body = texts.length > 0 ? texts.join("\n\n") : "(The package ships no licence file; the licence named above is from its package.json.)";
+    const facts = [`Licence: ${item.licence}`, item.author ? `Author: ${item.author}` : "", item.homepage ? item.homepage : ""].filter(
+      Boolean,
+    );
+    const body =
+      texts.length > 0 ? texts.join("\n\n") : "(The package ships no licence file; the licence named above is from its package.json.)";
     return `${"=".repeat(78)}\n${heading}\n${facts.join("\n")}\n${"=".repeat(78)}\n\n${body}\n`;
   });
 if (sections.length < 50) throw new Error("The list of third-party licences came out almost empty; refusing to ship without it.");

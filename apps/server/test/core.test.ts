@@ -118,6 +118,14 @@ describe("request security", () => {
   it("serves health and rejects unknown hosts", async () => {
     app = await createTestApp();
     expect((await app.api("GET", "/api/health")).body.status).toBe("ok");
+    // No built web app in tests, so there is no build to name; with one, it is the entry script.
+    expect((await app.api("GET", "/api/health")).body.web).toBeNull();
+    fs.mkdirSync(app.ctx.config.webDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(app.ctx.config.webDir, "index.html"),
+      '<script type="module" crossorigin src="/assets/index-Ab_1-x.js"></script>',
+    );
+    expect((await app.api("GET", "/api/health")).body.web).toBe("index-Ab_1-x.js");
     const rebind = await app.app.inject({ method: "GET", url: "/api/health", headers: { host: "attacker.example" } });
     expect(rebind.statusCode).toBe(403);
   });

@@ -66,6 +66,45 @@ test.describe("on a phone", () => {
     expect(errors).toEqual([]);
   });
 
+  test("reaches every screen from the bottom bar: four tabs, and everything else in the More sheet", async ({ page }) => {
+    const errors = watchForErrors(page);
+    await page.goto("/");
+    const bar = page.getByRole("navigation", { name: "Main" });
+    await expect(bar.getByRole("link")).toHaveText(["Home", "Library", "Maps", "Notes"]);
+
+    const others: Array<[string, string]> = [
+      ["Search", "/search"],
+      ["How search works", "/search/how-it-works"],
+      ["Explore", "/explore"],
+      ["Import files", "/import"],
+      ["Downloads", "/downloads"],
+      ["Storage", "/storage"],
+      ["Manage and clean up", "/storage/manage"],
+      ["Settings", "/settings"],
+    ];
+    await bar.getByRole("button", { name: "More" }).click();
+    const sheet = page.getByRole("dialog", { name: "More" });
+    await expect(sheet.getByRole("list").getByRole("link")).toHaveText(others.map(([name]) => name));
+    // The sheet fits the screen, or scrolls inside itself.
+    const box = await sheet.boundingBox();
+    expect(box!.y).toBeGreaterThanOrEqual(0);
+    await page.keyboard.press("Escape");
+
+    for (const [name, path] of others) {
+      await bar.getByRole("button", { name: "More" }).click();
+      await page.getByRole("dialog", { name: "More" }).getByRole("link", { name, exact: true }).click();
+      await expect(page).toHaveURL(new RegExp(`${path.replace(/[/.]/g, "\\$&")}(\\?.*)?$`));
+      await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
+      await expect(page.getByRole("dialog", { name: "More" })).toBeHidden();
+    }
+
+    // This tab runs the build the server is serving, so there is nothing to reload for.
+    const health = await api(page, "GET", "/api/health");
+    expect(health.web).toMatch(/^index-.+\.js$/);
+    await expect(page.getByText("Outpost has been updated.")).toBeHidden();
+    expect(errors).toEqual([]);
+  });
+
   test("fits the manage screen and its list of everything installed at phone width", async ({ page }) => {
     const errors = watchForErrors(page);
     for (const view of ["", "?view=installed", "?view=leftovers", "?view=clean-up"]) {

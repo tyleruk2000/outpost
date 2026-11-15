@@ -5,6 +5,7 @@ import { MobileNav } from "./mobile-nav";
 import { allNav } from "./nav";
 import { Sidebar } from "./sidebar";
 import { Skeleton } from "./ui/misc";
+import { UpdateNotice } from "./update-notice";
 
 function isTyping(target: EventTarget | null): boolean {
   const element = target as HTMLElement | null;
@@ -109,6 +110,7 @@ export function AppShell({ notesTree, onNewPage }: { notesTree?: ReactNode; onNe
       <Sidebar collapsed={collapsed} onToggle={toggleSidebar} onOpenSearch={() => setPaletteOpen(true)} notesTree={notesTree} />
       <MobileNav onOpenSearch={() => setPaletteOpen(true)} />
       <main id="content" ref={mainRef} tabIndex={-1} className="min-w-0 flex-1 focus:outline-none">
+        <UpdateNotice />
         <Suspense fallback={<PageFallback />}>
           <Outlet />
         </Suspense>

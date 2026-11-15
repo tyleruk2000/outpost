@@ -1,5 +1,7 @@
 /** Health, live events, background jobs, settings and a plain account of resource use. */
+import fs from "node:fs";
 import os from "node:os";
+import path from "node:path";
 import { sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
@@ -17,7 +19,25 @@ export async function registerSystem(app: FastifyInstance, ctx: AppContext): Pro
   const { settings } = ctx.services;
   const startedAt = Date.now();
 
-  app.get("/api/health", async () => ({ status: "ok", version: VERSION }));
+  // Which build of the web app this server is handing out: the name of its fingerprinted
+  // entry script. A browser tab that has been open since before an update compares it with
+  // its own and offers to reload. Read again only when index.html changes.
+  const indexFile = path.join(ctx.config.webDir, "index.html");
+  let webBuild: { mtimeMs: number; name: string | null } | undefined;
+  function servedWebBuild(): string | null {
+    try {
+      const { mtimeMs } = fs.statSync(indexFile);
+      if (webBuild?.mtimeMs !== mtimeMs) {
+        const entry = /assets\/(index-[A-Za-z0-9_-]+\.js)/.exec(fs.readFileSync(indexFile, "utf8"));
+        webBuild = { mtimeMs, name: entry?.[1] ?? null };
+      }
+      return webBuild.name;
+    } catch {
+      return null;
+    }
+  }
+
+  app.get("/api/health", async () => ({ status: "ok", version: VERSION, web: servedWebBuild() }));
 
   app.get("/api/system", async () => {
     const memory = process.memoryUsage();
