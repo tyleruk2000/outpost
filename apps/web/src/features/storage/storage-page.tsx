@@ -14,6 +14,7 @@ import { api, errorMessage } from "@/lib/api";
 import { useIsAdmin, useStorage } from "@/lib/queries";
 import { plural, timeAgo } from "@/lib/utils";
 import { AddLocationDialog } from "./add-location-dialog";
+import { PortableDriveSection } from "./portable-drive";
 
 export const kindLabels: Record<StorageKind, { label: string; icon: typeof HardDrive }> = {
   internal: { label: "Internal", icon: HardDrive },
@@ -269,6 +270,8 @@ export default function StoragePage() {
               </table>
             )}
           </Section>
+
+          {canEdit ? <PortableDriveSection /> : null}
 
           <Section title="Using a NAS or another drive">
             <div className="max-w-[70ch] space-y-2 text-small text-ink-muted">

@@ -10,6 +10,8 @@ export * from "./documents.ts";
 export * from "./downloads.ts";
 export * from "./maps.ts";
 export * from "./notes.ts";
+export * from "./portable.ts";
 export * from "./search.ts";
+export * from "./semantic.ts";
 export * from "./storage.ts";
 export * from "./system.ts";

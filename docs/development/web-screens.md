@@ -1,0 +1,112 @@
+# Building a screen in the web app
+
+How screens in `apps/web` are put together. Read `PRODUCT.md` and `DESIGN.md` first:
+they say who this is for and why it looks the way it does. This page is the working
+detail.
+
+## Where things are
+
+```
+apps/web/src/
+  styles/tokens.css      every colour, radius, font and layer as a CSS variable
+  styles/base.css        Tailwind v4 theme mapped onto the tokens, base rules, utilities
+  styles/prose.css       reading and writing surfaces (.prose)
+  components/ui/         controls: button, input, dialog, menu, misc (tabs, select, switch,
+                         checkbox, progress, badge, tooltip, popover, segmented, skeleton, kbd)
+  components/page.tsx    Page, PageHeader, Section, EmptyState, Notice, Rows, ErrorState
+  components/            shell: sidebar, mobile nav, command palette, lamp, contour, storage bar
+  lib/api.ts             the only way to call the server (`api.get/post/patch/delete/upload`)
+  lib/events.tsx         live updates; maps server events to query keys to refresh
+  lib/queries.ts         shared data hooks (session, system, storage, jobs, settings)
+  lib/utils.ts           cn, timeAgo, formatDate, plural, modKey
+  features/<name>/       one folder per screen or feature
+```
+
+`features/storage/storage-page.tsx` is the reference screen. Match its structure and
+tone before inventing anything.
+
+## The look, in practice
+
+- **Colour comes from tokens only.** Use the Tailwind names (`bg-page`, `bg-surface`,
+  `text-ink`, `text-ink-muted`, `border-border`, `bg-primary`, `text-primary`,
+  `bg-primary-soft`, `text-danger`, `bg-lamp` …). Never a hex value, never a Tailwind
+  palette colour such as `gray-500`. Light and dark both come for free that way.
+- **Two type families with fixed jobs.** `font-title` (Literata, serif) is for the title
+  of a thing a person reads: a screen title, a document, a page, a collection.
+  Everything functional is the default sans. `font-mono` is for paths, checksums,
+  coordinates and code. Sizes are the scale in `base.css`: `text-micro`, `text-small`,
+  `text-body`, `text-lead`, `text-heading`, `text-title`, `text-display`.
+- **Sentence case everywhere.** No all-caps labels, no tracked "eyebrow" text above
+  headings, no decorative numbering.
+- **Lists before cards.** A set of things is a list with hairlines (`Rows`, or
+  `divide-y divide-border`). A card is only for an object picked from a set (a catalogue
+  collection, a map region), and cards are never nested.
+- **Structure from hairlines and the two neutrals**, not shadows. Shadows are for
+  things that float (menus, dialogs, toasts) and come from the `ui` components.
+- **Radii by role:** `rounded-control` for controls, `rounded-panel` for panels.
+- **The amber `lamp` colour means "alive right now"** (a running download, indexing)
+  or a favourite. Nothing else. Primary (verdigris) is for the main action, the current
+  selection and links.
+- **No side-stripe accents** (a thick coloured left border), no gradient text, no
+  glass effects, no identical icon-heading-text card grids, no big-number "metric"
+  tiles. State is always text, optionally with an icon; colour only supports it.
+- **Numbers people compare** (sizes, counts, progress) get the `tabular` class and come
+  from `formatBytes` / `formatNumber` / `plural`.
+- **Motion is 120–200 ms on state changes only.** No entrance animations on page load.
+- **Icons are Lucide**, `strokeWidth` 1.6 in navigation, default in controls.
+
+## Every screen has all of its states
+
+- **Loading:** skeletons shaped like the content (`Skeleton`), not a centred spinner.
+- **Empty:** `EmptyState` with a title that says what belongs here and a first action.
+- **Error:** `ErrorState` (with retry) for a failed load; `Notice tone="danger"` or a
+  toast (`sonner`) for a failed action. Use `errorMessage(error)`: the server already
+  writes messages for people.
+- **Partial trouble:** a disconnected storage location, a job still running, a
+  document whose text could not be read. Say it plainly where it matters.
+- **Permission:** `useIsAdmin()`; hide or disable admin actions for members.
+
+## Data
+
+- Use TanStack Query. **Query keys start with the feature name** (`["documents", …]`),
+  because `lib/events.tsx` refreshes queries by that prefix when the server says
+  something changed. Add your event to the `invalidations` map there if it is missing.
+- Types come from `@outpost/shared`. Do not redeclare API shapes.
+- Mutations: `useMutation`, invalidate the affected keys on success, toast on error.
+- Long work is a server job; show it with `Progress` fed by real numbers. Never fake
+  progress, never show a control that does nothing.
+
+## Words
+
+Write for the person using it. Name things as they would ("Add documents", not
+"Upload files to index"). A button says exactly what it does and keeps that name
+through the flow. An error says what happened and what to do next. Deleting anything
+goes through `ConfirmDialog`, which names what will be removed.
+
+## Access and layout
+
+- Everything works from the keyboard, with visible focus (the global `:focus-visible`
+  ring; do not remove it). Icon-only buttons have an `aria-label`. Form controls are
+  labelled (`Field`).
+- Layout is mobile-first and must hold from 320 px wide. The sidebar becomes a bottom
+  bar under `md`, so leave the bottom padding `Page` provides. Touch targets are at
+  least 44 px on small screens (the `ui` controls already grow under `md`).
+- Body text contrast is at least 4.5:1. `text-ink-faint` is for placeholders and
+  disabled text only.
+
+## Checking your work
+
+Run a private server and the Vite dev server on ports of your own, then look at it:
+
+```bash
+# terminal 1: API on a scratch data directory
+OUTPOST_DATA_DIR=/tmp/outpost-dev/data OUTPOST_STORAGE_ROOTS=/tmp/outpost-dev/storage \
+OUTPOST_PORT=8101 node apps/server/src/index.ts
+# terminal 2: web app, proxying to it
+OUTPOST_DEV_SERVER=http://127.0.0.1:8101 OUTPOST_WEB_PORT=5181 pnpm --filter @outpost/web dev
+# screenshots (light, dark, mobile) into a folder you can open
+node e2e/tools/screenshot.mjs http://localhost:5181 /tmp/outpost-shots /library /library@dark /library@mobile
+```
+
+Look at the screenshots. Check light, dark and mobile, and each state you built.
+`pnpm --filter @outpost/web typecheck` must pass.

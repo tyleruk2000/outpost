@@ -1,5 +1,20 @@
 import { type ClassValue, clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
+import { extendTailwindMerge } from "tailwind-merge";
+
+/**
+ * tailwind-merge has to be told about the project's own scale names. Without this it
+ * takes `text-small` for a colour and drops it whenever a real colour such as
+ * `text-ink` appears in the same class list.
+ */
+const twMerge = extendTailwindMerge({
+  extend: {
+    theme: {
+      text: ["micro", "small", "body", "lead", "heading", "title", "display"],
+      radius: ["control", "panel"],
+      shadow: ["float", "dialog"],
+    },
+  },
+});
 
 export function cn(...inputs: ClassValue[]): string {
   return twMerge(clsx(inputs));
