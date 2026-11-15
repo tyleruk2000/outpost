@@ -1,0 +1,103 @@
+# Outpost — production Compose stack.
+#
+#   cp .env.example .env      # then read it; the defaults are safe
+#   docker compose up -d
+#   open http://localhost:8080
+#
+# Everything Outpost keeps lives in three places:
+#   outpost-data     database, notes attachments, settings   (keep on a local disk)
+#   outpost-library  the default storage location            (documents, collections, maps)
+#   anything you mount under /storage                        (external drives, NAS shares)
+#
+# See docs/storage.md for NAS and external-drive examples.
+
+name: outpost
+
+services:
+  outpost:
+    image: ${OUTPOST_IMAGE:-ghcr.io/tyleruk2000/outpost:latest}
+    build: .
+    restart: unless-stopped
+    init: true
+    environment:
+      # Reachable only from this machine unless you opt in. See .env.example.
+      OUTPOST_LAN_ACCESS: ${OUTPOST_LAN_ACCESS:-false}
+      OUTPOST_AUTH: ${OUTPOST_AUTH:-auto}
+      OUTPOST_ALLOWED_HOSTS: ${OUTPOST_ALLOWED_HOSTS:-}
+      OUTPOST_SECURE_COOKIES: ${OUTPOST_SECURE_COOKIES:-false}
+      OUTPOST_MAX_UPLOAD_MB: ${OUTPOST_MAX_UPLOAD_MB:-2048}
+      OUTPOST_KIWIX_URL: http://kiwix:8080
+    ports:
+      # 127.0.0.1 keeps the port private to this machine. Set OUTPOST_BIND=0.0.0.0
+      # together with OUTPOST_LAN_ACCESS=true to share it on your network.
+      - "${OUTPOST_BIND:-127.0.0.1}:${OUTPOST_PORT:-8080}:8080"
+    volumes:
+      - outpost-data:/data
+      - outpost-library:/storage/internal
+      - kiwix-library:/kiwix
+      # External drives and network shares: mount each under /storage, then add it
+      # on the Storage screen. Examples (uncomment and edit):
+      # - /mnt/usb-ssd:/storage/usb-ssd
+      # - /Volumes/FieldSSD:/storage/field-ssd          # macOS
+      # - /mnt/d/outpost:/storage/drive-d               # Windows, from WSL2
+      # - nas-library:/storage/nas                      # a volume defined below
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/api/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: ${OUTPOST_MEMORY_LIMIT:-1g}
+
+  # Serves installed ZIM archives (Wikipedia and other Kiwix collections). It is never
+  # published to the host: the browser reaches it only through Outpost, which adds
+  # sign-in and sandboxing. It needs the same /storage mounts as Outpost, read-only.
+  kiwix:
+    image: ghcr.io/kiwix/kiwix-serve:3.8.2
+    restart: unless-stopped
+    init: true
+    command: ["--library", "--monitorLibrary", "--nodatealiases", "/kiwix/library.xml"]
+    depends_on:
+      outpost:
+        condition: service_healthy
+    volumes:
+      - kiwix-library:/kiwix:ro
+      - outpost-library:/storage/internal:ro
+      # Repeat every extra /storage mount from the outpost service here, read-only:
+      # - /mnt/usb-ssd:/storage/usb-ssd:ro
+      # - nas-library:/storage/nas:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/catalog/v2/root.xml || exit 1"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: ${KIWIX_MEMORY_LIMIT:-512m}
+
+volumes:
+  outpost-data:
+  outpost-library:
+  kiwix-library:
+
+  # A NAS share mounted by Docker itself. Credentials stay in Docker's configuration
+  # (or an .env file readable only by you), never inside Outpost.
+  #
+  # nas-library:                      # NFS
+  #   driver: local
+  #   driver_opts:
+  #     type: nfs
+  #     o: "addr=192.168.1.20,rw,nfsvers=4.1,soft,timeo=150"
+  #     device: ":/volume1/outpost"
+  #
+  # nas-library:                      # SMB / CIFS
+  #   driver: local
+  #   driver_opts:
+  #     type: cifs
+  #     o: "addr=192.168.1.20,username=${NAS_USER},password=${NAS_PASSWORD},uid=1000,gid=1000,file_mode=0664,dir_mode=0775,vers=3.0"
+  #     device: "//192.168.1.20/outpost"
