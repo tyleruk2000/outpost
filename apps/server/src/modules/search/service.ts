@@ -200,11 +200,19 @@ export function createSearchService(ctx: AppContext): SearchService {
     }
 
     const current = existing
-      ? db.select({ ordinal: chunks.ordinal, contentHash: chunks.contentHash, indexVersion: chunks.indexVersion }).from(chunks).where(eq(chunks.entityRowId, rowId)).orderBy(chunks.ordinal).all()
+      ? db
+          .select({ ordinal: chunks.ordinal, contentHash: chunks.contentHash, indexVersion: chunks.indexVersion, heading: chunks.heading, page: chunks.page })
+          .from(chunks)
+          .where(eq(chunks.entityRowId, rowId))
+          .orderBy(chunks.ordinal)
+          .all()
       : [];
     const sameContent =
       current.length === passages.length &&
-      current.every((row, index) => row.contentHash === passages[index]!.contentHash && row.indexVersion === INDEX_VERSION);
+      current.every((row, index) => {
+        const passage = passages[index]!;
+        return row.contentHash === passage.contentHash && row.indexVersion === INDEX_VERSION && row.heading === passage.heading && row.page === passage.page;
+      });
 
     if (sameContent) {
       // Text is unchanged: refresh the denormalised columns and keep chunk ids, so any
