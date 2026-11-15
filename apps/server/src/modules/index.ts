@@ -11,12 +11,16 @@ import { registerDocuments } from "./documents/index.ts";
 import { registerDownloads } from "./downloads/index.ts";
 import { registerMaps } from "./maps/index.ts";
 import { registerNotes } from "./notes/index.ts";
+import { registerRetrieval } from "./retrieval/index.ts";
 import { registerSearch } from "./search/index.ts";
+import { registerSemantic } from "./semantic/index.ts";
 
 export type ModuleRegister = (app: FastifyInstance, ctx: AppContext) => Promise<void>;
 
 export const modules: ModuleRegister[] = [
   registerSearch,
+  registerSemantic,
+  registerRetrieval,
   registerDocuments,
   registerNotes,
   registerCollections,
