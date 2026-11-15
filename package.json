@@ -2,7 +2,7 @@
   "name": "outpost",
   "version": "0.1.0",
   "private": true,
-  "description": "Outpost — knowledge beyond the network. A self-hosted, offline-first knowledge platform.",
+  "description": "Outpost \u2014 knowledge beyond the network. A self-hosted, offline-first knowledge platform.",
   "license": "MIT",
   "type": "module",
   "packageManager": "pnpm@9.15.9",
@@ -24,5 +24,10 @@
     "@biomejs/biome": "^2.6.8",
     "esbuild": "^0.28.2",
     "typescript": "^7.0.2"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
   }
 }
