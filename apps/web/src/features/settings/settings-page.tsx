@@ -1,6 +1,7 @@
 import { formatBytes, type Settings } from "@outpost/shared";
 import { Monitor, Moon, Sun } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
+import { useLocation } from "react-router";
 import { ErrorState, Notice, Page, PageHeader } from "@/components/page";
 import { Input } from "@/components/ui/input";
 import { Segmented, Skeleton, Switch } from "@/components/ui/misc";
@@ -77,6 +78,14 @@ export default function SettingsPage({ extraSections }: { extraSections?: ReactN
   const save = <K extends keyof Settings>(key: K, value: Settings[K]) => update.mutate({ [key]: value } as Partial<Settings>);
   const s = settings.data;
   const info = system.data;
+
+  // A link such as /settings#semantic-title lands on that section once it has been drawn.
+  const { hash } = useLocation();
+  const drawn = settings.isSuccess;
+  useEffect(() => {
+    if (!hash || !drawn) return;
+    document.getElementById(decodeURIComponent(hash.slice(1)))?.scrollIntoView({ block: "start" });
+  }, [hash, drawn]);
 
   return (
     <Page>

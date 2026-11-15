@@ -170,6 +170,16 @@ describe("text from markup", () => {
       { heading: "Table", text: "Fuel | Boil\nGas | 3 min\n\nText with inline html and a pan." },
       { heading: "Empty", text: "" },
     ]);
+    // With no title in front matter, a document that opens with a level-one heading is named by it.
+    expect(markdownSections("# Radio for remote places\n\nLine of sight.\n\n## Antennas\n\nLonger is not always better.").meta.title).toBe(
+      "Radio for remote places",
+    );
+    expect(markdownSections("---\ntitle: From the front matter\n---\n# From the heading\n\nText.").meta.title).toBe(
+      "From the front matter",
+    );
+    // A heading further down, or a smaller one, is a section and not the document's name.
+    expect(markdownSections("Some notes first.\n\n# Later heading\n\nText.").meta.title).toBeUndefined();
+    expect(markdownSections("## Only a section\n\nText.").meta.title).toBeUndefined();
     // A thematic break at the top is not front matter.
     expect(markdownSections("---\n\nJust text").sections).toEqual([{ heading: undefined, text: "Just text" }]);
   });

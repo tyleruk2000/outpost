@@ -105,7 +105,9 @@ export default function HomePage() {
   const collections = useQuery({
     queryKey: ["collections", "all"],
     queryFn: () => api.get<CollectionsResponse>("/api/collections"),
-    select: (data) => data.collections,
+    // Home counts things as a person would: a PDF fetched from the catalogue is one of
+    // their documents (listed above), and terrain is part of the map it shades.
+    select: (data) => data.collections.filter((item) => item.kind !== "terrain" && !(item.kind === "file" && item.meta?.documentId)),
   });
   const downloads = useQuery({
     queryKey: ["downloads", "list"],

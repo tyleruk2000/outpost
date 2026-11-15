@@ -145,7 +145,10 @@ export function markdownSections(source: string): { sections: ExtractedSection[]
     }
   }
   flush();
-  return { sections, meta };
+  // A document that opens with a level-one heading is named by it, as a reader would name it.
+  const first = tree.children[0];
+  const opening = first?.type === "heading" && first.depth === 1 ? tidyText(markdownText(first)) : "";
+  return { sections, meta: { ...meta, title: meta.title ?? (opening || undefined) } };
 }
 
 export async function extractMarkdown(file: string): Promise<Extracted> {
