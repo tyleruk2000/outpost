@@ -1,0 +1,102 @@
+/**
+ * Behaviour people change from the Settings screen. Stored one key per row so that new
+ * settings can be added without a migration; the schema below is the single list of
+ * what exists and what the defaults are.
+ */
+import { z } from "zod";
+import type { AppContext } from "../../core/context.ts";
+import { settings as settingsTable } from "../../db/schema.ts";
+
+export const settingsSchema = z.object({
+  /** How many downloads run at once. */
+  "downloads.concurrency": z.number().int().min(1).max(8).default(2),
+  /** Attempts per download before it is marked failed. */
+  "downloads.maxAttempts": z.number().int().min(1).max(20).default(8),
+  /** How many documents are processed at once. Keep at 1 on a Raspberry Pi. */
+  "indexing.concurrency": z.number().int().min(1).max(8).default(1),
+  /** Target passage length, in characters, for search and retrieval. */
+  "indexing.chunkSize": z.number().int().min(300).max(4000).default(1200),
+  "indexing.chunkOverlap": z.number().int().min(0).max(800).default(150),
+  /** Largest number of PDF pages read per document; 0 means no limit. */
+  "indexing.maxPdfPages": z.number().int().min(0).max(100000).default(5000),
+  "search.semantic.enabled": z.boolean().default(false),
+  /** Embedding provider: none, a local model run in-process, or a local HTTP endpoint. */
+  "search.semantic.provider": z.enum(["none", "transformers", "openai-compatible"]).default("none"),
+  "search.semantic.model": z.string().max(200).default("Xenova/all-MiniLM-L6-v2"),
+  "search.semantic.endpoint": z.string().max(500).default("http://127.0.0.1:11434/v1"),
+  "search.semantic.batchSize": z.number().int().min(1).max(256).default(16),
+  /** Reciprocal rank fusion constant; larger values flatten the difference between ranks. */
+  "search.hybrid.rrfK": z.number().int().min(1).max(1000).default(60),
+  "search.hybrid.keywordWeight": z.number().min(0).max(10).default(1),
+  "search.hybrid.semanticWeight": z.number().min(0).max(10).default(1),
+  /** Include installed reference collections (Kiwix) in unified search. */
+  "search.includeReference": z.boolean().default(true),
+  /** Address of the planet tile archive regions are extracted from. Empty picks the newest build. */
+  "maps.tileSource": z.string().max(500).default(""),
+  "maps.terrainSource": z.string().max(500).default("https://download.mapterhorn.com/planet.pmtiles"),
+  "maps.defaultMaxZoom": z.number().int().min(0).max(15).default(14),
+  /** Minutes between checks that storage locations are still connected. */
+  "storage.checkIntervalSeconds": z.number().int().min(5).max(3600).default(30),
+});
+
+export type Settings = z.infer<typeof settingsSchema>;
+export type SettingKey = keyof Settings;
+
+export interface SettingsService {
+  all(): Settings;
+  get<K extends SettingKey>(key: K): Settings[K];
+  update(patch: Partial<Settings>): Settings;
+  onChange(listener: (settings: Settings) => void): void;
+}
+
+declare module "../../core/context.ts" {
+  interface Services {
+    settings: SettingsService;
+  }
+}
+
+export function createSettingsService(ctx: AppContext): SettingsService {
+  const listeners: Array<(settings: Settings) => void> = [];
+  let cache: Settings | undefined;
+
+  function load(): Settings {
+    if (cache) return cache;
+    const stored: Record<string, unknown> = {};
+    for (const row of ctx.db.select().from(settingsTable).all()) stored[row.key] = row.value;
+    // Unknown or no-longer-valid values fall back to defaults rather than failing boot.
+    const merged: Record<string, unknown> = {};
+    for (const [key, schema] of Object.entries(settingsSchema.shape)) {
+      const parsed = schema.safeParse(stored[key]);
+      merged[key] = parsed.success ? parsed.data : schema.parse(undefined);
+    }
+    cache = merged as Settings;
+    return cache;
+  }
+
+  return {
+    all: load,
+    get: (key) => load()[key],
+    update(patch) {
+      const validated = settingsSchema.partial().strict().parse(patch);
+      const now = Date.now();
+      ctx.sqlite.transaction(() => {
+        for (const [key, value] of Object.entries(validated)) {
+          if (value === undefined) continue;
+          ctx.db
+            .insert(settingsTable)
+            .values({ key, value, updatedAt: now })
+            .onConflictDoUpdate({ target: settingsTable.key, set: { value, updatedAt: now } })
+            .run();
+        }
+      })();
+      cache = undefined;
+      const next = load();
+      for (const listener of listeners) listener(next);
+      ctx.events.publish({ type: "settings.changed" });
+      return next;
+    },
+    onChange(listener) {
+      listeners.push(listener);
+    },
+  };
+}

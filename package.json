@@ -1,0 +1,27 @@
+{
+  "name": "outpost",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Outpost — knowledge beyond the network. A self-hosted, offline-first knowledge platform.",
+  "license": "MIT",
+  "type": "module",
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter @outpost/server --filter @outpost/web dev",
+    "build": "pnpm --filter @outpost/web build",
+    "start": "pnpm --filter @outpost/server start",
+    "test": "pnpm -r --workspace-concurrency=1 test",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "biome check .",
+    "format": "biome check --write .",
+    "catalog:validate": "node apps/server/src/cli/validate-catalog.ts",
+    "e2e": "pnpm --filter @outpost/e2e test"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.6.8",
+    "typescript": "^7.0.2"
+  }
+}
