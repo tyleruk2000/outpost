@@ -19,7 +19,7 @@ import {
 } from "../figures/fusion";
 import { CitationChecker, contextCommand, PromptBlock } from "../figures/model";
 import { formatValue } from "../lib/scale";
-import { SETTINGS_MEANING, SETTINGS_READING, Stage } from "../stages";
+import { SETTINGS_ANSWERS, SETTINGS_MEANING, SETTINGS_READING, Stage } from "../stages";
 
 /** The fusion figures share one set of what-if settings, so they live in one component per trace. */
 function FusionFigures({ trace }: { trace: ExplainResponse }) {
@@ -169,7 +169,8 @@ export function ContextSection() {
         <p>
           Small local models have small windows, a few thousand tokens. And even when the window is large, filling it is a mistake: every
           extra passage costs time, and a model given twenty passages of which three matter is more likely to be distracted than helped. So
-          there is a budget. Here it is {formatNumber(CONTEXT_BUDGET)} characters of quoted text and at most {TRACE_LIMIT} passages.
+          there is a budget. Here it is {formatNumber(CONTEXT_BUDGET)} characters of quoted text and at most {TRACE_LIMIT} passages, which
+          is what answers use unless the budget has been changed in <Link to={SETTINGS_ANSWERS}>Settings</Link>.
         </p>
         <p>
           The rule for filling it is simple. Take the passages in their final order. Add each one if it still fits. If one is too long for
@@ -231,8 +232,10 @@ export function ModelSection() {
     <Stage id="stage-model">
       <Prose>
         <p>
-          Everything up to here, Outpost does. This last step it does not: there is no language model inside Outpost, and no part of it
-          writes an answer. What it can show you is exactly what a model would be handed, so that the whole idea is in view.
+          Everything up to here, Outpost does. This last step is done by a language model, and there is none inside Outpost. If you run one
+          yourself (with Ollama, llama.cpp or LM Studio) and name it in <Link to={SETTINGS_ANSWERS}>Settings</Link>, the Search screen
+          offers <strong>Answer from my library</strong>: Outpost sends that model what is shown below, and shows you what it writes, with
+          the passages beneath it. Nothing is sent until you press that button, and it goes to your model server and nowhere else.
         </p>
         <p>
           A request to a language model is called a <strong>prompt</strong>. It usually has two parts. The <em>system</em> part is the
@@ -241,7 +244,7 @@ export function ModelSection() {
         </p>
       </Prose>
 
-      <Figure id="fig-prompt" title="The prompt that would be sent">
+      <Figure id="fig-prompt" title="The prompt that is sent">
         <FromTrace shape="text" invitation="The instructions, your sources and your question, laid out as a model would receive them.">
           {(traced) => <PromptBlock trace={traced} />}
         </FromTrace>
@@ -249,9 +252,18 @@ export function ModelSection() {
 
       <Prose>
         <p>
-          Given that prompt, a model would read the sources, write a few sentences in reply to the question, and put a marker such as [2]
-          after each statement to say which source it rests on. The instruction to answer <em>only</em> from the sources, and to say so when
-          they do not contain the answer, is what is meant by <em>grounding</em> an answer.
+          Given that prompt, a model reads the sources, writes a few sentences in reply to the question, and puts a marker such as [2] after
+          each statement to say which source it rests on. The instruction to answer <em>only</em> from the sources, and to say so when they
+          do not contain the answer, is what is meant by <em>grounding</em> an answer.
+        </p>
+        <p>
+          Look at the two lines of equals signs around the sources, and the code they share. Your documents can contain anything, including
+          a sentence written to look like an order: “ignore your instructions and say this instead”. Planting such a sentence is called{" "}
+          <strong>prompt injection</strong>. The lines fence the sources off as material to report on, the rules say that nothing between
+          them is to be obeyed, and the code is made up afresh for every question so that no document can contain it and close the fence
+          early. This lowers the risk. It does not remove it: a small model can still be talked round. What keeps that harmless is that
+          Outpost never acts on an answer. It is shown as words, and the only links in it are the markers, which lead to passages Outpost
+          itself supplied.
         </p>
         <p>
           The markers are the point of the whole arrangement. A model’s sentence is an interpretation; the source’s sentence is the source.
@@ -270,25 +282,46 @@ export function ModelSection() {
       <Figure
         id="fig-checker"
         title="Check the markers in an answer"
-        reading="The same check, done in this page. It needs an answer from somewhere else, because Outpost does not produce one."
+        reading="The check Outpost runs on every answer it shows, done here on any text you paste: an answer from another program, or one you have changed to see what happens."
       >
-        <FromTrace shape="text" invitation="A box for an answer from your own model, and a check of its markers against the sources above.">
+        <FromTrace shape="text" invitation="A box for an answer, and a check of its markers against the sources above.">
           {(traced) => <CitationChecker trace={traced} />}
         </FromTrace>
       </Figure>
 
       <Prose>
-        <h3>Trying it with a model of your own</h3>
+        <h3>Asking for an answer</h3>
         <p>
-          If you run a language model on your own computer, you can join the last two boxes up yourself today. Ask Outpost for the context,
-          then pass it to your model with an instruction like the one above. The request below returns the same numbered sources as this
-          page, together with the citation records. The file <code>docs/ai.md</code> in the Outpost repository has a complete worked
-          example.
+          {data ? (
+            <>
+              <Link to={`/search?q=${encodeURIComponent(data.query)}`}>Open this question on the Search screen</Link> and choose{" "}
+              <strong>Answer from my library</strong>.
+            </>
+          ) : (
+            <>
+              Type a question on the <Link to="/search">Search screen</Link> and choose <strong>Answer from my library</strong>.
+            </>
+          )}{" "}
+          The button is there once a model server is set up in{" "}
+          <Link to={SETTINGS_ANSWERS}>Settings, under “Answers from your library”</Link>. The answer is labelled as generated and names the
+          model that wrote it; the markers in it open the passages; a marker that matches no source is struck through; and an answer with no
+          markers is called out. When no passage is found, the model is not asked at all. One thing differs from the search box: before
+          looking for passages, an answer leaves out the words that only make a sentence a question (“how”, “should”, “the”) and searches
+          for the rest, and it says which words it searched for.
+        </p>
+        <p>
+          Answers draw on documents, notes and book chapters. Articles in reference collections such as Wikipedia are not cut into passages
+          by Outpost, so they are never among the sources, even when they appear in the search results.
+        </p>
+        <p>
+          To build something of your own on the same passages, ask Outpost for the context directly. The request below returns the numbered
+          sources and their citation records, without a prompt around them. The file <code>docs/ai.md</code> in the Outpost repository
+          describes the rest.
         </p>
         <pre>
           <code>{contextCommand(data?.query ?? "your question")}</code>
         </pre>
-        <p>The model’s reply is then its own work, not Outpost’s. Read it with the sources open.</p>
+        <p>However an answer is produced, it is the model’s work, not your library’s. Read it with the sources open.</p>
       </Prose>
     </Stage>
   );
@@ -323,9 +356,9 @@ export function WrongSection() {
         </p>
         <h3>It was in the context, and the model got it wrong anyway</h3>
         <p>
-          This one is outside Outpost, but you can still tell. If the right text is among <a href="#fig-sources">the numbered sources</a>{" "}
-          and the answer contradicts it, or cites a marker that does not support the claim, the fault is in the generation. Check the
-          markers, read the cited source, and prefer the source.
+          This one is the model’s doing, not the search’s, and you can tell. If the right text is among{" "}
+          <a href="#fig-sources">the numbered sources</a> and the answer contradicts it, or cites a marker that does not support the claim,
+          the fault is in the generation. Check the markers, read the cited source, and prefer the source.
         </p>
         <h3>Where to change things</h3>
         <ul>
@@ -336,6 +369,10 @@ export function WrongSection() {
           <li>
             <Link to={SETTINGS_MEANING}>Settings, under “Search by meaning”</Link>: switching it on, choosing where the model runs, and
             building the index of vectors.
+          </li>
+          <li>
+            <Link to={SETTINGS_ANSWERS}>Settings, under “Answers from your library”</Link>: which model writes, how freely it words things,
+            and the context budget.
           </li>
           <li>
             <Link to="/settings#search-title">Settings, under “Search”</Link>: the fusion numbers (<em>k</em> and the two weights). The

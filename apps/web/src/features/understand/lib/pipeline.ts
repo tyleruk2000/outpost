@@ -74,7 +74,7 @@ export function layoutPipeline(width: number): PipelineLayout {
   let height: number;
 
   if (direction === "across") {
-    // Six columns. What Outpost does not do sits in the last one: the model above, its answer below.
+    // Six columns. What happens outside Outpost, on the person's own model server, sits in the last one: the model above, its answer below.
     const column = width / 6;
     const nodeWidth = column - 10;
     const at = (index: number) => index * column + 5;

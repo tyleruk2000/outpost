@@ -30,8 +30,9 @@ export function JourneySection() {
           has had the found text added to it. Generation is the writing.
         </p>
         <p>
-          Outpost does the retrieval and the augmenting. It does not include a language model and does not write answers. So the journey
-          below is drawn with its last two steps dashed: they are what somebody would add, and everything before them is what happens here.
+          Outpost does the retrieval and the augmenting. It does not include a language model. The writing is done by a model you run
+          yourself, if you have set one up in Settings: Outpost hands it the passages and shows you what it wrote. So the journey below is
+          drawn with its last two steps dashed: they happen on your model server, and everything before them happens here.
         </p>
       </Prose>
 

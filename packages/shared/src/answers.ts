@@ -17,6 +17,8 @@ export interface AnswerSource {
   heading: string | null;
   /** The passage exactly as it is stored, and exactly as it was sent to the model. */
   quote: string;
+  /** This source is from a field where a wrong paraphrase can hurt someone (medicine, first aid, preserving food). */
+  safetyCritical: boolean;
 }
 
 /**
@@ -90,6 +92,11 @@ export type AnswerEvent =
   | {
       type: "sources";
       question: string;
+      /**
+       * What the library was searched for: the question without its small words ("how",
+       * "should", "the"), or the question as typed when it has no others.
+       */
+      searchedFor: string;
       /** The model named in Settings, as it was asked for. */
       model: string;
       server: string;

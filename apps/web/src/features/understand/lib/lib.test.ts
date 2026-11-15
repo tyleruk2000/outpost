@@ -376,6 +376,9 @@ describe("text helpers", () => {
   it("checks citation markers the way the server does", () => {
     expect(checkMarkers("Boil it [1]. Cool it [3][1]. Then [12] and [x].", [1, 2, 3])).toEqual({ used: [1, 3], unsupported: [12] });
     expect(checkMarkers("No markers here.", [1])).toEqual({ used: [], unsupported: [] });
+    // A list in one pair of brackets counts as its separate markers; prose in brackets is not a marker.
+    expect(checkMarkers("Boil it [1, 3]. See the [1994 edition] [2; 8].", [1, 2, 3])).toEqual({ used: [1, 2, 3], unsupported: [8] });
+    expect(splitMarkers("a [1, 9].").map((part) => part.text)).toEqual(["a ", "[1]", "[9]", "."]);
     expect(splitMarkers("Boil [1] then [9].")).toEqual([
       { text: "Boil ", marker: null },
       { text: "[1]", marker: 1 },

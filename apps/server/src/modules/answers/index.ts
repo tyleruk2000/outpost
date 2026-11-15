@@ -22,7 +22,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
 import { AppError, messageOf } from "../../core/errors.ts";
-import { checkCitations } from "../retrieval/index.ts";
+import { checkCitations, isSafetyCritical } from "../retrieval/index.ts";
 import { buildAnswerPrompt } from "../retrieval/prompt.ts";
 import { type ModelServerAddress, parseModelServerAddress } from "./address.ts";
 import {
@@ -38,6 +38,34 @@ import {
 export const ANSWER_PASSAGES = 8;
 /** The longest answer asked for, in tokens (about 750 words). A model that reaches it is reported as cut short. */
 export const ANSWER_MAX_TOKENS = 1024;
+
+/**
+ * Words that say a sentence is a question without saying what it is about. Search
+ * treats every word as something a passage must contain, so "how long should I boil
+ * water" finds nothing with all seven words and falls back to passages with any of
+ * them, including ones that merely contain "I" or "how". Searching for "long boil
+ * water" finds the passages that are about the subject. English only: a question in
+ * another language is searched for as typed.
+ */
+const SMALL_WORDS = new Set(
+  "a an and are as at be been but by can could did do does for from had has have how i if in into is it its me my of on or our shall should so than that the their them then there these they this those to us was we were what when where which who whom whose why will with would you your about tell explain please".split(
+    " ",
+  ),
+);
+
+/** The words of a question that say what it is about. The same text back when nothing can be dropped. */
+export function subjectOf(question: string): string {
+  // Quoted phrases and excluded words are search syntax the person meant; leave such a question alone.
+  if (/["“”]/.test(question) || /(^|\s)-\S/.test(question)) return question;
+  // "How long", "how many": the second word asks for an amount, it does not name the subject.
+  const words = question
+    .replace(/\bhow\s+(long|much|many|often|far|big|old)\b/gi, " ")
+    .split(/\s+/)
+    .filter(Boolean);
+  const kept = words.filter((word) => !SMALL_WORDS.has(word.toLowerCase().replace(/[^\p{L}\p{N}'’-]/gu, "")));
+  const subject = kept.join(" ").replace(/[?!.,;:]+$/g, "");
+  return subject && subject !== question ? subject : question;
+}
 
 export interface AnswersService {
   status(): AnswersStatus;
@@ -235,8 +263,11 @@ export async function registerAnswers(app: FastifyInstance, ctx: AppContext): Pr
     };
 
     try {
+      // The library is searched for what the question is about. If that finds nothing, nothing was
+      // found: falling back to the small words would only turn up passages that happen to contain "what".
+      const searchedFor = subjectOf(input.question);
       const passages = await retrieval.retriever.retrieve({
-        query: input.question,
+        query: searchedFor,
         limit: ANSWER_PASSAGES,
         mode: input.mode,
         signal: controller.signal,
@@ -266,10 +297,12 @@ export async function registerAnswers(app: FastifyInstance, ctx: AppContext): Pr
         page,
         heading,
         quote,
+        safetyCritical: isSafetyCritical({ title, collection }),
       }));
       send({
         type: "sources",
         question: input.question,
+        searchedFor,
         model: provider.model,
         server: provider.address.host,
         sources,

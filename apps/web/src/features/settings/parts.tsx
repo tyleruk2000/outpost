@@ -84,3 +84,56 @@ export function TextSetting({
     />
   );
 }
+
+/** A number field that saves when the person leaves it or presses Enter, and reverts if invalid. */
+export function NumberSetting({
+  id,
+  value,
+  min,
+  max,
+  disabled,
+  onSave,
+  unit,
+  decimals = false,
+}: {
+  id: string;
+  value: number;
+  min: number;
+  max: number;
+  disabled: boolean;
+  onSave: (value: number) => void;
+  unit?: string;
+  /** Accept one decimal place (a weight such as 1.5) instead of whole numbers only. */
+  decimals?: boolean;
+}) {
+  const [draft, setDraft] = useState(String(value));
+  useEffect(() => setDraft(String(value)), [value]);
+  const commit = () => {
+    const typed = Number(draft);
+    const parsed = decimals ? Math.round(typed * 10) / 10 : typed;
+    if (draft.trim() === "" || !Number.isFinite(typed) || (!decimals && !Number.isInteger(typed)) || parsed < min || parsed > max) {
+      return setDraft(String(value));
+    }
+    if (parsed !== typed) setDraft(String(parsed));
+    if (parsed !== value) onSave(parsed);
+  };
+  return (
+    <span className="flex items-center gap-2">
+      <Input
+        id={id}
+        type="number"
+        inputMode={decimals ? "decimal" : "numeric"}
+        step={decimals ? 0.1 : 1}
+        min={min}
+        max={max}
+        value={draft}
+        disabled={disabled}
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={commit}
+        onKeyDown={(event) => event.key === "Enter" && (event.target as HTMLInputElement).blur()}
+        className="tabular w-24 text-right"
+      />
+      {unit ? <span className="w-16 text-small text-ink-muted">{unit}</span> : null}
+    </span>
+  );
+}

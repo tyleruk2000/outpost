@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Segmented, Skeleton } from "@/components/ui/misc";
 import { api } from "@/lib/api";
 import { cn, plural } from "@/lib/utils";
+import { AnswerArea, AnswerHint } from "./answer";
 
 const PAGE_SIZE = 20;
 
@@ -147,6 +148,8 @@ export default function SearchPage() {
         ) : null}
       </div>
 
+      <AnswerArea q={q} mode={mode} referenceResults={q.trim() ? (data?.facets.reference ?? 0) : 0} />
+
       {!q.trim() ? (
         <EmptyState title="One search for everything you keep" seed={11} className="mt-8">
           <p>
@@ -170,6 +173,7 @@ export default function SearchPage() {
               See how search works, step by step
             </Link>
           </p>
+          <AnswerHint />
         </EmptyState>
       ) : (
         <>

@@ -5,7 +5,10 @@ import { Badge } from "@/components/ui/misc";
 import { cn, formatNumber, plural } from "@/lib/utils";
 import { checkMarkers, splitMarkers } from "../lib/text";
 
-/** The prompt that would be sent to a model. It is shown, never sent: Outpost does not run one. */
+/**
+ * The prompt for this question: what "Answer from my library" sends to the person's own model, built by the same
+ * code on the server. This page only shows it. Nothing is sent from here.
+ */
 export function PromptBlock({ trace }: { trace: ExplainResponse }) {
   const [full, setFull] = useState(false);
   const { system, user, approxTokens } = trace.prompt;
@@ -21,7 +24,7 @@ export function PromptBlock({ trace }: { trace: ExplainResponse }) {
   return (
     <div className="overflow-hidden rounded-panel border border-dashed border-border-strong">
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-dashed border-border-strong bg-surface px-4 py-2">
-        <p className="text-small font-semibold text-ink">What would be sent. Outpost does not run a model, so nothing was.</p>
+        <p className="text-small font-semibold text-ink">What is sent when you ask for an answer. Shown here, not sent.</p>
         <p className="tabular text-small text-ink-muted">about {formatNumber(approxTokens)} tokens</p>
       </div>
       <p className="px-4 pt-3 text-micro font-medium text-ink-muted">System: the standing instructions</p>
@@ -45,9 +48,9 @@ export function PromptBlock({ trace }: { trace: ExplainResponse }) {
 }
 
 /**
- * Checks the citation markers in an answer the reader brings from their own model.
- * Nothing is generated here: the page only reads the text it is given and compares its
- * `[n]` markers with the sources that were supplied.
+ * Checks the citation markers in any answer the reader pastes in: the check Outpost
+ * runs on every answer it shows. Nothing is generated here: the page only reads the
+ * text it is given and compares its `[n]` markers with the sources that were supplied.
  */
 export function CitationChecker({ trace }: { trace: ExplainResponse }) {
   const id = useId();
@@ -69,7 +72,7 @@ export function CitationChecker({ trace }: { trace: ExplainResponse }) {
   return (
     <div>
       <label htmlFor={id} className="text-small font-medium text-ink">
-        An answer from your own model
+        An answer to check
       </label>
       <p id={`${id}-hint`} className="mt-0.5 max-w-[68ch] text-small text-ink-muted">
         Paste an answer here to check its markers against the {plural(citations.length, "source")} above. The text stays in this page; it is

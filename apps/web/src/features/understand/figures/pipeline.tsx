@@ -116,11 +116,11 @@ function nodeTexts(overview: ExplainOverview | undefined, trace: ExplainResponse
     },
     model: {
       title: "Language model",
-      lines: ["not part of", "Outpost"],
+      lines: ["your own,", "not Outpost’s"],
       href: "#stage-model",
       color: COLOR.axis,
       outside: true,
-      spoken: "not part of Outpost",
+      spoken: "a model you run yourself, when one is set up; not part of Outpost",
     },
     answer: {
       title: "Answer",
@@ -128,7 +128,7 @@ function nodeTexts(overview: ExplainOverview | undefined, trace: ExplainResponse
       href: "#stage-model",
       color: COLOR.axis,
       outside: true,
-      spoken: "with citations; not produced by Outpost",
+      spoken: "with citations; written by your model, not by Outpost",
     },
   };
 }
