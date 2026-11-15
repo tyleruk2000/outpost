@@ -67,7 +67,12 @@ async function attempt(client: HttpClient, context: FetchContext): Promise<Outco
   context.progress(have, download.totalBytes);
 
   // Sizes and ranges are about the stored bytes, so ask for them as they are.
-  const headers: Record<string, string> = { "accept-encoding": "identity" };
+  // "Connection: close": one file per connection. A download held to a speed limit is
+  // read more slowly than the server sends, so the server finishes, waits out its idle
+  // timeout and hangs up while the tail of the file is still buffered here. On a
+  // kept-alive connection the HTTP client reports that as an error and drops what was
+  // buffered; on one both sides know will close, it reads the buffer to the end.
+  const headers: Record<string, string> = { "accept-encoding": "identity", connection: "close" };
   if (have > 0) {
     headers.range = `bytes=${have}-`;
     // If the file changed since the first part was fetched, If-Range makes the server
