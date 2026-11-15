@@ -19,16 +19,33 @@ import { useEffect, useMemo, useState } from "react";
 import { Notice, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
-import { Checkbox, Progress, Skeleton, Switch } from "@/components/ui/misc";
+import { Checkbox, Progress, Skeleton } from "@/components/ui/misc";
 import { api, errorMessage } from "@/lib/api";
 import { cn, formatDate, plural } from "@/lib/utils";
 import { FolderPicker, type PickedFolder } from "./folder-picker";
+import { dialogColumn, phoneSheet, phoneSheetFooter, SwitchRow } from "./parts";
 
 const steps = ["Where", "What to take", "Check and write"] as const;
 
 function StepList({ current }: { current: number }) {
   return (
-    <ol className="flex flex-wrap items-center gap-x-5 gap-y-1 border-b border-border px-5 py-3 text-small">
+    <>
+      {/* Three steps do not fit across a phone, so there it says where you are in words. */}
+      <p className="border-b border-border px-5 py-2.5 text-small text-ink-muted md:hidden">
+        Step {current + 1} of {steps.length}
+        <span className="mx-2 text-border-strong" aria-hidden>
+          /
+        </span>
+        <span className="font-semibold text-ink">{steps[current]}</span>
+      </p>
+      <StepNumbers current={current} />
+    </>
+  );
+}
+
+function StepNumbers({ current }: { current: number }) {
+  return (
+    <ol className="flex flex-wrap items-center gap-x-5 gap-y-1 border-b border-border px-5 py-3 text-small max-md:hidden">
       {steps.map((label, index) => (
         <li
           key={label}
@@ -68,22 +85,53 @@ function CheckRow({
   trailing?: string;
 }) {
   return (
-    <li className="flex items-start gap-3 py-2.5">
-      <Checkbox id={id} checked={checked} disabled={disabled} onCheckedChange={(value) => onChange(value === true)} className="mt-0.5" />
-      <label htmlFor={id} className={cn("min-w-0 flex-1", disabled && "opacity-55")}>
-        <span className="block text-small font-medium text-ink">{title}</span>
-        {detail ? <span className="block text-small text-ink-muted">{detail}</span> : null}
+    <li>
+      {/* The whole row is the target. The checkbox takes its name from the title alone. */}
+      <label htmlFor={id} className={cn("flex min-h-11 items-start gap-3 py-2.5", disabled ? "cursor-default" : "cursor-pointer")}>
+        <Checkbox
+          id={id}
+          checked={checked}
+          disabled={disabled}
+          onCheckedChange={(value) => onChange(value === true)}
+          aria-labelledby={`${id}-title`}
+          aria-describedby={detail || trailing ? `${id}-more` : undefined}
+          className="mt-0.5"
+        />
+        <span className={cn("min-w-0 flex-1 md:flex md:items-baseline md:justify-between md:gap-4", disabled && "opacity-55")}>
+          <span id={`${id}-title`} className="block text-small font-medium text-ink">
+            {title}
+          </span>
+          {detail || trailing ? (
+            <span id={`${id}-more`} className="block text-small text-ink-muted md:shrink-0 md:text-right">
+              {detail ? <span className="block">{detail}</span> : null}
+              {trailing ? <span className="tabular block">{trailing}</span> : null}
+            </span>
+          ) : null}
+        </span>
       </label>
-      {trailing ? <span className="tabular shrink-0 text-small text-ink-muted">{trailing}</span> : null}
     </li>
   );
 }
 
-function Fact({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
+function Fact({ label, value, strong, path }: { label: string; value: string; strong?: boolean; path?: boolean }) {
   return (
-    <div className="flex items-baseline justify-between gap-6 border-b border-border py-2 last:border-b-0">
-      <dt className="text-small text-ink-muted">{label}</dt>
-      <dd className={cn("tabular text-right text-small text-ink", strong && "font-semibold")}>{value}</dd>
+    <div
+      className={cn(
+        "border-b border-border py-2 last:border-b-0",
+        // A path is long and has no good place to break: on a phone it goes under its label.
+        path ? "grid gap-0.5 md:flex md:items-baseline md:justify-between md:gap-6" : "flex items-baseline justify-between gap-6",
+      )}
+    >
+      <dt className="shrink-0 text-small text-ink-muted">{label}</dt>
+      <dd
+        className={cn(
+          "min-w-0 text-small text-ink",
+          path ? "font-mono text-[0.8125rem] break-all md:text-right" : "tabular text-right",
+          strong && "font-semibold",
+        )}
+      >
+        {value}
+      </dd>
     </div>
   );
 }
@@ -149,7 +197,7 @@ function Wizard({ status, onClose }: { status: PortableStatus; onClose: () => vo
     const stopped = current?.state === "failed" || current?.state === "cancelled";
     return (
       <>
-        <DialogBody className="grid gap-5">
+        <DialogBody className={dialogColumn}>
           {finished ? (
             <>
               <Notice tone="success" icon={<CircleCheck />} title="The drive is ready">
@@ -190,7 +238,7 @@ function Wizard({ status, onClose }: { status: PortableStatus; onClose: () => vo
             </div>
           )}
         </DialogBody>
-        <DialogFooter>
+        <DialogFooter className={phoneSheetFooter}>
           {finished || stopped ? (
             <Button variant="primary" onClick={onClose}>
               Done
@@ -211,7 +259,7 @@ function Wizard({ status, onClose }: { status: PortableStatus; onClose: () => vo
   return (
     <>
       <StepList current={step} />
-      <DialogBody className="grid gap-5">
+      <DialogBody className={dialogColumn}>
         {step === 0 ? (
           <>
             <FolderPicker label="Folder on the drive" onChange={setFolder} newFolderSuggestion="Outpost" />
@@ -246,14 +294,15 @@ function Wizard({ status, onClose }: { status: PortableStatus; onClose: () => vo
             <fieldset>
               <legend className="text-small font-semibold text-ink">What goes on it</legend>
               <p className="mt-0.5 text-small text-ink-muted">Your notes, tags, saved places and settings always come along.</p>
-              <div className="mt-3 flex items-center justify-between gap-4 border-y border-border py-2.5">
-                <span id="portable-documents">
-                  <span className="block text-small font-medium text-ink">All documents</span>
-                  <span className="block text-small text-ink-muted">
-                    {facets.data ? `${plural(facets.data.total, "document")}, ${formatBytes(facets.data.totalBytes)}` : "Counting…"}
-                  </span>
-                </span>
-                <Switch checked={allDocuments} onCheckedChange={setAllDocuments} aria-labelledby="portable-documents" />
+              <div className="mt-3 border-y border-border py-1.5">
+                <SwitchRow
+                  label="All documents"
+                  description={
+                    facets.data ? `${plural(facets.data.total, "document")}, ${formatBytes(facets.data.totalBytes)}` : "Counting…"
+                  }
+                  checked={allDocuments}
+                  onCheckedChange={setAllDocuments}
+                />
               </div>
 
               {collections.isPending ? (
@@ -267,11 +316,11 @@ function Wizard({ status, onClose }: { status: PortableStatus; onClose: () => vo
                 </p>
               ) : (
                 <>
-                  <div className="mt-4 flex items-baseline justify-between gap-4">
+                  <div className="mt-4 flex items-center justify-between gap-4">
                     <span className="text-small font-medium text-ink">Collections and maps</span>
                     <button
                       type="button"
-                      className="text-small text-primary underline underline-offset-2"
+                      className="text-small text-primary underline underline-offset-2 max-md:-mr-2 max-md:min-h-11 max-md:px-2"
                       onClick={() =>
                         setCollectionIds(
                           collectionIds.length === installed.length
@@ -323,7 +372,7 @@ function Wizard({ status, onClose }: { status: PortableStatus; onClose: () => vo
           ) : data ? (
             <>
               <dl>
-                <Fact label="Folder" value={data.target.path} />
+                <Fact label="Folder" value={data.target.path} path />
                 <Fact label="Starts on" value={data.runtimes.map((runtime) => runtime.label).join(", ")} />
                 <Fact
                   label="Documents"
@@ -368,29 +417,35 @@ function Wizard({ status, onClose }: { status: PortableStatus; onClose: () => vo
                 </Notice>
               ))}
               {data.target.isOutpostDrive ? (
-                <div className="flex items-start gap-3 rounded-panel border border-border p-3.5">
+                <label
+                  htmlFor="replace-existing"
+                  className="flex cursor-pointer items-start gap-3 rounded-panel border border-border p-3.5"
+                >
                   <Checkbox
                     id="replace-existing"
                     checked={replaceExisting}
                     onCheckedChange={(value) => setReplaceExisting(value === true)}
+                    aria-labelledby="replace-existing-title"
                     className="mt-0.5"
                   />
-                  <label htmlFor="replace-existing" className="text-small text-ink">
-                    <span className="font-medium">Replace the notes and library index on this drive</span>
+                  <span className="min-w-0 text-small text-ink">
+                    <span id="replace-existing-title" className="font-medium">
+                      Replace the notes and library index on this drive
+                    </span>
                     <span className="mt-0.5 block text-ink-muted">
                       It was last written on {data.target.lastWritten ? formatDate(Date.parse(data.target.lastWritten)) : "an earlier date"}
                       . Anything added while running from the drive since then is not merged; what the drive holds now is moved into a dated
                       folder on the drive, not deleted.
                     </span>
-                  </label>
-                </div>
+                  </span>
+                </label>
               ) : null}
               {start.isError ? <Notice tone="danger">{errorMessage(start.error)}</Notice> : null}
             </>
           ) : null
         ) : null}
       </DialogBody>
-      <DialogFooter className="justify-between">
+      <DialogFooter className={cn("justify-between", phoneSheetFooter)}>
         <Button variant="ghost" onClick={step === 0 ? onClose : () => setStep(step - 1)}>
           {step === 0 ? "Cancel" : "Back"}
         </Button>
@@ -444,7 +499,7 @@ export function PortableDriveSection() {
         </Notice>
       ) : null}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent title="Make a portable drive" size="lg">
+        <DialogContent title="Make a portable drive" size="lg" className={phoneSheet}>
           {status.data ? <Wizard key={session} status={status.data} onClose={() => setOpen(false)} /> : null}
         </DialogContent>
       </Dialog>

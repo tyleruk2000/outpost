@@ -47,7 +47,10 @@ for uploads and downloads to go. In Docker it is `/storage/internal` (the
 
 ## Adding a location
 
-1. Make the drive or share visible inside a storage root (see the examples below).
+1. Make the drive or share visible inside a storage root. On a Mac a plugged-in drive
+   is already there, and a NAS share can be connected from the Storage screen (see
+   [Connecting a network share](#connecting-a-network-share)). Elsewhere, see the
+   examples below.
 2. Open **Storage** and choose **Add location**.
 3. Pick the folder in the folder browser. You can make a new folder there.
 4. Give it a name and a kind: external drive, network share, internal or Docker volume.
@@ -57,8 +60,8 @@ for uploads and downloads to go. In Docker it is `/storage/internal` (the
 Outpost checks that it can write to the folder, then writes the marker file. A folder
 cannot be added if it overlaps a location you already have.
 
-The Storage screen lists the roots of your installation at the bottom, under "Using a
-NAS or another drive".
+The Storage screen lists the roots of your installation at the bottom, under "Where
+Outpost can look".
 
 ### The default location
 
@@ -92,7 +95,7 @@ never as an absolute path. This has three consequences:
 Do not delete or edit the marker file.
 
 Locations are checked every 30 seconds (the `storage.checkIntervalSeconds` setting,
-5 to 3600) and whenever an administrator refreshes the Storage screen.
+5 to 3600) and whenever someone chooses **Check drives** on the Storage screen.
 
 ## What happens when a drive is unplugged
 
@@ -116,11 +119,83 @@ Locations are checked every 30 seconds (the `storage.checkIntervalSeconds` setti
 Unplug a drive only when nothing is being written to it. Eject it in the operating
 system first.
 
+## Connecting a network share
+
+**Storage → Network shares → Connect a network share.** What that button can do
+depends on where Outpost runs, and the screen says which applies.
+
+| Where Outpost runs | What happens |
+| --- | --- |
+| Directly on a Mac | Outpost connects the share itself and keeps it connected. |
+| In Docker | Outpost cannot: a container only sees what Docker gives it. The same form writes out the Compose lines to add. |
+| Directly on Linux | Outpost cannot: mounting needs root. The same form writes out the `/etc/fstab` line and the credentials-file steps. |
+| Windows, or from a portable drive | Nothing is offered. Mount the share with the operating system, inside a storage root. |
+
+### On a Mac
+
+Enter the server (its name, such as `nas.local`, or its address), the share's name, and
+the user name and password for it. File servers that announce themselves on the network
+(Bonjour) are listed so you can pick yours instead of typing its name. Outpost asks
+macOS to connect the share, the same way the Finder does. It appears under `/Volumes`,
+which is a storage root, and Outpost then offers to add it as a storage location, in a
+folder of its own on the share (`Outpost` unless you choose otherwise).
+
+- **SMB only.** That is the file sharing every NAS offers. NFS and AFP shares are not
+  connected from here; mount those yourself and add the folder with **Add location**.
+- **Only servers on your own network.** The server must have a private or link-local
+  address (see [security.md](security.md#network-shares)).
+- **The password is never kept by Outpost.** With **Remember the password** on, it is
+  stored in the macOS Keychain of the account that runs Outpost (an item named
+  "Outpost network share") and read back from there. With it off, nothing is kept and
+  you are asked again next time. The database holds the server, the share and the user
+  name only.
+- **Reconnecting.** Shares with a remembered password are connected again when Outpost
+  starts, and every five minutes after that while their server cannot be found (a NAS
+  that starts more slowly than the Mac). **Reconnect** does it at once. Outpost stops
+  trying after the server refuses the password, so that a changed password does not
+  lock the account on the NAS; enter the new one to carry on.
+- **Disconnect** unmounts the share and leaves it disconnected until you ask. If
+  something is being written there (a download, a move), Outpost names it and asks
+  before going ahead, and macOS itself refuses while a program has files open on the
+  share. Outpost never forces it.
+- **Forget this share** disconnects it, deletes the Keychain item and removes the
+  share from the list. Files on the share are not touched, and a storage location on
+  it stays in Outpost, shown as disconnected, until you remove that too.
+
+States shown: connected, not connected, wrong password, server not found, share not
+found, password needed.
+
+If the share is already connected on the Mac (from the Finder, say), Outpost uses that
+connection rather than making a second one, and tells you that the password you typed
+was not checked or saved.
+
+Keychain access needs someone to be logged in at the Mac. If Outpost is started before
+anyone logs in, remembered shares stay disconnected until **Reconnect** is used with
+the password.
+
+### In Docker and on Linux
+
+The form asks for the server, the share and the user name (or, for NFS, the exported
+folder), **not** the password, and writes out the text to use, each block with a copy
+button. They are instructions: nothing changes until you make the changes yourself.
+What it writes has the same shape as the examples in the next section. For Docker: the
+`.env` lines, the Compose volume, and the lines for the `outpost` and `kiwix` services.
+For Linux: the credentials file, the `/etc/fstab` line and the commands to run.
+
+What has been tried and what has not:
+
+- The Docker SMB volume and service lines were tried with Docker Desktop against a test
+  Samba server, with stand-in containers in place of the real services.
+- The Linux `/etc/fstab` lines and both NFS variants were written from the examples
+  below and have **not** been tried on a real system.
+- Nothing here has been tried against a real NAS.
+
 ## NAS set-up examples
 
-Outpost does not speak NFS or SMB and has no place to enter a share password. The
-operating system or Docker mounts the share; Outpost sees a folder. **Credentials stay
-with the operating system or Docker and are never stored by Outpost.**
+Outside a Mac, Outpost does not connect shares itself and has no place to enter a share
+password. The operating system or Docker mounts the share; Outpost sees a folder.
+**Credentials stay with the operating system or Docker and are never stored by
+Outpost.** (On a Mac, see [Connecting a network share](#connecting-a-network-share).)
 
 Whatever you mount for the `outpost` service must also be mounted, at the same path
 and read-only, for the `kiwix` service. kiwix-serve opens archives by the path Outpost
@@ -232,7 +307,9 @@ Notes:
   and NTFS drives use the mount options `uid=1000,gid=1000`.
 - Running without Docker and without `OUTPOST_STORAGE_ROOTS`, Outpost already treats
   `/Volumes` (macOS) and `/media/<user>`, `/run/media/<user>` and `/mnt` (Linux) as
-  roots, so a plugged-in drive can be added directly.
+  roots, so a plugged-in drive can be added directly. If you set `OUTPOST_STORAGE_ROOTS`
+  yourself on a Mac, include `/Volumes`, or shares connected from the Storage screen
+  cannot be added as locations.
 - With Docker, a drive that was not mounted when the containers started may not be
   visible inside them. If a location stays disconnected after you plug its drive back
   in, restart the stack with `docker compose restart`.
@@ -271,8 +348,8 @@ Folders that contain symbolic links or special files are not moved.
 
 Documents are moved together, not one by one. **Move documents here** in a location's
 menu on the Storage screen (`POST /api/documents/move`) moves **every document that is
-not already there**. It needs an
-administrator and runs as a background job ("Move documents to …").
+not already there**. It runs as a
+background job ("Move documents to …").
 
 For each document:
 
@@ -341,8 +418,8 @@ Three things a restore deliberately does not carry over:
 - **Catalogue manifests.** They are in the backup for safe keeping, but they decide
   which hosts Outpost will download from, so a backup file is not allowed to change
   them. Copy your own manifests back by hand from the `catalog` folder inside the zip.
-- **Sign-ins.** Everyone is signed out and signs in again with the accounts the backup
-  holds.
+- **Network shares.** The shares the other machine had connected are not remembered
+  here; connect them again from the Storage screen.
 - **Unfinished work.** Downloads and other jobs that were queued or running when the
   backup was made do not start on the machine it is restored to.
 

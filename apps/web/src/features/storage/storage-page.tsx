@@ -1,4 +1,4 @@
-import { formatBytes, type StorageKind, type StorageLocation, type StorageUsage } from "@outpost/shared";
+import { formatBytes, type NetworkShare, type StorageKind, type StorageLocation, type StorageUsage, shareAddress } from "@outpost/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Check, CircleAlert, Ellipsis, FolderInput, HardDrive, Network, Pencil, Plus, RefreshCw, Star, Trash2, Usb } from "lucide-react";
 import { useState } from "react";
@@ -11,9 +11,10 @@ import { Field, Input } from "@/components/ui/input";
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
 import { Badge, Skeleton } from "@/components/ui/misc";
 import { api, errorMessage } from "@/lib/api";
-import { useIsAdmin, useStorage } from "@/lib/queries";
+import { useStorage } from "@/lib/queries";
 import { plural, timeAgo } from "@/lib/utils";
 import { AddLocationDialog } from "./add-location-dialog";
+import { NetworkSharesSection, useShares } from "./network-shares";
 import { PortableDriveSection } from "./portable-drive";
 
 export const kindLabels: Record<StorageKind, { label: string; icon: typeof HardDrive }> = {
@@ -46,14 +47,15 @@ function UsageLegend({ usage }: { usage: StorageUsage }) {
 
 function LocationRow({
   location,
-  canEdit,
   onlyOne,
   documentsElsewhere,
+  share,
 }: {
   location: Location;
-  canEdit: boolean;
   onlyOne: boolean;
   documentsElsewhere: number;
+  /** The network share this location lives on, when Outpost connected it. */
+  share?: NetworkShare;
 }) {
   const client = useQueryClient();
   const [renaming, setRenaming] = useState(false);
@@ -113,43 +115,43 @@ function LocationRow({
               </Badge>
             )}
           </div>
-          <p className="mt-1 text-small text-ink-muted">
-            {kind.label}
-            <span className="mx-2 text-border-strong" aria-hidden>
-              /
-            </span>
-            <span className="font-mono text-[0.8125rem] break-all">{location.path}</span>
-          </p>
         </div>
-        {canEdit ? (
-          <Menu>
-            <MenuTrigger asChild>
-              <Button variant="ghost" size="icon-sm" aria-label={`Actions for ${location.name}`}>
-                <Ellipsis />
-              </Button>
-            </MenuTrigger>
-            <MenuContent>
-              <MenuItem onSelect={() => setRenaming(true)}>
-                <Pencil /> Rename
+        <Menu>
+          <MenuTrigger asChild>
+            <Button variant="ghost" size="icon-sm" className="max-md:size-11" aria-label={`Actions for ${location.name}`}>
+              <Ellipsis />
+            </Button>
+          </MenuTrigger>
+          <MenuContent>
+            <MenuItem onSelect={() => setRenaming(true)}>
+              <Pencil /> Rename
+            </MenuItem>
+            {!location.isDefault && available ? (
+              <MenuItem onSelect={() => update.mutate({ isDefault: true })}>
+                <Star /> Make default
               </MenuItem>
-              {!location.isDefault && available ? (
-                <MenuItem onSelect={() => update.mutate({ isDefault: true })}>
-                  <Star /> Make default
-                </MenuItem>
-              ) : null}
-              {available && documentsElsewhere > 0 ? (
-                <MenuItem onSelect={() => setMovingDocuments(true)}>
-                  <FolderInput /> Move documents here
-                </MenuItem>
-              ) : null}
-              <MenuSeparator />
-              <MenuItem danger disabled={onlyOne} onSelect={() => setRemoving(true)}>
-                <Trash2 /> Remove from Outpost
+            ) : null}
+            {available && documentsElsewhere > 0 ? (
+              <MenuItem onSelect={() => setMovingDocuments(true)}>
+                <FolderInput /> Move documents here
               </MenuItem>
-            </MenuContent>
-          </Menu>
-        ) : null}
+            ) : null}
+            <MenuSeparator />
+            <MenuItem danger disabled={onlyOne} onSelect={() => setRemoving(true)}>
+              <Trash2 /> Remove from Outpost
+            </MenuItem>
+          </MenuContent>
+        </Menu>
       </div>
+
+      {/* Under the title, not beside it: on a phone the path gets the full width and a line of its own. */}
+      <p className="mt-1 text-small text-ink-muted md:pl-9">
+        {kind.label}
+        <span className="mx-2 text-border-strong max-md:hidden" aria-hidden>
+          /
+        </span>
+        <span className="font-mono text-[0.8125rem] break-all max-md:block">{location.path}</span>
+      </p>
 
       <div className="mt-4 md:pl-9">
         {available ? (
@@ -164,11 +166,15 @@ function LocationRow({
           </>
         ) : (
           <Notice tone="warning" icon={<CircleAlert />} title="This location cannot be reached">
-            <p>{location.statusDetail}</p>
+            <p>
+              {share
+                ? `It is on the network share ${shareAddress(share)}, which is not connected. Reconnect it under Network shares below.`
+                : location.statusDetail}
+            </p>
             <p className="mt-1 text-ink-muted">
               {items > 0 ? `${plural(items, "item")} stored here ${items === 1 ? "is" : "are"} unavailable until it is back. ` : ""}
-              Last seen {timeAgo(location.lastSeenAt)}. Your library records are kept; reconnect the drive and Outpost will pick it up, even
-              at a different path.
+              Last seen {timeAgo(location.lastSeenAt)}. Your library records are kept
+              {share ? "." : "; reconnect the drive and Outpost will pick it up, even at a different path."}
             </p>
           </Notice>
         )}
@@ -225,7 +231,7 @@ function LocationRow({
 
 export default function StoragePage() {
   const storage = useStorage();
-  const canEdit = useIsAdmin();
+  const shares = useShares();
   const client = useQueryClient();
   const [adding, setAdding] = useState(false);
   const refresh = useMutation({
@@ -249,16 +255,14 @@ export default function StoragePage() {
         title="Storage"
         description="Choose where your library lives. Large collections and maps can sit on an external drive or a network share; Outpost keeps its own database on this device."
         actions={
-          canEdit ? (
-            <>
-              <Button onClick={() => refresh.mutate()} loading={refresh.isPending}>
-                {refresh.isPending ? null : <RefreshCw />} Check drives
-              </Button>
-              <Button variant="primary" onClick={() => setAdding(true)}>
-                <Plus /> Add location
-              </Button>
-            </>
-          ) : null
+          <>
+            <Button onClick={() => refresh.mutate()} loading={refresh.isPending}>
+              {refresh.isPending ? null : <RefreshCw />} Check drives
+            </Button>
+            <Button variant="primary" onClick={() => setAdding(true)}>
+              <Plus /> Add location
+            </Button>
+          </>
         }
       />
 
@@ -273,11 +277,9 @@ export default function StoragePage() {
         <EmptyState
           title="No storage location yet"
           action={
-            canEdit ? (
-              <Button variant="primary" onClick={() => setAdding(true)}>
-                Add location
-              </Button>
-            ) : null
+            <Button variant="primary" onClick={() => setAdding(true)}>
+              Add location
+            </Button>
           }
         >
           Add a folder for Outpost to keep documents, collections and maps in.
@@ -289,14 +291,18 @@ export default function StoragePage() {
               <LocationRow
                 key={location.id}
                 location={location}
-                canEdit={canEdit}
                 onlyOne={locations.length === 1}
+                share={shares.data?.shares.find(
+                  (share) => share.status !== "connected" && share.locations.some((entry) => entry.id === location.id),
+                )}
                 documentsElsewhere={locations
                   .filter((other) => other.id !== location.id)
                   .reduce((sum, other) => sum + (other.usage.byKind.document?.count ?? 0), 0)}
               />
             ))}
           </ul>
+
+          <NetworkSharesSection />
 
           <Section title="What is taking the space" description="Across every location, by kind of content.">
             {totals.length === 0 ? (
@@ -330,11 +336,14 @@ export default function StoragePage() {
             )}
           </Section>
 
-          {canEdit ? <PortableDriveSection /> : null}
+          <PortableDriveSection />
 
-          <Section title="Using a NAS or another drive">
+          <Section title="Where Outpost can look">
             <div className="max-w-[70ch] space-y-2 text-small text-ink-muted">
-              <p>Outpost can only see folders inside the storage roots set by whoever runs the server. On this installation those are:</p>
+              <p>
+                A storage location has to be inside one of the storage roots set when the server was started. On this installation those
+                are:
+              </p>
               <ul className="space-y-1">
                 {storage.data.roots.map((root) => (
                   <li key={root} className="font-mono text-[0.8125rem] break-all text-ink">
@@ -342,11 +351,19 @@ export default function StoragePage() {
                   </li>
                 ))}
               </ul>
-              <p>
-                Mount the share or drive under one of them (with Docker, add it as a volume in{" "}
-                <span className="font-mono text-[0.8125rem]">compose.yaml</span>), then add it here. Outpost never stores share passwords;
-                the operating system handles the mount.
-              </p>
+              {shares.data?.mode === "macos" ? (
+                <p>
+                  A drive plugged into this Mac appears under <span className="font-mono text-[0.8125rem] text-ink">/Volumes</span>, and so
+                  does a share connected under Network shares above. Outpost never stores a share’s password; if you ask for it to be
+                  remembered, it goes in this Mac’s Keychain.
+                </p>
+              ) : (
+                <p>
+                  Mount the share or drive under one of them (with Docker, add it as a volume in{" "}
+                  <span className="font-mono text-[0.8125rem]">compose.yaml</span>), then add it here. Outpost never stores share passwords;
+                  the operating system or Docker handles the mount.
+                </p>
+              )}
             </div>
           </Section>
         </>

@@ -6,9 +6,10 @@ import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
-import { Select, Switch } from "@/components/ui/misc";
+import { Select } from "@/components/ui/misc";
 import { api, errorMessage } from "@/lib/api";
 import { FolderPicker, type PickedFolder } from "./folder-picker";
+import { dialogColumn, phoneSheet, phoneSheetFooter, SwitchRow } from "./parts";
 
 const kinds: Array<{ value: StorageKind; label: string; description: string }> = [
   { value: "external", label: "External drive", description: "USB disk or SSD that may be unplugged" },
@@ -46,11 +47,7 @@ export function AddLocationDialog({ open, onOpenChange }: { open: boolean; onOpe
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        title="Add a storage location"
-        description="Pick the folder Outpost should use. A small marker file is written there so the drive is recognised when it is reconnected."
-        size="lg"
-      >
+      <DialogContent title="Add a storage location" size="lg" className={phoneSheet}>
         <form
           onSubmit={(event) => {
             event.preventDefault();
@@ -58,7 +55,10 @@ export function AddLocationDialog({ open, onOpenChange }: { open: boolean; onOpe
           }}
           className="flex min-h-0 flex-1 flex-col"
         >
-          <DialogBody className="grid gap-5">
+          <DialogBody className={dialogColumn}>
+            <p className="text-small text-ink-muted">
+              Pick the folder Outpost should use. A small marker file is written there so the drive is recognised when it is reconnected.
+            </p>
             {open ? <FolderPicker label="Folder" onChange={setFolder} /> : null}
 
             <div className="grid gap-4 sm:grid-cols-2">
@@ -69,6 +69,8 @@ export function AddLocationDialog({ open, onOpenChange }: { open: boolean; onOpe
                     value={name}
                     onChange={(event) => setName(event.target.value)}
                     placeholder="Field SSD"
+                    autoComplete="off"
+                    enterKeyHint="done"
                     maxLength={80}
                     required
                   />
@@ -79,17 +81,16 @@ export function AddLocationDialog({ open, onOpenChange }: { open: boolean; onOpe
               </Field>
             </div>
 
-            <div className="flex items-center justify-between gap-4">
-              <span id="make-default-label">
-                <span className="block text-small font-medium text-ink">Use for new downloads</span>
-                <span className="block text-small text-ink-muted">You can still choose a different location for any single download.</span>
-              </span>
-              <Switch checked={makeDefault} onCheckedChange={setMakeDefault} aria-labelledby="make-default-label" />
-            </div>
+            <SwitchRow
+              label="Use for new downloads"
+              description="You can still choose a different location for any single download."
+              checked={makeDefault}
+              onCheckedChange={setMakeDefault}
+            />
 
             {add.isError ? <Notice tone="danger">{errorMessage(add.error)}</Notice> : null}
           </DialogBody>
-          <DialogFooter>
+          <DialogFooter className={phoneSheetFooter}>
             <Button onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button type="submit" variant="primary" disabled={!folder.path || !folder.writable || !name.trim()} loading={add.isPending}>
               Add location

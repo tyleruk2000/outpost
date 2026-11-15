@@ -23,7 +23,7 @@ export interface StorageLocation {
 }
 
 export interface StorageLocationsResponse {
-  /** Folders the server administrator allows locations to live in. */
+  /** Folders the person running the server allows locations to live in. */
   roots: string[];
   locations: Array<StorageLocation & { usage: StorageUsage }>;
 }
