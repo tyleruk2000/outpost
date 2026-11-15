@@ -311,7 +311,7 @@ export default function StoragePage() {
               </p>
               <ul className="space-y-1">
                 {storage.data.roots.map((root) => (
-                  <li key={root} className="font-mono text-[0.8125rem] text-ink">
+                  <li key={root} className="font-mono text-[0.8125rem] break-all text-ink">
                     {root}
                   </li>
                 ))}
