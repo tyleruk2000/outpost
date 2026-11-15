@@ -1,0 +1,202 @@
+/**
+ * What sits along the bottom of the map: a scale bar, the coordinates of the pointer
+ * (or of the middle of the map), and the credits for what is drawn.
+ *
+ * The scale and the coordinates follow the camera frame by frame, so they write to
+ * the page directly instead of going through React state.
+ */
+import type { MapAttribution } from "@outpost/shared";
+import { ChevronUp, Copy } from "lucide-react";
+import { Fragment, useEffect, useRef } from "react";
+import { toast } from "sonner";
+import { Menu, MenuCheckItem, MenuContent, MenuLabel, MenuTrigger } from "@/components/ui/menu";
+import { cn } from "@/lib/utils";
+import { copyText } from "./hooks";
+import { parseAttribution } from "./lib/attribution";
+import { formatPosition, READOUT_FORMATS, READOUT_LABELS, type ReadoutFormat } from "./lib/coords";
+import { type LatLon, metersPerPixel, scaleBar } from "./lib/geo";
+import type { MapEngine } from "./map/engine";
+import { mapSurface } from "./ui";
+
+function ScaleBar({ engine }: { engine: MapEngine }) {
+  const bar = useRef<HTMLDivElement>(null);
+  const label = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    const update = () => {
+      const scale = scaleBar(metersPerPixel(engine.getCenter().lat, engine.getZoom()), 96);
+      if (bar.current) bar.current.style.width = `${Math.round(scale.width)}px`;
+      if (label.current) label.current.textContent = scale.label;
+    };
+    update();
+    return engine.on("move", update);
+  }, [engine]);
+
+  return (
+    <div className="pointer-events-none flex flex-col items-start gap-0.5" role="img" aria-label="Map scale">
+      <span ref={label} className="tabular rounded-[3px] bg-page/85 px-1 text-micro font-medium text-ink" />
+      {/* A ruler: ticks at both ends, on a backing that keeps it readable over any ground. */}
+      <div ref={bar} className="h-1.5 border-x-2 border-b-2 border-ink shadow-[0_1px_0_1px_var(--page),0_-1px_0_0_var(--page)]" />
+    </div>
+  );
+}
+
+function CoordinateReadout({
+  engine,
+  format,
+  onFormatChange,
+}: {
+  engine: MapEngine;
+  format: ReadoutFormat;
+  onFormatChange: (format: ReadoutFormat) => void;
+}) {
+  const text = useRef<HTMLSpanElement>(null);
+  const source = useRef<HTMLSpanElement>(null);
+  const pointer = useRef<LatLon | null>(null);
+
+  useEffect(() => {
+    const update = () => {
+      const position = pointer.current ?? engine.getCenter();
+      const readout = formatPosition(position.lat, position.lon, format, engine.getZoom());
+      if (text.current) text.current.textContent = readout.text;
+      if (source.current) {
+        const where = pointer.current ? "Pointer" : "Centre";
+        // Outside Great Britain there is no grid reference to give; say what is shown instead.
+        source.current.textContent = format === "osgb" && readout.format !== "osgb" ? `${where}, outside the British grid` : where;
+      }
+    };
+    update();
+    const offMove = engine.on("move", update);
+    const offPointer = engine.on("pointer", (position) => {
+      pointer.current = position;
+      update();
+    });
+    return () => {
+      offMove();
+      offPointer();
+    };
+  }, [engine, format]);
+
+  const copy = async () => {
+    const value = text.current?.textContent ?? "";
+    if (!value) return;
+    if (await copyText(value)) toast.success(`Copied ${value}`);
+    else toast.error("The browser did not allow copying. Select the coordinates and copy them by hand.");
+  };
+
+  return (
+    <div className={cn(mapSurface, "flex items-stretch")}>
+      <button
+        type="button"
+        onClick={copy}
+        aria-label="Copy these coordinates"
+        title="Copy"
+        className="group flex min-h-9 items-center gap-2 rounded-l-panel px-2.5 text-left max-md:min-h-11"
+      >
+        <span className="grid">
+          <span ref={source} className="text-[0.6875rem] leading-tight text-ink-muted" />
+          <span ref={text} className="tabular font-mono text-[0.8125rem] leading-tight text-ink" />
+        </span>
+        <Copy aria-hidden className="size-3.5 shrink-0 text-ink-faint group-hover:text-ink" />
+      </button>
+      <Menu>
+        <MenuTrigger
+          aria-label={`Coordinate format: ${READOUT_LABELS[format]}. Change`}
+          title="Coordinate format"
+          className="grid w-8 place-content-center rounded-r-panel border-l border-border text-ink-muted hover:bg-surface-strong hover:text-ink max-md:w-11"
+        >
+          <ChevronUp className="size-4" />
+        </MenuTrigger>
+        <MenuContent side="top" align="start">
+          <MenuLabel>Show coordinates as</MenuLabel>
+          {READOUT_FORMATS.map((option) => (
+            <MenuCheckItem key={option} checked={format === option} onCheckedChange={() => onFormatChange(option)}>
+              {READOUT_LABELS[option]}
+            </MenuCheckItem>
+          ))}
+        </MenuContent>
+      </Menu>
+    </div>
+  );
+}
+
+export interface Credit {
+  key: string;
+  /** Text and links, as parsed from the server's credit strings. */
+  parts: ReturnType<typeof parseAttribution>;
+}
+
+/** The credits for what is on screen now. */
+export function creditsFor(attributions: MapAttribution[], options: { hasTiles: boolean; hillshade: boolean }): Credit[] {
+  const credits: Credit[] = [];
+  for (const attribution of attributions) {
+    // Terrain is credited only while hill shading is drawn from it.
+    if (attribution.name === "Mapterhorn" && !options.hillshade) continue;
+    credits.push({ key: attribution.name, parts: parseAttribution(attribution.html) });
+  }
+  // The outline map underneath shows wherever no region is installed.
+  credits.push({
+    key: "natural-earth",
+    parts: [{ text: options.hasTiles ? "Outlines: " : "" }, { text: "Natural Earth", href: "https://www.naturalearthdata.com/" }],
+  });
+  return credits;
+}
+
+function Attribution({ credits }: { credits: Credit[] }) {
+  return (
+    <p className="pointer-events-auto max-w-full rounded-[4px] bg-page/85 px-1.5 py-0.5 text-right text-[0.6875rem] leading-snug text-ink-muted">
+      {credits.map((credit, index) => (
+        <Fragment key={credit.key}>
+          {index > 0 ? <span aria-hidden> · </span> : null}
+          {credit.parts.map((part) =>
+            part.href ? (
+              <a
+                key={`${part.href ?? ""}|${part.text}`}
+                href={part.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-ink underline decoration-border-strong underline-offset-2 hover:decoration-ink"
+              >
+                {part.text}
+              </a>
+            ) : (
+              <Fragment key={`${part.href ?? ""}|${part.text}`}>{part.text}</Fragment>
+            ),
+          )}
+        </Fragment>
+      ))}
+    </p>
+  );
+}
+
+export function MapFooter({
+  engine,
+  format,
+  onFormatChange,
+  credits,
+  className,
+}: {
+  engine: MapEngine | null;
+  format: ReadoutFormat;
+  onFormatChange: (format: ReadoutFormat) => void;
+  credits: Credit[];
+  className?: string;
+}) {
+  return (
+    <div className={cn("pointer-events-none flex flex-wrap items-end justify-between gap-x-4 gap-y-1.5", className)}>
+      <div className="flex items-end gap-3">
+        {engine ? (
+          <>
+            <div className="pointer-events-auto">
+              <CoordinateReadout engine={engine} format={format} onFormatChange={onFormatChange} />
+            </div>
+            <ScaleBar engine={engine} />
+          </>
+        ) : null}
+      </div>
+      <div className="ml-auto flex min-w-0 justify-end">
+        <Attribution credits={credits} />
+      </div>
+    </div>
+  );
+}

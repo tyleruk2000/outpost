@@ -1,0 +1,137 @@
+/**
+ * Elevation profiles: turning a track's stored geometry into distance-against-height
+ * samples, and those samples into the path an SVG draws.
+ */
+import { haversineMeters, type TrackWithGeometryDto } from "@outpost/shared";
+
+export interface ProfileSample {
+  /** Metres from the start of the track. */
+  distance: number;
+  elevation: number;
+  lat: number;
+  lon: number;
+}
+
+export interface Profile {
+  samples: ProfileSample[];
+  totalMeters: number;
+  minElevation: number;
+  maxElevation: number;
+}
+
+type Position = [lon: number, lat: number, elevation?: number];
+
+function isPosition(value: unknown): value is Position {
+  return Array.isArray(value) && typeof value[0] === "number" && typeof value[1] === "number";
+}
+
+/** Every line of a track, in order: track segments and routes alike. Waypoints are left out. */
+export function trackLines(geojson: TrackWithGeometryDto["geojson"]): Position[][] {
+  const lines: Position[][] = [];
+  for (const feature of geojson.features) {
+    const geometry = (feature as { geometry?: { type?: string; coordinates?: unknown } } | null)?.geometry;
+    if (!geometry) continue;
+    const parts =
+      geometry.type === "LineString"
+        ? [geometry.coordinates]
+        : geometry.type === "MultiLineString" && Array.isArray(geometry.coordinates)
+          ? geometry.coordinates
+          : [];
+    for (const part of parts) {
+      if (!Array.isArray(part)) continue;
+      const line = part.filter(isPosition);
+      if (line.length >= 2) lines.push(line);
+    }
+  }
+  return lines;
+}
+
+/** First and last point of what was recorded, for the start and end marks. */
+export function trackEnds(lines: Position[][]): { start: Position; end: Position } | null {
+  const first = lines[0]?.[0];
+  const last = lines.at(-1)?.at(-1);
+  return first && last ? { start: first, end: last } : null;
+}
+
+/**
+ * The profile of a track, or null when it has no usable heights. Points without a
+ * height are skipped but still count towards distance, so the x axis stays true. Long
+ * recordings are thinned to `maxSamples`, always keeping the highest and lowest points.
+ */
+export function buildProfile(geojson: TrackWithGeometryDto["geojson"], maxSamples = 400): Profile | null {
+  const samples: ProfileSample[] = [];
+  let distance = 0;
+  for (const line of trackLines(geojson)) {
+    let previous: Position | undefined;
+    for (const position of line) {
+      // A gap between segments is not travelled, so distance only grows within a line.
+      if (previous) distance += haversineMeters(previous[1], previous[0], position[1], position[0]);
+      previous = position;
+      const elevation = position[2];
+      if (typeof elevation === "number" && Number.isFinite(elevation))
+        samples.push({ distance, elevation, lat: position[1], lon: position[0] });
+    }
+  }
+  if (samples.length < 2 || distance <= 0) return null;
+
+  let min = samples[0]!;
+  let max = samples[0]!;
+  for (const sample of samples) {
+    if (sample.elevation < min.elevation) min = sample;
+    if (sample.elevation > max.elevation) max = sample;
+  }
+
+  let kept = samples;
+  if (samples.length > maxSamples) {
+    const step = (samples.length - 1) / (maxSamples - 1);
+    const indexes = new Set<number>([samples.indexOf(min), samples.indexOf(max)]);
+    for (let index = 0; index < maxSamples; index += 1) indexes.add(Math.round(index * step));
+    kept = [...indexes].sort((a, b) => a - b).map((index) => samples[index]!);
+  }
+  return { samples: kept, totalMeters: distance, minElevation: min.elevation, maxElevation: max.elevation };
+}
+
+export interface ProfileGeometry {
+  line: string;
+  area: string;
+  x(distance: number): number;
+  y(elevation: number): number;
+}
+
+/**
+ * SVG paths for a profile inside a box of `width` × `height`, with `pad` kept clear on
+ * each side. A flat track is drawn mid-height rather than dividing by zero.
+ */
+export function profileGeometry(
+  profile: Profile,
+  width: number,
+  height: number,
+  pad: { top: number; right: number; bottom: number; left: number },
+): ProfileGeometry {
+  const innerWidth = Math.max(1, width - pad.left - pad.right);
+  const innerHeight = Math.max(1, height - pad.top - pad.bottom);
+  const range = profile.maxElevation - profile.minElevation;
+  const x = (distance: number) => pad.left + (distance / profile.totalMeters) * innerWidth;
+  const y = (elevation: number) =>
+    range === 0 ? pad.top + innerHeight / 2 : pad.top + (1 - (elevation - profile.minElevation) / range) * innerHeight;
+  const points = profile.samples.map((sample) => `${x(sample.distance).toFixed(1)},${y(sample.elevation).toFixed(1)}`);
+  const line = `M${points.join("L")}`;
+  const base = (pad.top + innerHeight).toFixed(1);
+  const area = `${line}L${x(profile.samples.at(-1)!.distance).toFixed(1)},${base}L${x(profile.samples[0]!.distance).toFixed(1)},${base}Z`;
+  return { line, area, x, y };
+}
+
+/** The sample closest to a distance along the track. */
+export function sampleAt(profile: Profile, distance: number): ProfileSample {
+  const { samples } = profile;
+  let low = 0;
+  let high = samples.length - 1;
+  while (high - low > 1) {
+    const middle = (low + high) >> 1;
+    if (samples[middle]!.distance <= distance) low = middle;
+    else high = middle;
+  }
+  const a = samples[low]!;
+  const b = samples[high]!;
+  return Math.abs(a.distance - distance) <= Math.abs(b.distance - distance) ? a : b;
+}
