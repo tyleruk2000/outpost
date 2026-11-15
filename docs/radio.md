@@ -118,10 +118,10 @@ These are marked in the sheets, or left out and named under "Not covered".
   counts.
 - **Two countries in detail.** The UK and the United States are covered properly; the
   rest of the world only through the international table.
-- **In the library, a sheet is shown as text.** Tables are drawn as tables (scrolling
-  sideways inside their own box on a narrow screen, with the first column staying in
-  view), and web addresses are links, but bold type and other formatting are not shown.
-  Use "Download the original" for the Markdown file.
+- **In the library, a sheet is drawn from its Markdown, not as a web page.** Headings,
+  bold type, lists, links and tables are shown (a table scrolls sideways inside its own
+  box on a narrow screen, with the first column staying in view). Use "Download the
+  original" for the Markdown file itself.
 
 ## Keeping them right
 
