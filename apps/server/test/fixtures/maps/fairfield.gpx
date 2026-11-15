@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Outpost test fixture" xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata>
+    <name>Fairfield Horseshoe</name>
+    <desc>A round from Ambleside &amp; back, with a "short cut" &lt;if needed&gt;</desc>
+  </metadata>
+  <wpt lat="54.4320" lon="-2.9620">
+    <ele>55</ele>
+    <time>2026-06-14T08:00:00Z</time>
+    <name>Car park</name>
+    <desc>Rydal Road, pay &amp; display</desc>
+    <sym>Parking Area</sym>
+  </wpt>
+  <wpt lat="54.4972" lon="-2.9921">
+    <ele>873</ele>
+    <name>Fairfield summit</name>
+  </wpt>
+  <rte>
+    <name>Low-level alternative</name>
+    <rtept lat="54.4320" lon="-2.9620"/>
+    <rtept lat="54.4480" lon="-2.9800"/>
+    <rtept lat="54.4560" lon="-3.0200"/>
+  </rte>
+  <trk>
+    <name>Fairfield Horseshoe</name>
+    <desc>Recorded on the day</desc>
+    <trkseg>
+      <trkpt lat="54.4320" lon="-2.9620"><ele>55</ele><time>2026-06-14T08:05:00Z</time></trkpt>
+      <trkpt lat="54.4400" lon="-2.9700"><ele>180</ele><time>2026-06-14T08:35:00Z</time></trkpt>
+      <trkpt lat="54.4500" lon="-2.9800"><ele>181.5</ele><time>2026-06-14T08:50:00Z</time></trkpt>
+      <trkpt lat="54.4600" lon="-2.9850"><ele>400</ele><time>2026-06-14T09:30:00Z</time></trkpt>
+      <trkpt lat="54.4700" lon="-2.9900"><ele>398</ele><time>2026-06-14T09:45:00Z</time></trkpt>
+      <trkpt lat="54.4972" lon="-2.9921"><ele>873</ele><time>2026-06-14T11:10:00Z</time></trkpt>
+    </trkseg>
+    <trkseg>
+      <trkpt lat="54.4972" lon="-2.9921"><ele>873</ele><time>2026-06-14T11:40:00Z</time></trkpt>
+      <trkpt lat="54.4800" lon="-2.9600"><ele>620</ele><time>2026-06-14T12:30:00Z</time></trkpt>
+      <trkpt lat="54.4600" lon="-2.9500"><ele>640</ele><time>2026-06-14T13:00:00Z</time></trkpt>
+      <trkpt lat="54.4320" lon="-2.9620"><ele>55</ele><time>2026-06-14T14:20:00Z</time></trkpt>
+    </trkseg>
+  </trk>
+</gpx>

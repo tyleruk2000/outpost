@@ -5,6 +5,7 @@
  */
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
+import { AppError } from "../../core/errors.ts";
 import { settings as settingsTable } from "../../db/schema.ts";
 
 export const settingsSchema = z.object({
@@ -77,7 +78,18 @@ export function createSettingsService(ctx: AppContext): SettingsService {
     all: load,
     get: (key) => load()[key],
     update(patch) {
-      const validated = settingsSchema.partial().strict().parse(patch);
+      // Each given key is checked on its own. Parsing the patch against the whole
+      // schema would fill every absent key with its default and write those too,
+      // silently resetting settings the person never touched.
+      const validated: Record<string, unknown> = {};
+      for (const [key, value] of Object.entries(patch as Record<string, unknown>)) {
+        const schema = (settingsSchema.shape as Record<string, z.ZodType>)[key];
+        if (!schema) throw new AppError("bad_request", `"${key}" is not a setting.`);
+        if (value === undefined) continue;
+        const parsed = schema.safeParse(value);
+        if (!parsed.success) throw new AppError("bad_request", `${key}: ${parsed.error.issues[0]?.message ?? "not a valid value"}`);
+        validated[key] = parsed.data;
+      }
       const now = Date.now();
       ctx.sqlite.transaction(() => {
         for (const [key, value] of Object.entries(validated)) {

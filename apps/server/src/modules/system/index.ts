@@ -8,7 +8,7 @@ import { notFound } from "../../core/errors.ts";
 import { toJobDto } from "../../core/jobs.ts";
 import { isBundled } from "../../core/paths.ts";
 import { jobs } from "../../db/schema.ts";
-import { settingsSchema } from "../settings/service.ts";
+import type { Settings } from "../settings/service.ts";
 
 export const VERSION = "0.1.0";
 
@@ -102,6 +102,7 @@ export async function registerSystem(app: FastifyInstance, ctx: AppContext): Pro
 
   app.patch("/api/settings", async (request) => {
     auth.requireAdmin(request);
-    return { settings: settings.update(settingsSchema.partial().strict().parse(request.body)) };
+    const body = z.record(z.string(), z.unknown()).parse(request.body);
+    return { settings: settings.update(body as Partial<Settings>) };
   });
 }

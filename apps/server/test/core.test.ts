@@ -107,6 +107,18 @@ describe("request security", () => {
     expect(ok.body.settings["downloads.concurrency"]).toBe(3);
   });
 
+  it("changes only the settings it is given", async () => {
+    app = await createTestApp();
+    await app.api("PATCH", "/api/settings", { "downloads.concurrency": 5, "maps.tileSource": "https://tiles.example/planet.pmtiles" });
+    const { body } = await app.api("PATCH", "/api/settings", { "indexing.chunkSize": 900 });
+    expect(body.settings).toMatchObject({ "downloads.concurrency": 5, "maps.tileSource": "https://tiles.example/planet.pmtiles", "indexing.chunkSize": 900 });
+    // And they are still there after a restart.
+    const dir = app.dir;
+    await app.app.close();
+    app = await createTestApp({}, dir);
+    expect((await app.api("GET", "/api/settings")).body.settings).toMatchObject({ "downloads.concurrency": 5, "indexing.chunkSize": 900 });
+  });
+
   it("validates settings and ignores nothing silently", async () => {
     app = await createTestApp();
     expect((await app.api("PATCH", "/api/settings", { "downloads.concurrency": 99 })).status).toBe(400);

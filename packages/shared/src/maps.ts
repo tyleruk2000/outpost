@@ -1,1 +1,602 @@
-export {};
+/**
+ * Offline maps: the shapes the maps API returns, and the coordinate helpers both sides
+ * need (the server to understand what someone typed into the search box, the web app
+ * to show the position under the cursor). Everything here is pure arithmetic.
+ */
+
+// ── Types ───────────────────────────────────────────────────────────────────
+
+/** [west, south, east, north] in degrees. */
+export type Bbox = [west: number, south: number, east: number, north: number];
+
+export type MapTileType = "vector" | "terrain";
+
+export const MARKER_COLORS = ["teal", "amber", "red", "green", "blue", "violet", "slate"] as const;
+export type MarkerColor = (typeof MARKER_COLORS)[number];
+
+/** A ready-made area someone can download with one click. */
+export interface MapRegionPreset {
+  id: string;
+  name: string;
+  /** Heading the preset is listed under, e.g. "Britain and Ireland" or "Africa". */
+  group: string;
+  bbox: Bbox;
+  /** Deepest zoom worth downloading by default: detailed for a valley, coarse for a continent. */
+  recommendedMaxZoom: number;
+  /** Anything a person should know before downloading, e.g. what the box leaves out. */
+  note?: string;
+}
+
+export interface MapRegionPresetStatus extends MapRegionPreset {
+  installed: boolean;
+  /** Installed map collections that came from this preset. */
+  collectionIds: string[];
+  /** A download of this preset that has not finished yet. */
+  downloadId: string | null;
+}
+
+export interface MapRegionsResponse {
+  groups: Array<{ name: string; regions: MapRegionPresetStatus[] }>;
+}
+
+export interface InstalledRegion {
+  /** Collection id. Remove or move a region through the collections API. */
+  id: string;
+  /** Preset this was downloaded from, when it was. */
+  regionId: string | null;
+  name: string;
+  tileType: MapTileType;
+  bounds: Bbox;
+  minZoom: number;
+  maxZoom: number;
+  sizeBytes: number;
+  /** Day of the source build, "YYYYMMDD", when known. */
+  sourceBuild: string | null;
+  installedAt: number;
+  locationId: string;
+  locationName: string;
+  /** False while the drive holding the file is not connected. */
+  available: boolean;
+  status: "installed" | "missing" | "moving" | "damaged";
+}
+
+export interface PlacesDataset {
+  id: string;
+  name: string;
+  /** Which GeoNames file it came from: "cities500", "cities15000" or a country code. */
+  dataset: string;
+  countries: string[];
+  count: number;
+  sizeBytes: number;
+  installedAt: number;
+}
+
+export interface MapOverview {
+  regions: InstalledRegion[];
+  places: PlacesDataset[];
+  counts: { markers: number; tracks: number; places: number };
+}
+
+export interface MapAttribution {
+  name: string;
+  /** HTML for the map's attribution control. */
+  html: string;
+  license: string;
+  url: string;
+}
+
+/**
+ * The pieces of a MapLibre style that depend on what is installed. The web app adds the
+ * layers. Tile addresses are relative to the server; MapLibre wants absolute ones, so
+ * prefix them with `location.origin`.
+ */
+export interface MapSources {
+  hasTiles: boolean;
+  hasTerrain: boolean;
+  sources: {
+    basemap?: {
+      type: "vector";
+      tiles: string[];
+      minzoom: number;
+      maxzoom: number;
+      bounds: Bbox;
+      attribution: string;
+    };
+    terrain?: {
+      type: "raster-dem";
+      tiles: string[];
+      minzoom: number;
+      maxzoom: number;
+      bounds: Bbox;
+      tileSize: number;
+      encoding: "terrarium" | "mapbox";
+      attribution: string;
+    };
+  };
+  glyphs: string;
+  /** Sprite address per basemap flavour ("light", "dark", …), without extension. */
+  sprites: Record<string, string>;
+  /** Union of everything installed; null when there are no map tiles yet. */
+  bounds: Bbox | null;
+  minZoom: number;
+  maxZoom: number;
+  /** All attributions joined, ready for the attribution control. */
+  attribution: string;
+  attributions: MapAttribution[];
+}
+
+export interface MapEstimate {
+  sizeBytes: number;
+  /** Tiles the extract will hold, counting every position (shared tiles count each time). */
+  tileCount: number;
+  /** Network requests the download will make for tile data. */
+  requests: number;
+  sourceBuild: string | null;
+  sourceUrl: string;
+  minZoom: number;
+  maxZoom: number;
+  attribution: string;
+}
+
+export interface MarkerDto {
+  id: string;
+  name: string;
+  note: string;
+  lat: number;
+  lon: number;
+  color: MarkerColor;
+  isFavorite: boolean;
+  noteId: string | null;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface TrackDto {
+  id: string;
+  name: string;
+  description: string;
+  color: MarkerColor;
+  sourceFilename: string | null;
+  distanceMeters: number;
+  /** Null when the file carried no elevations. */
+  ascentMeters: number | null;
+  pointCount: number;
+  bounds: Bbox | null;
+  createdAt: number;
+  updatedAt: number;
+}
+
+/** GeoJSON FeatureCollection of the lines and waypoints; typed loosely to stay dependency-free. */
+export interface TrackWithGeometryDto extends TrackDto {
+  geojson: { type: "FeatureCollection"; features: unknown[] };
+}
+
+export interface TrackImportResponse {
+  track: TrackDto | null;
+  /** Markers created from the file's waypoints, when that was asked for. */
+  markers: MarkerDto[];
+}
+
+export interface PlaceDto {
+  id: number;
+  name: string;
+  country: string | null;
+  admin1: string | null;
+  featureCode: string | null;
+  /** Plain word for what it is: "City", "Mountain", "Lake", … */
+  kindLabel: string;
+  lat: number;
+  lon: number;
+  population: number;
+  elevation: number | null;
+}
+
+export interface PlaceSearchResponse {
+  query: string;
+  /** Set when the text is a position rather than a name. */
+  coordinate: ParsedCoordinate | null;
+  places: PlaceDto[];
+}
+
+// ── Coordinates ─────────────────────────────────────────────────────────────
+
+export type CoordinateFormat = "decimal" | "ddm" | "dms" | "geo" | "osgb";
+
+export interface ParsedCoordinate {
+  lat: number;
+  lon: number;
+  format: CoordinateFormat;
+  /** For grid references: the size of the square the reference names, in metres. */
+  precisionMeters?: number;
+}
+
+const DEG = Math.PI / 180;
+
+export function isValidLatLon(lat: number, lon: number): boolean {
+  return Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180;
+}
+
+/** Great-circle distance in metres on a sphere of mean Earth radius. */
+export function haversineMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const dLat = (lat2 - lat1) * DEG;
+  const dLon = (lon2 - lon1) * DEG;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * DEG) * Math.cos(lat2 * DEG) * Math.sin(dLon / 2) ** 2;
+  return 2 * 6_371_008.8 * Math.asin(Math.min(1, Math.sqrt(a)));
+}
+
+// ── British National Grid ───────────────────────────────────────────────────
+// Ordnance Survey, "A guide to coordinate systems in Great Britain": Transverse
+// Mercator on the Airy 1830 ellipsoid, and a seven-parameter Helmert shift between
+// OSGB36 and WGS84. The shift is good to about five metres, which is finer than
+// anything typed as a grid reference by hand.
+
+interface Ellipsoid {
+  a: number;
+  b: number;
+}
+const AIRY_1830: Ellipsoid = { a: 6_377_563.396, b: 6_356_256.909 };
+const WGS84: Ellipsoid = { a: 6_378_137, b: 6_356_752.314245 };
+
+const GRID = { f0: 0.9996012717, lat0: 49 * DEG, lon0: -2 * DEG, e0: 400_000, n0: -100_000 };
+const GRID_WIDTH = 700_000;
+const GRID_HEIGHT = 1_300_000;
+
+/** WGS84 → OSGB36: translations in metres, rotations in arc-seconds, scale in ppm. */
+const HELMERT_TO_OSGB36 = { tx: -446.448, ty: 125.157, tz: -542.06, rx: -0.1502, ry: -0.247, rz: -0.8421, s: 20.4894 };
+
+type Helmert = typeof HELMERT_TO_OSGB36;
+
+function invertHelmert(t: Helmert): Helmert {
+  return { tx: -t.tx, ty: -t.ty, tz: -t.tz, rx: -t.rx, ry: -t.ry, rz: -t.rz, s: -t.s };
+}
+
+function toCartesian(lat: number, lon: number, e: Ellipsoid): [number, number, number] {
+  const e2 = 1 - (e.b * e.b) / (e.a * e.a);
+  const sinLat = Math.sin(lat);
+  const nu = e.a / Math.sqrt(1 - e2 * sinLat * sinLat);
+  return [nu * Math.cos(lat) * Math.cos(lon), nu * Math.cos(lat) * Math.sin(lon), nu * (1 - e2) * sinLat];
+}
+
+function fromCartesian(x: number, y: number, z: number, e: Ellipsoid): [lat: number, lon: number] {
+  const e2 = 1 - (e.b * e.b) / (e.a * e.a);
+  const p = Math.hypot(x, y);
+  let lat = Math.atan2(z, p * (1 - e2));
+  for (let i = 0; i < 10; i += 1) {
+    const sinLat = Math.sin(lat);
+    const nu = e.a / Math.sqrt(1 - e2 * sinLat * sinLat);
+    const next = Math.atan2(z + e2 * nu * sinLat, p);
+    if (Math.abs(next - lat) < 1e-13) {
+      lat = next;
+      break;
+    }
+    lat = next;
+  }
+  return [lat, Math.atan2(y, x)];
+}
+
+function helmert(point: [number, number, number], t: Helmert): [number, number, number] {
+  const [x, y, z] = point;
+  const arcSecond = DEG / 3600;
+  const rx = t.rx * arcSecond;
+  const ry = t.ry * arcSecond;
+  const rz = t.rz * arcSecond;
+  const s = 1 + t.s / 1e6;
+  return [t.tx + x * s - y * rz + z * ry, t.ty + x * rz + y * s - z * rx, t.tz - x * ry + y * rx + z * s];
+}
+
+function shiftDatum(latDeg: number, lonDeg: number, from: Ellipsoid, to: Ellipsoid, t: Helmert): [number, number] {
+  const moved = helmert(toCartesian(latDeg * DEG, lonDeg * DEG, from), t);
+  const [lat, lon] = fromCartesian(moved[0], moved[1], moved[2], to);
+  return [lat / DEG, lon / DEG];
+}
+
+/** Meridional arc from the grid's true origin to latitude `lat` (radians), in metres. */
+function meridionalArc(lat: number): number {
+  const { a, b } = AIRY_1830;
+  const n = (a - b) / (a + b);
+  const n2 = n * n;
+  const n3 = n2 * n;
+  const dLat = lat - GRID.lat0;
+  const sLat = lat + GRID.lat0;
+  return (
+    b *
+    GRID.f0 *
+    ((1 + n + (5 / 4) * n2 + (5 / 4) * n3) * dLat -
+      (3 * n + 3 * n2 + (21 / 8) * n3) * Math.sin(dLat) * Math.cos(sLat) +
+      ((15 / 8) * n2 + (15 / 8) * n3) * Math.sin(2 * dLat) * Math.cos(2 * sLat) -
+      (35 / 24) * n3 * Math.sin(3 * dLat) * Math.cos(3 * sLat))
+  );
+}
+
+function osgb36ToGrid(latDeg: number, lonDeg: number): { easting: number; northing: number } {
+  const { a, b } = AIRY_1830;
+  const lat = latDeg * DEG;
+  const lon = lonDeg * DEG;
+  const e2 = 1 - (b * b) / (a * a);
+  const sinLat = Math.sin(lat);
+  const cosLat = Math.cos(lat);
+  const tan2 = Math.tan(lat) ** 2;
+  const nu = (a * GRID.f0) / Math.sqrt(1 - e2 * sinLat * sinLat);
+  const rho = (a * GRID.f0 * (1 - e2)) / (1 - e2 * sinLat * sinLat) ** 1.5;
+  const eta2 = nu / rho - 1;
+  const m = meridionalArc(lat);
+  const dLon = lon - GRID.lon0;
+
+  const i = m + GRID.n0;
+  const ii = (nu / 2) * sinLat * cosLat;
+  const iii = (nu / 24) * sinLat * cosLat ** 3 * (5 - tan2 + 9 * eta2);
+  const iiia = (nu / 720) * sinLat * cosLat ** 5 * (61 - 58 * tan2 + tan2 * tan2);
+  const iv = nu * cosLat;
+  const v = (nu / 6) * cosLat ** 3 * (nu / rho - tan2);
+  const vi = (nu / 120) * cosLat ** 5 * (5 - 18 * tan2 + tan2 * tan2 + 14 * eta2 - 58 * tan2 * eta2);
+
+  return {
+    northing: i + ii * dLon ** 2 + iii * dLon ** 4 + iiia * dLon ** 6,
+    easting: GRID.e0 + iv * dLon + v * dLon ** 3 + vi * dLon ** 5,
+  };
+}
+
+function gridToOsgb36(easting: number, northing: number): [lat: number, lon: number] {
+  const { a, b } = AIRY_1830;
+  const e2 = 1 - (b * b) / (a * a);
+  let lat = GRID.lat0;
+  let m = 0;
+  for (let i = 0; i < 20; i += 1) {
+    lat = (northing - GRID.n0 - m) / (a * GRID.f0) + lat;
+    m = meridionalArc(lat);
+    if (Math.abs(northing - GRID.n0 - m) < 0.00001) break;
+  }
+  const sinLat = Math.sin(lat);
+  const cosLat = Math.cos(lat);
+  const tan = Math.tan(lat);
+  const tan2 = tan * tan;
+  const nu = (a * GRID.f0) / Math.sqrt(1 - e2 * sinLat * sinLat);
+  const rho = (a * GRID.f0 * (1 - e2)) / (1 - e2 * sinLat * sinLat) ** 1.5;
+  const eta2 = nu / rho - 1;
+  const dE = easting - GRID.e0;
+
+  const vii = tan / (2 * rho * nu);
+  const viii = (tan / (24 * rho * nu ** 3)) * (5 + 3 * tan2 + eta2 - 9 * tan2 * eta2);
+  const ix = (tan / (720 * rho * nu ** 5)) * (61 + 90 * tan2 + 45 * tan2 * tan2);
+  const x = 1 / (cosLat * nu);
+  const xi = (1 / (cosLat * 6 * nu ** 3)) * (nu / rho + 2 * tan2);
+  const xii = (1 / (cosLat * 120 * nu ** 5)) * (5 + 28 * tan2 + 24 * tan2 * tan2);
+  const xiia = (1 / (cosLat * 5040 * nu ** 7)) * (61 + 662 * tan2 + 1320 * tan2 * tan2 + 720 * tan2 ** 3);
+
+  return [
+    (lat - vii * dE ** 2 + viii * dE ** 4 - ix * dE ** 6) / DEG,
+    (GRID.lon0 + x * dE - xi * dE ** 3 + xii * dE ** 5 - xiia * dE ** 7) / DEG,
+  ];
+}
+
+/** National Grid easting and northing of a WGS84 position, or null outside the grid. */
+export function toOsGrid(lat: number, lon: number): { easting: number; northing: number } | null {
+  // Far from Britain the projection is meaningless and its series diverge.
+  if (!isValidLatLon(lat, lon) || lat < 49 || lat > 62 || lon < -10 || lon > 4) return null;
+  const [osLat, osLon] = shiftDatum(lat, lon, WGS84, AIRY_1830, HELMERT_TO_OSGB36);
+  const grid = osgb36ToGrid(osLat, osLon);
+  if (grid.easting < 0 || grid.easting >= GRID_WIDTH || grid.northing < 0 || grid.northing >= GRID_HEIGHT) return null;
+  return grid;
+}
+
+/** WGS84 position of a National Grid easting and northing (metres). */
+export function fromOsGrid(easting: number, northing: number): { lat: number; lon: number } | null {
+  if (!(easting >= 0 && easting < GRID_WIDTH && northing >= 0 && northing < GRID_HEIGHT)) return null;
+  const [osLat, osLon] = gridToOsgb36(easting, northing);
+  const [lat, lon] = shiftDatum(osLat, osLon, AIRY_1830, WGS84, invertHelmert(HELMERT_TO_OSGB36));
+  return { lat, lon };
+}
+
+/** The 25 letters of the grid: A–Z without I, five to a row, starting top-left. */
+const GRID_LETTERS = "ABCDEFGHJKLMNOPQRSTUVWXYZ";
+
+/**
+ * Parses a grid reference such as "NY 215 072", "NY21540721" or "NY 21540 07210".
+ * The position returned is the middle of the square the reference names, because that
+ * is the best single guess for where the person means.
+ */
+export function parseOsGridRef(input: string): ParsedCoordinate | null {
+  const match = /^([A-HJ-Z])([A-HJ-Z])\s*((?:\d\s*){2,10})$/i.exec(input.trim());
+  if (!match) return null;
+  const digits = match[3]!.replace(/\s+/g, "");
+  if (digits.length % 2 !== 0) return null;
+  // With a space, the two halves must be the same length ("NY 2154 0721", not "NY 215 4072").
+  const parts = match[3]!.trim().split(/\s+/);
+  if (parts.length > 2 || (parts.length === 2 && parts[0]!.length !== parts[1]!.length)) return null;
+
+  const first = GRID_LETTERS.indexOf(match[1]!.toUpperCase());
+  const second = GRID_LETTERS.indexOf(match[2]!.toUpperCase());
+  // The first letter picks a 500 km square (S is at the origin's row), the second a 100 km one.
+  const e100 = ((first % 5) - 2) * 5 + (second % 5);
+  const n100 = (4 - Math.floor(first / 5) - 1) * 5 + (4 - Math.floor(second / 5));
+  if (e100 < 0 || e100 > 6 || n100 < 0 || n100 > 12) return null;
+
+  const half = digits.length / 2;
+  const square = 10 ** (5 - half);
+  const easting = e100 * 100_000 + Number(digits.slice(0, half)) * square + square / 2;
+  const northing = n100 * 100_000 + Number(digits.slice(half)) * square + square / 2;
+  const position = fromOsGrid(easting, northing);
+  return position ? { ...position, format: "osgb", precisionMeters: square } : null;
+}
+
+/**
+ * Formats a position as a grid reference with `figures` digits in total (6 = 100 m,
+ * 8 = 10 m, 10 = 1 m). Digits are cut, not rounded, as the Ordnance Survey does: a
+ * reference names the square a point is in. Null outside Great Britain's grid.
+ */
+export function formatOsGridRef(lat: number, lon: number, figures: 2 | 4 | 6 | 8 | 10 = 8): string | null {
+  const grid = toOsGrid(lat, lon);
+  if (!grid) return null;
+  const easting = Math.floor(grid.easting);
+  const northing = Math.floor(grid.northing);
+  const e100 = Math.floor(easting / 100_000);
+  const n100 = Math.floor(northing / 100_000);
+  const first = (4 - Math.floor(n100 / 5) - 1) * 5 + Math.floor(e100 / 5) + 2;
+  const second = (4 - (n100 % 5)) * 5 + (e100 % 5);
+  const half = figures / 2;
+  const cut = (value: number) =>
+    Math.floor((value % 100_000) / 10 ** (5 - half))
+      .toString()
+      .padStart(half, "0");
+  return `${GRID_LETTERS[first]}${GRID_LETTERS[second]} ${cut(easting)} ${cut(northing)}`;
+}
+
+// ── Parsing typed positions ─────────────────────────────────────────────────
+
+interface AngleGroup {
+  numbers: string[];
+  hemisphere?: string;
+}
+
+/** Degrees from one to three numbers (degrees, minutes, seconds). Null if they make no sense. */
+function angleFromGroup(group: AngleGroup): number | null {
+  const [degText, minText, secText] = group.numbers;
+  if (!degText || group.numbers.length > 3) return null;
+  const negative = degText.startsWith("-");
+  const degrees = Math.abs(Number(degText));
+  const minutes = minText === undefined ? 0 : Number(minText);
+  const seconds = secText === undefined ? 0 : Number(secText);
+  // Only the last part may carry a fraction, and only degrees may carry a sign.
+  if (minText !== undefined && (degText.includes(".") || /^[+-]/.test(minText) || minutes >= 60)) return null;
+  if (secText !== undefined && (minText!.includes(".") || /^[+-]/.test(secText) || seconds >= 60)) return null;
+  if (group.hemisphere && /^[+-]/.test(degText)) return null;
+  let value = degrees + minutes / 60 + seconds / 3600;
+  if (negative || group.hemisphere === "S" || group.hemisphere === "W") value = -value;
+  return value;
+}
+
+function parseGeoUri(text: string): ParsedCoordinate | null {
+  const match = /^geo:\s*(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)(?:[,;?].*)?$/i.exec(text);
+  if (!match) return null;
+  const lat = Number(match[1]);
+  const lon = Number(match[2]);
+  return isValidLatLon(lat, lon) ? { lat, lon, format: "geo" } : null;
+}
+
+/** Six-digit easting and northing written as plain numbers, e.g. "321540 507210". */
+function parseEastingNorthing(text: string): ParsedCoordinate | null {
+  const match = /^(\d{6})[\s,]+(\d{6,7})$/.exec(text);
+  if (!match) return null;
+  const position = fromOsGrid(Number(match[1]), Number(match[2]));
+  return position ? { ...position, format: "osgb", precisionMeters: 1 } : null;
+}
+
+function parseLatLon(text: string): ParsedCoordinate | null {
+  const normalised = text
+    .replace(/[−–—]/g, "-")
+    .replace(/[′’‘`´]/g, "'")
+    .replace(/[″“”]/g, '"')
+    .replace(/''/g, '"')
+    .replace(/º/g, "°")
+    .toUpperCase();
+  // Anything other than numbers, hemisphere letters and angle marks means it is a name.
+  if (!/^[\s\d.,;+\-°'"NSEW]+$/.test(normalised)) return null;
+
+  const tokens = normalised.match(/[+-]?\d+(?:\.\d+)?|[NSEW]|[,;]/g) ?? [];
+  const letters = tokens.filter((token) => /^[NSEW]$/.test(token));
+  const numberCount = tokens.filter((token) => /\d/.test(token)).length;
+  if (numberCount < 2 || numberCount > 6) return null;
+
+  const groups: AngleGroup[] = [];
+  if (letters.length === 2) {
+    // "54°27'N 3°05'W" or "N54 27 W3 05": each letter closes or opens its own group.
+    const prefixed = /^[NSEW]$/.test(tokens[0]!);
+    let current: AngleGroup = { numbers: [] };
+    for (const token of tokens) {
+      if (token === "," || token === ";") continue;
+      if (/^[NSEW]$/.test(token)) {
+        if (prefixed) {
+          if (current.numbers.length > 0) groups.push(current);
+          current = { numbers: [], hemisphere: token };
+        } else {
+          groups.push({ ...current, hemisphere: token });
+          current = { numbers: [] };
+        }
+      } else {
+        current.numbers.push(token);
+      }
+    }
+    if (prefixed) groups.push(current);
+    else if (current.numbers.length > 0) return null;
+  } else if (letters.length === 0) {
+    const separator = tokens.findIndex((token) => token === "," || token === ";");
+    const numbers = tokens.filter((token) => /\d/.test(token));
+    if (separator !== -1) {
+      if (tokens.filter((token) => token === "," || token === ";").length > 1) return null;
+      groups.push({ numbers: tokens.slice(0, separator) }, { numbers: tokens.slice(separator + 1) });
+    } else {
+      if (numbers.length % 2 !== 0) return null;
+      groups.push({ numbers: numbers.slice(0, numbers.length / 2) }, { numbers: numbers.slice(numbers.length / 2) });
+    }
+  } else {
+    return null;
+  }
+
+  if (groups.length !== 2) return null;
+  const [first, second] = groups as [AngleGroup, AngleGroup];
+  if (first.numbers.length !== second.numbers.length) return null;
+  const a = angleFromGroup(first);
+  const b = angleFromGroup(second);
+  if (a === null || b === null) return null;
+
+  // Latitude comes first unless the letters say otherwise ("3.09W 54.46N").
+  const firstIsLon = first.hemisphere === "E" || first.hemisphere === "W";
+  const secondIsLon = second.hemisphere === "E" || second.hemisphere === "W";
+  if (letters.length === 2 && firstIsLon === secondIsLon) return null;
+  const lat = firstIsLon ? b : a;
+  const lon = firstIsLon ? a : b;
+  if (!isValidLatLon(lat, lon)) return null;
+  const format: CoordinateFormat = first.numbers.length === 1 ? "decimal" : first.numbers.length === 2 ? "ddm" : "dms";
+  return { lat, lon, format };
+}
+
+/**
+ * Understands a position typed by hand: decimal degrees ("54.4609, -3.0886"), with
+ * hemisphere letters, degrees and decimal minutes, degrees-minutes-seconds, `geo:`
+ * links and British National Grid references. Returns null for anything else, so the
+ * caller can treat the text as a place name.
+ */
+export function parseCoordinates(input: string): ParsedCoordinate | null {
+  const text = input.trim();
+  if (text.length < 3 || text.length > 80) return null;
+  return parseGeoUri(text) ?? parseOsGridRef(text) ?? parseEastingNorthing(text) ?? parseLatLon(text);
+}
+
+// ── Formatting ──────────────────────────────────────────────────────────────
+
+/** "54.46090, -3.08860" */
+export function formatDecimal(lat: number, lon: number, digits = 5): string {
+  return `${lat.toFixed(digits)}, ${lon.toFixed(digits)}`;
+}
+
+function splitAngle(value: number, secondsDigits: number): { degrees: number; minutes: number; seconds: number } {
+  const scale = 10 ** secondsDigits;
+  // Work in whole units of the smallest step so that rounding can never show 60″.
+  const total = Math.round(Math.abs(value) * 3600 * scale);
+  const seconds = (total % (60 * scale)) / scale;
+  const minutes = Math.floor(total / (60 * scale)) % 60;
+  const degrees = Math.floor(total / (3600 * scale));
+  return { degrees, minutes, seconds };
+}
+
+/** "54°27′39″N 3°05′19″W" */
+export function formatDms(lat: number, lon: number, secondsDigits = 0): string {
+  const part = (value: number, positive: string, negative: string) => {
+    const { degrees, minutes, seconds } = splitAngle(value, secondsDigits);
+    const secondsText = seconds.toFixed(secondsDigits).padStart(secondsDigits ? 3 + secondsDigits : 2, "0");
+    return `${degrees}°${String(minutes).padStart(2, "0")}′${secondsText}″${value < 0 ? negative : positive}`;
+  };
+  return `${part(lat, "N", "S")} ${part(lon, "E", "W")}`;
+}
+
+/** "54°27.654′N 3°05.316′W" */
+export function formatDdm(lat: number, lon: number, minutesDigits = 3): string {
+  const part = (value: number, positive: string, negative: string) => {
+    const scale = 10 ** minutesDigits;
+    const total = Math.round(Math.abs(value) * 60 * scale);
+    const degrees = Math.floor(total / (60 * scale));
+    const minutes = (total % (60 * scale)) / scale;
+    return `${degrees}°${minutes.toFixed(minutesDigits).padStart(3 + minutesDigits, "0")}′${value < 0 ? negative : positive}`;
+  };
+  return `${part(lat, "N", "S")} ${part(lon, "E", "W")}`;
+}
