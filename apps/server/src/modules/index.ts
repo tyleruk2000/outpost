@@ -10,6 +10,8 @@ import { registerCatalog } from "./catalog/index.ts";
 import { registerCollections } from "./collections/index.ts";
 import { registerDocuments } from "./documents/index.ts";
 import { registerDownloads } from "./downloads/index.ts";
+import { registerImports } from "./imports/index.ts";
+import { registerKiwix } from "./kiwix/index.ts";
 import { registerMaps } from "./maps/index.ts";
 import { registerNotes } from "./notes/index.ts";
 import { registerPortable } from "./portable/index.ts";
@@ -25,7 +27,9 @@ export const modules: ModuleRegister[] = [
   registerRetrieval,
   registerDocuments,
   registerNotes,
+  registerImports,
   registerCollections,
+  registerKiwix,
   registerDownloads,
   registerCatalog,
   registerMaps,
