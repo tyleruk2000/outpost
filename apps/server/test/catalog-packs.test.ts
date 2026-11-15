@@ -134,7 +134,9 @@ describe("packs", () => {
     expect(got.status).toBe(200);
     expect(got.body.queued.map((download: { catalogEntryId: string }) => download.catalogEntryId)).toEqual(["t.water"]);
     // The sheet that ships with Outpost is simply added: nothing to wait for.
-    expect(got.body.added).toEqual([{ entryId: "t.channels", name: "Radio channels", documentId: expect.any(String) }]);
+    expect(got.body.added).toEqual([
+      { entryId: "t.channels", name: "Radio channels", documentId: expect.any(String), collectionId: expect.any(String) },
+    ]);
     expect(got.body.already).toBe(1);
     expect(got.body.failed).toEqual([]);
 

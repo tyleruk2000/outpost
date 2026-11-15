@@ -9,8 +9,8 @@
  *   node apps/server/src/cli/validate-catalog.ts --dir <path-to-catalog-folder>
  *
  * Offline: every manifest follows the format, entry ids are unique, addresses are
- * https and on a host the manifest lists, every file an entry bundles is in
- * catalog/bundled (and nothing else is), and catalog/schema/manifest.schema.json is
+ * https and on a host the manifest lists, every file an entry bundles (one file, or each
+ * chapter of a book) is in catalog/bundled (and nothing else is), and catalog/schema/manifest.schema.json is
  * what the code would generate. Online: every entry still resolves at its source.
  * Several publishers ask automated clients to wait ten seconds between requests, so the
  * online check asks one host at a time at that pace; with the shipped catalogue it
@@ -63,25 +63,37 @@ function filesUnder(dir: string, prefix = ""): string[] {
 function bundledProblems(catalog: LoadedCatalog, bundledDir: string): string[] {
   const problems: string[] = [];
   const listed = new Set<string>();
-  for (const entry of catalog.entries) {
-    if (entry.source.type !== "bundled") continue;
-    const label = `${entry.manifestId} (${entry.id})`;
-    listed.add(entry.source.file);
-    if (!entry.source.version) {
-      problems.push(`${label}: a bundled entry needs a "version", so that a corrected file in a later release is offered as an update.`);
-    }
-    const file = catalog.bundled.get(entry.id);
-    if (!file || entry.format !== "markdown") continue;
-    const bytes = fs.readFileSync(file.path);
+  /** A Markdown file must be text the library will take, opening with its title. */
+  const checkMarkdown = (label: string, name: string, file: string): void => {
+    const bytes = fs.readFileSync(file);
     let text: string;
     try {
       if (bytes.includes(0)) throw new Error("NUL byte");
       text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
     } catch {
-      problems.push(`${label}: ${entry.source.file} is not UTF-8 text, so the library would refuse it.`);
+      problems.push(`${label}: ${name} is not UTF-8 text, so the library would refuse it.`);
+      return;
+    }
+    if (!/^# \S/.test(text)) problems.push(`${label}: ${name} should open with its title as a level-one heading ("# Title").`);
+  };
+  for (const entry of catalog.entries) {
+    if (entry.source.type !== "bundled") continue;
+    const label = `${entry.manifestId} (${entry.id})`;
+    if (!entry.source.version) {
+      problems.push(`${label}: a bundled entry needs a "version", so that a corrected file in a later release is offered as an update.`);
+    }
+    if (entry.source.book) {
+      const { folder } = entry.source.book;
+      for (const chapter of catalog.books.get(entry.id)?.chapters ?? []) {
+        listed.add(`${folder}/${chapter.fileName}`);
+        checkMarkdown(label, `${folder}/${chapter.fileName}`, chapter.path);
+      }
       continue;
     }
-    if (!/^# \S/.test(text)) problems.push(`${label}: ${entry.source.file} should open with its title as a level-one heading ("# Title").`);
+    const name = entry.source.file ?? "";
+    listed.add(name);
+    const file = catalog.bundled.get(entry.id);
+    if (file && entry.format === "markdown") checkMarkdown(label, name, file.path);
   }
   for (const file of filesUnder(bundledDir)) {
     if (!listed.has(file)) problems.push(`bundled/${file} is not listed by any manifest, so nobody could add it. List it or remove it.`);

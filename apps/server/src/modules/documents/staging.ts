@@ -29,6 +29,11 @@ export interface StagedFile {
   sizeBytes: number;
   /** The first bytes, kept for checks that need more than the signature (EPUB). */
   head: Buffer;
+  /**
+   * Set when the file is already where it is to stay, as a path inside the storage
+   * location: it is recorded there and not moved into a folder of its own.
+   */
+  keepAt?: string;
 }
 
 export function tooLarge(originalName: string, maxBytes: number): AppError {

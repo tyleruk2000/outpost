@@ -1,8 +1,9 @@
 /**
  * Catalogue manifests: JSON files that list content Outpost can fetch and say where it
  * comes from. A manifest never contains content, only a description and a source.
- * A source is a book in the Kiwix library, a file at an https address, or a file that
- * ships with Outpost in the `bundled` folder beside the manifests.
+ * A source is a book in the Kiwix library, a file at an https address, or something that
+ * ships with Outpost in the `bundled` folder beside the manifests: one file, or a book of
+ * chapters.
  *
  * The zod schema here is the definition of the format; `catalog/schema/manifest.schema.json`
  * is generated from it (see cli/validate-catalog.ts). Loading is forgiving on purpose:
@@ -13,6 +14,8 @@ import path from "node:path";
 import {
   CATALOG_CATEGORY_SLUGS,
   CATALOG_FORMATS,
+  type CatalogBook,
+  type CatalogBookChapter,
   type CatalogManifest,
   type CatalogManifestEntry,
   type CatalogProblem,
@@ -58,19 +61,56 @@ const BUNDLED_FORMATS: Record<string, CatalogManifestEntry["format"]> = {
   htm: "html",
 };
 
-const bundledSource = z.strictObject({
-  type: z.literal("bundled"),
-  /** Path inside the `bundled` folder, e.g. "radio/uk-amateur-bands.md". */
-  file: z
+const bundledPath = (what: string, example: string) =>
+  z
     .string()
     .max(300)
     .regex(
       /^[a-z0-9][a-z0-9._-]*(?:\/[a-z0-9][a-z0-9._-]*)*$/,
-      "A bundled file is named by its path inside the bundled folder: lower-case names joined by /, such as radio/uk-amateur-bands.md.",
-    ),
-  version: z.string().min(1).max(50).optional(),
-  published: isoDate.optional(),
+      `${what} is named by its path inside the bundled folder: lower-case names joined by /, such as ${example}.`,
+    );
+
+/** How a chapter is named in links between chapters: lower-case words joined by hyphens. */
+export const CHAPTER_KEY = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+const bookChapter = z.strictObject({
+  key: z.string().min(1).max(80).regex(CHAPTER_KEY, "A chapter key is lower-case words joined by hyphens, such as getting-started."),
+  /** As printed in the contents: "00", "05A", "A". */
+  number: z.string().trim().min(1).max(8).optional(),
+  title: z.string().trim().min(1).max(200),
+  summary: z.string().trim().min(1).max(400).optional(),
+  /** File name inside the book's folder. */
+  file: z
+    .string()
+    .max(120)
+    .regex(/^[a-z0-9][a-z0-9._-]*\.md$/, "A chapter is a Markdown file named in lower case, such as 03-everyday-controls.md."),
 });
+
+const bundledBook = z.strictObject({
+  /** Path of the book's folder inside `bundled`, e.g. "logbook73/g90". */
+  folder: bundledPath("A book's folder", "logbook73/g90"),
+  /** Named parts in reading order, each with its chapters in reading order. */
+  sections: z
+    .array(z.strictObject({ title: z.string().trim().min(1).max(120), chapters: z.array(bookChapter).min(1).max(300) }))
+    .min(1)
+    .max(60),
+});
+
+const bundledSource = z
+  .strictObject({
+    type: z.literal("bundled"),
+    /** One file: its path inside the `bundled` folder, e.g. "radio/uk-amateur-bands.md". */
+    file: bundledPath("A bundled file", "radio/uk-amateur-bands.md").optional(),
+    /** A book: a folder of Markdown chapters and the order they are read in. */
+    book: bundledBook.optional(),
+    version: z.string().min(1).max(50).optional(),
+    published: isoDate.optional(),
+  })
+  .refine((source) => (source.file === undefined) !== (source.book === undefined), {
+    message: 'A bundled source names either one "file" or a "book" of chapters, and not both.',
+  })
+  // The rule above, in a form the published JSON Schema can state.
+  .meta({ oneOf: [{ required: ["file"] }, { required: ["book"] }] });
 
 function httpSource(allowInsecureHttp: boolean) {
   return z.strictObject({
@@ -152,6 +192,18 @@ export interface BundledFile {
   sizeBytes: number;
 }
 
+/** The files of a bundled book, in reading order. */
+export interface BundledBook {
+  /** All the chapters together. */
+  sizeBytes: number;
+  chapters: Array<BundledFile & { key: string; number?: string; title: string; summary?: string; section: string; fileName: string }>;
+}
+
+/** A bundled book's chapters in reading order, each with the title of its section. */
+export function chaptersOf(book: CatalogBook): Array<CatalogBookChapter & { section: string }> {
+  return book.sections.flatMap((section) => section.chapters.map((chapter) => ({ ...chapter, section: section.title })));
+}
+
 export interface LoadedCatalog {
   manifests: Manifest[];
   /** Usable entries, in manifest order; ids are unique. */
@@ -159,8 +211,10 @@ export interface LoadedCatalog {
   problems: CatalogProblem[];
   /** Every host a usable manifest lists, lower-case. */
   downloadHosts: string[];
-  /** The file behind each usable entry that ships with Outpost, by entry id. */
+  /** The file behind each usable entry that ships with Outpost as one file, by entry id. */
   bundled: Map<string, BundledFile>;
+  /** The chapters behind each usable entry that ships with Outpost as a book, by entry id. */
+  books: Map<string, BundledBook>;
 }
 
 /** The JSON Schema for manifests, as committed in catalog/schema/manifest.schema.json. */
@@ -195,8 +249,20 @@ export function entryProblem(entry: ManifestEntry, manifest: Manifest): string |
   if (entry.source.type === "kiwix") {
     return entry.format === "zim" ? undefined : `Kiwix books are ZIM archives, but the format is given as "${entry.format}".`;
   }
+  if (entry.source.type === "bundled" && entry.source.book) {
+    if (entry.format !== "markdown") return `A book is made of Markdown chapters, but the format is given as "${entry.format}".`;
+    const chapters = chaptersOf(entry.source.book);
+    for (const field of ["key", "file"] as const) {
+      const seen = new Set<string>();
+      for (const chapter of chapters) {
+        if (seen.has(chapter[field])) return `Two chapters of the book have the ${field} "${chapter[field]}".`;
+        seen.add(chapter[field]);
+      }
+    }
+    return undefined;
+  }
   if (entry.source.type === "bundled") {
-    const extension = path.extname(entry.source.file).slice(1);
+    const extension = path.extname(entry.source.file ?? "").slice(1);
     const expected = BUNDLED_FORMATS[extension];
     if (!expected) return `A bundled file must be Markdown, PDF, EPUB or HTML, but "${entry.source.file}" is none of these.`;
     return entry.format === expected
@@ -266,6 +332,26 @@ function findBundledFile(bundledDir: string, file: string): BundledFile | string
   }
 }
 
+/** Finds every chapter of a bundled book. One missing chapter makes the whole book unusable. */
+function findBundledBook(bundledDir: string, book: CatalogBook): BundledBook | string {
+  const found: BundledBook = { sizeBytes: 0, chapters: [] };
+  for (const chapter of chaptersOf(book)) {
+    const file = findBundledFile(bundledDir, `${book.folder}/${chapter.file}`);
+    if (typeof file === "string") return file;
+    found.sizeBytes += file.sizeBytes;
+    found.chapters.push({
+      ...file,
+      key: chapter.key,
+      number: chapter.number,
+      title: chapter.title,
+      summary: chapter.summary,
+      section: chapter.section,
+      fileName: chapter.file,
+    });
+  }
+  return found;
+}
+
 function jsonFiles(dir: string): string[] {
   try {
     return fs
@@ -284,7 +370,7 @@ function jsonFiles(dir: string): string[] {
  * so the manifests shipped with Outpost cannot be shadowed by one added later.
  */
 export function loadCatalog(dirs: string[], options: { allowInsecureHttp?: boolean } = {}): LoadedCatalog {
-  const catalog: LoadedCatalog = { manifests: [], entries: [], problems: [], downloadHosts: [], bundled: new Map() };
+  const catalog: LoadedCatalog = { manifests: [], entries: [], problems: [], downloadHosts: [], bundled: new Map(), books: new Map() };
   const entryOwner = new Map<string, string>();
   const hosts = new Set<string>();
 
@@ -320,8 +406,12 @@ export function loadCatalog(dirs: string[], options: { allowInsecureHttp?: boole
         continue;
       }
       let problem = entryProblem(entry, manifest);
-      if (!problem && entry.source.type === "bundled") {
-        const found = findBundledFile(bundledDirFor(path.dirname(file)), entry.source.file);
+      if (!problem && entry.source.type === "bundled" && entry.source.book) {
+        const found = findBundledBook(bundledDirFor(path.dirname(file)), entry.source.book);
+        if (typeof found === "string") problem = found;
+        else catalog.books.set(entry.id, found);
+      } else if (!problem && entry.source.type === "bundled") {
+        const found = findBundledFile(bundledDirFor(path.dirname(file)), entry.source.file ?? "");
         if (typeof found === "string") problem = found;
         else catalog.bundled.set(entry.id, found);
       }

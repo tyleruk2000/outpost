@@ -4,7 +4,7 @@
  */
 import fs from "node:fs";
 import fastifyMultipart from "@fastify/multipart";
-import type { DocumentMarkdownResponse } from "@outpost/shared";
+import type { DocumentMarkdownResponse, DocumentResponse } from "@outpost/shared";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
@@ -12,7 +12,7 @@ import { AppError } from "../../core/errors.ts";
 import { safeFileName } from "../../core/fs-safe.ts";
 import { DOCUMENT_TYPES, formatForExt, servedAs } from "./file-types.ts";
 import { contentDisposition, matchesEtag, parseRange } from "./http.ts";
-import { readMarkdownBlocks } from "./markdown-view.ts";
+import { type LinkResolver, readMarkdownBlocks } from "./markdown-view.ts";
 import { registerDocumentMoves } from "./move.ts";
 import { createDocumentsService } from "./service.ts";
 import { receiveUpload } from "./upload.ts";
@@ -37,6 +37,10 @@ const listQuery = z.object({
   category: blankAsMissing(100),
   tag: blankAsMissing(50),
   type: z.enum(DOCUMENT_TYPES).optional(),
+  chapters: z
+    .enum(["true", "false"])
+    .optional()
+    .transform((value) => (value === undefined ? undefined : value === "true")),
   sort: z.enum(["added", "title", "size"]).default("added"),
   order: z.enum(["asc", "desc"]).optional(),
   limit: z.coerce.number().int().min(1).max(200).default(50),
@@ -89,7 +93,12 @@ export async function registerDocuments(app: FastifyInstance, ctx: AppContext): 
 
   app.get("/api/documents/facets", async () => service.facets());
 
-  app.get<IdParams>("/api/documents/:id", async (request) => ({ document: service.get(request.params.id) }));
+  app.get<IdParams>("/api/documents/:id", async (request): Promise<DocumentResponse> => {
+    const document = service.get(request.params.id);
+    // A chapter of a book also says where it comes in the book and what is on either side.
+    const chapter = document.book ? ctx.services.books?.chapterOf(document.id) : undefined;
+    return chapter ? { document, chapter } : { document };
+  });
 
   app.patch<IdParams>("/api/documents/:id", async (request) => {
     return { document: await service.update(request.params.id, patchBody.parse(request.body)) };
@@ -118,7 +127,9 @@ export async function registerDocuments(app: FastifyInstance, ctx: AppContext): 
   app.get<IdParams>("/api/documents/:id/markdown", async (request): Promise<DocumentMarkdownResponse> => {
     const document = service.get(request.params.id);
     if (document.type !== "markdown") throw new AppError("unsupported", `"${document.title}" is not a Markdown file.`);
-    return { documentId: document.id, blocks: await readMarkdownBlocks(service.absolutePath(document.id)) };
+    // Links into Outpost's catalogue are looked up as the file is read, so they follow what is in the library now.
+    const resolve: LinkResolver = (entryId, chapterKey) => ctx.services.catalog?.linkTarget(entryId, chapterKey);
+    return { documentId: document.id, blocks: await readMarkdownBlocks(service.absolutePath(document.id), { resolve }) };
   });
 
   /**

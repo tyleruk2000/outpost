@@ -45,15 +45,45 @@ export interface CatalogHttpSource {
   published?: string;
 }
 
+/** One chapter of a book that ships with Outpost. */
+export interface CatalogBookChapter {
+  /** The chapter's name in links between chapters. It stays the same from one edition to the next. */
+  key: string;
+  /** The number as printed in the contents: "00", "05A", "A". */
+  number?: string;
+  title: string;
+  /** One line for the contents page. */
+  summary?: string;
+  /** File name inside the book's folder: "03-everyday-controls.md". */
+  file: string;
+}
+
+/** A named part of a book, holding its chapters in reading order. */
+export interface CatalogBookSection {
+  title: string;
+  chapters: CatalogBookChapter[];
+}
+
+/** A book that ships with Outpost: a folder of Markdown chapters and their order. */
+export interface CatalogBook {
+  /** Path of the folder inside `bundled`, with forward slashes: "logbook73/g90". */
+  folder: string;
+  /** In reading order. Every chapter belongs to one section. */
+  sections: CatalogBookSection[];
+}
+
 /**
- * A file that ships with Outpost itself, in the `bundled` folder beside the manifests.
- * Adding it to the library copies it from there: no network is involved.
+ * Something that ships with Outpost itself, in the `bundled` folder beside the manifests:
+ * either one file, which becomes one document, or a book, which becomes one document per
+ * chapter. Adding it to the library copies it from there: no network is involved.
  */
 export interface CatalogBundledSource {
   type: "bundled";
-  /** Path inside the `bundled` folder, with forward slashes: "radio/uk-amateur-bands.md". */
-  file: string;
-  /** The edition of the file, usually the day it was last checked. A higher one offers an update. */
+  /** One file. Path inside the `bundled` folder, with forward slashes: "radio/uk-amateur-bands.md". */
+  file?: string;
+  /** A book of chapters. Exactly one of `file` and `book` is given. */
+  book?: CatalogBook;
+  /** The edition, usually the day it was last checked. A higher one offers an update. */
   version?: string;
   published?: string;
 }
@@ -97,8 +127,12 @@ export type CatalogAvailability = "unknown" | "available" | "unavailable";
 export type CatalogInstallStatus = "not_installed" | "queued" | "downloading" | "paused" | "failed" | "installed";
 
 /** A manifest entry merged with what the last refresh learned and what is installed. */
-export interface CatalogEntryDto extends Omit<CatalogManifestEntry, "sizeBytes"> {
+export interface CatalogEntryDto extends Omit<CatalogManifestEntry, "sizeBytes" | "source"> {
   manifestId: string;
+  /** As in the manifest, except that a book's list of chapters is left out; see `chapterCount`. */
+  source: CatalogKiwixSource | CatalogHttpSource | Omit<CatalogBundledSource, "book">;
+  /** For a book that ships with Outpost: how many chapters it has. */
+  chapterCount?: number;
   /** Exact when resolved, otherwise the manifest's estimate; null when neither is known. */
   sizeBytes: number | null;
   /** True when `sizeBytes` is the manifest's estimate rather than a figure from the source. */
@@ -114,7 +148,7 @@ export interface CatalogEntryDto extends Omit<CatalogManifestEntry, "sizeBytes">
   status: CatalogInstallStatus;
   downloadId?: string;
   collectionId?: string;
-  /** The document in the library that holds the installed file, for entries that are documents. */
+  /** The document in the library that holds the installed file, for entries that are one document. */
   documentId?: string;
   installedVersion?: string;
   /** The installed version is older than the one the source now offers. */
@@ -124,8 +158,10 @@ export interface CatalogEntryDto extends Omit<CatalogManifestEntry, "sizeBytes">
 /** The answer to adding an entry that ships with Outpost. */
 export interface CatalogAddResponse {
   collectionId: string;
-  /** The document it became in the library; absent only if it could not be added there. */
+  /** The document it became in the library; absent for a book, and if it could not be added there. */
   documentId?: string;
+  /** For a book: how many chapters were added. */
+  chapterCount?: number;
   /** Set when an older edition was in the library: it has been removed, with its file. */
   replacedCollectionId: string | null;
 }
@@ -151,7 +187,7 @@ export interface CatalogPackInstallResponse {
   /** Downloads that were started. */
   queued: DownloadDto[];
   /** Entries that ship with Outpost and were added there and then. */
-  added: Array<{ entryId: string; name: string; documentId?: string }>;
+  added: Array<{ entryId: string; name: string; documentId?: string; collectionId?: string }>;
   /** Entries that were already installed or already on their way. */
   already: number;
   /** Entries that could not be started, each with the reason. The rest went ahead. */

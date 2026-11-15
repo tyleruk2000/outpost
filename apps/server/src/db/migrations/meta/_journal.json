@@ -29,6 +29,13 @@
       "when": 1794772442154,
       "tag": "0003_network_shares",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1794778414843,
+      "tag": "0004_book_chapters",
+      "breakpoints": true
     }
   ]
 }
