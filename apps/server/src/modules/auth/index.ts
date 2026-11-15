@@ -169,7 +169,17 @@ export async function registerAuth(app: FastifyInstance, ctx: AppContext): Promi
   const publicApi = new Set(["/api/health", "/api/auth/session", "/api/auth/login", "/api/auth/setup"]);
 
   app.addHook("onRequest", async (request, reply) => {
-    const pathname = request.url.split("?")[0] ?? "";
+    // Decide from the route that will actually handle the request, never from the raw
+    // address: the router decodes percent-escapes before matching, so "/%61pi/notes"
+    // reaches the same handler as "/api/notes" and must be held to the same rules.
+    const route = request.routeOptions?.url;
+    let pathname = request.url.split("?")[0] ?? "";
+    try {
+      pathname = decodeURIComponent(pathname);
+    } catch {
+      // Not valid escaping; the router will reject it, and the raw text is good enough here.
+    }
+    const isApi = route ? route.startsWith("/api/") : pathname.startsWith("/api/");
 
     if (!isAllowedHost(hostnameOf(request.headers.host), config)) {
       throw new AppError(
@@ -183,7 +193,7 @@ export async function registerAuth(app: FastifyInstance, ctx: AppContext): Promi
     reply.header("Cross-Origin-Opener-Policy", "same-origin");
     reply.header("X-Frame-Options", "SAMEORIGIN");
 
-    if (!pathname.startsWith("/api/")) return;
+    if (!isApi) return;
     reply.header("Cache-Control", "no-store");
 
     if (!["GET", "HEAD", "OPTIONS"].includes(request.method)) {
@@ -201,7 +211,7 @@ export async function registerAuth(app: FastifyInstance, ctx: AppContext): Promi
     }
 
     request.principal = principalFor(request);
-    if (!request.principal && !publicApi.has(pathname)) {
+    if (!request.principal && !publicApi.has(route ?? pathname)) {
       throw new AppError("unauthenticated", "Sign in to continue.");
     }
   });
