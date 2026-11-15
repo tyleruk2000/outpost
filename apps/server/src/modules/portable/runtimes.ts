@@ -128,3 +128,89 @@ export async function ensureRuntime(options: RuntimeFetchOptions): Promise<strin
     await fs.promises.rm(`${destination}.unpack`, { force: true });
   }
 }
+
+// ── kiwix-serve, for reading reference collections from a drive ──────────────
+
+/** Pinned to the version the Compose stack runs, which is the one Outpost is tested against. */
+export const KIWIX_TOOLS_VERSION = "3.8.2";
+export const KIWIX_DIST_HOST = "download.kiwix.org";
+
+/** The Kiwix project's own builds. It publishes none for Windows at this version. */
+const kiwixBuilds: Partial<Record<PortablePlatform, string>> = {
+  "darwin-arm64": "macos-arm64",
+  "darwin-x64": "macos-x86_64",
+  "linux-x64": "linux-x86_64",
+  "linux-arm64": "linux-aarch64",
+};
+
+export const kiwixSupports = (platform: PortablePlatform): boolean => platform in kiwixBuilds;
+
+export function kiwixCachePath(dataDir: string, platform: PortablePlatform): string {
+  return path.join(dataDir, "runtimes", `kiwix-tools-${KIWIX_TOOLS_VERSION}`, platform, "kiwix-serve");
+}
+
+export function localKiwix(dataDir: string, platform: PortablePlatform): string | undefined {
+  const cached = kiwixCachePath(dataDir, platform);
+  if (fs.existsSync(cached)) return cached;
+  if (isBundled) {
+    const sibling = path.join(appRoot, "..", "runtime", platform, "kiwix-serve");
+    if (fs.existsSync(sibling)) return sibling;
+  }
+  return undefined;
+}
+
+/**
+ * Returns the path of kiwix-serve for `platform`, downloading the Kiwix project's
+ * build if it is not cached. The project publishes only MD5 sums for these files: that
+ * catches a damaged download, while authenticity rests on HTTPS to its own host.
+ */
+export async function ensureKiwix(options: Omit<RuntimeFetchOptions, "version">): Promise<string> {
+  const { dataDir, platform, http, signal } = options;
+  const existing = localKiwix(dataDir, platform);
+  if (existing) return existing;
+  const build = kiwixBuilds[platform];
+  if (!build) throw new AppError("unsupported", `The Kiwix project does not publish kiwix-serve for ${platform}.`);
+
+  const base = (options.distBase ?? `https://${KIWIX_DIST_HOST}/release/kiwix-tools`).replace(/\/+$/, "");
+  const host = new URL(base).hostname;
+  const file = `kiwix-tools_${build}-${KIWIX_TOOLS_VERSION}.tar.gz`;
+
+  const sumResponse = await http.fetch(`${base}/${file}.md5`, { allowedHosts: [host], signal });
+  if (!sumResponse.response.ok) throw new AppError("upstream", `The checksum for kiwix-serve (${platform}) could not be fetched (${sumResponse.response.status}).`);
+  const expected = /[0-9a-f]{32}/i.exec(await sumResponse.response.text())?.[0]?.toLowerCase();
+  if (!expected) throw new AppError("upstream", "The checksum file for kiwix-serve was not in the expected form.");
+
+  const destination = kiwixCachePath(dataDir, platform);
+  await fs.promises.mkdir(path.dirname(destination), { recursive: true });
+  const archive = `${destination}.download`;
+  const { response } = await http.fetch(`${base}/${file}`, { allowedHosts: [host], signal });
+  if (!response.ok || !response.body) throw new AppError("upstream", `kiwix-serve for ${platform} could not be downloaded (${response.status}).`);
+  const total = Number(response.headers.get("content-length")) || null;
+  const hash = createHash("md5");
+  let received = 0;
+  try {
+    await pipeline(
+      Readable.fromWeb(response.body as never),
+      async function* (source) {
+        for await (const chunk of source) {
+          hash.update(chunk as Buffer);
+          received += (chunk as Buffer).length;
+          options.onProgress?.(received, total);
+          yield chunk;
+        }
+      },
+      fs.createWriteStream(archive),
+      { signal },
+    );
+    if (hash.digest("hex") !== expected) throw new AppError("upstream", `kiwix-serve for ${platform} did not match its published checksum, so it was discarded.`);
+    const unpacked = `${destination}.unpack`;
+    const found = await extractOneFromTarGz(fs.createReadStream(archive), (entry) => /(^|\/)kiwix-serve$/.test(entry), unpacked);
+    if (!found) throw new AppError("upstream", "The Kiwix archive did not contain kiwix-serve.");
+    await fs.promises.rename(unpacked, destination);
+    await fs.promises.chmod(destination, 0o755).catch(() => {});
+    return destination;
+  } finally {
+    await fs.promises.rm(archive, { force: true });
+    await fs.promises.rm(`${destination}.unpack`, { force: true });
+  }
+}

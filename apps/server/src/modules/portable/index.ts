@@ -28,7 +28,7 @@ import { SPACE_RESERVE_BYTES } from "../storage/service.ts";
 import { VERSION } from "../system/index.ts";
 import { prepareDriveDatabase } from "./database.ts";
 import { currentPlatform, linuxLauncher, macLauncher, PORTABLE_PLATFORMS, type PortablePlatform, platformLabels, readme, windowsLauncher } from "./launchers.ts";
-import { binaryName, ensureRuntime, localRuntime, NODE_DIST_HOST } from "./runtimes.ts";
+import { binaryName, ensureKiwix, ensureRuntime, KIWIX_DIST_HOST, kiwixSupports, localKiwix, localRuntime, NODE_DIST_HOST } from "./runtimes.ts";
 
 const MANIFEST = "outpost-portable.json";
 const LOCATION_MARKER = ".outpost-location.json";
@@ -42,6 +42,8 @@ const requestSchema = z.object({
   platforms: z.array(z.enum(PORTABLE_PLATFORMS)).min(1).max(PORTABLE_PLATFORMS.length),
   collectionIds: z.array(z.string().max(64)).max(5000).default([]),
   documents: z.enum(["all", "none"]).default("all"),
+  /** Also put kiwix-serve on the drive, so reference collections can be read from it. */
+  reader: z.boolean().default(false),
   /** Required when the folder is already an Outpost drive: its notes and index will be replaced. */
   replaceExisting: z.boolean().default(false),
 });
@@ -70,6 +72,8 @@ export interface PortablePlan {
   target: { path: string; exists: boolean; isOutpostDrive: boolean; freeBytes: number | null; totalBytes: number | null; lastWritten: string | null };
   app: { available: boolean; bytes: number };
   runtimes: Array<{ platform: PortablePlatform; label: string; cached: boolean }>;
+  /** kiwix-serve per chosen platform, when the reader was asked for. */
+  reader: Array<{ platform: PortablePlatform; label: string; supported: boolean; cached: boolean }>;
   collections: Array<{ id: string; title: string; kind: string; bytes: number; available: boolean; alreadyOnDrive: boolean }>;
   documents: { count: number; bytes: number };
   /** Bytes that still have to be written, after skipping what is already on the drive. */
@@ -176,6 +180,16 @@ export async function registerPortable(app: FastifyInstance, ctx: AppContext): P
     // Runtimes.
     const runtimes = request.platforms.map((platform) => ({ platform, label: platformLabels[platform], cached: Boolean(localRuntime(config.dataDir, nodeVersion, platform)) }));
 
+    const reader = request.reader
+      ? request.platforms.map((platform) => ({ platform, label: platformLabels[platform], supported: kiwixSupports(platform), cached: Boolean(localKiwix(config.dataDir, platform)) }))
+      : [];
+    const unsupportedReader = reader.filter((item) => !item.supported);
+    if (unsupportedReader.length > 0) {
+      warnings.push(
+        `Reference collections such as Wikipedia cannot be opened from this drive on ${unsupportedReader.map((item) => item.label).join(" or ")}: the Kiwix project does not publish its reader for that system. Documents, notes, maps and search still work there.`,
+      );
+    }
+
     // Collections.
     const wanted = request.collectionIds.length ? db.select().from(collections).where(inArray(collections.id, request.collectionIds)).all() : [];
     const collectionPlan: PortablePlan["collections"] = [];
@@ -231,7 +245,7 @@ export async function registerPortable(app: FastifyInstance, ctx: AppContext): P
       }
     }
 
-    return { target, manifest, exists, space, copies, runtimes, collectionPlan, includedCollectionIds, includedDocumentIds, documentBytes, problems, warnings, appBytes: appFiles.reduce((sum, file) => sum + file.bytes, 0) };
+    return { target, manifest, exists, space, copies, runtimes, reader, collectionPlan, includedCollectionIds, includedDocumentIds, documentBytes, problems, warnings, appBytes: appFiles.reduce((sum, file) => sum + file.bytes, 0) };
   }
 
   async function plan(request: PortableRequest): Promise<PortablePlan> {
@@ -239,6 +253,10 @@ export async function registerPortable(app: FastifyInstance, ctx: AppContext): P
     const pending = (await Promise.all(gathered.copies.map(async (copy) => ((await isCurrent(copy)) ? 0 : copy.bytes)))).reduce((sum, bytes) => sum + bytes, 0);
     const databaseBytes = await sizeOnDisk(path.join(config.dataDir, "outpost.db"));
     const missingRuntimes = gathered.runtimes.filter((runtime) => !runtime.cached);
+    const missingReader = gathered.reader.filter((item) => item.supported && !item.cached);
+    if (missingReader.length > 0) {
+      gathered.warnings.push(`The reader for reference collections will be downloaded from ${KIWIX_DIST_HOST} for ${missingReader.map((item) => item.label).join(", ")} and kept for next time. This step needs a connection.`);
+    }
     const runtimeBytes = gathered.runtimes.length * RUNTIME_ESTIMATE_BYTES;
     const bytesToWrite = pending + databaseBytes + runtimeBytes;
     const enoughSpace = gathered.space.freeBytes === null || gathered.space.freeBytes >= bytesToWrite + SPACE_RESERVE_BYTES;
@@ -259,11 +277,12 @@ export async function registerPortable(app: FastifyInstance, ctx: AppContext): P
       },
       app: { available: bundleAvailable(), bytes: gathered.appBytes },
       runtimes: gathered.runtimes,
+      reader: gathered.reader,
       collections: gathered.collectionPlan,
       documents: { count: gathered.includedDocumentIds.length, bytes: gathered.documentBytes },
       bytesToWrite,
       enoughSpace,
-      needsConnection: missingRuntimes.length > 0,
+      needsConnection: missingRuntimes.length > 0 || missingReader.length > 0,
       problems: gathered.problems,
       warnings: [...new Set(gathered.warnings)],
     };
@@ -296,6 +315,21 @@ export async function registerPortable(app: FastifyInstance, ctx: AppContext): P
         const destination = path.join(target, "runtime", platform, binaryName(platform));
         await fs.promises.mkdir(path.dirname(destination), { recursive: true });
         if (!(await isCurrent({ from: source, to: destination, bytes: 0, label }))) {
+          await fs.promises.copyFile(source, destination);
+          await fs.promises.chmod(destination, 0o755).catch(() => {});
+        }
+      }
+
+      for (const item of gathered.reader) {
+        if (!item.supported) continue;
+        signal.throwIfAborted();
+        step(`Getting the reader for reference collections on ${item.label}`);
+        const source = await ensureKiwix({ dataDir: config.dataDir, platform: item.platform, http: client(), distBase: config.kiwixDistUrl, signal }).catch((error) => {
+          throw error instanceof AppError ? new PermanentJobError(error.message) : error;
+        });
+        const destination = path.join(target, "runtime", item.platform, "kiwix-serve");
+        await fs.promises.mkdir(path.dirname(destination), { recursive: true });
+        if (!(await isCurrent({ from: source, to: destination, bytes: 0, label: item.label }))) {
           await fs.promises.copyFile(source, destination);
           await fs.promises.chmod(destination, 0o755).catch(() => {});
         }

@@ -18,6 +18,8 @@ export interface PortableRequest {
   platforms: PortablePlatform[];
   collectionIds: string[];
   documents: "all" | "none";
+  /** Also put the reader for reference collections (kiwix-serve) on the drive. */
+  reader?: boolean;
   /** Must be true to update a folder that is already an Outpost drive. */
   replaceExisting?: boolean;
 }
@@ -33,6 +35,7 @@ export interface PortablePlan {
   };
   app: { available: boolean; bytes: number };
   runtimes: Array<{ platform: PortablePlatform; label: string; cached: boolean }>;
+  reader: Array<{ platform: PortablePlatform; label: string; supported: boolean; cached: boolean }>;
   collections: Array<{ id: string; title: string; kind: string; bytes: number; available: boolean; alreadyOnDrive: boolean }>;
   documents: { count: number; bytes: number };
   bytesToWrite: number;

@@ -9,7 +9,7 @@ import Database from "better-sqlite3";
 import { afterEach, describe, expect, it } from "vitest";
 import { createHttpClient } from "../src/core/http.ts";
 import { collections, documents } from "../src/db/schema.ts";
-import { cachePath, distFile, ensureRuntime, parseShasums } from "../src/modules/portable/runtimes.ts";
+import { cachePath, distFile, ensureKiwix, ensureRuntime, kiwixCachePath, kiwixSupports, parseShasums } from "../src/modules/portable/runtimes.ts";
 import { extractOneFromTarGz } from "../src/modules/portable/tar.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
 
@@ -114,6 +114,36 @@ describe("runtime downloads", () => {
     await expect(ensureRuntime({ dataDir, version: "v99.0.0", platform: "linux-x64", http: client, distBase: dist.base })).rejects.toThrow(/checksum/);
     expect(fs.existsSync(cachePath(dataDir, "v99.0.0", "linux-x64"))).toBe(false);
     await expect(ensureRuntime({ dataDir, version: "v99.0.0", platform: "darwin-arm64", http: client, distBase: dist.base })).rejects.toThrow(/no official build/);
+  });
+});
+
+describe("the reader for reference collections", () => {
+  it("is fetched from the Kiwix project's builds, checked and cached", async () => {
+    const binary = Buffer.from("#!/bin/sh\necho kiwix-serve\n");
+    const archive = gzipSync(tar({ "kiwix-tools_linux-x86_64-3.8.2/kiwix-manage": Buffer.from("manage"), "kiwix-tools_linux-x86_64-3.8.2/kiwix-serve": binary }));
+    const md5 = createHash("md5").update(archive).digest("hex");
+    let corrupt = false;
+    const server = http.createServer((request, response) => {
+      if (request.url === "/kiwix-tools_linux-x86_64-3.8.2.tar.gz.md5") return response.end(`${md5}  kiwix-tools_linux-x86_64-3.8.2.tar.gz\n`);
+      if (request.url === "/kiwix-tools_linux-x86_64-3.8.2.tar.gz") return response.end(corrupt ? archive.subarray(0, archive.length - 5) : archive);
+      response.statusCode = 404;
+      response.end();
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    cleanups.push(() => new Promise<void>((resolve) => server.close(() => resolve())));
+    const distBase = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+    const client = createHttpClient({ allowPrivate: true });
+    cleanups.push(() => client.close());
+
+    const dataDir = tempDir();
+    corrupt = true;
+    await expect(ensureKiwix({ dataDir, platform: "linux-x64", http: client, distBase })).rejects.toThrow(/checksum/);
+    expect(fs.existsSync(kiwixCachePath(dataDir, "linux-x64"))).toBe(false);
+    corrupt = false;
+    const file = await ensureKiwix({ dataDir, platform: "linux-x64", http: client, distBase });
+    expect(fs.readFileSync(file).equals(binary)).toBe(true);
+    expect(kiwixSupports("win-x64")).toBe(false);
+    await expect(ensureKiwix({ dataDir, platform: "win-x64", http: client, distBase })).rejects.toThrow(/does not publish/);
   });
 });
 
@@ -278,6 +308,25 @@ describe("writing a portable drive", () => {
     const kept = fs.readdirSync(drive).filter((name) => name.startsWith("data-before-update-"));
     expect(kept).toHaveLength(1);
     expect(fs.existsSync(path.join(drive, kept[0]!, "outpost.db"))).toBe(true);
+  });
+
+  it("puts the reader on the drive where one exists, and says where it does not", async () => {
+    const { app, drive } = await setup();
+    const cached = kiwixCachePath(app.ctx.config.dataDir, "darwin-arm64");
+    fs.mkdirSync(path.dirname(cached), { recursive: true });
+    fs.writeFileSync(cached, "kiwix for mac");
+    const plan = (await app.api("POST", "/api/portable/plan", request(drive, { reader: true }))).body;
+    expect(plan.reader).toEqual([
+      { platform: "darwin-arm64", label: "Mac (Apple Silicon)", supported: true, cached: true },
+      { platform: "win-x64", label: "Windows (64-bit PC)", supported: false, cached: false },
+    ]);
+    expect(plan.warnings.join(" ")).toMatch(/cannot be opened from this drive on Windows/);
+    expect(plan.needsConnection).toBe(false);
+    await app.api("POST", "/api/portable/build", request(drive, { reader: true }));
+    await app.ctx.jobs.whenIdle();
+    expect(fs.readFileSync(path.join(drive, "runtime/darwin-arm64/kiwix-serve"), "utf8")).toBe("kiwix for mac");
+    expect(fs.existsSync(path.join(drive, "runtime/win-x64/kiwix-serve"))).toBe(false);
+    expect(fs.readFileSync(path.join(drive, "README.txt"), "utf8")).toContain("are included and readable");
   });
 
   it("refuses folders it should not write to", async () => {

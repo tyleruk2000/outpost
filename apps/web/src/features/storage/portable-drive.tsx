@@ -71,9 +71,12 @@ function Wizard({ status, onClose }: { status: PortableStatus; onClose: () => vo
   const collections = useQuery({ queryKey: ["collections", "all"], queryFn: () => api.get<CollectionsResponse>("/api/collections") });
   const facets = useQuery({ queryKey: ["documents", "facets"], queryFn: () => api.get<DocumentFacets>("/api/documents/facets") });
 
+  const installed = collections.data?.collections ?? [];
+  // Reference collections are only readable with kiwix-serve beside them.
+  const takesReference = installed.some((item) => item.kind === "zim" && collectionIds.includes(item.id));
   const request = useMemo<PortableRequest>(
-    () => ({ targetPath: folder.path ?? "", platforms, collectionIds, documents: allDocuments ? "all" : "none", replaceExisting }),
-    [folder.path, platforms, collectionIds, allDocuments, replaceExisting],
+    () => ({ targetPath: folder.path ?? "", platforms, collectionIds, documents: allDocuments ? "all" : "none", reader: takesReference, replaceExisting }),
+    [folder.path, platforms, collectionIds, allDocuments, takesReference, replaceExisting],
   );
 
   const plan = useQuery({
@@ -99,7 +102,6 @@ function Wizard({ status, onClose }: { status: PortableStatus; onClose: () => vo
   const cancel = useMutation({ mutationFn: () => api.post(`/api/jobs/${jobId}/cancel`) });
 
   const toggle = <T,>(list: T[], value: T, on: boolean) => (on ? [...new Set([...list, value])] : list.filter((item) => item !== value));
-  const installed = collections.data?.collections ?? [];
   const data = plan.data;
   const blocked = !data || data.problems.length > 0 || (data.target.isOutpostDrive && !replaceExisting);
 
@@ -268,6 +270,16 @@ function Wizard({ status, onClose }: { status: PortableStatus; onClose: () => vo
                   label="Collections and maps"
                   value={data.collections.length === 0 ? "None" : `${data.collections.length}, ${formatBytes(data.collections.reduce((sum, item) => sum + item.bytes, 0))}`}
                 />
+                {data.reader.length > 0 ? (
+                  <Fact
+                    label="Reader for reference collections"
+                    value={
+                      data.reader.some((item) => item.supported)
+                        ? `Included for ${data.reader.filter((item) => item.supported).map((item) => item.label).join(", ")}`
+                        : "Not available for the chosen computers"
+                    }
+                  />
+                ) : null}
                 <Fact label="Still to write" value={formatBytes(data.bytesToWrite)} strong />
                 <Fact label="Free on the drive" value={formatBytes(data.target.freeBytes)} />
               </dl>

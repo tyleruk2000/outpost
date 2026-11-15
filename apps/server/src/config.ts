@@ -50,6 +50,7 @@ const envSchema = z.object({
   OUTPOST_PORTABLE: bool(false),
   OUTPOST_APP_DIR: z.string().optional(),
   OUTPOST_NODE_DIST_URL: z.string().optional(),
+  OUTPOST_KIWIX_DIST_URL: z.string().optional(),
   OUTPOST_LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).optional(),
 });
 
@@ -88,6 +89,8 @@ export interface Config {
   appBundleDir: string;
   /** Where Node runtimes for portable drives are fetched from. Defaults to nodejs.org; set for a mirror. */
   nodeDistUrl?: string;
+  /** Where kiwix-serve for portable drives is fetched from. Defaults to download.kiwix.org. */
+  kiwixDistUrl?: string;
 }
 
 /**
@@ -161,5 +164,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
         ? appRoot
         : path.join(appRoot, "dist/app"),
     nodeDistUrl: parsed.OUTPOST_NODE_DIST_URL,
+    kiwixDistUrl: parsed.OUTPOST_KIWIX_DIST_URL,
   };
 }
