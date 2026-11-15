@@ -107,7 +107,6 @@ export async function buildApp(config: Config): Promise<BuiltApp> {
   if (fs.existsSync(indexFile)) {
     await app.register(fastifyStatic, {
       root: config.webDir,
-      wildcard: false,
       setHeaders(reply, file) {
         if (file.endsWith(".html")) {
           reply.header("Content-Security-Policy", APP_CSP);

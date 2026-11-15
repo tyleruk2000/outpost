@@ -1,0 +1,125 @@
+/*
+ * Design tokens. DESIGN.md explains the choices; this file is their single definition.
+ *
+ * The picture: a cloth-bound field reference. A dark verdigris spine (the sidebar),
+ * clean white pages (content), and one amber lamp for anything alive right now.
+ * All colours are OKLCH. Light and dark are equal citizens.
+ */
+:root {
+  color-scheme: light;
+
+  /* Pages */
+  --page: oklch(1 0 0);
+  --surface: oklch(0.972 0.004 200);
+  --surface-strong: oklch(0.945 0.006 200);
+  --raised: oklch(1 0 0);
+  --border: oklch(0.905 0.006 200);
+  --border-strong: oklch(0.82 0.01 200);
+
+  /* Ink */
+  --ink: oklch(0.21 0.015 220);
+  --ink-muted: oklch(0.44 0.016 220);
+  --ink-faint: oklch(0.56 0.014 220);
+
+  /* The spine */
+  --spine: oklch(0.285 0.042 200);
+  --spine-raised: oklch(0.335 0.046 200);
+  --spine-active: oklch(0.39 0.055 200);
+  --spine-ink: oklch(0.95 0.008 200);
+  --spine-ink-muted: oklch(0.78 0.02 200);
+  --spine-border: oklch(0.36 0.04 200);
+
+  /* Verdigris: actions, selection, links */
+  --primary: oklch(0.45 0.074 200);
+  --primary-hover: oklch(0.4 0.07 200);
+  --primary-ink: oklch(1 0 0);
+  --primary-soft: oklch(0.95 0.022 200);
+  --primary-soft-ink: oklch(0.33 0.065 200);
+
+  /* The lamp: things that are alive right now, and favourites */
+  --lamp: oklch(0.78 0.15 75);
+  --lamp-ink: oklch(0.36 0.08 70);
+  --lamp-soft: oklch(0.955 0.045 85);
+
+  --success: oklch(0.48 0.11 155);
+  --success-soft: oklch(0.95 0.035 155);
+  --warning: oklch(0.5 0.11 70);
+  --warning-soft: oklch(0.955 0.045 85);
+  --danger: oklch(0.5 0.17 27);
+  --danger-hover: oklch(0.44 0.16 27);
+  --danger-soft: oklch(0.955 0.025 25);
+  --mark: oklch(0.9 0.12 95);
+
+  --focus: oklch(0.55 0.12 200);
+  --shadow-float: 0 1px 2px oklch(0.2 0.02 220 / 0.06), 0 8px 24px -6px oklch(0.2 0.02 220 / 0.16);
+  --shadow-dialog: 0 2px 4px oklch(0.2 0.02 220 / 0.08), 0 24px 56px -12px oklch(0.2 0.02 220 / 0.28);
+  --overlay: oklch(0.2 0.02 220 / 0.38);
+
+  /* Shape */
+  --radius-control: 5px;
+  --radius-panel: 8px;
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.25, 1, 0.5, 1);
+  --duration: 140ms;
+
+  /* Type */
+  --font-sans: "Atkinson Hyperlegible Next Variable", "Atkinson Hyperlegible Next", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-serif: "Literata Variable", "Literata", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --font-mono: "Atkinson Hyperlegible Mono Variable", "Atkinson Hyperlegible Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  /* Layers */
+  --z-sticky: 10;
+  --z-nav: 20;
+  --z-dropdown: 30;
+  --z-overlay: 40;
+  --z-dialog: 50;
+  --z-toast: 60;
+  --z-tooltip: 70;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --page: oklch(0.2 0.008 215);
+  --surface: oklch(0.232 0.009 215);
+  --surface-strong: oklch(0.265 0.011 215);
+  --raised: oklch(0.245 0.01 215);
+  --border: oklch(0.305 0.011 215);
+  --border-strong: oklch(0.4 0.014 215);
+
+  --ink: oklch(0.935 0.006 210);
+  --ink-muted: oklch(0.74 0.012 212);
+  --ink-faint: oklch(0.62 0.012 212);
+
+  --spine: oklch(0.165 0.024 200);
+  --spine-raised: oklch(0.215 0.03 200);
+  --spine-active: oklch(0.275 0.042 200);
+  --spine-ink: oklch(0.93 0.008 205);
+  --spine-ink-muted: oklch(0.72 0.016 205);
+  --spine-border: oklch(0.255 0.028 200);
+
+  --primary: oklch(0.76 0.09 195);
+  --primary-hover: oklch(0.82 0.085 195);
+  --primary-ink: oklch(0.17 0.03 200);
+  --primary-soft: oklch(0.29 0.04 200);
+  --primary-soft-ink: oklch(0.88 0.06 195);
+
+  --lamp: oklch(0.82 0.14 78);
+  --lamp-ink: oklch(0.88 0.1 82);
+  --lamp-soft: oklch(0.3 0.045 75);
+
+  --success: oklch(0.76 0.13 155);
+  --success-soft: oklch(0.28 0.045 155);
+  --warning: oklch(0.82 0.12 80);
+  --warning-soft: oklch(0.3 0.045 75);
+  --danger: oklch(0.72 0.15 25);
+  --danger-hover: oklch(0.78 0.14 25);
+  --danger-soft: oklch(0.29 0.055 25);
+  --mark: oklch(0.5 0.1 90);
+
+  --focus: oklch(0.8 0.1 195);
+  --shadow-float: 0 1px 2px oklch(0 0 0 / 0.3), 0 8px 24px -6px oklch(0 0 0 / 0.5);
+  --shadow-dialog: 0 2px 4px oklch(0 0 0 / 0.3), 0 24px 56px -12px oklch(0 0 0 / 0.6);
+  --overlay: oklch(0.08 0.01 215 / 0.6);
+}

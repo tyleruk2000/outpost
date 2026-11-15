@@ -1,0 +1,200 @@
+@import "tailwindcss";
+@import "@fontsource-variable/atkinson-hyperlegible-next";
+@import "@fontsource-variable/atkinson-hyperlegible-next/wght-italic.css";
+@import "@fontsource-variable/atkinson-hyperlegible-mono";
+@import "@fontsource-variable/literata/opsz.css";
+@import "@fontsource-variable/literata/opsz-italic.css";
+@import "./tokens.css";
+@import "./prose.css";
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+@theme inline {
+  --color-page: var(--page);
+  --color-surface: var(--surface);
+  --color-surface-strong: var(--surface-strong);
+  --color-raised: var(--raised);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-faint: var(--ink-faint);
+  --color-spine: var(--spine);
+  --color-spine-raised: var(--spine-raised);
+  --color-spine-active: var(--spine-active);
+  --color-spine-ink: var(--spine-ink);
+  --color-spine-ink-muted: var(--spine-ink-muted);
+  --color-spine-border: var(--spine-border);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-ink: var(--primary-ink);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-soft-ink: var(--primary-soft-ink);
+  --color-lamp: var(--lamp);
+  --color-lamp-ink: var(--lamp-ink);
+  --color-lamp-soft: var(--lamp-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-hover: var(--danger-hover);
+  --color-danger-soft: var(--danger-soft);
+  --color-mark: var(--mark);
+  --color-focus: var(--focus);
+  --color-overlay: var(--overlay);
+
+  --font-sans: var(--font-sans);
+  --font-serif: var(--font-serif);
+  --font-mono: var(--font-mono);
+
+  --radius-control: var(--radius-control);
+  --radius-panel: var(--radius-panel);
+
+  --shadow-float: var(--shadow-float);
+  --shadow-dialog: var(--shadow-dialog);
+
+  /* Fixed type scale, ratio about 1.2. Product UI does not use fluid sizes. */
+  --text-micro: 0.78125rem;
+  --text-micro--line-height: 1.125rem;
+  --text-small: 0.875rem;
+  --text-small--line-height: 1.3125rem;
+  --text-body: 1rem;
+  --text-body--line-height: 1.5rem;
+  --text-lead: 1.1875rem;
+  --text-lead--line-height: 1.625rem;
+  --text-heading: 1.4375rem;
+  --text-heading--line-height: 1.875rem;
+  --text-title: 1.75rem;
+  --text-title--line-height: 2.125rem;
+  --text-display: 2.125rem;
+  --text-display--line-height: 2.5rem;
+
+  --ease-out: var(--ease-out);
+
+  --animate-enter: enter var(--duration) var(--ease-out);
+  --animate-fade: fade var(--duration) var(--ease-out);
+  --animate-sheet: sheet 200ms var(--ease-out);
+}
+
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.985);
+  }
+}
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes sheet {
+  from {
+    transform: translateY(100%);
+  }
+}
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  html {
+    font-family: var(--font-sans);
+    font-size: 100%;
+    line-height: 1.5;
+    color: var(--ink);
+    background: var(--page);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-kerning: normal;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    min-height: 100dvh;
+    background: var(--page);
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  /* One focus treatment everywhere: a 2px ring in the focus colour, offset from the control. */
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: color-mix(in oklch, var(--primary) 28%, transparent);
+  }
+
+  mark {
+    background: var(--mark);
+    color: inherit;
+    border-radius: 2px;
+    padding: 0 1px;
+  }
+
+  button,
+  [role="button"] {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Titles of things you read: pages, documents, collections. */
+@utility font-title {
+  font-family: var(--font-serif);
+  font-optical-sizing: auto;
+  font-weight: 600;
+  letter-spacing: -0.012em;
+}
+
+@utility skeleton {
+  border-radius: var(--radius-control);
+  background: linear-gradient(90deg, var(--surface) 0%, var(--surface-strong) 50%, var(--surface) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+
+/* Thin scrollbars that follow the theme, without replacing native behaviour. */
+@utility scroll-quiet {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+@keyframes indeterminate {
+  0% {
+    left: -35%;
+  }
+  100% {
+    left: 100%;
+  }
+}

@@ -25,3 +25,6 @@ e2e/.tmp/
 
 # Local tooling
 .impeccable/
+
+# Map fonts and sprites are fetched at build time (scripts/fetch-map-assets.mjs)
+apps/web/public/map-assets/
