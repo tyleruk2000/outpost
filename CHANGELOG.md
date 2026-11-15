@@ -21,6 +21,8 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 - A web app (React, Vite, Tailwind) with light and dark themes, a keyboard-driven
   command palette, and a layout that works from phone width up.
 - Database migrations applied automatically at start.
+- The packaged app and the Docker image include `THIRD-PARTY-LICENSES.txt`, the licences
+  of the projects bundled into them.
 
 #### Storage
 

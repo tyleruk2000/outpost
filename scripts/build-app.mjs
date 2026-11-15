@@ -9,6 +9,7 @@
  *     server/migrations/        SQL migrations
  *     server/node_modules/      the one native dependency (SQLite), with prebuilt
  *                               binaries for every supported platform
+ *     THIRD-PARTY-LICENSES.txt  the licences of the projects bundled into the app
  *     server/ocr/               English language data for OCR (the engine itself is
  *                               WebAssembly inside workers/ocr.mjs)
  *     web/                      built web app, fonts and map assets included
@@ -151,6 +152,82 @@ if (!fs.existsSync(path.join(out, "server/workers/ocr.mjs"))) {
 copyDir(path.join(root, "catalog"), path.join(out, "catalog"));
 fs.copyFileSync(path.join(root, "LICENSE"), path.join(out, "LICENSE"));
 fs.writeFileSync(path.join(out, "VERSION"), `${version}\n`);
+
+// ── Other people's licences ────────────────────────────────────────────────
+// The bundles above contain other projects' code, and their licences ask that their
+// notices travel with it. This lists every package the server and the web app depend on
+// when running (a little more than what ends up in the bundles), each with the licence
+// text found in the package.
+/** Depended on by name, but replaced at build time and never shipped; see apps/web/vite.config.ts. */
+const NOT_SHIPPED = new Set(["elkjs"]);
+// Found by following "dependencies" from the two apps through node_modules, the way Node
+// itself resolves them, so it needs nothing but the installed packages (no package store,
+// which the Docker build does not keep).
+const packages = new Map();
+const visited = new Set();
+function follow(dir) {
+  const real = fs.realpathSync(dir);
+  if (visited.has(real)) return;
+  visited.add(real);
+  const manifest = JSON.parse(fs.readFileSync(path.join(real, "package.json"), "utf8"));
+  if (!manifest.private && !NOT_SHIPPED.has(manifest.name)) {
+    const stated = manifest.license ?? manifest.licenses;
+    const licence = typeof stated === "string" ? stated : Array.isArray(stated) ? stated.map((item) => item.type ?? item).join(" OR ") : stated?.type;
+    const author = typeof manifest.author === "string" ? manifest.author : manifest.author?.name;
+    const known = packages.get(manifest.name);
+    packages.set(manifest.name, {
+      name: manifest.name,
+      versions: [...new Set([...(known?.versions ?? []), manifest.version])].sort(),
+      paths: [...(known?.paths ?? []), real],
+      licence: licence ?? "Unknown",
+      author,
+      homepage: manifest.homepage,
+    });
+  }
+  if (NOT_SHIPPED.has(manifest.name)) return;
+  for (const name of Object.keys({ ...manifest.dependencies, ...manifest.optionalDependencies })) {
+    // Up through the folders above, as Node looks; an optional package for another platform is simply not there.
+    for (let from = real; ; from = path.dirname(from)) {
+      const candidate = path.join(from, "node_modules", name);
+      if (fs.existsSync(path.join(candidate, "package.json"))) {
+        follow(candidate);
+        break;
+      }
+      if (path.dirname(from) === from) break;
+    }
+  }
+}
+for (const app of ["apps/server", "apps/web"]) follow(path.join(root, app));
+const noticeFile = /^(licen[cs]e|copying|notice)(\.|-|$)/i;
+const sections = [...packages.values()]
+  .sort((a, b) => a.name.localeCompare(b.name))
+  .map((item) => {
+    const dir = item.paths?.[0];
+    const texts = [];
+    if (dir && fs.existsSync(dir)) {
+      for (const name of fs.readdirSync(dir).sort()) {
+        if (!noticeFile.test(name) || !fs.statSync(path.join(dir, name)).isFile()) continue;
+        texts.push(fs.readFileSync(path.join(dir, name), "utf8").trim());
+      }
+    }
+    const heading = `${item.name} ${(item.versions ?? []).join(", ")}`.trim();
+    const facts = [`Licence: ${item.licence}`, item.author ? `Author: ${item.author}` : "", item.homepage ? item.homepage : ""].filter(Boolean);
+    const body = texts.length > 0 ? texts.join("\n\n") : "(The package ships no licence file; the licence named above is from its package.json.)";
+    return `${"=".repeat(78)}\n${heading}\n${facts.join("\n")}\n${"=".repeat(78)}\n\n${body}\n`;
+  });
+if (sections.length < 50) throw new Error("The list of third-party licences came out almost empty; refusing to ship without it.");
+fs.writeFileSync(
+  path.join(out, "THIRD-PARTY-LICENSES.txt"),
+  [
+    "Outpost includes or depends on the following projects. Each is listed with its licence.",
+    "Outpost itself is under the MIT licence in the file LICENSE beside this one.",
+    "The OCR engine and its language data have their notices in server/ocr/.",
+    "Map fonts, icons and data, and the catalogue's content, are credited in the app and in docs/architecture.md.",
+    "",
+    ...sections,
+  ].join("\n"),
+);
+console.log(`[build-app] third-party licences: ${sections.length} packages`);
 
 let bytes = 0;
 let files = 0;

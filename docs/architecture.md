@@ -239,6 +239,10 @@ These are deliberate, and stated so nobody has to discover them.
 Outpost is MIT. Everything linked into it is MIT, ISC, BSD or Apache-2.0. Things that
 are not are kept outside the process or left out:
 
+The packaged app and the Docker image carry `THIRD-PARTY-LICENSES.txt`: every package
+the server and the web app depend on when running, each with its licence text. It is
+written by `scripts/build-app.mjs` from the installed packages.
+
 | Component | Licence | How it is used |
 | --- | --- | --- |
 | kiwix-serve, libzim | GPL-3.0 / GPL-2.0+ | Separate process, reached over HTTP. Not linked, not bundled in the Outpost image. |
