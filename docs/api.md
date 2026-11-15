@@ -1,9 +1,9 @@
 # API reference
 
 This page lists every HTTP route the Outpost server registers, grouped by module:
-method, path, who may call it, what it is for, and the main request and response
-fields. Field-by-field shapes are TypeScript types in `packages/shared/src/`; this
-page names the type rather than repeating it.
+method, path, what it is for, and the main request and response fields.
+Field-by-field shapes are TypeScript types in `packages/shared/src/`; this page names
+the type rather than repeating it.
 
 The API is the web app's own interface. It is not versioned, and it may change between
 releases.
@@ -17,7 +17,7 @@ server sends no CORS headers, so a page on another origin cannot call it from a
 browser. Scripts and command-line tools on your own machine can.
 
 Requests must be addressed to a host name the server answers to (see
-[deployment.md](deployment.md#letting-other-devices-use-it-lan-access-and-sign-in)).
+[deployment.md](deployment.md#letting-other-devices-use-it-lan-access)).
 Otherwise the answer is `403 forbidden`: "This address is not one Outpost answers to."
 
 ### The `X-Outpost-Request` header
@@ -40,15 +40,16 @@ curl -X POST http://localhost:8080/api/notes \
 
 ### Who may call what
 
-- **Sign-in off** (the default on one computer): every request is treated as the local
-  administrator.
-- **Sign-in on:** every `/api/` route needs a session cookie (`outpost_session`, set
-  by `POST /api/auth/login`), except `GET /api/health`, `GET /api/auth/session`,
-  `POST /api/auth/login` and `POST /api/auth/setup`. Without one the answer is
-  `401 unauthenticated`.
+Outpost has no accounts, and no route is reserved for anyone. A request that reaches
+the server may call any route, as long as it keeps the two rules above:
 
-In the tables below, **signed in** means any account (administrator or member), and
-**admin** means an administrator.
+1. it is addressed to a host name the server answers to; and
+2. if it is not a `GET`, `HEAD` or `OPTIONS`, it carries `X-Outpost-Request: 1` and
+   does not come from another site.
+
+Who can reach the server in the first place is decided when it starts: only the
+computer it runs on, unless `OUTPOST_LAN_ACCESS` is on, in which case every device on
+the network can. Both rules are in `apps/server/src/core/guard.ts`.
 
 ### Request and response bodies
 
@@ -71,8 +72,7 @@ depends on the error. The codes, from `apps/server/src/core/errors.ts`:
 | Code | HTTP status | Meaning |
 | --- | --- | --- |
 | `bad_request` | 400 | The request is not valid. For validation failures, `details.issues` lists them. |
-| `unauthenticated` | 401 | Sign in to continue. |
-| `forbidden` | 403 | Not allowed: wrong role, wrong host, missing header, a blocked download address. |
+| `forbidden` | 403 | Refused: an address the server does not answer to, a missing header, a request from another site, a blocked download address. |
 | `not_found` | 404 | No such thing. |
 | `conflict` | 409 | The request clashes with the current state: already exists, already running, edited elsewhere. |
 | `too_large` | 413 | A file or region is over a limit. |
@@ -126,29 +126,29 @@ Job types in use: `download.run`, `document.extract`, `documents.move`,
 
 Types: `packages/shared/src/system.ts`, `common.ts`.
 
-| Method and path | Who | Purpose |
-| --- | --- | --- |
-| `GET /api/health` | anyone | `{ status: "ok", version }`. Used by health checks. |
-| `GET /api/system` | signed in | Version, platform, memory and load, database size, and counts per job queue (`SystemInfo`). |
-| `GET /api/events` | signed in | The live event stream described above. |
-| `POST /api/system/restart` | admin | Stops the server so that its supervisor starts it again. Answers `409 conflict` unless the server was started with `OUTPOST_SUPERVISED=true`. |
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/health` | `{ status: "ok", version }`. Used by health checks. |
+| `GET /api/system` | Version, platform, memory and load, database size, whether LAN access is on (`lanAccess`), and counts per job queue (`SystemInfo`). |
+| `GET /api/events` | The live event stream described above. |
+| `POST /api/system/restart` | Stops the server so that its supervisor starts it again. Answers `409 conflict` unless the server was started with `OUTPOST_SUPERVISED=true`. |
 
 ### Jobs
 
-| Method and path | Who | Purpose |
-| --- | --- | --- |
-| `GET /api/jobs` | signed in | Recent jobs, newest first: `{ jobs: JobDto[] }`. Query: `active=true` for queued, running and paused only; `limit` (default 50, at most 200). |
-| `GET /api/jobs/:id` | signed in | One job: `{ job }`. `job.result` holds the outcome once it has finished. |
-| `POST /api/jobs/:id/pause` | admin | Stop a job but keep it. |
-| `POST /api/jobs/:id/resume` | admin | Queue a paused or failed job again. |
-| `POST /api/jobs/:id/cancel` | admin | Stop a job for good. |
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/jobs` | Recent jobs, newest first: `{ jobs: JobDto[] }`. Query: `active=true` for queued, running and paused only; `limit` (default 50, at most 200). |
+| `GET /api/jobs/:id` | One job: `{ job }`. `job.result` holds the outcome once it has finished. |
+| `POST /api/jobs/:id/pause` | Stop a job but keep it. |
+| `POST /api/jobs/:id/resume` | Queue a paused or failed job again. |
+| `POST /api/jobs/:id/cancel` | Stop a job for good. |
 
 ### Settings
 
-| Method and path | Who | Purpose |
-| --- | --- | --- |
-| `GET /api/settings` | signed in | `{ settings }`: every setting with its current value (`Settings`). |
-| `PATCH /api/settings` | admin | Body: any subset of settings, by key. Only the keys given are changed. An unknown key or an invalid value is a `400`. Answers `{ settings }`. |
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/settings` | `{ settings }`: every setting with its current value (`Settings`). |
+| `PATCH /api/settings` | Body: any subset of settings, by key. Only the keys given are changed. An unknown key or an invalid value is a `400`. Answers `{ settings }`. |
 
 Settings and their defaults are defined in
 `apps/server/src/modules/settings/service.ts`:
@@ -163,7 +163,7 @@ Settings and their defaults are defined in
 | `indexing.chunkOverlap` | 150 | 0 to 800 characters |
 | `indexing.maxPdfPages` | 5000 | 0 (no limit) to 100000 |
 | `search.semantic.enabled` | false | |
-| `search.semantic.provider` | `none` | `none`, `transformers`, `openai-compatible` |
+| `search.semantic.provider` | `none` | `none`, `transformers`, `openai-compatible`, `demo` |
 | `search.semantic.model` | `Xenova/all-MiniLM-L6-v2` | |
 | `search.semantic.endpoint` | `http://127.0.0.1:11434/v1` | |
 | `search.semantic.batchSize` | 16 | 1 to 256 |
@@ -176,45 +176,44 @@ Settings and their defaults are defined in
 | `maps.defaultMaxZoom` | 14 | 0 to 15 |
 | `storage.checkIntervalSeconds` | 30 | 5 to 3600 |
 
-## Sign-in and accounts
-
-Types: `SessionInfo` in `packages/shared/src/system.ts`.
-
-| Method and path | Who | Purpose |
-| --- | --- | --- |
-| `GET /api/auth/session` | anyone | `{ authRequired, setupRequired, setupTokenRequired, lanAccess, user }`. `user` is null when not signed in. |
-| `POST /api/auth/setup` | anyone, once | Creates the first administrator and signs in. Body: `username`, `password` (at least 10 characters), and `setupToken` when `setupTokenRequired`. `409` once an administrator exists. |
-| `POST /api/auth/login` | anyone | Body: `username`, `password`. Sets the session cookie. Answers `{ user }`. After five failures from one address or against one account, answers `403 forbidden` with "Too many attempts. Try again in N seconds." for a period that doubles each time, up to 15 minutes. |
-| `POST /api/auth/logout` | signed in | Ends the session and clears the cookie. |
-| `GET /api/users` | admin | `{ users }`: id, username, role, createdAt, lastLoginAt. |
-| `POST /api/users` | admin | Creates an account. Body: `username`, `password`, `role` (`admin` or `member`). |
-| `POST /api/users/:id/password` | the account itself, or admin | Body: `password`, and `currentPassword` when changing your own (an administrator changing someone else's does not need it). `403` when the current password is wrong. Ends that account's sessions on every device. |
-| `DELETE /api/users/:id` | admin | Deletes an account. Not your own, and not the last administrator. |
-
-User names are 2 to 64 letters, digits, dots, dashes or underscores.
-
 ## Storage
 
 Types: `packages/shared/src/storage.ts`. See [storage.md](storage.md).
 
-| Method and path | Who | Purpose |
-| --- | --- | --- |
-| `GET /api/storage/locations` | signed in | `{ roots, locations }` (`StorageLocationsResponse`): the storage roots, and each location with capacity, status and usage by kind. |
-| `POST /api/storage/refresh` | admin | Checks every location now. `{ locations }`. |
-| `GET /api/storage/browse` | admin | Lists folders for the folder picker (`StorageBrowseResponse`). Query: `path`; without it, the roots. Only folders inside the roots can be listed. |
-| `POST /api/storage/folders` | admin | Works out the path of a new folder. Body: `parent`, `name`. Answers `{ path }`. The folder itself is created when it is added as a location. |
-| `POST /api/storage/locations` | admin | Adds a location. Body: `name`, `path`, `kind` (`internal`, `external`, `network`, `volume`), `makeDefault?`. |
-| `PATCH /api/storage/locations/:id` | admin | Body: `name?`, `kind?`, `isDefault?: true`. |
-| `DELETE /api/storage/locations/:id` | admin | Forgets a location. Refused (`409`) while it holds content or is the last one. Nothing on disk is deleted. |
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/storage/locations` | `{ roots, locations }` (`StorageLocationsResponse`): the storage roots, and each location with capacity, status and usage by kind. |
+| `POST /api/storage/refresh` | Checks every location now. `{ locations }`. |
+| `GET /api/storage/browse` | Lists folders for the folder picker (`StorageBrowseResponse`). Query: `path`; without it, the roots. Only folders inside the roots can be listed. |
+| `POST /api/storage/folders` | Works out the path of a new folder. Body: `parent`, `name`. Answers `{ path }`. The folder itself is created when it is added as a location. |
+| `POST /api/storage/locations` | Adds a location. Body: `name`, `path`, `kind` (`internal`, `external`, `network`, `volume`), `makeDefault?`. |
+| `PATCH /api/storage/locations/:id` | Body: `name?`, `kind?`, `isDefault?: true`. |
+| `DELETE /api/storage/locations/:id` | Forgets a location. Refused (`409`) while it holds content or is the last one. Nothing on disk is deleted. |
+
+### Network shares
+
+Types: `packages/shared/src/shares.ts`. Outpost connects a share itself only when it
+runs directly on a Mac; `mode` in the first route says which case applies (`macos`,
+`docker`, `linux` or `unsupported`). Elsewhere the routes that connect answer
+`415 unsupported`.
+
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/storage/shares` | `{ mode, shares, hints }` (`NetworkSharesResponse`): the shares Outpost knows, each with its status and the storage locations on it. No response ever contains a password. |
+| `GET /api/storage/shares/discover` | `{ supported, servers }`: file servers that announce themselves on the local network. `supported` is false anywhere but a Mac run directly. |
+| `POST /api/storage/shares` | Connects an SMB share. Body (`ConnectShareRequest`): `server`, `port?`, `share`, `userName`, `password`, `rememberPassword`. Answers `{ share, note? }`. |
+| `POST /api/storage/shares/:id/reconnect` | Body: `password?`, `rememberPassword?`. Without a password, the one remembered in the Keychain is used. |
+| `POST /api/storage/shares/:id/disconnect` | Unmounts the share. Answers `409 conflict` with `details.work` while something is using it, unless the body is `{ "confirm": true }`. |
+| `DELETE /api/storage/shares/:id` | Disconnects, removes the remembered password and forgets the share. Query `confirm=true` as above. |
 
 ## Search
 
 Types: `packages/shared/src/search.ts`. See [search.md](search.md).
 
-| Method and path | Who | Purpose |
-| --- | --- | --- |
-| `GET /api/search` | signed in | Unified search (`SearchResponse`). Query: `q` (at most 500 characters), `kinds` (comma separated, for example `document,note`), `tag`, `mode` (`keyword`, `semantic`, `hybrid`), `limit` (1 to 100, default 20), `offset`. |
-| `GET /api/search/stats` | signed in | `{ entities, chunks }`: indexed items per kind and the number of passages. |
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/search` | Unified search (`SearchResponse`). Query: `q` (at most 500 characters), `kinds` (comma separated, for example `document,note`), `tag`, `mode` (`keyword`, `semantic`, `hybrid`), `limit` (1 to 100, default 20), `offset`. |
+| `GET /api/search/stats` | `{ entities, chunks }`: indexed items per kind and the number of passages. |
 
 Response fields worth knowing: `relaxed` (the search fell back to "any word"),
 `facets` (results per kind), `warnings` (sources that could not answer, with a
@@ -224,14 +223,14 @@ reason), and per result `url` (the in-app route), `passages` and `sources`.
 
 Types: `SemanticStatus` in `packages/shared/src/semantic.ts`.
 
-| Method and path | Who | Purpose |
-| --- | --- | --- |
-| `GET /api/semantic/status` | signed in | Whether it is enabled and ready, the model, counts of passages and vectors, other models with stored vectors, and whether a build is running. |
-| `POST /api/semantic/index` | admin | Starts (or continues) building vectors for the current model. `409` if no provider is configured or it does not answer. Answers the status. |
-| `POST /api/semantic/test` | admin | Body: `text`. Embeds it once and answers `{ modelId, dimensions, tookMs }`. |
-| `DELETE /api/semantic/models/:modelId` | admin | Deletes every vector of one model. `{ removed }`. |
-| `GET /api/semantic/export` | admin | Downloads vectors as gzip-compressed JSON lines. Query: `model` (a model id; default the current one). |
-| `POST /api/semantic/import` | admin | Body: the exported file itself, with `Content-Type: application/gzip`. Answers `{ modelId, vectorsInFile, passagesUpdated, vectorsWithoutPassage }`. |
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/semantic/status` | Whether it is enabled and ready, the model, counts of passages and vectors, other models with stored vectors, and whether a build is running. |
+| `POST /api/semantic/index` | Starts (or continues) building vectors for the current model. `409` if no provider is configured or it does not answer. Answers the status. |
+| `POST /api/semantic/test` | Body: `text`. Embeds it once and answers `{ modelId, dimensions, tookMs }`. |
+| `DELETE /api/semantic/models/:modelId` | Deletes every vector of one model. `{ removed }`. |
+| `GET /api/semantic/export` | Downloads vectors as gzip-compressed JSON lines. Query: `model` (a model id; default the current one). |
+| `POST /api/semantic/import` | Body: the exported file itself, with `Content-Type: application/gzip`. Answers `{ modelId, vectorsInFile, passagesUpdated, vectorsWithoutPassage }`. |
 
 The file format is described in
 [search.md](search.md#moving-vectors-between-installations).
@@ -240,10 +239,10 @@ The file format is described in
 
 Types: `apps/server/src/modules/retrieval/types.ts`. See [ai.md](ai.md).
 
-| Method and path | Who | Purpose |
-| --- | --- | --- |
-| `POST /api/retrieval/passages` | signed in | Body: `query`, `limit?`, `kinds?`, `mode?`. Answers `{ query, passages: RetrievedPassage[] }`. |
-| `POST /api/retrieval/context` | signed in | Same body plus `maxChars?`. Answers an `AssembledContext`: `text`, `citations`, `omitted`, `safetyCritical`. |
+| Method and path | Purpose |
+| --- | --- |
+| `POST /api/retrieval/passages` | Body: `query`, `limit?`, `kinds?`, `mode?`. Answers `{ query, passages: RetrievedPassage[] }`. |
+| `POST /api/retrieval/context` | Same body plus `maxChars?`. Answers an `AssembledContext`: `text`, `citations`, `omitted`, `safetyCritical`. |
 
 ### Seeing how search works
 
@@ -251,13 +250,13 @@ These feed the **How search works** screen. They run the same code as real searc
 return what each stage produced, so nothing on that screen is a mock-up. They read
 only; nothing is changed. Types: `packages/shared/src/retrieval.ts`.
 
-| Method and path | Who | Purpose |
-| --- | --- | --- |
-| `GET /api/retrieval/overview` | signed in | `ExplainOverview`: how many things and passages are indexed, passage length distribution, passage settings, and which vector source is in use. |
-| `GET /api/retrieval/entities?q=` | signed in | `{ entities }`: indexed things whose title matches, to pick one to look inside. |
-| `GET /api/retrieval/chunks?kind=&entityId=` | signed in | `{ entity, chunks, chunkSize, chunkOverlap }`: the passages one thing was cut into, with offsets and overlaps. |
-| `POST /api/retrieval/explain` | signed in | Body: `query`, `limit?` (3 to 20, default 8). `ExplainResponse`: the query's terms, the keyword ranking with per-term scores, the vector ranking with similarities, the fusion table with each list's contribution, the assembled context, the prompt a local model would be given (shown, never sent anywhere), and timings. |
-| `POST /api/retrieval/projection` | signed in | Body: `query?`, `limit?` (20 to 800, default 300). `ProjectionResponse`: passages (and the query) placed in two dimensions by principal component analysis of their vectors. |
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/retrieval/overview` | `ExplainOverview`: how many things and passages are indexed, passage length distribution, passage settings, and which vector source is in use. |
+| `GET /api/retrieval/entities?q=` | `{ entities }`: indexed things whose title matches, to pick one to look inside. |
+| `GET /api/retrieval/chunks?kind=&entityId=` | `{ entity, chunks, chunkSize, chunkOverlap }`: the passages one thing was cut into, with offsets and overlaps. |
+| `POST /api/retrieval/explain` | Body: `query`, `limit?` (3 to 20, default 8). `ExplainResponse`: the query's terms, the keyword ranking with per-term scores, the vector ranking with similarities, the fusion table with each list's contribution, the assembled context, the prompt a local model would be given (shown, never sent anywhere), and timings. |
+| `POST /api/retrieval/projection` | Body: `query?`, `limit?` (20 to 800, default 300). `ProjectionResponse`: passages (and the query) placed in two dimensions by principal component analysis of their vectors. |
 
 When no embedding provider is configured, the vector stages use the built-in
 demonstration vectors and say so in the response (`ExplainVectorSource`).
@@ -266,19 +265,19 @@ demonstration vectors and say so in the response (`ExplainVectorSource`).
 
 Types: `packages/shared/src/documents.ts`.
 
-| Method and path | Who | Purpose |
-| --- | --- | --- |
-| `POST /api/documents` | signed in | Uploads one or more files as `multipart/form-data` (at most 200 per request). Optional fields or query parameters: `category`, `tags` (comma separated), `locationId`, `allowDuplicate`. Answers `{ results: UploadResult[] }`, one per file with status `created`, `duplicate` or `rejected`; one bad file does not fail the others. |
-| `GET /api/documents` | signed in | Lists documents (`DocumentListResponse`). Query: `q` (title or file name), `category`, `tag`, `type` (`pdf`, `markdown`, `text`, `html`, `epub`, `image`), `sort` (`added`, `title`, `size`), `order`, `limit` (at most 200), `offset`. |
-| `GET /api/documents/facets` | signed in | Counts by category, tag and type, with totals (`DocumentFacets`). |
-| `GET /api/documents/:id` | signed in | `{ document }` (`DocumentDto`). |
-| `PATCH /api/documents/:id` | signed in | Body (`DocumentPatch`): `title`, `description`, `category`, `author`, `source`, `language`, `tags`. Omitted fields are left alone; `tags` replaces the whole list. |
-| `DELETE /api/documents/:id` | admin | Deletes the document and its file. Query `forget=true` removes only Outpost's record and leaves the file. |
-| `POST /api/documents/:id/reextract` | signed in | Reads the text again. `{ document, jobId }`. |
-| `GET /api/documents/:id/text` | signed in | The extracted text in sections (`DocumentTextResponse`). Query: `page`. |
-| `GET /api/documents/:id/file` | signed in | The original file. Supports byte ranges and `ETag`. Query `download=1` forces a download. Sent with a sandbox policy. |
-| `POST /api/documents/move` | admin | Body: `locationId`. Moves every document that is not on that location to it, as a job. `{ job, documents }`. |
-| `GET /api/tags` | signed in | `{ tags }`: every tag with the number of documents carrying it (`TagDto`). |
+| Method and path | Purpose |
+| --- | --- |
+| `POST /api/documents` | Uploads one or more files as `multipart/form-data` (at most 200 per request). Optional fields or query parameters: `category`, `tags` (comma separated), `locationId`, `allowDuplicate`. Answers `{ results: UploadResult[] }`, one per file with status `created`, `duplicate` or `rejected`; one bad file does not fail the others. |
+| `GET /api/documents` | Lists documents (`DocumentListResponse`). Query: `q` (title or file name), `category`, `tag`, `type` (`pdf`, `markdown`, `text`, `html`, `epub`, `image`), `sort` (`added`, `title`, `size`), `order`, `limit` (at most 200), `offset`. |
+| `GET /api/documents/facets` | Counts by category, tag and type, with totals (`DocumentFacets`). |
+| `GET /api/documents/:id` | `{ document }` (`DocumentDto`). |
+| `PATCH /api/documents/:id` | Body (`DocumentPatch`): `title`, `description`, `category`, `author`, `source`, `language`, `tags`. Omitted fields are left alone; `tags` replaces the whole list. |
+| `DELETE /api/documents/:id` | Deletes the document and its file. Query `forget=true` removes only Outpost's record and leaves the file. |
+| `POST /api/documents/:id/reextract` | Reads the text again. `{ document, jobId }`. |
+| `GET /api/documents/:id/text` | The extracted text in sections (`DocumentTextResponse`). Query: `page`. |
+| `GET /api/documents/:id/file` | The original file. Supports byte ranges and `ETag`. Query `download=1` forces a download. Sent with a sandbox policy. |
+| `POST /api/documents/move` | Body: `locationId`. Moves every document that is not on that location to it, as a job. `{ job, documents }`. |
+| `GET /api/tags` | `{ tags }`: every tag with the number of documents carrying it (`TagDto`). |
 
 Accepted types: PDF, EPUB, Markdown, plain text (`.txt`, `.csv`, `.json`), HTML and
 images (`.png`, `.jpg`, `.gif`, `.webp`, `.svg`). A file must be what its extension
@@ -290,96 +289,124 @@ says. An identical file (same SHA-256) is reported as `duplicate` unless
 Types: `packages/shared/src/notes.ts`. See
 [notes-and-imports.md](notes-and-imports.md).
 
-| Method and path | Who | Purpose |
-| --- | --- | --- |
-| `GET /api/notes/tree` | signed in | Every page, flat, for the sidebar tree (`NoteTreeResponse`). |
-| `GET /api/notes/recent` | signed in | Recently opened pages. Query: `limit` (default 20). |
-| `GET /api/notes/favorites` | signed in | Starred pages. |
-| `GET /api/notes/trash` | signed in | Pages in the trash (`NoteTrashResponse`). |
-| `GET /api/notes/templates` | signed in | Built-in templates and your own (`NoteTemplatesResponse`). |
-| `GET /api/notes/lookup` | signed in | Pages whose title contains `q`, for the link menu. Query: `q`, `limit`. |
-| `POST /api/notes` | signed in | Creates a page. Body (`CreateNoteBody`): `parentId`, `title`, `icon`, `content`, `templateId`, `afterId`. `{ note }`. |
-| `GET /api/notes/:id` | signed in | `{ note }` (`NoteDetail`): content, tags, breadcrumbs, backlinks, children. Query `view=1` records that the page was opened. |
-| `PATCH /api/notes/:id` | signed in | Saves changes. Body (`UpdateNoteBody`): `title`, `icon`, `content`, `tags`, `isFavorite`, `coverAttachmentId`, `isTemplate`, `baseUpdatedAt`. If the stored page is newer than `baseUpdatedAt` the answer is `409 conflict` with `details.current`, and nothing is overwritten. |
-| `POST /api/notes/:id/move` | signed in | Body (`MoveNoteBody`): `parentId`, `afterId`. |
-| `POST /api/notes/:id/duplicate` | signed in | Body: `withChildren?`. |
-| `DELETE /api/notes/:id` | signed in | Moves the page and its sub-pages to the trash. `{ trashed: [ids] }`. |
-| `DELETE /api/notes/:id?permanent=1` | admin | Deletes a page that is in the trash for good, with attachments nothing else uses. |
-| `POST /api/notes/:id/restore` | signed in | Brings a page back from the trash. |
-| `GET /api/notes/:id/export.md` | signed in | The page as a Markdown file. |
-| `GET /api/notes/export.zip` | signed in | The whole workspace as a zip of Markdown files and attachments. |
-| `POST /api/attachments` | signed in | Uploads one file as `multipart/form-data` (at most 50 MB). Optional `noteId` field or query parameter. `{ attachment }` (`AttachmentDto`). |
-| `GET /api/attachments/:id` | signed in | The file, sent with a sandbox policy. |
-| `DELETE /api/attachments/:id` | signed in | Deletes an attachment. `409` while a page still uses it. |
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/notes/tree` | Every page, flat, for the sidebar tree (`NoteTreeResponse`). |
+| `GET /api/notes/recent` | Recently opened pages. Query: `limit` (default 20). |
+| `GET /api/notes/favorites` | Starred pages. |
+| `GET /api/notes/trash` | Pages in the trash (`NoteTrashResponse`). |
+| `GET /api/notes/templates` | Built-in templates and your own (`NoteTemplatesResponse`). |
+| `GET /api/notes/lookup` | Pages whose title contains `q`, for the link menu. Query: `q`, `limit`. |
+| `POST /api/notes` | Creates a page. Body (`CreateNoteBody`): `parentId`, `title`, `icon`, `content`, `templateId`, `afterId`. `{ note }`. |
+| `GET /api/notes/:id` | `{ note }` (`NoteDetail`): content, tags, breadcrumbs, backlinks, children. Query `view=1` records that the page was opened. |
+| `PATCH /api/notes/:id` | Saves changes. Body (`UpdateNoteBody`): `title`, `icon`, `content`, `tags`, `isFavorite`, `coverAttachmentId`, `isTemplate`, `baseUpdatedAt`. If the stored page is newer than `baseUpdatedAt` the answer is `409 conflict` with `details.current`, and nothing is overwritten. |
+| `POST /api/notes/:id/move` | Body (`MoveNoteBody`): `parentId`, `afterId`. |
+| `POST /api/notes/:id/duplicate` | Body: `withChildren?`. |
+| `DELETE /api/notes/:id` | Moves the page and its sub-pages to the trash. `{ trashed: [ids] }`. |
+| `DELETE /api/notes/:id?permanent=1` | Deletes a page that is in the trash for good, with attachments nothing else uses. |
+| `POST /api/notes/:id/restore` | Brings a page back from the trash. |
+| `GET /api/notes/:id/export.md` | The page as a Markdown file. |
+| `GET /api/notes/export.zip` | The whole workspace as a zip of Markdown files and attachments. |
+| `POST /api/attachments` | Uploads one file as `multipart/form-data` (at most 50 MB). Optional `noteId` field or query parameter. `{ attachment }` (`AttachmentDto`). |
+| `GET /api/attachments/:id` | The file, sent with a sandbox policy. |
+| `DELETE /api/attachments/:id` | Deletes an attachment. `409` while a page still uses it. |
 
 ## Imports
 
 Types: `packages/shared/src/imports.ts`. See
 [notes-and-imports.md](notes-and-imports.md#imports).
 
-| Method and path | Who | Purpose |
-| --- | --- | --- |
-| `POST /api/imports` | signed in | Uploads files as `multipart/form-data` (at most 500 per request): `.md`, `.markdown`, `.txt`, `.html`, `.htm`, `.pdf`, `.csv` or `.zip`. Analysis starts by itself. `{ import }` (`ImportDto`). |
-| `GET /api/imports` | signed in | Recent imports (`ImportSummary[]`). Query: `limit` (default 30). |
-| `GET /api/imports/:id` | signed in | One import with its analysis (the plan) and, later, its report. |
-| `POST /api/imports/:id/commit` | signed in | Carries out the plan. Body (`ImportOptions`): `duplicates` (`skip`, `copy`, `replace`), `pdfs` (`library`, `skip`), `parentId?`, `replaceConfirmed?`. |
-| `POST /api/imports/:id/cancel` | signed in | Stops the analysis or the commit that is running. |
-| `DELETE /api/imports/:id` | signed in | Discards an import and removes its uploaded files. |
+| Method and path | Purpose |
+| --- | --- |
+| `POST /api/imports` | Uploads files as `multipart/form-data` (at most 500 per request): `.md`, `.markdown`, `.txt`, `.html`, `.htm`, `.pdf`, `.csv` or `.zip`. Analysis starts by itself. `{ import }` (`ImportDto`). |
+| `GET /api/imports` | Recent imports (`ImportSummary[]`). Query: `limit` (default 30). |
+| `GET /api/imports/:id` | One import with its analysis (the plan) and, later, its report. |
+| `POST /api/imports/:id/commit` | Carries out the plan. Body (`ImportOptions`): `duplicates` (`skip`, `copy`, `replace`), `pdfs` (`library`, `skip`), `parentId?`, `replaceConfirmed?`. |
+| `POST /api/imports/:id/cancel` | Stops the analysis or the commit that is running. |
+| `DELETE /api/imports/:id` | Discards an import and removes its uploaded files. |
 
 ## Collections
 
 Types: `packages/shared/src/collections.ts`.
 
-| Method and path | Who | Purpose |
-| --- | --- | --- |
-| `GET /api/collections` | signed in | Installed collections (`CollectionDto[]`). Query: `kind` (`zim`, `map`, `terrain`, `places`, `file`, `model`). |
-| `GET /api/collections/:id` | signed in | `{ collection }`. |
-| `DELETE /api/collections/:id` | admin | Removes a collection. `deleteFiles` is **required**, in the body (`{ "deleteFiles": true }`) or the query: `true` deletes the file, `false` removes only Outpost's record. |
-| `POST /api/collections/:id/verify` | admin | Checks the file against its recorded checksum, as a job. `{ job }`. The job's `result` is a `CollectionVerifyResult`. |
-| `POST /api/collections/:id/move` | admin | Body: `locationId`. Moves the collection, as a job. `{ job }`. |
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/collections` | Installed collections (`CollectionDto[]`). Query: `kind` (`zim`, `map`, `terrain`, `places`, `file`, `model`). |
+| `GET /api/collections/:id` | `{ collection }`. |
+| `DELETE /api/collections/:id` | Removes a collection. `deleteFiles` is **required**, in the body (`{ "deleteFiles": true }`) or the query: `true` deletes the file, `false` removes only Outpost's record. |
+| `POST /api/collections/:id/verify` | Checks the file against its recorded checksum, as a job. `{ job }`. The job's `result` is a `CollectionVerifyResult`. |
+| `POST /api/collections/:id/move` | Body: `locationId`. Moves the collection, as a job. `{ job }`. |
 
 ## Reference collections (Kiwix)
 
 Types: `packages/shared/src/kiwix.ts`.
 
-| Method and path | Who | Purpose |
-| --- | --- | --- |
-| `GET /api/kiwix/status` | signed in | `{ mode, available, problem, books }` (`ReferenceStatus`). `mode` is `external`, `managed` or `none`. |
-| `GET /api/kiwix/books` | signed in | Readable books (`ReferenceBook[]`), each with a `contentBase` address that includes a short-lived token. |
-| `GET /api/kiwix/books/:collectionId` | signed in | One book, and the `reason` it cannot be read when it cannot. |
-| `GET /api/kiwix/books/:collectionId/suggest` | signed in | Title suggestions. Query: `q`. |
-| `GET /api/kiwix/books/:collectionId/search` | signed in | Full-text search inside one book. Query: `q`, `offset`, `limit` (at most 50). |
-| `POST /api/kiwix/import` | admin | Registers a `.zim` file that is already on a storage location. Body: `locationId`, `relPath`, `title?`. Nothing is copied. |
-| `GET` or `HEAD /kiwix/:token/*` | holder of a valid token | The sandboxing proxy for article content. Not under `/api/`: access is carried by the token in the path, because sandboxed pages do not send cookies. Only `content/…` and a book's icon can be reached. |
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/kiwix/status` | `{ mode, available, problem, books }` (`ReferenceStatus`). `mode` is `external`, `managed` or `none`. |
+| `GET /api/kiwix/books` | Readable books (`ReferenceBook[]`), each with a `contentBase` address to append an article path to. |
+| `GET /api/kiwix/books/:collectionId` | One book, and the `reason` it cannot be read when it cannot. |
+| `GET /api/kiwix/books/:collectionId/suggest` | Title suggestions. Query: `q`. |
+| `GET /api/kiwix/books/:collectionId/search` | Full-text search inside one book. Query: `q`, `offset`, `limit` (at most 50). |
+| `POST /api/kiwix/import` | Registers a `.zim` file that is already on a storage location. Body: `locationId`, `relPath`, `title?`. Nothing is copied. |
+| `POST /api/kiwix/books/:collectionId/files/save` | Copies a file out of the archive into the document library. No connection is needed. Body: `path` (the file's path inside the book, for example `example.org/docs/manual.pdf`), `title?`. Answers `{ status, document }` (`SaveArchiveFileResponse`): `created`; `already` when this file had been added before; `duplicate` when the library held the same file from elsewhere. PDF, EPUB, Markdown and text files only; a page is a `400`. |
+| `POST /api/kiwix/books/:collectionId/files/check` | Which of these files are already documents. Body: `paths` (at most 500). Answers `{ files: [{ path, state, documentId? }] }`, where `state` is `new` or `saved`. |
+| `GET` or `HEAD /kiwix/open/*` | The sandboxing proxy for article content. Not under `/api/`. Only `content/…` and a book's icon can be reached. Use the `contentBase` a book reports; the first segment after `/kiwix/` is fixed, and any other value is a `404`. |
 
 ## Downloads
 
 Types: `packages/shared/src/downloads.ts`.
 
-| Method and path | Who | Purpose |
-| --- | --- | --- |
-| `GET /api/downloads` | signed in | Every download, newest first (`DownloadDto[]`), with progress, speed, time remaining and, for failures, `error` and `errorKind`. |
-| `GET /api/downloads/plan` | signed in | What the queue is going to do (`DownloadPlan`): what is active, waiting and paused, estimated start and finish times, and whether each storage location has room for what is queued. |
-| `GET /api/downloads/:id` | signed in | Everything known about one download (`DownloadDetail`): source and mirror, checksums, destination, timing, recent speed readings, history of state changes, attempts. |
-| `POST /api/downloads/pause-all` | admin | Pauses every active download. `{ paused }`. |
-| `POST /api/downloads/resume-all` | admin | Resumes every paused download. `{ resumed }`. |
-| `POST /api/downloads/:id/pause` | admin | Pauses; the partial file is kept. |
-| `POST /api/downloads/:id/resume` | admin | Continues a paused download. |
-| `POST /api/downloads/:id/cancel` | admin | Cancels; nothing is installed. |
-| `POST /api/downloads/:id/retry` | admin | Queues a failed or cancelled download again, continuing from its partial file. |
-| `DELETE /api/downloads/:id` | admin | Removes a finished, failed or cancelled download from the list, with any partial file. A completed file is never deleted this way. |
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/downloads` | Every download, newest first (`DownloadDto[]`), with progress, speed, time remaining and, for failures, `error` and `errorKind`. |
+| `GET /api/downloads/plan` | What the queue is going to do (`DownloadPlan`): what is active, waiting and paused, estimated start and finish times, and whether each storage location has room for what is queued. |
+| `GET /api/downloads/:id` | Everything known about one download (`DownloadDetail`): source and mirror, checksums, destination, timing, recent speed readings, history of state changes, attempts. |
+| `POST /api/downloads/pause-all` | Pauses every active download. `{ paused }`. |
+| `POST /api/downloads/resume-all` | Resumes every paused download. `{ resumed }`. |
+| `POST /api/downloads/:id/pause` | Pauses; the partial file is kept. |
+| `POST /api/downloads/:id/resume` | Continues a paused download. |
+| `POST /api/downloads/:id/cancel` | Cancels; nothing is installed. |
+| `POST /api/downloads/:id/retry` | Queues a failed or cancelled download again, continuing from its partial file. |
+| `DELETE /api/downloads/:id` | Removes a finished, failed or cancelled download from the list, with any partial file. A completed file is never deleted this way. |
 
-Downloads are started by the catalogue and maps routes, not here.
+Downloads are started by the catalogue, maps and links routes, not here. `kind` says
+what is being fetched: `zim`, `map`, `terrain`, `places`, `file`, `model`, or `document`
+for a file saved from a link. A completed `document` download carries the `documentId`
+of the library document it became.
+
+## Links
+
+Types: `packages/shared/src/links.ts`.
+
+These fetch a file that a reference page links to but its archive does not hold, and
+add it to the document library. The fetch is an ordinary download of kind `document`:
+it shows on the Downloads screen, obeys the speed limit and can be paused.
+
+| Method and path | Purpose |
+| --- | --- |
+| `POST /api/links/save` | Body: `url`, `title?`, `foundIn?` (the collection the link was found in, for the document's description), `locationId?` (default: the default storage location). Answers `{ download }`; or `{ already: "saved", document }` when the library has it; or `{ already: "saving", download }` when it is on its way (`SaveLinkResponse`). |
+| `POST /api/links/save-all` | Body: `links` (1 to 200 of `{ url, title? }`), `foundIn?`, `locationId?`. Answers `{ queued, already, refused }` (`SaveLinksResponse`): the downloads started, how many were already saved or on their way, and each link that was refused with the reason. One bad link does not fail the others. |
+| `POST /api/links/check` | Body: `urls` (at most 500). Answers `{ links }` (`LinkState[]`): each address with `state` `new`, `saved` (with `documentId`), `saving` (with `downloadId`) or `unsupported`. Fetches nothing. |
+
+A link is accepted only when it starts with `http://` or `https://`, carries no user
+name or password, and ends in the name of a kind of file the library keeps (see
+[Documents](#documents)) other than a web page. An address on this computer or a
+private network is refused with `403 forbidden`, and every connection the download
+makes, redirects included, must land on a public address, unless the server was started
+with `OUTPOST_ALLOW_PRIVATE_DOWNLOADS=true`. What arrives must be the kind of file its
+name says, or nothing is kept.
 
 ## Catalogue
 
 Types: `packages/shared/src/catalog.ts`. See [catalog/README.md](../catalog/README.md).
 
-| Method and path | Who | Purpose |
-| --- | --- | --- |
-| `GET /api/catalog` | signed in | Categories, entries, manifests, manifest problems and the time of the last refresh (`CatalogResponse`). Works offline from the manifests and the last known details. |
-| `POST /api/catalog/refresh` | admin | Asks each source what it currently offers (`CatalogRefreshSummary`). Needs a connection; `503 offline` without one. |
-| `POST /api/catalog/entries/:id/download` | admin | Starts downloading an entry. Body: `locationId?`. `{ download, replacesCollectionId }`. When the entry is already installed and the source has a newer version, the old version is removed once the new one is installed and verified. |
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/catalog` | Categories, entries, manifests, manifest problems and the time of the last refresh (`CatalogResponse`). Works offline from the manifests and the last known details. |
+| `POST /api/catalog/refresh` | Asks each source what it currently offers (`CatalogRefreshSummary`). Needs a connection; `503 offline` without one. |
+| `POST /api/catalog/entries/:id/download` | Starts downloading an entry. Body: `locationId?`. `{ download, replacesCollectionId }`. When the entry is already installed and the source has a newer version, the old version is removed once the new one is installed and verified. |
+| `POST /api/catalog/entries/:id/add` | Adds an entry that ships with Outpost, copying it into the library with no connection. Body: `locationId?`. Answers `{ collectionId, documentId?, replacedCollectionId }` (`CatalogAddResponse`). |
 
 ## Maps
 
@@ -387,64 +414,66 @@ Types: `packages/shared/src/maps.ts`. See [maps.md](maps.md).
 
 ### Regions and tiles
 
-| Method and path | Who | Purpose |
-| --- | --- | --- |
-| `GET /api/maps/regions` | signed in | The ready-made regions in groups, each with whether it is installed or downloading (`MapRegionsResponse`). |
-| `POST /api/maps/estimate` | admin | Body: `bbox` (`[west, south, east, north]`), `maxZoom`, `minZoom?`, `tileType?` (`vector` or `terrain`). Answers a `MapEstimate` with the exact size. Needs a connection. |
-| `POST /api/maps/regions` | admin | Starts a region download. Body: `name`, `bbox`, `maxZoom`, `minZoom?`, `regionId?`, `locationId?`, `includeTerrain?`. `{ downloads }`. |
-| `POST /api/maps/import` | admin | Registers a `.pmtiles` file already on a storage location. Body: `locationId`, `relPath`, `name`, `tileType?`. `{ collection }`. |
-| `GET /api/maps/overview` | signed in | Installed regions, place-name datasets and counts (`MapOverview`). |
-| `GET /api/maps/sources` | signed in | The parts of a MapLibre style that depend on what is installed: tile addresses, bounds, zoom range, glyph and sprite addresses, attribution (`MapSources`). |
-| `GET /api/maps/tiles/:z/:x/:y.mvt` | signed in | A vector tile from the best installed region. `204` when no region has it. |
-| `GET /api/maps/terrain/:z/:x/:y.webp` (or `.png`) | signed in | A terrain tile. |
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/maps/regions` | The ready-made regions in groups, each with whether it is installed or downloading (`MapRegionsResponse`). |
+| `POST /api/maps/estimate` | Body: `bbox` (`[west, south, east, north]`), `maxZoom`, `minZoom?`, `tileType?` (`vector` or `terrain`). Answers a `MapEstimate` with the exact size. Needs a connection. |
+| `POST /api/maps/regions` | Starts a region download. Body: `name`, `bbox`, `maxZoom`, `minZoom?`, `regionId?`, `locationId?`, `includeTerrain?`. `{ downloads }`. |
+| `POST /api/maps/import` | Registers a `.pmtiles` file already on a storage location. Body: `locationId`, `relPath`, `name`, `tileType?`. `{ collection }`. |
+| `GET /api/maps/overview` | Installed regions, place-name datasets and counts (`MapOverview`). |
+| `GET /api/maps/sources` | The parts of a MapLibre style that depend on what is installed: tile addresses, bounds, zoom range, glyph and sprite addresses, attribution (`MapSources`). |
+| `GET /api/maps/tiles/:z/:x/:y.mvt` | A vector tile from the best installed region. `204` when no region has it. |
+| `GET /api/maps/terrain/:z/:x/:y.webp` (or `.png`) | A terrain tile. |
 
 ### Places
 
-| Method and path | Who | Purpose |
-| --- | --- | --- |
-| `GET /api/maps/places` | signed in | Place search (`PlaceSearchResponse`). Query: `q`, `limit` (at most 50), `near` (`latitude,longitude`). When `q` is a position, `coordinate` is set and `places` is empty. |
-| `GET /api/maps/places/datasets` | signed in | Installed place-name datasets. |
-| `POST /api/maps/places/datasets` | admin | Downloads one. Body: `dataset` (`cities500`, `cities15000` or `country`), `country` (two letters, with `country`), `locationId?`. `{ download }`. |
-| `DELETE /api/maps/places/datasets/:id` | admin | Removes a dataset and its names. |
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/maps/places` | Place search (`PlaceSearchResponse`). Query: `q`, `limit` (at most 50), `near` (`latitude,longitude`). When `q` is a position, `coordinate` is set and `places` is empty. |
+| `GET /api/maps/places/datasets` | Installed place-name datasets. |
+| `POST /api/maps/places/datasets` | Downloads one. Body: `dataset` (`cities500`, `cities15000` or `country`), `country` (two letters, with `country`), `locationId?`. `{ download }`. |
+| `DELETE /api/maps/places/datasets/:id` | Removes a dataset and its names. |
 
 ### Markers and tracks
 
-| Method and path | Who | Purpose |
-| --- | --- | --- |
-| `GET /api/maps/markers` | signed in | `{ markers }` (`MarkerDto[]`). |
-| `POST /api/maps/markers` | signed in | Body: `name`, `lat`, `lon`, `note?`, `color?`, `isFavorite?`, `noteId?`. |
-| `PATCH /api/maps/markers/:id` | signed in | Any of the same fields. |
-| `DELETE /api/maps/markers/:id` | signed in | |
-| `GET /api/maps/tracks` | signed in | `{ tracks }` (`TrackDto[]`). |
-| `POST /api/maps/tracks/import` | signed in | One GPX file as `multipart/form-data` (at most 20 MB). Optional fields: `name`, `color`, `importWaypointsAsMarkers`. Answers `{ track, markers }`. |
-| `GET /api/maps/tracks/:id` | signed in | One track with its geometry as GeoJSON. |
-| `PATCH /api/maps/tracks/:id` | signed in | Body: `name?`, `description?`, `color?`. |
-| `DELETE /api/maps/tracks/:id` | signed in | |
-| `GET /api/maps/tracks/:id/export.gpx` | signed in | One track as GPX. |
-| `GET /api/maps/export.gpx` | signed in | A selection as one GPX file. Query: `markers=1`, `tracks=<id>,<id>`. |
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/maps/markers` | `{ markers }` (`MarkerDto[]`). |
+| `POST /api/maps/markers` | Body: `name`, `lat`, `lon`, `note?`, `color?`, `isFavorite?`, `noteId?`. |
+| `PATCH /api/maps/markers/:id` | Any of the same fields. |
+| `DELETE /api/maps/markers/:id` | |
+| `GET /api/maps/tracks` | `{ tracks }` (`TrackDto[]`). |
+| `POST /api/maps/tracks` | Saves a route drawn on the map: straight lines between the points sent. Body: `name`, `points` (at least two of `{ lat, lon }`), `description?`, `color?`. Answers `{ track, elevation }` (`RouteSaveResponse`). |
+| `PUT /api/maps/tracks/:id/points` | Replaces a track's lines with one drawn through `points`. Its waypoints are kept. Answers `{ track, elevation }`. |
+| `POST /api/maps/tracks/import` | One GPX file as `multipart/form-data` (at most 20 MB). Optional fields: `name`, `color`, `importWaypointsAsMarkers`. Answers `{ track, markers }`. |
+| `GET /api/maps/tracks/:id` | One track with its geometry as GeoJSON. |
+| `PATCH /api/maps/tracks/:id` | Body: `name?`, `description?`, `color?`. |
+| `DELETE /api/maps/tracks/:id` | |
+| `GET /api/maps/tracks/:id/export.gpx` | One track as GPX. |
+| `GET /api/maps/export.gpx` | A selection as one GPX file. Query: `markers=1`, `tracks=<id>,<id>`. |
 
 ## Backup
 
 Types: `BackupStatus` in `packages/shared/src/semantic.ts`.
 
-| Method and path | Who | Purpose |
-| --- | --- | --- |
-| `GET /api/backup/status` | admin | `{ restorePending, previousData, supervised }`. |
-| `GET /api/backup/download` | admin | Streams a backup `.zip`: the database, attachments, extracted text and your own catalogue manifests. Refuses a request that another site caused the browser to make. |
-| `POST /api/backup/restore` | admin | Body: the backup file itself, with `Content-Type: application/zip`. Checks it and stages it for the next start. `{ staged, createdAt, appVersion, supervised }`. When applied, the database, attachments and extracted text are replaced; catalogue manifests in the backup are not put back; every session is ended and unfinished jobs are dropped. |
-| `DELETE /api/backup/restore` | admin | Drops a staged restore. |
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/backup/status` | `{ restorePending, previousData, supervised }`. |
+| `GET /api/backup/download` | Streams a backup `.zip`: the database, attachments, extracted text and your own catalogue manifests. Refuses a request that another site caused the browser to make. |
+| `POST /api/backup/restore` | Body: the backup file itself, with `Content-Type: application/zip`. Checks it and stages it for the next start. `{ staged, createdAt, appVersion, supervised }`. When applied, the database, attachments and extracted text are replaced; catalogue manifests in the backup are not put back; unfinished jobs are dropped, downloads that were under way are marked cancelled, and unfinished imports are discarded. |
+| `DELETE /api/backup/restore` | Drops a staged restore. |
 
 ## Portable drives
 
 Types: `packages/shared/src/portable.ts`. See [portable.md](portable.md).
 
-| Method and path | Who | Purpose |
-| --- | --- | --- |
-| `GET /api/portable/status` | admin | Whether a packaged app is available, the Node version, and which runtimes are cached (`PortableStatus`). |
-| `GET /api/portable/inspect` | admin | Query: `path`. Whether that folder is already an Outpost drive, and its manifest. |
-| `POST /api/portable/plan` | admin | Body (`PortableRequest`): `targetPath`, `platforms`, `collectionIds`, `documents` (`all` or `none`), `reader?`, `replaceExisting?`. Answers a `PortablePlan`: sizes, free space, problems and warnings. Writes nothing. |
-| `POST /api/portable/build` | admin | Same body. Starts writing the drive, as a job. `409` if the plan has problems, or the folder is already a drive and `replaceExisting` is not true. |
-| `POST /api/portable/runtimes` | admin | Body: `platforms`. Downloads Node runtimes into the cache ahead of time, as a job. |
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/portable/status` | Whether a packaged app is available, the Node version, and which runtimes are cached (`PortableStatus`). |
+| `GET /api/portable/inspect` | Query: `path`. Whether that folder is already an Outpost drive, and its manifest. |
+| `POST /api/portable/plan` | Body (`PortableRequest`): `targetPath`, `platforms`, `collectionIds`, `documents` (`all` or `none`), `reader?`, `replaceExisting?`. Answers a `PortablePlan`: sizes, free space, problems and warnings. Writes nothing. |
+| `POST /api/portable/build` | Same body. Starts writing the drive, as a job. `409` if the plan has problems, or the folder is already a drive and `replaceExisting` is not true. |
+| `POST /api/portable/runtimes` | Body: `platforms`. Downloads Node runtimes into the cache ahead of time, as a job. |
 
 ## Everything else
 

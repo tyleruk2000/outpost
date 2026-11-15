@@ -15,7 +15,7 @@ name: outpost
 
 services:
   outpost:
-    image: ${OUTPOST_IMAGE:-ghcr.io/tyleruk2000/outpost:latest}
+    image: ${OUTPOST_IMAGE:-outpost:local}
     build: .
     restart: unless-stopped
     init: true
@@ -23,18 +23,16 @@ services:
       # Reachable only from this machine unless you opt in. See .env.example.
       OUTPOST_LAN_ACCESS: ${OUTPOST_LAN_ACCESS:-false}
       # Tells the server which address its port is published on (see "ports" below), so
-      # that it can refuse to run open to the network without sign-in.
+      # that it can refuse to be reachable from the network unless you chose that.
       OUTPOST_PUBLISHED_ADDRESS: ${OUTPOST_BIND:-127.0.0.1}
-      OUTPOST_AUTH: ${OUTPOST_AUTH:-auto}
       OUTPOST_ALLOWED_HOSTS: ${OUTPOST_ALLOWED_HOSTS:-}
-      OUTPOST_SECURE_COOKIES: ${OUTPOST_SECURE_COOKIES:-false}
       OUTPOST_MAX_UPLOAD_MB: ${OUTPOST_MAX_UPLOAD_MB:-2048}
       OUTPOST_DOWNLOAD_HOSTS: ${OUTPOST_DOWNLOAD_HOSTS:-}
       OUTPOST_ALLOW_PRIVATE_DOWNLOADS: ${OUTPOST_ALLOW_PRIVATE_DOWNLOADS:-false}
       OUTPOST_KIWIX_URL: http://kiwix:8080
     ports:
       # 127.0.0.1 keeps the port private to this machine. Set OUTPOST_BIND=0.0.0.0
-      # together with OUTPOST_LAN_ACCESS=true to share it on your network.
+      # together with OUTPOST_LAN_ACCESS=true to share it with everyone on your network.
       - "${OUTPOST_BIND:-127.0.0.1}:${OUTPOST_PORT:-8080}:8080"
     volumes:
       - outpost-data:/data
@@ -59,7 +57,7 @@ services:
 
   # Serves installed ZIM archives (Wikipedia and other Kiwix collections). It is never
   # published to the host: the browser reaches it only through Outpost, which adds
-  # sign-in and sandboxing. It needs the same /storage mounts as Outpost, read-only.
+  # sandboxing. It needs the same /storage mounts as Outpost, read-only.
   kiwix:
     image: ghcr.io/kiwix/kiwix-serve:3.8.2
     restart: unless-stopped

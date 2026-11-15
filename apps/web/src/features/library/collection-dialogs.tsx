@@ -38,7 +38,7 @@ function MoveSteps({ collection, activity, onClose }: { collection: CollectionDt
     return (
       <>
         <DialogBody>
-          <CollectionJobStatus activity={activity} canCancel dismissible={false} />
+          <CollectionJobStatus activity={activity} dismissible={false} />
           {finished ? null : (
             <p className="mt-4 text-small text-ink-muted">
               You can close this window. The move carries on, and its progress stays on this screen and under Downloads.

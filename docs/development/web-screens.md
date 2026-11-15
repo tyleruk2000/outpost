@@ -17,7 +17,7 @@ apps/web/src/
   components/            shell: sidebar, mobile nav, command palette, lamp, contour, storage bar
   lib/api.ts             the only way to call the server (`api.get/post/patch/delete/upload`)
   lib/events.tsx         live updates; maps server events to query keys to refresh
-  lib/queries.ts         shared data hooks (session, system, storage, jobs, settings)
+  lib/queries.ts         shared data hooks (system, storage, jobs, settings)
   lib/utils.ts           cn, timeAgo, formatDate, plural, modKey
   features/<name>/       one folder per screen or feature
 ```
@@ -94,7 +94,8 @@ not taste:
   writes messages for people.
 - **Partial trouble:** a disconnected storage location, a job still running, a
   document whose text could not be read. Say it plainly where it matters.
-- **Permission:** `useIsAdmin()`; hide or disable admin actions for members.
+- **No permission state.** There are no accounts or roles, so every action is there
+  for everyone.
 
 ## Data
 

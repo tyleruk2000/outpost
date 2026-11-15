@@ -9,11 +9,12 @@ import { toJobDto } from "../../core/jobs.ts";
 import { isBundled } from "../../core/paths.ts";
 import { jobs } from "../../db/schema.ts";
 import type { Settings } from "../settings/service.ts";
+import { detectHost } from "../storage/shares/host.ts";
 
 export const VERSION = "0.1.0";
 
 export async function registerSystem(app: FastifyInstance, ctx: AppContext): Promise<void> {
-  const { auth, settings } = ctx.services;
+  const { settings } = ctx.services;
   const startedAt = Date.now();
 
   app.get("/api/health", async () => ({ status: "ok", version: VERSION }));
@@ -40,9 +41,9 @@ export async function registerSystem(app: FastifyInstance, ctx: AppContext): Pro
       portable: ctx.config.portable,
       node: process.version,
       platform: `${process.platform}-${process.arch}`,
+      host: detectHost(),
       uptimeSeconds: Math.round((Date.now() - startedAt) / 1000),
       lanAccess: ctx.config.lanAccess,
-      authRequired: ctx.config.authRequired,
       resources: {
         processRssBytes: memory.rss,
         heapUsedBytes: memory.heapUsed,
@@ -98,7 +99,6 @@ export async function registerSystem(app: FastifyInstance, ctx: AppContext): Pro
   });
 
   app.post<{ Params: { id: string; action: string } }>("/api/jobs/:id/:action", async (request) => {
-    auth.requireAdmin(request);
     const action = z.enum(["pause", "resume", "cancel"]).parse(request.params.action);
     return { job: toJobDto(ctx.jobs[action](request.params.id)) };
   });
@@ -106,7 +106,6 @@ export async function registerSystem(app: FastifyInstance, ctx: AppContext): Pro
   app.get("/api/settings", async () => ({ settings: settings.all() }));
 
   app.patch("/api/settings", async (request) => {
-    auth.requireAdmin(request);
     const body = z.record(z.string(), z.unknown()).parse(request.body);
     return { settings: settings.update(body as Partial<Settings>) };
   });

@@ -56,7 +56,6 @@ export async function registerNotes(app: FastifyInstance, ctx: AppContext): Prom
   const notes = createNotesService(ctx, attachments);
   const exporter = createNotesExporter(ctx, notes, attachments);
   ctx.services.notes = notes;
-  const { auth } = ctx.services;
 
   // The documents module uploads files too; whichever registers first provides the
   // parser. Limits are given with each request, so it does not matter whose it is.
@@ -66,34 +65,28 @@ export async function registerNotes(app: FastifyInstance, ctx: AppContext): Prom
 
   // ── The tree and lists ──
 
-  app.get("/api/notes/tree", async (request) => {
-    auth.requireUser(request);
+  app.get("/api/notes/tree", async () => {
     return { notes: notes.tree() };
   });
 
   app.get("/api/notes/recent", async (request) => {
-    auth.requireUser(request);
     const query = z.object({ limit: z.coerce.number().int().min(1).max(100).default(20) }).parse(request.query);
     return { notes: notes.recent(query.limit) };
   });
 
-  app.get("/api/notes/favorites", async (request) => {
-    auth.requireUser(request);
+  app.get("/api/notes/favorites", async () => {
     return { notes: notes.favorites() };
   });
 
-  app.get("/api/notes/trash", async (request) => {
-    auth.requireUser(request);
+  app.get("/api/notes/trash", async () => {
     return { notes: notes.listTrash() };
   });
 
-  app.get("/api/notes/templates", async (request) => {
-    auth.requireUser(request);
+  app.get("/api/notes/templates", async () => {
     return { templates: notes.templates() };
   });
 
   app.get("/api/notes/lookup", async (request) => {
-    auth.requireUser(request);
     const query = z
       .object({ q: z.string().max(200).default(""), limit: z.coerce.number().int().min(1).max(50).default(10) })
       .parse(request.query);
@@ -103,31 +96,26 @@ export async function registerNotes(app: FastifyInstance, ctx: AppContext): Prom
   // ── Pages ──
 
   app.post("/api/notes", async (request) => {
-    auth.requireUser(request);
     return { note: notes.create(createBody.parse(request.body ?? {})) };
   });
 
   app.get("/api/notes/:id", async (request) => {
-    auth.requireUser(request);
     const params = idParams.parse(request.params);
     const query = z.object({ view: flag }).parse(request.query);
     return { note: notes.get(params.id, { view: isOn(query.view) }) };
   });
 
   app.patch("/api/notes/:id", async (request) => {
-    auth.requireUser(request);
     const params = idParams.parse(request.params);
     return { note: notes.update(params.id, updateBody.parse(request.body ?? {})) };
   });
 
   app.post("/api/notes/:id/move", async (request) => {
-    auth.requireUser(request);
     const params = idParams.parse(request.params);
     return { note: notes.move(params.id, moveBody.parse(request.body)) };
   });
 
   app.post("/api/notes/:id/duplicate", async (request) => {
-    auth.requireUser(request);
     const params = idParams.parse(request.params);
     return { note: notes.duplicate(params.id, duplicateBody.parse(request.body ?? {})) };
   });
@@ -136,16 +124,12 @@ export async function registerNotes(app: FastifyInstance, ctx: AppContext): Prom
     const params = idParams.parse(request.params);
     const query = z.object({ permanent: flag }).parse(request.query);
     if (isOn(query.permanent)) {
-      // Nothing brings a page back after this, so it is an administrator's decision.
-      auth.requireAdmin(request);
       return notes.deletePermanently(params.id);
     }
-    auth.requireUser(request);
     return { trashed: notes.trash(params.id) };
   });
 
   app.post("/api/notes/:id/restore", async (request) => {
-    auth.requireUser(request);
     const params = idParams.parse(request.params);
     return { note: notes.restore(params.id) };
   });
@@ -153,7 +137,6 @@ export async function registerNotes(app: FastifyInstance, ctx: AppContext): Prom
   // ── Export ──
 
   app.get("/api/notes/:id/export.md", async (request, reply) => {
-    auth.requireUser(request);
     const params = idParams.parse(request.params);
     const { filename, markdown } = exporter.page(params.id);
     return reply
@@ -162,8 +145,7 @@ export async function registerNotes(app: FastifyInstance, ctx: AppContext): Prom
       .send(markdown);
   });
 
-  app.get("/api/notes/export.zip", async (request, reply) => {
-    auth.requireUser(request);
+  app.get("/api/notes/export.zip", async (_request, reply) => {
     const { filename, stream } = exporter.workspace();
     return reply
       .header("Content-Type", "application/zip")
@@ -178,7 +160,6 @@ export async function registerNotes(app: FastifyInstance, ctx: AppContext): Prom
    * parameter) records which page it was added to.
    */
   app.post("/api/attachments", async (request) => {
-    auth.requireUser(request);
     if (!request.isMultipart()) throw badRequest("Send the file as a form upload.");
     const query = z.object({ noteId: id.optional() }).parse(request.query);
     let noteId = query.noteId;
@@ -212,7 +193,6 @@ export async function registerNotes(app: FastifyInstance, ctx: AppContext): Prom
   });
 
   app.get("/api/attachments/:id", async (request, reply) => {
-    auth.requireUser(request);
     const params = idParams.parse(request.params);
     const row = attachments.get(params.id);
     const file = attachments.filePath(row);
@@ -234,7 +214,6 @@ export async function registerNotes(app: FastifyInstance, ctx: AppContext): Prom
   });
 
   app.delete("/api/attachments/:id", async (request) => {
-    auth.requireUser(request);
     const params = idParams.parse(request.params);
     await notes.deleteAttachment(params.id);
     return { ok: true };

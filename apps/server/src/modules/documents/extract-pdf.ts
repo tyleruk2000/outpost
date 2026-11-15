@@ -77,7 +77,7 @@ export async function extractPdf(file: string, maxPages: number, onProgress: (pr
 
     if (limit < pageCount) {
       notes.push(
-        `Only the first ${limit.toLocaleString("en")} of ${pageCount.toLocaleString("en")} pages can be searched. An administrator can raise the limit in Settings, then read the text again.`,
+        `Only the first ${limit.toLocaleString("en")} of ${pageCount.toLocaleString("en")} pages can be searched. Raise the limit in Settings, then read the text again.`,
       );
     }
     if (unreadable > 0) {

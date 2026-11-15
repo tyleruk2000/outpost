@@ -1,8 +1,7 @@
-import { LogOut, PanelLeftClose, PanelLeftOpen, Search } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen, Search } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link, NavLink } from "react-router";
-import { api } from "@/lib/api";
-import { useActiveJobs, useSession } from "@/lib/queries";
+import { useActiveJobs } from "@/lib/queries";
 import { cn, modKey } from "@/lib/utils";
 import { Lamp } from "./lamp";
 import { LogoMark } from "./logo";
@@ -49,7 +48,6 @@ export function Sidebar({
   /** The page tree, shown under Notes when the spine is expanded. */
   notesTree?: ReactNode;
 }) {
-  const session = useSession();
   const jobs = useActiveJobs();
   const downloads = jobs.data?.filter((job) => job.queue === "download" && job.state !== "paused").length ?? 0;
   // Search opens the palette from the spine; the full screen is one keystroke further.
@@ -136,23 +134,6 @@ export function Sidebar({
         </nav>
         <div className="mt-1 border-t border-spine-border pt-1">
           <Lamp collapsed={collapsed} />
-          {session.data?.user && session.data.authRequired ? (
-            <button
-              type="button"
-              onClick={async () => {
-                await api.post("/api/auth/logout");
-                window.location.assign("/");
-              }}
-              title={collapsed ? `Sign out ${session.data.user.username}` : undefined}
-              className={cn(
-                "flex w-full items-center gap-3 rounded-control px-2.5 py-2 text-small text-spine-ink-muted hover:bg-spine-raised hover:text-spine-ink focus-visible:outline-spine-ink",
-                collapsed && "justify-center px-0",
-              )}
-            >
-              <LogOut aria-hidden className="size-4 shrink-0" strokeWidth={1.6} />
-              <span className={cn("truncate", collapsed && "sr-only")}>Sign out {session.data.user.username}</span>
-            </button>
-          ) : null}
         </div>
       </div>
     </aside>

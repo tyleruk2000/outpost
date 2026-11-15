@@ -20,48 +20,7 @@ afterEach(async () => {
 const raw = (method: string, url: string, headers: Record<string, string> = {}, payload?: unknown) =>
   app!.app.inject({ method: method as "GET", url, headers: { host: "localhost", ...headers }, payload: payload as never });
 
-describe("sign-in cannot be sidestepped by disguising the address", () => {
-  const disguises = ["/%61pi", "/a%70i", "/ap%69", "/%61%70%69", "/API", "//api", "/./api", "/api/../api"];
-  const targets = [
-    "/documents",
-    "/search?q=secret",
-    "/settings",
-    "/storage/locations",
-    "/collections",
-    "/downloads",
-    "/jobs",
-    "/events",
-    "/catalog",
-    "/system",
-    "/notes/tree",
-    "/retrieval/overview",
-  ];
-
-  it("requires a session for every API route however the path is written", async () => {
-    app = await createTestApp({ OUTPOST_AUTH: "on" });
-    await app.api("POST", "/api/auth/setup", { username: "keeper", password: "lantern on the north shelf" });
-    app.ctx.services.search.upsert({
-      kind: "note",
-      entityId: "n",
-      title: "Private",
-      url: "/notes/n",
-      sections: [{ text: "the secret passphrase" }],
-    });
-
-    for (const target of targets) {
-      const plain = await raw("GET", `/api${target}`);
-      expect(plain.statusCode, `/api${target}`).toBe(401);
-      for (const disguise of disguises) {
-        const response = await raw("GET", `${disguise}${target}`);
-        // Either the router does not take it for an API route at all (and answers with the
-        // web app's page or an error), or it does and sign-in is enforced. It never answers with data.
-        const servedData = response.statusCode === 200 && String(response.headers["content-type"]).includes("json");
-        expect(servedData, `${disguise}${target} -> ${response.statusCode}`).toBe(false);
-        expect(response.body).not.toContain("secret passphrase");
-      }
-    }
-  });
-
+describe("the request rules cannot be sidestepped by disguising the address", () => {
   it("applies the cross-site checks to disguised addresses too", async () => {
     app = await createTestApp();
     for (const prefix of ["/%61pi", "/a%70i"]) {
@@ -77,65 +36,6 @@ describe("sign-in cannot be sidestepped by disguising the address", () => {
     }
     expect((await app.api("GET", "/api/settings")).body.settings["downloads.concurrency"]).toBe(2);
   });
-
-  it("still serves the few routes that must work before signing in", async () => {
-    app = await createTestApp({ OUTPOST_AUTH: "on" });
-    expect((await raw("GET", "/api/health")).statusCode).toBe(200);
-    expect((await raw("GET", "/api/auth/session")).statusCode).toBe(200);
-    expect((await raw("GET", "/%61pi/health")).statusCode).toBe(200);
-  });
-});
-
-describe("guessing passwords", () => {
-  const guess = (username: string, password: string) => app!.api("POST", "/api/auth/login", { username, password });
-
-  it("counts a burst of guesses sent together, not just the ones that finish first", async () => {
-    app = await createTestApp({ OUTPOST_AUTH: "on" });
-    await app.api("POST", "/api/auth/setup", { username: "keeper", password: "lantern on the north shelf" });
-    const burst = await Promise.all(Array.from({ length: 12 }, (_, index) => guess("keeper", `wrong guess number ${index}`)));
-    const refused = burst.filter((response) => response.status === 403).length;
-    // Five misses are allowed per account; the rest of the burst is turned away unchecked.
-    expect(refused).toBeGreaterThanOrEqual(6);
-    expect((await guess("keeper", "lantern on the north shelf")).status).toBe(403);
-  });
-
-  it("does not let a sign-in to one account reset the count for another", async () => {
-    app = await createTestApp({ OUTPOST_AUTH: "on" });
-    const setup = await app.api("POST", "/api/auth/setup", { username: "keeper", password: "lantern on the north shelf" });
-    const cookie = String(setup.headers["set-cookie"]).split(";")[0]!;
-    await app.api("POST", "/api/users", { username: "guest", password: "a long enough password", role: "member" }, { headers: { cookie } });
-    let evaluated = 0;
-    for (let round = 0; round < 4; round += 1) {
-      for (let attempt = 0; attempt < 3; attempt += 1)
-        if ((await guess("keeper", `guess ${round}-${attempt}`)).status === 401) evaluated += 1;
-      await guess("guest", "a long enough password");
-    }
-    // Twelve guesses at the administrator were sent; only the first few were even checked.
-    expect(evaluated).toBeLessThanOrEqual(5);
-  });
-
-  it("asks for the current password before changing your own", async () => {
-    app = await createTestApp({ OUTPOST_AUTH: "on" });
-    const setup = await app.api("POST", "/api/auth/setup", { username: "keeper", password: "lantern on the north shelf" });
-    const cookie = String(setup.headers["set-cookie"]).split(";")[0]!;
-    const id = setup.body.user.id as string;
-    const without = await app.api("POST", `/api/users/${id}/password`, { password: "a brand new password" }, { headers: { cookie } });
-    expect(without.status).toBe(403);
-    const wrong = await app.api(
-      "POST",
-      `/api/users/${id}/password`,
-      { password: "a brand new password", currentPassword: "not it at all" },
-      { headers: { cookie } },
-    );
-    expect(wrong.status).toBe(403);
-    const right = await app.api(
-      "POST",
-      `/api/users/${id}/password`,
-      { password: "a brand new password", currentPassword: "lantern on the north shelf" },
-      { headers: { cookie } },
-    );
-    expect(right.status).toBe(200);
-  });
 });
 
 describe("smaller hardening", () => {
@@ -149,40 +49,24 @@ describe("smaller hardening", () => {
 });
 
 describe("large uploads", () => {
-  it("are refused before the body is read unless an administrator sends the right kind of file", async () => {
-    app = await createTestApp({ OUTPOST_AUTH: "on" });
-    const setup = await app.api("POST", "/api/auth/setup", { username: "keeper", password: "lantern on the north shelf" });
-    const admin = String(setup.headers["set-cookie"]).split(";")[0]!;
-    await app.api(
-      "POST",
-      "/api/users",
-      { username: "guest", password: "a long enough password", role: "member" },
-      { headers: { cookie: admin } },
-    );
-    const member = String(
-      (await app.api("POST", "/api/auth/login", { username: "guest", password: "a long enough password" })).headers["set-cookie"],
-    ).split(";")[0]!;
+  it("are refused before the body is read unless they are the right kind of file", async () => {
+    app = await createTestApp();
     const big = Buffer.alloc(2 * 1024 * 1024, 65);
-
     for (const url of ["/api/backup/restore", "/api/semantic/import"]) {
-      // A member, with a type the server would otherwise buffer whole.
-      const asMember = await raw("POST", url, { cookie: member, "x-outpost-request": "1", "content-type": "text/plain" }, big);
-      expect(asMember.statusCode, url).toBe(403);
-      // Nobody signed in.
-      expect((await raw("POST", url, { "x-outpost-request": "1", "content-type": "text/plain" }, big)).statusCode).toBe(401);
-      // An administrator, but not one of the streamed types.
-      const wrongType = await raw("POST", url, { cookie: admin, "x-outpost-request": "1", "content-type": "text/plain" }, big);
+      // A type the server would otherwise buffer whole.
+      const wrongType = await raw("POST", url, { "x-outpost-request": "1", "content-type": "text/plain" }, big);
       expect(wrongType.statusCode, url).toBe(415);
+      // And never from another site, whatever the type.
+      const crossSite = await raw("POST", url, { "content-type": "application/zip", origin: "https://evil.example" }, big);
+      expect(crossSite.statusCode, url).toBe(403);
     }
   });
 });
 
 describe("restoring a backup someone else made", () => {
-  it("does not bring their sign-ins, their queued work or their download hosts", async () => {
-    // The "attacker's" Outpost: an account, a session, a queued job and a manifest of their choosing.
-    const theirs = await createTestApp({ OUTPOST_AUTH: "on" });
-    const setup = await theirs.api("POST", "/api/auth/setup", { username: "mallory", password: "a perfectly fine password" });
-    const theirCookie = String(setup.headers["set-cookie"]).split(";")[0]!;
+  it("does not bring their queued work, their network shares or their download hosts", async () => {
+    // Someone else's Outpost: a queued job and a manifest of their choosing.
+    const theirs = await createTestApp();
     fs.mkdirSync(path.join(theirs.ctx.config.dataDir, "catalog"), { recursive: true });
     fs.writeFileSync(
       path.join(theirs.ctx.config.dataDir, "catalog", "evil.json"),
@@ -201,33 +85,32 @@ describe("restoring a backup someone else made", () => {
         "INSERT INTO jobs (id, type, queue, state, title, payload, created_at, updated_at) VALUES ('j1', 'documents.move', 'transfer', 'queued', 'Planted', '{}', 1, 1)",
       )
       .run();
-    const backup = (
-      await theirs.app.inject({ method: "GET", url: "/api/backup/download", headers: { host: "localhost", cookie: theirCookie } })
-    ).rawPayload;
+    // And a network share that their machine reconnects to by itself.
+    theirs.ctx.sqlite
+      .prepare(
+        "INSERT INTO network_shares (id, server, port, share, user_name, password_in_keychain, auto_connect, created_at, updated_at) VALUES ('s1', 'their-nas.local', 445, 'private', 'mallory', 1, 1, 1, 1)",
+      )
+      .run();
+    const backup = (await theirs.app.inject({ method: "GET", url: "/api/backup/download", headers: { host: "localhost" } })).rawPayload;
     await theirs.close();
 
-    // The victim restores it.
+    // It is restored here.
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "outpost-restore-sec-"));
-    let mine = await createTestApp({ OUTPOST_AUTH: "on" }, dir);
-    const mySetup = await mine.api("POST", "/api/auth/setup", { username: "keeper", password: "lantern on the north shelf" });
-    const myCookie = String(mySetup.headers["set-cookie"]).split(";")[0]!;
+    let mine = await createTestApp({}, dir);
     const staged = await mine.app.inject({
       method: "POST",
       url: "/api/backup/restore",
-      headers: { host: "localhost", cookie: myCookie, "x-outpost-request": "1", "content-type": "application/zip" },
+      headers: { host: "localhost", "x-outpost-request": "1", "content-type": "application/zip" },
       payload: backup,
     });
     expect(staged.statusCode).toBe(200);
     await mine.close();
-    mine = await createTestApp({ OUTPOST_AUTH: "on" }, dir);
+    mine = await createTestApp({}, dir);
     app = mine;
 
-    // Their session cookie is not a way in.
-    expect(
-      (await mine.app.inject({ method: "GET", url: "/api/settings", headers: { host: "localhost", cookie: theirCookie } })).statusCode,
-    ).toBe(401);
-    expect(mine.ctx.sqlite.prepare("SELECT count(*) AS n FROM sessions").get()).toEqual({ n: 0 });
     expect(mine.ctx.sqlite.prepare("SELECT count(*) AS n FROM jobs WHERE id = 'j1'").get()).toEqual({ n: 0 });
+    // This machine must not start trying to connect to a file server named in someone else's backup.
+    expect(mine.ctx.sqlite.prepare("SELECT count(*) AS n FROM network_shares").get()).toEqual({ n: 0 });
     expect(fs.existsSync(path.join(mine.ctx.config.dataDir, "catalog", "evil.json"))).toBe(false);
     fs.rmSync(dir, { recursive: true, force: true });
   });

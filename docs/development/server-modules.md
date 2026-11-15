@@ -9,7 +9,7 @@ works to. Read it together with the code it points at; the code is the authority
 apps/server/src/
   config.ts            deployment configuration (environment variables)
   app.ts               builds the Fastify app; used by index.ts and by tests
-  core/                context, errors, jobs, events, safe paths, HTTP client, hashing
+  core/                context, request guard, errors, jobs, events, safe paths, HTTP client, hashing
   db/schema.ts         every table (Drizzle); db/migrations/ is generated from it
   modules/<name>/      one folder per feature: index.ts registers routes and services
 apps/server/test/      Vitest suites; helpers.ts gives a full server on a temp directory
@@ -45,7 +45,6 @@ before it. Use `ctx.onClose.push(fn)` for cleanup.
 | Database | `ctx.db` (Drizzle) and `ctx.sqlite` (better-sqlite3) for raw SQL and transactions |
 | Ids and time | `newId()` from `core/ids.ts`; timestamps are `Date.now()` milliseconds |
 | Errors | throw `AppError` (or `notFound`, `badRequest`, `conflict`) from `core/errors.ts` |
-| Permissions | `ctx.services.auth.requireAdmin(request)` / `requireUser(request)` |
 | Settings | `ctx.services.settings.get("indexing.chunkSize")` |
 | Files in a storage location | `ctx.services.storage.resolve(locationId, relPath)`, `getDefault()`, `assertSpace()` |
 | Safe paths and names | `resolveInside`, `safeFileName` from `core/fs-safe.ts` |
@@ -95,8 +94,11 @@ ctx.services.search.upsert({
    never run script in Outpost's origin.
 6. **No outbound requests** except through the HTTP client, and only as the direct
    result of a person's action.
-7. **Admin operations** (anything that changes storage, starts or removes downloads,
-   changes settings, deletes content in bulk) call `requireAdmin`.
+7. **There are no accounts and no roles.** Every route is open to whoever can reach
+   the server, so a route has no permission check to make. `core/guard.ts` holds every
+   request to the Host check, and every request that is not a `GET`, `HEAD` or
+   `OPTIONS` to the `X-Outpost-Request` header and the same origin. That protection
+   covers only those methods: a `GET` must never change anything.
 8. **Messages are for people.** Say what happened and what to do next, in plain words.
 
 ## Schema changes

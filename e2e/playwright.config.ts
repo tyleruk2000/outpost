@@ -1,9 +1,7 @@
 /**
  * End-to-end tests run a real browser against the real server.
  *
- * Two servers are started on throwaway data directories:
- *   - "open": the default single-user setup, bound to localhost with sign-in off;
- *   - "signin": the same app with sign-in required, as on a LAN.
+ * A server is started on a throwaway data directory, bound to localhost.
  *
  * By default they run the packaged app (dist/app), so the bundle that ships is the
  * thing under test. Set OUTPOST_E2E_SOURCE=1 to run the server from source instead
@@ -83,7 +81,6 @@ fs.writeFileSync(
 );
 
 export const OPEN_URL = "http://localhost:8471";
-export const SIGNIN_URL = "http://localhost:8472";
 
 export default defineConfig({
   testDir: "./tests",
@@ -111,6 +108,5 @@ export default defineConfig({
     },
     // The open server fetches portable-drive runtimes from the stand-in above, which is on a private address.
     server("open", 8471, { OUTPOST_NODE_DIST_URL: "http://127.0.0.1:8473", OUTPOST_ALLOW_PRIVATE_DOWNLOADS: "true" }),
-    server("signin", 8472, { OUTPOST_AUTH: "on" }),
   ],
 });

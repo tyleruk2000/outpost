@@ -14,12 +14,24 @@ Without Docker, the log is whatever the server prints in its terminal.
 
 ## Starting and reaching Outpost
 
-### The server refuses to start: "OUTPOST_LAN_ACCESS is on but OUTPOST_AUTH is off"
+### The server refuses to start, naming OUTPOST_LAN_ACCESS
 
-LAN access without sign-in would let anyone on your network change or delete your
-library, so the server stops. Either remove `OUTPOST_AUTH=off` (the default, `auto`,
-turns sign-in on with LAN access), or set `OUTPOST_ALLOW_UNAUTHENTICATED_LAN=true` if
-you accept that.
+With Docker: "Outpost does not know that its port is published only to this computer…"
+Without Docker: "OUTPOST_HOST is …, which other devices can reach, but
+OUTPOST_LAN_ACCESS is not set."
+
+The port would be reachable from your network, and Outpost will not allow that unless
+you have chosen it. There are no accounts, so everyone who can reach Outpost can
+change and delete what is in it.
+
+- To keep it private to this computer, set `OUTPOST_BIND=127.0.0.1` in `.env` (or
+  `OUTPOST_HOST=127.0.0.1` without Docker). These are the defaults.
+- To share it with everyone on your network, also set `OUTPOST_LAN_ACCESS=true`. Read
+  [deployment.md](deployment.md#letting-other-devices-use-it-lan-access) first.
+
+If you start the image with plain `docker run`, the server cannot see how the port was
+published: pass `-e OUTPOST_PUBLISHED_ADDRESS=127.0.0.1` when you publish it with
+`-p 127.0.0.1:8080:8080`.
 
 ### The port is already in use
 
@@ -76,32 +88,6 @@ use `pnpm dev` for development.
 The message is `unable to determine transport target for "pino-pretty"`. Set
 `NODE_ENV=production` when running `dist/app/server/outpost.mjs`. See
 [deployment.md](deployment.md#the-packaged-app).
-
-## Sign-in
-
-### Where is the setup token?
-
-With LAN access on, creating the first administrator asks for a setup token. It is in
-the server log, on a line starting "First-run setup token":
-
-```bash
-docker compose logs outpost | grep "setup token"
-```
-
-A new token is made each time the server starts, until an administrator exists. If
-you see "That setup token is not correct", read the log again after the latest start.
-
-### "Too many attempts. Try again in N seconds."
-
-After five failed sign-ins from one address, attempts are refused for a while; the
-wait doubles each time, up to 15 minutes. Wait it out. Restarting the server also
-clears the count.
-
-### An administrator has forgotten their password
-
-Another administrator can set a new one under **Settings**. There is no
-password-reset tool for the case where the only administrator is locked out, so keep
-that password somewhere safe.
 
 ## Storage
 
@@ -254,10 +240,38 @@ growing pauses; the last line the program printed is included in the message.
 - **"This collection is not ready to read yet."** kiwix-serve needs a moment to
   notice a newly installed archive. Wait a few seconds and reload.
 
-### "This link to your library has expired. Go back to Outpost and open the page again."
+### A link in a reference page shows a notice instead of opening
 
-Links to reference pages carry a token that lasts 12 hours. Open the article again
-from Outpost.
+Pressing a link in a reference page does one of three things:
+
+- A PDF or e-book that is **inside the collection** opens over the page, with **Add to
+  library**. Adding it copies it out of the collection and needs no connection.
+- "This file is not in the collection. It is on the internet at …" The copy of the
+  site did not include that file. With a connection, **Save to library** fetches it
+  and it appears under Documents when the download finishes. Without one, it cannot be
+  had.
+- "That link leaves your library and needs the internet: …" The link goes to a web
+  page outside the collection.
+
+Collections made from web sites carry a script that makes every link report the
+address it had on the live site. Outpost reads each link before that script runs, so
+a file that is inside the collection is recognised as such. If a file is still
+reported as being on the internet, the page links to it at an address outside the
+collection's copy of the site, and the internet is the only place Outpost can get it
+from.
+
+### A file from a reference page cannot be added to the library
+
+- "…is not in this collection. The site it was copied from may have had it; the copy
+  does not." The page links to a file that was never packed into the collection.
+- "Outpost can save links to files it can keep (PDF, EPUB, Markdown, plain text and
+  images). This link does not end in one of those." Web pages and other kinds of file
+  are not fetched.
+- "That link points at this computer or your own network, which Outpost does not fetch
+  from." See the entry on blocked addresses under [Downloads](#downloads).
+- The download fails with "…is named like a PDF, but its contents are not one." The
+  address answered with something else, often a page asking you to log in. Outpost
+  kept nothing and does not try again.
 
 ### Search results have no reference articles
 
@@ -342,10 +356,11 @@ A restore is applied when the server next starts. Restart it:
 docker compose restart outpost
 ```
 
-Without Docker, stop the server and start it again. From a portable drive, Outpost
-can restart itself. "Outpost cannot restart itself here. Stop it and start it again
-to finish." means nothing is supervising the server, which is the case in Docker and
-from source.
+Without Docker, stop the server and start it again. From a portable drive or the
+Compose stack, Outpost can restart itself when you ask it to. "Outpost cannot restart
+itself here. Stop it and start it again to finish." means nothing is supervising the
+server, which is the case when you run it from source or run the packaged app
+yourself.
 
 To change your mind before restarting, cancel the staged restore in **Settings →
 Backup**.

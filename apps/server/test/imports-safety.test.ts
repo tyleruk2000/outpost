@@ -239,13 +239,6 @@ describe("the upload itself", () => {
     expect(refused.body.error.message).toBe('"big.md" is larger than the 1.05 MB this server accepts for one file.');
     expect(everythingUnder(stagingRoot())).toEqual([]);
   });
-
-  it("needs a signed-in person when accounts are on", async () => {
-    await app.close();
-    app = await createTestApp({ OUTPOST_AUTH: "on" });
-    expect((await uploadImport(app, [{ name: "a.md", content: "# A\n" }])).status).toBe(401);
-    expect((await app.api("GET", "/api/imports")).status).toBe(401);
-  });
 });
 
 describe("the extractor on its own", () => {

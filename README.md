@@ -33,6 +33,9 @@ picture, not a surveyed path.
   handbooks and textbooks as PDFs straight from their publishers (FAA, NASA, USGS,
   the US National Weather Service, FAO, WHO, OpenStax and others). Downloads resume,
   retry, can be rate limited, and are checked against a checksum. Read them in the app.
+  A PDF inside a collection opens in Outpost's own viewer, and PDFs and e-books in a
+  collection can be added to your document library with no connection. A file that a
+  page links to out on the internet can be fetched into the library while you have one.
 - **Your documents.** Add PDFs, EPUBs, Markdown, HTML, text and images. Text is
   extracted and indexed down to the page; originals are kept untouched. A built-in
   PDF viewer opens at the page a search result points to.
@@ -55,8 +58,8 @@ picture, not a surveyed path.
 - **Take it with you.** Write a portable drive: a USB stick holding Outpost itself and
   part of your library, which starts with a double-click on another Mac, Windows or
   Linux computer with nothing installed.
-- **Private by construction.** No accounts in the cloud, no telemetry, no external AI.
-  The app is forbidden by its own content policy from contacting any other server.
+- **Private by construction.** No accounts, no telemetry, no external AI. The app is
+  forbidden by its own content policy from contacting any other server.
 
 What it does **not** do yet is listed under [Limitations](#limitations). Nothing in
 this README describes something that is not implemented and tested.
@@ -65,16 +68,17 @@ this README describes something that is not implemented and tested.
 
 | Platform | How | Status |
 | --- | --- | --- |
-| macOS, Apple Silicon | Docker Desktop, the packaged app, or a portable drive | Developed and tested here, including the full Compose stack |
-| Linux ARM64, Raspberry Pi 4 and 5 (64-bit OS) | Docker Compose | The ARM64 image is built and run on Apple Silicon; not yet tried on a physical Pi |
-| Linux x86-64 | Docker Compose, or the packaged app | Image build and tests are set up in CI; no CI run has happened yet |
-| macOS, Intel | Docker Desktop, or the packaged app | Untested |
-| Windows 10 and 11 | Docker Desktop with WSL2 | Server tests are set up for Windows in CI; no CI run has happened yet |
-| NAS and home servers | Any that run containers | Untested on specific models |
+| macOS, Apple Silicon | Docker Desktop, the packaged app, or a portable drive | Developed and tested here by hand, including the full Compose stack |
+| Linux ARM64, Raspberry Pi 4 and 5 (64-bit OS) | Docker Compose | The ARM64 image is built and run on Apple Silicon; untried on a physical Pi |
+| Linux x86-64 | Docker Compose, or the packaged app | Untried |
+| macOS, Intel | Docker Desktop, or the packaged app | Untried |
+| Windows 10 and 11 | Docker Desktop with WSL2 | Untried |
+| NAS and home servers | Any that run containers | Untried |
 
-"Set up in CI" means the workflow exists in `.github/workflows/`. Until the first run
-is green, treat those platforms as expected to work rather than proven. 4 GB of RAM or
-more is recommended on a Raspberry Pi.
+"Untried" means nobody has run Outpost there yet. Nothing builds or tests it
+automatically: the checks are run by hand, on the one machine in the first row. Treat
+the other platforms as expected to work rather than proven. 4 GB of RAM or more is
+recommended on a Raspberry Pi.
 
 ## Quick start
 
@@ -89,11 +93,19 @@ docker compose up -d --build
 
 Open <http://localhost:8080>.
 
-The first start builds the image, which takes a few minutes. By default Outpost
-answers only on the computer it runs on. To use it from phones and other computers on
-your network, set `OUTPOST_LAN_ACCESS=true` and `OUTPOST_BIND=0.0.0.0` in `.env` and
-restart; sign-in is then required. See [docs/deployment.md](docs/deployment.md) for
-every platform, for running without Docker, and for all settings.
+The first start builds the image on your computer, which takes a few minutes and needs
+a connection. By default Outpost answers only on the computer it runs on. To use it
+from phones and other computers on your network, set `OUTPOST_LAN_ACCESS=true` and
+`OUTPOST_BIND=0.0.0.0` in `.env` and restart.
+
+Outpost has no accounts and no sign-in. With LAN access on, everyone on your network
+can read, add, change and delete everything in it, so turn it on only for a network
+where you trust everyone, such as your home. Never forward the port to the internet,
+and do not put Outpost behind a public reverse proxy unless the proxy itself asks
+people to authenticate.
+
+See [docs/deployment.md](docs/deployment.md) for every platform, for running without
+Docker, and for all settings.
 
 ## Storage
 
@@ -105,7 +117,7 @@ Outpost keeps three kinds of thing in three places:
 | Documents, collections, maps | Storage locations you add | Any mounted folder |
 | The app | The image, or a portable drive | Replaceable at any time |
 
-The server administrator decides which folders Outpost may use (the storage roots; in
+Whoever runs the server decides which folders Outpost may use (the storage roots; in
 Docker, anything mounted under `/storage`). Inside those, you add **storage locations**
 from the Storage screen, choose a default for new downloads, and pick a different one
 for any single download. Each location is identified by a small marker file, so a
@@ -113,8 +125,14 @@ drive that comes back at a different mount point is recognised.
 
 ### NAS and external drives
 
-Mount the share or drive on the host, map it into both containers, then add it in the
-app:
+On a Mac run directly, **Storage → Connect a network share** does this for you: enter
+the server, the share and your user name and password, and Outpost asks macOS to
+connect it and keeps it connected. The password is kept in the Mac's Keychain if you
+ask for it to be remembered, and never by Outpost. In Docker and on Linux, Outpost
+cannot mount a share itself; the same form writes out the exact lines to use instead.
+
+With Docker, mount the share or drive on the host, map it into both containers, then
+add it in the app:
 
 ```yaml
 # compose.yaml
@@ -128,8 +146,7 @@ services:
 ```
 
 Docker can also mount NFS and SMB shares itself; `compose.yaml` has commented
-examples. Outpost never stores share passwords: the operating system or Docker does
-the mounting. Full examples for Linux, macOS, Windows and common NAS systems are in
+examples. Full examples for Linux, macOS, Windows and common NAS systems are in
 [docs/storage.md](docs/storage.md).
 
 ## Downloading collections
@@ -220,6 +237,8 @@ Stated here so nobody has to find them out:
 - **Maps** have no contour lines and no routing. Hill shading needs a separate terrain
   download.
 - **One server, one library.** There is no clustering and no PostgreSQL back end.
+- **No accounts or permissions.** Everyone who can reach Outpost can read and change
+  everything in it.
 - **No live collaboration.** Two people editing the same page are warned of the
   conflict rather than merged.
 - **A portable drive is a copy.** Changes made on the drive are not merged back.

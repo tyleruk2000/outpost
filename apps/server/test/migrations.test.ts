@@ -32,8 +32,6 @@ describe("database migrations", () => {
         sqlite.prepare("SELECT name FROM sqlite_master WHERE type IN ('table', 'trigger')").all() as Array<{ name: string }>
       ).map((row) => row.name);
       for (const table of [
-        "users",
-        "sessions",
         "settings",
         "storage_locations",
         "jobs",

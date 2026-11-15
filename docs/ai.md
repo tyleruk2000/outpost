@@ -104,8 +104,7 @@ Passages from the same source are kept together and in reading order.
 ## A worked example
 
 This asks Outpost for context and passes it to a model running in Ollama. It needs
-`curl` and `jq`. The model name is an example; use one you have pulled. With sign-in
-on, add your session cookie to the Outpost request.
+`curl` and `jq`. The model name is an example; use one you have pulled.
 
 ```bash
 QUESTION="boil water safe drinking"

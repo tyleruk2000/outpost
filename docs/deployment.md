@@ -16,21 +16,17 @@ version).
 git clone https://github.com/tyleruk2000/outpost.git
 cd outpost
 cp .env.example .env
-docker compose build
-docker compose up -d
+docker compose up -d --build
 ```
 
 Then open <http://localhost:8080>.
 
-- `docker compose build` builds the image from the checkout. The build needs an
+- `--build` builds the image from the checkout before starting it. The build needs an
   internet connection: it installs dependencies and fetches the map fonts and icons.
-- `compose.yaml` names the image `ghcr.io/tyleruk2000/outpost:latest` (override it with
-  `OUTPOST_IMAGE`). The release workflow publishes that image, for `linux/amd64` and
-  `linux/arm64`, when a version tag is pushed. Until a release exists, build it locally
-  as above. Once an image is published, `compose.yaml` and `.env` are all you need on
-  the machine, and `docker compose up -d` pulls the image.
+- No image is published anywhere, so there is nothing to pull. `compose.yaml` names the
+  image it builds `outpost:local` (change the name with `OUTPOST_IMAGE`).
 - Every line in `.env` is optional. The defaults keep Outpost private to the computer it
-  runs on, with sign-in off.
+  runs on.
 
 Check that it is running:
 
@@ -54,7 +50,7 @@ The `outpost` container runs as the unprivileged `node` user (uid 1000, gid 1000
 
 | Volume | Mounted at | Holds |
 | --- | --- | --- |
-| `outpost-data` | `/data` | The database (`outpost.db`), note attachments, text extracted from documents, the signing secret, cached runtimes for portable drives, and anything else Outpost itself owns. Keep it on a local disk. |
+| `outpost-data` | `/data` | The database (`outpost.db`), note attachments, text extracted from documents, cached runtimes for portable drives, and anything else Outpost itself owns. Keep it on a local disk. |
 | `outpost-library` | `/storage/internal` | The default storage location: documents, collections and maps you have not put somewhere else. |
 | `kiwix-library` | `/kiwix` | `library.xml`, the list of installed archives that Outpost writes and kiwix-serve reads. |
 
@@ -62,10 +58,11 @@ External drives and network shares are extra mounts under `/storage`. Each one m
 added to **both** services (read-only for `kiwix`). [storage.md](storage.md) has
 examples.
 
-## Letting other devices use it (LAN access and sign-in)
+## Letting other devices use it (LAN access)
 
 By default the port is published on `127.0.0.1` only, and the server refuses requests
-addressed to any name other than `localhost`, `127.0.0.1` or `::1`.
+addressed to any name other than `localhost`, `127.0.0.1`, `::1` or one you list in
+`OUTPOST_ALLOWED_HOSTS`. Only the computer Outpost runs on can open it.
 
 To use Outpost from phones and other computers on your network, set both of these in
 `.env` and restart:
@@ -79,51 +76,37 @@ OUTPOST_BIND=0.0.0.0
 docker compose up -d
 ```
 
-What changes:
+Other devices then open `http://<address of this computer>:8080`.
 
-- Sign-in is turned on (`OUTPOST_AUTH=auto` follows `OUTPOST_LAN_ACCESS`).
-- The first visit asks you to create the administrator account. Because that form is
-  now reachable by anyone on the network, it also asks for a **setup token**. The token
-  is printed in the server log each time the server starts, until an administrator
-  exists:
+**Outpost has no accounts and no sign-in.** With LAN access on, everyone on your
+network can read, add, change and delete everything in it. Turn it on only for a network
+where you trust everyone, such as your home. Never forward the port to the internet,
+and do not put Outpost behind a reverse proxy that the public can reach unless the
+proxy itself asks people to authenticate (see [below](#behind-a-reverse-proxy)).
 
-  ```bash
-  docker compose logs outpost | grep "setup token"
-  ```
+What else to know:
 
-- Outpost answers to `localhost`, to IP addresses, to single-word host names, to names
-  ending in `.local`, `.lan`, `.home`, `.internal` or `.home.arpa`, and to anything you
-  list in `OUTPOST_ALLOWED_HOSTS`. Any other name gets "This address is not one Outpost
-  answers to".
-- The server refuses to start with `OUTPOST_LAN_ACCESS=true` and `OUTPOST_AUTH=off`
-  unless `OUTPOST_ALLOW_UNAUTHENTICATED_LAN=true` is also set. `compose.yaml` does not
-  pass that variable through; add it to the `environment:` block if you accept the risk.
+- With LAN access on, Outpost answers to `localhost`, to IP addresses, to single-word
+  host names, to names ending in `.local`, `.lan`, `.home`, `.internal` or `.home.arpa`,
+  and to anything you list in `OUTPOST_ALLOWED_HOSTS`. Any other name gets "This
+  address is not one Outpost answers to".
+- The two settings go together. With `OUTPOST_BIND=0.0.0.0` alone the server refuses to
+  start, and says why: its port would be reachable from the network without your having
+  chosen that. With `OUTPOST_LAN_ACCESS=true` alone the port is still published only to
+  this computer.
+- Both can only be changed where the server is started, never from the browser.
+  **Settings → Who can use this library** shows which is in force.
+- Traffic on the LAN is plain HTTP unless you put a reverse proxy in front.
 
-These settings can only be changed where the server is started, never from the browser.
-Traffic on the LAN is plain HTTP unless you put a reverse proxy in front (see below).
 [security.md](security.md) explains what this does and does not protect.
-
-Accounts are administrators or members. Members can read, search, upload documents
-and write notes. Only administrators can change storage, start or remove downloads,
-change settings, or delete documents and collections. Add people under **Settings**.
 
 ## Updating
 
 Back up first (**Settings → Backup**, or see [storage.md](storage.md)).
 
-With a locally built image:
-
 ```bash
 git pull
-docker compose build
-docker compose up -d
-```
-
-With a published image:
-
-```bash
-docker compose pull
-docker compose up -d
+docker compose up -d --build
 ```
 
 Database migrations run automatically when the server starts. Your volumes are not
@@ -152,14 +135,14 @@ the default library. Do not run it unless that is what you want.
 
 ## Platform notes
 
-The image is built for 64-bit x86 (`linux/amd64`) and 64-bit ARM (`linux/arm64`). There
-is no 32-bit build.
+The image can be built for 64-bit x86 (`linux/amd64`) and 64-bit ARM (`linux/arm64`);
+a local build produces the one for the machine it runs on. There is no 32-bit build.
 
-What has been checked, so you know what you are relying on: the continuous-integration
-workflow runs the server test suite on Linux x86-64, Linux ARM64, macOS and Windows,
-runs the browser tests against the packaged app on Linux x86-64, builds the image for
-both architectures, and checks that the ARM64 image starts and answers its health
-check. It does not test specific NAS products or Raspberry Pi hardware.
+What has been tried, so you know what you are relying on: Outpost is developed and run
+by hand on macOS on Apple Silicon, from source, as the packaged app, and as the full
+Compose stack with the `arm64` image. The test suites are run by hand on that machine.
+Nothing builds or tests Outpost automatically, and nothing else has been tried: not
+Linux on x86-64, not an Intel Mac, not Windows, not a Raspberry Pi, not a NAS.
 
 ### macOS (Apple Silicon and Intel)
 
@@ -225,8 +208,8 @@ check. It does not test specific NAS products or Raspberry Pi hardware.
 - Do not put the database on a Windows drive (`/mnt/c/...` or `C:/...`). Files shared
   between Windows and Linux do not give SQLite the file locking it needs. Content
   (documents, collections, maps) is fine there.
-- Running without Docker on Windows: the packaged app runs, and the server test suite
-  runs on Windows in CI, but it has not been tested by hand. See
+- Running without Docker on Windows is untried: the packaged app includes the SQLite
+  binary for Windows, but nobody has run it there. See
   [the limits table](architecture.md#limits-and-trade-offs).
 
 ### Linux (x86-64 and ARM64)
@@ -266,14 +249,16 @@ check. It does not test specific NAS products or Raspberry Pi hardware.
 ### NAS and home servers that run containers
 
 Any NAS or home server that offers Docker Compose (or can import a Compose file) and
-has a 64-bit x86 or ARM CPU can run the stack. Outpost has not been tested on specific
-NAS products, so treat the following as guidance:
+has a 64-bit x86 or ARM CPU should be able to run the stack. Outpost has not been tried
+on any NAS product, so treat the following as guidance:
 
 - Keep `outpost-data` on a volume that is local to the machine running the containers.
   A NAS's own disk is local to that NAS.
 - Bind-mount the shared folders you want to use for content under `/storage`, in both
   services, and make them writable by uid 1000.
-- If the vendor's interface does not support `build:`, use a published image.
+- The stack builds its image from the checkout (`build: .`). No image is published, so
+  if the vendor's interface cannot build one, you have to build it on another machine
+  and load it onto the NAS yourself.
 
 ## Running without Docker
 
@@ -312,7 +297,8 @@ Things to know:
   folder is used.
 - If you skip `fetch-map-assets.mjs`, everything works except that maps draw without
   labels and icons.
-- For LAN access, set `OUTPOST_HOST=0.0.0.0` together with `OUTPOST_LAN_ACCESS=true`.
+- For LAN access, set `OUTPOST_HOST=0.0.0.0` together with `OUTPOST_LAN_ACCESS=true`,
+  and read [what that means](#letting-other-devices-use-it-lan-access) first.
 
 ### The packaged app
 
@@ -339,8 +325,7 @@ node dist/app/server/outpost.mjs
 log formatter that the packaged app does not include, and stops at start-up.
 
 The folder contains prebuilt SQLite binaries for macOS, Linux (glibc and musl) and
-Windows, on x64 and arm64. The release workflow also attaches the packaged app to each
-GitHub release as `outpost-app-<tag>.tar.gz` with a `.sha256` file.
+Windows, on x64 and arm64.
 
 ### Reference collections without Docker
 
@@ -367,27 +352,26 @@ against version 3.8.2. Two ways to provide it:
   ```
 
   It must see the archives at the same paths Outpost does, and should not be reachable
-  from the network: Outpost is what adds sign-in and sandboxing in front of it.
+  from the network: Outpost is what adds sandboxing in front of it.
 
 Without either, everything else works and the interface says that reference
 collections cannot be read.
 
 ## Behind a reverse proxy
 
-No test in the suite runs Outpost behind a reverse proxy. The notes below follow from
-the code; check your own set-up.
+Nobody has run Outpost behind a reverse proxy, and no test does. The notes below follow
+from the code; check your own set-up.
 
+- **Authentication.** Outpost has none: whoever gets through the proxy can read and
+  change everything. A proxy that can be reached from the internet must ask people to
+  authenticate itself. Pages from reference collections are shown in a sandboxed frame
+  whose requests carry no cookies, so check that the reader still works behind whatever
+  the proxy uses.
 - **Host names.** The proxy must pass the original `Host` header through. List the name
-  people type in `OUTPOST_ALLOWED_HOSTS` (comma separated) unless it is one of the local
-  forms Outpost already accepts with LAN access on.
-- **Sign-in.** If only the proxy can reach Outpost (it listens on `127.0.0.1`), LAN
-  access is off and so, by default, is sign-in: everyone who reaches the proxy would be
-  an administrator. Set `OUTPOST_LAN_ACCESS=true`, which turns sign-in on and protects
-  the first-run form with the setup token. `OUTPOST_AUTH=on` alone turns sign-in on
-  but does not ask for a setup token, so create the administrator account before
-  exposing the proxy if you use that.
-- **Cookies.** Set `OUTPOST_SECURE_COOKIES=true` when people reach Outpost over HTTPS,
-  so the session cookie is only sent over HTTPS.
+  people type in `OUTPOST_ALLOWED_HOSTS` (comma separated).
+- **Keep Outpost itself private.** When the proxy runs on the same machine, leave
+  `OUTPOST_BIND` at `127.0.0.1` and `OUTPOST_LAN_ACCESS` off. Only the proxy can then
+  reach Outpost, and a name listed in `OUTPOST_ALLOWED_HOSTS` is answered either way.
 - **Live updates.** `/api/events` is a server-sent-events stream that stays open.
   Outpost sends `X-Accel-Buffering: no` with it, which nginx honours. Other proxies
   must not buffer that response, or progress will not appear until the page is
@@ -395,8 +379,6 @@ the code; check your own set-up.
 - **Upload size.** Raise the proxy's request-body limit to at least
   `OUTPOST_MAX_UPLOAD_MB` (2048 MB by default). Restoring a backup and loading a
   vectors file send the whole file as one request.
-- **Client addresses.** Outpost does not read `X-Forwarded-For`. Behind a proxy, the
-  slow-down applied after repeated failed sign-ins counts every visitor as one address.
 
 A minimal nginx server block:
 
@@ -405,6 +387,7 @@ server {
     listen 443 ssl;
     server_name outpost.example.net;
     # ssl_certificate and ssl_certificate_key go here
+    # authentication goes here if this name can be reached from the internet
 
     client_max_body_size 2048m;
 
@@ -428,12 +411,8 @@ server {
 with, in `.env`:
 
 ```ini
-OUTPOST_LAN_ACCESS=true
 OUTPOST_ALLOWED_HOSTS=outpost.example.net
-OUTPOST_SECURE_COOKIES=true
 ```
-
-Leave `OUTPOST_BIND` at `127.0.0.1` when the proxy runs on the same machine.
 
 ## Environment variables
 
@@ -445,17 +424,14 @@ value the image sets when it differs from the default.
 | Variable | Default | Docker image | Meaning |
 | --- | --- | --- | --- |
 | `NODE_ENV` | `development` | `production` | `development`, `production` or `test`. The packaged app needs `production`. |
-| `OUTPOST_HOST` | `127.0.0.1` | `0.0.0.0` | Address the server listens on. In Docker, exposure is controlled by `OUTPOST_BIND` instead. |
+| `OUTPOST_HOST` | `127.0.0.1` | `0.0.0.0` | Address the server listens on. Outside a container, anything but a loopback address stops the server at start-up unless `OUTPOST_LAN_ACCESS=true`. In Docker, exposure is controlled by `OUTPOST_BIND` instead. |
 | `OUTPOST_PORT` | `8080` | `8080` | Port the server listens on. With Compose this sets the port on the host; the container always uses 8080. |
 | `OUTPOST_DATA_DIR` | `./data` | `/data` | Database, attachments and other state Outpost owns. |
 | `OUTPOST_STORAGE_ROOTS` | see [above](#from-source) | `/storage` | Comma-separated folders in which storage locations may be created. |
-| `OUTPOST_LAN_ACCESS` | `false` | | Accept requests addressed to LAN names and addresses, and (with `OUTPOST_AUTH=auto`) require sign-in. |
+| `OUTPOST_LAN_ACCESS` | `false` | | Share Outpost with every device on the network: accept requests addressed to LAN names and addresses, and allow the server to listen on (or be published on) an address other devices can reach. There are no accounts, so everyone who can reach it can change it. |
 | `OUTPOST_IN_CONTAINER` | `false` | `true` | Tells the server it is inside a container, where it always listens on every interface, so `OUTPOST_HOST` says nothing about who can reach it. |
 | `OUTPOST_PUBLISHED_ADDRESS` | unset | set by Compose to the value of `OUTPOST_BIND` | Inside a container, the host address the port was published on. Unless this is a loopback address, the server refuses to start without `OUTPOST_LAN_ACCESS=true`. |
-| `OUTPOST_AUTH` | `auto` | | `auto` (on when LAN access is on), `on` or `off`. |
-| `OUTPOST_ALLOW_UNAUTHENTICATED_LAN` | `false` | | Allows LAN access with sign-in off. Without it that combination stops the server at start-up. |
 | `OUTPOST_ALLOWED_HOSTS` | empty | | Extra host names the server answers to, comma separated. |
-| `OUTPOST_SECURE_COOKIES` | `false` | | Mark the session cookie `Secure`. Set to `true` behind HTTPS. |
 | `OUTPOST_KIWIX_URL` | unset | set by Compose to `http://kiwix:8080` | Address of a kiwix-serve that someone else runs. |
 | `OUTPOST_KIWIX_BIN` | unset | | Path of a kiwix-serve program for Outpost to run itself. Ignored when `OUTPOST_KIWIX_URL` is set. |
 | `OUTPOST_KIWIX_LIBRARY_PATH` | `<data dir>/kiwix/library.xml` | `/kiwix/library.xml` | Where Outpost writes the library file kiwix-serve reads. |
@@ -463,7 +439,7 @@ value the image sets when it differs from the default.
 | `OUTPOST_WEB_DIR` | the built web app shipped with Outpost | | Folder the web app is served from. |
 | `OUTPOST_MAX_UPLOAD_MB` | `2048` | | Largest single uploaded file, in megabytes. |
 | `OUTPOST_DOWNLOAD_HOSTS` | empty | | Extra hosts a catalogue download may start from, comma separated. |
-| `OUTPOST_ALLOW_PRIVATE_DOWNLOADS` | `false` | | Let downloads connect to private addresses, for a mirror on your own network. |
+| `OUTPOST_ALLOW_PRIVATE_DOWNLOADS` | `false` | | Let downloads, including files saved from links, connect to private addresses, for a mirror on your own network. |
 | `OUTPOST_PORTABLE` | `false` | | Set by the launchers on a portable drive. Quieter logging, no removable-media roots, and the port moves up if 8080 is taken. |
 | `OUTPOST_APP_DIR` | the running packaged app, or `dist/app` from source | | Packaged app copied onto portable drives. |
 | `OUTPOST_NODE_DIST_URL` | `https://nodejs.org/dist` | | Where Node runtimes for portable drives are fetched from; set for a mirror. |
@@ -484,20 +460,27 @@ Boolean variables accept `1`, `true`, `yes` or `on`.
 | Variable | Default | Meaning |
 | --- | --- | --- |
 | `OUTPOST_BIND` | `127.0.0.1` | Host address the port is published on. `0.0.0.0` shares it on the network. |
-| `OUTPOST_IMAGE` | `ghcr.io/tyleruk2000/outpost:latest` | Image to run. |
+| `OUTPOST_IMAGE` | `outpost:local` | Name of the image Compose builds and runs. |
 | `OUTPOST_MEMORY_LIMIT` | `1g` | Memory ceiling for the `outpost` container. |
 | `KIWIX_MEMORY_LIMIT` | `512m` | Memory ceiling for the `kiwix` container. |
 
 `compose.yaml` passes these server variables from `.env` into the container:
-`OUTPOST_LAN_ACCESS`, `OUTPOST_AUTH`, `OUTPOST_ALLOWED_HOSTS`, `OUTPOST_SECURE_COOKIES`,
-`OUTPOST_MAX_UPLOAD_MB`, `OUTPOST_DOWNLOAD_HOSTS` and `OUTPOST_ALLOW_PRIVATE_DOWNLOADS`.
-It sets `OUTPOST_PUBLISHED_ADDRESS` from `OUTPOST_BIND` itself. Any other server
-variable has no effect until you add it to the `environment:` block of the `outpost`
-service.
+`OUTPOST_LAN_ACCESS`, `OUTPOST_ALLOWED_HOSTS`, `OUTPOST_MAX_UPLOAD_MB`,
+`OUTPOST_DOWNLOAD_HOSTS` and `OUTPOST_ALLOW_PRIVATE_DOWNLOADS`. It sets
+`OUTPOST_PUBLISHED_ADDRESS` from `OUTPOST_BIND` itself. Any other server variable has
+no effect until you add it to the `environment:` block of the `outpost` service.
 
 Settings that people change while Outpost runs (download concurrency, search options,
 map sources) are not environment variables. They are stored in the database; see
 `GET /api/settings` in [api.md](api.md#settings).
+
+### Variables from older versions
+
+An `.env` written for an earlier build may still set `OUTPOST_AUTH`,
+`OUTPOST_ALLOW_UNAUTHENTICATED_LAN` or `OUTPOST_SECURE_COOKIES`. They belonged to
+accounts, which Outpost does not have. They are ignored, not an error; delete the
+lines. On its first start, this version also removes the `users` and `sessions` tables
+from an existing database.
 
 ## If something goes wrong
 

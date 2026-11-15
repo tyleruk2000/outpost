@@ -1,7 +1,7 @@
 # Contributing to Outpost
 
 Thank you for wanting to help. This page covers setting up, finding your way around,
-running the tests, and what a change needs before it can be merged.
+running the checks, and what a change needs before it can be merged.
 
 Outpost is MIT-licensed. By contributing you agree that your contribution is licensed
 under the same terms (see [LICENSE](LICENSE)). Please also read the
@@ -95,6 +95,25 @@ They start their own servers on ports 8471 and 8472, on throwaway data directori
 To run against the source instead of the packaged app, build the web app
 (`pnpm build`) and set `OUTPOST_E2E_SOURCE=1`.
 
+### Before you send a change
+
+Nothing builds or tests Outpost for you: there is no build service, so the checks are
+the ones you run. Run all of them, from the repository root:
+
+```bash
+pnpm lint
+pnpm typecheck
+pnpm --filter @outpost/server test
+pnpm --filter @outpost/web test
+pnpm catalog:validate
+node scripts/build-app.mjs
+pnpm e2e
+```
+
+`pnpm e2e` tests the packaged app that `node scripts/build-app.mjs` has just written,
+so keep that order. If you could not run one of them (the browser tests need Chromium
+installed, for example), say so in the pull request.
+
 ### Rules for tests
 
 - Tests must not reach the internet. Use a local `http.createServer` fixture.
@@ -137,10 +156,9 @@ pnpm format    # fix what can be fixed
   when it is not obvious.
 - Keep a pull request to one subject. Say what it changes, why, and how you tested it.
   Screenshots (light, dark and phone width) help for anything visible.
-- Before opening it, run `pnpm lint`, `pnpm typecheck`, the server and web tests, and
-  `pnpm catalog:validate`. CI runs these, the browser tests, the server tests on Linux
-  ARM64, macOS and Windows, an image build for amd64 and arm64, a dependency audit and
-  CodeQL.
+- Before opening it, run [the checks](#before-you-send-a-change) and say which system
+  you ran them on. Outpost has only been tried on macOS on Apple Silicon, so a run on
+  Linux or Windows is useful news either way.
 - Update the documentation in `docs/` and the [changelog](CHANGELOG.md) when behaviour
   changes.
 - New dependencies must be MIT, ISC, BSD or Apache-2.0 licensed. See "Dependency

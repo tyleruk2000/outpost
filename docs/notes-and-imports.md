@@ -101,9 +101,9 @@ Deleting a page moves it, and its sub-pages, to the trash. Nothing is lost.
 - A page in the trash keeps everything and can be restored. Its sub-pages come back
   with it. If its old parent is gone, it returns to the top level.
 - A page in the trash cannot be edited or moved, and is not found by search.
-- **Deleting for good** is a separate step, only possible from the trash, and needs an
-  administrator. It removes the page, its sub-pages in the trash, and any attachments
-  that no remaining page uses.
+- **Deleting for good** is a separate step, only possible from the trash. It removes
+  the page, its sub-pages in the trash, and any attachments that no remaining page
+  uses.
 - The trash is not emptied automatically.
 
 ### Attachments

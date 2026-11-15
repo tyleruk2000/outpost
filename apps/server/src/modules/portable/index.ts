@@ -146,7 +146,7 @@ async function listFiles(root: string, relative = ""): Promise<Array<{ rel: stri
 
 export async function registerPortable(app: FastifyInstance, ctx: AppContext): Promise<void> {
   const { config, db, jobs } = ctx;
-  const { auth, storage } = ctx.services;
+  const { storage } = ctx.services;
   const nodeVersion = process.version;
   let http: HttpClient | undefined;
   const client = () => (http ??= createHttpClient({ allowPrivate: config.allowPrivateDownloads }));
@@ -574,8 +574,7 @@ export async function registerPortable(app: FastifyInstance, ctx: AppContext): P
   });
 
   // ── Routes ──
-  app.get("/api/portable/status", async (request) => {
-    auth.requireAdmin(request);
+  app.get("/api/portable/status", async () => {
     return {
       runningFromDrive: config.portable,
       packagedAppAvailable: bundleAvailable(),
@@ -591,19 +590,16 @@ export async function registerPortable(app: FastifyInstance, ctx: AppContext): P
   });
 
   app.get<{ Querystring: { path?: string } }>("/api/portable/inspect", async (request) => {
-    auth.requireAdmin(request);
     if (!request.query.path) throw badRequest("Say which folder to look at with ?path=.");
     const target = resolveTarget(request.query.path);
     return { path: target, drive: (await readManifest(target)) ?? null };
   });
 
   app.post("/api/portable/plan", async (request) => {
-    auth.requireAdmin(request);
     return plan(requestSchema.parse(request.body));
   });
 
   app.post("/api/portable/build", async (request) => {
-    auth.requireAdmin(request);
     const body = requestSchema.parse(request.body);
     const current = await plan(body);
     if (current.problems.length > 0) throw conflict(current.problems[0]!, { problems: current.problems });
@@ -623,7 +619,6 @@ export async function registerPortable(app: FastifyInstance, ctx: AppContext): P
   });
 
   app.post("/api/portable/runtimes", async (request) => {
-    auth.requireAdmin(request);
     const body = z.object({ platforms: z.array(z.enum(PORTABLE_PLATFORMS)).min(1) }).parse(request.body);
     const job = jobs.enqueue("portable.runtimes", body, {
       title: "Download programs for portable drives",

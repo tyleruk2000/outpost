@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Badge, Tooltip } from "@/components/ui/misc";
 import { api, errorMessage } from "@/lib/api";
-import { useIsAdmin } from "@/lib/queries";
 import { cn, formatDateTime, formatNumber, plural } from "@/lib/utils";
 import { SavedField } from "./document-field";
 import { copyText, documentKeys, isReading, kindOfDocument } from "./document-meta";
@@ -160,7 +159,6 @@ export function DocumentDetails({
   onDeleted: () => void;
 }) {
   const client = useQueryClient();
-  const admin = useIsAdmin();
   const facets = useQuery({ queryKey: documentKeys.facets, queryFn: () => api.get<DocumentFacets>("/api/documents/facets") });
   const kind = kindOfDocument(document);
 
@@ -239,7 +237,7 @@ export function DocumentDetails({
 
       <TextStatus document={document} onDocument={accept} />
 
-      {admin ? <DeleteDocument document={document} locationName={locationName} onDeleted={onDeleted} /> : null}
+      <DeleteDocument document={document} locationName={locationName} onDeleted={onDeleted} />
     </>
   );
 }

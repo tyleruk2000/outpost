@@ -24,7 +24,7 @@ interface MovePayload extends Record<string, unknown> {
 
 export function registerDocumentMoves(app: FastifyInstance, ctx: AppContext): void {
   const { db, jobs } = ctx;
-  const { auth, storage } = ctx.services;
+  const { storage } = ctx.services;
 
   const elsewhere = (locationId: string) => db.select().from(documents).where(ne(documents.locationId, locationId)).all();
 
@@ -104,7 +104,6 @@ export function registerDocumentMoves(app: FastifyInstance, ctx: AppContext): vo
   });
 
   app.post("/api/documents/move", async (request) => {
-    auth.requireAdmin(request);
     const body = z.object({ locationId: z.string().min(1) }).parse(request.body);
     const target = storage.get(body.locationId);
     if (target.status !== "available") throw new AppError("storage_unavailable", `"${target.name}" is not connected.`);

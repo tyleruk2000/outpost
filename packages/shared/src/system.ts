@@ -1,20 +1,17 @@
-export interface SessionInfo {
-  authRequired: boolean;
-  setupRequired: boolean;
-  setupTokenRequired: boolean;
-  lanAccess: boolean;
-  user: { id: string; username: string; role: "admin" | "member" } | null;
-}
-
 export interface SystemInfo {
   version: string;
   packaged: boolean;
   portable: boolean;
   node: string;
   platform: string;
+  /** Where the server runs, for the things that depend on it (connecting network shares). */
+  host: {
+    os: "macos" | "linux" | "windows" | "other";
+    /** Running inside a container, where the host's drives are only what was mounted in. */
+    inContainer: boolean;
+  };
   uptimeSeconds: number;
   lanAccess: boolean;
-  authRequired: boolean;
   resources: {
     processRssBytes: number;
     heapUsedBytes: number;

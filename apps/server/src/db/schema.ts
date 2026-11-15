@@ -15,32 +15,6 @@ const createdAt = () => integer("created_at").notNull();
 const updatedAt = () => integer("updated_at").notNull();
 const json = <T>(name: string) => text(name, { mode: "json" }).$type<T>();
 
-// ── Accounts ────────────────────────────────────────────────────────────────
-
-export const users = sqliteTable("users", {
-  id: id(),
-  username: text("username").notNull().unique(),
-  passwordHash: text("password_hash").notNull(),
-  role: text("role", { enum: ["admin", "member"] }).notNull(),
-  createdAt: createdAt(),
-  lastLoginAt: integer("last_login_at"),
-});
-
-export const sessions = sqliteTable(
-  "sessions",
-  {
-    /** SHA-256 of the cookie token. The token itself is never stored. */
-    id: id(),
-    userId: text("user_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    createdAt: createdAt(),
-    expiresAt: integer("expires_at").notNull(),
-    userAgent: text("user_agent"),
-  },
-  (table) => [index("sessions_user_idx").on(table.userId)],
-);
-
 export const settings = sqliteTable("settings", {
   key: text("key").primaryKey(),
   value: json<unknown>("value").notNull(),
@@ -64,6 +38,38 @@ export const storageLocations = sqliteTable("storage_locations", {
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });
+
+/**
+ * Network shares a person connected from the Storage screen. This is what is needed to
+ * connect again, and nothing else: there is deliberately no column for a password. If
+ * the person chose to keep it, it is in the operating system's keychain, not here.
+ */
+export const networkShares = sqliteTable(
+  "network_shares",
+  {
+    id: id(),
+    /** Host name or address as typed, lower case. */
+    server: text("server").notNull(),
+    port: integer("port").notNull().default(445),
+    share: text("share").notNull(),
+    userName: text("user_name").notNull(),
+    /** A keychain item exists for this share. */
+    passwordInKeychain: integer("password_in_keychain", { mode: "boolean" }).notNull().default(false),
+    /** Connect it again when Outpost starts. Turned off by "Disconnect". */
+    autoConnect: integer("auto_connect", { mode: "boolean" }).notNull().default(true),
+    /** Where it was last mounted, and the address that was used, to recognise it again. */
+    mountPath: text("mount_path"),
+    lastAddress: text("last_address"),
+    /** Why the last attempt to connect failed; null after a success. */
+    lastError: text("last_error", {
+      enum: ["wrong_password", "server_not_found", "share_not_found", "needs_password", "failed"],
+    }),
+    lastConnectedAt: integer("last_connected_at"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [uniqueIndex("network_shares_address_idx").on(table.server, table.port, table.share)],
+);
 
 // ── Background work ─────────────────────────────────────────────────────────
 
@@ -156,7 +162,7 @@ export const downloads = sqliteTable(
     id: id(),
     jobId: text("job_id"),
     /** What kind of thing is being fetched; decides how it is installed afterwards. */
-    kind: text("kind", { enum: ["zim", "map", "terrain", "places", "file", "model"] }).notNull(),
+    kind: text("kind", { enum: ["zim", "map", "terrain", "places", "file", "model", "document"] }).notNull(),
     catalogEntryId: text("catalog_entry_id"),
     title: text("title").notNull(),
     url: text("url").notNull(),

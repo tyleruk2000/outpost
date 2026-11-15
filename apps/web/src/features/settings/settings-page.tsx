@@ -2,16 +2,15 @@ import { formatBytes, type Settings } from "@outpost/shared";
 import { Monitor, Moon, Sun } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { useLocation } from "react-router";
-import { ErrorState, Notice, Page, PageHeader } from "@/components/page";
+import { ErrorState, Page, PageHeader } from "@/components/page";
 import { Input } from "@/components/ui/input";
 import { Segmented, Skeleton, Switch } from "@/components/ui/misc";
-import { useIsAdmin, useSession, useSettings, useSystem, useUpdateSettings } from "@/lib/queries";
+import { useSettings, useSystem, useUpdateSettings } from "@/lib/queries";
 import { useTheme } from "@/lib/theme";
 import { cn, plural } from "@/lib/utils";
 import { BackupSection } from "./backup-section";
 import { SettingRow, SettingsSection, TextSetting } from "./parts";
 import { SemanticSection } from "./semantic-section";
-import { UsersSection } from "./users-section";
 
 /** A number field that saves when the person leaves it or presses Enter, and reverts if invalid. */
 function NumberSetting({
@@ -70,11 +69,9 @@ function Fact({ label, value }: { label: string; value: ReactNode }) {
 export default function SettingsPage({ extraSections }: { extraSections?: ReactNode }) {
   const settings = useSettings();
   const system = useSystem();
-  const session = useSession();
   const update = useUpdateSettings();
-  const admin = useIsAdmin();
   const { theme, setTheme, reading, setReading } = useTheme();
-  const disabled = !admin || update.isPending;
+  const disabled = update.isPending;
   const save = <K extends keyof Settings>(key: K, value: Settings[K]) => update.mutate({ [key]: value } as Partial<Settings>);
   const s = settings.data;
   const info = system.data;
@@ -90,11 +87,6 @@ export default function SettingsPage({ extraSections }: { extraSections?: ReactN
   return (
     <Page>
       <PageHeader title="Settings" />
-      {!admin ? (
-        <Notice tone="info" className="mb-8">
-          You can change how Outpost looks for you. Other settings belong to an administrator.
-        </Notice>
-      ) : null}
 
       <SettingsSection id="appearance" title="Appearance" description="Saved in this browser, so each device can have its own.">
         <SettingRow
@@ -297,33 +289,30 @@ export default function SettingsPage({ extraSections }: { extraSections?: ReactN
 
           {extraSections}
 
-          {admin ? <BackupSection /> : null}
-          {admin && session.data?.authRequired ? <UsersSection /> : null}
+          <BackupSection />
         </>
       )}
 
       <SettingsSection
         id="access"
-        title="Network and sign-in"
+        title="Who can use this library"
         description="Set when the server starts, not from this screen, so that nobody on the network can open Outpost up from a browser."
       >
         <dl>
-          <Fact
-            label="Reachable from other devices"
-            value={session.data?.lanAccess ? "Yes, on your local network" : "No, this device only"}
-          />
-          <Fact label="Sign-in required" value={session.data?.authRequired ? "Yes" : "No"} />
-          {session.data?.user && session.data.authRequired ? (
-            <Fact
-              label="Signed in as"
-              value={`${session.data.user.username} (${session.data.user.role === "admin" ? "administrator" : "member"})`}
-            />
-          ) : null}
+          <Fact label="Reachable from" value={info?.lanAccess ? "Every device on your local network" : "This device only"} />
+          <Fact label="Accounts" value="None. Anyone who can reach Outpost can read, add, change and delete." />
         </dl>
         <p className="text-small text-ink-muted">
-          To let phones and other computers on your network use this library, set{" "}
-          <span className="font-mono text-[0.8125rem] text-ink">OUTPOST_LAN_ACCESS=true</span> in the{" "}
-          <span className="font-mono text-[0.8125rem] text-ink">.env</span> file and restart. Sign-in is turned on with it.
+          {info?.lanAccess
+            ? "Outpost is shared with your network and has no sign-in, so use it only on a network where you trust everyone, such as your home. Do not forward its port to the internet."
+            : "To let phones and other computers on your network use this library, set "}
+          {info?.lanAccess ? null : (
+            <>
+              <span className="font-mono text-[0.8125rem] text-ink">OUTPOST_LAN_ACCESS=true</span> in the{" "}
+              <span className="font-mono text-[0.8125rem] text-ink">.env</span> file and restart. There is no sign-in: everyone on that
+              network will be able to use and change it.
+            </>
+          )}
         </p>
       </SettingsSection>
 

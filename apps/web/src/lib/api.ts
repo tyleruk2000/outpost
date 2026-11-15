@@ -41,7 +41,6 @@ async function parse<T>(response: Response): Promise<T> {
   if (response.ok) return (isJson ? await response.json() : await response.text()) as T;
   if (isJson) {
     const body = (await response.json()) as ApiErrorBody;
-    if (response.status === 401) window.dispatchEvent(new CustomEvent("outpost:unauthenticated"));
     throw new ApiError(response.status, body.error.code, body.error.message, body.error.details);
   }
   throw new ApiError(response.status, "http", `The server answered with an error (${response.status}).`);

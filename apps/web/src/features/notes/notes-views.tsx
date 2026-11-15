@@ -8,7 +8,6 @@ import { EmptyState, ErrorState, Page, PageHeader, Section } from "@/components/
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/misc";
-import { useIsAdmin } from "@/lib/queries";
 import { plural, timeAgo } from "@/lib/utils";
 import { displayTitle, useNoteActions, useTemplates, useTrash } from "./notes-data";
 import { TemplateList, useTemplateStarter } from "./notes-home";
@@ -38,7 +37,7 @@ function RowsSkeleton() {
   );
 }
 
-function TrashRow({ page, canDelete, onDelete }: { page: TrashedNote; canDelete: boolean; onDelete(page: TrashedNote): void }) {
+function TrashRow({ page, onDelete }: { page: TrashedNote; onDelete(page: TrashedNote): void }) {
   const actions = useNoteActions();
   const [restoring, setRestoring] = useState(false);
   const title = displayTitle(page.title);
@@ -71,11 +70,9 @@ function TrashRow({ page, canDelete, onDelete }: { page: TrashedNote; canDelete:
         >
           Restore
         </Button>
-        {canDelete ? (
-          <Button size="sm" variant="danger-ghost" onClick={() => onDelete(page)}>
-            Delete for good
-          </Button>
-        ) : null}
+        <Button size="sm" variant="danger-ghost" onClick={() => onDelete(page)}>
+          Delete for good
+        </Button>
       </div>
     </li>
   );
@@ -84,7 +81,6 @@ function TrashRow({ page, canDelete, onDelete }: { page: TrashedNote; canDelete:
 export function TrashView() {
   const trash = useTrash();
   const actions = useNoteActions();
-  const isAdmin = useIsAdmin();
   const [deleting, setDeleting] = useState<TrashedNote | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -93,11 +89,7 @@ export function TrashView() {
       <BackToNotes />
       <PageHeader
         title="Trash"
-        description={
-          isAdmin
-            ? "Pages you moved to the trash stay here, with their sub-pages, until they are restored or deleted for good."
-            : "Pages you moved to the trash stay here, with their sub-pages, until they are restored. Only an administrator can delete them for good."
-        }
+        description="Pages you moved to the trash stay here, with their sub-pages, until they are restored or deleted for good."
       />
       {trash.isPending ? (
         <RowsSkeleton />
@@ -110,7 +102,7 @@ export function TrashView() {
       ) : (
         <ul className="divide-y divide-border border-y border-border">
           {trash.data.map((page) => (
-            <TrashRow key={page.id} page={page} canDelete={isAdmin} onDelete={setDeleting} />
+            <TrashRow key={page.id} page={page} onDelete={setDeleting} />
           ))}
         </ul>
       )}

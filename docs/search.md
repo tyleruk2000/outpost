@@ -247,8 +247,7 @@ curl -X POST "http://localhost:8080/api/semantic/import" \
 ```
 
 The answer reports `vectorsInFile`, `passagesUpdated` and `vectorsWithoutPassage`.
-The settings screen has buttons for both steps. With sign-in on, both need an
-administrator's session.
+The settings screen has buttons for both steps.
 
 How it works, and what follows from it:
 

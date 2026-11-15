@@ -65,7 +65,7 @@ type IdParams = { Params: { id: string } };
 export async function registerDocuments(app: FastifyInstance, ctx: AppContext): Promise<void> {
   const service = createDocumentsService(ctx);
   ctx.services.documents = service;
-  const { auth } = ctx.services;
+
   registerDocumentMoves(app, ctx);
 
   // Another module may have registered the multipart parser already; twice is an error.
@@ -80,7 +80,6 @@ export async function registerDocuments(app: FastifyInstance, ctx: AppContext): 
    * answer has one result per file; a refused file does not fail the others.
    */
   app.post("/api/documents", async (request) => {
-    auth.requireUser(request);
     return { results: await receiveUpload(request, ctx, service) };
   });
 
@@ -91,19 +90,16 @@ export async function registerDocuments(app: FastifyInstance, ctx: AppContext): 
   app.get<IdParams>("/api/documents/:id", async (request) => ({ document: service.get(request.params.id) }));
 
   app.patch<IdParams>("/api/documents/:id", async (request) => {
-    auth.requireUser(request);
     return { document: await service.update(request.params.id, patchBody.parse(request.body)) };
   });
 
   app.delete<IdParams>("/api/documents/:id", async (request) => {
-    auth.requireAdmin(request);
     const { forget } = z.object({ forget: switchOn }).parse(request.query);
     await service.remove(request.params.id, { forget });
     return { ok: true };
   });
 
   app.post<IdParams>("/api/documents/:id/reextract", async (request) => {
-    auth.requireUser(request);
     const { document, job } = service.reextract(request.params.id);
     return { document, jobId: job.id };
   });

@@ -60,7 +60,7 @@ describe("moving documents between storage locations", () => {
     expect((await app.api("GET", `/api/documents/${first.id}`)).body.document.locationId).toBe(first.locationId);
   });
 
-  it("is for administrators, needs a connected destination, and checks for room", async () => {
+  it("needs a connected destination, and checks for room", async () => {
     expect((await app.api("POST", "/api/documents/move", { locationId: "nope" })).status).toBe(404);
     fs.renameSync(ssd.path, path.join(app.dir, "unplugged"));
     await app.api("POST", "/api/storage/refresh");

@@ -16,9 +16,9 @@ use it from whatever screen is nearby: a desktop at a desk, a phone in a tent, a
 in a workshop. Sessions are task-shaped. Someone is looking something up, reading,
 writing a note, checking a map, or tending the library (downloading, moving, verifying).
 
-The person who installs Outpost is often also its administrator, but should never feel
-like one. Storage, downloads and settings are part of the same calm product as reading
-and writing.
+The person who installs Outpost also looks after it, but should never feel like they
+are running a server. Storage, downloads and settings are part of the same calm product
+as reading and writing.
 
 ## Product Purpose
 

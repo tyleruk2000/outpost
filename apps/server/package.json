@@ -11,7 +11,6 @@
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
-    "@fastify/cookie": "^11.1.5",
     "@fastify/multipart": "^10.1.8",
     "@fastify/static": "^10.1.11",
     "@outpost/shared": "workspace:*",

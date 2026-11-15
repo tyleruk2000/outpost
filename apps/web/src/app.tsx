@@ -1,13 +1,13 @@
-import { useQueryClient } from "@tanstack/react-query";
-import { lazy, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { lazy } from "react";
 import { Route, Routes, useNavigate } from "react-router";
 import { AppShell } from "./components/app-shell";
 import { Page } from "./components/page";
+import { ServerDown } from "./components/server-down";
 import { Skeleton } from "./components/ui/misc";
-import { ServerDown, SignIn } from "./features/auth/auth-screens";
 import { NotesTree } from "./features/notes/notes-tree";
+import { api } from "./lib/api";
 import { EventsProvider } from "./lib/events";
-import { useSession } from "./lib/queries";
 
 const HomePage = lazy(() => import("./features/home/home-page"));
 const LibraryPage = lazy(() => import("./features/library/library-page"));
@@ -35,26 +35,22 @@ function NotFound() {
 }
 
 export function App() {
-  const session = useSession();
-  const client = useQueryClient();
+  // There are no accounts: the only thing to find out before drawing the app is whether its server is there.
+  const server = useQuery({
+    queryKey: ["health"],
+    queryFn: () => api.get<{ status: string }>("/api/health"),
+    staleTime: Number.POSITIVE_INFINITY,
+  });
   const navigate = useNavigate();
 
-  // A request anywhere came back 401: the session ended. Re-read it so the sign-in screen shows.
-  useEffect(() => {
-    const onUnauthenticated = () => void client.invalidateQueries({ queryKey: ["session"] });
-    window.addEventListener("outpost:unauthenticated", onUnauthenticated);
-    return () => window.removeEventListener("outpost:unauthenticated", onUnauthenticated);
-  }, [client]);
-
-  if (session.isPending) {
+  if (server.isPending) {
     return (
       <div className="grid min-h-dvh place-items-center bg-spine" aria-busy>
         <Skeleton className="h-2 w-40 opacity-30" />
       </div>
     );
   }
-  if (session.isError) return <ServerDown onRetry={() => session.refetch()} />;
-  if (session.data.authRequired && !session.data.user) return <SignIn session={session.data} />;
+  if (server.isError) return <ServerDown onRetry={() => server.refetch()} />;
 
   return (
     <EventsProvider enabled>

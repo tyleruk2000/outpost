@@ -2,15 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Route, Routes } from "react-router";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import {
-  adminSession,
-  collection,
-  fakeServer,
-  installBrowserStubs,
-  location,
-  memberSession,
-  renderScreen,
-} from "../downloads/test-support";
+import { collection, fakeServer, installBrowserStubs, location, renderScreen } from "../downloads/test-support";
 import CollectionPage from "./collection-page";
 import CollectionsPanel from "./collections-panel";
 
@@ -29,7 +21,6 @@ function serve(item = collection(), routes: Record<string, unknown> = {}) {
     "GET /api/collections": { collections: [item] },
     "GET /api/catalog": { categories: [], entries: [], manifests: [], problems: [], lastRefreshedAt: null },
     "GET /api/jobs": { jobs: [] },
-    "GET /api/auth/session": adminSession,
     "GET /api/storage/locations": { roots: ["/mnt"], locations },
     ...routes,
   });
@@ -102,15 +93,6 @@ describe("one collection", () => {
     expect(screen.getByRole("button", { name: "Move" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Remove" })).toBeEnabled();
     expect(screen.getByText("38858407a11076aa")).toBeInTheDocument();
-  });
-
-  it("offers members reading only", async () => {
-    serve(collection(), { "GET /api/auth/session": memberSession });
-    page();
-    await screen.findByRole("heading", { level: 1 });
-    await waitFor(() => expect(screen.queryByRole("button", { name: "Remove" })).not.toBeInTheDocument());
-    expect(screen.queryByRole("button", { name: "Check files" })).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Read" })).toBeInTheDocument();
   });
 
   it("starts a check and reports the outcome in plain words", async () => {

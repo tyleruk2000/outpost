@@ -117,7 +117,6 @@ async function receive(request: FastifyRequest, ctx: AppContext, service: Import
 export async function registerImports(app: FastifyInstance, ctx: AppContext): Promise<void> {
   const service = await createImportsService(ctx);
   ctx.services.imports = service;
-  const { auth } = ctx.services;
 
   // Whichever module registers first provides the parser; limits are given per request.
   if (!app.hasContentTypeParser("multipart/form-data")) {
@@ -125,7 +124,6 @@ export async function registerImports(app: FastifyInstance, ctx: AppContext): Pr
   }
 
   app.post("/api/imports", async (request): Promise<ImportResponse> => {
-    auth.requireUser(request);
     const upload = await receive(request, ctx, service);
     try {
       return { import: service.createFromUpload(upload) };
@@ -136,29 +134,24 @@ export async function registerImports(app: FastifyInstance, ctx: AppContext): Pr
   });
 
   app.get("/api/imports", async (request): Promise<ImportListResponse> => {
-    auth.requireUser(request);
     const query = z.object({ limit: z.coerce.number().int().min(1).max(100).default(30) }).parse(request.query);
     return { imports: service.list(query.limit) };
   });
 
   app.get("/api/imports/:id", async (request): Promise<ImportResponse> => {
-    auth.requireUser(request);
     return { import: service.get(idParams.parse(request.params).id) };
   });
 
   app.post("/api/imports/:id/commit", async (request): Promise<ImportResponse> => {
-    auth.requireUser(request);
     const { id } = idParams.parse(request.params);
     return { import: service.commit(id, commitBody.parse(request.body ?? {})) };
   });
 
   app.post("/api/imports/:id/cancel", async (request): Promise<ImportResponse> => {
-    auth.requireUser(request);
     return { import: service.cancel(idParams.parse(request.params).id) };
   });
 
   app.delete("/api/imports/:id", async (request): Promise<ImportResponse> => {
-    auth.requireUser(request);
     return { import: await service.discard(idParams.parse(request.params).id) };
   });
 }

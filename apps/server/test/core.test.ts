@@ -3,9 +3,9 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { loadConfig } from "../src/config.ts";
 import { resolveInside, safeFileName } from "../src/core/fs-safe.ts";
+import { isAllowedHost } from "../src/core/guard.ts";
 import { isPublicAddress } from "../src/core/http.ts";
 import { retryDelayMs } from "../src/core/jobs.ts";
-import { isAllowedHost } from "../src/modules/auth/index.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
 
 let app: TestApp | undefined;
@@ -15,27 +15,22 @@ afterEach(async () => {
 });
 
 describe("configuration", () => {
-  it("binds to localhost with sign-in off by default", () => {
+  it("answers only on this computer by default", () => {
     const config = loadConfig({});
     expect(config.host).toBe("127.0.0.1");
     expect(config.lanAccess).toBe(false);
-    expect(config.authRequired).toBe(false);
   });
 
-  it("turns sign-in on when LAN access is enabled", () => {
-    expect(loadConfig({ OUTPOST_LAN_ACCESS: "true" }).authRequired).toBe(true);
-  });
-
-  it("refuses to listen beyond this computer unless LAN access was chosen", () => {
+  it("refuses to listen beyond this computer unless sharing it on the network was chosen", () => {
     expect(() => loadConfig({ OUTPOST_HOST: "0.0.0.0" })).toThrow(/OUTPOST_LAN_ACCESS is not set/);
     expect(() => loadConfig({ OUTPOST_HOST: "192.168.1.20" })).toThrow(/OUTPOST_LAN_ACCESS is not set/);
-    expect(loadConfig({ OUTPOST_HOST: "0.0.0.0", OUTPOST_LAN_ACCESS: "true" }).authRequired).toBe(true);
+    expect(loadConfig({ OUTPOST_HOST: "0.0.0.0", OUTPOST_LAN_ACCESS: "true" }).lanAccess).toBe(true);
     // In a container the listening address says nothing; the published address decides.
     expect(() => loadConfig({ OUTPOST_HOST: "0.0.0.0", OUTPOST_IN_CONTAINER: "true" })).toThrow(/published only to this computer/);
     expect(() => loadConfig({ OUTPOST_HOST: "0.0.0.0", OUTPOST_IN_CONTAINER: "true", OUTPOST_PUBLISHED_ADDRESS: "0.0.0.0" })).toThrow(
       /published only to this computer/,
     );
-    expect(loadConfig({ OUTPOST_HOST: "0.0.0.0", OUTPOST_IN_CONTAINER: "true", OUTPOST_PUBLISHED_ADDRESS: "127.0.0.1" }).authRequired).toBe(
+    expect(loadConfig({ OUTPOST_HOST: "0.0.0.0", OUTPOST_IN_CONTAINER: "true", OUTPOST_PUBLISHED_ADDRESS: "127.0.0.1" }).lanAccess).toBe(
       false,
     );
     expect(
@@ -44,13 +39,13 @@ describe("configuration", () => {
         OUTPOST_IN_CONTAINER: "true",
         OUTPOST_PUBLISHED_ADDRESS: "0.0.0.0",
         OUTPOST_LAN_ACCESS: "true",
-      }).authRequired,
+      }).lanAccess,
     ).toBe(true);
   });
 
-  it("refuses LAN access without sign-in unless that is stated explicitly", () => {
-    expect(() => loadConfig({ OUTPOST_LAN_ACCESS: "true", OUTPOST_AUTH: "off" })).toThrow(/OUTPOST_AUTH is off/);
-    expect(loadConfig({ OUTPOST_LAN_ACCESS: "true", OUTPOST_AUTH: "off", OUTPOST_ALLOW_UNAUTHENTICATED_LAN: "true" }).authRequired).toBe(
+  it("ignores the settings that accounts used to have", () => {
+    // An .env file from before accounts were removed must not stop the server starting.
+    expect(loadConfig({ OUTPOST_AUTH: "on", OUTPOST_ALLOW_UNAUTHENTICATED_LAN: "true", OUTPOST_SECURE_COOKIES: "true" }).lanAccess).toBe(
       false,
     );
   });
@@ -120,7 +115,7 @@ describe("network guards", () => {
 });
 
 describe("request security", () => {
-  it("serves health without sign-in and rejects unknown hosts", async () => {
+  it("serves health and rejects unknown hosts", async () => {
     app = await createTestApp();
     expect((await app.api("GET", "/api/health")).body.status).toBe("ok");
     const rebind = await app.app.inject({ method: "GET", url: "/api/health", headers: { host: "attacker.example" } });
@@ -163,45 +158,37 @@ describe("request security", () => {
   });
 });
 
-describe("sign-in", () => {
-  it("requires an account once sign-in is on, and protects admin operations", async () => {
-    app = await createTestApp({ OUTPOST_AUTH: "on" });
-    expect((await app.api("GET", "/api/settings")).status).toBe(401);
-    const session = await app.api("GET", "/api/auth/session");
-    expect(session.body).toMatchObject({ authRequired: true, setupRequired: true, user: null });
-
-    expect((await app.api("POST", "/api/auth/setup", { username: "tyler", password: "short" })).status).toBe(400);
-    const setup = await app.api("POST", "/api/auth/setup", { username: "tyler", password: "correct horse battery" });
-    expect(setup.status).toBe(200);
-    const cookie = String(setup.headers["set-cookie"]).split(";")[0]!;
-    expect(String(setup.headers["set-cookie"])).toMatch(/HttpOnly/i);
-    expect((await app.api("POST", "/api/auth/setup", { username: "second", password: "correct horse battery" })).status).toBe(409);
-
-    const asAdmin = { headers: { cookie } };
-    expect((await app.api("GET", "/api/settings", undefined, asAdmin)).status).toBe(200);
-
-    const member = await app.api("POST", "/api/users", { username: "guest", password: "a long enough password", role: "member" }, asAdmin);
-    expect(member.status).toBe(200);
-    const login = await app.api("POST", "/api/auth/login", { username: "guest", password: "a long enough password" });
-    const memberCookie = String(login.headers["set-cookie"]).split(";")[0]!;
-    const asMember = { headers: { cookie: memberCookie } };
-    expect((await app.api("GET", "/api/settings", undefined, asMember)).status).toBe(200);
-    expect((await app.api("PATCH", "/api/settings", { "downloads.concurrency": 1 }, asMember)).status).toBe(403);
-    expect((await app.api("GET", "/api/users", undefined, asMember)).status).toBe(403);
-
-    expect((await app.api("POST", "/api/auth/login", { username: "guest", password: "wrong password!!" })).status).toBe(401);
-    await app.api("POST", "/api/auth/logout", {}, asMember);
-    expect((await app.api("GET", "/api/settings", undefined, asMember)).status).toBe(401);
+describe("sharing on the network", () => {
+  it("serves everything to anyone who can reach it, with no account", async () => {
+    app = await createTestApp({ OUTPOST_LAN_ACCESS: "true" });
+    const onLan = { headers: { host: "192.168.1.20:8080" } };
+    expect((await app.api("GET", "/api/settings", undefined, onLan)).status).toBe(200);
+    expect((await app.api("PATCH", "/api/settings", { "downloads.concurrency": 3 }, onLan)).status).toBe(200);
+    // There is nothing to sign in to.
+    for (const gone of ["/api/auth/session", "/api/auth/login", "/api/auth/setup", "/api/users"]) {
+      expect((await app.api("GET", gone, undefined, onLan)).status, gone).toBe(404);
+    }
+    expect(app.ctx.sqlite.prepare("SELECT name FROM sqlite_master WHERE name IN ('users', 'sessions')").all()).toEqual([]);
   });
 
-  it("asks for a setup token when the first-run form is reachable from the network", async () => {
+  it("still refuses a browser that was sent here by another site", async () => {
     app = await createTestApp({ OUTPOST_LAN_ACCESS: "true" });
-    const token = app.ctx.services.auth.setupToken;
-    expect(token).toBeTruthy();
-    const without = await app.api("POST", "/api/auth/setup", { username: "tyler", password: "correct horse battery" });
-    expect(without.status).toBe(403);
-    const withToken = await app.api("POST", "/api/auth/setup", { username: "tyler", password: "correct horse battery", setupToken: token });
-    expect(withToken.status).toBe(200);
+    const host = "192.168.1.20:8080";
+    // A page on another site pointing its own name at this server (DNS rebinding).
+    expect((await app.app.inject({ method: "GET", url: "/api/settings", headers: { host: "attacker.example" } })).statusCode).toBe(403);
+    // A form or script on another site trying to change something.
+    const forged = await app.app.inject({
+      method: "PATCH",
+      url: "/api/settings",
+      headers: { host, origin: "https://evil.example", "sec-fetch-site": "cross-site", "content-type": "application/json" },
+      payload: { "downloads.concurrency": 7 },
+    });
+    expect(forged.statusCode).toBe(403);
+    const withoutHeader = await app.app.inject({ method: "DELETE", url: "/api/documents/anything", headers: { host } });
+    expect(withoutHeader.statusCode).toBe(403);
+    // And it never offers its data to other origins.
+    const read = await app.app.inject({ method: "GET", url: "/api/settings", headers: { host, origin: "https://evil.example" } });
+    expect(read.headers["access-control-allow-origin"]).toBeUndefined();
   });
 });
 

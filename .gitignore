@@ -28,3 +28,6 @@ e2e/.tmp/
 
 # Map fonts and sprites are fetched at build time (scripts/fetch-map-assets.mjs)
 apps/web/public/map-assets/
+
+# Editor and agent tooling written per machine (absolute paths inside)
+.cursor/

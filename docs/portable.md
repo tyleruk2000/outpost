@@ -31,17 +31,17 @@ What travels:
   tick.
 - The database on the drive is a copy narrowed to match: it lists only the documents
   and collections that were copied, and one storage location, "This drive", which is
-  the drive's `library` folder. Download history, background jobs and sign-in sessions
-  are not copied. User accounts are (see [Security](#security)).
+  the drive's `library` folder. Download history, background jobs and the records of
+  past imports are not copied.
 
 The drive's library folder is found by its marker file, so the drive works whatever
 letter or mount point the next computer gives it.
 
 ## Making a drive
 
-You need to be an administrator, and the drive's folder must be somewhere Outpost can
-reach: inside a storage root. With Docker that means the drive is mounted under
-`/storage` (see [storage.md](storage.md#external-usb-drives)).
+The drive's folder must be somewhere Outpost can reach: inside a storage root. With
+Docker that means the drive is mounted under `/storage` (see
+[storage.md](storage.md#external-usb-drives)).
 
 Open **Storage → Take it with you → Make a portable drive**. There are three steps.
 
@@ -83,8 +83,8 @@ A drive runs only on the platforms you ticked when making it. Each one adds a No
 runtime of about 110 MB.
 
 What has been tested: the server test suite writes a drive and starts a server on the
-drive's own data and library folders, and the reader has been run from a drive on an Apple Silicon Mac. Starting a drive
-on Windows has not been tested by hand; see the
+drive's own data and library folders, and the reader has been run from a drive on an
+Apple Silicon Mac. Starting a drive on any other kind of computer is untried; see the
 [limits table](architecture.md#limits-and-trade-offs).
 
 ### Where the programs come from
@@ -182,11 +182,8 @@ the whole workspace as Markdown from Notes, documents from the Library.
 
 - **Local only.** From a drive, Outpost listens on `127.0.0.1`: only the computer the
   drive is plugged into can open it.
-- **No sign-in by default.** Whoever starts Outpost from the drive is its
-  administrator. Sign-in sessions are not copied to the drive.
 - **The drive is not encrypted.** Anyone who has the drive can read everything on it:
-  your notes, the documents and collections you copied, and the database, which
-  includes the user names and password hashes of the Outpost that made it. If that
+  your notes, your settings, and the documents and collections you copied. If that
   matters, use an encrypted drive (BitLocker, FileVault, LUKS or VeraCrypt) and unlock
   it before starting Outpost.
 - **Nothing is written to the host computer.** Data and settings stay in the drive's

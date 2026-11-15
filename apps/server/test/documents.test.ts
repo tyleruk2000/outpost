@@ -840,34 +840,3 @@ describe("the service, as other modules use it", () => {
     expect(after.extractionDetail).toContain("The file is missing");
   });
 });
-
-describe("permissions", () => {
-  const cookieOf = (headers: Record<string, unknown>) => String([headers["set-cookie"]].flat()[0]).split(";")[0]!;
-
-  it("lets members add and edit but only administrators delete", async () => {
-    app = await createTestApp({ OUTPOST_AUTH: "on" });
-    const setup = await app.api("POST", "/api/auth/setup", { username: "admin", password: "correct horse battery" });
-    const admin = { cookie: cookieOf(setup.headers) };
-    await app.api("POST", "/api/users", { username: "member", password: "another long password", role: "member" }, { headers: admin });
-    const login = await app.api("POST", "/api/auth/login", { username: "member", password: "another long password" });
-    const member = { cookie: cookieOf(login.headers) };
-
-    const { payload, headers } = multipart({}, [{ name: "shared.txt", content: "for everyone" }]);
-    expect((await app.api("POST", "/api/documents", payload, { headers })).status).toBe(401);
-    expect((await app.api("GET", "/api/documents")).status).toBe(401);
-
-    const uploaded = await app.api("POST", "/api/documents", payload, { headers: { ...headers, ...member } });
-    expect(uploaded.status).toBe(200);
-    const id = uploaded.body.results[0].document.id;
-    await app.ctx.jobs.whenIdle();
-
-    expect((await app.api("GET", `/api/documents/${id}/file`)).status).toBe(401);
-    expect((await app.api("GET", `/api/documents/${id}/file`, undefined, { headers: member })).status).toBe(200);
-    expect((await app.api("PATCH", `/api/documents/${id}`, { title: "Shared" }, { headers: member })).status).toBe(200);
-    expect((await app.api("POST", `/api/documents/${id}/reextract`, undefined, { headers: member })).status).toBe(200);
-
-    const denied = await app.api("DELETE", `/api/documents/${id}`, undefined, { headers: member });
-    expect(denied.status).toBe(403);
-    expect((await app.api("DELETE", `/api/documents/${id}`, undefined, { headers: admin })).status).toBe(200);
-  });
-});

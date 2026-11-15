@@ -135,13 +135,6 @@ describe("backup and restore", () => {
     expect(fs.existsSync(path.join(pending, "elsewhere"))).toBe(false);
   });
 
-  it("is for administrators only", async () => {
-    const app = await createTestApp({ OUTPOST_AUTH: "on" });
-    apps.push(app);
-    const response = await app.app.inject({ method: "GET", url: "/api/backup/download", headers: { host: "localhost" } });
-    expect(response.statusCode).toBe(401);
-  });
-
   it("only restarts itself when something will start it again", async () => {
     const app = await createTestApp();
     apps.push(app);

@@ -57,7 +57,7 @@ const EXPORT_FORMAT = "outpost-embeddings";
 
 export async function registerSemantic(app: FastifyInstance, ctx: AppContext): Promise<void> {
   const { sqlite, jobs } = ctx;
-  const { settings, search, auth } = ctx.services;
+  const { settings, search } = ctx.services;
   const index = createFlatVectorIndex(sqlite);
   const modelsDir = path.join(ctx.config.dataDir, "models");
 
@@ -275,8 +275,7 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
   // ── Routes ──
   app.get("/api/semantic/status", async () => status());
 
-  app.post("/api/semantic/index", async (request) => {
-    auth.requireAdmin(request);
+  app.post("/api/semantic/index", async () => {
     const provider = currentProvider();
     if (!provider) throw new AppError("conflict", "Turn semantic search on and choose a model first.");
     const check = await checkProvider(provider, 0);
@@ -286,7 +285,6 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
   });
 
   app.delete<{ Params: { modelId: string } }>("/api/semantic/models/:modelId", async (request) => {
-    auth.requireAdmin(request);
     const removed = index.removeModel(request.params.modelId);
     ctx.events.publish({ type: "semantic.changed" });
     return { removed };
@@ -299,7 +297,6 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
    * whatever ids its database gave them.
    */
   app.get<{ Querystring: { model?: string } }>("/api/semantic/export", async (request, reply) => {
-    auth.requireAdmin(request);
     const modelId = request.query.model ?? currentProvider()?.modelId;
     if (!modelId) throw badRequest("Say which model to export with ?model=.");
     const model = sqlite.prepare("SELECT id, provider, model, dimensions FROM embedding_models WHERE id = ?").get(modelId) as
@@ -324,16 +321,13 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
   app.addContentTypeParser(["application/gzip", "application/x-gzip", "application/octet-stream"], (_request, payload, done) =>
     done(null, payload),
   );
-  const adminBeforeBody = async (request: import("fastify").FastifyRequest) => {
-    // Checked before the body is read: a large upload is only accepted from an administrator,
-    // and only as one of the streamed types.
-    auth.requireAdmin(request);
+  const typeBeforeBody = async (request: import("fastify").FastifyRequest) => {
+    // Checked before the body is read: a large upload is only accepted as one of the streamed types.
     if (!/^application\/(gzip|x-gzip|octet-stream)\b/i.test(request.headers["content-type"] ?? "")) {
       throw new AppError("unsupported", "Send the exported .jsonl.gz file with Content-Type application/gzip.");
     }
   };
-  app.post("/api/semantic/import", { bodyLimit: 8 * 1024 * 1024 * 1024, onRequest: adminBeforeBody }, async (request) => {
-    auth.requireAdmin(request);
+  app.post("/api/semantic/import", { bodyLimit: 8 * 1024 * 1024 * 1024, onRequest: typeBeforeBody }, async (request) => {
     const body = request.body as Readable | undefined;
     if (!body || typeof body.pipe !== "function") throw badRequest("Send the exported .jsonl.gz file as the request body.");
     const gunzip = createGunzip();
@@ -417,7 +411,6 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
   });
 
   app.post("/api/semantic/test", async (request) => {
-    auth.requireAdmin(request);
     const body = z.object({ text: z.string().min(1).max(2000) }).parse(request.body);
     const provider = currentProvider();
     if (!provider) throw new AppError("conflict", "Turn semantic search on and choose a model first.");

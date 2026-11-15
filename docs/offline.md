@@ -11,6 +11,8 @@ still needs to reach the Outpost server, on the same computer or over your own n
 Everything you have already installed or written:
 
 - reading and searching documents, notes and installed reference collections;
+- opening a PDF that is inside a reference collection, and adding PDFs and e-books
+  from a collection to your documents (they are copied from the archive on your disk);
 - keyword search, and semantic search if its index is built and your embedding
   provider runs locally (see [search.md](search.md));
 - writing and organising notes, uploading documents, importing files;
@@ -32,6 +34,7 @@ Only actions that fetch something new. Each happens because a person pressed a b
 | Starting a catalogue download | The hosts listed in the manifests' `downloadHosts`; mirrors they redirect to |
 | Estimating or downloading a map region | `build-metadata.protomaps.dev` and `build.protomaps.com`, or the archive in the `maps.tileSource` setting; for terrain, the `maps.terrainSource` archive |
 | Downloading place names | `download.geonames.org` |
+| **Save to library** on a link in a reference page, or adding a page's linked files that are only on the internet | The host named in the link, and whatever it redirects to. This is the one place Outpost fetches from a host that no catalogue manifest lists. The address must be `http` or `https`, must end in a kind of file the library keeps, and must not be on this computer or a private network (unless the server was started with `OUTPOST_ALLOW_PRIVATE_DOWNLOADS=true`). |
 | Making a portable drive for a kind of computer for the first time | `nodejs.org` for the Node runtime; `download.kiwix.org` for the reference-collection reader |
 
 Once fetched, the Node runtimes and the reader are cached in the data directory, so
@@ -58,11 +61,14 @@ Building Outpost from source, or building the Docker image, also needs a connect
   (`apps/web/vite.config.ts`).
 - **Reference content is sealed in.** Pages from ZIM archives are served with a policy
   that only allows loading from Outpost's own origin, so an archived page cannot fetch
-  from the live web (`apps/server/src/modules/kiwix/index.ts`).
+  from the live web (`apps/server/src/modules/kiwix/index.ts`). A link that leaves the
+  archive is not followed: the reader shows where it goes, and fetching the file it
+  points at is a button you press.
 - **The server calls out only on request.** Outbound requests for downloads and
   catalogue look-ups go through one guarded client (`apps/server/src/core/http.ts`),
-  used by the catalogue, downloads, maps and portable modules. Nothing is scheduled:
-  there is no update check, no background refresh and no telemetry.
+  used by the catalogue, downloads, maps and portable modules. A file saved from a
+  link is an ordinary download through the same client. Nothing is scheduled: there is
+  no update check, no background refresh and no telemetry.
 - **Imports never download.** A picture at a web address in an imported page is kept
   as a link, not fetched.
 

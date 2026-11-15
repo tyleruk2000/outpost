@@ -4,9 +4,7 @@
  * The copy keeps all notes, tags, saved places, settings and the search index. It is
  * then narrowed to what actually travels on the drive: one storage location (the
  * drive's own library folder) and only the collections and documents that were chosen.
- * Machine-specific state (sessions, job and download history) is cleared, and so are
- * accounts: a drive runs for whoever holds it, without sign-in, and has no business
- * carrying other people's user names and password hashes around.
+ * Machine-specific state (job and download history) is cleared.
  */
 import Database from "better-sqlite3";
 
@@ -45,9 +43,8 @@ export function prepareDriveDatabase(file: string, contents: DriveContents): { c
         DELETE FROM collections WHERE id NOT IN (SELECT id FROM keep_collections);
         DELETE FROM downloads;
         DELETE FROM jobs;
-        DELETE FROM sessions;
-        DELETE FROM users;
         DELETE FROM imports;
+        DELETE FROM network_shares;
       `);
 
       // Everything that remains lives in the drive's one location, at the same relative paths.

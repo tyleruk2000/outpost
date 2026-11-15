@@ -11,10 +11,10 @@ import type { Config } from "./config.ts";
 import type { AppContext, Services } from "./core/context.ts";
 import { AppError } from "./core/errors.ts";
 import { EventBus } from "./core/events.ts";
+import { registerRequestGuard } from "./core/guard.ts";
 import { JobQueue } from "./core/jobs.ts";
 import { isBundled } from "./core/paths.ts";
 import { openDatabase } from "./db/client.ts";
-import { registerAuth } from "./modules/auth/index.ts";
 import { applyPendingRestore } from "./modules/backup/index.ts";
 import { modules } from "./modules/index.ts";
 import { createSettingsService } from "./modules/settings/service.ts";
@@ -101,7 +101,7 @@ export async function buildApp(config: Config): Promise<BuiltApp> {
   });
 
   ctx.services.settings = createSettingsService(ctx);
-  await registerAuth(app, ctx);
+  await registerRequestGuard(app, ctx);
   await registerStorage(app, ctx);
   await registerSystem(app, ctx);
   for (const register of modules) await register(app, ctx);

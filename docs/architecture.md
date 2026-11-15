@@ -53,9 +53,9 @@ inside the configured roots and carries on. If a *different* drive appears at th
 path, the marker does not match and the location is reported as disconnected rather
 than silently used.
 
-Browsers can only name folders inside the **storage roots** the administrator
-configured (`OUTPOST_STORAGE_ROOTS`). The server never accepts an absolute path from a
-request without checking it against those roots.
+Browsers can only name folders inside the **storage roots** set when the server starts
+(`OUTPOST_STORAGE_ROOTS`). The server never accepts an absolute path from a request
+without checking it against those roots.
 
 ### One job queue for all long work
 
@@ -96,14 +96,24 @@ it is maintained, it handles the format's full-text indexes, and running it as a
 separate process keeps its GPL code at arm's length from Outpost's MIT code.
 
 A ZIM archive is a copy of someone else's web site, scripts included. Served from
-Outpost's origin, those scripts could call Outpost's API as the signed-in person. So
-the browser never talks to kiwix-serve. Outpost proxies only article content and
-replaces the response's security policy with a `sandbox` that omits
-`allow-same-origin`. The page then runs in an origin of its own: it cannot read
-cookies, storage or API responses, and cannot load anything from the internet. Since
-cookies are not sent from a sandboxed page, access is carried by a short-lived signed
-token in the URL. This was checked in a real browser against kiwix-serve 3.8.2 with a
-Wikipedia archive.
+Outpost's origin, those scripts could call Outpost's API and change the library, just
+as the person reading can. So the browser never talks to kiwix-serve. Outpost proxies
+only article content and replaces the response's security policy with a `sandbox` that
+omits `allow-same-origin`. The page then runs in an origin of its own: it cannot read
+Outpost's storage or API responses, cannot send the header a state-changing request
+needs, and cannot load anything from the internet. This was checked in a real browser
+against kiwix-serve 3.8.2 with a Wikipedia archive.
+
+The frame cannot be inspected from outside, so the proxy adds a small script to each
+page that tells the reader around it which page is showing, which files the page links
+to, and which link was pressed. It runs before the archive's own scripts and keeps its
+own way of reading a link's address, because books made from web sites carry a script
+that makes every link report the address it had on the live site. The reader treats
+everything the frame says as untrusted. A PDF inside the archive opens in Outpost's
+own PDF viewer, read straight from the archive, and a PDF or e-book can be copied into
+the document library, which needs no connection. A link that really does leave the
+archive is never followed inside the frame; if it points at a file the library keeps,
+the reader offers to fetch it through the download manager.
 
 kiwix-serve trusts its library file and will not search a book that has no language
 recorded, so Outpost writes complete metadata, which it reads back from each archive.
@@ -126,12 +136,18 @@ search uses GeoNames data loaded into FTS5.
 
 ### Security posture
 
-- Binds to localhost by default. LAN access is a start-up setting, never changeable
-  from the browser, and turns sign-in on.
+- There are no accounts: whoever can reach Outpost can use all of it. What is
+  controlled is who can reach it, and what a browser can be tricked into doing. The
+  rules are in `core/guard.ts`.
+- Binds to localhost by default. Sharing it on the network is a start-up setting
+  (`OUTPOST_LAN_ACCESS`), never changeable from the browser, and the server refuses to
+  start on an address other devices can reach without it.
 - Every state-changing request must carry a custom header and come from the same
   origin. A page on another site cannot add the header without a CORS preflight, which
   is never approved. The Host header is checked against the names the server answers
-  to, which defeats DNS rebinding.
+  to, which defeats DNS rebinding. Every response carries `X-Content-Type-Options:
+  nosniff`, `Referrer-Policy: no-referrer`, `Cross-Origin-Opener-Policy: same-origin`
+  and, outside the reference proxy, `X-Frame-Options: SAMEORIGIN`.
 - The app's Content Security Policy is `default-src 'self'` with `connect-src 'self'`:
   the browser itself enforces that nothing is loaded from, or sent to, anywhere else.
 - Files people upload are served with `Content-Security-Policy: sandbox`, so an
@@ -140,13 +156,17 @@ search uses GeoNames data loaded into FTS5.
 - Downloads are limited to hosts named in catalogue manifests for the first request,
   and every connection, including each redirect hop, must land on a public address.
   Integrity comes from the checksum published by the source, not from the mirror.
+- The one fetch from a host no manifest lists is a file a person chooses to save from
+  a link in a reference page. It must be an `http` or `https` address ending in a kind
+  of file the library keeps, it goes through the same download manager and the same
+  public-address rule, and what arrives is kept only if it is the kind of file its name
+  says.
 - Archives are unpacked with path, size, count and ratio limits, and never onto paths
   outside the staging folder.
-- Passwords are hashed with scrypt. Sessions are random tokens stored hashed.
 - No telemetry. The server makes an outbound request only as the direct result of a
-  person's action: refreshing the catalogue, starting a download, estimating or
-  downloading a map region or place names, fetching the runtimes for a portable drive,
-  or, if they configured one, calling their own embedding server.
+  person's action: refreshing the catalogue, starting a download, saving a file from
+  a link, estimating or downloading a map region or place names, fetching the runtimes
+  for a portable drive, or, if they configured one, calling their own embedding server.
 
 See [security.md](security.md) for the threat model.
 
@@ -156,7 +176,7 @@ See [security.md](security.md) for the threat model.
 apps/server/src/
   config.ts          environment → configuration
   app.ts             builds the Fastify app (used by index.ts and by tests)
-  core/              context, jobs, events, errors, safe paths, guarded HTTP client
+  core/              context, request guard, jobs, events, errors, safe paths, guarded HTTP client
   db/                schema (Drizzle) and migrations
   modules/           one folder per feature; index.ts registers routes and a service
 apps/web/src/
@@ -170,7 +190,7 @@ e2e/                 Playwright tests against the packaged app
 ```
 
 Modules, in registration order: search, semantic, retrieval, documents, notes, imports,
-collections, kiwix, downloads, catalog, maps, backup, portable. A module may use the
+collections, kiwix, downloads, links, catalog, maps, backup, portable. A module may use the
 services of those before it. [development/server-modules.md](development/server-modules.md)
 is the contract a module works to.
 
@@ -191,7 +211,8 @@ These are deliberate, and stated so nobody has to discover them.
 | Map source | Depends on the Protomaps build host staying available for new downloads. | The source address is a setting; any PMTiles archive with the same schema works, including one you host. |
 | Notes collaboration | Last writer wins, with conflict detection; no live co-editing. | The editor could take a CRDT later; the storage format would need to change. |
 | Portable drives | A drive is a copy, not a sync partner: changes made on the drive are not merged back. | Merging two diverged libraries safely is a project of its own. |
-| Windows without Docker | Untried. The server suite is set up to run on Windows in CI, but no CI run has happened yet, and nobody has run the packaged app on Windows by hand. | A first green CI run, then a manual pass. |
+| Windows without Docker | Untried. Nobody has run the server tests or the packaged app on Windows. | A manual pass on a Windows machine. |
+| Access | No accounts and no per-person permissions: everyone who can reach Outpost can read, add, change and delete everything. | Outpost is for one household or one trusted network. Anything wider needs an authenticating proxy in front of it. |
 
 ## Dependency licences
 

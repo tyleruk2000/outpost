@@ -1,5 +1,5 @@
 import path from "node:path";
-import { expect, test, watchForErrors } from "./fixtures";
+import { api, expect, test, watchForErrors } from "./fixtures";
 
 test.describe("the shell", () => {
   test("opens on Home with every asset served locally and a strict content policy", async ({ page }) => {
@@ -90,5 +90,39 @@ test.describe("storage", () => {
     // Nothing outside the storage roots can be reached through the browser.
     const outside = await page.request.get(`/api/storage/browse?path=${encodeURIComponent(path.resolve("/etc"))}`);
     expect(outside.status()).toBe(403);
+  });
+
+  test("offers to connect a network share, and is honest about what it can do here", async ({ page }) => {
+    await page.goto("/storage");
+    await expect(page.getByRole("heading", { name: "Network shares" })).toBeVisible();
+    const { mode } = await api<{ mode: string }>(page, "GET", "/api/storage/shares");
+    test.skip(mode === "unsupported", "this platform has nothing to offer for shares");
+
+    await page.getByRole("button", { name: "Connect a network share" }).click();
+    const dialog = page.getByRole("dialog", { name: "Connect a network share" });
+
+    if (mode === "macos") {
+      // A Mac run directly connects the share itself, but only from the home network.
+      // 8.8.8.8 is refused before anything is contacted, so this needs no network.
+      await dialog.getByLabel("Server").fill("8.8.8.8");
+      await dialog.getByLabel("Share", { exact: true }).fill("media");
+      await dialog.getByLabel("User name").fill("walker");
+      await dialog.getByLabel("Password", { exact: true }).fill("not a real password");
+      await dialog.getByRole("button", { name: "Connect", exact: true }).click();
+      await expect(dialog.getByRole("alert")).toContainText("only connects to file servers on your own network");
+      // Nothing was remembered, and the password is not echoed anywhere on the page.
+      expect((await api<{ shares: unknown[] }>(page, "GET", "/api/storage/shares")).shares).toEqual([]);
+      await expect(page.getByText("not a real password")).toHaveCount(0);
+    } else {
+      // In a container or on Linux it cannot, says so, and writes out what to do instead.
+      await expect(dialog.getByText("Outpost cannot connect this share for you here")).toBeVisible();
+      await expect(dialog.getByLabel("Password")).toHaveCount(0);
+      await dialog.getByLabel("Server").fill("192.168.1.20");
+      await dialog.getByLabel("Share", { exact: true }).fill("media");
+      await dialog.getByLabel("User name").fill("walker");
+      await expect(dialog.getByRole("heading", { name: "What to do" })).toBeVisible();
+      await expect(dialog.getByText(mode === "docker" ? "type: cifs" : "//192.168.1.20/media", { exact: false }).first()).toBeVisible();
+      await expect(dialog.getByRole("button", { name: /Copy the text/ }).first()).toBeVisible();
+    }
   });
 });

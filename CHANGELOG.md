@@ -108,6 +108,16 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   and the mirror that served it, the checksum, and the destination.
 - Reading ZIM archives through kiwix-serve behind a sandboxing proxy, with search and
   title suggestions inside each collection.
+- Files inside a reference collection: a PDF opens in the built-in PDF viewer when its
+  link is pressed, and PDFs and e-books can be added to the document library straight
+  from the archive, with no connection.
+- A bar under the reader's header that lists every file the page links to, inside the
+  collection or out on the internet, and adds the chosen ones to the library at once.
+- Saving a file that a reference page links to on the internet: fetched through the
+  download manager into the document library, from public `http` and `https`
+  addresses only, and kept only if it is the kind of file its name says.
+- Links read before a web-site archive's own script can rewrite them, so a file inside
+  the archive is not mistaken for one on the internet.
 - Registering a ZIM archive that is already on a storage location.
 - Updating an installed collection to a newer version from the catalogue.
 
@@ -140,23 +150,27 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 
 #### Security
 
-- Local-only by default; LAN access as a start-up setting that turns sign-in on.
-- Accounts with administrator and member roles, scrypt password hashing, hashed
-  session tokens, a first-run setup token on a LAN, and slowed sign-in attempts.
-- Protection against requests from other sites, a Host allow-list, and a strict
-  Content Security Policy.
-- A guarded download client that refuses private addresses and unlisted hosts.
+- Local-only by default. Sharing Outpost with the network is a start-up setting
+  (`OUTPOST_LAN_ACCESS`) that cannot be changed from the browser, and the server
+  refuses to start on an address other devices can reach without it.
+- No accounts: everyone who can reach Outpost can read, add, change and delete
+  everything in it. LAN access is for a network where everyone is trusted.
+- Protection against requests from other sites (every state-changing request must
+  carry a custom header and come from the same origin), a Host allow-list against DNS
+  rebinding, and a strict Content Security Policy.
+- A guarded download client that refuses private addresses, and holds catalogue
+  downloads to the hosts their manifests list.
 - Limits on archive extraction; sanitising of imported Markdown and HTML into a fixed
   content model.
 - No telemetry, and no outbound request unless a person asks for one.
 
 #### Deployment
 
-- A Docker image for `linux/amd64` and `linux/arm64` and a Compose stack with a
-  kiwix-serve sidecar.
+- A Dockerfile for `linux/amd64` and `linux/arm64`, and a Compose stack that builds the
+  image locally (`outpost:local`) and runs it with a kiwix-serve sidecar.
 - A packaged app that runs with only a Node binary.
-- CI with lint, type checking, server tests on Linux, macOS and Windows, browser tests
-  with the internet blocked, image builds, a dependency audit and CodeQL.
+- Checks to run locally: lint, type checking, server and web tests, catalogue
+  validation, and browser tests against the packaged app with the internet blocked.
 
 ### Known limitations
 
@@ -182,10 +196,12 @@ These are deliberate or known, and are explained in
 - **Notes** have conflict detection but no live co-editing.
 - **A portable drive is a copy, not a sync partner.** Changes made on the drive are
   not merged back.
-- **Windows without Docker** is covered by the server test suite in CI but has not
-  been tested by hand.
-- **Everyone who can sign in can read everything.** There are no per-page or
-  per-person permissions.
+- **Tried on one platform.** Outpost has been run by hand on macOS on Apple Silicon,
+  including the Compose stack with the `arm64` image. Linux on x86-64, Intel Macs,
+  Windows, Raspberry Pi hardware and NAS products are untried. Nothing builds or tests
+  it automatically, and no image is published.
+- **No accounts.** Everyone who can reach Outpost can read and change everything. There
+  are no per-page or per-person permissions.
 - **No built-in HTTPS and no encryption at rest.** Use a reverse proxy and encrypted
   drives where that matters; see [docs/security.md](docs/security.md).
 - **The HTTP API is not versioned** and may change between releases.

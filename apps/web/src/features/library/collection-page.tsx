@@ -19,7 +19,7 @@ import { ErrorState, Notice, Page } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/misc";
 import { ApiError, api, errorMessage } from "@/lib/api";
-import { useIsAdmin, useStorage } from "@/lib/queries";
+import { useStorage } from "@/lib/queries";
 import { formatDate, formatDateTime, formatNumber } from "@/lib/utils";
 import { languageName, sizeText } from "../explore/catalog";
 import { DownloadDialog } from "../explore/download-dialog";
@@ -192,7 +192,6 @@ export default function CollectionPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const client = useQueryClient();
-  const isAdmin = useIsAdmin();
   const query = useCollection(id);
   const catalog = useCatalog();
   const activity = useCollectionActivity(id ?? "");
@@ -244,7 +243,7 @@ export default function CollectionPage() {
   const away = !collection.locationAvailable;
   const entry = collection.catalogEntryId ? catalog.data?.entries.find((item) => item.id === collection.catalogEntryId) : undefined;
   // The catalogue is where a new copy comes from: a newer version, or the same one when the file has gone missing.
-  const canFetchAgain = isAdmin && entry && entry.status === "installed" && entry.availability !== "unavailable";
+  const canFetchAgain = entry && entry.status === "installed" && entry.availability !== "unavailable";
   const TargetIcon = collection.kind === "zim" ? BookOpen : MapIcon;
 
   return (
@@ -314,25 +313,21 @@ export default function CollectionPage() {
             </Button>
           )
         ) : null}
-        {isAdmin ? (
-          <>
-            <Button onClick={() => verify.mutate()} loading={verify.isPending} disabled={away || activity.busy}>
-              {verify.isPending ? null : <ShieldCheck />} Check files
-            </Button>
-            <Button onClick={() => setMoving(true)} disabled={away || activity.busy || collection.status !== "installed"}>
-              <FolderInput /> Move
-            </Button>
-            <Button variant="danger-ghost" onClick={() => setRemoving(true)} disabled={activity.busy} className="md:ml-auto">
-              <Trash2 /> Remove
-            </Button>
-          </>
-        ) : null}
+        <Button onClick={() => verify.mutate()} loading={verify.isPending} disabled={away || activity.busy}>
+          {verify.isPending ? null : <ShieldCheck />} Check files
+        </Button>
+        <Button onClick={() => setMoving(true)} disabled={away || activity.busy || collection.status !== "installed"}>
+          <FolderInput /> Move
+        </Button>
+        <Button variant="danger-ghost" onClick={() => setRemoving(true)} disabled={activity.busy} className="md:ml-auto">
+          <Trash2 /> Remove
+        </Button>
       </div>
-      {isAdmin && activity.busy ? (
+      {activity.busy ? (
         <p className="mt-2 text-small text-ink-muted">Checking, moving and removing wait until the work below has finished.</p>
       ) : null}
 
-      <CollectionJobStatus activity={activity} canCancel={isAdmin} className="mt-6" />
+      <CollectionJobStatus activity={activity} className="mt-6" />
 
       <section className="mt-8" aria-labelledby="collection-details">
         <h2 id="collection-details" className="mb-2 text-lead font-semibold text-ink">
@@ -341,29 +336,32 @@ export default function CollectionPage() {
         <Details collection={collection} />
       </section>
 
-      {isAdmin ? (
-        <>
-          <MoveCollectionDialog collection={collection} activity={activity} open={moving} onOpenChange={setMoving} />
-          <RemoveCollectionDialog
-            collection={collection}
-            open={removing}
-            onOpenChange={setRemoving}
-            onRemoved={() => navigate(collectionsTab)}
-          />
-          <DownloadDialog
-            entry={entry}
-            open={updating}
-            onOpenChange={setUpdating}
-            replaces={collection.status === "missing" ? "missing" : "older"}
-            onStarted={() =>
-              toast.success(`Downloading “${collection.title}”`, {
-                description: "Progress is under Downloads.",
-                action: { label: "Open Downloads", onClick: () => navigate("/downloads") },
-              })
-            }
-          />
-        </>
-      ) : null}
+      <MoveCollectionDialog collection={collection} activity={activity} open={moving} onOpenChange={setMoving} />
+      <RemoveCollectionDialog
+        collection={collection}
+        open={removing}
+        onOpenChange={setRemoving}
+        onRemoved={() => navigate(collectionsTab)}
+      />
+      <DownloadDialog
+        entry={entry}
+        open={updating}
+        onOpenChange={setUpdating}
+        replaces={collection.status === "missing" ? "missing" : "older"}
+        onStarted={() => {
+          // Something that ships with Outpost is replaced on the spot: there is no download
+          // to follow, and this page's record has just been replaced by the new one.
+          if (entry?.source.type === "bundled") {
+            toast.success(`“${collection.title}” is up to date`);
+            navigate(collectionsTab);
+            return;
+          }
+          toast.success(`Downloading “${collection.title}”`, {
+            description: "Progress is under Downloads.",
+            action: { label: "Open Downloads", onClick: () => navigate("/downloads") },
+          });
+        }}
+      />
     </Page>
   );
 }

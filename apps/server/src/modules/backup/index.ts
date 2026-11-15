@@ -140,11 +140,9 @@ async function unpack(file: string, target: string): Promise<BackupManifest> {
 }
 
 export async function registerBackup(app: FastifyInstance, ctx: AppContext): Promise<void> {
-  const { auth } = ctx.services;
   const { dataDir } = ctx.config;
 
-  app.get("/api/backup/status", async (request) => {
-    auth.requireAdmin(request);
+  app.get("/api/backup/status", async () => {
     const kept = (await fs.promises.readdir(dataDir)).filter((name) => name.startsWith("before-restore-")).sort();
     return {
       restorePending: fs.existsSync(path.join(dataDir, PENDING, READY_MARKER)),
@@ -155,7 +153,6 @@ export async function registerBackup(app: FastifyInstance, ctx: AppContext): Pro
 
   /** Streams a backup as a zip. Nothing is written to the data directory except a temporary database snapshot. */
   app.get("/api/backup/download", async (request, reply) => {
-    auth.requireAdmin(request);
     // Making a backup takes a database snapshot, which is work. A page on another site
     // must not be able to set it off by pointing an image or a link here.
     const site = request.headers["sec-fetch-site"];
@@ -194,14 +191,12 @@ export async function registerBackup(app: FastifyInstance, ctx: AppContext): Pro
   // The backup is sent as the raw request body and streamed straight to disk.
   app.addContentTypeParser("application/zip", (_request, payload, done) => done(null, payload));
   /** Runs before the body is read, so nobody without the right can make the server receive it. */
-  const adminBeforeBody = async (request: import("fastify").FastifyRequest) => {
-    auth.requireAdmin(request);
+  const typeBeforeBody = async (request: import("fastify").FastifyRequest) => {
     if (!/^application\/zip\b/i.test(request.headers["content-type"] ?? "")) {
       throw new AppError("unsupported", "Send the backup .zip with Content-Type application/zip.");
     }
   };
-  app.post("/api/backup/restore", { bodyLimit: MAX_TOTAL_BYTES, onRequest: adminBeforeBody }, async (request) => {
-    auth.requireAdmin(request);
+  app.post("/api/backup/restore", { bodyLimit: MAX_TOTAL_BYTES, onRequest: typeBeforeBody }, async (request) => {
     const body = request.body as NodeJS.ReadableStream | undefined;
     if (!body || typeof body.pipe !== "function")
       throw badRequest("Send the backup .zip as the request body with Content-Type application/zip.");
@@ -233,13 +228,16 @@ export async function registerBackup(app: FastifyInstance, ctx: AppContext): Pro
       } catch {
         throw badRequest("The database inside that backup is damaged or is not an Outpost database, so it was not restored.");
       }
-      // A backup carries the state of the machine it was made on. Sign-ins and work in
-      // progress do not transfer: whoever holds a backup file must not thereby hold a
-      // session here, and its queued jobs must not start running on this machine.
+      // A backup carries the state of the machine it was made on. Work in progress does
+      // not transfer: its queued jobs must not start running on this machine. Nor do the
+      // network shares that machine had connected: this one would try to connect to them.
       const clean = new Database(staged);
       try {
+        // A backup made before network shares existed has no such table.
+        if (clean.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'network_shares'").get()) {
+          clean.exec("DELETE FROM network_shares");
+        }
         clean.exec(`
-          DELETE FROM sessions;
           DELETE FROM jobs;
           UPDATE downloads SET state = 'cancelled', job_id = NULL, error = 'This download was in progress when the backup was made.' WHERE state IN ('queued', 'running', 'verifying', 'paused');
           UPDATE imports SET state = 'discarded' WHERE state NOT IN ('completed', 'discarded');
@@ -264,8 +262,7 @@ export async function registerBackup(app: FastifyInstance, ctx: AppContext): Pro
     }
   });
 
-  app.delete("/api/backup/restore", async (request) => {
-    auth.requireAdmin(request);
+  app.delete("/api/backup/restore", async () => {
     await fs.promises.rm(path.join(dataDir, PENDING), { recursive: true, force: true });
     return { ok: true };
   });
@@ -274,8 +271,7 @@ export async function registerBackup(app: FastifyInstance, ctx: AppContext): Pro
    * Stops the server so that whatever supervises it (Docker's restart policy, the
    * portable launcher) starts it again. Refused when nothing would restart it.
    */
-  app.post("/api/system/restart", async (request, reply) => {
-    auth.requireAdmin(request);
+  app.post("/api/system/restart", async (_request, reply) => {
     if (process.env.OUTPOST_SUPERVISED !== "true") {
       throw new AppError("conflict", "Outpost cannot restart itself here. Stop it and start it again to finish.");
     }

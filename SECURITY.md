@@ -23,11 +23,11 @@ the maintainers can see.
 
 - The Outpost version, and how you run it: Docker Compose, from source, the packaged
   app, or a portable drive.
-- The relevant settings: whether LAN access and sign-in are on, and whether a reverse
-  proxy is in front.
-- What an attacker needs to start with (no account, a member account, a file they can
-  get you to upload or import, a page they can get you to visit, a catalogue manifest
-  they control).
+- The relevant settings: whether LAN access is on, and whether a reverse proxy is in
+  front.
+- What an attacker needs to start with (a device on the same network, a file they can
+  get you to upload or import, a page they can get you to visit, a link they can get
+  you to save, a catalogue manifest they control).
 - Steps to reproduce, ideally with a small proof of concept.
 - What the attacker gains.
 
@@ -51,19 +51,19 @@ against, what it is not, and where each control lives in the code. Reports are m
 useful when they show one of those protections failing, for example:
 
 - a page on another site reading from or changing an Outpost;
-- access without signing in when sign-in is on, or a member doing what only an
-  administrator may;
+- another device reaching an Outpost that was started without LAN access;
 - an uploaded, imported or downloaded file running script in Outpost's origin, or
   writing outside the folders it belongs in;
 - content from a reference collection escaping its sandbox;
 - Outpost being made to fetch from a private address;
 - the server contacting the internet without a person asking it to.
 
-Things the design does not claim to prevent, and which are therefore not
-vulnerabilities on their own: what an administrator can do; reading an unencrypted
-drive someone has physical access to; interception on a network when no HTTPS proxy is
-in use; and local programs on the same computer when sign-in is off. If you think one
-of those limits is wrong, an ordinary issue is the right place to say so.
+Outpost has no accounts. Anyone who can reach it can read, add, change and delete
+everything in it, and with LAN access on that is everyone on the network. That is how
+it is meant to work, not a vulnerability. Nor, on their own, are: reading an
+unencrypted drive someone has physical access to; interception on a network when no
+HTTPS proxy is in use; and what other programs on the same computer can do. If you
+think one of those limits is wrong, an ordinary issue is the right place to say so.
 
 Vulnerabilities in kiwix-serve, Node.js or other dependencies should be reported to
 those projects. Tell us as well if Outpost's use of them makes things worse.

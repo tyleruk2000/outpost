@@ -34,7 +34,6 @@ function readDeleteFiles(body: unknown, query: unknown): boolean {
 export async function registerCollections(app: FastifyInstance, ctx: AppContext): Promise<void> {
   const service = createCollectionsService(ctx);
   ctx.services.collections = service;
-  const { auth } = ctx.services;
 
   // Keep the search index in step with the table, e.g. after a database restore.
   service.reindex();
@@ -67,19 +66,16 @@ export async function registerCollections(app: FastifyInstance, ctx: AppContext)
   });
 
   app.delete<{ Params: { id: string } }>("/api/collections/:id", async (request) => {
-    auth.requireAdmin(request);
     const deleteFiles = readDeleteFiles(request.body, request.query);
     await service.remove(request.params.id, { deleteFiles });
     return { ok: true, deletedFiles: deleteFiles };
   });
 
   app.post<{ Params: { id: string } }>("/api/collections/:id/verify", async (request) => {
-    auth.requireAdmin(request);
     return { job: toJobDto(service.verify(request.params.id)) };
   });
 
   app.post<{ Params: { id: string } }>("/api/collections/:id/move", async (request) => {
-    auth.requireAdmin(request);
     const body = z.object({ locationId: z.string().min(1).max(100) }).parse(request.body);
     return { job: toJobDto(await service.move(request.params.id, body.locationId)) };
   });

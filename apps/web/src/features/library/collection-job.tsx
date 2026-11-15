@@ -78,12 +78,10 @@ const outcomeIcons = { success: <CircleCheck />, info: <Info />, warning: <Trian
 /** Progress of a check or move while it runs, then how it turned out. */
 export function CollectionJobStatus({
   activity,
-  canCancel,
   dismissible = true,
   className,
 }: {
   activity: CollectionActivity;
-  canCancel: boolean;
   /** Whether a finished job's outcome can be put away. Off inside a dialog, which has its own way out. */
   dismissible?: boolean;
   className?: string;
@@ -141,11 +139,9 @@ export function CollectionJobStatus({
             ? "The original stays in place and readable until the copy has been checked. Only then is it removed."
             : "The file is read from start to end and compared with its recorded checksum."}
         </p>
-        {canCancel ? (
-          <Button variant="ghost" size="sm" onClick={activity.cancel} loading={activity.cancelling} className="-mr-2.5">
-            {move ? "Cancel move" : "Cancel check"}
-          </Button>
-        ) : null}
+        <Button variant="ghost" size="sm" onClick={activity.cancel} loading={activity.cancelling} className="-mr-2.5">
+          {move ? "Cancel move" : "Cancel check"}
+        </Button>
       </div>
     </div>
   );

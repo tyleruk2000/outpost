@@ -4,7 +4,6 @@
  */
 export type ErrorCode =
   | "bad_request"
-  | "unauthenticated"
   | "forbidden"
   | "not_found"
   | "conflict"
@@ -18,7 +17,6 @@ export type ErrorCode =
 
 const statusByCode: Record<ErrorCode, number> = {
   bad_request: 400,
-  unauthenticated: 401,
   forbidden: 403,
   not_found: 404,
   conflict: 409,

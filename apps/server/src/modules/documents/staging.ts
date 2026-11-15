@@ -35,7 +35,7 @@ export function tooLarge(originalName: string, maxBytes: number): AppError {
   const megabytes = Math.floor(maxBytes / (1024 * 1024));
   return new AppError(
     "too_large",
-    `"${originalName}" is larger than the ${megabytes.toLocaleString("en")} MB this server accepts per file. An administrator can raise the limit with OUTPOST_MAX_UPLOAD_MB.`,
+    `"${originalName}" is larger than the ${megabytes.toLocaleString("en")} MB this server accepts per file. Whoever runs this server can raise the limit with OUTPOST_MAX_UPLOAD_MB.`,
     { maxBytes },
   );
 }
