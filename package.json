@@ -18,6 +18,7 @@
     "lint": "biome check .",
     "format": "biome check --write .",
     "catalog:validate": "node apps/server/src/cli/validate-catalog.ts",
+    "catalog:import-logbook73": "node apps/server/src/cli/import-logbook73.ts",
     "e2e": "pnpm --filter @outpost/e2e test"
   },
   "devDependencies": {

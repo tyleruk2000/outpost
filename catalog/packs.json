@@ -116,7 +116,7 @@
     {
       "id": "radio-uk",
       "name": "Amateur radio in the UK",
-      "description": "For a UK operator or someone working towards a licence: the reference sheets, Ofcom's licence conditions and guidance, the UK frequency allocation table, CB and PMR446 rules, the IARU Region 1 band plans and operating guide, and questions and answers from other operators.",
+      "description": "For a UK operator or someone working towards a licence: the reference sheets, the Radio Engineering Handbook to learn from, Ofcom's licence conditions and guidance, the UK frequency allocation table, CB and PMR446 rules, the IARU Region 1 band plans and operating guide, and questions and answers from other operators.",
       "entries": [
         "outpost.radio.uk-amateur-bands",
         "outpost.radio.world-amateur-bands",
@@ -125,6 +125,7 @@
         "outpost.radio.emergency-frequencies",
         "outpost.radio.licence-free-radio",
         "outpost.radio.broadcasts-weather-time",
+        "logbook73.handbook",
         "ofcom.amateur-radio-licence-conditions",
         "ofcom.amateur-radio-guidance",
         "ofcom.ir-2028-amateur-radio",
@@ -147,7 +148,7 @@
     {
       "id": "radio-us",
       "name": "Amateur radio in the United States",
-      "description": "For a US operator or someone studying for a licence: the reference sheets, the FCC's amateur and personal radio rules, the national allocation chart, the federal field operations guides for emergency communications, NOAA Weather Radio and the time stations, the IARU Region 2 band plan, and questions and answers from other operators.",
+      "description": "For a US operator or someone studying for a licence: the reference sheets, the Radio Engineering Handbook to learn from, the FCC's amateur and personal radio rules, the national allocation chart, the federal field operations guides for emergency communications, NOAA Weather Radio and the time stations, the IARU Region 2 band plan, and questions and answers from other operators.",
       "entries": [
         "outpost.radio.us-amateur-bands",
         "outpost.radio.world-amateur-bands",
@@ -157,6 +158,7 @@
         "outpost.radio.licence-free-radio",
         "outpost.radio.broadcasts-weather-time",
         "outpost.radio.preparedness-conventions",
+        "logbook73.handbook",
         "fcc.part-97-amateur-radio-service",
         "fcc.part-95-personal-radio-services",
         "ntia.us-frequency-allocation-chart",
@@ -169,6 +171,35 @@
         "iaru.ethics-and-operating-procedures",
         "iaru.emergency-telecommunications-guide",
         "kiwix.ham.stackexchange.com-en-all"
+      ]
+    },
+    {
+      "id": "radio-learning",
+      "name": "Learning amateur radio",
+      "description": "A beginner's course to read from the start: the Radio Engineering Handbook, with the operating reference and the worldwide band sheet beside it. All of it comes with Outpost, so adding it needs no connection.",
+      "entries": ["logbook73.handbook", "outpost.radio.operating-reference", "outpost.radio.world-amateur-bands"]
+    },
+    {
+      "id": "radio-guides",
+      "name": "Radio companion guides",
+      "description": "Book-length guides to 15 particular radios and interfaces, each with its menus explained, ready-made configurations and troubleshooting, and the handbook they lean on for theory. They come with Outpost, so adding them needs no connection. To add only the guide for your own radio, find it under Radio communications.",
+      "entries": [
+        "logbook73.guide.rt-950-pro",
+        "logbook73.guide.uv-5r",
+        "logbook73.guide.ft5dr",
+        "logbook73.guide.g90",
+        "logbook73.guide.x6100",
+        "logbook73.guide.x6200",
+        "logbook73.guide.uv-k5",
+        "logbook73.guide.rt-4d",
+        "logbook73.guide.rt-6d",
+        "logbook73.guide.gt-5r-mini",
+        "logbook73.guide.td-h3",
+        "logbook73.guide.rt95",
+        "logbook73.guide.trusdx",
+        "logbook73.guide.digirig",
+        "logbook73.guide.digipi",
+        "logbook73.handbook"
       ]
     },
     {
