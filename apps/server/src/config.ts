@@ -49,6 +49,7 @@ const envSchema = z.object({
   OUTPOST_DOWNLOAD_HOSTS: list,
   OUTPOST_PORTABLE: bool(false),
   OUTPOST_APP_DIR: z.string().optional(),
+  OUTPOST_NODE_DIST_URL: z.string().optional(),
   OUTPOST_LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).optional(),
 });
 
@@ -85,6 +86,8 @@ export interface Config {
   portable: boolean;
   /** Packaged app directory to copy when writing a portable drive. */
   appBundleDir: string;
+  /** Where Node runtimes for portable drives are fetched from. Defaults to nodejs.org; set for a mirror. */
+  nodeDistUrl?: string;
 }
 
 /**
@@ -149,12 +152,14 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     maxUploadBytes: parsed.OUTPOST_MAX_UPLOAD_MB * 1024 * 1024,
     allowPrivateDownloads: parsed.OUTPOST_ALLOW_PRIVATE_DOWNLOADS,
     extraDownloadHosts: parsed.OUTPOST_DOWNLOAD_HOSTS.map((host) => host.toLowerCase()),
-    logLevel: parsed.OUTPOST_LOG_LEVEL ?? (parsed.NODE_ENV === "test" ? "silent" : "info"),
+    // A portable drive runs in a window a person is looking at: keep it quiet.
+    logLevel: parsed.OUTPOST_LOG_LEVEL ?? (parsed.NODE_ENV === "test" ? "silent" : parsed.OUTPOST_PORTABLE ? "warn" : "info"),
     portable: parsed.OUTPOST_PORTABLE,
     appBundleDir: parsed.OUTPOST_APP_DIR
       ? path.resolve(parsed.OUTPOST_APP_DIR)
       : isBundled
         ? appRoot
         : path.join(appRoot, "dist/app"),
+    nodeDistUrl: parsed.OUTPOST_NODE_DIST_URL,
   };
 }

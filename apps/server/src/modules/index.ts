@@ -12,6 +12,7 @@ import { registerDocuments } from "./documents/index.ts";
 import { registerDownloads } from "./downloads/index.ts";
 import { registerMaps } from "./maps/index.ts";
 import { registerNotes } from "./notes/index.ts";
+import { registerPortable } from "./portable/index.ts";
 import { registerRetrieval } from "./retrieval/index.ts";
 import { registerSearch } from "./search/index.ts";
 import { registerSemantic } from "./semantic/index.ts";
@@ -29,4 +30,5 @@ export const modules: ModuleRegister[] = [
   registerCatalog,
   registerMaps,
   registerBackup,
+  registerPortable,
 ];
