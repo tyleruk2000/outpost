@@ -27,6 +27,16 @@ picture, not a surveyed path.
 
 ## What it does
 
+- **Packs to start from.** Explore opens with curated sets for a purpose (first things,
+  home preparedness, medicine, food and growing, the hills, radio for the UK and the
+  US, repair, a schoolroom, programming). A pack shows what is in it and how much
+  there is to fetch, lets you leave things out and choose where to keep them, and
+  then fetches the lot.
+- **Radio reference sheets, included.** Nine sheets ship with Outpost and need no
+  download: amateur bands for the UK, the US and worldwide, licence-free radio (PMR446,
+  CB, FRS, GMRS, MURS), emergency and calling frequencies, weather and time
+  broadcasts, repeaters and data modes, and an operating reference. Every figure was
+  read from the regulator's own documents; see [docs/radio.md](docs/radio.md).
 - **Reference collections.** Browse a curated catalogue (Wikipedia, medicine and first
   aid, repair guides, food preservation, engineering, and more) and download
   individual collections as [Kiwix](https://kiwix.org) ZIM archives, or official
@@ -156,8 +166,9 @@ Open **Explore**. The catalogue ships with the app and can be browsed offline; p
 collection, check its size against the free space on the location you pick, and
 download. Progress, pausing and retrying are on the **Downloads** screen.
 
-Collections are downloaded from their publishers' official endpoints and are never
-bundled with Outpost. Each entry states its licence, and says so plainly where the
+Start with **Packs** if you are not sure what to choose. Collections are downloaded
+from their publishers' official endpoints and are never bundled with Outpost; the only
+content that ships with it is its own reference sheets, written for the project. Each entry states its licence, and says so plainly where the
 maintainers have not verified it. To add entries, see [catalog/README.md](catalog/README.md).
 Which sources were considered, which are used and why the rest are not is in
 [docs/sources.md](docs/sources.md).
@@ -286,4 +297,5 @@ The projects that showed the way: Internet-in-a-Box, PrepperPi, Offgrid Pi,
 Paperless-ngx and Organic Maps. No code was taken from them.
 
 Every downloadable collection has its own licence, shown in the app. Outpost does not
-bundle or redistribute any of them.
+bundle or redistribute any of them. The reference sheets that ship with Outpost are
+the project's own compilations of facts from official sources, under its MIT licence.

@@ -403,9 +403,10 @@ Types: `packages/shared/src/catalog.ts`. See [catalog/README.md](../catalog/READ
 
 | Method and path | Purpose |
 | --- | --- |
-| `GET /api/catalog` | Categories, entries, manifests, manifest problems and the time of the last refresh (`CatalogResponse`). Works offline from the manifests and the last known details. |
+| `GET /api/catalog` | Categories, entries, packs, manifests, manifest and pack problems and the time of the last refresh (`CatalogResponse`). Works offline from the manifests and the last known details. |
 | `POST /api/catalog/refresh` | Asks each source what it currently offers (`CatalogRefreshSummary`). Needs a connection; `503 offline` without one. |
 | `POST /api/catalog/entries/:id/download` | Starts downloading an entry. Body: `locationId?`. `{ download, replacesCollectionId }`. When the entry is already installed and the source has a newer version, the old version is removed once the new one is installed and verified. |
+| `POST /api/catalog/packs/:id/install` | Fetches what a pack holds that is not here yet. Body: `locationId?`, `entryIds?` (part of the pack; all of it when omitted). Starts a download for each such entry and adds those that ship with Outpost. Answers `{ queued, added, already, failed }` (`CatalogPackInstallResponse`); one entry failing to start is reported in `failed` and does not stop the others. `404` for an unknown pack, `400` for an entry that is not in it. |
 | `POST /api/catalog/entries/:id/add` | Adds an entry that ships with Outpost, copying it into the library with no connection. Body: `locationId?`. Answers `{ collectionId, documentId?, replacedCollectionId }` (`CatalogAddResponse`). |
 
 ## Maps

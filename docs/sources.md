@@ -186,7 +186,8 @@ was checked should not arrive silently.
   were requested by document code and WHO records by record number; in both cases the
   title was confirmed from what came back before anything was used.
 - **The validator.** `node apps/server/src/cli/validate-catalog.ts` passes, and with
-  `--online` all 173 entries resolve at their source.
+  `--online` all 220 entries resolve at their source (checked again after the radio
+  sources were added).
 - **Conduct.** Requests were made one at a time with a generic client name and no
   personal information. `robots.txt` was read where present, and the ten-second crawl
   delay that the WHO and FAO repositories ask for was kept between downloads. The

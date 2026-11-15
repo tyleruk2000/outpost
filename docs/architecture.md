@@ -230,3 +230,4 @@ are not are kept outside the process or left out:
 | GeoNames | CC BY 4.0 | Downloaded by the user; credited where shown. |
 | Natural Earth | Public domain | Bundled world outline. |
 | Catalogue content | Per collection | Never bundled. Each entry states its licence, and says so when it has not been verified. |
+| Reference sheets (`catalog/bundled/`) | MIT, with the project | Bundled. The project's own compilations of facts from official sources, each listing its sources. |

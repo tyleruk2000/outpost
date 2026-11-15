@@ -107,6 +107,38 @@ There are three kinds of `source`:
    crawl or search a site to find files: take addresses from the publisher's own
    listing. A `"See source"` licence note must contain the words "not been verified".
 
+## Packs
+
+A pack is a named list of entries that are usually wanted together: "Home
+preparedness", "Amateur radio in the UK". It holds nothing itself; every item in it is
+an ordinary entry in a manifest, with its own source, licence and checksum. Explore
+lists packs first, and fetching one queues whatever is not installed yet.
+
+Packs live in `packs.json` beside this file (a person's own go in
+`<data directory>/catalog/packs.json`):
+
+```json
+{
+  "schemaVersion": 1,
+  "packs": [
+    {
+      "id": "first-things",
+      "name": "First things",
+      "description": "What it is for, in a sentence or two, written for the person choosing.",
+      "entries": ["ready.emergency-supply-list", "who.basic-emergency-care"]
+    }
+  ]
+}
+```
+
+- `id` is lower-case words joined by hyphens; `name` must be unique.
+- `entries` are entry ids, in the order they should be listed. An id the catalogue
+  does not list is reported by the validator, and left out of the pack in the app.
+- Keep a pack to what someone would fetch in one go on a home connection. The shipped
+  packs hold nothing larger than about 1.5 GB; the complete Wikipedia and the video
+  collections stay as single entries for people who want them.
+- Say what the pack is for, not how large it is: the app works the size out.
+
 ## How entries are verified
 
 Each entry carries `lastVerified`: the day a maintainer last confirmed that it

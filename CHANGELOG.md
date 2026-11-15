@@ -90,11 +90,18 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 
 #### Reference collections
 
-- A catalogue of 173 freely available items in JSON manifests, with a validator: 123
-  Kiwix archives, and 50 official handbooks and textbooks fetched as PDFs from their
-  publishers (FAA, NASA, USGS, the US National Weather Service, FAO, WHO, Ready.gov,
-  USDA, OpenStax, UIAA), each pinned by size and SHA-256. Downloaded PDFs join the
-  document library and are searchable to the page.
+- A catalogue of 220 items in JSON manifests, with a validator: 128 Kiwix archives; 83
+  official handbooks, rules and textbooks fetched as PDFs from their publishers (FAA,
+  NASA, USGS, the US National Weather Service, FAO, WHO, Ready.gov, USDA, OpenStax,
+  UIAA, Ofcom, IARU, CEPT, NIST, NTIA, CISA and others), each pinned by size and
+  SHA-256; and nine radio reference sheets that ship with Outpost. Downloaded PDFs join
+  the document library and are searchable to the page.
+- Radio reference sheets included with Outpost and added with no connection: amateur
+  bands (UK, US, worldwide), licence-free radio, emergency and calling frequencies,
+  weather and time broadcasts, repeaters and data modes, an operating reference, and
+  the informal preparedness conventions, each figure read from an official source.
+- Packs: curated sets of catalogue entries for a purpose, listed first in Explore and
+  fetched together after choosing what to leave out and where to keep it.
 - A record of every source considered, its licence and how it is used
   (`docs/sources.md`).
 - A catalogue refresh that does not contact a publisher about a pinned file, and a
