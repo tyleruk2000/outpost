@@ -3,12 +3,17 @@
  *
  *   node apps/server/src/cli/validate-catalog.ts              offline checks
  *   node apps/server/src/cli/validate-catalog.ts --online     also ask the sources
+ *   node apps/server/src/cli/validate-catalog.ts --online --delay 10
+ *                                                             seconds between requests to one host (default 10)
  *   node apps/server/src/cli/validate-catalog.ts --write-schema
  *   node apps/server/src/cli/validate-catalog.ts --dir <path-to-catalog-folder>
  *
  * Offline: every manifest follows the format, entry ids are unique, addresses are
  * https and on a host the manifest lists, and catalog/schema/manifest.schema.json is
  * what the code would generate. Online: every entry still resolves at its source.
+ * Several publishers ask automated clients to wait ten seconds between requests, so the
+ * online check asks one host at a time at that pace; with the shipped catalogue it
+ * takes a couple of minutes.
  * Exits with 1 when anything is wrong, so it can gate a pull request.
  */
 import fs from "node:fs";
@@ -83,12 +88,22 @@ export interface OnlineValidation {
 }
 
 /** Asks each source whether it still has what the manifests list. Needs a connection. */
-export async function validateOnline(catalog: LoadedCatalog): Promise<OnlineValidation> {
+export async function validateOnline(catalog: LoadedCatalog, options: { hostIntervalMs?: number } = {}): Promise<OnlineValidation> {
+  const hostIntervalMs = options.hostIntervalMs ?? 10_000;
+  // Long enough for the busiest host at the chosen pace, with room to spare.
+  const perHost = new Map<string, number>();
+  for (const entry of catalog.entries) {
+    if (entry.source.type !== "http") continue;
+    const host = new URL(entry.source.url).host;
+    perHost.set(host, (perHost.get(host) ?? 0) + 1);
+  }
+  const busiest = Math.max(0, ...perHost.values());
   const http = createHttpClient({ allowPrivate: false });
   try {
     const results = await resolveEntries(http, catalog.entries, {
       allowedHosts: catalog.downloadHosts,
-      signal: AbortSignal.timeout(180_000),
+      hostIntervalMs,
+      signal: AbortSignal.timeout(180_000 + busiest * (hostIntervalMs + 30_000)),
     });
     const problems: string[] = [];
     let resolved = 0;
@@ -121,7 +136,10 @@ async function main(argv: string[]): Promise<number> {
 
   if (flags.has("--online")) {
     try {
-      const online = await validateOnline(offline.catalog);
+      const delayIndex = argv.indexOf("--delay");
+      const delaySeconds = delayIndex >= 0 ? Number(argv[delayIndex + 1]) : 10;
+      if (!Number.isFinite(delaySeconds) || delaySeconds < 0) throw new Error("--delay takes a number of seconds, for example --delay 10");
+      const online = await validateOnline(offline.catalog, { hostIntervalMs: delaySeconds * 1000 });
       console.log(`${online.resolved} of ${offline.entries} entries resolve at their source.`);
       problems.push(...online.problems);
     } catch (error) {

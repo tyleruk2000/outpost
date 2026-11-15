@@ -64,8 +64,11 @@ There are two kinds of `source`:
   SHA-256 checksum from there. Never write the address of a `.zim` file into a
   manifest: Kiwix rebuilds most books every month or two and removes old builds.
 - `{ "type": "http", "url": "https://...", "sha256": "...", "sizeBytes": 0, "version": "..." }`
-  is a file at a fixed https address. Give the `sha256` whenever the publisher
-  provides one; without it Outpost cannot tell a damaged or altered file from a good one.
+  is a file at a fixed https address. Give the `sha256` and `sizeBytes` of the file as
+  you downloaded and checked it. Without the checksum Outpost cannot tell a damaged or
+  altered file from a good one; with both, a catalogue refresh takes the details from
+  the manifest and never contacts the publisher. Entries shipped in this repository
+  must have both.
 
 ## Rules for entries
 
@@ -80,6 +83,12 @@ There are two kinds of `source`:
    editions, each edition is its own entry and the name says what differs
    ("without images").
 5. **https only**, and every host must be in `downloadHosts`.
+6. **Names are unique** across the whole catalogue, so two entries can be told apart
+   in a list.
+7. **Go gently.** Read the publisher's terms and `robots.txt` before adding a file.
+   Do not list a source whose terms forbid automated or stored copies, and do not
+   crawl or search a site to find files: take addresses from the publisher's own
+   listing. A `"See source"` licence note must contain the words "not been verified".
 
 ## How entries are verified
 
@@ -91,12 +100,18 @@ node apps/server/src/cli/validate-catalog.ts            # format, ids, hosts, sc
 node apps/server/src/cli/validate-catalog.ts --online   # also asks each source
 ```
 
+The online check asks one host at a time and waits ten seconds between requests to
+the same host (`--delay <seconds>` changes that), because several publishers ask
+automated clients for that pace. It takes a couple of minutes. Where a server refuses
+`HEAD`, it asks for the first byte of the file instead.
+
 The offline check runs in the test suite. The online check lists every entry that no
 longer resolves (a book renamed or withdrawn upstream); fix or remove those and update
 `lastVerified` on the entries you checked. If you change the format in
 `apps/server/src/modules/catalog/manifest.ts`, regenerate the schema file with
 `--write-schema`.
 
-Sizes, versions and availability shown in Explore do not come from the manifests. They
-come from the source when an administrator presses Refresh, and are remembered so that
-Explore still reads well offline.
+For Kiwix books, the sizes, versions and availability shown in Explore do not come
+from the manifests. They come from the Kiwix library when an administrator presses
+Refresh, and are remembered so that Explore still reads well offline. For files with a
+pinned size and checksum, they come from the manifest.

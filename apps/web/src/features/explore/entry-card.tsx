@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/misc";
 import { cn, formatNumber } from "@/lib/utils";
 import { DownloadControls, DownloadProgress } from "../downloads/download-progress";
-import { editionText, entryAction, entrySituation, languageName, licenceText, sizeText } from "./catalog";
+import { editionText, entryAction, entrySituation, formatLabel, languageName, licenceText, sizeText } from "./catalog";
 
 const Slash = () => (
   <span aria-hidden className="mx-2 text-border-strong">
@@ -183,6 +183,7 @@ export function EntryCard({
         parts={[
           entry.publisher,
           languageName(entry.language),
+          formatLabel(entry.format),
           entry.articleCount && entry.articleCount > 1 ? (
             <span key="articles" className="tabular whitespace-nowrap">
               {formatNumber(entry.articleCount)} articles

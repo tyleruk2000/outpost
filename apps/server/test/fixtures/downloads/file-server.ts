@@ -17,6 +17,8 @@ export interface FileRoute {
   drops?: number;
   /** Answer with this status and no body instead of the file. */
   status?: number;
+  /** Answer HEAD requests with this status, while GET still serves the file. */
+  headStatus?: number;
   headers?: Record<string, string>;
   /** Redirect elsewhere instead of serving. */
   redirectTo?: string;
@@ -94,6 +96,10 @@ export async function startFileServer(host = "127.0.0.1"): Promise<FileServer> {
     }
     if (route.status) {
       res.writeHead(route.status, route.headers).end();
+      return;
+    }
+    if (route.headStatus && req.method === "HEAD") {
+      res.writeHead(route.headStatus).end();
       return;
     }
     if (route.respond) {

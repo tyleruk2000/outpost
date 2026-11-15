@@ -215,6 +215,7 @@ export function createCatalogService(ctx: AppContext, options: CatalogServiceOpt
       results = await resolveEntries(http, catalog.entries, {
         allowedHosts: allowedHosts(),
         kiwixCatalogUrl,
+        trustPinned: true,
         signal: AbortSignal.timeout(120_000),
       });
     } catch (error) {

@@ -28,7 +28,7 @@ Only actions that fetch something new. Each happens because a person pressed a b
 
 | Action | Contacts |
 | --- | --- |
-| **Refresh** on Explore (the catalogue) | The Kiwix library feed, `opds.library.kiwix.org`, and any host a manifest of your own names |
+| **Refresh** on Explore (the catalogue) | The Kiwix library feed, `opds.library.kiwix.org`. Publishers of individual documents are not contacted when the manifest already records the file's size and checksum, which every shipped entry does; a manifest of your own without them causes one small request to the host it names. |
 | Starting a catalogue download | The hosts listed in the manifests' `downloadHosts`; mirrors they redirect to |
 | Estimating or downloading a map region | `build-metadata.protomaps.dev` and `build.protomaps.com`, or the archive in the `maps.tileSource` setting; for terrain, the `maps.terrainSource` archive |
 | Downloading place names | `download.geonames.org` |

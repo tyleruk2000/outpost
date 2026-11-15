@@ -1,0 +1,1511 @@
+{
+  "$schema": "../schema/manifest.schema.json",
+  "schemaVersion": 1,
+  "id": "kiwix-more",
+  "name": "More from Kiwix",
+  "description": "Further archives from the Kiwix library: programming documentation from DevDocs, more Project Gutenberg shelves, medical and science references, courses, talks, and material on low-tech living and preparedness. Every entry is fetched from Kiwix's own servers at the moment you ask for it; nothing is bundled with Outpost.",
+  "maintainers": [
+    "Outpost maintainers"
+  ],
+  "downloadHosts": [
+    "opds.library.kiwix.org",
+    "library.kiwix.org",
+    "download.kiwix.org",
+    "lb.download.kiwix.org"
+  ],
+  "entries": [
+    {
+      "id": "kiwix.devdocs-en-python",
+      "name": "Python documentation (DevDocs)",
+      "description": "Reference documentation for the Python language and its standard library, in the compact form published by DevDocs.",
+      "category": "engineering",
+      "publisher": "DevDocs",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "DevDocs. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://devdocs.io",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "programming",
+        "documentation",
+        "python"
+      ],
+      "sizeBytes": 5000000,
+      "source": {
+        "type": "kiwix",
+        "name": "devdocs_en_python",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.devdocs-en-javascript",
+      "name": "JavaScript documentation (DevDocs)",
+      "description": "Reference documentation for the JavaScript language, in the compact form published by DevDocs.",
+      "category": "engineering",
+      "publisher": "DevDocs",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "DevDocs. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://devdocs.io",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "programming",
+        "documentation",
+        "javascript"
+      ],
+      "sizeBytes": 3000000,
+      "source": {
+        "type": "kiwix",
+        "name": "devdocs_en_javascript",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.devdocs-en-html",
+      "name": "HTML documentation (DevDocs)",
+      "description": "Reference documentation for HTML elements and attributes, in the compact form published by DevDocs.",
+      "category": "engineering",
+      "publisher": "DevDocs",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "DevDocs. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://devdocs.io",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "programming",
+        "documentation",
+        "html"
+      ],
+      "sizeBytes": 2000000,
+      "source": {
+        "type": "kiwix",
+        "name": "devdocs_en_html",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.devdocs-en-css",
+      "name": "CSS documentation (DevDocs)",
+      "description": "Reference documentation for CSS properties and selectors, in the compact form published by DevDocs.",
+      "category": "engineering",
+      "publisher": "DevDocs",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "DevDocs. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://devdocs.io",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "programming",
+        "documentation",
+        "css"
+      ],
+      "sizeBytes": 3000000,
+      "source": {
+        "type": "kiwix",
+        "name": "devdocs_en_css",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.devdocs-en-dom",
+      "name": "Web APIs documentation (DevDocs)",
+      "description": "Reference documentation for the programming interfaces that web browsers provide, in the compact form published by DevDocs.",
+      "category": "engineering",
+      "publisher": "DevDocs",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "DevDocs. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://devdocs.io",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "programming",
+        "documentation",
+        "web apis"
+      ],
+      "sizeBytes": 14000000,
+      "source": {
+        "type": "kiwix",
+        "name": "devdocs_en_dom",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.devdocs-en-http",
+      "name": "HTTP documentation (DevDocs)",
+      "description": "Reference documentation for the HTTP protocol: methods, headers and status codes, in the compact form published by DevDocs.",
+      "category": "engineering",
+      "publisher": "DevDocs",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "DevDocs. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://devdocs.io",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "programming",
+        "documentation",
+        "http"
+      ],
+      "sizeBytes": 2000000,
+      "source": {
+        "type": "kiwix",
+        "name": "devdocs_en_http",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.devdocs-en-bash",
+      "name": "Bash documentation (DevDocs)",
+      "description": "Reference documentation for the Bash shell, in the compact form published by DevDocs.",
+      "category": "engineering",
+      "publisher": "DevDocs",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "DevDocs. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://devdocs.io",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "programming",
+        "documentation",
+        "bash"
+      ],
+      "sizeBytes": 1000000,
+      "source": {
+        "type": "kiwix",
+        "name": "devdocs_en_bash",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.devdocs-en-git",
+      "name": "Git documentation (DevDocs)",
+      "description": "Reference documentation for the Git version control system, in the compact form published by DevDocs.",
+      "category": "engineering",
+      "publisher": "DevDocs",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "DevDocs. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://devdocs.io",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "programming",
+        "documentation",
+        "git"
+      ],
+      "sizeBytes": 2000000,
+      "source": {
+        "type": "kiwix",
+        "name": "devdocs_en_git",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.devdocs-en-man",
+      "name": "Linux man pages documentation (DevDocs)",
+      "description": "Reference documentation for Linux commands, system calls and library functions, in the compact form published by DevDocs.",
+      "category": "engineering",
+      "publisher": "DevDocs",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "DevDocs. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://devdocs.io",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "programming",
+        "documentation",
+        "linux man pages"
+      ],
+      "sizeBytes": 30000000,
+      "source": {
+        "type": "kiwix",
+        "name": "devdocs_en_man",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.devdocs-en-c",
+      "name": "C documentation (DevDocs)",
+      "description": "Reference documentation for the C language and its standard library, in the compact form published by DevDocs.",
+      "category": "engineering",
+      "publisher": "DevDocs",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "DevDocs. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://devdocs.io",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "programming",
+        "documentation",
+        "c"
+      ],
+      "sizeBytes": 1000000,
+      "source": {
+        "type": "kiwix",
+        "name": "devdocs_en_c",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.devdocs-en-cpp",
+      "name": "C++ documentation (DevDocs)",
+      "description": "Reference documentation for the C++ language and its standard library, in the compact form published by DevDocs.",
+      "category": "engineering",
+      "publisher": "DevDocs",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "DevDocs. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://devdocs.io",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "programming",
+        "documentation",
+        "c++"
+      ],
+      "sizeBytes": 8000000,
+      "source": {
+        "type": "kiwix",
+        "name": "devdocs_en_cpp",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.devdocs-en-go",
+      "name": "Go documentation (DevDocs)",
+      "description": "Reference documentation for the Go language and its standard library, in the compact form published by DevDocs.",
+      "category": "engineering",
+      "publisher": "DevDocs",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "DevDocs. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://devdocs.io",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "programming",
+        "documentation",
+        "go"
+      ],
+      "sizeBytes": 2000000,
+      "source": {
+        "type": "kiwix",
+        "name": "devdocs_en_go",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.devdocs-en-rust",
+      "name": "Rust documentation (DevDocs)",
+      "description": "Reference documentation for the Rust language and its standard library, in the compact form published by DevDocs.",
+      "category": "engineering",
+      "publisher": "DevDocs",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "DevDocs. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://devdocs.io",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "programming",
+        "documentation",
+        "rust"
+      ],
+      "sizeBytes": 6000000,
+      "source": {
+        "type": "kiwix",
+        "name": "devdocs_en_rust",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.devdocs-en-node",
+      "name": "Node.js documentation (DevDocs)",
+      "description": "Reference documentation for the Node.js runtime, in the compact form published by DevDocs.",
+      "category": "engineering",
+      "publisher": "DevDocs",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "DevDocs. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://devdocs.io",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "programming",
+        "documentation",
+        "node.js"
+      ],
+      "sizeBytes": 1000000,
+      "source": {
+        "type": "kiwix",
+        "name": "devdocs_en_node",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.devdocs-en-typescript",
+      "name": "TypeScript documentation (DevDocs)",
+      "description": "Reference documentation for the TypeScript language, in the compact form published by DevDocs.",
+      "category": "engineering",
+      "publisher": "DevDocs",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "DevDocs. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://devdocs.io",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "programming",
+        "documentation",
+        "typescript"
+      ],
+      "sizeBytes": 1000000,
+      "source": {
+        "type": "kiwix",
+        "name": "devdocs_en_typescript",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.devdocs-en-docker",
+      "name": "Docker documentation (DevDocs)",
+      "description": "Reference documentation for Docker containers and their tooling, in the compact form published by DevDocs.",
+      "category": "engineering",
+      "publisher": "DevDocs",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "DevDocs. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://devdocs.io",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "programming",
+        "documentation",
+        "docker"
+      ],
+      "sizeBytes": 2000000,
+      "source": {
+        "type": "kiwix",
+        "name": "devdocs_en_docker",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.devdocs-en-postgresql",
+      "name": "PostgreSQL documentation (DevDocs)",
+      "description": "Reference documentation for the PostgreSQL database, in the compact form published by DevDocs.",
+      "category": "engineering",
+      "publisher": "DevDocs",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "DevDocs. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://devdocs.io",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "programming",
+        "documentation",
+        "postgresql"
+      ],
+      "sizeBytes": 3000000,
+      "source": {
+        "type": "kiwix",
+        "name": "devdocs_en_postgresql",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.devdocs-en-sqlite",
+      "name": "SQLite documentation (DevDocs)",
+      "description": "Reference documentation for the SQLite database engine, in the compact form published by DevDocs.",
+      "category": "engineering",
+      "publisher": "DevDocs",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "DevDocs. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://devdocs.io",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "programming",
+        "documentation",
+        "sqlite"
+      ],
+      "sizeBytes": 3000000,
+      "source": {
+        "type": "kiwix",
+        "name": "devdocs_en_sqlite",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.freecodecamp-en-all",
+      "name": "freeCodeCamp courses",
+      "description": "The freeCodeCamp courses, packaged for use without a connection.",
+      "category": "engineering",
+      "publisher": "freeCodeCamp",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "freeCodeCamp. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://www.freecodecamp.org",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "programming",
+        "courses"
+      ],
+      "sizeBytes": 8000000,
+      "source": {
+        "type": "kiwix",
+        "name": "freecodecamp_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.freecodecamp-en-javascript-algorithms-and-data-structures",
+      "name": "freeCodeCamp: JavaScript",
+      "description": "The JavaScript courses from freeCodeCamp.",
+      "category": "engineering",
+      "publisher": "freeCodeCamp",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "freeCodeCamp. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://www.freecodecamp.org",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "programming",
+        "courses",
+        "javascript"
+      ],
+      "sizeBytes": 11000000,
+      "source": {
+        "type": "kiwix",
+        "name": "freecodecamp_en_javascript-algorithms-and-data-structures",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.archlinux-en-all-maxi",
+      "name": "ArchWiki",
+      "description": "The Arch Linux documentation wiki. This is the complete edition, with images.",
+      "category": "engineering",
+      "publisher": "ArchWiki",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "ArchWiki. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://wiki.archlinux.org",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "linux",
+        "documentation"
+      ],
+      "sizeBytes": 38000000,
+      "source": {
+        "type": "kiwix",
+        "name": "archlinux_en_all",
+        "flavour": "maxi"
+      }
+    },
+    {
+      "id": "kiwix.energypedia-en-all-nopic",
+      "name": "energypedia (without images)",
+      "description": "A wiki for exchanging knowledge on renewable energy and access to energy. This edition has the full text without images.",
+      "category": "engineering",
+      "publisher": "energypedia",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "energypedia. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://energypedia.info",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "energy",
+        "renewable energy"
+      ],
+      "sizeBytes": 723000000,
+      "source": {
+        "type": "kiwix",
+        "name": "energypedia_en_all",
+        "flavour": "nopic"
+      }
+    },
+    {
+      "id": "kiwix.energypedia-en-all-maxi",
+      "name": "energypedia",
+      "description": "A wiki for exchanging knowledge on renewable energy and access to energy. This is the complete edition, with images.",
+      "category": "engineering",
+      "publisher": "energypedia",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "energypedia. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://energypedia.info",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "energy",
+        "renewable energy"
+      ],
+      "sizeBytes": 800000000,
+      "source": {
+        "type": "kiwix",
+        "name": "energypedia_en_all",
+        "flavour": "maxi"
+      }
+    },
+    {
+      "id": "kiwix.100r.co-en-all",
+      "name": "Hundred Rabbits",
+      "description": "The Hundred Rabbits site, which researches and tests low-tech solutions and documents what it finds.",
+      "category": "engineering",
+      "publisher": "Hundred Rabbits",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "Hundred Rabbits. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://100r.co",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "low-tech",
+        "off-grid"
+      ],
+      "sizeBytes": 177000000,
+      "source": {
+        "type": "kiwix",
+        "name": "100r.co_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.solar.lowtechmagazine.com-mul-all",
+      "name": "Low-tech Magazine (solar-powered edition)",
+      "description": "Articles from the solar-powered edition of Low-tech Magazine, on the idea that not every problem has a high-tech solution. Kiwix lists it as multilingual: English and several other languages.",
+      "category": "engineering",
+      "publisher": "Low-tech Magazine",
+      "language": "mul",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "Low-tech Magazine. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://solar.lowtechmagazine.com",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "low-tech",
+        "energy"
+      ],
+      "sizeBytes": 701000000,
+      "source": {
+        "type": "kiwix",
+        "name": "solar.lowtechmagazine.com_mul_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.wikiciv-en-all-maxi",
+      "name": "WikiCiv",
+      "description": "A wiki manual for building civilisation from scratch. This is the complete edition, with images.",
+      "category": "engineering",
+      "publisher": "WikiCiv",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "WikiCiv. Packaged as a ZIM archive by the Kiwix project.",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "low-tech",
+        "manual"
+      ],
+      "sizeBytes": 5000000,
+      "source": {
+        "type": "kiwix",
+        "name": "wikiciv_en_all",
+        "flavour": "maxi"
+      }
+    },
+    {
+      "id": "kiwix.wikipedia-en-computer-nopic",
+      "name": "Computing by Wikipedia (without images)",
+      "description": "A selection of Wikipedia articles on computers. This edition has the full text without images.",
+      "category": "engineering",
+      "publisher": "Wikipedia",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0",
+      "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://en.wikipedia.org",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "computing"
+      ],
+      "sizeBytes": 517000000,
+      "source": {
+        "type": "kiwix",
+        "name": "wikipedia_en_computer",
+        "flavour": "nopic"
+      }
+    },
+    {
+      "id": "kiwix.gutenberg-en-lcc-r",
+      "name": "Project Gutenberg: Medicine",
+      "description": "English-language books from Project Gutenberg shelved under Medicine (Library of Congress class R). These are older books: medical advice in them is of historical interest and should not be relied on.",
+      "category": "medicine",
+      "publisher": "Project Gutenberg",
+      "language": "en",
+      "format": "zim",
+      "license": "Public domain in the United States",
+      "attribution": "Project Gutenberg. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://www.gutenberg.org",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "books",
+        "medicine",
+        "historical"
+      ],
+      "sizeBytes": 2019000000,
+      "source": {
+        "type": "kiwix",
+        "name": "gutenberg_en_lcc-r",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.gutenberg-en-lcc-s",
+      "name": "Project Gutenberg: Agriculture",
+      "description": "English-language books from Project Gutenberg shelved under Agriculture (Library of Congress class S). These are older books, so methods and safety advice reflect their time.",
+      "category": "agriculture",
+      "publisher": "Project Gutenberg",
+      "language": "en",
+      "format": "zim",
+      "license": "Public domain in the United States",
+      "attribution": "Project Gutenberg. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://www.gutenberg.org",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "books",
+        "farming",
+        "historical"
+      ],
+      "sizeBytes": 4533000000,
+      "source": {
+        "type": "kiwix",
+        "name": "gutenberg_en_lcc-s",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.gutenberg-en-lcc-t",
+      "name": "Project Gutenberg: Technology",
+      "description": "English-language books from Project Gutenberg shelved under Technology (Library of Congress class T). These are older books, so methods and safety advice reflect their time.",
+      "category": "engineering",
+      "publisher": "Project Gutenberg",
+      "language": "en",
+      "format": "zim",
+      "license": "Public domain in the United States",
+      "attribution": "Project Gutenberg. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://www.gutenberg.org",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "books",
+        "technology",
+        "historical"
+      ],
+      "sizeBytes": 13155000000,
+      "source": {
+        "type": "kiwix",
+        "name": "gutenberg_en_lcc-t",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.gutenberg-en-lcc-q",
+      "name": "Project Gutenberg: Science",
+      "description": "English-language books from Project Gutenberg shelved under Science (Library of Congress class Q). These are older books, so methods and safety advice reflect their time.",
+      "category": "science",
+      "publisher": "Project Gutenberg",
+      "language": "en",
+      "format": "zim",
+      "license": "Public domain in the United States",
+      "attribution": "Project Gutenberg. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://www.gutenberg.org",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "books",
+        "science",
+        "historical"
+      ],
+      "sizeBytes": 17725000000,
+      "source": {
+        "type": "kiwix",
+        "name": "gutenberg_en_lcc-q",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.gutenberg-en-lcc-g",
+      "name": "Project Gutenberg: Geography, anthropology, recreation",
+      "description": "English-language books from Project Gutenberg shelved under Geography, anthropology, recreation (Library of Congress class G). These are older books, so methods and safety advice reflect their time.",
+      "category": "navigation",
+      "publisher": "Project Gutenberg",
+      "language": "en",
+      "format": "zim",
+      "license": "Public domain in the United States",
+      "attribution": "Project Gutenberg. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://www.gutenberg.org",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "books",
+        "geography",
+        "travel"
+      ],
+      "sizeBytes": 8095000000,
+      "source": {
+        "type": "kiwix",
+        "name": "gutenberg_en_lcc-g",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.gutenberg-en-lcc-v",
+      "name": "Project Gutenberg: Naval science",
+      "description": "English-language books from Project Gutenberg shelved under Naval science (Library of Congress class V). These are older books, so methods and safety advice reflect their time.",
+      "category": "navigation",
+      "publisher": "Project Gutenberg",
+      "language": "en",
+      "format": "zim",
+      "license": "Public domain in the United States",
+      "attribution": "Project Gutenberg. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://www.gutenberg.org",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "books",
+        "seamanship",
+        "historical"
+      ],
+      "sizeBytes": 1369000000,
+      "source": {
+        "type": "kiwix",
+        "name": "gutenberg_en_lcc-v",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.gutenberg-en-lcc-u",
+      "name": "Project Gutenberg: Military science",
+      "description": "English-language books from Project Gutenberg shelved under Military science (Library of Congress class U). These are older books, so methods and safety advice reflect their time.",
+      "category": "reference",
+      "publisher": "Project Gutenberg",
+      "language": "en",
+      "format": "zim",
+      "license": "Public domain in the United States",
+      "attribution": "Project Gutenberg. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://www.gutenberg.org",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "books",
+        "military",
+        "historical"
+      ],
+      "sizeBytes": 1288000000,
+      "source": {
+        "type": "kiwix",
+        "name": "gutenberg_en_lcc-u",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.gutenberg-en-all",
+      "name": "Project Gutenberg: all English books",
+      "description": "Every English-language book in the Project Gutenberg library, in one very large archive.",
+      "category": "reference",
+      "publisher": "Project Gutenberg",
+      "language": "en",
+      "format": "zim",
+      "license": "Public domain in the United States",
+      "attribution": "Project Gutenberg. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://www.gutenberg.org",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "books",
+        "library"
+      ],
+      "sizeBytes": 221252000000,
+      "source": {
+        "type": "kiwix",
+        "name": "gutenberg_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.medlineplus.gov-en-all",
+      "name": "MedlinePlus",
+      "description": "Health information for the public from MedlinePlus, a service of the US National Library of Medicine.",
+      "category": "medicine",
+      "publisher": "US National Library of Medicine",
+      "language": "en",
+      "format": "zim",
+      "license": "Mixed: public domain (US Government work) and copyrighted material",
+      "licenseNote": "MedlinePlus says that some of its content is in the public domain as a work of the US Government, and that other content is copyrighted and licensed specifically for use on MedlinePlus. Check the source before redistributing this content.",
+      "attribution": "US National Library of Medicine. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://medlineplus.gov",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "health",
+        "reference"
+      ],
+      "sizeBytes": 1945000000,
+      "source": {
+        "type": "kiwix",
+        "name": "medlineplus.gov_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.mdwiki-en-all-maxi",
+      "name": "MDWiki Medical Encyclopedia",
+      "description": "Healthcare articles curated by WikiProjectMed. This is the complete edition, with images.",
+      "category": "medicine",
+      "publisher": "MDWiki (WikiProjectMed)",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "MDWiki (WikiProjectMed). Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://mdwiki.org",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "medicine",
+        "encyclopedia"
+      ],
+      "sizeBytes": 2303000000,
+      "source": {
+        "type": "kiwix",
+        "name": "mdwiki_en_all",
+        "flavour": "maxi"
+      }
+    },
+    {
+      "id": "kiwix.wikivet.net-en-all-maxi",
+      "name": "WikiVet",
+      "description": "A veterinary medicine encyclopedia. This is the complete edition, with images.",
+      "category": "medicine",
+      "publisher": "WikiVet",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "WikiVet. Packaged as a ZIM archive by the Kiwix project.",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "veterinary",
+        "animals"
+      ],
+      "sizeBytes": 57000000,
+      "source": {
+        "type": "kiwix",
+        "name": "wikivet.net_en_all",
+        "flavour": "maxi"
+      }
+    },
+    {
+      "id": "kiwix.libretexts.org-en-med",
+      "name": "Medicine LibreTexts",
+      "description": "Medicine courses and textbooks from LibreTexts.",
+      "category": "medicine",
+      "publisher": "LibreTexts",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "LibreTexts. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://libretexts.org",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "textbooks",
+        "medicine"
+      ],
+      "sizeBytes": 1193000000,
+      "source": {
+        "type": "kiwix",
+        "name": "libretexts.org_en_med",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.libretexts.org-en-bio",
+      "name": "Biology LibreTexts",
+      "description": "Biology courses and textbooks from LibreTexts.",
+      "category": "science",
+      "publisher": "LibreTexts",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "LibreTexts. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://libretexts.org",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "textbooks",
+        "biology"
+      ],
+      "sizeBytes": 2241000000,
+      "source": {
+        "type": "kiwix",
+        "name": "libretexts.org_en_bio",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.libretexts.org-en-chem",
+      "name": "Chemistry LibreTexts",
+      "description": "Chemistry courses and textbooks from LibreTexts.",
+      "category": "science",
+      "publisher": "LibreTexts",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "LibreTexts. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://libretexts.org",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "textbooks",
+        "chemistry"
+      ],
+      "sizeBytes": 2183000000,
+      "source": {
+        "type": "kiwix",
+        "name": "libretexts.org_en_chem",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.libretexts.org-en-math",
+      "name": "Mathematics LibreTexts",
+      "description": "Mathematics courses and textbooks from LibreTexts.",
+      "category": "science",
+      "publisher": "LibreTexts",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "LibreTexts. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://libretexts.org",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "textbooks",
+        "mathematics"
+      ],
+      "sizeBytes": 831000000,
+      "source": {
+        "type": "kiwix",
+        "name": "libretexts.org_en_math",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.libretexts.org-en-geo",
+      "name": "Geosciences LibreTexts",
+      "description": "Geosciences courses and textbooks from LibreTexts.",
+      "category": "science",
+      "publisher": "LibreTexts",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "LibreTexts. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://libretexts.org",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "textbooks",
+        "geology"
+      ],
+      "sizeBytes": 1188000000,
+      "source": {
+        "type": "kiwix",
+        "name": "libretexts.org_en_geo",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.khanacademy-en-all",
+      "name": "Khan Academy (US curriculum)",
+      "description": "Khan Academy videos and exercises on mathematics, physics, chemistry, biology and other school subjects, following the US curriculum. This is a very large archive, last built in 2023.",
+      "category": "science",
+      "publisher": "Khan Academy",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "Khan Academy. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://www.khanacademy.org",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "courses",
+        "videos",
+        "education"
+      ],
+      "sizeBytes": 180007000000,
+      "source": {
+        "type": "kiwix",
+        "name": "khanacademy_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.apod.nasa.gov-en-all",
+      "name": "Astronomy Picture of the Day",
+      "description": "NASA's Astronomy Picture of the Day: images of the universe, each with a short explanation.",
+      "category": "science",
+      "publisher": "NASA",
+      "language": "en",
+      "format": "zim",
+      "license": "Mixed: public domain NASA images and copyrighted images",
+      "licenseNote": "The Astronomy Picture of the Day site says that NASA images are in the public domain, but that some of its pictures are copyrighted by the people or institutions credited beneath them, whose permission is needed for public or commercial use.",
+      "attribution": "NASA. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://apod.nasa.gov",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "astronomy",
+        "images"
+      ],
+      "sizeBytes": 16679000000,
+      "source": {
+        "type": "kiwix",
+        "name": "apod.nasa.gov_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.wikipedia-en-astronomy-nopic",
+      "name": "Astronomy by Wikipedia (without images)",
+      "description": "A selection of Wikipedia articles on astronomy. This edition has the full text without images.",
+      "category": "science",
+      "publisher": "Wikipedia",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0",
+      "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://en.wikipedia.org",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "astronomy"
+      ],
+      "sizeBytes": 404000000,
+      "source": {
+        "type": "kiwix",
+        "name": "wikipedia_en_astronomy",
+        "flavour": "nopic"
+      }
+    },
+    {
+      "id": "kiwix.wikipedia-en-mathematics-mini",
+      "name": "Mathematics by Wikipedia (introductions only)",
+      "description": "A selection of Wikipedia articles on mathematics. This is the smallest edition: only the introduction of each article, without images.",
+      "category": "science",
+      "publisher": "Wikipedia",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0",
+      "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://en.wikipedia.org",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "mathematics"
+      ],
+      "sizeBytes": 58000000,
+      "source": {
+        "type": "kiwix",
+        "name": "wikipedia_en_mathematics",
+        "flavour": "mini"
+      }
+    },
+    {
+      "id": "kiwix.wikipedia-en-geography-nopic",
+      "name": "Geography by Wikipedia (without images)",
+      "description": "A selection of Wikipedia articles on geography. This edition has the full text without images.",
+      "category": "navigation",
+      "publisher": "Wikipedia",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0",
+      "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://en.wikipedia.org",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "geography"
+      ],
+      "sizeBytes": 615000000,
+      "source": {
+        "type": "kiwix",
+        "name": "wikipedia_en_geography",
+        "flavour": "nopic"
+      }
+    },
+    {
+      "id": "kiwix.ted-mul-natural-disaster",
+      "name": "TED talks: natural disasters",
+      "description": "A collection of TED talk videos about natural disasters. Kiwix lists it as multilingual: English and several other languages.",
+      "category": "preparedness",
+      "publisher": "TED",
+      "language": "mul",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "TED. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://www.ted.com",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "videos",
+        "talks"
+      ],
+      "sizeBytes": 716000000,
+      "source": {
+        "type": "kiwix",
+        "name": "ted_mul_natural-disaster",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.ted-mul-agriculture",
+      "name": "TED talks: agriculture",
+      "description": "A collection of TED talk videos about agriculture. Kiwix lists it as multilingual: English and several other languages.",
+      "category": "agriculture",
+      "publisher": "TED",
+      "language": "mul",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "TED. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://www.ted.com",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "videos",
+        "talks"
+      ],
+      "sizeBytes": 1270000000,
+      "source": {
+        "type": "kiwix",
+        "name": "ted_mul_agriculture",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.ted-mul-farming",
+      "name": "TED talks: farming",
+      "description": "A collection of TED talk videos about farming. Kiwix lists it as multilingual: English and several other languages.",
+      "category": "agriculture",
+      "publisher": "TED",
+      "language": "mul",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "TED. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://www.ted.com",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "videos",
+        "talks"
+      ],
+      "sizeBytes": 828000000,
+      "source": {
+        "type": "kiwix",
+        "name": "ted_mul_farming",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.ted-mul-gardening",
+      "name": "TED talks: gardening",
+      "description": "A collection of TED talk videos about gardening. Kiwix lists it as multilingual: English and several other languages.",
+      "category": "agriculture",
+      "publisher": "TED",
+      "language": "mul",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "TED. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://www.ted.com",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "videos",
+        "talks"
+      ],
+      "sizeBytes": 326000000,
+      "source": {
+        "type": "kiwix",
+        "name": "ted_mul_gardening",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.ted-mul-water",
+      "name": "TED talks: water",
+      "description": "A collection of TED talk videos about water. Kiwix lists it as multilingual: English and several other languages.",
+      "category": "science",
+      "publisher": "TED",
+      "language": "mul",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "TED. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://www.ted.com",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "videos",
+        "talks"
+      ],
+      "sizeBytes": 872000000,
+      "source": {
+        "type": "kiwix",
+        "name": "ted_mul_water",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.ted-mul-weather",
+      "name": "TED talks: weather",
+      "description": "A collection of TED talk videos about weather. Kiwix lists it as multilingual: English and several other languages.",
+      "category": "science",
+      "publisher": "TED",
+      "language": "mul",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "TED. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://www.ted.com",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "videos",
+        "talks"
+      ],
+      "sizeBytes": 386000000,
+      "source": {
+        "type": "kiwix",
+        "name": "ted_mul_weather",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.ted-mul-medicine",
+      "name": "TED talks: medicine",
+      "description": "A collection of TED talk videos about medicine. Kiwix lists it as multilingual: English and several other languages.",
+      "category": "medicine",
+      "publisher": "TED",
+      "language": "mul",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "TED. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://www.ted.com",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "videos",
+        "talks"
+      ],
+      "sizeBytes": 3607000000,
+      "source": {
+        "type": "kiwix",
+        "name": "ted_mul_medicine",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.ted-mul-renewable-energy",
+      "name": "TED talks: renewable energy",
+      "description": "A collection of TED talk videos about renewable energy. Kiwix lists it as multilingual: English and several other languages.",
+      "category": "engineering",
+      "publisher": "TED",
+      "language": "mul",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "TED. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://www.ted.com",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "videos",
+        "talks"
+      ],
+      "sizeBytes": 1066000000,
+      "source": {
+        "type": "kiwix",
+        "name": "ted_mul_renewable-energy",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.ted-mul-nasa",
+      "name": "TED talks: NASA",
+      "description": "A collection of TED talk videos about NASA. Kiwix lists it as multilingual: English and several other languages.",
+      "category": "science",
+      "publisher": "TED",
+      "language": "mul",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "TED. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://www.ted.com",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "videos",
+        "talks"
+      ],
+      "sizeBytes": 147000000,
+      "source": {
+        "type": "kiwix",
+        "name": "ted_mul_nasa",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.armypubs-en-all",
+      "name": "US Army publications",
+      "description": "Publications from the Army Publishing Directorate, the United States Army's central service for its publications and forms.",
+      "category": "reference",
+      "publisher": "US Army Publishing Directorate",
+      "language": "en",
+      "format": "zim",
+      "license": "Public domain (US Government work)",
+      "licenseNote": "Publications of the US Army are works of the US Government. Individual documents may include third-party material; this has not been checked document by document.",
+      "attribution": "US Army Publishing Directorate. Packaged as a ZIM archive by the Kiwix project.",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "army",
+        "manuals"
+      ],
+      "sizeBytes": 8232000000,
+      "source": {
+        "type": "kiwix",
+        "name": "armypubs_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.urban-prepper-en-all",
+      "name": "The Urban Prepper (videos)",
+      "description": "Videos on emergency preparedness topics from the YouTube channel The Urban Prepper.",
+      "category": "preparedness",
+      "publisher": "The Urban Prepper",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "The Urban Prepper. Packaged as a ZIM archive by the Kiwix project.",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "videos",
+        "preparedness"
+      ],
+      "sizeBytes": 2245000000,
+      "source": {
+        "type": "kiwix",
+        "name": "urban-prepper_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.lrnselfreliance-en-all",
+      "name": "Learning Self-Reliance (videos)",
+      "description": "Videos from a YouTube channel about prepping, survival and beekeeping.",
+      "category": "survival",
+      "publisher": "Learning Self-Reliance",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "Learning Self-Reliance. Packaged as a ZIM archive by the Kiwix project.",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "videos",
+        "self-reliance",
+        "beekeeping"
+      ],
+      "sizeBytes": 3974000000,
+      "source": {
+        "type": "kiwix",
+        "name": "lrnselfreliance_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.canadian-prepper-en-winterprepping",
+      "name": "Canadian Prepper: winter prepping (videos)",
+      "description": "Videos from the YouTube channel Canadian Prepper on preparing for winter survival and emergencies.",
+      "category": "survival",
+      "publisher": "Canadian Prepper",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "Canadian Prepper. Packaged as a ZIM archive by the Kiwix project.",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "videos",
+        "winter"
+      ],
+      "sizeBytes": 1342000000,
+      "source": {
+        "type": "kiwix",
+        "name": "canadian-prepper_en_winterprepping",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.canadian-prepper-en-preppingfood",
+      "name": "Canadian Prepper: food (videos)",
+      "description": "Videos from the YouTube channel Canadian Prepper on long-term food storage and survival meals.",
+      "category": "preparedness",
+      "publisher": "Canadian Prepper",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "Canadian Prepper. Packaged as a ZIM archive by the Kiwix project.",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "videos",
+        "food storage"
+      ],
+      "sizeBytes": 2195000000,
+      "source": {
+        "type": "kiwix",
+        "name": "canadian-prepper_en_preppingfood",
+        "flavour": ""
+      }
+    }
+  ]
+}

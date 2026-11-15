@@ -5,6 +5,7 @@ import type { CatalogEntryDto, CatalogResponse } from "@outpost/shared";
 import { CATALOG_CATEGORIES } from "@outpost/shared";
 import { afterEach, describe, expect, it } from "vitest";
 import { validateCatalog } from "../src/cli/validate-catalog.ts";
+import { createHttpClient } from "../src/core/http.ts";
 import {
   type KiwixBook,
   parseMetalink,
@@ -13,7 +14,8 @@ import {
   pickBook,
   versionFromFileName,
 } from "../src/modules/catalog/kiwix.ts";
-import { loadCatalog, manifestJsonSchema, parseManifest } from "../src/modules/catalog/manifest.ts";
+import { type LoadedEntry, loadCatalog, manifestJsonSchema, parseManifest } from "../src/modules/catalog/manifest.ts";
+import { resolveEntries } from "../src/modules/catalog/resolve.ts";
 import { compareVersions, createCatalogService } from "../src/modules/catalog/service.ts";
 import { serveKiwixLibrary, sha256Of } from "./fixtures/catalog/kiwix-library.ts";
 import { type FileServer, startFileServer, testBytes, unusedPort, waitFor } from "./fixtures/downloads/file-server.ts";
@@ -244,11 +246,20 @@ describe("the shipped catalogue", () => {
 
   it("follows the rules for curated entries", () => {
     const { entries, manifests, downloadHosts } = loadCatalog([path.join(repoCatalogDir, "manifests")]);
-    expect(downloadHosts).toEqual(["download.kiwix.org", "lb.download.kiwix.org", "library.kiwix.org", "opds.library.kiwix.org"]);
-    expect(manifests.map((item) => item.id)).toContain("kiwix-essentials");
+    expect(downloadHosts).toEqual(expect.arrayContaining(["download.kiwix.org", "lb.download.kiwix.org", "library.kiwix.org", "opds.library.kiwix.org"]));
+    expect(manifests.map((item) => item.id)).toEqual(expect.arrayContaining(["kiwix-essentials", "kiwix-more", "official-publications"]));
     for (const item of entries) {
-      expect(item.source.type, item.id).toBe("kiwix");
-      expect(JSON.stringify(item), item.id).not.toMatch(/\.zim\b/);
+      // Kiwix rebuilds its books; an address written down today is gone in two months.
+      if (item.source.type === "kiwix") expect(JSON.stringify(item), item.id).not.toMatch(/\.zim\b/);
+      // A file fetched from its publisher is pinned, so what arrives is what was checked,
+      // and so a refresh never has to contact the publisher about it.
+      if (item.source.type === "http") {
+        expect(item.source.sha256, item.id).toMatch(/^[0-9a-f]{64}$/);
+        expect(item.source.sizeBytes, item.id).toBeGreaterThan(0);
+        expect(item.source.url, item.id).toMatch(/^https:\/\//);
+        expect(item.format, item.id).not.toBe("zim");
+        expect(item.homepage, item.id).toBeTruthy();
+      }
       expect(item.category, item.id).not.toBe("maps");
       if (item.license === "See source") expect(item.licenseNote, item.id).toMatch(/not been verified/);
     }
@@ -476,6 +487,74 @@ describe("refreshing from the Kiwix library", () => {
     expect(server.requests.map((seen) => seen.method)).toEqual(["HEAD", "HEAD"]);
     expect(await entryOf(app, "h.guide")).toMatchObject({ availability: "available", sizeBytes: 12_345, version: "3" });
     expect(await entryOf(app, "h.gone")).toMatchObject({ availability: "unavailable" });
+  });
+});
+
+describe("checking files that publishers host themselves", () => {
+  const allowed = (server: FileServer) => ({ allowedHosts: [server.host] });
+  const loaded = (id: string, source: Json) => ({ ...entry(id, source), manifestId: "http-test" }) as unknown as LoadedEntry;
+
+  it("does not contact the publisher on refresh when the manifest already pins the size and checksum", async () => {
+    app = await createTestApp();
+    const server = await fileServer();
+    const body = testBytes(20_000, 21);
+    server.routes.set("/pinned.pdf", { body });
+    server.routes.set("/loose.pdf", { body: testBytes(5_000, 22) });
+    ship(
+      app,
+      "http.json",
+      manifest("http-test", [
+        entry("h.pinned", { type: "http", url: server.url("/pinned.pdf"), sha256: sha256Of(body), sizeBytes: body.length, version: "2" }),
+        entry("h.loose", { type: "http", url: server.url("/loose.pdf") }),
+      ]),
+    );
+    const refreshed = await app.api("POST", "/api/catalog/refresh");
+    expect(refreshed.body).toMatchObject({ checked: 2, available: 2, unavailable: [], unchecked: [] });
+    // Only the entry with nothing pinned needed asking about.
+    expect(server.requests.map((seen) => `${seen.method} ${seen.path}`)).toEqual(["HEAD /loose.pdf"]);
+    expect(await entryOf(app, "h.pinned")).toMatchObject({ availability: "available", sizeBytes: 20_000, version: "2" });
+  });
+
+  it("asks for one byte when a server refuses HEAD", async () => {
+    const server = await fileServer();
+    server.routes.set("/report.pdf", { body: testBytes(8_000, 23), headStatus: 500 });
+    server.routes.set("/broken.pdf", { body: testBytes(10), status: 503 });
+    const http = createHttpClient({ allowPrivate: true });
+    try {
+      const entries = [
+        loaded("h.report", { type: "http", url: server.url("/report.pdf") }),
+        loaded("h.broken", { type: "http", url: server.url("/broken.pdf") }),
+        loaded("h.gone", { type: "http", url: server.url("/gone.pdf") }),
+      ];
+      const results = await resolveEntries(http, entries, allowed(server));
+      expect(results.get("h.report")).toMatchObject({ state: "available", resolved: { sizeBytes: 8_000 } });
+      expect(results.get("h.broken")).toMatchObject({ state: "unchecked", reason: expect.stringMatching(/answered HTTP 503/) });
+      expect(results.get("h.gone")).toMatchObject({ state: "unavailable" });
+      const report = server.requests.filter((seen) => seen.path === "/report.pdf");
+      expect(report.map((seen) => [seen.method, seen.range])).toEqual([
+        ["HEAD", undefined],
+        ["GET", "bytes=0-0"],
+      ]);
+    } finally {
+      await http.close();
+    }
+  });
+
+  it("leaves a gap between requests to the same host when asked to, and checks pinned files too", async () => {
+    const server = await fileServer();
+    const body = testBytes(3_000, 24);
+    for (const name of ["a", "b", "c"]) server.routes.set(`/${name}.pdf`, { body });
+    const http = createHttpClient({ allowPrivate: true });
+    try {
+      const entries = ["a", "b", "c"].map((name) => loaded(`h.${name}`, { type: "http", url: server.url(`/${name}.pdf`), sha256: sha256Of(body), sizeBytes: body.length }));
+      const started = Date.now();
+      const results = await resolveEntries(http, entries, { ...allowed(server), hostIntervalMs: 120 });
+      expect(Date.now() - started).toBeGreaterThanOrEqual(240);
+      expect([...results.values()].map((result) => result.state)).toEqual(["available", "available", "available"]);
+      expect(server.requests.length).toBe(3);
+    } finally {
+      await http.close();
+    }
   });
 });
 

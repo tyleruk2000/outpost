@@ -27,8 +27,10 @@ These are screenshots of the running application, taken by the script in
 
 - **Reference collections.** Browse a curated catalogue (Wikipedia, medicine and first
   aid, repair guides, food preservation, engineering, and more) and download
-  individual collections as [Kiwix](https://kiwix.org) ZIM archives. Downloads resume,
-  retry, and are checked against the publisher's checksum. Read them in the app.
+  individual collections as [Kiwix](https://kiwix.org) ZIM archives, or official
+  handbooks and textbooks as PDFs straight from their publishers (FAA, NASA, USGS,
+  the US National Weather Service, FAO, WHO, OpenStax and others). Downloads resume,
+  retry, can be rate limited, and are checked against a checksum. Read them in the app.
 - **Your documents.** Add PDFs, EPUBs, Markdown, HTML, text and images. Text is
   extracted and indexed down to the page; originals are kept untouched. A built-in
   PDF viewer opens at the page a search result points to.
@@ -134,6 +136,8 @@ download. Progress, pausing and retrying are on the **Downloads** screen.
 Collections are downloaded from their publishers' official endpoints and are never
 bundled with Outpost. Each entry states its licence, and says so plainly where the
 maintainers have not verified it. To add entries, see [catalog/README.md](catalog/README.md).
+Which sources were considered, which are used and why the rest are not is in
+[docs/sources.md](docs/sources.md).
 
 Maps are downloaded from the **Maps** screen by region. See [docs/maps.md](docs/maps.md).
 
@@ -185,6 +189,7 @@ The reasoning behind each choice, the security model and the known trade-offs ar
 | [Storage](docs/storage.md) | Locations, NAS examples, moving and verifying |
 | [Offline use](docs/offline.md) | What works without a connection, and how that is guaranteed |
 | [Search](docs/search.md) | Query syntax, semantic and hybrid search |
+| [Sources](docs/sources.md) | Every content source considered, its licence, and how it is used |
 | [Maps](docs/maps.md) | Regions, data sources, GPX, coordinates |
 | [Notes and imports](docs/notes-and-imports.md) | The editor, Markdown and Notion imports |
 | [Portable drives](docs/portable.md) | Making and using a USB drive |

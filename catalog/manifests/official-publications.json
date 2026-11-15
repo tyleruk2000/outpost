@@ -1,0 +1,1366 @@
+{
+  "$schema": "../schema/manifest.schema.json",
+  "schemaVersion": 1,
+  "id": "official-publications",
+  "name": "Official publications",
+  "description": "Individual handbooks, guides and textbooks as PDF files, each fetched from its publisher's own website at the moment you ask for it: aviation handbooks from the FAA, preparedness guides from Ready.gov and the National Weather Service, the USDA guide to home canning, farming manuals from the FAO, references from NASA and the US Geological Survey, mountain medicine papers from the UIAA, and textbooks from OpenStax. Every file was downloaded and its checksum recorded on the date given as last verified; if a publisher later replaces a file, the download is refused until the entry is updated.",
+  "maintainers": [
+    "Outpost maintainers"
+  ],
+  "downloadHosts": [
+    "assets.openstax.org",
+    "iris.who.int",
+    "nchfp.uga.edu",
+    "ntrs.nasa.gov",
+    "openknowledge.fao.org",
+    "pubs.usgs.gov",
+    "www.faa.gov",
+    "www.ready.gov",
+    "www.theuiaa.org",
+    "www.weather.gov"
+  ],
+  "entries": [
+    {
+      "id": "faa.pilots-handbook-of-aeronautical-knowledge",
+      "name": "Pilot's Handbook of Aeronautical Knowledge",
+      "description": "The FAA's basic textbook for pilots: how aircraft fly, aircraft systems, flight instruments, weather, navigation, airspace and decision-making. 522 pages.",
+      "category": "navigation",
+      "publisher": "Federal Aviation Administration",
+      "language": "en",
+      "format": "pdf",
+      "license": "Public domain (US Government work)",
+      "licenseNote": "Published by the Federal Aviation Administration, a US federal agency; works of the US Government are not subject to copyright in the United States. The handbook says it is available for download from the FAA's website. The FAA's web policy pages carry no separate reuse statement, and images credited to outside contributors may remain under their owners' copyright.",
+      "attribution": "US Department of Transportation, Federal Aviation Administration.",
+      "homepage": "https://www.faa.gov/regulations_policies/handbooks_manuals/aviation/phak",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "aviation",
+        "handbook",
+        "flight training"
+      ],
+      "sizeBytes": 77598564,
+      "source": {
+        "type": "http",
+        "url": "https://www.faa.gov/regulations_policies/handbooks_manuals/aviation/faa-h-8083-25c.pdf",
+        "sha256": "247929cace0ab56b376e683eba540cc4c8f39f199ab35414e8b604e24f395cb7",
+        "sizeBytes": 77598564,
+        "version": "FAA-H-8083-25C (2023)"
+      }
+    },
+    {
+      "id": "faa.airplane-flying-handbook",
+      "name": "Airplane Flying Handbook",
+      "description": "The FAA's handbook of basic piloting skills for aeroplanes: ground operations, flight manoeuvres, take-offs, approaches and landings, night flying and emergency procedures. 406 pages.",
+      "category": "navigation",
+      "publisher": "Federal Aviation Administration",
+      "language": "en",
+      "format": "pdf",
+      "license": "Public domain (US Government work)",
+      "licenseNote": "Published by the Federal Aviation Administration, a US federal agency; works of the US Government are not subject to copyright in the United States. The handbook says it is available for download from the FAA's website. The FAA's web policy pages carry no separate reuse statement, and images credited to outside contributors may remain under their owners' copyright.",
+      "attribution": "US Department of Transportation, Federal Aviation Administration.",
+      "homepage": "https://www.faa.gov/regulations_policies/handbooks_manuals/aviation/airplane_handbook",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "aviation",
+        "handbook",
+        "flight training"
+      ],
+      "sizeBytes": 273248888,
+      "source": {
+        "type": "http",
+        "url": "https://www.faa.gov/sites/faa.gov/files/regulations_policies/handbooks_manuals/aviation/airplane_handbook/00_afh_full.pdf",
+        "sha256": "90dda95dcbe992bd798f1932b02b5a02d620d8344565c0516a6917f29dea1f8d",
+        "sizeBytes": 273248888,
+        "version": "FAA-H-8083-3C (2021)"
+      }
+    },
+    {
+      "id": "faa.aviation-weather-handbook",
+      "name": "Aviation Weather Handbook",
+      "description": "The FAA's technical reference on weather for flight planning and decision-making, and on the weather products most commonly used in aviation. 514 pages.",
+      "category": "navigation",
+      "publisher": "Federal Aviation Administration",
+      "language": "en",
+      "format": "pdf",
+      "license": "Public domain (US Government work)",
+      "licenseNote": "Published by the Federal Aviation Administration, a US federal agency; works of the US Government are not subject to copyright in the United States. The handbook says it is available for download from the FAA's website. The FAA's web policy pages carry no separate reuse statement, and images credited to outside contributors may remain under their owners' copyright.",
+      "attribution": "US Department of Transportation, Federal Aviation Administration.",
+      "homepage": "https://www.faa.gov/regulationspolicies/handbooksmanuals/aviation/faa-h-8083-28b-aviation-weather-handbook",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "aviation",
+        "weather",
+        "handbook"
+      ],
+      "sizeBytes": 18515580,
+      "source": {
+        "type": "http",
+        "url": "https://www.faa.gov/sites/faa.gov/files/FAA-H-8083-28B.pdf",
+        "sha256": "2a87e4a5613e2a8e060aaf83a95dfc55b61b0e576f5b783df9fdcebe62da62c3",
+        "sizeBytes": 18515580,
+        "version": "FAA-H-8083-28B",
+        "published": "2026-04-02"
+      }
+    },
+    {
+      "id": "faa.instrument-flying-handbook",
+      "name": "Instrument Flying Handbook",
+      "description": "The FAA's handbook on flying by reference to instruments. 371 pages. The FAA publishes an errata sheet and addenda for this edition on its handbooks page.",
+      "category": "navigation",
+      "publisher": "Federal Aviation Administration",
+      "language": "en",
+      "format": "pdf",
+      "license": "Public domain (US Government work)",
+      "licenseNote": "Published by the Federal Aviation Administration, a US federal agency; works of the US Government are not subject to copyright in the United States. The FAA's web policy pages carry no separate reuse statement, and images credited to outside contributors may remain under their owners' copyright.",
+      "attribution": "US Department of Transportation, Federal Aviation Administration.",
+      "homepage": "https://www.faa.gov/regulations_policies/handbooks_manuals/aviation",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "aviation",
+        "handbook",
+        "instrument flying"
+      ],
+      "sizeBytes": 68414993,
+      "source": {
+        "type": "http",
+        "url": "https://www.faa.gov/sites/faa.gov/files/regulations_policies/handbooks_manuals/aviation/FAA-H-8083-15B.pdf",
+        "sha256": "15cbf13fef6bf9810ad38d1f5bbff318133554a6ca118c4474bc1760ad9059d5",
+        "sizeBytes": 68414993,
+        "version": "FAA-H-8083-15B (2012)"
+      }
+    },
+    {
+      "id": "faa.helicopter-flying-handbook",
+      "name": "Helicopter Flying Handbook",
+      "description": "The FAA's handbook for helicopter pilots: aerodynamics, flight controls, systems, performance, manoeuvres, emergencies and night operations. 203 pages.",
+      "category": "navigation",
+      "publisher": "Federal Aviation Administration",
+      "language": "en",
+      "format": "pdf",
+      "license": "Public domain (US Government work)",
+      "licenseNote": "Published by the Federal Aviation Administration, a US federal agency; works of the US Government are not subject to copyright in the United States. The FAA's web policy pages carry no separate reuse statement, and images credited to outside contributors may remain under their owners' copyright.",
+      "attribution": "US Department of Transportation, Federal Aviation Administration.",
+      "homepage": "https://www.faa.gov/regulations_policies/handbooks_manuals/aviation/helicopter_flying_handbook",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "aviation",
+        "handbook",
+        "helicopter"
+      ],
+      "sizeBytes": 179110571,
+      "source": {
+        "type": "http",
+        "url": "https://www.faa.gov/sites/faa.gov/files/regulations_policies/handbooks_manuals/aviation/helicopter_flying_handbook/helicopter_flying_handbook.pdf",
+        "sha256": "88a2a6c72e163ea00b3dbf5f1f18538abeee28807516e8067fde31738bc641dc",
+        "sizeBytes": 179110571,
+        "version": "FAA-H-8083-21B (2019)"
+      }
+    },
+    {
+      "id": "faa.aviation-maintenance-technician-handbook-general",
+      "name": "Aviation Maintenance Technician Handbook: General",
+      "description": "The FAA's general handbook for aircraft mechanics: mathematics, drawings, weight and balance, materials, processes and tools, physics, electricity, inspection and ground operations. 677 pages.",
+      "category": "repair",
+      "publisher": "Federal Aviation Administration",
+      "language": "en",
+      "format": "pdf",
+      "license": "Public domain (US Government work)",
+      "licenseNote": "Published by the Federal Aviation Administration, a US federal agency; works of the US Government are not subject to copyright in the United States. The FAA's web policy pages carry no separate reuse statement, and images credited to outside contributors may remain under their owners' copyright.",
+      "attribution": "US Department of Transportation, Federal Aviation Administration.",
+      "homepage": "https://www.faa.gov/regulations_policies/handbooks_manuals/aviation",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "aviation",
+        "maintenance",
+        "tools",
+        "handbook"
+      ],
+      "sizeBytes": 92539602,
+      "source": {
+        "type": "http",
+        "url": "https://www.faa.gov/regulations_policies/handbooks_manuals/aviation/amtg_handbook.pdf",
+        "sha256": "0a39c01bbc454e77a49813cf27e2ef291756fa7111d9308bc290cd0eb71616fd",
+        "sizeBytes": 92539602,
+        "version": "FAA-H-8083-30B (2023)"
+      }
+    },
+    {
+      "id": "ready.are-you-ready-guide",
+      "name": "Are You Ready? An In-Depth Guide to Citizen Preparedness",
+      "description": "FEMA's guide to preparing for disasters: knowing your risks, basic protective actions, and what to do before, during and after specific hazards. 36 pages.",
+      "category": "preparedness",
+      "publisher": "Ready.gov (FEMA)",
+      "language": "en",
+      "format": "pdf",
+      "license": "Free to download and to reproduce unaltered (Ready.gov reprint terms)",
+      "licenseNote": "A US Government publication. Ready.gov says FEMA has made the Ready Campaign's publications available to download at no cost and that they may be reproduced, provided the content, photos, graphics and figures are not altered and the materials are not used to imply that FEMA or the US Government endorses a company's products or services.",
+      "attribution": "Ready.gov, Federal Emergency Management Agency, US Department of Homeland Security.",
+      "homepage": "https://www.ready.gov/publications",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "disaster",
+        "planning",
+        "guide"
+      ],
+      "sizeBytes": 4233522,
+      "source": {
+        "type": "http",
+        "url": "https://www.ready.gov/sites/default/files/2021-11/are-you-ready-guide.pdf",
+        "sha256": "3873f8ae7528389adacab72259c37b9ae3c507bd3ae23783122e06586560040c",
+        "sizeBytes": 4233522,
+        "version": "P-2064, September 2020"
+      }
+    },
+    {
+      "id": "ready.hazard-information-sheets",
+      "name": "Be Prepared for Any Hazard: hazard information sheets",
+      "description": "FEMA's complete set of hazard information sheets on how to prepare for, keep safe during and recover from disasters, one sheet for each kind of hazard. 35 pages.",
+      "category": "preparedness",
+      "publisher": "Ready.gov (FEMA)",
+      "language": "en",
+      "format": "pdf",
+      "license": "Free to download and to reproduce unaltered (Ready.gov reprint terms)",
+      "licenseNote": "A US Government publication. Ready.gov says FEMA has made the Ready Campaign's publications available to download at no cost and that they may be reproduced, provided the content, photos, graphics and figures are not altered and the materials are not used to imply that FEMA or the US Government endorses a company's products or services.",
+      "attribution": "Ready.gov, Federal Emergency Management Agency, US Department of Homeland Security.",
+      "homepage": "https://www.ready.gov/publications",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "disaster",
+        "hazards",
+        "fact sheets"
+      ],
+      "sizeBytes": 4376542,
+      "source": {
+        "type": "http",
+        "url": "https://www.ready.gov/sites/default/files/2025-02/fema_full-suite-hazard-info-sheets.pdf",
+        "sha256": "079108e88643fcc37bbcb4e46ce4aa1336b0f59acb4847c271c0ce930f0c79c2",
+        "sizeBytes": 4376542,
+        "version": "FEMA P-2143, August 2024"
+      }
+    },
+    {
+      "id": "ready.emergency-supply-list",
+      "name": "Emergency Supply List",
+      "description": "Ready.gov's two-page checklist of what to put in an emergency supply kit for a home and family.",
+      "category": "preparedness",
+      "publisher": "Ready.gov (FEMA)",
+      "language": "en",
+      "format": "pdf",
+      "license": "Free to download and to reproduce unaltered (Ready.gov reprint terms)",
+      "licenseNote": "A US Government publication. Ready.gov says FEMA has made the Ready Campaign's publications available to download at no cost and that they may be reproduced, provided the content, photos, graphics and figures are not altered and the materials are not used to imply that FEMA or the US Government endorses a company's products or services.",
+      "attribution": "Ready.gov, Federal Emergency Management Agency, US Department of Homeland Security.",
+      "homepage": "https://www.ready.gov/publications",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "checklist",
+        "emergency kit"
+      ],
+      "sizeBytes": 152185,
+      "source": {
+        "type": "http",
+        "url": "https://www.ready.gov/sites/default/files/2021-02/ready_checklist.pdf",
+        "sha256": "375f8acfeec361ecf2ee2e032178bd112ad3001035ccf5fd4e848aa9440f939c",
+        "sizeBytes": 152185
+      }
+    },
+    {
+      "id": "ready.disaster-preparedness-guide-for-older-adults",
+      "name": "Disaster Preparedness Guide for Older Adults",
+      "description": "A FEMA guide in three steps for older adults: assess your needs, make a plan and build a kit, and engage your support network. 20 pages.",
+      "category": "preparedness",
+      "publisher": "Ready.gov (FEMA)",
+      "language": "en",
+      "format": "pdf",
+      "license": "Free to download and to reproduce unaltered (Ready.gov reprint terms)",
+      "licenseNote": "A US Government publication. Ready.gov says FEMA has made the Ready Campaign's publications available to download at no cost and that they may be reproduced, provided the content, photos, graphics and figures are not altered and the materials are not used to imply that FEMA or the US Government endorses a company's products or services.",
+      "attribution": "Ready.gov, Federal Emergency Management Agency, US Department of Homeland Security.",
+      "homepage": "https://www.ready.gov/publications",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "disaster",
+        "planning",
+        "older adults"
+      ],
+      "sizeBytes": 3588917,
+      "source": {
+        "type": "http",
+        "url": "https://www.ready.gov/sites/default/files/2023-09/ready-gov_disaster-preparedness-guide-for-older-adults.pdf",
+        "sha256": "b1a5faebc0d4fe01d368dd7895ad8b9e720c0a3fb6b382f3c3e8f6660a4257cc",
+        "sizeBytes": 3588917
+      }
+    },
+    {
+      "id": "usda.complete-guide-to-home-canning-introduction",
+      "name": "USDA Complete Guide to Home Canning: Introduction",
+      "description": "The cover, acknowledgements, safety caution and contents of the guide. One of the eight files that make up the USDA Complete Guide to Home Canning; download all eight for the whole book. 12 pages.",
+      "category": "food",
+      "publisher": "US Department of Agriculture",
+      "language": "en",
+      "format": "pdf",
+      "license": "See source",
+      "licenseNote": "Published by the US Department of Agriculture and offered for download by the National Center for Home Food Preservation as the electronic version of the guide. Neither the file nor the download page states a reuse licence, and the hosting website is marked \"All rights reserved\", so the terms for reuse have not been verified by the catalogue maintainers. Check with the publisher before redistributing this content.",
+      "attribution": "US Department of Agriculture, National Institute of Food and Agriculture. Complete Guide to Home Canning, Agriculture Information Bulletin No. 539, revised 2015. Hosted by the National Center for Home Food Preservation.",
+      "homepage": "https://nchfp.uga.edu/resources/entry/introduction-usda-guide-to-home-canning",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "canning",
+        "food preservation"
+      ],
+      "sizeBytes": 467339,
+      "source": {
+        "type": "http",
+        "url": "https://nchfp.uga.edu/papers/guide/INTRO_HomeCanrev0715.pdf",
+        "sha256": "c1683833cb4546858445c787f02bb4027710760bbff08c7e1b54889bf5521568",
+        "sizeBytes": 467339,
+        "version": "Revised 2015"
+      }
+    },
+    {
+      "id": "usda.complete-guide-to-home-canning-part-1",
+      "name": "USDA Complete Guide to Home Canning: Guide 1: Principles of Home Canning",
+      "description": "The principles behind safe home canning, which the recipes in the other parts rely on. One of the eight files that make up the USDA Complete Guide to Home Canning; download all eight for the whole book. 40 pages.",
+      "category": "food",
+      "publisher": "US Department of Agriculture",
+      "language": "en",
+      "format": "pdf",
+      "license": "See source",
+      "licenseNote": "Published by the US Department of Agriculture and offered for download by the National Center for Home Food Preservation as the electronic version of the guide. Neither the file nor the download page states a reuse licence, and the hosting website is marked \"All rights reserved\", so the terms for reuse have not been verified by the catalogue maintainers. Check with the publisher before redistributing this content.",
+      "attribution": "US Department of Agriculture, National Institute of Food and Agriculture. Complete Guide to Home Canning, Agriculture Information Bulletin No. 539, revised 2015. Hosted by the National Center for Home Food Preservation.",
+      "homepage": "https://nchfp.uga.edu/resources/entry/guide-part-1-principles-of-home-canning",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "canning",
+        "food preservation"
+      ],
+      "sizeBytes": 3794234,
+      "source": {
+        "type": "http",
+        "url": "https://nchfp.uga.edu/papers/guide/GUIDE01_HomeCan_rev0715.pdf",
+        "sha256": "60d1e1a74a9fe61c19e6f5312a76d291905a8ca51b28d0def04c677294416d86",
+        "sizeBytes": 3794234,
+        "version": "Revised 2015"
+      }
+    },
+    {
+      "id": "usda.complete-guide-to-home-canning-part-2",
+      "name": "USDA Complete Guide to Home Canning: Guide 2: Fruit and Fruit Products",
+      "description": "Selecting, preparing and canning fruit and fruit products. One of the eight files that make up the USDA Complete Guide to Home Canning; download all eight for the whole book. 32 pages.",
+      "category": "food",
+      "publisher": "US Department of Agriculture",
+      "language": "en",
+      "format": "pdf",
+      "license": "See source",
+      "licenseNote": "Published by the US Department of Agriculture and offered for download by the National Center for Home Food Preservation as the electronic version of the guide. Neither the file nor the download page states a reuse licence, and the hosting website is marked \"All rights reserved\", so the terms for reuse have not been verified by the catalogue maintainers. Check with the publisher before redistributing this content.",
+      "attribution": "US Department of Agriculture, National Institute of Food and Agriculture. Complete Guide to Home Canning, Agriculture Information Bulletin No. 539, revised 2015. Hosted by the National Center for Home Food Preservation.",
+      "homepage": "https://nchfp.uga.edu/resources/entry/guide-part-2-fruit-and-fruit-products",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "canning",
+        "food preservation"
+      ],
+      "sizeBytes": 1098841,
+      "source": {
+        "type": "http",
+        "url": "https://nchfp.uga.edu/papers/guide/GUIDE02_HomeCan_rev0715.pdf",
+        "sha256": "5f6918678e1410b72f9f87d652ebab2f5f5d39f3806db676399e5c785be0b58e",
+        "sizeBytes": 1098841,
+        "version": "Revised 2015"
+      }
+    },
+    {
+      "id": "usda.complete-guide-to-home-canning-part-3",
+      "name": "USDA Complete Guide to Home Canning: Guide 3: Tomatoes and Tomato Products",
+      "description": "Selecting, preparing and canning tomatoes and tomato products. One of the eight files that make up the USDA Complete Guide to Home Canning; download all eight for the whole book. 26 pages.",
+      "category": "food",
+      "publisher": "US Department of Agriculture",
+      "language": "en",
+      "format": "pdf",
+      "license": "See source",
+      "licenseNote": "Published by the US Department of Agriculture and offered for download by the National Center for Home Food Preservation as the electronic version of the guide. Neither the file nor the download page states a reuse licence, and the hosting website is marked \"All rights reserved\", so the terms for reuse have not been verified by the catalogue maintainers. Check with the publisher before redistributing this content.",
+      "attribution": "US Department of Agriculture, National Institute of Food and Agriculture. Complete Guide to Home Canning, Agriculture Information Bulletin No. 539, revised 2015. Hosted by the National Center for Home Food Preservation.",
+      "homepage": "https://nchfp.uga.edu/resources/entry/guide-part-3-tomatoes-and-tomato-products",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "canning",
+        "food preservation"
+      ],
+      "sizeBytes": 976490,
+      "source": {
+        "type": "http",
+        "url": "https://nchfp.uga.edu/papers/guide/GUIDE03_HomeCan_rev0715.pdf",
+        "sha256": "6f8d166be89c7260964bfa4746fae72e79164f19a712672b0c1aa3bb902d18ff",
+        "sizeBytes": 976490,
+        "version": "Revised 2015"
+      }
+    },
+    {
+      "id": "usda.complete-guide-to-home-canning-part-4",
+      "name": "USDA Complete Guide to Home Canning: Guide 4: Vegetables and Vegetable Products",
+      "description": "Selecting, preparing and canning vegetables and vegetable products. One of the eight files that make up the USDA Complete Guide to Home Canning; download all eight for the whole book. 22 pages.",
+      "category": "food",
+      "publisher": "US Department of Agriculture",
+      "language": "en",
+      "format": "pdf",
+      "license": "See source",
+      "licenseNote": "Published by the US Department of Agriculture and offered for download by the National Center for Home Food Preservation as the electronic version of the guide. Neither the file nor the download page states a reuse licence, and the hosting website is marked \"All rights reserved\", so the terms for reuse have not been verified by the catalogue maintainers. Check with the publisher before redistributing this content.",
+      "attribution": "US Department of Agriculture, National Institute of Food and Agriculture. Complete Guide to Home Canning, Agriculture Information Bulletin No. 539, revised 2015. Hosted by the National Center for Home Food Preservation.",
+      "homepage": "https://nchfp.uga.edu/resources/entry/guide-part-4-vegetables-and-vegetable-products",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "canning",
+        "food preservation"
+      ],
+      "sizeBytes": 2013613,
+      "source": {
+        "type": "http",
+        "url": "https://nchfp.uga.edu/papers/guide/GUIDE04_HomeCan_rev0715.pdf",
+        "sha256": "bb1d6ccce65146b5caad8bdaf766424c702119a90aa834b25269816da165641f",
+        "sizeBytes": 2013613,
+        "version": "Revised 2015"
+      }
+    },
+    {
+      "id": "usda.complete-guide-to-home-canning-part-5",
+      "name": "USDA Complete Guide to Home Canning: Guide 5: Poultry, Red Meats and Seafood",
+      "description": "Preparing and canning poultry, red meats and seafood. One of the eight files that make up the USDA Complete Guide to Home Canning; download all eight for the whole book. 16 pages.",
+      "category": "food",
+      "publisher": "US Department of Agriculture",
+      "language": "en",
+      "format": "pdf",
+      "license": "See source",
+      "licenseNote": "Published by the US Department of Agriculture and offered for download by the National Center for Home Food Preservation as the electronic version of the guide. Neither the file nor the download page states a reuse licence, and the hosting website is marked \"All rights reserved\", so the terms for reuse have not been verified by the catalogue maintainers. Check with the publisher before redistributing this content.",
+      "attribution": "US Department of Agriculture, National Institute of Food and Agriculture. Complete Guide to Home Canning, Agriculture Information Bulletin No. 539, revised 2015. Hosted by the National Center for Home Food Preservation.",
+      "homepage": "https://nchfp.uga.edu/resources/entry/guide-part-5-poultry-red-meats-and-seafood",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "canning",
+        "food preservation"
+      ],
+      "sizeBytes": 1356485,
+      "source": {
+        "type": "http",
+        "url": "https://nchfp.uga.edu/papers/guide/GUIDE05_HomeCan_rev0715.pdf",
+        "sha256": "bffe17ee5a99d5b3393894b811508cbe797d30685b1b91d13496d7a768b589b7",
+        "sizeBytes": 1356485,
+        "version": "Revised 2015"
+      }
+    },
+    {
+      "id": "usda.complete-guide-to-home-canning-part-6",
+      "name": "USDA Complete Guide to Home Canning: Guide 6: Fermented Foods and Pickled Vegetables",
+      "description": "Preparing and canning fermented foods and pickled vegetables. One of the eight files that make up the USDA Complete Guide to Home Canning; download all eight for the whole book. 36 pages.",
+      "category": "food",
+      "publisher": "US Department of Agriculture",
+      "language": "en",
+      "format": "pdf",
+      "license": "See source",
+      "licenseNote": "Published by the US Department of Agriculture and offered for download by the National Center for Home Food Preservation as the electronic version of the guide. Neither the file nor the download page states a reuse licence, and the hosting website is marked \"All rights reserved\", so the terms for reuse have not been verified by the catalogue maintainers. Check with the publisher before redistributing this content.",
+      "attribution": "US Department of Agriculture, National Institute of Food and Agriculture. Complete Guide to Home Canning, Agriculture Information Bulletin No. 539, revised 2015. Hosted by the National Center for Home Food Preservation.",
+      "homepage": "https://nchfp.uga.edu/resources/entry/guide-part-6-fermented-food-and-pickled-vegetables",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "canning",
+        "food preservation"
+      ],
+      "sizeBytes": 3173534,
+      "source": {
+        "type": "http",
+        "url": "https://nchfp.uga.edu/papers/guide/GUIDE06_HomeCan_rev0715.pdf",
+        "sha256": "fa4be9f7ac718801178f4f04efa169d74b8c64757d35aa29aa8226fbdaeee4bf",
+        "sizeBytes": 3173534,
+        "version": "Revised 2015"
+      }
+    },
+    {
+      "id": "usda.complete-guide-to-home-canning-part-7",
+      "name": "USDA Complete Guide to Home Canning: Guide 7: Jams and Jellies",
+      "description": "Preparing and canning jams and jellies. One of the eight files that make up the USDA Complete Guide to Home Canning; download all eight for the whole book. 13 pages.",
+      "category": "food",
+      "publisher": "US Department of Agriculture",
+      "language": "en",
+      "format": "pdf",
+      "license": "See source",
+      "licenseNote": "Published by the US Department of Agriculture and offered for download by the National Center for Home Food Preservation as the electronic version of the guide. Neither the file nor the download page states a reuse licence, and the hosting website is marked \"All rights reserved\", so the terms for reuse have not been verified by the catalogue maintainers. Check with the publisher before redistributing this content.",
+      "attribution": "US Department of Agriculture, National Institute of Food and Agriculture. Complete Guide to Home Canning, Agriculture Information Bulletin No. 539, revised 2015. Hosted by the National Center for Home Food Preservation.",
+      "homepage": "https://nchfp.uga.edu/resources/entry/guide-part-7-jams-and-jellies",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "canning",
+        "food preservation"
+      ],
+      "sizeBytes": 1300368,
+      "source": {
+        "type": "http",
+        "url": "https://nchfp.uga.edu/papers/guide/GUIDE07_HomeCan_rev0715.pdf",
+        "sha256": "6023faf9ea45f8e20078c54c5d273a7717ce17c66eba57a18f363ba54021e411",
+        "sizeBytes": 1300368,
+        "version": "Revised 2015"
+      }
+    },
+    {
+      "id": "fao.a-vegetable-garden-for-all",
+      "name": "A Vegetable Garden for All",
+      "description": "An FAO manual on growing vegetables in a home or backyard garden, fifth edition. 269 pages.",
+      "category": "agriculture",
+      "publisher": "Food and Agriculture Organization of the United Nations",
+      "language": "en",
+      "format": "pdf",
+      "license": "FAO terms: free for private study, research, teaching and non-commercial use, with acknowledgement",
+      "licenseNote": "© FAO. The document says its material may be copied, downloaded and printed for private study, research and teaching purposes, or for use in non-commercial products or services, provided FAO is acknowledged as the source and copyright holder and its endorsement is not implied. Commercial use needs FAO's permission.",
+      "attribution": "© FAO, 2014. Manual “A Vegetable Garden for All”, 5th edition.",
+      "homepage": "https://www.fao.org/3/i3556e/i3556e.pdf",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "gardening",
+        "vegetables",
+        "manual"
+      ],
+      "sizeBytes": 8364980,
+      "source": {
+        "type": "http",
+        "url": "https://openknowledge.fao.org/server/api/core/bitstreams/f01f31d7-9231-4daa-abdb-2900905fc058/content",
+        "sha256": "697b835e9e9dd9891528f03c02e8f177e11a9342bfb30a414e69bebd86752a09",
+        "sizeBytes": 8364980,
+        "version": "5th edition (2014)"
+      }
+    },
+    {
+      "id": "fao.small-scale-aquaponic-food-production",
+      "name": "Small-scale Aquaponic Food Production",
+      "description": "An FAO technical manual on integrated fish and plant farming at small scale. 288 pages.",
+      "category": "agriculture",
+      "publisher": "Food and Agriculture Organization of the United Nations",
+      "language": "en",
+      "format": "pdf",
+      "license": "FAO terms: free for private study, research, teaching and non-commercial use, with acknowledgement",
+      "licenseNote": "© FAO. The document says its material may be copied, downloaded and printed for private study, research and teaching purposes, or for use in non-commercial products or services, provided FAO is acknowledged as the source and copyright holder and its endorsement is not implied. Commercial use needs FAO's permission.",
+      "attribution": "© FAO, 2014. Small-scale aquaponic food production: integrated fish and plant farming. FAO Fisheries and Aquaculture Technical Paper 589.",
+      "homepage": "https://www.fao.org/3/i4021e/i4021e.pdf",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "aquaponics",
+        "fish",
+        "growing food"
+      ],
+      "sizeBytes": 58759333,
+      "source": {
+        "type": "http",
+        "url": "https://openknowledge.fao.org/server/api/core/bitstreams/2ca21047-390f-42cd-bd1d-0c2ebc9c1df2/content",
+        "sha256": "0ca44ba739e100d356942b9d110b133e689e167fd8c9010068ae9b038f19f368",
+        "sizeBytes": 58759333,
+        "version": "Technical Paper 589 (2014)"
+      }
+    },
+    {
+      "id": "fao.farmers-compost-handbook",
+      "name": "Farmer's Compost Handbook",
+      "description": "An FAO handbook on making and using compost on the farm, drawing on experience in Latin America. 112 pages.",
+      "category": "agriculture",
+      "publisher": "Food and Agriculture Organization of the United Nations",
+      "language": "en",
+      "format": "pdf",
+      "license": "FAO terms: free for private study, research, teaching and non-commercial use, with acknowledgement",
+      "licenseNote": "© FAO. The document says its material may be copied, downloaded and printed for private study, research and teaching purposes, or for use in non-commercial products or services, provided FAO is acknowledged as the source and copyright holder and its endorsement is not implied. Commercial use needs FAO's permission.",
+      "attribution": "© FAO, 2015. Farmer's Compost Handbook: Experiences in Latin America.",
+      "homepage": "https://www.fao.org/3/i3388e/i3388e.pdf",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "compost",
+        "soil"
+      ],
+      "sizeBytes": 4572583,
+      "source": {
+        "type": "http",
+        "url": "https://openknowledge.fao.org/server/api/core/bitstreams/0658b4e0-53e3-4ed7-89d0-ff351bec1dff/content",
+        "sha256": "daa724962104abccbb3db845884a68ee9b7c85d62884447b475b2702387be683",
+        "sizeBytes": 4572583,
+        "version": "2015"
+      }
+    },
+    {
+      "id": "fao.manual-on-small-earth-dams",
+      "name": "Manual on Small Earth Dams",
+      "description": "An FAO guide to siting, designing and building small earth dams for storing water. 124 pages.",
+      "category": "engineering",
+      "publisher": "Food and Agriculture Organization of the United Nations",
+      "language": "en",
+      "format": "pdf",
+      "license": "FAO terms: free for educational and other non-commercial use, with acknowledgement",
+      "licenseNote": "© FAO. All rights reserved, but the document says that reproduction and dissemination of its material for educational or other non-commercial purposes are authorised without prior written permission, provided the source is fully acknowledged. Reproduction for resale or other commercial purposes needs written permission.",
+      "attribution": "© FAO, 2010. Manual on small earth dams: a guide to siting, design and construction. FAO Irrigation and Drainage Paper 64.",
+      "homepage": "https://www.fao.org/3/i1531e/i1531e.pdf",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "water",
+        "dams",
+        "construction"
+      ],
+      "sizeBytes": 3587339,
+      "source": {
+        "type": "http",
+        "url": "https://openknowledge.fao.org/server/api/core/bitstreams/b885ce10-0d4e-4677-8134-625f23f3c18a/content",
+        "sha256": "7ef31b3a1c5a960244dbb9a10a960150b7639939a14691977cd6f40c8d82da94",
+        "sizeBytes": 3587339,
+        "version": "Irrigation and Drainage Paper 64 (2010)"
+      }
+    },
+    {
+      "id": "nws.weather-spotters-field-guide",
+      "name": "Weather Spotter's Field Guide",
+      "description": "The National Weather Service guide to being a SKYWARN storm spotter: the spotter's role, and how to recognise and report severe weather. 72 pages.",
+      "category": "science",
+      "publisher": "National Weather Service (NOAA)",
+      "language": "en",
+      "format": "pdf",
+      "license": "Public domain (US Government work)",
+      "licenseNote": "The National Weather Service says the information on its web pages is in the public domain unless noted otherwise, and may be used without charge so long as you do not claim it as your own, imply endorsement by NOAA or the NWS, or modify it and present it as official government material. Some photographs in this guide are credited to individual photographers and marked as their copyright.",
+      "attribution": "US Department of Commerce, National Oceanic and Atmospheric Administration, National Weather Service.",
+      "homepage": "https://www.weather.gov/owlie/publication_brochures",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "weather",
+        "storms",
+        "field guide"
+      ],
+      "sizeBytes": 27871046,
+      "source": {
+        "type": "http",
+        "url": "https://www.weather.gov/media/owlie/SGJune6-11(1).pdf",
+        "sha256": "831b7506ec3713400c03fad75b43f5d550de080b33d3b2b113a54d5bee8bd5df",
+        "sizeBytes": 27871046,
+        "version": "June 2011"
+      }
+    },
+    {
+      "id": "nws.thunderstorms-tornadoes-lightning",
+      "name": "Thunderstorms, Tornadoes, Lightning: a preparedness guide",
+      "description": "A National Weather Service preparedness guide that explains thunderstorms and related hazards and the actions that protect you, with tornado safety information for schools. 20 pages.",
+      "category": "preparedness",
+      "publisher": "National Weather Service (NOAA)",
+      "language": "en",
+      "format": "pdf",
+      "license": "Public domain (US Government work)",
+      "licenseNote": "The National Weather Service says the information on its web pages is in the public domain unless noted otherwise, and may be used without charge so long as you do not claim it as your own, imply endorsement by NOAA or the NWS, or modify it and present it as official government material.",
+      "attribution": "US Department of Commerce, National Oceanic and Atmospheric Administration, National Weather Service.",
+      "homepage": "https://www.weather.gov/owlie/publication_brochures",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "weather",
+        "tornado",
+        "lightning",
+        "safety"
+      ],
+      "sizeBytes": 14573890,
+      "source": {
+        "type": "http",
+        "url": "https://www.weather.gov/media/owlie/ttl6-10.pdf",
+        "sha256": "ea0c073826bb64386712d322a547bce1592a7f9e9c5edae5cf3ae8261180466a",
+        "sizeBytes": 14573890
+      }
+    },
+    {
+      "id": "nws.winter-storms-the-deceptive-killers",
+      "name": "Winter Storms: The Deceptive Killers",
+      "description": "A National Weather Service preparedness guide to the dangers of winter weather and the actions that protect you. 12 pages.",
+      "category": "preparedness",
+      "publisher": "National Weather Service (NOAA)",
+      "language": "en",
+      "format": "pdf",
+      "license": "Public domain (US Government work)",
+      "licenseNote": "The National Weather Service says the information on its web pages is in the public domain unless noted otherwise, and may be used without charge so long as you do not claim it as your own, imply endorsement by NOAA or the NWS, or modify it and present it as official government material.",
+      "attribution": "US Department of Commerce, National Oceanic and Atmospheric Administration, National Weather Service.",
+      "homepage": "https://www.weather.gov/owlie/publication_brochures",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "weather",
+        "winter",
+        "safety"
+      ],
+      "sizeBytes": 1719119,
+      "source": {
+        "type": "http",
+        "url": "https://www.weather.gov/media/owlie/Winter_Storms2008.pdf",
+        "sha256": "9a168429ef1fd662ea515908c2ce6fb1b4b863ec89487850edcc06f2c529c132",
+        "sizeBytes": 1719119,
+        "version": "June 2008"
+      }
+    },
+    {
+      "id": "nws.cloud-chart",
+      "name": "Cloud Chart",
+      "description": "A two-page chart from the National Weather Service of the types of high, middle and low clouds, with a short description of each.",
+      "category": "science",
+      "publisher": "National Weather Service (NOAA)",
+      "language": "en",
+      "format": "pdf",
+      "license": "Public domain (US Government work)",
+      "licenseNote": "The National Weather Service says the information on its web pages is in the public domain unless noted otherwise, and may be used without charge so long as you do not claim it as your own, imply endorsement by NOAA or the NWS, or modify it and present it as official government material.",
+      "attribution": "US Department of Commerce, National Oceanic and Atmospheric Administration, National Weather Service.",
+      "homepage": "https://www.weather.gov/owlie/publication_brochures",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "weather",
+        "clouds",
+        "chart"
+      ],
+      "sizeBytes": 9051873,
+      "source": {
+        "type": "http",
+        "url": "https://www.weather.gov/media/owlie/cloud_chart.pdf",
+        "sha256": "cd6baa797f52a10028cb6fd573ce016fd69696e164cca0f11813f7b4247b0117",
+        "sizeBytes": 9051873
+      }
+    },
+    {
+      "id": "nws.observing-handbook-no-1-marine-surface-weather-observations",
+      "name": "Observing Handbook No. 1: Marine Surface Weather Observations",
+      "description": "The National Weather Service handbook for observing, coding and reporting the weather from ships at sea. 150 pages.",
+      "category": "navigation",
+      "publisher": "National Weather Service (NOAA)",
+      "language": "en",
+      "format": "pdf",
+      "license": "Public domain (US Government work)",
+      "licenseNote": "The National Weather Service says the information on its web pages is in the public domain unless noted otherwise, and may be used without charge so long as you do not claim it as your own, imply endorsement by NOAA or the NWS, or modify it and present it as official government material.",
+      "attribution": "US Department of Commerce, National Oceanic and Atmospheric Administration, National Weather Service.",
+      "homepage": "https://www.weather.gov/owlie/publication_brochures",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "weather",
+        "marine",
+        "observation"
+      ],
+      "sizeBytes": 4687856,
+      "source": {
+        "type": "http",
+        "url": "https://www.weather.gov/media/owlie/ObservingHandbook1_2010_508_compliant.pdf",
+        "sha256": "a9f143cb41622e5df90d9b2fa0f11e65ef02774a4dba14d156740c9b6e99405e",
+        "sizeBytes": 4687856,
+        "version": "May 2010"
+      }
+    },
+    {
+      "id": "nws.worldwide-marine-radiofacsimile-broadcast-schedules",
+      "name": "Worldwide Marine Radiofacsimile Broadcast Schedules",
+      "description": "National Weather Service listing of radiofacsimile (weather fax) broadcasts for mariners around the world. 134 pages. This edition is dated 13 May 2016 and broadcast schedules change, so check it against a current source when you can.",
+      "category": "radio",
+      "publisher": "National Weather Service (NOAA)",
+      "language": "en",
+      "format": "pdf",
+      "license": "Public domain (US Government work)",
+      "licenseNote": "The National Weather Service says the information on its web pages is in the public domain unless noted otherwise, and may be used without charge so long as you do not claim it as your own, imply endorsement by NOAA or the NWS, or modify it and present it as official government material.",
+      "attribution": "US Department of Commerce, National Oceanic and Atmospheric Administration, National Weather Service.",
+      "homepage": "https://www.weather.gov/owlie/publication_brochures",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "radio",
+        "weather fax",
+        "marine"
+      ],
+      "sizeBytes": 738317,
+      "source": {
+        "type": "http",
+        "url": "https://www.weather.gov/media/owlie/rfax.pdf",
+        "sha256": "cecdd9f9fac5ec2632a4796be2fd895d9adbccf4d79227f0d2fe82b3f4e784e8",
+        "sizeBytes": 738317,
+        "version": "13 May 2016",
+        "published": "2016-05-13"
+      }
+    },
+    {
+      "id": "nasa.systems-engineering-handbook",
+      "name": "NASA Systems Engineering Handbook",
+      "description": "NASA's handbook on how it carries out systems engineering across the life of a project. 356 pages.",
+      "category": "engineering",
+      "publisher": "NASA",
+      "language": "en",
+      "format": "pdf",
+      "license": "Public use permitted (NASA Technical Reports Server)",
+      "licenseNote": "The NASA Technical Reports Server lists this document as publicly available and gives its copyright status as public use permitted.",
+      "attribution": "National Aeronautics and Space Administration. NASA Systems Engineering Handbook, NASA/SP-2016-6105 Rev 2.",
+      "homepage": "https://ntrs.nasa.gov/citations/20170001761",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "engineering",
+        "handbook"
+      ],
+      "sizeBytes": 4122125,
+      "source": {
+        "type": "http",
+        "url": "https://ntrs.nasa.gov/api/citations/20170001761/downloads/20170001761.pdf",
+        "sha256": "3153ae2e53e29452d5997efafe280a5f05cd21b43a047e988a17e1dd5207a38e",
+        "sizeBytes": 4122125,
+        "version": "NASA/SP-2016-6105 Rev 2",
+        "published": "2017-02-17"
+      }
+    },
+    {
+      "id": "nasa.fastener-design-manual",
+      "name": "Fastener Design Manual",
+      "description": "A NASA reference publication on designing joints with threaded fasteners and rivets. A scanned document of 100 pages.",
+      "category": "engineering",
+      "publisher": "NASA",
+      "language": "en",
+      "format": "pdf",
+      "license": "Public domain (US Government work)",
+      "licenseNote": "The NASA Technical Reports Server lists this document as publicly available and gives its copyright status as a government work with public use permitted.",
+      "attribution": "National Aeronautics and Space Administration. Fastener Design Manual, NASA Reference Publication 1228.",
+      "homepage": "https://ntrs.nasa.gov/citations/19900009424",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "engineering",
+        "fasteners",
+        "reference"
+      ],
+      "sizeBytes": 5345208,
+      "source": {
+        "type": "http",
+        "url": "https://ntrs.nasa.gov/api/citations/19900009424/downloads/19900009424.pdf",
+        "sha256": "7942e1937732b71a8a86b10b9c9454ea434220ffef7214cdb22696a5cc494602",
+        "sizeBytes": 5345208,
+        "version": "NASA RP-1228",
+        "published": "1990-03-01"
+      }
+    },
+    {
+      "id": "usgs.topographic-map-symbols",
+      "name": "Topographic Map Symbols",
+      "description": "A four-page USGS key to the symbols and colours used on topographic maps.",
+      "category": "navigation",
+      "publisher": "US Geological Survey",
+      "language": "en",
+      "format": "pdf",
+      "license": "Public domain (US Government work)",
+      "licenseNote": "The USGS Publications Warehouse says that PDF files of USGS-published reports are in the public domain. It adds that some illustrations or photographs in USGS publications are used with permission of other owners.",
+      "attribution": "US Department of the Interior, US Geological Survey.",
+      "homepage": "https://pubs.usgs.gov/gip/TopographicMapSymbols/",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "maps",
+        "symbols",
+        "reference"
+      ],
+      "sizeBytes": 2197818,
+      "source": {
+        "type": "http",
+        "url": "https://pubs.usgs.gov/gip/TopographicMapSymbols/topomapsymbols.pdf",
+        "sha256": "edb97e137a1831e75f6fddb4971e5e46b9a68cd8ca17ef2c44480b453f49aa59",
+        "sizeBytes": 2197818
+      }
+    },
+    {
+      "id": "usgs.finding-your-way-with-map-and-compass",
+      "name": "Finding Your Way with Map and Compass",
+      "description": "A two-page USGS fact sheet on reading a topographic map and using it with a compass.",
+      "category": "navigation",
+      "publisher": "US Geological Survey",
+      "language": "en",
+      "format": "pdf",
+      "license": "Public domain (US Government work)",
+      "licenseNote": "The USGS Publications Warehouse says that PDF files of USGS-published reports are in the public domain. It adds that some illustrations or photographs in USGS publications are used with permission of other owners.",
+      "attribution": "US Department of the Interior, US Geological Survey.",
+      "homepage": "https://pubs.usgs.gov/fs/2001/0035/",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "maps",
+        "compass",
+        "navigation"
+      ],
+      "sizeBytes": 204850,
+      "source": {
+        "type": "http",
+        "url": "https://pubs.usgs.gov/fs/2001/0035/report.pdf",
+        "sha256": "bc476fdc38e0949f18941cf361242bce8f0c18583111ce7e10b06eb3fc569922",
+        "sizeBytes": 204850,
+        "version": "Fact Sheet 035-01 (2001)"
+      }
+    },
+    {
+      "id": "usgs.map-projections-a-working-manual",
+      "name": "Map Projections: A Working Manual",
+      "description": "The USGS manual of map projections: a plain description of each projection, followed by its formulas and tables. A scanned document of 397 pages.",
+      "category": "navigation",
+      "publisher": "US Geological Survey",
+      "language": "en",
+      "format": "pdf",
+      "license": "Public domain (US Government work)",
+      "licenseNote": "The USGS Publications Warehouse says that PDF files of USGS-published reports are in the public domain. It adds that some illustrations or photographs in USGS publications are used with permission of other owners.",
+      "attribution": "US Department of the Interior, US Geological Survey. Professional Paper 1395.",
+      "homepage": "https://pubs.usgs.gov/publication/pp1395",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "maps",
+        "projections",
+        "reference"
+      ],
+      "sizeBytes": 22466124,
+      "source": {
+        "type": "http",
+        "url": "https://pubs.usgs.gov/pp/1395/report.pdf",
+        "sha256": "8c4a1f30dd9202816f2717ea97e5fb6d412263f0ee6c40ed6ce8a55918cff078",
+        "sizeBytes": 22466124,
+        "version": "Professional Paper 1395 (1987)"
+      }
+    },
+    {
+      "id": "openstax.anatomy-and-physiology-2e",
+      "name": "OpenStax Anatomy and Physiology 2e",
+      "description": "A college textbook on the structure and function of the human body, from OpenStax. 1,347 pages; a large download.",
+      "category": "medicine",
+      "publisher": "OpenStax, Rice University",
+      "language": "en",
+      "format": "pdf",
+      "license": "CC BY-NC-SA 4.0",
+      "licenseNote": "The licence is stated inside the book and in OpenStax's own catalogue. It allows sharing and adaptation for non-commercial purposes only, with attribution and under the same licence. OpenStax rebuilds its PDFs from time to time.",
+      "attribution": "© Rice University. Textbook content produced by OpenStax is licensed under CC BY-NC-SA 4.0. Access for free at openstax.org.",
+      "homepage": "https://openstax.org/details/books/anatomy-and-physiology-2e",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "textbook",
+        "anatomy",
+        "physiology"
+      ],
+      "sizeBytes": 476335014,
+      "source": {
+        "type": "http",
+        "url": "https://assets.openstax.org/oscms-prodcms/media/documents/anatomy-and-physiology-2e_-_WEB.pdf",
+        "sha256": "aa2e577b2083c343f4d57b38f00dd935dd2d98befdb38c0f368d72d636d0ff46",
+        "sizeBytes": 476335014,
+        "version": "PDF built 2026-04-20",
+        "published": "2022-04-20"
+      }
+    },
+    {
+      "id": "openstax.microbiology",
+      "name": "OpenStax Microbiology",
+      "description": "A college textbook for an introductory microbiology course, from OpenStax. 1,221 pages; a large download.",
+      "category": "medicine",
+      "publisher": "OpenStax, Rice University",
+      "language": "en",
+      "format": "pdf",
+      "license": "CC BY-NC-SA 4.0",
+      "licenseNote": "The licence is stated inside the book and in OpenStax's own catalogue. It allows sharing and adaptation for non-commercial purposes only, with attribution and under the same licence. OpenStax rebuilds its PDFs from time to time.",
+      "attribution": "© Rice University. Textbook content produced by OpenStax is licensed under CC BY-NC-SA 4.0. Access for free at openstax.org.",
+      "homepage": "https://openstax.org/details/books/microbiology",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "textbook",
+        "microbiology"
+      ],
+      "sizeBytes": 332873038,
+      "source": {
+        "type": "http",
+        "url": "https://assets.openstax.org/oscms-prodcms/media/documents/microbiology_-_WEB.pdf",
+        "sha256": "e3dd075104421429b41493171eb9380312610b68843bff07c3cdf6e9ecfc1751",
+        "sizeBytes": 332873038,
+        "version": "PDF built 2026-04-20",
+        "published": "2016-11-01"
+      }
+    },
+    {
+      "id": "openstax.clinical-nursing-skills",
+      "name": "OpenStax Clinical Nursing Skills",
+      "description": "A college textbook on clinical nursing skills, from OpenStax. 1,347 pages; a large download.",
+      "category": "medicine",
+      "publisher": "OpenStax, Rice University",
+      "language": "en",
+      "format": "pdf",
+      "license": "CC BY-NC-SA 4.0",
+      "licenseNote": "The licence is stated inside the book and in OpenStax's own catalogue. It allows sharing and adaptation for non-commercial purposes only, with attribution and under the same licence. OpenStax rebuilds its PDFs from time to time.",
+      "attribution": "© Rice University. Textbook content produced by OpenStax is licensed under CC BY-NC-SA 4.0. Access for free at openstax.org.",
+      "homepage": "https://openstax.org/details/books/clinical-nursing-skills",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "textbook",
+        "nursing"
+      ],
+      "sizeBytes": 95717314,
+      "source": {
+        "type": "http",
+        "url": "https://assets.openstax.org/oscms-prodcms/media/documents/Clinical-Nursing-Skills-WEB.pdf",
+        "sha256": "cd5224b3f6c3096362c33a3e3af1f08f04a593e85ba444b82955689c50157175",
+        "sizeBytes": 95717314,
+        "version": "PDF built 2026-04-20",
+        "published": "2024-06-26"
+      }
+    },
+    {
+      "id": "openstax.biology-2e",
+      "name": "OpenStax Biology 2e",
+      "description": "A college textbook for an introductory biology course, from OpenStax. 1,475 pages; a large download.",
+      "category": "science",
+      "publisher": "OpenStax, Rice University",
+      "language": "en",
+      "format": "pdf",
+      "license": "CC BY-NC-SA 4.0",
+      "licenseNote": "The licence is stated inside the book and in OpenStax's own catalogue. It allows sharing and adaptation for non-commercial purposes only, with attribution and under the same licence. OpenStax rebuilds its PDFs from time to time.",
+      "attribution": "© Rice University. Textbook content produced by OpenStax is licensed under CC BY-NC-SA 4.0. Access for free at openstax.org.",
+      "homepage": "https://openstax.org/details/books/biology-2e",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "textbook",
+        "biology"
+      ],
+      "sizeBytes": 401298122,
+      "source": {
+        "type": "http",
+        "url": "https://assets.openstax.org/oscms-prodcms/media/documents/Biology-2e_-_WEB.pdf",
+        "sha256": "4d1f413fd779f114838cdaeab7859dcb2922ca7529230d3bfd7d36a77b4e27b6",
+        "sizeBytes": 401298122,
+        "version": "PDF built 2026-06-09",
+        "published": "2018-03-28"
+      }
+    },
+    {
+      "id": "openstax.chemistry-2e",
+      "name": "OpenStax Chemistry 2e",
+      "description": "A college textbook for an introductory general chemistry course, from OpenStax. 1,203 pages; a large download.",
+      "category": "science",
+      "publisher": "OpenStax, Rice University",
+      "language": "en",
+      "format": "pdf",
+      "license": "CC BY-NC-SA 4.0",
+      "licenseNote": "The licence is stated inside the book and in OpenStax's own catalogue. It allows sharing and adaptation for non-commercial purposes only, with attribution and under the same licence. OpenStax rebuilds its PDFs from time to time.",
+      "attribution": "© Rice University. Textbook content produced by OpenStax is licensed under CC BY-NC-SA 4.0. Access for free at openstax.org.",
+      "homepage": "https://openstax.org/details/books/chemistry-2e",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "textbook",
+        "chemistry"
+      ],
+      "sizeBytes": 217794376,
+      "source": {
+        "type": "http",
+        "url": "https://assets.openstax.org/oscms-prodcms/media/documents/chemistry-2e_-_WEB.pdf",
+        "sha256": "fd89db1b8a1fee06b8ad3e8982f4f4b34bde4e93654a4ce28b724f8c0efe98d6",
+        "sizeBytes": 217794376,
+        "version": "PDF built 2026-04-20",
+        "published": "2019-02-14"
+      }
+    },
+    {
+      "id": "openstax.college-physics-2e",
+      "name": "OpenStax College Physics 2e",
+      "description": "A college textbook for an introductory physics course, from OpenStax. 1,671 pages; a large download.",
+      "category": "science",
+      "publisher": "OpenStax, Rice University",
+      "language": "en",
+      "format": "pdf",
+      "license": "CC BY-NC-SA 4.0",
+      "licenseNote": "The licence is stated inside the book and in OpenStax's own catalogue. It allows sharing and adaptation for non-commercial purposes only, with attribution and under the same licence. OpenStax rebuilds its PDFs from time to time.",
+      "attribution": "© Rice University. Textbook content produced by OpenStax is licensed under CC BY-NC-SA 4.0. Access for free at openstax.org.",
+      "homepage": "https://openstax.org/details/books/college-physics-2e",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "textbook",
+        "physics"
+      ],
+      "sizeBytes": 263463256,
+      "source": {
+        "type": "http",
+        "url": "https://assets.openstax.org/oscms-prodcms/media/documents/college-physics-2e_-_WEB.pdf",
+        "sha256": "a052d9fae2a90e135a74d70c001a78bb49b83280be58191e108d5de577699bb6",
+        "sizeBytes": 263463256,
+        "version": "PDF built 2026-04-22",
+        "published": "2022-07-13"
+      }
+    },
+    {
+      "id": "openstax.astronomy-2e",
+      "name": "OpenStax Astronomy 2e",
+      "description": "A college textbook for an introductory astronomy course, from OpenStax. 1,151 pages; a large download.",
+      "category": "science",
+      "publisher": "OpenStax, Rice University",
+      "language": "en",
+      "format": "pdf",
+      "license": "CC BY-NC-SA 4.0",
+      "licenseNote": "The licence is stated inside the book and in OpenStax's own catalogue. It allows sharing and adaptation for non-commercial purposes only, with attribution and under the same licence. OpenStax rebuilds its PDFs from time to time.",
+      "attribution": "© Rice University. Textbook content produced by OpenStax is licensed under CC BY-NC-SA 4.0. Access for free at openstax.org.",
+      "homepage": "https://openstax.org/details/books/astronomy-2e",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "textbook",
+        "astronomy"
+      ],
+      "sizeBytes": 162975061,
+      "source": {
+        "type": "http",
+        "url": "https://assets.openstax.org/oscms-prodcms/media/documents/astronomy-2e_-_WEB.pdf",
+        "sha256": "9c3c49fc2d0b35a122509d27714780a5991b8e97cb6bd8db954e2b37542797a5",
+        "sizeBytes": 162975061,
+        "version": "PDF built 2026-04-20",
+        "published": "2022-03-09"
+      }
+    },
+    {
+      "id": "openstax.precalculus-2e",
+      "name": "OpenStax Precalculus 2e",
+      "description": "A college textbook that prepares students for calculus, from OpenStax. 1,411 pages; a large download.",
+      "category": "science",
+      "publisher": "OpenStax, Rice University",
+      "language": "en",
+      "format": "pdf",
+      "license": "CC BY-NC-SA 4.0",
+      "licenseNote": "The licence is stated inside the book and in OpenStax's own catalogue. It allows sharing and adaptation for non-commercial purposes only, with attribution and under the same licence. OpenStax rebuilds its PDFs from time to time.",
+      "attribution": "© Rice University. Textbook content produced by OpenStax is licensed under CC BY-NC-SA 4.0. Access for free at openstax.org.",
+      "homepage": "https://openstax.org/details/books/precalculus-2e",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "textbook",
+        "mathematics"
+      ],
+      "sizeBytes": 114386806,
+      "source": {
+        "type": "http",
+        "url": "https://assets.openstax.org/oscms-prodcms/media/documents/precalculus-2e_-_WEB.pdf",
+        "sha256": "4b7018778433d2c125229a35315cf70e0813cbaacb04118b7265baae625372b5",
+        "sizeBytes": 114386806,
+        "version": "PDF built 2026-04-20",
+        "published": "2021-12-21"
+      }
+    },
+    {
+      "id": "openstax.introductory-statistics-2e",
+      "name": "OpenStax Introductory Statistics 2e",
+      "description": "A college textbook for a first course in statistics, from OpenStax. 847 pages; a large download.",
+      "category": "science",
+      "publisher": "OpenStax, Rice University",
+      "language": "en",
+      "format": "pdf",
+      "license": "CC BY-NC-SA 4.0",
+      "licenseNote": "The licence is stated inside the book and in OpenStax's own catalogue. It allows sharing and adaptation for non-commercial purposes only, with attribution and under the same licence. OpenStax rebuilds its PDFs from time to time.",
+      "attribution": "© Rice University. Textbook content produced by OpenStax is licensed under CC BY-NC-SA 4.0. Access for free at openstax.org.",
+      "homepage": "https://openstax.org/details/books/introductory-statistics-2e",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "textbook",
+        "statistics"
+      ],
+      "sizeBytes": 23503369,
+      "source": {
+        "type": "http",
+        "url": "https://assets.openstax.org/oscms-prodcms/media/documents/introductory-statistics-2e_-_WEB.pdf",
+        "sha256": "a79a953b75e570030c74ea6f700b8bd70f41dc8c01bf4e9618e6a0adba3a382a",
+        "sizeBytes": 23503369,
+        "version": "PDF built 2026-04-20",
+        "published": "2023-12-13"
+      }
+    },
+    {
+      "id": "uiaa.medcom-2-altitude-sickness-field-management",
+      "name": "Emergency Field Management of Altitude Sickness (AMS, HAPE, HACE)",
+      "description": "A consensus statement of the UIAA Medical Commission on recognising and treating acute mountain sickness, high-altitude pulmonary oedema and high-altitude cerebral oedema in the field. 19 pages.",
+      "category": "medicine",
+      "publisher": "UIAA (International Climbing and Mountaineering Federation)",
+      "language": "en",
+      "format": "pdf",
+      "license": "See source",
+      "licenseNote": "© UIAA. The UIAA Medical Commission offers this paper for free download on its own website and says it is intended for doctors, interested non-medical persons and trekking or expedition operators. Neither the paper nor the download page states a reuse licence, so the terms for reuse have not been verified by the catalogue maintainers. Check with the publisher before redistributing this content.",
+      "attribution": "UIAA Medical Commission. Consensus Statement No. 2.",
+      "homepage": "https://www.theuiaa.org/mountain-medicine/medical-advice/",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "mountaineering",
+        "altitude",
+        "first aid"
+      ],
+      "sizeBytes": 347635,
+      "source": {
+        "type": "http",
+        "url": "https://www.theuiaa.org/documents/mountainmedicine/English_UIAA_MedCom_Rec_No_2_AMS_HAPE_HACE_2012_V3.3.pdf",
+        "sha256": "f750c839dbd39082c3388914408d6c799465e50376e7133490f2f9a311bd29b0",
+        "sizeBytes": 347635,
+        "version": "V 3.3 (2012, updated 2024)"
+      }
+    },
+    {
+      "id": "uiaa.medcom-6-water-disinfection-in-the-mountains",
+      "name": "Water Disinfection in the Mountains",
+      "description": "A recommendation of the UIAA Medical Commission on ways of making water safe to drink when travelling in the mountains. 26 pages.",
+      "category": "survival",
+      "publisher": "UIAA (International Climbing and Mountaineering Federation)",
+      "language": "en",
+      "format": "pdf",
+      "license": "See source",
+      "licenseNote": "© UIAA. The UIAA Medical Commission offers this paper for free download on its own website and says it is intended for doctors, interested non-medical persons and trekking or expedition operators. Neither the paper nor the download page states a reuse licence, so the terms for reuse have not been verified by the catalogue maintainers. Check with the publisher before redistributing this content.",
+      "attribution": "UIAA Medical Commission. Recommendation No. 6.",
+      "homepage": "https://www.theuiaa.org/mountain-medicine/medical-advice/",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "mountaineering",
+        "water",
+        "purification"
+      ],
+      "sizeBytes": 175465,
+      "source": {
+        "type": "http",
+        "url": "https://www.theuiaa.org/documents/mountainmedicine/UIAA_MedCom_RecNo%206WaterDisinfection2021V7.4.pdf",
+        "sha256": "bdaac768a8bd39f5f32448d1529457f9e2da300a01cced4b4dc0da6b23cf3e99",
+        "sizeBytes": 175465,
+        "version": "3rd revised edition, V 7.4 (April 2021)"
+      }
+    },
+    {
+      "id": "who.basic-emergency-care",
+      "name": "Basic Emergency Care: approach to the acutely ill and injured",
+      "description": "The participant workbook for the WHO Basic Emergency Care course, for frontline health workers with limited resources: a systematic approach to trauma, difficulty in breathing, shock and altered mental status. 240 pages.",
+      "category": "medicine",
+      "publisher": "World Health Organization",
+      "language": "en",
+      "format": "pdf",
+      "license": "CC BY-NC-SA 3.0 IGO",
+      "attribution": "World Health Organization and the International Committee of the Red Cross, 2018.",
+      "homepage": "https://iris.who.int/handle/10665/275635",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "emergency care",
+        "first aid",
+        "training"
+      ],
+      "sizeBytes": 4257552,
+      "source": {
+        "type": "http",
+        "url": "https://iris.who.int/server/api/core/bitstreams/63432b9f-8808-44c5-9692-cea717c0cbda/content",
+        "sha256": "51e5000a8f268d67f28a8206e7b8a35ba7877bec0b45e28084970b074e00043e",
+        "sizeBytes": 4257552,
+        "published": "2018-10-30"
+      },
+      "licenseNote": "The licence is stated inside the file and on the World Health Organization's copyright page. Non-commercial use only; adaptations must carry the same licence."
+    },
+    {
+      "id": "who.pocket-book-primary-health-care-children-adolescents",
+      "name": "Pocket Book of Primary Health Care for Children and Adolescents",
+      "description": "WHO guidelines for health promotion, disease prevention and management from the newborn period to adolescence, written for primary care. 940 pages.",
+      "category": "medicine",
+      "publisher": "World Health Organization",
+      "language": "en",
+      "format": "pdf",
+      "license": "CC BY-NC-SA 3.0 IGO",
+      "attribution": "World Health Organization, Regional Office for Europe, 2022.",
+      "homepage": "https://iris.who.int/handle/10665/352485",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "child health",
+        "primary care",
+        "guidelines"
+      ],
+      "sizeBytes": 9184945,
+      "source": {
+        "type": "http",
+        "url": "https://iris.who.int/server/api/core/bitstreams/a484e069-51b4-4f27-933f-18d025350299/content",
+        "sha256": "0322ee069d2eb96d6d7772850c8365a04b32e8c4320b70e359cc3b57fc861f82",
+        "sizeBytes": 9184945,
+        "published": "2022-03-16"
+      },
+      "licenseNote": "The licence is stated inside the file and on the World Health Organization's copyright page. Non-commercial use only; adaptations must carry the same licence."
+    },
+    {
+      "id": "who.managing-complications-pregnancy-childbirth",
+      "name": "Managing Complications in Pregnancy and Childbirth",
+      "description": "A WHO guide for midwives and doctors, second edition. 492 pages.",
+      "category": "medicine",
+      "publisher": "World Health Organization",
+      "language": "en",
+      "format": "pdf",
+      "license": "CC BY-NC-SA 3.0 IGO",
+      "licenseNote": "Some figures are reprinted by permission of other copyright holders, as credited in the document.",
+      "attribution": "World Health Organization, 2017.",
+      "homepage": "https://iris.who.int/handle/10665/255760",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "pregnancy",
+        "childbirth",
+        "guidelines"
+      ],
+      "sizeBytes": 5110597,
+      "source": {
+        "type": "http",
+        "url": "https://iris.who.int/server/api/core/bitstreams/3bda1306-da5d-487d-b2ad-aff995112a7a/content",
+        "sha256": "f472f20b1dd63f0fe5cddb20f43819d498184b58fe1d633474ab0818229a6b09",
+        "sizeBytes": 5110597,
+        "version": "2nd edition",
+        "published": "2017-06-23"
+      }
+    },
+    {
+      "id": "who.model-list-of-essential-medicines-2023",
+      "name": "WHO Model List of Essential Medicines, 23rd list (2023)",
+      "description": "The World Health Organization's model list of the medicines a basic health system needs, with forms and strengths. 71 pages.",
+      "category": "medicine",
+      "publisher": "World Health Organization",
+      "language": "en",
+      "format": "pdf",
+      "license": "CC BY-NC-SA 3.0 IGO",
+      "attribution": "World Health Organization, 2023.",
+      "homepage": "https://iris.who.int/handle/10665/371090",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "medicines",
+        "reference"
+      ],
+      "sizeBytes": 926649,
+      "source": {
+        "type": "http",
+        "url": "https://iris.who.int/server/api/core/bitstreams/289a875c-cc89-4914-90ad-eb3c578ebaf6/content",
+        "sha256": "9617e1dee5f9772ec1154d4c4453c761fe53483c821525b9d7d9dee66a4850a1",
+        "sizeBytes": 926649,
+        "version": "23rd list (2023)",
+        "published": "2023-07-14"
+      },
+      "licenseNote": "The licence is stated inside the file and on the World Health Organization's copyright page. Non-commercial use only; adaptations must carry the same licence."
+    },
+    {
+      "id": "who.guidelines-for-drinking-water-quality",
+      "name": "Guidelines for Drinking-water Quality",
+      "description": "The WHO guidelines on drinking-water safety, fourth edition incorporating the first and second addenda. A long technical reference: 614 pages.",
+      "category": "medicine",
+      "publisher": "World Health Organization",
+      "language": "en",
+      "format": "pdf",
+      "license": "CC BY-NC-SA 3.0 IGO",
+      "attribution": "World Health Organization, 2022.",
+      "homepage": "https://iris.who.int/handle/10665/352532",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "water",
+        "health",
+        "guidelines"
+      ],
+      "sizeBytes": 5321705,
+      "source": {
+        "type": "http",
+        "url": "https://iris.who.int/server/api/core/bitstreams/69c17edd-ee26-425b-9d34-33799377e886/content",
+        "sha256": "a0ac96fa5eac13e4a14f9fd77ea86440eda9349e04fb58e5a86bee9c06db93d0",
+        "sizeBytes": 5321705,
+        "version": "4th edition with 1st and 2nd addenda",
+        "published": "2022-03-18"
+      },
+      "licenseNote": "The licence is stated inside the file and on the World Health Organization's copyright page. Non-commercial use only; adaptations must carry the same licence."
+    },
+    {
+      "id": "who.preventing-drowning-implementation-guide",
+      "name": "Preventing Drowning: an implementation guide",
+      "description": "A WHO guide to practical measures that prevent drowning. 116 pages.",
+      "category": "preparedness",
+      "publisher": "World Health Organization",
+      "language": "en",
+      "format": "pdf",
+      "license": "CC BY-NC-SA 3.0 IGO",
+      "attribution": "World Health Organization, 2017.",
+      "homepage": "https://iris.who.int/handle/10665/255196",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "water safety",
+        "drowning"
+      ],
+      "sizeBytes": 3031426,
+      "source": {
+        "type": "http",
+        "url": "https://iris.who.int/server/api/core/bitstreams/90f66fd8-be6c-437b-ad47-d2d771dc614c/content",
+        "sha256": "4cc5f1fb667d11be374715d6e0584a0a604a7b59eb670c450849e5986f88c44e",
+        "sizeBytes": 3031426,
+        "published": "2017-05-02"
+      },
+      "licenseNote": "The licence is stated inside the file and on the World Health Organization's copyright page. Non-commercial use only; adaptations must carry the same licence."
+    }
+  ]
+}

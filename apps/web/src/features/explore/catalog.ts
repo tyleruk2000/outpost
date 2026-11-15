@@ -84,10 +84,29 @@ export function editionText(entry: Pick<CatalogEntryDto, "version" | "publishedA
   return entry.version ? `Version ${entry.version}` : null;
 }
 
+/** What kind of file an entry is, when it is not a reference collection (which needs no saying). */
+export function formatLabel(format: CatalogEntryDto["format"]): string | null {
+  switch (format) {
+    case "pdf":
+      return "PDF document";
+    case "epub":
+      return "EPUB book";
+    case "html":
+      return "Web page";
+    case "other":
+      return "File";
+    default:
+      return null;
+  }
+}
+
 /** The licence as one plain sentence, saying so when nobody has checked the terms. */
 export function licenceText(entry: Pick<CatalogEntryDto, "license" | "licenseNote">): string {
-  const unverified = Boolean(entry.licenseNote);
-  if (/^see source$/i.test(entry.license.trim()))
+  const seeSource = /^see source$/i.test(entry.license.trim());
+  // A note usually explains the terms of a licence that was read at the source. It marks
+  // the licence as unchecked only when it says so, or when there is no licence to name.
+  const unverified = seeSource ? Boolean(entry.licenseNote) : /not (?:been )?verified/i.test(entry.licenseNote ?? "");
+  if (seeSource)
     return unverified ? "Licence: see the source. Not verified by the catalogue maintainers." : "Licence: see the source.";
   return unverified ? `Licence: ${entry.license}. Not verified by the catalogue maintainers.` : `Licence: ${entry.license}.`;
 }

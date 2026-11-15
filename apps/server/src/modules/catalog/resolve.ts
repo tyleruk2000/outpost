@@ -39,6 +39,15 @@ export interface ResolveOptions {
   allowedHosts: string[];
   kiwixCatalogUrl?: string;
   signal?: AbortSignal;
+  /**
+   * Take a file's manifest details on trust when the manifest pins both its size and
+   * its checksum, and do not contact the publisher. The download itself checks both, so
+   * asking first only adds requests to someone else's server. A refresh does this; the
+   * maintainers' online check does not.
+   */
+  trustPinned?: boolean;
+  /** Leave at least this long between requests to one host, as publishers' crawl delays ask. */
+  hostIntervalMs?: number;
 }
 
 type KiwixEntry = LoadedEntry & { source: { type: "kiwix" } };
@@ -117,30 +126,65 @@ async function resolveKiwix(http: HttpClient, entries: KiwixEntry[], options: Re
   }
 }
 
-async function resolveHttp(http: HttpClient, entry: LoadedEntry, options: ResolveOptions): Promise<EntryResolution> {
-  if (entry.source.type !== "http") throw new Error("not an http entry");
+type HttpEntry = LoadedEntry & { source: { type: "http" } };
+
+const isHttpEntry = (entry: LoadedEntry): entry is HttpEntry => entry.source.type === "http";
+
+function fromManifest(source: HttpEntry["source"], sizeBytes = source.sizeBytes): EntryResolution {
+  return {
+    state: "available",
+    resolved: { availability: "available", sizeBytes, sizeExact: sizeBytes !== undefined, version: source.version, publishedAt: source.published },
+  };
+}
+
+/** The whole file's size from a response: Content-Range's total for a partial answer, else Content-Length. */
+function sizeFrom(response: Response): number | undefined {
+  const total = /\/(\d+)$/.exec(response.headers.get("content-range") ?? "")?.[1];
+  const length = response.status === 206 ? total : (total ?? response.headers.get("content-length"));
+  return length && /^\d+$/.test(length) ? Number(length) : undefined;
+}
+
+async function resolveHttp(http: HttpClient, entry: HttpEntry, options: ResolveOptions): Promise<EntryResolution> {
   const source = entry.source;
-  const { response } = await http.fetch(source.url, { method: "HEAD", allowedHosts: options.allowedHosts, signal: options.signal });
+  const request = { allowedHosts: options.allowedHosts, signal: options.signal };
+  let { response } = await http.fetch(source.url, { ...request, method: "HEAD" });
   await response.body?.cancel();
+  if (!response.ok && response.status !== 404 && response.status !== 410) {
+    // Some servers refuse HEAD, or answer it with an error, while serving the file
+    // normally. Asking for the first byte settles it without fetching the file.
+    ({ response } = await http.fetch(source.url, { ...request, method: "GET", headers: { range: "bytes=0-0" } }));
+    await response.body?.cancel();
+  }
   if (response.status === 404 || response.status === 410) {
     return { state: "unavailable", reason: "The file is no longer at the address this entry gives." };
   }
   if (!response.ok) {
-    // Some servers refuse HEAD; that says nothing about the file.
     return { state: "unchecked", reason: `${new URL(source.url).hostname} answered HTTP ${response.status}.` };
   }
-  const length = response.headers.get("content-length");
-  const sizeBytes = source.sizeBytes ?? (length && /^\d+$/.test(length) ? Number(length) : undefined);
-  return {
-    state: "available",
-    resolved: {
-      availability: "available",
-      sizeBytes,
-      sizeExact: sizeBytes !== undefined,
-      version: source.version,
-      publishedAt: source.published,
-    },
-  };
+  return fromManifest(source, source.sizeBytes ?? sizeFrom(response));
+}
+
+const sleep = (ms: number, signal?: AbortSignal) =>
+  new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(resolve, ms);
+    signal?.addEventListener("abort", () => (clearTimeout(timer), reject(signal.reason)), { once: true });
+  });
+
+/**
+ * Entries in an order that visits hosts in turn, so that waiting out one host's
+ * interval is spent asking the others.
+ */
+function interleavedByHost(entries: HttpEntry[]): HttpEntry[] {
+  const turn = new Map<string, number>();
+  return entries
+    .map((entry, index) => {
+      const host = new URL(entry.source.url).host;
+      const round = turn.get(host) ?? 0;
+      turn.set(host, round + 1);
+      return { entry, round, index };
+    })
+    .sort((a, b) => a.round - b.round || a.index - b.index)
+    .map((item) => item.entry);
 }
 
 /**
@@ -155,14 +199,25 @@ export async function resolveEntries(
 ): Promise<Map<string, EntryResolution>> {
   const out = new Map<string, EntryResolution>();
   await resolveKiwix(http, entries.filter(isKiwixEntry), options, out);
-  for (const entry of entries) {
-    if (entry.source.type !== "http") continue;
+  const direct = entries.filter(isHttpEntry);
+  const toAsk: HttpEntry[] = [];
+  for (const entry of direct) {
+    if (options.trustPinned && entry.source.sha256 && entry.source.sizeBytes) out.set(entry.id, fromManifest(entry.source));
+    else toAsk.push(entry);
+  }
+  const lastAsked = new Map<string, number>();
+  for (const entry of options.hostIntervalMs ? interleavedByHost(toAsk) : toAsk) {
+    const host = new URL(entry.source.url).host;
+    const wait = (lastAsked.get(host) ?? Number.NEGATIVE_INFINITY) + (options.hostIntervalMs ?? 0) - Date.now();
     try {
+      if (wait > 0) await sleep(wait, options.signal);
+      lastAsked.set(host, Date.now());
       out.set(entry.id, await resolveHttp(http, entry, options));
     } catch (error) {
       if (classifyNetworkError(error) === "offline") throw error;
       out.set(entry.id, { state: "unchecked", reason: reasonOf(error) });
     }
   }
-  return out;
+  // Report in the order the entries were given, whatever order they were asked in.
+  return new Map(entries.filter((entry) => out.has(entry.id)).map((entry) => [entry.id, out.get(entry.id)!]));
 }
