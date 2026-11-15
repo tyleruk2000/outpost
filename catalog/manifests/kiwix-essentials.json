@@ -1,0 +1,1420 @@
+{
+  "$schema": "../schema/manifest.schema.json",
+  "schemaVersion": 1,
+  "id": "kiwix-essentials",
+  "name": "Kiwix essentials",
+  "description": "A starter selection of reference archives from the Kiwix library: encyclopedias, medical and repair references, practical questions and answers, and textbooks. Every entry is fetched from Kiwix's own servers at the moment you ask for it; nothing is bundled with Outpost.",
+  "maintainers": [
+    "Outpost maintainers"
+  ],
+  "downloadHosts": [
+    "opds.library.kiwix.org",
+    "library.kiwix.org",
+    "download.kiwix.org",
+    "lb.download.kiwix.org"
+  ],
+  "entries": [
+    {
+      "id": "kiwix.zimgit-knots-en",
+      "name": "A Library of Knots",
+      "description": "Illustrated resources on many kinds of knots, rope ladders and sutures, collected as documents.",
+      "category": "survival",
+      "publisher": "Zimgit",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "Zimgit. Packaged as a ZIM archive by the Kiwix project.",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "knots",
+        "rope"
+      ],
+      "sizeBytes": 28000000,
+      "source": {
+        "type": "kiwix",
+        "name": "zimgit-knots_en",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.zimgit-water-en",
+      "name": "Water Treatment Library",
+      "description": "A collection of documents about collecting water and making it safe to drink.",
+      "category": "survival",
+      "publisher": "Zimgit",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "Zimgit. Packaged as a ZIM archive by the Kiwix project.",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "water",
+        "purification"
+      ],
+      "sizeBytes": 21000000,
+      "source": {
+        "type": "kiwix",
+        "name": "zimgit-water_en",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.scoutwiki.org-en-all-maxi",
+      "name": "ScoutWiki",
+      "description": "A wiki for everyone who wants to know about Scouting and Guiding. This is the complete edition, with images.",
+      "category": "survival",
+      "publisher": "ScoutWiki",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "ScoutWiki. Packaged as a ZIM archive by the Kiwix project.",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "scouting",
+        "outdoors"
+      ],
+      "sizeBytes": 25000000,
+      "source": {
+        "type": "kiwix",
+        "name": "scoutwiki.org_en_all",
+        "flavour": "maxi"
+      }
+    },
+    {
+      "id": "kiwix.wikipedia-en-knots-maxi",
+      "name": "Knots by Wikipedia",
+      "description": "The Wikipedia articles about knots, gathered into one small archive. This is the complete edition, with images.",
+      "category": "survival",
+      "publisher": "Wikipedia",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0",
+      "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://en.wikipedia.org",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "knots",
+        "rope"
+      ],
+      "sizeBytes": 14000000,
+      "source": {
+        "type": "kiwix",
+        "name": "wikipedia_en_knots",
+        "flavour": "maxi"
+      }
+    },
+    {
+      "id": "kiwix.nhs.uk-en-medicines",
+      "name": "NHS Medicines A to Z",
+      "description": "The NHS guide to medicines: how each one works, and how and when to take it.",
+      "category": "medicine",
+      "publisher": "NHS",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "NHS. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://www.nhs.uk",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "medicines",
+        "reference"
+      ],
+      "sizeBytes": 15000000,
+      "source": {
+        "type": "kiwix",
+        "name": "nhs.uk_en_medicines",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.zimgit-medicine-en",
+      "name": "Medical Library",
+      "description": "A collection of books about field and emergency medicine.",
+      "category": "medicine",
+      "publisher": "Zimgit",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "Zimgit. Packaged as a ZIM archive by the Kiwix project.",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "first aid",
+        "emergency"
+      ],
+      "sizeBytes": 70000000,
+      "source": {
+        "type": "kiwix",
+        "name": "zimgit-medicine_en",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.irp.fas.org-en-military-medicine",
+      "name": "Military Medicine",
+      "description": "Doctrinal and instructional manuals on military medicine, as collected by the FAS Intelligence Resource Program.",
+      "category": "medicine",
+      "publisher": "FAS Intelligence Resource Program",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "FAS Intelligence Resource Program. Packaged as a ZIM archive by the Kiwix project.",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "first aid",
+        "manuals"
+      ],
+      "sizeBytes": 65000000,
+      "source": {
+        "type": "kiwix",
+        "name": "irp.fas.org_en_military-medicine",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.wikipedia-en-medicine-mini",
+      "name": "WikiMed Medical Encyclopedia (introductions only, without images)",
+      "description": "The medical articles of Wikipedia: diseases, medicines, anatomy and more. This is the smallest edition: only the introduction of each article, without images.",
+      "category": "medicine",
+      "publisher": "Wikipedia",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0",
+      "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://en.wikipedia.org",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "medical",
+        "encyclopedia"
+      ],
+      "sizeBytes": 174000000,
+      "source": {
+        "type": "kiwix",
+        "name": "wikipedia_en_medicine",
+        "flavour": "mini"
+      }
+    },
+    {
+      "id": "kiwix.wikipedia-en-medicine-nopic",
+      "name": "WikiMed Medical Encyclopedia (without images)",
+      "description": "The medical articles of Wikipedia: diseases, medicines, anatomy and more. This edition has the full text without images, which makes it much smaller.",
+      "category": "medicine",
+      "publisher": "Wikipedia",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0",
+      "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://en.wikipedia.org",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "medical",
+        "encyclopedia"
+      ],
+      "sizeBytes": 1048000000,
+      "source": {
+        "type": "kiwix",
+        "name": "wikipedia_en_medicine",
+        "flavour": "nopic"
+      }
+    },
+    {
+      "id": "kiwix.wikipedia-en-medicine-maxi",
+      "name": "WikiMed Medical Encyclopedia (complete, with images)",
+      "description": "The medical articles of Wikipedia: diseases, medicines, anatomy and more. This is the complete edition, with images.",
+      "category": "medicine",
+      "publisher": "Wikipedia",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0",
+      "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://en.wikipedia.org",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "medical",
+        "encyclopedia"
+      ],
+      "sizeBytes": 1864000000,
+      "source": {
+        "type": "kiwix",
+        "name": "wikipedia_en_medicine",
+        "flavour": "maxi"
+      }
+    },
+    {
+      "id": "kiwix.usda-2015-en",
+      "name": "USDA Guide to Home Canning",
+      "description": "The USDA's research-based recommendations for canning food safely at home.",
+      "category": "food",
+      "publisher": "USDA",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "USDA. Packaged as a ZIM archive by the Kiwix project.",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "canning",
+        "preserving"
+      ],
+      "sizeBytes": 20000000,
+      "source": {
+        "type": "kiwix",
+        "name": "usda-2015_en",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.publicdomainrecipes.com-en-all",
+      "name": "Public Domain Recipes",
+      "description": "A collection of several hundred recipes from the Public Domain Recipes site.",
+      "category": "food",
+      "publisher": "Public Domain Recipes",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "Public Domain Recipes. Packaged as a ZIM archive by the Kiwix project.",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "recipes",
+        "cooking"
+      ],
+      "sizeBytes": 17000000,
+      "source": {
+        "type": "kiwix",
+        "name": "publicdomainrecipes.com_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.zimgit-food-preparation-en",
+      "name": "Food for Preppers",
+      "description": "A collection of recipes and techniques for preparing food.",
+      "category": "food",
+      "publisher": "Zimgit",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "Zimgit. Packaged as a ZIM archive by the Kiwix project.",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "recipes",
+        "preserving"
+      ],
+      "sizeBytes": 98000000,
+      "source": {
+        "type": "kiwix",
+        "name": "zimgit-food-preparation_en",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.cooking.stackexchange.com-en-all",
+      "name": "Cooking Q&A (Seasoned Advice)",
+      "description": "Questions and answers from the Stack Exchange site for professional and amateur cooks.",
+      "category": "food",
+      "publisher": "Stack Exchange",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0 (older posts under earlier versions)",
+      "attribution": "Contributors to the Stack Exchange network. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://cooking.stackexchange.com",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "cooking",
+        "questions and answers"
+      ],
+      "sizeBytes": 238000000,
+      "source": {
+        "type": "kiwix",
+        "name": "cooking.stackexchange.com_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.sustainability.stackexchange.com-en-all",
+      "name": "Sustainable Living Q&A",
+      "description": "Questions and answers from the Stack Exchange site about living without depleting resources.",
+      "category": "agriculture",
+      "publisher": "Stack Exchange",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0 (older posts under earlier versions)",
+      "attribution": "Contributors to the Stack Exchange network. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://sustainability.stackexchange.com",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "sustainability",
+        "questions and answers"
+      ],
+      "sizeBytes": 28000000,
+      "source": {
+        "type": "kiwix",
+        "name": "sustainability.stackexchange.com_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.gardenology-en-all",
+      "name": "Gardenology",
+      "description": "A plant and garden encyclopedia.",
+      "category": "agriculture",
+      "publisher": "Gardenology",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "Gardenology. Packaged as a ZIM archive by the Kiwix project.",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "plants",
+        "gardening"
+      ],
+      "sizeBytes": 113000000,
+      "source": {
+        "type": "kiwix",
+        "name": "gardenology_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.appropedia-en-all-maxi",
+      "name": "Appropedia",
+      "description": "A wiki of shared knowledge for building rich, sustainable lives. This is the complete edition, with images.",
+      "category": "agriculture",
+      "publisher": "Appropedia",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "Appropedia. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://www.appropedia.org",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "sustainability",
+        "how-to"
+      ],
+      "sizeBytes": 582000000,
+      "source": {
+        "type": "kiwix",
+        "name": "appropedia_en_all",
+        "flavour": "maxi"
+      }
+    },
+    {
+      "id": "kiwix.cd3wdproject.org-en-all",
+      "name": "CD3WD Project",
+      "description": "More than 900 technical documents on topics related to sustainable development.",
+      "category": "agriculture",
+      "publisher": "CD3WD Project",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "CD3WD Project. Packaged as a ZIM archive by the Kiwix project.",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "development",
+        "manuals"
+      ],
+      "sizeBytes": 573000000,
+      "source": {
+        "type": "kiwix",
+        "name": "cd3wdproject.org_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.gardening.stackexchange.com-en-all",
+      "name": "Gardening & Landscaping Q&A",
+      "description": "Questions and answers from the Stack Exchange site for gardeners and landscapers.",
+      "category": "agriculture",
+      "publisher": "Stack Exchange",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0 (older posts under earlier versions)",
+      "attribution": "Contributors to the Stack Exchange network. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://gardening.stackexchange.com",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "gardening",
+        "questions and answers"
+      ],
+      "sizeBytes": 933000000,
+      "source": {
+        "type": "kiwix",
+        "name": "gardening.stackexchange.com_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.3dprinting.stackexchange.com-en-all",
+      "name": "3D Printing Q&A",
+      "description": "Questions and answers from the Stack Exchange site for 3D printing enthusiasts.",
+      "category": "engineering",
+      "publisher": "Stack Exchange",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0 (older posts under earlier versions)",
+      "attribution": "Contributors to the Stack Exchange network. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://3dprinting.stackexchange.com",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "3d printing",
+        "questions and answers"
+      ],
+      "sizeBytes": 120000000,
+      "source": {
+        "type": "kiwix",
+        "name": "3dprinting.stackexchange.com_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.engineering.stackexchange.com-en-all",
+      "name": "Engineering Q&A",
+      "description": "Questions and answers from the Stack Exchange site for professionals and students of engineering.",
+      "category": "engineering",
+      "publisher": "Stack Exchange",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0 (older posts under earlier versions)",
+      "attribution": "Contributors to the Stack Exchange network. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://engineering.stackexchange.com",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "engineering",
+        "questions and answers"
+      ],
+      "sizeBytes": 259000000,
+      "source": {
+        "type": "kiwix",
+        "name": "engineering.stackexchange.com_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.arduino.stackexchange.com-en-all",
+      "name": "Arduino Q&A",
+      "description": "Questions and answers from the Stack Exchange site about Arduino hardware and software.",
+      "category": "engineering",
+      "publisher": "Stack Exchange",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0 (older posts under earlier versions)",
+      "attribution": "Contributors to the Stack Exchange network. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://arduino.stackexchange.com",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "arduino",
+        "electronics",
+        "questions and answers"
+      ],
+      "sizeBytes": 260000000,
+      "source": {
+        "type": "kiwix",
+        "name": "arduino.stackexchange.com_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.electronics.stackexchange.com-en-all",
+      "name": "Electronics Q&A",
+      "description": "Questions and answers from the Stack Exchange site about electronics and electrical engineering.",
+      "category": "engineering",
+      "publisher": "Stack Exchange",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0 (older posts under earlier versions)",
+      "attribution": "Contributors to the Stack Exchange network. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://electronics.stackexchange.com",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "electronics",
+        "questions and answers"
+      ],
+      "sizeBytes": 4261000000,
+      "source": {
+        "type": "kiwix",
+        "name": "electronics.stackexchange.com_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.libretexts.org-en-eng",
+      "name": "Engineering LibreTexts",
+      "description": "Engineering courses and textbooks from LibreTexts.",
+      "category": "engineering",
+      "publisher": "LibreTexts",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "LibreTexts. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://libretexts.org",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "textbooks",
+        "engineering"
+      ],
+      "sizeBytes": 678000000,
+      "source": {
+        "type": "kiwix",
+        "name": "libretexts.org_en_eng",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.restarters-en-all-maxi",
+      "name": "Restarters",
+      "description": "The Restarters wiki: how things work and how to fix them. This is the complete edition, with images.",
+      "category": "repair",
+      "publisher": "Restarters",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "Restarters. Packaged as a ZIM archive by the Kiwix project.",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "repair",
+        "electronics"
+      ],
+      "sizeBytes": 17000000,
+      "source": {
+        "type": "kiwix",
+        "name": "restarters_en_all",
+        "flavour": "maxi"
+      }
+    },
+    {
+      "id": "kiwix.mechanics.stackexchange.com-en-all",
+      "name": "Motor Vehicle Mechanics Q&A",
+      "description": "Questions and answers from the Stack Exchange site for mechanics and owners of cars, trucks and motorcycles.",
+      "category": "repair",
+      "publisher": "Stack Exchange",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0 (older posts under earlier versions)",
+      "attribution": "Contributors to the Stack Exchange network. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://mechanics.stackexchange.com",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "vehicles",
+        "questions and answers"
+      ],
+      "sizeBytes": 342000000,
+      "source": {
+        "type": "kiwix",
+        "name": "mechanics.stackexchange.com_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.bicycles.stackexchange.com-en-all",
+      "name": "Bicycles Q&A",
+      "description": "Questions and answers from the Stack Exchange site for people involved with bicycles.",
+      "category": "repair",
+      "publisher": "Stack Exchange",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0 (older posts under earlier versions)",
+      "attribution": "Contributors to the Stack Exchange network. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://bicycles.stackexchange.com",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "bicycles",
+        "questions and answers"
+      ],
+      "sizeBytes": 499000000,
+      "source": {
+        "type": "kiwix",
+        "name": "bicycles.stackexchange.com_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.ifixit-en-all",
+      "name": "iFixit repair guides",
+      "description": "Repair guides from iFixit, a community of people helping each other repair things.",
+      "category": "repair",
+      "publisher": "iFixit",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "iFixit. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://www.ifixit.com",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "repair",
+        "guides"
+      ],
+      "sizeBytes": 3571000000,
+      "source": {
+        "type": "kiwix",
+        "name": "ifixit_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.ham.stackexchange.com-en-all",
+      "name": "Amateur Radio Q&A",
+      "description": "Questions and answers from the Stack Exchange site for amateur radio enthusiasts.",
+      "category": "radio",
+      "publisher": "Stack Exchange",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0 (older posts under earlier versions)",
+      "attribution": "Contributors to the Stack Exchange network. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://ham.stackexchange.com",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "amateur radio",
+        "questions and answers"
+      ],
+      "sizeBytes": 77000000,
+      "source": {
+        "type": "kiwix",
+        "name": "ham.stackexchange.com_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.dsp.stackexchange.com-en-all",
+      "name": "Signal Processing Q&A",
+      "description": "Questions and answers from the Stack Exchange site for practitioners of signal, image and video processing.",
+      "category": "radio",
+      "publisher": "Stack Exchange",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0 (older posts under earlier versions)",
+      "attribution": "Contributors to the Stack Exchange network. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://dsp.stackexchange.com",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "signal processing",
+        "questions and answers"
+      ],
+      "sizeBytes": 379000000,
+      "source": {
+        "type": "kiwix",
+        "name": "dsp.stackexchange.com_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.outdoors.stackexchange.com-en-all",
+      "name": "The Great Outdoors Q&A",
+      "description": "Questions and answers from the Stack Exchange site about being outdoors and enjoying nature and wilderness.",
+      "category": "navigation",
+      "publisher": "Stack Exchange",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0 (older posts under earlier versions)",
+      "attribution": "Contributors to the Stack Exchange network. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://outdoors.stackexchange.com",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "outdoors",
+        "hiking",
+        "questions and answers"
+      ],
+      "sizeBytes": 142000000,
+      "source": {
+        "type": "kiwix",
+        "name": "outdoors.stackexchange.com_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.earthscience.stackexchange.com-en-all",
+      "name": "Earth Science Q&A",
+      "description": "Questions and answers from the Stack Exchange site about geology, meteorology and oceanography.",
+      "category": "navigation",
+      "publisher": "Stack Exchange",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0 (older posts under earlier versions)",
+      "attribution": "Contributors to the Stack Exchange network. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://earthscience.stackexchange.com",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "weather",
+        "geology",
+        "questions and answers"
+      ],
+      "sizeBytes": 133000000,
+      "source": {
+        "type": "kiwix",
+        "name": "earthscience.stackexchange.com_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.wikivoyage-en-europe-nopic",
+      "name": "Wikivoyage: Europe",
+      "description": "The European destinations from Wikivoyage, the collaborative travel guide. This edition has the full text without images, which makes it much smaller.",
+      "category": "navigation",
+      "publisher": "Wikivoyage",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0",
+      "attribution": "Wikivoyage contributors. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://en.wikivoyage.org",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "travel",
+        "europe"
+      ],
+      "sizeBytes": 84000000,
+      "source": {
+        "type": "kiwix",
+        "name": "wikivoyage_en_europe",
+        "flavour": "nopic"
+      }
+    },
+    {
+      "id": "kiwix.openstreetmap-wiki-en-all-nopic",
+      "name": "OpenStreetMap Wiki",
+      "description": "The OpenStreetMap wiki: documentation of the map's tags, tools and practices. It does not contain the map itself. This edition has the full text without images, which makes it much smaller.",
+      "category": "navigation",
+      "publisher": "OpenStreetMap",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "OpenStreetMap. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://wiki.openstreetmap.org",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "maps",
+        "documentation"
+      ],
+      "sizeBytes": 534000000,
+      "source": {
+        "type": "kiwix",
+        "name": "openstreetmap-wiki_en_all",
+        "flavour": "nopic"
+      }
+    },
+    {
+      "id": "kiwix.zimgit-post-disaster-en",
+      "name": "Post Disaster Resource Library",
+      "description": "A collection of documents for use after a disaster.",
+      "category": "preparedness",
+      "publisher": "Zimgit",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "Zimgit. Packaged as a ZIM archive by the Kiwix project.",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "disaster",
+        "manuals"
+      ],
+      "sizeBytes": 645000000,
+      "source": {
+        "type": "kiwix",
+        "name": "zimgit-post-disaster_en",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.ready.gov-en-all",
+      "name": "Ready.gov",
+      "description": "The Ready.gov site on planning ahead for disasters: weather, fire, making plans and building kits.",
+      "category": "preparedness",
+      "publisher": "Ready.gov (FEMA)",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "Ready.gov (FEMA). Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://www.ready.gov",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "disaster",
+        "planning"
+      ],
+      "sizeBytes": 2064000000,
+      "source": {
+        "type": "kiwix",
+        "name": "ready.gov_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.wwwnc.cdc.gov-en-all",
+      "name": "CDC Travelers' Health",
+      "description": "Travel health advice from the US Centers for Disease Control and Prevention.",
+      "category": "preparedness",
+      "publisher": "CDC",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "CDC. Packaged as a ZIM archive by the Kiwix project.",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "health",
+        "travel"
+      ],
+      "sizeBytes": 178000000,
+      "source": {
+        "type": "kiwix",
+        "name": "wwwnc.cdc.gov_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.vikidia-en-all-nopic",
+      "name": "Vikidia (without images)",
+      "description": "An encyclopedia written for children. This edition has the full text without images, which makes it much smaller.",
+      "category": "encyclopedias",
+      "publisher": "Vikidia",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "Vikidia. Packaged as a ZIM archive by the Kiwix project.",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "children",
+        "encyclopedia"
+      ],
+      "sizeBytes": 11000000,
+      "source": {
+        "type": "kiwix",
+        "name": "vikidia_en_all",
+        "flavour": "nopic"
+      }
+    },
+    {
+      "id": "kiwix.vikidia-en-all-maxi",
+      "name": "Vikidia (complete, with images)",
+      "description": "An encyclopedia written for children. This is the complete edition, with images.",
+      "category": "encyclopedias",
+      "publisher": "Vikidia",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "Vikidia. Packaged as a ZIM archive by the Kiwix project.",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "children",
+        "encyclopedia"
+      ],
+      "sizeBytes": 78000000,
+      "source": {
+        "type": "kiwix",
+        "name": "vikidia_en_all",
+        "flavour": "maxi"
+      }
+    },
+    {
+      "id": "kiwix.wikipedia-en-top-mini",
+      "name": "Best of Wikipedia",
+      "description": "A selection of the 50,000 best Wikipedia articles. This is the smallest edition: only the introduction of each article, without images.",
+      "category": "encyclopedias",
+      "publisher": "Wikipedia",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0",
+      "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://en.wikipedia.org",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "encyclopedia"
+      ],
+      "sizeBytes": 297000000,
+      "source": {
+        "type": "kiwix",
+        "name": "wikipedia_en_top",
+        "flavour": "mini"
+      }
+    },
+    {
+      "id": "kiwix.wikipedia-en-100",
+      "name": "Wikipedia 100",
+      "description": "A small archive built around the top one hundred Wikipedia articles. A good first download to try Outpost with.",
+      "category": "encyclopedias",
+      "publisher": "Wikipedia",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0",
+      "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://en.wikipedia.org",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "encyclopedia"
+      ],
+      "sizeBytes": 333000000,
+      "source": {
+        "type": "kiwix",
+        "name": "wikipedia_en_100",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.wikipedia-en-simple-all-mini",
+      "name": "Wikipedia in Simple English (introductions only, without images)",
+      "description": "All of the Simple English Wikipedia, written with simpler words and grammar. This is the smallest edition: only the introduction of each article, without images.",
+      "category": "encyclopedias",
+      "publisher": "Wikipedia",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0",
+      "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://simple.wikipedia.org",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "encyclopedia",
+        "simple english"
+      ],
+      "sizeBytes": 531000000,
+      "source": {
+        "type": "kiwix",
+        "name": "wikipedia_en-simple_all",
+        "flavour": "mini"
+      }
+    },
+    {
+      "id": "kiwix.wikipedia-en-simple-all-nopic",
+      "name": "Wikipedia in Simple English (without images)",
+      "description": "All of the Simple English Wikipedia, written with simpler words and grammar. This edition has the full text without images, which makes it much smaller.",
+      "category": "encyclopedias",
+      "publisher": "Wikipedia",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0",
+      "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://simple.wikipedia.org",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "encyclopedia",
+        "simple english"
+      ],
+      "sizeBytes": 1095000000,
+      "source": {
+        "type": "kiwix",
+        "name": "wikipedia_en-simple_all",
+        "flavour": "nopic"
+      }
+    },
+    {
+      "id": "kiwix.wikipedia-en-simple-all-maxi",
+      "name": "Wikipedia in Simple English (complete, with images)",
+      "description": "All of the Simple English Wikipedia, written with simpler words and grammar. This is the complete edition, with images.",
+      "category": "encyclopedias",
+      "publisher": "Wikipedia",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0",
+      "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://simple.wikipedia.org",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "encyclopedia",
+        "simple english"
+      ],
+      "sizeBytes": 3121000000,
+      "source": {
+        "type": "kiwix",
+        "name": "wikipedia_en-simple_all",
+        "flavour": "maxi"
+      }
+    },
+    {
+      "id": "kiwix.wikipedia-en-all-mini",
+      "name": "Wikipedia (introductions only, without images)",
+      "description": "All of the English Wikipedia, the free encyclopedia. This is the smallest edition: only the introduction of each article, without images.",
+      "category": "encyclopedias",
+      "publisher": "Wikipedia",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0",
+      "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://en.wikipedia.org",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "encyclopedia"
+      ],
+      "sizeBytes": 14387000000,
+      "source": {
+        "type": "kiwix",
+        "name": "wikipedia_en_all",
+        "flavour": "mini"
+      }
+    },
+    {
+      "id": "kiwix.wikipedia-en-all-nopic",
+      "name": "Wikipedia (without images)",
+      "description": "All of the English Wikipedia, the free encyclopedia. This edition has the full text without images, which makes it much smaller.",
+      "category": "encyclopedias",
+      "publisher": "Wikipedia",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0",
+      "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://en.wikipedia.org",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "encyclopedia"
+      ],
+      "sizeBytes": 52691000000,
+      "source": {
+        "type": "kiwix",
+        "name": "wikipedia_en_all",
+        "flavour": "nopic"
+      }
+    },
+    {
+      "id": "kiwix.wikipedia-en-all-maxi",
+      "name": "Wikipedia (complete, with images)",
+      "description": "All of the English Wikipedia, the free encyclopedia. This is the complete edition, with images.",
+      "category": "encyclopedias",
+      "publisher": "Wikipedia",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0",
+      "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://en.wikipedia.org",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "encyclopedia"
+      ],
+      "sizeBytes": 127418000000,
+      "source": {
+        "type": "kiwix",
+        "name": "wikipedia_en_all",
+        "flavour": "maxi"
+      }
+    },
+    {
+      "id": "kiwix.wikipedia-en-chemistry-mini",
+      "name": "Chemistry by Wikipedia",
+      "description": "A selection of Wikipedia articles on chemistry. This is the smallest edition: only the introduction of each article, without images.",
+      "category": "science",
+      "publisher": "Wikipedia",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0",
+      "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://en.wikipedia.org",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "chemistry"
+      ],
+      "sizeBytes": 23000000,
+      "source": {
+        "type": "kiwix",
+        "name": "wikipedia_en_chemistry",
+        "flavour": "mini"
+      }
+    },
+    {
+      "id": "kiwix.wikipedia-en-physics-mini",
+      "name": "Physics by Wikipedia",
+      "description": "A selection of Wikipedia articles on physics. This is the smallest edition: only the introduction of each article, without images.",
+      "category": "science",
+      "publisher": "Wikipedia",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0",
+      "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://en.wikipedia.org",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "physics"
+      ],
+      "sizeBytes": 53000000,
+      "source": {
+        "type": "kiwix",
+        "name": "wikipedia_en_physics",
+        "flavour": "mini"
+      }
+    },
+    {
+      "id": "kiwix.phet-en-all",
+      "name": "PhET Interactive Simulations",
+      "description": "Interactive simulations for science and mathematics teaching, from the University of Colorado.",
+      "category": "science",
+      "publisher": "PhET, University of Colorado",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "PhET, University of Colorado. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://phet.colorado.edu",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "simulations",
+        "education"
+      ],
+      "sizeBytes": 109000000,
+      "source": {
+        "type": "kiwix",
+        "name": "phet_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.libretexts.org-en-stats",
+      "name": "Statistics LibreTexts",
+      "description": "Statistics courses and textbooks from LibreTexts.",
+      "category": "science",
+      "publisher": "LibreTexts",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "LibreTexts. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://libretexts.org",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "textbooks",
+        "statistics"
+      ],
+      "sizeBytes": 216000000,
+      "source": {
+        "type": "kiwix",
+        "name": "libretexts.org_en_stats",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.libretexts.org-en-phys",
+      "name": "Physics LibreTexts",
+      "description": "Physics courses and textbooks from LibreTexts.",
+      "category": "science",
+      "publisher": "LibreTexts",
+      "language": "en",
+      "format": "zim",
+      "license": "See source",
+      "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
+      "attribution": "LibreTexts. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://libretexts.org",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "textbooks",
+        "physics"
+      ],
+      "sizeBytes": 560000000,
+      "source": {
+        "type": "kiwix",
+        "name": "libretexts.org_en_phys",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.wikibooks-en-all-nopic",
+      "name": "Wikibooks (without images)",
+      "description": "The Wikibooks collection of open-content textbooks. This edition has the full text without images, which makes it much smaller.",
+      "category": "science",
+      "publisher": "Wikibooks",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0",
+      "attribution": "Wikibooks contributors. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://en.wikibooks.org",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "textbooks"
+      ],
+      "sizeBytes": 3545000000,
+      "source": {
+        "type": "kiwix",
+        "name": "wikibooks_en_all",
+        "flavour": "nopic"
+      }
+    },
+    {
+      "id": "kiwix.wikibooks-en-all-maxi",
+      "name": "Wikibooks (complete, with images)",
+      "description": "The Wikibooks collection of open-content textbooks. This is the complete edition, with images.",
+      "category": "science",
+      "publisher": "Wikibooks",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0",
+      "attribution": "Wikibooks contributors. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://en.wikibooks.org",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "textbooks"
+      ],
+      "sizeBytes": 4740000000,
+      "source": {
+        "type": "kiwix",
+        "name": "wikibooks_en_all",
+        "flavour": "maxi"
+      }
+    },
+    {
+      "id": "kiwix.gutenberg-en-lcc-pf",
+      "name": "Project Gutenberg: West Germanic languages",
+      "description": "English-language books from Project Gutenberg shelved under West Germanic languages (Library of Congress class PF).",
+      "category": "reference",
+      "publisher": "Project Gutenberg",
+      "language": "en",
+      "format": "zim",
+      "license": "Public domain in the United States",
+      "attribution": "Project Gutenberg. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://www.gutenberg.org",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "books",
+        "languages"
+      ],
+      "sizeBytes": 13000000,
+      "source": {
+        "type": "kiwix",
+        "name": "gutenberg_en_lcc-pf",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.wiktionary-en-simple-all-nopic",
+      "name": "Wiktionary in Simple English",
+      "description": "A dictionary of English that explains words using simple words and grammar. This edition has the full text without images, which makes it much smaller.",
+      "category": "reference",
+      "publisher": "Wiktionary",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0",
+      "attribution": "Wiktionary contributors. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://simple.wiktionary.org",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "dictionary",
+        "simple english"
+      ],
+      "sizeBytes": 31000000,
+      "source": {
+        "type": "kiwix",
+        "name": "wiktionary_en-simple_all",
+        "flavour": "nopic"
+      }
+    },
+    {
+      "id": "kiwix.wikivoyage-en-all-nopic",
+      "name": "Wikivoyage (without images)",
+      "description": "The collaborative travel guide, covering destinations worldwide. This edition has the full text without images, which makes it much smaller.",
+      "category": "reference",
+      "publisher": "Wikivoyage",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0",
+      "attribution": "Wikivoyage contributors. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://en.wikivoyage.org",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "travel"
+      ],
+      "sizeBytes": 273000000,
+      "source": {
+        "type": "kiwix",
+        "name": "wikivoyage_en_all",
+        "flavour": "nopic"
+      }
+    },
+    {
+      "id": "kiwix.wikivoyage-en-all-maxi",
+      "name": "Wikivoyage (complete, with images)",
+      "description": "The collaborative travel guide, covering destinations worldwide. This is the complete edition, with images.",
+      "category": "reference",
+      "publisher": "Wikivoyage",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0",
+      "attribution": "Wikivoyage contributors. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://en.wikivoyage.org",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "travel"
+      ],
+      "sizeBytes": 1071000000,
+      "source": {
+        "type": "kiwix",
+        "name": "wikivoyage_en_all",
+        "flavour": "maxi"
+      }
+    },
+    {
+      "id": "kiwix.theworldfactbook-en-all",
+      "name": "CIA World Factbook (2020 edition)",
+      "description": "Almanac-style information about the countries of the world, prepared by the CIA. The Factbook has been discontinued; this is the 2020 edition and is not updated.",
+      "category": "reference",
+      "publisher": "CIA",
+      "language": "en",
+      "format": "zim",
+      "license": "Public domain (US Government work)",
+      "attribution": "CIA. Packaged as a ZIM archive by the Kiwix project.",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "countries",
+        "almanac"
+      ],
+      "sizeBytes": 407000000,
+      "source": {
+        "type": "kiwix",
+        "name": "theworldfactbook_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.wikisource-en-all-nopic",
+      "name": "Wikisource",
+      "description": "The Wikisource library of public-domain and freely licensed texts in English. This edition has the full text without images, which makes it much smaller.",
+      "category": "reference",
+      "publisher": "Wikisource",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0",
+      "attribution": "Wikisource contributors. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://en.wikisource.org",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "books",
+        "library"
+      ],
+      "sizeBytes": 3906000000,
+      "source": {
+        "type": "kiwix",
+        "name": "wikisource_en_all",
+        "flavour": "nopic"
+      }
+    },
+    {
+      "id": "kiwix.wiktionary-en-all-nopic",
+      "name": "Wiktionary",
+      "description": "The English Wiktionary: a dictionary with definitions of words from many languages. This edition has the full text without images, which makes it much smaller.",
+      "category": "reference",
+      "publisher": "Wiktionary",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0",
+      "attribution": "Wiktionary contributors. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://en.wiktionary.org",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "dictionary"
+      ],
+      "sizeBytes": 14848000000,
+      "source": {
+        "type": "kiwix",
+        "name": "wiktionary_en_all",
+        "flavour": "nopic"
+      }
+    }
+  ]
+}

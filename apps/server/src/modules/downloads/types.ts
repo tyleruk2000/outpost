@@ -12,7 +12,8 @@
  *  - an *installer* runs once the file is complete and verified, and turns it into
  *    something usable (a collection row, a place index, an entry in Kiwix's library).
  */
-import type { downloads } from "../../db/schema.ts";
+import type { DownloadDto } from "@outpost/shared";
+import type { CollectionMeta, downloads } from "../../db/schema.ts";
 
 export type DownloadRow = typeof downloads.$inferSelect;
 export type DownloadKind = DownloadRow["kind"];
@@ -38,10 +39,30 @@ export interface StartDownload {
   meta?: Record<string, unknown>;
 }
 
+/**
+ * Keys of `meta` that the built-in installer reads. It is used for kinds that have no
+ * installer of their own, and records the finished file as a collection. Everything is
+ * optional; the download's title is the fallback for the collection's title.
+ */
+export interface InstallMeta {
+  title?: string;
+  description?: string;
+  category?: string;
+  language?: string;
+  publisher?: string;
+  license?: string;
+  attribution?: string;
+  version?: string;
+  /** Stored as the collection's `meta`. */
+  collectionMeta?: CollectionMeta;
+}
+
 export interface FetchContext {
   download: DownloadRow;
   /** Absolute path of the partial file. Fetchers append to or fill in this file. */
   partPath: string;
+  /** The hosts given to `start`, for fetchers that make their own requests. */
+  allowedHosts?: string[];
   signal: AbortSignal;
   /** Report bytes on disk so far and, once known, the final size. */
   progress(receivedBytes: number, totalBytes?: number | null, message?: string): void;
@@ -76,11 +97,17 @@ export interface DownloadsService {
   pause(id: string): DownloadRow;
   resume(id: string): DownloadRow;
   cancel(id: string): DownloadRow;
+  /** Queues a failed or cancelled download again. It continues from its partial file. */
+  retry(id: string): Promise<DownloadRow>;
   /** Removes a finished, failed or cancelled download from history, and any partial file. */
   remove(id: string): Promise<void>;
   registerFetcher(name: string, fetcher: Fetcher): void;
   /** One installer per kind. Registering twice for a kind is an error. */
   registerInstaller(kind: DownloadKind, installer: Installer): void;
+  /** Called once a download has been verified and installed, with its final row. */
+  onCompleted(listener: (download: DownloadRow) => void | Promise<void>): void;
+  /** The row as the API reports it, with live progress, speed and time remaining. */
+  toDto(row: DownloadRow): DownloadDto;
 }
 
 declare module "../../core/context.ts" {

@@ -1,0 +1,102 @@
+# The Outpost catalogue
+
+This folder holds the catalogue that Explore shows: lists of freely available content
+that Outpost can download on request. A manifest describes content and says where it
+comes from. It never contains the content itself, and nothing is fetched until a
+person asks for it.
+
+```
+catalog/
+  manifests/                 one JSON file per manifest
+  schema/manifest.schema.json   the format, generated from the server's code
+```
+
+People running Outpost can add their own manifests, in the same format, to
+`<data directory>/catalog/`. Manifests shipped here are read first, so a later file
+cannot replace one of their entries.
+
+## The format
+
+A manifest follows [`schema/manifest.schema.json`](schema/manifest.schema.json). Point
+your editor at it with `"$schema": "../schema/manifest.schema.json"`.
+
+```json
+{
+  "schemaVersion": 1,
+  "id": "my-manifest",
+  "name": "My manifest",
+  "description": "What this list is for.",
+  "maintainers": ["Who looks after it"],
+  "downloadHosts": ["opds.library.kiwix.org", "lb.download.kiwix.org"],
+  "entries": [
+    {
+      "id": "kiwix.wikipedia-en-100",
+      "name": "Wikipedia 100",
+      "description": "What a person gets, in a sentence or two.",
+      "category": "encyclopedias",
+      "publisher": "Wikipedia",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0",
+      "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
+      "lastVerified": "2026-11-15",
+      "sizeBytes": 333000000,
+      "source": { "type": "kiwix", "name": "wikipedia_en_100", "flavour": "" }
+    }
+  ]
+}
+```
+
+- `id` is unique across every manifest: lower-case words joined by dots or hyphens.
+- `category` is one of: `survival`, `medicine`, `food`, `agriculture`, `engineering`,
+  `repair`, `radio`, `navigation`, `preparedness`, `encyclopedias`, `science`,
+  `reference`, `maps`.
+- `sizeBytes` is an estimate shown until Outpost has asked the source for the real size.
+- `downloadHosts` lists every host the first request for an entry may go to. Outpost
+  refuses to contact any host that no manifest lists.
+
+There are two kinds of `source`:
+
+- `{ "type": "kiwix", "name": "...", "flavour": "..." }` names a book in the
+  [Kiwix library](https://library.kiwix.org). `flavour` is `maxi`, `nopic`, `mini` or
+  the empty string for books published in a single edition. Outpost looks the book up
+  in the library's feed right before downloading and takes the address, exact size and
+  SHA-256 checksum from there. Never write the address of a `.zim` file into a
+  manifest: Kiwix rebuilds most books every month or two and removes old builds.
+- `{ "type": "http", "url": "https://...", "sha256": "...", "sizeBytes": 0, "version": "..." }`
+  is a file at a fixed https address. Give the `sha256` whenever the publisher
+  provides one; without it Outpost cannot tell a damaged or altered file from a good one.
+
+## Rules for entries
+
+1. **Official endpoints only.** An entry points at the publisher's own distribution
+   service, or one the publisher endorses (such as Kiwix for the projects it packages).
+   No re-uploads, link shorteners or personal mirrors.
+2. **State the licence honestly.** Write the licence you have checked at the source.
+   If you have not been able to check it, write `"license": "See source"` and add a
+   `licenseNote` saying so. Do not guess.
+3. **No bundled content.** Manifests carry descriptions and sources, never the content.
+4. **Describe plainly.** Say what a person gets. Where a book comes in several
+   editions, each edition is its own entry and the name says what differs
+   ("without images").
+5. **https only**, and every host must be in `downloadHosts`.
+
+## How entries are verified
+
+Each entry carries `lastVerified`: the day a maintainer last confirmed that it
+resolves at its source. Before sending a change, run:
+
+```
+node apps/server/src/cli/validate-catalog.ts            # format, ids, hosts, schema file
+node apps/server/src/cli/validate-catalog.ts --online   # also asks each source
+```
+
+The offline check runs in the test suite. The online check lists every entry that no
+longer resolves (a book renamed or withdrawn upstream); fix or remove those and update
+`lastVerified` on the entries you checked. If you change the format in
+`apps/server/src/modules/catalog/manifest.ts`, regenerate the schema file with
+`--write-schema`.
+
+Sizes, versions and availability shown in Explore do not come from the manifests. They
+come from the source when an administrator presses Refresh, and are remembered so that
+Explore still reads well offline.

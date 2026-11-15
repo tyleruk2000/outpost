@@ -1,1 +1,146 @@
-export {};
+import type { DownloadDto } from "./downloads.ts";
+
+/** Catalogue categories, in the order Explore shows them. */
+export const CATALOG_CATEGORIES = [
+  { slug: "survival", label: "Survival and wilderness skills" },
+  { slug: "medicine", label: "Medicine and first aid" },
+  { slug: "food", label: "Food preservation and cooking" },
+  { slug: "agriculture", label: "Agriculture and gardening" },
+  { slug: "engineering", label: "Engineering and electronics" },
+  { slug: "repair", label: "Vehicle and equipment repair" },
+  { slug: "radio", label: "Radio communications" },
+  { slug: "navigation", label: "Mountaineering and navigation" },
+  { slug: "preparedness", label: "Disaster preparedness" },
+  { slug: "encyclopedias", label: "Wikipedia and encyclopedias" },
+  { slug: "science", label: "Science and education" },
+  { slug: "reference", label: "History and general reference" },
+  { slug: "maps", label: "Offline maps" },
+] as const;
+
+export type CatalogCategorySlug = (typeof CATALOG_CATEGORIES)[number]["slug"];
+
+export const CATALOG_CATEGORY_SLUGS = CATALOG_CATEGORIES.map((category) => category.slug) as [
+  CatalogCategorySlug,
+  ...CatalogCategorySlug[],
+];
+
+export const CATALOG_FORMATS = ["zim", "pdf", "epub", "html", "other"] as const;
+export type CatalogFormat = (typeof CATALOG_FORMATS)[number];
+
+/** A book in the Kiwix library, found by name and flavour each time it is needed. */
+export interface CatalogKiwixSource {
+  type: "kiwix";
+  name: string;
+  /** "maxi", "nopic", "mini", … or the empty string for books with a single edition. */
+  flavour: string;
+}
+
+/** A file at a fixed https address. */
+export interface CatalogHttpSource {
+  type: "http";
+  url: string;
+  sha256?: string;
+  sizeBytes?: number;
+  version?: string;
+  published?: string;
+}
+
+export type CatalogSource = CatalogKiwixSource | CatalogHttpSource;
+
+/** One entry as written in a manifest. */
+export interface CatalogManifestEntry {
+  id: string;
+  name: string;
+  description: string;
+  category: CatalogCategorySlug;
+  publisher: string;
+  language: string;
+  format: CatalogFormat;
+  license: string;
+  licenseNote?: string;
+  attribution: string;
+  homepage?: string;
+  /** YYYY-MM-DD: when a maintainer last checked that the entry resolves. */
+  lastVerified: string;
+  tags?: string[];
+  /** Estimate, shown until the live size is known. */
+  sizeBytes?: number;
+  source: CatalogSource;
+}
+
+export interface CatalogManifest {
+  schemaVersion: 1;
+  id: string;
+  name: string;
+  description: string;
+  maintainers: string[];
+  downloadHosts: string[];
+  entries: CatalogManifestEntry[];
+}
+
+/** Whether the upstream source still offers the entry, as of the last refresh. */
+export type CatalogAvailability = "unknown" | "available" | "unavailable";
+
+export type CatalogInstallStatus = "not_installed" | "queued" | "downloading" | "paused" | "failed" | "installed";
+
+/** A manifest entry merged with what the last refresh learned and what is installed. */
+export interface CatalogEntryDto extends Omit<CatalogManifestEntry, "sizeBytes"> {
+  manifestId: string;
+  /** Exact when resolved, otherwise the manifest's estimate; null when neither is known. */
+  sizeBytes: number | null;
+  /** True when `sizeBytes` is the manifest's estimate rather than a figure from the source. */
+  sizeIsEstimate: boolean;
+  version: string | null;
+  publishedAt: string | null;
+  articleCount: number | null;
+  /** When the details above were last confirmed with the source; null if never. */
+  resolvedAt: number | null;
+  availability: CatalogAvailability;
+  /** Why the entry is unavailable, in plain words. */
+  unavailableReason: string | null;
+  status: CatalogInstallStatus;
+  downloadId?: string;
+  collectionId?: string;
+  installedVersion?: string;
+  /** The installed version is older than the one the source now offers. */
+  updateAvailable: boolean;
+}
+
+export interface CatalogProblem {
+  /** Manifest file the problem was found in. */
+  file: string;
+  entryId?: string;
+  message: string;
+}
+
+export interface CatalogResponse {
+  categories: Array<{ slug: CatalogCategorySlug; label: string; count: number }>;
+  entries: CatalogEntryDto[];
+  manifests: Array<{ id: string; name: string }>;
+  problems: CatalogProblem[];
+  lastRefreshedAt: number | null;
+}
+
+export interface CatalogRefreshSummary {
+  /** Entries the sources gave an answer for. */
+  checked: number;
+  available: number;
+  unavailable: Array<{ entryId: string; reason: string }>;
+  /** Entries whose source could not be asked this time; their last known details are kept. */
+  unchecked: Array<{ entryId: string; reason: string }>;
+  refreshedAt: number;
+}
+
+export interface CatalogDownloadRequest {
+  /** Storage location to install to. Defaults to the default location. */
+  locationId?: string;
+}
+
+export interface CatalogDownloadResponse {
+  download: DownloadDto;
+  /**
+   * Set when this download updates something already installed: that collection and
+   * its file are removed once the new version has been installed and verified.
+   */
+  replacesCollectionId: string | null;
+}

@@ -9,6 +9,7 @@ export * from "./common.ts";
 export * from "./documents.ts";
 export * from "./downloads.ts";
 export * from "./imports.ts";
+export * from "./kiwix.ts";
 export * from "./maps.ts";
 export * from "./notes.ts";
 export * from "./portable.ts";

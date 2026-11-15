@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metalink xmlns="urn:ietf:params:xml:ns:metalink">
+  <generator>MirrorBrain/2.19.0</generator>
+  <origin dynamic="true">https://lb.download.kiwix.org/zim/wikipedia/wikipedia_en_medicine_mini_2026-10.zim.meta4</origin>
+  <published>2026-11-15T00:00:00Z</published>
+  <publisher>
+    <name>Kiwix project</name>
+    <url>https://kiwix.org</url>
+  </publisher>
+
+  <file name="wikipedia_en_medicine_mini_2026-10.zim">
+    <size>174350854</size>
+
+    <!-- <mtime>1791811477</mtime> -->
+
+    <!-- internal id: 10697 -->
+    <hash type="md5">218639ac2d92e9adfc86abc4d0d1ce83</hash>
+    <hash type="sha-1">126f2f33740aba43b61a9c73967d21b5614c9863</hash>
+    <hash type="sha-256">c66f27274775870cec7e0c230c7e7626d367633b1f26c4a74499c249ddac0822</hash>
+    <pieces length="4194304" type="sha-1">
+      <hash>884aae1d4001c5d5ff426ed5143141af262dd283</hash>
+      <hash>a986ac0226b6761e831eb925c8ecce18cbf3ebf5</hash>
+      <hash>ad2b8ca5ff4aaf859bbc7a7b266acd5f85fb7976</hash>
+      <!-- remaining piece hashes removed from this fixture -->
+    </pieces>
+
+    <!-- mirror list removed from this fixture -->
+  </file>
+</metalink>

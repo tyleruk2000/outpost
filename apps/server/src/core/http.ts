@@ -139,7 +139,16 @@ export function createHttpClient(config: { allowPrivate: boolean }): HttpClient 
           signal: options.signal,
           dispatcher: agent,
         };
-        const response = await undiciFetch(url, init);
+        const response = await undiciFetch(url, init).catch((error: unknown) => {
+          // undici reports a refused connection as a generic "fetch failed" with the real
+          // reason underneath. A blocked address is a decision, not a network fault, and
+          // must not be retried as one.
+          for (let cause: unknown = error, depth = 0; cause && depth < 5; depth += 1) {
+            if (cause instanceof BlockedAddressError) throw cause;
+            cause = (cause as { cause?: unknown }).cause;
+          }
+          throw error;
+        });
         if (response.status >= 300 && response.status < 400 && response.headers.has("location")) {
           await response.body?.cancel();
           if (hop >= maxRedirects) throw new AppError("upstream", "The download redirected too many times.");
