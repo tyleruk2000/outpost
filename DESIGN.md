@@ -1,7 +1,8 @@
 # Design
 
 The visual system for Outpost. Tokens live in `apps/web/src/styles/tokens.css`; this
-file explains the choices behind them.
+file explains the choices behind them. `docs/development/web-screens.md` is the
+working guide for building a screen.
 
 ## Scene
 
@@ -10,126 +11,135 @@ phone to look something up on a small server humming on a shelf. Bright daylight
 near darkness are both normal, so light and dark themes are equal citizens and the
 default follows the system setting.
 
-Mood phrase: **a well-kept field station, lamp on** — mineral teal, clean white paper,
-one amber light.
+## The picture
+
+**A cloth-bound field reference.** A dark verdigris spine (the sidebar), clean white
+pages (the content), a sturdy book face for the titles of things you read, and one
+amber lamp for anything alive right now.
+
+This is deliberately not the default look of a web app: no all-white shell with a
+single accent, no card grid, no geometric sans everywhere. The identity is carried by
+three things and nothing else:
+
+1. **The spine.** Navigation sits on deep verdigris in both themes. It is the one
+   committed block of colour.
+2. **Two faces with fixed jobs.** Literata, a book serif drawn for long reading on
+   screens, names the things a person reads: a screen, a document, a page, a
+   collection. Atkinson Hyperlegible does everything functional. Its letterforms were
+   drawn to stay distinguishable in poor conditions, which is this product's premise.
+3. **Contour lines.** Home and empty states carry a quiet contour drawing, generated
+   with the same method as a real map (a height field traced by marching squares).
+   Nothing else in the interface is decorative.
 
 ## Colour
 
-Strategy: **restrained**. Neutral surfaces, one primary, one signal colour.
-
-All values are OKLCH.
+Strategy: **restrained**, with one committed surface. All values are OKLCH.
 
 | Role | Light | Dark | Use |
 | --- | --- | --- | --- |
-| `bg` | `1 0 0` | `0.17 0.006 220` | Content surface |
-| `surface` | `0.975 0.003 210` | `0.205 0.007 220` | Sidebar, toolbars, panels |
-| `raised` | `1 0 0` | `0.235 0.008 220` | Popovers, dialogs, menus |
-| `border` | `0.915 0.005 210` | `0.29 0.008 220` | Hairlines, control outlines |
-| `border-strong` | `0.84 0.008 210` | `0.37 0.01 220` | Inputs, focused outlines |
-| `ink` | `0.21 0.015 225` | `0.94 0.005 210` | Body text |
-| `ink-muted` | `0.47 0.015 225` | `0.72 0.01 215` | Secondary text |
-| `ink-faint` | `0.58 0.012 225` | `0.6 0.01 215` | Placeholders, disabled |
-| `primary` | `0.45 0.074 200` | `0.74 0.09 195` | Primary actions, selection, links |
-| `primary-ink` | `1 0 0` | `0.17 0.02 200` | Text on primary |
-| `primary-soft` | `0.955 0.02 200` | `0.27 0.035 200` | Selected rows, soft buttons |
-| `signal` | `0.74 0.15 72` | `0.8 0.14 78` | The lamp: active work, favourites |
-| `success` | `0.5 0.11 155` | `0.76 0.13 155` | Verified, installed |
-| `warning` | `0.56 0.12 70` | `0.8 0.13 80` | Low space, needs attention |
-| `danger` | `0.52 0.17 27` | `0.72 0.15 25` | Errors, destructive actions |
+| `page` | `1 0 0` | `0.2 0.008 215` | Content surface. Light is literal white. |
+| `surface` | `0.972 0.004 200` | `0.232 0.009 215` | Panels, toolbars, table heads |
+| `surface-strong` | `0.945 0.006 200` | `0.265 0.011 215` | Hover, tracks, inline code |
+| `raised` | `1 0 0` | `0.245 0.01 215` | Menus, dialogs |
+| `border` / `border-strong` | `0.905 0.006 200` / `0.82 0.01 200` | `0.305 0.011 215` / `0.4 0.014 215` | Hairlines / control outlines |
+| `ink` | `0.21 0.015 220` | `0.935 0.006 210` | Text |
+| `ink-muted` | `0.44 0.016 220` | `0.74 0.012 212` | Secondary text (still 4.5:1) |
+| `ink-faint` | `0.56 0.014 220` | `0.62 0.012 212` | Placeholders and disabled only |
+| `spine` | `0.285 0.042 200` | `0.165 0.024 200` | The sidebar |
+| `primary` | `0.45 0.074 200` | `0.76 0.09 195` | Main action, selection, links |
+| `primary-soft` | `0.95 0.022 200` | `0.29 0.04 200` | Selected rows, soft buttons, info notices |
+| `lamp` | `0.78 0.15 75` | `0.82 0.14 78` | Alive right now; favourites |
+| `success` / `warning` / `danger` | `0.48 0.11 155` / `0.5 0.11 70` / `0.5 0.17 27` | lighter equivalents | State, always with words |
 
 Rules:
 
-- The primary is the seed colour `oklch(0.45 0.074 200)`: a deep mineral teal. It is
-  used for primary actions, the current selection and links. Never as decoration.
-- `signal` amber is the single warm note. It marks things that are alive right now
-  (a running download, an indexing job) and favourites. If more than a few amber
-  things are visible at once, something is wrong.
-- Light `bg` is literal white. Warmth is not added to surfaces.
-- Text on tinted or coloured backgrounds uses a darker shade of that hue, never grey.
+- Primary is the seed colour, a deep mineral teal. It marks the main action, the
+  current selection and links. Never decoration.
+- The amber `lamp` is the single warm note. It means a download is running, an index
+  is building, or something is a favourite. If more than a few amber things are on
+  screen, something is wrong.
+- Surfaces carry no warmth. Neutrals lean very slightly toward the brand's own hue.
+- Text on a tinted background uses a darker shade of that hue, never grey.
+- State is never colour alone: there is always a word, and usually an icon.
 
 ## Typography
 
-One family, chosen for the subject: **Atkinson Hyperlegible Next** (variable, OFL),
-with **Atkinson Hyperlegible Mono** for code, coordinates, checksums and sizes in
-tables. Both are bundled through `@fontsource-variable` and served locally.
+| Family | Job |
+| --- | --- |
+| **Literata** (variable, optical sizes) | Titles of things you read, and reading surfaces (pages, document text). A setting switches reading surfaces to the sans. |
+| **Atkinson Hyperlegible Next** (variable) | Everything functional: navigation, controls, labels, tables, body UI text. |
+| **Atkinson Hyperlegible Mono** | Paths, checksums, coordinates, code. |
 
-The Atkinson faces were drawn so that letters stay distinguishable in poor conditions.
-That is the product's whole premise, so the type carries it.
+All three are bundled and served locally. Fixed rem scale, ratio about 1.2:
 
-Fixed rem scale, ratio about 1.15:
+| Token | Size / line | Use |
+| --- | --- | --- |
+| `display` | 2.125rem / 2.5rem | Home title |
+| `title` | 1.75rem / 2.125rem | Screen titles |
+| `heading` | 1.4375rem / 1.875rem | Empty-state and section titles in serif |
+| `lead` | 1.1875rem / 1.625rem | Section headings, row titles |
+| `body` | 1rem / 1.5rem | Default |
+| `small` | 0.875rem / 1.3125rem | Secondary UI text |
+| `micro` | 0.78125rem / 1.125rem | Badges, counters |
 
-| Token | Size / line | Weight | Use |
-| --- | --- | --- | --- |
-| `display` | 1.75rem / 2.125rem | 650 | Page titles in notes and readers |
-| `title` | 1.375rem / 1.75rem | 650 | Screen titles |
-| `heading` | 1.0625rem / 1.5rem | 600 | Section headings |
-| `body` | 0.9375rem / 1.5rem | 400 | Default UI and prose |
-| `small` | 0.8125rem / 1.25rem | 400 | Secondary text, table meta |
-| `micro` | 0.75rem / 1rem | 500 | Badges, counters |
-
-- Prose (notes, readers) is set at 1rem / 1.7 and capped at 70ch.
-- Sentence case everywhere. No all-caps labels, no tracked eyebrows.
-- Numbers that people compare (sizes, free space, progress) use tabular figures.
+- Reading prose is 1.0625rem at 1.72 line height, capped at 70ch.
+- Sentence case everywhere. No all-caps labels, no tracked eyebrows, no decorative
+  numbering.
+- Numbers people compare use tabular figures.
 
 ## Shape and depth
 
-- Radii by role, not one value: controls 6px, panels and dialogs 10px, pills full.
-- Structure comes from hairline borders and the two-level neutral. Shadows appear only
-  on things that float (menus, dialogs, toasts).
-- Icons are Lucide at 1.5px stroke, 16px in controls and 18px in navigation.
+- Radii by role: controls 5px, panels and dialogs 8px, pills full.
+- Structure comes from hairlines and the two neutrals. Shadows appear only on things
+  that float.
+- Icons are Lucide, stroke 1.6 in navigation.
+- No side-stripe accents, gradient text, glass, or icon-in-a-tinted-square tiles.
 
 ## Layout
 
 ```
 ┌────────────┬──────────────────────────────────────────┐
-│ Outpost    │  breadcrumb / title          search  ⌘K  │
-│            ├──────────────────────────────────────────┤
-│ Home       │                                          │
-│ Search     │   content                                │
-│ Explore    │   reading: max 720px, left aligned       │
-│ Library    │   browsing: max 1120px                   │
-│ Maps       │   map: full bleed                        │
+│ ▮ Outpost  │                                          │
+│ Search  ⌘K │   Title in Literata                      │
+│            │   content                                │
+│ Home       │   reading: max 46rem, left aligned       │
+│ Explore    │   browsing: max 70rem                    │
+│ Library    │   map and readers: full bleed            │
+│ Maps       │                                          │
 │ Notes      │                                          │
-│  ▸ page    │                                          │
-│  ▸ page    │                                          │
-│ ────────   │                                          │
+│  ▸ pages   │                                          │
+│ ─────────  │                                          │
 │ Downloads  │                                          │
 │ Storage    │                                          │
 │ Settings   │                                          │
+│ ▪ Ready    │                                          │
 └────────────┴──────────────────────────────────────────┘
+        spine: verdigris            pages: white
 ```
 
-- Desktop: a 256px sidebar on the `surface` neutral, collapsible to icons. Knowledge
-  destinations sit at the top, the notes tree in the middle, upkeep (downloads,
-  storage, settings) at the bottom.
-- Mobile: the sidebar becomes a bottom bar with Home, Search, Library, Notes and Maps,
-  plus a More sheet for the rest.
-- Content is left aligned. Reading surfaces are narrow; browsing surfaces are wider;
-  the map takes everything.
-- Lists and rows are preferred over cards. A card appears only when an item is a
-  self-contained object people pick from a set (a catalogue collection, a map region).
-
-## The one memorable thing
-
-Contour lines. Empty states and the Home header carry a quiet topographic drawing in
-`border` colour, generated from the same maths as a real contour map. Nothing else in
-the interface is decorative.
+- Desktop: a 16rem spine, collapsible to icons. Knowledge at the top, the page tree in
+  the middle, upkeep at the bottom, and the lamp (one line of status) at the foot.
+- Mobile: a spine-coloured top bar and a bottom bar with Home, Library, Maps, Notes
+  and More.
+- Lists before cards. A card appears only when an item is an object picked from a set
+  (a catalogue collection, a map region). Cards are never nested.
+- Home is written as sentences and lists, not tiles of numbers.
 
 ## Motion
 
-- 120–200ms, ease-out-quart, on state changes only: opening, selecting, confirming.
+- 120–200ms, ease-out, on state changes only: opening, selecting, confirming.
 - Progress bars move with real progress. No page-load choreography.
-- Under `prefers-reduced-motion`, transitions become instant or a short crossfade.
+- Under `prefers-reduced-motion`, transitions are instant.
 
 ## Writing
 
 - Name things as people know them: "Library", "Storage", "Downloads".
-- A button says what it does: "Download", "Move collection", "Verify files".
+- A button says what it does: "Download", "Move collection", "Write drive".
 - Errors state what happened and what to do. Offline is a normal state, described
   plainly: "No connection. This download will resume when the network is back."
 - Empty screens invite the first action.
 
-## Z-index scale
+## Layers
 
-`base 0` · `sticky 10` · `nav 20` · `dropdown 30` · `overlay 40` · `dialog 50` ·
-`toast 60` · `tooltip 70`.
+`sticky 10` · `nav 20` · `dropdown 30` · `overlay 40` · `dialog 50` · `toast 60` ·
+`tooltip 70`.
