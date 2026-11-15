@@ -50,6 +50,25 @@
   --danger-soft: oklch(0.955 0.025 25);
   --mark: oklch(0.9 0.12 95);
 
+  /*
+   * Charts. Four categorical colours in a fixed order, checked with the data-viz
+   * validator for colour-blind separation and contrast on this surface. Scatter-style
+   * charts, where every pair can touch, use the first three only.
+   */
+  --chart-1: #00919f;
+  --chart-2: #c8731a;
+  --chart-3: #6f5bd6;
+  --chart-4: #d4517f;
+  --chart-other: oklch(0.7 0.01 220);
+  --chart-grid: oklch(0.93 0.004 210);
+  --chart-axis: oklch(0.56 0.014 220);
+  /* One hue, light to dark, for "how much". */
+  --chart-seq-1: oklch(0.93 0.03 200);
+  --chart-seq-2: oklch(0.83 0.06 200);
+  --chart-seq-3: oklch(0.7 0.09 200);
+  --chart-seq-4: oklch(0.56 0.1 200);
+  --chart-seq-5: oklch(0.4 0.08 200);
+
   --focus: oklch(0.55 0.12 200);
   --shadow-float: 0 1px 2px oklch(0.2 0.02 220 / 0.06), 0 8px 24px -6px oklch(0.2 0.02 220 / 0.16);
   --shadow-dialog: 0 2px 4px oklch(0.2 0.02 220 / 0.08), 0 24px 56px -12px oklch(0.2 0.02 220 / 0.28);
@@ -117,6 +136,19 @@
   --danger-hover: oklch(0.78 0.14 25);
   --danger-soft: oklch(0.29 0.055 25);
   --mark: oklch(0.5 0.1 90);
+
+  --chart-1: #1f9aa8;
+  --chart-2: #c08026;
+  --chart-3: #8577e6;
+  --chart-4: #d76390;
+  --chart-other: oklch(0.5 0.012 215);
+  --chart-grid: oklch(0.27 0.01 215);
+  --chart-axis: oklch(0.62 0.012 212);
+  --chart-seq-1: oklch(0.3 0.04 200);
+  --chart-seq-2: oklch(0.4 0.06 200);
+  --chart-seq-3: oklch(0.52 0.08 200);
+  --chart-seq-4: oklch(0.66 0.09 198);
+  --chart-seq-5: oklch(0.82 0.08 195);
 
   --focus: oklch(0.8 0.1 195);
   --shadow-float: 0 1px 2px oklch(0 0 0 / 0.3), 0 8px 24px -6px oklch(0 0 0 / 0.5);

@@ -55,6 +55,36 @@ tone before inventing anything.
 - **Motion is 120–200 ms on state changes only.** No entrance animations on page load.
 - **Icons are Lucide**, `strokeWidth` 1.6 in navigation, default in controls.
 
+## Charts
+
+Charts are hand-drawn SVG in React. There is no chart library. They follow a method,
+not taste:
+
+1. **Pick the form from the job.** Change over time is a line. Parts of a whole is one
+   stacked bar. A ranking is horizontal bars. A single figure is a number in a
+   sentence, not a chart. Never two y-axes on one chart.
+2. **Colour last, and by job.** Identity uses the four categorical tokens
+   `--chart-1` (teal), `--chart-2` (amber), `--chart-3` (violet), `--chart-4` (rose),
+   always in that order and always meaning the same thing across a screen. Scatter
+   plots use the first three only. Everything else folds into `--chart-other`.
+   Magnitude uses the single-hue ramp `--chart-seq-1` … `--chart-seq-5`. State uses
+   the status tokens (`success`, `warning`, `danger`) with a word beside it. The
+   palette was checked with a validator for colour-blind separation and contrast in
+   both themes; do not add colours to it.
+3. **Marks are thin.** Lines 2px, bars with a 2px gap in the surface colour between
+   segments, 4px rounded ends at the data end only, points at least 8px. Grid and axes
+   are recessive (`--chart-grid`, `--chart-axis`).
+4. **Text is ink, never the series colour.** Values and labels use `text-ink` and
+   `text-ink-muted`; a coloured mark next to them carries identity. Two or more series
+   always have a legend, and up to four are also labelled directly on the chart.
+5. **Every chart answers the pointer and the keyboard.** A crosshair and tooltip on
+   lines, a tooltip per mark on bars and points, hit areas larger than the mark, and
+   focusable marks with the same information for keyboard users.
+6. **Every chart has words.** A title that says what it shows, a one-line reading of
+   it underneath where that helps, an accessible name, and a table of the same numbers
+   available to screen readers (a visually hidden `<table>` is fine).
+7. **Look at it** in light, dark and at phone width before calling it done.
+
 ## Every screen has all of its states
 
 - **Loading:** skeletons shaped like the content (`Skeleton`), not a centred spinner.

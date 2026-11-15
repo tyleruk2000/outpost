@@ -41,6 +41,13 @@
   --color-danger-hover: var(--danger-hover);
   --color-danger-soft: var(--danger-soft);
   --color-mark: var(--mark);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-other: var(--chart-other);
+  --color-chart-grid: var(--chart-grid);
+  --color-chart-axis: var(--chart-axis);
   --color-focus: var(--focus);
   --color-overlay: var(--overlay);
 
