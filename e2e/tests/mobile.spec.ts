@@ -66,6 +66,18 @@ test.describe("on a phone", () => {
     expect(errors).toEqual([]);
   });
 
+  test("fits the manage screen and its list of everything installed at phone width", async ({ page }) => {
+    const errors = watchForErrors(page);
+    for (const view of ["", "?view=installed", "?view=leftovers", "?view=clean-up"]) {
+      await page.goto(`/storage/manage${view}`);
+      await expect(page.getByRole("heading", { name: "Manage and clean up", level: 1 })).toBeVisible();
+      await expect(page.getByRole("tab", { name: "Clean up" })).toBeVisible();
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      expect(overflow, `sideways overflow on ${view || "the space view"}`).toBeLessThanOrEqual(1);
+    }
+    expect(errors).toEqual([]);
+  });
+
   test("gives controls a comfortable touch size", async ({ page }) => {
     await page.goto("/storage");
     const button = page.getByRole("button", { name: "Add location" });

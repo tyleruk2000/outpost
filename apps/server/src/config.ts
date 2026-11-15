@@ -45,6 +45,7 @@ const envSchema = z.object({
   OUTPOST_WEB_DIR: z.string().optional(),
   OUTPOST_MAX_UPLOAD_MB: z.coerce.number().int().min(1).default(2048),
   OUTPOST_ALLOW_PRIVATE_DOWNLOADS: bool(false),
+  OUTPOST_ALLOW_REMOTE_ERASE: bool(false),
   OUTPOST_DOWNLOAD_HOSTS: list,
   OUTPOST_PORTABLE: bool(false),
   OUTPOST_APP_DIR: z.string().optional(),
@@ -79,6 +80,11 @@ export interface Config {
   /** Lets downloads reach private addresses, for a mirror on your own network. */
   allowPrivateDownloads: boolean;
   extraDownloadHosts: string[];
+  /**
+   * Lets "erase everything" be started from any device that can reach Outpost. Without
+   * it, only a request from this computer may erase the person's own things.
+   */
+  allowRemoteErase: boolean;
   logLevel: string;
   /** Running from a portable drive: paths are relative to the drive, nothing is assumed about the host. */
   portable: boolean;
@@ -149,6 +155,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     maxUploadBytes: parsed.OUTPOST_MAX_UPLOAD_MB * 1024 * 1024,
     allowPrivateDownloads: parsed.OUTPOST_ALLOW_PRIVATE_DOWNLOADS,
     extraDownloadHosts: parsed.OUTPOST_DOWNLOAD_HOSTS.map((host) => host.toLowerCase()),
+    allowRemoteErase: parsed.OUTPOST_ALLOW_REMOTE_ERASE,
     // A portable drive runs in a window a person is looking at: keep it quiet.
     logLevel: parsed.OUTPOST_LOG_LEVEL ?? (parsed.NODE_ENV === "test" ? "silent" : parsed.OUTPOST_PORTABLE ? "warn" : "info"),
     portable: parsed.OUTPOST_PORTABLE,

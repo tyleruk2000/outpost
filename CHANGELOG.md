@@ -36,6 +36,19 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 - Moving all documents to another location, each checked against its recorded
   checksum.
 - Checking a collection against its recorded checksum.
+- **Manage and clean up**, a page under Storage (`/storage/manage`): what is taking the
+  space by kind and by location, measured in the background and marked as recorded,
+  measured or estimated; every collection and document in one sortable, filterable
+  list, to remove or move one or many, with a summary before and an account after;
+  leftovers (unfinished downloads, records whose file has gone, files no record refers
+  to, caches, history) cleared only when chosen; and three clean-ups: remove all
+  downloaded content, clear and rebuild search data, erase everything and start again.
+- "Erase everything" needs a typed phrase, offers a backup first, and can only be
+  started on the computer Outpost runs on unless the server is started with
+  `OUTPOST_ALLOW_REMOTE_ERASE=true`.
+- A cancelled job can keep an account of what it had done before it was stopped.
+- A selection of documents can be moved to another location (`ids` on
+  `POST /api/documents/move`).
 
 #### Document library
 

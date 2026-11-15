@@ -92,6 +92,8 @@ export interface CollectionsService {
    * `onRemoved` listeners run first so that anything serving the file can let go of it.
    */
   remove(id: string, options: { deleteFiles: boolean }): Promise<void>;
+  /** True while the collection is being moved or checked, when it must not be removed. */
+  isBusy(id: string): boolean;
   /** Absolute path of the collection's file or folder. Throws if its location is not connected. */
   absolutePath(id: string): string;
   /** Queues a job that re-hashes the file and compares it with the recorded checksum. */
@@ -291,6 +293,10 @@ export function createCollectionsService(ctx: AppContext): CollectionsService {
       db.delete(collections).where(eq(collections.id, id)).run();
       search.remove(SEARCH_KIND, id);
       announce(id);
+    },
+
+    isBusy(id) {
+      return get(id)?.status === "moving" || hasActiveJob(id);
     },
 
     absolutePath(id) {

@@ -22,17 +22,19 @@ const invalidations: Record<string, string[][]> = {
   // their cached list from the event itself, so nothing is refetched here; the lists
   // are refreshed when a download changes state (see the listener below).
   "download.updated": [],
-  "download.removed": [["downloads"], ["catalog"]],
-  "storage.changed": [["storage"], ["collections"], ["documents"]],
+  "download.removed": [["downloads"], ["catalog"], ["manage"]],
+  "storage.changed": [["storage"], ["collections"], ["documents"], ["manage"]],
   "settings.changed": [["settings"]],
-  "documents.changed": [["documents"], ["search"], ["storage"]],
+  "documents.changed": [["documents"], ["search"], ["storage"], ["manage"]],
   "notes.changed": [["notes"], ["search"]],
-  "collections.changed": [["collections"], ["catalog"], ["storage"], ["kiwix"], ["maps"]],
+  "collections.changed": [["collections"], ["catalog"], ["storage"], ["kiwix"], ["maps"], ["manage"]],
   "catalog.changed": [["catalog"]],
   "maps.changed": [["maps"], ["collections"]],
   "imports.changed": [["imports"]],
   "semantic.changed": [["semantic"]],
   "portable.changed": [["portable"]],
+  // The background count of what is on disk has finished.
+  "manage.changed": [["manage"]],
 };
 
 function scheduleInvalidation(client: QueryClient, pending: Set<string>, timer: { id?: number }, keys: string[][]): void {

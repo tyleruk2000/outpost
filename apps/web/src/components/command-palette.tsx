@@ -6,7 +6,7 @@
 import type { SearchResponse } from "@outpost/shared";
 import { useQuery } from "@tanstack/react-query";
 import { Command } from "cmdk";
-import { CornerDownLeft, FolderInput, type LucideIcon, Moon, Plus, Search, Sun, Upload, Waypoints } from "lucide-react";
+import { CornerDownLeft, Eraser, FolderInput, ListChecks, type LucideIcon, Moon, Plus, Search, Sun, Upload, Waypoints } from "lucide-react";
 import { Dialog } from "radix-ui";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
@@ -92,6 +92,8 @@ export function CommandPalette({
     { id: "add-documents", label: "Add documents", icon: Upload, run: () => go("/library?upload=1") },
     { id: "import", label: "Import pages from Markdown or Notion", icon: FolderInput, run: () => go("/import") },
     { id: "how-search-works", label: "See how search works", icon: Waypoints, run: () => go("/search/how-it-works") },
+    { id: "free-space", label: "Free up space and clean up", icon: Eraser, run: () => go("/storage/manage") },
+    { id: "manage-downloaded", label: "Manage what is downloaded", icon: ListChecks, run: () => go("/storage/manage?view=installed") },
     {
       id: "theme",
       label: `Switch to ${resolved === "dark" ? "light" : "dark"} theme`,

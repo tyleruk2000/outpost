@@ -64,6 +64,8 @@ export interface SettingsService {
   get<K extends SettingKey>(key: K): Settings[K];
   update(patch: Partial<Settings>): Settings;
   onChange(listener: (settings: Settings) => void): void;
+  /** Puts every setting back to its default. Returns how many had been changed. */
+  reset(): number;
 }
 
 declare module "../../core/context.ts" {
@@ -125,6 +127,14 @@ export function createSettingsService(ctx: AppContext): SettingsService {
     },
     onChange(listener) {
       listeners.push(listener);
+    },
+    reset() {
+      const removed = ctx.db.delete(settingsTable).run().changes;
+      cache = undefined;
+      const next = load();
+      for (const listener of listeners) listener(next);
+      ctx.events.publish({ type: "settings.changed" });
+      return removed;
     },
   };
 }

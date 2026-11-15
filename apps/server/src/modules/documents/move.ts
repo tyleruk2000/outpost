@@ -10,29 +10,58 @@ import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { pipeline } from "node:stream/promises";
-import { ne } from "drizzle-orm";
+import { and, inArray, ne } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
 import { AppError, conflict } from "../../core/errors.ts";
-import { toJobDto } from "../../core/jobs.ts";
+import { type JobRow, toJobDto } from "../../core/jobs.ts";
 import { documents } from "../../db/schema.ts";
 
 interface MovePayload extends Record<string, unknown> {
   locationId: string;
+  /** Only these documents; every document that is elsewhere when omitted. */
+  ids?: string[];
 }
+
+export interface DocumentMoves {
+  /** Queues a job that moves documents to a location: the ones named, or every one that is elsewhere. */
+  start(locationId: string, ids?: string[]): Promise<{ job: JobRow; documents: number }>;
+}
+
+declare module "../../core/context.ts" {
+  interface Services {
+    documentMoves: DocumentMoves;
+  }
+}
+
+/** SQLite takes a limited number of values in one statement; a selection can be larger. */
+const ID_BATCH = 400;
 
 export function registerDocumentMoves(app: FastifyInstance, ctx: AppContext): void {
   const { db, jobs } = ctx;
   const { storage } = ctx.services;
 
-  const elsewhere = (locationId: string) => db.select().from(documents).where(ne(documents.locationId, locationId)).all();
+  function elsewhere(locationId: string, ids?: string[]) {
+    if (!ids) return db.select().from(documents).where(ne(documents.locationId, locationId)).all();
+    const rows: Array<typeof documents.$inferSelect> = [];
+    for (let start = 0; start < ids.length; start += ID_BATCH) {
+      rows.push(
+        ...db
+          .select()
+          .from(documents)
+          .where(and(ne(documents.locationId, locationId), inArray(documents.id, ids.slice(start, start + ID_BATCH))))
+          .all(),
+      );
+    }
+    return rows;
+  }
 
   jobs.register<MovePayload>("documents.move", {
     queue: "transfer",
     async run({ payload, signal, progress }) {
       const target = storage.get(payload.locationId);
-      const rows = elsewhere(target.id);
+      const rows = elsewhere(target.id, payload.ids);
       const total = rows.reduce((sum, row) => sum + row.sizeBytes, 0);
       let done = 0;
       const moved: string[] = [];
@@ -103,12 +132,14 @@ export function registerDocumentMoves(app: FastifyInstance, ctx: AppContext): vo
     },
   });
 
-  app.post("/api/documents/move", async (request) => {
-    const body = z.object({ locationId: z.string().min(1) }).parse(request.body);
+  async function start(locationId: string, ids?: string[]): Promise<{ job: JobRow; documents: number }> {
+    const body = { locationId, ids };
     const target = storage.get(body.locationId);
     if (target.status !== "available") throw new AppError("storage_unavailable", `"${target.name}" is not connected.`);
-    const rows = elsewhere(target.id);
-    if (rows.length === 0) throw conflict(`Every document is already on "${target.name}".`);
+    const rows = elsewhere(target.id, body.ids);
+    if (rows.length === 0) {
+      throw conflict(body.ids ? `Those documents are already on "${target.name}".` : `Every document is already on "${target.name}".`);
+    }
     if (jobs.list({ states: ["queued", "running"] }).some((job) => job.type === "documents.move")) {
       throw conflict("Documents are already being moved. Wait for that to finish, or cancel it on the Downloads screen.");
     }
@@ -118,9 +149,23 @@ export function registerDocumentMoves(app: FastifyInstance, ctx: AppContext): vo
     );
     const job = jobs.enqueue(
       "documents.move",
-      { locationId: target.id },
-      { title: `Move documents to ${target.name}`, subject: `documents-move:${target.id}` },
+      { locationId: target.id, ...(body.ids ? { ids: rows.map((row) => row.id) } : {}) },
+      {
+        title: body.ids
+          ? `Move ${rows.length} document${rows.length === 1 ? "" : "s"} to ${target.name}`
+          : `Move documents to ${target.name}`,
+        subject: `documents-move:${target.id}`,
+      },
     );
-    return { job: toJobDto(job), documents: rows.length };
+    return { job, documents: rows.length };
+  }
+  ctx.services.documentMoves = { start };
+
+  app.post("/api/documents/move", async (request) => {
+    const body = z
+      .object({ locationId: z.string().min(1), ids: z.array(z.string().min(1).max(100)).min(1).max(20_000).optional() })
+      .parse(request.body);
+    const started = await start(body.locationId, body.ids);
+    return { job: toJobDto(started.job), documents: started.documents };
   });
 }

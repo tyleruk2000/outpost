@@ -2,11 +2,13 @@ import type { BackupStatus } from "@outpost/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Download, RotateCcw, Upload } from "lucide-react";
 import { useRef, useState } from "react";
+import { Link } from "react-router";
 import { toast } from "sonner";
 import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { ApiError, api, errorMessage } from "@/lib/api";
+import { manageLink } from "../manage/manage-data";
 import { SettingRow, SettingsSection } from "./parts";
 
 export function BackupSection() {
@@ -113,10 +115,22 @@ export function BackupSection() {
       {status.data && status.data.previousData.length > 0 ? (
         <p className="text-small text-ink-muted">
           Data from before earlier restores is kept in the data directory:{" "}
-          <span className="font-mono text-[0.8125rem] text-ink">{status.data.previousData.join(", ")}</span>. Delete those folders yourself
+          <span className="font-mono text-[0.8125rem] text-ink">{status.data.previousData.join(", ")}</span>. Delete them from{" "}
+          <Link to={manageLink("leftovers")} className="text-primary underline underline-offset-2">
+            Leftovers
+          </Link>{" "}
           when you no longer need them.
         </p>
       ) : null}
+      <SettingRow
+        label="Clean up or start again"
+        hint="See what is taking the space, remove what was downloaded, clear leftovers, or erase everything."
+        control={
+          <Button asChild size="sm">
+            <Link to={manageLink("clean-up")}>Manage and clean up</Link>
+          </Button>
+        }
+      />
       <ConfirmDialog
         open={Boolean(chosen)}
         onOpenChange={(open) => !open && setChosen(undefined)}

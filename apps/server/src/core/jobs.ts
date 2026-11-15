@@ -61,6 +61,21 @@ export class PermanentJobError extends Error {
   }
 }
 
+/**
+ * Thrown by a handler that was stopped part of the way through work that cannot be
+ * undone, to say what it had done by then. A cancelled job keeps this as its result, so
+ * "stopped" never means "nobody knows what happened". Pausing and shutting down ignore
+ * it: the job runs again and picks up from what is left.
+ */
+export class StoppedWithResult extends Error {
+  readonly result: Record<string, unknown>;
+  constructor(result: Record<string, unknown>) {
+    super("Stopped");
+    this.name = "StoppedWithResult";
+    this.result = result;
+  }
+}
+
 type StopReason = "paused" | "cancelled" | "shutdown";
 
 const PROGRESS_WRITE_INTERVAL_MS = 500;
@@ -323,7 +338,11 @@ export class JobQueue {
       if (reason === "paused") {
         this.update(job.id, { state: "paused", progressMessage: "Paused" });
       } else if (reason === "cancelled") {
-        this.update(job.id, { state: "cancelled", finishedAt: Date.now() });
+        this.update(job.id, {
+          state: "cancelled",
+          finishedAt: Date.now(),
+          ...(error instanceof StoppedWithResult ? { result: error.result } : {}),
+        });
       } else if (reason === "shutdown") {
         // Leave the row as running; start() on the next boot queues it again.
       } else {

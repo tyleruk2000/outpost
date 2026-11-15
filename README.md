@@ -70,7 +70,8 @@ picture, not a surveyed path.
   with the real numbers from your own library.
 - **Storage you control.** Internal disks, USB drives, SSDs and NAS shares. See what
   uses the space, move collections between locations with verification, and unplug a
-  drive without losing your library's records.
+  drive without losing your library's records. One screen lists everything installed,
+  removes what you no longer want, clears leftovers, and can start again from nothing.
 - **Take it with you.** Write a portable drive: a USB stick holding Outpost itself and
   part of your library, which starts with a double-click on another Mac, Windows or
   Linux computer with nothing installed.

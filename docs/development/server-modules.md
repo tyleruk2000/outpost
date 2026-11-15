@@ -54,15 +54,19 @@ before it. Use `ctx.onClose.push(fn)` for cleanup.
 | Outbound HTTP | `createHttpClient({ allowPrivate: ctx.config.allowPrivateDownloads })` from `core/http.ts` |
 | Search | `ctx.services.search.upsert({...})` and `.remove(kind, entityId)` |
 | Network transfers | `ctx.services.downloads.start({...})`; see `modules/downloads/types.ts` |
+| Whether a request comes from this computer | `isLocalRequest(request, ctx.config)` from `core/local.ts` |
 
 ### Jobs
 
 Queues in use: `download` (network transfers), `index` (text extraction, embeddings),
 `ocr` (reading scanned pages, always one at a time), `transfer` (moving and verifying
-files), `import`. Handlers receive an `AbortSignal`
+files), `import`, `manage` (bulk removal and clean-ups, one at a time). Handlers
+receive an `AbortSignal`
 and must stop promptly when it fires (pause, cancel, shutdown). Report progress with
 `run.progress({ current, total, message })`. Throw `PermanentJobError` for failures
-that retrying cannot fix.
+that retrying cannot fix. A handler that is cancelled part of the way through work
+that cannot be undone throws `StoppedWithResult` with an account of what it had done;
+the job is still cancelled, and keeps that account as its result.
 
 ### Search
 
@@ -86,7 +90,9 @@ ctx.services.search.upsert({
    to the data directory. Never store or accept absolute paths from a request. Every
    path built from request input goes through `resolveInside`.
 2. **Never move, overwrite or delete a person's files as a side effect.** Deleting is
-   only ever the direct result of a request that says so.
+   only ever the direct result of a request that says so. Removing in bulk
+   (`modules/manage`) goes through the owning services, one item at a time; nothing
+   deletes a folder of a storage location wholesale.
 3. **Validate input with zod** at the route. A `ZodError` becomes a 400 automatically.
 4. **Streams, not buffers,** for anything that can be large: uploads, downloads,
    hashing, archive extraction.
@@ -100,6 +106,9 @@ ctx.services.search.upsert({
    request to the Host check, and every request that is not a `GET`, `HEAD` or
    `OPTIONS` to the `X-Outpost-Request` header and the same origin. That protection
    covers only those methods: a `GET` must never change anything.
+   The one route that asks where a request came from is "erase everything", which uses
+   `isLocalRequest` from `core/local.ts`; that is not a permission, and nothing else
+   should lean on it without a reason as strong.
 8. **Messages are for people.** Say what happened and what to do next, in plain words.
 
 ## Schema changes

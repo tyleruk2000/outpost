@@ -11,6 +11,7 @@ export * from "./downloads.ts";
 export * from "./imports.ts";
 export * from "./kiwix.ts";
 export * from "./links.ts";
+export * from "./manage.ts";
 export * from "./maps.ts";
 export * from "./notes.ts";
 export * from "./portable.ts";

@@ -1,7 +1,9 @@
 import { type DownloadPlanLocation, formatBytes } from "@outpost/shared";
 import { TriangleAlert } from "lucide-react";
 import { memo, useState } from "react";
+import { Link } from "react-router";
 import { cn } from "@/lib/utils";
+import { manageLink } from "../manage/manage-data";
 import { ChartTooltip, TooltipValue } from "./charts/chart-tooltip";
 import { useWidth } from "./charts/use-width";
 import { Swatch } from "./plan-timeline";
@@ -117,8 +119,11 @@ function Drive({ location }: { location: DownloadPlanLocation }) {
             <span className="font-semibold text-warning">This will not fit.</span> The queue needs{" "}
             <span className="tabular">{formatBytes(location.pendingBytes)}</span> here and{" "}
             <span className="tabular">{formatBytes(location.freeBytes)}</span> is free:{" "}
-            <span className="tabular">{formatBytes(short)}</span> short. Free some space, or cancel or move something, before the drive
-            fills.
+            <span className="tabular">{formatBytes(short)}</span> short.{" "}
+            <Link to={manageLink()} className="text-primary underline underline-offset-2">
+              Free up space
+            </Link>
+            , or cancel or move something, before the drive fills.
           </span>
         </p>
       ) : null}

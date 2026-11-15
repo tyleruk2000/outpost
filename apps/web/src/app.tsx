@@ -23,6 +23,7 @@ const UnderstandPage = lazy(() => import("./features/understand/understand-page"
 const MapsPage = lazy(() => import("./features/maps/maps-page"));
 const SearchPage = lazy(() => import("./features/search/search-page"));
 const StoragePage = lazy(() => import("./features/storage/storage-page"));
+const ManagePage = lazy(() => import("./features/manage/manage-page"));
 const SettingsPage = lazy(() => import("./features/settings/settings-page"));
 
 function NotFound() {
@@ -71,6 +72,7 @@ export function App() {
           <Route path="downloads/:id" element={<DownloadPage />} />
           <Route path="search/how-it-works" element={<UnderstandPage />} />
           <Route path="storage" element={<StoragePage />} />
+          <Route path="storage/manage" element={<ManagePage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="*" element={<NotFound />} />
         </Route>
