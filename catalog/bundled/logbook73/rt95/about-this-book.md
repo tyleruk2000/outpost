@@ -35,7 +35,7 @@ Not carried over from LogBook73:
 - **Self-check quizzes and reading progress.** LogBook73 follows which chapters you have read and offers questions at the end of a part. Outpost does neither.
 - **Pop-up definitions.** In LogBook73 a term can be pressed for its definition. Here the handbook's glossary chapter holds most of the same definitions.
 - **LogBook73's own screens.** Where a chapter mentions LogBook73's map, logbook, band tools or practice pages, the words are kept and the link is not: there is nothing in Outpost for it to open.
-- **Pictures.** Twelve handbook chapters have an illustration. The pictures are not included; the description and caption their author wrote for each one are shown in its place. Every diagram and signal figure that is drawn from the text is here.
+- **Pictures.** Eleven handbook chapters have an illustration or two. The pictures are not included; the description and caption their author wrote for each one are shown in its place. Every diagram and signal figure that is drawn from the text is here.
 
 ## Licence
 

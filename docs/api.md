@@ -268,14 +268,14 @@ Types: `packages/shared/src/documents.ts`.
 | Method and path | Purpose |
 | --- | --- |
 | `POST /api/documents` | Uploads one or more files as `multipart/form-data` (at most 200 per request). Optional fields or query parameters: `category`, `tags` (comma separated), `locationId`, `allowDuplicate`. Answers `{ results: UploadResult[] }`, one per file with status `created`, `duplicate` or `rejected`; one bad file does not fail the others. |
-| `GET /api/documents` | Lists documents (`DocumentListResponse`). Query: `q` (title or file name), `category`, `tag`, `type` (`pdf`, `markdown`, `text`, `html`, `epub`, `image`), `sort` (`added`, `title`, `size`), `order`, `limit` (at most 200), `offset`. |
-| `GET /api/documents/facets` | Counts by category, tag and type, with totals (`DocumentFacets`). |
-| `GET /api/documents/:id` | `{ document }` (`DocumentDto`). |
+| `GET /api/documents` | Lists documents (`DocumentListResponse`). Query: `q` (title or file name), `category`, `tag`, `type` (`pdf`, `markdown`, `text`, `html`, `epub`, `image`), `sort` (`added`, `title`, `size`), `order`, `limit` (at most 200), `offset`, `chapters`. The chapters of books are left out unless `q` or `tag` is given: a book is one thing in the library, reached from its collection. `chapters=true` always lists them, `chapters=false` never. A chapter's `book` says which book it is from. |
+| `GET /api/documents/facets` | Counts by category, tag and type, with totals (`DocumentFacets`). Chapters of books are not counted. |
+| `GET /api/documents/:id` | `{ document }` (`DocumentDto`). For a chapter of a book, also `chapter` (`DocumentChapterDto`): the book, the chapter's place in it, and the previous and next chapters. |
 | `PATCH /api/documents/:id` | Body (`DocumentPatch`): `title`, `description`, `category`, `author`, `source`, `language`, `tags`. Omitted fields are left alone; `tags` replaces the whole list. |
 | `DELETE /api/documents/:id` | Deletes the document and its file. Query `forget=true` removes only Outpost's record and leaves the file. |
 | `POST /api/documents/:id/reextract` | Reads the text again. `{ document, jobId }`. |
 | `GET /api/documents/:id/text` | The extracted text in sections (`DocumentTextResponse`). Query: `page`. |
-| `GET /api/documents/:id/markdown` | A Markdown document with its formatting, as a tree of plain values (`DocumentMarkdownResponse`): headings, paragraphs, lists, quotes, code, tables, and bold, italic, code and links inside them. Never HTML. Links are present only for `http`, `https` and `mailto` addresses; pictures become their description; embedded HTML becomes its words. `415` for a document that is not Markdown, `413` for a file over 2 MB (the web app then shows the text from `/text`), `404` when the file is missing. |
+| `GET /api/documents/:id/markdown` | A Markdown document with its formatting, as a tree of plain values (`DocumentMarkdownResponse`): headings (each with an `id` made from its words), paragraphs, lists, quotes, code (with the `lang` written after the fence, such as `mermaid` or `viz`), tables, and bold, italic, code and links inside them. Never HTML. A link is one of three things: `link`, for an `http`, `https` or `mailto` address; `jump`, to a heading of the same document; or `ref`, for `outpost:entry/<entry id>/<chapter key>`, which carries the entry's id and name and, when it is in the library, the `collectionId` and `documentId` the server found. Pictures become their description and caption; embedded HTML becomes its words. `415` for a document that is not Markdown, `413` for a file over 2 MB (the web app then shows the text from `/text`), `404` when the file is missing. |
 | `GET /api/documents/:id/file` | The original file. Supports byte ranges and `ETag`. Query `download=1` forces a download. Sent with a sandbox policy. |
 | `POST /api/documents/move` | Body: `locationId`. Moves every document that is not on that location to it, as a job. `{ job, documents }`. |
 | `GET /api/tags` | `{ tags }`: every tag with the number of documents carrying it (`TagDto`). |
@@ -337,6 +337,7 @@ Types: `packages/shared/src/collections.ts`.
 | `DELETE /api/collections/:id` | Removes a collection. `deleteFiles` is **required**, in the body (`{ "deleteFiles": true }`) or the query: `true` deletes the file, `false` removes only Outpost's record. |
 | `POST /api/collections/:id/verify` | Checks the file against its recorded checksum, as a job. `{ job }`. The job's `result` is a `CollectionVerifyResult`. |
 | `POST /api/collections/:id/move` | Body: `locationId`. Moves the collection, as a job. `{ job }`. |
+| `GET /api/collections/:id/chapters` | The contents of a book (`BookContentsResponse`): its named parts in reading order, each with its chapters (`key`, `number`, `title`, `summary`, `documentId`). `404` for a collection that is not a book. A book is a collection of kind `file` whose `meta.book` holds its number of chapters. |
 
 ## Reference collections (Kiwix)
 
@@ -404,11 +405,11 @@ Types: `packages/shared/src/catalog.ts`. See [catalog/README.md](../catalog/READ
 
 | Method and path | Purpose |
 | --- | --- |
-| `GET /api/catalog` | Categories, entries, packs, manifests, manifest and pack problems and the time of the last refresh (`CatalogResponse`). Works offline from the manifests and the last known details. |
+| `GET /api/catalog` | Categories, entries, packs, manifests, manifest and pack problems and the time of the last refresh (`CatalogResponse`). Works offline from the manifests and the last known details. An entry that is a book carries `chapterCount`; its list of chapters is not sent. |
 | `POST /api/catalog/refresh` | Asks each source what it currently offers (`CatalogRefreshSummary`). Needs a connection; `503 offline` without one. |
 | `POST /api/catalog/entries/:id/download` | Starts downloading an entry. Body: `locationId?`. `{ download, replacesCollectionId }`. When the entry is already installed and the source has a newer version, the old version is removed once the new one is installed and verified. |
 | `POST /api/catalog/packs/:id/install` | Fetches what a pack holds that is not here yet. Body: `locationId?`, `entryIds?` (part of the pack; all of it when omitted). Starts a download for each such entry and adds those that ship with Outpost. Answers `{ queued, added, already, failed }` (`CatalogPackInstallResponse`); one entry failing to start is reported in `failed` and does not stop the others. `404` for an unknown pack, `400` for an entry that is not in it. |
-| `POST /api/catalog/entries/:id/add` | Adds an entry that ships with Outpost, copying it into the library with no connection. Body: `locationId?`. Answers `{ collectionId, documentId?, replacedCollectionId }` (`CatalogAddResponse`). |
+| `POST /api/catalog/entries/:id/add` | Adds an entry that ships with Outpost, copying it into the library with no connection. Body: `locationId?`. Answers `{ collectionId, documentId?, chapterCount?, replacedCollectionId }` (`CatalogAddResponse`): `documentId` for a single file, `chapterCount` for a book, whose chapters become one document each. |
 
 ## Maps
 

@@ -47,6 +47,20 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 - Markdown documents shown with their formatting: headings, bold, italic, links, lists,
   task lists, quotations, code and tables. The file is drawn from a tree of plain values
   and is never turned into HTML, so nothing written in it can run or load from the internet.
+- Links inside Outpost from a Markdown document: to one of its own headings, and to a
+  catalogue entry or a chapter of its book (`outpost:entry/<entry id>/<chapter key>`).
+  The server looks the target up; a file cannot point the browser anywhere of its own
+  choosing. A link to a book that is not in the library keeps its words and leads to
+  it in Explore.
+- Diagrams and figures in Markdown documents. A `mermaid` block is drawn by Mermaid
+  (bundled, loaded only when needed) and shown as an image, never as markup in the
+  page; a `viz` block is drawn as a signal figure (waveform, spectrum, response curve,
+  radiation pattern, constellation, waterfall, annotated radio display). Both follow
+  the theme, keep a legible size on a phone by scrolling inside their own box, and
+  have a larger view. A block that cannot be drawn is shown as written.
+- Books: a collection that is a folder of chapters, one document each, with a contents
+  page, and previous, next and contents links in every chapter. Chapters are found by
+  search and are not listed one by one among the documents.
 - Titles, authors, categories, descriptions and tags; a PDF viewer with byte-range
   loading; originals served in a sandbox.
 
@@ -93,16 +107,24 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 
 #### Reference collections
 
-- A catalogue of 220 items in JSON manifests, with a validator: 128 Kiwix archives; 83
+- A catalogue of 236 items in JSON manifests, with a validator: 128 Kiwix archives; 83
   official handbooks, rules and textbooks fetched as PDFs from their publishers (FAA,
   NASA, USGS, the US National Weather Service, FAO, WHO, Ready.gov, USDA, OpenStax,
   UIAA, Ofcom, IARU, CEPT, NIST, NTIA, CISA and others), each pinned by size and
-  SHA-256; and nine radio reference sheets that ship with Outpost. Downloaded PDFs join
+  SHA-256; and nine radio reference sheets and sixteen radio books that ship with
+  Outpost. Downloaded PDFs join
   the document library and are searchable to the page.
 - Radio reference sheets included with Outpost and added with no connection: amateur
   bands (UK, US, worldwide), licence-free radio, emergency and calling frequencies,
   weather and time broadcasts, repeaters and data modes, an operating reference, and
   the informal preparedness conventions, each figure read from an official source.
+- The Radio Engineering Handbook and fifteen radio companion guides from LogBook73,
+  included with Outpost as books and added with no connection: 328 chapters with 563
+  diagrams and 149 signal figures. Written by the same author under the MIT licence;
+  each guide carries its review date, basis and sources. Regenerated from a LogBook73
+  checkout by `pnpm catalog:import-logbook73`.
+- A catalogue entry that ships with Outpost can be a book: a `bundled` source names
+  either one file or a folder of chapters in named sections.
 - Packs: curated sets of catalogue entries for a purpose, listed first in Explore and
   fetched together after choosing what to leave out and where to keep it.
 - A record of every source considered, its licence and how it is used

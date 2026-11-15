@@ -1,11 +1,16 @@
-# Radio reference sheets
+# Radio: reference sheets, a handbook and radio guides
 
-Outpost ships with nine reference sheets about amateur radio, licence-free radio and
-emergency frequencies. They are meant to be usable with no connection at all: the
-tables are in the sheets themselves, not behind a link.
+Outpost ships with two kinds of radio material, both usable with no connection at all:
 
-This page says what the sheets are, where their facts come from, how they were checked
-and what their limits are. Read the limits before relying on a sheet.
+- **Nine reference sheets** about amateur radio, licence-free radio and emergency
+  frequencies, written for Outpost from the regulators' own documents. The tables are in
+  the sheets themselves, not behind a link. Most of this page is about them: what they
+  are, where their facts come from, how they were checked and what their limits are.
+  Read the limits before relying on a sheet.
+- **Sixteen books from LogBook73**: the Radio Engineering Handbook, a beginner's course
+  in ninety chapters, and fifteen companion guides for particular radios. They were
+  written for another project by the same author and are copied in, not written for
+  Outpost. See [The handbook and the radio guides](#the-handbook-and-the-radio-guides).
 
 ## Where to find them
 
@@ -123,7 +128,7 @@ These are marked in the sheets, or left out and named under "Not covered".
   box on a narrow screen, with the first column staying in view). Use "Download the
   original" for the Markdown file itself.
 
-## Keeping them right
+## Keeping the sheets right
 
 To correct or update a sheet: edit the file in `catalog/bundled/radio/`, re-check every
 changed figure against its source, update the date under "Checked", and raise `version`
@@ -131,3 +136,118 @@ changed figure against its source, update the date under "Checked", and raise `v
 the old copy are offered the new one. Then run
 `node apps/server/src/cli/validate-catalog.ts` and the catalogue tests. The rules for
 what may go in `catalog/bundled/` are in [`catalog/README.md`](../catalog/README.md).
+
+## The handbook and the radio guides
+
+### What they are
+
+| Book | What it holds |
+| --- | --- |
+| Radio Engineering Handbook | A beginner's course in how radio works, from electromagnetic waves to a first station: 90 chapters in eleven parts (foundations, signals and modulation, receiver performance, building blocks, antennas and feedlines, propagation and bands, amateur radio, digital modes, space, tools and projects, reference), with a glossary. It deliberately leaves out the details of any one country's licence. |
+| Companion guides | One book for each of fifteen radios and interfaces: Baofeng UV-5R and GT-5R Mini, Quansheng UV-K5, Radtel RT-950 Pro, RT-4D and RT-6D, Retevis RT95, TIDRADIO TD-H3, Yaesu FT5DR, Xiegu G90, X6100 and X6200, (tr)uSDX, Digirig Mobile and DigiPi. Each explains the radio's menus and controls, gives ready-made configurations, troubleshooting and a quick reference, and points to the handbook for the theory behind a setting. |
+
+They were written by Tyler Allen for [LogBook73](#where-they-come-from), an amateur radio
+logbook, and are included under LogBook73's MIT licence. Together they are 328 chapters
+and about 5.5 MB of Markdown, with 563 diagrams and 149 signal figures drawn from the
+text.
+
+**They are not the manufacturers' manuals and not legal advice.** Each guide carries the
+date LogBook73 last reviewed its menu and specification claims, what the review was
+based on, the models, regions, manuals and firmware it was checked against, and the
+sources it started from. **Outpost has not checked any of it against the manufacturers'
+manuals again.** Firmware changes, and a radio sold under one name can differ from one
+market to another: where a guide and your radio disagree, believe the radio and its own
+manual. What you may transmit is set by your own licence and your country's rules.
+
+### Where to find them
+
+In **Explore**, under **Radio communications**, each book says "Book, N chapters" and
+"Included with Outpost"; "Who wrote it and how it was reviewed" opens the review note.
+**Add to library** copies the book in there and then, with no connection. Two packs
+gather them: **Learning amateur radio** (the handbook with two of the reference sheets)
+and **Radio companion guides** (all fifteen guides and the handbook). The handbook is
+also in the UK and US amateur radio packs. To add only the guide for your own radio,
+find it under Radio communications.
+
+A book is kept whole. It is listed once, under **Books** in the Library's Collections
+tab, and its page is its contents: parts, chapter numbers, titles and one-line
+summaries. Each chapter is a document of its own, so search lands on the chapter (and
+says which book it is from) and a phone never loads a whole book to show one page.
+A chapter says which book it is in and how far through, and ends with the previous and
+next chapters and the way back to the contents. The chapters are not listed one by one
+among your documents; typing part of a chapter's name in the Library's filter finds it.
+
+Every book ends with **About this book**: who wrote it, the review in full with links
+to its sources, what was not carried over, and the licence text.
+
+### Links, diagrams and figures
+
+- **Links between chapters** open the chapter in Outpost. A guide's links to the
+  handbook work when the handbook is in your library; when it is not, the link keeps its
+  words, has a dotted underline, and leads to the handbook in Explore, where it can be
+  added. A note at the top of the chapter says so once.
+- **Diagrams** (flow charts and sequence diagrams, written in the files as Mermaid
+  text) are drawn when they come near the screen and shown as pictures that follow the
+  light or dark theme. **Signal figures** (waveforms, spectra, filter and SWR curves,
+  radiation patterns, constellations, waterfalls, annotated radio displays) are drawn
+  from a short description in the file. On a phone a figure keeps a readable size and
+  scrolls sideways inside its own box; **View larger** opens it on its own. A diagram's
+  text is under **Diagram as text**.
+- **Search** reads the chapters' words. Of a signal figure it reads the title and
+  caption; of a diagram, nothing: the boxes' labels would turn up in results as
+  fragments, and the paragraph beside a diagram already says what it shows.
+
+### What was not carried over
+
+- **Self-check quizzes and reading progress.** LogBook73 tracks which chapters have been
+  read and asks questions at the end of a part. Outpost does neither.
+- **Pop-up definitions** of terms. The handbook's glossary chapter holds most of the
+  same definitions.
+- **LogBook73's own screens** (its map, logbook, band tools, Morse practice and so on).
+  Where a chapter linked to one, the words are kept and the link is not: 123 links in
+  all. Sentences that tell the reader to do something "in LogBook73" are left as their
+  author wrote them.
+- **Thirteen illustrations** in eleven handbook chapters (about 25 MB of pictures). The
+  Markdown view does not show pictures; the description and caption written for each
+  one are shown in its place.
+- Nothing else: there is no embedded HTML in the chapters beyond line breaks inside
+  diagram labels, and every table, diagram and figure is drawn.
+
+### Where they come from
+
+The books are generated from a checkout of LogBook73 by
+`apps/server/src/cli/import-logbook73.ts`. It reads LogBook73's two registries
+(`packages/content/src/handbook.ts` and `guides.ts`) and the Markdown they name, and
+writes `catalog/bundled/logbook73/` (one folder per book, one file per chapter),
+`catalog/manifests/logbook73.json` (one entry per book; its description records the
+LogBook73 commit) and the two packs it owns in `catalog/packs.json`. The files it
+writes are committed: LogBook73 is not needed to build or run Outpost.
+
+The chapters are their author's text and are not edited. The importer changes three
+things because the format needs them: a chapter with no title of its own is given its
+registry title as a first heading; links to other chapters become
+`outpost:entry/<entry id>/<chapter key>` links (see
+[catalog/README.md](../catalog/README.md#links-into-the-catalogue)); and links to
+LogBook73's own screens keep their words and lose the link. It writes the last chapter
+of each book from the registry. Chapters LogBook73 marks as planned are left out.
+
+To refresh the books:
+
+```
+pnpm catalog:import-logbook73 /path/to/LogBook73
+pnpm catalog:validate
+pnpm --filter @outpost/server test
+pnpm --filter @outpost/web test
+```
+
+The importer refuses a checkout with uncommitted changes to the content, reports any
+link to a chapter or heading that does not exist, and gives the same output for the
+same checkout whenever it is run. A book's `version` moves only when something in that
+book differs from what is already here (it becomes the date of the LogBook73 commit),
+so people who added a book are offered an update exactly when there is one. Its
+`lastVerified` is the guide's own review date, not the day of the import. The server
+and web tests read every chapter: every link names a chapter that exists, every
+diagram is one Mermaid can read, and every signal figure draws.
+
+The signal figures are drawn by a port of LogBook73's `RadioViz` component and its
+maths (`apps/web/src/features/library/figures/`), also MIT and by the same author.
