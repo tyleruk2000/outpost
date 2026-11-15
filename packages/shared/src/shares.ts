@@ -36,7 +36,10 @@ export interface NetworkShare {
   /** Only when the server does not use the usual port. */
   port: number | null;
   share: string;
+  /** Empty when the share is connected as a guest. */
   userName: string;
+  /** Connected without a user name or password. */
+  guest: boolean;
   /** The password is in this Mac's Keychain. Outpost itself never has it. */
   passwordRemembered: boolean;
   status: NetworkShareStatus;
@@ -69,10 +72,77 @@ export interface ConnectShareRequest {
   server: string;
   port?: number | null;
   share: string;
-  userName: string;
-  password: string;
+  /** Left out, with the password, when connecting as a guest. */
+  userName?: string;
+  password?: string;
+  /** Connect without a user name or password. */
+  guest?: boolean;
   /** Keep the password in the Keychain so the share can be reconnected without asking. */
-  rememberPassword: boolean;
+  rememberPassword?: boolean;
+}
+
+/** Asks a server which shared folders it offers. */
+export interface ListServerSharesRequest {
+  server: string;
+  port?: number | null;
+  userName?: string;
+  password?: string;
+  /** Look without a user name or password. */
+  guest?: boolean;
+}
+
+/** One shared folder a server offers. Only folders that can hold files are listed. */
+export interface ServerShare {
+  name: string;
+  /** Marked by its owner as not for listing (the name ends in `$`). Shown only on request. */
+  hidden: boolean;
+  /** The server's own description of it, if it gave one. */
+  comment: string | null;
+  /** Where it appears on this Mac, if it is connected already. */
+  mountPath: string | null;
+}
+
+export interface ServerSharesResponse {
+  shares: ServerShare[];
+  /** Shares left out because their names have characters Outpost does not accept. */
+  unusable: number;
+}
+
+/** Why a server's shares could not be listed, or a share not connected. */
+export type ShareFailureReason =
+  | "wrong_password"
+  | "server_not_found"
+  | "share_not_found"
+  | "needs_password"
+  | "guest_refused"
+  /** The server cannot be asked for its list, though a share may still be connected by name. */
+  | "cannot_list"
+  | "failed";
+
+/** Sent with a refused password once too many have been tried. */
+export interface ShareHeldDetails {
+  reason: "wrong_password";
+  /** Seconds until another password will be passed on to the server. */
+  retryAfterSeconds: number;
+}
+
+/** A network volume that is connected on this Mac already, by Outpost or by anyone else. */
+export interface MountedShare {
+  server: string;
+  port: number | null;
+  share: string;
+  /** Null when it was connected as a guest or the system does not say. */
+  userName: string | null;
+  mountPath: string;
+  /** False when Outpost may not use it, with the reason in `problem`. */
+  usable: boolean;
+  problem: string | null;
+  /** Set when Outpost already remembers this share. */
+  shareId: string | null;
+}
+
+export interface MountedSharesResponse {
+  mounts: MountedShare[];
 }
 
 export interface ReconnectShareRequest {

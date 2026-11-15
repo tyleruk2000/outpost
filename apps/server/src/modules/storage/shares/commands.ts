@@ -63,6 +63,8 @@ export interface MountRequest {
   password?: string;
   remember: boolean;
   keychain: KeychainRef;
+  /** Connect without a user name or password. Nothing is read from or kept in the Keychain. */
+  guest?: boolean;
 }
 
 export type MountOutcome =
@@ -86,7 +88,7 @@ function parseJson(text: string): Record<string, unknown> | undefined {
 }
 
 export async function mountShare(run: CommandRunner, request: MountRequest, timeoutMs: number): Promise<MountOutcome> {
-  const input = JSON.stringify({ op: "mount", ...request });
+  const input = JSON.stringify(request.guest ? { op: "mount", url: request.url, guest: true } : { op: "mount", ...request });
   const result = await run(OSASCRIPT, MAC_HELPER_ARGS, { input, timeoutMs });
   if (result.timedOut) return { kind: "timed_out" };
   const answer = result.code === 0 ? parseJson(result.stdout) : undefined;
@@ -144,7 +146,9 @@ export function parseMountTable(output: string): SmbMount[] {
       port = Number(withPort[2]);
     }
     host = decode(host.replace(/^\[|\]$/g, ""));
-    mounts.push({ host, port, share: decode(share), user: user ? decode(user) : undefined, mountPoint });
+    // A guest connection is listed as "GUEST:" (a name and an empty password).
+    const name = user ? decode(user).replace(/:$/, "") : "";
+    mounts.push({ host, port, share: decode(share), user: name && name.toUpperCase() !== "GUEST" ? name : undefined, mountPoint });
   }
   return mounts;
 }

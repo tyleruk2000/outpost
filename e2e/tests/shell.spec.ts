@@ -102,17 +102,23 @@ test.describe("storage", () => {
     const dialog = page.getByRole("dialog", { name: "Connect a network share" });
 
     if (mode === "macos") {
-      // A Mac run directly connects the share itself, but only from the home network.
-      // 8.8.8.8 is refused before anything is contacted, so this needs no network.
-      await dialog.getByLabel("Server").fill("8.8.8.8");
-      await dialog.getByLabel("Share", { exact: true }).fill("media");
+      // A Mac run directly connects the share itself, in steps: the server, a sign-in,
+      // then the shared folders the server offers. Only servers on the home network are
+      // ever asked: 8.8.8.8 is refused before anything is contacted, so this needs no network.
+      await expect(dialog.getByText("Step 1 of 4")).toBeVisible();
+      await dialog.getByLabel(/type its name or address|^Server$/).fill("8.8.8.8");
+      await dialog.getByRole("button", { name: "Continue" }).click();
+      await expect(dialog.getByText("Step 2 of 4")).toBeVisible();
       await dialog.getByLabel("User name").fill("walker");
       await dialog.getByLabel("Password", { exact: true }).fill("not a real password");
-      await dialog.getByRole("button", { name: "Connect", exact: true }).click();
+      await dialog.getByRole("button", { name: "Show shared folders" }).click();
       await expect(dialog.getByRole("alert")).toContainText("only connects to file servers on your own network");
       // Nothing was remembered, and the password is not echoed anywhere on the page.
       expect((await api<{ shares: unknown[] }>(page, "GET", "/api/storage/shares")).shares).toEqual([]);
       await expect(page.getByText("not a real password")).toHaveCount(0);
+      // The way back keeps the server and asks for the password again.
+      await dialog.getByRole("button", { name: "Back" }).click();
+      await expect(dialog.getByLabel(/type its name or address|^Server$/)).toHaveValue("8.8.8.8");
     } else {
       // In a container or on Linux it cannot, says so, and writes out what to do instead.
       await expect(dialog.getByText("Outpost cannot connect this share for you here")).toBeVisible();

@@ -1,7 +1,8 @@
 /** Small pieces the Storage dialogs share. */
-import { Check, Copy } from "lucide-react";
-import { type ReactNode, useId, useRef, useState } from "react";
+import { Check, Copy, Eye, EyeOff } from "lucide-react";
+import { type ReactNode, type Ref, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/misc";
 import { cn } from "@/lib/utils";
 
@@ -116,5 +117,63 @@ export function CopyBlock({ label, text, className }: { label: string; text: str
         {text}
       </pre>
     </div>
+  );
+}
+
+/** Typing a name must not be "corrected" by a phone keyboard. */
+export const plainText = { autoCapitalize: "none", autoCorrect: "off", spellCheck: false } as const;
+
+export const rememberDescription = "Kept in this Mac’s Keychain, not by Outpost, so the share can be connected again after a restart.";
+
+export function PasswordInput({
+  value,
+  onChange,
+  ...props
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  id?: string;
+  "aria-describedby"?: string;
+  "aria-invalid"?: boolean;
+  ref?: Ref<HTMLInputElement>;
+}) {
+  const [shown, setShown] = useState(false);
+  return (
+    <div className="relative">
+      <Input
+        {...props}
+        {...plainText}
+        type={shown ? "text" : "password"}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        autoComplete="current-password"
+        maxLength={255}
+        required
+        className="pr-11"
+      />
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        onClick={() => setShown(!shown)}
+        aria-label={shown ? "Hide the password" : "Show the password"}
+        aria-pressed={shown}
+        className="absolute top-1/2 right-1 -translate-y-1/2 max-md:right-0 max-md:size-11"
+      >
+        {shown ? <EyeOff /> : <Eye />}
+      </Button>
+    </div>
+  );
+}
+
+/** Where a person is in a short sequence, in words: "Step 2 of 4 / Sign in". */
+export function StepLine({ step, of, label }: { step: number; of: number; label: string }) {
+  return (
+    <p className="border-b border-border px-5 py-2.5 text-small text-ink-muted" aria-current="step">
+      Step {step} of {of}
+      <span className="mx-2 text-border-strong" aria-hidden>
+        /
+      </span>
+      <span className="font-semibold text-ink">{label}</span>
+    </p>
   );
 }

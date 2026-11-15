@@ -101,7 +101,10 @@ export function ShareInstructions({ mode, hints, onClose }: { mode: ShareHostMod
           </Field>
           {protocol === "smb" ? (
             <>
-              <Field label="Share" hint="The shared folder’s name on the NAS, for example media.">
+              <Field
+                label="Share"
+                hint="The shared folder’s name, typed as the NAS shows it, for example media. Outpost does not look up the NAS’s list of shares here: that needs the password, which this form never asks for."
+              >
                 {(ids) => (
                   <Input {...ids} {...plainText} value={share} onChange={(event) => setShare(event.target.value)} autoComplete="off" />
                 )}

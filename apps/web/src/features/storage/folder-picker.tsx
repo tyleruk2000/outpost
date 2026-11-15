@@ -1,7 +1,7 @@
 import { formatBytes, type StorageBrowseResponse } from "@outpost/shared";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronRight, CornerLeftUp, Folder, FolderPlus } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/misc";
@@ -25,13 +25,27 @@ export function FolderPicker({
   label,
   onChange,
   newFolderSuggestion,
+  startAt,
+  floor,
+  preferFolder,
 }: {
   label: string;
   onChange: (picked: PickedFolder) => void;
   newFolderSuggestion?: string;
+  /** Open here instead of at the list of storage roots (a drive or share just connected, say). */
+  startAt?: string;
+  /** Do not go above this folder. */
+  floor?: string;
+  /**
+   * A folder of this name inside `startAt` is what is wanted: it is opened if it is
+   * there, and offered as a new folder if it is not, so nothing has to be typed.
+   */
+  preferFolder?: string;
 }) {
-  const [path, setPath] = useState<string | undefined>();
+  const [path, setPath] = useState<string | undefined>(startAt);
   const [newFolder, setNewFolder] = useState<string | null>(null);
+  // Only a folder the person asked to name gets the keyboard; a suggested one does not.
+  const [naming, setNaming] = useState(false);
 
   const browse = useQuery({
     queryKey: ["storage", "browse", path ?? null],
@@ -40,6 +54,16 @@ export function FolderPicker({
 
   const listing = browse.data;
   const atRoots = listing?.path === null;
+  const atFloor = atRoots || (floor !== undefined && listing?.path === floor);
+
+  const preferred = useRef(false);
+  useEffect(() => {
+    if (preferred.current || !preferFolder || !listing || listing.path !== startAt) return;
+    preferred.current = true;
+    const existing = listing.entries.find((entry) => entry.name === preferFolder);
+    if (existing) setPath(existing.path);
+    else if (listing.writable) setNewFolder(preferFolder);
+  }, [listing, preferFolder, startAt]);
   const folderName = newFolder?.trim();
   const target = listing?.path ? (folderName ? `${listing.path}/${folderName}` : listing.path) : undefined;
   const writable = Boolean(listing?.writable);
@@ -67,7 +91,7 @@ export function FolderPicker({
             size="icon-sm"
             className="max-md:size-11"
             aria-label="Up one folder"
-            disabled={atRoots || browse.isPending}
+            disabled={atFloor || browse.isPending}
             onClick={() => {
               setNewFolder(null);
               setPath(listing?.parent ?? undefined);
@@ -84,7 +108,10 @@ export function FolderPicker({
               variant="ghost"
               size="sm"
               className="max-md:h-11"
-              onClick={() => setNewFolder(newFolder === null ? (newFolderSuggestion ?? "") : null)}
+              onClick={() => {
+                setNaming(newFolder === null);
+                setNewFolder(newFolder === null ? (newFolderSuggestion ?? preferFolder ?? "") : null);
+              }}
             >
               <FolderPlus /> New folder
             </Button>
@@ -108,7 +135,7 @@ export function FolderPicker({
                     onChange={(event) => setNewFolder(event.target.value.replace(/[/\\:*?"<>|]/g, ""))}
                     placeholder="Name of the new folder"
                     aria-label="Name of the new folder"
-                    autoFocus
+                    autoFocus={naming}
                     maxLength={100}
                     autoCapitalize="none"
                     autoCorrect="off"

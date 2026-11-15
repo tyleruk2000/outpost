@@ -13,6 +13,7 @@
  *   { op: "mount", url, user, password?, remember, keychain: { service, account, label } }
  *     → { status, mountPoints?, stored?, storeStatus? }      status is an errno; 0 is success
  *     → { status: null, keychain }                           no password given and none remembered
+ *   { op: "mount", url, guest: true }                        as a guest: no user, no password, no Keychain
  *   { op: "forget", keychain } → { keychain }                0 or -25300 (already gone)
  *
  * Mounting uses NetFS, the same system service the Finder uses, with its "no user
@@ -56,18 +57,26 @@ function remember(keychain, password) {
 }
 
 function mount(input) {
+  var guest = input.guest === true;
   var password = input.password;
-  if (typeof password !== "string") {
+  if (!guest && typeof password !== "string") {
     var kept = remembered(input.keychain);
     if (kept.status !== 0) return { status: null, keychain: kept.status };
     password = kept.password;
   }
   var open = $.NSMutableDictionary.alloc.init;
   open.setObjectForKey("NoUI", "UIOption");
+  // Always sign in afresh. Left to itself, macOS reuses a sign-in it already has with
+  // the same server and mounts the share whatever password it was given (or none).
+  open.setObjectForKey(true, "ForceNewSession");
+  if (guest) open.setObjectForKey(true, "Guest");
   var options = $.NSMutableDictionary.alloc.init;
   options.setObjectForKey(true, "SoftMount");
   var points = Ref();
-  var status = $.NetFSMountURLSync($.NSURL.URLWithString(String(input.url)), null, $(String(input.user)), $(password), open, options, points);
+  var url = $.NSURL.URLWithString(String(input.url));
+  var status = guest
+    ? $.NetFSMountURLSync(url, null, null, null, open, options, points)
+    : $.NetFSMountURLSync(url, null, $(String(input.user)), $(password), open, options, points);
   var out = { status: status };
   if (status === 0) {
     try {
@@ -75,7 +84,7 @@ function mount(input) {
     } catch (error) {
       out.mountPoints = [];
     }
-    if (input.remember === true) {
+    if (input.remember === true && !guest) {
       out.storeStatus = remember(input.keychain, password);
       out.stored = out.storeStatus === 0;
     }

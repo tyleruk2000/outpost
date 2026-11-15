@@ -22,6 +22,8 @@ export type LocationKind = LocationRow["kind"];
 const MARKER = ".outpost-location.json";
 /** How deep below a root to look for a location that has moved. */
 const RECONNECT_SEARCH_DEPTH = 3;
+/** The most folders one search for a moved location will look at, across all roots. */
+const RECONNECT_SEARCH_FOLDERS = 3000;
 
 interface Marker {
   id: string;
@@ -106,22 +108,40 @@ async function isWritable(dir: string): Promise<boolean> {
   }
 }
 
-async function findMarker(root: string, id: string, depth: number): Promise<string | undefined> {
+/**
+ * Collects the folders under `root` that carry the marker of location `id`, looking no
+ * deeper than `depth` and stopping once `limit` have been found. A folder that carries
+ * the marker is not looked inside: a location never contains another one. `budget` caps
+ * the folders looked at, so a root that holds a large network share cannot turn every
+ * check into a long crawl of it.
+ */
+async function findMarkers(
+  root: string,
+  id: string,
+  depth: number,
+  found: Set<string>,
+  limit: number,
+  budget: { folders: number },
+): Promise<void> {
+  if (found.size >= limit || budget.folders <= 0) return;
+  budget.folders -= 1;
   const marker = await readMarker(root);
-  if (marker?.id === id) return root;
-  if (depth === 0) return undefined;
+  if (marker?.id === id) {
+    found.add(root);
+    return;
+  }
+  if (depth === 0) return;
   let entries: fs.Dirent[];
   try {
     entries = await fs.promises.readdir(root, { withFileTypes: true });
   } catch {
-    return undefined;
+    return;
   }
   for (const entry of entries) {
     if (!entry.isDirectory() || entry.name.startsWith(".")) continue;
-    const found = await findMarker(path.join(root, entry.name), id, depth - 1);
-    if (found) return found;
+    await findMarkers(path.join(root, entry.name), id, depth - 1, found, limit, budget);
+    if (found.size >= limit || budget.folders <= 0) return;
   }
-  return undefined;
 }
 
 export function createStorageService(ctx: AppContext): StorageService {
@@ -148,24 +168,34 @@ export function createStorageService(ctx: AppContext): StorageService {
   }
 
   async function check(row: LocationRow): Promise<boolean> {
-    const before = `${row.status}|${row.path}|${row.freeBytes}|${row.totalBytes}`;
+    const before = `${row.status}|${row.path}|${row.freeBytes}|${row.totalBytes}|${row.statusDetail}`;
     let currentPath = row.path;
-    let marker = await readMarker(currentPath);
+    // The storage roots are the boundary set by whoever started the server, and they can
+    // change between starts. A folder outside them is not used, even if it is still
+    // there with the right marker in it.
+    const allowed = insideRoots(row.path);
+    let marker = allowed ? await readMarker(currentPath) : undefined;
     let detail: string | null = null;
 
     if (marker?.id !== row.id) {
-      // Not where it was. Look for the marker under each root before giving up.
+      // Not where it was, or no longer somewhere Outpost may use. Look for the marker
+      // under each root before giving up. Two are enough to know there is a choice.
       marker = undefined;
-      for (const root of roots) {
-        const found = await findMarker(root, row.id, RECONNECT_SEARCH_DEPTH);
-        if (found) {
-          currentPath = found;
-          marker = { id: row.id, name: row.name, createdAt: row.createdAt };
-          ctx.log.info({ location: row.id, from: row.path, to: found }, "storage location found at a new path");
-          break;
-        }
-      }
-      if (!marker) {
+      const found = new Set<string>();
+      const budget = { folders: RECONNECT_SEARCH_FOLDERS };
+      for (const root of roots) await findMarkers(root, row.id, RECONNECT_SEARCH_DEPTH, found, 2, budget);
+      const [first, second] = [...found];
+      if (first && second) {
+        // Never chosen silently: the two may have drifted apart since one was copied.
+        detail = `Two folders carry this location's marker: ${first} and ${second}. Outpost will not choose between them. Remove the copy you do not want, or the file ${MARKER} inside it, then choose Check drives.`;
+      } else if (first) {
+        currentPath = first;
+        marker = { id: row.id, name: row.name, createdAt: row.createdAt };
+        ctx.log.info({ location: row.id, from: row.path, to: first }, "storage location found at a new path");
+      } else if (!allowed) {
+        detail =
+          "This folder is outside the folders Outpost is allowed to use. Those are the storage roots, set with OUTPOST_STORAGE_ROOTS when the server starts. Add the folder to that setting, or copy it (with its marker file) to a place inside the roots, then start Outpost again.";
+      } else {
         detail = (await fs.promises.stat(row.path).catch(() => undefined))
           ? "The folder is there but is not this Outpost location. The drive mounted at this path may be a different one."
           : "The folder is not reachable. The drive may be unplugged or the share not mounted.";
@@ -181,7 +211,7 @@ export function createStorageService(ctx: AppContext): StorageService {
       freeBytes: marker ? (space?.freeBytes ?? null) : row.freeBytes,
       lastSeenAt: marker ? Date.now() : row.lastSeenAt,
     };
-    const after = `${patch.status}|${patch.path}|${patch.freeBytes}|${patch.totalBytes}`;
+    const after = `${patch.status}|${patch.path}|${patch.freeBytes}|${patch.totalBytes}|${patch.statusDetail}`;
     db.update(storageLocations).set(patch).where(eq(storageLocations.id, row.id)).run();
     return before !== after;
   }

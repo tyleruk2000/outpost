@@ -29,6 +29,7 @@ import {
 } from "../src/modules/storage/shares/commands.ts";
 import { detectHost, shareHostMode } from "../src/modules/storage/shares/host.ts";
 import { MAC_HELPER } from "../src/modules/storage/shares/mac-helper.ts";
+import type { ListedShare, ShareLister } from "../src/modules/storage/shares/smb-list.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
 
 const PASSWORD = "hunter2 \"quoted\" back\\slash $(id) `id` 'single'";
@@ -61,6 +62,7 @@ interface FakeMount {
   host: string;
   port: number;
   share: string;
+  /** Empty for a guest. */
   user: string;
   mountPoint: string;
 }
@@ -81,6 +83,37 @@ function fakeMac(root: string, options: { password?: string; shares?: string[] }
     /** Make keychain deletions fail. */
     keychainBroken: false,
     advertised: [] as Array<{ name: string; host: string; port: number }>,
+    /** More names the pretend network knows, and the addresses they stand for. */
+    lookupAlso: {} as Record<string, string>,
+    /** Shares guests may open. */
+    guestShares: [] as string[],
+    /** Whether the server lets guests in at all. */
+    guests: false,
+    /**
+     * Behave as macOS really does when it is NOT told to sign in afresh: a second mount
+     * from a server it already has a sign-in with succeeds whatever password it is given.
+     */
+    reusesSignIn: false,
+    /** What the server answers when asked for its shares. Defaults to its disk shares. */
+    listing: undefined as ListedShare[] | undefined,
+    /** What the list reader was asked, without the password. */
+    listed: [] as Array<{ address: string; port: number; user: string | undefined; typedPassword: boolean }>,
+    /** Make the list reader answer this instead of talking to the pretend server. */
+    listAnswer: undefined as Awaited<ReturnType<ShareLister>> | undefined,
+  };
+  /** The pretend server's answer to a sign-in and a request for its shares. */
+  const list: ShareLister = async (request) => {
+    state.listed.push({ address: request.address, port: request.port, user: request.user, typedPassword: request.password !== undefined });
+    if (state.listAnswer) return state.listAnswer;
+    if (request.user === undefined) {
+      if (!state.guests) return { kind: "guest_refused" };
+    } else if (request.password !== state.password) {
+      return { kind: "wrong_password" };
+    }
+    const shares =
+      state.listing ??
+      [...state.shares, ...state.guestShares].map((name): ListedShare => ({ name, kind: "disk", special: false, comment: "" }));
+    return { kind: "listed", shares };
   };
   const ok = (stdout: string) => ({ code: 0, stdout, stderr: "", timedOut: false });
   const run: CommandRunner = async (file, args, opts) => {
@@ -88,7 +121,7 @@ function fakeMac(root: string, options: { password?: string; shares?: string[] }
     if (file === "/sbin/mount") {
       const lines = state.mounts.map(
         (mount) =>
-          `//${encodeURIComponent(mount.user)}@${mount.host}${mount.port === 445 ? "" : `:${mount.port}`}/${encodeURIComponent(mount.share)} on ${mount.mountPoint} (smbfs, nodev, nosuid, mounted by someone)`,
+          `//${mount.user ? encodeURIComponent(mount.user) : "GUEST:"}@${encodeURIComponent(mount.host)}${mount.port === 445 ? "" : `:${mount.port}`}/${encodeURIComponent(mount.share)} on ${mount.mountPoint} (smbfs, nodev, nosuid, mounted by someone)`,
       );
       return ok(["/dev/disk3s1s1 on / (apfs, sealed, local, read-only, journaled)", ...lines].join("\n"));
     }
@@ -121,35 +154,52 @@ function fakeMac(root: string, options: { password?: string; shares?: string[] }
       const input = JSON.parse(opts.input ?? "{}") as {
         op: string;
         url: string;
-        user: string;
+        user?: string;
         password?: string;
         remember?: boolean;
-        keychain: { service: string; account: string };
+        guest?: boolean;
+        keychain?: { service: string; account: string };
       };
-      const key = `${input.keychain.service}|${input.keychain.account}`;
+      const key = input.keychain ? `${input.keychain.service}|${input.keychain.account}` : "";
       if (input.op === "forget") {
         if (state.keychainBroken) return ok(JSON.stringify({ keychain: -25308 }));
         const had = state.keychain.delete(key);
         return ok(JSON.stringify({ keychain: had ? 0 : -25300 }));
       }
+      const url = new URL(input.url);
+      const share = decodeURIComponent(url.pathname.slice(1));
+      const port = url.port ? Number(url.port) : 445;
       let password = input.password;
-      if (typeof password !== "string") {
+      if (!input.guest && typeof password !== "string") {
         const kept = state.keychain.get(key);
         if (kept === undefined) return ok(JSON.stringify({ status: null, keychain: -25300 }));
         password = kept;
       }
-      const url = new URL(input.url);
-      const share = decodeURIComponent(url.pathname.slice(1));
-      if (password !== state.password) return ok(JSON.stringify({ status: 80 }));
-      if (!state.shares.includes(share)) return ok(JSON.stringify({ status: 2 }));
+      // The real helper always asks for a fresh sign-in; a helper that did not would be let in on an old one.
+      const riding = state.reusesSignIn ? state.mounts.find((mount) => mount.host === url.hostname && mount.port === port) : undefined;
+      if (!riding) {
+        if (input.guest) {
+          if (!state.guests) return ok(JSON.stringify({ status: 80 }));
+          if (!state.guestShares.includes(share)) return ok(JSON.stringify({ status: 60 }));
+        } else {
+          if (password !== state.password) return ok(JSON.stringify({ status: 80 }));
+          if (![...state.shares, ...state.guestShares].includes(share)) return ok(JSON.stringify({ status: 2 }));
+        }
+      }
       const mountPoint = path.join(root, share);
       if (state.mounts.some((mount) => mount.mountPoint === mountPoint)) return ok(JSON.stringify({ status: 17 }));
       if (fs.existsSync(away(mountPoint))) fs.renameSync(away(mountPoint), mountPoint);
       else fs.mkdirSync(mountPoint, { recursive: true });
-      state.mounts.push({ host: url.hostname, port: url.port ? Number(url.port) : 445, share, user: input.user, mountPoint });
+      state.mounts.push({
+        host: url.hostname,
+        port,
+        share,
+        user: riding ? riding.user : input.guest ? "" : (input.user ?? ""),
+        mountPoint,
+      });
       const answer: Record<string, unknown> = { status: 0, mountPoints: [mountPoint] };
-      if (input.remember === true) {
-        state.keychain.set(key, password);
+      if (input.remember === true && !input.guest) {
+        state.keychain.set(key, password ?? "");
         answer.stored = true;
         answer.storeStatus = 0;
       }
@@ -157,7 +207,7 @@ function fakeMac(root: string, options: { password?: string; shares?: string[] }
     }
     return { code: null, stdout: "", stderr: "", timedOut: false };
   };
-  return { state, run };
+  return { state, run, list };
 }
 
 let app: TestApp | undefined;
@@ -173,8 +223,10 @@ async function macApp(options: { password?: string; shares?: string[]; env?: Rec
   const deps = app.ctx.services.shares.deps;
   deps.mode = "macos";
   deps.run = mac.run;
+  deps.listShares = mac.list;
   deps.lookup = async (host) => {
     if (host === "nas.local") return [{ address: "192.168.1.20", family: 4 }];
+    if (mac.state.lookupAlso[host]) return [{ address: mac.state.lookupAlso[host]!, family: 4 }];
     if (host === "dual.local") {
       return [
         { address: "2a00:1450:4009:81f::200e", family: 6 },
@@ -408,15 +460,18 @@ describe("the helper program", () => {
   it("reads the system's list of mounts and Bonjour answers", () => {
     const table = [
       "/dev/disk3s1s1 on / (apfs, sealed, local, read-only, journaled)",
-      "//tallen@TALLEN-NAS._smb._tcp.local/Docs on /Volumes/Docs (smbfs, nodev, nosuid, mounted by someone)",
+      "//walker@ATTIC-NAS._smb._tcp.local/Docs on /Volumes/Docs (smbfs, nodev, nosuid, mounted by someone)",
       "//outposttest@127.0.0.1:44445/outpost-test on /Volumes/outpost-test (smbfs, nodev, nosuid, mounted by someone)",
       "//me@192.168.1.20/Family%20Photos on /Volumes/Family Photos (smbfs, nodev, nosuid, mounted by someone)",
       "nas:/volume1/x on /Volumes/x (nfs, nodev, nosuid, mounted by someone)",
+      "//GUEST:@127.0.0.1:44445/public on /Volumes/public (smbfs, nodev, nosuid, noowners, mounted by someone)",
     ].join("\n");
     expect(parseMountTable(table)).toEqual([
-      { host: "tallen-nas._smb._tcp.local", port: 445, share: "Docs", user: "tallen", mountPoint: "/Volumes/Docs" },
+      { host: "attic-nas._smb._tcp.local", port: 445, share: "Docs", user: "walker", mountPoint: "/Volumes/Docs" },
       { host: "127.0.0.1", port: 44445, share: "outpost-test", user: "outposttest", mountPoint: "/Volumes/outpost-test" },
       { host: "192.168.1.20", port: 445, share: "Family Photos", user: "me", mountPoint: "/Volumes/Family Photos" },
+      // A guest's connection has no user to speak of.
+      { host: "127.0.0.1", port: 44445, share: "public", user: undefined, mountPoint: "/Volumes/public" },
     ]);
     const browse = [
       "Browsing for _smb._tcp.local.",
@@ -560,19 +615,34 @@ describe("connecting a share on a Mac", () => {
         const refused = await app.api("POST", "/api/storage/shares", connectBody({ password: `guess ${guess}` }));
         expect(refused.body.error.details.reason, `guess ${guess}`).toBe("wrong_password");
       }
-      const asked = mac.state.calls.length;
+      // What reaches the file server: a mount by the helper, or a sign-in by the list reader.
+      const mounts = () => mac.state.calls.filter((call) => call.file === "/usr/bin/osascript").length;
+      const asked = mounts();
+      const looked = mac.state.listed.length;
       // The sixth is turned away here: the server never hears it, even though it is right.
       // Outpost has no sign-in, so without this anyone on the network could try passwords through it.
       const held = await app.api("POST", "/api/storage/shares", connectBody());
       expect(held.status).toBe(403);
-      expect(held.body.error.message).toMatch(/Too many wrong passwords for this share\. Try again in \d+ seconds\./);
-      expect(mac.state.calls.length).toBe(asked);
-      // A different share is not held up by it.
+      expect(held.body.error.message).toMatch(/Too many wrong passwords for this user on this server\. Try again in \d+ seconds\./);
+      expect(held.body.error.details).toMatchObject({ reason: "wrong_password", retryAfterSeconds: 60 });
+      expect(mounts()).toBe(asked);
+      expect(mac.state.listed.length).toBe(looked);
+      // The count belongs to the user on that server, so another of its shares is held up too...
       mac.state.shares.push("other");
-      expect((await app.api("POST", "/api/storage/shares", connectBody({ share: "other" }))).status).toBe(200);
+      expect((await app.api("POST", "/api/storage/shares", connectBody({ share: "other" }))).status).toBe(403);
+      // ...and so is the same server under another name, or the user name in other letters.
+      mac.state.lookupAlso = { "nas-again.local": "192.168.1.20" };
+      expect((await app.api("POST", "/api/storage/shares", connectBody({ server: "nas-again.local" }))).status).toBe(403);
+      expect((await app.api("POST", "/api/storage/shares", connectBody({ server: "192.168.1.20", userName: "WALKER" }))).status).toBe(403);
+      expect(mounts()).toBe(asked);
+      expect(mac.state.listed.length).toBe(looked);
       // After the wait, the right password works and the count is forgotten.
       clock += 61_000;
       expect((await app.api("POST", "/api/storage/shares", connectBody())).status).toBe(200);
+      for (let guess = 1; guess <= 4; guess += 1) {
+        expect((await app.api("POST", "/api/storage/shares", connectBody({ share: "other", password: "no" }))).status).toBe(403);
+      }
+      expect((await app.api("POST", "/api/storage/shares", connectBody({ share: "other" }))).status).toBe(200);
     } finally {
       now.mockRestore();
     }
@@ -867,6 +937,370 @@ describe("reconnecting, disconnecting and forgetting", () => {
         { name: "WORKSHOP-NAS", host: "workshop-nas.local", port: null },
       ],
     });
+  });
+});
+
+describe("exploring a server instead of typing a share's name", () => {
+  const listBody = (extra: Record<string, unknown> = {}) => ({ server: "nas.local", userName: "walker", password: PASSWORD, ...extra });
+  const signIns = (mac: ReturnType<typeof fakeMac>) => mac.state.listed.length;
+  const mountsAsked = (mac: ReturnType<typeof fakeMac>) => mac.state.calls.filter((call) => call.file === "/usr/bin/osascript").length;
+
+  it("lists the folders a server shares, and only those a library could live on", async () => {
+    const { app, mac } = await macApp();
+    mac.state.listing = [
+      { name: "media", kind: "disk", special: false, comment: "Films and music" },
+      { name: "Family Photos", kind: "disk", special: false, comment: "" },
+      { name: "Übungen", kind: "disk", special: false, comment: "tab\tand\u0000nul" },
+      { name: "backup$", kind: "disk", special: false, comment: "" },
+      { name: "IPC$", kind: "ipc", special: true, comment: "IPC Service" },
+      { name: "print$", kind: "disk", special: false, comment: "Printer Drivers" },
+      { name: "ADMIN$", kind: "disk", special: true, comment: "Remote Admin" },
+      { name: "C$", kind: "disk", special: true, comment: "Default share" },
+      { name: "laser", kind: "printer", special: false, comment: "" },
+      { name: "tape", kind: "device", special: false, comment: "" },
+      { name: "MEDIA", kind: "disk", special: false, comment: "the same share in other letters" },
+    ];
+    const { status, body } = await app.api("POST", "/api/storage/shares/list", listBody());
+    expect(status).toBe(200);
+    expect(body).toEqual({
+      shares: [
+        { name: "backup$", hidden: true, comment: null, mountPath: null },
+        { name: "Family Photos", hidden: false, comment: null, mountPath: null },
+        { name: "media", hidden: false, comment: "Films and music", mountPath: null },
+        { name: "Übungen", hidden: false, comment: "tab and nul", mountPath: null },
+      ],
+      unusable: 0,
+    });
+    // It asked the address that was checked, as the user given, and nothing was mounted or kept.
+    expect(mac.state.listed).toEqual([{ address: "192.168.1.20", port: 445, user: "walker", typedPassword: true }]);
+    expect(mountsAsked(mac)).toBe(0);
+    expect(app.ctx.db.select().from(networkShares).all()).toEqual([]);
+    expect(mac.state.keychain.size).toBe(0);
+    for (const part of [PASSWORD, "hunter2"]) {
+      expect(JSON.stringify(body)).not.toContain(part);
+      expect(databaseBytes(app.dir)).not.toContain(part);
+      for (const call of mac.state.calls) expect(call.args.join("\n")).not.toContain(part);
+    }
+  });
+
+  it("treats every name the server sends as untrusted", async () => {
+    const { app, mac } = await macApp();
+    mac.state.listing = [
+      { name: "media", kind: "disk", special: false, comment: "" },
+      ...hostile.filter(Boolean).map((name): ListedShare => ({ name, kind: "disk", special: false, comment: "" })),
+      { name: "../../etc", kind: "disk", special: false, comment: "" },
+      { name: "a/b", kind: "disk", special: false, comment: "" },
+      { name: "x".repeat(500), kind: "disk", special: false, comment: "" },
+      { name: "", kind: "disk", special: false, comment: "" },
+    ];
+    const { body } = await app.api("POST", "/api/storage/shares/list", listBody());
+    // Only the one name that passes the same rule as a typed name is offered; the rest are counted.
+    expect(body.shares.map((share: { name: string }) => share.name)).toEqual(["media"]);
+    expect(body.unusable).toBe(mac.state.listing.length - 1);
+    // And a hostile name cannot be connected by asking for it directly either.
+    for (const share of ['nas"; do shell script "id', "a/b", "../../etc"]) {
+      expect((await app.api("POST", "/api/storage/shares", connectBody({ share }))).status).toBe(400);
+    }
+    expect(mountsAsked(mac)).toBe(0);
+  });
+
+  it("says which shares are connected on this Mac already", async () => {
+    const { app, mac } = await macApp({ shares: ["media", "films"] });
+    await app.api("POST", "/api/storage/shares", connectBody());
+    const { body } = await app.api("POST", "/api/storage/shares/list", listBody());
+    expect(body.shares).toEqual([
+      { name: "films", hidden: false, comment: null, mountPath: null },
+      { name: "media", hidden: false, comment: null, mountPath: path.join(app.dir, "storage", "media") },
+    ]);
+    expect(mac.state.mounts).toHaveLength(1);
+  });
+
+  it("counts a wrong password when listing towards the same wait as connecting", async () => {
+    const { app, mac } = await macApp();
+    const now = vi.spyOn(Date, "now");
+    let clock = 1_800_000_000_000;
+    now.mockImplementation(() => clock);
+    try {
+      // Three misses looking at the list, two more trying to connect: five in all, for one user on one server.
+      for (let guess = 1; guess <= 3; guess += 1) {
+        const refused = await app.api("POST", "/api/storage/shares/list", listBody({ password: `list guess ${guess}` }));
+        expect(refused.status).toBe(403);
+        expect(refused.body.error).toMatchObject({
+          message: "The server did not accept that user name and password.",
+          details: { reason: "wrong_password" },
+        });
+        expect(JSON.stringify(refused.body)).not.toContain("list guess");
+      }
+      for (let guess = 1; guess <= 2; guess += 1) {
+        expect((await app.api("POST", "/api/storage/shares", connectBody({ password: `connect guess ${guess}` }))).status).toBe(403);
+      }
+      const reached = signIns(mac) + mountsAsked(mac);
+      // Now neither way of trying a password reaches the server, even with the right one.
+      const heldList = await app.api("POST", "/api/storage/shares/list", listBody());
+      expect(heldList.status).toBe(403);
+      expect(heldList.body.error.message).toMatch(/Too many wrong passwords for this user on this server\. Try again in 60 seconds\./);
+      expect(heldList.body.error.details).toEqual({ reason: "wrong_password", retryAfterSeconds: 60 });
+      expect((await app.api("POST", "/api/storage/shares", connectBody())).status).toBe(403);
+      expect((await app.api("POST", "/api/storage/shares/list", listBody({ server: "192.168.1.20", userName: "Walker" }))).status).toBe(
+        403,
+      );
+      expect(signIns(mac) + mountsAsked(mac)).toBe(reached);
+      // Someone else's account on the same server is not held up, and nor is a guest (who offers no password).
+      mac.state.guests = true;
+      expect((await app.api("POST", "/api/storage/shares/list", listBody({ userName: "other", password: "also wrong" }))).status).toBe(403);
+      expect((await app.api("POST", "/api/storage/shares/list", { server: "nas.local", guest: true })).status).toBe(200);
+      // A further miss after the wait doubles it; the right password clears the count.
+      clock += 61_000;
+      expect((await app.api("POST", "/api/storage/shares/list", listBody({ password: "sixth" }))).body.error.details.reason).toBe(
+        "wrong_password",
+      );
+      expect((await app.api("POST", "/api/storage/shares/list", listBody())).body.error.details.retryAfterSeconds).toBe(120);
+      clock += 121_000;
+      expect((await app.api("POST", "/api/storage/shares/list", listBody())).status).toBe(200);
+      for (let guess = 1; guess <= 4; guess += 1) await app.api("POST", "/api/storage/shares/list", listBody({ password: "again" }));
+      expect((await app.api("POST", "/api/storage/shares/list", listBody())).status).toBe(200);
+    } finally {
+      now.mockRestore();
+    }
+  });
+
+  it("counts a user name the server does not know as a wrong guess too", async () => {
+    const { app, mac } = await macApp();
+    mac.state.listAnswer = { kind: "unknown_user" };
+    const refused = await app.api("POST", "/api/storage/shares/list", listBody({ userName: "nobody" }));
+    expect(refused.status).toBe(403);
+    expect(refused.body.error.message).toBe("nas.local has no user called nobody. Check the user name.");
+    for (let guess = 2; guess <= 5; guess += 1) await app.api("POST", "/api/storage/shares/list", listBody({ userName: "nobody" }));
+    expect((await app.api("POST", "/api/storage/shares/list", listBody({ userName: "nobody" }))).body.error.message).toMatch(
+      /Too many wrong passwords/,
+    );
+  });
+
+  it("lets a guest look and connect only where the server allows guests", async () => {
+    const { app, mac } = await macApp();
+    const refused = await app.api("POST", "/api/storage/shares/list", { server: "nas.local", guest: true });
+    expect(refused.status).toBe(403);
+    expect(refused.body.error).toMatchObject({ details: { reason: "guest_refused" } });
+    expect(refused.body.error.message).toMatch(/does not let guests look at its shared folders/);
+    expect((await app.api("POST", "/api/storage/shares", { server: "nas.local", share: "media", guest: true })).status).toBe(503);
+    expect(mountsAsked(mac)).toBe(0);
+
+    mac.state.guests = true;
+    mac.state.guestShares = ["public"];
+    const listed = await app.api("POST", "/api/storage/shares/list", { server: "nas.local", guest: true });
+    expect(listed.body.shares.map((share: { name: string }) => share.name)).toEqual(["media", "public"]);
+    expect(mac.state.listed.at(-1)).toEqual({ address: "192.168.1.20", port: 445, user: undefined, typedPassword: false });
+
+    // A share guests may not open says so, and leaves nothing behind.
+    const closed = await app.api("POST", "/api/storage/shares", { server: "nas.local", share: "media", guest: true });
+    expect(closed.status).toBe(503);
+    expect(closed.body.error.message).toMatch(/no share called "media" that a guest can open/);
+    expect(app.ctx.db.select().from(networkShares).all()).toEqual([]);
+
+    const connected = await app.api("POST", "/api/storage/shares", {
+      server: "nas.local",
+      share: "public",
+      guest: true,
+      rememberPassword: true,
+    });
+    expect(connected.status).toBe(200);
+    expect(connected.body.share).toMatchObject({
+      share: "public",
+      guest: true,
+      userName: "",
+      passwordRemembered: false,
+      status: "connected",
+    });
+    // The helper was told "guest" and given no name, no password and nothing to do with the Keychain.
+    const sent = JSON.parse(mac.state.calls.filter((call) => call.file === "/usr/bin/osascript").at(-1)!.input!);
+    expect(sent).toEqual({ op: "mount", url: "smb://192.168.1.20/public", guest: true });
+    expect(mac.state.keychain.size).toBe(0);
+
+    // A guest's share is one Outpost can bring back by itself.
+    mac.state.mounts = [];
+    await app.ctx.services.shares.reconnectRemembered();
+    expect((await app.api("GET", "/api/storage/shares")).body.shares[0]).toMatchObject({ status: "connected", guest: true });
+    // Forgetting it has no Keychain item to remove, and does not go looking for one.
+    const before = mountsAsked(mac);
+    expect((await app.api("DELETE", `/api/storage/shares/${connected.body.share.id}`)).status).toBe(200);
+    expect(mountsAsked(mac)).toBe(before);
+  });
+
+  it("checks the sign-in itself, so an old sign-in on the Mac cannot stand in for a password", async () => {
+    const { app, mac } = await macApp({ shares: ["media", "private"] });
+    await app.api("POST", "/api/storage/shares", connectBody());
+    const asked = mountsAsked(mac);
+    // From here the pretend Mac does what a real one does unless told to sign in afresh:
+    // it would mount another share from the same server whatever password it was handed.
+    mac.state.reusesSignIn = true;
+    const wrong = await app.api("POST", "/api/storage/shares", connectBody({ share: "private", password: "anything at all" }));
+    expect(wrong.status).toBe(403);
+    expect(wrong.body.error.details.reason).toBe("wrong_password");
+    const guest = await app.api("POST", "/api/storage/shares", { server: "nas.local", share: "private", guest: true });
+    expect(guest.status).toBe(503);
+    // Neither request got as far as asking for a mount.
+    expect(mountsAsked(mac)).toBe(asked);
+    expect(mac.state.mounts.map((mount) => mount.share)).toEqual(["media"]);
+    // And the helper itself always asks macOS for a fresh sign-in.
+    expect(MAC_HELPER).toContain('open.setObjectForKey(true, "ForceNewSession")');
+  });
+
+  it("says plainly why a list could not be had, and that the name can still be typed", async () => {
+    const { app, mac, deps } = await macApp();
+    const cases: Array<[Awaited<ReturnType<ShareLister>>, number, string, RegExp]> = [
+      [
+        { kind: "unsupported", why: "protocol" },
+        503,
+        "cannot_list",
+        /speaks a version of SMB .* You can still connect a share by typing its name\./,
+      ],
+      [{ kind: "unsupported", why: "sign_in" }, 503, "cannot_list", /kind of sign-in/],
+      [{ kind: "not_allowed" }, 503, "cannot_list", /accepted the sign-in, but does not let this account see its list/],
+      [
+        { kind: "failed", detail: "c0000001 from the server \u0000" },
+        503,
+        "cannot_list",
+        /could not read the list of shared folders from nas\.local\. You can still/,
+      ],
+      [{ kind: "no_answer" }, 503, "server_not_found", /did not answer/],
+      [{ kind: "account_unusable", why: "locked" }, 403, "failed", /has locked this account/],
+    ];
+    for (const [answer, status, reason, message] of cases) {
+      mac.state.listAnswer = answer;
+      const response = await app.api("POST", "/api/storage/shares/list", listBody());
+      expect(response.status, answer.kind).toBe(status);
+      expect(response.body.error.details.reason, answer.kind).toBe(reason);
+      expect(response.body.error.message, answer.kind).toMatch(message);
+      // The server's own words stay in the log.
+      expect(response.body.error.message).not.toContain("c0000001");
+    }
+    // None of those is a wrong password: the count is untouched.
+    mac.state.listAnswer = undefined;
+    expect((await app.api("POST", "/api/storage/shares/list", listBody())).status).toBe(200);
+
+    // A server that is not on the home network, or not there, is never asked.
+    const asked = signIns(mac);
+    expect((await app.api("POST", "/api/storage/shares/list", listBody({ server: "example.com" }))).body.error.message).toMatch(
+      /only connects to file servers on your own network/,
+    );
+    expect((await app.api("POST", "/api/storage/shares/list", listBody({ server: "8.8.8.8" }))).status).toBe(503);
+    deps.allowLoopback = false;
+    expect((await app.api("POST", "/api/storage/shares/list", listBody({ server: "127.0.0.1" }))).status).toBe(503);
+    deps.probe = async () => "timeout";
+    expect((await app.api("POST", "/api/storage/shares/list", listBody())).body.error.details.reason).toBe("server_not_found");
+    for (const server of hostile) expect((await app.api("POST", "/api/storage/shares/list", listBody({ server }))).status).toBe(400);
+    for (const userName of hostile) expect((await app.api("POST", "/api/storage/shares/list", listBody({ userName }))).status).toBe(400);
+    expect((await app.api("POST", "/api/storage/shares/list", listBody({ password: "two\nlines" }))).status).toBe(400);
+    expect(signIns(mac)).toBe(asked);
+  });
+
+  it("does not list anything in a container or on Linux", async () => {
+    const { app, mac, deps } = await macApp();
+    for (const mode of ["docker", "linux", "unsupported"] as const) {
+      deps.mode = mode;
+      expect((await app.api("POST", "/api/storage/shares/list", listBody())).status).toBe(415);
+      expect((await app.api("GET", "/api/storage/shares/mounted")).body).toEqual({ mounts: [] });
+      expect((await app.api("POST", "/api/storage/shares/adopt", { mountPath: "/Volumes/media" })).status).toBe(415);
+    }
+    expect(signIns(mac)).toBe(0);
+    expect(mac.state.calls).toEqual([]);
+  });
+});
+
+describe("volumes that are connected on the Mac already", () => {
+  it("lists those inside the storage roots with their server and share, and says which Outpost may use", async () => {
+    const { app, mac } = await macApp();
+    const root = path.join(app.dir, "storage");
+    for (const name of ["Docs", "Family Photos", "odd"]) fs.mkdirSync(path.join(root, name), { recursive: true });
+    mac.state.mounts.push(
+      // From the Finder's Network list, which names the server after its Bonjour service.
+      { host: "attic-nas._smb._tcp.local", port: 445, share: "Docs", user: "walker", mountPoint: path.join(root, "Docs") },
+      { host: "192.168.1.20", port: 4450, share: "Family Photos", user: "", mountPoint: path.join(root, "Family Photos") },
+      // Not inside a storage root: left out altogether.
+      { host: "nas.local", port: 445, share: "elsewhere", user: "walker", mountPoint: "/Users/someone/elsewhere" },
+      // A server name that could never be typed.
+      { host: "felicity’s macbook pro._smb._tcp.local", port: 445, share: "odd", user: "walker", mountPoint: path.join(root, "odd") },
+    );
+    const { body } = await app.api("GET", "/api/storage/shares/mounted");
+    expect(body.mounts).toEqual([
+      {
+        server: "attic-nas.local",
+        port: null,
+        share: "Docs",
+        userName: "walker",
+        mountPath: path.join(root, "Docs"),
+        usable: true,
+        problem: null,
+        shareId: null,
+      },
+      {
+        server: "192.168.1.20",
+        port: 4450,
+        share: "Family Photos",
+        userName: null,
+        mountPath: path.join(root, "Family Photos"),
+        usable: true,
+        problem: null,
+        shareId: null,
+      },
+      expect.objectContaining({ share: "odd", usable: false, problem: expect.stringMatching(/characters Outpost does not accept/) }),
+    ]);
+  });
+
+  it("uses one with a tap: no password, nothing mounted, and the share is remembered", async () => {
+    const { app, mac } = await macApp();
+    const mountPoint = path.join(app.dir, "storage", "Docs");
+    fs.mkdirSync(mountPoint, { recursive: true });
+    mac.state.mounts.push({ host: "attic-nas._smb._tcp.local", port: 445, share: "Docs", user: "walker", mountPoint });
+    mac.state.lookupAlso = { "attic-nas.local": "192.168.1.30" };
+
+    const adopted = await app.api("POST", "/api/storage/shares/adopt", { mountPath: mountPoint });
+    expect(adopted.status).toBe(200);
+    expect(adopted.body.share).toMatchObject({
+      server: "attic-nas.local",
+      share: "Docs",
+      userName: "walker",
+      guest: false,
+      passwordRemembered: false,
+      status: "connected",
+      mountPath: mountPoint,
+    });
+    expect(adopted.body.note).toBeUndefined();
+    // The file server was not contacted at all.
+    expect(mac.state.listed).toEqual([]);
+    expect(mac.state.calls.every((call) => call.file === "/sbin/mount")).toBe(true);
+    expect(mac.state.keychain.size).toBe(0);
+
+    // It is now marked as Outpost's, and using it again changes nothing.
+    expect((await app.api("GET", "/api/storage/shares/mounted")).body.mounts[0].shareId).toBe(adopted.body.share.id);
+    const again = await app.api("POST", "/api/storage/shares/adopt", { mountPath: mountPoint });
+    expect(again.body.share.id).toBe(adopted.body.share.id);
+    expect(app.ctx.db.select().from(networkShares).all()).toHaveLength(1);
+
+    // The folder on it becomes a location through the ordinary path.
+    const location = await app.api("POST", "/api/storage/locations", {
+      name: "Docs on the NAS",
+      path: path.join(mountPoint, "Outpost"),
+      kind: "network",
+    });
+    expect(location.status).toBe(200);
+    expect((await app.api("GET", "/api/storage/shares")).body.shares[0].locations).toEqual([
+      { id: location.body.location.id, name: "Docs on the NAS" },
+    ]);
+  });
+
+  it("only ever adopts a volume in the system's own list of mounts", async () => {
+    const { app, mac } = await macApp();
+    const inside = path.join(app.dir, "storage", "plain-folder");
+    fs.mkdirSync(inside, { recursive: true });
+    mac.state.mounts.push({ host: "nas.local", port: 445, share: "elsewhere", user: "walker", mountPoint: "/Users/someone/elsewhere" });
+    // An ordinary folder, a path outside the roots, a mount outside the roots, and nonsense.
+    expect((await app.api("POST", "/api/storage/shares/adopt", { mountPath: inside })).status).toBe(404);
+    expect((await app.api("POST", "/api/storage/shares/adopt", { mountPath: "/etc" })).status).toBe(404);
+    expect((await app.api("POST", "/api/storage/shares/adopt", { mountPath: "/Users/someone/elsewhere" })).status).toBe(400);
+    expect((await app.api("POST", "/api/storage/shares/adopt", { mountPath: "" })).status).toBe(400);
+    expect((await app.api("POST", "/api/storage/shares/adopt", {})).status).toBe(400);
+    expect(app.ctx.db.select().from(networkShares).all()).toEqual([]);
   });
 });
 

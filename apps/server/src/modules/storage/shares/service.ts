@@ -21,9 +21,11 @@ import {
   isValidShareName,
   isValidSharePassword,
   isValidShareUser,
+  type MountedShare,
   type NetworkShare,
   type NetworkShareStatus,
   parseShareServer,
+  type ServerSharesResponse,
   type ShareHostMode,
   type ShareInstructionHints,
   shareHostKind,
@@ -47,6 +49,7 @@ import {
   unmountVolume,
 } from "./commands.ts";
 import { detectHost, shareHostMode } from "./host.ts";
+import { listServerShares, pickDiskShares, type ShareLister } from "./smb-list.ts";
 
 export type ShareRow = typeof networkShares.$inferSelect;
 type ShareError = NonNullable<ShareRow["lastError"]>;
@@ -57,6 +60,8 @@ export interface SharesDeps {
   run: CommandRunner;
   lookup: HostLookup;
   probe: PortProbe;
+  /** Asks a server which shares it offers. */
+  listShares: ShareLister;
   /** Lets a share be connected from this computer itself. For testing only. */
   allowLoopback: boolean;
 }
@@ -65,9 +70,19 @@ export interface ConnectInput {
   server: string;
   port?: number | null;
   share: string;
-  userName: string;
-  password: string;
-  rememberPassword: boolean;
+  /** Left out, with the password, for a guest. */
+  userName?: string;
+  password?: string;
+  guest?: boolean;
+  rememberPassword?: boolean;
+}
+
+export interface ListInput {
+  server: string;
+  port?: number | null;
+  userName?: string;
+  password?: string;
+  guest?: boolean;
 }
 
 export interface ShareResult {
@@ -81,6 +96,12 @@ export interface SharesService {
   deps: SharesDeps;
   list(): Promise<NetworkShare[]>;
   hints(): ShareInstructionHints;
+  /** The shared folders a server offers to this user, for choosing one instead of typing its name. */
+  serverShares(input: ListInput): Promise<ServerSharesResponse>;
+  /** Network volumes connected on this Mac already, whoever connected them. */
+  mounted(): Promise<MountedShare[]>;
+  /** Starts using a volume that is connected already, found by where it is mounted. */
+  adopt(mountPath: string): Promise<ShareResult>;
   connect(input: ConnectInput): Promise<ShareResult>;
   reconnect(id: string, input: { password?: string; rememberPassword?: boolean }): Promise<ShareResult>;
   /** Unmounts. Refuses while work is in progress on the share unless `confirm` is set. */
@@ -104,6 +125,9 @@ const PROBE_TIMEOUT_MS = 4_000;
 const MOUNT_TIMEOUT_MS = 45_000;
 /** Used when the quick check could not say whether the server is there. */
 const MOUNT_TIMEOUT_UNSURE_MS = 20_000;
+const LIST_TIMEOUT_MS = 12_000;
+/** How a share connected from the Finder's Network list names its server. */
+const BONJOUR_SUFFIX = "._smb._tcp.local";
 
 // errno values macOS answers a failed mount with.
 const AUTH_ERRORS = new Set([13 /* EACCES */, 80 /* EAUTH */, 81 /* ENEEDAUTH */]);
@@ -112,7 +136,7 @@ const NETWORK_ERRORS = new Set([50, 51, 61, 64, 65]); // ENETDOWN, ENETUNREACH, 
 
 const statusDetails: Record<NetworkShareStatus, (row: ShareRow) => string | null> = {
   connected: () => null,
-  disconnected: (row) => (row.passwordInKeychain ? null : "Enter the password to connect it."),
+  disconnected: (row) => (row.passwordInKeychain || row.userName === "" ? null : "Enter the password to connect it."),
   wrong_password: () => "The server did not accept the user name and password. Enter the password again.",
   server_not_found: () => "The server did not answer last time. It may be switched off or on another network.",
   share_not_found: () => "The server answered, but this share could not be opened. Its name may have changed.",
@@ -143,13 +167,42 @@ export function createSharesService(ctx: AppContext, overrides: Partial<SharesDe
     run: config.env === "test" ? async () => ({ code: null, stdout: "", stderr: "", timedOut: false }) : runCommand,
     lookup: lookupHost,
     probe: probePort,
+    // Nor do they open connections of their own.
+    listShares: config.env === "test" ? async () => ({ kind: "failed", detail: "no network in tests" }) : listServerShares,
     allowLoopback: config.allowPrivateDownloads,
     ...overrides,
   };
 
-  /** Wrong typed passwords per share, kept in memory only. */
+  // A typed password that keeps being wrong is held back for a while. Outpost has no
+  // sign-in, so without this anyone who can open it could try passwords against the
+  // file server through it, and could lock the real owner's account on that server.
+  // The count is per server and user, whichever way the password was tried: looking at
+  // a server's shares and connecting one of them draw on the same five tries.
+  /** Wrong typed passwords per server and user, kept in memory only. */
   const wrongGuesses = new Map<string, { count: number; blockedUntil: number }>();
   const FREE_GUESSES = 5;
+  // Keyed by the address the server resolved to, so that another name for the same server is not five more tries.
+  const guessKeyFor = (address: string, port: number, userName: string) => `${address.toLowerCase()}:${port}/${userName.toLowerCase()}`;
+
+  /** Refuses, without reaching the server, while this user's tries are being held back. */
+  function assertNotHeld(guessKey: string): void {
+    const held = wrongGuesses.get(guessKey);
+    if (!held || held.blockedUntil <= Date.now()) return;
+    const seconds = Math.ceil((held.blockedUntil - Date.now()) / 1000);
+    throw new AppError("forbidden", `Too many wrong passwords for this user on this server. Try again in ${seconds} seconds.`, {
+      reason: "wrong_password",
+      retryAfterSeconds: seconds,
+    });
+  }
+
+  function countWrongGuess(guessKey: string): void {
+    const entry = wrongGuesses.get(guessKey) ?? { count: 0, blockedUntil: 0 };
+    entry.count += 1;
+    // Five tries are free; after that each further miss doubles the wait, from a minute up to an hour.
+    if (entry.count >= FREE_GUESSES) entry.blockedUntil = Date.now() + Math.min(60_000 * 2 ** (entry.count - FREE_GUESSES), 3_600_000);
+    if (wrongGuesses.size > 500) wrongGuesses.clear();
+    wrongGuesses.set(guessKey, entry);
+  }
 
   // One mount or unmount at a time: they change the same rows and the same folders.
   let queue: Promise<unknown> = Promise.resolve();
@@ -221,6 +274,7 @@ export function createSharesService(ctx: AppContext, overrides: Partial<SharesDe
       port: row.port === DEFAULT_PORT ? null : row.port,
       share: row.share,
       userName: row.userName,
+      guest: row.userName === "",
       passwordRemembered: row.passwordInKeychain,
       status,
       statusDetail: statusDetails[status](row),
@@ -270,7 +324,80 @@ export function createSharesService(ctx: AppContext, overrides: Partial<SharesDe
     server: string;
     port: number;
     share: string;
+    /** Empty for a guest. */
     userName: string;
+  }
+
+  /**
+   * Finds the one address to use for a server and sees whether it answers. Refuses a
+   * server that is not on the home network before anything is sent to it.
+   */
+  async function reach(server: string, port: number): Promise<{ address: string; reachable: "open" | "unreachable" }> {
+    const where = formatShareServer(server, port === DEFAULT_PORT ? null : port);
+    const resolved = await resolveShareHost(server, { allowLoopback: deps.allowLoopback, lookup: deps.lookup });
+    if (!resolved.ok) {
+      if (resolved.reason === "not_private") {
+        throw shareError(
+          "failed",
+          `Outpost only connects to file servers on your own network. ${server} is at ${resolved.addresses[0]}, which is not a private address.`,
+        );
+      }
+      throw shareError(
+        "server_not_found",
+        `No computer called ${server} was found on this network. Check the name, or use its address, for example 192.168.1.20.`,
+      );
+    }
+    const { address } = resolved.address;
+    const reachable = await deps.probe(address, port, PROBE_TIMEOUT_MS);
+    if (reachable === "timeout") {
+      throw shareError("server_not_found", `${where} did not answer. Check that it is switched on and on the same network as this Mac.`);
+    }
+    if (reachable === "refused") {
+      throw shareError(
+        "server_not_found",
+        `${server} is there, but it is not offering file sharing (SMB) on port ${port}. Turn on SMB file sharing on it.`,
+      );
+    }
+    return { address, reachable };
+  }
+
+  /** The server and port a request names, or a plain refusal. */
+  function parseServer(input: { server: string; port?: number | null }): { host: string; port: number } {
+    const parsed = parseShareServer(input.server);
+    if (!parsed) throw badRequest("Enter the server's name or address, for example nas.local or 192.168.1.20.");
+    const port = input.port ?? parsed.port ?? DEFAULT_PORT;
+    if (!Number.isInteger(port) || port < 1 || port > 65535) throw badRequest("That port is not valid.");
+    return { host: parsed.host, port };
+  }
+
+  /** The user name and password a request carries, checked; both absent for a guest. */
+  function parseSignIn(input: { userName?: string; password?: string; guest?: boolean }): {
+    userName: string;
+    password: string | undefined;
+  } {
+    if (input.guest === true) return { userName: "", password: undefined };
+    const userName = (input.userName ?? "").trim();
+    if (!isValidShareUser(userName))
+      throw badRequest("That user name has characters Outpost does not accept. Use letters, digits, dots, dashes and underscores.");
+    if (!isValidSharePassword(input.password ?? "")) throw badRequest("Enter the password. It cannot contain line breaks.");
+    return { userName, password: input.password };
+  }
+
+  /** The server a mounted volume belongs to, as a person would type it, if it can be typed. */
+  function serverOfMount(mount: SmbMount): string | undefined {
+    const host = mount.host.endsWith(BONJOUR_SUFFIX) ? `${mount.host.slice(0, -BONJOUR_SUFFIX.length)}.local` : mount.host;
+    return shareHostKind(host) ? host : undefined;
+  }
+
+  /** Why Outpost cannot use a mounted volume, or null if it can. */
+  function mountProblem(mount: SmbMount): string | null {
+    if (!config.storageRoots.some((root) => isInside(root, mount.mountPoint))) {
+      return "It is outside the folders Outpost is allowed to use.";
+    }
+    if (!serverOfMount(mount) || !isValidShareName(mount.share) || (mount.user !== undefined && !isValidShareUser(mount.user))) {
+      return "Its name has characters Outpost does not accept. Use Add location to pick a folder on it instead.";
+    }
+    return null;
   }
 
   /**
@@ -301,19 +428,7 @@ export function createSharesService(ctx: AppContext, overrides: Partial<SharesDe
     };
     const where = formatShareServer(target.server, target.port === DEFAULT_PORT ? null : target.port);
 
-    // A typed password that keeps being wrong is held back for a while. Outpost has no
-    // sign-in, so without this anyone who can open it could try passwords against the
-    // file server through it, and could lock the real owner's account on that server.
-    const guessKey = `${target.server.toLowerCase()}:${target.port}/${target.share.toLowerCase()}`;
-    if (password !== undefined) {
-      const held = wrongGuesses.get(guessKey);
-      if (held && held.blockedUntil > Date.now()) {
-        const seconds = Math.ceil((held.blockedUntil - Date.now()) / 1000);
-        throw new AppError("forbidden", `Too many wrong passwords for this share. Try again in ${seconds} seconds.`, {
-          reason: "wrong_password",
-        });
-      }
-    }
+    const guest = target.userName === "";
 
     // Already connected, by Outpost earlier or by someone in the Finder: use that.
     const before = findMount({ ...target, lastAddress: row?.lastAddress, mountPath: row?.mountPath }, await mountsNow());
@@ -329,33 +444,37 @@ export function createSharesService(ctx: AppContext, overrides: Partial<SharesDe
       };
     }
 
-    const resolved = await resolveShareHost(target.server, { allowLoopback: deps.allowLoopback, lookup: deps.lookup });
-    if (!resolved.ok) {
-      if (resolved.reason === "not_private") {
-        return fail(
-          "failed",
-          `Outpost only connects to file servers on your own network. ${target.server} is at ${resolved.addresses[0]}, which is not a private address.`,
-        );
-      }
-      return fail(
-        "server_not_found",
-        `No computer called ${target.server} was found on this network. Check the name, or use its address, for example 192.168.1.20.`,
-      );
-    }
-    const { address } = resolved.address;
-
-    const reachable = await deps.probe(address, target.port, PROBE_TIMEOUT_MS);
-    if (reachable === "timeout") {
-      return fail("server_not_found", `${where} did not answer. Check that it is switched on and on the same network as this Mac.`);
-    }
-    if (reachable === "refused") {
-      return fail(
-        "server_not_found",
-        `${target.server} is there, but it is not offering file sharing (SMB) on port ${target.port}. Turn on SMB file sharing on it.`,
-      );
-    }
+    const { address, reachable } = await reach(target.server, target.port).catch((error: unknown) => {
+      // Remember why on the share's row, then pass the same message on.
+      if (row && error instanceof AppError && typeof error.details?.reason === "string")
+        patch(row.id, { lastError: error.details.reason as ShareError });
+      throw error;
+    });
     if (reachable !== "open" && unattended) {
       return fail("server_not_found", `${where} could not be reached. Check that it is switched on and on the same network as this Mac.`);
+    }
+    // Finding the server is not a try at its password; what follows is.
+    const guessKey = guessKeyFor(address, target.port, target.userName);
+    if (password !== undefined) assertNotHeld(guessKey);
+
+    // Outpost checks the sign-in itself before asking macOS to mount anything. macOS will
+    // happily reuse a sign-in it already has with a server, so "the mount worked" is not
+    // on its own proof that this password, or a guest, was accepted. (The helper also asks
+    // for a fresh sign-in every time; this is the second lock on the same door.) When the
+    // password comes from the Keychain, Outpost never has it, and only the helper checks.
+    if (reachable === "open" && (guest || password !== undefined)) {
+      const checked = await deps.listShares(
+        { address, port: target.port, user: guest ? undefined : target.userName, password },
+        LIST_TIMEOUT_MS,
+      );
+      if (checked.kind === "wrong_password" || checked.kind === "unknown_user") {
+        countWrongGuess(guessKey);
+        return fail("wrong_password", "The server did not accept that user name and password.");
+      }
+      if (checked.kind === "guest_refused") {
+        return fail("failed", `${target.server} does not let guests in. Connect "${target.share}" with a user name and password.`);
+      }
+      // Anything else (signed in, or a server this check cannot talk to) is left to the mount to settle.
     }
 
     const keychain = keychainFor(target);
@@ -367,6 +486,7 @@ export function createSharesService(ctx: AppContext, overrides: Partial<SharesDe
         password,
         remember,
         keychain,
+        guest,
       },
       reachable === "open" ? MOUNT_TIMEOUT_MS : MOUNT_TIMEOUT_UNSURE_MS,
     );
@@ -390,21 +510,17 @@ export function createSharesService(ctx: AppContext, overrides: Partial<SharesDe
         );
       case "error":
         if (AUTH_ERRORS.has(outcome.errno)) {
-          if (password !== undefined) {
-            const entry = wrongGuesses.get(guessKey) ?? { count: 0, blockedUntil: 0 };
-            entry.count += 1;
-            // Five tries are free; after that each further miss doubles the wait, from a minute up to an hour.
-            if (entry.count >= FREE_GUESSES)
-              entry.blockedUntil = Date.now() + Math.min(60_000 * 2 ** (entry.count - FREE_GUESSES), 3_600_000);
-            if (wrongGuesses.size > 500) wrongGuesses.clear();
-            wrongGuesses.set(guessKey, entry);
-          }
+          if (guest)
+            return fail("failed", `${target.server} does not let guests open "${target.share}". Connect it with a user name and password.`);
+          if (password !== undefined) countWrongGuess(guessKey);
           return fail("wrong_password", "The server did not accept that user name and password.");
         }
         if (SHARE_ERRORS.has(outcome.errno) && reachable === "open") {
           return fail(
             "share_not_found",
-            `${target.server} answered, but there is no share called "${target.share}" that this user can open. Check the share's name.`,
+            guest
+              ? `${target.server} answered, but there is no share called "${target.share}" that a guest can open. Connect it with a user name and password.`
+              : `${target.server} answered, but there is no share called "${target.share}" that this user can open. Check the share's name.`,
           );
         }
         if (NETWORK_ERRORS.has(outcome.errno) || SHARE_ERRORS.has(outcome.errno)) {
@@ -419,13 +535,13 @@ export function createSharesService(ctx: AppContext, overrides: Partial<SharesDe
         break;
     }
 
-    wrongGuesses.delete(guessKey);
+    if (password !== undefined && outcome.kind === "mounted") wrongGuesses.delete(guessKey);
     const mountPoint =
       (outcome.kind === "mounted" ? outcome.mountPoint : undefined) ??
       findMount({ ...target, lastAddress: address }, await mountsNow())?.mountPoint;
     if (!mountPoint) return fail("failed", "macOS says the share is connected, but Outpost could not find where. Try again.");
 
-    let passwordInKeychain = row?.passwordInKeychain ?? false;
+    let passwordInKeychain = guest ? false : (row?.passwordInKeychain ?? false);
     let note: string | undefined;
     if (password !== undefined && outcome.kind === "mounted") {
       // A password was typed: the Keychain now holds it, or should hold nothing.
@@ -444,7 +560,8 @@ export function createSharesService(ctx: AppContext, overrides: Partial<SharesDe
 
     const saved = save({ mountPath: mountPoint, lastAddress: address, passwordInKeychain });
     await afterChange();
-    return { share: toDto(saved, { host: address, port: target.port, share: target.share, user: target.userName, mountPoint }), note };
+    const user = guest ? undefined : target.userName;
+    return { share: toDto(saved, { host: address, port: target.port, share: target.share, user, mountPoint }), note };
   }
 
   async function detach(row: ShareRow, confirm: boolean): Promise<void> {
@@ -499,19 +616,144 @@ export function createSharesService(ctx: AppContext, overrides: Partial<SharesDe
       return { uid, gid, mountBase };
     },
 
+    async serverShares(input) {
+      requireMac();
+      const { host, port } = parseServer(input);
+      const { userName, password } = parseSignIn(input);
+      const guest = userName === "";
+      const where = formatShareServer(host, port === DEFAULT_PORT ? null : port);
+      const { address } = await reach(host, port);
+      // Looking with a typed password is a try at that password like any other.
+      const guessKey = guessKeyFor(address, port, userName);
+      if (!guest) assertNotHeld(guessKey);
+
+      const outcome = await deps.listShares({ address, port, user: guest ? undefined : userName, password }, LIST_TIMEOUT_MS);
+      const typeIt = "You can still connect a share by typing its name.";
+      switch (outcome.kind) {
+        case "listed":
+          break;
+        case "wrong_password":
+          countWrongGuess(guessKey);
+          throw shareError("wrong_password", "The server did not accept that user name and password.");
+        case "unknown_user":
+          // The server let an unknown name in as a guest. That is still a wrong guess at who has an account.
+          countWrongGuess(guessKey);
+          throw shareError("wrong_password", `${host} has no user called ${userName}. Check the user name.`);
+        case "guest_refused":
+          throw new AppError("forbidden", `${host} does not let guests look at its shared folders. Enter a user name and password.`, {
+            reason: "guest_refused",
+          });
+        case "account_unusable":
+          throw new AppError(
+            "forbidden",
+            {
+              locked: `${host} has locked this account, usually after too many wrong passwords. Unlock it on the server, or wait and try again.`,
+              disabled: `This account is switched off on ${host}.`,
+              expired: `This account or its password has expired on ${host}. Change the password on the server first.`,
+              restricted: `${host} does not let this account sign in over the network.`,
+            }[outcome.why],
+            { reason: "failed" },
+          );
+        case "no_answer":
+          throw shareError(
+            "server_not_found",
+            `${where} did not answer. Check that it is switched on and on the same network as this Mac.`,
+          );
+        case "not_allowed":
+          throw new AppError(
+            "storage_unavailable",
+            `${host} accepted the sign-in, but does not let this account see its list of shared folders. ${typeIt}`,
+            {
+              reason: "cannot_list",
+            },
+          );
+        case "unsupported":
+          throw new AppError(
+            "storage_unavailable",
+            `Outpost could not read the list of shared folders from ${host}: ${
+              outcome.why === "signing"
+                ? "it does not give its list to guests"
+                : outcome.why === "sign_in"
+                  ? "it asks for a kind of sign-in that Outpost cannot use for reading the list"
+                  : "it only speaks a version of SMB that Outpost cannot read the list with"
+            }. ${typeIt}`,
+            { reason: "cannot_list" },
+          );
+        case "failed":
+          // What went wrong is in the server's own terms: for the log, not for the person.
+          ctx.log.warn({ detail: outcome.detail }, "a file server's shares could not be listed");
+          throw new AppError("storage_unavailable", `Outpost could not read the list of shared folders from ${host}. ${typeIt}`, {
+            reason: "cannot_list",
+          });
+      }
+      // The password was right: earlier misses are forgiven.
+      if (!guest) wrongGuesses.delete(guessKey);
+
+      // Share names come from the server. Only ones that pass the same rule as a typed name are offered.
+      const { shares, unusable } = pickDiskShares(outcome.shares, isValidShareName);
+      const mounts = await mountsNow();
+      const rows = db.select().from(networkShares).all();
+      return {
+        shares: shares.map((share) => {
+          const known = rows.find(
+            (row) => row.server === host && row.port === port && row.share.toLowerCase() === share.name.toLowerCase(),
+          );
+          const mount = findMount({ server: host, port, share: share.name, lastAddress: known?.lastAddress ?? address }, mounts);
+          return { ...share, mountPath: mount?.mountPoint ?? null };
+        }),
+        unusable,
+      };
+    },
+
+    async mounted() {
+      if (deps.mode !== "macos") return [];
+      // Only volumes inside the folders Outpost may use are named. Anyone who can open
+      // Outpost can read this list, and what else is connected to this Mac is not theirs to see.
+      const mounts = (await mountsNow()).filter((mount) => config.storageRoots.some((root) => isInside(root, mount.mountPoint)));
+      const rows = db.select().from(networkShares).all();
+      return mounts.map((mount) => {
+        const problem = mountProblem(mount);
+        return {
+          server: serverOfMount(mount) ?? mount.host,
+          port: mount.port === DEFAULT_PORT ? null : mount.port,
+          share: mount.share,
+          userName: mount.user ?? null,
+          mountPath: mount.mountPoint,
+          usable: problem === null,
+          problem,
+          shareId: rows.find((row) => findMount(row, [mount]))?.id ?? null,
+        };
+      });
+    },
+
+    async adopt(mountPath) {
+      requireMac();
+      return exclusive(async () => {
+        // Only a volume in the system's own list of SMB mounts, never a path taken on trust.
+        const mount = (await mountsNow()).find((candidate) => candidate.mountPoint === mountPath);
+        if (!mount) throw new AppError("not_found", "That volume is no longer connected on this Mac.");
+        const problem = mountProblem(mount);
+        if (problem) throw badRequest(`Outpost cannot use that volume. ${problem}`);
+        const row = db
+          .select()
+          .from(networkShares)
+          .all()
+          .find((candidate) => findMount(candidate, [mount]));
+        const target = row
+          ? { server: row.server, port: row.port, share: row.share, userName: row.userName }
+          : { server: serverOfMount(mount)!, port: mount.port, share: mount.share, userName: mount.user ?? "" };
+        // attach() finds the same mount and records it; nothing is mounted and no password is involved.
+        return attach(target, row, undefined, false);
+      });
+    },
+
     async connect(input) {
       requireMac();
-      const parsed = parseShareServer(input.server);
-      if (!parsed) throw badRequest("Enter the server's name or address, for example nas.local or 192.168.1.20.");
-      const port = input.port ?? parsed.port ?? DEFAULT_PORT;
-      if (!Number.isInteger(port) || port < 1 || port > 65535) throw badRequest("That port is not valid.");
+      const { host, port } = parseServer(input);
       const share = input.share.trim();
-      const userName = input.userName.trim();
       if (!isValidShareName(share)) throw badRequest("Enter the share's name as the server shows it, without slashes.");
-      if (!isValidShareUser(userName))
-        throw badRequest("That user name has characters Outpost does not accept. Use letters, digits, dots, dashes and underscores.");
-      if (!isValidSharePassword(input.password)) throw badRequest("Enter the password. It cannot contain line breaks.");
-      const target = { server: parsed.host, port, share, userName };
+      const { userName, password } = parseSignIn(input);
+      const target = { server: host, port, share, userName };
       return exclusive(() => {
         const row = db
           .select()
@@ -519,7 +761,7 @@ export function createSharesService(ctx: AppContext, overrides: Partial<SharesDe
           .where(and(eq(networkShares.server, target.server), eq(networkShares.port, port)))
           .all()
           .find((candidate) => candidate.share.toLowerCase() === share.toLowerCase());
-        return attach(row ? { ...target, share: row.share } : target, row, input.password, input.rememberPassword);
+        return attach(row ? { ...target, share: row.share } : target, row, password, userName !== "" && input.rememberPassword === true);
       });
     },
 
@@ -530,7 +772,8 @@ export function createSharesService(ctx: AppContext, overrides: Partial<SharesDe
       }
       return exclusive(async () => {
         const row = getRow(id);
-        if (input.password === undefined && !row.passwordInKeychain && !findMount(row, await mountsNow())) {
+        const guest = row.userName === "" && input.password === undefined;
+        if (!guest && input.password === undefined && !row.passwordInKeychain && !findMount(row, await mountsNow())) {
           patch(row.id, { lastError: "needs_password" });
           throw shareError("needs_password", "Enter the password to connect this share.");
         }
@@ -556,7 +799,8 @@ export function createSharesService(ctx: AppContext, overrides: Partial<SharesDe
         const row = getRow(id);
         if (deps.mode === "macos") {
           await detach(row, options.confirm);
-          if (!(await forgetPassword(deps.run, keychainFor(row)))) {
+          // A guest's share never had a password to remember.
+          if (row.userName !== "" && !(await forgetPassword(deps.run, keychainFor(row)))) {
             await afterChange();
             throw new AppError(
               "storage_unavailable",
@@ -588,10 +832,11 @@ export function createSharesService(ctx: AppContext, overrides: Partial<SharesDe
       const wanted = db
         .select()
         .from(networkShares)
-        .where(and(eq(networkShares.autoConnect, true), eq(networkShares.passwordInKeychain, true)))
+        .where(eq(networkShares.autoConnect, true))
         .all()
+        // Only shares that can be connected without asking anyone: a remembered password, or a guest.
         // A refused password will be refused again; asking repeatedly can lock the account on the NAS.
-        .filter((row) => row.lastError !== "wrong_password");
+        .filter((row) => (row.passwordInKeychain || row.userName === "") && row.lastError !== "wrong_password");
       if (wanted.length === 0) return;
       const mounts = await mountsNow();
       for (const row of wanted) {

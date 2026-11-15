@@ -211,8 +211,9 @@ download, a catalogue refresh or one of the other actions listed in
 
 ## Network shares
 
-On a Mac run directly, the Storage screen can connect an SMB share: a person enters
-the server, share, user name and password, and Outpost asks macOS to mount it. Outpost
+On a Mac run directly, the Storage screen can connect an SMB share: a person picks the
+server, enters a user name and password, picks one of the shared folders the server
+lists, and Outpost asks macOS to mount it. Outpost
 has no accounts, so **anyone who can open Outpost can use this**. These are the limits
 that keep it safe:
 
@@ -225,7 +226,10 @@ that keep it safe:
 | Remembered passwords live in the Keychain | Only if the person asks. The item is a generic password named "Outpost network share" in the login keychain of the account that runs Outpost. On a reconnect the helper reads it and mounts in the same process: the password does not pass through the server. | `shares/mac-helper.ts` |
 | No dialogs on the Mac | The mount is made with the system's "no user interface" option, so a wrong password is an answer in the browser, never a prompt on the Mac's screen. | `shares/mac-helper.ts` |
 | Time limits | Every external program is stopped after a fixed time. A server that does not answer is given up on in a few seconds. | `shares/commands.ts` |
-| Wrong passwords are held back | After five wrong passwords typed for one share, further tries are refused without being passed to the file server, for a minute at first and doubling up to an hour. Without this, anyone on the network could guess passwords through Outpost, or lock the owner's account on the NAS. | `shares/service.ts` |
+| Wrong passwords are held back | After five wrong passwords typed for one user on one server, further tries are refused without being passed to the file server, for a minute at first and doubling up to an hour. The count is shared by every way of trying a password (looking at the server's shares, connecting one, reconnecting) and is kept against the server's address, so another name for the same server, another share, or the user name in other letters does not start a fresh count. Without this, anyone on the network could guess passwords through Outpost, or lock the owner's account on the NAS. | `shares/service.ts` |
+| A sign-in is checked, never borrowed | macOS reuses a sign-in it already has with a server: asked to mount a second share from it, it will do so whatever password it is handed, or none. So Outpost checks a typed sign-in itself before asking for a mount, and the helper tells macOS to sign in afresh every time (`ForceNewSession`). A password is accepted only if the server accepts it now. | `shares/service.ts`, `shares/mac-helper.ts` |
+| Listing shares | Outpost reads a server's list of shares with a small SMB client of its own, over one connection it makes itself to the address it checked. No system tool is run for it, so nothing else gets to resolve a name or open a second connection, and the password never leaves the server process: only proof of knowing it (an NTLMv2 response) goes on the wire. Everything the server sends back is treated as untrusted: lengths and offsets are checked against the bytes that arrived, sizes are capped, and a share name is offered only if it passes the same rule as a typed one. | `shares/smb-list.ts` |
+| Volumes already connected | The "Already connected on this Mac" list comes from the system's own table of mounts, and names only volumes inside a storage root: what else is connected to the Mac is not shown to people who can open Outpost. One can be used only if it is in that table at that moment and inside a storage root; a path is never taken on trust. | `shares/service.ts` |
 | Polite disconnects | Outpost unmounts without "force". It names work in progress on the share and asks first; macOS refuses while files are open. | `shares/service.ts` |
 
 What this does not protect against:
@@ -240,7 +244,12 @@ What this does not protect against:
   any Keychain item made by a command-line tool. Turn **Remember the password** off if
   that matters to you; the share then has to be reconnected by hand.
 - **The connection itself.** SMB signing and encryption are whatever the Mac and the
-  NAS negotiate. Outpost does not change them. Over plain HTTP on a network you do not
+  NAS negotiate. Outpost does not change them. When reading a server's list of shares,
+  Outpost signs its requests if the server insists but does not check the server's own
+  signatures, so someone able to tamper with traffic on your network could alter the
+  list shown; the mount that follows is made by macOS and is not affected.
+- **Guests.** A server that lets guests in lets anyone on your network in, through
+  Outpost or without it. Over plain HTTP on a network you do not
   trust, the password can also be observed on its way from the browser to Outpost,
   like everything else (see above).
 

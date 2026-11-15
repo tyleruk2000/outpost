@@ -80,7 +80,7 @@ one.
 
 Every location has a small file at its root, `.outpost-location.json`, holding the
 location's id. Outpost records content as *(location id, path inside the location)*,
-never as an absolute path. This has three consequences:
+never as an absolute path. This has these consequences:
 
 - **A drive that comes back somewhere else is found.** If the marker is not where it
   was, Outpost looks for it inside every storage root, up to three folders deep, and
@@ -92,10 +92,45 @@ never as an absolute path. This has three consequences:
   another Outpost, or from before a database restore, it keeps its id, so records that
   refer to it line up again.
 
-Do not delete or edit the marker file.
+- **A folder outside the storage roots is not used.** The roots can change between
+  starts. A location whose recorded folder is no longer inside any of them is treated
+  like a drive that has moved: Outpost looks for its marker inside the roots and
+  carries on from there. If it is not there, the location is shown as disconnected with
+  the note that its folder is outside the folders Outpost is allowed to use
+  (`OUTPOST_STORAGE_ROOTS`). Its records are kept, and nothing is moved or deleted.
+- **Two folders with the same marker are never chosen between.** If the search finds a
+  location's marker in two places (a copy and its original, both inside the roots),
+  the location is shown as disconnected and both folders are named. Remove the copy you
+  do not want, or the marker file inside it, and choose **Check drives**. While a
+  location is where it was recorded, inside the roots, a stray copy elsewhere changes
+  nothing: the recorded folder is used and no search is made.
+
+Do not delete or edit the marker file, except to settle which of two copies is the
+real one.
 
 Locations are checked every 30 seconds (the `storage.checkIntervalSeconds` setting,
-5 to 3600) and whenever someone chooses **Check drives** on the Storage screen.
+5 to 3600), when Outpost starts, and whenever someone chooses **Check drives** on the
+Storage screen.
+
+### Moving a library to another disk or folder
+
+To move a whole storage location, as opposed to one collection or the documents (for
+those, see further down):
+
+1. Stop Outpost.
+2. Copy the location's folder to the new place, **with its marker file**
+   `.outpost-location.json` (it is a hidden file; copy the folder itself, not just what
+   you can see in it).
+3. Make sure the new place is inside a storage root. If it is not, set
+   `OUTPOST_STORAGE_ROOTS` to include it. If the old place should no longer be used,
+   leave it out of the roots, or delete or rename the old folder once you have checked
+   the copy.
+4. Start Outpost. It finds the marker at the new place and carries on from there; the
+   Storage screen shows the new path.
+
+If both the old and the new folder are inside the roots, Outpost goes on using the old
+one for as long as it is there. Take the old one out of the roots, or remove it, to
+switch over.
 
 ## What happens when a drive is unplugged
 
@@ -133,17 +168,47 @@ depends on where Outpost runs, and the screen says which applies.
 
 ### On a Mac
 
-Enter the server (its name, such as `nas.local`, or its address), the share's name, and
-the user name and password for it. File servers that announce themselves on the network
-(Bonjour) are listed so you can pick yours instead of typing its name. Outpost asks
-macOS to connect the share, the same way the Finder does. It appears under `/Volumes`,
-which is a storage root, and Outpost then offers to add it as a storage location, in a
-folder of its own on the share (`Outpost` unless you choose otherwise).
+Nothing has to be typed but a user name and a password. The dialog walks through four
+steps:
+
+1. **Server.** Pick the NAS or computer. File servers that announce themselves on the
+   network (Bonjour) are listed, and its name (`nas.local`) or address can be typed
+   instead. Network volumes that are **already connected on this Mac**, from the Finder
+   for instance, are listed first: choosing one skips straight to step 4, with no
+   password and nothing mounted again.
+2. **Sign in.** Enter the user name and password for the server, or choose **Try
+   without a password (guest)** for a server that allows guests.
+3. **Shared folder.** Outpost asks the server which shared folders that account can
+   see and lists them. Choose one and Outpost asks macOS to connect it, the way the
+   Finder does. It appears under `/Volumes`, which is a storage root.
+4. **Folder to use.** The folder browser opens on the share. A folder of its own,
+   `Outpost`, is suggested (made if it is not there, opened if it is); choose another,
+   or the top of the share, if you prefer. **Add as storage location** finishes.
+
+About the list in step 3:
+
+- Only shares that can hold files are shown. Printers, and the shares a server keeps
+  for its own running (`IPC$`, `print$`, `ADMIN$`, `C$` and the like), are left out.
+- Shares whose names end in `$` are hidden by convention. They are kept behind **Show
+  hidden shares**.
+- A share's name can always be typed instead (**Not in the list? Type its name**):
+  some servers keep shares out of the list altogether.
+- Outpost reads the list itself, over one connection to the server's checked address,
+  using SMB 2 or 3 with an NTLM sign-in. A server that insists on encryption for every
+  connection, or accepts only Kerberos, cannot be listed; the dialog says so and goes
+  on to typing the name, and connecting such a share still works, because macOS does
+  the connecting.
+- Looking at the list with a typed password is a try at that password. Wrong tries
+  are counted per server and user, across looking and connecting together: after five,
+  further tries are refused for a minute, then two, doubling up to an hour, and the
+  dialog shows the wait.
 
 - **SMB only.** That is the file sharing every NAS offers. NFS and AFP shares are not
   connected from here; mount those yourself and add the folder with **Add location**.
 - **Only servers on your own network.** The server must have a private or link-local
   address (see [security.md](security.md#network-shares)).
+- **A guest's share** has no user name or password. Outpost reconnects it by itself
+  like a share with a remembered password.
 - **The password is never kept by Outpost.** With **Remember the password** on, it is
   stored in the macOS Keychain of the account that runs Outpost (an item named
   "Outpost network share") and read back from there. With it off, nothing is kept and
@@ -167,7 +232,8 @@ found, password needed.
 
 If the share is already connected on the Mac (from the Finder, say), Outpost uses that
 connection rather than making a second one, and tells you that the password you typed
-was not checked or saved.
+was not checked or saved. A share used this way has no remembered password, so after
+it is next disconnected Outpost asks for the password to connect it again.
 
 Keychain access needs someone to be logged in at the Mac. If Outpost is started before
 anyone logs in, remembered shares stay disconnected until **Reconnect** is used with
@@ -177,7 +243,8 @@ the password.
 
 The form asks for the server, the share and the user name (or, for NFS, the exported
 folder), **not** the password, and writes out the text to use, each block with a copy
-button. They are instructions: nothing changes until you make the changes yourself.
+button. The share's name is typed here: listing a server's shares needs a sign-in, and
+this form never asks for the password. They are instructions: nothing changes until you make the changes yourself.
 What it writes has the same shape as the examples in the next section. For Docker: the
 `.env` lines, the Compose volume, and the lines for the `outpost` and `kiwix` services.
 For Linux: the credentials file, the `/etc/fstab` line and the commands to run.
