@@ -1,12 +1,19 @@
 import type { MarkdownBlock, MarkdownInline } from "@outpost/shared";
 import { render as renderBare, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
+import { ThemeProvider } from "@/lib/theme";
 import { MarkdownDocument, missingRefs, plainText, refTarget, sectionsOf } from "./document-markdown";
 
 /** Links inside Outpost are router links, so the document is drawn inside a router, as it is in the app. */
-const render = (ui: ReactElement, at = "/library/documents/01HERE") => renderBare(<MemoryRouter initialEntries={[at]}>{ui}</MemoryRouter>);
+const render = (ui: ReactElement, at = "/library/documents/01HERE") =>
+  renderBare(
+    <ThemeProvider>
+      <MemoryRouter initialEntries={[at]}>{ui}</MemoryRouter>
+    </ThemeProvider>,
+  );
 
 const words = (v: string) => [{ t: "text" as const, v }];
 const heading = (depth: number, v: string): MarkdownBlock => ({ t: "heading", depth, c: words(v) });
@@ -289,5 +296,47 @@ describe("a picture in a Markdown document", () => {
     expect(screen.getByText(/Six antennas compared\./)).toBeInTheDocument();
     expect(screen.getByText(/There is no best antenna\./)).toBeInTheDocument();
     expect(plainText([{ t: "image", alt: "Six antennas compared." }])).toBe("Six antennas compared.");
+  });
+});
+
+describe("a fenced block that describes a picture", () => {
+  it("is drawn as a signal figure when it is marked viz, with its title, caption and a larger view", async () => {
+    const source = JSON.stringify({
+      type: "wave",
+      title: "An AM signal",
+      caption: "The envelope follows the audio.",
+      traces: [{ kind: "am", freq: 24, mod: 2, label: "AM signal" }],
+    });
+    const { container } = render(<MarkdownDocument title="Modulation" blocks={[{ t: "code", lang: "viz", v: source }]} />);
+    const figure = await screen.findByRole("img", { name: "An AM signal" });
+    expect(figure.tagName.toLowerCase()).toBe("svg");
+    expect(screen.getByText("The envelope follows the audio.")).toBeInTheDocument();
+    // The JSON is not shown: it has become the picture.
+    expect(container.querySelector("pre")).toBeNull();
+    expect(screen.getByRole("region", { name: "Figure: An AM signal" })).toHaveAttribute("tabindex", "0");
+
+    await userEvent.click(screen.getByRole("button", { name: "View larger" }));
+    const dialog = screen.getByRole("dialog", { name: "An AM signal" });
+    expect(within(dialog).getByRole("img", { name: "An AM signal" })).toBeInTheDocument();
+    expect(within(dialog).getByText("150%")).toBeInTheDocument();
+    await userEvent.click(within(dialog).getByRole("button", { name: "Larger" }));
+    expect(within(dialog).getByText("200%")).toBeInTheDocument();
+  });
+
+  it("is handed to the diagram drawer when it is marked mermaid, and is otherwise only text", () => {
+    const { container } = render(
+      <MarkdownDocument
+        title="Receivers"
+        blocks={[
+          { t: "code", lang: "mermaid", v: 'flowchart LR\n  A["Antenna"] --> B["Mixer"]' },
+          { t: "code", lang: "html", v: "<script>alert(1)</script>" },
+          { t: "code", v: '{"type":"wave"}' },
+        ]}
+      />,
+    );
+    expect(screen.getByRole("img", { name: "Diagram, being drawn" })).toBeInTheDocument();
+    const blocks = [...container.querySelectorAll("pre code")].map((code) => code.textContent);
+    expect(blocks).toEqual(["<script>alert(1)</script>", '{"type":"wave"}']);
+    expect(container.querySelector("script")).toBeNull();
   });
 });

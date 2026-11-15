@@ -1,7 +1,11 @@
 import type { MarkdownBlock, MarkdownInline, MarkdownListItem, MarkdownRef } from "@outpost/shared";
-import { type ReactNode, useEffect, useRef } from "react";
+import { lazy, type ReactNode, Suspense, useEffect, useRef } from "react";
 import { Link, useLocation } from "react-router";
 import { DataTable } from "./document-table";
+import MermaidDiagram from "./figures/mermaid-diagram";
+
+// Only documents with a signal figure need the code that draws one.
+const RadioViz = lazy(() => import("./figures/radio-viz"));
 
 /** The words of a run of text, for a label or a comparison. */
 export function plainText(runs: readonly MarkdownInline[]): string {
@@ -194,6 +198,22 @@ function Block({ block }: { block: MarkdownBlock }): ReactNode {
         </blockquote>
       );
     case "code":
+      // Two kinds of fenced block describe a picture. The text of either is only ever read as a
+      // description: the diagram becomes an image, the figure is drawn from numbers and labels.
+      if (block.lang === "mermaid") return <MermaidDiagram source={block.v} />;
+      if (block.lang === "viz") {
+        return (
+          <Suspense
+            fallback={
+              <div className="doc-figure doc-figure-pending" aria-busy>
+                Drawing the figure…
+              </div>
+            }
+          >
+            <RadioViz source={block.v} />
+          </Suspense>
+        );
+      }
       return (
         <pre>
           <code>{block.v}</code>
