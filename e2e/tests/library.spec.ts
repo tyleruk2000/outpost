@@ -32,14 +32,18 @@ test.describe("documents", () => {
     await expect(page.getByRole("link", { name: /kit-list|Kit list/ }).first()).toBeVisible();
 
     // Text is read in the background; wait for both to finish.
+    // Other tests add documents to the same library, so look for these two by name.
     await expect
       .poll(
         async () =>
-          (await api(page, "GET", "/api/documents")).documents.filter((document: { extraction: string }) => document.extraction === "done")
-            .length,
+          (await api(page, "GET", "/api/documents")).documents
+            .filter((document: { originalName: string; extraction: string }) =>
+              ["Field water treatment.pdf", "kit-list.md"].includes(document.originalName),
+            )
+            .map((document: { extraction: string }) => document.extraction),
         { timeout: 20_000 },
       )
-      .toBe(2);
+      .toEqual(["done", "done"]);
 
     // Unified search finds the phrase and points at the page it is on.
     await page.goto(`/search?q=${encodeURIComponent('"chlorine dioxide"')}`);
@@ -57,6 +61,7 @@ test.describe("documents", () => {
   });
 
   test("refuses a file that is not what its name says", async ({ page }) => {
+    const before = (await api(page, "GET", "/api/documents")).total;
     await page.goto("/library");
     const chooser = page.waitForEvent("filechooser");
     await page.getByRole("button", { name: "Add documents" }).first().click();
@@ -66,7 +71,7 @@ test.describe("documents", () => {
     await expect(page.getByText(/not-really\.pdf/).first()).toBeVisible();
     await expect(page.getByText("1 not added")).toBeVisible();
     await expect(page.getByText(/is named like a PDF, but its contents are not one/)).toBeVisible();
-    expect((await api(page, "GET", "/api/documents")).total).toBe(2);
+    expect((await api(page, "GET", "/api/documents")).total).toBe(before);
   });
 
   test("serves originals in a sandbox so an uploaded page can never run script here", async ({ page }) => {
