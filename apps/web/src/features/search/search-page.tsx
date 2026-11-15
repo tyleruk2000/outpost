@@ -152,6 +152,11 @@ export default function SearchPage() {
               <span className="font-mono text-[0.8125rem] text-ink">54.4542, -3.2116</span> or <span className="font-mono text-[0.8125rem] text-ink">NY 215 072</span> opens the map there
             </li>
           </ul>
+          <p className="mt-5 text-small">
+            <Link to="/search/how-it-works" className="text-primary underline underline-offset-2">
+              See how search works, step by step
+            </Link>
+          </p>
         </EmptyState>
       ) : (
         <>
@@ -215,7 +220,10 @@ export default function SearchPage() {
               <p className="tabular mt-4 text-small text-ink-muted" aria-live="polite">
                 {plural(data.total, "result")}
                 {data.relaxed ? ". No single item had every word, so these match some of them." : ""}
-                <span className="text-ink-faint"> in {data.tookMs} ms</span>
+                <span className="text-ink-faint"> in {data.tookMs} ms. </span>
+                <Link to={`/search/how-it-works?q=${encodeURIComponent(data.query)}`} className="text-primary underline underline-offset-2">
+                  How were these found?
+                </Link>
               </p>
               {data.warnings.map((warning) => (
                 <Notice key={warning.source} tone="info" className="mt-3 max-w-[46rem]">

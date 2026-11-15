@@ -69,7 +69,9 @@ export function SemanticSection({ settings, disabled, save }: { settings: Settin
             hint={
               provider === "transformers"
                 ? "Inside Outpost, from files in the models folder of the data directory. Needs the optional @huggingface/transformers package."
-                : "A server on this device or network that speaks the OpenAI embeddings format, such as Ollama or llama.cpp."
+                : provider === "demo"
+                  ? "Built in, nothing to install. Vectors are made from word counts, so results follow shared words rather than meaning. Good for seeing how the pieces fit before setting up a real model."
+                  : "A server on this device or network that speaks the OpenAI embeddings format, such as Ollama or llama.cpp."
             }
             control={
               <Segmented
@@ -79,11 +81,12 @@ export function SemanticSection({ settings, disabled, save }: { settings: Settin
                 options={[
                   { value: "openai-compatible", label: "Local server" },
                   { value: "transformers", label: "Inside Outpost" },
+                  { value: "demo", label: "Demonstration" },
                 ]}
               />
             }
           />
-          {provider !== "transformers" ? (
+          {provider !== "transformers" && provider !== "demo" ? (
             <SettingRow
               htmlFor="semantic-endpoint"
               label="Server address"
@@ -91,12 +94,14 @@ export function SemanticSection({ settings, disabled, save }: { settings: Settin
               control={<TextSetting id="semantic-endpoint" value={settings["search.semantic.endpoint"]} disabled={disabled} onSave={(value) => save("search.semantic.endpoint", value)} mono />}
             />
           ) : null}
+          {provider === "demo" ? null : (
           <SettingRow
             htmlFor="semantic-model"
             label="Model"
             hint={provider === "transformers" ? "Folder name under models/, for example Xenova/all-MiniLM-L6-v2" : "The name the server knows it by, for example nomic-embed-text"}
             control={<TextSetting id="semantic-model" value={settings["search.semantic.model"]} disabled={disabled} onSave={(value) => save("search.semantic.model", value)} mono />}
           />
+          )}
 
           {status.isPending ? null : provider === "none" ? (
             <Notice tone="info">Choose where the model runs to continue.</Notice>

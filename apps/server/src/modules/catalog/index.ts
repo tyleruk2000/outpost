@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
+import { registerDocumentBridge } from "./documents-bridge.ts";
 import { createCatalogService } from "./service.ts";
 
 export type { CatalogService, CatalogServiceOptions, DownloadResolution } from "./service.ts";
@@ -33,6 +34,8 @@ export async function registerCatalog(app: FastifyInstance, ctx: AppContext): Pr
       ctx.log.warn({ err: error, collection: old.id }, "the replaced version could not be removed");
     }
   });
+
+  registerDocumentBridge(ctx);
 
   app.get("/api/catalog", async () => service.list());
 
