@@ -471,7 +471,7 @@ describe("refreshing from the Kiwix library", () => {
     expect(server.requests.length).toBe(before);
   });
 
-  it("refreshes through the API, for administrators", async () => {
+  it("refreshes through the API", async () => {
     app = await createTestApp();
     const server = await fileServer();
     server.routes.set("/guide.pdf", { body: testBytes(12_345) });

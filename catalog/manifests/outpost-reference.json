@@ -1,0 +1,251 @@
+{
+  "$schema": "../schema/manifest.schema.json",
+  "schemaVersion": 1,
+  "id": "outpost-reference",
+  "name": "Included with Outpost",
+  "description": "Reference sheets written for Outpost and shipped with it. Adding one copies it into the document library; nothing is downloaded.",
+  "maintainers": ["Outpost maintainers"],
+  "downloadHosts": [],
+  "entries": [
+    {
+      "id": "outpost.radio.uk-amateur-bands",
+      "name": "Amateur radio bands in the United Kingdom",
+      "description": "Every band in the Ofcom amateur radio licence, with status and power limits for the Foundation, Intermediate and Full licences, the 5 MHz segments, and the usual calling frequencies.",
+      "category": "radio",
+      "publisher": "Outpost",
+      "language": "en",
+      "format": "markdown",
+      "license": "MIT",
+      "licenseNote": "An original compilation of facts from the official sources listed at the end of the sheet, checked on the date shown there. It is not an official document and not legal advice: rules change, so confirm with the source before relying on a figure.",
+      "attribution": "Compiled for Outpost from the regulators and bodies named in the sheet's list of sources.",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "ham radio",
+        "amateur radio",
+        "Ofcom",
+        "UK",
+        "band plan",
+        "frequencies",
+        "Foundation",
+        "Intermediate",
+        "Full licence",
+        "145.500 MHz"
+      ],
+      "source": {
+        "type": "bundled",
+        "file": "radio/uk-amateur-bands.md",
+        "version": "2026-11-15",
+        "published": "2026-11-15"
+      }
+    },
+    {
+      "id": "outpost.radio.us-amateur-bands",
+      "name": "Amateur radio bands in the United States",
+      "description": "FCC Part 97 bands for Technician, General, Advanced and Amateur Extra licences, with the mode sub-bands, the 60 metre channels and the power limits.",
+      "category": "radio",
+      "publisher": "Outpost",
+      "language": "en",
+      "format": "markdown",
+      "license": "MIT",
+      "licenseNote": "An original compilation of facts from the official sources listed at the end of the sheet, checked on the date shown there. It is not an official document and not legal advice: rules change, so confirm with the source before relying on a figure.",
+      "attribution": "Compiled for Outpost from the regulators and bodies named in the sheet's list of sources.",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "ham radio",
+        "amateur radio",
+        "FCC",
+        "Part 97",
+        "United States",
+        "band plan",
+        "frequencies",
+        "Technician",
+        "General",
+        "Extra",
+        "146.520 MHz"
+      ],
+      "source": {
+        "type": "bundled",
+        "file": "radio/us-amateur-bands.md",
+        "version": "2026-11-15",
+        "published": "2026-11-15"
+      }
+    },
+    {
+      "id": "outpost.radio.world-amateur-bands",
+      "name": "Amateur radio bands worldwide",
+      "description": "The three ITU and IARU regions, the international amateur allocations from 135 kHz to 1300 MHz, where the regions differ, and the UK and United States side by side.",
+      "category": "radio",
+      "publisher": "Outpost",
+      "language": "en",
+      "format": "markdown",
+      "license": "MIT",
+      "licenseNote": "An original compilation of facts from the official sources listed at the end of the sheet, checked on the date shown there. It is not an official document and not legal advice: rules change, so confirm with the source before relying on a figure.",
+      "attribution": "Compiled for Outpost from the regulators and bodies named in the sheet's list of sources.",
+      "lastVerified": "2026-11-15",
+      "tags": ["ham radio", "amateur radio", "ITU regions", "IARU", "band plan", "frequencies", "international"],
+      "source": {
+        "type": "bundled",
+        "file": "radio/world-amateur-bands.md",
+        "version": "2026-11-15",
+        "published": "2026-11-15"
+      }
+    },
+    {
+      "id": "outpost.radio.repeaters-data-space",
+      "name": "Repeaters, data modes and space: band-plan frequencies",
+      "description": "Where the IARU band plans put repeaters and their shifts on 2 metres, APRS, FT8 and WSPR, and the HF data segments, with the International Space Station's amateur radio frequencies from ARISS.",
+      "category": "radio",
+      "publisher": "Outpost",
+      "language": "en",
+      "format": "markdown",
+      "license": "MIT",
+      "licenseNote": "An original compilation of facts from the official sources listed at the end of the sheet, checked on the date shown there. It is not an official document and not legal advice: rules change, so confirm with the source before relying on a figure.",
+      "attribution": "Compiled for Outpost from the regulators and bodies named in the sheet's list of sources.",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "repeater",
+        "repeater shift",
+        "APRS",
+        "FT8",
+        "WSPR",
+        "packet",
+        "ISS",
+        "ARISS",
+        "satellite",
+        "144.800 MHz",
+        "144.390 MHz",
+        "145.800 MHz",
+        "ham radio",
+        "amateur radio"
+      ],
+      "source": {
+        "type": "bundled",
+        "file": "radio/repeaters-data-space.md",
+        "version": "2026-11-15",
+        "published": "2026-11-15"
+      }
+    },
+    {
+      "id": "outpost.radio.licence-free-radio",
+      "name": "Radio you can use without an amateur licence",
+      "description": "PMR446 and CB in the UK and Europe; FRS, GMRS, MURS and CB in the United States: every channel and frequency, the power limits, and which services need a licence.",
+      "category": "radio",
+      "publisher": "Outpost",
+      "language": "en",
+      "format": "markdown",
+      "license": "MIT",
+      "licenseNote": "An original compilation of facts from the official sources listed at the end of the sheet, checked on the date shown there. It is not an official document and not legal advice: rules change, so confirm with the source before relying on a figure.",
+      "attribution": "Compiled for Outpost from the regulators and bodies named in the sheet's list of sources.",
+      "lastVerified": "2026-11-15",
+      "tags": ["PMR446", "CB radio", "FRS", "GMRS", "MURS", "walkie-talkie", "licence-exempt", "channels", "frequencies", "Ofcom", "FCC"],
+      "source": {
+        "type": "bundled",
+        "file": "radio/licence-free-radio.md",
+        "version": "2026-11-15",
+        "published": "2026-11-15"
+      }
+    },
+    {
+      "id": "outpost.radio.emergency-frequencies",
+      "name": "Emergency, distress and calling frequencies",
+      "description": "Marine and aeronautical distress frequencies, 406 MHz beacons, amateur calling frequencies and emergency centres of activity, with who may transmit on each and what the regulators say about emergencies.",
+      "category": "radio",
+      "publisher": "Outpost",
+      "language": "en",
+      "format": "markdown",
+      "license": "MIT",
+      "licenseNote": "An original compilation of facts from the official sources listed at the end of the sheet, checked on the date shown there. It is not an official document and not legal advice: rules change, so confirm with the source before relying on a figure.",
+      "attribution": "Compiled for Outpost from the regulators and bodies named in the sheet's list of sources.",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "distress",
+        "emergency",
+        "channel 16",
+        "DSC",
+        "121.5 MHz",
+        "406 MHz",
+        "calling frequency",
+        "marine VHF",
+        "amateur radio",
+        "frequencies"
+      ],
+      "source": {
+        "type": "bundled",
+        "file": "radio/emergency-frequencies.md",
+        "version": "2026-11-15",
+        "published": "2026-11-15"
+      }
+    },
+    {
+      "id": "outpost.radio.broadcasts-weather-time",
+      "name": "Weather, shipping and time signal broadcasts",
+      "description": "NOAA Weather Radio channels, the time stations WWV, WWVH, WWVB, MSF and DCF77, and the UK's Shipping Forecast, Coastguard and NAVTEX broadcasts as they stood when checked.",
+      "category": "radio",
+      "publisher": "Outpost",
+      "language": "en",
+      "format": "markdown",
+      "license": "MIT",
+      "licenseNote": "An original compilation of facts from the official sources listed at the end of the sheet, checked on the date shown there. It is not an official document and not legal advice: rules change, so confirm with the source before relying on a figure.",
+      "attribution": "Compiled for Outpost from the regulators and bodies named in the sheet's list of sources.",
+      "lastVerified": "2026-11-15",
+      "tags": [
+        "NOAA Weather Radio",
+        "WWV",
+        "MSF",
+        "DCF77",
+        "time signal",
+        "Shipping Forecast",
+        "NAVTEX",
+        "weather",
+        "Coastguard",
+        "frequencies"
+      ],
+      "source": {
+        "type": "bundled",
+        "file": "radio/broadcasts-weather-time.md",
+        "version": "2026-11-15",
+        "published": "2026-11-15"
+      }
+    },
+    {
+      "id": "outpost.radio.preparedness-conventions",
+      "name": "Preparedness radio channel conventions",
+      "description": "The unofficial conventions preparedness groups cite, such as the 3-3-3 plan, channel 3 and the Wilderness Protocol: where each comes from, what it says, and why none is a standard or has a guaranteed listener.",
+      "category": "radio",
+      "publisher": "Outpost",
+      "language": "en",
+      "format": "markdown",
+      "license": "MIT",
+      "licenseNote": "An original compilation of facts from the official sources listed at the end of the sheet, checked on the date shown there. It is not an official document and not legal advice: rules change, so confirm with the source before relying on a figure.",
+      "attribution": "Compiled for Outpost from the regulators and bodies named in the sheet's list of sources.",
+      "lastVerified": "2026-11-15",
+      "tags": ["prepper", "preparedness", "3-3-3", "channel 3", "Wilderness Protocol", "CB radio", "FRS", "PMR446"],
+      "source": {
+        "type": "bundled",
+        "file": "radio/preparedness-conventions.md",
+        "version": "2026-11-15",
+        "published": "2026-11-15"
+      }
+    },
+    {
+      "id": "outpost.radio.operating-reference",
+      "name": "Radio operating reference",
+      "description": "The phonetic alphabet, Morse code, the Q code, RST signal reports, band names and frequency-to-wavelength conversion, each from the body that publishes it.",
+      "category": "radio",
+      "publisher": "Outpost",
+      "language": "en",
+      "format": "markdown",
+      "license": "MIT",
+      "licenseNote": "An original compilation of facts from the official sources listed at the end of the sheet, checked on the date shown there. It is not an official document and not legal advice: rules change, so confirm with the source before relying on a figure. The RST tables are taken from the IARU's Ethics and Operating Procedures for the Radio Amateur (4th edition), which is licensed CC BY-SA 4.0.",
+      "attribution": "Compiled for Outpost from the regulators and bodies named in the sheet's list of sources.",
+      "lastVerified": "2026-11-15",
+      "tags": ["phonetic alphabet", "Morse code", "Q code", "RST", "signal report", "wavelength", "UTC", "ham radio", "amateur radio"],
+      "source": {
+        "type": "bundled",
+        "file": "radio/operating-reference.md",
+        "version": "2026-11-15",
+        "published": "2026-11-15"
+      }
+    }
+  ]
+}

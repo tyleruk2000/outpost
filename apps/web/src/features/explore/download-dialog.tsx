@@ -1,8 +1,15 @@
-import { type CatalogDownloadResponse, type CatalogEntryDto, type DownloadsResponse, formatBytes } from "@outpost/shared";
+import {
+  type CatalogAddResponse,
+  type CatalogDownloadResponse,
+  type CatalogEntryDto,
+  type DownloadsResponse,
+  formatBytes,
+} from "@outpost/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CircleAlert, WifiOff } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { Link } from "react-router";
+import { toast } from "sonner";
 import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
@@ -11,7 +18,7 @@ import { ApiError, api, errorMessage } from "@/lib/api";
 import { useStorage } from "@/lib/queries";
 import { LocationPicker, locationProblem, preferredLocation } from "../downloads/location-picker";
 import { downloadsKey } from "../downloads/use-downloads";
-import { publishedDate, sizeText } from "./catalog";
+import { isIncluded, publishedDate, sizeText } from "./catalog";
 
 function Fact({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -53,6 +60,9 @@ function StartError({ error, locationName }: { error: unknown; locationName: str
 type Replaces = "nothing" | "older" | "missing";
 
 const verbs: Record<Replaces, string> = { nothing: "Download", older: "Update", missing: "Download again" };
+/** The same steps for an entry that ships with Outpost, where nothing is downloaded. */
+const includedVerbs: Record<Replaces, string> = { nothing: "Add to library", older: "Update", missing: "Add again" };
+const verbFor = (entry: CatalogEntryDto, replaces: Replaces) => (isIncluded(entry) ? includedVerbs : verbs)[replaces];
 
 function DownloadForm({
   entry,
@@ -69,11 +79,24 @@ function DownloadForm({
   const storage = useStorage();
   const [chosen, setChosen] = useState<string>();
   const isUpdate = replaces === "older";
+  const included = isIncluded(entry);
 
   const start = useMutation({
     mutationFn: (locationId: string) =>
-      api.post<CatalogDownloadResponse>(`/api/catalog/entries/${encodeURIComponent(entry.id)}/download`, { locationId }),
+      api.post<CatalogDownloadResponse | CatalogAddResponse>(
+        `/api/catalog/entries/${encodeURIComponent(entry.id)}/${included ? "add" : "download"}`,
+        { locationId },
+      ),
     onSuccess: (response) => {
+      if (!("download" in response)) {
+        // Copied from Outpost's own files: it is in the library already, with no download to follow.
+        toast.success(`“${entry.name}” is in your library`);
+        void client.invalidateQueries({ queryKey: ["catalog"] });
+        void client.invalidateQueries({ queryKey: ["collections"] });
+        void client.invalidateQueries({ queryKey: ["documents"] });
+        onClose();
+        return;
+      }
       client.setQueryData<DownloadsResponse>(downloadsKey, (current) =>
         current ? { downloads: [response.download, ...current.downloads.filter((item) => item.id !== response.download.id)] } : current,
       );
@@ -161,7 +184,12 @@ function DownloadForm({
           )}
         </div>
 
-        {isUpdate ? (
+        {included ? (
+          <p className="text-small text-ink">
+            This is included with Outpost, so nothing is downloaded.
+            {isUpdate ? " The edition in your library is replaced by the newer one, and its file is removed." : ""}
+          </p>
+        ) : isUpdate ? (
           <p className="text-small text-ink">
             The version installed now stays in place and readable while the new one downloads. It is removed, with its file, only after the
             new version has been checked and installed.
@@ -202,7 +230,7 @@ function DownloadForm({
       <DialogFooter>
         <Button onClick={onClose}>Cancel</Button>
         <Button type="submit" variant="primary" loading={start.isPending} disabled={!selected}>
-          {verbs[replaces]}
+          {verbFor(entry, replaces)}
         </Button>
       </DialogFooter>
     </form>
@@ -232,7 +260,14 @@ export function DownloadDialog({
   const standsFor = replaces ?? (entry.status === "installed" ? "older" : "nothing");
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent title={`${verbs[standsFor]} “${entry.name}”`} description={`${entry.publisher}. ${entry.description}`}>
+      <DialogContent
+        title={
+          isIncluded(entry) && standsFor === "nothing"
+            ? `Add “${entry.name}” to the library`
+            : `${verbFor(entry, standsFor)} “${entry.name}”`
+        }
+        description={`${entry.publisher}. ${entry.description}`}
+      >
         {/* A fresh form each time, so an old error or choice never carries over. */}
         {open ? (
           <DownloadForm key={entry.id} entry={entry} replaces={standsFor} onClose={() => onOpenChange(false)} onStarted={onStarted} />

@@ -1,15 +1,20 @@
-import { CATALOG_CATEGORIES, type CatalogEntryDto, type CatalogRefreshSummary, type CatalogResponse } from "@outpost/shared";
+import {
+  CATALOG_CATEGORIES,
+  type CatalogAddResponse,
+  type CatalogEntryDto,
+  type CatalogRefreshSummary,
+  type CatalogResponse,
+} from "@outpost/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CircleAlert, RefreshCw, Search, WifiOff, X } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { EmptyState, ErrorState, Notice, Page, PageHeader } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Segmented, Select, Skeleton } from "@/components/ui/misc";
 import { ApiError, api, errorMessage } from "@/lib/api";
-import { useIsAdmin } from "@/lib/queries";
 import { plural, timeAgo } from "@/lib/utils";
 import { useDownloads } from "../downloads/use-downloads";
 import { type CategoryChoice, countByCategory, filterEntries, type ShowFilter, type SortOrder, sortEntries } from "./catalog";
@@ -20,6 +25,7 @@ import { useCatalog } from "./use-catalog";
 
 const showOptions: Array<{ value: ShowFilter; label: string }> = [
   { value: "all", label: "All" },
+  { value: "included", label: "Included" },
   { value: "installed", label: "Installed" },
   { value: "not_installed", label: "Not installed" },
 ];
@@ -110,8 +116,8 @@ function LoadingCatalogue() {
 export default function ExplorePage() {
   const catalog = useCatalog();
   const downloads = useDownloads();
-  const isAdmin = useIsAdmin();
   const client = useQueryClient();
+  const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const [query, setQuery] = useState("");
   const [show, setShow] = useState<ShowFilter>("all");
@@ -124,6 +130,22 @@ export default function ExplorePage() {
       toast.success("Catalogue refreshed", { description: refreshSummary(summary) });
       return client.invalidateQueries({ queryKey: ["catalog"] });
     },
+  });
+
+  // Entries that ship with Outpost are copied into the library there and then: no network, nothing to confirm.
+  const add = useMutation({
+    mutationFn: (entry: CatalogEntryDto) => api.post<CatalogAddResponse>(`/api/catalog/entries/${encodeURIComponent(entry.id)}/add`),
+    onSuccess: (response, entry) => {
+      const target = response.documentId ? `/library/documents/${response.documentId}` : `/library/collections/${response.collectionId}`;
+      toast.success(`“${entry.name}” is in your library`, {
+        description: "It is stored on this server and its text is searchable.",
+        action: { label: "Open", onClick: () => navigate(target) },
+      });
+      void client.invalidateQueries({ queryKey: ["documents"] });
+      void client.invalidateQueries({ queryKey: ["collections"] });
+      return client.invalidateQueries({ queryKey: ["catalog"] });
+    },
+    onError: (error, entry) => toast.error(`“${entry.name}” could not be added`, { description: errorMessage(error) }),
   });
 
   const entries = catalog.data?.entries ?? [];
@@ -179,10 +201,11 @@ export default function ExplorePage() {
       key={entry.id}
       entry={entry}
       download={entry.downloadId ? downloadById.get(entry.downloadId) : undefined}
-      isAdmin={isAdmin}
+      adding={add.isPending && add.variables?.id === entry.id}
       marked={entry.id === markedId}
       categoryLabel={category === "all" && !grouped ? labelOf(entry.category) : undefined}
       onDownload={(chosen) => setDownloading({ entry: chosen, open: true })}
+      onAdd={(chosen) => add.mutate(chosen)}
     />
   );
 
@@ -193,15 +216,13 @@ export default function ExplorePage() {
     <Page>
       <PageHeader
         title="Explore"
-        description="Reference collections you can keep on this server and read without a connection. Choose them one at a time; each shows its real size before anything is fetched."
+        description="Reference collections you can keep on this server and read without a connection. Choose them one at a time; each shows its real size before anything is fetched. A few reference sheets are included with Outpost and need no download."
         actions={
           catalog.data ? (
             <div className="flex flex-col gap-1.5 md:items-end">
-              {isAdmin ? (
-                <Button onClick={() => refresh.mutate()} loading={refresh.isPending}>
-                  {refresh.isPending ? null : <RefreshCw />} Refresh catalogue
-                </Button>
-              ) : null}
+              <Button onClick={() => refresh.mutate()} loading={refresh.isPending}>
+                {refresh.isPending ? null : <RefreshCw />} Refresh catalogue
+              </Button>
               <p className="text-small text-ink-muted">
                 {lastRefreshed
                   ? `Sizes and versions checked ${timeAgo(lastRefreshed)}`
@@ -247,12 +268,6 @@ export default function ExplorePage() {
                 <Select aria-label="Sort" value={sort} onChange={setSort} options={sortOptions} className="md:w-40" />
               </div>
             </div>
-
-            {isAdmin ? null : (
-              <p className="mt-3 text-small text-ink-muted">
-                You can browse the catalogue and open what is installed. Downloading is done by an administrator.
-              </p>
-            )}
 
             {filtered && !emptyMapsCategory && shown.length > 0 ? (
               <p className="mt-3 text-small text-ink-muted" role="status">
@@ -303,7 +318,14 @@ export default function ExplorePage() {
                   <>
                     No collection{category === "all" ? "" : ` in “${labelOf(category)}”`} fits{" "}
                     {query.trim() ? `“${query.trim()}”` : "this filter"}
-                    {show === "installed" ? " among those installed" : show === "not_installed" ? " among those not installed" : ""}.
+                    {show === "installed"
+                      ? " among those installed"
+                      : show === "not_installed"
+                        ? " among those not installed"
+                        : show === "included"
+                          ? " among those included with Outpost"
+                          : ""}
+                    .
                     {category !== "all" && (counts.all ?? 0) > 0
                       ? ` ${plural(counts.all ?? 0, "match", "matches")} in other categories.`
                       : ""}
@@ -326,7 +348,7 @@ export default function ExplorePage() {
               ))
             )}
 
-            {isAdmin && catalog.data.problems.length > 0 ? <ProblemsNote problems={catalog.data.problems} /> : null}
+            {catalog.data.problems.length > 0 ? <ProblemsNote problems={catalog.data.problems} /> : null}
           </div>
         </div>
       )}

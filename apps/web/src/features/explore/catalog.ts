@@ -2,7 +2,7 @@
 import { type CatalogCategorySlug, type CatalogEntryDto, formatBytes } from "@outpost/shared";
 import { formatDate } from "@/lib/utils";
 
-export type ShowFilter = "all" | "installed" | "not_installed";
+export type ShowFilter = "all" | "included" | "installed" | "not_installed";
 export type SortOrder = "name" | "smallest" | "largest";
 
 export interface CatalogFilter {
@@ -20,8 +20,12 @@ export function matchesQuery(entry: Searchable, query: string): boolean {
   return words.every((word) => text.includes(word));
 }
 
-export function filterEntries<T extends Searchable & Pick<CatalogEntryDto, "status">>(entries: T[], filter: CatalogFilter): T[] {
+/** An entry whose file ships with Outpost: adding it copies the file, and nothing is downloaded. */
+export const isIncluded = (entry: Pick<CatalogEntryDto, "source">): boolean => entry.source.type === "bundled";
+
+export function filterEntries<T extends Searchable & Pick<CatalogEntryDto, "status" | "source">>(entries: T[], filter: CatalogFilter): T[] {
   return entries.filter((entry) => {
+    if (filter.show === "included" && !isIncluded(entry)) return false;
     if (filter.show === "installed" && entry.status !== "installed") return false;
     if (filter.show === "not_installed" && entry.status === "installed") return false;
     return matchesQuery(entry, filter.query);
@@ -93,6 +97,8 @@ export function formatLabel(format: CatalogEntryDto["format"]): string | null {
       return "EPUB book";
     case "html":
       return "Web page";
+    case "markdown":
+      return "Text document";
     case "other":
       return "File";
     default:
@@ -131,7 +137,7 @@ export function entrySituation(entry: Pick<CatalogEntryDto, "status" | "updateAv
   }
 }
 
-export type EntryActionKind = "download" | "update" | "open" | "retry" | "manage" | "none";
+export type EntryActionKind = "download" | "add" | "update" | "open" | "retry" | "manage" | "none";
 
 export interface EntryAction {
   kind: EntryActionKind;
@@ -139,22 +145,30 @@ export interface EntryAction {
   label: string | null;
 }
 
-/** Members can browse and open; only administrators start, retry or update downloads. */
-export function entryAction(situation: EntrySituation, isAdmin: boolean): EntryAction {
+/** The one thing to do next. An entry that ships with Outpost is added, not downloaded. */
+export function entryAction(situation: EntrySituation, included = false): EntryAction {
   switch (situation) {
     case "available":
-      return isAdmin ? { kind: "download", label: "Download" } : { kind: "none", label: null };
+      return included ? { kind: "add", label: "Add to library" } : { kind: "download", label: "Download" };
     case "update":
-      return isAdmin ? { kind: "update", label: "Update" } : { kind: "open", label: "Open" };
+      return { kind: "update", label: "Update" };
     case "installed":
       return { kind: "open", label: "Open" };
     case "failed":
-      return isAdmin ? { kind: "retry", label: "Retry" } : { kind: "none", label: null };
+      return { kind: "retry", label: "Retry" };
     case "queued":
     case "downloading":
     case "paused":
-      return isAdmin ? { kind: "manage", label: null } : { kind: "none", label: null };
+      return { kind: "manage", label: null };
     case "unavailable":
       return { kind: "none", label: null };
   }
+}
+
+/**
+ * Where "Open" leads. A sheet that ships with Outpost opens as the document it became;
+ * everything else opens its collection page, where it is read, checked and managed.
+ */
+export function openTarget(entry: Pick<CatalogEntryDto, "source" | "documentId" | "collectionId">): string {
+  return isIncluded(entry) && entry.documentId ? `/library/documents/${entry.documentId}` : `/library/collections/${entry.collectionId}`;
 }

@@ -1,0 +1,170 @@
+{
+  "schemaVersion": 1,
+  "packs": [
+    {
+      "id": "first-things",
+      "name": "First things",
+      "description": "The small set to fetch before anything else: what to have in the house, first aid, safe water, finding your way and the knots worth knowing. Small enough for a phone connection.",
+      "entries": [
+        "ready.emergency-supply-list",
+        "ready.are-you-ready-guide",
+        "ready.hazard-information-sheets",
+        "who.basic-emergency-care",
+        "uiaa.medcom-6-water-disinfection-in-the-mountains",
+        "kiwix.zimgit-water-en",
+        "kiwix.nhs.uk-en-medicines",
+        "usgs.finding-your-way-with-map-and-compass",
+        "kiwix.wikipedia-en-knots-maxi"
+      ]
+    },
+    {
+      "id": "home-preparedness",
+      "name": "Home preparedness",
+      "description": "For a household riding out a power cut, a storm or a longer disruption: official guidance on hazards, a post-disaster library, medicine, keeping food and making water safe.",
+      "entries": [
+        "ready.emergency-supply-list",
+        "ready.are-you-ready-guide",
+        "ready.hazard-information-sheets",
+        "ready.disaster-preparedness-guide-for-older-adults",
+        "nws.winter-storms-the-deceptive-killers",
+        "nws.thunderstorms-tornadoes-lightning",
+        "kiwix.zimgit-post-disaster-en",
+        "kiwix.zimgit-water-en",
+        "who.guidelines-for-drinking-water-quality",
+        "kiwix.zimgit-food-preparation-en",
+        "kiwix.usda-2015-en",
+        "kiwix.zimgit-medicine-en",
+        "who.basic-emergency-care",
+        "kiwix.nhs.uk-en-medicines",
+        "kiwix.wikipedia-en-medicine-mini"
+      ]
+    },
+    {
+      "id": "field-medicine",
+      "name": "Medicine and first aid",
+      "description": "Reference for when a doctor is a long way off: emergency care, children, childbirth, essential medicines, altitude illness, and a medical encyclopedia to look things up in.",
+      "entries": [
+        "who.basic-emergency-care",
+        "who.pocket-book-primary-health-care-children-adolescents",
+        "who.managing-complications-pregnancy-childbirth",
+        "who.model-list-of-essential-medicines-2023",
+        "uiaa.medcom-2-altitude-sickness-field-management",
+        "kiwix.nhs.uk-en-medicines",
+        "kiwix.irp.fas.org-en-military-medicine",
+        "kiwix.zimgit-medicine-en",
+        "kiwix.wikipedia-en-medicine-mini"
+      ]
+    },
+    {
+      "id": "food-and-growing",
+      "name": "Food and growing",
+      "description": "Growing vegetables, composting, and keeping what you grow: canning, preserving and plain recipes.",
+      "entries": [
+        "kiwix.usda-2015-en",
+        "kiwix.zimgit-food-preparation-en",
+        "kiwix.publicdomainrecipes.com-en-all",
+        "kiwix.cooking.stackexchange.com-en-all",
+        "fao.a-vegetable-garden-for-all",
+        "fao.farmers-compost-handbook",
+        "fao.small-scale-aquaponic-food-production",
+        "kiwix.gardenology-en-all",
+        "kiwix.sustainability.stackexchange.com-en-all"
+      ]
+    },
+    {
+      "id": "outdoors",
+      "name": "Hills and navigation",
+      "description": "For walking, camping and the mountains: map and compass, map symbols, weather signs, knots, water, altitude, and answers from people who spend their time outside. Pair it with a map region from the Maps screen.",
+      "entries": [
+        "usgs.finding-your-way-with-map-and-compass",
+        "usgs.topographic-map-symbols",
+        "nws.cloud-chart",
+        "nws.weather-spotters-field-guide",
+        "kiwix.wikipedia-en-knots-maxi",
+        "kiwix.zimgit-knots-en",
+        "kiwix.scoutwiki.org-en-all-maxi",
+        "uiaa.medcom-6-water-disinfection-in-the-mountains",
+        "uiaa.medcom-2-altitude-sickness-field-management",
+        "kiwix.zimgit-water-en",
+        "kiwix.outdoors.stackexchange.com-en-all"
+      ]
+    },
+    {
+      "id": "radio",
+      "name": "Radio",
+      "description": "For listening and for licensed operating: questions and answers from amateur radio operators, signal processing, and marine weather fax schedules.",
+      "entries": [
+        "kiwix.ham.stackexchange.com-en-all",
+        "kiwix.dsp.stackexchange.com-en-all",
+        "nws.worldwide-marine-radiofacsimile-broadcast-schedules"
+      ]
+    },
+    {
+      "id": "repair",
+      "name": "Repair and making",
+      "description": "Keeping things working: community repair guides, vehicles, bicycles, electronics with Arduino, 3D printing, and how fasteners are chosen.",
+      "entries": [
+        "kiwix.restarters-en-all-maxi",
+        "kiwix.mechanics.stackexchange.com-en-all",
+        "kiwix.bicycles.stackexchange.com-en-all",
+        "kiwix.arduino.stackexchange.com-en-all",
+        "kiwix.3dprinting.stackexchange.com-en-all",
+        "kiwix.engineering.stackexchange.com-en-all",
+        "nasa.fastener-design-manual"
+      ]
+    },
+    {
+      "id": "general-reference",
+      "name": "General reference",
+      "description": "A compact shelf for looking things up: the most-read Wikipedia articles, a dictionary, a travel guide to the world, and country facts.",
+      "entries": [
+        "kiwix.wikipedia-en-top-mini",
+        "kiwix.wiktionary-en-simple-all-nopic",
+        "kiwix.wikivoyage-en-all-nopic",
+        "kiwix.theworldfactbook-en-all"
+      ]
+    },
+    {
+      "id": "schoolroom",
+      "name": "Schoolroom",
+      "description": "For learning with no connection: a children's encyclopedia, Wikipedia in simple English, interactive science simulations, and college textbooks in maths, physics, chemistry and biology.",
+      "entries": [
+        "kiwix.vikidia-en-all-maxi",
+        "kiwix.wikipedia-en-simple-all-mini",
+        "kiwix.phet-en-all",
+        "openstax.precalculus-2e",
+        "openstax.introductory-statistics-2e",
+        "openstax.college-physics-2e",
+        "openstax.chemistry-2e",
+        "openstax.biology-2e"
+      ]
+    },
+    {
+      "id": "offline-developer",
+      "name": "Programming without the internet",
+      "description": "Language and tool documentation, the Linux manual pages, the ArchWiki and freeCodeCamp's courses. All of it together is small.",
+      "entries": [
+        "kiwix.devdocs-en-python",
+        "kiwix.devdocs-en-javascript",
+        "kiwix.devdocs-en-typescript",
+        "kiwix.devdocs-en-node",
+        "kiwix.devdocs-en-html",
+        "kiwix.devdocs-en-css",
+        "kiwix.devdocs-en-dom",
+        "kiwix.devdocs-en-http",
+        "kiwix.devdocs-en-bash",
+        "kiwix.devdocs-en-git",
+        "kiwix.devdocs-en-man",
+        "kiwix.devdocs-en-c",
+        "kiwix.devdocs-en-cpp",
+        "kiwix.devdocs-en-go",
+        "kiwix.devdocs-en-rust",
+        "kiwix.devdocs-en-docker",
+        "kiwix.devdocs-en-postgresql",
+        "kiwix.devdocs-en-sqlite",
+        "kiwix.freecodecamp-en-all",
+        "kiwix.archlinux-en-all-maxi"
+      ]
+    }
+  ]
+}

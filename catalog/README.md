@@ -1,19 +1,21 @@
 # The Outpost catalogue
 
 This folder holds the catalogue that Explore shows: lists of freely available content
-that Outpost can download on request. A manifest describes content and says where it
-comes from. It never contains the content itself, and nothing is fetched until a
-person asks for it.
+that Outpost can download on request, and a few reference sheets that ship with
+Outpost. A manifest describes content and says where it comes from. It never contains
+the content itself, and nothing is fetched until a person asks for it.
 
 ```
 catalog/
   manifests/                 one JSON file per manifest
+  bundled/                   files that ship with Outpost (its own reference sheets)
   schema/manifest.schema.json   the format, generated from the server's code
 ```
 
 People running Outpost can add their own manifests, in the same format, to
-`<data directory>/catalog/`. Manifests shipped here are read first, so a later file
-cannot replace one of their entries.
+`<data directory>/catalog/`, with any files of their own that those manifests bundle
+in `<data directory>/catalog/bundled/`. Manifests shipped here are read first, so a
+later file cannot replace one of their entries.
 
 ## The format
 
@@ -53,9 +55,10 @@ your editor at it with `"$schema": "../schema/manifest.schema.json"`.
   `reference`, `maps`.
 - `sizeBytes` is an estimate shown until Outpost has asked the source for the real size.
 - `downloadHosts` lists every host the first request for an entry may go to. Outpost
-  refuses to contact any host that no manifest lists.
+  refuses to contact any host that no manifest lists. It may be empty when every entry
+  in the manifest ships with Outpost.
 
-There are two kinds of `source`:
+There are three kinds of `source`:
 
 - `{ "type": "kiwix", "name": "...", "flavour": "..." }` names a book in the
   [Kiwix library](https://library.kiwix.org). `flavour` is `maxi`, `nopic`, `mini` or
@@ -69,6 +72,15 @@ There are two kinds of `source`:
   altered file from a good one; with both, a catalogue refresh takes the details from
   the manifest and never contacts the publisher. Entries shipped in this repository
   must have both.
+- `{ "type": "bundled", "file": "radio/uk-amateur-bands.md", "version": "2026-11-15" }`
+  names a file in the `bundled` folder beside the manifests: a path of lower-case names
+  joined by `/`. Explore shows the entry as "Included with Outpost", and adding it copies
+  the file into the document library, where it is indexed and opened like any other
+  document. No network is involved, so it works offline. The file must be Markdown, PDF,
+  EPUB or HTML, and `format` must say which (`markdown`, `pdf`, `epub`, `html`). Give a
+  `version` (the day the file was last checked is a good one): when a later release
+  ships a corrected file under a higher version, people who added the old one are
+  offered the update. The shipped file is never changed or moved by adding it.
 
 ## Rules for entries
 
@@ -78,7 +90,12 @@ There are two kinds of `source`:
 2. **State the licence honestly.** Write the licence you have checked at the source.
    If you have not been able to check it, write `"license": "See source"` and add a
    `licenseNote` saying so. Do not guess.
-3. **No bundled content.** Manifests carry descriptions and sources, never the content.
+3. **No one else's content in this repository.** Manifests carry descriptions and
+   sources, never the content. The only files in `bundled/` are sheets written for
+   Outpost itself: original compilations of facts, each ending with the date it was
+   checked, its sources with their addresses, and what it does not cover. Do not put a
+   copy of a publisher's document there, whatever its licence; list it with an `http`
+   source instead.
 4. **Describe plainly.** Say what a person gets. Where a book comes in several
    editions, each edition is its own entry and the name says what differs
    ("without images").
@@ -96,7 +113,7 @@ Each entry carries `lastVerified`: the day a maintainer last confirmed that it
 resolves at its source. Before sending a change, run:
 
 ```
-node apps/server/src/cli/validate-catalog.ts            # format, ids, hosts, schema file
+node apps/server/src/cli/validate-catalog.ts            # format, ids, hosts, bundled files, schema file
 node apps/server/src/cli/validate-catalog.ts --online   # also asks each source
 ```
 
@@ -105,6 +122,10 @@ the same host (`--delay <seconds>` changes that), because several publishers ask
 automated clients for that pace. It takes a couple of minutes. Where a server refuses
 `HEAD`, it asks for the first byte of the file instead.
 
+The offline check also confirms that every bundled entry's file is present, is UTF-8
+text that opens with its title, and carries a version, and that nothing sits in
+`bundled/` unlisted. Bundled entries need no online check: there is nobody to ask.
+
 The offline check runs in the test suite. The online check lists every entry that no
 longer resolves (a book renamed or withdrawn upstream); fix or remove those and update
 `lastVerified` on the entries you checked. If you change the format in
@@ -112,6 +133,7 @@ longer resolves (a book renamed or withdrawn upstream); fix or remove those and 
 `--write-schema`.
 
 For Kiwix books, the sizes, versions and availability shown in Explore do not come
-from the manifests. They come from the Kiwix library when an administrator presses
-Refresh, and are remembered so that Explore still reads well offline. For files with a
-pinned size and checksum, they come from the manifest.
+from the manifests. They come from the Kiwix library when someone presses Refresh, and
+are remembered so that Explore still reads well offline. For files with a pinned size
+and checksum, they come from the manifest. For bundled files, the size is measured from
+the file itself and the version comes from the manifest.

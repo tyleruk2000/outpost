@@ -9,8 +9,10 @@
  *  - what is installed or downloading on this server.
  *
  * Nothing here calls out on its own. `refresh` and `download` do, and both are the
- * direct result of someone pressing a button.
+ * direct result of someone pressing a button. `add` never does: it copies a file that
+ * ships with Outpost into the library.
  */
+import fs from "node:fs";
 import path from "node:path";
 import {
   CATALOG_CATEGORIES,
@@ -21,12 +23,14 @@ import {
 } from "@outpost/shared";
 import { eq } from "drizzle-orm";
 import type { AppContext } from "../../core/context.ts";
-import { AppError, classifyNetworkError, conflict, messageOf, notFound } from "../../core/errors.ts";
+import { AppError, badRequest, classifyNetworkError, conflict, messageOf, notFound } from "../../core/errors.ts";
 import { pathExists, safeFileName } from "../../core/fs-safe.ts";
+import { sha256File } from "../../core/hashing.ts";
 import { createHttpClient, type HttpClient } from "../../core/http.ts";
 import { catalogCache, searchEntities } from "../../db/schema.ts";
 import type { CollectionRow } from "../collections/service.ts";
 import type { DownloadRow, InstallMeta } from "../downloads/types.ts";
+import type { DocumentBridge } from "./documents-bridge.ts";
 import { fetchBooks, fetchFileFacts, KIWIX_CATALOG_URL, type KiwixBook, pickBook } from "./kiwix.ts";
 import { type LoadedCatalog, type LoadedEntry, loadCatalog } from "./manifest.ts";
 import {
@@ -64,6 +68,14 @@ export interface CatalogDownloadResult {
   replacesCollectionId: string | null;
 }
 
+export interface CatalogAddResult {
+  collection: CollectionRow;
+  /** The document the file became in the library, when it is one. */
+  documentId?: string;
+  /** The older edition this one took the place of; it has been removed with its file. */
+  replacedCollectionId: string | null;
+}
+
 export interface CatalogService {
   /** Reads the manifests from disk again and re-describes the entries to search. */
   reload(): LoadedCatalog;
@@ -76,6 +88,11 @@ export interface CatalogService {
   /** Resolves one entry right now, with exact size and checksum where the source publishes them. */
   resolveForDownload(entryId: string): Promise<DownloadResolution>;
   download(entryId: string, options?: { locationId?: string }): Promise<CatalogDownloadResult>;
+  /**
+   * Adds an entry that ships with Outpost: copies its file into the library and records
+   * it as installed. Works with no connection, and finishes before it returns.
+   */
+  add(entryId: string, options?: { locationId?: string }): Promise<CatalogAddResult>;
   /** True when the catalogue knows a newer version than the one installed. */
   hasUpdate(collection: CollectionRow): boolean;
 }
@@ -89,6 +106,8 @@ declare module "../../core/context.ts" {
 export interface CatalogServiceOptions {
   /** The Kiwix OPDS endpoint. Tests point this at a local fixture. */
   kiwixCatalogUrl?: string;
+  /** Hands installed documents to the document library. Without it, added files stay plain collections. */
+  documents?: DocumentBridge;
 }
 
 /**
@@ -130,7 +149,7 @@ export function createCatalogService(ctx: AppContext, options: CatalogServiceOpt
   ctx.onClose.push(() => http.close());
 
   const manifestDirs = [path.join(config.catalogDir, "manifests"), path.join(config.dataDir, "catalog")];
-  let catalog: LoadedCatalog = { manifests: [], entries: [], problems: [], downloadHosts: [] };
+  let catalog: LoadedCatalog = { manifests: [], entries: [], problems: [], downloadHosts: [], bundled: new Map() };
   let byId = new Map<string, LoadedEntry>();
 
   function allowedHosts(): string[] {
@@ -249,8 +268,9 @@ export function createCatalogService(ctx: AppContext, options: CatalogServiceOpt
       const { url, sha256, sizeBytes, version, published } = entry.source;
       return { url, fileName: fileNameFromUrl(url), sha256, sizeBytes, version, publishedAt: published };
     }
-
-    if (!isKiwixEntry(entry)) throw new Error("unreachable: sources are kiwix or http");
+    if (!isKiwixEntry(entry)) {
+      throw badRequest(`"${entry.name}" is included with Outpost, so there is nothing to download. Add it to the library instead.`);
+    }
     const { name, flavour } = entry.source;
     const signal = AbortSignal.timeout(60_000);
     let book: KiwixBook | undefined;
@@ -299,6 +319,8 @@ export function createCatalogService(ctx: AppContext, options: CatalogServiceOpt
   const isActive = (row: DownloadRow) => ["queued", "running", "verifying", "paused"].includes(row.state);
 
   function knownVersion(entry: LoadedEntry, resolution: CachedResolution | undefined): string | undefined {
+    // What ships with this copy of Outpost is the edition on offer, whatever an earlier refresh remembered.
+    if (entry.source.type === "bundled") return entry.source.version;
     return resolution?.version ?? (entry.source.type === "http" ? entry.source.version : undefined);
   }
 
@@ -332,8 +354,32 @@ export function createCatalogService(ctx: AppContext, options: CatalogServiceOpt
       downloadId = latest.id;
     }
 
-    const resolvedSize = resolution?.sizeBytes ?? (source.type === "http" ? source.sizeBytes : undefined);
     const version = knownVersion(entry, resolution);
+    const documentId = typeof installed?.meta.documentId === "string" ? installed.meta.documentId : undefined;
+    const installState = {
+      status,
+      downloadId,
+      collectionId: installed?.id,
+      documentId,
+      installedVersion: installed?.version ?? undefined,
+      updateAvailable: installed ? isNewer(installed.version, version) : false,
+    };
+    if (source.type === "bundled") {
+      // The file is on this machine already: its size is measured, and it is always available.
+      return {
+        ...manifestFields,
+        sizeBytes: catalog.bundled.get(entry.id)?.sizeBytes ?? null,
+        sizeIsEstimate: false,
+        version: version ?? null,
+        publishedAt: source.published ?? null,
+        articleCount: null,
+        resolvedAt: null,
+        availability: "available",
+        unavailableReason: null,
+        ...installState,
+      };
+    }
+    const resolvedSize = resolution?.sizeBytes ?? (source.type === "http" ? source.sizeBytes : undefined);
     return {
       ...manifestFields,
       sizeBytes: resolvedSize ?? estimate ?? null,
@@ -344,11 +390,7 @@ export function createCatalogService(ctx: AppContext, options: CatalogServiceOpt
       resolvedAt: cache?.resolvedAt ?? null,
       availability: resolution?.availability ?? "unknown",
       unavailableReason: resolution?.availability === "unavailable" ? (resolution.reason ?? null) : null,
-      status,
-      downloadId,
-      collectionId: installed?.id,
-      installedVersion: installed?.version ?? undefined,
-      updateAvailable: installed ? isNewer(installed.version, version) : false,
+      ...installState,
     };
   }
 
@@ -477,7 +519,98 @@ export function createCatalogService(ctx: AppContext, options: CatalogServiceOpt
     return { download: row, replacesCollectionId };
   }
 
+  // ── Adding what ships with Outpost ──
+
+  /** A free path for a bundled file: its own name, then with the version, then numbered. */
+  async function freeDestination(locationId: string, fileName: string, version: string | undefined): Promise<string> {
+    const extension = path.extname(fileName);
+    const stem = fileName.slice(0, fileName.length - extension.length);
+    const candidates = [fileName, ...(version ? [safeFileName(`${stem}_${version}${extension}`)] : [])];
+    for (let copy = 2; copy <= 50; copy += 1) candidates.push(`${stem}_${copy}${extension}`);
+    for (const candidate of candidates) {
+      const relPath = `collections/files/${candidate}`;
+      if (!(await pathExists(storage.resolve(locationId, relPath)))) return relPath;
+    }
+    throw conflict(`There are already many files called "${fileName}" in this location. Remove some of them and try again.`);
+  }
+
+  const adding = new Set<string>();
+
+  async function add(entryId: string, request: { locationId?: string } = {}): Promise<CatalogAddResult> {
+    const entry = requireEntry(entryId);
+    const file = catalog.bundled.get(entryId);
+    if (entry.source.type !== "bundled" || !file) {
+      throw badRequest(`"${entry.name}" does not ship with Outpost. Download it from the catalogue instead.`);
+    }
+    if (adding.has(entryId)) throw conflict(`"${entry.name}" is already being added.`);
+    adding.add(entryId);
+    try {
+      const { version, published } = entry.source;
+      const installed = collections.list({ catalogEntryId: entryId })[0];
+      if (installed && !isNewer(installed.version, version) && installed.status !== "missing") {
+        throw conflict(`"${entry.name}" is already in your library${installed.version ? ` (version ${installed.version})` : ""}.`);
+      }
+      const location = request.locationId ? storage.get(request.locationId) : storage.getDefault();
+      await storage.assertSpace(location.id, file.sizeBytes);
+
+      const relPath = await freeDestination(location.id, safeFileName(path.basename(file.path), "document"), version);
+      const target = storage.resolve(location.id, relPath);
+      await fs.promises.mkdir(path.dirname(target), { recursive: true });
+      // COPYFILE_EXCL: never write over a file that appeared in the meantime.
+      await fs.promises.copyFile(file.path, target, fs.constants.COPYFILE_EXCL);
+
+      let collection: CollectionRow;
+      try {
+        collection = await collections.create({
+          kind: "file",
+          title: entry.name,
+          locationId: location.id,
+          relPath,
+          catalogEntryId: entry.id,
+          description: entry.description,
+          category: entry.category,
+          language: entry.language,
+          publisher: entry.publisher,
+          license: entry.license,
+          attribution: entry.attribution,
+          version,
+          sizeBytes: file.sizeBytes,
+          sha256: await sha256File(target),
+          meta: {
+            format: entry.format,
+            manifestId: entry.manifestId,
+            bundled: true,
+            ...(entry.licenseNote ? { licenseNote: entry.licenseNote } : {}),
+            ...(entry.homepage ? { homepage: entry.homepage } : {}),
+            ...(published ? { publishedAt: published } : {}),
+          },
+        });
+      } catch (error) {
+        // Nothing records the copy, so it would only be clutter. It is Outpost's own copy, made a moment ago.
+        await fs.promises.rm(target, { force: true }).catch(() => undefined);
+        throw error;
+      }
+
+      const documentId = await options.documents?.adopt(collection.id);
+      let replacedCollectionId: string | null = null;
+      if (installed && installed.id !== collection.id) {
+        // The same rule as an updated download: the person asked for the new edition, so
+        // the one it replaces goes, with its file, once the new one is in place.
+        try {
+          await collections.remove(installed.id, { deleteFiles: true });
+          replacedCollectionId = installed.id;
+        } catch (error) {
+          ctx.log.warn({ err: error, collection: installed.id }, "the replaced edition could not be removed");
+        }
+      }
+      ctx.events.publish({ type: "catalog.changed", id: entry.id });
+      return { collection: collections.get(collection.id) ?? collection, documentId, replacedCollectionId };
+    } finally {
+      adding.delete(entryId);
+    }
+  }
+
   reload();
 
-  return { reload, list, getEntry: (id) => byId.get(id), allowedHosts, refresh, resolveForDownload, download, hasUpdate };
+  return { reload, list, getEntry: (id) => byId.get(id), allowedHosts, refresh, resolveForDownload, download, add, hasUpdate };
 }

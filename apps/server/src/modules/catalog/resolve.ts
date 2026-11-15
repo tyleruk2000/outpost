@@ -211,6 +211,13 @@ export async function resolveEntries(
   options: ResolveOptions,
 ): Promise<Map<string, EntryResolution>> {
   const out = new Map<string, EntryResolution>();
+  for (const entry of entries) {
+    // A file that ships with Outpost was found on disk when the manifest was loaded; there is nobody to ask.
+    if (entry.source.type === "bundled") {
+      const { version, published } = entry.source;
+      out.set(entry.id, { state: "available", resolved: { availability: "available", version, publishedAt: published } });
+    }
+  }
   await resolveKiwix(http, entries.filter(isKiwixEntry), options, out);
   const direct = entries.filter(isHttpEntry);
   const toAsk: HttpEntry[] = [];

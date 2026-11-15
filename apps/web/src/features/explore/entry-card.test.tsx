@@ -7,15 +7,31 @@ import { EntryCard } from "./entry-card";
 
 afterEach(() => vi.unstubAllGlobals());
 
-function show(over: Partial<CatalogEntryDto>, options: { isAdmin?: boolean; download?: ReturnType<typeof download> } = {}) {
+function show(over: Partial<CatalogEntryDto>, options: { adding?: boolean; download?: ReturnType<typeof download> } = {}) {
   const onDownload = vi.fn();
+  const onAdd = vi.fn();
   renderScreen(
     <ul>
-      <EntryCard entry={entry(over)} download={options.download} isAdmin={options.isAdmin ?? true} onDownload={onDownload} />
+      <EntryCard entry={entry(over)} download={options.download} adding={options.adding} onDownload={onDownload} onAdd={onAdd} />
     </ul>,
   );
-  return onDownload;
+  return Object.assign(onDownload, { onAdd });
 }
+
+/** A reference sheet that ships with Outpost. */
+const sheet: Partial<CatalogEntryDto> = {
+  id: "outpost.radio.uk-amateur-bands",
+  name: "Amateur radio bands in the United Kingdom",
+  publisher: "Outpost",
+  category: "radio",
+  format: "markdown",
+  license: "MIT",
+  source: { type: "bundled", file: "radio/uk-amateur-bands.md", version: "2026-11-15" },
+  sizeBytes: 13_539,
+  sizeIsEstimate: false,
+  version: "2026-11-15",
+  availability: "available",
+};
 
 describe("a catalogue entry", () => {
   it("shows what it is, an estimated size, and the unverified licence", () => {
@@ -26,16 +42,11 @@ describe("a catalogue entry", () => {
     expect(screen.getByText("Licence: see the source. Not verified by the catalogue maintainers.")).toBeInTheDocument();
   });
 
-  it("offers Download to an administrator and hands the entry to the confirmation step", async () => {
+  it("offers Download and hands the entry to the confirmation step", async () => {
     const onDownload = show({ sizeIsEstimate: false, sizeBytes: 14_100_000 });
     expect(screen.getByText("14.1 MB")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Download Knots by Wikipedia" }));
     expect(onDownload).toHaveBeenCalledWith(expect.objectContaining({ id: "kiwix.knots" }));
-  });
-
-  it("lets a member browse without a download control", () => {
-    show({}, { isAdmin: false });
-    expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 
   it("shows real progress with pause and cancel while downloading", () => {
@@ -47,7 +58,7 @@ describe("a catalogue entry", () => {
     expect(screen.getByRole("button", { name: "Cancel Wikipedia 100" })).toBeInTheDocument();
   });
 
-  it("offers resume when paused, and nothing to a member", () => {
+  it("offers resume when paused", () => {
     show({ status: "paused", downloadId: "d1" }, { download: download({ state: "paused", bytesPerSecond: null, etaSeconds: null }) });
     expect(screen.getByText("Paused at 412 MB of 1.90 GB")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Resume Wikipedia 100" })).toBeInTheDocument();
@@ -89,5 +100,47 @@ describe("a catalogue entry", () => {
     expect(screen.getByText("No longer offered at the source")).toBeInTheDocument();
     expect(screen.getByText("The Kiwix library no longer lists this edition.")).toBeInTheDocument();
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("says a sheet that ships with Outpost is included, and adds it with one press and no dialog", async () => {
+    const onDownload = show(sheet);
+    expect(screen.getByText("Included with Outpost")).toBeInTheDocument();
+    expect(screen.getByText(/No download needed/)).toBeInTheDocument();
+    expect(screen.getByText(/Outpost.*English.*Text document/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Download/ })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Add Amateur radio bands in the United Kingdom to the library" }));
+    expect(onDownload.onAdd).toHaveBeenCalledWith(expect.objectContaining({ id: "outpost.radio.uk-amateur-bands" }));
+    expect(onDownload).not.toHaveBeenCalled();
+  });
+
+  it("shows the add as busy while the sheet is being copied", () => {
+    show(sheet, { adding: true });
+    expect(screen.getByRole("button", { name: "Add Amateur radio bands in the United Kingdom to the library" })).toBeDisabled();
+  });
+
+  it("opens an added sheet as the document it became", () => {
+    show({ ...sheet, status: "installed", collectionId: "c4", documentId: "d7", installedVersion: "2026-11-15" });
+    expect(screen.getByText("In your library")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open Amateur radio bands in the United Kingdom" })).toHaveAttribute(
+      "href",
+      "/library/documents/d7",
+    );
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("offers the newer edition of a sheet that came with an update of Outpost", async () => {
+    const onDownload = show({
+      ...sheet,
+      status: "installed",
+      collectionId: "c4",
+      documentId: "d7",
+      installedVersion: "2026-11-15",
+      version: "2027-02-01",
+      updateAvailable: true,
+    });
+    expect(screen.getByText("Version 2027-02-01 came with this version of Outpost.")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Update Amateur radio bands in the United Kingdom" }));
+    expect(onDownload.onAdd).toHaveBeenCalled();
+    expect(onDownload).not.toHaveBeenCalled();
   });
 });

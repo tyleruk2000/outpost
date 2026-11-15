@@ -7,8 +7,10 @@ import {
   entrySituation,
   filterEntries,
   formatLabel,
+  isIncluded,
   licenceText,
   matchesQuery,
+  openTarget,
   sizeText,
   sortEntries,
 } from "./catalog";
@@ -42,6 +44,18 @@ const unknown = entry({
   tags: undefined,
 });
 const all = [wikipedia, knots, unknown, medicines];
+const sheet = entry({
+  id: "outpost.radio.uk-amateur-bands",
+  name: "Amateur radio bands in the United Kingdom",
+  description: "Every band in the Ofcom licence.",
+  category: "radio",
+  publisher: "Outpost",
+  format: "markdown",
+  tags: ["ham radio"],
+  source: { type: "bundled", file: "radio/uk-amateur-bands.md", version: "2026-11-15" },
+  sizeBytes: 13_539,
+  sizeIsEstimate: false,
+});
 
 describe("filtering the catalogue", () => {
   it("matches name, description, publisher and tags, whatever the case", () => {
@@ -62,6 +76,17 @@ describe("filtering the catalogue", () => {
     expect(filterEntries(all, { query: "", show: "installed" }).map((item) => item.id)).toEqual(["nhs"]);
     expect(filterEntries(all, { query: "", show: "not_installed" }).map((item) => item.id)).toEqual(["wp", "kiwix.knots", "odd"]);
     expect(filterEntries(all, { query: "wikipedia", show: "all" }).map((item) => item.id)).toEqual(["wp", "kiwix.knots"]);
+  });
+
+  it("narrows to what is included with Outpost", () => {
+    expect(isIncluded(sheet)).toBe(true);
+    expect(isIncluded(knots)).toBe(false);
+    expect(filterEntries([...all, sheet], { query: "", show: "included" }).map((item) => item.id)).toEqual([
+      "outpost.radio.uk-amateur-bands",
+    ]);
+    expect(filterEntries([...all, sheet], { query: "ham", show: "all" }).map((item) => item.id)).toEqual([
+      "outpost.radio.uk-amateur-bands",
+    ]);
   });
 
   it("counts what is left per category, with the total under all", () => {
@@ -116,32 +141,43 @@ describe("wording", () => {
     expect(formatLabel("pdf")).toBe("PDF document");
     expect(formatLabel("epub")).toBe("EPUB book");
     expect(formatLabel("html")).toBe("Web page");
+    expect(formatLabel("markdown")).toBe("Text document");
   });
 });
 
 describe("the state and action of an entry", () => {
-  const cases: Array<[Partial<CatalogEntryDto>, string, string | null, string | null]> = [
-    // entry, situation, admin's action, member's action
-    [{ status: "not_installed" }, "available", "Download", null],
-    [{ status: "not_installed", availability: "unavailable" }, "unavailable", null, null],
-    [{ status: "queued" }, "queued", null, null],
-    [{ status: "downloading" }, "downloading", null, null],
-    [{ status: "paused" }, "paused", null, null],
-    [{ status: "failed" }, "failed", "Retry", null],
-    [{ status: "installed" }, "installed", "Open", "Open"],
-    [{ status: "installed", updateAvailable: true }, "update", "Update", "Open"],
-    [{ status: "installed", updateAvailable: true, availability: "unavailable" }, "installed", "Open", "Open"],
+  const cases: Array<[Partial<CatalogEntryDto>, string, string | null]> = [
+    // entry, situation, the action offered
+    [{ status: "not_installed" }, "available", "Download"],
+    [{ status: "not_installed", availability: "unavailable" }, "unavailable", null],
+    [{ status: "queued" }, "queued", null],
+    [{ status: "downloading" }, "downloading", null],
+    [{ status: "paused" }, "paused", null],
+    [{ status: "failed" }, "failed", "Retry"],
+    [{ status: "installed" }, "installed", "Open"],
+    [{ status: "installed", updateAvailable: true }, "update", "Update"],
+    [{ status: "installed", updateAvailable: true, availability: "unavailable" }, "installed", "Open"],
   ];
 
-  it.each(cases)("%j is %s", (over, situation, adminLabel, memberLabel) => {
+  it.each(cases)("%j is %s", (over, situation, label) => {
     const state = entrySituation(entry(over));
     expect(state).toBe(situation);
-    expect(entryAction(state, true).label).toBe(adminLabel);
-    expect(entryAction(state, false).label).toBe(memberLabel);
+    expect(entryAction(state).label).toBe(label);
   });
 
-  it("lets only administrators manage a download that is under way", () => {
-    expect(entryAction("downloading", true).kind).toBe("manage");
-    expect(entryAction("downloading", false).kind).toBe("none");
+  it("manages a download that is under way", () => {
+    expect(entryAction("downloading").kind).toBe("manage");
+  });
+
+  it("adds what ships with Outpost instead of downloading it", () => {
+    expect(entryAction(entrySituation(sheet), isIncluded(sheet))).toEqual({ kind: "add", label: "Add to library" });
+    expect(entryAction("update", true)).toEqual({ kind: "update", label: "Update" });
+    expect(entryAction("installed", true)).toEqual({ kind: "open", label: "Open" });
+  });
+
+  it("opens an added sheet as its document and anything else as its collection", () => {
+    expect(openTarget({ ...sheet, collectionId: "c4", documentId: "d7" })).toBe("/library/documents/d7");
+    expect(openTarget({ ...sheet, collectionId: "c4" })).toBe("/library/collections/c4");
+    expect(openTarget(entry({ format: "pdf", collectionId: "c9", documentId: "d1" }))).toBe("/library/collections/c9");
   });
 });

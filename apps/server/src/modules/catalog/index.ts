@@ -1,15 +1,19 @@
+import type { CatalogAddResponse } from "@outpost/shared";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
-import { registerDocumentBridge } from "./documents-bridge.ts";
+import { type DocumentBridge, registerDocumentBridge } from "./documents-bridge.ts";
 import { createCatalogService } from "./service.ts";
 
-export type { CatalogService, CatalogServiceOptions, DownloadResolution } from "./service.ts";
+export type { CatalogAddResult, CatalogService, CatalogServiceOptions, DownloadResolution } from "./service.ts";
 
 export async function registerCatalog(app: FastifyInstance, ctx: AppContext): Promise<void> {
-  const service = createCatalogService(ctx);
+  // The bridge is registered further down so that its listeners keep running after the
+  // one that removes a replaced version; the service only needs it once a person adds something.
+  let bridge: DocumentBridge | undefined;
+  const service = createCatalogService(ctx, { documents: { adopt: async (collectionId) => bridge?.adopt(collectionId) } });
   ctx.services.catalog = service;
-  const { auth, collections, downloads } = ctx.services;
+  const { collections, downloads } = ctx.services;
 
   // Collections report "update available" without knowing how the catalogue works.
   collections.addUpdateCheck(service.hasUpdate);
@@ -35,19 +39,24 @@ export async function registerCatalog(app: FastifyInstance, ctx: AppContext): Pr
     }
   });
 
-  registerDocumentBridge(ctx);
+  bridge = registerDocumentBridge(ctx);
 
   app.get("/api/catalog", async () => service.list());
 
-  app.post("/api/catalog/refresh", async (request) => {
-    auth.requireAdmin(request);
+  app.post("/api/catalog/refresh", async () => {
     return service.refresh();
   });
 
   app.post<{ Params: { id: string } }>("/api/catalog/entries/:id/download", async (request) => {
-    auth.requireAdmin(request);
     const body = z.object({ locationId: z.string().min(1).max(100).optional() }).parse(request.body ?? {});
     const result = await service.download(request.params.id, body);
     return { download: downloads.toDto(result.download), replacesCollectionId: result.replacesCollectionId };
+  });
+
+  // An entry that ships with Outpost: copied into the library there and then, with no network.
+  app.post<{ Params: { id: string } }>("/api/catalog/entries/:id/add", async (request): Promise<CatalogAddResponse> => {
+    const body = z.object({ locationId: z.string().min(1).max(100).optional() }).parse(request.body ?? {});
+    const result = await service.add(request.params.id, body);
+    return { collectionId: result.collection.id, documentId: result.documentId, replacedCollectionId: result.replacedCollectionId };
   });
 }

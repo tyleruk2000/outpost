@@ -1,12 +1,22 @@
 import type { CatalogEntryDto, DownloadDto } from "@outpost/shared";
-import { Check, CircleAlert, Download } from "lucide-react";
+import { Check, CircleAlert, Download, Plus } from "lucide-react";
 import { Fragment, type ReactNode, useEffect, useRef } from "react";
 import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/misc";
 import { cn, formatNumber } from "@/lib/utils";
 import { DownloadControls, DownloadProgress } from "../downloads/download-progress";
-import { editionText, entryAction, entrySituation, formatLabel, languageName, licenceText, sizeText } from "./catalog";
+import {
+  editionText,
+  entryAction,
+  entrySituation,
+  formatLabel,
+  isIncluded,
+  languageName,
+  licenceText,
+  openTarget,
+  sizeText,
+} from "./catalog";
 
 const Slash = () => (
   <span aria-hidden className="mx-2 text-border-strong">
@@ -33,16 +43,19 @@ function Facts({ parts }: { parts: ReactNode[] }) {
 function Standing({
   entry,
   download,
-  isAdmin,
+  adding,
   onDownload,
+  onAdd,
 }: {
   entry: CatalogEntryDto;
   download: DownloadDto | undefined;
-  isAdmin: boolean;
+  adding: boolean;
   onDownload: (entry: CatalogEntryDto) => void;
+  onAdd: (entry: CatalogEntryDto) => void;
 }) {
   const situation = entrySituation(entry);
-  const action = entryAction(situation, isAdmin);
+  const included = isIncluded(entry);
+  const action = entryAction(situation, included);
   const edition = editionText(entry);
   const row = "flex flex-wrap items-center justify-between gap-x-4 gap-y-2";
 
@@ -79,8 +92,8 @@ function Standing({
 
   if (situation === "installed" || situation === "update") {
     const open = (
-      <Button asChild variant={situation === "update" && isAdmin ? "ghost" : "secondary"} size="sm">
-        <Link to={`/library/collections/${entry.collectionId}`} aria-label={`Open ${entry.name}`}>
+      <Button asChild variant={situation === "update" ? "ghost" : "secondary"} size="sm">
+        <Link to={openTarget(entry)} aria-label={`Open ${entry.name}`}>
           Open
         </Link>
       </Button>
@@ -91,14 +104,18 @@ function Standing({
           <p className="flex items-center gap-1.5 text-success">
             <Check aria-hidden className="size-4 shrink-0" />
             <span>
-              Installed
+              {included ? "In your library" : "Installed"}
               {entry.installedVersion ? <span className="text-ink-muted">, version {entry.installedVersion}</span> : null}
             </span>
           </p>
-          {situation === "update" ? (
+          {situation === "update" && included ? (
+            <p className="mt-0.5 text-ink">Version {entry.version} came with this version of Outpost.</p>
+          ) : situation === "update" ? (
             <p className="mt-0.5 text-ink">
               Version {entry.version} is available, <span className="tabular">{sizeText(entry)}</span>.
             </p>
+          ) : included ? (
+            <p className="mt-0.5 text-ink-muted">Included with Outpost</p>
           ) : entry.availability === "unavailable" ? (
             <p className="mt-0.5 text-ink-muted">No longer offered at the source. Your copy keeps working.</p>
           ) : (
@@ -107,7 +124,11 @@ function Standing({
         </div>
         <div className="ml-auto flex items-center gap-1">
           {open}
-          {action.kind === "update" ? (
+          {action.kind === "update" && included ? (
+            <Button size="sm" loading={adding} onClick={() => onAdd(entry)} aria-label={`Update ${entry.name}`}>
+              Update
+            </Button>
+          ) : action.kind === "update" ? (
             <Button size="sm" onClick={() => onDownload(entry)} aria-label={`Update ${entry.name}`}>
               <Download /> Update
             </Button>
@@ -122,6 +143,21 @@ function Standing({
       <div className="text-small">
         <p className="font-medium text-ink">No longer offered at the source</p>
         {entry.unavailableReason ? <p className="mt-0.5 text-ink-muted">{entry.unavailableReason}</p> : null}
+      </div>
+    );
+  }
+
+  if (action.kind === "add") {
+    // Already on this machine: no size to weigh up and nothing to fetch, so the state says that instead.
+    return (
+      <div className={row}>
+        <p className="min-w-0 text-small text-ink-muted">
+          <span className="block text-body font-semibold text-ink">Included with Outpost</span>
+          No download needed{edition ? <span>. {edition}</span> : null}
+        </p>
+        <Button size="sm" loading={adding} onClick={() => onAdd(entry)} aria-label={`Add ${entry.name} to the library`}>
+          {adding ? null : <Plus />} Add to library
+        </Button>
       </div>
     );
   }
@@ -149,19 +185,23 @@ function Standing({
 export function EntryCard({
   entry,
   download,
-  isAdmin,
+  adding = false,
   marked,
   categoryLabel,
   onDownload,
+  onAdd,
 }: {
   entry: CatalogEntryDto;
   download: DownloadDto | undefined;
-  isAdmin: boolean;
+  /** This entry is being copied into the library right now. */
+  adding?: boolean;
   /** Arrived at from a link to this entry: scrolled to and outlined. */
   marked?: boolean;
   /** Shown when entries from several categories are mixed in one list. */
   categoryLabel?: string;
   onDownload: (entry: CatalogEntryDto) => void;
+  /** Adds an entry that ships with Outpost; there is nothing to confirm, so no dialog. */
+  onAdd: (entry: CatalogEntryDto) => void;
 }) {
   const ref = useRef<HTMLLIElement>(null);
   useEffect(() => {
@@ -195,7 +235,7 @@ export function EntryCard({
       <p className="mt-2.5 max-w-[68ch] text-small leading-relaxed text-ink">{entry.description}</p>
       <p className="mt-2 mb-4 text-small text-ink-muted">{licenceText(entry)}</p>
       <div className="mt-auto border-t border-border pt-3.5">
-        <Standing entry={entry} download={download} isAdmin={isAdmin} onDownload={onDownload} />
+        <Standing entry={entry} download={download} adding={adding} onDownload={onDownload} onAdd={onAdd} />
       </div>
     </li>
   );

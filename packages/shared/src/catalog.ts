@@ -24,7 +24,7 @@ export const CATALOG_CATEGORY_SLUGS = CATALOG_CATEGORIES.map((category) => categ
   ...CatalogCategorySlug[],
 ];
 
-export const CATALOG_FORMATS = ["zim", "pdf", "epub", "html", "other"] as const;
+export const CATALOG_FORMATS = ["zim", "pdf", "epub", "html", "markdown", "other"] as const;
 export type CatalogFormat = (typeof CATALOG_FORMATS)[number];
 
 /** A book in the Kiwix library, found by name and flavour each time it is needed. */
@@ -45,7 +45,20 @@ export interface CatalogHttpSource {
   published?: string;
 }
 
-export type CatalogSource = CatalogKiwixSource | CatalogHttpSource;
+/**
+ * A file that ships with Outpost itself, in the `bundled` folder beside the manifests.
+ * Adding it to the library copies it from there: no network is involved.
+ */
+export interface CatalogBundledSource {
+  type: "bundled";
+  /** Path inside the `bundled` folder, with forward slashes: "radio/uk-amateur-bands.md". */
+  file: string;
+  /** The edition of the file, usually the day it was last checked. A higher one offers an update. */
+  version?: string;
+  published?: string;
+}
+
+export type CatalogSource = CatalogKiwixSource | CatalogHttpSource | CatalogBundledSource;
 
 /** One entry as written in a manifest. */
 export interface CatalogManifestEntry {
@@ -101,9 +114,20 @@ export interface CatalogEntryDto extends Omit<CatalogManifestEntry, "sizeBytes">
   status: CatalogInstallStatus;
   downloadId?: string;
   collectionId?: string;
+  /** The document in the library that holds the installed file, for entries that are documents. */
+  documentId?: string;
   installedVersion?: string;
   /** The installed version is older than the one the source now offers. */
   updateAvailable: boolean;
+}
+
+/** The answer to adding an entry that ships with Outpost. */
+export interface CatalogAddResponse {
+  collectionId: string;
+  /** The document it became in the library; absent only if it could not be added there. */
+  documentId?: string;
+  /** Set when an older edition was in the library: it has been removed, with its file. */
+  replacedCollectionId: string | null;
 }
 
 export interface CatalogProblem {

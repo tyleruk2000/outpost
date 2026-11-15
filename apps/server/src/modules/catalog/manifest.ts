@@ -1,6 +1,8 @@
 /**
  * Catalogue manifests: JSON files that list content Outpost can fetch and say where it
  * comes from. A manifest never contains content, only a description and a source.
+ * A source is a book in the Kiwix library, a file at an https address, or a file that
+ * ships with Outpost in the `bundled` folder beside the manifests.
  *
  * The zod schema here is the definition of the format; `catalog/schema/manifest.schema.json`
  * is generated from it (see cli/validate-catalog.ts). Loading is forgiving on purpose:
@@ -46,6 +48,30 @@ const kiwixSource = z.strictObject({
     .regex(/^[a-z0-9_-]*$/, "A flavour is a short lower-case word, or empty."),
 });
 
+/** Document formats a bundled file may have, by file extension. */
+const BUNDLED_FORMATS: Record<string, CatalogManifestEntry["format"]> = {
+  md: "markdown",
+  markdown: "markdown",
+  pdf: "pdf",
+  epub: "epub",
+  html: "html",
+  htm: "html",
+};
+
+const bundledSource = z.strictObject({
+  type: z.literal("bundled"),
+  /** Path inside the `bundled` folder, e.g. "radio/uk-amateur-bands.md". */
+  file: z
+    .string()
+    .max(300)
+    .regex(
+      /^[a-z0-9][a-z0-9._-]*(?:\/[a-z0-9][a-z0-9._-]*)*$/,
+      "A bundled file is named by its path inside the bundled folder: lower-case names joined by /, such as radio/uk-amateur-bands.md.",
+    ),
+  version: z.string().min(1).max(50).optional(),
+  published: isoDate.optional(),
+});
+
 function httpSource(allowInsecureHttp: boolean) {
   return z.strictObject({
     type: z.literal("http"),
@@ -89,7 +115,7 @@ export function createManifestSchema(options: { allowInsecureHttp?: boolean } = 
     lastVerified: isoDate,
     tags: z.array(z.string().trim().min(1).max(40)).max(20).optional(),
     sizeBytes: z.number().int().positive().optional(),
-    source: z.discriminatedUnion("type", [kiwixSource, httpSource(options.allowInsecureHttp ?? false)]),
+    source: z.discriminatedUnion("type", [kiwixSource, httpSource(options.allowInsecureHttp ?? false), bundledSource]),
   });
 
   return z.strictObject({
@@ -103,7 +129,8 @@ export function createManifestSchema(options: { allowInsecureHttp?: boolean } = 
     name: z.string().trim().min(1).max(200),
     description: z.string().trim().min(1).max(2000),
     maintainers: z.array(z.string().trim().min(1).max(200)),
-    downloadHosts: z.array(hostName).min(1),
+    /** May be empty when every entry ships with Outpost. */
+    downloadHosts: z.array(hostName),
     entries: z.array(entry),
   });
 }
@@ -119,6 +146,12 @@ export interface LoadedEntry extends ManifestEntry {
   manifestId: string;
 }
 
+/** Where a bundled entry's file is on this machine. Never sent to a browser. */
+export interface BundledFile {
+  path: string;
+  sizeBytes: number;
+}
+
 export interface LoadedCatalog {
   manifests: Manifest[];
   /** Usable entries, in manifest order; ids are unique. */
@@ -126,6 +159,8 @@ export interface LoadedCatalog {
   problems: CatalogProblem[];
   /** Every host a usable manifest lists, lower-case. */
   downloadHosts: string[];
+  /** The file behind each usable entry that ships with Outpost, by entry id. */
+  bundled: Map<string, BundledFile>;
 }
 
 /** The JSON Schema for manifests, as committed in catalog/schema/manifest.schema.json. */
@@ -159,6 +194,14 @@ function describeIssues(error: z.ZodError, raw: unknown): string {
 export function entryProblem(entry: ManifestEntry, manifest: Manifest): string | undefined {
   if (entry.source.type === "kiwix") {
     return entry.format === "zim" ? undefined : `Kiwix books are ZIM archives, but the format is given as "${entry.format}".`;
+  }
+  if (entry.source.type === "bundled") {
+    const extension = path.extname(entry.source.file).slice(1);
+    const expected = BUNDLED_FORMATS[extension];
+    if (!expected) return `A bundled file must be Markdown, PDF, EPUB or HTML, but "${entry.source.file}" is none of these.`;
+    return entry.format === expected
+      ? undefined
+      : `"${entry.source.file}" is a ${expected} file, but the format is given as "${entry.format}".`;
   }
   let url: URL;
   try {
@@ -198,6 +241,31 @@ export function parseManifest(text: string, options: { allowInsecureHttp?: boole
   return { manifest };
 }
 
+/**
+ * The folder that holds the files a manifest folder's entries may bundle: `bundled`
+ * beside a folder called `manifests` (as shipped: catalog/manifests and catalog/bundled),
+ * otherwise `bundled` inside the manifest folder (a person's own: <data>/catalog/bundled).
+ */
+export function bundledDirFor(manifestDir: string): string {
+  return path.basename(manifestDir) === "manifests" ? path.join(path.dirname(manifestDir), "bundled") : path.join(manifestDir, "bundled");
+}
+
+/** Finds a bundled entry's file, refusing anything that is not a real file inside the bundled folder. */
+function findBundledFile(bundledDir: string, file: string): BundledFile | string {
+  const missing = `The file "${file}" is not in the bundled folder beside this manifest.`;
+  try {
+    const root = fs.realpathSync(bundledDir);
+    const real = fs.realpathSync(path.join(bundledDir, ...file.split("/")));
+    if (!real.startsWith(root + path.sep)) return `The file "${file}" leads outside the bundled folder.`;
+    const stat = fs.statSync(real);
+    if (!stat.isFile()) return missing;
+    if (stat.size === 0) return `The file "${file}" is empty.`;
+    return { path: real, sizeBytes: stat.size };
+  } catch {
+    return missing;
+  }
+}
+
 function jsonFiles(dir: string): string[] {
   try {
     return fs
@@ -216,7 +284,7 @@ function jsonFiles(dir: string): string[] {
  * so the manifests shipped with Outpost cannot be shadowed by one added later.
  */
 export function loadCatalog(dirs: string[], options: { allowInsecureHttp?: boolean } = {}): LoadedCatalog {
-  const catalog: LoadedCatalog = { manifests: [], entries: [], problems: [], downloadHosts: [] };
+  const catalog: LoadedCatalog = { manifests: [], entries: [], problems: [], downloadHosts: [], bundled: new Map() };
   const entryOwner = new Map<string, string>();
   const hosts = new Set<string>();
 
@@ -251,7 +319,12 @@ export function loadCatalog(dirs: string[], options: { allowInsecureHttp?: boole
         });
         continue;
       }
-      const problem = entryProblem(entry, manifest);
+      let problem = entryProblem(entry, manifest);
+      if (!problem && entry.source.type === "bundled") {
+        const found = findBundledFile(bundledDirFor(path.dirname(file)), entry.source.file);
+        if (typeof found === "string") problem = found;
+        else catalog.bundled.set(entry.id, found);
+      }
       if (problem) {
         catalog.problems.push({ file: name, entryId: entry.id, message: `${problem} The entry was skipped.` });
         continue;

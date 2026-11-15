@@ -152,6 +152,67 @@
   overflow-x: auto;
 }
 
+/*
+ * A document read as text (the library's text view). Prose keeps its measure; a table
+ * takes the width its columns need, up to the reading column's full width, and beyond
+ * that it scrolls inside its own box so the page never scrolls sideways.
+ */
+.prose.prose-doc {
+  max-width: none;
+}
+.prose.prose-doc > section > :not(.doc-table) {
+  max-width: 70ch;
+}
+.prose .doc-table {
+  max-width: 100%;
+  width: fit-content;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+}
+.prose .doc-table table {
+  table-layout: auto;
+  width: max-content;
+  min-width: 100%;
+  /* Frequencies, channel numbers and limits are compared down a column. */
+  font-variant-numeric: tabular-nums lining-nums;
+}
+.prose .doc-table th,
+.prose .doc-table td {
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  padding: 0.42em 0.85em;
+  background: var(--page);
+  /* Room for a frequency range on one line, even on a phone; longer cells wrap rather than stretch the table. */
+  min-width: 3.5rem;
+  max-width: min(20rem, 46vw);
+  overflow-wrap: break-word;
+}
+.prose .doc-table th {
+  border-bottom-color: var(--border-strong);
+  background: var(--surface);
+  white-space: nowrap;
+}
+/* Notes usually come last and run longest: give them more room so rows stay short. */
+.prose .doc-table td:last-child:not(:first-child) {
+  max-width: min(24rem, 72vw);
+}
+/* The first column says which row you are on, so it stays put while the rest scrolls under it. */
+.prose .doc-table th:first-child,
+.prose .doc-table td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  box-shadow: 1px 0 0 var(--border);
+}
+.prose .doc-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+.prose .doc-table tbody tr:hover td {
+  background: var(--surface);
+}
+
 /* Task lists */
 .prose ul[data-type="taskList"] {
   list-style: none;

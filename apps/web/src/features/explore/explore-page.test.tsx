@@ -3,7 +3,7 @@ import { CATALOG_CATEGORIES } from "@outpost/shared";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { adminSession, entry, fakeServer, installBrowserStubs, location, memberSession, renderScreen } from "../downloads/test-support";
+import { entry, fakeServer, installBrowserStubs, location, renderScreen } from "../downloads/test-support";
 import ExplorePage from "./explore-page";
 
 beforeAll(installBrowserStubs);
@@ -47,7 +47,6 @@ function serve(routes: Record<string, unknown> = {}) {
   return fakeServer({
     "GET /api/catalog": catalog(),
     "GET /api/downloads": { downloads: [] },
-    "GET /api/auth/session": adminSession,
     "GET /api/storage/locations": {
       roots: ["/srv"],
       locations: [
@@ -121,16 +120,81 @@ describe("Explore", () => {
     expect(screen.getByRole("heading", { name: "Knots by Wikipedia" })).toBeInTheDocument();
   });
 
-  it("keeps downloading and refreshing for administrators only", async () => {
-    serve({ "GET /api/auth/session": memberSession });
+  it("adds a sheet that ships with Outpost with one press, with no dialog and no download", async () => {
+    const sheet = entry({
+      id: "outpost.radio.uk-amateur-bands",
+      name: "Amateur radio bands in the United Kingdom",
+      description: "Every band in the Ofcom licence.",
+      category: "radio",
+      publisher: "Outpost",
+      format: "markdown",
+      license: "MIT",
+      tags: ["ham radio"],
+      source: { type: "bundled", file: "radio/uk-amateur-bands.md", version: "2026-11-15" },
+      sizeBytes: 13_539,
+      sizeIsEstimate: false,
+      version: "2026-11-15",
+      availability: "available",
+    });
+    let added = false;
+    const server = serve({
+      "GET /api/catalog": () =>
+        catalog({ entries: [...entries, added ? { ...sheet, status: "installed", collectionId: "c4", documentId: "d7" } : sheet] }),
+      "POST /api/catalog/entries/outpost.radio.uk-amateur-bands/add": () => {
+        added = true;
+        return { collectionId: "c4", documentId: "d7", replacedCollectionId: null };
+      },
+    });
     renderScreen(<ExplorePage />, "/explore");
-    await screen.findByRole("heading", { name: "Knots by Wikipedia" });
-    await waitFor(() => expect(screen.queryByRole("button", { name: "Refresh catalogue" })).not.toBeInTheDocument());
-    expect(screen.queryByRole("button", { name: /^Download / })).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Open NHS Medicines A to Z" })).toBeInTheDocument();
+    await screen.findByRole("heading", { name: "Amateur radio bands in the United Kingdom" });
+    expect(screen.getByText("Included with Outpost")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Add Amateur radio bands in the United Kingdom to the library" }));
+    expect(await screen.findByRole("link", { name: "Open Amateur radio bands in the United Kingdom" })).toHaveAttribute(
+      "href",
+      "/library/documents/d7",
+    );
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(server.calls).toContain("POST /api/catalog/entries/outpost.radio.uk-amateur-bands/add");
+    expect(server.calls.some((call) => call.startsWith("POST") && call.endsWith("/download"))).toBe(false);
   });
 
-  it("lists catalogue problems for administrators", async () => {
+  it("can show only what is included with Outpost", async () => {
+    serve({
+      "GET /api/catalog": catalog({
+        entries: [
+          ...entries,
+          entry({
+            id: "outpost.radio.operating-reference",
+            name: "Radio operating reference",
+            category: "radio",
+            publisher: "Outpost",
+            format: "markdown",
+            source: { type: "bundled", file: "radio/operating-reference.md", version: "2026-11-15" },
+            sizeIsEstimate: false,
+          }),
+        ],
+      }),
+    });
+    renderScreen(<ExplorePage />, "/explore");
+    await screen.findByRole("heading", { name: "Knots by Wikipedia" });
+    await userEvent.click(screen.getByRole("radio", { name: "Included" }));
+    expect(screen.getByRole("heading", { name: "Radio operating reference" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Knots by Wikipedia" })).not.toBeInTheDocument();
+    expect(categoryButton(/^All collections/)).toHaveTextContent("1");
+  });
+
+  it("offers Refresh and Download to everyone: there are no accounts", async () => {
+    const server = serve();
+    renderScreen(<ExplorePage />, "/explore");
+    await screen.findByRole("heading", { name: "Knots by Wikipedia" });
+    expect(screen.getByRole("button", { name: "Refresh catalogue" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Download Knots by Wikipedia" })).toBeInTheDocument();
+    expect(screen.queryByText(/administrator/i)).not.toBeInTheDocument();
+    expect(server.calls.some((call) => call.includes("/api/auth/"))).toBe(false);
+  });
+
+  it("lists catalogue problems", async () => {
     serve({
       "GET /api/catalog": catalog({
         problems: [{ file: "catalog/mine.json", entryId: "local.x", message: "“category” is not a catalogue category." }],

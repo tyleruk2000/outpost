@@ -9,7 +9,8 @@
  *   node apps/server/src/cli/validate-catalog.ts --dir <path-to-catalog-folder>
  *
  * Offline: every manifest follows the format, entry ids are unique, addresses are
- * https and on a host the manifest lists, and catalog/schema/manifest.schema.json is
+ * https and on a host the manifest lists, every file an entry bundles is in
+ * catalog/bundled (and nothing else is), and catalog/schema/manifest.schema.json is
  * what the code would generate. Online: every entry still resolves at its source.
  * Several publishers ask automated clients to wait ten seconds between requests, so the
  * online check asks one host at a time at that pace; with the shipped catalogue it
@@ -21,7 +22,7 @@ import path from "node:path";
 import { createHttpClient } from "../core/http.ts";
 import { defaultCatalogDir } from "../core/paths.ts";
 import { KIWIX_CATALOG_URL } from "../modules/catalog/kiwix.ts";
-import { type LoadedCatalog, loadCatalog, manifestJsonSchema } from "../modules/catalog/manifest.ts";
+import { bundledDirFor, type LoadedCatalog, loadCatalog, manifestJsonSchema } from "../modules/catalog/manifest.ts";
 import { type EntryResolution, resolveEntries } from "../modules/catalog/resolve.ts";
 
 export interface CatalogValidation {
@@ -36,6 +37,56 @@ export const schemaPath = (catalogDir: string) => path.join(catalogDir, "schema"
 
 /** Hosts a manifest with Kiwix entries must list: the library's feed and its download service. */
 const KIWIX_REQUIRED_HOSTS = [new URL(KIWIX_CATALOG_URL).hostname, "lb.download.kiwix.org"];
+
+/** Every file under `dir`, as paths relative to it with forward slashes. Hidden files are skipped. */
+function filesUnder(dir: string, prefix = ""): string[] {
+  let names: fs.Dirent[];
+  try {
+    names = fs.readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+  return names
+    .filter((item) => !item.name.startsWith("."))
+    .flatMap((item) =>
+      item.isDirectory() ? filesUnder(path.join(dir, item.name), `${prefix}${item.name}/`) : item.isFile() ? [`${prefix}${item.name}`] : [],
+    )
+    .sort();
+}
+
+/**
+ * What a file that ships with Outpost must be, beyond existing: text a person can read
+ * and search, opening with its title, and carrying an edition so a corrected copy in a
+ * later release is offered as an update.
+ */
+function bundledProblems(catalog: LoadedCatalog, bundledDir: string): string[] {
+  const problems: string[] = [];
+  const listed = new Set<string>();
+  for (const entry of catalog.entries) {
+    if (entry.source.type !== "bundled") continue;
+    const label = `${entry.manifestId} (${entry.id})`;
+    listed.add(entry.source.file);
+    if (!entry.source.version) {
+      problems.push(`${label}: a bundled entry needs a "version", so that a corrected file in a later release is offered as an update.`);
+    }
+    const file = catalog.bundled.get(entry.id);
+    if (!file || entry.format !== "markdown") continue;
+    const bytes = fs.readFileSync(file.path);
+    let text: string;
+    try {
+      if (bytes.includes(0)) throw new Error("NUL byte");
+      text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    } catch {
+      problems.push(`${label}: ${entry.source.file} is not UTF-8 text, so the library would refuse it.`);
+      continue;
+    }
+    if (!/^# \S/.test(text)) problems.push(`${label}: ${entry.source.file} should open with its title as a level-one heading ("# Title").`);
+  }
+  for (const file of filesUnder(bundledDir)) {
+    if (!listed.has(file)) problems.push(`bundled/${file} is not listed by any manifest, so nobody could add it. List it or remove it.`);
+  }
+  return problems;
+}
 
 /** Everything that can be checked without a connection. */
 export function validateCatalog(catalogDir: string = defaultCatalogDir, options: { checkSchemaFile?: boolean } = {}): CatalogValidation {
@@ -62,13 +113,19 @@ export function validateCatalog(catalogDir: string = defaultCatalogDir, options:
         const other = seenBooks.get(key);
         if (other) problems.push(`${manifest.id} (${entry.id}): the same Kiwix book and flavour is already listed as "${other}".`);
         else seenBooks.set(key, entry.id);
-      } else if (/\.zim$/i.test(new URL(entry.source.url).pathname) && /(^|\.)kiwix\.org$/.test(new URL(entry.source.url).hostname)) {
+      } else if (
+        entry.source.type === "http" &&
+        /\.zim$/i.test(new URL(entry.source.url).pathname) &&
+        /(^|\.)kiwix\.org$/.test(new URL(entry.source.url).hostname)
+      ) {
         problems.push(
           `${manifest.id} (${entry.id}): points straight at a ZIM file on kiwix.org. Those addresses change with every build; use a "kiwix" source with the book's name instead.`,
         );
       }
     }
   }
+
+  problems.push(...bundledProblems(catalog, bundledDirFor(manifestsDir)));
 
   if (options.checkSchemaFile ?? true) {
     const file = schemaPath(catalogDir);
