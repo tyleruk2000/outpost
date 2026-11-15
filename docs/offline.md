@@ -15,6 +15,8 @@ Everything you have already installed or written:
   from a collection to your documents (they are copied from the archive on your disk);
 - keyword search, and semantic search if its index is built and your embedding
   provider runs locally (see [search.md](search.md));
+- answers written from your library, if you have set up a language model and its
+  server runs on your own machine or network (see [ai.md](ai.md));
 - writing and organising notes, uploading documents, importing files;
 - viewing installed map regions, searching installed place names, markers, GPX import
   and export;
@@ -44,6 +46,12 @@ One more connection is yours to choose: with semantic search set to a "local emb
 server", Outpost sends passage text and search queries to the address in the
 `search.semantic.endpoint` setting. The default is `http://127.0.0.1:11434/v1`, on the
 same machine. Point it at another machine and the text goes there.
+
+The same goes for answers: with "Answers from your library" switched on, pressing
+**Answer from my library** sends your question and the passages found for it to the
+address in the `answers.endpoint` setting, and to no other. The default is also
+`http://127.0.0.1:11434/v1`. Outpost never downloads a language model; you fetch one
+with your model server's own tool, which does need a connection, once.
 
 Building Outpost from source, or building the Docker image, also needs a connection
 (to install dependencies and fetch map fonts). Running it does not.

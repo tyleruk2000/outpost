@@ -192,4 +192,8 @@ the whole workspace as Markdown from Notes, documents from the Library.
   a local embedding server, the drive will look for one at the same address on the new
   computer. If none answers, searches return keyword results with a note saying so.
 
+- **Model servers.** The same goes for answers: if "Answers from your library" was
+  set up, the drive looks for a model server at the same address on the new computer.
+  If none answers, **Answer from my library** says so; search is unaffected.
+
 See also [offline.md](offline.md) and [security.md](security.md).

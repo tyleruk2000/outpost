@@ -367,6 +367,55 @@ Check that the server is running and that the address is right from where Outpos
 runs. In Docker, `127.0.0.1` is the container itself; see
 [search.md](search.md#choosing-a-provider).
 
+### There is no "Answer from my library" button
+
+It appears on the Search screen only when **Settings → Answers from your library** is
+switched on and a model is chosen. Outpost does not include a language model; see
+[ai.md](ai.md#setting-it-up).
+
+### Answers: "No model server answered at …"
+
+The model server is not running, or the address is wrong from where Outpost runs.
+Start it (for Ollama, `ollama serve` or the Ollama app) and press **Test** in
+Settings. In Docker, `127.0.0.1` is the container itself; see
+[ai.md](ai.md#in-docker-or-with-the-model-on-another-machine). llama.cpp's server
+changed its default port from 8080 to 9931: use the address it prints.
+
+### Answers: "The model server … has no model called …"
+
+The name must be the one the server uses, including any tag (`llama3.2:3b`, not
+`llama3.2 3b`). Choose it from the list in Settings, which comes from the server, or
+fetch it first (`ollama pull llama3.2:3b`).
+
+### Answers: "… cannot write text. It is probably an embedding model…"
+
+A model such as `nomic-embed-text` turns text into numbers for search by meaning and
+cannot answer. Choose a chat model.
+
+### Answers: "The passages and the question were too long for the model."
+
+Lower **Context budget** in Settings, or start the model with a larger context
+(`-c 8192` for llama.cpp's server). Ollama does not report this: it silently drops
+what does not fit, so with Ollama keep the budget inside its context size (4,096
+tokens by default; the default budget fits). See [ai.md](ai.md#with-ollama).
+
+### Answers: "The model had not started writing after 3 minutes…"
+
+The machine is too slow for that model with that much text. Use a smaller model or a
+smaller context budget. The first answer after starting the model server is the
+slowest, because the model is loaded into memory then.
+
+### Answers: "Outpost is already writing an answer…"
+
+One answer is written at a time, across every device using this Outpost. Wait for the
+other to finish, or stop it where it was asked.
+
+### An answer cites nothing, or cites a number that is struck through
+
+The model did not follow its instructions. Small models do this more often. Treat the
+answer as unsupported, read the passages listed beneath it, and consider a larger
+model. Outpost flags this; it cannot prevent it.
+
 ## Notes
 
 ### "This page was changed somewhere else after you opened it…"

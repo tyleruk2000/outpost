@@ -126,6 +126,39 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 - Retrieval endpoints that return passages with full provenance and numbered, cited
   context for use with a language model, with a flag for safety-critical sources.
 
+#### Answers from your library
+
+- **Answer from my library** on the Search screen: a language model you run yourself
+  (through Ollama, llama.cpp's server or LM Studio) writes a short answer to a question
+  from passages of your documents, notes and book chapters. Outpost includes no model
+  and downloads none. Off until it is set up; the search results are unchanged and stay
+  beneath the answer.
+- The answer streams as it is written and can be stopped. It is headed as generated
+  and names the model. Each citation marker shows the quoted passage and opens the
+  source; the passages the model was given are always listed beneath.
+- Grounding that is checked: the model is told to answer only from the numbered
+  passages and to say when they do not hold the answer; a marker that matches no
+  passage is struck through; an answer that cites nothing is called out; and when no
+  passage is found the model is not asked at all.
+- The existing safety flag carries through: when a source is about medicine, first aid
+  or preserving food, the model is asked for the source's own words, a warning sits
+  above the answer and those passages are shown open.
+- **Settings → Answers from your library**: server address, the model (chosen from the
+  server's own list when it can be read), a test that says what failed (not reachable,
+  not a model server, no such model, not a chat model, no chat endpoint, too slow),
+  temperature (0.2 by default) and a context budget.
+- `POST /api/answers` streams the answer as server-sent events; it writes one answer at
+  a time, stops the model when the reader goes away, and stores nothing.
+  `GET /api/answers/status`, `GET /api/answers/models` and `POST /api/answers/test`
+  support the settings.
+- Questions are searched for by what they are about: words such as "how" and "should"
+  are left out, and the answer says which words were searched for.
+- *How search works* shows the prompt that is really sent, and explains how the
+  sources are fenced off from instructions.
+- Tested against a stand-in server that speaks the protocol
+  (`apps/server/test/model-server.ts`), checked against the Ollama and llama.cpp
+  documentation of 2026-11-15. **Not yet run against a real model.**
+
 #### Reference collections
 
 - A catalogue of 236 items in JSON manifests, with a validator: 128 Kiwix archives; 83
@@ -222,6 +255,10 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 - Limits on archive extraction; sanitising of imported Markdown and HTML into a fixed
   content model.
 - No telemetry, and no outbound request unless a person asks for one.
+- Answers from a language model: the question and passages go only to the model
+  server a person configured (redirects refused, no credentials in the address),
+  sources are fenced as data in the prompt, and an answer is drawn as words only, with
+  no links but the citation markers Outpost builds.
 
 #### Deployment
 
@@ -243,7 +280,10 @@ These are deliberate or known, and are explained in
   everywhere.
 - **OCR** is slow and makes mistakes, reads only pictures of pages (not text drawn as
   shapes), and has English only unless a language file is added by hand.
-- **No language model.** Outpost retrieves and cites; it does not generate answers.
+- **No language model is included.** Answers need a model server you run yourself.
+  They are one question and one answer, from documents, notes and book chapters only
+  (reference collections are not read), and have been tested against a stand-in
+  server, not a real model.
 - **Reference collections need kiwix-serve**: the Compose sidecar, or a binary for
   installations without Docker. On a portable drive they cannot be opened on Windows,
   because the Kiwix project publishes no Windows build of its reader at the version

@@ -183,6 +183,11 @@ Settings and their defaults are defined in
 | `search.hybrid.keywordWeight` | 1 | 0 to 10 |
 | `search.hybrid.semanticWeight` | 1 | 0 to 10 |
 | `search.includeReference` | true | |
+| `answers.enabled` | false | Answers written by a language model the person runs. See [ai.md](ai.md) |
+| `answers.endpoint` | `http://127.0.0.1:11434/v1` | An `http` or `https` address without credentials; `/v1` is added when it has no path |
+| `answers.model` | empty | The model's name as the server knows it |
+| `answers.temperature` | 0.2 | 0 to 2 |
+| `answers.contextChars` | 6000 | 1000 to 60000 characters of quoted passages per question |
 | `maps.tileSource` | empty (newest daily build) | an address |
 | `maps.terrainSource` | `https://download.mapterhorn.com/planet.pmtiles` | an address |
 | `maps.defaultMaxZoom` | 14 | 0 to 15 |
@@ -247,6 +252,36 @@ Types: `SemanticStatus` in `packages/shared/src/semantic.ts`.
 The file format is described in
 [search.md](search.md#moving-vectors-between-installations).
 
+## Answers
+
+One question, one answer written by a language model the person runs themselves, from
+passages of their library. Types: `packages/shared/src/answers.ts`. See
+[ai.md](ai.md) for the prompt, what is sent where, and the events in full.
+
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/answers/status` | `AnswersStatus`: `enabled`, `ready`, `reason`, `model`, `server`, `place` (`this-computer`, `local-network`, `elsewhere`), `busy`. Read from settings; the model server is not contacted. |
+| `GET /api/answers/models` | `{ models, message }`: the model names the configured server reports, or why they could not be read. Contacts the model server, and only while answers are switched on. |
+| `POST /api/answers/test` | Asks the configured model for one word. `AnswerTestResult`: `ok`, `failure` (`address`, `unreachable`, `not-a-model-server`, `no-such-model`, `not-a-chat-model`, `no-chat-endpoint`, `too-slow`, `other`), `message`, `models`, `reply`, `tookMs`. Always `200`. |
+| `POST /api/answers` | Body: `question` (1 to 1000 characters), `mode?` (`keyword`, `semantic`, `hybrid`). Writes an answer and streams it. |
+
+`POST /api/answers` is the one endpoint that answers a `POST` with a stream. It
+answers `409` if answers are not set up, or if another answer is being written
+(`details.busy` is then `true`): one is written at a time, and a second is refused,
+not queued. Otherwise the response is `200` with
+`Content-Type: text/event-stream`, and these events, each with one JSON `data` line:
+
+| Event | Data |
+| --- | --- |
+| `sources` | Always first: `question`, `searchedFor`, `model`, `server`, `sources`, `omitted`, `safetyCritical`. Each source has `marker`, `kind`, `entityId`, `title`, `collection`, `url`, `page`, `heading`, `quote` and `safetyCritical`. |
+| `delta` | `text`: the next piece of the answer. |
+| `done` | `outcome` (`answered`, or `nothing-found` when no passage matched and the model was not asked), `used` and `unsupported` (citation markers that are and are not real sources), `cutShort`, `tookMs`. |
+| `error` | `failure` and a `message` for a person. Sent in place of `done` when the model server fails after the stream has begun. |
+
+Closing the connection stops the model. Nothing about the question or the answer is
+stored. Because it is a `POST`, it needs the `X-Outpost-Request` header, so a browser
+reads it with `fetch`, not `EventSource`.
+
 ## Retrieval
 
 Types: `apps/server/src/modules/retrieval/types.ts`. See [ai.md](ai.md).
@@ -267,7 +302,7 @@ only; nothing is changed. Types: `packages/shared/src/retrieval.ts`.
 | `GET /api/retrieval/overview` | `ExplainOverview`: how many things and passages are indexed, passage length distribution, passage settings, and which vector source is in use. |
 | `GET /api/retrieval/entities?q=` | `{ entities }`: indexed things whose title matches, to pick one to look inside. |
 | `GET /api/retrieval/chunks?kind=&entityId=` | `{ entity, chunks, chunkSize, chunkOverlap }`: the passages one thing was cut into, with offsets and overlaps. |
-| `POST /api/retrieval/explain` | Body: `query`, `limit?` (3 to 20, default 8). `ExplainResponse`: the query's terms, the keyword ranking with per-term scores, the vector ranking with similarities, the fusion table with each list's contribution, the assembled context, the prompt a local model would be given (shown, never sent anywhere), and timings. |
+| `POST /api/retrieval/explain` | Body: `query`, `limit?` (3 to 20, default 8). `ExplainResponse`: the query's terms, the keyword ranking with per-term scores, the vector ranking with similarities, the fusion table with each list's contribution, the assembled context, the prompt `POST /api/answers` would send for this question (built by the same code; this endpoint sends nothing), and timings. |
 | `POST /api/retrieval/projection` | Body: `query?`, `limit?` (20 to 800, default 300). `ProjectionResponse`: passages (and the query) placed in two dimensions by principal component analysis of their vectors. |
 
 When no embedding provider is configured, the vector stages use the built-in

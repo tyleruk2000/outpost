@@ -170,7 +170,7 @@ export default function SettingsPage({ extraSections }: { extraSections?: ReactN
             <SettingRow
               htmlFor="ix-chunk"
               label="Passage length"
-              hint="Text is split into passages of about this size for search results and future question answering."
+              hint="Text is split into passages of about this size for search results and for answers written from your library."
               control={
                 <NumberSetting
                   id="ix-chunk"

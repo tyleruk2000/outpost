@@ -66,8 +66,13 @@ picture, not a surveyed path.
   search finds passages by meaning, and hybrid ranking combines the two.
 - **Search you can see into.** *How search works* follows one question of yours
   through every step (cutting documents into passages, matching words, matching
-  meaning, combining the two, building the context a language model would be given)
-  with the real numbers from your own library.
+  meaning, combining the two, building the context a language model is given) with
+  the real numbers from your own library.
+- **Answers with their sources, from a model you run.** If you run a language model
+  on your own machine (with Ollama, llama.cpp or LM Studio), search can also write a
+  short answer from passages of your documents and notes, with a citation after each
+  statement that opens the passage. Outpost includes no model and downloads none, and
+  nothing is sent anywhere but the model server you set up.
 - **Storage you control.** Internal disks, USB drives, SSDs and NAS shares. See what
   uses the space, move collections between locations with verification, and unplug a
   drive without losing your library's records. One screen lists everything installed,
@@ -229,14 +234,14 @@ The reasoning behind each choice, the security model and the known trade-offs ar
 | [Deployment](docs/deployment.md) | Installing on each platform, settings, running without Docker |
 | [Storage](docs/storage.md) | Locations, NAS examples, moving and verifying |
 | [Offline use](docs/offline.md) | What works without a connection, and how that is guaranteed |
-| [Search](docs/search.md) | Query syntax, semantic and hybrid search |
+| [Search](docs/search.md) | Query syntax, semantic and hybrid search, answers from your library |
 | [Sources](docs/sources.md) | Every content source considered, its licence, and how it is used |
 | [Maps](docs/maps.md) | Regions, data sources, GPX, coordinates |
 | [Notes and imports](docs/notes-and-imports.md) | The editor, Markdown and Notion imports |
 | [Portable drives](docs/portable.md) | Making and using a USB drive |
 | [Security](docs/security.md) | Threat model and controls |
 | [API](docs/api.md) | HTTP API reference |
-| [Preparing for AI](docs/ai.md) | Retrieval interfaces for future question answering |
+| [Answers and language models](docs/ai.md) | Setting up a model of your own, the exact prompt, what is sent where |
 | [Troubleshooting](docs/troubleshooting.md) | Common problems |
 | [Architecture](docs/architecture.md) | Design decisions and trade-offs |
 
@@ -249,8 +254,12 @@ Stated here so nobody has to find them out:
   English is built in; other languages need a data file you add yourself. Text drawn
   as shapes is not read. See
   [Search](docs/search.md#scanned-pages-and-images-ocr).
-- **No language model.** Outpost does not answer questions in prose. The retrieval and
-  citation interfaces a model would use exist and are documented.
+- **No language model is included.** Answers in prose need a model server you run
+  yourself (Ollama, llama.cpp, LM Studio) and a model you download with it. It is one
+  question and one answer, from documents, notes and book chapters only: reference
+  collections such as Wikipedia are not read. This has been tested against a stand-in
+  server that speaks the same protocol, **not yet against a real model**. See
+  [Answers and language models](docs/ai.md).
 - **Semantic search needs a model you provide**: a local embedding server such as
   Ollama, or an optional package that is not part of the packaged app.
 - **Reference collections need kiwix-serve.** It is in the Compose stack. On portable
@@ -268,7 +277,7 @@ Stated here so nobody has to find them out:
 ## Roadmap
 
 In rough order: downloading OCR languages from inside Outpost; a bundled local embedding option;
-question answering with citations through a local model (Ollama, llama.cpp); richer
+answers that can also draw on reference collections; richer
 topographic layers; merging a portable drive back into its source;
 storage pools; an optional PostgreSQL and pgvector back end. Work is tracked in the
 repository's issues.
