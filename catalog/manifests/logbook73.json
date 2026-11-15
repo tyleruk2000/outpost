@@ -22,7 +22,7 @@
       "tags": ["ham radio", "amateur radio", "handbook", "beginners", "antennas", "propagation", "digital modes"],
       "source": {
         "type": "bundled",
-        "version": "2026-11-12.2",
+        "version": "2026-11-12",
         "book": {
           "folder": "logbook73/handbook",
           "sections": [
@@ -741,7 +741,7 @@
       "tags": ["ham radio", "amateur radio", "radio guide", "Radtel RT-950 Pro"],
       "source": {
         "type": "bundled",
-        "version": "2026-11-12.2",
+        "version": "2026-11-12",
         "book": {
           "folder": "logbook73/rt-950-pro",
           "sections": [
@@ -932,7 +932,7 @@
       "tags": ["ham radio", "amateur radio", "radio guide", "Baofeng UV-5R"],
       "source": {
         "type": "bundled",
-        "version": "2026-11-12.2",
+        "version": "2026-11-12",
         "book": {
           "folder": "logbook73/uv-5r",
           "sections": [
@@ -1076,7 +1076,7 @@
       "tags": ["ham radio", "amateur radio", "radio guide", "Yaesu FT5DR"],
       "source": {
         "type": "bundled",
-        "version": "2026-11-12.2",
+        "version": "2026-11-12",
         "book": {
           "folder": "logbook73/ft5dr",
           "sections": [
@@ -1297,7 +1297,7 @@
       "tags": ["ham radio", "amateur radio", "radio guide", "Xiegu G90"],
       "source": {
         "type": "bundled",
-        "version": "2026-11-12.2",
+        "version": "2026-11-12",
         "book": {
           "folder": "logbook73/g90",
           "sections": [
@@ -1471,7 +1471,7 @@
       "tags": ["ham radio", "amateur radio", "radio guide", "Xiegu X6100"],
       "source": {
         "type": "bundled",
-        "version": "2026-11-12.2",
+        "version": "2026-11-12",
         "book": {
           "folder": "logbook73/x6100",
           "sections": [
@@ -1662,7 +1662,7 @@
       "tags": ["ham radio", "amateur radio", "radio guide", "Xiegu X6200"],
       "source": {
         "type": "bundled",
-        "version": "2026-11-12.2",
+        "version": "2026-11-12",
         "book": {
           "folder": "logbook73/x6200",
           "sections": [
@@ -1829,7 +1829,7 @@
       "tags": ["ham radio", "amateur radio", "radio guide", "Quansheng UV-K5"],
       "source": {
         "type": "bundled",
-        "version": "2026-11-12.2",
+        "version": "2026-11-12",
         "book": {
           "folder": "logbook73/uv-k5",
           "sections": [
@@ -2074,7 +2074,7 @@
       "tags": ["ham radio", "amateur radio", "radio guide", "Radtel RT-4D"],
       "source": {
         "type": "bundled",
-        "version": "2026-11-12.2",
+        "version": "2026-11-12",
         "book": {
           "folder": "logbook73/rt-4d",
           "sections": [
@@ -2260,7 +2260,7 @@
       "tags": ["ham radio", "amateur radio", "radio guide", "Radtel RT-6D / RT-6D Pro"],
       "source": {
         "type": "bundled",
-        "version": "2026-11-12.2",
+        "version": "2026-11-12",
         "book": {
           "folder": "logbook73/rt-6d",
           "sections": [
@@ -2453,7 +2453,7 @@
       "tags": ["ham radio", "amateur radio", "radio guide", "Baofeng GT-5R Mini"],
       "source": {
         "type": "bundled",
-        "version": "2026-11-12.2",
+        "version": "2026-11-12",
         "book": {
           "folder": "logbook73/gt-5r-mini",
           "sections": [
@@ -2597,7 +2597,7 @@
       "tags": ["ham radio", "amateur radio", "radio guide", "TIDRADIO TD-H3"],
       "source": {
         "type": "bundled",
-        "version": "2026-11-12.2",
+        "version": "2026-11-12",
         "book": {
           "folder": "logbook73/td-h3",
           "sections": [
@@ -2741,7 +2741,7 @@
       "tags": ["ham radio", "amateur radio", "radio guide", "Retevis RT95"],
       "source": {
         "type": "bundled",
-        "version": "2026-11-12.2",
+        "version": "2026-11-12",
         "book": {
           "folder": "logbook73/rt95",
           "sections": [
@@ -2916,7 +2916,7 @@
       "tags": ["ham radio", "amateur radio", "radio guide", "(tr)uSDX"],
       "source": {
         "type": "bundled",
-        "version": "2026-11-12.2",
+        "version": "2026-11-12",
         "book": {
           "folder": "logbook73/trusdx",
           "sections": [
@@ -3100,7 +3100,7 @@
       "tags": ["ham radio", "amateur radio", "radio guide", "Digirig Mobile"],
       "source": {
         "type": "bundled",
-        "version": "2026-11-12.2",
+        "version": "2026-11-12",
         "book": {
           "folder": "logbook73/digirig",
           "sections": [
@@ -3258,7 +3258,7 @@
       "tags": ["ham radio", "amateur radio", "radio guide", "DigiPi"],
       "source": {
         "type": "bundled",
-        "version": "2026-11-12.2",
+        "version": "2026-11-12",
         "book": {
           "folder": "logbook73/digipi",
           "sections": [
