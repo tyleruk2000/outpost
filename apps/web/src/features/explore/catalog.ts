@@ -1,5 +1,5 @@
 /** Filtering, ordering and wording for catalogue entries. Pure, so the rules can be tested without a screen. */
-import { type CatalogCategorySlug, type CatalogEntryDto, formatBytes } from "@outpost/shared";
+import { type CatalogCategorySlug, type CatalogEntryDto, type CatalogPack, formatBytes } from "@outpost/shared";
 import { formatDate } from "@/lib/utils";
 
 export type ShowFilter = "all" | "included" | "installed" | "not_installed";
@@ -53,7 +53,8 @@ export function countByCategory(entries: Array<Pick<CatalogEntryDto, "category">
   return counts;
 }
 
-export type CategoryChoice = CatalogCategorySlug | "all";
+/** A category, everything, or the packs (curated lists across categories). */
+export type CategoryChoice = CatalogCategorySlug | "all" | "packs";
 
 // ── Wording ──
 
@@ -171,4 +172,81 @@ export function entryAction(situation: EntrySituation, included = false): EntryA
  */
 export function openTarget(entry: Pick<CatalogEntryDto, "source" | "documentId" | "collectionId">): string {
   return isIncluded(entry) && entry.documentId ? `/library/documents/${entry.documentId}` : `/library/collections/${entry.collectionId}`;
+}
+
+// ── Packs ──
+
+export interface PackSummary {
+  /** The pack's entries, in its own order. */
+  items: CatalogEntryDto[];
+  /** Entries already in the library. */
+  installed: number;
+  /** Entries being fetched or queued right now. */
+  underWay: number;
+  /** Entries that are neither here nor on their way. */
+  missing: CatalogEntryDto[];
+}
+
+export const isUnderWay = (entry: Pick<CatalogEntryDto, "status">) =>
+  entry.status === "queued" || entry.status === "downloading" || entry.status === "paused";
+
+/** Where a pack stands against what is already in the library. */
+export function packSummary(pack: Pick<CatalogPack, "entryIds">, entries: CatalogEntryDto[]): PackSummary {
+  const byId = new Map(entries.map((entry) => [entry.id, entry]));
+  const items = pack.entryIds.flatMap((id) => byId.get(id) ?? []);
+  return {
+    items,
+    installed: items.filter((entry) => entry.status === "installed").length,
+    underWay: items.filter(isUnderWay).length,
+    missing: items.filter((entry) => entry.status !== "installed" && !isUnderWay(entry)),
+  };
+}
+
+export interface FetchSize {
+  /** Bytes still to fetch from the internet, as far as sizes are known. */
+  bytes: number;
+  /** Some of the sizes are the catalogue's estimates. */
+  approximate: boolean;
+  /** Entries whose size is not known at all. */
+  unknown: number;
+  /** Entries that need a connection, as opposed to those that ship with Outpost. */
+  online: number;
+  /** Entries that ship with Outpost and are simply added. */
+  included: number;
+}
+
+/** What fetching these entries will take. Entries that ship with Outpost cost nothing to fetch. */
+export function fetchSize(entries: CatalogEntryDto[]): FetchSize {
+  const size: FetchSize = { bytes: 0, approximate: false, unknown: 0, online: 0, included: 0 };
+  for (const entry of entries) {
+    if (entry.source.type === "bundled") {
+      size.included += 1;
+      continue;
+    }
+    size.online += 1;
+    if (entry.sizeBytes === null) size.unknown += 1;
+    else {
+      size.bytes += entry.sizeBytes;
+      if (entry.sizeIsEstimate) size.approximate = true;
+    }
+  }
+  return size;
+}
+
+/** "about 1.20 GB to fetch", "nothing to fetch", "62.0 MB to fetch, plus 2 of unknown size". */
+export function fetchSizeText(size: FetchSize): string {
+  if (size.online === 0) return "nothing to fetch";
+  const amount = size.bytes > 0 ? `${size.approximate ? "about " : ""}${formatBytes(size.bytes)} to fetch` : "size not known yet";
+  return size.unknown > 0 && size.bytes > 0 ? `${amount}, plus ${size.unknown} of unknown size` : amount;
+}
+
+/** One line on where a pack stands: "11 items, about 62.0 MB to fetch, 2 already here". */
+export function packLine(summary: PackSummary): string {
+  const total = summary.items.length;
+  if (summary.installed === total) return `All ${total} already in your library`;
+  const parts = [`${total} ${total === 1 ? "item" : "items"}`];
+  if (summary.missing.length > 0) parts.push(fetchSizeText(fetchSize(summary.missing)));
+  if (summary.installed > 0) parts.push(`${summary.installed} already here`);
+  if (summary.underWay > 0) parts.push(`${summary.underWay} on ${summary.underWay === 1 ? "its" : "their"} way`);
+  return parts.join(", ");
 }

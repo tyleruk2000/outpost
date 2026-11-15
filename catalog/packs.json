@@ -4,7 +4,7 @@
     {
       "id": "first-things",
       "name": "First things",
-      "description": "The small set to fetch before anything else: what to have in the house, first aid, safe water, finding your way and the knots worth knowing. Small enough for a phone connection.",
+      "description": "The small set to fetch before anything else: what to have in the house, first aid, safe water, finding your way, the knots worth knowing, and which radio channels are for what. Small enough for a phone connection.",
       "entries": [
         "ready.emergency-supply-list",
         "ready.are-you-ready-guide",
@@ -14,13 +14,15 @@
         "kiwix.zimgit-water-en",
         "kiwix.nhs.uk-en-medicines",
         "usgs.finding-your-way-with-map-and-compass",
-        "kiwix.wikipedia-en-knots-maxi"
+        "kiwix.wikipedia-en-knots-maxi",
+        "outpost.radio.emergency-frequencies",
+        "outpost.radio.licence-free-radio"
       ]
     },
     {
       "id": "home-preparedness",
       "name": "Home preparedness",
-      "description": "For a household riding out a power cut, a storm or a longer disruption: official guidance on hazards, a post-disaster library, medicine, keeping food and making water safe.",
+      "description": "For a household riding out a power cut, a storm or a longer disruption: official guidance on hazards, a post-disaster library, medicine, keeping food, making water safe, and radio channels and broadcasts to know.",
       "entries": [
         "ready.emergency-supply-list",
         "ready.are-you-ready-guide",
@@ -36,7 +38,11 @@
         "kiwix.zimgit-medicine-en",
         "who.basic-emergency-care",
         "kiwix.nhs.uk-en-medicines",
-        "kiwix.wikipedia-en-medicine-mini"
+        "kiwix.wikipedia-en-medicine-mini",
+        "outpost.radio.emergency-frequencies",
+        "outpost.radio.licence-free-radio",
+        "outpost.radio.broadcasts-weather-time",
+        "outpost.radio.preparedness-conventions"
       ]
     },
     {
@@ -86,17 +92,83 @@
         "uiaa.medcom-6-water-disinfection-in-the-mountains",
         "uiaa.medcom-2-altitude-sickness-field-management",
         "kiwix.zimgit-water-en",
-        "kiwix.outdoors.stackexchange.com-en-all"
+        "kiwix.outdoors.stackexchange.com-en-all",
+        "outpost.radio.emergency-frequencies",
+        "outpost.radio.licence-free-radio"
       ]
     },
     {
-      "id": "radio",
-      "name": "Radio",
-      "description": "For listening and for licensed operating: questions and answers from amateur radio operators, signal processing, and marine weather fax schedules.",
+      "id": "radio-reference",
+      "name": "Radio reference sheets",
+      "description": "Nine sheets that come with Outpost, so adding them needs no connection: amateur bands for the UK, the US and worldwide, repeaters and data modes, licence-free radio, emergency and calling frequencies, weather and time broadcasts, an operating reference, and the informal preparedness conventions.",
       "entries": [
-        "kiwix.ham.stackexchange.com-en-all",
-        "kiwix.dsp.stackexchange.com-en-all",
-        "nws.worldwide-marine-radiofacsimile-broadcast-schedules"
+        "outpost.radio.uk-amateur-bands",
+        "outpost.radio.us-amateur-bands",
+        "outpost.radio.world-amateur-bands",
+        "outpost.radio.repeaters-data-space",
+        "outpost.radio.licence-free-radio",
+        "outpost.radio.emergency-frequencies",
+        "outpost.radio.broadcasts-weather-time",
+        "outpost.radio.preparedness-conventions",
+        "outpost.radio.operating-reference"
+      ]
+    },
+    {
+      "id": "radio-uk",
+      "name": "Amateur radio in the UK",
+      "description": "For a UK operator or someone working towards a licence: the reference sheets, Ofcom's licence conditions and guidance, the UK frequency allocation table, CB and PMR446 rules, the IARU Region 1 band plans and operating guide, and questions and answers from other operators.",
+      "entries": [
+        "outpost.radio.uk-amateur-bands",
+        "outpost.radio.world-amateur-bands",
+        "outpost.radio.repeaters-data-space",
+        "outpost.radio.operating-reference",
+        "outpost.radio.emergency-frequencies",
+        "outpost.radio.licence-free-radio",
+        "outpost.radio.broadcasts-weather-time",
+        "ofcom.amateur-radio-licence-conditions",
+        "ofcom.amateur-radio-guidance",
+        "ofcom.ir-2028-amateur-radio",
+        "ofcom.amateur-radio-notice-of-coordination",
+        "ofcom.amateur-radio-phase-2-3-guide",
+        "ofcom.uk-frequency-allocation-table",
+        "ofcom.distress-safety-frequencies",
+        "ofcom.pmr446-information-sheet",
+        "ofcom.ir-2027-citizens-band-fm",
+        "ofcom.ir-2027-2-citizens-band-am-ssb",
+        "iaru.region-1-hf-band-plan",
+        "iaru.region-1-vhf-band-plan",
+        "iaru.ethics-and-operating-procedures",
+        "iaru.emergency-telecommunications-guide",
+        "cept.tr-61-01-radio-amateur-licence",
+        "mca.maritime-safety-information-leaflet",
+        "kiwix.ham.stackexchange.com-en-all"
+      ]
+    },
+    {
+      "id": "radio-us",
+      "name": "Amateur radio in the United States",
+      "description": "For a US operator or someone studying for a licence: the reference sheets, the FCC's amateur and personal radio rules, the national allocation chart, the federal field operations guides for emergency communications, NOAA Weather Radio and the time stations, the IARU Region 2 band plan, and questions and answers from other operators.",
+      "entries": [
+        "outpost.radio.us-amateur-bands",
+        "outpost.radio.world-amateur-bands",
+        "outpost.radio.repeaters-data-space",
+        "outpost.radio.operating-reference",
+        "outpost.radio.emergency-frequencies",
+        "outpost.radio.licence-free-radio",
+        "outpost.radio.broadcasts-weather-time",
+        "outpost.radio.preparedness-conventions",
+        "fcc.part-97-amateur-radio-service",
+        "fcc.part-95-personal-radio-services",
+        "ntia.us-frequency-allocation-chart",
+        "cisa.nifog",
+        "cisa.auxfog",
+        "nist.sp-432-time-and-frequency-services",
+        "nws.noaa-weather-radio-brochure",
+        "nws.worldwide-marine-radiofacsimile-broadcast-schedules",
+        "iaru.region-2-band-plan",
+        "iaru.ethics-and-operating-procedures",
+        "iaru.emergency-telecommunications-guide",
+        "kiwix.ham.stackexchange.com-en-all"
       ]
     },
     {

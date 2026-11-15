@@ -1,4 +1,4 @@
-import type { CatalogAddResponse } from "@outpost/shared";
+import type { CatalogAddResponse, CatalogPackInstallResponse } from "@outpost/shared";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
@@ -51,6 +51,17 @@ export async function registerCatalog(app: FastifyInstance, ctx: AppContext): Pr
     const body = z.object({ locationId: z.string().min(1).max(100).optional() }).parse(request.body ?? {});
     const result = await service.download(request.params.id, body);
     return { download: downloads.toDto(result.download), replacesCollectionId: result.replacesCollectionId };
+  });
+
+  // Everything in a pack that is not here yet, or the part of it that was chosen.
+  app.post<{ Params: { id: string } }>("/api/catalog/packs/:id/install", async (request): Promise<CatalogPackInstallResponse> => {
+    const body = z
+      .object({
+        locationId: z.string().min(1).max(100).optional(),
+        entryIds: z.array(z.string().min(1).max(120)).min(1).max(100).optional(),
+      })
+      .parse(request.body ?? {});
+    return service.installPack(request.params.id, body);
   });
 
   // An entry that ships with Outpost: copied into the library there and then, with no network.

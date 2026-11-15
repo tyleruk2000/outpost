@@ -21,6 +21,7 @@ import { type CategoryChoice, countByCategory, filterEntries, type ShowFilter, t
 import { type CategoryItem, CategoryNav } from "./category-nav";
 import { DownloadDialog } from "./download-dialog";
 import { EntryCard, EntryCardSkeleton } from "./entry-card";
+import { PackList } from "./packs";
 import { useCatalog } from "./use-catalog";
 
 const showOptions: Array<{ value: ShowFilter; label: string }> = [
@@ -153,7 +154,11 @@ export default function ExplorePage() {
   const markedEntry = markedId ? entries.find((entry) => entry.id === markedId) : undefined;
   const requested = params.get("category");
   // A link to one entry opens its category unless the address names another.
-  const category: CategoryChoice = CATALOG_CATEGORIES.find((item) => item.slug === requested)?.slug ?? markedEntry?.category ?? "all";
+  const packs = catalog.data?.packs ?? [];
+  const category: CategoryChoice =
+    requested === "packs" && packs.length > 0
+      ? "packs"
+      : (CATALOG_CATEGORIES.find((item) => item.slug === requested)?.slug ?? markedEntry?.category ?? "all");
 
   const setCategory = (next: CategoryChoice) =>
     setParams((current) => {
@@ -171,6 +176,8 @@ export default function ExplorePage() {
   const categories = catalog.data?.categories ?? [];
   const labelOf = (slug: string) => categories.find((item) => item.slug === slug)?.label ?? slug;
   const navItems: CategoryItem[] = [
+    // Packs come first: they are the answer to "where do I start?".
+    ...(packs.length > 0 ? [{ slug: "packs" as const, label: "Packs", count: packs.length }] : []),
     { slug: "all", label: "All collections", count: counts.all ?? 0 },
     // Maps are fetched by region on their own screen, so "0" beside them would be wrong.
     ...categories.map((item) => ({
@@ -186,7 +193,7 @@ export default function ExplorePage() {
     setShow("all");
   };
 
-  const inCategory = category === "all" ? matching : matching.filter((entry) => entry.category === category);
+  const inCategory = category === "all" || category === "packs" ? matching : matching.filter((entry) => entry.category === category);
   const shown = sortEntries(inCategory, sort);
   // By name, the whole catalogue reads best under its category headings; by size it is one ranked list.
   const grouped = category === "all" && sort === "name";
@@ -194,7 +201,7 @@ export default function ExplorePage() {
     ? categories
         .map((item) => ({ ...item, entries: shown.filter((entry) => entry.category === item.slug) }))
         .filter((group) => group.entries.length > 0)
-    : [{ slug: category, label: category === "all" ? "All collections" : labelOf(category), entries: shown }];
+    : [{ slug: category, label: category === "all" || category === "packs" ? "All collections" : labelOf(category), entries: shown }];
 
   const card = (entry: CatalogEntryDto) => (
     <EntryCard
@@ -243,113 +250,134 @@ export default function ExplorePage() {
         <div className="lg:grid lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-x-10">
           <CategoryNav items={navItems} value={category} onChange={setCategory} />
 
-          <div className="min-w-0 max-lg:mt-3">
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="relative min-w-56 flex-1 max-md:basis-full">
-                <Search aria-hidden className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-muted" />
-                <Input
-                  type="search"
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Filter by name, publisher or topic"
-                  aria-label="Filter collections"
-                  className="pl-9 [&::-webkit-search-cancel-button]:hidden"
-                />
-              </div>
-              <Segmented label="Show" value={show} onChange={setShow} options={showOptions} className="max-md:hidden" />
-              <div className="flex gap-3 max-md:basis-full [&>*]:min-w-0 [&>*]:flex-1">
-                <Select
-                  aria-label="Show"
-                  value={show}
-                  onChange={setShow}
-                  options={showOptions.map((option) => ({ ...option, label: option.value === "all" ? "Show all" : option.label }))}
-                  className="md:hidden"
-                />
-                <Select aria-label="Sort" value={sort} onChange={setSort} options={sortOptions} className="md:w-40" />
-              </div>
-            </div>
-
-            {filtered && !emptyMapsCategory && shown.length > 0 ? (
-              <p className="mt-3 text-small text-ink-muted" role="status">
-                <span className="tabular">
-                  {shown.length} of{" "}
-                  {plural(
-                    category === "all" ? entries.length : entries.filter((entry) => entry.category === category).length,
-                    "collection",
-                  )}
-                </span>{" "}
-                {shown.length === 1 ? "fits" : "fit"} the filter.{" "}
-                <button type="button" onClick={clearFilters} className="text-primary underline underline-offset-2">
-                  Clear filters
-                </button>
+          {category === "packs" ? (
+            <div className="min-w-0 max-lg:mt-3">
+              <h2 className="text-lead font-semibold text-ink">Packs</h2>
+              <p className="mt-1 mb-4 max-w-[68ch] text-small text-ink-muted">
+                A pack gathers the usual things for one purpose so that they can be fetched together. Everything in a pack is also listed on
+                its own in the catalogue, with its publisher and licence. You choose what to leave out and where to keep it before anything
+                starts.
               </p>
-            ) : null}
+              <PackList packs={packs} entries={entries} />
+            </div>
+          ) : (
+            <div className="min-w-0 max-lg:mt-3">
+              {packs.length > 0 && category === "all" && !filtered ? (
+                <p className="mb-4 text-small text-ink-muted">
+                  Not sure where to start?{" "}
+                  <button type="button" onClick={() => setCategory("packs")} className="text-primary underline underline-offset-2">
+                    Packs
+                  </button>{" "}
+                  gather the usual things for a purpose, such as home preparedness, the hills, or radio.
+                </p>
+              ) : null}
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="relative min-w-56 flex-1 max-md:basis-full">
+                  <Search aria-hidden className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-muted" />
+                  <Input
+                    type="search"
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    placeholder="Filter by name, publisher or topic"
+                    aria-label="Filter collections"
+                    className="pl-9 [&::-webkit-search-cancel-button]:hidden"
+                  />
+                </div>
+                <Segmented label="Show" value={show} onChange={setShow} options={showOptions} className="max-md:hidden" />
+                <div className="flex gap-3 max-md:basis-full [&>*]:min-w-0 [&>*]:flex-1">
+                  <Select
+                    aria-label="Show"
+                    value={show}
+                    onChange={setShow}
+                    options={showOptions.map((option) => ({ ...option, label: option.value === "all" ? "Show all" : option.label }))}
+                    className="md:hidden"
+                  />
+                  <Select aria-label="Sort" value={sort} onChange={setSort} options={sortOptions} className="md:w-40" />
+                </div>
+              </div>
 
-            {emptyMapsCategory ? (
-              <EmptyState
-                title="Maps are downloaded by region"
-                seed={5}
-                compact
-                className="mt-6"
-                action={
-                  <Button asChild variant="primary">
-                    <Link to="/maps">Open Maps</Link>
-                  </Button>
-                }
-              >
-                Offline maps are not single files in this catalogue. On the Maps screen you choose the regions you need, see their size, and
-                download just those.
-              </EmptyState>
-            ) : shown.length === 0 ? (
-              <EmptyState
-                title={filtered ? "Nothing matches" : "Nothing in this category yet"}
-                compact
-                className="mt-6"
-                action={
-                  <>
-                    {filtered ? <Button onClick={clearFilters}>Clear filters</Button> : null}
-                    {category !== "all" && (counts.all ?? 0) > 0 ? (
-                      <Button onClick={() => setCategory("all")}>Show all categories</Button>
-                    ) : null}
-                  </>
-                }
-              >
-                {filtered ? (
-                  <>
-                    No collection{category === "all" ? "" : ` in “${labelOf(category)}”`} fits{" "}
-                    {query.trim() ? `“${query.trim()}”` : "this filter"}
-                    {show === "installed"
-                      ? " among those installed"
-                      : show === "not_installed"
-                        ? " among those not installed"
-                        : show === "included"
-                          ? " among those included with Outpost"
-                          : ""}
-                    .
-                    {category !== "all" && (counts.all ?? 0) > 0
-                      ? ` ${plural(counts.all ?? 0, "match", "matches")} in other categories.`
-                      : ""}
-                  </>
-                ) : (
-                  "The catalogue has no entries here."
-                )}
-              </EmptyState>
-            ) : (
-              groups.map((group) => (
-                <section key={group.slug} className="mt-8 first-of-type:mt-6" aria-labelledby={`category-${group.slug}`}>
-                  <div className="mb-3 flex items-baseline gap-3">
-                    <h2 id={`category-${group.slug}`} className="text-lead font-semibold text-ink">
-                      {group.label}
-                    </h2>
-                    <p className="tabular text-small text-ink-muted">{group.entries.length}</p>
-                  </div>
-                  <ul className={grid}>{group.entries.map(card)}</ul>
-                </section>
-              ))
-            )}
+              {filtered && !emptyMapsCategory && shown.length > 0 ? (
+                <p className="mt-3 text-small text-ink-muted" role="status">
+                  <span className="tabular">
+                    {shown.length} of{" "}
+                    {plural(
+                      category === "all" ? entries.length : entries.filter((entry) => entry.category === category).length,
+                      "collection",
+                    )}
+                  </span>{" "}
+                  {shown.length === 1 ? "fits" : "fit"} the filter.{" "}
+                  <button type="button" onClick={clearFilters} className="text-primary underline underline-offset-2">
+                    Clear filters
+                  </button>
+                </p>
+              ) : null}
 
-            {catalog.data.problems.length > 0 ? <ProblemsNote problems={catalog.data.problems} /> : null}
-          </div>
+              {emptyMapsCategory ? (
+                <EmptyState
+                  title="Maps are downloaded by region"
+                  seed={5}
+                  compact
+                  className="mt-6"
+                  action={
+                    <Button asChild variant="primary">
+                      <Link to="/maps">Open Maps</Link>
+                    </Button>
+                  }
+                >
+                  Offline maps are not single files in this catalogue. On the Maps screen you choose the regions you need, see their size,
+                  and download just those.
+                </EmptyState>
+              ) : shown.length === 0 ? (
+                <EmptyState
+                  title={filtered ? "Nothing matches" : "Nothing in this category yet"}
+                  compact
+                  className="mt-6"
+                  action={
+                    <>
+                      {filtered ? <Button onClick={clearFilters}>Clear filters</Button> : null}
+                      {category !== "all" && (counts.all ?? 0) > 0 ? (
+                        <Button onClick={() => setCategory("all")}>Show all categories</Button>
+                      ) : null}
+                    </>
+                  }
+                >
+                  {filtered ? (
+                    <>
+                      No collection{category === "all" ? "" : ` in “${labelOf(category)}”`} fits{" "}
+                      {query.trim() ? `“${query.trim()}”` : "this filter"}
+                      {show === "installed"
+                        ? " among those installed"
+                        : show === "not_installed"
+                          ? " among those not installed"
+                          : show === "included"
+                            ? " among those included with Outpost"
+                            : ""}
+                      .
+                      {category !== "all" && (counts.all ?? 0) > 0
+                        ? ` ${plural(counts.all ?? 0, "match", "matches")} in other categories.`
+                        : ""}
+                    </>
+                  ) : (
+                    "The catalogue has no entries here."
+                  )}
+                </EmptyState>
+              ) : (
+                groups.map((group) => (
+                  <section key={group.slug} className="mt-8 first-of-type:mt-6" aria-labelledby={`category-${group.slug}`}>
+                    <div className="mb-3 flex items-baseline gap-3">
+                      <h2 id={`category-${group.slug}`} className="text-lead font-semibold text-ink">
+                        {group.label}
+                      </h2>
+                      <p className="tabular text-small text-ink-muted">{group.entries.length}</p>
+                    </div>
+                    <ul className={grid}>{group.entries.map(card)}</ul>
+                  </section>
+                ))
+              )}
+
+              {catalog.data.problems.length > 0 ? <ProblemsNote problems={catalog.data.problems} /> : null}
+            </div>
+          )}
         </div>
       )}
 

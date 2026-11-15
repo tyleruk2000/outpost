@@ -5,12 +5,16 @@ import {
   countByCategory,
   entryAction,
   entrySituation,
+  fetchSize,
+  fetchSizeText,
   filterEntries,
   formatLabel,
   isIncluded,
   licenceText,
   matchesQuery,
   openTarget,
+  packLine,
+  packSummary,
   sizeText,
   sortEntries,
 } from "./catalog";
@@ -179,5 +183,54 @@ describe("the state and action of an entry", () => {
     expect(openTarget({ ...sheet, collectionId: "c4", documentId: "d7" })).toBe("/library/documents/d7");
     expect(openTarget({ ...sheet, collectionId: "c4" })).toBe("/library/collections/c4");
     expect(openTarget(entry({ format: "pdf", collectionId: "c9", documentId: "d1" }))).toBe("/library/collections/c9");
+  });
+});
+
+describe("packs", () => {
+  const sheet = entry({
+    id: "sheet",
+    name: "Radio channels",
+    source: { type: "bundled", file: "radio/channels.md", version: "1" },
+    sizeBytes: 9_000,
+    sizeIsEstimate: false,
+  });
+  const guide = entry({ id: "guide", name: "First aid guide", sizeBytes: 4_000_000, sizeIsEstimate: false });
+  const archive = entry({ id: "archive", name: "Medical library", sizeBytes: 70_000_000, sizeIsEstimate: true });
+  const unsized = entry({ id: "unsized", name: "Unknown", sizeBytes: null });
+  const all = [sheet, guide, archive, unsized];
+  const pack = { entryIds: ["guide", "sheet", "archive", "gone"] };
+
+  it("keeps the pack's own order and leaves out what the catalogue no longer lists", () => {
+    expect(packSummary(pack, all).items.map((item) => item.id)).toEqual(["guide", "sheet", "archive"]);
+  });
+
+  it("separates what is here, what is on its way and what is missing", () => {
+    const summary = packSummary(pack, [sheet, { ...guide, status: "installed" }, { ...archive, status: "downloading" }]);
+    expect(summary).toMatchObject({ installed: 1, underWay: 1 });
+    expect(summary.missing.map((item) => item.id)).toEqual(["sheet"]);
+  });
+
+  it("counts only what has to be fetched: sheets that come with Outpost cost nothing", () => {
+    expect(fetchSize([sheet, guide, archive])).toEqual({ bytes: 74_000_000, approximate: true, unknown: 0, online: 2, included: 1 });
+    expect(fetchSizeText(fetchSize([sheet]))).toBe("nothing to fetch");
+    expect(fetchSizeText(fetchSize([guide]))).toBe("4.00 MB to fetch");
+    expect(fetchSizeText(fetchSize([guide, archive]))).toBe("about 74.0 MB to fetch");
+    expect(fetchSizeText(fetchSize([guide, unsized]))).toBe("4.00 MB to fetch, plus 1 of unknown size");
+    expect(fetchSizeText(fetchSize([unsized]))).toBe("size not known yet");
+  });
+
+  it("says where a pack stands in one line", () => {
+    expect(packLine(packSummary(pack, all))).toBe("3 items, about 74.0 MB to fetch");
+    expect(packLine(packSummary(pack, [sheet, { ...guide, status: "installed" }, { ...archive, status: "queued" }]))).toBe(
+      "3 items, nothing to fetch, 1 already here, 1 on its way",
+    );
+    expect(
+      packLine(
+        packSummary(
+          pack,
+          all.map((item) => ({ ...item, status: "installed" as const })),
+        ),
+      ),
+    ).toBe("All 3 already in your library");
   });
 });

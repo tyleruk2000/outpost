@@ -3,7 +3,7 @@ import { CATALOG_CATEGORIES } from "@outpost/shared";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { entry, fakeServer, installBrowserStubs, location, renderScreen } from "../downloads/test-support";
+import { download, entry, fakeServer, installBrowserStubs, location, renderScreen } from "../downloads/test-support";
 import ExplorePage from "./explore-page";
 
 beforeAll(installBrowserStubs);
@@ -36,6 +36,7 @@ function catalog(over: Partial<CatalogResponse> = {}): CatalogResponse {
   return {
     categories: CATALOG_CATEGORIES.map((item) => ({ ...item, count: entries.filter((one) => one.category === item.slug).length })),
     entries,
+    packs: [],
     manifests: [{ id: "kiwix-essentials", name: "Kiwix essentials" }],
     problems: [],
     lastRefreshedAt: null,
@@ -248,5 +249,36 @@ describe("the download confirmation", () => {
     expect(await within(dialog).findByRole("radio", { name: /Internal storage/ })).toBeDisabled();
     expect(within(dialog).getAllByText("Not enough room: this needs 127 GB")).toHaveLength(2);
     expect(within(dialog).getByRole("button", { name: "Download" })).toBeDisabled();
+  });
+
+  it("offers packs first, and fetches the chosen part of one to the chosen location", async () => {
+    const pack = { id: "starter", name: "Starter", description: "The first things to fetch.", entryIds: ["kiwix.knots", "nhs", "wp"] };
+    const server = serve({
+      "GET /api/catalog": catalog({ packs: [pack] }),
+      "POST /api/catalog/packs/starter/install": {
+        queued: [download({ id: "d9", title: "Knots by Wikipedia" })],
+        added: [],
+        already: 0,
+        failed: [],
+      },
+    });
+    const user = userEvent.setup();
+    renderScreen(<ExplorePage />, "/explore");
+    // The main view points at packs; the category list has them first.
+    await user.click(await screen.findByRole("button", { name: "Packs" }));
+    expect(await screen.findByRole("heading", { name: "Starter" })).toBeInTheDocument();
+    expect(screen.getByText(/3 items, .*to fetch, 1 already here/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Get the rest" }));
+    const dialog = await screen.findByRole("dialog", { name: "Starter" });
+    // What is already here is shown, not offered again.
+    expect(within(dialog).getByText("In your library")).toBeInTheDocument();
+    expect(within(dialog).getAllByRole("checkbox")).toHaveLength(2);
+    // The complete Wikipedia is left out; the rest fits the default location.
+    await user.click(within(dialog).getByRole("checkbox", { name: /Wikipedia \(complete/ }));
+    await user.click(within(dialog).getByRole("button", { name: "Fetch 1 item" }));
+
+    expect(await screen.findByRole("dialog", { name: "Starter: on its way" })).toBeInTheDocument();
+    expect(server.calls).toContain("POST /api/catalog/packs/starter/install");
   });
 });

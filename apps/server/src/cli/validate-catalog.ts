@@ -23,6 +23,7 @@ import { createHttpClient } from "../core/http.ts";
 import { defaultCatalogDir } from "../core/paths.ts";
 import { KIWIX_CATALOG_URL } from "../modules/catalog/kiwix.ts";
 import { bundledDirFor, type LoadedCatalog, loadCatalog, manifestJsonSchema } from "../modules/catalog/manifest.ts";
+import { loadPacks } from "../modules/catalog/packs.ts";
 import { type EntryResolution, resolveEntries } from "../modules/catalog/resolve.ts";
 
 export interface CatalogValidation {
@@ -126,6 +127,15 @@ export function validateCatalog(catalogDir: string = defaultCatalogDir, options:
   }
 
   problems.push(...bundledProblems(catalog, bundledDirFor(manifestsDir)));
+
+  // Packs name entries by id: one that names something the catalogue does not list would quietly shrink.
+  const packs = loadPacks([path.join(catalogDir, "packs.json")], new Set(catalog.entries.map((entry) => entry.id)));
+  for (const problem of packs.problems) problems.push(`${problem.file}: ${problem.message}`);
+  const names = new Set<string>();
+  for (const pack of packs.packs) {
+    if (names.has(pack.name)) problems.push(`packs.json: two packs are called "${pack.name}".`);
+    names.add(pack.name);
+  }
 
   if (options.checkSchemaFile ?? true) {
     const file = schemaPath(catalogDir);

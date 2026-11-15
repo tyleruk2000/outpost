@@ -137,9 +137,31 @@ export interface CatalogProblem {
   message: string;
 }
 
+/** A named, curated list of catalogue entries that are usually wanted together. */
+export interface CatalogPack {
+  id: string;
+  name: string;
+  description: string;
+  /** Entries in the pack, in the order its author gave. Every id is in the catalogue. */
+  entryIds: string[];
+}
+
+/** What happened when a pack, or part of one, was asked for. */
+export interface CatalogPackInstallResponse {
+  /** Downloads that were started. */
+  queued: DownloadDto[];
+  /** Entries that ship with Outpost and were added there and then. */
+  added: Array<{ entryId: string; name: string; documentId?: string }>;
+  /** Entries that were already installed or already on their way. */
+  already: number;
+  /** Entries that could not be started, each with the reason. The rest went ahead. */
+  failed: Array<{ entryId: string; name: string; reason: string }>;
+}
+
 export interface CatalogResponse {
   categories: Array<{ slug: CatalogCategorySlug; label: string; count: number }>;
   entries: CatalogEntryDto[];
+  packs: CatalogPack[];
   manifests: Array<{ id: string; name: string }>;
   problems: CatalogProblem[];
   lastRefreshedAt: number | null;

@@ -18,6 +18,7 @@ import {
   CATALOG_CATEGORIES,
   type CatalogEntryDto,
   type CatalogInstallStatus,
+  type CatalogPackInstallResponse,
   type CatalogRefreshSummary,
   type CatalogResponse,
 } from "@outpost/shared";
@@ -33,6 +34,7 @@ import type { DownloadRow, InstallMeta } from "../downloads/types.ts";
 import type { DocumentBridge } from "./documents-bridge.ts";
 import { fetchBooks, fetchFileFacts, KIWIX_CATALOG_URL, type KiwixBook, pickBook } from "./kiwix.ts";
 import { type LoadedCatalog, type LoadedEntry, loadCatalog } from "./manifest.ts";
+import { type LoadedPacks, loadPacks } from "./packs.ts";
 import {
   bookResolution,
   type CachedResolution,
@@ -88,6 +90,12 @@ export interface CatalogService {
   /** Resolves one entry right now, with exact size and checksum where the source publishes them. */
   resolveForDownload(entryId: string): Promise<DownloadResolution>;
   download(entryId: string, options?: { locationId?: string }): Promise<CatalogDownloadResult>;
+  /**
+   * Fetches what a pack holds that is not here yet: starts a download for each such
+   * entry and adds the ones that ship with Outpost. One entry failing to start does not
+   * stop the others. `entryIds` narrows it to part of the pack.
+   */
+  installPack(packId: string, options?: { locationId?: string; entryIds?: string[] }): Promise<CatalogPackInstallResponse>;
   /**
    * Adds an entry that ships with Outpost: copies its file into the library and records
    * it as installed. Works with no connection, and finishes before it returns.
@@ -150,6 +158,9 @@ export function createCatalogService(ctx: AppContext, options: CatalogServiceOpt
 
   const manifestDirs = [path.join(config.catalogDir, "manifests"), path.join(config.dataDir, "catalog")];
   let catalog: LoadedCatalog = { manifests: [], entries: [], problems: [], downloadHosts: [], bundled: new Map() };
+  // Packs that ship with Outpost first; a person's own after, in the folder that holds their manifests.
+  const packFiles = [path.join(config.catalogDir, "packs.json"), path.join(config.dataDir, "catalog", "packs.json")];
+  let packs: LoadedPacks = { packs: [], problems: [] };
   let byId = new Map<string, LoadedEntry>();
 
   function allowedHosts(): string[] {
@@ -180,7 +191,8 @@ export function createCatalogService(ctx: AppContext, options: CatalogServiceOpt
     // http addresses are for a mirror on the person's own network, and only when they allowed that.
     catalog = loadCatalog(manifestDirs, { allowInsecureHttp: config.allowPrivateDownloads });
     byId = new Map(catalog.entries.map((entry) => [entry.id, entry]));
-    for (const problem of catalog.problems) {
+    packs = loadPacks(packFiles, new Set(byId.keys()));
+    for (const problem of [...catalog.problems, ...packs.problems]) {
       ctx.log.warn({ file: problem.file, entry: problem.entryId }, `catalogue: ${problem.message}`);
     }
     indexEntries();
@@ -413,8 +425,9 @@ export function createCatalogService(ctx: AppContext, options: CatalogServiceOpt
     return {
       categories: CATALOG_CATEGORIES.map(({ slug, label }) => ({ slug, label, count: counts.get(slug) ?? 0 })),
       entries,
+      packs: packs.packs,
       manifests: catalog.manifests.map(({ id, name }) => ({ id, name })),
-      problems: catalog.problems,
+      problems: [...catalog.problems, ...packs.problems],
       lastRefreshedAt: cached(REFRESH_MARKER)?.resolvedAt ?? null,
     };
   }
@@ -612,5 +625,41 @@ export function createCatalogService(ctx: AppContext, options: CatalogServiceOpt
 
   reload();
 
-  return { reload, list, getEntry: (id) => byId.get(id), allowedHosts, refresh, resolveForDownload, download, add, hasUpdate };
+  async function installPack(
+    packId: string,
+    request: { locationId?: string; entryIds?: string[] } = {},
+  ): Promise<CatalogPackInstallResponse> {
+    const pack = packs.packs.find((item) => item.id === packId);
+    if (!pack) throw new AppError("not_found", "There is no pack by that name.");
+    const wanted = request.entryIds ?? pack.entryIds;
+    const outside = wanted.filter((id) => !pack.entryIds.includes(id));
+    if (outside.length > 0) throw badRequest(`These are not part of the pack "${pack.name}": ${outside.join(", ")}.`);
+
+    const status = new Map(list().entries.map((item) => [item.id, item.status]));
+    const result: CatalogPackInstallResponse = { queued: [], added: [], already: 0, failed: [] };
+    // In the pack's own order, one at a time: each start checks the free space left by the ones before it.
+    for (const entryId of pack.entryIds.filter((id) => wanted.includes(id))) {
+      const entry = requireEntry(entryId);
+      const now = status.get(entryId);
+      if (now === "installed" || now === "queued" || now === "downloading" || now === "paused") {
+        result.already += 1;
+        continue;
+      }
+      try {
+        if (entry.source.type === "bundled") {
+          const added = await add(entryId, { locationId: request.locationId });
+          result.added.push({ entryId, name: entry.name, documentId: added.documentId });
+        } else {
+          const started = await download(entryId, { locationId: request.locationId });
+          result.queued.push(downloads.toDto(started.download));
+        }
+      } catch (error) {
+        // Without a connection none of the rest can start either; say so once, plainly, for each.
+        result.failed.push({ entryId, name: entry.name, reason: underlyingAppError(error)?.message ?? messageOf(error) });
+      }
+    }
+    return result;
+  }
+
+  return { installPack, reload, list, getEntry: (id) => byId.get(id), allowedHosts, refresh, resolveForDownload, download, add, hasUpdate };
 }

@@ -393,7 +393,7 @@ function SaveFilesDialog({
         )}
       </DialogBody>
       <DialogFooter className="justify-between">
-        <div className="min-w-0 flex-1 text-small text-ink-muted">
+        <div className="min-w-0 flex-1 text-small text-ink-muted max-md:basis-full">
           {progress ? (
             <div>
               <p className="truncate">
