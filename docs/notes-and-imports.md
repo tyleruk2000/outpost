@@ -45,6 +45,26 @@ links, line breaks, and **page links**, which are inline links to another page.
 
 A page can hold up to 5 MB of content and 40 levels of nesting.
 
+### Writing
+
+- **Type `/`** on an empty line for the block menu, and keep typing to filter it
+  ("/call" for a callout, "/tab" for a table).
+- **Markdown shortcuts** work as you type: `#`, `##`, `###` for headings, `-` for a
+  bulleted list, `1.` for a numbered list, `[]` for a to-do, `>` for a quote, three
+  backticks for code, `---` for a divider.
+- **Type `[[` or `@`** to link to another page; pick it from the list or keep typing
+  its name.
+- **Select text** for the formatting bar: bold, italic, underline, strikethrough,
+  code, highlight, link, and "Turn into" to change the kind of block.
+- **The grip beside a block** drags it to a new position, and opens a menu to turn it
+  into something else, duplicate it or delete it. It works on whole top-level blocks,
+  not on single list items.
+- **Pictures** can be pasted, dropped in or chosen from the block menu. Upload progress
+  is shown in place.
+- **On a phone or tablet** there is no floating bar; a formatting bar sits above the
+  keyboard, and pages are rearranged with "Move to…" because drag and drop needs a
+  mouse.
+
 ### Links and backlinks
 
 A page link points at another page by its id, so it keeps working when the target is

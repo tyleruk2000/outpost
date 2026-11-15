@@ -11,6 +11,41 @@ is installed, viewing it needs no internet connection.
 regional extracts of a published archive, on request, and then served from your own
 disk.
 
+## The Maps screen
+
+The map fills the screen, with a panel beside it (a sheet you can drag up on a phone)
+that has three tabs.
+
+- **Places** lists your saved places. **Save a place** drops a pin you can drag; give
+  it a name, a note, a colour, and mark it a favourite to keep it named on the map.
+- **Routes** lists imported GPX tracks. Open one for its distance, ascent and an
+  elevation profile; move along the profile and the matching point is shown on the
+  map. Drop a `.gpx` file anywhere on the map to import it.
+- **Offline maps** lists installed regions and is where an administrator downloads
+  more: pick a ready-made region, or draw a box on the map (or use the current view),
+  choose how much detail, and see the exact size before anything is fetched.
+
+On the map itself:
+
+- The **search box** takes a place name (once place names are downloaded, see
+  [below](#offline-place-search)), coordinates in any of the formats under
+  [Coordinate formats](#coordinate-formats), or a British grid reference.
+- The **ruler** measures a path you click out, in kilometres and miles.
+- **Hill shading** appears as a button once terrain is installed for the area in view.
+- The readout at the bottom shows the centre of the map; choose decimal degrees,
+  degrees-minutes-seconds or British National Grid, and copy it.
+- Right-click (or press and hold) for "Save a place here", "Measure from here" and
+  "Copy coordinates".
+- The address bar always holds the current view, so a link to it can be saved in a
+  note.
+
+Before any region is installed the map shows a plain outline of the world, which
+ships with Outpost, and offers the world overview as a first download.
+
+Not there yet: the download box is adjusted by its corners only; saved places are
+moved by opening them first; "locate me" needs HTTPS, which browsers require for
+location, so it explains this on a plain `http://` LAN address.
+
 ## How regions work
 
 A region is a rectangle of the world at a range of zoom levels, saved as one file in
