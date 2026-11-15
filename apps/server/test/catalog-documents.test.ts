@@ -144,4 +144,26 @@ describe("books and papers from the catalogue", () => {
     );
     expect((await entryOf(app)).status).toBe("installed");
   });
+
+  it("takes the document along when the catalogue item itself is moved", async () => {
+    const { app } = await setup();
+    await download(app);
+    const ssd = (
+      await app.api("POST", "/api/storage/locations", { name: "Field SSD", path: path.join(app.dir, "storage", "ssd"), kind: "external" })
+    ).body.location;
+    const entry = await entryOf(app);
+    expect((await app.api("POST", `/api/collections/${entry.collectionId}/move`, { locationId: ssd.id })).status).toBe(200);
+    await app.ctx.jobs.whenIdle();
+
+    // One file, two records: both must name the new place, and the file must open from it.
+    const collection = (await app.api("GET", `/api/collections/${entry.collectionId}`)).body.collection;
+    const document = (await app.api("GET", `/api/documents/${entry.documentId}`)).body.document;
+    expect(collection).toMatchObject({ locationId: ssd.id, status: "installed" });
+    expect(document).toMatchObject({ locationId: ssd.id, relPath: collection.relPath });
+    expect((await app.api("GET", `/api/documents/${entry.documentId}/file`)).status).toBe(200);
+    // The reconcile that follows a document change must leave it there.
+    await app.ctx.jobs.whenIdle();
+    expect((await app.api("GET", `/api/collections/${entry.collectionId}`)).body.collection.locationId).toBe(ssd.id);
+    expect((await entryOf(app)).status).toBe("installed");
+  });
 });

@@ -104,6 +104,15 @@ export function registerDocumentBridge(ctx: AppContext): DocumentBridge {
     }
   });
 
+  // Moving the catalogue item moves the one file both records describe, so the document
+  // has to be told. Without this the document would point at a file that has gone, and
+  // the next reconcile would point the collection back at it too.
+  collections.onMoved(async (row) => {
+    const documentId = documentIdOf(row.meta);
+    if (!documentId || row.meta.alreadyInLibrary) return;
+    await documents.relocate(documentId, row.locationId, row.relPath);
+  });
+
   // Follow the document: where it now lives, and whether it still exists.
   let reconciling = false;
   async function reconcile(): Promise<void> {

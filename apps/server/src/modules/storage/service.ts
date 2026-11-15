@@ -99,6 +99,22 @@ async function readMarker(dir: string): Promise<Marker | undefined> {
   }
 }
 
+/**
+ * Something that is the same for one marker file however it is reached, and different
+ * for a copy of it. A network share connected twice (once from the Finder, once by
+ * Outpost, under two names for the same server) shows one folder at two paths: the
+ * file has the same number on the server, the same size and the same times through
+ * both. A copied folder gets a new file number and a new creation time.
+ */
+async function markerIdentity(dir: string): Promise<string> {
+  try {
+    const stat = await fs.promises.stat(path.join(dir, MARKER), { bigint: true });
+    return `${stat.ino}:${stat.size}:${stat.mtimeNs}:${stat.birthtimeNs}`;
+  } catch {
+    return dir;
+  }
+}
+
 async function isWritable(dir: string): Promise<boolean> {
   try {
     await fs.promises.access(dir, fs.constants.W_OK);
@@ -179,12 +195,18 @@ export function createStorageService(ctx: AppContext): StorageService {
 
     if (marker?.id !== row.id) {
       // Not where it was, or no longer somewhere Outpost may use. Look for the marker
-      // under each root before giving up. Two are enough to know there is a choice.
+      // under each root before giving up.
       marker = undefined;
       const found = new Set<string>();
       const budget = { folders: RECONNECT_SEARCH_FOLDERS };
-      for (const root of roots) await findMarkers(root, row.id, RECONNECT_SEARCH_DEPTH, found, 2, budget);
-      const [first, second] = [...found];
+      for (const root of roots) await findMarkers(root, row.id, RECONNECT_SEARCH_DEPTH, found, 6, budget);
+      // One folder seen through several mounts of the same share is one folder, not a choice.
+      const distinct = new Map<string, string>();
+      for (const folder of found) {
+        const identity = await markerIdentity(folder);
+        if (!distinct.has(identity)) distinct.set(identity, folder);
+      }
+      const [first, second] = [...distinct.values()];
       if (first && second) {
         // Never chosen silently: the two may have drifted apart since one was copied.
         detail = `Two folders carry this location's marker: ${first} and ${second}. Outpost will not choose between them. Remove the copy you do not want, or the file ${MARKER} inside it, then choose Check drives.`;

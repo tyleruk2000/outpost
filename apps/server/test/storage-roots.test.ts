@@ -119,6 +119,22 @@ describe("a location recorded outside the storage roots", () => {
     expect(library).toMatchObject({ status: "available", path: second, statusDetail: null });
   });
 
+  it("is relinked when the two folders are one folder reached two ways", async () => {
+    // A network share connected twice shows one folder at two paths. The marker is then
+    // the very same file through both, which a hard link stands in for here.
+    const { id, oldPath } = await withLibraryInOld();
+    const first = path.join(dir, "new", "mount-a");
+    const second = path.join(dir, "new", "mount-b");
+    fs.cpSync(oldPath, first, { recursive: true });
+    fs.mkdirSync(second, { recursive: true });
+    fs.linkSync(path.join(first, MARKER), path.join(second, MARKER));
+
+    const server = await start("new");
+    const library = (await locations(server)).find((location) => location.id === id)!;
+    expect(library).toMatchObject({ status: "available", statusDetail: null });
+    expect([first, second]).toContain(library.path);
+  });
+
   it("refuses to add a folder outside the roots, as before", async () => {
     const server = await start("new");
     const outside = await server.api("POST", "/api/storage/locations", { name: "Old", path: path.join(dir, "old", "x"), kind: "external" });
