@@ -70,8 +70,18 @@ function Frame({ children }: { children: ReactNode }) {
   );
 }
 
-function BackToLibrary({ cameFromLibrary }: { cameFromLibrary: boolean }) {
+function BackToLibrary({ cameFromLibrary, book }: { cameFromLibrary: boolean; book?: { collectionId: string; bookTitle: string } }) {
   const navigate = useNavigate();
+  // A chapter belongs to its book: back means the book's contents, wherever the reader came from.
+  if (book) {
+    return (
+      <Button asChild variant="ghost" size="sm" className="shrink-0 max-md:w-10 max-md:px-0">
+        <Link to={`/library/collections/${book.collectionId}`} aria-label={`Back to the contents of ${book.bookTitle}`}>
+          <ArrowLeft /> <span className="max-md:sr-only">Contents</span>
+        </Link>
+      </Button>
+    );
+  }
   const content = (
     <>
       <ArrowLeft /> <span className="max-md:sr-only">Library</span>
@@ -315,7 +325,7 @@ export default function DocumentPage() {
   return (
     <Frame>
       <header className="flex h-12 shrink-0 items-center gap-1.5 border-b border-border bg-page pr-2 pl-1.5 max-md:h-13 md:pr-3 md:pl-2">
-        <BackToLibrary cameFromLibrary={cameFromLibrary} />
+        <BackToLibrary cameFromLibrary={cameFromLibrary} book={query.data?.chapter} />
         <span aria-hidden className="h-5 w-px shrink-0 bg-border max-md:hidden" />
         <h1 className="min-w-0 flex-1 truncate font-title text-lead text-ink md:pl-2" title={document.title}>
           {document.title}

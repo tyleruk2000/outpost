@@ -47,6 +47,8 @@ test.describe("radio guides", () => {
     await contents.getByRole("link", { name: /Getting started: layout, display and modes/ }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Getting started: layout, display and modes" })).toBeVisible();
     const place = page.getByRole("navigation", { name: "Book" });
+    // The header's back button leads to the book, not to the whole Library.
+    await expect(page.getByRole("link", { name: /^Back to the contents of / })).toHaveAttribute("href", /\/library\/collections\//);
     await expect(place.getByRole("link", { name: GUIDE })).toBeVisible();
     await expect(place).toContainText("Getting started, 2 of 11");
 
