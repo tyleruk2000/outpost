@@ -1,12 +1,45 @@
+import fs from "node:fs";
 import path from "node:path";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
+import type { Plugin } from "vite";
 import { defineConfig } from "vitest/config";
 
 const server = process.env.OUTPOST_DEV_SERVER ?? "http://127.0.0.1:8080";
 
+/**
+ * pdf.js loads character maps, the standard fonts, colour profiles and image decoders
+ * at run time, by name. Outpost works offline, so they are served from the app's own
+ * origin under /pdfjs/: straight from the package in development, copied into the build.
+ */
+function pdfjsAssets(): Plugin {
+  const source = path.resolve(import.meta.dirname, "node_modules/pdfjs-dist");
+  const folders = ["cmaps", "standard_fonts", "wasm", "iccs"];
+  let outDir = "";
+  return {
+    name: "outpost:pdfjs-assets",
+    configResolved(config) {
+      outDir = path.resolve(config.root, config.build.outDir);
+    },
+    configureServer(server) {
+      server.middlewares.use("/pdfjs", (request, response, next) => {
+        const relative = decodeURIComponent((request.url ?? "").split("?")[0] ?? "").replace(/^\/+/, "");
+        const file = path.join(source, relative);
+        const inside = folders.some((folder) => file.startsWith(path.join(source, folder) + path.sep));
+        if (!inside || !fs.statSync(file, { throwIfNoEntry: false })?.isFile()) return next();
+        if (file.endsWith(".wasm")) response.setHeader("Content-Type", "application/wasm");
+        else if (file.endsWith(".js")) response.setHeader("Content-Type", "text/javascript");
+        fs.createReadStream(file).pipe(response);
+      });
+    },
+    writeBundle() {
+      for (const folder of folders) fs.cpSync(path.join(source, folder), path.join(outDir, "pdfjs", folder), { recursive: true });
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), pdfjsAssets()],
   resolve: { alias: { "@": path.resolve(import.meta.dirname, "src") } },
   server: {
     port: Number(process.env.OUTPOST_WEB_PORT ?? 5173),

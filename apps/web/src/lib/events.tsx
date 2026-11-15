@@ -18,7 +18,11 @@ const EventsContext = createContext<EventsValue>({ connected: true, subscribe: (
 /** Which cached queries each server event makes stale. Keys are query-key prefixes. */
 const invalidations: Record<string, string[][]> = {
   "job.updated": [["jobs"], ["system"]],
-  "download.updated": [["downloads"], ["catalog"]],
+  // Progress arrives about twice a second per download. Screens that show it patch
+  // their cached list from the event itself, so nothing is refetched here; the lists
+  // are refreshed when a download changes state (see the listener below).
+  "download.updated": [],
+  "download.removed": [["downloads"], ["catalog"]],
   "storage.changed": [["storage"], ["collections"], ["documents"]],
   "settings.changed": [["settings"]],
   "documents.changed": [["documents"], ["search"], ["storage"]],
@@ -65,10 +69,19 @@ export function EventsProvider({ children, enabled }: { children: ReactNode; ena
       setConnected(false);
     };
 
+    const downloadStates = new Map<string, string>();
     const handlers: Array<[string, (event: MessageEvent<string>) => void]> = Object.keys(invalidations).map((type) => [
       type,
       (event) => {
         scheduleInvalidation(client, pending, timer, invalidations[type]!);
+        if (type === "download.updated") {
+          const payload = JSON.parse(event.data) as { id?: string; data?: { state?: string } };
+          const state = payload.data?.state;
+          if (payload.id && state && downloadStates.get(payload.id) !== state) {
+            downloadStates.set(payload.id, state);
+            scheduleInvalidation(client, pending, timer, [["downloads"], ["catalog"], ["collections"], ["storage"]]);
+          }
+        }
         const set = listeners.current.get(type);
         if (set?.size) {
           const payload = JSON.parse(event.data) as { id?: string; data?: unknown };

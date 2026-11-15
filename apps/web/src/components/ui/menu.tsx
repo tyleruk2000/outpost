@@ -27,7 +27,7 @@ export function MenuItem({ className, danger, ...props }: ComponentProps<typeof 
 
 export function MenuCheckItem({ className, children, ...props }: ComponentProps<typeof Primitive.CheckboxItem>) {
   return (
-    <Primitive.CheckboxItem className={cn(item, "pr-8", className)} {...props}>
+    <Primitive.CheckboxItem className={cn(item, "relative pr-8", className)} {...props}>
       <span className="flex-1">{children}</span>
       <Primitive.ItemIndicator className="absolute right-2.5">
         <Check className="text-primary!" />
