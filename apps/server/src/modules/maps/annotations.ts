@@ -18,7 +18,7 @@ import type { AppContext } from "../../core/context.ts";
 import { badRequest, notFound } from "../../core/errors.ts";
 import { newId } from "../../core/ids.ts";
 import { markers, tracks } from "../../db/schema.ts";
-import { buildGpx, type GpxWaypoint, parseGpx, splitCollection, type TrackCollection, trackStats } from "./gpx.ts";
+import { buildGpx, type GpxWaypoint, parseGpxSafely, splitCollection, type TrackCollection, trackStats } from "./gpx.ts";
 
 type MarkerRow = typeof markers.$inferSelect;
 type TrackRow = typeof tracks.$inferSelect;
@@ -64,7 +64,7 @@ export interface AnnotationsService {
   removeMarker(id: string): void;
   listTracks(): TrackDto[];
   getTrack(id: string): TrackWithGeometryDto;
-  importTrack(input: TrackImportInput): TrackImportResponse;
+  importTrack(input: TrackImportInput): Promise<TrackImportResponse>;
   updateTrack(id: string, patch: z.infer<typeof trackPatchSchema>): TrackDto;
   removeTrack(id: string): void;
   exportTrack(id: string): { filename: string; gpx: string };
@@ -254,8 +254,8 @@ export function createAnnotationsService(ctx: AppContext): AnnotationsService {
       return { ...toTrackDto(row), geojson: row.geojson as unknown as TrackWithGeometryDto["geojson"] };
     },
 
-    importTrack(input) {
-      const parsed = parseGpx(input.source);
+    async importTrack(input) {
+      const parsed = await parseGpxSafely(input.source);
       const fallbackName = input.filename?.replace(/\.[^.]+$/, "").trim();
       const name = (input.name?.trim() || parsed.name || fallbackName || "Imported track").slice(0, 200);
       const asMarkers = input.importWaypointsAsMarkers === true;

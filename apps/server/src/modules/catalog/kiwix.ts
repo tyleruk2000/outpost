@@ -191,6 +191,9 @@ async function readText(response: { body: ReadableStream<Uint8Array> | null }, m
 async function getText(http: HttpClient, url: string, options: KiwixRequestOptions, maxBytes: number): Promise<string> {
   const { response } = await http.fetch(url, {
     allowedHosts: options.allowedHosts,
+    // The catalogue feed and the checksum files are believed as they are, so they must
+    // come from the publisher's own hosts all the way, not from wherever a redirect leads.
+    everyHop: true,
     signal: options.signal,
     headers: { accept: "application/atom+xml, application/xml, text/plain, */*" },
   });

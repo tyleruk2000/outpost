@@ -7,6 +7,8 @@ import os from "node:os";
 import path from "node:path";
 import { ZipArchive } from "archiver";
 import { afterEach, describe, expect, it } from "vitest";
+import { scanConstructs } from "../src/modules/imports/convert.ts";
+import { markdownToDoc } from "../src/modules/notes/content/index.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
 
 let app: TestApp | undefined;
@@ -185,4 +187,51 @@ describe("restoring a backup someone else made", () => {
     expect(response.json().error.message).toMatch(/expands far more/);
     expect(fs.existsSync(path.join(app.ctx.config.dataDir, "restore-pending"))).toBe(false);
   });
+});
+
+describe("hostile files cannot freeze or exhaust the server", () => {
+  it("scans Markdown made of unclosed code fences in linear time", () => {
+    const hostile = "```x\n".repeat(60_000);
+    const started = performance.now();
+    scanConstructs("markdown", hostile);
+    // The old pattern took about nine seconds on a file this size.
+    expect(performance.now() - started).toBeLessThan(500);
+  });
+
+  it("converts Markdown full of unclosed <summary> tags in linear time", () => {
+    const hostile = `<details>${"<summary>".repeat(60_000)}\n\ntext\n\n</details>`;
+    const started = performance.now();
+    const { doc } = markdownToDoc(hostile);
+    expect(doc.type).toBe("doc");
+    expect(performance.now() - started).toBeLessThan(1500);
+  });
+
+  it("still reads fenced code and summaries correctly", () => {
+    expect(scanConstructs("markdown", "text\n```\n$$ not maths $$\n```\nmore")).toEqual(scanConstructs("markdown", "text\nmore"));
+    const { doc } = markdownToDoc("<details>\n<summary>Kit <b>list</b></summary>\n\nStove and gas.\n\n</details>");
+    expect(JSON.stringify(doc)).toContain("detailsSummary");
+    expect(JSON.stringify(doc)).toContain("Stove and gas.");
+  });
+
+  it("refuses a GPX file that would balloon in memory, and keeps answering other requests", async () => {
+    app = await createTestApp();
+    const hostile = `<?xml version="1.0"?><gpx version="1.1" xmlns="http://www.topografix.com/GPX/1/1"><trk><trkseg>${'<a b="1"/>'.repeat(900_000)}</trkseg></trk></gpx>`;
+    const form = new FormData();
+    form.set("file", new Blob([hostile], { type: "application/gpx+xml" }), "bomb.gpx");
+    const encoded = new Response(form);
+    const pending = app.app.inject({
+      method: "POST",
+      url: "/api/maps/tracks/import",
+      headers: { host: "localhost", "x-outpost-request": "1", "content-type": encoded.headers.get("content-type")! },
+      payload: Buffer.from(await encoded.arrayBuffer()),
+    });
+    // While that file is being chewed on, the server still answers.
+    const started = performance.now();
+    expect((await app.api("GET", "/api/health")).status).toBe(200);
+    expect(performance.now() - started).toBeLessThan(1000);
+    const response = await pending;
+    expect(response.statusCode).toBe(400);
+    expect(response.json().error.message).toMatch(/too complex/);
+    expect((await app.api("GET", "/api/maps/tracks")).body.tracks).toEqual([]);
+  }, 60_000);
 });

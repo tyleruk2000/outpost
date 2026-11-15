@@ -35,6 +35,8 @@ const envSchema = z.object({
   OUTPOST_DATA_DIR: z.string().default("./data"),
   OUTPOST_STORAGE_ROOTS: list,
   OUTPOST_LAN_ACCESS: bool(false),
+  OUTPOST_IN_CONTAINER: bool(false),
+  OUTPOST_PUBLISHED_ADDRESS: z.string().optional(),
   OUTPOST_AUTH: z.enum(["auto", "on", "off"]).default("auto"),
   OUTPOST_ALLOW_UNAUTHENTICATED_LAN: bool(false),
   OUTPOST_ALLOWED_HOSTS: list,
@@ -121,6 +123,22 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       "OUTPOST_LAN_ACCESS is on but OUTPOST_AUTH is off. Anyone on your network could " +
         "change or delete your library. Turn sign-in on, or set " +
         "OUTPOST_ALLOW_UNAUTHENTICATED_LAN=true if you accept that.",
+    );
+  }
+
+  // Sign-in off is only safe when nothing but this computer can connect. The Host check
+  // stops browsers being tricked, but any program on the network can simply claim to be
+  // "localhost". So if Outpost would be reachable from elsewhere, LAN access (and with
+  // it sign-in) must have been chosen deliberately.
+  const isLoopback = (address: string) => ["127.0.0.1", "localhost", "::1", "[::1]"].includes(address.trim().toLowerCase());
+  // Inside a container the server always listens on every interface; what matters is
+  // the address the port was published on, which only the person starting it knows.
+  const reachableFrom = parsed.OUTPOST_IN_CONTAINER ? (parsed.OUTPOST_PUBLISHED_ADDRESS ?? "") : parsed.OUTPOST_HOST;
+  if (!isLoopback(reachableFrom) && !parsed.OUTPOST_LAN_ACCESS) {
+    throw new Error(
+      parsed.OUTPOST_IN_CONTAINER
+        ? "Outpost does not know that its port is published only to this computer. Either publish it on 127.0.0.1 and set OUTPOST_PUBLISHED_ADDRESS=127.0.0.1 (the Compose file does both), or set OUTPOST_LAN_ACCESS=true to share it on your network with sign-in."
+        : `OUTPOST_HOST is ${parsed.OUTPOST_HOST}, which other devices can reach, but OUTPOST_LAN_ACCESS is not set. Set OUTPOST_LAN_ACCESS=true to share Outpost on your network with sign-in, or use OUTPOST_HOST=127.0.0.1.`,
     );
   }
 

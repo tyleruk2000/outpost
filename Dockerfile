@@ -33,7 +33,8 @@ ENV NODE_ENV=production \
     OUTPOST_DATA_DIR=/data \
     OUTPOST_STORAGE_ROOTS=/storage \
     OUTPOST_KIWIX_LIBRARY_PATH=/kiwix/library.xml \
-    OUTPOST_SUPERVISED=true
+    OUTPOST_SUPERVISED=true \
+    OUTPOST_IN_CONTAINER=true
 
 COPY --from=trim /out/app /app
 

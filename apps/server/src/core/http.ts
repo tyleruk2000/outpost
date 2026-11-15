@@ -94,6 +94,12 @@ export interface SafeFetchOptions {
   signal?: AbortSignal;
   /** Hosts the first request may go to. Omit to allow any public host. */
   allowedHosts?: Iterable<string>;
+  /**
+   * Hold every redirect hop to `allowedHosts`, not only the first. For anything whose
+   * answer is trusted in itself, such as a checksum: the publisher must be the one
+   * that says what the bytes should be, never a mirror.
+   */
+  everyHop?: boolean;
   maxRedirects?: number;
 }
 
@@ -136,7 +142,7 @@ export function createHttpClient(config: { allowPrivate: boolean }): HttpClient 
       const maxRedirects = options.maxRedirects ?? 8;
       for (let hop = 0; ; hop += 1) {
         // Only the first hop is held to the allow-list; mirrors may be anywhere public.
-        check(url, hop === 0 ? allowed : undefined);
+        check(url, hop === 0 || options.everyHop ? allowed : undefined);
         const init: RequestInit = {
           method: options.method ?? "GET",
           headers: { "user-agent": USER_AGENT, accept: "*/*", ...options.headers },

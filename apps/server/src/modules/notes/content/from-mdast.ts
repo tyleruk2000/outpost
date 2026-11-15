@@ -21,6 +21,25 @@ import {
   safeUrl,
 } from "./schema.ts";
 
+/**
+ * Finds `<summary>…</summary>` by position rather than by pattern. Returns the whole
+ * element and its inner text in the two slots a regular-expression match would have.
+ * A lazy pattern here takes quadratic time on input that opens many summaries and
+ * closes none.
+ */
+function summaryOf(html: string): [whole: string, inner: string] | null {
+  const lower = html.toLowerCase();
+  const open = lower.indexOf("<summary");
+  if (open === -1) return null;
+  const openEnd = html.indexOf(">", open);
+  if (openEnd === -1) return null;
+  const close = lower.indexOf("</summary", openEnd);
+  if (close === -1) return null;
+  const closeEnd = html.indexOf(">", close);
+  if (closeEnd === -1) return null;
+  return [html.slice(open, closeEnd + 1), html.slice(openEnd + 1, close)];
+}
+
 /** An mdast node, typed loosely: importers feed this all kinds of trees. */
 export interface MdNode {
   type: string;
@@ -441,7 +460,7 @@ export function mdastToBlocks(root: MdNode, options: LinkResolver = {}): MappedB
     }
     if (depth > 0) return null;
 
-    const summary = tag === "details" ? /<summary[^>]*>([\s\S]*?)<\/summary\s*>/i.exec(head) : null;
+    const summary = tag === "details" ? summaryOf(head) : null;
     const leading = head.replace(new RegExp(`^\\s*<${tag}[^>]*>`, "i"), "").replace(summary?.[0] ?? "", "");
     const tail = children[end]!.value ?? "";
     const closeAt = tail.toLowerCase().lastIndexOf(`</${tag}`);

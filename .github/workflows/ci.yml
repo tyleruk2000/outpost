@@ -96,7 +96,7 @@ jobs:
       - name: The arm64 image starts and answers its health check
         run: |
           docker buildx build --platform linux/arm64 --load -t outpost:arm64-test --cache-from type=gha .
-          docker run -d --name outpost-arm64 --platform linux/arm64 -p 127.0.0.1:8080:8080 outpost:arm64-test
+          docker run -d --name outpost-arm64 --platform linux/arm64 -e OUTPOST_PUBLISHED_ADDRESS=127.0.0.1 -p 127.0.0.1:8080:8080 outpost:arm64-test
           for attempt in $(seq 1 40); do
             if curl -fsS http://127.0.0.1:8080/api/health; then exit 0; fi
             sleep 3

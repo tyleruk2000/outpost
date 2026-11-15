@@ -22,6 +22,9 @@ services:
     environment:
       # Reachable only from this machine unless you opt in. See .env.example.
       OUTPOST_LAN_ACCESS: ${OUTPOST_LAN_ACCESS:-false}
+      # Tells the server which address its port is published on (see "ports" below), so
+      # that it can refuse to run open to the network without sign-in.
+      OUTPOST_PUBLISHED_ADDRESS: ${OUTPOST_BIND:-127.0.0.1}
       OUTPOST_AUTH: ${OUTPOST_AUTH:-auto}
       OUTPOST_ALLOWED_HOSTS: ${OUTPOST_ALLOWED_HOSTS:-}
       OUTPOST_SECURE_COOKIES: ${OUTPOST_SECURE_COOKIES:-false}

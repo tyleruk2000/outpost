@@ -221,7 +221,23 @@ const count = (text: string, pattern: RegExp): number => text.match(pattern)?.le
 
 /** Markdown with its code taken out, so that a `$` or a tag inside an example is not mistaken for the real thing. */
 function withoutCode(markdown: string): string {
-  return markdown.replace(/^(```|~~~)[^\n]*\n[\s\S]*?^\1[ \t]*$/gm, "").replace(/`[^`\n]*`/g, "");
+  // One pass over the lines. A pattern that hunts for each fence's closing partner
+  // takes time that grows with the square of the file when the fences never close,
+  // and this runs on files people upload.
+  const kept: string[] = [];
+  let fence: string | null = null;
+  for (const line of markdown.split("\n")) {
+    if (fence) {
+      if (line.startsWith(fence) && line.slice(fence.length).trim() === "") fence = null;
+      continue;
+    }
+    if (line.startsWith("```") || line.startsWith("~~~")) {
+      fence = line.slice(0, 3);
+      continue;
+    }
+    kept.push(line);
+  }
+  return kept.join("\n").replace(/`[^`\n]*`/g, "");
 }
 
 /**

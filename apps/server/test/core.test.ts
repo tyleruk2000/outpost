@@ -26,6 +26,17 @@ describe("configuration", () => {
     expect(loadConfig({ OUTPOST_LAN_ACCESS: "true" }).authRequired).toBe(true);
   });
 
+  it("refuses to listen beyond this computer unless LAN access was chosen", () => {
+    expect(() => loadConfig({ OUTPOST_HOST: "0.0.0.0" })).toThrow(/OUTPOST_LAN_ACCESS is not set/);
+    expect(() => loadConfig({ OUTPOST_HOST: "192.168.1.20" })).toThrow(/OUTPOST_LAN_ACCESS is not set/);
+    expect(loadConfig({ OUTPOST_HOST: "0.0.0.0", OUTPOST_LAN_ACCESS: "true" }).authRequired).toBe(true);
+    // In a container the listening address says nothing; the published address decides.
+    expect(() => loadConfig({ OUTPOST_HOST: "0.0.0.0", OUTPOST_IN_CONTAINER: "true" })).toThrow(/published only to this computer/);
+    expect(() => loadConfig({ OUTPOST_HOST: "0.0.0.0", OUTPOST_IN_CONTAINER: "true", OUTPOST_PUBLISHED_ADDRESS: "0.0.0.0" })).toThrow(/published only to this computer/);
+    expect(loadConfig({ OUTPOST_HOST: "0.0.0.0", OUTPOST_IN_CONTAINER: "true", OUTPOST_PUBLISHED_ADDRESS: "127.0.0.1" }).authRequired).toBe(false);
+    expect(loadConfig({ OUTPOST_HOST: "0.0.0.0", OUTPOST_IN_CONTAINER: "true", OUTPOST_PUBLISHED_ADDRESS: "0.0.0.0", OUTPOST_LAN_ACCESS: "true" }).authRequired).toBe(true);
+  });
+
   it("refuses LAN access without sign-in unless that is stated explicitly", () => {
     expect(() => loadConfig({ OUTPOST_LAN_ACCESS: "true", OUTPOST_AUTH: "off" })).toThrow(/OUTPOST_AUTH is off/);
     expect(

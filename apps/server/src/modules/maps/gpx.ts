@@ -6,6 +6,9 @@
  * GeoJSON, which is what the map draws and what is stored. Writing: GPX 1.1 built by
  * hand from that GeoJSON, with every piece of text escaped.
  */
+import { Worker } from "node:worker_threads";
+import { AppError } from "../../core/errors.ts";
+import { workerUrl } from "../../core/paths.ts";
 import type { Bbox } from "@outpost/shared";
 import { haversineMeters } from "@outpost/shared";
 import { gpx as gpxToGeoJson } from "@tmcw/togeojson";
@@ -343,4 +346,41 @@ export function splitCollection(collection: TrackCollection): Pick<GpxDocument, 
     }
   }
   return { lines, waypoints };
+}
+
+// ── Parsing off the main thread ─────────────────────────────────────────────
+
+/** Heap a GPX parse may use, and how long it may take. Real tracks need a fraction of either. */
+const GPX_WORKER_HEAP_MB = 384;
+const GPX_WORKER_TIMEOUT_MS = 30_000;
+const TOO_COMPLEX = "That GPX file is too complex to read. If it holds many routes, export them one at a time and import them separately.";
+
+/**
+ * `parseGpx` in a worker thread with limits of its own. Use this for anything that
+ * arrives from outside; a hostile or freakish file then costs one worker, not the server.
+ */
+export function parseGpxSafely(source: string): Promise<ParsedGpx> {
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(workerUrl(new URL("./gpx.worker.ts", import.meta.url), "gpx"), {
+      workerData: { source },
+      resourceLimits: { maxOldGenerationSizeMb: GPX_WORKER_HEAP_MB },
+    });
+    let settled = false;
+    const settle = (finish: () => void) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      void worker.terminate();
+      finish();
+    };
+    const timer = setTimeout(() => settle(() => reject(badRequest(TOO_COMPLEX))), GPX_WORKER_TIMEOUT_MS);
+    worker.once("message", (message: { ok: true; parsed: ParsedGpx } | { ok: false; code: string; message: string }) => {
+      settle(() => (message.ok ? resolve(message.parsed) : reject(new AppError(message.code as never, message.message))));
+    });
+    // Running out of its memory allowance ends the worker with an error or a non-zero exit.
+    worker.once("error", () => settle(() => reject(badRequest(TOO_COMPLEX))));
+    worker.once("exit", (code) => {
+      if (code !== 0) settle(() => reject(badRequest(TOO_COMPLEX)));
+    });
+  });
 }

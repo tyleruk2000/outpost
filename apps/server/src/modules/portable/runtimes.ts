@@ -80,7 +80,7 @@ export async function ensureRuntime(options: RuntimeFetchOptions): Promise<strin
   const host = new URL(base).hostname;
   const file = distFile(version, platform);
 
-  const sumsResponse = await http.fetch(`${base}/${version}/SHASUMS256.txt`, { allowedHosts: [host], signal });
+  const sumsResponse = await http.fetch(`${base}/${version}/SHASUMS256.txt`, { allowedHosts: [host], everyHop: true, signal });
   if (!sumsResponse.response.ok) {
     throw new AppError("upstream", `The checksum list for Node ${version} could not be fetched (${sumsResponse.response.status}).`);
   }
@@ -175,7 +175,7 @@ export async function ensureKiwix(options: Omit<RuntimeFetchOptions, "version">)
   const host = new URL(base).hostname;
   const file = `kiwix-tools_${build}-${KIWIX_TOOLS_VERSION}.tar.gz`;
 
-  const sumResponse = await http.fetch(`${base}/${file}.md5`, { allowedHosts: [host], signal });
+  const sumResponse = await http.fetch(`${base}/${file}.md5`, { allowedHosts: [host], everyHop: true, signal });
   if (!sumResponse.response.ok) throw new AppError("upstream", `The checksum for kiwix-serve (${platform}) could not be fetched (${sumResponse.response.status}).`);
   const expected = /[0-9a-f]{32}/i.exec(await sumResponse.response.text())?.[0]?.toLowerCase();
   if (!expected) throw new AppError("upstream", "The checksum file for kiwix-serve was not in the expected form.");
