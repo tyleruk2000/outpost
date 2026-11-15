@@ -3,7 +3,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import DownloadsPage from "./downloads-page";
-import { adminSession, collection, download, fakeServer, installBrowserStubs, memberSession, renderScreen } from "./test-support";
+import { adminSession, collection, download, fakeServer, installBrowserStubs, memberSession, plan, renderScreen } from "./test-support";
 
 beforeAll(installBrowserStubs);
 afterEach(() => vi.unstubAllGlobals());
@@ -72,6 +72,7 @@ const everything = [
 function serve(routes: Record<string, unknown> = {}) {
   return fakeServer({
     "GET /api/downloads": { downloads: everything },
+    "GET /api/downloads/plan": plan(),
     "GET /api/jobs": {
       jobs: [job({}), job({ id: "j0", type: "download.run", title: "Download Best of Wikipedia", subject: "download:run" })],
     },

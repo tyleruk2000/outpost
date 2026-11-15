@@ -1,5 +1,6 @@
 /** What a download is doing, in words and real numbers. Pure, so every state can be tested. */
 import { type DownloadDto, formatBytes, formatDuration } from "@outpost/shared";
+import { formatSpeed } from "./charts/speed";
 
 export interface DownloadView {
   /** The main line: where the download stands. */
@@ -32,7 +33,7 @@ export function fractionOf(download: Progressed): number | undefined {
 /** "2.10 MB/s, 4 minutes left" from whichever of the two is known. */
 export function paceOf(download: Pick<DownloadDto, "bytesPerSecond" | "etaSeconds">): string | null {
   const parts = [
-    download.bytesPerSecond ? `${formatBytes(download.bytesPerSecond)}/s` : null,
+    download.bytesPerSecond ? formatSpeed(download.bytesPerSecond) : null,
     download.etaSeconds !== null && download.etaSeconds >= 0 ? `${formatDuration(download.etaSeconds)} left` : null,
   ].filter(Boolean);
   return parts.length > 0 ? parts.join(", ") : null;

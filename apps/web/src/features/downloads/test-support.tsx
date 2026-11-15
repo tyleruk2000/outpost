@@ -1,5 +1,13 @@
 /** Shared by the component tests of Explore, Downloads and Collections: a router, a query client, and a fake server. */
-import type { CatalogEntryDto, CollectionDto, DownloadDto } from "@outpost/shared";
+import type {
+  CatalogEntryDto,
+  CollectionDto,
+  DownloadDetail,
+  DownloadDto,
+  DownloadPlan,
+  DownloadPlanItem,
+  DownloadPlanLocation,
+} from "@outpost/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render } from "@testing-library/react";
 import type { ReactElement } from "react";
@@ -174,6 +182,114 @@ export function collection(over: Partial<CollectionDto> = {}): CollectionDto {
     installedAt: 1,
     verifiedAt: 1,
     updatedAt: 1,
+    ...over,
+  };
+}
+
+export function planItem(over: Partial<DownloadPlanItem> = {}): DownloadPlanItem {
+  return {
+    id: "d1",
+    title: "Wikipedia 100",
+    kind: "zim",
+    state: "running",
+    phase: "active",
+    receivedBytes: 412_000_000,
+    totalBytes: 1_900_000_000,
+    remainingBytes: 1_488_000_000,
+    locationId: "loc1",
+    locationName: "Internal storage",
+    startsInSeconds: 0,
+    finishesInSeconds: 1200,
+    ...over,
+  };
+}
+
+export function planLocation(over: Partial<DownloadPlanLocation> = {}): DownloadPlanLocation {
+  return {
+    locationId: "loc1",
+    name: "Internal storage",
+    available: true,
+    totalBytes: 500_000_000_000,
+    freeBytes: 60_000_000_000,
+    pendingBytes: 4_200_000_000,
+    freeAfterBytes: 55_800_000_000,
+    enough: true,
+    ...over,
+  };
+}
+
+/** A plan for three downloads: one running, two waiting, 4.2 GB to go at a measured speed. */
+export function plan(over: Partial<DownloadPlan> = {}): DownloadPlan {
+  return {
+    concurrency: 2,
+    rateLimitBytesPerSecond: null,
+    bytesPerSecond: 1_000_000,
+    assumedBytesPerSecond: 1_000_000,
+    basis: "measured",
+    remainingBytes: 4_200_000_000,
+    unknownSizes: 0,
+    finishesInSeconds: 4200,
+    counts: { active: 1, waiting: 2, paused: 0, failed: 0 },
+    queue: [
+      planItem({ id: "run", title: "Best of Wikipedia" }),
+      planItem({
+        id: "next",
+        title: "Wikibooks",
+        state: "queued",
+        phase: "waiting",
+        receivedBytes: 0,
+        totalBytes: 1_200_000_000,
+        remainingBytes: 1_200_000_000,
+        startsInSeconds: 1200,
+        finishesInSeconds: 2700,
+      }),
+      planItem({
+        id: "last",
+        title: "iFixit repair guides",
+        state: "queued",
+        phase: "waiting",
+        receivedBytes: 0,
+        totalBytes: 1_512_000_000,
+        remainingBytes: 1_512_000_000,
+        startsInSeconds: 2700,
+        finishesInSeconds: 4200,
+      }),
+    ],
+    locations: [planLocation()],
+    ...over,
+  };
+}
+
+export function detail(over: Partial<DownloadDetail> = {}): DownloadDetail {
+  return {
+    download: download(),
+    source: {
+      requestedUrl: "https://download.example.org/wikipedia_en_100.zim",
+      requestedHost: "download.example.org",
+      servedBy: null,
+      fetcher: "http",
+      etag: null,
+      lastModified: null,
+    },
+    integrity: { sha256Expected: "a".repeat(64), sha256Actual: null, verified: null },
+    destination: {
+      locationId: "loc1",
+      locationName: "Internal storage",
+      locationAvailable: true,
+      relPath: "collections/zim/wikipedia_en_100.zim",
+      freeBytes: 60_000_000_000,
+      totalBytes: 500_000_000_000,
+    },
+    timing: { createdAt: 1, startedAt: 2, finishedAt: null, averageBytesPerSecond: null, peakBytesPerSecond: null },
+    speedHistory: [],
+    events: [
+      { at: 1_794_000_000_000, state: "queued" },
+      { at: 1_794_000_002_000, state: "running" },
+    ],
+    attempts: { made: 1, allowed: 8, nextAttemptAt: null },
+    about: null,
+    region: null,
+    rateLimitBytesPerSecond: null,
     ...over,
   };
 }

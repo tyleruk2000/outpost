@@ -125,7 +125,7 @@ describe("archives that are too much", () => {
         { name: "a.md", content: "a".repeat(600) },
         { name: "b.md", content: "b".repeat(600) },
       ]),
-      /unpacks to more than 1\.00 KB, which is more than Outpost imports at once/,
+      /unpacks to more than 1\.00 kB, which is more than Outpost imports at once/,
     );
   });
 

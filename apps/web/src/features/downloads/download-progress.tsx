@@ -1,10 +1,12 @@
-import type { DownloadDto } from "@outpost/shared";
+import { type DownloadDto, formatBytes } from "@outpost/shared";
 import { Pause, Play, RotateCw, X } from "lucide-react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/misc";
 import { cn } from "@/lib/utils";
-import { describeDownload } from "./download-text";
-import { useDownloadAction } from "./use-downloads";
+import { describeDownload, removalDeletesPartialFile } from "./download-text";
+import { useDownloadAction, useRemoveDownload } from "./use-downloads";
 
 /**
  * Where one download stands: a bar fed by real bytes, then the numbers in words. Amber
@@ -84,5 +86,41 @@ export function DownloadControls({ download, className }: { download: DownloadDt
         </Button>
       ) : null}
     </div>
+  );
+}
+
+/** Removes a download. Asks first only when part of a file will be deleted with it. */
+export function RemoveDownloadButton({ download, label, onRemoved }: { download: DownloadDto; label: string; onRemoved?: () => void }) {
+  const [confirming, setConfirming] = useState(false);
+  const remove = useRemoveDownload(download.id);
+  const deletes = removalDeletesPartialFile(download);
+  return (
+    <>
+      <Button
+        variant="ghost"
+        size="sm"
+        loading={remove.isPending && !confirming}
+        onClick={() => (deletes ? setConfirming(true) : remove.mutate(undefined, { onSuccess: onRemoved }))}
+        aria-label={`${label}: ${download.title}`}
+      >
+        {label}
+      </Button>
+      <ConfirmDialog
+        open={confirming}
+        onOpenChange={setConfirming}
+        title={`Remove the download of “${download.title}”?`}
+        description={`The ${formatBytes(download.receivedBytes)} already downloaded to “${download.locationName}” will be deleted. To get this collection later, the download starts from the beginning.`}
+        confirmLabel="Remove and delete the partial file"
+        onConfirm={() =>
+          remove.mutate(undefined, {
+            onSuccess: () => {
+              setConfirming(false);
+              onRemoved?.();
+            },
+          })
+        }
+        loading={remove.isPending}
+      />
+    </>
   );
 }

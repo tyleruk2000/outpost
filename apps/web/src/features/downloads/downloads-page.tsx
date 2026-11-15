@@ -1,19 +1,23 @@
-import { ACTIVE_DOWNLOAD_STATES, type CollectionsResponse, type DownloadDto, formatBytes } from "@outpost/shared";
+import { ACTIVE_DOWNLOAD_STATES, type CollectionsResponse, type DownloadDto } from "@outpost/shared";
 import { useQuery } from "@tanstack/react-query";
 import { CircleAlert } from "lucide-react";
-import { Fragment, type ReactNode, useState } from "react";
+import { Fragment, memo, type ReactNode, useMemo } from "react";
 import { Link } from "react-router";
 import { EmptyState, ErrorState, Page, PageHeader, Rows, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
-import { ConfirmDialog } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/misc";
 import { api } from "@/lib/api";
 import { useActiveJobs, useIsAdmin } from "@/lib/queries";
 import { plural, timeAgo } from "@/lib/utils";
-import { DownloadControls, DownloadProgress } from "./download-progress";
-import { describeDownload, removalDeletesPartialFile } from "./download-text";
+import { clockAt } from "./charts/time-axis";
+import { DownloadControls, DownloadProgress, RemoveDownloadButton } from "./download-progress";
+import { describeDownload } from "./download-text";
 import { JobRow } from "./job-row";
-import { useDownloads, useRemoveDownload } from "./use-downloads";
+import { PlanControls } from "./plan-controls";
+import { PlanSection } from "./plan-section";
+import { queuePosition, queuePositions, stalledWords } from "./plan-text";
+import { useDownloads } from "./use-downloads";
+import { usePlan } from "./use-plan";
 
 /** How many waiting jobs are listed before the rest are summed up in a line. */
 const JOBS_SHOWN = 8;
@@ -32,56 +36,63 @@ function MetaLine({ parts, className }: { parts: ReactNode[]; className?: string
         // biome-ignore lint/suspicious/noArrayIndexKey: a fixed, ordered list of facts about one download
         <Fragment key={index}>
           {index > 0 ? <Slash /> : null}
-          {part}
+          <span>{part}</span>
         </Fragment>
       ))}
     </p>
   );
 }
 
-/** Removes a download. Asks first only when part of a file will be deleted with it. */
-function RemoveButton({ download, label }: { download: DownloadDto; label: string }) {
-  const [confirming, setConfirming] = useState(false);
-  const remove = useRemoveDownload(download.id);
-  const deletes = removalDeletesPartialFile(download);
+/** The way from a row to the whole story of that download. */
+function DetailsLink({ download }: { download: DownloadDto }) {
   return (
-    <>
-      <Button
-        variant="ghost"
-        size="sm"
-        loading={remove.isPending && !confirming}
-        onClick={() => (deletes ? setConfirming(true) : remove.mutate())}
-        aria-label={`${label}: ${download.title}`}
-      >
-        {label}
-      </Button>
-      <ConfirmDialog
-        open={confirming}
-        onOpenChange={setConfirming}
-        title={`Remove the download of “${download.title}”?`}
-        description={`The ${formatBytes(download.receivedBytes)} already downloaded to “${download.locationName}” will be deleted. To get this collection later, the download starts from the beginning.`}
-        confirmLabel="Remove and delete the partial file"
-        onConfirm={() => remove.mutate(undefined, { onSuccess: () => setConfirming(false) })}
-        loading={remove.isPending}
-      />
-    </>
+    <Button asChild variant="ghost" size="sm">
+      <Link to={`/downloads/${download.id}`} aria-label={`Details of ${download.title}`}>
+        Details
+      </Link>
+    </Button>
   );
 }
 
-function ActiveRow({ download, canManage }: { download: DownloadDto; canManage: boolean }) {
+const ActiveRow = memo(function ActiveRow({
+  download,
+  canManage,
+  standing,
+  forecast,
+}: {
+  download: DownloadDto;
+  canManage: boolean;
+  /** "Next", "2nd in line": where a waiting download stands. */
+  standing: string | null;
+  /** "Finishes about 19:05", from the plan. */
+  forecast: string | null;
+}) {
   return (
     <li className="py-5">
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
         <div className="min-w-0">
           <h3 className="font-title text-lead text-ink">{download.title}</h3>
-          <p className="mt-0.5 text-small text-ink-muted">To {download.locationName}</p>
+          <MetaLine
+            parts={[
+              `To ${download.locationName}`,
+              standing,
+              forecast ? (
+                <span key="forecast" className="tabular">
+                  {forecast}
+                </span>
+              ) : null,
+            ]}
+          />
         </div>
-        {canManage ? <DownloadControls download={download} className="max-md:-ml-2.5 md:-mr-2.5" /> : null}
+        <div className="flex shrink-0 items-center gap-1 max-md:-ml-2.5 md:-mr-2.5">
+          {canManage ? <DownloadControls download={download} /> : null}
+          <DetailsLink download={download} />
+        </div>
       </div>
       <DownloadProgress download={download} className="mt-3" />
     </li>
   );
-}
+});
 
 function FailedRow({ download, canManage }: { download: DownloadDto; canManage: boolean }) {
   const view = describeDownload(download);
@@ -92,12 +103,15 @@ function FailedRow({ download, canManage }: { download: DownloadDto; canManage: 
           <h3 className="font-title text-lead text-ink">{download.title}</h3>
           <MetaLine parts={[`To ${download.locationName}`, download.finishedAt ? `Stopped ${timeAgo(download.finishedAt)}` : null]} />
         </div>
-        {canManage ? (
-          <div className="flex items-center gap-1 md:-mr-2.5">
-            <DownloadControls download={download} />
-            <RemoveButton download={download} label="Remove" />
-          </div>
-        ) : null}
+        <div className="flex items-center gap-1 max-md:-ml-2.5 md:-mr-2.5">
+          {canManage ? (
+            <>
+              <DownloadControls download={download} />
+              <RemoveDownloadButton download={download} label="Remove" />
+            </>
+          ) : null}
+          <DetailsLink download={download} />
+        </div>
       </div>
       <p className="mt-2.5 flex max-w-[70ch] items-start gap-2 text-small text-danger">
         <CircleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
@@ -141,12 +155,15 @@ function HistoryRow({ download, canManage, installed }: { download: DownloadDto;
         />
         {view.detail ? <p className="text-small text-ink-muted">{view.detail}</p> : null}
       </div>
-      {canManage ? (
-        <div className="flex items-center gap-1 max-md:-ml-2.5 md:-mr-2.5">
-          {completed ? null : <DownloadControls download={download} />}
-          <RemoveButton download={download} label={completed ? "Remove from history" : "Remove"} />
-        </div>
-      ) : null}
+      <div className="flex items-center gap-1 max-md:-ml-2.5 md:-mr-2.5">
+        {canManage ? (
+          <>
+            {completed ? null : <DownloadControls download={download} />}
+            <RemoveDownloadButton download={download} label={completed ? "Remove from history" : "Remove"} />
+          </>
+        ) : null}
+        <DetailsLink download={download} />
+      </div>
     </li>
   );
 }
@@ -175,11 +192,36 @@ export default function DownloadsPage() {
   const installedIds = collections.data ? new Set(collections.data.collections.map((item) => item.id)) : undefined;
   const nothing = all.length === 0 && otherWork.length === 0;
 
+  // The plan: asked for once there are downloads at all, refreshed while any is on its way.
+  const plan = usePlan({ enabled: all.length > 0 });
+  const queued = plan.data ? plan.data.counts.active + plan.data.counts.waiting + plan.data.counts.paused : 0;
+  const positions = plan.data ? queuePositions(plan.data.queue) : undefined;
+  const forecasts = new Map(plan.data?.queue.map((item) => [item.id, item]));
+  // Downloads that stopped and will try again by themselves. Rebuilt only when that set changes, so the plan is not redrawn with every progress event.
+  const stalledKey = active
+    .map((item) => [item.id, stalledWords(item)] as const)
+    .filter(([, reason]) => reason)
+    .map(([key, reason]) => `${key}\t${reason}`)
+    .join("\n");
+  const stalled = useMemo(
+    () => new Map(stalledKey ? stalledKey.split("\n").map((line) => line.split("\t") as [string, string]) : []),
+    [stalledKey],
+  );
+  const forecastOf = (download: DownloadDto): string | null => {
+    const item = forecasts.get(download.id);
+    if (!item || item.finishesInSeconds === null || item.finishesInSeconds <= 0 || item.phase === "paused" || download.error) return null;
+    return `Finishes about ${clockAt(plan.dataUpdatedAt + item.finishesInSeconds * 1000, plan.dataUpdatedAt)}`;
+  };
+  const standingOf = (download: DownloadDto): string | null => {
+    const position = download.state === "queued" && !download.error ? positions?.get(download.id) : undefined;
+    return position ? queuePosition(position) : null;
+  };
+
   return (
     <Page>
       <PageHeader
         title="Downloads"
-        description="What is being fetched, what needs a hand, and what has finished. Downloads carry on in the background and continue from where they stopped."
+        description="What is being fetched, when it will be here, and what has finished. Downloads carry on in the background and continue from where they stopped."
         actions={
           nothing ? null : (
             <Button asChild>
@@ -217,13 +259,36 @@ export default function DownloadsPage() {
         </EmptyState>
       ) : (
         <>
+          {active.length === 0 ? null : plan.data && queued > 0 ? (
+            <PlanSection plan={plan.data} fetchedAt={plan.dataUpdatedAt} stale={plan.isError} canManage={canManage} stalled={stalled} />
+          ) : plan.isPending ? (
+            <div className="grid gap-4" aria-busy>
+              <Skeleton className="h-14 max-w-[36rem]" />
+              <Skeleton className="h-16" />
+              <Skeleton className="h-28" />
+            </div>
+          ) : plan.isError && !plan.data ? (
+            <ErrorState error={plan.error} onRetry={() => plan.refetch()} />
+          ) : null}
+
           <Section title="In progress">
             {active.length === 0 ? (
-              <p className="text-small text-ink-muted">Nothing is downloading right now.</p>
+              <>
+                <p className="text-small text-ink-muted">
+                  Nothing is downloading right now.{plan.data ? " The next downloads will run like this:" : ""}
+                </p>
+                {plan.data ? <PlanControls plan={plan.data} canManage={canManage} className="mt-3" /> : null}
+              </>
             ) : (
               <Rows>
                 {active.map((download) => (
-                  <ActiveRow key={download.id} download={download} canManage={canManage} />
+                  <ActiveRow
+                    key={download.id}
+                    download={download}
+                    canManage={canManage}
+                    standing={standingOf(download)}
+                    forecast={forecastOf(download)}
+                  />
                 ))}
               </Rows>
             )}

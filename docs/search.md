@@ -266,7 +266,7 @@ because they have no vectors.
   and needs no extra software, and is comfortable to roughly 100,000 passages. Beyond
   that, searches slow down in proportion. There is no approximate index in this
   version.
-- Vectors live in the database. A 384-dimension model needs about 1.5 KB per passage,
+- Vectors live in the database. A 384-dimension model needs about 1.5 kB per passage,
   so 100,000 passages add about 150 MB.
 - Reference articles are not embedded and are found by keyword only.
 - Semantic results show the start of the matching passage rather than highlighted

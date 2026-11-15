@@ -28,7 +28,7 @@ export interface JobDto {
   updatedAt: number;
 }
 
-const units = ["bytes", "KB", "MB", "GB", "TB", "PB"] as const;
+const units = ["bytes", "kB", "MB", "GB", "TB", "PB"] as const;
 
 /**
  * Human-readable size using decimal units (1 GB = 1,000,000,000 bytes), the convention
