@@ -53,6 +53,8 @@ export function DocumentRow({ document, locationName }: { document: DocumentDto;
   const kind = kindOfDocument(document);
   const away = !document.locationAvailable;
   const meta: ReactNode[] = [
+    // A chapter is told apart from other chapters of the same name by its book.
+    document.book ? `${document.book.title}${document.book.number ? `, chapter ${document.book.number}` : ""}` : null,
     kindLine(document),
     <span key="size" className="tabular md:hidden">
       {formatBytes(document.sizeBytes)}
@@ -87,7 +89,7 @@ export function DocumentRow({ document, locationName }: { document: DocumentDto;
               <Fragment key={index}>
                 {index > 0 ? (
                   // The size and date move to their own column on wide screens, and take their separators with them.
-                  <span className={index === 1 || index === 2 ? "md:hidden" : undefined}>
+                  <span className={typeof part === "object" ? "md:hidden" : undefined}>
                     <Slash />
                   </span>
                 ) : null}

@@ -6,17 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/misc";
 import { cn, formatNumber } from "@/lib/utils";
 import { DownloadControls, DownloadProgress } from "../downloads/download-progress";
-import {
-  editionText,
-  entryAction,
-  entrySituation,
-  formatLabel,
-  isIncluded,
-  languageName,
-  licenceText,
-  openTarget,
-  sizeText,
-} from "./catalog";
+import { editionText, entryAction, entrySituation, isIncluded, kindText, languageName, licenceText, openTarget, sizeText } from "./catalog";
 
 const Slash = () => (
   <span aria-hidden className="mx-2 text-border-strong">
@@ -223,7 +213,7 @@ export function EntryCard({
         parts={[
           entry.publisher,
           languageName(entry.language),
-          formatLabel(entry.format),
+          kindText(entry),
           entry.articleCount && entry.articleCount > 1 ? (
             <span key="articles" className="tabular whitespace-nowrap">
               {formatNumber(entry.articleCount)} articles
@@ -233,7 +223,17 @@ export function EntryCard({
         ]}
       />
       <p className="mt-2.5 max-w-[68ch] text-small leading-relaxed text-ink">{entry.description}</p>
-      <p className="mt-2 mb-4 text-small text-ink-muted">{licenceText(entry)}</p>
+      <p className="mt-2 text-small text-ink-muted">{licenceText(entry)}</p>
+      {entry.chapterCount && entry.licenseNote ? (
+        // A book carries its author's own account of how it was reviewed; it is a line away, not hidden.
+        <details className="mt-1.5 text-small text-ink-muted">
+          <summary className="w-fit cursor-pointer rounded-control font-medium text-primary underline-offset-[0.2em] hover:underline">
+            Who wrote it and how it was reviewed
+          </summary>
+          <p className="mt-1.5 max-w-[68ch] leading-relaxed text-ink">{entry.licenseNote}</p>
+        </details>
+      ) : null}
+      <div className="mb-4" />
       <div className="mt-auto border-t border-border pt-3.5">
         <Standing entry={entry} download={download} adding={adding} onDownload={onDownload} onAdd={onAdd} />
       </div>

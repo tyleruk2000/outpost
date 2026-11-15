@@ -6,6 +6,7 @@ import { ErrorState } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/misc";
 import { api } from "@/lib/api";
+import { ChapterPlace, ChapterTurn, useChapter } from "./chapter-nav";
 import { MarkdownDocument } from "./document-markdown";
 import { documentKeys, isReading, kindOfDocument } from "./document-meta";
 import { DataTable } from "./document-table";
@@ -102,6 +103,8 @@ export function TextViewer({ document, downloadUrl }: { document: DocumentDto; d
     enabled: plain && document.extraction === "done",
   });
   const kind = kindOfDocument(document);
+  // A chapter of a book says which book, and offers the chapters on either side.
+  const chapter = useChapter(document.id);
   const download = (
     <Button asChild>
       <a href={downloadUrl}>Download original</a>
@@ -117,6 +120,7 @@ export function TextViewer({ document, downloadUrl }: { document: DocumentDto; d
         className="scroll-quiet min-h-0 flex-1 overflow-y-auto bg-page focus-visible:outline-offset-[-2px]"
       >
         <div className="max-w-[68rem] px-5 pt-6 pb-16 md:px-10 md:pt-8">
+          <ChapterPlace chapter={chapter} />
           <p className="mb-8 max-w-[48rem] border-b border-border pb-4 text-small text-ink-muted">
             This is the Markdown file as Outpost reads it. Pictures and embedded web content are left out.{" "}
             <a href={downloadUrl} className="font-medium text-primary underline decoration-1 underline-offset-[0.2em] hover:decoration-2">
@@ -124,7 +128,10 @@ export function TextViewer({ document, downloadUrl }: { document: DocumentDto; d
             </a>
           </p>
           {formatted.data ? (
-            <MarkdownDocument blocks={formatted.data.blocks} title={document.title} />
+            <>
+              <MarkdownDocument blocks={formatted.data.blocks} title={document.title} />
+              <ChapterTurn chapter={chapter} />
+            </>
           ) : (
             <div className="grid gap-3" aria-busy>
               <Skeleton className="h-7 w-64 max-w-full" />
