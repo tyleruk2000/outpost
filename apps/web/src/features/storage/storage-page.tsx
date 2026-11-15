@@ -1,6 +1,6 @@
 import { formatBytes, type StorageKind, type StorageLocation, type StorageUsage } from "@outpost/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Check, CircleAlert, Ellipsis, HardDrive, Network, Pencil, Plus, RefreshCw, Star, Trash2, Usb } from "lucide-react";
+import { Check, CircleAlert, Ellipsis, FolderInput, HardDrive, Network, Pencil, Plus, RefreshCw, Star, Trash2, Usb } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { EmptyState, ErrorState, Notice, Page, PageHeader, Section } from "@/components/page";
@@ -44,10 +44,11 @@ function UsageLegend({ usage }: { usage: StorageUsage }) {
   );
 }
 
-function LocationRow({ location, canEdit, onlyOne }: { location: Location; canEdit: boolean; onlyOne: boolean }) {
+function LocationRow({ location, canEdit, onlyOne, documentsElsewhere }: { location: Location; canEdit: boolean; onlyOne: boolean; documentsElsewhere: number }) {
   const client = useQueryClient();
   const [renaming, setRenaming] = useState(false);
   const [removing, setRemoving] = useState(false);
+  const [movingDocuments, setMovingDocuments] = useState(false);
   const [name, setName] = useState(location.name);
   const kind = kindLabels[location.kind];
   const available = location.status === "available";
@@ -59,6 +60,14 @@ function LocationRow({ location, canEdit, onlyOne }: { location: Location; canEd
     onSuccess: () => {
       setRenaming(false);
       return invalidate();
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+  const moveDocuments = useMutation({
+    mutationFn: () => api.post<{ documents: number }>("/api/documents/move", { locationId: location.id }),
+    onSuccess: (result) => {
+      setMovingDocuments(false);
+      toast.success(`Moving ${plural(result.documents, "document")} to “${location.name}”. Progress is under Downloads.`);
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
@@ -118,6 +127,11 @@ function LocationRow({ location, canEdit, onlyOne }: { location: Location; canEd
                   <Star /> Make default
                 </MenuItem>
               ) : null}
+              {available && documentsElsewhere > 0 ? (
+                <MenuItem onSelect={() => setMovingDocuments(true)}>
+                  <FolderInput /> Move documents here
+                </MenuItem>
+              ) : null}
               <MenuSeparator />
               <MenuItem danger disabled={onlyOne} onSelect={() => setRemoving(true)}>
                 <Trash2 /> Remove from Outpost
@@ -169,6 +183,17 @@ function LocationRow({ location, canEdit, onlyOne }: { location: Location; canEd
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={movingDocuments}
+        onOpenChange={setMovingDocuments}
+        title={`Move documents to “${location.name}”?`}
+        description={`${plural(documentsElsewhere, "document")} on other locations will be copied here. Each copy is checked against its checksum before the original is removed, and anything that cannot be moved stays where it is.`}
+        confirmLabel="Move documents"
+        confirmVariant="primary"
+        onConfirm={() => moveDocuments.mutate()}
+        loading={moveDocuments.isPending}
+      />
 
       <ConfirmDialog
         open={removing}
@@ -237,7 +262,13 @@ export default function StoragePage() {
         <>
           <ul className="divide-y divide-border border-y border-border">
             {locations.map((location) => (
-              <LocationRow key={location.id} location={location} canEdit={canEdit} onlyOne={locations.length === 1} />
+              <LocationRow
+                key={location.id}
+                location={location}
+                canEdit={canEdit}
+                onlyOne={locations.length === 1}
+                documentsElsewhere={locations.filter((other) => other.id !== location.id).reduce((sum, other) => sum + (other.usage.byKind.document?.count ?? 0), 0)}
+              />
             ))}
           </ul>
 

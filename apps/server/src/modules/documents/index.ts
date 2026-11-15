@@ -13,6 +13,7 @@ import { DOCUMENT_TYPES, formatForExt, servedAs } from "./file-types.ts";
 import { contentDisposition, matchesEtag, parseRange } from "./http.ts";
 import { createDocumentsService } from "./service.ts";
 import { receiveUpload } from "./upload.ts";
+import { registerDocumentMoves } from "./move.ts";
 
 /**
  * Sent with every original file. `sandbox` gives the response an origin of its own, so
@@ -65,6 +66,7 @@ export async function registerDocuments(app: FastifyInstance, ctx: AppContext): 
   const service = createDocumentsService(ctx);
   ctx.services.documents = service;
   const { auth } = ctx.services;
+  registerDocumentMoves(app, ctx);
 
   // Another module may have registered the multipart parser already; twice is an error.
   // Limits are passed with each request, so it does not matter whose registration won.

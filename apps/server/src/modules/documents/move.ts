@@ -1,0 +1,110 @@
+/**
+ * Moving documents to another storage location.
+ *
+ * Each original is copied, the copy is checked against the checksum recorded when the
+ * document was added, the record is pointed at the copy, and only then is the old file
+ * removed. A document keeps its id throughout, so links, tags and search results are
+ * unaffected. Anything that cannot be moved is left exactly where it was and reported.
+ */
+import { createHash } from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
+import { pipeline } from "node:stream/promises";
+import { ne } from "drizzle-orm";
+import type { FastifyInstance } from "fastify";
+import { z } from "zod";
+import type { AppContext } from "../../core/context.ts";
+import { AppError, conflict } from "../../core/errors.ts";
+import { toJobDto } from "../../core/jobs.ts";
+import { documents } from "../../db/schema.ts";
+
+interface MovePayload extends Record<string, unknown> {
+  locationId: string;
+}
+
+export function registerDocumentMoves(app: FastifyInstance, ctx: AppContext): void {
+  const { db, jobs } = ctx;
+  const { auth, storage } = ctx.services;
+
+  const elsewhere = (locationId: string) => db.select().from(documents).where(ne(documents.locationId, locationId)).all();
+
+  jobs.register<MovePayload>("documents.move", {
+    queue: "transfer",
+    async run({ payload, signal, progress }) {
+      const target = storage.get(payload.locationId);
+      const rows = elsewhere(target.id);
+      const total = rows.reduce((sum, row) => sum + row.sizeBytes, 0);
+      let done = 0;
+      const moved: string[] = [];
+      const left: Array<{ title: string; reason: string }> = [];
+
+      for (const row of rows) {
+        signal.throwIfAborted();
+        progress({ current: done, total, message: `Moving ${row.title}` });
+        if (!storage.isAvailable(row.locationId)) {
+          left.push({ title: row.title, reason: `It is on "${storage.get(row.locationId).name}", which is not connected.` });
+          done += row.sizeBytes;
+          continue;
+        }
+        const source = storage.resolve(row.locationId, row.relPath);
+        const destination = storage.resolve(target.id, row.relPath);
+        const partial = `${destination}.part`;
+        const before = done;
+        try {
+          await fs.promises.mkdir(path.dirname(destination), { recursive: true });
+          const hash = createHash("sha256");
+          await pipeline(
+            fs.createReadStream(source, { highWaterMark: 1024 * 1024 }),
+            async function* (stream) {
+              for await (const chunk of stream) {
+                hash.update(chunk as Buffer);
+                done += (chunk as Buffer).length;
+                progress({ current: done, total, message: `Moving ${row.title}` });
+                yield chunk;
+              }
+            },
+            fs.createWriteStream(partial),
+            { signal },
+          );
+          if (hash.digest("hex") !== row.sha256) {
+            throw new AppError("conflict", "The file no longer matches the checksum recorded when it was added, so it was left where it is.");
+          }
+          await fs.promises.rename(partial, destination);
+          await ctx.services.documents.relocate(row.id, target.id, row.relPath);
+          // The record now points at the copy; the original can go, and its folder if that emptied it.
+          await fs.promises.rm(source, { force: true });
+          await fs.promises.rmdir(path.dirname(source)).catch(() => {});
+          moved.push(row.id);
+        } catch (error) {
+          await fs.promises.rm(partial, { force: true });
+          if (signal.aborted) throw error;
+          done = before + row.sizeBytes;
+          const code = (error as NodeJS.ErrnoException).code;
+          left.push({
+            title: row.title,
+            reason: code === "ENOSPC" ? "The destination is full." : code === "ENOENT" ? "The original file is missing." : error instanceof Error ? error.message : String(error),
+          });
+          if (code === "ENOSPC") break;
+        }
+      }
+      ctx.events.publish({ type: "documents.changed" });
+      ctx.events.publish({ type: "storage.changed" });
+      return { moved: moved.length, left, locationId: target.id };
+    },
+  });
+
+  app.post("/api/documents/move", async (request) => {
+    auth.requireAdmin(request);
+    const body = z.object({ locationId: z.string().min(1) }).parse(request.body);
+    const target = storage.get(body.locationId);
+    if (target.status !== "available") throw new AppError("storage_unavailable", `"${target.name}" is not connected.`);
+    const rows = elsewhere(target.id);
+    if (rows.length === 0) throw conflict(`Every document is already on "${target.name}".`);
+    if (jobs.list({ states: ["queued", "running"] }).some((job) => job.type === "documents.move")) {
+      throw conflict("Documents are already being moved. Wait for that to finish, or cancel it on the Downloads screen.");
+    }
+    await storage.assertSpace(target.id, rows.reduce((sum, row) => sum + row.sizeBytes, 0));
+    const job = jobs.enqueue("documents.move", { locationId: target.id }, { title: `Move documents to ${target.name}`, subject: `documents-move:${target.id}` });
+    return { job: toJobDto(job), documents: rows.length };
+  });
+}
