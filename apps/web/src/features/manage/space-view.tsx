@@ -195,7 +195,7 @@ export default function SpaceView() {
   return (
     <div className="mt-6">
       <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
-        <p className="max-w-[62ch] text-body text-ink">
+        <p className="max-w-[54ch] text-body text-pretty text-ink">
           Outpost is storing{" "}
           <span className="tabular font-semibold">
             {total.counting ? "at least " : ""}

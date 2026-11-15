@@ -51,6 +51,12 @@ Who can reach the server in the first place is decided when it starts: only the
 computer it runs on, unless `OUTPOST_LAN_ACCESS` is on, in which case every device on
 the network can. Both rules are in `apps/server/src/core/guard.ts`.
 
+There is one exception. `POST /api/manage/cleanup/everything`, which erases a person's
+own notes and documents, is accepted only from the computer the server runs on, unless
+the server was started with `OUTPOST_ALLOW_REMOTE_ERASE=true`. That is a rule about
+where a request comes from, not who sent it; see
+[security.md](security.md#erasing-everything).
+
 ### Request and response bodies
 
 JSON, unless a route says otherwise. JSON bodies are limited to 20 MB. Times are
@@ -120,7 +126,11 @@ queued again and continues from what is on disk.
 
 Job types in use: `download.run`, `document.extract`, `documents.move`,
 `collection.verify`, `collection.move`, `semantic.index`, `import.analyse`,
-`import.commit`, `portable.build`, `portable.runtimes`.
+`import.commit`, `portable.build`, `portable.runtimes`, `manage.remove`,
+`manage.derived`, `manage.erase`.
+
+A job that was cancelled part of the way through work that cannot be undone keeps a
+`result` saying what it had done by then; the three `manage.*` jobs do this.
 
 ## System
 
@@ -468,6 +478,36 @@ Types: `BackupStatus` in `packages/shared/src/semantic.ts`.
 | `GET /api/backup/download` | Streams a backup `.zip`: the database, attachments, extracted text and your own catalogue manifests. Refuses a request that another site caused the browser to make. |
 | `POST /api/backup/restore` | Body: the backup file itself, with `Content-Type: application/zip`. Checks it and stages it for the next start. `{ staged, createdAt, appVersion, supervised }`. When applied, the database, attachments and extracted text are replaced; catalogue manifests in the backup are not put back; unfinished jobs are dropped, downloads that were under way are marked cancelled, and unfinished imports are discarded. |
 | `DELETE /api/backup/restore` | Drops a staged restore. |
+
+## Managing and cleaning up
+
+Types: `packages/shared/src/manage.ts`. See
+[storage.md](storage.md#managing-and-cleaning-up) for what each clean-up removes and
+keeps, and [security.md](security.md#removing-in-bulk) for what they can touch.
+
+Items are named by key: `collection:<id>` or `document:<id>`. A catalogue sheet or
+book is one item, keyed by its collection, with its documents listed in `documents`.
+
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/manage/usage` | What is taking the space (`UsageResponse`): `rows` by kind, each with `bytes` (null while still being counted), `count`, `basis` (`records`, `disk` or `estimate`), `disconnectedBytes` and `within` (set when the row is part of another, as passages and vectors are part of the database); `locations` with capacity, free space, what Outpost's records say is there and what was measured on disk (null when not connected); `dataDir`; `measuredAt` and `measuring`. Starts a count in the background if the last is more than five minutes old or something has changed. |
+| `POST /api/manage/measure` | Checks drives and starts a count now. Same answer as above. |
+| `GET /api/manage/items` | Everything installed: `{ items: ManagedItem[] }`, each with `key`, `kind` (`zim`, `map`, `terrain`, `places`, `sheet`, `file`, `model`, `document`), `origin` (`downloaded` or `own`), size, date added, location and whether it is connected, `state` (`ok`, `missing`, `damaged`, `busy`) and `busyReason`. |
+| `POST /api/manage/plan` | What a removal would do, by the rules of the removal itself. Changes nothing. Body: `{ scope: "items", keys, files?, disconnected? }`, `{ scope: "downloaded", disconnected? }` or `{ scope: "everything" }`. Answers a `CleanupPlan`: `changes`, `remove` (count and bytes), `byKind`, `byLocation` (deleted and staying, per location), `own`, `linkedDocuments`, `disconnected` and `outside` (with file paths), `refused` (with reasons), `downloads`, and for `everything` `personal`. |
+| `POST /api/manage/remove` | Body: `{ keys, files?: "delete" \| "keep", disconnected?: "leave" \| "forget" }` (defaults `delete` and `leave`). Starts a `manage.remove` job: `{ job }`. `409` when nothing chosen can be removed, or another clean-up is waiting or running. |
+| `POST /api/manage/move` | Body: `{ keys, locationId }`. Starts one `collection.move` job per collection and one `documents.move` job for the documents: `{ jobs, refused }`, where `refused` names each item that was not moved and why. `507 insufficient_space` when the target cannot hold the whole selection; nothing is started then. |
+| `GET /api/manage/leftovers` | `{ items: Leftover[], more, measuredAt, measuring }`. Kinds: `download`, `missing`, `untracked`, `upload`, `history`, `cache`, `previous`. At most 200 of a kind are listed; `more` counts the rest. |
+| `POST /api/manage/leftovers/clear` | Body: `{ ids }`, as issued by the list. Clears each and answers `{ cleared: { count, bytes }, failed: [{ id, title, reason }] }`. An id Outpost did not issue, or a file something now uses, is refused and reported in `failed`. |
+| `GET /api/manage/cleanup` | `CleanupStatus`: `erase` (`{ allowed, reason: "local" \| "option" \| "remote", option }`, for the device asking), `derived` (vectors, documents, reclaimable and total database bytes), and the clean-up job that is `active` and the `last` that finished. |
+| `POST /api/manage/cleanup/downloaded` | Body: `{ disconnected?: "leave" \| "forget" }`. Removes all downloaded content, as a `manage.remove` job. |
+| `POST /api/manage/cleanup/derived` | Body: `{ steps }`, any of `vectors`, `text`, `compact`. A `manage.derived` job; compacting always runs last. |
+| `POST /api/manage/cleanup/everything` | Body: `{ confirm: "erase everything" }`. A `manage.erase` job. `403 forbidden` unless the request comes from the computer Outpost runs on or the server was started with `OUTPOST_ALLOW_REMOTE_ERASE=true`; `400` without the phrase. |
+
+The three jobs answer a `CleanupResult` as their `result`: `removed`, `forgotten`,
+`left`, `leftBehind` (files not deleted, with paths), `failed` (with reasons),
+`stopped` and `notReached`. Stop one with `POST /api/jobs/:id/cancel`.
+
+`POST /api/documents/move` also takes `ids`, to move only those documents.
 
 ## Portable drives
 

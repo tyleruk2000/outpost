@@ -37,13 +37,13 @@ function Rung({
         <h2 id={id} className="text-lead font-semibold text-ink">
           {title}
         </h2>
-        <p className="mt-1 text-small text-ink-muted">{summary}</p>
+        <p className="mt-1 text-small text-pretty text-ink-muted">{summary}</p>
       </div>
       <div className="grid max-w-[44rem] gap-4">
         <div className="grid gap-x-8 gap-y-3 text-small sm:grid-cols-2">
           <div>
             <h3 className="font-semibold text-ink">Removes</h3>
-            <ul className="mt-1 grid gap-1 text-ink">
+            <ul className="mt-1 grid gap-1 text-pretty text-ink">
               {removes.map((line, index) => (
                 // biome-ignore lint/suspicious/noArrayIndexKey: a fixed list of sentences
                 <li key={index}>{line}</li>
@@ -52,7 +52,7 @@ function Rung({
           </div>
           <div>
             <h3 className="font-semibold text-ink">Keeps</h3>
-            <ul className="mt-1 grid gap-1 text-ink-muted">
+            <ul className="mt-1 grid gap-1 text-pretty text-ink-muted">
               {keeps.map((line, index) => (
                 // biome-ignore lint/suspicious/noArrayIndexKey: a fixed list of sentences
                 <li key={index}>{line}</li>
@@ -198,7 +198,7 @@ function DerivedRung({ status, busy }: { status: CleanupStatus; busy: boolean })
             />
             <span>
               <span className={choice.disabled ? "font-medium text-ink-muted" : "font-medium text-ink"}>{choice.title}</span>
-              <span className="block text-ink-muted">{choice.detail}</span>
+              <span className="block text-pretty text-ink-muted">{choice.detail}</span>
             </span>
           </label>
         ))}

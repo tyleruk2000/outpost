@@ -84,6 +84,8 @@ export interface PlanLocation {
 
 export interface CleanupPlan {
   scope: CleanupScope;
+  /** How many things carrying this out would change: deleted, or forgotten. */
+  changes: number;
   /** Everything that will go, files included. */
   remove: Tally;
   byKind: Array<{ kind: ManagedKind } & Tally>;

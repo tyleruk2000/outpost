@@ -462,6 +462,158 @@ names and other files. The same numbers are in `GET /api/storage/locations` unde
 Outpost always leaves 256 MB free on a location. A download, upload or move that would
 go past that is refused before it starts, with the space needed and the space free.
 
+For everything else that takes space (the database, extracted text, caches, part files
+and files nobody recorded), and for removing things, see the next section.
+
+## Managing and cleaning up
+
+**Storage → Manage and clean up** (`/storage/manage`) is one place to see everything
+Outpost is storing, remove what is not wanted, and clean up. It is also linked from
+Downloads and Explore (**Manage what is downloaded**), from Settings, from the command
+palette, and from the warnings shown when a drive is too full (**Free up space**). It
+has four views.
+
+Nothing on this screen happens by itself. Every removal is something you choose, is
+shown to you first as counts and sizes, and has to be confirmed. That is the one
+exception Outpost makes to "never delete a person's files": you asked, in so many
+words.
+
+### Space
+
+What is taking the space, by kind and by location, with free space.
+
+| Figure | Where it comes from |
+| --- | --- |
+| Reference archives, maps, terrain, place names, catalogue sheets and books, your documents | Outpost's records of what was installed. Available at once, and for a location that is not connected. |
+| Pictures and files in notes, text read from documents, programs for portable drives, search model files, data set aside by a restore, unfinished downloads, files no record refers to, the database file | Measured from the files. |
+| Search passages and semantic vectors | Estimates. Both live inside the database file, so their share can only be worked out: vectors are counted and multiplied by their size; passage text is summed and half as much again is added for the word index. They are shown as part of the database, not added to the total twice. |
+
+Measuring means walking folders, which on a network share with thousands of documents
+takes a while. So it runs in the background, never more than one at a time, and the
+screen says when the figures were taken and when a new count is under way. A row that
+has never been counted says "Counting" rather than showing a guess. **Count again**
+starts a count now; otherwise a count is at most five minutes old, and a new one starts
+when you look after something has changed.
+
+A location that is not connected shows what Outpost last knew (how much of its own was
+there, the free space when it was last seen, and when that was) and says it is
+disconnected. Nothing on it can be measured or deleted until it is back.
+
+### Installed
+
+Every collection and document in one list, with its kind, location, size and the date
+it was added. Filter by name, kind, location, or whether it was downloaded or is your
+own; sort by size, date, name, kind or location.
+
+A catalogue sheet or book is listed once. It is one file with two records, an entry in
+your collections and a document in your library, and the two are removed and moved
+together.
+
+Tick one or many, then:
+
+- **Remove.** The dialog shows what the selection adds up to, by kind and by location,
+  how many of the items are your own and cannot be downloaded again, and anything that
+  will be left alone and why. You choose whether the files are deleted or only
+  Outpost's records are removed. The rules are the ones the Library already has:
+  - a catalogue item and its document go together;
+  - a file on a location that is not connected cannot be deleted. It is left alone, in
+    your library, unless you tick **Forget it anyway**, which removes Outpost's record
+    and leaves the file on the drive;
+  - anything being moved or checked is refused, and named.
+- **Move** to another location. This starts the same checked moves as the Library: one
+  job per collection, and one for all the documents chosen. The copy is verified before
+  the original is removed. Room is checked for the whole selection before anything
+  starts, and whatever cannot be moved is named with the reason.
+
+Removing runs as a job with progress and a **Stop** button. When it finishes, or is
+stopped, the screen says what was deleted, what was only forgotten, what was left as it
+was, and what could not be removed and why, with the path of every file that was not
+deleted.
+
+### Leftovers
+
+What is on disk or in the records that no longer serves anything. Each group says what
+its things are and what clearing them does. Nothing is cleared that you did not tick.
+
+| Leftover | What clearing it does |
+| --- | --- |
+| Downloads that did not finish | Deletes the partial file (`<name>.part`, and for a map region the plan and progress files beside it) and takes the download off the Downloads screen. |
+| Records whose file has gone | The file is no longer on its location, which is connected. Removes the record and its text in search. There is no file to delete. A catalogue item can be downloaded again from Explore. |
+| Files no record refers to | A file inside `collections/` or `documents/` in a storage location that no collection, document, download or move lays claim to, and that has not changed for ten minutes. Deletes that file. |
+| Uploads that did not finish | Parts of uploads more than a day old in `documents/.incoming/`. Deletes them. |
+| Things that can be fetched or worked out again | Programs fetched for portable drives (fetched again, 50 to 100 MB per kind of computer, when a drive is next written); search model files (fetched again when search by meaning is next used); text kept for documents that are no longer in the library; database copies left by a backup that was cut off. |
+| Data set aside by a restore | The `before-restore-<time>` folders. Deleting one means that restore can no longer be undone by hand. |
+| History | The lists of finished work and finished downloads. A failed download keeps its entry so that it can still be retried. |
+
+Outpost only ever looks inside the two folders it makes in a storage location,
+`collections/` and `documents/`. Anything else you keep on the same drive is never
+listed, measured or deleted, and symbolic links are never followed. Before a file is
+deleted it is checked again: still inside one of those folders, still a plain file,
+still not used by anything.
+
+### Clean up
+
+Three clean-ups, in order of how much they take.
+
+**1. Remove all downloaded content.** Everything that came from the catalogue or a
+download and can be fetched again.
+
+- Removes: reference archives, maps, terrain, place names, catalogue sheets and books
+  (with the documents they are in your library), and downloads still under way or left
+  unfinished, with their partial files.
+- Keeps: documents you added, notes, saved places and routes, archives and maps of your
+  own that you pointed Outpost at, settings, storage locations and network shares.
+- Content on a location that is not connected is left behind and stays in your
+  library. The summary lists it; tick **Forget them as well** to remove Outpost's
+  records and leave the files on the drive.
+
+**2. Clear and rebuild search data.** What Outpost works out from your library. You
+tick which:
+
+- *Clear semantic vectors.* Search by meaning finds nothing until the index is built
+  again from Settings, which runs every passage through the model once more.
+- *Read the text of every document again.* Rebuilds extracted text and search passages
+  from the original files, one document at a time. Each document stays searchable by
+  its old text until the new text is in. Text read by OCR is kept. Documents on a
+  location that is not connected are skipped.
+- *Compact the database.* Deleting things leaves empty space inside the database file;
+  this hands it back to the disk. Outpost stops answering while it runs, about a second
+  for every 100 MB, and it needs free space equal to the size of the database.
+
+Nothing you keep is lost by any of these. The keyword index is not cleared separately:
+it is rebuilt from the extracted text, which the second option does.
+
+**3. Erase everything and start again.** The only clean-up that destroys things that
+cannot be downloaded again.
+
+- Removes: everything the first clean-up removes; documents you added, files and all;
+  notes and their attachments; saved places and routes; settings; search data; the
+  history of downloads and other work; and the copies of earlier data that a restore
+  set aside (they hold the same notes).
+- Keeps: storage locations and their marker files; network shares and any password
+  remembered in the Keychain; catalogue manifests of your own; programs fetched for
+  portable drives and search model files (clear those from Leftovers); the catalogue's
+  last answers, so Explore still reads offline; and the kiwix-serve program, which is
+  not Outpost's.
+- Leaves alone, and says where they are: any file outside the folders Outpost made (an
+  archive of your own that you pointed Outpost at), and everything on a location that
+  is not connected. Outpost forgets them; delete them by hand if you want them gone.
+- Needs the words "erase everything" typed, and offers a backup first. A backup holds
+  notes, attachments, saved places, routes and settings. It does **not** hold the files
+  of documents you added: copy those from the `documents` folder of each storage
+  location if you want to keep them.
+- Can only be started on the computer Outpost runs on, unless Outpost was started with
+  `OUTPOST_ALLOW_REMOTE_ERASE=true`. From any other device the screen says so and does
+  not offer the button. See [security.md](security.md#erasing-everything).
+
+Content is deleted through the same code as removing one item at a time, then the
+database is emptied in place and compacted. No restart is needed, and no folder is
+deleted wholesale in a storage location.
+
+Each clean-up runs as a job with progress and can be stopped. Only one runs at a time.
+A stopped clean-up leaves what it had already removed removed, and reports what it had
+and had not reached.
+
 ## One location per item
 
 Each document and each collection lives on exactly one location. Outpost does not
@@ -492,5 +644,8 @@ Three things a restore deliberately does not carry over:
 
 Back up the storage locations themselves with whatever you use for files: they are
 ordinary folders.
+
+The `before-restore-<time>` folders can be deleted from **Storage → Manage and clean up
+→ Leftovers** once you are sure a restore was right.
 
 See also [security.md](security.md) and [troubleshooting.md](troubleshooting.md).

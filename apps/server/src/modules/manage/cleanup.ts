@@ -193,6 +193,7 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
     }
     const result: CleanupPlan = {
       scope: request.scope,
+      changes: 0,
       remove: emptyTally(),
       byKind: [],
       byLocation: [],
@@ -256,6 +257,7 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
         previous: previousData(),
       };
     }
+    result.changes = acts;
     return { plan: result, acts };
   }
 
@@ -525,27 +527,36 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
 
     // Whatever is left belongs to records that no longer exist: attachments no page
     // used, import reports, history, vectors, and the settings.
+    // Anything that could not be removed above keeps what belongs to it: a page its
+    // attachments, a document its tags and its place in search.
+    const pagesLeft = remaining("notes") > 0;
     sqlite.transaction(() => {
-      db.delete(attachmentsTable).run();
+      if (!pagesLeft) db.delete(attachmentsTable).run();
       db.delete(importsTable).run();
       db.delete(downloadsTable).run();
       db.delete(embeddings).run();
       db.delete(embeddingModels).run();
-      sqlite.prepare("DELETE FROM note_links").run();
-      sqlite.prepare("DELETE FROM note_tags").run();
-      sqlite.prepare("DELETE FROM document_tags").run();
-      sqlite.prepare("DELETE FROM tags").run();
+      sqlite
+        .prepare("DELETE FROM tags WHERE id NOT IN (SELECT tag_id FROM document_tags) AND id NOT IN (SELECT tag_id FROM note_tags)")
+        .run();
       // The catalogue describes what can be fetched, not what a person has; it stays findable.
-      sqlite.prepare("DELETE FROM search_entities WHERE kind <> 'catalog'").run();
+      sqlite.prepare("DELETE FROM search_entities WHERE kind NOT IN ('catalog', 'collection', 'document', 'note')").run();
+      sqlite.prepare("DELETE FROM search_entities WHERE kind = 'collection' AND entity_id NOT IN (SELECT id FROM collections)").run();
+      sqlite.prepare("DELETE FROM search_entities WHERE kind = 'document' AND entity_id NOT IN (SELECT id FROM documents)").run();
+      sqlite.prepare("DELETE FROM search_entities WHERE kind = 'note' AND entity_id NOT IN (SELECT id FROM notes)").run();
     })();
     personal.settings = db.select({ n: sql<number>`count(*)` }).from(settingsTable).get()?.n ?? 0;
     settings.reset();
     result.personal = personal;
   }
 
+  const remaining = (table: "notes" | "documents") => (sqlite.prepare(`SELECT count(*) AS n FROM ${table}`).get() as { n: number }).n;
+
   /** Empties the data directory's own folders once nothing refers to what is in them. */
   async function eraseDataFolders(result: CleanupResult): Promise<void> {
     for (const name of DERIVED_FOLDERS) {
+      // Kept while something that could not be removed still uses it.
+      if ((name === "attachments" && remaining("notes") > 0) || (name === "extracted" && remaining("documents") > 0)) continue;
       await fs.promises.rm(path.join(config.dataDir, name), { recursive: true, force: true }).catch((error) => {
         noteFailed(result, `The ${name} folder`, messageOf(error));
       });
@@ -596,7 +607,7 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
           ctx.events.publish({ type });
         }
       }
-      result.message = `Erased everything. ${summarise(result)}`;
+      result.message = `${result.failed.length > 0 ? "Erased everything that could be erased." : "Erased everything."} ${summarise(result)}`;
       return result;
     },
   });

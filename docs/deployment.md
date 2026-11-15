@@ -372,6 +372,11 @@ from the code; check your own set-up.
 - **Keep Outpost itself private.** When the proxy runs on the same machine, leave
   `OUTPOST_BIND` at `127.0.0.1` and `OUTPOST_LAN_ACCESS` off. Only the proxy can then
   reach Outpost, and a name listed in `OUTPOST_ALLOWED_HOSTS` is answered either way.
+- **Forwarding headers.** Have the proxy send `X-Forwarded-For` (nginx:
+  `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;`; Caddy and Traefik send
+  it without being asked). Outpost uses it for one thing: a request that carries it is
+  not treated as coming from this computer, so **Erase everything** is not offered to
+  people who arrive through the proxy. Without the header every visitor looks local.
 - **Live updates.** `/api/events` is a server-sent-events stream that stays open.
   Outpost sends `X-Accel-Buffering: no` with it, which nginx honours. Other proxies
   must not buffer that response, or progress will not appear until the page is
@@ -440,6 +445,7 @@ value the image sets when it differs from the default.
 | `OUTPOST_MAX_UPLOAD_MB` | `2048` | | Largest single uploaded file, in megabytes. |
 | `OUTPOST_DOWNLOAD_HOSTS` | empty | | Extra hosts a catalogue download may start from, comma separated. |
 | `OUTPOST_ALLOW_PRIVATE_DOWNLOADS` | `false` | | Let downloads, including files saved from links, connect to private addresses, for a mirror on your own network. |
+| `OUTPOST_ALLOW_REMOTE_ERASE` | `false` | | Let **Erase everything** (Storage → Manage and clean up) be started from any device that can reach Outpost. Without it, only the computer Outpost runs on may. See [security.md](security.md#erasing-everything). |
 | `OUTPOST_PORTABLE` | `false` | | Set by the launchers on a portable drive. Quieter logging, no removable-media roots, and the port moves up if 8080 is taken. |
 | `OUTPOST_APP_DIR` | the running packaged app, or `dist/app` from source | | Packaged app copied onto portable drives. |
 | `OUTPOST_NODE_DIST_URL` | `https://nodejs.org/dist` | | Where Node runtimes for portable drives are fetched from; set for a mirror. |
@@ -466,7 +472,8 @@ Boolean variables accept `1`, `true`, `yes` or `on`.
 
 `compose.yaml` passes these server variables from `.env` into the container:
 `OUTPOST_LAN_ACCESS`, `OUTPOST_ALLOWED_HOSTS`, `OUTPOST_MAX_UPLOAD_MB`,
-`OUTPOST_DOWNLOAD_HOSTS` and `OUTPOST_ALLOW_PRIVATE_DOWNLOADS`. It sets
+`OUTPOST_DOWNLOAD_HOSTS`, `OUTPOST_ALLOW_PRIVATE_DOWNLOADS` and
+`OUTPOST_ALLOW_REMOTE_ERASE`. It sets
 `OUTPOST_PUBLISHED_ADDRESS` from `OUTPOST_BIND` itself. Any other server variable has
 no effect until you add it to the `environment:` block of the `outpost` service.
 

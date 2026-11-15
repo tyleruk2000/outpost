@@ -143,7 +143,22 @@ sudo chown -R 1000:1000 /mnt/usb-ssd/outpost
 ### "…does not have enough free space for this."
 
 Outpost always leaves 256 MB free on a location, so the space needed is the size of
-the item plus that reserve. Free some space or choose another location.
+the item plus that reserve. Free some space or choose another location. **Storage →
+Manage and clean up** shows what is taking the space, lists unfinished downloads and
+stray files that can be cleared, and removes what you no longer want.
+
+### "Erasing everything can only be started on the computer Outpost runs on."
+
+Outpost has no accounts, so the one action that destroys notes and documents is tied to
+where the request comes from. Open Outpost on the computer it runs on, or start it
+with `OUTPOST_ALLOW_REMOTE_ERASE=true`. In Docker with `OUTPOST_LAN_ACCESS=true`, or
+behind a reverse proxy, no request looks local, so the option is the only way. See
+[security.md](security.md#erasing-everything).
+
+### The database file did not get smaller after removing things
+
+SQLite keeps the freed space inside the file for reuse. **Storage → Manage and clean
+up → Clean up → Compact the database** hands it back to the disk.
 
 ### "…still holds N items. Move or remove them first."
 

@@ -92,7 +92,7 @@ function Group({
           {sizeOf(items) + (more?.bytes ?? 0) > 0 ? `, ${formatBytes(sizeOf(items) + (more?.bytes ?? 0))}` : ""}
         </p>
       </div>
-      <p className="mt-1 max-w-[72ch] text-small text-ink-muted">{words.description}</p>
+      <p className="mt-1 max-w-[62ch] text-small text-pretty text-ink-muted">{words.description}</p>
 
       <div className="mt-3 flex items-center gap-3 border-b border-border pb-1.5">
         <span className="grid size-11 shrink-0 place-content-center md:size-9">
@@ -168,7 +168,7 @@ function Status({ data }: { data: LeftoversResponse }) {
   const measure = useMeasure();
   return (
     <div className="mt-6 flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
-      <p className="flex items-center gap-2 text-small text-ink-muted" aria-live="polite">
+      <p className="flex items-center gap-2 text-small text-pretty text-ink-muted" aria-live="polite">
         {data.measuring ? <Spinner className="size-3.5" label="Looking" /> : null}
         {data.measuring
           ? data.measuredAt

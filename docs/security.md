@@ -35,7 +35,10 @@ public internet and must not be exposed to it.
 
 - **Anyone on a network you have shared it with.** With LAN access on, every person
   and device on that network can read and change everything, connect and disconnect
-  network shares, start downloads, restore a different database and delete the library.
+  network shares, start downloads, restore a different database, and remove anything
+  from the library, one item at a time or everything that was downloaded at once. The
+  one thing they cannot do from another device is erase your own notes and documents
+  in one step (see [Erasing everything](#erasing-everything)).
   There are no permissions, no per-person views and no audit log. Share it only with a
   network where you trust everyone.
 - **Other programs or people on the same computer.** Anything that can connect to
@@ -202,6 +205,57 @@ because they name the hosts downloads may start from; unfinished jobs and rememb
 network shares in the restored database are deleted, so a backup from another machine
 cannot make this one start work or connect to a file server.
 Code: `apps/server/src/modules/backup/index.ts`.
+
+### Removing in bulk
+
+**Storage → Manage and clean up** removes things in bulk. These are explicit actions:
+each shows what it will do and is confirmed, and none runs as a side effect of
+anything else. What they can and cannot touch:
+
+| Control | Detail | Code |
+| --- | --- | --- |
+| One set of rules | Bulk removal goes through the collections and documents services, one item at a time, by the same rules as removing one item from the Library: a file on a location that is not connected is never deleted, and anything being moved or checked is refused. There is no second path that deletes folders. | `apps/server/src/modules/manage/remove.ts` |
+| Only Outpost's own folders | In a storage location Outpost looks only inside `collections/` and `documents/`. "Erase everything" deletes a file only if it is inside one of them; a library file anywhere else is forgotten, not deleted, and its path is reported. | `manage/inventory.ts`, `manage/cleanup.ts` |
+| Leftover files are checked twice | A file is offered as a leftover only if no collection, document, download or move lays claim to it and it has not changed for ten minutes. When it is cleared it is checked again: inside `collections/` or `documents/`, a plain file, reached through no symbolic link, still unclaimed. Symbolic links are never followed when measuring. | `manage/survey.ts`, `manage/leftovers.ts` |
+| Ids, not paths | A request names items by id, and leftovers by ids Outpost issued. A path inside an id goes through `resolveInside`; `..`, an absolute path or another location's file is refused. | `manage/index.ts`, `manage/leftovers.ts` |
+| Never touched | Storage locations and their marker files, network shares and Keychain items, catalogue manifests, and anything outside the data directory and the two folders above. | |
+| Changing requests only | Everything that removes is a `POST` and so needs the `X-Outpost-Request` header and the same origin. Measuring is read-only. | `apps/server/src/core/guard.ts` |
+
+#### Erasing everything
+
+Removing downloaded content loses nothing that cannot be fetched again, so, like
+removing items one at a time, any device that can reach Outpost may do it. **Erase
+everything** destroys notes and documents, and Outpost has no accounts to ask "who is
+this?". It asks "where from?" instead:
+
+- The request must come from **the computer Outpost runs on**. It counts as local when
+  it did not come through a proxy and either nothing but this computer can reach
+  Outpost at all (LAN access is off) or the connection itself comes from a loopback
+  address (`127.0.0.0/8`, `::1`).
+- A request carrying `Forwarded`, `X-Forwarded-For`, `X-Forwarded-Host` or `X-Real-IP`
+  is treated as remote. A reverse proxy on the same computer makes every visitor look
+  local, and these headers are how a proxy says it is one.
+- From any other device the screen explains this and does not show the button, and the
+  server answers `403 forbidden` to a request made anyway.
+- `OUTPOST_ALLOW_REMOTE_ERASE=true`, set when Outpost starts, allows it from every
+  device. It cannot be changed from the browser.
+- It also needs the phrase "erase everything" in the request, so that it cannot be set
+  off by a single stray call.
+
+Code: `apps/server/src/core/local.ts`, `apps/server/src/modules/manage/index.ts`.
+
+What this does not do:
+
+- **It is not authentication.** Any program on the computer, and anyone at its
+  keyboard, can erase. It stops a phone or a guest's laptop on the home network from
+  doing so, which is the case it is for.
+- **In Docker with LAN access on**, every connection reaches Outpost from Docker's own
+  network, so nothing looks local and erasing needs `OUTPOST_ALLOW_REMOTE_ERASE=true`.
+  With the Compose defaults (the port published on `127.0.0.1`, LAN access off) only
+  this computer can connect at all, and erasing is offered.
+- **A reverse proxy that adds no forwarding header** makes every visitor look local.
+  Make sure yours sends `X-Forwarded-For`; see
+  [deployment.md](deployment.md#behind-a-reverse-proxy).
 
 ### No telemetry
 

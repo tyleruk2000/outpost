@@ -213,16 +213,16 @@ export default function DownloadsPage() {
         title="Downloads"
         description="What is being fetched, when it will be here, and what has finished. Downloads carry on in the background and continue from where they stopped."
         actions={
-          nothing ? null : (
-            <>
-              <Button asChild>
-                <Link to={manageLink("installed")}>Manage what is downloaded</Link>
-              </Button>
+          <>
+            <Button asChild>
+              <Link to={manageLink("installed")}>Manage what is downloaded</Link>
+            </Button>
+            {nothing ? null : (
               <Button asChild>
                 <Link to="/explore">Find more in Explore</Link>
               </Button>
-            </>
-          )
+            )}
+          </>
         }
       />
 
