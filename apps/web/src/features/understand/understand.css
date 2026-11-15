@@ -1,0 +1,97 @@
+/*
+ * "How search works". Everything here is built from the design tokens; the one local
+ * value is the ink used on top of a filled mark, which must be dark in both themes.
+ */
+:root {
+  --understand-on-fill: oklch(0.21 0.015 220);
+}
+
+/* A figure is set off from the prose by a hairline above it, like a plate in a book. */
+.understand-figure {
+  margin: 2.25rem 0;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+/* Anchors land below whatever is stuck to the top of the window. */
+.understand-stage,
+.understand-figure,
+.understand-anchor {
+  scroll-margin-top: 7rem;
+}
+.understand-picker {
+  top: 3.25rem;
+}
+@media (min-width: 48rem) {
+  .understand-stage,
+  .understand-figure,
+  .understand-anchor {
+    scroll-margin-top: 4.5rem;
+  }
+  .understand-picker {
+    top: 0;
+  }
+}
+@media (min-width: 80rem) {
+  .understand-stage,
+  .understand-figure,
+  .understand-anchor {
+    scroll-margin-top: 2rem;
+  }
+}
+
+/* A mark answers the pointer by lifting slightly; focus uses the global ring. */
+.understand-mark {
+  transition: filter var(--duration) var(--ease-out);
+}
+.understand-mark:hover,
+.understand-mark:focus-visible {
+  filter: brightness(0.9);
+}
+:root[data-theme="dark"] .understand-mark:hover,
+:root[data-theme="dark"] .understand-mark:focus-visible {
+  filter: brightness(1.15);
+}
+.understand-plot:focus-visible,
+.understand-ribbon:focus-visible {
+  outline-offset: 4px;
+}
+
+/* Boxes in the journey diagram are links. */
+.understand-node {
+  cursor: pointer;
+}
+.understand-node rect {
+  transition: fill var(--duration) var(--ease-out);
+}
+.understand-node:hover rect {
+  fill: var(--surface-strong);
+}
+.understand-node:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-control);
+}
+
+/* A citation number is printed on its block only where the block is wide enough for it. */
+@container (max-width: 0.9rem) {
+  .understand-fit {
+    display: none;
+  }
+}
+
+.understand-range {
+  height: 1.5rem;
+  cursor: pointer;
+}
+@media (max-width: 47.99rem) {
+  .understand-range {
+    height: 2.75rem;
+  }
+}
+
+/* Section headings inside the essay use the prose rules; give the first paragraph after a figure room. */
+.understand-stage .prose + .understand-figure,
+.understand-stage .understand-figure + .prose {
+  margin-top: 2.25rem;
+}

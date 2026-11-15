@@ -147,6 +147,9 @@ export function registerExplain(app: FastifyInstance, ctx: AppContext): void {
     return { info: { source: "demonstration", modelId: demo.modelId, dimensions: 256, reason }, provider: demo, stored: false };
   }
 
+  /** The kinds of thing whose text may be given to a language model, as in the retrieval endpoint. */
+  const CONTEXT_KINDS = new Set(["document", "note"]);
+
   const countChunks = () => (sqlite.prepare("SELECT count(*) AS n FROM chunks WHERE text <> ''").get() as { n: number }).n;
 
   /** Passages to compare against when vectors are made on the spot: an even sample when there are too many. */
@@ -251,9 +254,10 @@ export function registerExplain(app: FastifyInstance, ctx: AppContext): void {
   app.post("/api/retrieval/explain", async (request): Promise<ExplainResponse> => {
     const { query, limit } = explainBody.parse(request.body);
     const started = performance.now();
-    const totalChunks = countChunks();
 
     // 1. Words
+    // The index counts every row it holds, including those with a title and no text.
+    const indexRows = (sqlite.prepare("SELECT count(*) AS n FROM chunks_fts").get() as { n: number }).n;
     const parsed = parseQuery(query);
     let expression = toFtsQuery(parsed, "all");
     const terms = parsed.required.map((term, index) => {
@@ -261,8 +265,11 @@ export function registerExplain(app: FastifyInstance, ctx: AppContext): void {
       const containing = single
         ? (sqlite.prepare("SELECT count(*) AS n FROM chunks_fts WHERE chunks_fts MATCH ?").get(single) as { n: number }).n
         : 0;
-      // The inverse document frequency used by BM25: rare words score high, common words near zero.
-      return { term, chunksContaining: containing, idf: Math.log((totalChunks - containing + 0.5) / (containing + 0.5) + 1) };
+      // The inverse document frequency exactly as the index (SQLite FTS5) works it out:
+      // rare words score high, and a word in more than half of everything counts for
+      // next to nothing.
+      const idf = Math.log((indexRows - containing + 0.5) / (containing + 0.5));
+      return { term, chunksContaining: containing, idf: idf > 0 ? idf : 1e-6 };
     });
 
     // 2. Keyword search, passage by passage
@@ -399,8 +406,11 @@ export function registerExplain(app: FastifyInstance, ctx: AppContext): void {
 
     // 5. Context for a model
     const contextStarted = performance.now();
-    const best = fusionRows.slice(0, limit);
-    const rows = chunkRows(best.map((row) => row.chunkId));
+    // As the retrieval endpoint does, only passages from documents and pages are handed
+    // to a model: a catalogue listing or a saved place is not something to quote from.
+    const candidates = chunkRows(fusionRows.map((row) => row.chunkId));
+    const best = fusionRows.filter((row) => CONTEXT_KINDS.has(candidates.get(row.chunkId)?.kind ?? "")).slice(0, limit);
+    const rows = candidates;
     const passages: RetrievedPassage[] = best.flatMap((row) => {
       const chunk = rows.get(row.chunkId);
       if (!chunk) return [];
@@ -444,7 +454,15 @@ export function registerExplain(app: FastifyInstance, ctx: AppContext): void {
     const round = (value: number) => Math.round(value * 10) / 10;
     return {
       query,
-      parse: { words: parsed.required, excluded: parsed.excluded, prefixLast: parsed.prefixLast, expression, relaxed, terms, totalChunks },
+      parse: {
+        words: parsed.required,
+        excluded: parsed.excluded,
+        prefixLast: parsed.prefixLast,
+        expression,
+        relaxed,
+        terms,
+        totalChunks: indexRows,
+      },
       keyword: { tookMs: round(keywordMs), hits: keywordHits.slice(0, limit * 2) },
       semantic: {
         ...source.info,

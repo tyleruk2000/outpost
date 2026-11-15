@@ -170,6 +170,40 @@ describe("how search works", () => {
     expect(body.timings.totalMs).toBeGreaterThan(0);
   });
 
+  it("weighs words exactly as the index does", async () => {
+    const { body } = await app.api("POST", "/api/retrieval/explain", { query: "bowline water" });
+    const rows = (app.ctx.sqlite.prepare("SELECT count(*) AS n FROM chunks_fts").get() as { n: number }).n;
+    expect(body.parse.totalChunks).toBe(rows);
+    for (const term of body.parse.terms as Array<{ term: string; chunksContaining: number; idf: number }>) {
+      const idf = Math.log((rows - term.chunksContaining + 0.5) / (term.chunksContaining + 0.5));
+      expect(term.idf, term.term).toBeCloseTo(idf > 0 ? idf : 1e-6, 10);
+    }
+    const [bowline, water] = body.parse.terms;
+    // "water" is in most of this small index; the index gives such a word almost no weight, never a negative one.
+    expect(bowline.idf).toBeGreaterThan(water.idf);
+    expect(water.idf).toBeGreaterThan(0);
+  });
+
+  it("hands a model only passages from documents and pages, though the ranking covers everything", async () => {
+    app.ctx.services.search.upsert({
+      kind: "catalog",
+      entityId: "c-water",
+      title: "Boiling water: a collection you could download",
+      url: "/explore?entry=c-water",
+      sections: [
+        { text: "Boiling water, boiling water, boiling water. A listing in the download catalogue, not something to quote from." },
+      ],
+    });
+    const { body } = await app.api("POST", "/api/retrieval/explain", { query: "boiling water" });
+    // The listing is found and ranked, as it is on the Search screen...
+    expect(body.keyword.hits.some((hit: { kind: string }) => hit.kind === "catalog")).toBe(true);
+    expect(body.fusion.rows.some((row: { url: string }) => row.url.startsWith("/explore"))).toBe(true);
+    // ...but it is not among the sources a model would be given.
+    expect(body.context.citations.length).toBeGreaterThan(0);
+    expect(body.context.citations.every((citation: { url: string }) => !citation.url.startsWith("/explore"))).toBe(true);
+    expect(body.context.text).not.toContain("a collection you could download");
+  });
+
   it("says when it had to fall back to matching any word", async () => {
     const { body } = await app.api("POST", "/api/retrieval/explain", { query: "bowline tablets " });
     expect(body.parse.relaxed).toBe(true);
