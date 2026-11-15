@@ -154,6 +154,15 @@ export async function registerPortable(app: FastifyInstance, ctx: AppContext): P
 
   const bundleAvailable = () => fs.existsSync(path.join(config.appBundleDir, "server", "outpost.mjs"));
 
+  /**
+   * This library's identity, made the first time a drive is written. The drive records
+   * it, so that when the drive comes home Outpost knows it is its own (modules/merge).
+   */
+  function libraryId(): string {
+    ctx.sqlite.prepare("INSERT OR IGNORE INTO library_meta (key, value) VALUES ('library.id', ?)").run(newId());
+    return (ctx.sqlite.prepare("SELECT value FROM library_meta WHERE key = 'library.id'").get() as { value: string }).value;
+  }
+
   /** The folder must be inside a storage root, and must not be somewhere Outpost itself lives. */
   function resolveTarget(input: string): string {
     const target = path.resolve(input);
@@ -504,6 +513,7 @@ export async function registerPortable(app: FastifyInstance, ctx: AppContext): P
         locationPath: path.join(target, "library"),
         collectionIds: gathered.includedCollectionIds,
         documentIds: gathered.includedDocumentIds,
+        madeFrom: libraryId(),
       });
 
       // 4. Swap the data folder in. Whatever the drive held is kept beside it.

@@ -13,6 +13,7 @@ export * from "./kiwix.ts";
 export * from "./links.ts";
 export * from "./manage.ts";
 export * from "./maps.ts";
+export * from "./merge.ts";
 export * from "./notes.ts";
 export * from "./portable.ts";
 export * from "./retrieval.ts";

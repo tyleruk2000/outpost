@@ -16,6 +16,7 @@ import { registerKiwix } from "./kiwix/index.ts";
 import { registerLinks } from "./links/index.ts";
 import { registerManage } from "./manage/index.ts";
 import { registerMaps } from "./maps/index.ts";
+import { registerMerge } from "./merge/index.ts";
 import { registerNotes } from "./notes/index.ts";
 import { registerPortable } from "./portable/index.ts";
 import { registerRetrieval } from "./retrieval/index.ts";
@@ -40,5 +41,6 @@ export const modules: ModuleRegister[] = [
   registerMaps,
   registerBackup,
   registerPortable,
+  registerMerge,
   registerManage,
 ];
