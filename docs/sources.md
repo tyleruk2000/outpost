@@ -13,11 +13,15 @@ The catalogue itself lives in [`catalog/manifests/`](../catalog/manifests):
 | `official-publications.json` | Individual PDF handbooks, guides and textbooks, each fetched from its publisher's own website | 50 |
 | `radio.json` | Radio rules, frequency tables, field guides, broadcast guides and band plans as PDFs from their publishers (33), and five more Kiwix archives | 38 |
 | `outpost-reference.json` | Reference sheets written for Outpost and shipped with it; see [radio.md](radio.md) | 9 |
+| `logbook73.json` | The Radio Engineering Handbook and fifteen radio companion guides, written by this project's author for LogBook73 (MIT) and shipped as books; generated, see [radio.md](radio.md#the-handbook-and-the-radio-guides) | 16 |
 
 A manifest only describes content and says where it comes from, and nothing is fetched
-until a person asks for it. The one kind of content that ships with Outpost is its own
-reference sheets, in [`catalog/bundled/`](../catalog/bundled): original compilations
-written for Outpost, which are added to the library by copying, with no network. The
+until a person asks for it. Two kinds of content ship with Outpost, in
+[`catalog/bundled/`](../catalog/bundled), and are added to the library by copying, with
+no network: its own reference sheets, which are original compilations written for
+Outpost; and the radio handbook and guides its author wrote for LogBook73, which are
+generated from that project under its MIT licence and are not checked by Outpost against
+the manufacturers' manuals ([radio.md](radio.md#the-handbook-and-the-radio-guides)). The
 format and the rules for entries are in [`catalog/README.md`](../catalog/README.md).
 
 ## Status of each source

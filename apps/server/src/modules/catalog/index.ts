@@ -68,6 +68,11 @@ export async function registerCatalog(app: FastifyInstance, ctx: AppContext): Pr
   app.post<{ Params: { id: string } }>("/api/catalog/entries/:id/add", async (request): Promise<CatalogAddResponse> => {
     const body = z.object({ locationId: z.string().min(1).max(100).optional() }).parse(request.body ?? {});
     const result = await service.add(request.params.id, body);
-    return { collectionId: result.collection.id, documentId: result.documentId, replacedCollectionId: result.replacedCollectionId };
+    return {
+      collectionId: result.collection.id,
+      documentId: result.documentId,
+      chapterCount: result.chapterCount,
+      replacedCollectionId: result.replacedCollectionId,
+    };
   });
 }

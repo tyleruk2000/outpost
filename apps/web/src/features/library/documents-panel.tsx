@@ -2,7 +2,7 @@ import { type DocumentFacets, type DocumentListResponse, type DocumentSort, type
 import { keepPreviousData, useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowDownUp, Plus, Search, Upload, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { EmptyState, ErrorState, Rows } from "@/components/page";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
 import { useStorage } from "@/lib/queries";
 import { cn, formatNumber, plural } from "@/lib/utils";
+import { useCollections } from "./collection-data";
+import { isBook } from "./collection-meta";
 import { ChoiceMenu } from "./document-filter-menu";
 import { clearFilters, type DocumentFilters, isFiltered, listQuery, PAGE_SIZE, readFilters, writeFilters } from "./document-filters";
 import { ACCEPTED_FILES, documentKeys, SUPPORTED_TYPES, typeLabels } from "./document-meta";
@@ -154,6 +156,28 @@ function summary(filters: DocumentFilters, facets: DocumentFacets | undefined, s
   if (!facets) return "";
   if (isFiltered(filters) && shown !== undefined) return `${formatNumber(shown)} of ${plural(facets.total, "document")}`;
   return `${plural(facets.total, "document")}, ${formatBytes(facets.totalBytes)}`;
+}
+
+/**
+ * Books from the catalogue are kept whole under Collections, not as a document per
+ * chapter in this list. Someone who has just added one should not find this tab
+ * saying there is nothing here.
+ */
+function BooksPointer() {
+  const books = useCollections().data?.filter(isBook).length ?? 0;
+  if (books === 0) return null;
+  return (
+    <p className="mt-3 text-small text-ink-muted">
+      {plural(books, "book")} from the catalogue {books === 1 ? "is" : "are"} kept whole, with {books === 1 ? "its" : "their"} chapters in
+      order.{" "}
+      <Link
+        to="/library?tab=collections"
+        className="font-medium text-primary underline decoration-1 underline-offset-[0.2em] hover:decoration-2"
+      >
+        See your books
+      </Link>
+    </p>
+  );
 }
 
 export default function DocumentsPanel() {
@@ -315,6 +339,8 @@ export default function DocumentsPanel() {
         onDismiss={uploadQueue.clearSettled}
         className={libraryEmpty ? "mb-6" : "mt-3"}
       />
+
+      <BooksPointer />
 
       {list.isPending || facets.isPending ? (
         <ul className="mt-3 divide-y divide-border border-y border-border" aria-busy aria-label="Loading documents">

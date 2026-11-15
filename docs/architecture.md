@@ -119,6 +119,22 @@ the reader offers to fetch it through the download manager.
 kiwix-serve trusts its library file and will not search a book that has no language
 recorded, so Outpost writes complete metadata, which it reads back from each archive.
 
+### A book is a collection of documents, one per chapter
+
+The handbook and radio guides that ship with Outpost are book-length. Kept as one
+document each, search could only say "somewhere in this book" and a phone would load
+eighty thousand words to show a page. So a book is one collection (kind `file`, with
+`meta.book`) whose folder holds one Markdown file per chapter, and each chapter is an
+ordinary document recorded where it lies. The `book_chapters` table ties the two
+together: which document is which chapter, in what order, under which part. The
+collection is what a person adds, checks, moves and removes; its page is the contents.
+The chapters are searched and opened like any document, and are left out of the
+library's own list and counts so that three hundred of them do not bury everything
+else. Links between chapters are written as `outpost:entry/<entry id>/<chapter key>`
+and looked up when a chapter is shown, so they work across books and say plainly when
+the other book has not been added. Code: `modules/books`, `modules/catalog`
+(`addBook`), `documents/markdown-view.ts`.
+
 ### Maps: regional extracts of a planet archive, composited on the server
 
 Tiles come from the Protomaps daily planet build (OpenStreetMap data, ODbL), a single
@@ -185,13 +201,14 @@ apps/web/src/
   components/        shell and controls
   features/          one folder per screen
 packages/shared/     API types and pure helpers used by both sides
-catalog/             catalogue manifests, their schema, and map region presets
+catalog/             catalogue manifests, their schema, packs, map region presets, and the
+                     sheets and books that ship with Outpost (bundled/)
 scripts/             packaged-app build, map asset fetch
 e2e/                 Playwright tests against the packaged app
 ```
 
 Modules, in registration order: search, semantic, retrieval, documents, notes, imports,
-collections, kiwix, downloads, links, catalog, maps, backup, portable. A module may use the
+collections, books, kiwix, downloads, links, catalog, maps, backup, portable. A module may use the
 services of those before it. [development/server-modules.md](development/server-modules.md)
 is the contract a module works to.
 
@@ -232,4 +249,8 @@ are not are kept outside the process or left out:
 | GeoNames | CC BY 4.0 | Downloaded by the user; credited where shown. |
 | Natural Earth | Public domain | Bundled world outline. |
 | Catalogue content | Per collection | Never bundled. Each entry states its licence, and says so when it has not been verified. |
-| Reference sheets (`catalog/bundled/`) | MIT, with the project | Bundled. The project's own compilations of facts from official sources, each listing its sources. |
+| Reference sheets (`catalog/bundled/radio/`) | MIT, with the project | Bundled. The project's own compilations of facts from official sources, each listing its sources. |
+| Handbook and radio guides (`catalog/bundled/logbook73/`) | MIT, © 2026 Tyler Allen | Bundled. Written by this project's author for LogBook73 and generated from it; each book's last chapter carries the licence text. See [radio.md](radio.md#the-handbook-and-the-radio-guides). |
+| Signal figures (`apps/web/src/features/library/figures/radio-viz*.ts*`) | MIT, © 2026 Tyler Allen | Ported from LogBook73's `RadioViz` component and its maths; the files say so. |
+| Mermaid 12 | MIT | Bundled in the web app; draws diagrams in Markdown documents. Its dependencies are MIT, ISC, BSD-3-Clause or Apache-2.0, with two notes: DOMPurify is dual-licensed and is used under Apache-2.0, and `robust-predicates` is released into the public domain (Unlicense). |
+| elkjs (Mermaid's optional ELK layout) | EPL-2.0 or GPL-3.0-or-later | Not shipped. The build replaces it with a stand-in (`figures/no-elk.ts`, `resolve.alias` in `apps/web/vite.config.ts`); diagrams are laid out with dagre. |

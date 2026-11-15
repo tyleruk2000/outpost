@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/misc";
 import { cn, plural, timeAgo } from "@/lib/utils";
 import { useCollections } from "./collection-data";
-import { type CollectionNote, collectionNote, filesReachable, groupCollections, openTarget } from "./collection-meta";
+import { type CollectionNote, chapterCount, collectionNote, filesReachable, groupCollections, openTarget } from "./collection-meta";
 
 const Slash = () => (
   <span aria-hidden className="mx-2 text-border-strong">
@@ -45,7 +45,9 @@ function CollectionRow({ collection }: { collection: CollectionDto }) {
   const note = collectionNote(collection);
   const target = openTarget(collection);
   const away = !collection.locationAvailable;
+  const chapters = chapterCount(collection);
   const meta: ReactNode[] = [
+    chapters ? plural(chapters, "chapter") : null,
     <span key="size" className="tabular">
       {formatBytes(collection.sizeBytes)}
     </span>,

@@ -33,7 +33,7 @@ import type { CollectionRow } from "../collections/service.ts";
 import type { DownloadRow, InstallMeta } from "../downloads/types.ts";
 import type { DocumentBridge } from "./documents-bridge.ts";
 import { fetchBooks, fetchFileFacts, KIWIX_CATALOG_URL, type KiwixBook, pickBook } from "./kiwix.ts";
-import { type LoadedCatalog, type LoadedEntry, loadCatalog } from "./manifest.ts";
+import { type BundledBook, type BundledFile, type LoadedCatalog, type LoadedEntry, loadCatalog } from "./manifest.ts";
 import { type LoadedPacks, loadPacks } from "./packs.ts";
 import {
   bookResolution,
@@ -74,8 +74,17 @@ export interface CatalogAddResult {
   collection: CollectionRow;
   /** The document the file became in the library, when it is one. */
   documentId?: string;
+  /** For a book: how many chapters were added, each as a document. */
+  chapterCount?: number;
   /** The older edition this one took the place of; it has been removed with its file. */
   replacedCollectionId: string | null;
+}
+
+export interface CatalogLinkTarget {
+  entryId: string;
+  entryName: string;
+  collectionId?: string;
+  documentId?: string;
 }
 
 export interface CatalogService {
@@ -97,10 +106,17 @@ export interface CatalogService {
    */
   installPack(packId: string, options?: { locationId?: string; entryIds?: string[] }): Promise<CatalogPackInstallResponse>;
   /**
-   * Adds an entry that ships with Outpost: copies its file into the library and records
-   * it as installed. Works with no connection, and finishes before it returns.
+   * Adds an entry that ships with Outpost: copies its file, or the chapters of its book,
+   * into the library and records it as installed. Works with no connection, and
+   * finishes before it returns.
    */
   add(entryId: string, options?: { locationId?: string }): Promise<CatalogAddResult>;
+  /**
+   * What a link to a catalogue entry (and a chapter of its book) leads to on this server:
+   * the entry's name, and the collection and document it is in the library as, if it is.
+   * Undefined when the catalogue has no such entry.
+   */
+  linkTarget(entryId: string, chapterKey?: string): CatalogLinkTarget | undefined;
   /** True when the catalogue knows a newer version than the one installed. */
   hasUpdate(collection: CollectionRow): boolean;
 }
@@ -157,7 +173,7 @@ export function createCatalogService(ctx: AppContext, options: CatalogServiceOpt
   ctx.onClose.push(() => http.close());
 
   const manifestDirs = [path.join(config.catalogDir, "manifests"), path.join(config.dataDir, "catalog")];
-  let catalog: LoadedCatalog = { manifests: [], entries: [], problems: [], downloadHosts: [], bundled: new Map() };
+  let catalog: LoadedCatalog = { manifests: [], entries: [], problems: [], downloadHosts: [], bundled: new Map(), books: new Map() };
   // Packs that ship with Outpost first; a person's own after, in the folder that holds their manifests.
   const packFiles = [path.join(config.catalogDir, "packs.json"), path.join(config.dataDir, "catalog", "packs.json")];
   let packs: LoadedPacks = { packs: [], problems: [] };
@@ -350,7 +366,7 @@ export function createCatalogService(ctx: AppContext, options: CatalogServiceOpt
     const cache = cached(entry.id);
     const resolution = cache?.resolved;
     const source = entry.source;
-    const { sizeBytes: estimate, ...manifestFields } = entry;
+    const { sizeBytes: estimate, source: _source, ...manifestFields } = entry;
 
     const active = entryDownloads.find(isActive);
     const latest = entryDownloads[0];
@@ -378,9 +394,14 @@ export function createCatalogService(ctx: AppContext, options: CatalogServiceOpt
     };
     if (source.type === "bundled") {
       // The file is on this machine already: its size is measured, and it is always available.
+      // A book's list of chapters stays here; the catalogue says only how many there are.
+      const { book: _book, ...bundledSource } = source;
+      const book = catalog.books.get(entry.id);
       return {
         ...manifestFields,
-        sizeBytes: catalog.bundled.get(entry.id)?.sizeBytes ?? null,
+        source: bundledSource,
+        ...(book ? { chapterCount: book.chapters.length } : {}),
+        sizeBytes: (book ?? catalog.bundled.get(entry.id))?.sizeBytes ?? null,
         sizeIsEstimate: false,
         version: version ?? null,
         publishedAt: source.published ?? null,
@@ -394,6 +415,7 @@ export function createCatalogService(ctx: AppContext, options: CatalogServiceOpt
     const resolvedSize = resolution?.sizeBytes ?? (source.type === "http" ? source.sizeBytes : undefined);
     return {
       ...manifestFields,
+      source,
       sizeBytes: resolvedSize ?? estimate ?? null,
       sizeIsEstimate: resolvedSize === undefined && estimate !== undefined,
       version: version ?? null,
@@ -547,64 +569,130 @@ export function createCatalogService(ctx: AppContext, options: CatalogServiceOpt
     throw conflict(`There are already many files called "${fileName}" in this location. Remove some of them and try again.`);
   }
 
+  /** A free folder for a bundled book: named for its entry, then with the version, then numbered. */
+  async function freeFolder(locationId: string, name: string, version: string | undefined): Promise<string> {
+    const candidates = [name, ...(version ? [safeFileName(`${name}_${version}`)] : [])];
+    for (let copy = 2; copy <= 50; copy += 1) candidates.push(`${name}_${copy}`);
+    for (const candidate of candidates) {
+      const relPath = `collections/books/${candidate}`;
+      if (!(await pathExists(storage.resolve(locationId, relPath)))) return relPath;
+    }
+    throw conflict(`There are already many folders called "${name}" in this location. Remove some of them and try again.`);
+  }
+
   const adding = new Set<string>();
+
+  /** What the catalogue records about anything it installs from an entry that ships with Outpost. */
+  function bundledRecord(entry: LoadedEntry, locationId: string, relPath: string) {
+    const { version, published } = entry.source as { version?: string; published?: string };
+    return {
+      title: entry.name,
+      locationId,
+      relPath,
+      catalogEntryId: entry.id,
+      description: entry.description,
+      category: entry.category,
+      language: entry.language,
+      publisher: entry.publisher,
+      license: entry.license,
+      attribution: entry.attribution,
+      version,
+      meta: {
+        format: entry.format,
+        manifestId: entry.manifestId,
+        bundled: true,
+        ...(entry.licenseNote ? { licenseNote: entry.licenseNote } : {}),
+        ...(entry.homepage ? { homepage: entry.homepage } : {}),
+        ...(published ? { publishedAt: published } : {}),
+      },
+    };
+  }
+
+  /** Copies one bundled file into the library: a collection record, and the document it becomes. */
+  async function addFile(
+    entry: LoadedEntry,
+    file: BundledFile,
+    locationId: string,
+  ): Promise<{ collection: CollectionRow; documentId?: string }> {
+    const { version } = entry.source as { version?: string };
+    const relPath = await freeDestination(locationId, safeFileName(path.basename(file.path), "document"), version);
+    const target = storage.resolve(locationId, relPath);
+    await fs.promises.mkdir(path.dirname(target), { recursive: true });
+    // COPYFILE_EXCL: never write over a file that appeared in the meantime.
+    await fs.promises.copyFile(file.path, target, fs.constants.COPYFILE_EXCL);
+
+    let collection: CollectionRow;
+    try {
+      collection = await collections.create({
+        ...bundledRecord(entry, locationId, relPath),
+        kind: "file",
+        sizeBytes: file.sizeBytes,
+        sha256: await sha256File(target),
+      });
+    } catch (error) {
+      // Nothing records the copy, so it would only be clutter. It is Outpost's own copy, made a moment ago.
+      await fs.promises.rm(target, { force: true }).catch(() => undefined);
+      throw error;
+    }
+    return { collection, documentId: await options.documents?.adopt(collection.id) };
+  }
+
+  /** Copies a bundled book into the library: its chapters into one folder, each recorded as a document. */
+  async function addBook(
+    entry: LoadedEntry,
+    book: BundledBook,
+    locationId: string,
+  ): Promise<{ collection: CollectionRow; chapterCount: number }> {
+    const { version } = entry.source as { version?: string };
+    const relPath = await freeFolder(locationId, safeFileName(entry.id, "book"), version);
+    const target = storage.resolve(locationId, relPath);
+    await fs.promises.mkdir(path.dirname(target), { recursive: true });
+    // Not recursive: the folder must be new, so nothing that is already there is written into.
+    await fs.promises.mkdir(target);
+    try {
+      for (const chapter of book.chapters) {
+        await fs.promises.copyFile(chapter.path, path.join(target, chapter.fileName), fs.constants.COPYFILE_EXCL);
+      }
+      return await ctx.services.books.create({
+        collection: bundledRecord(entry, locationId, relPath),
+        chapters: book.chapters,
+        document: {
+          category: CATALOG_CATEGORIES.find((category) => category.slug === entry.category)?.label,
+          author: entry.publisher,
+          source: entry.homepage ?? entry.publisher,
+          language: entry.language,
+        },
+      });
+    } catch (error) {
+      // Nothing records the copies, so they would only be clutter. They are Outpost's own, made a moment ago.
+      await fs.promises.rm(target, { recursive: true, force: true }).catch(() => undefined);
+      throw error;
+    }
+  }
 
   async function add(entryId: string, request: { locationId?: string } = {}): Promise<CatalogAddResult> {
     const entry = requireEntry(entryId);
     const file = catalog.bundled.get(entryId);
-    if (entry.source.type !== "bundled" || !file) {
+    const book = catalog.books.get(entryId);
+    if (entry.source.type !== "bundled" || !(file || book)) {
       throw badRequest(`"${entry.name}" does not ship with Outpost. Download it from the catalogue instead.`);
     }
     if (adding.has(entryId)) throw conflict(`"${entry.name}" is already being added.`);
     adding.add(entryId);
     try {
-      const { version, published } = entry.source;
+      const { version } = entry.source;
       const installed = collections.list({ catalogEntryId: entryId })[0];
       if (installed && !isNewer(installed.version, version) && installed.status !== "missing") {
         throw conflict(`"${entry.name}" is already in your library${installed.version ? ` (version ${installed.version})` : ""}.`);
       }
       const location = request.locationId ? storage.get(request.locationId) : storage.getDefault();
-      await storage.assertSpace(location.id, file.sizeBytes);
+      await storage.assertSpace(location.id, (book ?? file)!.sizeBytes);
 
-      const relPath = await freeDestination(location.id, safeFileName(path.basename(file.path), "document"), version);
-      const target = storage.resolve(location.id, relPath);
-      await fs.promises.mkdir(path.dirname(target), { recursive: true });
-      // COPYFILE_EXCL: never write over a file that appeared in the meantime.
-      await fs.promises.copyFile(file.path, target, fs.constants.COPYFILE_EXCL);
+      const added: { collection: CollectionRow; documentId?: string; chapterCount?: number } = book
+        ? await addBook(entry, book, location.id)
+        : await addFile(entry, file!, location.id);
+      const { collection } = added;
 
-      let collection: CollectionRow;
-      try {
-        collection = await collections.create({
-          kind: "file",
-          title: entry.name,
-          locationId: location.id,
-          relPath,
-          catalogEntryId: entry.id,
-          description: entry.description,
-          category: entry.category,
-          language: entry.language,
-          publisher: entry.publisher,
-          license: entry.license,
-          attribution: entry.attribution,
-          version,
-          sizeBytes: file.sizeBytes,
-          sha256: await sha256File(target),
-          meta: {
-            format: entry.format,
-            manifestId: entry.manifestId,
-            bundled: true,
-            ...(entry.licenseNote ? { licenseNote: entry.licenseNote } : {}),
-            ...(entry.homepage ? { homepage: entry.homepage } : {}),
-            ...(published ? { publishedAt: published } : {}),
-          },
-        });
-      } catch (error) {
-        // Nothing records the copy, so it would only be clutter. It is Outpost's own copy, made a moment ago.
-        await fs.promises.rm(target, { force: true }).catch(() => undefined);
-        throw error;
-      }
-
-      const documentId = await options.documents?.adopt(collection.id);
       let replacedCollectionId: string | null = null;
       if (installed && installed.id !== collection.id) {
         // The same rule as an updated download: the person asked for the new edition, so
@@ -617,10 +705,28 @@ export function createCatalogService(ctx: AppContext, options: CatalogServiceOpt
         }
       }
       ctx.events.publish({ type: "catalog.changed", id: entry.id });
-      return { collection: collections.get(collection.id) ?? collection, documentId, replacedCollectionId };
+      return {
+        collection: collections.get(collection.id) ?? collection,
+        documentId: added.documentId,
+        chapterCount: added.chapterCount,
+        replacedCollectionId,
+      };
     } finally {
       adding.delete(entryId);
     }
+  }
+
+  function linkTarget(entryId: string, chapterKey?: string): CatalogLinkTarget | undefined {
+    const entry = byId.get(entryId);
+    if (!entry) return undefined;
+    const target: CatalogLinkTarget = { entryId: entry.id, entryName: entry.name };
+    // collections.list() is newest first: the first one is the current install.
+    const installed = collections.list({ catalogEntryId: entryId })[0];
+    if (!installed) return target;
+    target.collectionId = installed.id;
+    if (chapterKey !== undefined) target.documentId = ctx.services.books.chapterDocument(installed.id, chapterKey);
+    else if (typeof installed.meta.documentId === "string") target.documentId = installed.meta.documentId;
+    return target;
   }
 
   reload();
@@ -648,7 +754,7 @@ export function createCatalogService(ctx: AppContext, options: CatalogServiceOpt
       try {
         if (entry.source.type === "bundled") {
           const added = await add(entryId, { locationId: request.locationId });
-          result.added.push({ entryId, name: entry.name, documentId: added.documentId });
+          result.added.push({ entryId, name: entry.name, documentId: added.documentId, collectionId: added.collection.id });
         } else {
           const started = await download(entryId, { locationId: request.locationId });
           result.queued.push(downloads.toDto(started.download));
@@ -661,5 +767,17 @@ export function createCatalogService(ctx: AppContext, options: CatalogServiceOpt
     return result;
   }
 
-  return { installPack, reload, list, getEntry: (id) => byId.get(id), allowedHosts, refresh, resolveForDownload, download, add, hasUpdate };
+  return {
+    installPack,
+    reload,
+    list,
+    getEntry: (id) => byId.get(id),
+    allowedHosts,
+    refresh,
+    resolveForDownload,
+    download,
+    add,
+    linkTarget,
+    hasUpdate,
+  };
 }

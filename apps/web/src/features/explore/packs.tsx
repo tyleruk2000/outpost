@@ -51,6 +51,12 @@ export function PackList({ packs, entries }: { packs: CatalogPack[]; entries: Ca
   );
 }
 
+/** What to call the things that were added: sheets are single documents, books are kept whole. */
+function addedNoun(added: Array<{ documentId?: string }>): string {
+  const books = added.filter((item) => !item.documentId).length;
+  return books === 0 ? "reference sheet" : books === added.length ? "book" : "item";
+}
+
 function stateOf(entry: CatalogEntryDto): string | null {
   if (entry.status === "installed") return "In your library";
   if (isUnderWay(entry)) return "On its way";
@@ -105,7 +111,7 @@ function PackDialog({ pack, entries, onClose }: { pack: CatalogPack; entries: Ca
           ) : null}
           {added.length > 0 ? (
             <p>
-              {plural(added.length, "reference sheet")} that {added.length === 1 ? "comes" : "come"} with Outpost{" "}
+              {plural(added.length, addedNoun(added))} that {added.length === 1 ? "comes" : "come"} with Outpost{" "}
               {added.length === 1 ? "is" : "are"} now in your library.
             </p>
           ) : null}
@@ -130,6 +136,13 @@ function PackDialog({ pack, entries, onClose }: { pack: CatalogPack; entries: Ca
             <Button asChild variant="primary">
               <Link to="/downloads">
                 <Download /> See the downloads
+              </Link>
+            </Button>
+          ) : added.length > 0 && added.every((item) => !item.documentId) ? (
+            // Books are kept whole, under Collections, rather than as a document per chapter.
+            <Button asChild variant="primary">
+              <Link to="/library?tab=collections">
+                <LibraryBig /> Open your books
               </Link>
             </Button>
           ) : added.length > 0 ? (

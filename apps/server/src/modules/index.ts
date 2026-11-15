@@ -6,6 +6,7 @@
 import type { FastifyInstance } from "fastify";
 import type { AppContext } from "../core/context.ts";
 import { registerBackup } from "./backup/index.ts";
+import { registerBooks } from "./books/index.ts";
 import { registerCatalog } from "./catalog/index.ts";
 import { registerCollections } from "./collections/index.ts";
 import { registerDocuments } from "./documents/index.ts";
@@ -30,6 +31,7 @@ export const modules: ModuleRegister[] = [
   registerNotes,
   registerImports,
   registerCollections,
+  registerBooks,
   registerKiwix,
   registerDownloads,
   registerLinks,

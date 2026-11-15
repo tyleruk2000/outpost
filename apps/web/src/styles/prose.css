@@ -165,7 +165,7 @@
 .prose.prose-doc {
   max-width: none;
 }
-.prose.prose-doc > section > :not(.doc-table) {
+.prose.prose-doc > section > :not(.doc-table, .doc-figure) {
   max-width: 70ch;
 }
 .prose .doc-table {
@@ -309,4 +309,146 @@
   cursor: pointer;
   font-family: var(--font-sans);
   font-weight: 600;
+}
+
+/*
+ * A link to a chapter of a book that is not in the library. It reads as part of the
+ * sentence, with a dotted line saying there is somewhere to go: Explore, where the
+ * book can be added.
+ */
+.prose a.doc-ref-missing {
+  color: inherit;
+  text-decoration-style: dotted;
+  text-decoration-color: var(--ink-faint);
+}
+.prose a.doc-ref-missing:hover {
+  text-decoration-color: var(--primary);
+}
+.prose .doc-refs-note {
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--ink-muted);
+  max-width: 48rem;
+  margin-bottom: 1.6em;
+}
+
+/* A picture the Markdown view does not show: its description stands in for it. */
+.prose .doc-picture {
+  display: block;
+  font-family: var(--font-sans);
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  color: var(--ink-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  padding: 0.75em 1em;
+}
+.prose .doc-picture-label {
+  font-weight: 600;
+  color: var(--ink);
+}
+.prose .doc-picture-caption {
+  display: block;
+  margin-top: 0.4em;
+  color: var(--ink);
+}
+
+/*
+ * A figure in a document: a diagram or a signal figure. Like a table, it takes the
+ * width it needs up to the reading column's full width, and beyond that it scrolls
+ * inside its own box. It is functional, so it is set in the sans.
+ */
+.prose .doc-figure {
+  width: fit-content;
+  /* As wide as its drawing (and no narrower than a caption can be read at), within the column. */
+  max-width: min(100%, max(24rem, calc(var(--figure-width, 40rem) + 1.5rem + 2px)));
+  margin-left: 0;
+  margin-right: 0;
+  font-family: var(--font-sans);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  background: var(--page);
+}
+.prose .doc-figure-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--ink);
+  padding: 0.6em 0.9em;
+  border-bottom: 1px solid var(--border);
+}
+.prose .doc-figure-scroll {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  padding: 0.75rem;
+}
+.prose .doc-figure-drawing {
+  margin-inline: auto;
+}
+.prose .doc-figure-scroll:focus-visible {
+  outline-offset: -2px;
+}
+.prose .doc-figure-scroll img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: none;
+  border-radius: 0;
+}
+.prose .doc-figure-caption {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--ink-muted);
+  padding: 0.6em 0.9em;
+  border-top: 1px solid var(--border);
+}
+.prose .doc-figure-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.25rem 0.75rem;
+  padding: 0.25rem 0.4rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.875rem;
+  color: var(--ink-muted);
+}
+.prose .doc-figure-foot details {
+  flex: 1 1 12rem;
+  min-width: 0;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+}
+.prose .doc-figure-foot details > summary {
+  width: fit-content;
+  cursor: pointer;
+  font-weight: 400;
+  padding: 0.3rem 0.5rem;
+  border-radius: var(--radius-control);
+  line-height: 1.4;
+}
+.prose .doc-figure-foot details > summary:hover {
+  color: var(--ink);
+}
+.prose .doc-figure-foot pre {
+  margin: 0.25rem 0.35rem 0.5rem;
+  font-size: 0.8125rem;
+}
+/* A figure still being drawn holds its place, so the text below does not jump when it arrives. */
+.prose .doc-figure-pending {
+  display: grid;
+  place-content: center;
+  min-height: 9rem;
+  min-width: min(100%, 18rem);
+  font-size: 0.875rem;
+  color: var(--ink-muted);
+}
+/* A block that says it is a figure and cannot be drawn: the reason, then the text as written. */
+.prose .doc-figure-failed > p {
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--ink-muted);
+  margin-bottom: 0.5em;
 }

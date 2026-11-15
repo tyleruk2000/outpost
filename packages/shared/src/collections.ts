@@ -38,6 +38,31 @@ export interface CollectionDto {
   updatedAt: number;
 }
 
+/** One chapter of a book in the library. */
+export interface BookChapterDto {
+  /** The chapter's name in links between chapters. */
+  key: string;
+  number: string | null;
+  title: string;
+  summary: string | null;
+  /** The document that holds the chapter. */
+  documentId: string;
+}
+
+export interface BookSectionDto {
+  /** Empty when the book has no named parts. */
+  title: string;
+  chapters: BookChapterDto[];
+}
+
+/** The contents of a book: its chapters in reading order, grouped by part. */
+export interface BookContentsResponse {
+  collectionId: string;
+  sections: BookSectionDto[];
+  /** Chapters in all. */
+  total: number;
+}
+
 export interface CollectionsResponse {
   collections: CollectionDto[];
 }

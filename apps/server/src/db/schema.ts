@@ -259,6 +259,39 @@ export const documentTags = sqliteTable(
   (table) => [primaryKey({ columns: [table.documentId, table.tagId] })],
 );
 
+/**
+ * The chapters of a book: a collection that is a folder of documents read in order
+ * (a handbook or a guide from the catalogue). One row ties a document to its book and
+ * says where it comes in the contents. The document itself is an ordinary document;
+ * deleting it, or removing the book, removes the row with it.
+ */
+export const bookChapters = sqliteTable(
+  "book_chapters",
+  {
+    collectionId: text("collection_id")
+      .notNull()
+      .references(() => collections.id, { onDelete: "cascade" }),
+    documentId: text("document_id")
+      .notNull()
+      .references(() => documents.id, { onDelete: "cascade" }),
+    /** The chapter's name in links between chapters. Stays the same from one edition to the next. */
+    key: text("key").notNull(),
+    /** Reading order within the book, from 0. */
+    position: integer("position").notNull(),
+    /** The named part of the book the chapter belongs to. */
+    section: text("section").notNull().default(""),
+    /** The number as printed in the contents: "00", "05A", "A". */
+    number: text("number"),
+    /** One line for the contents page. */
+    summary: text("summary"),
+  },
+  (table) => [
+    primaryKey({ columns: [table.collectionId, table.key] }),
+    uniqueIndex("book_chapters_document_idx").on(table.documentId),
+    index("book_chapters_order_idx").on(table.collectionId, table.position),
+  ],
+);
+
 // ── Notes ───────────────────────────────────────────────────────────────────
 
 export const notes = sqliteTable(

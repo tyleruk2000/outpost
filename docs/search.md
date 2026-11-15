@@ -64,7 +64,7 @@ them." In the API response this is `relaxed: true`.
 
 | Kind | What is indexed |
 | --- | --- |
-| Documents | Title, author or file name, category, tags, and the text read from the file, page by page for PDFs. For scanned pages and images, the text read by OCR once that has been run |
+| Documents | Title, author or file name, category, tags, and the text read from the file, page by page for PDFs. For scanned pages and images, the text read by OCR once that has been run. A chapter of a book is a document, shown with its book's name. In a Markdown file, a signal figure (a `viz` block) is searched by its title and caption and a Mermaid diagram's source is not searched at all |
 | Notes | Title, the titles of parent pages, tags, and the text under each heading |
 | Installed collections | Title, publisher and description |
 | Catalogue entries | The entries listed in Explore, so you can find something to download |

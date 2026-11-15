@@ -202,7 +202,8 @@ function Viewer({
         />
       </>
     );
-  return <TextViewer document={document} downloadUrl={downloadUrl} />;
+  // Keyed, so that going from one chapter to the next starts at the top of the new one.
+  return <TextViewer key={document.id} document={document} downloadUrl={downloadUrl} />;
 }
 
 export default function DocumentPage() {

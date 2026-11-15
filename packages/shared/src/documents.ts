@@ -13,6 +13,15 @@ export type DocumentType = "pdf" | "markdown" | "text" | "html" | "epub" | "imag
  */
 export type DocumentExtractionState = "pending" | "running" | "done" | "failed" | "unsupported";
 
+/** The book a document is a chapter of. */
+export interface DocumentBookDto {
+  /** The book's collection: its page is the book's contents. */
+  collectionId: string;
+  title: string;
+  /** The chapter's number as printed in the contents, when it has one. */
+  number: string | null;
+}
+
 export interface DocumentDto {
   /** Identifies the document forever, wherever its file is moved. */
   id: string;
@@ -55,6 +64,8 @@ export interface DocumentDto {
   ocrDetail: string | null;
   /** Address of the original file. Add `?download=1` to save it instead of viewing. */
   fileUrl: string;
+  /** Set when the document is a chapter of a book from the catalogue. */
+  book?: DocumentBookDto | null;
   createdAt: number;
   updatedAt: number;
 }
@@ -67,8 +78,32 @@ export interface DocumentListResponse {
   total: number;
 }
 
+/** A neighbouring chapter, enough to link to it. */
+export interface ChapterLinkDto {
+  documentId: string;
+  title: string;
+  number: string | null;
+}
+
+/** Where a chapter comes in its book, and what is on either side of it. */
+export interface DocumentChapterDto {
+  collectionId: string;
+  bookTitle: string;
+  key: string;
+  number: string | null;
+  /** The named part of the book it belongs to; empty when the book has no parts. */
+  section: string;
+  /** Counted from 1, in reading order. */
+  position: number;
+  total: number;
+  previous: ChapterLinkDto | null;
+  next: ChapterLinkDto | null;
+}
+
 export interface DocumentResponse {
   document: DocumentDto;
+  /** Present when the document is a chapter of a book. */
+  chapter?: DocumentChapterDto;
 }
 
 /** Fields `PATCH /api/documents/:id` accepts. Omitted fields are left alone. */
@@ -167,16 +202,43 @@ export interface OcrStatus {
 }
 
 /**
+ * A link to something inside Outpost: a catalogue entry, or a chapter of the book that
+ * entry adds. A Markdown file writes it as `outpost:entry/<entry id>/<chapter key>`; the
+ * server looks the entry up and sends only what it found, so the web app never builds an
+ * address out of anything a file wrote.
+ */
+export interface MarkdownRef {
+  t: "ref";
+  /** A catalogue entry that exists on this server. */
+  entryId: string;
+  entryName: string;
+  /** The entry is in the library as this collection. */
+  collectionId?: string;
+  /** The chapter is in the library as this document. */
+  documentId?: string;
+  /** A heading in the target chapter (see `MarkdownBlock` heading ids). */
+  anchor?: string;
+  c: MarkdownInline[];
+}
+
+/**
  * A run of text inside a Markdown block. This is what the server keeps of a Markdown
  * file's formatting: enough to read it as written, and nothing that could act in a
- * browser. A link is present only when its address is a web or mail address.
+ * browser. A link is present only when its address is a web or mail address; a "jump"
+ * goes to a heading of the same document; a "ref" goes to something inside Outpost.
+ * Nothing here carries an address a file chose, other than those web and mail links.
  */
 export type MarkdownInline =
   | { t: "text"; v: string }
   | { t: "code"; v: string }
   | { t: "break" }
   | { t: "strong" | "em" | "del"; c: MarkdownInline[] }
-  | { t: "link"; href: string; c: MarkdownInline[] };
+  | { t: "link"; href: string; c: MarkdownInline[] }
+  /** A picture, which is not shown: only the description and caption its author gave it. */
+  | { t: "image"; alt: string; caption?: string }
+  /** `to` is the id of a heading in this document. */
+  | { t: "jump"; to: string; c: MarkdownInline[] }
+  | MarkdownRef;
 
 export interface MarkdownListItem {
   /** Set for a task-list item: whether its box is ticked. */
@@ -185,12 +247,17 @@ export interface MarkdownListItem {
 }
 
 export type MarkdownBlock =
-  /** `depth` is 1 to 6, as written in the file. */
-  | { t: "heading"; depth: number; c: MarkdownInline[] }
+  /**
+   * `depth` is 1 to 6, as written in the file. `id` is made from the heading's words
+   * (lower case, hyphens for spaces), the way links to a heading are usually written;
+   * it is unique within the document.
+   */
+  | { t: "heading"; depth: number; id?: string; c: MarkdownInline[] }
   | { t: "paragraph"; c: MarkdownInline[] }
   | { t: "list"; ordered: boolean; start?: number; items: MarkdownListItem[] }
   | { t: "quote"; c: MarkdownBlock[] }
-  | { t: "code"; v: string }
+  /** `lang` is the word after the opening fence, lower case: "mermaid", "viz", "json". */
+  | { t: "code"; lang?: string; v: string }
   /** The first row is the header. Every row has the same number of cells. */
   | { t: "table"; rows: MarkdownInline[][][] }
   | { t: "rule" };

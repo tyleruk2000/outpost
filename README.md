@@ -37,6 +37,12 @@ picture, not a surveyed path.
   CB, FRS, GMRS, MURS), emergency and calling frequencies, weather and time
   broadcasts, repeaters and data modes, and an operating reference. Every figure was
   read from the regulator's own documents; see [docs/radio.md](docs/radio.md).
+- **A radio handbook and radio guides, included.** The Radio Engineering Handbook (a
+  beginner's course in ninety chapters) and companion guides to fifteen radios and
+  interfaces, written for LogBook73 by the same author and shipped as books: a
+  contents page, a document per chapter, links between chapters, and their diagrams
+  and signal figures drawn in the app. They are not the manufacturers' manuals; see
+  [docs/radio.md](docs/radio.md#the-handbook-and-the-radio-guides).
 - **Reference collections.** Browse a curated catalogue (Wikipedia, medicine and first
   aid, repair guides, food preservation, engineering, and more) and download
   individual collections as [Kiwix](https://kiwix.org) ZIM archives, or official
@@ -292,8 +298,8 @@ It stands on other people's work:
   **[GeoNames](https://www.geonames.org)** (CC BY 4.0). World outline from
   **Natural Earth** (public domain).
 - **[MapLibre GL JS](https://maplibre.org)**, **[Tiptap](https://tiptap.dev)**,
-  **[PDF.js](https://mozilla.github.io/pdf.js/)**, and the libraries listed in the
-  package manifests.
+  **[PDF.js](https://mozilla.github.io/pdf.js/)**, **[Mermaid](https://mermaid.js.org)**
+  (MIT), and the libraries listed in the package manifests.
 - Typefaces: **Atkinson Hyperlegible** (Braille Institute) and **Literata**
   (TypeTogether), both under the SIL Open Font Licence.
 
@@ -303,3 +309,5 @@ Paperless-ngx and Organic Maps. No code was taken from them.
 Every downloadable collection has its own licence, shown in the app. Outpost does not
 bundle or redistribute any of them. The reference sheets that ship with Outpost are
 the project's own compilations of facts from official sources, under its MIT licence.
+The handbook and radio guides that ship with it were written by the same author for
+LogBook73 and are included under that project's MIT licence.

@@ -24,10 +24,11 @@ import { formatDate, formatDateTime, formatNumber } from "@/lib/utils";
 import { languageName, sizeText } from "../explore/catalog";
 import { DownloadDialog } from "../explore/download-dialog";
 import { useCatalog } from "../explore/use-catalog";
+import { BookContents, firstChapter, useBookContents } from "./book-contents";
 import { useCollection } from "./collection-data";
 import { MoveCollectionDialog, RemoveCollectionDialog } from "./collection-dialogs";
 import { CollectionJobStatus, useCollectionActivity } from "./collection-job";
-import { filesReachable, kindLabels, openTarget } from "./collection-meta";
+import { chapterCount, filesReachable, isBook, kindLabel, openTarget } from "./collection-meta";
 
 const collectionsTab = "/library?tab=collections";
 
@@ -113,7 +114,7 @@ function Details({ collection }: { collection: CollectionDto }) {
 
   return (
     <dl className="border-y border-border">
-      <Fact label="Kind">{kindLabels[collection.kind]}</Fact>
+      <Fact label="Kind">{kindLabel(collection)}</Fact>
       {collection.publisher ? <Fact label="Publisher">{collection.publisher}</Fact> : null}
       {collection.language ? <Fact label="Language">{languageName(collection.language)}</Fact> : null}
       {collection.version ? <Fact label="Version">{collection.version}</Fact> : null}
@@ -198,6 +199,8 @@ export default function CollectionPage() {
   const [moving, setMoving] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [updating, setUpdating] = useState(false);
+  // Asked for only when the collection is a book; the contents below share the answer.
+  const first = firstChapter(useBookContents(id, query.data ? isBook(query.data) : false).data);
 
   const verify = useMutation({
     mutationFn: () => api.post<CollectionJobResponse>(`/api/collections/${id}/verify`),
@@ -238,13 +241,15 @@ export default function CollectionPage() {
   }
 
   const collection = query.data;
-  const target = openTarget(collection);
+  const book = isBook(collection);
+  // A book is read from its first chapter; everything else from wherever its kind is used.
+  const target = book ? (first ? { to: `/library/documents/${first.documentId}`, label: "Start reading" } : null) : openTarget(collection);
   const reachable = filesReachable(collection);
   const away = !collection.locationAvailable;
   const entry = collection.catalogEntryId ? catalog.data?.entries.find((item) => item.id === collection.catalogEntryId) : undefined;
   // The catalogue is where a new copy comes from: a newer version, or the same one when the file has gone missing.
   const canFetchAgain = entry && entry.status === "installed" && entry.availability !== "unavailable";
-  const TargetIcon = collection.kind === "zim" ? BookOpen : MapIcon;
+  const TargetIcon = collection.kind === "zim" || book ? BookOpen : MapIcon;
 
   return (
     <Page width="reading">
@@ -328,6 +333,8 @@ export default function CollectionPage() {
       ) : null}
 
       <CollectionJobStatus activity={activity} className="mt-6" />
+
+      {book ? <BookContents collectionId={collection.id} readable={reachable} expected={chapterCount(collection)} /> : null}
 
       <section className="mt-8" aria-labelledby="collection-details">
         <h2 id="collection-details" className="mb-2 text-lead font-semibold text-ink">

@@ -107,6 +107,12 @@ export function formatLabel(format: CatalogEntryDto["format"]): string | null {
   }
 }
 
+/** What an entry is: a book that ships with Outpost says how many chapters it has; other files say their type. */
+export function kindText(entry: Pick<CatalogEntryDto, "format" | "chapterCount">): string | null {
+  if (entry.chapterCount) return `Book, ${entry.chapterCount} ${entry.chapterCount === 1 ? "chapter" : "chapters"}`;
+  return formatLabel(entry.format);
+}
+
 /** The licence as one plain sentence, saying so when nobody has checked the terms. */
 export function licenceText(entry: Pick<CatalogEntryDto, "license" | "licenseNote">): string {
   const seeSource = /^see source$/i.test(entry.license.trim());

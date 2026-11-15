@@ -215,6 +215,83 @@
                     "maxLength": 300,
                     "pattern": "^[a-z0-9][a-z0-9._-]*(?:\\/[a-z0-9][a-z0-9._-]*)*$"
                   },
+                  "book": {
+                    "type": "object",
+                    "properties": {
+                      "folder": {
+                        "type": "string",
+                        "maxLength": 300,
+                        "pattern": "^[a-z0-9][a-z0-9._-]*(?:\\/[a-z0-9][a-z0-9._-]*)*$"
+                      },
+                      "sections": {
+                        "minItems": 1,
+                        "maxItems": 60,
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "title": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 120
+                            },
+                            "chapters": {
+                              "minItems": 1,
+                              "maxItems": 300,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "key": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 80,
+                                    "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                                  },
+                                  "number": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 8
+                                  },
+                                  "title": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  "summary": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 400
+                                  },
+                                  "file": {
+                                    "type": "string",
+                                    "maxLength": 120,
+                                    "pattern": "^[a-z0-9][a-z0-9._-]*\\.md$"
+                                  }
+                                },
+                                "required": [
+                                  "key",
+                                  "title",
+                                  "file"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "title",
+                            "chapters"
+                          ],
+                          "additionalProperties": false
+                        }
+                      }
+                    },
+                    "required": [
+                      "folder",
+                      "sections"
+                    ],
+                    "additionalProperties": false
+                  },
                   "version": {
                     "type": "string",
                     "minLength": 1,
@@ -226,10 +303,21 @@
                   }
                 },
                 "required": [
-                  "type",
-                  "file"
+                  "type"
                 ],
-                "additionalProperties": false
+                "additionalProperties": false,
+                "oneOf": [
+                  {
+                    "required": [
+                      "file"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "book"
+                    ]
+                  }
+                ]
               }
             ]
           }

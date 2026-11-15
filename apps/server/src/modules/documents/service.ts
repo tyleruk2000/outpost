@@ -30,7 +30,7 @@ import { resolveInside, safeFileName } from "../../core/fs-safe.ts";
 import { sha256File } from "../../core/hashing.ts";
 import { newId } from "../../core/ids.ts";
 import { type JobRow, PermanentJobError } from "../../core/jobs.ts";
-import { documents, documentTags, tags } from "../../db/schema.ts";
+import { bookChapters, collections, documents, documentTags, tags } from "../../db/schema.ts";
 import type { LocationRow } from "../storage/service.ts";
 import { ExtractionFailure, runExtraction } from "./extract-host.ts";
 import type { Extracted, ExtractedSection, ExtractKind } from "./extract-types.ts";
@@ -86,6 +86,12 @@ export interface IngestInput extends CommitOptions {
   locationId?: string;
   /** Move the file instead of copying it. A duplicate is never moved or removed. */
   move?: boolean;
+  /**
+   * Record the file where it is instead of taking it into a folder of its own. It must
+   * already be inside the storage location given. Used for the chapters of a book, which
+   * stay together in the book's folder.
+   */
+  inPlace?: boolean;
 }
 
 export interface IngestOutcome {
@@ -100,6 +106,12 @@ export interface DocumentListQuery {
   category?: string;
   tag?: string;
   type?: DocumentType;
+  /**
+   * Chapters of books are left out of the list unless it is being searched by name
+   * (`q`) or by tag: a book is one thing in the library, reached from its own page.
+   * True lists them always, false never.
+   */
+  chapters?: boolean;
   sort?: DocumentSort;
   order?: "asc" | "desc";
   limit?: number;
@@ -262,8 +274,31 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
 
   // ── Reading ──
 
+  /** The book each of these documents is a chapter of, for those that are. */
+  function booksOf(documentIds: string[]): Map<string, { collectionId: string; title: string; number: string | null }> {
+    const found = new Map<string, { collectionId: string; title: string; number: string | null }>();
+    if (documentIds.length === 0) return found;
+    const rows = db
+      .select({
+        documentId: bookChapters.documentId,
+        collectionId: bookChapters.collectionId,
+        title: collections.title,
+        number: bookChapters.number,
+      })
+      .from(bookChapters)
+      .innerJoin(collections, eq(collections.id, bookChapters.collectionId))
+      .where(inArray(bookChapters.documentId, documentIds))
+      .all();
+    for (const { documentId, ...book } of rows) found.set(documentId, book);
+    return found;
+  }
+
+  /** True for every document that is not a chapter of a book. */
+  const notAChapter = sql`not exists (select 1 from ${bookChapters} where ${bookChapters.documentId} = ${documents.id})`;
+
   function toDtos(rows: DocumentRow[]): DocumentDto[] {
     const names = tagNames(rows.map((row) => row.id));
+    const books = booksOf(rows.map((row) => row.id));
     const connected = new Set(
       storage
         .list()
@@ -297,6 +332,7 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
       ocrPages: row.ocrPages,
       ocrDetail: row.ocrDetail,
       fileUrl: `/api/documents/${row.id}/file`,
+      book: books.get(row.id) ?? null,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     }));
@@ -307,11 +343,13 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
   // ── Search ──
 
   function index(row: DocumentRow, sections: ExtractedSection[]): void {
+    // A chapter is told apart from other chapters of the same name by its book.
+    const book = booksOf([row.id]).get(row.id);
     search.upsert({
       kind: SEARCH_KIND,
       entityId: row.id,
       title: row.title,
-      subtitle: row.author || row.originalName,
+      subtitle: book ? `${book.title}${book.number ? `, chapter ${book.number}` : ""}` : row.author || row.originalName,
       collection: row.category,
       url: `/library/documents/${row.id}`,
       sourcePath: row.relPath,
@@ -399,15 +437,17 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
       const fallbackName = `document.${staged.format.ext}`;
       let fileName = safeFileName(staged.originalName, fallbackName);
       if (!fileName.toLowerCase().endsWith(`.${staged.format.ext}`)) fileName = fallbackName;
-      const relPath = `documents/${id}/${fileName}`;
+      const relPath = staged.keepAt ?? `documents/${id}/${fileName}`;
       const finalPath = storage.resolve(location.id, relPath);
       const folder = path.dirname(finalPath);
       const now = Date.now();
-      await fs.promises.mkdir(folder, { recursive: true });
+      if (!staged.keepAt) await fs.promises.mkdir(folder, { recursive: true });
       let moved = false;
       try {
-        await moveFile(staged.partPath, finalPath);
-        moved = true;
+        if (!staged.keepAt) {
+          await moveFile(staged.partPath, finalPath);
+          moved = true;
+        }
         sqlite.transaction(() => {
           db.insert(documents)
             .values({
@@ -431,7 +471,8 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
       } catch (error) {
         // Put a moved-in original back before removing the folder made for it.
         if (moved && !staged.owned) await moveFile(finalPath, staged.partPath).catch(() => undefined);
-        await fs.promises.rm(folder, { recursive: true, force: true }).catch(() => undefined);
+        // A file recorded where it lies has no folder of its own to clear away.
+        if (!staged.keepAt) await fs.promises.rm(folder, { recursive: true, force: true }).catch(() => undefined);
         throw error;
       }
 
@@ -468,6 +509,14 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
     }
 
     const facts = { locationId: location.id, originalName, format, sha256, sizeBytes: stat.size, head };
+    if (input.inPlace) {
+      const keepAt = path
+        .relative(location.path, resolveInside(location.path, path.relative(location.path, source)))
+        .split(path.sep)
+        .join("/");
+      if (!keepAt) throw badRequest(`"${originalName}" is not a file inside "${location.name}", so it cannot be recorded where it is.`);
+      return oneAtATime(() => commit({ ...facts, partPath: source, owned: false, keepAt }, input));
+    }
     const incoming = path.join(location.path, INCOMING_DIR);
     await fs.promises.mkdir(incoming, { recursive: true });
     const sameDrive = (await fs.promises.stat(incoming)).dev === stat.dev;
@@ -697,6 +746,7 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
           sql`exists (select 1 from ${documentTags} where ${documentTags.documentId} = ${documents.id} and ${documentTags.tagId} = ${tag.id})`,
         );
       }
+      if (!(query.chapters ?? Boolean(query.q || query.tag))) conditions.push(notAChapter);
       const where = conditions.length > 0 ? and(...conditions) : undefined;
       const sort = query.sort ?? "added";
       // Newest and largest first, but titles from A to Z, unless asked otherwise.
@@ -714,10 +764,12 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
     },
 
     facets() {
+      // Counted as the list shows them: a book's chapters are not separate documents here.
+      const loose = "NOT EXISTS (SELECT 1 FROM book_chapters bc WHERE bc.document_id = documents.id)";
       const categories = sqlite
         .prepare(
           `SELECT min(category) AS name, count(*) AS count FROM documents
-           WHERE category IS NOT NULL AND category != ''
+           WHERE category IS NOT NULL AND category != '' AND ${loose}
            GROUP BY category COLLATE NOCASE ORDER BY count DESC, name COLLATE NOCASE`,
         )
         .all() as Array<{ name: string; count: number }>;
@@ -728,14 +780,16 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
         )
         .all() as Array<{ name: string; count: number }>;
       const byType = new Map<DocumentType, number>();
-      for (const row of sqlite.prepare("SELECT ext, count(*) AS count FROM documents GROUP BY ext").all() as Array<{
+      for (const row of sqlite.prepare(`SELECT ext, count(*) AS count FROM documents WHERE ${loose} GROUP BY ext`).all() as Array<{
         ext: string;
         count: number;
       }>) {
         const type = formatForExt(row.ext)?.type ?? "text";
         byType.set(type, (byType.get(type) ?? 0) + row.count);
       }
-      const totals = sqlite.prepare("SELECT count(*) AS total, coalesce(sum(size_bytes), 0) AS totalBytes FROM documents").get() as {
+      const totals = sqlite
+        .prepare(`SELECT count(*) AS total, coalesce(sum(size_bytes), 0) AS totalBytes FROM documents WHERE ${loose}`)
+        .get() as {
         total: number;
         totalBytes: number;
       };

@@ -318,7 +318,8 @@ describe("manifests that bundle files", () => {
 
 describe("the reference sheets shipped with Outpost", () => {
   const catalog = loadCatalog([path.join(repoCatalogDir, "manifests")]);
-  const sheets = catalog.entries.filter((entry) => entry.source.type === "bundled");
+  // Single files; the books that ship with Outpost have tests of their own (catalog-books.test.ts).
+  const sheets = catalog.entries.filter((entry) => entry.source.type === "bundled" && entry.source.file);
 
   it("are all listed, in the radio category, with a version and an honest note", () => {
     expect(sheets.length).toBeGreaterThanOrEqual(8);

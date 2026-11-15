@@ -10,24 +10,44 @@ export const kindLabels: Record<CollectionKind, string> = {
   model: "Search model",
 };
 
+/**
+ * A book: a handbook or guide from the catalogue, kept as one document per chapter.
+ * It is stored as a folder of files, so its kind is "file"; `meta.book` says it is a book.
+ */
+export function isBook(collection: Pick<CollectionDto, "meta">): boolean {
+  return typeof collection.meta?.book === "object" && collection.meta.book !== null;
+}
+
+/** How many chapters a book has, or null for anything that is not a book. */
+export function chapterCount(collection: Pick<CollectionDto, "meta">): number | null {
+  if (!isBook(collection)) return null;
+  const count = (collection.meta.book as { chapters?: unknown }).chapters;
+  return typeof count === "number" && count >= 0 ? count : null;
+}
+
+/** What a collection is, in a word or two. */
+export const kindLabel = (collection: Pick<CollectionDto, "kind" | "meta">): string =>
+  isBook(collection) ? "Book" : kindLabels[collection.kind];
+
+type Grouped = Pick<CollectionDto, "kind" | "title" | "meta">;
+
 /** The headings of the Collections tab, in the order they are shown. */
-export const collectionGroups: Array<{ id: string; title: string; kinds: CollectionKind[] }> = [
-  { id: "reference", title: "Reference collections", kinds: ["zim"] },
-  { id: "maps", title: "Maps", kinds: ["map", "terrain"] },
-  { id: "places", title: "Place names", kinds: ["places"] },
-  { id: "files", title: "Files", kinds: ["file"] },
-  { id: "models", title: "Search models", kinds: ["model"] },
+export const collectionGroups: Array<{ id: string; title: string; holds: (collection: Grouped) => boolean }> = [
+  { id: "reference", title: "Reference collections", holds: (item) => item.kind === "zim" },
+  { id: "books", title: "Books", holds: (item) => item.kind === "file" && isBook(item) },
+  { id: "maps", title: "Maps", holds: (item) => item.kind === "map" || item.kind === "terrain" },
+  { id: "places", title: "Place names", holds: (item) => item.kind === "places" },
+  { id: "files", title: "Files", holds: (item) => item.kind === "file" && !isBook(item) },
+  { id: "models", title: "Search models", holds: (item) => item.kind === "model" },
 ];
 
-export function groupCollections<T extends Pick<CollectionDto, "kind" | "title">>(
-  collections: T[],
-): Array<{ id: string; title: string; collections: T[] }> {
+export function groupCollections<T extends Grouped>(collections: T[]): Array<{ id: string; title: string; collections: T[] }> {
   return collectionGroups
     .map((group) => ({
       id: group.id,
       title: group.title,
       collections: collections
-        .filter((item) => group.kinds.includes(item.kind))
+        .filter((item) => group.holds(item))
         .sort((a, b) => a.title.localeCompare(b.title, "en", { sensitivity: "base", numeric: true })),
     }))
     .filter((group) => group.collections.length > 0);
@@ -36,7 +56,8 @@ export function groupCollections<T extends Pick<CollectionDto, "kind" | "title">
 /**
  * Where a collection is used: the reader for reference collections, the map for maps,
  * and the document viewer for a file that became a document (a PDF from the catalogue,
- * a reference sheet). Its own page only describes and manages it.
+ * a reference sheet). Its own page only describes and manages it, except for a book,
+ * whose page is its contents: there is nowhere else to send a person.
  */
 export function openTarget(collection: Pick<CollectionDto, "id" | "kind" | "meta">): { to: string; label: string } | null {
   if (collection.kind === "zim") return { to: `/library/read/${collection.id}/`, label: "Read" };

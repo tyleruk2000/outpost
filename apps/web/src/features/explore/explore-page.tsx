@@ -139,7 +139,9 @@ export default function ExplorePage() {
     onSuccess: (response, entry) => {
       const target = response.documentId ? `/library/documents/${response.documentId}` : `/library/collections/${response.collectionId}`;
       toast.success(`“${entry.name}” is in your library`, {
-        description: "It is stored on this server and its text is searchable.",
+        description: response.chapterCount
+          ? `Its ${response.chapterCount} chapters are stored on this server and their text is searchable.`
+          : "It is stored on this server and its text is searchable.",
         action: { label: "Open", onClick: () => navigate(target) },
       });
       void client.invalidateQueries({ queryKey: ["documents"] });
