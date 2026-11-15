@@ -1,12 +1,12 @@
 /**
  * The palette: one box to go anywhere or find anything. Empty, it lists places and
- * actions. With text, it searches the whole library as you type and offers the full
- * results screen as the first choice.
+ * actions. With text, places and actions whose names match stay at the top, and the
+ * whole library is searched underneath as you type.
  */
 import type { SearchResponse } from "@outpost/shared";
 import { useQuery } from "@tanstack/react-query";
 import { Command } from "cmdk";
-import { CornerDownLeft, FolderInput, Moon, Plus, Search, Sun, Upload, Waypoints } from "lucide-react";
+import { CornerDownLeft, FolderInput, type LucideIcon, Moon, Plus, Search, Sun, Upload, Waypoints } from "lucide-react";
 import { Dialog } from "radix-ui";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
@@ -15,6 +15,23 @@ import { useTheme } from "@/lib/theme";
 import { allNav } from "./nav";
 import { Highlighted, kindOf } from "./search-hit";
 import { Kbd, Spinner } from "./ui/misc";
+
+interface PaletteAction {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+  run: () => void;
+}
+
+/** True when every word typed begins some word of the label. Nothing typed matches everything. */
+export function matchesWords(label: string, typed: string): boolean {
+  const words = label.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+  return typed
+    .toLowerCase()
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter(Boolean)
+    .every((part) => words.some((word) => word.startsWith(part)));
+}
 
 function useDebounced<T>(value: T, delay: number): T {
   const [debounced, setDebounced] = useState(value);
@@ -55,7 +72,23 @@ export function CommandPalette({ open, onOpenChange, onNewPage }: { open: boolea
     onOpenChange(false);
     action();
   };
-  const searching = debounced.length > 1;
+  const typed = query.trim();
+  const searching = debounced.length > 1 && typed.length > 1;
+
+  const everyAction: PaletteAction[] = [
+    { id: "new-page", label: "New page", icon: Plus, run: () => run(onNewPage) },
+    { id: "add-documents", label: "Add documents", icon: Upload, run: () => go("/library?upload=1") },
+    { id: "import", label: "Import pages from Markdown or Notion", icon: FolderInput, run: () => go("/import") },
+    { id: "how-search-works", label: "See how search works", icon: Waypoints, run: () => go("/search/how-it-works") },
+    {
+      id: "theme",
+      label: `Switch to ${resolved === "dark" ? "light" : "dark"} theme`,
+      icon: resolved === "dark" ? Sun : Moon,
+      run: () => run(() => setTheme(resolved === "dark" ? "light" : "dark")),
+    },
+  ];
+  const places = allNav.filter((item) => matchesWords(item.label, typed));
+  const actions = everyAction.filter((action) => matchesWords(action.label, typed));
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -66,8 +99,8 @@ export function CommandPalette({ open, onOpenChange, onNewPage }: { open: boolea
           className="fixed top-[12dvh] left-1/2 z-(--z-dialog) w-[calc(100vw-1.5rem)] max-w-[40rem] -translate-x-1/2 overflow-hidden rounded-panel border border-border bg-raised shadow-dialog focus:outline-none data-[state=open]:animate-enter max-md:top-3"
         >
           <Dialog.Title className="sr-only">Search and go to</Dialog.Title>
-          {/* Filtering is done by the server for search results and by cmdk for commands. */}
-          <Command shouldFilter={!searching} loop label="Search and go to">
+          {/* Nothing is left to cmdk's fuzzy filter: places and actions are matched here by word, the library by the server. */}
+          <Command shouldFilter={false} loop label="Search and go to">
             <div className="flex items-center gap-3 border-b border-border px-4">
               <Search aria-hidden className="size-[18px] shrink-0 text-ink-muted" />
               <Command.Input
@@ -79,18 +112,43 @@ export function CommandPalette({ open, onOpenChange, onNewPage }: { open: boolea
               {results.isFetching && searching ? <Spinner /> : null}
             </div>
             <Command.List className="scroll-quiet max-h-[min(60dvh,26rem)] overflow-y-auto p-1.5">
-              {searching ? (
+              {/* Places come first, so typing the name of a screen and pressing Enter always goes there. */}
+              {places.length > 0 ? (
+                <Command.Group heading="Go to" className={groupClass}>
+                  {places.map((item) => (
+                    <Command.Item key={item.to} value={`go ${item.to}`} onSelect={() => go(item.to)} className={itemClass}>
+                      <item.icon aria-hidden />
+                      <span className="flex-1">{item.label}</span>
+                      <span className="flex gap-1">
+                        <Kbd>g</Kbd>
+                        <Kbd>{item.key}</Kbd>
+                      </span>
+                    </Command.Item>
+                  ))}
+                </Command.Group>
+              ) : null}
+              {actions.length > 0 ? (
+                <Command.Group heading="Do" className={groupClass}>
+                  {actions.map((action) => (
+                    <Command.Item key={action.id} value={`do ${action.id}`} onSelect={action.run} className={itemClass}>
+                      <action.icon aria-hidden />
+                      {action.label}
+                    </Command.Item>
+                  ))}
+                </Command.Group>
+              ) : null}
+              {typed.length > 0 ? (
                 <>
-                  <Command.Group className={groupClass}>
-                    <Command.Item value={`__all ${debounced}`} onSelect={() => go(`/search?q=${encodeURIComponent(query.trim())}`)} className={itemClass}>
+                  <Command.Group heading={places.length + actions.length > 0 ? "In your library" : undefined} className={groupClass}>
+                    <Command.Item value={`__all ${typed}`} onSelect={() => go(`/search?q=${encodeURIComponent(typed)}`)} className={itemClass}>
                       <Search aria-hidden />
                       <span className="flex-1 truncate">
-                        See all results for <span className="font-semibold">“{query.trim()}”</span>
+                        See all results for <span className="font-semibold">“{typed}”</span>
                       </span>
                       <CornerDownLeft aria-hidden />
                     </Command.Item>
                   </Command.Group>
-                  {results.data && results.data.results.length > 0 ? (
+                  {searching && results.data && results.data.results.length > 0 ? (
                     <Command.Group heading={results.data.relaxed ? "Closest matches" : "Top matches"} className={groupClass}>
                       {results.data.results.map((result) => {
                         const kind = kindOf(result.kind);
@@ -116,51 +174,13 @@ export function CommandPalette({ open, onOpenChange, onNewPage }: { open: boolea
                         );
                       })}
                     </Command.Group>
-                  ) : results.isSuccess ? (
-                    <p className="px-3 py-6 text-small text-ink-muted">Nothing in your library matches “{debounced}”. Check the spelling, or try fewer words.</p>
-                  ) : results.isError ? (
-                    <p className="px-3 py-6 text-small text-danger">Search is not available right now. The server may be restarting.</p>
+                  ) : searching && results.isSuccess ? (
+                    <p className="px-3 py-4 text-small text-ink-muted">Nothing in your library matches “{debounced}”. Check the spelling, or try fewer words.</p>
+                  ) : searching && results.isError ? (
+                    <p className="px-3 py-4 text-small text-danger">Search is not available right now. The server may be restarting.</p>
                   ) : null}
                 </>
-              ) : (
-                <>
-                  <Command.Empty className="px-3 py-6 text-small text-ink-muted">No place or action by that name. Keep typing to search your library.</Command.Empty>
-                  <Command.Group heading="Do" className={groupClass}>
-                    <Command.Item onSelect={() => run(onNewPage)} className={itemClass}>
-                      <Plus aria-hidden />
-                      New page
-                    </Command.Item>
-                    <Command.Item onSelect={() => go("/library?upload=1")} className={itemClass}>
-                      <Upload aria-hidden />
-                      Add documents
-                    </Command.Item>
-                    <Command.Item onSelect={() => go("/import")} className={itemClass}>
-                      <FolderInput aria-hidden />
-                      Import pages from Markdown or Notion
-                    </Command.Item>
-                    <Command.Item onSelect={() => go("/search/how-it-works")} className={itemClass}>
-                      <Waypoints aria-hidden />
-                      See how search works
-                    </Command.Item>
-                    <Command.Item onSelect={() => run(() => setTheme(resolved === "dark" ? "light" : "dark"))} className={itemClass}>
-                      {resolved === "dark" ? <Sun aria-hidden /> : <Moon aria-hidden />}
-                      Switch to {resolved === "dark" ? "light" : "dark"} theme
-                    </Command.Item>
-                  </Command.Group>
-                  <Command.Group heading="Go to" className={groupClass}>
-                    {allNav.map((item) => (
-                      <Command.Item key={item.to} value={`go ${item.label}`} onSelect={() => go(item.to)} className={itemClass}>
-                        <item.icon aria-hidden />
-                        <span className="flex-1">{item.label}</span>
-                        <span className="flex gap-1">
-                          <Kbd>g</Kbd>
-                          <Kbd>{item.key}</Kbd>
-                        </span>
-                      </Command.Item>
-                    ))}
-                  </Command.Group>
-                </>
-              )}
+              ) : null}
             </Command.List>
           </Command>
         </Dialog.Content>
