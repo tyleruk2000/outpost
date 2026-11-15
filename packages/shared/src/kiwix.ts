@@ -40,5 +40,5 @@ export interface ReferenceSuggestion {
 
 export interface ReferenceSearchResponse {
   total: number;
-  results: Array<{ title: string; path: string; snippet: string; url: string }>;
+  results: Array<{ title: string; path: string; snippet: string; segments: Array<{ text: string; hit: boolean }>; url: string }>;
 }

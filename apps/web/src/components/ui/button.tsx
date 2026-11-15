@@ -46,8 +46,15 @@ export function Button({ className, variant, size, asChild, loading, disabled, c
       type={asChild ? undefined : (type ?? "button")}
       {...props}
     >
-      {loading ? <LoaderCircle className="animate-spin" aria-hidden /> : null}
-      {children}
+      {/* With asChild the single child is the element itself, so nothing may sit beside it. */}
+      {asChild ? (
+        children
+      ) : (
+        <>
+          {loading ? <LoaderCircle className="animate-spin" aria-hidden /> : null}
+          {children}
+        </>
+      )}
     </Component>
   );
 }

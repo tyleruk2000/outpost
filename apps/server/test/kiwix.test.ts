@@ -82,7 +82,7 @@ async function fakeKiwix() {
       response.setHeader("Content-Type", "application/xml");
       return response.end(`<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/"><channel>
         <opensearch:totalResults>25</opensearch:totalResults>
-        <item><title>Portuguese bowline</title><link>/content/${BOOK}/Portuguese_bowline</link><description>...a variant of the bowline with two loops...</description></item>
+        <item><title>Portuguese bowline</title><link>/content/${BOOK}/Portuguese_bowline</link><description>...a variant of the <b>bowline</b> with two loops &amp; more...</description></item>
         <item><title>Fireman&apos;s chair knot</title><link>/content/${BOOK}/Fireman&apos;s_chair_knot</link><description>...used in rescue...</description></item>
       </channel></rss>`);
     }
@@ -205,6 +205,11 @@ describe("kiwix integration", () => {
 
     const inBook = (await app.api("GET", `/api/kiwix/books/${id}/search?q=bowline`)).body;
     expect(inBook.total).toBe(25);
+    expect(inBook.results[0].segments).toEqual([
+      { text: "...a variant of the ", hit: false },
+      { text: "bowline", hit: true },
+      { text: " with two loops & more...", hit: false },
+    ]);
     expect(inBook.results[1]).toMatchObject({ title: "Fireman's chair knot", path: "Fireman's_chair_knot", url: `/library/read/${id}/Fireman's_chair_knot` });
 
     const suggest = (await app.api("GET", `/api/kiwix/books/${id}/suggest?q=bow`)).body;

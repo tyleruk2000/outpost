@@ -76,7 +76,8 @@ const SANDBOX = "sandbox allow-scripts allow-forms allow-popups allow-popups-to-
 const BRIDGE = `<script>(function(){try{var s=function(){parent.postMessage({type:"outpost:reader",path:location.pathname,hash:location.hash,title:document.title},"*")};s();addEventListener("DOMContentLoaded",s);addEventListener("hashchange",s);addEventListener("click",function(e){var a=e.target&&e.target.closest&&e.target.closest("a[href]");if(!a)return;var u;try{u=new URL(a.href,location.href)}catch(x){return}if((u.protocol==="http:"||u.protocol==="https:")&&u.host!==location.host){e.preventDefault();parent.postMessage({type:"outpost:external",href:u.href},"*")}},true)}catch(e){}})();</script>`;
 
 const MAX_HTML_BYTES = 32 * 1024 * 1024;
-const allowedPrefixes = ["content/", "catalog/v2/illustration/"];
+/** Only a book's pages and its icon are reachable; search and the rest of kiwix-serve are not. */
+const isAllowedPath = (rest: string) => rest.startsWith("content/") || /^raw\/[^/]+\/meta\/Illustration_48x48@1$/.test(rest);
 const passThroughHeaders = ["content-type", "etag", "last-modified", "content-range", "accept-ranges"];
 
 const zimOf = (row: CollectionRow) => row.meta.zim;
@@ -87,7 +88,8 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
   const { auth, collections, storage, search, settings } = ctx.services;
   const connection = createKiwixConnection({ url: config.kiwix.url, bin: config.kiwix.bin, libraryPath: config.kiwix.libraryPath, log });
   ctx.onClose.push(() => connection.close());
-  const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: "@", processEntities: true, htmlEntities: true });
+  // Descriptions carry <b> around matched words; keep them raw so the matches survive.
+  const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: "@", processEntities: true, htmlEntities: true, stopNodes: ["*.description"] });
 
   const zimCollections = () => collections.list({ kind: "zim" });
   const servable = (row: CollectionRow) => row.status === "installed" && storage.isAvailable(row.locationId) && Boolean(zimOf(row)?.uuid);
@@ -254,7 +256,7 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
       articleCount: zim.articleCount ?? null,
       sizeBytes: row.sizeBytes,
       contentBase: `/kiwix/${token}/content/${encodeURIComponent(zim.bookName)}/`,
-      iconUrl: `/kiwix/${token}/catalog/v2/illustration/${zim.uuid}/?size=48`,
+      iconUrl: `/kiwix/${token}/raw/${encodeURIComponent(zim.bookName)}/meta/Illustration_48x48@1`,
       ready: up && servable(row),
     };
   }
@@ -276,6 +278,22 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
     title: string;
     path: string;
     snippet: string;
+    segments: Array<{ text: string; hit: boolean }>;
+  }
+
+  /** Turns kiwix-serve's `…words <b>match</b> words…` into plain segments, never HTML. */
+  function snippetSegments(raw: string): Hit["segments"] {
+    const segments: Hit["segments"] = [];
+    let hit = false;
+    for (const part of raw.split(/(<\/?b>)/i)) {
+      if (/^<b>$/i.test(part)) hit = true;
+      else if (/^<\/b>$/i.test(part)) hit = false;
+      else {
+        const text = decodeEntities(part.replace(/<[^>]*>/g, "")).replace(/\s+/g, " ");
+        if (text) segments.push({ text, hit });
+      }
+    }
+    return segments;
   }
 
   async function searchBook(row: CollectionRow, q: string, start: number, limit: number, signal?: AbortSignal): Promise<{ total: number; hits: Hit[] }> {
@@ -293,10 +311,12 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
       const link = decodeEntities(String(item.link ?? ""));
       const at = link.indexOf(prefix);
       if (at === -1) continue;
+      const segments = snippetSegments(typeof item.description === "string" ? item.description : "");
       hits.push({
         title: decodeEntities(String(item.title ?? "")),
         path: link.slice(at + prefix.length),
-        snippet: decodeEntities(String(item.description ?? "")).replace(/\s+/g, " ").trim(),
+        snippet: segments.map((segment) => segment.text).join("").trim(),
+        segments,
       });
     }
     return { total: Number(channel["opensearch:totalResults"]) || hits.length, hits };
@@ -332,7 +352,7 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
             url: readerUrl(row.id, hit.path),
             tags: [],
             score: 1 - rank / perBook,
-            passages: hit.snippet ? [{ chunkId: null, segments: [{ text: hit.snippet.slice(0, 320), hit: false }], page: null, heading: null }] : [],
+            passages: hit.snippet ? [{ chunkId: null, segments: hit.segments, page: null, heading: null }] : [],
             sources: ["reference"],
           });
         });
@@ -425,7 +445,7 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
         return reply.status(401).type("text/plain").send("This link to your library has expired. Go back to Outpost and open the page again.");
       }
       const rest = request.params["*"];
-      if (rest.includes("..") || !allowedPrefixes.some((prefix) => rest.startsWith(prefix))) {
+      if (rest.includes("..") || !isAllowedPath(rest)) {
         return reply.status(404).type("text/plain").send("Not found.");
       }
       const query = request.url.includes("?") ? request.url.slice(request.url.indexOf("?")) : "";
@@ -435,7 +455,7 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
         if (typeof value === "string") headers[name] = value;
       }
       const prefix = `/kiwix/${request.params.token}`;
-      const response = await upstream(`${rest.split("/").map(encodeURIComponent).join("/")}${query}`, { method: request.method, headers }).catch((error: AppError) => {
+      const response = await upstream(`${rest.split("/").map((part) => encodeURIComponent(part).replace(/%40/g, "@")).join("/")}${query}`, { method: request.method, headers }).catch((error: AppError) => {
         reply.status(502).type("text/plain");
         return error.message;
       });
