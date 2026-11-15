@@ -1,7 +1,8 @@
 /**
  * Retrieval and context assembly: the parts of a question-answering pipeline that do
- * not need a language model. Exposed over HTTP so that a model running elsewhere on
- * the machine can already be given cited context from the library.
+ * not need a language model. `modules/answers` builds on them to have a model the
+ * person runs write an answer; they are also exposed over HTTP, so that any other
+ * program on the machine can be given cited context from the library.
  */
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
@@ -12,8 +13,9 @@ import type { AssembledContext, Citation, ContextAssembler, ModelProvider, Reran
 export interface RetrievalService {
   retriever: Retriever;
   assembler: ContextAssembler;
-  /** Extension points for a future release; empty today. */
+  /** Declared for a later release; nothing registers a reranker. */
   rerankers: Map<string, Reranker>;
+  /** The model answers are written by, when one is set up in Settings (see `modules/answers`). Otherwise empty. */
   models: Map<string, ModelProvider>;
 }
 
@@ -90,11 +92,20 @@ export const contextAssembler: ContextAssembler = {
   },
 };
 
+/**
+ * The numbers inside one pair of square brackets, when the brackets hold nothing but
+ * numbers: "[2]", and "[1, 3]" as some models write it. "[see 2]" and "[1994 edition]"
+ * are prose, not markers.
+ */
+export const CITATION_MARKER = /\[(\d{1,3}(?:\s*[,;]\s*\d{1,3})*)\]/g;
+
 /** Finds which citation markers an answer used, and which of them are not real sources. */
 export function checkCitations(answer: string, citations: Citation[]): { used: number[]; unsupported: number[] } {
   const known = new Set(citations.map((citation) => citation.marker));
   const used = new Set<number>();
-  for (const match of answer.matchAll(/\[(\d{1,3})\]/g)) used.add(Number(match[1]));
+  for (const match of answer.matchAll(CITATION_MARKER)) {
+    for (const number of match[1]!.split(/[,;]/)) used.add(Number(number));
+  }
   const all = [...used].sort((a, b) => a - b);
   return { used: all.filter((marker) => known.has(marker)), unsupported: all.filter((marker) => !known.has(marker)) };
 }

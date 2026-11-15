@@ -3,6 +3,7 @@
  * the API contract: the server builds responses to these shapes and the web app reads
  * them. Nothing here may import Node or browser APIs.
  */
+export * from "./answers.ts";
 export * from "./catalog.ts";
 export * from "./collections.ts";
 export * from "./common.ts";

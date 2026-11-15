@@ -1,0 +1,470 @@
+/**
+ * A language model on the person's own machine or network, reached over the
+ * OpenAI-compatible chat API that Ollama, llama.cpp's server and LM Studio all serve.
+ *
+ * Outpost bundles no model and downloads none. This file only knows how to talk to a
+ * server the person has set up: it sends one request to `<address>/chat/completions`
+ * and reads the answer as it is written. The request uses the fields all three servers
+ * document (`model`, `messages`, `stream`, `temperature`, `max_tokens`) and nothing
+ * else. See docs/ai.md for what was checked against which server's documentation.
+ *
+ * Everything a server can do wrong is turned into a sentence a person can act on:
+ * nothing listening, no such model, a model that cannot write text, an address with no
+ * chat endpoint, a prompt too long for the model, a model too slow to wait for, and a
+ * server that stops part-way through.
+ */
+import type { AnswerFailure, AnswerTestFailure, AnswerTestResult } from "@outpost/shared";
+import { AppError } from "../../core/errors.ts";
+import type { GenerationRequest, ModelProvider } from "../retrieval/types.ts";
+import type { ModelServerAddress } from "./address.ts";
+
+export interface ModelTimeouts {
+  /** How long to wait for the first sign of life. A small machine reads the whole prompt before it writes a word. */
+  firstTokenMs: number;
+  /** How long a silence is allowed once the model has started. */
+  idleMs: number;
+  /** The longest one answer may take from start to finish. */
+  totalMs: number;
+  /** How long the model list and the test request may take. */
+  probeMs: number;
+}
+
+export const DEFAULT_TIMEOUTS: ModelTimeouts = { firstTokenMs: 180_000, idleMs: 60_000, totalMs: 600_000, probeMs: 60_000 };
+
+/** A failure of the model server, with the kind of failure kept so the interface can say what to do. */
+export class ModelServerError extends AppError {
+  readonly failure: AnswerFailure;
+
+  constructor(failure: AnswerFailure, message: string) {
+    super(failure === "context-too-long" ? "too_large" : "upstream", message);
+    this.name = "ModelServerError";
+    this.failure = failure;
+  }
+}
+
+export interface ChatModelProvider extends ModelProvider {
+  readonly model: string;
+  readonly address: ModelServerAddress;
+  /** The model names the server reports. Throws a `ModelServerError` when it cannot be asked. */
+  listModels(signal?: AbortSignal): Promise<string[]>;
+  /** Asks the model for one word, and says exactly what failed if anything did. Never throws. */
+  test(signal?: AbortSignal): Promise<AnswerTestResult>;
+}
+
+const minutes = (ms: number) => {
+  const value = Math.round(ms / 60_000);
+  return value >= 1 ? `${value} minute${value === 1 ? "" : "s"}` : `${Math.round(ms / 1000)} seconds`;
+};
+
+/** What a server said went wrong, read from either of the two error shapes in use. */
+function readErrorBody(text: string): { message: string; type: string | null; promptTokens: number | null; contextTokens: number | null } {
+  try {
+    const body = JSON.parse(text) as { error?: unknown };
+    const error = body.error;
+    if (typeof error === "string") return { message: error, type: null, promptTokens: null, contextTokens: null };
+    if (error && typeof error === "object") {
+      const fields = error as { message?: unknown; type?: unknown; n_prompt_tokens?: unknown; n_ctx?: unknown };
+      return {
+        message: typeof fields.message === "string" ? fields.message : "",
+        type: typeof fields.type === "string" ? fields.type : null,
+        promptTokens: typeof fields.n_prompt_tokens === "number" ? fields.n_prompt_tokens : null,
+        contextTokens: typeof fields.n_ctx === "number" ? fields.n_ctx : null,
+      };
+    }
+  } catch {
+    // Not JSON: a proxy's error page, or a server that is not a model server.
+  }
+  return { message: "", type: null, promptTokens: null, contextTokens: null };
+}
+
+/** Text from a server, made safe to put in a sentence: one line, no markup, not too long. */
+const quoteServer = (text: string) =>
+  text
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 200);
+
+export function openAiChatProvider(
+  address: ModelServerAddress,
+  model: string,
+  timeouts: ModelTimeouts = DEFAULT_TIMEOUTS,
+): ChatModelProvider {
+  const { base, host } = address;
+  const chatUrl = `${base}/chat/completions`;
+
+  const unreachable = () =>
+    new ModelServerError(
+      "unreachable",
+      `No model server answered at ${host}. Check that it is running${address.place === "this-computer" ? " on this computer" : ""} and that the address in Settings is right.`,
+    );
+
+  /** Turns an error answer from the server into the failure it means. */
+  function failureOf(status: number, text: string): ModelServerError {
+    const { message, type, promptTokens, contextTokens } = readErrorBody(text);
+    if (
+      type === "exceed_context_size_error" ||
+      (status === 400 && /context (size|length|window)|too many tokens|maximum context/i.test(message))
+    ) {
+      const sizes =
+        promptTokens !== null && contextTokens !== null
+          ? ` They came to ${promptTokens} tokens and the model is set up to read ${contextTokens} at once.`
+          : "";
+      return new ModelServerError(
+        "context-too-long",
+        `The passages and the question were too long for the model.${sizes} Lower the context budget in Settings, or start the model with a larger context.`,
+      );
+    }
+    if (status === 404 && /model\b.*\bnot found|no such model|model .*does not exist/i.test(message)) {
+      return new ModelServerError(
+        "no-such-model",
+        `The model server at ${host} has no model called "${model}". Check the name in Settings, or fetch the model with your model server's own tool.`,
+      );
+    }
+    if (type === "not_supported_error" || /does not support (chat|generate|completion)/i.test(message)) {
+      return new ModelServerError(
+        "not-a-chat-model",
+        `"${model}" cannot write text. It is probably an embedding model, which turns text into numbers for search. Choose a chat model in Settings.`,
+      );
+    }
+    if (status === 404 || status === 405) {
+      return new ModelServerError(
+        "no-chat-endpoint",
+        `The server at ${host} has no chat endpoint: ${chatUrl} answered ${status}. Check the address in Settings; for Ollama, llama.cpp and LM Studio it ends in /v1.`,
+      );
+    }
+    if (status === 503 && /loading/i.test(message)) {
+      return new ModelServerError("other", "The model server is still loading its model. Try again in a moment.");
+    }
+    const said = quoteServer(message || text);
+    return new ModelServerError("other", `The model server answered with an error (${status})${said ? `: ${said}` : "."}`);
+  }
+
+  async function* generate(request: GenerationRequest): AsyncGenerator<string> {
+    const outer = request.signal;
+    outer?.throwIfAborted();
+    const controller = new AbortController();
+    const stopFromOutside = () => controller.abort(outer?.reason);
+    outer?.addEventListener("abort", stopFromOutside, { once: true });
+
+    // One timer for silence (long before the first sign of life, shorter after it),
+    // and one for the whole answer.
+    let gaveUp: "first" | "idle" | "total" | null = null;
+    let silence: NodeJS.Timeout | undefined;
+    const waitFor = (ms: number, why: "first" | "idle") => {
+      clearTimeout(silence);
+      silence = setTimeout(() => {
+        gaveUp = why;
+        controller.abort();
+      }, ms);
+    };
+    const whole = setTimeout(() => {
+      gaveUp = "total";
+      controller.abort();
+    }, timeouts.totalMs);
+    waitFor(timeouts.firstTokenMs, "first");
+
+    const tooSlow = () =>
+      new ModelServerError(
+        "too-slow",
+        gaveUp === "first"
+          ? `The model had not started writing after ${minutes(timeouts.firstTokenMs)}, so Outpost stopped waiting. A smaller model, or a smaller context budget in Settings, will answer sooner.`
+          : gaveUp === "idle"
+            ? `The model went quiet for ${minutes(timeouts.idleMs)} part-way through, so Outpost stopped waiting.`
+            : `The answer was still being written after ${minutes(timeouts.totalMs)}, so Outpost stopped it.`,
+      );
+
+    try {
+      let response: Response;
+      try {
+        response = await fetch(chatUrl, {
+          method: "POST",
+          headers: { "content-type": "application/json", accept: "text/event-stream" },
+          body: JSON.stringify({
+            model,
+            messages: [
+              { role: "system", content: request.system },
+              { role: "user", content: request.prompt },
+            ],
+            stream: true,
+            temperature: request.temperature ?? 0.2,
+            max_tokens: request.maxTokens ?? 1024,
+          }),
+          signal: controller.signal,
+          // The question goes to the server that was named, and to no other.
+          redirect: "error",
+        });
+      } catch (error) {
+        if (outer?.aborted) throw error;
+        if (gaveUp) throw tooSlow();
+        throw unreachable();
+      }
+      if (!response.ok) throw failureOf(response.status, await response.text().catch(() => ""));
+      if (!response.body) throw new ModelServerError("other", "The model server sent an empty reply.");
+
+      const type = response.headers.get("content-type") ?? "";
+      if (!type.includes("text/event-stream")) {
+        // A server that ignores `stream` answers in one piece. Anything else is not a model server.
+        const text = await response.text();
+        let entire: string | undefined;
+        try {
+          const body = JSON.parse(text) as { choices?: Array<{ message?: { content?: unknown }; finish_reason?: unknown }> };
+          const content = body.choices?.[0]?.message?.content;
+          if (typeof content === "string") {
+            entire = content;
+            request.onFinish?.({
+              finishReason: typeof body.choices?.[0]?.finish_reason === "string" ? body.choices[0].finish_reason : null,
+            });
+          }
+        } catch {
+          // Falls through to the error below.
+        }
+        if (entire === undefined) {
+          throw new ModelServerError(
+            "other",
+            `Something answered at ${host}, but not in the way a model server does. Check the address in Settings.`,
+          );
+        }
+        if (entire) yield entire;
+        return;
+      }
+
+      const decoder = new TextDecoder();
+      let rest = "";
+      let finishReason: string | null = null;
+      let sawDone = false;
+      const reader = response.body.getReader();
+      try {
+        read: for (;;) {
+          let chunk: { done: boolean; value?: Uint8Array };
+          try {
+            chunk = await reader.read();
+          } catch (error) {
+            if (outer?.aborted) throw error;
+            if (gaveUp) throw tooSlow();
+            throw new ModelServerError("interrupted", "The model server stopped part-way through the answer.");
+          }
+          if (chunk.done) break;
+          rest += decoder.decode(chunk.value, { stream: true });
+          let newline = rest.indexOf("\n");
+          while (newline !== -1) {
+            const line = rest.slice(0, newline).replace(/\r$/, "");
+            rest = rest.slice(newline + 1);
+            newline = rest.indexOf("\n");
+            // Blank lines end an event; lines starting with a colon are keep-alive comments.
+            if (!line.startsWith("data:")) continue;
+            const data = line.slice(5).trim();
+            if (data === "[DONE]") {
+              sawDone = true;
+              break read;
+            }
+            let event: {
+              error?: unknown;
+              choices?: Array<{ delta?: { content?: unknown; reasoning?: unknown; reasoning_content?: unknown }; finish_reason?: unknown }>;
+            };
+            try {
+              event = JSON.parse(data);
+            } catch {
+              continue;
+            }
+            // llama.cpp reports a failure in mid-stream as one `data: {"error": …}` line and then closes.
+            if (event.error) throw failureOf(500, JSON.stringify({ error: event.error }));
+            // Any event is a sign of life, including a model's private reasoning, which is not shown.
+            waitFor(timeouts.idleMs, "idle");
+            const choice = event.choices?.[0];
+            if (typeof choice?.finish_reason === "string") finishReason = choice.finish_reason;
+            const content = choice?.delta?.content;
+            if (typeof content === "string" && content) yield content;
+          }
+        }
+      } finally {
+        reader.cancel().catch(() => {});
+      }
+      // Both a finish reason and the [DONE] line mean the model ended the answer itself.
+      // A stream that simply closes means the server gave up; Ollama loses the reason.
+      if (!sawDone && finishReason === null) {
+        throw new ModelServerError("interrupted", "The model server stopped part-way through the answer.");
+      }
+      request.onFinish?.({ finishReason });
+    } finally {
+      clearTimeout(silence);
+      clearTimeout(whole);
+      outer?.removeEventListener("abort", stopFromOutside);
+      // Whoever was reading has stopped (finished, failed or walked away): close the connection so the model stops too.
+      controller.abort();
+    }
+  }
+
+  async function listModels(signal?: AbortSignal): Promise<string[]> {
+    let response: Response;
+    try {
+      response = await fetch(`${base}/models`, {
+        headers: { accept: "application/json" },
+        signal: signal
+          ? AbortSignal.any([signal, AbortSignal.timeout(timeouts.probeMs)])
+          : AbortSignal.timeout(Math.min(timeouts.probeMs, 10_000)),
+        redirect: "error",
+      });
+    } catch (error) {
+      if (signal?.aborted) throw error;
+      throw unreachable();
+    }
+    const text = await response.text().catch(() => "");
+    let names: string[] | undefined;
+    if (response.ok) {
+      try {
+        const body = JSON.parse(text) as { data?: Array<{ id?: unknown }> };
+        if (Array.isArray(body.data))
+          names = body.data.map((item) => item?.id).filter((id): id is string => typeof id === "string" && id.length > 0);
+      } catch {
+        // Not JSON.
+      }
+    }
+    if (!names) {
+      throw new ModelServerError(
+        "other",
+        `Something answered at ${host}, but it did not give a list of models (${base}/models answered ${response.status}). Check the address in Settings; for Ollama, llama.cpp and LM Studio it ends in /v1.`,
+      );
+    }
+    return names.slice(0, 200).map((name) => name.slice(0, 200));
+  }
+
+  async function test(signal?: AbortSignal): Promise<AnswerTestResult> {
+    const started = performance.now();
+    const result = (
+      ok: boolean,
+      failure: AnswerTestFailure | null,
+      message: string,
+      models: string[],
+      reply: string | null,
+    ): AnswerTestResult => ({
+      ok,
+      failure,
+      message,
+      models,
+      reply,
+      tookMs: Math.round(performance.now() - started),
+    });
+
+    // 1. Is anything there, and is it a model server?
+    let models: string[] = [];
+    try {
+      models = await listModels(signal);
+    } catch (error) {
+      if (error instanceof ModelServerError) {
+        return result(false, error.failure === "unreachable" ? "unreachable" : "not-a-model-server", error.message, [], null);
+      }
+      throw error;
+    }
+    const has = models.length > 0 ? ` It has: ${models.slice(0, 12).join(", ")}${models.length > 12 ? " and others" : ""}.` : "";
+
+    // 2. Can the named model write? One short request, not streamed.
+    let response: Response;
+    try {
+      response = await fetch(chatUrl, {
+        method: "POST",
+        headers: { "content-type": "application/json", accept: "application/json" },
+        body: JSON.stringify({
+          model,
+          messages: [{ role: "user", content: "Reply with the one word: ready" }],
+          stream: false,
+          temperature: 0,
+          max_tokens: 32,
+        }),
+        signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(timeouts.probeMs)]) : AbortSignal.timeout(timeouts.probeMs),
+        redirect: "error",
+      });
+    } catch (error) {
+      if (signal?.aborted) throw error;
+      if (error instanceof Error && error.name === "TimeoutError") {
+        return result(
+          false,
+          "too-slow",
+          `"${model}" did not answer a one-word request within ${minutes(timeouts.probeMs)}. It may still be loading; try again. If it is always this slow, choose a smaller model.`,
+          models,
+          null,
+        );
+      }
+      return result(false, "unreachable", unreachable().message, models, null);
+    }
+    const text = await response.text().catch(() => "");
+    if (!response.ok) {
+      const failure = failureOf(response.status, text);
+      const kind: AnswerTestFailure =
+        failure.failure === "no-such-model"
+          ? "no-such-model"
+          : failure.failure === "not-a-chat-model"
+            ? "not-a-chat-model"
+            : failure.failure === "no-chat-endpoint"
+              ? "no-chat-endpoint"
+              : "other";
+      return result(false, kind, kind === "no-such-model" ? `${failure.message}${has}` : failure.message, models, null);
+    }
+    let reply: unknown;
+    try {
+      reply = (JSON.parse(text) as { choices?: Array<{ message?: { content?: unknown } }> }).choices?.[0]?.message?.content;
+    } catch {
+      reply = undefined;
+    }
+    if (typeof reply !== "string" && reply !== null) {
+      return result(
+        false,
+        "not-a-model-server",
+        `Something answered at ${host}, but not in the way a model server answers a chat request. Check the address in Settings.`,
+        models,
+        null,
+      );
+    }
+    const words = typeof reply === "string" ? reply.replace(/\s+/g, " ").trim().slice(0, 120) : "";
+    return result(
+      true,
+      null,
+      `"${model}" answered${words ? `: “${words}”` : ", though with no words (some models think first and ran out of room in this short test)"}.`,
+      models,
+      words || null,
+    );
+  }
+
+  return { id: `openai-compatible:${model}`, model, address, generate, listModels, test };
+}
+
+/**
+ * Removes a model's private reasoning when it arrives inside the answer itself, as
+ * `<think>…</think>` at the very start. (Servers that send reasoning in a field of its
+ * own are handled in the provider, which never passes that field on.)
+ */
+export async function* withoutThinking(pieces: AsyncIterable<string>): AsyncGenerator<string> {
+  const OPEN = "<think>";
+  const CLOSE = "</think>";
+  let held = "";
+  // "after": the reasoning has ended and the blank lines that follow it are being skipped.
+  let state: "start" | "thinking" | "after" | "answer" = "start";
+  for await (const piece of pieces) {
+    if (state === "answer") {
+      yield piece;
+      continue;
+    }
+    held += piece;
+    if (state === "start") {
+      const trimmed = held.trimStart();
+      if (trimmed.startsWith(OPEN)) state = "thinking";
+      else if (trimmed.length >= OPEN.length || !OPEN.startsWith(trimmed)) state = "answer";
+      else continue;
+    }
+    if (state === "thinking") {
+      const end = held.indexOf(CLOSE);
+      if (end === -1) continue;
+      held = held.slice(end + CLOSE.length);
+      state = "after";
+    }
+    if (state === "after") {
+      held = held.trimStart();
+      if (!held) continue;
+      state = "answer";
+    }
+    yield held;
+    held = "";
+  }
+  // A stream that ended while still undecided was all answer; one that ended inside the reasoning had no answer.
+  if (state === "start" && held) yield held;
+}

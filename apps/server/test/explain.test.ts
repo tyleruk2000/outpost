@@ -158,14 +158,17 @@ describe("how search works", () => {
       [...rows.map((row: { score: number }) => row.score)].sort((a, b) => b - a),
     );
 
-    // Context: numbered sources with exact quotes, flagged as safety-critical, and the prompt that would be sent.
+    // Context: numbered sources with exact quotes, flagged as safety-critical, and the prompt.
     expect(body.context.citations[0].marker).toBe(1);
     expect(body.context.text).toContain(`[1] `);
     expect(body.context.text).toContain(body.context.citations[0].quote);
     expect(body.context.safetyCritical).toBe(true);
     expect(body.context.approxTokens).toBe(Math.ceil(body.context.characters / 4));
-    expect(body.prompt.system).toMatch(/cite the source/);
-    expect(body.prompt.system).toMatch(/Quote the source's own wording/);
+    // It is the prompt "Answer from my library" sends: fenced sources, the rules, and the safety rule for these sources.
+    expect(body.prompt.system).toMatch(/give the number of the source it rests on in square brackets/);
+    expect(body.prompt.system).toMatch(/give the source's own words inside quotation marks/);
+    expect(body.prompt.user).toMatch(/^===== SOURCES [0-9a-f]{8} /);
+    expect(body.prompt.user).toContain(body.context.text);
     expect(body.prompt.user).toContain("Question: boiling water");
     expect(body.timings.totalMs).toBeGreaterThan(0);
   });

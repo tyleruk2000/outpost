@@ -30,6 +30,7 @@ import { reciprocalRankFusion } from "../search/fusion.ts";
 import { HIT_CLOSE, HIT_OPEN, parseQuery, toFtsQuery, toSegments } from "../search/query.ts";
 import { demoProvider, demoTerms, type EmbeddingProvider } from "../semantic/providers.ts";
 import { contextAssembler } from "./index.ts";
+import { buildAnswerPrompt } from "./prompt.ts";
 import type { RetrievedPassage } from "./types.ts";
 
 /** How many numbers of a vector are sent to be drawn. Enough to see a pattern, not the whole thing. */
@@ -438,17 +439,8 @@ export function registerExplain(app: FastifyInstance, ctx: AppContext): void {
       ];
     });
     const assembled = contextAssembler.assemble(query, passages, { maxChars: 6000, maxPassages: limit });
-    const system = [
-      "Answer the question using only the numbered sources below.",
-      "After each statement, cite the source it came from as [n].",
-      "If the sources do not contain the answer, say so plainly instead of guessing.",
-      ...(assembled.safetyCritical
-        ? [
-            "These sources concern health, safety or food preservation. Quote the source's own wording for any instruction, dose, time or temperature.",
-          ]
-        : []),
-    ].join(" ");
-    const user = `Sources:\n\n${assembled.text}\n\nQuestion: ${query}`;
+    // The same prompt "Answer from my library" sends, built by the same function.
+    const { system, user } = buildAnswerPrompt(assembled);
     const contextMs = performance.now() - contextStarted;
 
     const round = (value: number) => Math.round(value * 10) / 10;

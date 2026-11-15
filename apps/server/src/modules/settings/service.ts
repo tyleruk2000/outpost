@@ -7,6 +7,7 @@ import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
 import { AppError } from "../../core/errors.ts";
 import { settings as settingsTable } from "../../db/schema.ts";
+import { parseModelServerAddress } from "../answers/address.ts";
 
 export const settingsSchema = z.object({
   /** How many downloads run at once. */
@@ -46,6 +47,32 @@ export const settingsSchema = z.object({
   "search.hybrid.rrfK": z.number().int().min(1).max(1000).default(60),
   "search.hybrid.keywordWeight": z.number().min(0).max(10).default(1),
   "search.hybrid.semanticWeight": z.number().min(0).max(10).default(1),
+  /**
+   * Answers written by a language model the person runs themselves. Off until they
+   * turn it on and name a model: Outpost bundles no model and contacts no server on its own.
+   */
+  "answers.enabled": z.boolean().default(false),
+  /**
+   * Where the model server is: any OpenAI-compatible chat server (Ollama, llama.cpp,
+   * LM Studio). The question and the passages found for it are sent here and nowhere else.
+   */
+  "answers.endpoint": z
+    .string()
+    .max(500)
+    .superRefine((value, issue) => {
+      try {
+        parseModelServerAddress(value);
+      } catch (error) {
+        issue.addIssue({ code: "custom", message: error instanceof Error ? error.message : "That is not an address." });
+      }
+    })
+    .default("http://127.0.0.1:11434/v1"),
+  /** The model's name as the server knows it. Empty until the person chooses one. */
+  "answers.model": z.string().max(200).default(""),
+  /** How freely the model words things. Kept low: an answer should stay close to its sources. */
+  "answers.temperature": z.number().min(0).max(2).default(0.2),
+  /** Most characters of quoted passages sent with a question. About four characters make a token. */
+  "answers.contextChars": z.number().int().min(1000).max(60000).default(6000),
   /** Include installed reference collections (Kiwix) in unified search. */
   "search.includeReference": z.boolean().default(true),
   /** Address of the planet tile archive regions are extracted from. Empty picks the newest build. */

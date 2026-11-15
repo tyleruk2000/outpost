@@ -141,7 +141,10 @@ export interface ExplainResponse {
     /** A rough token count (characters ÷ 4). Real counts depend on the model. */
     approxTokens: number;
   };
-  /** What would be sent to a local model. Outpost does not run one; this is shown, not sent. */
+  /**
+   * The prompt "Answer from my library" sends to the person's own model for this question:
+   * the same text, built by the same code. This endpoint only shows it; nothing is sent.
+   */
   prompt: { system: string; user: string; approxTokens: number };
   timings: { keywordMs: number; semanticMs: number; fusionMs: number; contextMs: number; totalMs: number };
 }
