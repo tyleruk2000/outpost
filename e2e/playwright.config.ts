@@ -64,5 +64,14 @@ export default defineConfig({
     { name: "desktop", use: { ...devices["Desktop Chrome"], viewport: { width: 1360, height: 860 } } },
     { name: "phone", use: { ...devices["Pixel 7"] }, testMatch: /mobile\.spec\.ts/ },
   ],
-  webServer: [server("open", 8471, {}), server("signin", 8472, { OUTPOST_AUTH: "on" })],
+  webServer: [
+    {
+      command: `node "${path.join(import.meta.dirname, "tools/fake-dist.mjs")}" 8473`,
+      url: "http://127.0.0.1:8473/health",
+      reuseExistingServer: false,
+    },
+    // The open server fetches portable-drive runtimes from the stand-in above, which is on a private address.
+    server("open", 8471, { OUTPOST_NODE_DIST_URL: "http://127.0.0.1:8473", OUTPOST_ALLOW_PRIVATE_DOWNLOADS: "true" }),
+    server("signin", 8472, { OUTPOST_AUTH: "on" }),
+  ],
 });
