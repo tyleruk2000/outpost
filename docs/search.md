@@ -275,7 +275,8 @@ lets results from unrelated systems be combined fairly.
 | `search.hybrid.keywordWeight` | 1 | Weight of the keyword list, and of reference articles. |
 | `search.hybrid.semanticWeight` | 1 | Weight of the semantic list. |
 
-These three have no control on the Settings screen. Change them through the API:
+All three are under **Settings → Search**. *How search works* lets you try a change on
+a question of your own before saving it. They can also be set through the API:
 
 ```bash
 curl -X PATCH "http://localhost:8080/api/settings" \

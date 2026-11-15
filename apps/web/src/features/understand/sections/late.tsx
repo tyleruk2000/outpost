@@ -338,10 +338,8 @@ export function WrongSection() {
             building the index of vectors.
           </li>
           <li>
-            The fusion numbers (<em>k</em> and the two weights) have no control on the Settings screen yet. They are the settings{" "}
-            <code>search.hybrid.rrfK</code>, <code>search.hybrid.keywordWeight</code> and <code>search.hybrid.semanticWeight</code>, and can
-            be changed through the settings API. The sliders <a href="#fig-formula">above</a> let you see what a change would do before
-            making it.
+            <Link to="/settings#search-title">Settings, under “Search”</Link>: the fusion numbers (<em>k</em> and the two weights). The
+            sliders <a href="#fig-formula">above</a> let you see what a change would do before making it.
           </li>
         </ul>
       </Prose>

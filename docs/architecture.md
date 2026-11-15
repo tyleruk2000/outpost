@@ -203,7 +203,6 @@ These are deliberate, and stated so nobody has to discover them.
 | Scale | One node, one writer. | SQLite. Fine for a household or a classroom; a larger deployment needs the PostgreSQL seam filled in. |
 | Vector search | Flat index: every query compares against every stored vector. | Exact and dependency-free; comfortable to roughly 100,000 passages. `VectorIndex` is the seam for sqlite-vec or pgvector. |
 | Local embedding model | Needs the optional `@huggingface/transformers` package, which is not in the packaged app. | Its native runtime is large and has no musl or Intel-macOS builds. A local embedding server (Ollama, llama.cpp) works everywhere today. |
-| Hybrid ranking settings | The fusion constant and the two weights are settings without a control on the Settings screen. | They can be changed through the API (see search.md), and tried out live on the How search works page. |
 | OCR | Not included. Scanned PDFs and images are stored and viewable but have no searchable text. | A provider interface and optional Tesseract are the planned route. |
 | Language model answers | Not included, by design for this release. | Interfaces exist; see ai.md. |
 | ZIM archives | Need kiwix-serve (the Compose sidecar, or a binary for non-Docker installs). | Reading the format in pure JavaScript would mean reimplementing libzim. |
