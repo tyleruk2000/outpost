@@ -394,7 +394,11 @@ stored to six decimal places, and a point repeated straight after itself is drop
   points and bounds.
 - **Export.** One track as GPX (`GET /api/maps/tracks/:id/export.gpx`), or a selection
   of tracks together with your markers as waypoints
-  (`GET /api/maps/export.gpx?markers=1&tracks=<id>,<id>`). The output is GPX 1.1.
+  (`GET /api/maps/export.gpx?markers=1&tracks=<id>,<id>`). The output is GPX 1.1. An
+  imported track, a drawn route, places alone and a mixed selection were each checked
+  against the published GPX 1.1 schema with `xmllint` on 15 November 2026, with names
+  containing `<`, `&`, quotation marks and accented letters; all four validated. Opening
+  the files in other map programs has not been tried.
 - **A drawn route in GPX.** It is written as a track (`<trk>` with one `<trkseg>`),
   which more apps read than a `<rte>`, and which no device will try to re-plan along
   roads. It carries the route's name, one `<trkpt>` for each point you placed with its
