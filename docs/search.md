@@ -6,6 +6,33 @@ are ranked, and how to turn on optional semantic search ("search by meaning").
 Keyword search is always available and needs no set-up. Semantic search is optional
 and off by default.
 
+## Seeing how it works
+
+**How search works** (the "How were these found?" link under any search, or
+`/search/how-it-works`) follows one question of yours through every step on your own
+library and shows what each step produced:
+
+1. the whole journey as a diagram, with the time each step took;
+2. how a document was cut into overlapping passages;
+3. search by words: how rare each of your words is, and how that and repetition make
+   the score;
+4. search by meaning: vectors, the angle between them, and a map of the passages;
+5. how the two ranked lists are combined, with the constant and the weights adjustable
+   on the page to see what would change;
+6. the numbered sources a language model would be given;
+7. the prompt that would be sent (it is shown, never sent: Outpost runs no model);
+8. what can go wrong at each step, and how to tell.
+
+Everything on that page comes from the same code as real search. Two things to know
+when reading it:
+
+- With no embedding model set up, the "meaning" steps use the built-in
+  [demonstration vectors](#demonstration-demonstration), and the page says so. They
+  show the mechanics; they are word matching by another route, not understanding.
+- The ranking steps cover everything search covers, including catalogue listings and
+  saved places. The context step keeps only passages from your documents and pages,
+  because those are what a model should quote from.
+
 ## Keyword search
 
 ### What you can type

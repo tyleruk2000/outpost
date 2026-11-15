@@ -18,6 +18,10 @@ what exists, what does not, and how to connect a local model yourself.
   See [search.md](search.md#semantic-search).
 - **Typed interfaces** for the missing parts, in
   `apps/server/src/modules/retrieval/types.ts`.
+- **A page that shows all of this working**: *How search works*
+  (`/search/how-it-works`) follows one question through chunking, both searches,
+  fusion, the context and the prompt, with the numbers from your own library. Read
+  it before building on these endpoints; see [search.md](search.md#seeing-how-it-works).
 
 ## What does not exist
 
