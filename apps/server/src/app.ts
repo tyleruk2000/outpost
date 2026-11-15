@@ -14,6 +14,7 @@ import { EventBus } from "./core/events.ts";
 import { JobQueue } from "./core/jobs.ts";
 import { openDatabase } from "./db/client.ts";
 import { registerAuth } from "./modules/auth/index.ts";
+import { applyPendingRestore } from "./modules/backup/index.ts";
 import { modules } from "./modules/index.ts";
 import { createSettingsService } from "./modules/settings/service.ts";
 import { registerStorage } from "./modules/storage/index.ts";
@@ -63,6 +64,7 @@ export async function buildApp(config: Config): Promise<BuiltApp> {
     routerOptions: { maxParamLength: 2000 },
   });
 
+  applyPendingRestore(config.dataDir, (message) => app.log.warn(message));
   const { sqlite, db } = openDatabase(path.join(config.dataDir, "outpost.db"));
   const events = new EventBus();
   const ctx: AppContext = {
