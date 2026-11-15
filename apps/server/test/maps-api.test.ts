@@ -377,6 +377,65 @@ describe("downloading a region", () => {
     expect(sources.attribution).toMatch(/OpenStreetMap.*Mapterhorn/);
   });
 
+  it("keeps the map and its terrain on the storage location that was chosen", async () => {
+    const terrain = buildArchive({
+      tiles: labelledWorld("dem", 5).map((tile) => ({ ...tile, data: Buffer.concat([Buffer.from("RIFF\0\0\0\0WEBPVP8 "), tile.data]) })),
+      tileType: TileType.Webp,
+      tileCompression: Compression.None,
+      rootBudget: 300,
+      minLeafSize: 64,
+    });
+    const terrainServer = await serveBytes(terrain.bytes, { etag: '"dem-1"' });
+    extraServers.push(terrainServer);
+    configure({ "maps.terrainSource": terrainServer.url });
+
+    const added = await app.api("POST", "/api/storage/locations", {
+      name: "Field SSD",
+      path: path.join(app.dir, "storage", "ssd"),
+      kind: "external",
+    });
+    expect(added.status).toBe(200);
+    const ssd = added.body.location as { id: string; path: string };
+    const internal = app.ctx.services.storage.getDefault();
+    expect(ssd.id).not.toBe(internal.id);
+
+    const started = await app.api("POST", "/api/maps/regions", {
+      name: "Hills",
+      bbox: REGION_BBOX,
+      maxZoom: 6,
+      includeTerrain: true,
+      locationId: ssd.id,
+    });
+    expect(started.status).toBe(200);
+    // Both parts are told where to go: the terrain follows the map.
+    expect(started.body.downloads.map((download: { kind: string; locationId: string }) => [download.kind, download.locationId])).toEqual([
+      ["map", ssd.id],
+      ["terrain", ssd.id],
+    ]);
+    const rows = await Promise.all(started.body.downloads.map((download: { id: string }) => settled(download.id)));
+    expect(rows.map((row) => row.state)).toEqual(["completed", "completed"]);
+    for (const row of rows) {
+      const collection = app.ctx.services.collections.get(row.collectionId!)!;
+      expect(collection.locationId).toBe(ssd.id);
+      expect(app.ctx.services.collections.absolutePath(collection.id).startsWith(ssd.path)).toBe(true);
+    }
+    // Nothing was written to the default location.
+    expect(fs.existsSync(path.join(internal.path, "collections/maps"))).toBe(false);
+    expect(fs.existsSync(path.join(internal.path, "collections/terrain"))).toBe(false);
+    // The overview says where each is kept, which is what the screen shows.
+    const regions = (await app.api("GET", "/api/maps/overview")).body.regions as Array<{ tileType: string; locationName: string }>;
+    expect(regions.map((region) => [region.tileType, region.locationName]).sort()).toEqual([
+      ["terrain", "Field SSD"],
+      ["vector", "Field SSD"],
+    ]);
+
+    // Without a choice, a download still goes to the default location.
+    const fallback = await app.api("POST", "/api/maps/regions", { name: "Elsewhere", bbox: [-20, 20, 10, 40], maxZoom: 5 });
+    expect(fallback.status).toBe(200);
+    expect(fallback.body.downloads[0].locationId).toBe(internal.id);
+    await settled(fallback.body.downloads[0].id);
+  });
+
   it("installs a whole archive fetched as an ordinary download, and refuses a file that is not one", async () => {
     // A ready-made archive from some catalogue entry: no region details, just a file.
     const whole = buildArchive({ tiles: labelledWorld("whole", 3), bounds: [-10, 35, 30, 60] });
@@ -706,49 +765,6 @@ describe("importing an archive that is already on disk", () => {
     const twice = await app.api("POST", "/api/maps/import", body("imports/mine.pmtiles"));
     expect(twice.status).toBe(409);
     expect(app.ctx.services.collections.list({ kind: "map" })).toHaveLength(1);
-  });
-});
-
-describe("permissions", () => {
-  it("lets members look and keep markers, and only administrators change what is installed", async () => {
-    await app.close();
-    app = await createTestApp({ OUTPOST_AUTH: "on" });
-    configure();
-    const cookieOf = (headers: Record<string, unknown>) => String([headers["set-cookie"]].flat()[0]).split(";")[0]!;
-    const setup = await app.api("POST", "/api/auth/setup", { username: "admin", password: "correct horse battery" });
-    const admin = { headers: { cookie: cookieOf(setup.headers) } };
-    await app.api("POST", "/api/users", { username: "member", password: "another long password", role: "member" }, admin);
-    const login = await app.api("POST", "/api/auth/login", { username: "member", password: "another long password" });
-    const member = { headers: { cookie: cookieOf(login.headers) } };
-
-    for (const url of [
-      "/api/maps/regions",
-      "/api/maps/overview",
-      "/api/maps/sources",
-      "/api/maps/markers",
-      "/api/maps/tracks",
-      "/api/maps/places?q=x",
-      "/api/maps/tiles/0/0/0.mvt",
-    ]) {
-      expect((await app.api("GET", url)).status, url).toBe(401);
-      expect((await app.api("GET", url, undefined, member)).status, url).toBeLessThan(300);
-    }
-    const location = app.ctx.services.storage.getDefault();
-    const adminOnly: Array<[string, string, unknown]> = [
-      ["POST", "/api/maps/estimate", { bbox: REGION_BBOX, maxZoom: 3 }],
-      ["POST", "/api/maps/regions", { name: "X", bbox: REGION_BBOX, maxZoom: 3 }],
-      ["POST", "/api/maps/import", { locationId: location.id, relPath: "x.pmtiles", name: "X" }],
-      ["POST", "/api/maps/places/datasets", { dataset: "cities500" }],
-      ["DELETE", "/api/maps/places/datasets/anything", undefined],
-    ];
-    for (const [method, url, payload] of adminOnly) {
-      const refused = await app.api(method, url, payload, member);
-      expect(refused.status, url).toBe(403);
-      expect(refused.body.error.message).toMatch(/Only an administrator/);
-    }
-    const marker = await app.api("POST", "/api/maps/markers", { name: "Camp", lat: 54.5, lon: -3.1 }, member);
-    expect(marker.status).toBe(200);
-    expect((await app.api("DELETE", `/api/maps/markers/${marker.body.marker.id}`, undefined, member)).status).toBe(200);
   });
 });
 

@@ -1,6 +1,7 @@
 /**
  * What people add to the map themselves: markers (a named point with a note) and
- * tracks (lines imported from GPX files). Both are indexed for the app-wide search.
+ * tracks (lines imported from GPX files, or drawn on the map point by point). Both are
+ * indexed for the app-wide search.
  */
 import {
   type Bbox,
@@ -8,6 +9,7 @@ import {
   MARKER_COLORS,
   type MarkerColor,
   type MarkerDto,
+  type RouteSaveResponse,
   type TrackDto,
   type TrackImportResponse,
   type TrackWithGeometryDto,
@@ -18,6 +20,8 @@ import type { AppContext } from "../../core/context.ts";
 import { badRequest, notFound } from "../../core/errors.ts";
 import { newId } from "../../core/ids.ts";
 import { markers, tracks } from "../../db/schema.ts";
+import { buildDrawnLine, type DrawnLine, routePointsSchema } from "./drawn-route.ts";
+import type { ElevationSampler } from "./elevation.ts";
 import { buildGpx, type GpxWaypoint, parseGpxSafely, splitCollection, type TrackCollection, trackStats } from "./gpx.ts";
 
 type MarkerRow = typeof markers.$inferSelect;
@@ -48,6 +52,15 @@ export const trackPatchSchema = z.object({
   color: color.optional(),
 });
 
+export const routeCreateSchema = z.object({
+  name: z.string().trim().min(1, "Give the route a name.").max(200),
+  description: z.string().max(20_000).optional(),
+  color: color.optional(),
+  points: routePointsSchema,
+});
+
+export const routePointsReplaceSchema = z.object({ points: routePointsSchema });
+
 export interface TrackImportInput {
   /** The GPX file's text. */
   source: string;
@@ -65,6 +78,10 @@ export interface AnnotationsService {
   listTracks(): TrackDto[];
   getTrack(id: string): TrackWithGeometryDto;
   importTrack(input: TrackImportInput): Promise<TrackImportResponse>;
+  /** A route drawn on the map: straight lines between the points given. */
+  createRoute(input: z.infer<typeof routeCreateSchema>): Promise<RouteSaveResponse>;
+  /** Replaces a track's lines with one drawn through the points given. Its waypoints are kept. */
+  replaceRoutePoints(id: string, input: z.infer<typeof routePointsReplaceSchema>): Promise<RouteSaveResponse>;
   updateTrack(id: string, patch: z.infer<typeof trackPatchSchema>): TrackDto;
   removeTrack(id: string): void;
   exportTrack(id: string): { filename: string; gpx: string };
@@ -111,7 +128,7 @@ function fileNameOf(name: string): string {
   return `${cleaned || "outpost"}.gpx`;
 }
 
-export function createAnnotationsService(ctx: AppContext): AnnotationsService {
+export function createAnnotationsService(ctx: AppContext, deps: { elevation: ElevationSampler }): AnnotationsService {
   const { db, sqlite } = ctx;
   const { search } = ctx.services;
   const changed = () => ctx.events.publish({ type: "maps.changed" });
@@ -194,6 +211,21 @@ export function createAnnotationsService(ctx: AppContext): AnnotationsService {
     createdAt: tracks.createdAt,
     updatedAt: tracks.updatedAt,
   };
+
+  /**
+   * Length, size and extent come from the points as placed. The climb comes from the
+   * line sampled between them, so a hill between two distant points is counted.
+   */
+  function drawnStats(collection: TrackCollection, drawn: DrawnLine) {
+    const stats = trackStats(collection);
+    const ascentMeters = drawn.profile
+      ? trackStats({
+          type: "FeatureCollection",
+          features: [{ type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: drawn.profile } }],
+        }).ascentMeters
+      : null;
+    return { ...stats, ascentMeters };
+  }
 
   const markerWaypoints = (): GpxWaypoint[] =>
     db
@@ -309,6 +341,62 @@ export function createAnnotationsService(ctx: AppContext): AnnotationsService {
 
       changed();
       return { track: result.track ? toTrackDto(result.track) : null, markers: result.created.map(toMarkerDto) };
+    },
+
+    async createRoute(input) {
+      // Heights are read before anything is written: a slow disk must not hold a transaction open.
+      const drawn = await buildDrawnLine(input.points, deps.elevation);
+      const collection: TrackCollection = { type: "FeatureCollection", features: [drawn.feature] };
+      const stats = drawnStats(collection, drawn);
+      const now = Date.now();
+      const id = newId();
+      db.insert(tracks)
+        .values({
+          id,
+          name: input.name,
+          description: input.description ?? "",
+          color: input.color ?? "teal",
+          geojson: collection as unknown as Record<string, unknown>,
+          sourceFilename: null,
+          distanceMeters: stats.distanceMeters,
+          ascentMeters: stats.ascentMeters,
+          pointCount: stats.pointCount,
+          bounds: stats.bounds,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run();
+      const row = trackRow(id);
+      indexTrack(row);
+      changed();
+      return { track: toTrackDto(row), elevation: drawn.elevation };
+    },
+
+    async replaceRoutePoints(id, input) {
+      trackRow(id);
+      const drawn = await buildDrawnLine(input.points, deps.elevation);
+      // Read again: the heights took a moment, and the track may have been renamed or removed meanwhile.
+      const current = trackRow(id);
+      const waypoints = ((current.geojson as unknown as TrackCollection).features ?? []).filter(
+        (feature) => feature.geometry?.type === "Point",
+      );
+      const collection: TrackCollection = { type: "FeatureCollection", features: [drawn.feature, ...waypoints] };
+      const stats = drawnStats(collection, drawn);
+      db.update(tracks)
+        .set({
+          geojson: collection as unknown as Record<string, unknown>,
+          distanceMeters: stats.distanceMeters,
+          ascentMeters: stats.ascentMeters,
+          pointCount: stats.pointCount,
+          bounds: stats.bounds,
+          updatedAt: Date.now(),
+        })
+        .where(eq(tracks.id, id))
+        .run();
+      const row = trackRow(id);
+      indexTrack(row);
+      changed();
+      return { track: toTrackDto(row), elevation: drawn.elevation };
     },
 
     updateTrack(id, patch) {

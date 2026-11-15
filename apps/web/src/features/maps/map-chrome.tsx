@@ -1,5 +1,5 @@
-/** The controls and cards that float over the map: tools, zoom, the measuring card, the pin card. */
-import { Compass, LocateFixed, Minus, Mountain, Plus, Ruler, Undo2, X } from "lucide-react";
+/** The controls and cards that float over the map: tools, zoom, the measuring card, the drawing card, the pin card. */
+import { Compass, Crosshair, LocateFixed, Minus, Mountain, PenLine, Plus, Redo2, Ruler, Undo2, X } from "lucide-react";
 import { type ReactNode, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -9,9 +9,11 @@ import { copyText, type LocateState } from "./hooks";
 import { formatPosition, type ReadoutFormat } from "./lib/coords";
 import { formatBearing, formatDistance, formatDistanceWithMiles, type LatLon } from "./lib/geo";
 import { measure } from "./lib/measure";
+import { canRedo, canUndo, isFull, type RouteEdit } from "./lib/route-edit";
+import { STRAIGHT_LINES } from "./panels/route-editor";
 import { ControlButton, ControlGroup, mapSurface } from "./ui";
 
-export type Tool = "browse" | "measure" | "add-place";
+export type Tool = "browse" | "measure" | "add-place" | "draw";
 
 /** A map pin with a plus: the "add a place" tool. Drawn here because the icon set has no exact match at this weight. */
 function PinPlus() {
@@ -95,6 +97,14 @@ export function MapControls({
           <Ruler />
         </ControlButton>
         <ControlButton
+          label="Draw a route"
+          pressed={tool === "draw"}
+          onClick={() => onToolChange(tool === "draw" ? "browse" : "draw")}
+          disabled={disabled}
+        >
+          <PenLine />
+        </ControlButton>
+        <ControlButton
           label="Save a place: then click the map"
           pressed={tool === "add-place"}
           onClick={() => onToolChange(tool === "add-place" ? "browse" : "add-place")}
@@ -146,11 +156,14 @@ export function MeasureCard({
   onUndo,
   onClear,
   onDone,
+  onSaveAsRoute,
 }: {
   points: LatLon[];
   onUndo: () => void;
   onClear: () => void;
   onDone: () => void;
+  /** Keeps the measured path: opens it in the drawing tool, to be named and saved as a route. */
+  onSaveAsRoute: () => void;
 }) {
   const result = measure(points);
   const list = useRef<HTMLOListElement>(null);
@@ -208,6 +221,78 @@ export function MeasureCard({
           Done
         </Button>
       </div>
+      {points.length >= 2 ? (
+        <div className="mt-2 border-t border-border pt-2">
+          <Button size="sm" onClick={onSaveAsRoute}>
+            <PenLine /> Save as a route
+          </Button>
+        </div>
+      ) : null}
+    </MapCard>
+  );
+}
+
+/**
+ * The drawing tool's card over the map, for when its panel is out of sight: on a phone
+ * with the sheet lowered so the map can be tapped, or on a desktop with the panel
+ * closed. It shows the length so far and holds the few things needed while placing
+ * points; naming and saving happen in the panel, which "Name and save" brings up.
+ */
+export function DrawCard({
+  edit,
+  reshaping,
+  onUndo,
+  onRedo,
+  onAddAtCentre,
+  onOpenPanel,
+  onClose,
+}: {
+  edit: RouteEdit;
+  /** True when the shape of a saved route is being changed, false for a new route. */
+  reshaping: boolean;
+  onUndo: () => void;
+  onRedo: () => void;
+  onAddAtCentre: () => void;
+  onOpenPanel: () => void;
+  onClose: () => void;
+}) {
+  const { points } = edit;
+  const total = measure(points).totalMeters;
+  return (
+    <MapCard title={reshaping ? "Edit shape" : "Draw a route"} onClose={onClose} closeLabel="Stop drawing">
+      {points.length === 0 ? (
+        <p className="mt-1 text-small text-ink-muted">Click or tap the map to place the first point. {STRAIGHT_LINES}</p>
+      ) : (
+        <>
+          <p className="tabular mt-1 text-lead font-semibold text-ink" aria-live="polite" aria-atomic>
+            {points.length < 2 ? "0 m" : formatDistanceWithMiles(total)}
+          </p>
+          <p className="tabular text-small text-ink-muted">
+            {points.length === 1 ? "First point placed. Place the next one." : `${points.length} points. Drag a point to move it.`}
+          </p>
+        </>
+      )}
+      {/* One row at any width: on a phone this card shares the screen with the map being drawn on. */}
+      <div className="mt-3 flex items-center gap-2">
+        <Button size="icon" aria-label="Undo" title="Undo" onClick={onUndo} disabled={!canUndo(edit)}>
+          <Undo2 />
+        </Button>
+        <Button size="icon" aria-label="Redo" title="Redo" onClick={onRedo} disabled={!canRedo(edit)}>
+          <Redo2 />
+        </Button>
+        <Button
+          size="icon"
+          aria-label="Add a point at the centre of the map"
+          title="Add a point at the centre of the map"
+          onClick={onAddAtCentre}
+          disabled={isFull(edit)}
+        >
+          <Crosshair />
+        </Button>
+        <Button variant="primary" onClick={onOpenPanel} className="ml-auto">
+          {reshaping ? "Review and save" : "Name and save"}
+        </Button>
+      </div>
     </MapCard>
   );
 }
@@ -259,6 +344,7 @@ export function ContextMenu({
   coordinates,
   onSave,
   onMeasure,
+  onDraw,
   onClose,
 }: {
   point: { x: number; y: number };
@@ -267,6 +353,7 @@ export function ContextMenu({
   coordinates: string;
   onSave: () => void;
   onMeasure: () => void;
+  onDraw: () => void;
   onClose: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -292,7 +379,7 @@ export function ContextMenu({
   }, [onClose]);
 
   const width = 232;
-  const height = 148;
+  const height = 182;
   const left = Math.max(8, Math.min(point.x, bounds.width - width - 8));
   const top = Math.max(8, Math.min(point.y, bounds.height - height - 8));
   const item =
@@ -306,6 +393,9 @@ export function ContextMenu({
       </button>
       <button type="button" role="menuitem" className={item} onClick={onMeasure}>
         Measure from here
+      </button>
+      <button type="button" role="menuitem" className={item} onClick={onDraw}>
+        Draw a route from here
       </button>
       <button
         type="button"

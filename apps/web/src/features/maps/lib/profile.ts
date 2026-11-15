@@ -2,7 +2,7 @@
  * Elevation profiles: turning a track's stored geometry into distance-against-height
  * samples, and those samples into the path an SVG draws.
  */
-import { haversineMeters, type TrackWithGeometryDto } from "@outpost/shared";
+import { haversineMeters, type RouteElevation, type TrackWithGeometryDto } from "@outpost/shared";
 
 export interface ProfileSample {
   /** Metres from the start of the track. */
@@ -46,6 +46,53 @@ export function trackLines(geojson: TrackWithGeometryDto["geojson"]): Position[]
   return lines;
 }
 
+interface LineFeature {
+  properties?: { _drawn?: unknown; _elevation?: unknown; _profile?: unknown; coordinateProperties?: { times?: unknown } } | null;
+  geometry?: { type?: string; coordinates?: unknown } | null;
+}
+
+const isLine = (feature: LineFeature | null) => feature?.geometry?.type === "LineString" || feature?.geometry?.type === "MultiLineString";
+
+export interface RouteOrigin {
+  /** The line was drawn (or reshaped) by hand on the map, not recorded. */
+  drawn: boolean;
+  /** For a drawn line: whether installed terrain could give it heights. Null for a recording. */
+  elevation: RouteElevation | null;
+  /** The recording carries a time at each point. */
+  timed: boolean;
+}
+
+/** How a stored track came to have its line, read from the line itself. */
+export function routeOrigin(geojson: TrackWithGeometryDto["geojson"]): RouteOrigin {
+  const lines = (geojson.features as LineFeature[]).filter(isLine);
+  const drawn = lines.find((feature) => feature.properties?._drawn === true);
+  const elevation = drawn?.properties?._elevation;
+  return {
+    drawn: Boolean(drawn),
+    elevation: elevation === "terrain" || elevation === "partial" || elevation === "none" ? elevation : drawn ? "none" : null,
+    timed: lines.some((feature) => Array.isArray(feature.properties?.coordinateProperties?.times)),
+  };
+}
+
+/**
+ * The lines an elevation profile is read from. A drawn route carries its line sampled
+ * every few tens of metres with a height at each sample, so the profile shows the
+ * ground between its points; a recording is its own points.
+ */
+function profileLines(geojson: TrackWithGeometryDto["geojson"]): Position[][] {
+  const lines: Position[][] = [];
+  for (const feature of geojson.features as LineFeature[]) {
+    const sampled = feature?.properties?._drawn === true ? feature.properties._profile : undefined;
+    if (Array.isArray(sampled)) {
+      const line = sampled.filter(isPosition);
+      if (line.length >= 2) lines.push(line);
+    } else {
+      lines.push(...trackLines({ type: "FeatureCollection", features: [feature] }));
+    }
+  }
+  return lines;
+}
+
 /** First and last point of what was recorded, for the start and end marks. */
 export function trackEnds(lines: Position[][]): { start: Position; end: Position } | null {
   const first = lines[0]?.[0];
@@ -61,7 +108,7 @@ export function trackEnds(lines: Position[][]): { start: Position; end: Position
 export function buildProfile(geojson: TrackWithGeometryDto["geojson"], maxSamples = 400): Profile | null {
   const samples: ProfileSample[] = [];
   let distance = 0;
-  for (const line of trackLines(geojson)) {
+  for (const line of profileLines(geojson)) {
     let previous: Position | undefined;
     for (const position of line) {
       // A gap between segments is not travelled, so distance only grows within a line.

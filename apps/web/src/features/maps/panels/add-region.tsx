@@ -1,21 +1,19 @@
 /**
  * Adding a map region: choose an area (a ready-made one or a box drawn on the map),
- * choose how much detail, ask the source exactly how large that is, then download it
- * to a storage location with room for it.
+ * choose how much detail and which storage location it goes to, ask the source exactly
+ * how large that is, then download it. Terrain, when asked for, goes to the same place.
  */
 import { type Bbox, formatBytes, type MapRegionPresetStatus } from "@outpost/shared";
 import { useMutation } from "@tanstack/react-query";
 import { ArrowLeft, Check, CircleAlert, Search, SquareDashedMousePointer } from "lucide-react";
-import { useCallback, useEffect, useId, useMemo, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ErrorState, Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { Badge, Checkbox, Progress, Segmented, Skeleton } from "@/components/ui/misc";
 import { ChoiceList } from "@/features/downloads/choice-list";
-import { LocationPicker, locationProblem, preferredLocation } from "@/features/downloads/location-picker";
 import { errorMessage } from "@/lib/api";
-import { useStorage } from "@/lib/queries";
 import { cn, formatNumber } from "@/lib/utils";
 import { estimateRegion, useMapRegions, useStartRegion } from "../data";
 import { countTiles, formatBbox, formatBboxSize, isValidBbox } from "../lib/geo";
@@ -23,6 +21,7 @@ import { fold } from "../lib/search";
 import { formatBuild } from "../lib/tracks";
 import type { MapEngine } from "../map/engine";
 import { Fact } from "../ui";
+import { DestinationLine, DestinationPicker, useDestination } from "./destination";
 
 /** The server refuses anything over this many tiles; saying so before asking saves a round trip. */
 const MAX_TILES = 20_000_000;
@@ -135,6 +134,7 @@ export function AddRegion({
   initialPresetId,
   onClose,
   onNeedMap,
+  onNeedRoom,
 }: {
   engine: MapEngine | null;
   /** A preset to start from, when the person arrived by a "World overview" shortcut. */
@@ -142,10 +142,12 @@ export function AddRegion({
   onClose: () => void;
   /** Asks the screen to get out of the map's way (on a phone, lowers the sheet) while a box is drawn. */
   onNeedMap: () => void;
+  /** Asks for as much room as the screen can give (on a phone, raises the sheet): the choices before a download are many. */
+  onNeedRoom: () => void;
 }) {
   const regions = useMapRegions(true);
-  const storage = useStorage();
   const terrainId = useId();
+  const whereRef = useRef<HTMLDivElement>(null);
   const [mode, setMode] = useState<"list" | "draw">("list");
   const [area, setArea] = useState<Area | null>(null);
   const [step, setStep] = useState<"area" | "options">("area");
@@ -154,7 +156,6 @@ export function AddRegion({
   const [name, setName] = useState("");
   const [maxZoom, setMaxZoom] = useState(14);
   const [includeTerrain, setIncludeTerrain] = useState(false);
-  const [locationId, setLocationId] = useState<string>();
 
   const estimate = useMutation({ mutationFn: estimateRegion });
   const start = useStartRegion();
@@ -236,29 +237,36 @@ export function AddRegion({
     return () => window.removeEventListener("keydown", onKey, true);
   }, [drawing]);
 
-  const locations = storage.data?.locations ?? [];
+  // The map and its terrain go to the same place, so the room needed is for both together.
   const requiredBytes = estimate.data?.totalBytes ?? null;
-  // biome-ignore lint/correctness/useExhaustiveDependencies: choose again when the size becomes known or the locations change
+  const destination = useDestination(requiredBytes);
+
+  // The choices before a download fill more than half a phone's screen.
   useEffect(() => {
-    const current = locations.find((location) => location.id === locationId);
-    if (!current || locationProblem(current, requiredBytes) !== null) setLocationId(preferredLocation(locations, requiredBytes));
-  }, [storage.data, requiredBytes]);
+    if (step === "options") onNeedRoom();
+  }, [step, onNeedRoom]);
 
   const regionName = area?.kind === "preset" ? area.preset.name : name.trim();
   const zooms = detailChoices(recommended);
   const tooLarge = (zoom: number) => (bbox ? countTiles(bbox, 0, zoom) > MAX_TILES : false);
-  const chosenLocation = locations.find((location) => location.id === locationId);
-  const canDownload = Boolean(
-    estimate.data && bbox && regionName && chosenLocation && locationProblem(chosenLocation, requiredBytes) === null,
-  );
+  const canDownload = Boolean(estimate.data && bbox && regionName && destination.locationId);
 
   const download = () => {
-    if (!bbox || !estimate.data) return;
+    if (!bbox || !estimate.data || !destination.location) return;
+    const kept = destination.location.name;
     start.mutate(
-      { name: regionName, regionId: area?.kind === "preset" ? area.preset.id : undefined, bbox, maxZoom, includeTerrain, locationId },
+      {
+        name: regionName,
+        regionId: area?.kind === "preset" ? area.preset.id : undefined,
+        bbox,
+        maxZoom,
+        includeTerrain,
+        locationId: destination.locationId,
+      },
       {
         onSuccess: () => {
-          toast.success(`Downloading “${regionName}”. Progress is shown here and under Downloads.`);
+          destination.remember();
+          toast.success(`Downloading “${regionName}” to ${kept}. Progress is shown here and under Downloads.`);
           onClose();
         },
       },
@@ -506,30 +514,11 @@ export function AddRegion({
           ) : null}
         </div>
 
-        {estimate.data ? (
-          <div className="grid gap-2">
-            <h4 className="text-small font-semibold text-ink">Where to keep it</h4>
-            {storage.isPending ? (
-              <Skeleton className="h-14" />
-            ) : storage.isError ? (
-              <ErrorState error={storage.error} onRetry={() => storage.refetch()} />
-            ) : (
-              <LocationPicker
-                label="Where to keep it"
-                locations={locations}
-                value={locationId}
-                onChange={setLocationId}
-                requiredBytes={requiredBytes}
-              />
-            )}
-            {!storage.isPending && !storage.isError && !locationId ? (
-              <Notice tone="warning" icon={<CircleAlert />}>
-                No connected storage location has room for {formatBytes(requiredBytes)}. Free some space, connect a drive, or choose less
-                detail.
-              </Notice>
-            ) : null}
-          </div>
-        ) : null}
+        <div ref={whereRef} className="grid scroll-mt-4 gap-2">
+          <h4 className="text-small font-semibold text-ink">Where to keep it</h4>
+          <DestinationPicker destination={destination} />
+          {includeTerrain ? <p className="text-small text-ink-muted">The terrain is kept in the same place as the map.</p> : null}
+        </div>
 
         {start.isError ? (
           <Notice tone="danger" icon={<CircleAlert />} title="The download did not start">
@@ -537,11 +526,22 @@ export function AddRegion({
           </Notice>
         ) : null}
       </div>
-      <footer className="flex flex-wrap items-center gap-2 border-t border-border px-4 py-3">
-        <Button variant="primary" onClick={download} disabled={!canDownload} loading={start.isPending}>
-          Download
-        </Button>
-        <Button onClick={onClose}>Cancel</Button>
+      <footer className="grid gap-2.5 border-t border-border px-4 py-3">
+        {/* Beside the button, so where it goes is in view when deciding, however far the list above is scrolled. */}
+        <DestinationLine
+          destination={destination}
+          onChange={() => {
+            whereRef.current?.scrollIntoView({ block: "nearest" });
+            whereRef.current?.querySelector<HTMLElement>('[role="radio"]:not([disabled])')?.focus({ preventScroll: true });
+          }}
+        />
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="primary" onClick={download} disabled={!canDownload} loading={start.isPending}>
+            Download
+          </Button>
+          <Button onClick={onClose}>Cancel</Button>
+          {!estimate.data && !estimate.isPending ? <span className="text-small text-ink-muted">Check the size first.</span> : null}
+        </div>
       </footer>
     </div>
   );

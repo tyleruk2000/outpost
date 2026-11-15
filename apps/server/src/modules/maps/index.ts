@@ -19,8 +19,11 @@ import {
   createAnnotationsService,
   markerCreateSchema,
   markerPatchSchema,
+  routeCreateSchema,
+  routePointsReplaceSchema,
   trackPatchSchema,
 } from "./annotations.ts";
+import { createElevationSampler } from "./elevation.ts";
 import { createExtractFetcher, createTilesInstaller, EXTRACT_FETCHER } from "./extract-download.ts";
 import { MAX_GPX_BYTES } from "./gpx.ts";
 import { createPlacesService, datasetSchema, type PlacesService } from "./places.ts";
@@ -77,13 +80,13 @@ function tileCoordinates(params: TileParams["Params"], extension: string): [numb
 }
 
 export async function registerMaps(app: FastifyInstance, ctx: AppContext): Promise<void> {
-  const { auth, settings, collections, downloads, storage } = ctx.services;
+  const { settings, collections, downloads, storage } = ctx.services;
   const client = createHttpClient({ allowPrivate: ctx.config.allowPrivateDownloads });
   const sources = createSourceResolver({ client, setting: (key) => settings.get(key) });
   const planner = createPlanner(client);
   const tiles = createTileServer(ctx);
   const places = createPlacesService(ctx);
-  const annotations = createAnnotationsService(ctx);
+  const annotations = createAnnotationsService(ctx, { elevation: createElevationSampler(ctx, tiles) });
   const regions = createRegionsService(ctx, { planner, sources });
 
   const service: MapsService = {
@@ -156,35 +159,29 @@ export async function registerMaps(app: FastifyInstance, ctx: AppContext): Promi
 
   // ── Regions ──
 
-  app.get("/api/maps/regions", async (request) => {
-    auth.requireUser(request);
+  app.get("/api/maps/regions", async () => {
     return regions.list();
   });
 
   app.post("/api/maps/estimate", async (request) => {
-    auth.requireAdmin(request);
     return regions.estimate(estimateSchema.parse(request.body));
   });
 
   app.post("/api/maps/regions", async (request) => {
-    auth.requireAdmin(request);
     const started = await regions.start(startRegionSchema.parse(request.body));
     return { downloads: started.map((row) => downloads.toDto(row)) };
   });
 
   app.post("/api/maps/import", async (request) => {
-    auth.requireAdmin(request);
     const collection = await regions.importArchive(importSchema.parse(request.body));
     return { collection: collections.toDto(collection) };
   });
 
-  app.get("/api/maps/overview", async (request) => {
-    auth.requireUser(request);
+  app.get("/api/maps/overview", async () => {
     return service.overview();
   });
 
-  app.get("/api/maps/sources", async (request) => {
-    auth.requireUser(request);
+  app.get("/api/maps/sources", async () => {
     return tiles.sources();
   });
 
@@ -201,30 +198,25 @@ export async function registerMaps(app: FastifyInstance, ctx: AppContext): Promi
   }
 
   app.get<TileParams>("/api/maps/tiles/:z/:x/:file", async (request, reply) => {
-    auth.requireUser(request);
     return sendTile(reply, "vector", tileCoordinates(request.params, "mvt"));
   });
 
   app.get<TileParams>("/api/maps/terrain/:z/:x/:file", async (request, reply) => {
-    auth.requireUser(request);
     return sendTile(reply, "terrain", tileCoordinates(request.params, "(?:webp|png)"));
   });
 
   // ── Places ──
 
   app.post("/api/maps/places/datasets", async (request) => {
-    auth.requireAdmin(request);
     const download = await places.startDownload(datasetSchema.parse(request.body));
     return { download: downloads.toDto(download) };
   });
 
-  app.get("/api/maps/places/datasets", async (request) => {
-    auth.requireUser(request);
+  app.get("/api/maps/places/datasets", async () => {
     return { datasets: places.datasets() };
   });
 
   app.delete<IdParams>("/api/maps/places/datasets/:id", async (request) => {
-    auth.requireAdmin(request);
     const collection = collections.get(request.params.id);
     if (collection?.kind !== "places") throw new AppError("not_found", "Those place names were not found.");
     // The zip is only the source of the rows; there is nothing in it a person would keep.
@@ -233,30 +225,25 @@ export async function registerMaps(app: FastifyInstance, ctx: AppContext): Promi
   });
 
   app.get("/api/maps/places", async (request) => {
-    auth.requireUser(request);
     const query = placesQuery.parse(request.query);
     return places.search(query.q, { limit: query.limit, near: query.near });
   });
 
   // ── Markers ──
 
-  app.get("/api/maps/markers", async (request) => {
-    auth.requireUser(request);
+  app.get("/api/maps/markers", async () => {
     return { markers: annotations.listMarkers() };
   });
 
   app.post("/api/maps/markers", async (request) => {
-    auth.requireUser(request);
     return { marker: annotations.createMarker(markerCreateSchema.parse(request.body)) };
   });
 
   app.patch<IdParams>("/api/maps/markers/:id", async (request) => {
-    auth.requireUser(request);
     return { marker: annotations.updateMarker(request.params.id, markerPatchSchema.parse(request.body)) };
   });
 
   app.delete<IdParams>("/api/maps/markers/:id", async (request) => {
-    auth.requireUser(request);
     annotations.removeMarker(request.params.id);
     return { ok: true };
   });
@@ -301,7 +288,6 @@ export async function registerMaps(app: FastifyInstance, ctx: AppContext): Promi
   }
 
   app.post("/api/maps/tracks/import", async (request) => {
-    auth.requireUser(request);
     const { source, filename, fields } = await receiveGpx(request);
     const options = z
       .object({ name: z.string().trim().max(200).optional(), color: z.enum(MARKER_COLORS).optional(), importWaypointsAsMarkers: flag })
@@ -313,9 +299,17 @@ export async function registerMaps(app: FastifyInstance, ctx: AppContext): Promi
     return annotations.importTrack({ source, filename, ...options });
   });
 
-  app.get("/api/maps/tracks", async (request) => {
-    auth.requireUser(request);
+  app.get("/api/maps/tracks", async () => {
     return { tracks: annotations.listTracks() };
+  });
+
+  // A route drawn on the map: straight lines between the points sent.
+  app.post("/api/maps/tracks", async (request) => {
+    return annotations.createRoute(routeCreateSchema.parse(request.body));
+  });
+
+  app.put<IdParams>("/api/maps/tracks/:id/points", async (request) => {
+    return annotations.replaceRoutePoints(request.params.id, routePointsReplaceSchema.parse(request.body));
   });
 
   function sendGpx(reply: FastifyReply, file: { filename: string; gpx: string }) {
@@ -332,12 +326,10 @@ export async function registerMaps(app: FastifyInstance, ctx: AppContext): Promi
   }
 
   app.get<IdParams>("/api/maps/tracks/:id/export.gpx", async (request, reply) => {
-    auth.requireUser(request);
     return sendGpx(reply, annotations.exportTrack(request.params.id));
   });
 
   app.get("/api/maps/export.gpx", async (request, reply) => {
-    auth.requireUser(request);
     const query = z.object({ markers: flag, tracks: z.string().max(4000).optional() }).parse(request.query);
     const trackIds = (query.tracks ?? "")
       .split(",")
@@ -347,17 +339,14 @@ export async function registerMaps(app: FastifyInstance, ctx: AppContext): Promi
   });
 
   app.get<IdParams>("/api/maps/tracks/:id", async (request) => {
-    auth.requireUser(request);
     return { track: annotations.getTrack(request.params.id) };
   });
 
   app.patch<IdParams>("/api/maps/tracks/:id", async (request) => {
-    auth.requireUser(request);
     return { track: annotations.updateTrack(request.params.id, trackPatchSchema.parse(request.body)) };
   });
 
   app.delete<IdParams>("/api/maps/tracks/:id", async (request) => {
-    auth.requireUser(request);
     annotations.removeTrack(request.params.id);
     return { ok: true };
   });

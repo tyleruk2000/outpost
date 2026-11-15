@@ -10,6 +10,8 @@ import type {
   MarkerDto,
   PlaceSearchResponse,
   PlacesDataset,
+  RoutePoint,
+  RouteSaveResponse,
   TrackDto,
   TrackImportResponse,
   TrackWithGeometryDto,
@@ -52,7 +54,7 @@ export const useTracks = () =>
 const trackQuery = (id: string) => ({
   queryKey: mapsKeys.track(id),
   queryFn: () => api.get<{ track: TrackWithGeometryDto }>(`/api/maps/tracks/${id}`).then((data) => data.track),
-  // Geometry is large and only changes when the track is deleted; renames arrive through the list.
+  // Geometry is large and only changes when the track's shape is edited or it is deleted; renames arrive through the list.
   staleTime: 5 * 60_000,
 });
 
@@ -139,6 +141,42 @@ export function useUpdateTrack() {
   });
 }
 
+export interface SaveRouteInput {
+  /** The saved route whose line is replaced; absent to save a new one. */
+  id?: string;
+  name: string;
+  color: MarkerColor;
+  points: RoutePoint[];
+}
+
+/**
+ * Saves a route drawn on the map: a new one, or a new shape for one that exists. The
+ * server works out its length and, where terrain is installed, its heights.
+ */
+export function useSaveRoute() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, name, color, points }: SaveRouteInput) =>
+      id
+        ? api.put<RouteSaveResponse>(`/api/maps/tracks/${id}/points`, { points })
+        : api.post<RouteSaveResponse>("/api/maps/tracks", { name, color, points }),
+    onSuccess: ({ track }) => {
+      client.setQueryData<{ tracks: TrackDto[] }>(mapsKeys.tracks, (current) =>
+        current
+          ? {
+              tracks: current.tracks.some((item) => item.id === track.id)
+                ? current.tracks.map((item) => (item.id === track.id ? track : item))
+                : [track, ...current.tracks],
+            }
+          : current,
+      );
+      // The line itself changed: what is cached for it is wrong, not merely old.
+      void client.invalidateQueries({ queryKey: mapsKeys.track(track.id) });
+      void client.invalidateQueries({ queryKey: ["maps"] });
+    },
+  });
+}
+
 export function useDeleteTrack() {
   const client = useQueryClient();
   return useMutation({
@@ -214,7 +252,10 @@ export function useRemoveRegion() {
   });
 }
 
-export type PlacesDatasetRequest = { dataset: "cities500" | "cities15000" } | { dataset: "country"; country: string };
+export type PlacesDatasetRequest = ({ dataset: "cities500" | "cities15000" } | { dataset: "country"; country: string }) & {
+  /** The storage location to download to; the default one when absent. */
+  locationId?: string;
+};
 
 export function useStartPlaces() {
   const client = useQueryClient();

@@ -1,14 +1,15 @@
 /**
- * Everything drawn on top of the basemap: saved places, tracks, the measuring line, the
- * download box, installed coverage, the person's position. This module describes the
+ * Everything drawn on top of the basemap: saved places, tracks, the route being drawn,
+ * the measuring line, the download box, installed coverage, the person's position. This module describes the
  * layers and turns app data into GeoJSON for them; the engine only hands the result to
  * MapLibre.
  */
-import type { Bbox, InstalledRegion, MarkerDto, TrackWithGeometryDto } from "@outpost/shared";
-import { bboxRing, circleRing, formatDistance, type LatLon } from "../lib/geo";
+import { type Bbox, haversineMeters, type InstalledRegion, type MarkerDto, type TrackWithGeometryDto } from "@outpost/shared";
+import { bboxRing, circleRing, formatDistance, type LatLon, metersPerPixel } from "../lib/geo";
 import { measure } from "../lib/measure";
 import { MARKER_HEX } from "../lib/palette";
 import { trackEnds, trackLines } from "../lib/profile";
+import { midpoints } from "../lib/route-edit";
 import { MAP_FONTS, type MapTheme } from "../lib/style";
 import type { LayerSpecification, SourceSpecification } from "../lib/style-types";
 
@@ -18,6 +19,7 @@ export const OVERLAY_SOURCES = [
   "o-tracks",
   "o-track-ends",
   "o-measure",
+  "o-draw",
   "o-location",
   "o-markers",
   "o-profile",
@@ -28,6 +30,9 @@ export const OVERLAY_LAYERS = {
   markers: "o-markers",
   tracks: "o-tracks-line",
   tracksHit: "o-tracks-hit",
+  drawPoints: "o-draw-points",
+  drawPointsSmall: "o-draw-points-small",
+  drawMiddles: "o-draw-middles",
 } as const;
 
 export interface FeatureCollection {
@@ -205,6 +210,68 @@ export function overlayLayers(theme: MapTheme): LayerSpecification[] {
       source: "o-profile",
       paint: { "circle-radius": 7, "circle-color": theme.page, "circle-stroke-color": theme.ink, "circle-stroke-width": 3 },
     },
+    // The route being drawn or reshaped, above everything else so that its points can always be
+    // taken hold of: its line, a handle in the middle of each leg, and the points themselves.
+    {
+      id: "o-draw-casing",
+      type: "line",
+      source: "o-draw",
+      filter: ["==", ["geometry-type"], "LineString"],
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: { "line-color": theme.page, "line-width": 7.5, "line-opacity": 0.9 },
+    },
+    {
+      id: "o-draw-line",
+      type: "line",
+      source: "o-draw",
+      filter: ["==", ["geometry-type"], "LineString"],
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: { "line-color": ["get", "color"], "line-width": 4 },
+    },
+    {
+      id: OVERLAY_LAYERS.drawMiddles,
+      type: "circle",
+      source: "o-draw",
+      // A handle is left out while its leg is too short on screen to hold one.
+      filter: ["all", ["==", ["get", "kind"], "middle"], [">=", ["zoom"], ["get", "minZoom"]]],
+      paint: {
+        "circle-radius": 4.5,
+        "circle-color": theme.page,
+        "circle-stroke-color": ["get", "color"],
+        "circle-stroke-width": 1.5,
+        "circle-opacity": 0.95,
+      },
+    },
+    // Points too close together on screen to be drawn whole (a recording, zoomed out) are drawn small,
+    // so the line stays readable. They can still be taken hold of, and grow when zoomed in.
+    {
+      id: OVERLAY_LAYERS.drawPointsSmall,
+      type: "circle",
+      source: "o-draw",
+      filter: ["all", ["==", ["get", "kind"], "point"], ["<", ["zoom"], ["get", "minZoom"]]],
+      paint: { "circle-radius": 3, "circle-color": theme.page, "circle-stroke-color": ["get", "color"], "circle-stroke-width": 1.5 },
+    },
+    {
+      id: OVERLAY_LAYERS.drawPoints,
+      type: "circle",
+      source: "o-draw",
+      filter: ["all", ["==", ["get", "kind"], "point"], [">=", ["zoom"], ["get", "minZoom"]]],
+      paint: {
+        // The chosen point is larger and ringed in ink; the first is solid, as a route's start is.
+        "circle-radius": ["case", ["get", "selected"], 9, 7],
+        "circle-color": ["case", ["get", "first"], ["get", "color"], theme.page],
+        "circle-stroke-color": ["case", ["get", "selected"], theme.ink, ["get", "first"], theme.page, ["get", "color"]],
+        "circle-stroke-width": ["case", ["get", "selected"], 3.5, 3],
+      },
+    },
+    {
+      id: "o-draw-label",
+      type: "symbol",
+      source: "o-draw",
+      filter: ["all", ["==", ["get", "kind"], "point"], ["has", "label"]],
+      layout: { ...label, "text-field": ["get", "label"], "text-anchor": "bottom", "text-offset": [0, -1], "text-optional": true },
+      paint: halo,
+    },
   ];
 }
 
@@ -270,6 +337,77 @@ export function measureData(points: LatLon[]): FeatureCollection {
       properties: {},
       geometry: { type: "LineString", coordinates: points.map((position) => [position.lon, position.lat]) },
     });
+  return { type: "FeatureCollection", features };
+}
+
+/** A mid-leg handle needs about this much of its leg on screen, or it crowds the points at either end. */
+const MIDDLE_MIN_LEG_PIXELS = 44;
+/** Points closer together on screen than this are drawn small. */
+const POINT_MIN_GAP_PIXELS = 17;
+
+/** The lowest whole zoom at which two positions are at least `pixels` apart on screen. */
+function zoomWhereApart(from: LatLon, to: LatLon, pixels: number): number {
+  const meters = haversineMeters(from.lat, from.lon, to.lat, to.lon);
+  if (meters <= 0) return 99;
+  return Math.max(0, Math.ceil(Math.log2((pixels * metersPerPixel((from.lat + to.lat) / 2, 0)) / meters)));
+}
+
+/** The lowest whole zoom at which a leg is long enough on screen to show the handle in its middle. */
+export function middleMinZoom(from: LatLon, to: LatLon): number {
+  return zoomWhereApart(from, to, MIDDLE_MIN_LEG_PIXELS);
+}
+
+export interface DrawState {
+  points: LatLon[];
+  /** Hex colour of the line. */
+  color: string;
+  /** The point chosen for removal or adjustment, if any. */
+  selected: number | null;
+}
+
+/**
+ * The route being drawn: its line, each point (numbered by `index`, so a press can be
+ * traced back to it), a handle in the middle of each leg, and the length so far written
+ * at the last point.
+ */
+export function drawData(state: DrawState | null): FeatureCollection {
+  if (!state || state.points.length === 0) return EMPTY;
+  const { points, color } = state;
+  const features: FeatureCollection["features"] = [];
+  if (points.length > 1) {
+    features.push({
+      type: "Feature",
+      properties: { kind: "line", color },
+      geometry: { type: "LineString", coordinates: points.map((position) => [position.lon, position.lat]) },
+    });
+    midpoints(points).forEach((position, index) => {
+      features.push({
+        type: "Feature",
+        // `index` is where a point added here would go in the line.
+        properties: { kind: "middle", index: index + 1, color, minZoom: middleMinZoom(points[index]!, points[index + 1]!) },
+        geometry: point(position.lon, position.lat),
+      });
+    });
+  }
+  const total = measure(points).totalMeters;
+  points.forEach((position, index) => {
+    const ends = index === 0 || index === points.length - 1;
+    const neighbours = [points[index - 1], points[index + 1]].filter((neighbour) => neighbour !== undefined);
+    const properties: Record<string, string | number | boolean> = {
+      kind: "point",
+      index,
+      color,
+      first: index === 0,
+      selected: index === state.selected,
+      // The ends and the chosen point are always drawn whole; the rest once there is room for them.
+      minZoom:
+        ends || index === state.selected
+          ? 0
+          : Math.max(...neighbours.map((neighbour) => zoomWhereApart(position, neighbour, POINT_MIN_GAP_PIXELS))),
+    };
+    if (index === points.length - 1 && index > 0) properties.label = formatDistance(total);
+    features.push({ type: "Feature", properties, geometry: point(position.lon, position.lat) });
+  });
   return { type: "FeatureCollection", features };
 }
 

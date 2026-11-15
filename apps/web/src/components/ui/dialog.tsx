@@ -70,6 +70,7 @@ export function ConfirmDialog({
   title,
   description,
   confirmLabel,
+  cancelLabel = "Cancel",
   confirmVariant = "danger",
   onConfirm,
   loading,
@@ -80,6 +81,8 @@ export function ConfirmDialog({
   title: ReactNode;
   description: ReactNode;
   confirmLabel: string;
+  /** What staying put is called here, when "Cancel" would be ambiguous: "Keep drawing". */
+  cancelLabel?: string;
   confirmVariant?: ButtonProps["variant"];
   onConfirm: () => void;
   loading?: boolean;
@@ -99,7 +102,7 @@ export function ConfirmDialog({
           </div>
           <footer className="flex flex-wrap justify-end gap-2 border-t border-border px-5 py-3.5">
             <AlertPrimitive.Cancel asChild>
-              <Button variant="secondary">Cancel</Button>
+              <Button variant="secondary">{cancelLabel}</Button>
             </AlertPrimitive.Cancel>
             <Button variant={confirmVariant} loading={loading} onClick={onConfirm}>
               {confirmLabel}

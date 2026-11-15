@@ -78,4 +78,9 @@ export const STORAGE_KEYS = {
   hillshade: "outpost.maps.hillshade",
   panel: "outpost.maps.panel",
   firstUseDismissed: "outpost.maps.firstUseDismissed",
+  /** The storage location the last map download went to. */
+  downloadLocation: "outpost.maps.downloadLocation",
 } as const;
+
+/** Kept for this tab only: a route that was being drawn when the screen was left or reloaded. */
+export const ROUTE_DRAFT_KEY = "outpost.maps.routeDraft";

@@ -31,11 +31,12 @@ import { formatBuild } from "../lib/tracks";
 import type { MapEngine } from "../map/engine";
 import { PanelHeading } from "../ui";
 import { AddRegion, detailLabel } from "./add-region";
+import { DestinationPicker, useDestination } from "./destination";
 
 /** What the panel was opened to do, when it was opened from elsewhere on the screen. */
 export type OfflineIntent = { type: "add"; presetId?: string } | { type: "places" } | null;
 
-function ActiveDownloads({ downloads, canManage }: { downloads: DownloadDto[]; canManage: boolean }) {
+function ActiveDownloads({ downloads }: { downloads: DownloadDto[] }) {
   if (downloads.length === 0) return null;
   return (
     <ul className="divide-y divide-border border-y border-border" aria-label="Downloads in progress">
@@ -45,14 +46,14 @@ function ActiveDownloads({ downloads, canManage }: { downloads: DownloadDto[]; c
             <p className="min-w-0 text-small font-medium text-ink">{download.title}</p>
           </div>
           <DownloadProgress download={download} className="mt-2" />
-          {canManage ? <DownloadControls download={download} className="mt-1 -ml-2" /> : null}
+          <DownloadControls download={download} className="mt-1 -ml-2" />
         </li>
       ))}
     </ul>
   );
 }
 
-function RegionRow({ region, canManage, onShow }: { region: InstalledRegion; canManage: boolean; onShow: (() => void) | undefined }) {
+function RegionRow({ region, onShow }: { region: InstalledRegion; onShow: (() => void) | undefined }) {
   const [removing, setRemoving] = useState(false);
   const [choice, setChoice] = useState<"delete" | "keep">();
   const [needsChoice, setNeedsChoice] = useState(false);
@@ -100,21 +101,17 @@ function RegionRow({ region, canManage, onShow }: { region: InstalledRegion; can
             <MenuItem disabled={!onShow} onSelect={() => onShow?.()}>
               <Scan /> Show on map
             </MenuItem>
-            {canManage ? (
-              <>
-                <MenuSeparator />
-                <MenuItem
-                  danger
-                  onSelect={() => {
-                    setChoice(undefined);
-                    setNeedsChoice(false);
-                    setRemoving(true);
-                  }}
-                >
-                  <Trash2 /> Remove
-                </MenuItem>
-              </>
-            ) : null}
+            <MenuSeparator />
+            <MenuItem
+              danger
+              onSelect={() => {
+                setChoice(undefined);
+                setNeedsChoice(false);
+                setRemoving(true);
+              }}
+            >
+              <Trash2 /> Remove
+            </MenuItem>
           </MenuContent>
         </Menu>
       </div>
@@ -175,21 +172,33 @@ function RegionRow({ region, canManage, onShow }: { region: InstalledRegion; can
   );
 }
 
+const MB = 1024 * 1024;
+/** `bytes` is roughly what the download takes, to rule out a location with no room; a country's size is not known beforehand. */
 const DATASET_CHOICES = [
-  { value: "cities500", title: "Towns and cities of the world", detail: "Every place with more than 500 people", trailing: "about 13 MB" },
-  { value: "cities15000", title: "Larger towns and cities only", detail: "Places with more than 15,000 people", trailing: "about 3 MB" },
-  { value: "country", title: "One country in full", detail: "Villages, hills, lakes, passes and other named features" },
+  {
+    value: "cities500",
+    title: "Towns and cities of the world",
+    detail: "Every place with more than 500 people",
+    trailing: "about 13 MB",
+    bytes: 13 * MB,
+  },
+  {
+    value: "cities15000",
+    title: "Larger towns and cities only",
+    detail: "Places with more than 15,000 people",
+    trailing: "about 3 MB",
+    bytes: 3 * MB,
+  },
+  { value: "country", title: "One country in full", detail: "Villages, hills, lakes, passes and other named features", bytes: null },
 ] as const;
 
 function PlaceNames({
   datasets,
   downloads,
-  canManage,
   sectionRef,
 }: {
   datasets: PlacesDataset[];
   downloads: DownloadDto[];
-  canManage: boolean;
   sectionRef: React.RefObject<HTMLElement | null>;
 }) {
   const [choice, setChoice] = useState<(typeof DATASET_CHOICES)[number]["value"]>();
@@ -197,6 +206,7 @@ function PlaceNames({
   const [removing, setRemoving] = useState<PlacesDataset>();
   const start = useStartPlaces();
   const remove = useRemovePlaces();
+  const destination = useDestination(DATASET_CHOICES.find((item) => item.value === choice)?.bytes ?? null);
   // The country list comes from the outline map's own file: no connection needed to choose.
   const countries = useQuery({
     queryKey: ["maps", "countries"],
@@ -212,8 +222,10 @@ function PlaceNames({
     staleTime: Number.POSITIVE_INFINITY,
   });
 
-  const request: PlacesDatasetRequest | null =
+  const dataset: PlacesDatasetRequest | null =
     choice === "country" ? (country ? { dataset: "country", country } : null) : choice ? { dataset: choice } : null;
+  const request: PlacesDatasetRequest | null =
+    dataset && destination.locationId ? { ...dataset, locationId: destination.locationId } : null;
 
   return (
     <section ref={sectionRef} className="scroll-mt-4" aria-label="Place names">
@@ -241,11 +253,9 @@ function PlaceNames({
                   {plural(dataset.count, "place")}, {formatBytes(dataset.sizeBytes)}
                 </p>
               </div>
-              {canManage ? (
-                <Button variant="ghost" size="icon-sm" aria-label={`Remove ${dataset.name}`} onClick={() => setRemoving(dataset)}>
-                  <Trash2 />
-                </Button>
-              ) : null}
+              <Button variant="ghost" size="icon-sm" aria-label={`Remove ${dataset.name}`} onClick={() => setRemoving(dataset)}>
+                <Trash2 />
+              </Button>
             </li>
           ))}
         </ul>
@@ -255,38 +265,57 @@ function PlaceNames({
 
       {downloads.length > 0 ? (
         <div className="mt-3">
-          <ActiveDownloads downloads={downloads} canManage={canManage} />
+          <ActiveDownloads downloads={downloads} />
         </div>
       ) : null}
 
-      {canManage ? (
-        <div className="mt-4 grid gap-3">
-          <h4 className="text-small font-semibold text-ink">Add place names</h4>
-          <ChoiceList label="Add place names" value={choice} onChange={setChoice} choices={DATASET_CHOICES.map((item) => ({ ...item }))} />
-          {choice === "country" ? (
-            countries.isError ? (
-              <ErrorState error={countries.error} onRetry={() => countries.refetch()} />
-            ) : (
-              <Select
-                aria-label="Country"
-                placeholder={countries.isPending ? "Reading the list of countries" : "Choose a country"}
-                value={country}
-                onChange={setCountry}
-                options={countries.data ?? []}
-                disabled={countries.isPending}
-              />
-            )
-          ) : null}
-          <Button
-            className="justify-self-start"
-            disabled={!request}
-            loading={start.isPending}
-            onClick={() => request && start.mutate(request, { onSuccess: () => setChoice(undefined) })}
-          >
-            Download place names
-          </Button>
-        </div>
-      ) : null}
+      <div className="mt-4 grid gap-3">
+        <h4 className="text-small font-semibold text-ink">Add place names</h4>
+        <ChoiceList
+          label="Add place names"
+          value={choice}
+          onChange={setChoice}
+          choices={DATASET_CHOICES.map(({ bytes: _bytes, ...item }) => ({ ...item }))}
+        />
+        {choice === "country" ? (
+          countries.isError ? (
+            <ErrorState error={countries.error} onRetry={() => countries.refetch()} />
+          ) : (
+            <Select
+              aria-label="Country"
+              placeholder={countries.isPending ? "Reading the list of countries" : "Choose a country"}
+              value={country}
+              onChange={setCountry}
+              options={countries.data ?? []}
+              disabled={countries.isPending}
+            />
+          )
+        ) : null}
+        {/* Asked once something is chosen, directly above the button that starts the download. */}
+        {choice ? (
+          <div className="grid gap-2">
+            <h5 className="text-small font-semibold text-ink">Where to keep them</h5>
+            <DestinationPicker destination={destination} label="Where to keep the place names" approximate />
+          </div>
+        ) : null}
+        <Button
+          className="justify-self-start"
+          disabled={!request}
+          loading={start.isPending}
+          onClick={() =>
+            request &&
+            start.mutate(request, {
+              onSuccess: () => {
+                destination.remember();
+                toast.success(`Downloading place names to ${destination.location?.name ?? "the chosen location"}.`);
+                setChoice(undefined);
+              },
+            })
+          }
+        >
+          Download place names
+        </Button>
+      </div>
 
       <ConfirmDialog
         open={Boolean(removing)}
@@ -304,18 +333,19 @@ function PlaceNames({
 export function OfflinePanel({
   overview,
   engine,
-  canManage,
   intent,
   onIntentHandled,
   onNeedMap,
+  onNeedRoom,
 }: {
   overview: UseQueryResult<MapOverview>;
   engine: MapEngine | null;
-  /** Administrators download and remove; members see what is installed. */
-  canManage: boolean;
   intent: OfflineIntent;
   onIntentHandled: () => void;
+  /** Asks the screen to uncover the map (on a phone, lowers the sheet). */
   onNeedMap: () => void;
+  /** Asks the screen for as much room as it can give (on a phone, raises the sheet). */
+  onNeedRoom: () => void;
 }) {
   const downloads = useDownloads();
   const [adding, setAdding] = useState<{ presetId?: string } | null>(null);
@@ -323,17 +353,25 @@ export function OfflinePanel({
 
   useEffect(() => {
     if (!intent) return;
-    if (intent.type === "add" && canManage) setAdding({ presetId: intent.presetId });
+    if (intent.type === "add") setAdding({ presetId: intent.presetId });
     if (intent.type === "places") {
       setAdding(null);
       // After the list has rendered: the section may not exist on the first pass.
       window.setTimeout(() => placesRef.current?.scrollIntoView({ block: "start" }), 0);
     }
     onIntentHandled();
-  }, [intent, canManage, onIntentHandled]);
+  }, [intent, onIntentHandled]);
 
-  if (adding && canManage) {
-    return <AddRegion engine={engine} initialPresetId={adding.presetId} onClose={() => setAdding(null)} onNeedMap={onNeedMap} />;
+  if (adding) {
+    return (
+      <AddRegion
+        engine={engine}
+        initialPresetId={adding.presetId}
+        onClose={() => setAdding(null)}
+        onNeedMap={onNeedMap}
+        onNeedRoom={onNeedRoom}
+      />
+    );
   }
 
   if (overview.isPending) {
@@ -366,7 +404,7 @@ export function OfflinePanel({
       <section aria-label="Maps on this device">
         <PanelHeading
           actions={
-            canManage && (regions.length > 0 || mapDownloads.length > 0) ? (
+            regions.length > 0 || mapDownloads.length > 0 ? (
               <Button size="sm" onClick={() => setAdding({})}>
                 <Plus /> Add a region
               </Button>
@@ -389,24 +427,18 @@ export function OfflinePanel({
               No detailed maps yet. Outpost draws coastlines and borders until a region is downloaded. Maps are downloaded one region at a
               time, so you keep only the areas you need, and they then work with no connection.
             </p>
-            {canManage ? (
-              <div className="mt-4 flex flex-wrap gap-2">
-                <Button variant="primary" onClick={() => setAdding({ presetId: "world" })}>
-                  World overview (about 45 MB)
-                </Button>
-                <Button onClick={() => setAdding({})}>Choose a region</Button>
-              </div>
-            ) : (
-              <p className="mt-3 text-small text-ink-muted">
-                Only an administrator can download maps. Ask whoever looks after this Outpost.
-              </p>
-            )}
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Button variant="primary" onClick={() => setAdding({ presetId: "world" })}>
+                World overview (about 45 MB)
+              </Button>
+              <Button onClick={() => setAdding({})}>Choose a region</Button>
+            </div>
           </div>
         ) : (
           <>
             {mapDownloads.length > 0 ? (
               <div className="mt-2">
-                <ActiveDownloads downloads={mapDownloads} canManage={canManage} />
+                <ActiveDownloads downloads={mapDownloads} />
                 <p className="mt-2 text-micro text-ink-muted">
                   Also listed under{" "}
                   <Link to="/downloads" className="text-primary underline decoration-1 underline-offset-2">
@@ -422,18 +454,16 @@ export function OfflinePanel({
                   <RegionRow
                     key={region.id}
                     region={region}
-                    canManage={canManage}
                     onShow={engine ? () => engine.fitBounds(region.bounds, { maxZoom: Math.max(4, region.maxZoom - 1) }) : undefined}
                   />
                 ))}
               </ul>
             ) : null}
-            {!canManage ? <p className="mt-3 text-small text-ink-muted">Only an administrator can download or remove maps.</p> : null}
           </>
         )}
       </section>
 
-      <PlaceNames datasets={places} downloads={placeDownloads} canManage={canManage} sectionRef={placesRef} />
+      <PlaceNames datasets={places} downloads={placeDownloads} sectionRef={placesRef} />
     </div>
   );
 }

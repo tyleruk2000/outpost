@@ -14,11 +14,19 @@ export interface TrackFact {
   value: string;
 }
 
-/** The facts shown for one track: distance with miles, ascent (or its absence, said plainly), points. */
-export function trackFacts(track: Pick<TrackDto, "distanceMeters" | "ascentMeters" | "pointCount">): TrackFact[] {
+/**
+ * The facts shown for one track: distance with miles, ascent (or its absence, said
+ * plainly), points. A drawn route has no file to lack heights: it lacks them because no
+ * terrain is installed where it runs.
+ */
+export function trackFacts(
+  track: Pick<TrackDto, "distanceMeters" | "ascentMeters" | "pointCount">,
+  options: { drawn?: boolean } = {},
+): TrackFact[] {
+  const noHeights = options.drawn ? "Not known: no terrain installed here" : "No heights in this file";
   return [
     { label: "Distance", value: formatDistanceWithMiles(track.distanceMeters) },
-    { label: "Ascent", value: track.ascentMeters === null ? "No heights in this file" : formatHeight(track.ascentMeters) },
+    { label: "Ascent", value: track.ascentMeters === null ? noHeights : formatHeight(track.ascentMeters) },
     { label: "Points", value: plural(track.pointCount, "point") },
   ];
 }

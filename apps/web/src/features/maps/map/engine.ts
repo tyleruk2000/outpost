@@ -21,10 +21,22 @@ import {
 // Served from Outpost's own origin, as the content security policy requires.
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
 import { type BoxResult, boxFromCorners, type LatLon, wrapLongitude } from "../lib/geo";
+import { midpoints } from "../lib/route-edit";
 import { buildStyle, countryLabelPoints, SOURCE_IDS, type StyleInput } from "../lib/style";
 import { createTileLoader, TILE_PROTOCOL } from "../lib/tiles";
 import type { CameraView } from "../lib/view";
-import { boxData, EMPTY, type FeatureCollection, OVERLAY_LAYERS, type OverlaySource, overlayLayers, overlaySources } from "./overlays";
+import {
+  boxData,
+  type DrawState,
+  drawData,
+  EMPTY,
+  type FeatureCollection,
+  middleMinZoom,
+  OVERLAY_LAYERS,
+  type OverlaySource,
+  overlayLayers,
+  overlaySources,
+} from "./overlays";
 
 setWorkerUrl(workerUrl);
 addProtocol(
@@ -63,12 +75,36 @@ export interface MapEvents {
   pindrag: LatLon;
   /** The download box was drawn or one of its corners moved. */
   box: BoxResult;
+  /** A point of the route being drawn was pressed and let go without being moved. */
+  routepoint: { index: number };
+  /** A point of the route being drawn was dragged somewhere new. */
+  routemove: { index: number; position: LatLon };
+  /** The handle in the middle of a leg was dragged or pressed: a new point there, to become number `index`. */
+  routeinsert: { index: number; position: LatLon };
   /** A map tile or data file could not be loaded. */
   loaderror: string;
   idle: undefined;
 }
 
 type Listener<K extends keyof MapEvents> = (payload: MapEvents[K]) => void;
+
+/** A point or a mid-leg handle of the route being drawn, while it is held. */
+interface HeldHandle {
+  kind: "point" | "middle";
+  index: number;
+  /** Where on screen it was taken hold of. */
+  start: { x: number; y: number };
+  position: LatLon;
+  /** False until it has been dragged far enough to mean it. */
+  moved: boolean;
+}
+
+const MAP_LABEL = "Map. Arrow keys pan, plus and minus zoom.";
+const MAP_LABEL_DRAWING = `${MAP_LABEL} Enter adds a point of the route at the centre.`;
+
+/** How near a press must be to a point of the route to take hold of it, in pixels. */
+const HANDLE_REACH_MOUSE = 9;
+const HANDLE_REACH_TOUCH = 22;
 
 export interface PinState {
   position: LatLon;
@@ -105,6 +141,10 @@ export class MapEngine {
   private rotated = false;
   private longPress: number | undefined;
   private lastContextAt = 0;
+  private route: DrawState | null = null;
+  private held: HeldHandle | undefined;
+  private ignoreClickUntil = 0;
+  private baseCursor: "" | "crosshair" = "";
   private readonly abort = new AbortController();
   private destroyed = false;
 
@@ -187,12 +227,15 @@ export class MapEngine {
 
     map.on("mousemove", (event) => {
       if (this.drawStart) this.updateDraw(lngLatOf(event.lngLat));
+      if (this.held) this.dragHandle(event.point, lngLatOf(event.lngLat));
+      else if (this.route) this.showHandleCursor(event.point);
       this.emit("pointer", lngLatOf(event.lngLat));
     });
     map.on("mouseout", () => this.emit("pointer", null));
 
     map.on("click", (event) => {
-      if (this.drawing) return;
+      // The press that let go of a route point is not also a press on the map.
+      if (this.drawing || performance.now() < this.ignoreClickUntil) return;
       this.emit("click", {
         position: lngLatOf(event.lngLat),
         point: { x: event.point.x, y: event.point.y },
@@ -206,11 +249,22 @@ export class MapEngine {
 
     // Drawing the download box: press, drag, release. Panning is switched off while the tool is armed.
     map.on("mousedown", (event: MapMouseEvent) => {
-      if (!this.drawing || event.originalEvent.button !== 0) return;
+      if (event.originalEvent.button !== 0) return;
+      if (this.drawing) {
+        event.preventDefault();
+        this.drawStart = lngLatOf(event.lngLat);
+        return;
+      }
+      // Taking hold of a point of the route being drawn: the map stays still while it is dragged.
+      const handle = this.handleAt(event.point, HANDLE_REACH_MOUSE);
+      if (!handle) return;
       event.preventDefault();
-      this.drawStart = lngLatOf(event.lngLat);
+      this.holdHandle(handle, event.point);
     });
-    map.on("mouseup", (event) => this.finishDraw(lngLatOf(event.lngLat)));
+    map.on("mouseup", (event) => {
+      this.finishDraw(lngLatOf(event.lngLat));
+      this.releaseHandle();
+    });
 
     map.on("touchstart", (event: MapTouchEvent) => {
       this.cancelLongPress();
@@ -218,6 +272,12 @@ export class MapEngine {
       if (this.drawing) {
         event.preventDefault();
         this.drawStart = lngLatOf(event.lngLat);
+        return;
+      }
+      const handle = this.handleAt(event.point, HANDLE_REACH_TOUCH);
+      if (handle) {
+        event.preventDefault();
+        this.holdHandle(handle, event.point);
         return;
       }
       const position = lngLatOf(event.lngLat);
@@ -231,18 +291,25 @@ export class MapEngine {
     map.on("touchmove", (event) => {
       this.cancelLongPress();
       if (this.drawStart && event.points.length === 1) this.updateDraw(lngLatOf(event.lngLat));
+      if (this.held) {
+        // A second finger means a pinch: let go without moving anything.
+        if (event.points.length === 1) this.dragHandle(event.point, lngLatOf(event.lngLat));
+        else this.dropHandle();
+      }
     });
     map.on("touchend", (event) => {
       this.cancelLongPress();
       this.finishDraw(lngLatOf(event.lngLat));
+      this.releaseHandle();
     });
     map.on("touchcancel", () => {
       this.cancelLongPress();
       this.drawStart = undefined;
+      this.dropHandle();
     });
 
     // The canvas hears the keyboard; MapLibre's handler pans and zooms from it.
-    map.getCanvas().setAttribute("aria-label", "Map. Arrow keys pan, plus and minus zoom.");
+    map.getCanvas().setAttribute("aria-label", MAP_LABEL);
   }
 
   private emitContext(position: LatLon, point: { x: number; y: number }): void {
@@ -394,7 +461,106 @@ export class MapEngine {
   }
 
   setCursor(cursor: "" | "crosshair"): void {
+    this.baseCursor = cursor;
     this.map.getCanvas().style.cursor = cursor;
+  }
+
+  // ── The route being drawn ──
+
+  /**
+   * Shows the route being drawn or reshaped, or clears it. While one is shown, its
+   * points can be dragged, the handle in the middle of each leg adds a point there, and
+   * what the person did is reported as `routepoint`, `routemove` and `routeinsert`.
+   * Presses on the map itself still arrive as `click`.
+   */
+  setRoute(state: DrawState | null): void {
+    const was = this.route !== null;
+    this.route = state;
+    if (!state) this.dropHandle();
+    if (!this.held) this.setOverlay("o-draw", drawData(state));
+    if (was === (state !== null)) return;
+    this.map.getCanvas().setAttribute("aria-label", state ? MAP_LABEL_DRAWING : MAP_LABEL);
+    // Two quick points close together must not zoom the map.
+    if (state) this.map.doubleClickZoom.disable();
+    else {
+      this.map.doubleClickZoom.enable();
+      this.map.getCanvas().style.cursor = this.baseCursor;
+    }
+  }
+
+  /** The point or mid-leg handle of the route under a place on screen, a point winning over a handle. */
+  private handleAt(at: { x: number; y: number }, reach: number): Pick<HeldHandle, "kind" | "index" | "position"> | null {
+    const route = this.route;
+    if (!route || route.points.length === 0) return null;
+    let best: Pick<HeldHandle, "kind" | "index" | "position"> | null = null;
+    let nearest = reach;
+    const consider = (kind: HeldHandle["kind"], index: number, position: LatLon, handicap: number) => {
+      const point = this.map.project([position.lon, position.lat]);
+      const distance = Math.hypot(point.x - at.x, point.y - at.y);
+      if (distance <= reach && distance + handicap < nearest) {
+        nearest = distance + handicap;
+        best = { kind, index, position };
+      }
+    };
+    route.points.forEach((position, index) => {
+      consider("point", index, position, 0);
+    });
+    const zoom = Math.floor(this.map.getZoom());
+    midpoints(route.points).forEach((position, index) => {
+      // Hidden while its leg is too short on screen to hold one: the same rule the layer draws by.
+      if (zoom >= middleMinZoom(route.points[index]!, route.points[index + 1]!)) consider("middle", index + 1, position, reach / 2);
+    });
+    return best;
+  }
+
+  private showHandleCursor(at: { x: number; y: number }): void {
+    const handle = this.handleAt(at, HANDLE_REACH_MOUSE);
+    this.map.getCanvas().style.cursor = handle ? (handle.kind === "point" ? "move" : "copy") : this.baseCursor;
+  }
+
+  private holdHandle(handle: Pick<HeldHandle, "kind" | "index" | "position">, at: { x: number; y: number }): void {
+    this.cancelLongPress();
+    this.held = { ...handle, start: { x: at.x, y: at.y }, moved: false };
+    // The pointer may be let go outside the map, where the map's own events do not reach.
+    window.addEventListener("mouseup", this.releaseHandle);
+  }
+
+  private dragHandle(at: { x: number; y: number }, position: LatLon): void {
+    const held = this.held;
+    const route = this.route;
+    if (!held || !route) return;
+    if (!held.moved && Math.hypot(at.x - held.start.x, at.y - held.start.y) < 4) return;
+    held.moved = true;
+    held.position = position;
+    const points =
+      held.kind === "point"
+        ? route.points.map((point, index) => (index === held.index ? position : point))
+        : [...route.points.slice(0, held.index), position, ...route.points.slice(held.index)];
+    this.setOverlay("o-draw", drawData({ ...route, points, selected: held.index }));
+    this.map.getCanvas().style.cursor = "grabbing";
+  }
+
+  /** Lets go of the held handle and reports what was done with it. */
+  private readonly releaseHandle = (): void => {
+    const held = this.held;
+    if (!held) return;
+    this.endHold();
+    this.ignoreClickUntil = performance.now() + 350;
+    if (held.kind === "middle") this.emit("routeinsert", { index: held.index, position: held.position });
+    else if (held.moved) this.emit("routemove", { index: held.index, position: held.position });
+    else this.emit("routepoint", { index: held.index });
+  };
+
+  /** Lets go of the held handle as if it had never been touched. */
+  private dropHandle(): void {
+    if (this.held) this.endHold();
+  }
+
+  private endHold(): void {
+    this.held = undefined;
+    window.removeEventListener("mouseup", this.releaseHandle);
+    this.setOverlay("o-draw", drawData(this.route));
+    this.map.getCanvas().style.cursor = this.baseCursor;
   }
 
   // ── The pin: a search result, a place about to be saved, or the place being edited ──
@@ -494,6 +660,7 @@ export class MapEngine {
     this.destroyed = true;
     this.abort.abort();
     this.cancelLongPress();
+    window.removeEventListener("mouseup", this.releaseHandle);
     this.listeners.clear();
     this.pin?.remove();
     for (const handle of this.boxHandles) handle.remove();

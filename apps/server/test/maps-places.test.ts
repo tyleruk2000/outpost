@@ -409,6 +409,36 @@ describe("installing a places dataset", () => {
     await expect(local.startDownload({ dataset: "country", country: "GB" })).rejects.toThrow(/already installed/);
   });
 
+  it("keeps the download on the storage location that was chosen, and refuses one that is not there", async () => {
+    server = await serveBytes(datasetZip("GB"), { etag: '"geonames"' });
+    const local = createPlacesService(app.ctx, { baseUrl: server.url.replace("planet.pmtiles", "") });
+    const added = await app.api("POST", "/api/storage/locations", {
+      name: "Field SSD",
+      path: path.join(app.dir, "storage", "ssd"),
+      kind: "external",
+    });
+    expect(added.status).toBe(200);
+    const ssd = added.body.location as { id: string; path: string };
+    expect(ssd.id).not.toBe(app.ctx.services.storage.getDefault().id);
+
+    const download = await local.startDownload({ dataset: "country", country: "GB", locationId: ssd.id });
+    expect(download.locationId).toBe(ssd.id);
+    await app.ctx.jobs.whenIdle();
+    const finished = app.ctx.services.downloads.get(download.id)!;
+    expect(finished).toMatchObject({ state: "completed", error: null });
+    // The file is on the chosen drive and nowhere else.
+    expect(app.ctx.services.collections.get(finished.collectionId!)).toMatchObject({ kind: "places", locationId: ssd.id });
+    expect(fs.existsSync(path.join(ssd.path, "collections/places/GB.zip"))).toBe(true);
+    expect(fs.existsSync(path.join(app.ctx.services.storage.getDefault().path, "collections/places/GB.zip"))).toBe(false);
+
+    // Through the API the choice is checked before anything is asked of the internet.
+    const nowhere = await app.api("POST", "/api/maps/places/datasets", { dataset: "cities15000", locationId: "no-such-location" });
+    expect(nowhere.status).toBe(404);
+    const empty = await app.api("POST", "/api/maps/places/datasets", { dataset: "cities15000", locationId: "" });
+    expect(empty.status).toBe(400);
+    expect(app.ctx.services.downloads.list().filter((row) => row.state !== "completed")).toEqual([]);
+  });
+
   it("validates what is asked for before anything is fetched", async () => {
     for (const [payload, message] of [
       [{ dataset: "everything" }, /dataset/],

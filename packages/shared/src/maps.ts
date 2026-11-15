@@ -177,6 +177,52 @@ export interface TrackImportResponse {
   markers: MarkerDto[];
 }
 
+/** The most points a route drawn or edited by hand may have. */
+export const MAX_ROUTE_POINTS = 2000;
+
+/** One point placed on the map. A drawn route is straight lines between these, in order. */
+export interface RoutePoint {
+  lat: number;
+  lon: number;
+}
+
+/**
+ * Where a drawn route's heights came from: the installed terrain for all of it
+ * ("terrain"), for only part of it ("partial"), or nowhere, because no terrain is
+ * installed for the area ("none"). Nothing is ever downloaded to find heights.
+ */
+export type RouteElevation = "terrain" | "partial" | "none";
+
+/** `POST /api/maps/tracks`: a route made by placing points. */
+export interface RouteCreateRequest {
+  name: string;
+  description?: string;
+  color?: MarkerColor;
+  points: RoutePoint[];
+}
+
+/** `PUT /api/maps/tracks/:id/points`: replaces the line of a route; its waypoints are kept. */
+export interface RoutePointsRequest {
+  points: RoutePoint[];
+}
+
+export interface RouteSaveResponse {
+  track: TrackDto;
+  elevation: RouteElevation;
+}
+
+/**
+ * What the line of a drawn route carries in its GeoJSON properties, beside the usual
+ * name. `_profile` is the line sampled every few tens of metres with a height at each
+ * sample ([longitude, latitude, metres]; the height is left off where none is known),
+ * so the elevation profile shows the ground between the points, not just at them.
+ */
+export interface DrawnRouteProperties {
+  _drawn: true;
+  _elevation: RouteElevation;
+  _profile?: Array<[lon: number, lat: number, elevation?: number]>;
+}
+
 export interface PlaceDto {
   id: number;
   name: string;

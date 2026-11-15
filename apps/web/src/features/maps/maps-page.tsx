@@ -1,6 +1,7 @@
 /**
  * The Maps screen: an offline map that fills the content area, with search, saved
- * places, GPX routes, a measuring tool and the download manager for map regions.
+ * places, routes (drawn here or imported as GPX), a measuring tool and the download
+ * manager for map regions.
  *
  * This file holds the screen's state and wires it to the map engine. The engine
  * (MapLibre) is loaded on demand; until it arrives, and if it cannot start at all, the
@@ -14,26 +15,57 @@ import { useLocation } from "react-router";
 import { toast } from "sonner";
 import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/dialog";
 import { Skeleton, Tooltip } from "@/components/ui/misc";
 import { useDownloads } from "@/features/downloads/use-downloads";
 import { errorMessage } from "@/lib/api";
-import { useIsAdmin } from "@/lib/queries";
-import { cn } from "@/lib/utils";
-import { useDeleteMarker, useMapOverview, useMapSources, useMarkers, useSaveMarker, useTrackGeometries, useTracks } from "./data";
+import { cn, plural } from "@/lib/utils";
+import {
+  useDeleteMarker,
+  useMapOverview,
+  useMapSources,
+  useMarkers,
+  useSaveMarker,
+  useSaveRoute,
+  useTrackGeometries,
+  useTracks,
+} from "./data";
 import { useGeolocation, useIsDesktop, useMapTheme, useStoredState } from "./hooks";
 import { formatPosition, isReadoutFormat, type ReadoutFormat } from "./lib/coords";
 import type { LatLon } from "./lib/geo";
 import { MARKER_HEX } from "./lib/palette";
+import {
+  addPoint,
+  insertPoint,
+  isStoredRouteDraft,
+  movePoint,
+  redo,
+  removePoint,
+  type StoredRouteDraft,
+  startEdit,
+  undo,
+} from "./lib/route-edit";
 import type { SearchResult } from "./lib/search";
 import type { StyleInput } from "./lib/style";
 import { regionsCacheKey } from "./lib/tiles";
-import { type CameraView, DEFAULT_VIEW, isCameraView, parseView, readStored, STORAGE_KEYS, withView, writeStored } from "./lib/view";
+import {
+  type CameraView,
+  DEFAULT_VIEW,
+  isCameraView,
+  parseView,
+  ROUTE_DRAFT_KEY,
+  readStored,
+  STORAGE_KEYS,
+  withView,
+  writeStored,
+} from "./lib/view";
 import type { MapEngine } from "./map/engine";
 import { coverageData, EMPTY, locationData, markersData, measureData, pointData, tracksData } from "./map/overlays";
-import { ContextMenu, MapCard, MapControls, MeasureCard, PinCard, type Tool } from "./map-chrome";
+import { ContextMenu, DrawCard, MapCard, MapControls, MeasureCard, PinCard, type Tool } from "./map-chrome";
 import { creditsFor, MapFooter } from "./map-footer";
 import { type OfflineIntent, OfflinePanel } from "./panels/offline";
 import { draftOf, type PlaceDraft, PlaceEditor, PlacesList } from "./panels/places";
+import { hasUnsavedWork, type RouteDraft, RouteEditor } from "./panels/route-editor";
 import { ImportGpxDialog, RouteDetail, RoutesList } from "./panels/routes";
 import { SearchBox } from "./search-box";
 import { DesktopPanel, type Detent, detentHeight, MobileSheet, PANEL_TABS, type PanelTab, PanelTabs } from "./side-panel";
@@ -59,10 +91,57 @@ interface Pin {
 
 type MapStatus = "loading" | "ready" | "unsupported" | "failed";
 
+/**
+ * A route that was being drawn when the screen was last left or reloaded in this tab.
+ * Unsaved points are the person's work: going to look something up in the library and
+ * coming back must not lose them.
+ */
+function restoreRouteDraft(): RouteDraft | null {
+  try {
+    const stored: unknown = JSON.parse(sessionStorage.getItem(ROUTE_DRAFT_KEY) ?? "null");
+    if (!isStoredRouteDraft(stored) || stored.points.length === 0) return null;
+    // What it looked like before the changes is not kept, so every point counts as unsaved.
+    const edit = { ...startEdit(stored.points), original: [] };
+    return {
+      trackId: stored.trackId,
+      name: stored.name,
+      color: stored.color,
+      edit,
+      selected: null,
+      replacesRecording: stored.replacesRecording,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function keepRouteDraft(draft: RouteDraft | null): void {
+  try {
+    if (!draft || !hasUnsavedWork(draft)) {
+      sessionStorage.removeItem(ROUTE_DRAFT_KEY);
+      return;
+    }
+    const stored: StoredRouteDraft = {
+      trackId: draft.trackId,
+      name: draft.name,
+      color: draft.color,
+      points: draft.edit.points,
+      replacesRecording: draft.replacesRecording,
+    };
+    sessionStorage.setItem(ROUTE_DRAFT_KEY, JSON.stringify(stored));
+  } catch {
+    // Storage refused (a private window): the route then lasts only while this screen is open.
+  }
+}
+
+const isTyping = (target: EventTarget | null) =>
+  target instanceof HTMLInputElement ||
+  target instanceof HTMLTextAreaElement ||
+  (target instanceof HTMLElement && target.isContentEditable);
+
 export default function MapsPage() {
   const location = useLocation();
   const isDesktop = useIsDesktop();
-  const isAdmin = useIsAdmin();
   const { flavour, theme } = useMapTheme();
 
   const sources = useMapSources();
@@ -72,6 +151,7 @@ export default function MapsPage() {
   const downloads = useDownloads();
   const saveMarker = useSaveMarker();
   const deleteMarker = useDeleteMarker();
+  const saveRoute = useSaveRoute();
 
   const [format, setFormat] = useStoredState<ReadoutFormat>(STORAGE_KEYS.coordinateFormat, isReadoutFormat, "decimal");
   const [hillshade, setHillshade] = useStoredState(STORAGE_KEYS.hillshade, isBoolean, true);
@@ -79,7 +159,17 @@ export default function MapsPage() {
   const [panel, setPanel] = useStoredState<PanelState>(STORAGE_KEYS.panel, isPanelState, { open: true, tab: "places" });
   const [detent, setDetent] = useState<Detent>("peek");
 
-  const [tool, setTool] = useState<Tool>("browse");
+  const [restoredDraft] = useState(restoreRouteDraft);
+  const [routeDraft, setRouteDraft] = useState<RouteDraft | null>(restoredDraft);
+  const [tool, setTool] = useState<Tool>(restoredDraft ? "draw" : "browse");
+  /** Set while asking whether to throw away unsaved points; `then` is what was being done when the question came up. */
+  const [discarding, setDiscarding] = useState<{ then?: () => void; reshaping?: string; points: number } | null>(null);
+  // What the question was about, kept so its words do not change while the dialog closes.
+  const lastDiscarding = useRef(discarding);
+  if (discarding) lastDiscarding.current = discarding;
+  const [mapHasKeyboard, setMapHasKeyboard] = useState(false);
+  const [nameRequested, setNameRequested] = useState(false);
+  const nameShown = useCallback(() => setNameRequested(false), []);
   const [measurePoints, setMeasurePoints] = useState<LatLon[]>([]);
   const [draft, setDraft] = useState<PlaceDraft | null>(null);
   const [pin, setPin] = useState<Pin | null>(null);
@@ -244,6 +334,84 @@ export default function MapsPage() {
     [showPanel],
   );
 
+  // ── Drawing a route ──
+
+  const resetSaveRoute = saveRoute.reset;
+  /**
+   * Takes up the drawing tool: with nothing for a new route, with points to carry on
+   * from (a measured path, a point from the context menu), or with a saved route's line
+   * to change its shape or to start a copy from.
+   */
+  const startDrawing = useCallback(
+    (points: LatLon[] = [], from?: { track: TrackDto; asCopy: boolean; replacesRecording: boolean }) => {
+      setContextMenu(null);
+      setPin(null);
+      setDraft(null);
+      setMeasurePoints([]);
+      resetSaveRoute();
+      const reshaping = from && !from.asCopy ? from.track : undefined;
+      setRouteDraft({
+        trackId: reshaping?.id,
+        name: from ? (from.asCopy ? `${from.track.name} (copy)` : from.track.name) : "",
+        color: from?.track.color ?? "teal",
+        edit: startEdit(points),
+        selected: null,
+        replacesRecording: reshaping ? from?.replacesRecording : undefined,
+      });
+      setTool("draw");
+      setPanel({ open: true, tab: "routes" });
+      // On a phone: out of the map's way while points are placed; in view when the next step is a name.
+      const naming = points.length >= 2 && !from;
+      setDetent(naming ? "half" : "peek");
+      // The button that started this is about to go. Focus moves to where the next step is: the
+      // name for a path that is already there, otherwise the map, where the arrow keys aim and Enter places a point.
+      if (naming) setNameRequested(true);
+      else engine?.focus();
+    },
+    [engine, setPanel, resetSaveRoute],
+  );
+
+  const stopDrawing = useCallback(() => {
+    setRouteDraft(null);
+    setTool("browse");
+    setDiscarding(null);
+    resetSaveRoute();
+  }, [resetSaveRoute]);
+
+  const latestDraft = useRef(routeDraft);
+  latestDraft.current = routeDraft;
+  /** Puts the drawing tool down, asking first if that would lose points that have not been saved. */
+  const closeDrawing = useCallback(
+    (then?: () => void) => {
+      const current = latestDraft.current;
+      if (current && hasUnsavedWork(current)) {
+        return setDiscarding({ then, reshaping: current.trackId ? current.name : undefined, points: current.edit.points.length });
+      }
+      stopDrawing();
+      then?.();
+    },
+    [stopDrawing],
+  );
+
+  const addRoutePoint = useCallback(
+    (position: LatLon) =>
+      setRouteDraft((current) => (current ? { ...current, edit: addPoint(current.edit, position), selected: null } : current)),
+    [],
+  );
+  const addAtCentre = useCallback(() => {
+    const centre = engine?.getCenter();
+    if (centre) addRoutePoint(centre);
+  }, [engine, addRoutePoint]);
+  const stepRoute = useCallback(
+    (step: typeof undo) => setRouteDraft((current) => (current ? { ...current, edit: step(current.edit), selected: null } : current)),
+    [],
+  );
+
+  useEffect(() => keepRouteDraft(routeDraft), [routeDraft]);
+  useEffect(() => {
+    if (restoredDraft) toast("The route you were drawing is back as you left it. It has not been saved yet.");
+  }, [restoredDraft]);
+
   // Links from the app-wide search: /maps?marker=… and /maps?track=…, and plain camera links.
   const handledLink = useRef<string | undefined>(undefined);
   useEffect(() => {
@@ -286,14 +454,56 @@ export default function MapsPage() {
     engine?.setOverlay("o-markers", markersData(markers.data ?? [], draft?.id ?? null));
   }, [engine, markers.data, draft?.id]);
 
+  // The route whose shape is being changed is drawn by the drawing tool instead, with its points.
+  const reshapingId = routeDraft?.trackId ?? null;
   useEffect(() => {
     if (!engine) return;
     // Colour and name come from the list, which is refreshed first when a route is changed.
-    const current = geometries.map((geometry) => ({ ...geometry, ...(tracks.data?.find((track) => track.id === geometry.id) ?? {}) }));
+    const current = geometries
+      .filter((geometry) => geometry.id !== reshapingId)
+      .map((geometry) => ({ ...geometry, ...(tracks.data?.find((track) => track.id === geometry.id) ?? {}) }));
     const data = tracksData(current, trackId);
     engine.setOverlay("o-tracks", data.lines);
     engine.setOverlay("o-track-ends", data.ends);
-  }, [engine, geometries, tracks.data, trackId]);
+  }, [engine, geometries, tracks.data, trackId, reshapingId]);
+
+  const routePoints = routeDraft?.edit.points;
+  const routeColor = routeDraft?.color;
+  const routeSelected = routeDraft?.selected ?? null;
+  useEffect(() => {
+    engine?.setRoute(routePoints && routeColor ? { points: routePoints, color: MARKER_HEX[routeColor], selected: routeSelected } : null);
+  }, [engine, routePoints, routeColor, routeSelected]);
+
+  useEffect(() => {
+    if (!engine) return;
+    const change = (apply: (draft: RouteDraft) => RouteDraft) => setRouteDraft((current) => (current ? apply(current) : current));
+    const offs = [
+      engine.on("routepoint", ({ index }) => change((draft) => ({ ...draft, selected: draft.selected === index ? null : index }))),
+      engine.on("routemove", ({ index, position }) =>
+        change((draft) => ({ ...draft, edit: movePoint(draft.edit, index, position), selected: index })),
+      ),
+      engine.on("routeinsert", ({ index, position }) =>
+        change((draft) => ({ ...draft, edit: insertPoint(draft.edit, index, position), selected: index })),
+      ),
+    ];
+    return () => {
+      for (const off of offs) off();
+    };
+  }, [engine]);
+
+  // The middle of the map is marked while the map itself has the keyboard, so "add a point at the centre" can be aimed.
+  useEffect(() => {
+    const element = container.current;
+    if (!element) return;
+    const onFocus = (event: FocusEvent) => setMapHasKeyboard(event.target instanceof HTMLElement && event.target.matches(":focus-visible"));
+    const onBlur = () => setMapHasKeyboard(false);
+    element.addEventListener("focusin", onFocus);
+    element.addEventListener("focusout", onBlur);
+    return () => {
+      element.removeEventListener("focusin", onFocus);
+      element.removeEventListener("focusout", onBlur);
+    };
+  }, []);
 
   useEffect(() => {
     engine?.setOverlay("o-measure", tool === "measure" ? measureData(measurePoints) : EMPTY);
@@ -344,8 +554,8 @@ export default function MapsPage() {
 
   // ── What the person does on the map ──
 
-  const latest = useRef({ tool, markers: markers.data, tracks: tracks.data, openMarker, openTrack, startPlace });
-  latest.current = { tool, markers: markers.data, tracks: tracks.data, openMarker, openTrack, startPlace };
+  const latest = useRef({ tool, markers: markers.data, tracks: tracks.data, openMarker, openTrack, startPlace, addRoutePoint });
+  latest.current = { tool, markers: markers.data, tracks: tracks.data, openMarker, openTrack, startPlace, addRoutePoint };
 
   useEffect(() => {
     if (!engine) return;
@@ -358,6 +568,11 @@ export default function MapsPage() {
       }
       if (now.tool === "add-place") {
         now.startPlace(position);
+        return;
+      }
+      // While drawing, a press on a saved place or another route is still a press on the map.
+      if (now.tool === "draw") {
+        now.addRoutePoint(position);
         return;
       }
       if (hit?.type === "marker") {
@@ -383,27 +598,73 @@ export default function MapsPage() {
   }, []);
 
   // Escape puts down whatever tool is in hand. Dialogs and menus handle their own.
+  // While drawing, the keyboard also undoes, redoes, removes the chosen point and adds
+  // one at the middle of the map.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.key !== "Escape" || event.defaultPrevented || document.querySelector('[role="dialog"],[role="alertdialog"],[role="menu"]'))
-        return;
-      if (tool !== "browse") {
+      if (event.defaultPrevented || document.querySelector('[role="dialog"],[role="alertdialog"],[role="menu"]')) return;
+      if (event.key === "Escape") {
+        if (tool === "browse") return;
         event.preventDefault();
-        leaveTool();
+        if (tool === "draw") closeDrawing();
+        else leaveTool();
+        return;
       }
+      // In a text field these keys belong to the text.
+      if (tool !== "draw" || isTyping(event.target)) return;
+      const key = event.key.toLowerCase();
+      const command = event.metaKey || event.ctrlKey;
+      const onMap = event.target instanceof HTMLElement && event.target.classList.contains("maplibregl-canvas");
+      if (command && key === "z") stepRoute(event.shiftKey ? redo : undo);
+      else if (command && key === "y") stepRoute(redo);
+      else if (key === "enter" && onMap) addAtCentre();
+      else if ((key === "delete" || key === "backspace") && latestDraft.current?.selected != null) {
+        const index = latestDraft.current.selected;
+        setRouteDraft((current) => (current ? { ...current, edit: removePoint(current.edit, index), selected: null } : current));
+      } else return;
+      event.preventDefault();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [tool, leaveTool]);
+  }, [tool, leaveTool, closeDrawing, stepRoute, addAtCentre]);
 
-  const changeTool = (next: Tool) => {
-    setContextMenu(null);
+  const takeUpTool = (next: Tool) => {
     if (next === "browse") return leaveTool();
+    if (next === "draw") return startDrawing();
     setMeasurePoints([]);
     setTool(next);
     // On a phone the sheet would cover the map being clicked on.
     setDetent("peek");
     if (next === "add-place") toast("Click or tap the map where the place is.");
+  };
+  const changeTool = (next: Tool) => {
+    setContextMenu(null);
+    // Putting the drawing tool down for another one must not lose points without asking.
+    if (tool === "draw") closeDrawing(next === "browse" || next === "draw" ? undefined : () => takeUpTool(next));
+    else takeUpTool(next);
+  };
+
+  const saveDrawnRoute = () => {
+    const draft = routeDraft;
+    if (!draft) return;
+    saveRoute.mutate(
+      { id: draft.trackId, name: draft.name.trim(), color: draft.color, points: draft.edit.points },
+      {
+        onSuccess: ({ track, elevation }) => {
+          stopDrawing();
+          const heights =
+            elevation === "terrain"
+              ? " Its heights were read from the installed terrain."
+              : elevation === "partial"
+                ? " Heights were read where terrain is installed."
+                : "";
+          toast.success(
+            draft.trackId ? `Saved the new shape of “${track.name}”.${heights}` : `“${track.name}” is saved to your routes.${heights}`,
+          );
+          openTrack(track, false);
+        },
+      },
+    );
   };
 
   const locate = useGeolocation(
@@ -482,6 +743,10 @@ export default function MapsPage() {
   };
   const clearIntent = useCallback(() => setOfflineIntent(null), []);
   const lowerSheet = useCallback(() => setDetent("peek"), []);
+  const raiseSheet = useCallback(() => setDetent("full"), []);
+  const terrainBounds = sources.data?.sources.terrain?.bounds ?? null;
+  /** Whether the drawing tool's panel is on screen; when it is not, a card over the map stands in for it. */
+  const editorVisible = panel.tab === "routes" && (isDesktop ? panel.open : detent !== "peek");
 
   const tabs = (
     <PanelTabs
@@ -513,7 +778,25 @@ export default function MapsPage() {
             canAddOnMap={Boolean(engine)}
           />
         ),
-        routes: selectedTrack ? (
+        routes: routeDraft ? (
+          <RouteEditor
+            draft={routeDraft}
+            terrain={terrainBounds}
+            mapReady={Boolean(engine)}
+            saving={saveRoute.isPending}
+            error={saveRoute.isError ? errorMessage(saveRoute.error) : undefined}
+            nameRequested={nameRequested}
+            onNameShown={nameShown}
+            onChange={setRouteDraft}
+            onAddAtCentre={addAtCentre}
+            onMoveToCentre={(index) => {
+              const centre = engine?.getCenter();
+              if (centre) setRouteDraft((current) => (current ? { ...current, edit: movePoint(current.edit, index, centre) } : current));
+            }}
+            onSave={saveDrawnRoute}
+            onClose={() => closeDrawing()}
+          />
+        ) : selectedTrack ? (
           <RouteDetail
             track={selectedTrack}
             visible={!hiddenTracks.includes(selectedTrack.id)}
@@ -528,6 +811,8 @@ export default function MapsPage() {
             onClose={() => setTrackId(null)}
             onDeleted={() => setTrackId(null)}
             onScrub={setProfilePoint}
+            terrain={terrainBounds}
+            onEditShape={(points, options) => startDrawing(points, { track: selectedTrack, ...options })}
           />
         ) : (
           <RoutesList
@@ -539,16 +824,18 @@ export default function MapsPage() {
             }
             onOpen={(track) => openTrack(track)}
             onImport={setImportFiles}
+            onDraw={() => startDrawing()}
+            canDraw={Boolean(engine)}
           />
         ),
         offline: (
           <OfflinePanel
             overview={overview}
             engine={engine}
-            canManage={isAdmin}
             intent={offlineIntent}
             onIntentHandled={clearIntent}
             onNeedMap={lowerSheet}
+            onNeedRoom={raiseSheet}
           />
         ),
       }}
@@ -562,6 +849,22 @@ export default function MapsPage() {
         onUndo={() => setMeasurePoints((points) => points.slice(0, -1))}
         onClear={() => setMeasurePoints([])}
         onDone={leaveTool}
+        onSaveAsRoute={() => startDrawing(measurePoints)}
+      />
+    ) : routeDraft && !editorVisible ? (
+      <DrawCard
+        edit={routeDraft.edit}
+        reshaping={Boolean(routeDraft.trackId)}
+        onUndo={() => stepRoute(undo)}
+        onRedo={() => stepRoute(redo)}
+        onAddAtCentre={addAtCentre}
+        onOpenPanel={() => {
+          showPanel("routes");
+          // On a phone, all the room there is: a name is about to be typed, with the keyboard up.
+          setDetent("full");
+          setNameRequested(true);
+        }}
+        onClose={() => closeDrawing()}
       />
     ) : pin ? (
       <PinCard
@@ -578,18 +881,15 @@ export default function MapsPage() {
           What you see is an outline of the world that comes with Outpost. Detailed maps are downloaded one region at a time, and then work
           with no connection.
         </p>
-        {isAdmin ? (
-          <div className="mt-3 flex flex-wrap gap-2">
-            <Button size="sm" variant="primary" onClick={() => openOffline({ type: "add", presetId: "world" })}>
-              World overview (about 45 MB)
-            </Button>
-            <Button size="sm" onClick={() => openOffline({ type: "add" })}>
-              Choose a region
-            </Button>
-          </div>
-        ) : (
-          <p className="mt-2 text-small text-ink-muted">Only an administrator can download maps. Ask whoever looks after this Outpost.</p>
-        )}
+        {/* Both lead to the choices before a download, which include where it is kept: nothing starts from here. */}
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button size="sm" variant="primary" onClick={() => openOffline({ type: "add", presetId: "world" })}>
+            World overview (about 45 MB)
+          </Button>
+          <Button size="sm" onClick={() => openOffline({ type: "add" })}>
+            Choose a region
+          </Button>
+        </div>
       </MapCard>
     ) : null;
 
@@ -636,11 +936,15 @@ export default function MapsPage() {
           </div>
         ) : null}
 
-        {/* Middle of the map on touch screens, where there is no pointer to read a position from. */}
-        {engine && detent === "peek" ? (
+        {/* Middle of the map on touch screens, where there is no pointer to read a position from, and while
+            drawing from the keyboard, where it is where the next point will go. */}
+        {engine && (detent === "peek" || (tool === "draw" && mapHasKeyboard)) ? (
           <div
             aria-hidden
-            className="pointer-events-none absolute top-1/2 left-1/2 hidden size-5 -translate-x-1/2 -translate-y-1/2 [@media(pointer:coarse)]:block"
+            className={cn(
+              "pointer-events-none absolute top-1/2 left-1/2 size-5 -translate-x-1/2 -translate-y-1/2",
+              tool === "draw" && mapHasKeyboard ? "block" : "hidden [@media(pointer:coarse)]:block",
+            )}
           >
             <span className="absolute top-1/2 left-0 h-0.5 w-full -translate-y-1/2 bg-ink shadow-[0_0_0_1px_var(--page)]" />
             <span className="absolute top-0 left-1/2 h-full w-0.5 -translate-x-1/2 bg-ink shadow-[0_0_0_1px_var(--page)]" />
@@ -737,6 +1041,7 @@ export default function MapsPage() {
               setMeasurePoints([contextMenu.position]);
               setDetent("peek");
             }}
+            onDraw={() => startDrawing([contextMenu.position])}
             onClose={() => setContextMenu(null)}
           />
         ) : null}
@@ -755,6 +1060,24 @@ export default function MapsPage() {
           </MobileSheet>
         ) : null}
       </div>
+
+      <ConfirmDialog
+        open={discarding !== null}
+        onOpenChange={(open) => !open && setDiscarding(null)}
+        title={lastDiscarding.current?.reshaping ? `Discard the changes to “${lastDiscarding.current.reshaping}”?` : "Discard this route?"}
+        description={
+          lastDiscarding.current?.reshaping
+            ? "The route stays as it was last saved. The changes you made to its shape are lost."
+            : `The ${plural(lastDiscarding.current?.points ?? 0, "point")} you placed ${lastDiscarding.current?.points === 1 ? "has" : "have"} not been saved and will be lost.`
+        }
+        confirmLabel={lastDiscarding.current?.reshaping ? "Discard changes" : "Discard route"}
+        cancelLabel={lastDiscarding.current?.reshaping ? "Keep editing" : "Keep drawing"}
+        onConfirm={() => {
+          const then = discarding?.then;
+          stopDrawing();
+          then?.();
+        }}
+      />
 
       <ImportGpxDialog
         files={importFiles}

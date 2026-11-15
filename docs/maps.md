@@ -1,8 +1,8 @@
 # Offline maps
 
-This page covers downloading map regions, where the map data comes from and how it
-must be credited, using your own map source, markers and GPX tracks, coordinate
-formats, and offline place search.
+This page covers downloading map regions and choosing where they are kept, where the
+map data comes from and how it must be credited, using your own map source, markers,
+drawing routes and importing GPX tracks, coordinate formats, and offline place search.
 
 Outpost draws a vector map in the browser from tiles it serves itself. Once a region
 is installed, viewing it needs no internet connection.
@@ -18,24 +18,28 @@ that has three tabs.
 
 - **Places** lists your saved places. **Save a place** drops a pin you can drag; give
   it a name, a note, a colour, and mark it a favourite to keep it named on the map.
-- **Routes** lists imported GPX tracks. Open one for its distance, ascent and an
-  elevation profile; move along the profile and the matching point is shown on the
-  map. Drop a `.gpx` file anywhere on the map to import it.
-- **Offline maps** lists installed regions and is where an administrator downloads
-  more: pick a ready-made region, or draw a box on the map (or use the current view),
-  choose how much detail, and see the exact size before anything is fetched.
+- **Routes** lists routes you have drawn and GPX tracks you have imported. Open one
+  for its distance, ascent and an elevation profile; move along the profile and the
+  matching point is shown on the map. **Draw a route** places one point by point (see
+  [Drawing a route](#drawing-a-route)). Drop a `.gpx` file anywhere on the map to
+  import it.
+- **Offline maps** lists installed regions and is where you download more: pick a
+  ready-made region, or draw a box on the map (or use the current view), choose how
+  much detail and which storage location it goes to, and see the exact size before
+  anything is fetched.
 
 On the map itself:
 
 - The **search box** takes a place name (once place names are downloaded, see
   [below](#offline-place-search)), coordinates in any of the formats under
   [Coordinate formats](#coordinate-formats), or a British grid reference.
-- The **ruler** measures a path you click out, in kilometres and miles.
+- The **ruler** measures a path you click out, in kilometres and miles. **Save as a
+  route** keeps the measured path as a route.
 - **Hill shading** appears as a button once terrain is installed for the area in view.
 - The readout at the bottom shows the centre of the map; choose decimal degrees,
   degrees-minutes-seconds or British National Grid, and copy it.
-- Right-click (or press and hold) for "Save a place here", "Measure from here" and
-  "Copy coordinates".
+- Right-click (or press and hold) for "Save a place here", "Measure from here", "Draw
+  a route from here" and "Copy coordinates".
 - The address bar always holds the current view, so a link to it can be saved in a
   note.
 
@@ -61,7 +65,7 @@ and removing them work as described in [storage.md](storage.md).
 
 ## Downloading a region
 
-Downloading needs an internet connection and an administrator.
+Downloading needs an internet connection.
 
 ### Ready-made regions
 
@@ -108,13 +112,32 @@ Limits:
 - A single region of more than 60 GB is refused.
 - The storage location must have room for the region plus a 256 MB reserve.
 
+### Where a download is kept
+
+Every download of map data asks which storage location it goes to: a region, the
+terrain that goes with it, and place names.
+
+- Each location is listed with its free space, and the default one is marked.
+- A location that is not connected, or that has too little room for this download,
+  stays in the list, says why, and cannot be chosen.
+- The location is shown again beside the **Download** button, so it is in view at the
+  moment of deciding on a phone as well as on a desktop.
+- The location the last map download went to is offered first the next time (this is
+  remembered in the browser). With only one location, it is still named.
+- Terrain is kept in the same location as its map. Both must fit before either starts.
+
+In the API this is `locationId` on `POST /api/maps/regions` and
+`POST /api/maps/places/datasets`; without it the default location is used. Location
+ids are listed by `GET /api/storage/locations`.
+
 ### Terrain
 
 Asking for terrain (`includeTerrain: true` in the API) downloads a second file for the
-same box: elevation tiles, used for hill shading. Terrain stops at zoom 12 whatever maximum
-you chose. Both files must fit before either download starts.
+same box: elevation tiles, used for hill shading and for the heights of routes you
+draw. Terrain stops at zoom 12 whatever maximum you chose. Both files must fit before
+either download starts.
 
-Terrain is optional. Without it the map is flat.
+Terrain is optional. Without it the map is flat, and a drawn route has no heights.
 
 ### While it downloads
 
@@ -198,8 +221,82 @@ curl -X POST "http://localhost:8080/api/maps/import" \
 
 A marker is a named point with an optional note, one of seven colours (teal, amber,
 red, green, blue, violet, slate), a favourite flag, and optionally a link to one of
-your note pages. Markers are found by the app-wide search. Anyone signed in can add
-and edit them.
+your note pages. Markers are found by the app-wide search.
+
+## Drawing a route
+
+**A drawn route is straight lines between the points you place. It does not follow
+paths or roads, and it is not routing: Outpost does not work out a way for you.** Its
+length is the length of those straight lines, which on a winding path is shorter than
+the walk.
+
+Start from **Draw a route** in the Routes tab, from the pencil button on the map, or
+from "Draw a route from here" in the map's right-click (press-and-hold) menu.
+
+| To | Pointer or finger | Keyboard |
+| --- | --- | --- |
+| Add a point | Click or tap the map | Move the map with the arrow keys, then press Enter with the map focused, or use **Add a point at the centre of the map** |
+| Move a point | Drag it | Choose it in the list, move the map, then **Move to the centre of the map** |
+| Add a point between two others | Drag (or press) the small handle in the middle of the leg | |
+| Remove a point | Press it to choose it, then Delete or Backspace; or the × beside it in the list | The × beside it in the list |
+| Undo, redo | The buttons | Ctrl/⌘ Z, Shift Ctrl/⌘ Z |
+| Stop | **Cancel**, or the × on the card | Escape |
+
+- The total distance is shown as you go, and at the last point on the map.
+- One finger is enough on a phone: a tap adds a point, a drag on a point moves it, and
+  a drag anywhere else still moves the map. The panel is a sheet there; while it is
+  lowered, a small card over the map holds undo, redo and **Name and save**.
+- Stopping asks first if there are points that have not been saved. If you leave the
+  Maps screen or reload the page part-way, the unsaved route is there when you come
+  back (in the same browser tab).
+- A route has between 2 and 2,000 points.
+- **Saving** needs a name and a colour. A saved route is like an imported one
+  everywhere: listed under Routes, drawn on the map, found by search, exported as GPX.
+
+### Heights
+
+When a route is saved, Outpost reads heights from the **terrain installed on this
+device**, for each point and along the straight lines between them (a sample about
+every 25 m, more widely spaced on very long routes). That gives the route its ascent
+and an elevation profile. Nothing is downloaded to do this.
+
+- No terrain where the route runs: the route has no ascent and no profile, and its
+  panel says so.
+- Terrain for only part of it: the profile and the ascent cover that part only, and
+  the panel says so.
+- If terrain is installed later, open the route and choose **Fill in heights from
+  terrain**.
+- The terrain is a grid of heights with cells some 10 m or more across, so sharp
+  summits and narrow ridges read a few metres low.
+
+### Editing the shape of a route
+
+**Edit shape** on a route opens the same tool on its line.
+
+For a route you drew, that simply changes its points. For a **recording imported from
+a GPX file**, Outpost asks first, because saving replaces what was recorded:
+
+- a recording of more than about 300 points becomes a simpler line of that many
+  points following the same shape;
+- separate lines (track segments, routes) in the file are joined end to end into one;
+- the time recorded at each point is dropped;
+- the heights from the file are replaced by heights from installed terrain, or
+  dropped where there is none;
+- its name, colour and waypoints are kept.
+
+Nothing changes until you save. **Edit a copy** leaves the recording as it is and
+starts a new route from its line.
+
+### In the API
+
+- `POST /api/maps/tracks` with `{ "name", "color"?, "description"?, "points": [{ "lat", "lon" }, …] }`
+  creates a route.
+- `PUT /api/maps/tracks/:id/points` with `{ "points": […] }` replaces the lines of a
+  track with one line through those points. Waypoints stored with the track are kept.
+
+Both answer with the track and `elevation`: `"terrain"`, `"partial"` or `"none"`.
+Distance, ascent, point count and bounds are worked out on the server. Positions are
+stored to six decimal places, and a point repeated straight after itself is dropped.
 
 ## GPX tracks
 
@@ -212,6 +309,14 @@ and edit them.
 - **Export.** One track as GPX (`GET /api/maps/tracks/:id/export.gpx`), or a selection
   of tracks together with your markers as waypoints
   (`GET /api/maps/export.gpx?markers=1&tracks=<id>,<id>`). The output is GPX 1.1.
+- **A drawn route in GPX.** It is written as a track (`<trk>` with one `<trkseg>`),
+  which more apps read than a `<rte>`, and which no device will try to re-plan along
+  roads. It carries the route's name, one `<trkpt>` for each point you placed with its
+  latitude and longitude, and an `<ele>` where a height is known. There are no `<time>`
+  elements: a drawn route was never walked. The samples taken between your points for
+  the elevation profile are not exported.
+- **Numbers.** Latitudes, longitudes and heights are always written as plain decimals
+  (never in a form such as `5e-8`, which GPX does not allow).
 - **Safety.** A GPX file is checked before it is read: files with a DOCTYPE or entity
   declarations are refused. Positions are stored to six decimal places.
 
@@ -275,8 +380,11 @@ matches, by population, and by distance from a point when one is given
 
 - **Contour lines.** Hill shading is available with a terrain download; contours are
   not drawn.
-- **Routing.** Outpost does not calculate routes or directions. Tracks come from GPX
-  files.
+- **Routing.** Outpost does not calculate routes or directions. A route is either
+  imported from a GPX file or drawn by hand as straight lines between points; it never
+  snaps to paths or roads.
+- **Routes across the 180° meridian.** A drawn leg that crosses it is drawn the long
+  way round the world.
 - **Satellite or aerial imagery.**
 - **Other map schemas.** The bundled styles draw the Protomaps basemap schema only.
 

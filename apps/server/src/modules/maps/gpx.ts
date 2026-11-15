@@ -7,7 +7,7 @@
  * hand from that GeoJSON, with every piece of text escaped.
  */
 import { Worker } from "node:worker_threads";
-import type { Bbox } from "@outpost/shared";
+import type { Bbox, RouteElevation } from "@outpost/shared";
 import { haversineMeters } from "@outpost/shared";
 import { gpx as gpxToGeoJson } from "@tmcw/togeojson";
 import { DOMParser } from "@xmldom/xmldom";
@@ -32,6 +32,12 @@ export interface TrackProperties {
   sym?: string;
   /** Per-point timestamps: one array per line, or one per segment for multi-segment tracks. */
   coordinateProperties?: { times?: Array<string | null> | Array<Array<string | null>> };
+  /** Set on a line that was drawn on the map rather than imported. See `drawn-route.ts`. */
+  _drawn?: true;
+  /** For a drawn line: whether its heights could be read from installed terrain. */
+  _elevation?: RouteElevation;
+  /** For a drawn line: the line sampled between its points, with heights. Never exported. */
+  _profile?: Position[];
 }
 
 export interface TrackStats {
@@ -265,10 +271,21 @@ export interface GpxDocument {
 const element = (tag: string, value: string | undefined, indent: string) =>
   value ? `${indent}<${tag}>${escapeXml(value)}</${tag}>\n` : "";
 
+/**
+ * A number as GPX wants it: plain decimal digits. JavaScript writes very small numbers
+ * as "5e-8", which the format does not allow and other apps refuse.
+ */
+export function decimal(value: number, digits: number): string {
+  if (!Number.isFinite(value)) return "0";
+  const fixed = value.toFixed(digits);
+  const trimmed = fixed.includes(".") ? fixed.replace(/0+$/, "").replace(/\.$/, "") : fixed;
+  return trimmed === "-0" ? "0" : trimmed;
+}
+
 function pointXml(tag: string, position: Position, time: string | null | undefined, indent: string, extra = ""): string {
   const [lon, lat, ele] = position;
-  const inner = `${typeof ele === "number" ? `${indent}  <ele>${ele}</ele>\n` : ""}${time ? `${indent}  <time>${escapeXml(time)}</time>\n` : ""}${extra}`;
-  const open = `${indent}<${tag} lat="${lat}" lon="${lon}"`;
+  const inner = `${typeof ele === "number" && Number.isFinite(ele) ? `${indent}  <ele>${decimal(ele, 2)}</ele>\n` : ""}${time ? `${indent}  <time>${escapeXml(time)}</time>\n` : ""}${extra}`;
+  const open = `${indent}<${tag} lat="${decimal(lat!, 7)}" lon="${decimal(lon!, 7)}"`;
   return inner ? `${open}>\n${inner}${indent}</${tag}>\n` : `${open}/>\n`;
 }
 

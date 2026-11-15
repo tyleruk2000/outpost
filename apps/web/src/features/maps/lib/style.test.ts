@@ -135,7 +135,9 @@ describe("buildStyle with a region installed", () => {
     }
     // Overlays sit on top of everything from the basemap.
     expect(layers.indexOf("o-markers")).toBeGreaterThan(layers.indexOf("places_country"));
-    expect(layers.at(-1)).toBe("o-profile-point");
+    // The route being drawn is topmost, so its points can be taken hold of over anything else.
+    expect(layers.indexOf("o-draw-points")).toBeGreaterThan(layers.indexOf("o-profile-point"));
+    expect(layers.at(-1)).toBe("o-draw-label");
   });
 });
 
