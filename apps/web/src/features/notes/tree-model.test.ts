@@ -3,11 +3,15 @@ import { describe, expect, it } from "vitest";
 import {
   ancestorIds,
   buildTreeIndex,
+  dropTargetAt,
   dropZoneAt,
+  END,
   isSelfOrDescendant,
+  moveAmongSiblings,
   moveDestinations,
   moveForDrop,
   pathLabel,
+  placeOf,
   visibleRows,
 } from "./tree-model";
 
@@ -157,5 +161,112 @@ describe("moveDestinations", () => {
   it("leaves out the page and everything under it", () => {
     expect(moveDestinations(index, "a").map((item) => item.id)).toEqual(["b", "c"]);
     expect(moveDestinations(index, "a1").map((item) => item.id)).toEqual(["a", "a2", "b", "c"]);
+  });
+});
+
+describe("dropTargetAt", () => {
+  // Rows of 30 px with a 1 px gap. Open: a, a1, a1x, a2, b, c.
+  const stride = 31;
+  const open = visibleRows(index, new Set(["a", "a1"]));
+  // Closed: a, b, c.
+  const closed = visibleRows(index, new Set());
+  const y = (row: number, part: number) => row * stride + 30 * part;
+
+  it("finds the row from the distance down the tree, and the zone within it", () => {
+    expect(dropTargetAt(index, open, "c", y(4, 0.1), stride)).toEqual({
+      id: "b",
+      zone: "before",
+      move: { parentId: null, afterId: "a" },
+      depth: 0,
+      opens: null,
+    });
+    expect(dropTargetAt(index, open, "c", y(3, 0.9), stride)).toMatchObject({
+      id: "a2",
+      zone: "after",
+      move: { parentId: "a", afterId: "a2" },
+    });
+    expect(dropTargetAt(index, open, "c", y(3, 0.5), stride)).toMatchObject({ id: "a2", zone: "inside", move: { parentId: "a2" } });
+  });
+
+  it("gives the level the page will have: one deeper when it goes inside", () => {
+    expect(dropTargetAt(index, open, "c", y(2, 0.1), stride)?.depth).toBe(2);
+    expect(dropTargetAt(index, open, "c", y(2, 0.5), stride)?.depth).toBe(3);
+    expect(dropTargetAt(index, open, "a1x", y(4, 0.9), stride)?.depth).toBe(0);
+  });
+
+  it("goes to the top of an open page, where the pointer is, and to the end of a closed one", () => {
+    expect(dropTargetAt(index, open, "c", y(0, 0.9), stride)).toMatchObject({
+      id: "a",
+      zone: "inside",
+      move: { parentId: "a", afterId: null },
+      opens: null,
+    });
+    expect(dropTargetAt(index, closed, "c", y(0, 0.5), stride)).toMatchObject({
+      id: "a",
+      zone: "inside",
+      move: { parentId: "a" },
+      opens: "a",
+    });
+  });
+
+  it("only opens a closed page that has something inside", () => {
+    expect(dropTargetAt(index, closed, "c", y(1, 0.5), stride)).toMatchObject({ id: "b", zone: "inside", opens: null });
+  });
+
+  it("counts the gap under a row as the bottom of that row", () => {
+    expect(dropTargetAt(index, open, "c", 3 * stride + 30.5, stride)).toMatchObject({ id: "a2", zone: "after" });
+  });
+
+  it("never lets a page land on itself or inside its own sub-pages", () => {
+    for (const row of [0, 1, 2, 3]) {
+      for (const part of [0.1, 0.5, 0.9]) expect(dropTargetAt(index, open, "a", y(row, part), stride)).toBeNull();
+    }
+    expect(dropTargetAt(index, open, "a1", y(2, 0.5), stride)).toBeNull();
+    // Out of its parent, next to it, is fine.
+    expect(dropTargetAt(index, open, "a1", y(4, 0.5), stride)).toMatchObject({ id: "b", zone: "inside" });
+  });
+
+  it("takes the space under the last row as the end of the top level", () => {
+    expect(dropTargetAt(index, open, "a1", y(6, 0.5), stride)).toEqual({
+      id: END,
+      zone: "after",
+      move: { parentId: null },
+      depth: 0,
+      opens: null,
+    });
+    // The last top-level page is already there.
+    expect(dropTargetAt(index, open, "c", y(6, 0.5), stride)).toBeNull();
+  });
+
+  it("has no target above the tree or for a page that is gone", () => {
+    expect(dropTargetAt(index, open, "c", -5, stride)).toBeNull();
+    expect(dropTargetAt(index, open, "gone", y(1, 0.5), stride)).toBeNull();
+    expect(dropTargetAt(index, open, "gone", y(9, 0.5), stride)).toBeNull();
+  });
+});
+
+describe("placeOf", () => {
+  it("says where a page is, as the move that would put it back", () => {
+    expect(placeOf(index, "a")).toEqual({ parentId: null, afterId: null });
+    expect(placeOf(index, "c")).toEqual({ parentId: null, afterId: "b" });
+    expect(placeOf(index, "a2")).toEqual({ parentId: "a", afterId: "a1" });
+    expect(placeOf(index, "gone")).toBeNull();
+  });
+});
+
+describe("moveAmongSiblings", () => {
+  it("moves a page one place up or down", () => {
+    expect(moveAmongSiblings(index, "c", -1)).toEqual({ parentId: null, afterId: "a" });
+    expect(moveAmongSiblings(index, "b", -1)).toEqual({ parentId: null, afterId: null });
+    expect(moveAmongSiblings(index, "a", 1)).toEqual({ parentId: null, afterId: "b" });
+    expect(moveAmongSiblings(index, "a1", 1)).toEqual({ parentId: "a", afterId: "a2" });
+  });
+
+  it("stops at the first and last place", () => {
+    expect(moveAmongSiblings(index, "a", -1)).toBeNull();
+    expect(moveAmongSiblings(index, "c", 1)).toBeNull();
+    expect(moveAmongSiblings(index, "a1x", -1)).toBeNull();
+    expect(moveAmongSiblings(index, "a1x", 1)).toBeNull();
+    expect(moveAmongSiblings(index, "gone", 1)).toBeNull();
   });
 });

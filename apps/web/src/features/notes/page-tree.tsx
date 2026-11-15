@@ -3,11 +3,29 @@
  * nesting by drag and drop. Used on the dark spine and, on phones, on the notes home.
  *
  * Only the rows of expanded branches exist, each row is memoised, and the row menu is a
- * single shared menu, so the tree stays light with thousands of pages.
+ * single shared menu. Past a couple of hundred rows only those near the part on screen
+ * are drawn (`tree-window.ts`), so the tree stays light with thousands of pages open.
+ *
+ * A page is moved with a mouse by the browser's own drag and drop, and with a finger by
+ * a long press. Both find their target from where the pointer is in the tree rather
+ * than from the row element under it, so they work on rows that are not drawn.
  */
 import type { NoteTreeItem } from "@outpost/shared";
-import { ChevronRight, Ellipsis, Plus } from "lucide-react";
-import { type DragEvent, type KeyboardEvent, type MouseEvent, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ArrowDown, ArrowUp, ChevronRight, Ellipsis, Plus } from "lucide-react";
+import {
+  type DragEvent,
+  type KeyboardEvent,
+  type MouseEvent,
+  memo,
+  type PointerEvent,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { createPortal } from "react-dom";
 import { Link, useNavigate } from "react-router";
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
 import { cn } from "@/lib/utils";
@@ -15,14 +33,32 @@ import { useIsTouch } from "./editor/use-touch";
 import { MoveDialog } from "./move-dialog";
 import { displayTitle, useNoteActions } from "./notes-data";
 import { PageIcon, PageMenuItems } from "./page-bits";
-import { ancestorIds, type DropZone, dropZoneAt, moveForDrop, type TreeIndex, type TreeRow, visibleRows } from "./tree-model";
+import {
+  ancestorIds,
+  type DropTarget,
+  type DropZone,
+  dropTargetAt,
+  END,
+  isSelfOrDescendant,
+  moveAmongSiblings,
+  type TreeIndex,
+  type TreeRow,
+  visibleRows,
+} from "./tree-model";
+import { edgeSpeed, scrollByY, useTreeWindow, viewOf } from "./tree-window";
 
 export type TreeTone = "spine" | "page";
 
 const DRAG_TYPE = "application/x-outpost-page";
 const EXPANDED_KEY = "outpost.notes.expanded";
-/** Stands for "after the last top-level page" as a drop target. */
-const END = "\u0000end";
+/** How long a finger rests on a page before it is picked up. */
+export const LONG_PRESS_MS = 400;
+/** A finger that travels further than this before then was scrolling, not pressing. */
+const PRESS_SLOP = 10;
+/** A dragged page has to travel this far before the edges of the list start to scroll it. */
+const CARRY_SLOP = 16;
+/** Resting on a closed page this long while dragging opens it. */
+const HOVER_OPEN_MS = 650;
 
 const tones = {
   spine: {
@@ -101,6 +137,8 @@ interface RowProps {
   /** Under the pointer or holding the focus: the only rows that carry their buttons. */
   active: boolean;
   touch: boolean;
+  /** Distance from the top of the tree, when the tree is windowed and places its rows itself. */
+  top: number | undefined;
   onToggle(id: string, open: boolean): void;
   onAddChild(item: NoteTreeItem): void;
   onMenu(item: NoteTreeItem, anchor: DOMRect): void;
@@ -123,6 +161,7 @@ function sameRow(a: RowProps, b: RowProps): boolean {
     a.menuOpen === b.menuOpen &&
     a.active === b.active &&
     a.touch === b.touch &&
+    a.top === b.top &&
     a.onToggle === b.onToggle &&
     a.onAddChild === b.onAddChild &&
     a.onMenu === b.onMenu
@@ -139,6 +178,7 @@ const Row = memo(function Row({
   menuOpen,
   active,
   touch,
+  top,
   onToggle,
   onAddChild,
   onMenu,
@@ -161,11 +201,12 @@ const Row = memo(function Row({
       aria-label={title}
       tabIndex={tabbable ? 0 : -1}
       data-row-id={item.id}
-      draggable
-      style={{ paddingLeft: indent }}
+      // A finger picks a page up with a long press instead; the browser's own drag would fight it.
+      draggable={!touch}
+      style={top === undefined ? { paddingLeft: indent } : { paddingLeft: indent, position: "absolute", top, left: 0, right: 0 }}
       className={cn(
         "group/row relative flex h-[30px] items-center gap-1 rounded-control pr-1 text-small select-none transition-colors duration-100 focus-visible:outline-2 focus-visible:-outline-offset-2 max-md:h-11 max-md:text-body",
-        "[contain-intrinsic-size:auto_30px] [content-visibility:auto]",
+        "[contain-intrinsic-size:auto_30px] [content-visibility:auto] [-webkit-touch-callout:none]",
         style.row,
         current && style.current,
         dropZone === "inside" && style.inside,
@@ -177,7 +218,8 @@ const Row = memo(function Row({
           aria-hidden
           style={{ left: indent + 6 }}
           className={cn(
-            "pointer-events-none absolute right-1 z-(--z-sticky) h-0.5 rounded-full",
+            // The round end sits at the indent the page will have, so the level can be read off it.
+            "pointer-events-none absolute right-1 z-(--z-sticky) h-0.5 rounded-full before:absolute before:top-1/2 before:-left-1 before:size-1.5 before:-translate-y-1/2 before:rounded-full before:bg-inherit",
             style.line,
             dropZone === "before" ? "top-0" : "bottom-0",
           )}
@@ -190,7 +232,11 @@ const Row = memo(function Row({
           tabIndex={-1}
           aria-label={row.expanded ? `Collapse ${title}` : `Expand ${title}`}
           onClick={() => onToggle(item.id, !row.expanded)}
-          className={cn("grid size-5 shrink-0 place-content-center rounded-[4px] max-md:size-8", style.button)}
+          // On small screens the target reaches past the glyph to 44 px, without moving the title.
+          className={cn(
+            "relative grid size-5 shrink-0 place-content-center rounded-[4px] max-md:size-8 max-md:after:absolute max-md:after:-inset-1.5",
+            style.button,
+          )}
         >
           <ChevronRight
             aria-hidden
@@ -233,7 +279,7 @@ const Row = memo(function Row({
             aria-label={`Actions for ${title}`}
             aria-haspopup="menu"
             onClick={(event) => onMenu(item, event.currentTarget.getBoundingClientRect())}
-            className={cn("grid size-6 place-content-center rounded-[4px]", touch && "size-10", style.button)}
+            className={cn("grid size-6 place-content-center rounded-[4px]", touch && "size-11", style.button)}
           >
             <Ellipsis aria-hidden className="size-[15px]" />
           </button>
@@ -247,6 +293,15 @@ interface MenuState {
   item: NoteTreeItem;
   anchor: { left: number; top: number; width: number; height: number };
 }
+
+/** The page a finger is carrying. */
+interface Lifted {
+  id: string;
+  pointerId: number;
+}
+
+const sameTarget = (a: DropTarget | null, b: DropTarget | null) =>
+  a === b || (a !== null && b !== null && a.id === b.id && a.zone === b.zone && a.depth === b.depth);
 
 export function PageTree({
   index,
@@ -264,30 +319,64 @@ export function PageTree({
   const treeRef = useRef<HTMLDivElement>(null);
   const { expanded, setOpen } = useExpanded(index, currentId);
   const rows = useMemo(() => visibleRows(index, expanded), [index, expanded]);
+  /** Where each visible page is in `rows`. */
+  const place = useMemo(() => new Map(rows.map((row, at) => [row.item.id, at])), [rows]);
+  const view = useTreeWindow(treeRef, rows.length);
   const touch = useIsTouch();
   const [focusId, setFocusId] = useState<string | undefined>(undefined);
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [menu, setMenu] = useState<MenuState | null>(null);
   const [moving, setMoving] = useState<NoteTreeItem | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
-  const [drop, setDrop] = useState<{ id: string; zone: DropZone } | null>(null);
-  const hoverOpen = useRef<{ id: string; timer: number } | null>(null);
+  const [drop, setDrop] = useState<DropTarget | null>(null);
+  const [lifted, setLifted] = useState<Lifted | null>(null);
+  /** The pointer is over one of the dragged page's own sub-pages, where it cannot go. */
+  const [refused, setRefused] = useState(false);
 
   // One row is in the tab order: the focused one, else the open page, else the first.
-  const tabId = rows.some((row) => row.item.id === focusId)
-    ? focusId
-    : rows.some((row) => row.item.id === currentId)
-      ? currentId
-      : rows[0]?.item.id;
+  const tabId =
+    focusId !== undefined && place.has(focusId) ? focusId : currentId !== undefined && place.has(currentId) ? currentId : rows[0]?.item.id;
 
-  const focusRow = useCallback((id: string) => {
-    setFocusId(id);
-    const find = () => treeRef.current?.querySelector<HTMLElement>(`[data-row-id="${CSS.escape(id)}"]`);
-    const row = find();
-    // A row in a branch that was only just opened exists after the next render.
-    if (row) row.focus();
-    else requestAnimationFrame(() => find()?.focus());
-  }, []);
+  // ── Focus ──
+
+  const pendingFocus = useRef<string | null>(null);
+  const findRow = useCallback((id: string) => treeRef.current?.querySelector<HTMLElement>(`[data-row-id="${CSS.escape(id)}"]`), []);
+
+  const focusRow = useCallback(
+    (id: string) => {
+      const at = place.get(id);
+      // A row that is not drawn is scrolled to first; holding the focus then keeps it drawn.
+      if (view.windowed && at !== undefined) view.reveal(at);
+      setFocusId(id);
+      const row = findRow(id);
+      if (row) row.focus();
+      // A row in a branch that was only just opened, or outside the window, exists after the next render.
+      else pendingFocus.current = id;
+    },
+    [place, view.windowed, view.reveal, findRow],
+  );
+
+  useLayoutEffect(() => {
+    const id = pendingFocus.current;
+    if (id === null) return;
+    const row = findRow(id);
+    if (!row) return;
+    pendingFocus.current = null;
+    row.focus();
+  });
+
+  // The open page is brought into view when it changes, and once its branch has opened.
+  const revealed = useRef<string | undefined>(undefined);
+  useLayoutEffect(() => {
+    if (currentId === undefined) {
+      revealed.current = undefined;
+      return;
+    }
+    const at = place.get(currentId);
+    if (at === undefined || revealed.current === currentId) return;
+    revealed.current = currentId;
+    view.reveal(at, "centre");
+  }, [currentId, place, view.reveal]);
 
   const addChild = useCallback(
     (item: NoteTreeItem) => {
@@ -301,12 +390,26 @@ export function PageTree({
     setMenu({ item, anchor: { left: rect.left, top: rect.top, width: rect.width, height: rect.height } });
   }, []);
 
+  /** Up or down one place among its siblings: reordering without dragging. */
+  const nudge = (id: string, direction: -1 | 1) => {
+    const move = moveAmongSiblings(index, id, direction);
+    if (move) void actions.moveWithUndo(index, id, move);
+    return move !== null;
+  };
+
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const target = event.target as HTMLElement;
-    if (target.getAttribute("role") !== "treeitem" || event.altKey || event.metaKey || event.ctrlKey) return;
-    const at = rows.findIndex((row) => row.item.id === target.dataset.rowId);
-    const row = rows[at];
-    if (!row) return;
+    if (target.getAttribute("role") !== "treeitem" || event.metaKey || event.ctrlKey) return;
+    const at = place.get(target.dataset.rowId ?? "");
+    const row = at === undefined ? undefined : rows[at];
+    if (at === undefined || !row) return;
+    if (event.altKey) {
+      // Alt with an arrow moves the page itself.
+      if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+      event.preventDefault();
+      nudge(row.item.id, event.key === "ArrowUp" ? -1 : 1);
+      return;
+    }
     const go = (next: TreeRow | undefined) => {
       event.preventDefault();
       if (next) focusRow(next.item.id);
@@ -328,7 +431,7 @@ export function PageTree({
       case "ArrowLeft":
         event.preventDefault();
         if (row.expanded) setOpen(row.item.id, false);
-        else if (row.item.parentId) go(rows.find((candidate) => candidate.item.id === row.item.parentId));
+        else if (row.item.parentId) go(rows[place.get(row.item.parentId) ?? -1]);
         return;
       case "Enter":
         event.preventDefault();
@@ -346,7 +449,247 @@ export function PageTree({
     }
   };
 
+  // ── Moving a page: shared by the mouse and the finger ──
+
+  // What the handlers below need as it is now, including in callbacks that outlive a render.
+  const live = useRef({ index, rows, stride: view.stride, scroller: view.scroller });
+  live.current = { index, rows, stride: view.stride, scroller: view.scroller };
+  const dragging = useRef<string | null>(null);
+  const pointer = useRef<{ x: number; y: number } | null>(null);
+  const hoverOpen = useRef<{ id: string; timer: number } | null>(null);
+  const scrolling = useRef<number | null>(null);
+  /** Where the drag began, and whether the page has been carried away from there yet. */
+  const origin = useRef<{ x: number; y: number } | null>(null);
+  const carried = useRef(false);
+  /** A finger resting on a row, and whether it has picked the page up yet. */
+  const press = useRef<{ pointerId: number; id: string; x: number; y: number; timer: number; lifted: boolean } | null>(null);
+  const chipRef = useRef<HTMLDivElement>(null);
+  /** The click that follows lifting a finger must not open the page that was carried. */
+  const swallowClick = useRef(false);
+  /** Whether the last press on the tree was a finger, whose long press must not open the right-click menu. */
+  const byFinger = useRef(false);
+
+  const cancelHoverOpen = useCallback(() => {
+    if (hoverOpen.current) window.clearTimeout(hoverOpen.current.timer);
+    hoverOpen.current = null;
+  }, []);
+
+  /** What a drop at this height in the window would do. */
+  const locate = useCallback((clientY: number): DropTarget | null => {
+    const tree = treeRef.current;
+    const id = dragging.current;
+    if (!tree || !id) return null;
+    const { index: tree_, rows: shown, stride } = live.current;
+    return dropTargetAt(tree_, shown, id, clientY - tree.getBoundingClientRect().top, stride);
+  }, []);
+
+  /** Follows the pointer: marks where the page would land, opens a closed page it rests on, scrolls at the edges. */
+  const aim = useCallback(
+    (x: number, y: number): DropTarget | null => {
+      pointer.current = { x, y };
+      const target = locate(y);
+      setDrop((current) => (sameTarget(current, target) ? current : target));
+      const id = dragging.current;
+      const tree = treeRef.current;
+      const under = tree ? live.current.rows[Math.floor((y - tree.getBoundingClientRect().top) / live.current.stride)] : undefined;
+      setRefused(!target && !!id && !!under && under.item.id !== id && isSelfOrDescendant(live.current.index, id, under.item.id));
+
+      const wantsOpen = target?.opens ?? null;
+      if (hoverOpen.current?.id !== wantsOpen) {
+        cancelHoverOpen();
+        if (wantsOpen) hoverOpen.current = { id: wantsOpen, timer: window.setTimeout(() => setOpen(wantsOpen, true), HOVER_OPEN_MS) };
+      }
+
+      // A page picked up near an edge does not scroll the list until it has been carried a little.
+      origin.current ??= { x, y };
+      if (!carried.current) carried.current = Math.hypot(x - origin.current.x, y - origin.current.y) > CARRY_SLOP;
+      if (carried.current && scrolling.current === null) {
+        scrolling.current = requestAnimationFrame(() => {
+          scrolling.current = null;
+          const at = pointer.current;
+          if (!at || !dragging.current) return;
+          const scroller = live.current.scroller();
+          const speed = edgeSpeed(at.y, viewOf(scroller));
+          if (speed === 0) return;
+          scrollByY(scroller, speed);
+          // The tree moved under a still pointer: aim again, which also keeps this going.
+          aim(at.x, at.y);
+        });
+      }
+      return target;
+    },
+    [locate, cancelHoverOpen, setOpen],
+  );
+
+  const endDrag = useCallback(() => {
+    cancelHoverOpen();
+    if (scrolling.current !== null) cancelAnimationFrame(scrolling.current);
+    scrolling.current = null;
+    dragging.current = null;
+    pointer.current = null;
+    origin.current = null;
+    carried.current = false;
+    setDragId(null);
+    setDrop(null);
+    setLifted(null);
+    setRefused(false);
+  }, [cancelHoverOpen]);
+
+  // A branch that opened under a resting pointer changes what is under it.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs when the rows change, which is the point
+  useEffect(() => {
+    if (dragging.current && pointer.current) aim(pointer.current.x, pointer.current.y);
+  }, [rows, aim]);
+
+  useEffect(() => endDrag, [endDrag]);
+
+  const land = (id: string, target: DropTarget) => {
+    if (target.zone === "inside" && target.id !== END) setOpen(target.id, true);
+    void actions.moveWithUndo(index, id, target.move);
+  };
+
+  // ── By mouse: the browser's drag and drop ──
+
+  const onDragStart = (event: DragEvent<HTMLDivElement>) => {
+    // A long press on a touch screen can also start the browser's drag; ours has it.
+    if (press.current) {
+      event.preventDefault();
+      return;
+    }
+    const id = (event.target as HTMLElement).closest<HTMLElement>("[data-row-id]")?.dataset.rowId;
+    if (!id) return;
+    event.dataTransfer.setData(DRAG_TYPE, id);
+    event.dataTransfer.setData("text/plain", displayTitle(index.byId.get(id)?.title));
+    event.dataTransfer.effectAllowed = "move";
+    dragging.current = id;
+    setDragId(id);
+  };
+
+  const onDragOver = (event: DragEvent<HTMLDivElement>) => {
+    if (!dragging.current || press.current) return;
+    if (!aim(event.clientX, event.clientY)) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+  };
+
+  const onDrop = (event: DragEvent<HTMLDivElement>) => {
+    if (press.current) return;
+    const target = locate(event.clientY);
+    const id = dragging.current;
+    endDrag();
+    if (!target || !id) return;
+    event.preventDefault();
+    land(id, target);
+  };
+
+  // ── By touch: a long press picks the page up ──
+
+  const placeChip = useCallback(() => {
+    const chip = chipRef.current;
+    const at = pointer.current;
+    if (!chip || !at) return;
+    // Above and a little to the right of the finger, so it is not hidden under it.
+    const x = Math.max(8, Math.min(at.x - 28, window.innerWidth - chip.offsetWidth - 8));
+    const above = at.y - chip.offsetHeight - 28;
+    chip.style.transform = `translate3d(${Math.round(x)}px, ${Math.round(above < 8 ? at.y + 36 : above)}px, 0)`;
+  }, []);
+
+  const endPress = useCallback(() => {
+    if (press.current) window.clearTimeout(press.current.timer);
+    press.current = null;
+  }, []);
+
+  const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    byFinger.current = event.pointerType !== "mouse";
+    swallowClick.current = false;
+    if (event.pointerType === "mouse" || !event.isPrimary || press.current) return;
+    const element = event.target as HTMLElement;
+    // The arrow and the menu button keep their own taps.
+    if (element.closest("button")) return;
+    const id = element.closest<HTMLElement>("[data-row-id]")?.dataset.rowId;
+    if (!id) return;
+    const { pointerId, clientX, clientY } = event;
+    const timer = window.setTimeout(() => {
+      const held = press.current;
+      if (!held || held.pointerId !== pointerId) return;
+      held.lifted = true;
+      swallowClick.current = true;
+      dragging.current = held.id;
+      pointer.current = { x: held.x, y: held.y };
+      // Later moves come to the tree even if the row under the finger is redrawn.
+      try {
+        treeRef.current?.setPointerCapture(pointerId);
+      } catch {
+        // The finger has already gone; the pointerup that follows ends the press.
+      }
+      try {
+        navigator.vibrate?.(8);
+      } catch {
+        // No vibration here; the lifted look says the same thing.
+      }
+      setDragId(held.id);
+      setLifted({ id: held.id, pointerId });
+      aim(held.x, held.y);
+    }, LONG_PRESS_MS);
+    press.current = { pointerId, id, x: clientX, y: clientY, timer, lifted: false };
+  };
+
+  const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    const held = press.current;
+    if (!held || event.pointerId !== held.pointerId) return;
+    if (!held.lifted) {
+      // Still deciding: a finger that travels is scrolling the list.
+      if (Math.hypot(event.clientX - held.x, event.clientY - held.y) > PRESS_SLOP) endPress();
+      return;
+    }
+    aim(event.clientX, event.clientY);
+    placeChip();
+  };
+
+  const onPointerUp = (event: PointerEvent<HTMLDivElement>) => {
+    const held = press.current;
+    if (!held || event.pointerId !== held.pointerId) return;
+    endPress();
+    if (!held.lifted) return;
+    // If the browser sends no click after a long press, the next real one must still count.
+    window.setTimeout(() => {
+      swallowClick.current = false;
+    }, 350);
+    const target = locate(event.clientY);
+    endDrag();
+    if (target) land(held.id, target);
+  };
+
+  const onPointerCancel = (event: PointerEvent<HTMLDivElement>) => {
+    const held = press.current;
+    if (!held || event.pointerId !== held.pointerId) return;
+    endPress();
+    if (held.lifted) endDrag();
+  };
+
+  // Once a page is lifted, the finger moves the page, not the list. A browser only
+  // honours that from a listener it was told about before the touch began.
+  useEffect(() => {
+    const tree = treeRef.current;
+    if (!tree) return;
+    const hold = (event: TouchEvent) => {
+      if (press.current?.lifted && event.cancelable) event.preventDefault();
+    };
+    tree.addEventListener("touchmove", hold, { passive: false });
+    return () => tree.removeEventListener("touchmove", hold);
+  }, []);
+
+  useEffect(() => endPress, [endPress]);
+  useLayoutEffect(() => {
+    if (lifted) placeChip();
+  });
+
   const onContextMenu = (event: MouseEvent<HTMLDivElement>) => {
+    // A long press with a finger picks the page up; its menu is the button on the row.
+    if (byFinger.current) {
+      event.preventDefault();
+      return;
+    }
     const id = (event.target as HTMLElement).closest<HTMLElement>("[data-row-id]")?.dataset.rowId;
     const item = id ? index.byId.get(id) : undefined;
     if (!item) return;
@@ -354,74 +697,42 @@ export function PageTree({
     setMenu({ item, anchor: { left: event.clientX, top: event.clientY, width: 0, height: 0 } });
   };
 
-  // ── Drag and drop ──
+  // ── What is drawn ──
 
-  const cancelHoverOpen = () => {
-    if (hoverOpen.current) window.clearTimeout(hoverOpen.current.timer);
-    hoverOpen.current = null;
-  };
-
-  const endDrag = () => {
-    cancelHoverOpen();
-    setDragId(null);
-    setDrop(null);
-  };
-
-  const onDragStart = (event: DragEvent<HTMLDivElement>) => {
-    const id = (event.target as HTMLElement).closest<HTMLElement>("[data-row-id]")?.dataset.rowId;
-    if (!id) return;
-    event.dataTransfer.setData(DRAG_TYPE, id);
-    event.dataTransfer.setData("text/plain", displayTitle(index.byId.get(id)?.title));
-    event.dataTransfer.effectAllowed = "move";
-    setDragId(id);
-  };
-
-  /** What a drop at the pointer would do, and where to draw it. */
-  const targetAt = (event: DragEvent<HTMLDivElement>) => {
-    if (!dragId) return null;
-    const element = (event.target as HTMLElement).closest<HTMLElement>("[data-row-id]");
-    if (!element) {
-      // The empty space under the tree: to the end of the top level.
-      const last = index.childrenOf.get(null)?.at(-1);
-      if (!last || last.id === dragId) return null;
-      return { id: END, zone: "after" as const, move: { parentId: null } };
+  // Rows near the part on screen, and the few that must stay whatever is on screen: the
+  // one holding the focus or the tab stop, the one being dragged, the one whose menu is open.
+  const drawn = useMemo(() => {
+    if (!view.windowed) return null;
+    const set = new Set<number>();
+    for (let at = view.range.start; at < view.range.end; at += 1) set.add(at);
+    for (const id of [tabId, focusId, dragId, menu?.item.id]) {
+      const at = id === undefined || id === null ? undefined : place.get(id);
+      if (at !== undefined) set.add(at);
     }
-    const row = rows.find((candidate) => candidate.item.id === element.dataset.rowId);
-    if (!row) return null;
-    const rect = element.getBoundingClientRect();
-    const zone = dropZoneAt(event.clientY - rect.top, rect.height, row);
-    const move = moveForDrop(index, dragId, row.item.id, zone, row.expanded);
-    return move ? { id: row.item.id, zone, move, row } : null;
-  };
+    return [...set].sort((a, b) => a - b);
+  }, [view.windowed, view.range.start, view.range.end, tabId, focusId, dragId, menu, place]);
 
-  const onDragOver = (event: DragEvent<HTMLDivElement>) => {
-    const target = targetAt(event);
-    if (!target) {
-      cancelHoverOpen();
-      if (drop) setDrop(null);
-      return;
-    }
-    event.preventDefault();
-    event.dataTransfer.dropEffect = "move";
-    if (drop?.id !== target.id || drop.zone !== target.zone) setDrop({ id: target.id, zone: target.zone });
+  const renderRow = (row: TreeRow, at: number | undefined) => (
+    <Row
+      key={row.item.id}
+      row={row}
+      tone={tone}
+      current={row.item.id === currentId}
+      tabbable={row.item.id === tabId}
+      dropZone={drop?.id === row.item.id ? drop.zone : null}
+      dragging={row.item.id === dragId}
+      menuOpen={menu?.item.id === row.item.id}
+      active={row.item.id === hoverId || row.item.id === focusId}
+      touch={touch}
+      top={at === undefined ? undefined : at * view.stride}
+      onToggle={setOpen}
+      onAddChild={addChild}
+      onMenu={openMenu}
+    />
+  );
 
-    // Resting on a closed page for a moment opens it, so a page can be dropped deeper.
-    const wantsOpen = target.zone === "inside" && target.row?.hasChildren && !target.row.expanded ? target.id : null;
-    if (hoverOpen.current?.id !== wantsOpen) {
-      cancelHoverOpen();
-      if (wantsOpen) hoverOpen.current = { id: wantsOpen, timer: window.setTimeout(() => setOpen(wantsOpen, true), 650) };
-    }
-  };
-
-  const onDrop = (event: DragEvent<HTMLDivElement>) => {
-    const target = targetAt(event);
-    const id = dragId;
-    endDrag();
-    if (!target || !id) return;
-    event.preventDefault();
-    if (target.zone === "inside") setOpen(target.id, true);
-    void actions.move(id, target.move);
-  };
+  const liftedItem = lifted ? index.byId.get(lifted.id) : undefined;
+  const menuItem = menu ? index.byId.get(menu.item.id) : undefined;
 
   return (
     <>
@@ -441,50 +752,85 @@ export function PageTree({
           if (id) setFocusId(id);
         }}
         onDragStart={onDragStart}
+        // Entering a row counts as being over it: Chrome sends no "dragover" for a move that changes the row.
+        onDragEnter={onDragOver}
         onDragOver={onDragOver}
         onDragLeave={(event) => {
           if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
             cancelHoverOpen();
+            pointer.current = null;
             setDrop(null);
           }
         }}
         onDrop={onDrop}
         onDragEnd={endDrag}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerCancel}
+        onClickCapture={(event) => {
+          if (!swallowClick.current) return;
+          swallowClick.current = false;
+          event.preventDefault();
+          event.stopPropagation();
+        }}
+        // Windowed, the tree is as tall as all of its rows and places the drawn ones itself.
+        style={drawn ? { height: `calc(${rows.length * view.stride - 1}px + 1.5rem)` } : undefined}
         className="relative flex flex-col gap-px pb-6"
       >
-        {rows.map((row) => (
-          <Row
-            key={row.item.id}
-            row={row}
-            tone={tone}
-            current={row.item.id === currentId}
-            tabbable={row.item.id === tabId}
-            dropZone={drop?.id === row.item.id ? drop.zone : null}
-            dragging={row.item.id === dragId}
-            menuOpen={menu?.item.id === row.item.id}
-            active={row.item.id === hoverId || row.item.id === focusId}
-            touch={touch}
-            onToggle={setOpen}
-            onAddChild={addChild}
-            onMenu={openMenu}
-          />
-        ))}
+        {drawn
+          ? drawn.map((at) => {
+              const row = rows[at];
+              return row ? renderRow(row, at) : null;
+            })
+          : rows.map((row) => renderRow(row, undefined))}
         {drop?.id === END ? (
           <span aria-hidden className={cn("pointer-events-none absolute inset-x-2 bottom-5 h-0.5 rounded-full", tones[tone].line)} />
         ) : null}
       </div>
+
+      {lifted && liftedItem
+        ? createPortal(
+            <div ref={chipRef} aria-hidden data-page-lifted className="pointer-events-none fixed top-0 left-0 z-(--z-toast)">
+              <div className="flex max-w-[min(19rem,calc(100vw-1rem))] animate-enter items-center gap-2.5 rounded-control border border-border-strong bg-raised py-2 pr-3.5 pl-3 text-ink shadow-float">
+                <PageIcon icon={liftedItem.icon} className="text-ink-muted" />
+                <span className="min-w-0">
+                  <span className="block truncate text-small font-medium">{displayTitle(liftedItem.title)}</span>
+                  <span className="block truncate text-micro text-ink-muted">{landingLabel(index, drop, refused)}</span>
+                </span>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
 
       <RowMenu
         menu={menu}
         onClose={() => setMenu(null)}
         onMove={(item) => setMoving(item)}
         onAddChild={addChild}
+        onNudge={(item, direction) => nudge(item.id, direction)}
+        canNudge={
+          menuItem
+            ? { up: moveAmongSiblings(index, menuItem.id, -1) !== null, down: moveAmongSiblings(index, menuItem.id, 1) !== null }
+            : undefined
+        }
         currentId={currentId}
         returnFocus={(id) => focusRow(id)}
       />
       {moving ? <MoveDialog page={moving} index={index} onClose={() => setMoving(null)} /> : null}
     </>
   );
+}
+
+/** In words, where the carried page will land: the finger is usually on top of the mark. */
+function landingLabel(index: TreeIndex, drop: DropTarget | null, refused: boolean): string {
+  if (drop) {
+    if (drop.id === END) return "At the end of the top level";
+    const title = `“${displayTitle(index.byId.get(drop.id)?.title)}”`;
+    return drop.zone === "inside" ? `Inside ${title}` : drop.zone === "before" ? `Before ${title}` : `After ${title}`;
+  }
+  return refused ? "A page cannot go inside itself" : "Drag to where it should go";
 }
 
 /**
@@ -496,6 +842,8 @@ export function RowMenu({
   onClose,
   onMove,
   onAddChild,
+  onNudge,
+  canNudge,
   currentId,
   returnFocus,
 }: {
@@ -503,6 +851,9 @@ export function RowMenu({
   onClose(): void;
   onMove(item: NoteTreeItem): void;
   onAddChild?(item: NoteTreeItem): void;
+  /** Where the order of pages shows (the tree), a page can be moved up or down a place from its menu. */
+  onNudge?(item: NoteTreeItem, direction: -1 | 1): void;
+  canNudge?: { up: boolean; down: boolean };
   currentId: string | undefined;
   returnFocus?(id: string): void;
 }) {
@@ -525,6 +876,8 @@ export function RowMenu({
       {shown ? (
         <MenuContent
           align="start"
+          // Comfortable under a thumb on small screens.
+          className="max-md:[&_[role=menuitem]]:min-h-11"
           onCloseAutoFocus={(event) => {
             event.preventDefault();
             returnFocus?.(shown.item.id);
@@ -544,6 +897,18 @@ export function RowMenu({
             actions={actions}
             onMove={() => onMove(shown.item)}
             openId={currentId}
+            afterMove={
+              onNudge ? (
+                <>
+                  <MenuItem disabled={!canNudge?.up} onSelect={() => onNudge(shown.item, -1)}>
+                    <ArrowUp /> Move up
+                  </MenuItem>
+                  <MenuItem disabled={!canNudge?.down} onSelect={() => onNudge(shown.item, 1)}>
+                    <ArrowDown /> Move down
+                  </MenuItem>
+                </>
+              ) : null
+            }
           />
         </MenuContent>
       ) : null}

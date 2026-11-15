@@ -24,6 +24,21 @@ export interface TreeRow {
 /** Where a dragged page lands relative to the row under the pointer. */
 export type DropZone = "before" | "after" | "inside";
 
+/** Stands for "after the last top-level page" as a drop target. */
+export const END = "\u0000end";
+
+/** What letting go at a point in the tree would do, and where to draw it. */
+export interface DropTarget {
+  /** The row the mark is drawn on, or `END` for the space under the tree. */
+  id: string;
+  zone: DropZone;
+  move: MoveNoteBody;
+  /** How deep the page will sit where it lands; the top level is 0. */
+  depth: number;
+  /** A closed page that opens if the pointer rests on it, so the page can go deeper. */
+  opens: string | null;
+}
+
 const byPosition = (a: NoteTreeItem, b: NoteTreeItem) => a.position - b.position || a.id.localeCompare(b.id);
 
 export function buildTreeIndex(items: readonly NoteTreeItem[]): TreeIndex {
@@ -123,6 +138,58 @@ export function moveForDrop(index: TreeIndex, dragId: string, targetId: string, 
     if ((currentPrevious?.id ?? null) === afterId) return null;
   }
   return { parentId, afterId };
+}
+
+/**
+ * The drop a point in the tree stands for. Rows are all the same height, so the row is
+ * worked out from the distance below the top of the tree (`y`) and the height of a row
+ * plus the gap under it (`stride`): this works for rows that are not drawn, too.
+ */
+export function dropTargetAt(index: TreeIndex, rows: readonly TreeRow[], dragId: string, y: number, stride: number): DropTarget | null {
+  if (y < 0 || stride <= 0) return null;
+  const at = Math.floor(y / stride);
+  const row = rows[at];
+  if (!row) {
+    // The empty space under the tree: to the end of the top level.
+    const last = index.childrenOf.get(null)?.at(-1);
+    if (!last || last.id === dragId || !index.byId.has(dragId)) return null;
+    return { id: END, zone: "after", move: { parentId: null }, depth: 0, opens: null };
+  }
+  const rowHeight = Math.max(1, stride - 1);
+  const zone = dropZoneAt(Math.min(y - at * stride, rowHeight), rowHeight, row);
+  const move = moveForDrop(index, dragId, row.item.id, zone, row.expanded);
+  if (!move) return null;
+  const inside = zone === "inside";
+  return {
+    id: row.item.id,
+    zone,
+    move,
+    depth: inside ? row.depth + 1 : row.depth,
+    opens: inside && row.hasChildren && !row.expanded ? row.item.id : null,
+  };
+}
+
+/** Where a page is now, as a move: what an undo sends to put it back. */
+export function placeOf(index: TreeIndex, id: string): MoveNoteBody | null {
+  if (!index.byId.has(id)) return null;
+  const parentId = parentOf(index, id);
+  const siblings = index.childrenOf.get(parentId) ?? [];
+  const previous = siblings[siblings.findIndex((item) => item.id === id) - 1];
+  return { parentId, afterId: previous ? previous.id : null };
+}
+
+/** One place up or down among its siblings, or `null` at the end of the line. */
+export function moveAmongSiblings(index: TreeIndex, id: string, direction: -1 | 1): MoveNoteBody | null {
+  if (!index.byId.has(id)) return null;
+  const parentId = parentOf(index, id);
+  const siblings = index.childrenOf.get(parentId) ?? [];
+  const at = siblings.findIndex((item) => item.id === id);
+  if (direction === -1) {
+    if (at <= 0) return null;
+    return { parentId, afterId: siblings[at - 2]?.id ?? null };
+  }
+  const next = siblings[at + 1];
+  return next ? { parentId, afterId: next.id } : null;
 }
 
 /** Pages a page may be moved into: everything except itself and its own sub-pages. */

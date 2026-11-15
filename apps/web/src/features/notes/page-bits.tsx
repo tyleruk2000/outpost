@@ -26,6 +26,7 @@ export function PageMenuItems({
   onMove,
   openId,
   favourite = true,
+  afterMove,
   children,
 }: {
   page: NoteRef;
@@ -36,6 +37,8 @@ export function PageMenuItems({
   openId?: string;
   /** False where a favourite button already sits next to the menu. */
   favourite?: boolean;
+  /** More ways to move the page, placed right after "Move to…". */
+  afterMove?: ReactNode;
   /** More items, placed before "Move to trash". */
   children?: ReactNode;
 }) {
@@ -52,6 +55,7 @@ export function PageMenuItems({
       <MenuItem onSelect={onMove}>
         <CornerDownRight /> Move to…
       </MenuItem>
+      {afterMove}
       <MenuItem asChild>
         <a href={exportUrl(page.id)} download>
           <Download /> Export as Markdown

@@ -22,7 +22,7 @@ import { useMemo } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
 import { api, errorMessage, uploadWithProgress } from "@/lib/api";
-import { buildTreeIndex, type TreeIndex } from "./tree-model";
+import { buildTreeIndex, placeOf, type TreeIndex } from "./tree-model";
 
 export const noteKeys = {
   all: ["notes"] as const,
@@ -113,6 +113,8 @@ export interface NoteActions {
   setFavorite(page: NoteRef, isFavorite: boolean): Promise<void>;
   duplicate(page: NoteRef): Promise<void>;
   move(id: string, target: MoveNoteBody): Promise<boolean>;
+  /** Moves a page and says so, with an "Undo" that puts it back. `index` is the tree before the move. */
+  moveWithUndo(index: TreeIndex, id: string, target: MoveNoteBody): Promise<boolean>;
   trash(page: NoteRef, options?: { openId?: string }): Promise<void>;
   restore(page: NoteRef): Promise<boolean>;
   deleteForGood(page: NoteRef): Promise<boolean>;
@@ -133,6 +135,18 @@ export function useNoteActions(): NoteActions {
       try {
         await api.post<NoteResponse>(`/api/notes/${page.id}/restore`);
         await refresh();
+        return true;
+      } catch (error) {
+        fail(error);
+        return false;
+      }
+    };
+
+    const move = async (id: string, target: MoveNoteBody) => {
+      try {
+        const { note } = await api.post<NoteMoveResponse>(`/api/notes/${id}/move`, target);
+        patchTreeItem(client, id, note);
+        void refresh();
         return true;
       } catch (error) {
         fail(error);
@@ -175,16 +189,22 @@ export function useNoteActions(): NoteActions {
         }
       },
 
-      async move(id, target) {
-        try {
-          const { note } = await api.post<NoteMoveResponse>(`/api/notes/${id}/move`, target);
-          patchTreeItem(client, id, note);
-          void refresh();
-          return true;
-        } catch (error) {
-          fail(error);
-          return false;
-        }
+      move,
+
+      async moveWithUndo(index, id, target) {
+        const page = index.byId.get(id);
+        const back = placeOf(index, id);
+        if (!(await move(id, target))) return false;
+        if (!page || !back) return true;
+        const title = displayTitle(page.title);
+        const message =
+          back.parentId === target.parentId
+            ? `Moved “${title}”.`
+            : target.parentId === null
+              ? `Moved “${title}” to the top level.`
+              : `Moved “${title}” into “${displayTitle(index.byId.get(target.parentId)?.title)}”.`;
+        toast(message, { action: { label: "Undo", onClick: () => void move(id, back) } });
+        return true;
       },
 
       async trash(page, { openId } = {}) {
