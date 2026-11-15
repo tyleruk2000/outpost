@@ -2,17 +2,27 @@
   "$schema": "https://biomejs.dev/schemas/2.6.8/schema.json",
   "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
   "files": {
-    "includes": ["**", "!**/dist", "!**/migrations/meta", "!apps/web/public", "!.beads", "!.claude", "!**/*.gen.ts", "!catalog/schema"]
+    "includes": [
+      "**",
+      "!**/dist",
+      "!**/migrations/meta",
+      "!apps/web/public",
+      "!.beads",
+      "!.claude",
+      "!**/*.gen.ts",
+      "!catalog/schema",
+      "!**/*.md"
+    ]
   },
   "formatter": { "indentStyle": "space", "indentWidth": 2, "lineWidth": 140 },
   "javascript": { "formatter": { "quoteStyle": "double", "semicolons": "always" } },
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true,
+      "preset": "recommended",
       "style": { "noNonNullAssertion": "off" },
       "suspicious": { "noExplicitAny": "warn" },
-      "a11y": { "recommended": true }
+      "a11y": { "preset": "recommended" }
     }
   },
   "css": { "parser": { "tailwindDirectives": true } }
