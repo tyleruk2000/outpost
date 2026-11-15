@@ -6,6 +6,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
+import { registerExplain } from "./explain.ts";
 import type { AssembledContext, Citation, ContextAssembler, ModelProvider, Reranker, RetrievedPassage, Retriever } from "./types.ts";
 
 export interface RetrievalService {
@@ -156,6 +157,8 @@ export async function registerRetrieval(app: FastifyInstance, ctx: AppContext): 
     const input = body.parse(request.body);
     return { query: input.query, passages: await retriever.retrieve(input) };
   });
+
+  registerExplain(app, ctx);
 
   /** The same passages laid out as numbered, citable context for a language model. */
   app.post("/api/retrieval/context", async (request) => {
