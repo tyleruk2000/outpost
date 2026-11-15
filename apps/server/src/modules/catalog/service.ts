@@ -428,7 +428,38 @@ export function createCatalogService(ctx: AppContext, options: CatalogServiceOpt
     };
   }
 
+  /**
+   * An archive that was added by hand, or installed before the catalogue listed it, is
+   * that entry's installed copy: the same book in the same edition. Without this the
+   * catalogue offers to download what is already there, and a pack fetches it twice.
+   * The record is only told which entry it belongs to; nothing else about it changes.
+   */
+  function adoptUnlinkedArchives(): void {
+    // Oldest first (ids sort by when they were made): of two copies, the first one keeps the entry.
+    const unlinked = collections
+      .list({ kind: "zim" })
+      .filter((row) => !row.catalogEntryId)
+      .sort((a, b) => (a.id < b.id ? -1 : 1));
+    if (unlinked.length === 0) return;
+    const taken = new Set(collections.list().map((row) => row.catalogEntryId));
+    for (const row of unlinked) {
+      const zim = (row.meta.zim ?? {}) as { flavour?: unknown };
+      const kiwix = (row.meta.kiwix ?? {}) as { name?: unknown };
+      const name = typeof kiwix.name === "string" ? kiwix.name : typeof row.meta.kiwixName === "string" ? row.meta.kiwixName : undefined;
+      if (!name) continue;
+      const flavour = typeof zim.flavour === "string" ? zim.flavour : "";
+      const entry = catalog.entries.find(
+        (candidate) => candidate.source.type === "kiwix" && candidate.source.name === name && candidate.source.flavour === flavour,
+      );
+      if (!entry || taken.has(entry.id)) continue;
+      collections.update(row.id, { catalogEntryId: entry.id });
+      taken.add(entry.id);
+      ctx.log.info({ collection: row.id, entry: entry.id }, "an installed archive was matched to its catalogue entry");
+    }
+  }
+
   function list(): CatalogResponse {
+    adoptUnlinkedArchives();
     const downloadsByEntry = new Map<string, DownloadRow[]>();
     for (const row of downloads.list()) {
       if (!row.catalogEntryId) continue;
@@ -472,6 +503,7 @@ export function createCatalogService(ctx: AppContext, options: CatalogServiceOpt
     const entry = requireEntry(entryId);
     const entryDownloads = downloads.list().filter((row) => row.catalogEntryId === entryId);
     if (entryDownloads.some(isActive)) throw conflict(`"${entry.name}" is already being downloaded.`);
+    adoptUnlinkedArchives();
     const installed = collections.list({ catalogEntryId: entryId })[0];
     const location = request.locationId ? storage.get(request.locationId) : storage.getDefault();
 

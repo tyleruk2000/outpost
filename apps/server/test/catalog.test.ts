@@ -562,6 +562,42 @@ describe("checking files that publishers host themselves", () => {
   });
 });
 
+describe("an archive that is installed already", () => {
+  it("is recognised as its catalogue entry, so it is not offered or fetched again", async () => {
+    app = await createTestApp();
+    const { collections, storage } = app.ctx.services;
+    const location = storage.getDefault();
+    const put = async (file: string, meta: Json) => {
+      const relPath = `collections/zim/${file}`;
+      fs.mkdirSync(path.join(location.path, "collections/zim"), { recursive: true });
+      fs.writeFileSync(path.join(location.path, relPath), "zim");
+      return collections.create({ kind: "zim", title: file, locationId: location.id, relPath, meta });
+    };
+    // Added by hand: the name and edition come from the archive itself.
+    const knots = await put("wikipedia_en_knots_maxi_2026-10.zim", { zim: { flavour: "maxi" }, kiwix: { name: "wikipedia_en_knots" } });
+    // The same book in another edition is a different entry, and this one has no entry at all.
+    const mini = await put("wikipedia_en_knots_mini_2026-10.zim", { zim: { flavour: "mini" }, kiwix: { name: "wikipedia_en_knots" } });
+    // A second copy of the first must not take the link from it.
+    const copy = await put("wikipedia_en_knots_maxi_copy.zim", { zim: { flavour: "maxi" }, kiwix: { name: "wikipedia_en_knots" } });
+    ship(
+      app,
+      "kiwix.json",
+      manifest("kiwix-test", [
+        entry("k.knots", { type: "kiwix", name: "wikipedia_en_knots", flavour: "maxi" }, { name: "Knots", category: "survival" }),
+        entry("k.water", { type: "kiwix", name: "zimgit-water_en", flavour: "" }, { name: "Water", category: "survival" }),
+      ]),
+    );
+
+    expect(await entryOf(app, "k.knots")).toMatchObject({ status: "installed", collectionId: knots.id });
+    expect(await entryOf(app, "k.water")).toMatchObject({ status: "not_installed" });
+    expect(collections.get(knots.id)?.catalogEntryId).toBe("k.knots");
+    expect(collections.get(mini.id)?.catalogEntryId).toBeNull();
+    expect(collections.get(copy.id)?.catalogEntryId).toBeNull();
+    // Only the link changed.
+    expect(collections.get(knots.id)).toMatchObject({ title: "wikipedia_en_knots_maxi_2026-10.zim", status: "installed" });
+  });
+});
+
 describe("downloading from the catalogue", () => {
   it("resolves a Kiwix book just before downloading, with exact size and checksum", async () => {
     app = await createTestApp();
