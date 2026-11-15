@@ -1,7 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { MAX_FORMATTED_BYTES, markdownBlocks, safeHref } from "../src/modules/documents/markdown-view.ts";
+import { markdownSections } from "../src/modules/documents/extract-text.ts";
+import { headingSlug, MAX_FORMATTED_BYTES, markdownBlocks, parseOutpostLink, safeHref } from "../src/modules/documents/markdown-view.ts";
 import { multipart, type UploadFile } from "./fixtures/documents/builders.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
 
@@ -96,14 +97,14 @@ describe("a Markdown file as blocks", () => {
       ].join("\n"),
     );
     expect(blocks.map((block) => block.t)).toEqual(["heading", "list", "list", "quote", "code", "rule"]);
-    expect(blocks[0]).toEqual({ t: "heading", depth: 1, c: [{ t: "text", v: "Stoves" }] });
+    expect(blocks[0]).toEqual({ t: "heading", depth: 1, id: "stoves", c: [{ t: "text", v: "Stoves" }] });
     expect(blocks[1]).toMatchObject({ ordered: true, start: 3, items: [{ c: [{ t: "paragraph" }] }, {}] });
     expect(blocks[2]).toMatchObject({
       ordered: false,
       items: [{ checked: true }, { checked: false, c: [{ t: "paragraph" }, { t: "list", items: [{ c: [{ c: [{ v: "Seal" }] }] }] }] }],
     });
     expect(blocks[3]).toMatchObject({ c: [{ t: "paragraph", c: [{ t: "text", v: "Keep " }, { t: "strong" }, { t: "text", v: "." }] }] });
-    expect(blocks[4]).toEqual({ t: "code", v: "echo hi" });
+    expect(blocks[4]).toEqual({ t: "code", lang: "sh", v: "echo hi" });
   });
 
   it("reads a table with formatting in its cells, every row the same width", () => {
@@ -125,6 +126,261 @@ describe("a Markdown file as blocks", () => {
     let depth = 0;
     for (let block = deep[0]; block?.t === "quote"; block = block.c[0]) depth += 1;
     expect(depth).toBeLessThanOrEqual(16);
+  });
+});
+
+describe("links that stay inside Outpost", () => {
+  const known = new Map([
+    [
+      "logbook73.handbook",
+      { name: "Radio Engineering Handbook", collectionId: "01COLLECTION", chapters: new Map([["decibels", "01DOCUMENT"]]) },
+    ],
+    ["logbook73.guide.g90", { name: "Xiegu G90 companion guide", collectionId: undefined, chapters: new Map<string, string>() }],
+  ]);
+  const asked: Array<[string, string | undefined]> = [];
+  const resolve = (entryId: string, chapterKey?: string) => {
+    asked.push([entryId, chapterKey]);
+    const entry = known.get(entryId);
+    if (!entry) return undefined;
+    return {
+      entryId,
+      entryName: entry.name,
+      collectionId: entry.collectionId,
+      documentId: chapterKey ? entry.chapters.get(chapterKey) : undefined,
+    };
+  };
+  const first = (source: string) => {
+    const [block] = markdownBlocks(source, { resolve });
+    return block?.t === "paragraph" ? block.c : [];
+  };
+
+  it("become a reference carrying only what the server looked up", () => {
+    expect(first("See [Decibels](outpost:entry/logbook73.handbook/decibels#the-3-db-rule).")).toEqual([
+      { t: "text", v: "See " },
+      {
+        t: "ref",
+        entryId: "logbook73.handbook",
+        entryName: "Radio Engineering Handbook",
+        collectionId: "01COLLECTION",
+        documentId: "01DOCUMENT",
+        anchor: "the-3-db-rule",
+        c: [{ t: "text", v: "Decibels" }],
+      },
+      { t: "text", v: "." },
+    ]);
+    // The book itself, a chapter it does not have, and a book that is not in the library.
+    expect(first("[The handbook](outpost:entry/logbook73.handbook)")).toEqual([
+      {
+        t: "ref",
+        entryId: "logbook73.handbook",
+        entryName: "Radio Engineering Handbook",
+        collectionId: "01COLLECTION",
+        c: [{ t: "text", v: "The handbook" }],
+      },
+    ]);
+    expect(first("[Gone](outpost:entry/logbook73.handbook/no-such-chapter#heading)")).toEqual([
+      {
+        t: "ref",
+        entryId: "logbook73.handbook",
+        entryName: "Radio Engineering Handbook",
+        collectionId: "01COLLECTION",
+        c: [{ t: "text", v: "Gone" }],
+      },
+    ]);
+    expect(first("[Menus](outpost:entry/logbook73.guide.g90/menu-reference)")).toEqual([
+      { t: "ref", entryId: "logbook73.guide.g90", entryName: "Xiegu G90 companion guide", c: [{ t: "text", v: "Menus" }] },
+    ]);
+    // A link with no words of its own is named after what it leads to.
+    expect(first("[](outpost:entry/logbook73.handbook)")).toMatchObject([
+      { t: "ref", c: [{ t: "text", v: "Radio Engineering Handbook" }] },
+    ]);
+  });
+
+  it("are plain words when the catalogue has no such entry, or when nothing can look it up", () => {
+    expect(first("[Elsewhere](outpost:entry/not.in.the.catalogue/chapter)")).toEqual([{ t: "text", v: "Elsewhere" }]);
+    expect(markdownBlocks("[Decibels](outpost:entry/logbook73.handbook/decibels)")).toEqual([
+      { t: "paragraph", c: [{ t: "text", v: "Decibels" }] },
+    ]);
+  });
+
+  it("refuse anything that is not exactly an entry, a chapter and a heading", () => {
+    asked.length = 0;
+    const hostile = [
+      "outpost:entry/../../api/system",
+      "outpost:entry/logbook73.handbook/../../../settings",
+      "outpost:entry/logbook73.handbook/decibels/extra",
+      "outpost:entry/logbook73.handbook/decibels?download=1",
+      "outpost:entry/logbook73.handbook?next=//evil.example",
+      "outpost:entry//decibels",
+      "outpost:entry/",
+      "outpost:entry",
+      "outpost:",
+      "outpost://evil.example/logbook73.handbook",
+      "outpost:entry/https://evil.example",
+      "outpost:entry/Logbook73.Handbook/decibels",
+      "outpost:entry/logbook73.handbook/Decibels",
+      "outpost:entry/logbook73.handbook/decibels%2F..%2Fx",
+      "outpost:entry/logbook73.handbook/decibels#",
+      "outpost:entry/logbook73.handbook/decibels#a%20b",
+      'outpost:entry/logbook73.handbook/decibels#x"onclick=alert(1)',
+      "outpost:entry/logbook73.handbook/decibels#<script>",
+      "outpost:entry/logbook73.handbook/decibels#a#b",
+      "outpost:entry/logbook73.handbook/decibels#a/b",
+      "OUTPOST:entry/logbook73.handbook/decibels",
+      "outpost:Entry/logbook73.handbook",
+      "outpost:document/01DOCUMENT",
+      "outpost:entry/logbook73.handbook\\decibels",
+      `outpost:entry/${"a".repeat(121)}`,
+      `outpost:entry/logbook73.handbook/${"a".repeat(81)}`,
+      `outpost:entry/logbook73.handbook/decibels#${"a".repeat(201)}`,
+      "/library/documents/01DOCUMENT",
+      "//evil.example/library",
+      "library/documents/01DOCUMENT",
+      "javascript:location='/api/system'",
+      "x-outpost:entry/logbook73.handbook",
+    ];
+    for (const url of hostile) {
+      expect(parseOutpostLink(url), url).toBeNull();
+      const flat = JSON.stringify(markdownBlocks(`[the words](<${url}>)`, { resolve }));
+      expect(flat, url).not.toMatch(/"ref"|"link"|"jump"/);
+      expect(flat, url).toContain("the words");
+    }
+    // None of them got as far as being looked up.
+    expect(asked).toEqual([]);
+    expect(parseOutpostLink("outpost:entry/logbook73.handbook/decibels#the-3-db-rule")).toEqual({
+      entryId: "logbook73.handbook",
+      chapterKey: "decibels",
+      anchor: "the-3-db-rule",
+    });
+    expect(parseOutpostLink("outpost:entry/logbook73.guide.rt-950-pro")).toEqual({ entryId: "logbook73.guide.rt-950-pro" });
+  });
+
+  it("jump to a heading of the same document, and only to one that exists", () => {
+    const blocks = markdownBlocks(
+      [
+        "[Down](#height-matters-usually-more) [Twice](#setup-1) [Nowhere](#no-such-heading) [Odd](#%E0%A4%A)",
+        "",
+        "## Setup",
+        "",
+        "## Height matters (usually more)",
+        "",
+        "> ## Setup",
+        "",
+        "## Transcript 1 — SOTA on 2 m FM, start to finish",
+      ].join("\n"),
+    );
+    expect(blocks[0]).toMatchObject({
+      c: [
+        { t: "jump", to: "height-matters-usually-more", c: [{ t: "text", v: "Down" }] },
+        { t: "text", v: " " },
+        { t: "jump", to: "setup-1" },
+        { t: "text", v: " Nowhere Odd" },
+      ],
+    });
+    expect(blocks.slice(1)).toMatchObject([
+      { t: "heading", id: "setup" },
+      { t: "heading", id: "height-matters-usually-more" },
+      // A repeated heading gets a number, as other Markdown tools give it, wherever it sits.
+      { t: "quote", c: [{ t: "heading", id: "setup-1" }] },
+      { t: "heading", id: "transcript-1--sota-on-2-m-fm-start-to-finish" },
+    ]);
+    expect(headingSlug("Decibels (dB, dBm, dBi)")).toBe("decibels-db-dbm-dbi");
+    expect(headingSlug('<img src=x onerror="alert(1)">')).toBe("img-srcx-onerroralert1");
+    expect(headingSlug("!!!")).toBe("");
+  });
+});
+
+describe("what a Markdown file may ask the web app to draw", () => {
+  it("keeps the word after a fence as a plain lower-case name, or not at all", () => {
+    const blocks = markdownBlocks(
+      [
+        "```mermaid",
+        "flowchart LR",
+        '  A["Antenna"] --> B["Mixer"]',
+        "```",
+        "",
+        "```Viz",
+        '{"type":"wave"}',
+        "```",
+        "",
+        '```"><script>alert(1)</script>',
+        "x",
+        "```",
+        "",
+        "```",
+        "bare",
+        "```",
+      ].join("\n"),
+    );
+    expect(blocks).toEqual([
+      { t: "code", lang: "mermaid", v: 'flowchart LR\n  A["Antenna"] --> B["Mixer"]' },
+      { t: "code", lang: "viz", v: '{"type":"wave"}' },
+      { t: "code", v: "x" },
+      { t: "code", v: "bare" },
+    ]);
+  });
+
+  it("keeps a line break written as a tag, and a picture as its description", () => {
+    const [table, picture] = markdownBlocks(
+      [
+        "| Key | Does |",
+        "| --- | --- |",
+        "| PTT | Transmit<br>Hold to talk<BR/>Release to listen |",
+        "",
+        '![Six antennas compared.](/handbook-figures/antennas.png "There is no best antenna.")',
+      ].join("\n"),
+    );
+    expect(table).toMatchObject({
+      rows: [
+        [[{ v: "Key" }], [{ v: "Does" }]],
+        [
+          [{ v: "PTT" }],
+          [
+            { t: "text", v: "Transmit" },
+            { t: "break" },
+            { t: "text", v: "Hold to talk" },
+            { t: "break" },
+            { t: "text", v: "Release to listen" },
+          ],
+        ],
+      ],
+    });
+    expect(picture).toEqual({ t: "paragraph", c: [{ t: "image", alt: "Six antennas compared.", caption: "There is no best antenna." }] });
+    expect(JSON.stringify(picture)).not.toContain("handbook-figures");
+  });
+
+  it("searches a figure by its title and caption, and a diagram not at all", () => {
+    const { sections } = markdownSections(
+      [
+        "# Modulation",
+        "",
+        "Amplitude modulation changes the carrier's strength.",
+        "",
+        "```mermaid",
+        "flowchart LR",
+        '  A["Microphone"] --> B["Modulator"]',
+        "```",
+        "",
+        "```viz",
+        '{ "type": "wave", "title": "An AM signal", "caption": "The envelope follows the audio.", "traces": [{ "kind": "am", "freq": 24 }] }',
+        "```",
+        "",
+        "```viz",
+        "{ not json",
+        "```",
+        "",
+        "```sh",
+        "rigctl -m 1",
+        "```",
+      ].join("\n"),
+    );
+    const text = sections.map((section) => section.text).join("\n");
+    expect(text).toContain("Amplitude modulation changes the carrier's strength.");
+    expect(text).toContain("An AM signal\nThe envelope follows the audio.");
+    // Ordinary code is searched as written, and so is a figure that is not the JSON it claims to be.
+    expect(text).toContain("rigctl -m 1");
+    expect(text).toContain("{ not json");
+    expect(text).not.toMatch(/flowchart|Microphone|-->|traces|"kind"/);
   });
 });
 

@@ -310,3 +310,46 @@
   font-family: var(--font-sans);
   font-weight: 600;
 }
+
+/*
+ * A link to a chapter of a book that is not in the library. It reads as part of the
+ * sentence, with a dotted line saying there is somewhere to go: Explore, where the
+ * book can be added.
+ */
+.prose a.doc-ref-missing {
+  color: inherit;
+  text-decoration-style: dotted;
+  text-decoration-color: var(--ink-faint);
+}
+.prose a.doc-ref-missing:hover {
+  text-decoration-color: var(--primary);
+}
+.prose .doc-refs-note {
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--ink-muted);
+  max-width: 48rem;
+  margin-bottom: 1.6em;
+}
+
+/* A picture the Markdown view does not show: its description stands in for it. */
+.prose .doc-picture {
+  display: block;
+  font-family: var(--font-sans);
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  color: var(--ink-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  padding: 0.75em 1em;
+}
+.prose .doc-picture-label {
+  font-weight: 600;
+  color: var(--ink);
+}
+.prose .doc-picture-caption {
+  display: block;
+  margin-top: 0.4em;
+  color: var(--ink);
+}

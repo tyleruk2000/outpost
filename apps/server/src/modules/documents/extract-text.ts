@@ -72,13 +72,33 @@ const stripTags = (html: string) =>
     .replace(/<(script|style)\b[\s\S]*?<\/\1\s*>/gi, " ")
     .replace(/<[^>]*>/g, " ");
 
+/**
+ * What a fenced block adds to search. Ordinary code is searched as written. A diagram's
+ * source is instructions for drawing, not something a person would look for: a Mermaid
+ * block adds nothing, and a signal figure (`viz`, a JSON description) adds only its
+ * title and caption, which are sentences written for the reader.
+ */
+function fencedText(lang: string | null | undefined, value: string): string {
+  const kind = lang?.toLowerCase();
+  if (kind === "mermaid") return "";
+  if (kind !== "viz") return value;
+  try {
+    const spec = JSON.parse(value) as { title?: unknown; caption?: unknown };
+    return [spec.title, spec.caption].filter((part): part is string => typeof part === "string" && part.trim() !== "").join("\n");
+  } catch {
+    // Not the JSON it claims to be, so it is shown as written, and searched as written.
+    return value;
+  }
+}
+
 /** The words of a Markdown node, with its syntax gone. */
 export function markdownText(node: MdastNodes): string {
   switch (node.type) {
     case "text":
     case "inlineCode":
-    case "code":
       return node.value;
+    case "code":
+      return fencedText(node.lang, node.value);
     case "html":
       return stripTags(node.value);
     case "image":
