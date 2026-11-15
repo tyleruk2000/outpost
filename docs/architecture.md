@@ -183,6 +183,7 @@ These are deliberate, and stated so nobody has to discover them.
 | Scale | One node, one writer. | SQLite. Fine for a household or a classroom; a larger deployment needs the PostgreSQL seam filled in. |
 | Vector search | Flat index: every query compares against every stored vector. | Exact and dependency-free; comfortable to roughly 100,000 passages. `VectorIndex` is the seam for sqlite-vec or pgvector. |
 | Local embedding model | Needs the optional `@huggingface/transformers` package, which is not in the packaged app. | Its native runtime is large and has no musl or Intel-macOS builds. A local embedding server (Ollama, llama.cpp) works everywhere today. |
+| Hybrid ranking settings | The fusion constant and the two weights are settings without a control on the Settings screen. | They can be changed through the API (see search.md), and tried out live on the How search works page. |
 | OCR | Not included. Scanned PDFs and images are stored and viewable but have no searchable text. | A provider interface and optional Tesseract are the planned route. |
 | Language model answers | Not included, by design for this release. | Interfaces exist; see ai.md. |
 | ZIM archives | Need kiwix-serve (the Compose sidecar, or a binary for non-Docker installs). | Reading the format in pure JavaScript would mean reimplementing libzim. |
@@ -190,7 +191,7 @@ These are deliberate, and stated so nobody has to discover them.
 | Map source | Depends on the Protomaps build host staying available for new downloads. | The source address is a setting; any PMTiles archive with the same schema works, including one you host. |
 | Notes collaboration | Last writer wins, with conflict detection; no live co-editing. | The editor could take a CRDT later; the storage format would need to change. |
 | Portable drives | A drive is a copy, not a sync partner: changes made on the drive are not merged back. | Merging two diverged libraries safely is a project of its own. |
-| Windows without Docker | The packaged app runs; it is tested in CI on Windows for the server suite, not by hand. | |
+| Windows without Docker | Untried. The server suite is set up to run on Windows in CI, but no CI run has happened yet, and nobody has run the packaged app on Windows by hand. | A first green CI run, then a manual pass. |
 
 ## Dependency licences
 
