@@ -3,7 +3,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import DownloadsPage from "./downloads-page";
-import { adminSession, collection, download, fakeServer, installBrowserStubs, memberSession, plan, renderScreen } from "./test-support";
+import { collection, download, fakeServer, installBrowserStubs, plan, renderScreen } from "./test-support";
 
 beforeAll(installBrowserStubs);
 afterEach(() => vi.unstubAllGlobals());
@@ -77,7 +77,6 @@ function serve(routes: Record<string, unknown> = {}) {
       jobs: [job({}), job({ id: "j0", type: "download.run", title: "Download Best of Wikipedia", subject: "download:run" })],
     },
     "GET /api/collections": { collections: [collection({ id: "c1" })] },
-    "GET /api/auth/session": adminSession,
     ...routes,
   });
 }
@@ -156,13 +155,6 @@ describe("Downloads", () => {
     renderScreen(<DownloadsPage />);
     await section("In progress");
     expect(screen.queryByRole("heading", { name: "Other work in the background" })).not.toBeInTheDocument();
-  });
-
-  it("shows members the state of things without controls", async () => {
-    serve({ "GET /api/auth/session": memberSession });
-    renderScreen(<DownloadsPage />);
-    await section("In progress");
-    await waitFor(() => expect(screen.queryByRole("button", { name: /Pause|Cancel|Retry|Remove/ })).not.toBeInTheDocument());
   });
 
   it("points to Explore when nothing has ever been downloaded", async () => {

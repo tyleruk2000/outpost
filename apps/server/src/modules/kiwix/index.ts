@@ -8,11 +8,11 @@
  *
  * The proxy is the security boundary. A ZIM archive is a copy of someone else's web
  * site, scripts included. Served from Outpost's own origin those scripts could call
- * Outpost's API as the signed-in person. So every proxied response carries a Content
- * Security Policy `sandbox` without `allow-same-origin`: the page runs in an origin of
- * its own, cannot read Outpost's cookies or responses, and cannot load anything from
- * the internet. Because cookies are not sent from a sandboxed page, access is carried
- * by a short-lived token in the URL instead.
+ * Outpost's API, and change or delete the library, without anyone meaning them to. So
+ * every proxied response carries a Content Security Policy `sandbox` without
+ * `allow-same-origin`: the page runs in an origin of its own, cannot read Outpost's
+ * responses or make changing requests that Outpost accepts, and cannot load anything
+ * from the internet.
  */
 import path from "node:path";
 import { Readable } from "node:stream";
@@ -23,6 +23,7 @@ import type { AppContext } from "../../core/context.ts";
 import { AppError, badRequest, notFound } from "../../core/errors.ts";
 import type { CollectionRow } from "../collections/service.ts";
 import type { SearchResult, SearchSource } from "../search/service.ts";
+import { registerArchiveFiles } from "./files.ts";
 import { bookNameOf, decodeEntities, type LibraryBook, readZimUuid, writeLibrary } from "./library.ts";
 import { createKiwixConnection, type KiwixConnection } from "./server.ts";
 
@@ -73,9 +74,18 @@ const SANDBOX = "sandbox allow-scripts allow-forms allow-popups allow-popups-to-
  * Tells the reader which article is showing and hands links that leave the library to
  * it, since a sandboxed page cannot be inspected from outside.
  */
-const BRIDGE = `<script>(function(){try{var s=function(){parent.postMessage({type:"outpost:reader",path:location.pathname,hash:location.hash,title:document.title},"*")};s();addEventListener("DOMContentLoaded",s);addEventListener("hashchange",s);addEventListener("click",function(e){var a=e.target&&e.target.closest&&e.target.closest("a[href]");if(!a)return;var u;try{u=new URL(a.href,location.href)}catch(x){return}if((u.protocol==="http:"||u.protocol==="https:")&&u.host!==location.host){e.preventDefault();parent.postMessage({type:"outpost:external",href:u.href},"*")}},true)}catch(e){}})();</script>`;
+/**
+ * A small script added to every archive page, so that the reader around it knows which
+ * page is on show and what was pressed. It is placed before the archive's own scripts
+ * and keeps its own reference to how a link's address is read: books made from web
+ * sites carry a script that makes every link report the address it had on the live
+ * site, which would make files inside the archive look as if they were on the internet.
+ */
+const BRIDGE = `<script>(function(){try{var G=Element.prototype.getAttribute,P=function(m){parent.postMessage(m,"*")};var F=/\\.(pdf|epub)$/i,X=/\\.(pdf|epub|txt|md|markdown)$/i;var R=function(a){var h=G.call(a,"href");if(h==null)return null;try{var u=new URL(h,location.href);return u.protocol==="http:"||u.protocol==="https:"?u:null}catch(x){return null}};var T=function(a){return(a.textContent||"").replace(/\\s+/g," ").trim().slice(0,200)};var s=function(){P({type:"outpost:reader",path:location.pathname,hash:location.hash,title:document.title})};var l=function(){try{var o=[],n={},a=document.querySelectorAll("a[href]");for(var i=0;i<a.length&&o.length<300;i++){var u=R(a[i]);if(!u)continue;var w=u.host===location.host;if(!(w?F:X).test(u.pathname))continue;u.hash="";var k=w?u.pathname:u.href;if(n[k])continue;n[k]=1;o.push({href:k,inside:w,text:T(a[i])})}P({type:"outpost:links",path:location.pathname,links:o})}catch(e){}};s();addEventListener("DOMContentLoaded",function(){s();l()});addEventListener("hashchange",s);addEventListener("click",function(e){var a=e.target&&e.target.closest&&e.target.closest("a[href]");if(!a)return;var u=R(a);if(!u)return;if(u.host!==location.host){e.preventDefault();P({type:"outpost:external",href:u.href})}else if(F.test(u.pathname)){e.preventDefault();P({type:"outpost:file",path:u.pathname,text:T(a)})}},true)}catch(e){}})();</script>`;
 
 const MAX_HTML_BYTES = 32 * 1024 * 1024;
+/** The fixed first segment of reference-content addresses, kept so that links people have saved go on working. */
+const CONTENT_TOKEN = "open";
 /** Only a book's pages and its icon are reachable; search and the rest of kiwix-serve are not. */
 const isAllowedPath = (rest: string) => rest.startsWith("content/") || /^raw\/[^/]+\/meta\/Illustration_48x48@1$/.test(rest);
 const passThroughHeaders = ["content-type", "etag", "last-modified", "content-range", "accept-ranges"];
@@ -85,7 +95,7 @@ const kiwixOf = (row: CollectionRow) => (row.meta.kiwix ?? {}) as KiwixMeta;
 
 export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Promise<void> {
   const { config, log } = ctx;
-  const { auth, collections, storage, search, settings } = ctx.services;
+  const { collections, storage, search, settings } = ctx.services;
   const connection = createKiwixConnection({ url: config.kiwix.url, bin: config.kiwix.bin, libraryPath: config.kiwix.libraryPath, log });
   ctx.onClose.push(() => connection.close());
   // Descriptions carry <b> around matched words; keep them raw so the matches survive.
@@ -408,12 +418,12 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
     };
   });
 
-  app.get("/api/kiwix/books", async (request) => ({ books: await service.books(auth.contentToken(auth.requireUser(request))) }));
+  app.get("/api/kiwix/books", async () => ({ books: await service.books(CONTENT_TOKEN) }));
 
   app.get<{ Params: { collectionId: string } }>("/api/kiwix/books/:collectionId", async (request) => {
     const row = requireBook(request.params.collectionId);
     const up = await connection.isUp();
-    const book = bookDto(row, auth.contentToken(auth.requireUser(request)), up);
+    const book = bookDto(row, CONTENT_TOKEN, up);
     if (!book) throw notFound("Collection");
     const reason = book.ready
       ? null
@@ -459,7 +469,6 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
 
   /** Registers a ZIM archive that is already on a storage location. Nothing is copied. */
   app.post("/api/kiwix/import", async (request) => {
-    auth.requireAdmin(request);
     const body = z
       .object({ locationId: z.string(), relPath: z.string().min(1).max(500), title: z.string().trim().max(200).optional() })
       .parse(request.body);
@@ -480,17 +489,14 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
     return { collection: collections.toDto(row) };
   });
 
+  registerArchiveFiles(app, ctx, { upstream, requireBook, bookNameOf: (row) => zimOf(row)!.bookName });
+
   // ── Proxy ──
   app.route<{ Params: { token: string; "*": string } }>({
     method: ["GET", "HEAD"],
     url: "/kiwix/:token/*",
     async handler(request, reply) {
-      if (!auth.verifyContentToken(request.params.token)) {
-        return reply
-          .status(401)
-          .type("text/plain")
-          .send("This link to your library has expired. Go back to Outpost and open the page again.");
-      }
+      if (request.params.token !== CONTENT_TOKEN) return reply.status(404).type("text/plain").send("There is nothing at this address.");
       const rest = request.params["*"];
       if (rest.includes("..") || !isAllowedPath(rest)) {
         return reply.status(404).type("text/plain").send("Not found.");
@@ -542,8 +548,10 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
       const length = Number(response.headers.get("content-length")) || 0;
       if (type.includes("text/html") && response.status === 200 && length <= MAX_HTML_BYTES) {
         const html = Buffer.from(await response.arrayBuffer()).toString("utf8");
-        const at = html.search(/<\/head>/i);
-        return reply.send(at === -1 ? BRIDGE + html : html.slice(0, at) + BRIDGE + html.slice(at));
+        // Straight after <head>, ahead of anything the archive's page loads.
+        const head = /<head[^>]*>/i.exec(html);
+        const at = head ? head.index + head[0].length : 0;
+        return reply.send(html.slice(0, at) + BRIDGE + html.slice(at));
       }
       if (length) reply.header("content-length", length);
       return reply.send(Readable.fromWeb(response.body as never));

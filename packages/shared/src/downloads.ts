@@ -1,5 +1,5 @@
 /** What is being fetched; decides how the file is installed once it is complete. */
-export type DownloadKind = "zim" | "map" | "terrain" | "places" | "file" | "model";
+export type DownloadKind = "zim" | "map" | "terrain" | "places" | "file" | "model" | "document";
 
 export type DownloadState = "queued" | "running" | "paused" | "verifying" | "completed" | "failed" | "cancelled";
 
@@ -48,6 +48,8 @@ export interface DownloadDto {
   attempts: number;
   /** The installed collection, once the download has completed. */
   collectionId: string | null;
+  /** The library document this became, for a file saved from a link. */
+  documentId: string | null;
   createdAt: number;
   startedAt: number | null;
   finishedAt: number | null;

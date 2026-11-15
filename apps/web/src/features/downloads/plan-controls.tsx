@@ -110,9 +110,9 @@ function TypedLimit({
 /**
  * The three things a person can steer: how fast, how many at once, and whether the
  * queue runs at all. Each change is saved as it is made and takes effect at once,
- * including on transfers already running. Members see the values without the controls.
+ * including on transfers already running.
  */
-export function PlanControls({ plan, canManage, className }: { plan: PlanSettings; canManage: boolean; className?: string }) {
+export function PlanControls({ plan, className }: { plan: PlanSettings; className?: string }) {
   const client = useQueryClient();
   const update = useUpdateSettings();
   const queue = useQueueAction();
@@ -160,23 +160,6 @@ export function PlanControls({ plan, canManage, className }: { plan: PlanSetting
         : "Saved. Downloads run as fast as the connection allows.",
     );
   const saveAtOnce = (next: number) => save({ "downloads.concurrency": next }, `Saved. Downloads run ${atOnceWords(next)}.`);
-
-  if (!canManage) {
-    return (
-      <dl className={cn("flex flex-wrap gap-x-10 gap-y-3 border-y border-border py-3.5 text-small", className)}>
-        <div>
-          <dt className="text-ink-muted">Speed limit</dt>
-          <dd className="tabular mt-0.5 font-medium text-ink">{limitWithMegabits(kbps)}</dd>
-        </div>
-        <div>
-          <dt className="text-ink-muted">At once</dt>
-          <dd className="tabular mt-0.5 font-medium text-ink">
-            {atOnce === 1 ? "One transfer at a time" : `${atOnce} transfers together`}
-          </dd>
-        </div>
-      </dl>
-    );
-  }
 
   const isPreset = (LIMIT_PRESETS_KBPS as readonly number[]).includes(kbps);
   const options = [

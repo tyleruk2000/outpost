@@ -92,8 +92,11 @@ export interface InstallContext {
   progress(current: number, total?: number | null, message?: string): void;
 }
 
-/** Returns the id of the collection that now represents the installed content, if any. */
-export type Installer = (context: InstallContext) => Promise<{ collectionId?: string } | undefined>;
+/**
+ * Returns the id of the collection that now represents the installed content, if any,
+ * and anything worth keeping on the download's record (merged into its `meta`).
+ */
+export type Installer = (context: InstallContext) => Promise<{ collectionId?: string; meta?: Record<string, unknown> } | undefined>;
 
 export interface DownloadsService {
   start(input: StartDownload): Promise<DownloadRow>;

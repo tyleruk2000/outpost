@@ -7,7 +7,7 @@ import { EmptyState, ErrorState, Page, PageHeader, Rows, Section } from "@/compo
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/misc";
 import { api } from "@/lib/api";
-import { useActiveJobs, useIsAdmin } from "@/lib/queries";
+import { useActiveJobs } from "@/lib/queries";
 import { plural, timeAgo } from "@/lib/utils";
 import { clockAt } from "./charts/time-axis";
 import { DownloadControls, DownloadProgress, RemoveDownloadButton } from "./download-progress";
@@ -56,12 +56,10 @@ function DetailsLink({ download }: { download: DownloadDto }) {
 
 const ActiveRow = memo(function ActiveRow({
   download,
-  canManage,
   standing,
   forecast,
 }: {
   download: DownloadDto;
-  canManage: boolean;
   /** "Next", "2nd in line": where a waiting download stands. */
   standing: string | null;
   /** "Finishes about 19:05", from the plan. */
@@ -85,7 +83,7 @@ const ActiveRow = memo(function ActiveRow({
           />
         </div>
         <div className="flex shrink-0 items-center gap-1 max-md:-ml-2.5 md:-mr-2.5">
-          {canManage ? <DownloadControls download={download} /> : null}
+          <DownloadControls download={download} />
           <DetailsLink download={download} />
         </div>
       </div>
@@ -94,7 +92,7 @@ const ActiveRow = memo(function ActiveRow({
   );
 });
 
-function FailedRow({ download, canManage }: { download: DownloadDto; canManage: boolean }) {
+function FailedRow({ download }: { download: DownloadDto }) {
   const view = describeDownload(download);
   return (
     <li className="py-5">
@@ -104,12 +102,8 @@ function FailedRow({ download, canManage }: { download: DownloadDto; canManage: 
           <MetaLine parts={[`To ${download.locationName}`, download.finishedAt ? `Stopped ${timeAgo(download.finishedAt)}` : null]} />
         </div>
         <div className="flex items-center gap-1 max-md:-ml-2.5 md:-mr-2.5">
-          {canManage ? (
-            <>
-              <DownloadControls download={download} />
-              <RemoveDownloadButton download={download} label="Remove" />
-            </>
-          ) : null}
+          <DownloadControls download={download} />
+          <RemoveDownloadButton download={download} label="Remove" />
           <DetailsLink download={download} />
         </div>
       </div>
@@ -124,7 +118,7 @@ function FailedRow({ download, canManage }: { download: DownloadDto; canManage: 
   );
 }
 
-function HistoryRow({ download, canManage, installed }: { download: DownloadDto; canManage: boolean; installed: boolean }) {
+function HistoryRow({ download, installed }: { download: DownloadDto; installed: boolean }) {
   const view = describeDownload(download);
   const completed = download.state === "completed";
   const when = download.finishedAt ?? download.updatedAt;
@@ -134,7 +128,7 @@ function HistoryRow({ download, canManage, installed }: { download: DownloadDto;
         <h3 className="font-title text-body text-ink">
           {completed && installed ? (
             <Link
-              to={`/library/collections/${download.collectionId}`}
+              to={download.documentId ? `/library/documents/${download.documentId}` : `/library/collections/${download.collectionId}`}
               className="decoration-primary decoration-1 underline-offset-[0.22em] hover:underline"
             >
               {download.title}
@@ -156,12 +150,8 @@ function HistoryRow({ download, canManage, installed }: { download: DownloadDto;
         {view.detail ? <p className="text-small text-ink-muted">{view.detail}</p> : null}
       </div>
       <div className="flex items-center gap-1 max-md:-ml-2.5 md:-mr-2.5">
-        {canManage ? (
-          <>
-            {completed ? null : <DownloadControls download={download} />}
-            <RemoveDownloadButton download={download} label={completed ? "Remove from history" : "Remove"} />
-          </>
-        ) : null}
+        {completed ? null : <DownloadControls download={download} />}
+        <RemoveDownloadButton download={download} label={completed ? "Remove from history" : "Remove"} />
         <DetailsLink download={download} />
       </div>
     </li>
@@ -173,7 +163,6 @@ const stateOrder: Record<string, number> = { running: 0, verifying: 1, queued: 2
 export default function DownloadsPage() {
   const downloads = useDownloads();
   const jobs = useActiveJobs();
-  const canManage = useIsAdmin();
   // Shared with other screens that list every collection; used here to know which finished downloads are still installed.
   const collections = useQuery({ queryKey: ["collections", "all"], queryFn: () => api.get<CollectionsResponse>("/api/collections") });
 
@@ -260,7 +249,7 @@ export default function DownloadsPage() {
       ) : (
         <>
           {active.length === 0 ? null : plan.data && queued > 0 ? (
-            <PlanSection plan={plan.data} fetchedAt={plan.dataUpdatedAt} stale={plan.isError} canManage={canManage} stalled={stalled} />
+            <PlanSection plan={plan.data} fetchedAt={plan.dataUpdatedAt} stale={plan.isError} stalled={stalled} />
           ) : plan.isPending ? (
             <div className="grid gap-4" aria-busy>
               <Skeleton className="h-14 max-w-[36rem]" />
@@ -277,18 +266,12 @@ export default function DownloadsPage() {
                 <p className="text-small text-ink-muted">
                   Nothing is downloading right now.{plan.data ? " The next downloads will run like this:" : ""}
                 </p>
-                {plan.data ? <PlanControls plan={plan.data} canManage={canManage} className="mt-3" /> : null}
+                {plan.data ? <PlanControls plan={plan.data} className="mt-3" /> : null}
               </>
             ) : (
               <Rows>
                 {active.map((download) => (
-                  <ActiveRow
-                    key={download.id}
-                    download={download}
-                    canManage={canManage}
-                    standing={standingOf(download)}
-                    forecast={forecastOf(download)}
-                  />
+                  <ActiveRow key={download.id} download={download} standing={standingOf(download)} forecast={forecastOf(download)} />
                 ))}
               </Rows>
             )}
@@ -298,7 +281,7 @@ export default function DownloadsPage() {
             <Section title="Needs attention" description="These stopped and will not continue by themselves.">
               <Rows>
                 {failed.map((download) => (
-                  <FailedRow key={download.id} download={download} canManage={canManage} />
+                  <FailedRow key={download.id} download={download} />
                 ))}
               </Rows>
             </Section>
@@ -308,7 +291,7 @@ export default function DownloadsPage() {
             <Section title="Other work in the background">
               <Rows>
                 {otherWork.slice(0, JOBS_SHOWN).map((job) => (
-                  <JobRow key={job.id} job={job} canCancel={canManage} />
+                  <JobRow key={job.id} job={job} />
                 ))}
               </Rows>
               {otherWork.length > JOBS_SHOWN ? (
@@ -324,8 +307,11 @@ export default function DownloadsPage() {
                   <HistoryRow
                     key={download.id}
                     download={download}
-                    canManage={canManage}
-                    installed={Boolean(download.collectionId) && (installedIds === undefined || installedIds.has(download.collectionId!))}
+                    installed={
+                      // A file saved from a link became a document; anything else became a collection.
+                      Boolean(download.documentId) ||
+                      (Boolean(download.collectionId) && (installedIds === undefined || installedIds.has(download.collectionId!)))
+                    }
                   />
                 ))}
               </Rows>

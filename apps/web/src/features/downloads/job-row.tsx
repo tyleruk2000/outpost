@@ -26,7 +26,7 @@ export function jobStateText(job: Pick<JobDto, "state" | "progress">): string {
 }
 
 /** One piece of background work that is not a download: its name, what it is doing now, and how far along. */
-export function JobRow({ job, canCancel }: { job: JobDto; canCancel: boolean }) {
+export function JobRow({ job }: { job: JobDto }) {
   const client = useQueryClient();
   const cancel = useMutation({
     mutationFn: () => api.post(`/api/jobs/${job.id}/cancel`),
@@ -47,11 +47,11 @@ export function JobRow({ job, canCancel }: { job: JobDto; canCancel: boolean }) 
             {figures ? <span className="tabular">{figures}</span> : null}
           </p>
         </div>
-        {canCancel && !notCancellable.has(job.type) ? (
+        {notCancellable.has(job.type) ? null : (
           <Button variant="ghost" size="sm" loading={cancel.isPending} onClick={() => cancel.mutate()} aria-label={`Cancel: ${job.title}`}>
             {cancel.isPending ? null : <X />} Cancel
           </Button>
-        ) : null}
+        )}
       </div>
       {running ? <Progress value={fraction} tone="lamp" label={job.title} className="mt-2.5" /> : null}
     </li>

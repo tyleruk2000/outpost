@@ -6,17 +6,26 @@
  * from here, so a small script the server adds to each page reports which article is
  * showing and hands over links that leave the library.
  */
-import type { ReferenceBookResponse, ReferenceSearchResponse, ReferenceSuggestion } from "@outpost/shared";
+import {
+  ARCHIVE_FILE,
+  isSavableLink,
+  type PageFile,
+  type ReferenceBookResponse,
+  type ReferenceSearchResponse,
+  type ReferenceSuggestion,
+} from "@outpost/shared";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ExternalLink, House, Search, X } from "lucide-react";
+import { ArrowLeft, House, Search, X } from "lucide-react";
 import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { ErrorState, Notice, Page } from "@/components/page";
 import { Highlighted } from "@/components/search-hit";
 import { Button } from "@/components/ui/button";
 import { Skeleton, Tooltip } from "@/components/ui/misc";
 import { api } from "@/lib/api";
 import { cn, formatNumber } from "@/lib/utils";
+import { ArchiveFile } from "./archive-file";
+import { ExternalLinkNotice, LinkedFiles } from "./linked-files";
 
 const encodePath = (path: string) => path.split("/").map(encodeURIComponent).join("/");
 
@@ -37,6 +46,12 @@ export default function ReaderPage() {
   const shownPath = useRef<string | null>(null);
   const [articleTitle, setArticleTitle] = useState<string>();
   const [external, setExternal] = useState<string>();
+  // Files the page on show links to, inside the archive or out on the internet, as the page itself reports them.
+  const [pageFiles, setPageFiles] = useState<PageFile[]>([]);
+  // A file inside the archive that is open over the page: ?file=<its path in the book>.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const openFile = searchParams.get("file") ?? undefined;
+  const [fileLabels] = useState(() => new Map<string, string>());
   const [query, setQuery] = useState("");
   const [searchFor, setSearchFor] = useState<string>();
   const [focused, setFocused] = useState(false);
@@ -45,8 +60,6 @@ export default function ReaderPage() {
   const book = useQuery({
     queryKey: ["kiwix", "book", collectionId],
     queryFn: () => api.get<ReferenceBookResponse>(`/api/kiwix/books/${collectionId}`),
-    // The address carries a token that expires; refresh it well within its lifetime.
-    refetchInterval: 6 * 60 * 60 * 1000,
   });
   const contentBase = book.data?.book.contentBase;
 
@@ -66,7 +79,24 @@ export default function ReaderPage() {
     const basePath = new URL(contentBase, window.location.origin).pathname;
     const onMessage = (event: MessageEvent) => {
       if (event.source !== frameRef.current?.contentWindow) return;
-      const data = event.data as { type?: unknown; path?: unknown; title?: unknown; href?: unknown } | null;
+      const data = event.data as {
+        type?: unknown;
+        path?: unknown;
+        title?: unknown;
+        href?: unknown;
+        links?: unknown;
+        text?: unknown;
+      } | null;
+      // Everything below comes from the archive's page, which is not trusted: each field is checked before use.
+      const insidePath = (pathname: unknown): string | undefined => {
+        if (typeof pathname !== "string" || pathname.length > 3000 || !pathname.startsWith(basePath)) return undefined;
+        try {
+          const path = decodeURIComponent(pathname.slice(basePath.length));
+          return ARCHIVE_FILE.test(path) && !path.split("/").includes("..") ? path : undefined;
+        } catch {
+          return undefined;
+        }
+      };
       if (!data || typeof data !== "object") return;
       if (data.type === "outpost:reader" && typeof data.path === "string" && data.path.startsWith(basePath)) {
         let path: string;
@@ -77,16 +107,37 @@ export default function ReaderPage() {
         }
         if (typeof data.title === "string") setArticleTitle(data.title.slice(0, 200));
         if (path !== shownPath.current) {
+          // Another page: its links have not been reported yet.
+          setPageFiles([]);
+          setExternal(undefined);
           shownPath.current = path;
           navigate(`/library/read/${collectionId}/${encodePath(path)}`, { replace: true });
         }
       } else if (data.type === "outpost:external" && typeof data.href === "string" && /^https?:\/\//.test(data.href)) {
         setExternal(data.href.slice(0, 2000));
+      } else if (data.type === "outpost:file") {
+        const path = insidePath(data.path);
+        if (!path) return;
+        if (typeof data.text === "string" && data.text) fileLabels.set(path, data.text.slice(0, 200));
+        setSearchParams({ file: path });
+      } else if (data.type === "outpost:links" && Array.isArray(data.links)) {
+        const found: PageFile[] = [];
+        for (const item of data.links.slice(0, 300) as Array<{ href?: unknown; text?: unknown; inside?: unknown }>) {
+          if (!item || typeof item.href !== "string") continue;
+          const text = typeof item.text === "string" ? item.text.slice(0, 200) : "";
+          if (item.inside === true) {
+            const path = insidePath(item.href);
+            if (path) found.push({ kind: "archive", path, text });
+          } else if (item.href.length <= 2000 && isSavableLink(item.href)) {
+            found.push({ kind: "internet", href: item.href, text });
+          }
+        }
+        setPageFiles(found);
       }
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, [contentBase, collectionId, navigate]);
+  }, [contentBase, collectionId, navigate, setSearchParams, fileLabels]);
 
   const suggestions = useQuery({
     queryKey: ["kiwix", "suggest", collectionId, debounced],
@@ -209,27 +260,8 @@ export default function ReaderPage() {
         </Tooltip>
       </header>
 
-      {external ? (
-        <Notice
-          tone="info"
-          icon={<ExternalLink />}
-          className="rounded-none border-b border-border"
-          action={
-            <span className="flex shrink-0 items-center gap-1">
-              <Button asChild size="sm" variant="ghost">
-                <a href={external} target="_blank" rel="noopener noreferrer">
-                  Open in a new tab
-                </a>
-              </Button>
-              <Button size="icon-sm" variant="ghost" aria-label="Dismiss" onClick={() => setExternal(undefined)}>
-                <X />
-              </Button>
-            </span>
-          }
-        >
-          That link leaves your library and needs the internet: <span className="font-mono text-[0.8125rem] break-all">{external}</span>
-        </Notice>
-      ) : null}
+      {external ? <ExternalLinkNotice href={external} foundIn={title ?? ""} onDismiss={() => setExternal(undefined)} /> : null}
+      {!external && !openFile && collectionId ? <LinkedFiles collectionId={collectionId} files={pageFiles} foundIn={title ?? ""} /> : null}
 
       <div className="relative min-h-0 flex-1">
         {!book.data.book.ready ? (
@@ -250,6 +282,21 @@ export default function ReaderPage() {
                 sandbox="allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
                 referrerPolicy="no-referrer"
                 className={cn("size-full border-0 bg-white", searchFor && "invisible")}
+              />
+            ) : null}
+            {openFile && contentBase && collectionId && ARCHIVE_FILE.test(openFile) && !openFile.split("/").includes("..") ? (
+              <ArchiveFile
+                key={openFile}
+                collectionId={collectionId}
+                url={`${contentBase}${encodePath(openFile)}`}
+                path={openFile}
+                label={
+                  fileLabels.get(openFile) ??
+                  pageFiles.find((file) => file.kind === "archive" && file.path === openFile)?.text ??
+                  openFile.split("/").pop() ??
+                  openFile
+                }
+                onClose={() => navigate(-1)}
               />
             ) : null}
             {searchFor ? (

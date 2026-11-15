@@ -22,7 +22,6 @@ export const PlanSection = memo(function PlanSection({
   plan,
   fetchedAt,
   stale,
-  canManage,
   stalled,
 }: {
   plan: DownloadPlan;
@@ -30,7 +29,6 @@ export const PlanSection = memo(function PlanSection({
   fetchedAt: number;
   /** The last refresh failed, so the figures are from `fetchedAt` and are not moving. */
   stale: boolean;
-  canManage: boolean;
   /** Downloads that stopped and are waiting to try again, by id, with what they are waiting for. Keep its identity stable. */
   stalled: ReadonlyMap<string, string>;
 }) {
@@ -54,7 +52,7 @@ export const PlanSection = memo(function PlanSection({
         </Notice>
       ) : null}
 
-      <PlanControls plan={plan} canManage={canManage} className="mt-5" />
+      <PlanControls plan={plan} className="mt-5" />
 
       {/* With everything paused there is no schedule to draw; the sentence has said so, and the list below has the rest. */}
       {moving ? (

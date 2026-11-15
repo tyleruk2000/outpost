@@ -89,7 +89,7 @@ interface ActiveRun {
 }
 
 const startSchema = z.object({
-  kind: z.enum(["zim", "map", "terrain", "places", "file", "model"]),
+  kind: z.enum(["zim", "map", "terrain", "places", "file", "model", "document"]),
   title: z.string().trim().min(1).max(300),
   url: z.string().min(1).max(4000),
   locationId: z.string().min(1).optional(),
@@ -222,6 +222,7 @@ export function createDownloadsService(ctx: AppContext): DownloadsService {
       errorKind: row.errorKind,
       attempts: row.attempts,
       collectionId: row.collectionId,
+      documentId: typeof row.meta.documentId === "string" ? row.meta.documentId : null,
       createdAt: row.createdAt,
       startedAt: row.startedAt,
       finishedAt: row.finishedAt,
@@ -366,6 +367,8 @@ export function createDownloadsService(ctx: AppContext): DownloadsService {
   // ── The job ──
 
   const defaultInstaller: Installer = async ({ download, sizeBytes, sha256 }) => {
+    // A file saved from a link becomes a library document; the module that starts those installs them.
+    if (download.kind === "document") throw new Error("No installer is registered for documents saved from links.");
     const parsed = installMetaSchema.safeParse(download.meta);
     const meta: InstallMeta = parsed.success ? (parsed.data as InstallMeta) : {};
     const collection = await ctx.services.collections.create({
@@ -556,6 +559,7 @@ export function createDownloadsService(ctx: AppContext): DownloadsService {
       }
 
       let collectionId: string | undefined;
+      let installMeta: Record<string, unknown> | undefined;
       try {
         state.message = "Installing";
         const install: InstallContext = {
@@ -567,18 +571,23 @@ export function createDownloadsService(ctx: AppContext): DownloadsService {
           progress: (current, total, message) =>
             run.progress({ current, message: message ?? "Installing", ...(total === undefined ? {} : { total }) }),
         };
-        collectionId = (await (installers.get(row.kind) ?? defaultInstaller)(install))?.collectionId;
+        const installed = await (installers.get(row.kind) ?? defaultInstaller)(install);
+        collectionId = installed?.collectionId;
+        installMeta = installed?.meta;
       } catch (error) {
         // Not installed, so the file gives its final name back. A retry finds the verified
         // partial file and goes straight to installing; removing the download deletes it.
-        await fs.promises
-          .rename(finalPath, partPath)
-          .catch((renameError) => run.log.warn({ err: renameError }, "could not set aside a file that failed to install"));
+        // An installer that found the file unusable may already have removed it.
+        await fs.promises.rename(finalPath, partPath).catch((renameError: NodeJS.ErrnoException) => {
+          if (renameError.code !== "ENOENT") run.log.warn({ err: renameError }, "could not set aside a file that failed to install");
+        });
         throw error;
       }
 
       row = write(id, {
         state: "completed",
+        // Read afresh: the record's history has grown since this run began.
+        ...(installMeta ? { meta: { ...requireRow(id).meta, ...installMeta } } : {}),
         collectionId: collectionId ?? null,
         receivedBytes: file.sizeBytes,
         totalBytes: file.sizeBytes,

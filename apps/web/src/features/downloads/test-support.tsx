@@ -60,15 +60,6 @@ export function fakeServer(routes: Record<string, Answer>): FakeServer {
   return { calls };
 }
 
-export const adminSession = {
-  authRequired: false,
-  setupRequired: false,
-  setupTokenRequired: false,
-  lanAccess: false,
-  user: { id: "local", username: "local", role: "admin" },
-};
-export const memberSession = { ...adminSession, authRequired: true, user: { id: "m1", username: "sam", role: "member" } };
-
 export function location(over: Record<string, unknown> = {}) {
   return {
     id: "loc1",
@@ -147,6 +138,7 @@ export function download(over: Partial<DownloadDto> = {}): DownloadDto {
     message: null,
     error: null,
     errorKind: null,
+    documentId: null,
     attempts: 1,
     collectionId: null,
     createdAt: 1,

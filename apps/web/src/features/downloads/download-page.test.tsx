@@ -3,18 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { Route, Routes } from "react-router";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import DownloadPage from "./download-page";
-import {
-  adminSession,
-  collection,
-  detail,
-  download,
-  fakeServer,
-  installBrowserStubs,
-  memberSession,
-  plan,
-  planItem,
-  renderScreen,
-} from "./test-support";
+import { collection, detail, download, fakeServer, installBrowserStubs, plan, planItem, renderScreen } from "./test-support";
 
 beforeAll(installBrowserStubs);
 afterEach(() => vi.unstubAllGlobals());
@@ -25,7 +14,6 @@ function serve(routes: Record<string, unknown> = {}) {
     "GET /api/downloads": { downloads: [download()] },
     "GET /api/downloads/plan": plan({ queue: [planItem({ id: "d1" })], counts: { active: 1, waiting: 0, paused: 0, failed: 0 } }),
     "GET /api/collections": { collections: [collection({ id: "c1" })] },
-    "GET /api/auth/session": adminSession,
     ...routes,
   });
 }
@@ -345,14 +333,6 @@ describe("Download details", () => {
     expect(region.getByText("45.80° N to 46.20° N, 6.80° E to 7.40° E")).toBeInTheDocument();
     expect(region.getByText("Zoom 0 to 14: detailed enough for footpaths and buildings.")).toBeInTheDocument();
     expect(within(await part("Where from")).getByText(/A region cut from a larger map archive/)).toBeInTheDocument();
-  });
-
-  it("shows members everything but the controls", async () => {
-    serve({ "GET /api/auth/session": memberSession });
-    show();
-    await part("Now");
-    await waitFor(() => expect(screen.queryByRole("button", { name: /Pause|Cancel|Retry|Remove/ })).not.toBeInTheDocument());
-    expect(screen.getByText("412 MB of 1.90 GB")).toBeInTheDocument();
   });
 
   it("says when the download is not listed any more", async () => {

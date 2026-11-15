@@ -630,7 +630,8 @@ describe("extension points", () => {
         region: context.download.meta.region,
       });
       const collection = await app!.ctx.services.collections.create({
-        kind: context.download.kind,
+        // A document saved from a link never becomes a collection; every other kind does.
+        kind: context.download.kind as Exclude<DownloadKind, "document">,
         title: context.download.title,
         locationId: context.download.locationId,
         relPath: context.download.relPath,

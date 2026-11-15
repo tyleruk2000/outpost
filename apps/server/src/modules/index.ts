@@ -1,5 +1,5 @@
 /**
- * Feature modules, registered in order after the core (settings, auth, storage,
+ * Feature modules, registered in order after the core (settings, storage,
  * system). A module is a function that adds its routes and puts its service on
  * `ctx.services`. Later modules may use the services of earlier ones.
  */
@@ -12,6 +12,7 @@ import { registerDocuments } from "./documents/index.ts";
 import { registerDownloads } from "./downloads/index.ts";
 import { registerImports } from "./imports/index.ts";
 import { registerKiwix } from "./kiwix/index.ts";
+import { registerLinks } from "./links/index.ts";
 import { registerMaps } from "./maps/index.ts";
 import { registerNotes } from "./notes/index.ts";
 import { registerPortable } from "./portable/index.ts";
@@ -31,6 +32,7 @@ export const modules: ModuleRegister[] = [
   registerCollections,
   registerKiwix,
   registerDownloads,
+  registerLinks,
   registerCatalog,
   registerMaps,
   registerBackup,

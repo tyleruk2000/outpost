@@ -2,17 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import DownloadsPage from "./downloads-page";
-import {
-  adminSession,
-  download,
-  fakeServer,
-  installBrowserStubs,
-  memberSession,
-  plan,
-  planItem,
-  planLocation,
-  renderScreen,
-} from "./test-support";
+import { download, fakeServer, installBrowserStubs, plan, planItem, planLocation, renderScreen } from "./test-support";
 
 beforeAll(installBrowserStubs);
 afterEach(() => vi.unstubAllGlobals());
@@ -48,7 +38,6 @@ function serve(routes: Record<string, unknown> = {}) {
     "GET /api/downloads/plan": plan(),
     "GET /api/jobs": { jobs: [] },
     "GET /api/collections": { collections: [] },
-    "GET /api/auth/session": adminSession,
     ...routes,
   });
 }
@@ -271,16 +260,6 @@ describe("The download plan", () => {
     expect(section.getByRole("heading", { name: "Speed now" })).toBeInTheDocument();
     expect(section.getByText("Collecting readings…")).toBeInTheDocument();
     expect(section.getByRole("group", { name: /^Total download speed over the last 1 min\. Chart/ })).toBeInTheDocument();
-  });
-
-  it("shows members the settings without the controls", async () => {
-    serve({ "GET /api/auth/session": memberSession, "GET /api/downloads/plan": plan({ rateLimitBytesPerSecond: 1_000_000 }) });
-    renderScreen(<DownloadsPage />);
-    const section = within(await planSection());
-    await waitFor(() => expect(section.getByText("1 MB/s, 8 Mbit/s")).toBeInTheDocument());
-    expect(section.getByText("2 transfers together")).toBeInTheDocument();
-    expect(section.queryByRole("combobox", { name: "Speed limit" })).not.toBeInTheDocument();
-    expect(section.queryByRole("button", { name: /at once|Pause all|Resume all/ })).not.toBeInTheDocument();
   });
 
   it("keeps the speed limit and the stepper within reach when nothing is queued", async () => {

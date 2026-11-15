@@ -5,10 +5,16 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { bookNameOf, decodeEntities, readZimUuid, renderLibrary } from "../src/modules/kiwix/library.ts";
+import { buildPdf } from "./fixtures/documents/builders.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
 
 const UUID = "b37270fd-f267-39ba-fc4f-9f3c720e5d8f";
 const BOOK = "wikipedia_en_knots_maxi_2026-10";
+
+const MANUAL = buildPdf([
+  ["Field sanitation", "Dig the latrine at least thirty metres from water."],
+  ["Waste", "Burn or bury it."],
+]);
 
 const cleanups: Array<() => Promise<void> | void> = [];
 afterEach(async () => {
@@ -74,6 +80,20 @@ async function fakeKiwix() {
       response.setHeader("Content-Type", "image/webp");
       response.setHeader("Content-Length", "4");
       return response.end(Buffer.from([1, 2, 3, 4]));
+    }
+    // A book made from a web site keeps each file under the site's own address.
+    if (url === `/content/${BOOK}/example.org/docs/manual.pdf`) {
+      response.setHeader("Content-Type", "application/pdf");
+      return response.end(MANUAL);
+    }
+    if (url === `/content/${BOOK}/example.org/docs/moved.pdf`) {
+      response.statusCode = 302;
+      response.setHeader("Location", `/content/${BOOK}/example.org/docs/manual.pdf`);
+      return response.end();
+    }
+    if (url === `/content/${BOOK}/example.org/docs/page.pdf`) {
+      response.setHeader("Content-Type", "text/html");
+      return response.end("<html><body>This page stands in for a file that was never captured.</body></html>");
     }
     if (url.startsWith("/search?")) {
       const params = new URL(url, "http://x").searchParams;
@@ -296,6 +316,10 @@ describe("the reader proxy", () => {
     expect(response.headers.etag).toBe('"abc"');
     // The bridge is added inside <head>, and the page's own relative links are untouched.
     expect(response.body).toMatch(/outpost:reader[\s\S]*<\/head>/);
+    // It comes before the archive's own scripts. Web-archive books carry one that changes
+    // what a link reports as its address, and the bridge must read links before that.
+    expect(response.body.indexOf("outpost:reader")).toBeLessThan(response.body.indexOf("startup.js"));
+    expect(response.body).toContain("outpost:file");
     expect(response.body).toContain('<a href="./Clove_hitch">');
   });
 
@@ -332,33 +356,89 @@ describe("the reader proxy", () => {
     const post = await app.app.inject({ method: "POST", url: `/kiwix/open/content/${BOOK}/Bowline`, headers: { host: "localhost" } });
     expect(post.statusCode).toBe(404);
   });
+});
 
-  it("requires a signed, unexpired token when sign-in is on", async () => {
-    const { app } = await setup({ OUTPOST_AUTH: "on" });
-    const setupResponse = await app.api("POST", "/api/auth/setup", { username: "tyler", password: "correct horse battery" });
-    const cookie = String(setupResponse.headers["set-cookie"]).split(";")[0]!;
+describe("files inside a reference collection", () => {
+  async function withBook() {
+    const made = await setup();
+    const id = (await made.app.api("POST", "/api/kiwix/import", { locationId: made.location.id, relPath: made.relPath })).body.collection
+      .id as string;
+    await waitFor(() => fs.readFileSync(made.libraryPath, "utf8").includes(UUID));
+    return { ...made, id };
+  }
 
-    // The token that works without sign-in is refused, as is a forged one.
-    expect((await get(app, `/kiwix/open/content/${BOOK}/Bowline`)).statusCode).toBe(401);
-    expect((await get(app, `/kiwix/local.zzzz.forged/content/${BOOK}/Bowline`)).statusCode).toBe(401);
-    // A signed-in person is given a token; the page then loads with no cookie at all.
-    expect((await app.api("GET", "/api/kiwix/books")).status).toBe(401);
-    const location = app.ctx.services.storage.getDefault();
-    await app.api(
-      "POST",
-      "/api/kiwix/import",
-      { locationId: location.id, relPath: `collections/zim/${BOOK}.zim` },
-      { headers: { cookie } },
-    );
-    const books = await app.api("GET", "/api/kiwix/books", undefined, { headers: { cookie } });
-    const token = (books.body.books[0].contentBase as string).split("/")[2]!;
-    expect(token).not.toBe("open");
-    expect((await get(app, `/kiwix/${token}/content/${BOOK}/Bowline`)).statusCode).toBe(200);
-    const tampered = `${token.slice(0, -2)}xx`;
-    expect((await get(app, `/kiwix/${tampered}/content/${BOOK}/Bowline`)).statusCode).toBe(401);
-    // Signing out ends the token with the session, long before its own expiry.
-    await app.api("POST", "/api/auth/logout", {}, { headers: { cookie } });
-    expect((await get(app, `/kiwix/${token}/content/${BOOK}/Bowline`)).statusCode).toBe(401);
-    expect(cookie).toContain("outpost_session");
+  it("adds a PDF from the archive to the document library, with no connection needed", async () => {
+    const { app, id, kiwix } = await withBook();
+    const saved = await app.api("POST", `/api/kiwix/books/${id}/files/save`, {
+      path: "example.org/docs/manual.pdf",
+      title: "Field sanitation manual",
+    });
+    expect(saved.status).toBe(200);
+    expect(saved.body).toMatchObject({
+      status: "created",
+      document: {
+        title: "Field sanitation manual",
+        type: "pdf",
+        originalName: "manual.pdf",
+        source: "https://example.org/docs/manual.pdf",
+      },
+    });
+    expect(saved.body.document.description).toMatch(/^Saved from .+\.$/);
+    // It came from the archive on this machine, not from example.org.
+    expect(kiwix.requests.some((seen) => seen.url === `/content/${BOOK}/example.org/docs/manual.pdf`)).toBe(true);
+
+    const documentId = saved.body.document.id as string;
+    await waitFor(() => app.ctx.services.documents.get(documentId).extraction === "done", 15_000);
+    expect((await app.api("GET", "/api/search?q=latrine")).body.results[0]).toMatchObject({
+      kind: "document",
+      title: "Field sanitation manual",
+    });
+
+    // Asking again adds nothing, and the reader can tell which files are already kept.
+    expect((await app.api("POST", `/api/kiwix/books/${id}/files/save`, { path: "example.org/docs/manual.pdf" })).body).toMatchObject({
+      status: "already",
+      document: { id: documentId },
+    });
+    const check = await app.api("POST", `/api/kiwix/books/${id}/files/check`, {
+      paths: ["example.org/docs/manual.pdf", "example.org/docs/other.pdf"],
+    });
+    expect(check.body.files).toEqual([
+      { path: "example.org/docs/manual.pdf", state: "saved", documentId },
+      { path: "example.org/docs/other.pdf", state: "new" },
+    ]);
+    expect((await app.api("GET", "/api/documents")).body.total).toBe(1);
+  });
+
+  it("follows the archive's own redirect to the file", async () => {
+    const { app, id } = await withBook();
+    const saved = await app.api("POST", `/api/kiwix/books/${id}/files/save`, { path: "example.org/docs/moved.pdf" });
+    expect(saved.body).toMatchObject({ status: "created", document: { type: "pdf", title: "moved" } });
+  });
+
+  it("refuses what is not a file in this collection, and leaves nothing behind", async () => {
+    const { app, id, location } = await withBook();
+    const save = (file: string) => app.api("POST", `/api/kiwix/books/${id}/files/save`, { path: file });
+    const missing = await save("example.org/docs/missing.pdf");
+    expect(missing.status).toBe(404);
+    expect(missing.body.error.message).toMatch(/is not in this collection/);
+    // The archive answered with a page where a file was expected.
+    const page = await save("example.org/docs/page.pdf");
+    expect(page.status).toBe(400);
+    expect(page.body.error.message).toMatch(/not a file the library can keep|named like a PDF/);
+    for (const bad of [
+      "../../etc/passwd",
+      "example.org/../../secret.pdf",
+      "/etc/passwd.pdf",
+      "https://evil.example/a.pdf",
+      "Bowline",
+      "example.org/app.zip",
+      "",
+    ]) {
+      expect((await save(bad)).status, bad).toBe(400);
+    }
+    expect((await app.api("POST", "/api/kiwix/books/nope/files/save", { path: "example.org/docs/manual.pdf" })).status).toBe(404);
+    expect((await app.api("GET", "/api/documents")).body.total).toBe(0);
+    const saved = path.join(location.path, "documents", "saved");
+    expect(fs.existsSync(saved) ? fs.readdirSync(saved) : []).toEqual([]);
   });
 });

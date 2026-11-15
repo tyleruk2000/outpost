@@ -15,7 +15,6 @@ import { EmptyState, ErrorState, Notice, Page } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Badge, Skeleton } from "@/components/ui/misc";
 import { ApiError, api } from "@/lib/api";
-import { useIsAdmin } from "@/lib/queries";
 import { cn, formatDateTime, timeAgo } from "@/lib/utils";
 import { formatMegabits, formatRate, formatSpeed } from "./charts/speed";
 import { SpeedChart } from "./charts/speed-chart";
@@ -35,6 +34,7 @@ const kindWords: Record<DownloadKind, string> = {
   places: "Place names",
   file: "File",
   model: "Search model",
+  document: "Document saved from a link",
 };
 
 const badgeTone: Record<Tone, "neutral" | "lamp" | "success" | "warning" | "danger"> = {
@@ -88,17 +88,7 @@ function NextAttempt({ attempts }: { attempts: DownloadDetail["attempts"] }) {
   );
 }
 
-function NowPart({
-  detail,
-  download,
-  canManage,
-  onRemoved,
-}: {
-  detail: DownloadDetail;
-  download: DownloadDto;
-  canManage: boolean;
-  onRemoved: () => void;
-}) {
+function NowPart({ detail, download, onRemoved }: { detail: DownloadDetail; download: DownloadDto; onRemoved: () => void }) {
   const active = ACTIVE_DOWNLOAD_STATES.includes(download.state);
   const inQueue = download.state === "queued" || download.state === "running";
   const plan = usePlan({ enabled: inQueue });
@@ -156,19 +146,17 @@ function NowPart({
       )}
       {download.state === "queued" && detail.attempts.nextAttemptAt ? <NextAttempt attempts={detail.attempts} /> : null}
       <Figures items={figures} />
-      {canManage ? (
-        // Text buttons are pulled left so their words line up with the column; an outlined one (Retry, after a failure) is not.
-        <div className={cn("mt-5 flex flex-wrap items-center gap-1", download.state !== "failed" && "-ml-2.5")}>
-          <DownloadControls download={download} />
-          {active ? null : (
-            <RemoveDownloadButton
-              download={download}
-              label={download.state === "completed" ? "Remove from history" : "Remove"}
-              onRemoved={onRemoved}
-            />
-          )}
-        </div>
-      ) : null}
+      {/* Text buttons are pulled left so their words line up with the column; an outlined one (Retry, after a failure) is not. */}
+      <div className={cn("mt-5 flex flex-wrap items-center gap-1", download.state !== "failed" && "-ml-2.5")}>
+        <DownloadControls download={download} />
+        {active ? null : (
+          <RemoveDownloadButton
+            download={download}
+            label={download.state === "completed" ? "Remove from history" : "Remove"}
+            onRemoved={onRemoved}
+          />
+        )}
+      </div>
     </Part>
   );
 }
@@ -254,7 +242,6 @@ function lastModifiedWords(value: string): string {
 export default function DownloadPage() {
   const { id = "" } = useParams();
   const navigate = useNavigate();
-  const canManage = useIsAdmin();
   const detail = useDownloadDetail(id);
   // The live list is patched by progress events, so the bar and the figures move without waiting for a refetch.
   const list = useDownloads();
@@ -313,8 +300,10 @@ export default function DownloadPage() {
   const VerdictIcon = verdictIcon[verdict.tone];
   const installed =
     download.state === "completed" &&
-    download.collectionId !== null &&
-    (!collections.data || collections.data.collections.some((item) => item.id === download.collectionId));
+    // A file saved from a link became a document; anything else became a collection.
+    (download.documentId !== null ||
+      (download.collectionId !== null &&
+        (!collections.data || collections.data.collections.some((item) => item.id === download.collectionId))));
 
   return (
     <Page>
@@ -344,7 +333,7 @@ export default function DownloadPage() {
         </Notice>
       ) : null}
 
-      <NowPart detail={data} download={download} canManage={canManage} onRemoved={() => navigate("/downloads")} />
+      <NowPart detail={data} download={download} onRemoved={() => navigate("/downloads")} />
 
       <SpeedPart detail={data} state={download.state} />
 
@@ -457,7 +446,11 @@ export default function DownloadPage() {
           <p className="mt-5 flex flex-wrap gap-2">
             {installed ? (
               <Button asChild variant="primary">
-                <Link to={`/library/collections/${download.collectionId}`}>Open in the library</Link>
+                <Link
+                  to={download.documentId ? `/library/documents/${download.documentId}` : `/library/collections/${download.collectionId}`}
+                >
+                  Open in the library
+                </Link>
               </Button>
             ) : null}
             {download.catalogEntryId ? (
