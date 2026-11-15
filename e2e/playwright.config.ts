@@ -20,6 +20,10 @@ if (!fs.existsSync(entry)) {
   throw new Error(`${entry} does not exist. Run \`node scripts/build-app.mjs\` first, or set OUTPOST_E2E_SOURCE=1.`);
 }
 
+// Two suites on one machine (two checkouts, say) need ports of their own.
+const port = Number(process.env.OUTPOST_E2E_PORT ?? 8471);
+const filesPort = Number(process.env.OUTPOST_E2E_FILES_PORT ?? 8473);
+
 const work = fs.mkdtempSync(path.join(os.tmpdir(), "outpost-e2e-"));
 process.env.OUTPOST_E2E_WORK = work;
 
@@ -70,7 +74,7 @@ fs.writeFileSync(
         lastVerified: "2026-11-15",
         source: {
           type: "http",
-          url: "http://127.0.0.1:8473/files/field-manual.bin",
+          url: `http://127.0.0.1:${filesPort}/files/field-manual.bin`,
           sha256: createHash("sha256").update(fieldManual).digest("hex"),
           sizeBytes: fieldManual.length,
           version: "1",
@@ -80,7 +84,7 @@ fs.writeFileSync(
   }),
 );
 
-export const OPEN_URL = "http://localhost:8471";
+export const OPEN_URL = `http://localhost:${port}`;
 
 export default defineConfig({
   testDir: "./tests",
@@ -102,11 +106,11 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: `node "${path.join(import.meta.dirname, "tools/fake-dist.mjs")}" 8473`,
-      url: "http://127.0.0.1:8473/health",
+      command: `node "${path.join(import.meta.dirname, "tools/fake-dist.mjs")}" ${filesPort}`,
+      url: `http://127.0.0.1:${filesPort}/health`,
       reuseExistingServer: false,
     },
     // The open server fetches portable-drive runtimes from the stand-in above, which is on a private address.
-    server("open", 8471, { OUTPOST_NODE_DIST_URL: "http://127.0.0.1:8473", OUTPOST_ALLOW_PRIVATE_DOWNLOADS: "true" }),
+    server("open", port, { OUTPOST_NODE_DIST_URL: `http://127.0.0.1:${filesPort}`, OUTPOST_ALLOW_PRIVATE_DOWNLOADS: "true" }),
   ],
 });
