@@ -25,7 +25,10 @@ interface PaletteAction {
 
 /** True when every word typed begins some word of the label. Nothing typed matches everything. */
 export function matchesWords(label: string, typed: string): boolean {
-  const words = label.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+  const words = label
+    .toLowerCase()
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter(Boolean);
   return typed
     .toLowerCase()
     .split(/[^\p{L}\p{N}]+/u)
@@ -44,9 +47,18 @@ function useDebounced<T>(value: T, delay: number): T {
 
 const itemClass =
   "flex cursor-default items-center gap-3 rounded-control px-3 py-2 text-small text-ink data-[selected=true]:bg-primary-soft data-[selected=true]:text-primary-soft-ink max-md:py-3 [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-ink-muted";
-const groupClass = "[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:text-micro [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-ink-faint";
+const groupClass =
+  "[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:text-micro [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-ink-faint";
 
-export function CommandPalette({ open, onOpenChange, onNewPage }: { open: boolean; onOpenChange: (open: boolean) => void; onNewPage: () => void }) {
+export function CommandPalette({
+  open,
+  onOpenChange,
+  onNewPage,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onNewPage: () => void;
+}) {
   const navigate = useNavigate();
   const { resolved, setTheme } = useTheme();
   const [query, setQuery] = useState("");
@@ -140,7 +152,11 @@ export function CommandPalette({ open, onOpenChange, onNewPage }: { open: boolea
               {typed.length > 0 ? (
                 <>
                   <Command.Group heading={places.length + actions.length > 0 ? "In your library" : undefined} className={groupClass}>
-                    <Command.Item value={`__all ${typed}`} onSelect={() => go(`/search?q=${encodeURIComponent(typed)}`)} className={itemClass}>
+                    <Command.Item
+                      value={`__all ${typed}`}
+                      onSelect={() => go(`/search?q=${encodeURIComponent(typed)}`)}
+                      className={itemClass}
+                    >
                       <Search aria-hidden />
                       <span className="flex-1 truncate">
                         See all results for <span className="font-semibold">“{typed}”</span>
@@ -154,11 +170,18 @@ export function CommandPalette({ open, onOpenChange, onNewPage }: { open: boolea
                         const kind = kindOf(result.kind);
                         const passage = result.passages[0];
                         return (
-                          <Command.Item key={`${result.kind}:${result.entityId}`} value={`${result.kind}:${result.entityId}`} onSelect={() => go(result.url)} className={`${itemClass} items-start`}>
+                          <Command.Item
+                            key={`${result.kind}:${result.entityId}`}
+                            value={`${result.kind}:${result.entityId}`}
+                            onSelect={() => go(result.url)}
+                            className={`${itemClass} items-start`}
+                          >
                             <kind.icon aria-hidden className="mt-0.5" />
                             <span className="min-w-0 flex-1">
                               <span className="block truncate font-medium">
-                                <Highlighted segments={result.titleSegments.length ? result.titleSegments : [{ text: result.title, hit: false }]} />
+                                <Highlighted
+                                  segments={result.titleSegments.length ? result.titleSegments : [{ text: result.title, hit: false }]}
+                                />
                               </span>
                               {passage ? (
                                 <span className="mt-0.5 line-clamp-1 block text-micro text-ink-muted">
@@ -175,7 +198,9 @@ export function CommandPalette({ open, onOpenChange, onNewPage }: { open: boolea
                       })}
                     </Command.Group>
                   ) : searching && results.isSuccess ? (
-                    <p className="px-3 py-4 text-small text-ink-muted">Nothing in your library matches “{debounced}”. Check the spelling, or try fewer words.</p>
+                    <p className="px-3 py-4 text-small text-ink-muted">
+                      Nothing in your library matches “{debounced}”. Check the spelling, or try fewer words.
+                    </p>
                   ) : searching && results.isError ? (
                     <p className="px-3 py-4 text-small text-danger">Search is not available right now. The server may be restarting.</p>
                   ) : null}

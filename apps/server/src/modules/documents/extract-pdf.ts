@@ -35,16 +35,16 @@ function clean(value: unknown): string | undefined {
 function openError(error: unknown): ExtractionError {
   const name = (error as { name?: string } | null)?.name;
   if (name === "PasswordException") {
-    return new ExtractionError("This PDF is protected with a password, so its text cannot be read. Save a copy without the password and add that instead.");
+    return new ExtractionError(
+      "This PDF is protected with a password, so its text cannot be read. Save a copy without the password and add that instead.",
+    );
   }
-  return new ExtractionError("This file could not be read as a PDF. It may be damaged or incomplete; check that it opens on your computer.");
+  return new ExtractionError(
+    "This file could not be read as a PDF. It may be damaged or incomplete; check that it opens on your computer.",
+  );
 }
 
-export async function extractPdf(
-  file: string,
-  maxPages: number,
-  onProgress: (progress: ExtractProgress) => void,
-): Promise<Extracted> {
+export async function extractPdf(file: string, maxPages: number, onProgress: (progress: ExtractProgress) => void): Promise<Extracted> {
   const data = new Uint8Array(await fs.promises.readFile(file));
   // verbosity 0: the parser's own warnings about odd files would otherwise fill the log.
   const pdf = await getDocumentProxy(data, { verbosity: 0 }).catch((error: unknown) => {
@@ -81,10 +81,14 @@ export async function extractPdf(
       );
     }
     if (unreadable > 0) {
-      notes.push(`${unreadable.toLocaleString("en")} ${unreadable === 1 ? "page" : "pages"} could not be read and ${unreadable === 1 ? "is" : "are"} not searchable.`);
+      notes.push(
+        `${unreadable.toLocaleString("en")} ${unreadable === 1 ? "page" : "pages"} could not be read and ${unreadable === 1 ? "is" : "are"} not searchable.`,
+      );
     }
     if (sections.length > 0 && blank > limit / 2) {
-      notes.push(`${blank.toLocaleString("en")} of ${limit.toLocaleString("en")} pages have no text. They may be scanned images, which cannot be searched in this version.`);
+      notes.push(
+        `${blank.toLocaleString("en")} of ${limit.toLocaleString("en")} pages have no text. They may be scanned images, which cannot be searched in this version.`,
+      );
     }
 
     const info = await pdf.getMetadata().then(

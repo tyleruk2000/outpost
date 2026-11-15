@@ -4,15 +4,8 @@
   "id": "kiwix-more",
   "name": "More from Kiwix",
   "description": "Further archives from the Kiwix library: programming documentation from DevDocs, more Project Gutenberg shelves, medical and science references, courses, talks, and material on low-tech living and preparedness. Every entry is fetched from Kiwix's own servers at the moment you ask for it; nothing is bundled with Outpost.",
-  "maintainers": [
-    "Outpost maintainers"
-  ],
-  "downloadHosts": [
-    "opds.library.kiwix.org",
-    "library.kiwix.org",
-    "download.kiwix.org",
-    "lb.download.kiwix.org"
-  ],
+  "maintainers": ["Outpost maintainers"],
+  "downloadHosts": ["opds.library.kiwix.org", "library.kiwix.org", "download.kiwix.org", "lb.download.kiwix.org"],
   "entries": [
     {
       "id": "kiwix.devdocs-en-python",
@@ -27,11 +20,7 @@
       "attribution": "DevDocs. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://devdocs.io",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "programming",
-        "documentation",
-        "python"
-      ],
+      "tags": ["programming", "documentation", "python"],
       "sizeBytes": 5000000,
       "source": {
         "type": "kiwix",
@@ -52,11 +41,7 @@
       "attribution": "DevDocs. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://devdocs.io",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "programming",
-        "documentation",
-        "javascript"
-      ],
+      "tags": ["programming", "documentation", "javascript"],
       "sizeBytes": 3000000,
       "source": {
         "type": "kiwix",
@@ -77,11 +62,7 @@
       "attribution": "DevDocs. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://devdocs.io",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "programming",
-        "documentation",
-        "html"
-      ],
+      "tags": ["programming", "documentation", "html"],
       "sizeBytes": 2000000,
       "source": {
         "type": "kiwix",
@@ -102,11 +83,7 @@
       "attribution": "DevDocs. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://devdocs.io",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "programming",
-        "documentation",
-        "css"
-      ],
+      "tags": ["programming", "documentation", "css"],
       "sizeBytes": 3000000,
       "source": {
         "type": "kiwix",
@@ -127,11 +104,7 @@
       "attribution": "DevDocs. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://devdocs.io",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "programming",
-        "documentation",
-        "web apis"
-      ],
+      "tags": ["programming", "documentation", "web apis"],
       "sizeBytes": 14000000,
       "source": {
         "type": "kiwix",
@@ -152,11 +125,7 @@
       "attribution": "DevDocs. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://devdocs.io",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "programming",
-        "documentation",
-        "http"
-      ],
+      "tags": ["programming", "documentation", "http"],
       "sizeBytes": 2000000,
       "source": {
         "type": "kiwix",
@@ -177,11 +146,7 @@
       "attribution": "DevDocs. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://devdocs.io",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "programming",
-        "documentation",
-        "bash"
-      ],
+      "tags": ["programming", "documentation", "bash"],
       "sizeBytes": 1000000,
       "source": {
         "type": "kiwix",
@@ -202,11 +167,7 @@
       "attribution": "DevDocs. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://devdocs.io",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "programming",
-        "documentation",
-        "git"
-      ],
+      "tags": ["programming", "documentation", "git"],
       "sizeBytes": 2000000,
       "source": {
         "type": "kiwix",
@@ -227,11 +188,7 @@
       "attribution": "DevDocs. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://devdocs.io",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "programming",
-        "documentation",
-        "linux man pages"
-      ],
+      "tags": ["programming", "documentation", "linux man pages"],
       "sizeBytes": 30000000,
       "source": {
         "type": "kiwix",
@@ -252,11 +209,7 @@
       "attribution": "DevDocs. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://devdocs.io",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "programming",
-        "documentation",
-        "c"
-      ],
+      "tags": ["programming", "documentation", "c"],
       "sizeBytes": 1000000,
       "source": {
         "type": "kiwix",
@@ -277,11 +230,7 @@
       "attribution": "DevDocs. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://devdocs.io",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "programming",
-        "documentation",
-        "c++"
-      ],
+      "tags": ["programming", "documentation", "c++"],
       "sizeBytes": 8000000,
       "source": {
         "type": "kiwix",
@@ -302,11 +251,7 @@
       "attribution": "DevDocs. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://devdocs.io",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "programming",
-        "documentation",
-        "go"
-      ],
+      "tags": ["programming", "documentation", "go"],
       "sizeBytes": 2000000,
       "source": {
         "type": "kiwix",
@@ -327,11 +272,7 @@
       "attribution": "DevDocs. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://devdocs.io",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "programming",
-        "documentation",
-        "rust"
-      ],
+      "tags": ["programming", "documentation", "rust"],
       "sizeBytes": 6000000,
       "source": {
         "type": "kiwix",
@@ -352,11 +293,7 @@
       "attribution": "DevDocs. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://devdocs.io",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "programming",
-        "documentation",
-        "node.js"
-      ],
+      "tags": ["programming", "documentation", "node.js"],
       "sizeBytes": 1000000,
       "source": {
         "type": "kiwix",
@@ -377,11 +314,7 @@
       "attribution": "DevDocs. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://devdocs.io",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "programming",
-        "documentation",
-        "typescript"
-      ],
+      "tags": ["programming", "documentation", "typescript"],
       "sizeBytes": 1000000,
       "source": {
         "type": "kiwix",
@@ -402,11 +335,7 @@
       "attribution": "DevDocs. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://devdocs.io",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "programming",
-        "documentation",
-        "docker"
-      ],
+      "tags": ["programming", "documentation", "docker"],
       "sizeBytes": 2000000,
       "source": {
         "type": "kiwix",
@@ -427,11 +356,7 @@
       "attribution": "DevDocs. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://devdocs.io",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "programming",
-        "documentation",
-        "postgresql"
-      ],
+      "tags": ["programming", "documentation", "postgresql"],
       "sizeBytes": 3000000,
       "source": {
         "type": "kiwix",
@@ -452,11 +377,7 @@
       "attribution": "DevDocs. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://devdocs.io",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "programming",
-        "documentation",
-        "sqlite"
-      ],
+      "tags": ["programming", "documentation", "sqlite"],
       "sizeBytes": 3000000,
       "source": {
         "type": "kiwix",
@@ -477,10 +398,7 @@
       "attribution": "freeCodeCamp. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://www.freecodecamp.org",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "programming",
-        "courses"
-      ],
+      "tags": ["programming", "courses"],
       "sizeBytes": 8000000,
       "source": {
         "type": "kiwix",
@@ -501,11 +419,7 @@
       "attribution": "freeCodeCamp. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://www.freecodecamp.org",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "programming",
-        "courses",
-        "javascript"
-      ],
+      "tags": ["programming", "courses", "javascript"],
       "sizeBytes": 11000000,
       "source": {
         "type": "kiwix",
@@ -526,10 +440,7 @@
       "attribution": "ArchWiki. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://wiki.archlinux.org",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "linux",
-        "documentation"
-      ],
+      "tags": ["linux", "documentation"],
       "sizeBytes": 38000000,
       "source": {
         "type": "kiwix",
@@ -550,10 +461,7 @@
       "attribution": "energypedia. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://energypedia.info",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "energy",
-        "renewable energy"
-      ],
+      "tags": ["energy", "renewable energy"],
       "sizeBytes": 723000000,
       "source": {
         "type": "kiwix",
@@ -574,10 +482,7 @@
       "attribution": "energypedia. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://energypedia.info",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "energy",
-        "renewable energy"
-      ],
+      "tags": ["energy", "renewable energy"],
       "sizeBytes": 800000000,
       "source": {
         "type": "kiwix",
@@ -598,10 +503,7 @@
       "attribution": "Hundred Rabbits. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://100r.co",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "low-tech",
-        "off-grid"
-      ],
+      "tags": ["low-tech", "off-grid"],
       "sizeBytes": 177000000,
       "source": {
         "type": "kiwix",
@@ -622,10 +524,7 @@
       "attribution": "Low-tech Magazine. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://solar.lowtechmagazine.com",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "low-tech",
-        "energy"
-      ],
+      "tags": ["low-tech", "energy"],
       "sizeBytes": 701000000,
       "source": {
         "type": "kiwix",
@@ -645,10 +544,7 @@
       "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
       "attribution": "WikiCiv. Packaged as a ZIM archive by the Kiwix project.",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "low-tech",
-        "manual"
-      ],
+      "tags": ["low-tech", "manual"],
       "sizeBytes": 5000000,
       "source": {
         "type": "kiwix",
@@ -668,9 +564,7 @@
       "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://en.wikipedia.org",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "computing"
-      ],
+      "tags": ["computing"],
       "sizeBytes": 517000000,
       "source": {
         "type": "kiwix",
@@ -690,11 +584,7 @@
       "attribution": "Project Gutenberg. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://www.gutenberg.org",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "books",
-        "medicine",
-        "historical"
-      ],
+      "tags": ["books", "medicine", "historical"],
       "sizeBytes": 2019000000,
       "source": {
         "type": "kiwix",
@@ -714,11 +604,7 @@
       "attribution": "Project Gutenberg. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://www.gutenberg.org",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "books",
-        "farming",
-        "historical"
-      ],
+      "tags": ["books", "farming", "historical"],
       "sizeBytes": 4533000000,
       "source": {
         "type": "kiwix",
@@ -738,11 +624,7 @@
       "attribution": "Project Gutenberg. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://www.gutenberg.org",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "books",
-        "technology",
-        "historical"
-      ],
+      "tags": ["books", "technology", "historical"],
       "sizeBytes": 13155000000,
       "source": {
         "type": "kiwix",
@@ -762,11 +644,7 @@
       "attribution": "Project Gutenberg. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://www.gutenberg.org",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "books",
-        "science",
-        "historical"
-      ],
+      "tags": ["books", "science", "historical"],
       "sizeBytes": 17725000000,
       "source": {
         "type": "kiwix",
@@ -786,11 +664,7 @@
       "attribution": "Project Gutenberg. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://www.gutenberg.org",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "books",
-        "geography",
-        "travel"
-      ],
+      "tags": ["books", "geography", "travel"],
       "sizeBytes": 8095000000,
       "source": {
         "type": "kiwix",
@@ -810,11 +684,7 @@
       "attribution": "Project Gutenberg. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://www.gutenberg.org",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "books",
-        "seamanship",
-        "historical"
-      ],
+      "tags": ["books", "seamanship", "historical"],
       "sizeBytes": 1369000000,
       "source": {
         "type": "kiwix",
@@ -834,11 +704,7 @@
       "attribution": "Project Gutenberg. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://www.gutenberg.org",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "books",
-        "military",
-        "historical"
-      ],
+      "tags": ["books", "military", "historical"],
       "sizeBytes": 1288000000,
       "source": {
         "type": "kiwix",
@@ -858,10 +724,7 @@
       "attribution": "Project Gutenberg. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://www.gutenberg.org",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "books",
-        "library"
-      ],
+      "tags": ["books", "library"],
       "sizeBytes": 221252000000,
       "source": {
         "type": "kiwix",
@@ -882,10 +745,7 @@
       "attribution": "US National Library of Medicine. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://medlineplus.gov",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "health",
-        "reference"
-      ],
+      "tags": ["health", "reference"],
       "sizeBytes": 1945000000,
       "source": {
         "type": "kiwix",
@@ -906,10 +766,7 @@
       "attribution": "MDWiki (WikiProjectMed). Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://mdwiki.org",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "medicine",
-        "encyclopedia"
-      ],
+      "tags": ["medicine", "encyclopedia"],
       "sizeBytes": 2303000000,
       "source": {
         "type": "kiwix",
@@ -929,10 +786,7 @@
       "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
       "attribution": "WikiVet. Packaged as a ZIM archive by the Kiwix project.",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "veterinary",
-        "animals"
-      ],
+      "tags": ["veterinary", "animals"],
       "sizeBytes": 57000000,
       "source": {
         "type": "kiwix",
@@ -953,10 +807,7 @@
       "attribution": "LibreTexts. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://libretexts.org",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "textbooks",
-        "medicine"
-      ],
+      "tags": ["textbooks", "medicine"],
       "sizeBytes": 1193000000,
       "source": {
         "type": "kiwix",
@@ -977,10 +828,7 @@
       "attribution": "LibreTexts. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://libretexts.org",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "textbooks",
-        "biology"
-      ],
+      "tags": ["textbooks", "biology"],
       "sizeBytes": 2241000000,
       "source": {
         "type": "kiwix",
@@ -1001,10 +849,7 @@
       "attribution": "LibreTexts. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://libretexts.org",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "textbooks",
-        "chemistry"
-      ],
+      "tags": ["textbooks", "chemistry"],
       "sizeBytes": 2183000000,
       "source": {
         "type": "kiwix",
@@ -1025,10 +870,7 @@
       "attribution": "LibreTexts. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://libretexts.org",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "textbooks",
-        "mathematics"
-      ],
+      "tags": ["textbooks", "mathematics"],
       "sizeBytes": 831000000,
       "source": {
         "type": "kiwix",
@@ -1049,10 +891,7 @@
       "attribution": "LibreTexts. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://libretexts.org",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "textbooks",
-        "geology"
-      ],
+      "tags": ["textbooks", "geology"],
       "sizeBytes": 1188000000,
       "source": {
         "type": "kiwix",
@@ -1073,11 +912,7 @@
       "attribution": "Khan Academy. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://www.khanacademy.org",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "courses",
-        "videos",
-        "education"
-      ],
+      "tags": ["courses", "videos", "education"],
       "sizeBytes": 180007000000,
       "source": {
         "type": "kiwix",
@@ -1098,10 +933,7 @@
       "attribution": "NASA. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://apod.nasa.gov",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "astronomy",
-        "images"
-      ],
+      "tags": ["astronomy", "images"],
       "sizeBytes": 16679000000,
       "source": {
         "type": "kiwix",
@@ -1121,9 +953,7 @@
       "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://en.wikipedia.org",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "astronomy"
-      ],
+      "tags": ["astronomy"],
       "sizeBytes": 404000000,
       "source": {
         "type": "kiwix",
@@ -1143,9 +973,7 @@
       "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://en.wikipedia.org",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "mathematics"
-      ],
+      "tags": ["mathematics"],
       "sizeBytes": 58000000,
       "source": {
         "type": "kiwix",
@@ -1165,9 +993,7 @@
       "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://en.wikipedia.org",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "geography"
-      ],
+      "tags": ["geography"],
       "sizeBytes": 615000000,
       "source": {
         "type": "kiwix",
@@ -1188,10 +1014,7 @@
       "attribution": "TED. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://www.ted.com",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "videos",
-        "talks"
-      ],
+      "tags": ["videos", "talks"],
       "sizeBytes": 716000000,
       "source": {
         "type": "kiwix",
@@ -1212,10 +1035,7 @@
       "attribution": "TED. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://www.ted.com",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "videos",
-        "talks"
-      ],
+      "tags": ["videos", "talks"],
       "sizeBytes": 1270000000,
       "source": {
         "type": "kiwix",
@@ -1236,10 +1056,7 @@
       "attribution": "TED. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://www.ted.com",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "videos",
-        "talks"
-      ],
+      "tags": ["videos", "talks"],
       "sizeBytes": 828000000,
       "source": {
         "type": "kiwix",
@@ -1260,10 +1077,7 @@
       "attribution": "TED. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://www.ted.com",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "videos",
-        "talks"
-      ],
+      "tags": ["videos", "talks"],
       "sizeBytes": 326000000,
       "source": {
         "type": "kiwix",
@@ -1284,10 +1098,7 @@
       "attribution": "TED. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://www.ted.com",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "videos",
-        "talks"
-      ],
+      "tags": ["videos", "talks"],
       "sizeBytes": 872000000,
       "source": {
         "type": "kiwix",
@@ -1308,10 +1119,7 @@
       "attribution": "TED. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://www.ted.com",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "videos",
-        "talks"
-      ],
+      "tags": ["videos", "talks"],
       "sizeBytes": 386000000,
       "source": {
         "type": "kiwix",
@@ -1332,10 +1140,7 @@
       "attribution": "TED. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://www.ted.com",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "videos",
-        "talks"
-      ],
+      "tags": ["videos", "talks"],
       "sizeBytes": 3607000000,
       "source": {
         "type": "kiwix",
@@ -1356,10 +1161,7 @@
       "attribution": "TED. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://www.ted.com",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "videos",
-        "talks"
-      ],
+      "tags": ["videos", "talks"],
       "sizeBytes": 1066000000,
       "source": {
         "type": "kiwix",
@@ -1380,10 +1182,7 @@
       "attribution": "TED. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://www.ted.com",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "videos",
-        "talks"
-      ],
+      "tags": ["videos", "talks"],
       "sizeBytes": 147000000,
       "source": {
         "type": "kiwix",
@@ -1403,10 +1202,7 @@
       "licenseNote": "Publications of the US Army are works of the US Government. Individual documents may include third-party material; this has not been checked document by document.",
       "attribution": "US Army Publishing Directorate. Packaged as a ZIM archive by the Kiwix project.",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "army",
-        "manuals"
-      ],
+      "tags": ["army", "manuals"],
       "sizeBytes": 8232000000,
       "source": {
         "type": "kiwix",
@@ -1426,10 +1222,7 @@
       "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
       "attribution": "The Urban Prepper. Packaged as a ZIM archive by the Kiwix project.",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "videos",
-        "preparedness"
-      ],
+      "tags": ["videos", "preparedness"],
       "sizeBytes": 2245000000,
       "source": {
         "type": "kiwix",
@@ -1449,11 +1242,7 @@
       "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
       "attribution": "Learning Self-Reliance. Packaged as a ZIM archive by the Kiwix project.",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "videos",
-        "self-reliance",
-        "beekeeping"
-      ],
+      "tags": ["videos", "self-reliance", "beekeeping"],
       "sizeBytes": 3974000000,
       "source": {
         "type": "kiwix",
@@ -1473,10 +1262,7 @@
       "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
       "attribution": "Canadian Prepper. Packaged as a ZIM archive by the Kiwix project.",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "videos",
-        "winter"
-      ],
+      "tags": ["videos", "winter"],
       "sizeBytes": 1342000000,
       "source": {
         "type": "kiwix",
@@ -1496,10 +1282,7 @@
       "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
       "attribution": "Canadian Prepper. Packaged as a ZIM archive by the Kiwix project.",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "videos",
-        "food storage"
-      ],
+      "tags": ["videos", "food storage"],
       "sizeBytes": 2195000000,
       "source": {
         "type": "kiwix",

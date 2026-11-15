@@ -13,7 +13,23 @@ import { SemanticSection } from "./semantic-section";
 import { UsersSection } from "./users-section";
 
 /** A number field that saves when the person leaves it or presses Enter, and reverts if invalid. */
-function NumberSetting({ id, value, min, max, disabled, onSave, unit }: { id: string; value: number; min: number; max: number; disabled: boolean; onSave: (value: number) => void; unit?: string }) {
+function NumberSetting({
+  id,
+  value,
+  min,
+  max,
+  disabled,
+  onSave,
+  unit,
+}: {
+  id: string;
+  value: number;
+  min: number;
+  max: number;
+  disabled: boolean;
+  onSave: (value: number) => void;
+  unit?: string;
+}) {
   const [draft, setDraft] = useState(String(value));
   useEffect(() => setDraft(String(value)), [value]);
   const commit = () => {
@@ -119,40 +135,101 @@ export default function SettingsPage({ extraSections }: { extraSections?: ReactN
               htmlFor="dl-concurrency"
               label="Downloads at once"
               hint="More is faster on a good connection. On a Raspberry Pi or a slow link, 1 or 2 keeps things responsive."
-              control={<NumberSetting id="dl-concurrency" value={s["downloads.concurrency"]} min={1} max={8} disabled={disabled} onSave={(value) => save("downloads.concurrency", value)} />}
+              control={
+                <NumberSetting
+                  id="dl-concurrency"
+                  value={s["downloads.concurrency"]}
+                  min={1}
+                  max={8}
+                  disabled={disabled}
+                  onSave={(value) => save("downloads.concurrency", value)}
+                />
+              }
             />
             <SettingRow
               htmlFor="dl-attempts"
               label="Attempts before giving up"
               hint="Failed downloads wait longer between each attempt, and resume from where they stopped."
-              control={<NumberSetting id="dl-attempts" value={s["downloads.maxAttempts"]} min={1} max={20} disabled={disabled} onSave={(value) => save("downloads.maxAttempts", value)} />}
+              control={
+                <NumberSetting
+                  id="dl-attempts"
+                  value={s["downloads.maxAttempts"]}
+                  min={1}
+                  max={20}
+                  disabled={disabled}
+                  onSave={(value) => save("downloads.maxAttempts", value)}
+                />
+              }
             />
           </SettingsSection>
 
-          <SettingsSection id="indexing" title="Reading documents" description="Text is pulled out of documents so they can be searched. Changes apply to documents added or re-read from now on.">
+          <SettingsSection
+            id="indexing"
+            title="Reading documents"
+            description="Text is pulled out of documents so they can be searched. Changes apply to documents added or re-read from now on."
+          >
             <SettingRow
               htmlFor="ix-concurrency"
               label="Documents processed at once"
               hint="Each one uses a processor core and some memory while it runs."
-              control={<NumberSetting id="ix-concurrency" value={s["indexing.concurrency"]} min={1} max={8} disabled={disabled} onSave={(value) => save("indexing.concurrency", value)} />}
+              control={
+                <NumberSetting
+                  id="ix-concurrency"
+                  value={s["indexing.concurrency"]}
+                  min={1}
+                  max={8}
+                  disabled={disabled}
+                  onSave={(value) => save("indexing.concurrency", value)}
+                />
+              }
             />
             <SettingRow
               htmlFor="ix-pages"
               label="Most pages read from one PDF"
               hint="Very long PDFs are read up to this page. Use 0 for no limit."
-              control={<NumberSetting id="ix-pages" value={s["indexing.maxPdfPages"]} min={0} max={100000} disabled={disabled} onSave={(value) => save("indexing.maxPdfPages", value)} unit="pages" />}
+              control={
+                <NumberSetting
+                  id="ix-pages"
+                  value={s["indexing.maxPdfPages"]}
+                  min={0}
+                  max={100000}
+                  disabled={disabled}
+                  onSave={(value) => save("indexing.maxPdfPages", value)}
+                  unit="pages"
+                />
+              }
             />
             <SettingRow
               htmlFor="ix-chunk"
               label="Passage length"
               hint="Text is split into passages of about this size for search results and future question answering."
-              control={<NumberSetting id="ix-chunk" value={s["indexing.chunkSize"]} min={300} max={4000} disabled={disabled} onSave={(value) => save("indexing.chunkSize", value)} unit="characters" />}
+              control={
+                <NumberSetting
+                  id="ix-chunk"
+                  value={s["indexing.chunkSize"]}
+                  min={300}
+                  max={4000}
+                  disabled={disabled}
+                  onSave={(value) => save("indexing.chunkSize", value)}
+                  unit="characters"
+                />
+              }
             />
             <SettingRow
               htmlFor="ix-overlap"
               label="Passage overlap"
               hint="How much neighbouring passages share, so a sentence across a boundary is still found whole."
-              control={<NumberSetting id="ix-overlap" value={s["indexing.chunkOverlap"]} min={0} max={800} disabled={disabled} onSave={(value) => save("indexing.chunkOverlap", value)} unit="characters" />}
+              control={
+                <NumberSetting
+                  id="ix-overlap"
+                  value={s["indexing.chunkOverlap"]}
+                  min={0}
+                  max={800}
+                  disabled={disabled}
+                  onSave={(value) => save("indexing.chunkOverlap", value)}
+                  unit="characters"
+                />
+              }
             />
           </SettingsSection>
 
@@ -160,24 +237,52 @@ export default function SettingsPage({ extraSections }: { extraSections?: ReactN
             <SettingRow
               label="Search inside reference collections"
               hint="Includes articles from installed collections such as Wikipedia in results. Turn off to search only your own documents and pages."
-              control={<Switch checked={s["search.includeReference"]} disabled={disabled} onCheckedChange={(value) => save("search.includeReference", value)} aria-label="Search inside reference collections" />}
+              control={
+                <Switch
+                  checked={s["search.includeReference"]}
+                  disabled={disabled}
+                  onCheckedChange={(value) => save("search.includeReference", value)}
+                  aria-label="Search inside reference collections"
+                />
+              }
             />
           </SettingsSection>
 
           <SemanticSection settings={s} disabled={disabled} save={save} />
 
-          <SettingsSection id="maps" title="Maps" description="Where map regions are fetched from when you download them. The defaults suit almost everyone.">
+          <SettingsSection
+            id="maps"
+            title="Maps"
+            description="Where map regions are fetched from when you download them. The defaults suit almost everyone."
+          >
             <SettingRow
               htmlFor="maps-source"
               label="Map source"
               hint="Address of a planet archive in PMTiles form. Leave empty to use the newest Protomaps build of OpenStreetMap."
-              control={<TextSetting id="maps-source" value={s["maps.tileSource"]} disabled={disabled} onSave={(value) => save("maps.tileSource", value)} placeholder="Newest Protomaps build" mono />}
+              control={
+                <TextSetting
+                  id="maps-source"
+                  value={s["maps.tileSource"]}
+                  disabled={disabled}
+                  onSave={(value) => save("maps.tileSource", value)}
+                  placeholder="Newest Protomaps build"
+                  mono
+                />
+              }
             />
             <SettingRow
               htmlFor="maps-terrain"
               label="Terrain source"
               hint="Used for hill shading when you choose to download terrain with a region."
-              control={<TextSetting id="maps-terrain" value={s["maps.terrainSource"]} disabled={disabled} onSave={(value) => save("maps.terrainSource", value)} mono />}
+              control={
+                <TextSetting
+                  id="maps-terrain"
+                  value={s["maps.terrainSource"]}
+                  disabled={disabled}
+                  onSave={(value) => save("maps.terrainSource", value)}
+                  mono
+                />
+              }
             />
           </SettingsSection>
 
@@ -194,12 +299,22 @@ export default function SettingsPage({ extraSections }: { extraSections?: ReactN
         description="Set when the server starts, not from this screen, so that nobody on the network can open Outpost up from a browser."
       >
         <dl>
-          <Fact label="Reachable from other devices" value={session.data?.lanAccess ? "Yes, on your local network" : "No, this device only"} />
+          <Fact
+            label="Reachable from other devices"
+            value={session.data?.lanAccess ? "Yes, on your local network" : "No, this device only"}
+          />
           <Fact label="Sign-in required" value={session.data?.authRequired ? "Yes" : "No"} />
-          {session.data?.user && session.data.authRequired ? <Fact label="Signed in as" value={`${session.data.user.username} (${session.data.user.role === "admin" ? "administrator" : "member"})`} /> : null}
+          {session.data?.user && session.data.authRequired ? (
+            <Fact
+              label="Signed in as"
+              value={`${session.data.user.username} (${session.data.user.role === "admin" ? "administrator" : "member"})`}
+            />
+          ) : null}
         </dl>
         <p className="text-small text-ink-muted">
-          To let phones and other computers on your network use this library, set <span className="font-mono text-[0.8125rem] text-ink">OUTPOST_LAN_ACCESS=true</span> in the <span className="font-mono text-[0.8125rem] text-ink">.env</span> file and restart. Sign-in is turned on with it.
+          To let phones and other computers on your network use this library, set{" "}
+          <span className="font-mono text-[0.8125rem] text-ink">OUTPOST_LAN_ACCESS=true</span> in the{" "}
+          <span className="font-mono text-[0.8125rem] text-ink">.env</span> file and restart. Sign-in is turned on with it.
         </p>
       </SettingsSection>
 
@@ -208,8 +323,14 @@ export default function SettingsPage({ extraSections }: { extraSections?: ReactN
           <dl>
             <Fact label="Version" value={`${info.version}${info.portable ? ", portable" : ""}`} />
             <Fact label="Running on" value={`${info.platform}, Node ${info.node.replace(/^v/, "")}`} />
-            <Fact label="Memory used by Outpost" value={`${formatBytes(info.resources.processRssBytes)} of ${formatBytes(info.resources.systemTotalBytes)}`} />
-            <Fact label="Processor load (1 min)" value={`${info.resources.loadAverage[0]?.toFixed(2)} across ${plural(info.resources.cpuCount, "core")}`} />
+            <Fact
+              label="Memory used by Outpost"
+              value={`${formatBytes(info.resources.processRssBytes)} of ${formatBytes(info.resources.systemTotalBytes)}`}
+            />
+            <Fact
+              label="Processor load (1 min)"
+              value={`${info.resources.loadAverage[0]?.toFixed(2)} across ${plural(info.resources.cpuCount, "core")}`}
+            />
             <Fact label="Database size" value={formatBytes(info.resources.databaseBytes)} />
             <Fact
               label="Background work"
@@ -229,7 +350,9 @@ export default function SettingsPage({ extraSections }: { extraSections?: ReactN
             <Skeleton />
           </div>
         )}
-        <p className="text-small text-ink-muted">Outpost sends no telemetry and makes no network requests unless you start a download or refresh the catalogue.</p>
+        <p className="text-small text-ink-muted">
+          Outpost sends no telemetry and makes no network requests unless you start a download or refresh the catalogue.
+        </p>
       </SettingsSection>
     </Page>
   );

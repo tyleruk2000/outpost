@@ -15,7 +15,10 @@ test("writes a portable drive from the Storage screen", async ({ page }) => {
   await dialog.getByRole("list", { name: "Folders" }).getByRole("button").first().click();
   await dialog.getByRole("button", { name: "New folder" }).click();
   await dialog.getByLabel("Name of the new folder").fill("Trip drive");
-  const target = (await dialog.getByText(/Outpost will use/).locator("span").textContent())!;
+  const target = (await dialog
+    .getByText(/Outpost will use/)
+    .locator("span")
+    .textContent())!;
   await dialog.getByRole("button", { name: "Continue" }).click();
 
   // Step 2: this computer is preselected; add Windows.
@@ -29,7 +32,18 @@ test("writes a portable drive from the Storage screen", async ({ page }) => {
   await dialog.getByRole("button", { name: "Write drive" }).click();
   await expect(dialog.getByText("The drive is ready")).toBeVisible({ timeout: 60_000 });
 
-  for (const file of ["Start Outpost.command", "Start Outpost.bat", "start-outpost.sh", "README.txt", "outpost-portable.json", "app/server/outpost.mjs", "app/web/index.html", "data/outpost.db", "library/.outpost-location.json", "runtime/win-x64/node.exe"]) {
+  for (const file of [
+    "Start Outpost.command",
+    "Start Outpost.bat",
+    "start-outpost.sh",
+    "README.txt",
+    "outpost-portable.json",
+    "app/server/outpost.mjs",
+    "app/web/index.html",
+    "data/outpost.db",
+    "library/.outpost-location.json",
+    "runtime/win-x64/node.exe",
+  ]) {
     expect(fs.existsSync(path.join(target, file)), file).toBe(true);
   }
   const manifest = JSON.parse(fs.readFileSync(path.join(target, "outpost-portable.json"), "utf8"));

@@ -7,14 +7,13 @@
  * hand from that GeoJSON, with every piece of text escaped.
  */
 import { Worker } from "node:worker_threads";
-import { AppError } from "../../core/errors.ts";
-import { workerUrl } from "../../core/paths.ts";
 import type { Bbox } from "@outpost/shared";
 import { haversineMeters } from "@outpost/shared";
 import { gpx as gpxToGeoJson } from "@tmcw/togeojson";
 import { DOMParser } from "@xmldom/xmldom";
 import type { Feature, FeatureCollection, LineString, MultiLineString, Point, Position } from "geojson";
-import { badRequest } from "../../core/errors.ts";
+import { AppError, badRequest } from "../../core/errors.ts";
+import { workerUrl } from "../../core/paths.ts";
 
 export const MAX_GPX_BYTES = 20 * 1024 * 1024;
 /** Elevation has to change by this much before it counts as climbing, to ignore GPS jitter. */

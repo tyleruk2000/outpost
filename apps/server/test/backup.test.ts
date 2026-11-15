@@ -45,7 +45,13 @@ describe("backup and restore", () => {
     const source = await createTestApp();
     apps.push(source);
     await source.api("PATCH", "/api/settings", { "downloads.concurrency": 5 });
-    source.ctx.services.search.upsert({ kind: "note", entityId: "n1", title: "Tide tables", url: "/notes/n1", sections: [{ text: "High water at Dover." }] });
+    source.ctx.services.search.upsert({
+      kind: "note",
+      entityId: "n1",
+      title: "Tide tables",
+      url: "/notes/n1",
+      sections: [{ text: "High water at Dover." }],
+    });
     const attachment = path.join(source.ctx.config.dataDir, "attachments", "ab", "photo.txt");
     fs.mkdirSync(path.dirname(attachment), { recursive: true });
     fs.writeFileSync(attachment, "a picture, honest");
@@ -80,10 +86,24 @@ describe("backup and restore", () => {
     apps.push(app);
     expect((await restore(app, Buffer.from("definitely not a zip"))).statusCode).toBe(400);
     expect((await restore(app, await zipOf({ "readme.txt": "hello" }))).statusCode).toBe(400);
-    const noDatabase = await zipOf({ "manifest.json": JSON.stringify({ format: "outpost-backup", version: 1, appVersion: "0.1.0", createdAt: "2026-01-01T00:00:00Z", migrations: 1 }) });
+    const noDatabase = await zipOf({
+      "manifest.json": JSON.stringify({
+        format: "outpost-backup",
+        version: 1,
+        appVersion: "0.1.0",
+        createdAt: "2026-01-01T00:00:00Z",
+        migrations: 1,
+      }),
+    });
     expect((await restore(app, noDatabase)).statusCode).toBe(400);
     const badDatabase = await zipOf({
-      "manifest.json": JSON.stringify({ format: "outpost-backup", version: 1, appVersion: "0.1.0", createdAt: "2026-01-01T00:00:00Z", migrations: 1 }),
+      "manifest.json": JSON.stringify({
+        format: "outpost-backup",
+        version: 1,
+        appVersion: "0.1.0",
+        createdAt: "2026-01-01T00:00:00Z",
+        migrations: 1,
+      }),
       "outpost.db": "this is not sqlite",
     });
     expect((await restore(app, badDatabase)).statusCode).toBe(400);
@@ -98,7 +118,13 @@ describe("backup and restore", () => {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "outpost-evil-"));
     fs.writeFileSync(path.join(tmp, "real.zip"), real);
     const hostile = await zipOf({
-      "manifest.json": JSON.stringify({ format: "outpost-backup", version: 1, appVersion: "0.1.0", createdAt: "2026-01-01T00:00:00Z", migrations: 1 }),
+      "manifest.json": JSON.stringify({
+        format: "outpost-backup",
+        version: 1,
+        appVersion: "0.1.0",
+        createdAt: "2026-01-01T00:00:00Z",
+        migrations: 1,
+      }),
       "secret.key": "overwritten",
       "elsewhere/passwd": "root::0:0",
       "attachments/ok.txt": "fine",

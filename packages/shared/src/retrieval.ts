@@ -126,7 +126,15 @@ export interface ExplainResponse {
   /** The passages laid out as numbered sources, as a language model would be given them. */
   context: {
     text: string;
-    citations: Array<{ marker: number; chunkId: number; title: string; heading: string | null; page: number | null; url: string; quote: string }>;
+    citations: Array<{
+      marker: number;
+      chunkId: number;
+      title: string;
+      heading: string | null;
+      page: number | null;
+      url: string;
+      quote: string;
+    }>;
     omitted: number;
     safetyCritical: boolean;
     characters: number;

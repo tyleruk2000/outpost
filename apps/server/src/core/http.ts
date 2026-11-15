@@ -14,7 +14,7 @@
  */
 import dns from "node:dns";
 import net from "node:net";
-import { Agent, fetch as undiciFetch, type RequestInit, type Response } from "undici";
+import { Agent, type RequestInit, type Response, fetch as undiciFetch } from "undici";
 import { AppError } from "./errors.ts";
 
 const privateRanges = new net.BlockList();
@@ -135,9 +135,7 @@ export function createHttpClient(config: { allowPrivate: boolean }): HttpClient 
 
   return {
     async fetch(input, options = {}) {
-      const allowed = options.allowedHosts
-        ? new Set([...options.allowedHosts].map((host) => host.toLowerCase()))
-        : undefined;
+      const allowed = options.allowedHosts ? new Set([...options.allowedHosts].map((host) => host.toLowerCase())) : undefined;
       let url = new URL(input);
       const maxRedirects = options.maxRedirects ?? 8;
       for (let hop = 0; ; hop += 1) {

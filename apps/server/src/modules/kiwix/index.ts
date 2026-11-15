@@ -89,7 +89,13 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
   const connection = createKiwixConnection({ url: config.kiwix.url, bin: config.kiwix.bin, libraryPath: config.kiwix.libraryPath, log });
   ctx.onClose.push(() => connection.close());
   // Descriptions carry <b> around matched words; keep them raw so the matches survive.
-  const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: "@", processEntities: true, htmlEntities: true, stopNodes: ["*.description"] });
+  const parser = new XMLParser({
+    ignoreAttributes: false,
+    attributeNamePrefix: "@",
+    processEntities: true,
+    htmlEntities: true,
+    stopNodes: ["*.description"],
+  });
 
   const zimCollections = () => collections.list({ kind: "zim" });
   const servable = (row: CollectionRow) => row.status === "installed" && storage.isAvailable(row.locationId) && Boolean(zimOf(row)?.uuid);
@@ -197,12 +203,16 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
       return;
     }
     const [description, language, name, flavour, date, creator, publisher, counter, tags] = await Promise.all(
-      ["Description", "Language", "Name", "Flavour", "Date", "Creator", "Publisher", "Counter", "Tags"].map((key) => readMeta(zim.bookName, key)),
+      ["Description", "Language", "Name", "Flavour", "Date", "Creator", "Publisher", "Counter", "Tags"].map((key) =>
+        readMeta(zim.bookName, key),
+      ),
     );
     // Counter looks like "image/png=3;text/html=599;…".
     const counts = new Map((counter ?? "").split(";").map((part) => part.split("=") as [string, string]));
     const articles = Number(counts.get("text/html")) || undefined;
-    const media = [...counts].filter(([type]) => type.startsWith("image/") || type.startsWith("video/") || type.startsWith("audio/")).reduce((sum, [, n]) => sum + (Number(n) || 0), 0);
+    const media = [...counts]
+      .filter(([type]) => type.startsWith("image/") || type.startsWith("video/") || type.startsWith("audio/"))
+      .reduce((sum, [, n]) => sum + (Number(n) || 0), 0);
     if (closed) return;
     const fresh = collections.get(collectionId);
     if (!fresh) return;
@@ -296,9 +306,21 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
     return segments;
   }
 
-  async function searchBook(row: CollectionRow, q: string, start: number, limit: number, signal?: AbortSignal): Promise<{ total: number; hits: Hit[] }> {
+  async function searchBook(
+    row: CollectionRow,
+    q: string,
+    start: number,
+    limit: number,
+    signal?: AbortSignal,
+  ): Promise<{ total: number; hits: Hit[] }> {
     const zim = zimOf(row)!;
-    const query = new URLSearchParams({ "books.id": zim.uuid, pattern: q, start: String(start), pageLength: String(Math.min(limit, 100)), format: "xml" });
+    const query = new URLSearchParams({
+      "books.id": zim.uuid,
+      pattern: q,
+      start: String(start),
+      pageLength: String(Math.min(limit, 100)),
+      format: "xml",
+    });
     const response = await upstream(`search?${query}`, { signal: signal ?? AbortSignal.timeout(8000) });
     const body = await response.text();
     if (!response.ok) return { total: 0, hits: [] };
@@ -315,14 +337,18 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
       hits.push({
         title: decodeEntities(String(item.title ?? "")),
         path: link.slice(at + prefix.length),
-        snippet: segments.map((segment) => segment.text).join("").trim(),
+        snippet: segments
+          .map((segment) => segment.text)
+          .join("")
+          .trim(),
         segments,
       });
     }
     return { total: Number(channel["opensearch:totalResults"]) || hits.length, hits };
   }
 
-  const readerUrl = (collectionId: string, articlePath: string) => `/library/read/${collectionId}/${articlePath.split("/").map(encodeURIComponent).join("/")}`;
+  const readerUrl = (collectionId: string, articlePath: string) =>
+    `/library/read/${collectionId}/${articlePath.split("/").map(encodeURIComponent).join("/")}`;
 
   const source: SearchSource = {
     id: "reference",
@@ -330,7 +356,10 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
     isAvailable: () => Boolean(connection.baseUrl()) && zimCollections().some(servable),
     weight: () => settings.get("search.hybrid.keywordWeight"),
     async search({ q, limit, signal }) {
-      if (!(await connection.isUp())) throw new Error(connection.problem() ?? "Reference collections are not answering, so their articles are missing from these results.");
+      if (!(await connection.isUp()))
+        throw new Error(
+          connection.problem() ?? "Reference collections are not answering, so their articles are missing from these results.",
+        );
       const books = zimCollections().filter(servable).slice(0, 24);
       const perBook = Math.max(3, Math.ceil((limit * 1.5) / Math.max(books.length, 1)));
       const answers = await Promise.allSettled(books.map((row) => searchBook(row, q, 0, perBook, signal)));
@@ -365,13 +394,18 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
   // ── API ──
   function requireBook(collectionId: string): CollectionRow {
     const row = collections.get(collectionId);
-    if (!row || row.kind !== "zim" || !zimOf(row)?.bookName) throw notFound("Collection");
+    if (row?.kind !== "zim" || !zimOf(row)?.bookName) throw notFound("Collection");
     return row;
   }
 
   app.get("/api/kiwix/status", async () => {
     const up = await connection.isUp();
-    return { mode: connection.mode, available: up, problem: up ? null : (connection.problem() ?? null), books: zimCollections().filter(servable).length };
+    return {
+      mode: connection.mode,
+      available: up,
+      problem: up ? null : (connection.problem() ?? null),
+      books: zimCollections().filter(servable).length,
+    };
   });
 
   app.get("/api/kiwix/books", async (request) => ({ books: await service.books(auth.contentToken(auth.requireUser(request))) }));
@@ -402,28 +436,38 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
     return {
       suggestions: raw
         .filter((item) => item.kind === "path" && item.path && item.value)
-        .map((item) => ({ title: decodeEntities(item.value!), path: decodeEntities(item.path!), url: readerUrl(row.id, decodeEntities(item.path!)) })),
+        .map((item) => ({
+          title: decodeEntities(item.value!),
+          path: decodeEntities(item.path!),
+          url: readerUrl(row.id, decodeEntities(item.path!)),
+        })),
     };
   });
 
-  app.get<{ Params: { collectionId: string }; Querystring: { q?: string; offset?: string; limit?: string } }>("/api/kiwix/books/:collectionId/search", async (request) => {
-    const row = requireBook(request.params.collectionId);
-    const q = (request.query.q ?? "").trim().slice(0, 300);
-    if (!q) return { total: 0, results: [] };
-    const offset = Math.max(0, Number(request.query.offset) || 0);
-    const limit = Math.min(50, Math.max(1, Number(request.query.limit) || 20));
-    const { total, hits } = await searchBook(row, q, offset, limit);
-    return { total, results: hits.map((hit) => ({ ...hit, url: readerUrl(row.id, hit.path) })) };
-  });
+  app.get<{ Params: { collectionId: string }; Querystring: { q?: string; offset?: string; limit?: string } }>(
+    "/api/kiwix/books/:collectionId/search",
+    async (request) => {
+      const row = requireBook(request.params.collectionId);
+      const q = (request.query.q ?? "").trim().slice(0, 300);
+      if (!q) return { total: 0, results: [] };
+      const offset = Math.max(0, Number(request.query.offset) || 0);
+      const limit = Math.min(50, Math.max(1, Number(request.query.limit) || 20));
+      const { total, hits } = await searchBook(row, q, offset, limit);
+      return { total, results: hits.map((hit) => ({ ...hit, url: readerUrl(row.id, hit.path) })) };
+    },
+  );
 
   /** Registers a ZIM archive that is already on a storage location. Nothing is copied. */
   app.post("/api/kiwix/import", async (request) => {
     auth.requireAdmin(request);
-    const body = z.object({ locationId: z.string(), relPath: z.string().min(1).max(500), title: z.string().trim().max(200).optional() }).parse(request.body);
+    const body = z
+      .object({ locationId: z.string(), relPath: z.string().min(1).max(500), title: z.string().trim().max(200).optional() })
+      .parse(request.body);
     const file = storage.resolve(body.locationId, body.relPath);
     const uuid = await readZimUuid(file);
     if (!uuid) throw badRequest("That file is not a ZIM archive.");
-    if (zimCollections().some((row) => zimOf(row)?.uuid === uuid)) throw new AppError("conflict", "That archive is already in your library.");
+    if (zimCollections().some((row) => zimOf(row)?.uuid === uuid))
+      throw new AppError("conflict", "That archive is already in your library.");
     const { size } = await import("node:fs").then((fs) => fs.promises.stat(file));
     const row = await collections.create({
       kind: "zim",
@@ -442,7 +486,10 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
     url: "/kiwix/:token/*",
     async handler(request, reply) {
       if (!auth.verifyContentToken(request.params.token)) {
-        return reply.status(401).type("text/plain").send("This link to your library has expired. Go back to Outpost and open the page again.");
+        return reply
+          .status(401)
+          .type("text/plain")
+          .send("This link to your library has expired. Go back to Outpost and open the page again.");
       }
       const rest = request.params["*"];
       if (rest.includes("..") || !isAllowedPath(rest)) {
@@ -455,7 +502,13 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
         if (typeof value === "string") headers[name] = value;
       }
       const prefix = `/kiwix/${request.params.token}`;
-      const response = await upstream(`${rest.split("/").map((part) => encodeURIComponent(part).replace(/%40/g, "@")).join("/")}${query}`, { method: request.method, headers }).catch((error: AppError) => {
+      const response = await upstream(
+        `${rest
+          .split("/")
+          .map((part) => encodeURIComponent(part).replace(/%40/g, "@"))
+          .join("/")}${query}`,
+        { method: request.method, headers },
+      ).catch((error: AppError) => {
         reply.status(502).type("text/plain");
         return error.message;
       });

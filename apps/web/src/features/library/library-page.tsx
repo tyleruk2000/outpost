@@ -19,7 +19,10 @@ export default function LibraryPage() {
   const tab = params.get("tab") === "collections" ? "collections" : "documents";
   return (
     <Page>
-      <PageHeader title="Library" description="Everything you keep: your own documents, and the reference collections and maps you have installed." />
+      <PageHeader
+        title="Library"
+        description="Everything you keep: your own documents, and the reference collections and maps you have installed."
+      />
       <Tabs
         value={tab}
         onValueChange={(next) =>

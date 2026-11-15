@@ -27,7 +27,9 @@ async function embeddingServer(options: { fail?: boolean } = {}) {
       const parsed = JSON.parse(body) as { model: string; input: string[] };
       calls.push(parsed);
       // Deliberately returned out of order and un-normalised: the provider must cope.
-      const data = parsed.input.map((text, index) => ({ index, embedding: [text.includes("water") ? 3 : 0, text.includes("rope") ? 4 : 0, 1] })).reverse();
+      const data = parsed.input
+        .map((text, index) => ({ index, embedding: [text.includes("water") ? 3 : 0, text.includes("rope") ? 4 : 0, 1] }))
+        .reverse();
       response.setHeader("Content-Type", "application/json");
       response.end(JSON.stringify({ data }));
     });
@@ -71,8 +73,12 @@ describe("embedding providers", () => {
   it("is chosen by settings", () => {
     const base = { "search.semantic.model": "m", "search.semantic.endpoint": "http://127.0.0.1:1/v1" };
     expect(providerFromSettings({ ...base, "search.semantic.provider": "none" } as never, "/models")).toBeUndefined();
-    expect(providerFromSettings({ ...base, "search.semantic.provider": "openai-compatible" } as never, "/models")?.modelId).toBe("openai-compatible:m");
-    expect(providerFromSettings({ ...base, "search.semantic.provider": "transformers" } as never, "/models")?.modelId).toBe("transformers:m");
+    expect(providerFromSettings({ ...base, "search.semantic.provider": "openai-compatible" } as never, "/models")?.modelId).toBe(
+      "openai-compatible:m",
+    );
+    expect(providerFromSettings({ ...base, "search.semantic.provider": "transformers" } as never, "/models")?.modelId).toBe(
+      "transformers:m",
+    );
   });
 });
 
@@ -81,9 +87,26 @@ describe("semantic search through a local embedding server", () => {
     const server = await embeddingServer();
     const app: TestApp = await createTestApp();
     cleanups.push(() => app.close());
-    app.ctx.services.search.upsert({ kind: "note", entityId: "w", title: "Hydration", url: "/notes/w", sections: [{ text: "Carry two litres of water." }] });
-    app.ctx.services.search.upsert({ kind: "note", entityId: "r", title: "Ropework", url: "/notes/r", sections: [{ text: "Coil the rope before stowing." }] });
-    await app.api("PATCH", "/api/settings", { "search.semantic.enabled": true, "search.semantic.provider": "openai-compatible", "search.semantic.endpoint": server.endpoint, "search.semantic.model": "test-embed" });
+    app.ctx.services.search.upsert({
+      kind: "note",
+      entityId: "w",
+      title: "Hydration",
+      url: "/notes/w",
+      sections: [{ text: "Carry two litres of water." }],
+    });
+    app.ctx.services.search.upsert({
+      kind: "note",
+      entityId: "r",
+      title: "Ropework",
+      url: "/notes/r",
+      sections: [{ text: "Coil the rope before stowing." }],
+    });
+    await app.api("PATCH", "/api/settings", {
+      "search.semantic.enabled": true,
+      "search.semantic.provider": "openai-compatible",
+      "search.semantic.endpoint": server.endpoint,
+      "search.semantic.model": "test-embed",
+    });
     const status = (await app.api("GET", "/api/semantic/status")).body;
     expect(status).toMatchObject({ enabled: true, ready: true, modelId: "openai-compatible:test-embed", dimensions: 3 });
     expect((await app.api("POST", "/api/semantic/index")).status).toBe(200);

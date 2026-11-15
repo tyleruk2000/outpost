@@ -6,7 +6,10 @@ import { createTestApp, type TestApp } from "./helpers.ts";
 describe("demonstration vectors", () => {
   it("point the same way for texts that share words, and say which words they used", async () => {
     const provider = demoProvider();
-    const [boil, boiled, rope] = await provider.embed(["Boil the water for one minute.", "The water was boiled.", "Coil the rope neatly."], "passage");
+    const [boil, boiled, rope] = await provider.embed(
+      ["Boil the water for one minute.", "The water was boiled.", "Coil the rope neatly."],
+      "passage",
+    );
     const dot = (a: Float32Array, b: Float32Array) => a.reduce((sum, value, index) => sum + value * b[index]!, 0);
     expect(dot(boil!, boiled!)).toBeGreaterThan(0.4);
     expect(Math.abs(dot(boil!, rope!))).toBeLessThan(0.2);
@@ -17,7 +20,8 @@ describe("demonstration vectors", () => {
 
 describe("flattening vectors to two dimensions", () => {
   it("keeps apart what is apart and reports how much each axis explains", () => {
-    const cluster = (centre: number[], n: number) => Array.from({ length: n }, (_, index) => Float32Array.from(centre.map((value, d) => value + Math.sin(index * 7 + d) * 0.05)));
+    const cluster = (centre: number[], n: number) =>
+      Array.from({ length: n }, (_, index) => Float32Array.from(centre.map((value, d) => value + Math.sin(index * 7 + d) * 0.05)));
     const vectors = [...cluster([1, 0, 0, 0, 0, 0], 12), ...cluster([0, 1, 0, 0, 0, 0], 12), ...cluster([0, 0, 1, 0, 0, 0], 12)];
     const { points, explained } = projectTo2d(vectors);
     expect(points).toHaveLength(36);
@@ -28,7 +32,12 @@ describe("flattening vectors to two dimensions", () => {
     const distance = (a: readonly [number, number], b: readonly [number, number]) => Math.hypot(a[0] - b[0], a[1] - b[1]);
     const [a, b, c] = [centroid(0), centroid(12), centroid(24)];
     // Three well-separated groups stay three groups on the page.
-    for (const pair of [[a, b], [a, c], [b, c]] as const) expect(distance(pair[0], pair[1])).toBeGreaterThan(0.5);
+    for (const pair of [
+      [a, b],
+      [a, c],
+      [b, c],
+    ] as const)
+      expect(distance(pair[0], pair[1])).toBeGreaterThan(0.5);
     expect(explained[0] + explained[1]).toBeGreaterThan(0.9);
     expect(explained[0]).toBeGreaterThanOrEqual(explained[1]);
     expect(projectTo2d([])).toEqual({ points: [], explained: [0, 0] });
@@ -42,14 +51,41 @@ describe("how search works", () => {
     const { search } = app.ctx.services;
     await app.api("PATCH", "/api/settings", { "indexing.chunkSize": 300, "indexing.chunkOverlap": 60 });
     search.upsert({
-      kind: "document", entityId: "d-water", title: "Water treatment in the field", url: "/library/documents/d-water", collection: "Medicine and first aid", tags: ["water"],
+      kind: "document",
+      entityId: "d-water",
+      title: "Water treatment in the field",
+      url: "/library/documents/d-water",
+      collection: "Medicine and first aid",
+      tags: ["water"],
       sections: [
-        { page: 1, heading: "Boiling", text: "Boiling is the most reliable way to make water safe to drink. Bring the water to a rolling boil for one minute. At altitude, boil for three minutes because water boils at a lower temperature. Let it cool before drinking and keep it covered so that it stays clean. ".repeat(2) },
-        { page: 2, heading: "Chemical treatment", text: "Chlorine dioxide tablets treat one litre of water in thirty minutes. Cold or cloudy water takes longer." },
+        {
+          page: 1,
+          heading: "Boiling",
+          text: "Boiling is the most reliable way to make water safe to drink. Bring the water to a rolling boil for one minute. At altitude, boil for three minutes because water boils at a lower temperature. Let it cool before drinking and keep it covered so that it stays clean. ".repeat(
+            2,
+          ),
+        },
+        {
+          page: 2,
+          heading: "Chemical treatment",
+          text: "Chlorine dioxide tablets treat one litre of water in thirty minutes. Cold or cloudy water takes longer.",
+        },
       ],
     });
-    search.upsert({ kind: "document", entityId: "d-knots", title: "Knots for climbing", url: "/library/documents/d-knots", sections: [{ page: 4, text: "The clove hitch is quick to tie. The bowline makes a fixed loop at the end of a rope." }] });
-    search.upsert({ kind: "note", entityId: "n-kit", title: "Kit list", url: "/notes/n-kit", sections: [{ heading: "Cooking", text: "Stove, gas, lighter, a pan for boiling water, a mug." }] });
+    search.upsert({
+      kind: "document",
+      entityId: "d-knots",
+      title: "Knots for climbing",
+      url: "/library/documents/d-knots",
+      sections: [{ page: 4, text: "The clove hitch is quick to tie. The bowline makes a fixed loop at the end of a rope." }],
+    });
+    search.upsert({
+      kind: "note",
+      entityId: "n-kit",
+      title: "Kit list",
+      url: "/notes/n-kit",
+      sections: [{ heading: "Cooking", text: "Stove, gas, lighter, a pan for boiling water, a mug." }],
+    });
   });
   afterEach(() => app.close());
 
@@ -87,7 +123,9 @@ describe("how search works", () => {
     expect(body.parse.words).toEqual(["boiling", "water"]);
     expect(body.parse.expression).toBe('("boiling" AND "water"*)');
     expect(body.parse.terms.map((term: { term: string }) => term.term)).toEqual(["boiling", "water"]);
-    expect(body.parse.terms.every((term: { chunksContaining: number; idf: number }) => term.chunksContaining > 0 && term.idf > 0)).toBe(true);
+    expect(body.parse.terms.every((term: { chunksContaining: number; idf: number }) => term.chunksContaining > 0 && term.idf > 0)).toBe(
+      true,
+    );
 
     // Keyword hits are ranked passages with BM25 scores and where the words were found.
     const keyword = body.keyword.hits;
@@ -116,7 +154,9 @@ describe("how search works", () => {
     expect(top.score).toBeCloseTo(top.keywordPart + top.semanticPart, 10);
     if (top.keywordRank !== null) expect(top.keywordPart).toBeCloseTo(1 / (60 + top.keywordRank), 10);
     if (top.semanticRank !== null) expect(top.semanticPart).toBeCloseTo(1 / (60 + top.semanticRank), 10);
-    expect(rows.map((row: { score: number }) => row.score)).toEqual([...rows.map((row: { score: number }) => row.score)].sort((a, b) => b - a));
+    expect(rows.map((row: { score: number }) => row.score)).toEqual(
+      [...rows.map((row: { score: number }) => row.score)].sort((a, b) => b - a),
+    );
 
     // Context: numbered sources with exact quotes, flagged as safety-critical, and the prompt that would be sent.
     expect(body.context.citations[0].marker).toBe(1);

@@ -23,7 +23,11 @@ function ResultRow({ result }: { result: SearchResult }) {
           {context.map((part, index) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: fixed, ordered list of context parts
             <span key={index} className="truncate">
-              {index > 0 ? <span aria-hidden className="mr-2 text-border-strong">/</span> : null}
+              {index > 0 ? (
+                <span aria-hidden className="mr-2 text-border-strong">
+                  /
+                </span>
+              ) : null}
               {part}
             </span>
           ))}
@@ -88,7 +92,12 @@ export default function SearchPage() {
 
   const search = useQuery({
     queryKey: ["search", "page", q, kind, mode ?? "", page],
-    queryFn: ({ signal }) => api.get<SearchResponse>("/api/search", { q, kinds: kind || undefined, mode, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE }, signal),
+    queryFn: ({ signal }) =>
+      api.get<SearchResponse>(
+        "/api/search",
+        { q, kinds: kind || undefined, mode, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE },
+        signal,
+      ),
     enabled: q.trim().length > 0,
     placeholderData: keepPreviousData,
   });
@@ -140,7 +149,10 @@ export default function SearchPage() {
 
       {!q.trim() ? (
         <EmptyState title="One search for everything you keep" seed={11} className="mt-8">
-          <p>Type a word or a question. Results come from your documents (down to the page), your notes, installed collections and saved places.</p>
+          <p>
+            Type a word or a question. Results come from your documents (down to the page), your notes, installed collections and saved
+            places.
+          </p>
           <ul className="mt-4 grid gap-1.5 text-small">
             <li>
               <span className="font-mono text-[0.8125rem] text-ink">"clove hitch"</span> finds the exact phrase
@@ -149,7 +161,8 @@ export default function SearchPage() {
               <span className="font-mono text-[0.8125rem] text-ink">water -chlorine</span> leaves out a word
             </li>
             <li>
-              <span className="font-mono text-[0.8125rem] text-ink">54.4542, -3.2116</span> or <span className="font-mono text-[0.8125rem] text-ink">NY 215 072</span> opens the map there
+              <span className="font-mono text-[0.8125rem] text-ink">54.4542, -3.2116</span> or{" "}
+              <span className="font-mono text-[0.8125rem] text-ink">NY 215 072</span> opens the map there
             </li>
           </ul>
           <p className="mt-5 text-small">
@@ -162,7 +175,10 @@ export default function SearchPage() {
         <>
           <div className="mt-6 flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-b border-border">
             <div role="tablist" aria-label="Filter results" className="scroll-quiet -mb-px flex gap-5 overflow-x-auto">
-              {[["", "Everything", undefined] as const, ...facets.map(([key, count]) => [key, kindMeta[key]?.plural ?? key, count] as const)].map(([key, label, count]) => (
+              {[
+                ["", "Everything", undefined] as const,
+                ...facets.map(([key, count]) => [key, kindMeta[key]?.plural ?? key, count] as const),
+              ].map(([key, label, count]) => (
                 <button
                   key={key || "all"}
                   type="button"
@@ -212,7 +228,12 @@ export default function SearchPage() {
             <div className="mt-8 max-w-[52ch]">
               <h2 className="font-title text-heading">Nothing matches “{data.query}”</h2>
               <p className="mt-2 text-ink-muted">
-                Check the spelling, try fewer or different words, or clear the filter. If you expected a document here, its text may still be processing: see <Link to="/downloads" className="text-primary underline underline-offset-2">Downloads</Link>.
+                Check the spelling, try fewer or different words, or clear the filter. If you expected a document here, its text may still
+                be processing: see{" "}
+                <Link to="/downloads" className="text-primary underline underline-offset-2">
+                  Downloads
+                </Link>
+                .
               </p>
             </div>
           ) : data ? (

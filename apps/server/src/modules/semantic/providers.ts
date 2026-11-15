@@ -61,9 +61,7 @@ export function openAiCompatibleProvider(endpoint: string, model: string): Embed
     if (!Array.isArray(body.data) || body.data.length !== texts.length) {
       throw new AppError("upstream", "The embedding server returned an unexpected response.");
     }
-    return [...body.data]
-      .sort((a, b) => (a.index ?? 0) - (b.index ?? 0))
-      .map((item) => normalise(Float32Array.from(item.embedding)));
+    return [...body.data].sort((a, b) => (a.index ?? 0) - (b.index ?? 0)).map((item) => normalise(Float32Array.from(item.embedding)));
   }
   return {
     modelId: `openai-compatible:${model}`,

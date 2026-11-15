@@ -185,10 +185,7 @@ export async function registerAuth(app: FastifyInstance, ctx: AppContext): Promi
     const isApi = route ? route.startsWith("/api/") : pathname.startsWith("/api/");
 
     if (!isAllowedHost(hostnameOf(request.headers.host), config)) {
-      throw new AppError(
-        "forbidden",
-        "This address is not one Outpost answers to. Add it to OUTPOST_ALLOWED_HOSTS to use it.",
-      );
+      throw new AppError("forbidden", "This address is not one Outpost answers to. Add it to OUTPOST_ALLOWED_HOSTS to use it.");
     }
 
     reply.header("X-Content-Type-Options", "nosniff");
@@ -291,9 +288,7 @@ export async function registerAuth(app: FastifyInstance, ctx: AppContext): Promi
     setupRequired: config.authRequired && userCount() === 0,
     setupTokenRequired: Boolean(setupToken),
     lanAccess: config.lanAccess,
-    user: request.principal
-      ? { id: request.principal.id, username: request.principal.username, role: request.principal.role }
-      : null,
+    user: request.principal ? { id: request.principal.id, username: request.principal.username, role: request.principal.role } : null,
   }));
 
   app.post("/api/auth/setup", async (request, reply) => {
@@ -325,9 +320,10 @@ export async function registerAuth(app: FastifyInstance, ctx: AppContext): Promi
     countAttempt(keys);
     const user = db.select().from(users).where(eq(users.username, body.username.trim())).get();
     // Hash even when the user does not exist so timing does not reveal which names are real.
-    const ok = user
-      ? await verifyPassword(body.password, user.passwordHash)
-      : (await hashPassword(body.password), false);
+    let ok = false;
+    if (user) ok = await verifyPassword(body.password, user.passwordHash);
+    // Spend the same time on a name that does not exist, so timing does not reveal which names do.
+    else await hashPassword(body.password);
     if (!user || !ok) throw new AppError("unauthenticated", "That username or password is not correct.");
     // This attempt was good: take it back off the count, and clear the account's own record.
     forgive(keys);

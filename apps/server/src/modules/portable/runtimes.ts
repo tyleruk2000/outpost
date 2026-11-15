@@ -91,7 +91,8 @@ export async function ensureRuntime(options: RuntimeFetchOptions): Promise<strin
   await fs.promises.mkdir(path.dirname(destination), { recursive: true });
   const archive = `${destination}.download`;
   const { response } = await http.fetch(`${base}/${version}/${file}`, { allowedHosts: [host], signal });
-  if (!response.ok || !response.body) throw new AppError("upstream", `The Node runtime for ${platform} could not be downloaded (${response.status}).`);
+  if (!response.ok || !response.body)
+    throw new AppError("upstream", `The Node runtime for ${platform} could not be downloaded (${response.status}).`);
   const total = Number(response.headers.get("content-length")) || null;
 
   const hash = createHash("sha256");
@@ -176,7 +177,8 @@ export async function ensureKiwix(options: Omit<RuntimeFetchOptions, "version">)
   const file = `kiwix-tools_${build}-${KIWIX_TOOLS_VERSION}.tar.gz`;
 
   const sumResponse = await http.fetch(`${base}/${file}.md5`, { allowedHosts: [host], everyHop: true, signal });
-  if (!sumResponse.response.ok) throw new AppError("upstream", `The checksum for kiwix-serve (${platform}) could not be fetched (${sumResponse.response.status}).`);
+  if (!sumResponse.response.ok)
+    throw new AppError("upstream", `The checksum for kiwix-serve (${platform}) could not be fetched (${sumResponse.response.status}).`);
   const expected = /[0-9a-f]{32}/i.exec(await sumResponse.response.text())?.[0]?.toLowerCase();
   if (!expected) throw new AppError("upstream", "The checksum file for kiwix-serve was not in the expected form.");
 
@@ -184,7 +186,8 @@ export async function ensureKiwix(options: Omit<RuntimeFetchOptions, "version">)
   await fs.promises.mkdir(path.dirname(destination), { recursive: true });
   const archive = `${destination}.download`;
   const { response } = await http.fetch(`${base}/${file}`, { allowedHosts: [host], signal });
-  if (!response.ok || !response.body) throw new AppError("upstream", `kiwix-serve for ${platform} could not be downloaded (${response.status}).`);
+  if (!response.ok || !response.body)
+    throw new AppError("upstream", `kiwix-serve for ${platform} could not be downloaded (${response.status}).`);
   const total = Number(response.headers.get("content-length")) || null;
   const hash = createHash("md5");
   let received = 0;
@@ -202,7 +205,8 @@ export async function ensureKiwix(options: Omit<RuntimeFetchOptions, "version">)
       fs.createWriteStream(archive),
       { signal },
     );
-    if (hash.digest("hex") !== expected) throw new AppError("upstream", `kiwix-serve for ${platform} did not match its published checksum, so it was discarded.`);
+    if (hash.digest("hex") !== expected)
+      throw new AppError("upstream", `kiwix-serve for ${platform} did not match its published checksum, so it was discarded.`);
     const unpacked = `${destination}.unpack`;
     const found = await extractOneFromTarGz(fs.createReadStream(archive), (entry) => /(^|\/)kiwix-serve$/.test(entry), unpacked);
     if (!found) throw new AppError("upstream", "The Kiwix archive did not contain kiwix-serve.");

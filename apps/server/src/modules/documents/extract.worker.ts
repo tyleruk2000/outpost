@@ -10,7 +10,7 @@
  * the PDF library.
  */
 import { parentPort, workerData } from "node:worker_threads";
-import { type Extracted, type ExtractProgress, type ExtractRequest, ExtractionError, type WorkerMessage } from "./extract-types.ts";
+import { type Extracted, ExtractionError, type ExtractProgress, type ExtractRequest, type WorkerMessage } from "./extract-types.ts";
 
 const send = (message: WorkerMessage) => parentPort?.postMessage(message);
 const onProgress = (progress: ExtractProgress) => send({ kind: "progress", progress });

@@ -11,10 +11,30 @@ import { createTestApp, type TestApp } from "./helpers.ts";
  * behaviour semantic search exists for, with none of the weight of a real model.
  */
 const concepts: Record<string, number> = {
-  water: 0, boil: 0, boiling: 0, purify: 0, purification: 0, drinking: 0, filter: 0, hydrate: 0, thirst: 0,
-  knot: 1, hitch: 1, rope: 1, bowline: 1, tie: 1, lashing: 1,
-  wound: 2, bandage: 2, bleeding: 2, injury: 2, dressing: 2,
-  stove: 3, tent: 3, shelter: 3, camp: 3,
+  water: 0,
+  boil: 0,
+  boiling: 0,
+  purify: 0,
+  purification: 0,
+  drinking: 0,
+  filter: 0,
+  hydrate: 0,
+  thirst: 0,
+  knot: 1,
+  hitch: 1,
+  rope: 1,
+  bowline: 1,
+  tie: 1,
+  lashing: 1,
+  wound: 2,
+  bandage: 2,
+  bleeding: 2,
+  injury: 2,
+  dressing: 2,
+  stove: 3,
+  tent: 3,
+  shelter: 3,
+  camp: 3,
 };
 function conceptProvider(modelId = "test:concepts", dimensions = 4): EmbeddingProvider & { calls: number } {
   const provider = {
@@ -48,9 +68,29 @@ describe("semantic and hybrid search", () => {
   beforeEach(async () => {
     app = await createTestApp();
     const { search } = app.ctx.services;
-    search.upsert({ kind: "document", entityId: "d-water", title: "Field hygiene", url: "/library/documents/d-water", collection: "Medicine and first aid", sourcePath: "documents/d-water/hygiene.pdf", sections: [{ page: 3, heading: "Safe drinking", text: "Boil it for one minute, or filter and treat it, before drinking." }] });
-    search.upsert({ kind: "document", entityId: "d-knots", title: "Ropework", url: "/library/documents/d-knots", sections: [{ page: 1, text: "A bowline makes a fixed loop. A clove hitch holds a rope to a post." }] });
-    search.upsert({ kind: "note", entityId: "n-kit", title: "Kit list", url: "/notes/n-kit", sections: [{ text: "Tent, stove, sleeping bag and a bandage for each person." }] });
+    search.upsert({
+      kind: "document",
+      entityId: "d-water",
+      title: "Field hygiene",
+      url: "/library/documents/d-water",
+      collection: "Medicine and first aid",
+      sourcePath: "documents/d-water/hygiene.pdf",
+      sections: [{ page: 3, heading: "Safe drinking", text: "Boil it for one minute, or filter and treat it, before drinking." }],
+    });
+    search.upsert({
+      kind: "document",
+      entityId: "d-knots",
+      title: "Ropework",
+      url: "/library/documents/d-knots",
+      sections: [{ page: 1, text: "A bowline makes a fixed loop. A clove hitch holds a rope to a post." }],
+    });
+    search.upsert({
+      kind: "note",
+      entityId: "n-kit",
+      title: "Kit list",
+      url: "/notes/n-kit",
+      sections: [{ text: "Tent, stove, sleeping bag and a bandage for each person." }],
+    });
     provider = conceptProvider();
     app.ctx.services.semantic.overrideProvider(provider);
   });
@@ -71,7 +111,14 @@ describe("semantic and hybrid search", () => {
   it("builds vectors for every passage and reports progress in status", async () => {
     await buildIndex();
     const status = (await app.api("GET", "/api/semantic/status")).body;
-    expect(status).toMatchObject({ modelId: "test:concepts", ready: true, dimensions: 4, totalChunks: 3, embeddedChunks: 3, indexing: false });
+    expect(status).toMatchObject({
+      modelId: "test:concepts",
+      ready: true,
+      dimensions: 4,
+      totalChunks: 3,
+      embeddedChunks: 3,
+      indexing: false,
+    });
   });
 
   it("finds a passage by meaning that shares no keyword with the query", async () => {
@@ -101,7 +148,13 @@ describe("semantic and hybrid search", () => {
     const callsAfterFirstBuild = provider.calls;
     await buildIndex();
     expect(provider.calls).toBe(callsAfterFirstBuild + 0);
-    app.ctx.services.search.upsert({ kind: "note", entityId: "n-kit", title: "Kit list", url: "/notes/n-kit", sections: [{ text: "Rope and a tarp for shelter." }] });
+    app.ctx.services.search.upsert({
+      kind: "note",
+      entityId: "n-kit",
+      title: "Kit list",
+      url: "/notes/n-kit",
+      sections: [{ text: "Rope and a tarp for shelter." }],
+    });
     await buildIndex();
     expect(provider.calls).toBe(callsAfterFirstBuild + 1);
     expect((await app.api("GET", "/api/semantic/status")).body.embeddedChunks).toBe(3);
@@ -129,7 +182,13 @@ describe("semantic and hybrid search", () => {
     const other = await createTestApp();
     try {
       // Same water passage, different ids; the knots document is absent here.
-      other.ctx.services.search.upsert({ kind: "document", entityId: "another-id", title: "Field hygiene", url: "/library/documents/another-id", sections: [{ page: 3, heading: "Safe drinking", text: "Boil it for one minute, or filter and treat it, before drinking." }] });
+      other.ctx.services.search.upsert({
+        kind: "document",
+        entityId: "another-id",
+        title: "Field hygiene",
+        url: "/library/documents/another-id",
+        sections: [{ page: 3, heading: "Safe drinking", text: "Boil it for one minute, or filter and treat it, before drinking." }],
+      });
       const imported = await other.app.inject({
         method: "POST",
         url: "/api/semantic/import",
@@ -170,20 +229,45 @@ describe("retrieval for future question answering", () => {
   beforeEach(async () => {
     app = await createTestApp();
     app.ctx.services.search.upsert({
-      kind: "document", entityId: "d1", title: "Home canning guide", url: "/library/documents/d1", collection: "Food preservation", sourcePath: "documents/d1/canning.pdf",
+      kind: "document",
+      entityId: "d1",
+      title: "Home canning guide",
+      url: "/library/documents/d1",
+      collection: "Food preservation",
+      sourcePath: "documents/d1/canning.pdf",
       sections: [
-        { page: 12, heading: "Processing times", text: "Process pint jars of tomatoes in a boiling-water canner for 40 minutes at sea level." },
+        {
+          page: 12,
+          heading: "Processing times",
+          text: "Process pint jars of tomatoes in a boiling-water canner for 40 minutes at sea level.",
+        },
         { page: 13, heading: "Altitude", text: "Add 5 minutes of processing time above 1,000 feet." },
       ],
     });
-    app.ctx.services.search.upsert({ kind: "note", entityId: "n1", title: "Allotment diary", url: "/notes/n1", sections: [{ text: "Tomatoes ripened late this year." }] });
+    app.ctx.services.search.upsert({
+      kind: "note",
+      entityId: "n1",
+      title: "Allotment diary",
+      url: "/notes/n1",
+      sections: [{ text: "Tomatoes ripened late this year." }],
+    });
   });
   afterEach(() => app.close());
 
   it("returns passages with the provenance needed to cite them", async () => {
     const { body } = await app.api("POST", "/api/retrieval/passages", { query: "tomatoes processing" });
     const passage = body.passages.find((item: { entityId: string }) => item.entityId === "d1");
-    expect(passage).toMatchObject({ kind: "document", title: "Home canning guide", collection: "Food preservation", sourcePath: "documents/d1/canning.pdf", page: 12, heading: "Processing times", url: "/library/documents/d1?page=12", indexVersion: 1, retrievedBy: ["keyword"] });
+    expect(passage).toMatchObject({
+      kind: "document",
+      title: "Home canning guide",
+      collection: "Food preservation",
+      sourcePath: "documents/d1/canning.pdf",
+      page: 12,
+      heading: "Processing times",
+      url: "/library/documents/d1?page=12",
+      indexVersion: 1,
+      retrievedBy: ["keyword"],
+    });
     expect(passage.text).toContain("40 minutes");
     expect(passage.contentHash).toMatch(/^[0-9a-f]{32}$/);
     expect(typeof passage.chunkId).toBe("number");

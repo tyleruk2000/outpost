@@ -12,8 +12,20 @@ test.describe("documents", () => {
     const chooser = page.waitForEvent("filechooser");
     await page.getByRole("button", { name: "Add documents" }).first().click();
     await (await chooser).setFiles([
-      { name: "Field water treatment.pdf", mimeType: "application/pdf", buffer: buildPdf([["Water treatment in the field", "Boiling is the most reliable method."], ["Chemical treatment", "Chlorine dioxide tablets take thirty minutes."], ["Filters", "A ceramic filter removes protozoa."]]) },
-      { name: "kit-list.md", mimeType: "text/markdown", buffer: Buffer.from("# Kit list\n\n## Cooking\n\nStove, gas, lighter and a pan for boiling water.\n") },
+      {
+        name: "Field water treatment.pdf",
+        mimeType: "application/pdf",
+        buffer: buildPdf([
+          ["Water treatment in the field", "Boiling is the most reliable method."],
+          ["Chemical treatment", "Chlorine dioxide tablets take thirty minutes."],
+          ["Filters", "A ceramic filter removes protozoa."],
+        ]),
+      },
+      {
+        name: "kit-list.md",
+        mimeType: "text/markdown",
+        buffer: Buffer.from("# Kit list\n\n## Cooking\n\nStove, gas, lighter and a pan for boiling water.\n"),
+      },
     ]);
 
     await expect(page.getByRole("link", { name: /Field water treatment/ }).first()).toBeVisible();
@@ -21,7 +33,12 @@ test.describe("documents", () => {
 
     // Text is read in the background; wait for both to finish.
     await expect
-      .poll(async () => (await api(page, "GET", "/api/documents")).documents.filter((document: { extraction: string }) => document.extraction === "done").length, { timeout: 20_000 })
+      .poll(
+        async () =>
+          (await api(page, "GET", "/api/documents")).documents.filter((document: { extraction: string }) => document.extraction === "done")
+            .length,
+        { timeout: 20_000 },
+      )
       .toBe(2);
 
     // Unified search finds the phrase and points at the page it is on.
@@ -43,7 +60,9 @@ test.describe("documents", () => {
     await page.goto("/library");
     const chooser = page.waitForEvent("filechooser");
     await page.getByRole("button", { name: "Add documents" }).first().click();
-    await (await chooser).setFiles([{ name: "not-really.pdf", mimeType: "application/pdf", buffer: Buffer.from("MZ this is a program, not a PDF") }]);
+    await (await chooser).setFiles([
+      { name: "not-really.pdf", mimeType: "application/pdf", buffer: Buffer.from("MZ this is a program, not a PDF") },
+    ]);
     await expect(page.getByText(/not-really\.pdf/).first()).toBeVisible();
     await expect(page.getByText("1 not added")).toBeVisible();
     await expect(page.getByText(/is named like a PDF, but its contents are not one/)).toBeVisible();
@@ -51,7 +70,16 @@ test.describe("documents", () => {
   });
 
   test("serves originals in a sandbox so an uploaded page can never run script here", async ({ page }) => {
-    const upload = await page.request.post("/api/documents", { headers: { "X-Outpost-Request": "1" }, multipart: { file: { name: "page.html", mimeType: "text/html", buffer: Buffer.from("<html><body><script>document.title='pwned'</script>hello</body></html>") } } });
+    const upload = await page.request.post("/api/documents", {
+      headers: { "X-Outpost-Request": "1" },
+      multipart: {
+        file: {
+          name: "page.html",
+          mimeType: "text/html",
+          buffer: Buffer.from("<html><body><script>document.title='pwned'</script>hello</body></html>"),
+        },
+      },
+    });
     expect(upload.ok()).toBe(true);
     const created = (await upload.json()).results[0].document;
     const file = await page.request.get(created.fileUrl);

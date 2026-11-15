@@ -27,8 +27,26 @@ import { collections, documents } from "../../db/schema.ts";
 import { SPACE_RESERVE_BYTES } from "../storage/service.ts";
 import { VERSION } from "../system/index.ts";
 import { prepareDriveDatabase } from "./database.ts";
-import { currentPlatform, linuxLauncher, macLauncher, PORTABLE_PLATFORMS, type PortablePlatform, platformLabels, readme, windowsLauncher } from "./launchers.ts";
-import { binaryName, ensureKiwix, ensureRuntime, KIWIX_DIST_HOST, kiwixSupports, localKiwix, localRuntime, NODE_DIST_HOST } from "./runtimes.ts";
+import {
+  currentPlatform,
+  linuxLauncher,
+  macLauncher,
+  PORTABLE_PLATFORMS,
+  type PortablePlatform,
+  platformLabels,
+  readme,
+  windowsLauncher,
+} from "./launchers.ts";
+import {
+  binaryName,
+  ensureKiwix,
+  ensureRuntime,
+  KIWIX_DIST_HOST,
+  kiwixSupports,
+  localKiwix,
+  localRuntime,
+  NODE_DIST_HOST,
+} from "./runtimes.ts";
 
 const MANIFEST = "outpost-portable.json";
 const LOCATION_MARKER = ".outpost-location.json";
@@ -69,7 +87,14 @@ interface FileCopy {
 }
 
 export interface PortablePlan {
-  target: { path: string; exists: boolean; isOutpostDrive: boolean; freeBytes: number | null; totalBytes: number | null; lastWritten: string | null };
+  target: {
+    path: string;
+    exists: boolean;
+    isOutpostDrive: boolean;
+    freeBytes: number | null;
+    totalBytes: number | null;
+    lastWritten: string | null;
+  };
   app: { available: boolean; bytes: number };
   runtimes: Array<{ platform: PortablePlatform; label: string; cached: boolean }>;
   /** kiwix-serve per chosen platform, when the reader was asked for. */
@@ -154,10 +179,14 @@ export async function registerPortable(app: FastifyInstance, ctx: AppContext): P
     const existing = await fs.promises.readdir(target).catch(() => undefined);
     const exists = existing !== undefined;
     if (exists && !manifest && existing.filter((name) => !name.startsWith(".")).length > 0) {
-      problems.push("That folder already has files in it that are not an Outpost drive. Choose an empty folder, or make a new one, so nothing of yours is mixed up or overwritten.");
+      problems.push(
+        "That folder already has files in it that are not an Outpost drive. Choose an empty folder, or make a new one, so nothing of yours is mixed up or overwritten.",
+      );
     }
     if (manifest && !request.replaceExisting) {
-      warnings.push("This folder is already an Outpost drive. Updating it replaces the notes and library index on the drive with this Outpost's. What the drive holds now is kept in a dated folder on the drive.");
+      warnings.push(
+        "This folder is already an Outpost drive. Updating it replaces the notes and library index on the drive with this Outpost's. What the drive holds now is kept in a dated folder on the drive.",
+      );
     }
 
     // Space is measured on the nearest existing folder: the target may not exist yet.
@@ -173,15 +202,32 @@ export async function registerPortable(app: FastifyInstance, ctx: AppContext): P
     // The app itself.
     const appFiles = bundleAvailable() ? await listFiles(config.appBundleDir) : [];
     if (!bundleAvailable()) {
-      problems.push("This Outpost is running from source, so there is no packaged app to put on a drive. Run `node scripts/build-app.mjs` first, or use the Docker image or a release build.");
+      problems.push(
+        "This Outpost is running from source, so there is no packaged app to put on a drive. Run `node scripts/build-app.mjs` first, or use the Docker image or a release build.",
+      );
     }
-    for (const file of appFiles) copies.push({ from: path.join(config.appBundleDir, file.rel), to: path.join(target, "app", file.rel), bytes: file.bytes, label: "Outpost" });
+    for (const file of appFiles)
+      copies.push({
+        from: path.join(config.appBundleDir, file.rel),
+        to: path.join(target, "app", file.rel),
+        bytes: file.bytes,
+        label: "Outpost",
+      });
 
     // Runtimes.
-    const runtimes = request.platforms.map((platform) => ({ platform, label: platformLabels[platform], cached: Boolean(localRuntime(config.dataDir, nodeVersion, platform)) }));
+    const runtimes = request.platforms.map((platform) => ({
+      platform,
+      label: platformLabels[platform],
+      cached: Boolean(localRuntime(config.dataDir, nodeVersion, platform)),
+    }));
 
     const reader = request.reader
-      ? request.platforms.map((platform) => ({ platform, label: platformLabels[platform], supported: kiwixSupports(platform), cached: Boolean(localKiwix(config.dataDir, platform)) }))
+      ? request.platforms.map((platform) => ({
+          platform,
+          label: platformLabels[platform],
+          supported: kiwixSupports(platform),
+          cached: Boolean(localKiwix(config.dataDir, platform)),
+        }))
       : [];
     const unsupportedReader = reader.filter((item) => !item.supported);
     if (unsupportedReader.length > 0) {
@@ -191,7 +237,9 @@ export async function registerPortable(app: FastifyInstance, ctx: AppContext): P
     }
 
     // Collections.
-    const wanted = request.collectionIds.length ? db.select().from(collections).where(inArray(collections.id, request.collectionIds)).all() : [];
+    const wanted = request.collectionIds.length
+      ? db.select().from(collections).where(inArray(collections.id, request.collectionIds)).all()
+      : [];
     const collectionPlan: PortablePlan["collections"] = [];
     const includedCollectionIds: string[] = [];
     for (const row of wanted) {
@@ -203,14 +251,24 @@ export async function registerPortable(app: FastifyInstance, ctx: AppContext): P
         if (!stat) {
           problems.push(`"${row.title}" is missing from its storage location and cannot be copied.`);
         } else {
-          const files = stat.isDirectory() ? (await listFiles(from)).map((file) => ({ rel: path.join(row.relPath, file.rel), bytes: file.bytes })) : [{ rel: row.relPath, bytes: stat.size }];
+          const files = stat.isDirectory()
+            ? (await listFiles(from)).map((file) => ({ rel: path.join(row.relPath, file.rel), bytes: file.bytes }))
+            : [{ rel: row.relPath, bytes: stat.size }];
           const location = storage.get(row.locationId);
-          const mine = files.map((file) => ({ from: resolveInside(location.path, file.rel), to: resolveInside(path.join(target, "library"), file.rel), bytes: file.bytes, label: row.title }));
+          const mine = files.map((file) => ({
+            from: resolveInside(location.path, file.rel),
+            to: resolveInside(path.join(target, "library"), file.rel),
+            bytes: file.bytes,
+            label: row.title,
+          }));
           alreadyOnDrive = (await Promise.all(mine.map(isCurrent))).every(Boolean);
           copies.push(...mine);
           includedCollectionIds.push(row.id);
           for (const file of files) {
-            if (file.bytes > FAT32_LIMIT) warnings.push(`"${row.title}" is larger than 4 GB. If the drive is formatted as FAT32 it cannot hold it; exFAT, NTFS, APFS and ext4 can.`);
+            if (file.bytes > FAT32_LIMIT)
+              warnings.push(
+                `"${row.title}" is larger than 4 GB. If the drive is formatted as FAT32 it cannot hold it; exFAT, NTFS, APFS and ext4 can.`,
+              );
           }
         }
       } else {
@@ -231,32 +289,65 @@ export async function registerPortable(app: FastifyInstance, ctx: AppContext): P
       }
       const location = storage.get(row.locationId);
       // Through resolveInside on both sides: a record must never be able to point the copy outside its folder.
-      copies.push({ from: resolveInside(location.path, row.relPath), to: resolveInside(path.join(target, "library"), row.relPath), bytes: row.sizeBytes, label: row.title });
+      copies.push({
+        from: resolveInside(location.path, row.relPath),
+        to: resolveInside(path.join(target, "library"), row.relPath),
+        bytes: row.sizeBytes,
+        label: row.title,
+      });
       includedDocumentIds.push(row.id);
       documentBytes += row.sizeBytes;
     }
-    if (skippedDocuments > 0) warnings.push(`${skippedDocuments} document${skippedDocuments === 1 ? " is" : "s are"} on a storage location that is not connected and will be left out.`);
+    if (skippedDocuments > 0)
+      warnings.push(
+        `${skippedDocuments} document${skippedDocuments === 1 ? " is" : "s are"} on a storage location that is not connected and will be left out.`,
+      );
 
     // Notes attachments and extracted text travel with the database.
     for (const folder of ["attachments", "extracted"]) {
       const root = path.join(config.dataDir, folder);
       for (const file of await listFiles(root)) {
         if (folder === "extracted" && !includedDocumentIds.includes(path.basename(file.rel, ".json"))) continue;
-        copies.push({ from: path.join(root, file.rel), to: path.join(target, "data-incoming", folder, file.rel), bytes: file.bytes, label: "Notes and index" });
+        copies.push({
+          from: path.join(root, file.rel),
+          to: path.join(target, "data-incoming", folder, file.rel),
+          bytes: file.bytes,
+          label: "Notes and index",
+        });
       }
     }
 
-    return { target, manifest, exists, space, copies, runtimes, reader, collectionPlan, includedCollectionIds, includedDocumentIds, documentBytes, problems, warnings, appBytes: appFiles.reduce((sum, file) => sum + file.bytes, 0) };
+    return {
+      target,
+      manifest,
+      exists,
+      space,
+      copies,
+      runtimes,
+      reader,
+      collectionPlan,
+      includedCollectionIds,
+      includedDocumentIds,
+      documentBytes,
+      problems,
+      warnings,
+      appBytes: appFiles.reduce((sum, file) => sum + file.bytes, 0),
+    };
   }
 
   async function plan(request: PortableRequest): Promise<PortablePlan> {
     const gathered = await gather(request);
-    const pending = (await Promise.all(gathered.copies.map(async (copy) => ((await isCurrent(copy)) ? 0 : copy.bytes)))).reduce((sum, bytes) => sum + bytes, 0);
+    const pending = (await Promise.all(gathered.copies.map(async (copy) => ((await isCurrent(copy)) ? 0 : copy.bytes)))).reduce(
+      (sum, bytes) => sum + bytes,
+      0,
+    );
     const databaseBytes = await sizeOnDisk(path.join(config.dataDir, "outpost.db"));
     const missingRuntimes = gathered.runtimes.filter((runtime) => !runtime.cached);
     const missingReader = gathered.reader.filter((item) => item.supported && !item.cached);
     if (missingReader.length > 0) {
-      gathered.warnings.push(`The reader for reference collections will be downloaded from ${KIWIX_DIST_HOST} for ${missingReader.map((item) => item.label).join(", ")} and kept for next time. This step needs a connection.`);
+      gathered.warnings.push(
+        `The reader for reference collections will be downloaded from ${KIWIX_DIST_HOST} for ${missingReader.map((item) => item.label).join(", ")} and kept for next time. This step needs a connection.`,
+      );
     }
     const runtimeBytes = gathered.runtimes.length * RUNTIME_ESTIMATE_BYTES;
     const bytesToWrite = pending + databaseBytes + runtimeBytes;
@@ -296,7 +387,9 @@ export async function registerPortable(app: FastifyInstance, ctx: AppContext): P
       const gathered = await gather(request);
       if (gathered.problems.length > 0) throw new PermanentJobError(gathered.problems[0]!);
       if (gathered.manifest && !request.replaceExisting) {
-        throw new PermanentJobError("This folder is already an Outpost drive. Confirm that its notes and index may be replaced, then try again.");
+        throw new PermanentJobError(
+          "This folder is already an Outpost drive. Confirm that its notes and index may be replaced, then try again.",
+        );
       }
       const { target } = gathered;
       const total = gathered.copies.reduce((sum, copy) => sum + copy.bytes, 0);
@@ -310,7 +403,14 @@ export async function registerPortable(app: FastifyInstance, ctx: AppContext): P
       for (const { platform, label } of gathered.runtimes) {
         signal.throwIfAborted();
         step(`Getting the program that runs Outpost on ${label}`);
-        const source = await ensureRuntime({ dataDir: config.dataDir, version: nodeVersion, platform, http: client(), distBase: config.nodeDistUrl, signal }).catch((error) => {
+        const source = await ensureRuntime({
+          dataDir: config.dataDir,
+          version: nodeVersion,
+          platform,
+          http: client(),
+          distBase: config.nodeDistUrl,
+          signal,
+        }).catch((error) => {
           throw error instanceof AppError ? new PermanentJobError(error.message) : error;
         });
         const destination = path.join(target, "runtime", platform, binaryName(platform));
@@ -325,7 +425,13 @@ export async function registerPortable(app: FastifyInstance, ctx: AppContext): P
         if (!item.supported) continue;
         signal.throwIfAborted();
         step(`Getting the reader for reference collections on ${item.label}`);
-        const source = await ensureKiwix({ dataDir: config.dataDir, platform: item.platform, http: client(), distBase: config.kiwixDistUrl, signal }).catch((error) => {
+        const source = await ensureKiwix({
+          dataDir: config.dataDir,
+          platform: item.platform,
+          http: client(),
+          distBase: config.kiwixDistUrl,
+          signal,
+        }).catch((error) => {
           throw error instanceof AppError ? new PermanentJobError(error.message) : error;
         });
         const destination = path.join(target, "runtime", item.platform, "kiwix-serve");
@@ -366,7 +472,8 @@ export async function registerPortable(app: FastifyInstance, ctx: AppContext): P
           await fs.promises.rm(partial, { force: true });
           done = before;
           const code = (error as NodeJS.ErrnoException).code;
-          if (code === "EFBIG") throw new PermanentJobError(`"${copy.label}" is too large for this drive's format. Reformat the drive as exFAT and try again.`);
+          if (code === "EFBIG")
+            throw new PermanentJobError(`"${copy.label}" is too large for this drive's format. Reformat the drive as exFAT and try again.`);
           if (code === "ENOSPC") throw new PermanentJobError("The drive is full. Free some space or choose less to take with you.");
           throw error;
         }
@@ -381,7 +488,10 @@ export async function registerPortable(app: FastifyInstance, ctx: AppContext): P
         locationId = (JSON.parse(await fs.promises.readFile(markerFile, "utf8")) as { id: string }).id;
       } catch {
         locationId = newId();
-        await fs.promises.writeFile(markerFile, `${JSON.stringify({ id: locationId, name: "This drive", createdAt: Date.now() }, null, 2)}\n`);
+        await fs.promises.writeFile(
+          markerFile,
+          `${JSON.stringify({ id: locationId, name: "This drive", createdAt: Date.now() }, null, 2)}\n`,
+        );
       }
       const incoming = path.join(target, "data-incoming");
       await fs.promises.mkdir(incoming, { recursive: true });
@@ -407,7 +517,9 @@ export async function registerPortable(app: FastifyInstance, ctx: AppContext): P
       // 5. Launchers, notes for the person holding the drive, and the manifest last:
       //    its presence is what marks the drive as complete.
       const now = new Date().toISOString();
-      const hasKiwix = gathered.runtimes.some(({ platform }) => fs.existsSync(path.join(target, "runtime", platform, platform.startsWith("win-") ? "kiwix-serve.exe" : "kiwix-serve")));
+      const hasKiwix = gathered.runtimes.some(({ platform }) =>
+        fs.existsSync(path.join(target, "runtime", platform, platform.startsWith("win-") ? "kiwix-serve.exe" : "kiwix-serve")),
+      );
       const mac = path.join(target, "Start Outpost.command");
       const linux = path.join(target, "start-outpost.sh");
       await fs.promises.writeFile(mac, macLauncher, { mode: 0o755 });
@@ -415,8 +527,13 @@ export async function registerPortable(app: FastifyInstance, ctx: AppContext): P
       await fs.promises.chmod(mac, 0o755).catch(() => {});
       await fs.promises.chmod(linux, 0o755).catch(() => {});
       await fs.promises.writeFile(path.join(target, "Start Outpost.bat"), windowsLauncher);
-      const platforms = PORTABLE_PLATFORMS.filter((platform) => fs.existsSync(path.join(target, "runtime", platform, binaryName(platform))));
-      await fs.promises.writeFile(path.join(target, "README.txt"), readme({ version: VERSION, createdAt: now.slice(0, 10), platforms, hasKiwix }));
+      const platforms = PORTABLE_PLATFORMS.filter((platform) =>
+        fs.existsSync(path.join(target, "runtime", platform, binaryName(platform))),
+      );
+      await fs.promises.writeFile(
+        path.join(target, "README.txt"),
+        readme({ version: VERSION, createdAt: now.slice(0, 10), platforms, hasKiwix }),
+      );
       const manifest: DriveManifest = {
         format: "outpost-portable",
         version: 1,
@@ -441,7 +558,14 @@ export async function registerPortable(app: FastifyInstance, ctx: AppContext): P
       let index = 0;
       for (const platform of payload.platforms) {
         progress({ current: index, total: payload.platforms.length, message: `Downloading for ${platformLabels[platform]}` });
-        await ensureRuntime({ dataDir: config.dataDir, version: nodeVersion, platform, http: client(), distBase: config.nodeDistUrl, signal });
+        await ensureRuntime({
+          dataDir: config.dataDir,
+          version: nodeVersion,
+          platform,
+          http: client(),
+          distBase: config.nodeDistUrl,
+          signal,
+        });
         index += 1;
       }
       ctx.events.publish({ type: "portable.changed" });
@@ -484,19 +608,28 @@ export async function registerPortable(app: FastifyInstance, ctx: AppContext): P
     const current = await plan(body);
     if (current.problems.length > 0) throw conflict(current.problems[0]!, { problems: current.problems });
     if (current.target.isOutpostDrive && !body.replaceExisting) {
-      throw conflict("This folder is already an Outpost drive. Confirm that its notes and index may be replaced.", { needsConfirmation: true });
+      throw conflict("This folder is already an Outpost drive. Confirm that its notes and index may be replaced.", {
+        needsConfirmation: true,
+      });
     }
     if (jobs.list({ states: ["queued", "running"] }).some((job) => job.type === "portable.build")) {
       throw conflict("A drive is already being written. Wait for it to finish, or cancel it on the Downloads screen.");
     }
-    const job = jobs.enqueue("portable.build", body, { title: `Write portable drive to ${path.basename(current.target.path)}`, subject: "portable" });
+    const job = jobs.enqueue("portable.build", body, {
+      title: `Write portable drive to ${path.basename(current.target.path)}`,
+      subject: "portable",
+    });
     return { job: toJobDto(job) };
   });
 
   app.post("/api/portable/runtimes", async (request) => {
     auth.requireAdmin(request);
     const body = z.object({ platforms: z.array(z.enum(PORTABLE_PLATFORMS)).min(1) }).parse(request.body);
-    const job = jobs.enqueue("portable.runtimes", body, { title: "Download programs for portable drives", subject: "portable-runtimes", maxAttempts: 3 });
+    const job = jobs.enqueue("portable.runtimes", body, {
+      title: "Download programs for portable drives",
+      subject: "portable-runtimes",
+      maxAttempts: 3,
+    });
     return { job: toJobDto(job) };
   });
 }

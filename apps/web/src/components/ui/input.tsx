@@ -38,7 +38,11 @@ export function Field({
       <label htmlFor={id} className="text-small font-medium text-ink">
         {label}
       </label>
-      {children({ id, "aria-describedby": [hintId, errorId].filter(Boolean).join(" ") || undefined, "aria-invalid": error ? true : undefined })}
+      {children({
+        id,
+        "aria-describedby": [hintId, errorId].filter(Boolean).join(" ") || undefined,
+        "aria-invalid": error ? true : undefined,
+      })}
       {hint ? (
         <p id={hintId} className="text-small text-ink-muted">
           {hint}

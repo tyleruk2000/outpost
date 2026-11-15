@@ -155,10 +155,11 @@ export class JobQueue {
 
   list(filter: { states?: JobState[]; limit?: number } = {}): JobRow[] {
     const query = this.db.select().from(jobs);
-    const rows = filter.states?.length
-      ? query.where(inArray(jobs.state, filter.states))
-      : query;
-    return rows.orderBy(sql`${jobs.createdAt} desc`).limit(filter.limit ?? 100).all();
+    const rows = filter.states?.length ? query.where(inArray(jobs.state, filter.states)) : query;
+    return rows
+      .orderBy(sql`${jobs.createdAt} desc`)
+      .limit(filter.limit ?? 100)
+      .all();
   }
 
   /** Stops a job but keeps it, so it can be resumed later. */
@@ -329,7 +330,13 @@ export class JobQueue {
         const network = classifyNetworkError(error);
         const permanent = error instanceof PermanentJobError || error instanceof AppError;
         const kind =
-          error instanceof PermanentJobError ? error.kind : network !== "other" ? network : error instanceof AppError ? error.code : "error";
+          error instanceof PermanentJobError
+            ? error.kind
+            : network !== "other"
+              ? network
+              : error instanceof AppError
+                ? error.code
+                : "error";
         if (!permanent && attempt < job.maxAttempts) {
           const delay = retryDelayMs(attempt);
           this.log.warn({ job: job.id, attempt, delay, err: messageOf(error) }, "job failed, will retry");

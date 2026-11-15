@@ -44,7 +44,10 @@ export function tooLarge(originalName: string, maxBytes: number): AppError {
 export function describeWriteError(error: unknown, locationName: string): unknown {
   const code = (error as NodeJS.ErrnoException | null)?.code;
   if (code === "ENOSPC" || code === "EDQUOT") {
-    return new AppError("insufficient_space", `"${locationName}" is full. Free some space or choose another storage location, then try again.`);
+    return new AppError(
+      "insufficient_space",
+      `"${locationName}" is full. Free some space or choose another storage location, then try again.`,
+    );
   }
   return error;
 }

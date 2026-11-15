@@ -8,16 +8,7 @@
  * be remounted somewhere else without rewriting rows.
  */
 import { sql } from "drizzle-orm";
-import {
-  blob,
-  index,
-  integer,
-  primaryKey,
-  real,
-  sqliteTable,
-  text,
-  uniqueIndex,
-} from "drizzle-orm/sqlite-core";
+import { blob, index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 const id = () => text("id").primaryKey();
 const createdAt = () => integer("created_at").notNull();
@@ -103,10 +94,7 @@ export const jobs = sqliteTable(
     finishedAt: integer("finished_at"),
     updatedAt: updatedAt(),
   },
-  (table) => [
-    index("jobs_state_idx").on(table.queue, table.state, table.runAfter),
-    index("jobs_subject_idx").on(table.subject),
-  ],
+  (table) => [index("jobs_state_idx").on(table.queue, table.state, table.runAfter), index("jobs_subject_idx").on(table.subject)],
 );
 
 // ── Installed content ───────────────────────────────────────────────────────
@@ -237,10 +225,7 @@ export const documents = sqliteTable(
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
-  (table) => [
-    index("documents_sha_idx").on(table.sha256),
-    index("documents_created_idx").on(table.createdAt),
-  ],
+  (table) => [index("documents_sha_idx").on(table.sha256), index("documents_created_idx").on(table.createdAt)],
 );
 
 export const tags = sqliteTable("tags", {
@@ -403,10 +388,7 @@ export const chunks = sqliteTable(
     contentHash: text("content_hash").notNull(),
     indexVersion: integer("index_version").notNull(),
   },
-  (table) => [
-    index("chunks_entity_idx").on(table.entityRowId, table.ordinal),
-    index("chunks_hash_idx").on(table.contentHash),
-  ],
+  (table) => [index("chunks_entity_idx").on(table.entityRowId, table.ordinal), index("chunks_hash_idx").on(table.contentHash)],
 );
 
 export const embeddingModels = sqliteTable("embedding_models", {
@@ -436,10 +418,7 @@ export const embeddings = sqliteTable(
     contentHash: text("content_hash").notNull(),
     createdAt: createdAt(),
   },
-  (table) => [
-    primaryKey({ columns: [table.chunkId, table.modelId] }),
-    index("embeddings_model_idx").on(table.modelId),
-  ],
+  (table) => [primaryKey({ columns: [table.chunkId, table.modelId] }), index("embeddings_model_idx").on(table.modelId)],
 );
 
 // ── Maps ────────────────────────────────────────────────────────────────────

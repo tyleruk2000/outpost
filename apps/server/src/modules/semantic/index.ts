@@ -7,9 +7,10 @@
  * what is missing. Vectors can be exported and imported, so a fast machine can build
  * the index for a Raspberry Pi holding the same library.
  */
-import { createGunzip, createGzip } from "node:zlib";
-import { Readable } from "node:stream";
+
 import path from "node:path";
+import { Readable } from "node:stream";
+import { createGunzip, createGzip } from "node:zlib";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
@@ -83,7 +84,9 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
 
   function rememberModel(provider: EmbeddingProvider, dimensions: number): void {
     sqlite
-      .prepare("INSERT INTO embedding_models (id, provider, model, dimensions, created_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET dimensions = excluded.dimensions")
+      .prepare(
+        "INSERT INTO embedding_models (id, provider, model, dimensions, created_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET dimensions = excluded.dimensions",
+      )
       .run(provider.modelId, provider.provider, provider.model, dimensions, Date.now());
   }
 
@@ -122,7 +125,13 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
       progress({ current: 0, total, message: "Reading passages" });
       for (;;) {
         signal.throwIfAborted();
-        const rows = missing.all(provider.modelId, batchSize) as Array<{ chunkId: number; title: string; heading: string; text: string; contentHash: string }>;
+        const rows = missing.all(provider.modelId, batchSize) as Array<{
+          chunkId: number;
+          title: string;
+          heading: string;
+          text: string;
+          contentHash: string;
+        }>;
         if (rows.length === 0) break;
         // A passage is embedded with its title and heading: short passages mean little without them.
         const inputs = rows.map((row) => [row.title, row.heading, row.text].filter(Boolean).join("\n"));
@@ -144,7 +153,11 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
   function requestIndexing(): void {
     const provider = currentProvider();
     if (!provider || isIndexing()) return;
-    jobs.enqueue("semantic.index", { modelId: provider.modelId }, { title: "Build semantic search index", subject: `semantic:${provider.modelId}`, maxAttempts: 3 });
+    jobs.enqueue(
+      "semantic.index",
+      { modelId: provider.modelId },
+      { title: "Build semantic search index", subject: `semantic:${provider.modelId}`, maxAttempts: 3 },
+    );
   }
 
   // New or changed passages get vectors without anyone asking, a little after the
@@ -199,7 +212,12 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
         }
         if (result.passages.length < 2) {
           const excerpt = record.text.length > 320 ? `${record.text.slice(0, 320).trimEnd()}…` : record.text;
-          result.passages.push({ chunkId: record.chunkId, segments: [{ text: excerpt, hit: false }], page: record.page, heading: record.heading || null });
+          result.passages.push({
+            chunkId: record.chunkId,
+            segments: [{ text: excerpt, hit: false }],
+            page: record.page,
+            heading: record.heading || null,
+          });
         }
       }
       return [...byEntity.values()];
@@ -296,12 +314,16 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
       for (const row of rows) yield `${JSON.stringify({ h: row.h, v: row.v.toString("base64") })}\n`;
     }
     const safeName = model.id.replace(/[^a-z0-9._-]+/gi, "_");
-    reply.header("Content-Type", "application/gzip").header("Content-Disposition", `attachment; filename="outpost-embeddings-${safeName}.jsonl.gz"`);
+    reply
+      .header("Content-Type", "application/gzip")
+      .header("Content-Disposition", `attachment; filename="outpost-embeddings-${safeName}.jsonl.gz"`);
     return reply.send(Readable.from(lines()).pipe(createGzip()));
   });
 
   // Import accepts the exported file as the raw request body.
-  app.addContentTypeParser(["application/gzip", "application/x-gzip", "application/octet-stream"], (_request, payload, done) => done(null, payload));
+  app.addContentTypeParser(["application/gzip", "application/x-gzip", "application/octet-stream"], (_request, payload, done) =>
+    done(null, payload),
+  );
   const adminBeforeBody = async (request: import("fastify").FastifyRequest) => {
     // Checked before the body is read: a large upload is only accepted from an administrator,
     // and only as one of the streamed types.
@@ -351,12 +373,24 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
         if (!line.trim()) continue;
         const record = JSON.parse(line) as Record<string, unknown>;
         if (!header) {
-          if (record.format !== EXPORT_FORMAT || record.version !== 1 || typeof record.modelId !== "string" || typeof record.dimensions !== "number") {
+          if (
+            record.format !== EXPORT_FORMAT ||
+            record.version !== 1 ||
+            typeof record.modelId !== "string" ||
+            typeof record.dimensions !== "number"
+          ) {
             throw badRequest("That file is not an Outpost embeddings export.");
           }
-          header = { modelId: record.modelId, provider: String(record.provider), model: String(record.model), dimensions: record.dimensions };
+          header = {
+            modelId: record.modelId,
+            provider: String(record.provider),
+            model: String(record.model),
+            dimensions: record.dimensions,
+          };
           sqlite
-            .prepare("INSERT INTO embedding_models (id, provider, model, dimensions, created_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT (id) DO NOTHING")
+            .prepare(
+              "INSERT INTO embedding_models (id, provider, model, dimensions, created_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT (id) DO NOTHING",
+            )
             .run(header.modelId, header.provider, header.model, header.dimensions, Date.now());
           continue;
         }
@@ -391,5 +425,4 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
     const [vector] = await provider.embed([body.text], "query");
     return { modelId: provider.modelId, dimensions: vector!.length, tookMs: Math.round(performance.now() - started) };
   });
-
 }

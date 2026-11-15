@@ -48,7 +48,11 @@ function listEntries(zip: yauzl.ZipFile): Promise<Map<string, yauzl.Entry>> {
     zip.on("entry", (entry: yauzl.Entry) => {
       seen += 1;
       if (seen > MAX_ZIP_ENTRIES) {
-        reject(new ExtractionError(`This archive holds more than ${MAX_ZIP_ENTRIES.toLocaleString("en")} files, which is more than Outpost will read.`));
+        reject(
+          new ExtractionError(
+            `This archive holds more than ${MAX_ZIP_ENTRIES.toLocaleString("en")} files, which is more than Outpost will read.`,
+          ),
+        );
         return;
       }
       const name = (entry.fileName as unknown as Buffer).toString("utf8");

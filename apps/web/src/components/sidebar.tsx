@@ -78,7 +78,11 @@ export function Sidebar({
             aria-expanded={!collapsed}
             className="grid size-8 place-content-center rounded-control text-spine-ink-muted hover:bg-spine-raised hover:text-spine-ink focus-visible:outline-spine-ink"
           >
-            {collapsed ? <PanelLeftOpen className="size-[18px]" strokeWidth={1.6} /> : <PanelLeftClose className="size-[18px]" strokeWidth={1.6} />}
+            {collapsed ? (
+              <PanelLeftOpen className="size-[18px]" strokeWidth={1.6} />
+            ) : (
+              <PanelLeftClose className="size-[18px]" strokeWidth={1.6} />
+            )}
           </button>
         </Tooltip>
       </div>
@@ -109,7 +113,9 @@ export function Sidebar({
         ))}
       </nav>
 
-      <div className="scroll-quiet mt-1 min-h-0 flex-1 overflow-y-auto px-3 [scrollbar-color:var(--spine-border)_transparent]">{!collapsed ? notesTree : null}</div>
+      <div className="scroll-quiet mt-1 min-h-0 flex-1 overflow-y-auto px-3 [scrollbar-color:var(--spine-border)_transparent]">
+        {!collapsed ? notesTree : null}
+      </div>
 
       <div className={cn("border-t border-spine-border px-3 py-2", collapsed && "px-2")}>
         <nav aria-label="Upkeep" className="grid gap-0.5">
@@ -120,7 +126,9 @@ export function Sidebar({
               collapsed={collapsed}
               trailing={
                 item.to === "/downloads" && downloads > 0 ? (
-                  <span className="tabular rounded-full bg-lamp px-1.5 text-micro font-semibold text-[oklch(0.25_0.05_70)]">{downloads}</span>
+                  <span className="tabular rounded-full bg-lamp px-1.5 text-micro font-semibold text-[oklch(0.25_0.05_70)]">
+                    {downloads}
+                  </span>
                 ) : null
               }
             />

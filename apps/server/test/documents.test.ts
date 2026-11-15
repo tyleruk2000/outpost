@@ -30,7 +30,8 @@ async function add(file: UploadFile, fields: Record<string, string> = {}) {
 
 const search = async (q: string) => (await app.api("GET", `/api/search?q=${encodeURIComponent(q)}`)).body;
 const locationPath = () => app.ctx.services.storage.getDefault().path;
-const incoming = () => fs.readdirSync(path.join(locationPath(), "documents", ".incoming"), { recursive: true }).filter((name) => String(name).endsWith(".part"));
+const incoming = () =>
+  fs.readdirSync(path.join(locationPath(), "documents", ".incoming"), { recursive: true }).filter((name) => String(name).endsWith(".part"));
 const fileOf = (document: { relPath: string }) => path.join(locationPath(), document.relPath);
 
 const MARKDOWN = "Kept in the shed.\n\n# Water\n\nBoil **it** for one minute.\n\n## Filters\n\nCeramic filters remove protozoa.\n";
@@ -84,7 +85,13 @@ describe("uploading and reading text", () => {
 
     const protozoa = await search("protozoa ");
     expect(protozoa.results).toHaveLength(1);
-    expect(protozoa.results[0]).toMatchObject({ kind: "document", entityId: markdown.id, url: `/library/documents/${markdown.id}`, collection: "Survival", subtitle: "water.md" });
+    expect(protozoa.results[0]).toMatchObject({
+      kind: "document",
+      entityId: markdown.id,
+      url: `/library/documents/${markdown.id}`,
+      collection: "Survival",
+      subtitle: "water.md",
+    });
     expect(protozoa.results[0].passages[0]).toMatchObject({ heading: "Filters", page: null });
 
     expect((await search("stove ")).results[0].entityId).toBe(text.id);
@@ -102,7 +109,11 @@ describe("uploading and reading text", () => {
 
   it("reads a PDF page by page and links results to the page", async () => {
     const pdf = buildPdf(
-      [["Field manual", "Boiling is the most reliable method."], ["Chemical treatment with chlorine dioxide tablets", "takes thirty minutes."], ["Index"]],
+      [
+        ["Field manual", "Boiling is the most reliable method."],
+        ["Chemical treatment with chlorine dioxide tablets", "takes thirty minutes."],
+        ["Index"],
+      ],
       { title: "Water Purification Handbook", author: "A. Ranger" },
     );
     const document = await add({ name: "scan_0042.pdf", content: pdf });
@@ -119,7 +130,9 @@ describe("uploading and reading text", () => {
     const all = (await app.api("GET", `/api/documents/${document.id}/text`)).body;
     expect(all.sections.map((section: { page: number }) => section.page)).toEqual([1, 2, 3]);
     const second = (await app.api("GET", `/api/documents/${document.id}/text?page=2`)).body;
-    expect(second.sections).toEqual([{ page: 2, heading: null, text: "Chemical treatment with chlorine dioxide tablets\ntakes thirty minutes." }]);
+    expect(second.sections).toEqual([
+      { page: 2, heading: null, text: "Chemical treatment with chlorine dioxide tablets\ntakes thirty minutes." },
+    ]);
 
     const found = await search('"chlorine dioxide"');
     expect(found.results).toHaveLength(1);
@@ -156,12 +169,23 @@ describe("uploading and reading text", () => {
       title: "The Long Walk",
       author: "Jane Hiker",
       chapters: [
-        { file: "one.xhtml", title: "Chapter file one", body: "<h1>Setting out</h1><p>We left before dawn with <a id='n1'/>heavy packs.</p>" },
+        {
+          file: "one.xhtml",
+          title: "Chapter file one",
+          body: "<h1>Setting out</h1><p>We left before dawn with <a id='n1'/>heavy packs.</p>",
+        },
         { file: "two.xhtml", title: "The ridge", body: "<p>The ridge was windy and exposed.</p>" },
       ],
     });
     const document = await add({ name: "long-walk.epub", content: epub });
-    expect(document).toMatchObject({ type: "epub", mime: "application/epub+zip", extraction: "done", title: "The Long Walk", author: "Jane Hiker", language: "en" });
+    expect(document).toMatchObject({
+      type: "epub",
+      mime: "application/epub+zip",
+      extraction: "done",
+      title: "The Long Walk",
+      author: "Jane Hiker",
+      language: "en",
+    });
 
     const { sections } = (await app.api("GET", `/api/documents/${document.id}/text`)).body;
     expect(sections).toEqual([
@@ -204,7 +228,9 @@ describe("uploading and reading text", () => {
   it("stores images without text and keeps them findable by title and tags", async () => {
     const image = await add({ name: "trailhead map.png", content: tinyPng }, { tags: "maps" });
     expect(image).toMatchObject({ type: "image", mime: "image/png", extraction: "unsupported", textChars: 0 });
-    expect(image.extractionDetail).toContain("Images are stored and shown but have no searchable text (OCR is not available in this version)");
+    expect(image.extractionDetail).toContain(
+      "Images are stored and shown but have no searchable text (OCR is not available in this version)",
+    );
     expect((await search("trailhead ")).results[0].entityId).toBe(image.id);
     expect((await app.api("GET", `/api/documents/${image.id}/text`)).body.sections).toEqual([]);
   });
@@ -233,7 +259,11 @@ describe("what is accepted", () => {
       { name: "renamed.txt", content: "same bytes" },
       { name: "other.txt", content: "different bytes" },
     ]);
-    expect(again.body.results[0]).toMatchObject({ originalName: "renamed.txt", status: "duplicate", document: { id: original.id, originalName: "one.txt" } });
+    expect(again.body.results[0]).toMatchObject({
+      originalName: "renamed.txt",
+      status: "duplicate",
+      document: { id: original.id, originalName: "one.txt" },
+    });
     expect(again.body.results[1].status).toBe("created");
     expect((await app.api("GET", "/api/documents")).body.total).toBe(2);
     expect(incoming()).toEqual([]);
@@ -461,7 +491,10 @@ describe("serving the original", () => {
     );
 
     expect(await headersOf(png)).toMatchObject({ "content-type": "image/png", "content-disposition": expect.stringMatching(/^inline;/) });
-    expect(await headersOf(pdf)).toMatchObject({ "content-type": "application/pdf", "content-disposition": expect.stringMatching(/^inline;/) });
+    expect(await headersOf(pdf)).toMatchObject({
+      "content-type": "application/pdf",
+      "content-disposition": expect.stringMatching(/^inline;/),
+    });
 
     const forced = await headersOf(pdf, "?download=1");
     expect(forced["content-disposition"]).toMatch(/^attachment; filename="paper.pdf"/);
@@ -484,7 +517,9 @@ describe("browsing and editing", () => {
     );
     const second = await upload([{ name: "dot.png", content: tinyPng }], { category: "Pictures", tags: "Photos,WATER" });
     await app.ctx.jobs.whenIdle();
-    docs = new Map([...first.body.results, ...second.body.results].map((result: UploadResult) => [result.originalName, result.document as DocumentDto]));
+    docs = new Map(
+      [...first.body.results, ...second.body.results].map((result: UploadResult) => [result.originalName, result.document as DocumentDto]),
+    );
   });
 
   const list = async (query: string) => (await app.api("GET", `/api/documents?${query}`)).body;
@@ -494,13 +529,19 @@ describe("browsing and editing", () => {
     const all = await list("");
     expect(all.total).toBe(3);
     // Newest first by default.
-    expect(all.documents.map((document: { originalName: string }) => document.originalName)).toEqual(["dot.png", "knots.txt", "Water guide.md"]);
+    expect(all.documents.map((document: { originalName: string }) => document.originalName)).toEqual([
+      "dot.png",
+      "knots.txt",
+      "Water guide.md",
+    ]);
     expect(all.documents[0]).toMatchObject({ tags: ["Photos", "water"], locationAvailable: true, extraction: "unsupported" });
 
     expect(await names("q=GUIDE")).toEqual(["Water guide.md"]);
     expect(await names("q=knots.t")).toEqual(["knots.txt"]);
     expect(await names(`q=${encodeURIComponent("%")}`)).toEqual([]);
-    expect(await names("category=survival&sort=title")).toEqual(["knots", "Water guide"].map((title) => (title === "knots" ? "knots.txt" : "Water guide.md")));
+    expect(await names("category=survival&sort=title")).toEqual(
+      ["knots", "Water guide"].map((title) => (title === "knots" ? "knots.txt" : "Water guide.md")),
+    );
     expect(await names("tag=Water&sort=title&order=desc")).toEqual(["Water guide.md", "knots.txt", "dot.png"]);
     expect(await names("tag=photos")).toEqual(["dot.png"]);
     expect(await names("tag=unknown")).toEqual([]);
@@ -663,7 +704,10 @@ describe("when the storage location goes away", () => {
     const after = (await app.api("GET", `/api/documents/${document.id}`)).body.document;
     expect(after.extraction).toBe("failed");
     expect(after.extractionDetail).toMatch(/not connected.*Read text again/);
-    expect(app.ctx.jobs.findBySubject(`document:${document.id}`).at(-1)).toMatchObject({ state: "failed", errorKind: "storage_unavailable" });
+    expect(app.ctx.jobs.findBySubject(`document:${document.id}`).at(-1)).toMatchObject({
+      state: "failed",
+      errorKind: "storage_unavailable",
+    });
     expect(fs.readFileSync(stored, "utf8")).toBe("keep me safe");
     // Text read earlier is still there and still searchable.
     expect((await app.api("GET", `/api/documents/${document.id}/text`)).body.sections).toHaveLength(1);
@@ -712,9 +756,20 @@ describe("the service, as other modules use it", () => {
     const { documents } = app.ctx.services;
     const source = scratch("tmp-8731.bin", "# Stoves\n\nAlcohol stoves are light.\n");
 
-    const copied = await documents.ingestFile({ sourcePath: source, originalName: "Stoves.md", category: "Kit", tags: ["cooking", "Cooking"] });
+    const copied = await documents.ingestFile({
+      sourcePath: source,
+      originalName: "Stoves.md",
+      category: "Kit",
+      tags: ["cooking", "Cooking"],
+    });
     expect(copied.status).toBe("created");
-    expect(copied.document).toMatchObject({ originalName: "Stoves.md", title: "Stoves", type: "markdown", category: "Kit", tags: ["cooking"] });
+    expect(copied.document).toMatchObject({
+      originalName: "Stoves.md",
+      title: "Stoves",
+      type: "markdown",
+      category: "Kit",
+      tags: ["cooking"],
+    });
     // Copied: the source is still there.
     expect(fs.existsSync(source)).toBe(true);
     expect(fs.readFileSync(documents.absolutePath(copied.document.id), "utf8")).toContain("Alcohol stoves");
@@ -729,14 +784,22 @@ describe("the service, as other modules use it", () => {
 
     const toMove = scratch("moving.txt", "moved into the library");
     const moved = await documents.ingestFile({ sourcePath: toMove, originalName: "../../moved.txt", move: true, title: "Moved in" });
-    expect(moved.document).toMatchObject({ originalName: "moved.txt", title: "Moved in", relPath: `documents/${moved.document.id}/moved.txt` });
+    expect(moved.document).toMatchObject({
+      originalName: "moved.txt",
+      title: "Moved in",
+      relPath: `documents/${moved.document.id}/moved.txt`,
+    });
     expect(fs.existsSync(toMove)).toBe(false);
     expect(fs.readFileSync(documents.absolutePath(moved.document.id), "utf8")).toBe("moved into the library");
 
     const wrong = scratch("program.pdf", "MZ not a pdf");
-    await expect(documents.ingestFile({ sourcePath: wrong, originalName: "program.pdf", move: true })).rejects.toMatchObject({ code: "unsupported" });
+    await expect(documents.ingestFile({ sourcePath: wrong, originalName: "program.pdf", move: true })).rejects.toMatchObject({
+      code: "unsupported",
+    });
     await expect(documents.ingestFile({ sourcePath: wrong, originalName: "program.exe" })).rejects.toMatchObject({ code: "unsupported" });
-    await expect(documents.ingestFile({ sourcePath: path.join(app.dir, "missing.txt"), originalName: "missing.txt" })).rejects.toMatchObject({ code: "bad_request" });
+    await expect(
+      documents.ingestFile({ sourcePath: path.join(app.dir, "missing.txt"), originalName: "missing.txt" }),
+    ).rejects.toMatchObject({ code: "bad_request" });
     // A refused file is left exactly where it was, even when a move was asked for.
     expect(fs.readFileSync(wrong, "utf8")).toBe("MZ not a pdf");
     expect(incoming()).toEqual([]);

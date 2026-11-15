@@ -24,7 +24,8 @@ declare module "../../core/context.ts" {
 }
 
 /** Collections and tags whose content must be quoted rather than paraphrased. */
-const safetyTerms = /\b(medic|first aid|health|drug|dose|dosage|wound|poison|canning|preserv|food safety|ferment|foraging|mushroom|water treatment|purif)/i;
+const safetyTerms =
+  /\b(medic|first aid|health|drug|dose|dosage|wound|poison|canning|preserv|food safety|ferment|foraging|mushroom|water treatment|purif)/i;
 
 export function isSafetyCritical(passage: Pick<RetrievedPassage, "title" | "collection">): boolean {
   return safetyTerms.test(`${passage.title} ${passage.collection ?? ""}`);
@@ -106,7 +107,13 @@ export async function registerRetrieval(app: FastifyInstance, ctx: AppContext): 
     async retrieve({ query, limit = 8, kinds, mode, signal }) {
       // Reference articles served by Kiwix are not chunked in Outpost's index, so
       // retrieval covers documents, notes and other locally indexed text.
-      const response = await search.search({ q: query, kinds: kinds ?? ["document", "note"], mode, limit: Math.min(limit * 2, 50), signal });
+      const response = await search.search({
+        q: query,
+        kinds: kinds ?? ["document", "note"],
+        mode,
+        limit: Math.min(limit * 2, 50),
+        signal,
+      });
       const wanted: Array<{ chunkId: number; score: number; sources: string[] }> = [];
       for (const result of response.results) {
         for (const passage of result.passages) {
@@ -117,7 +124,7 @@ export async function registerRetrieval(app: FastifyInstance, ctx: AppContext): 
       const passages: RetrievedPassage[] = [];
       for (const item of wanted) {
         const record = records.get(item.chunkId);
-        if (!record || !record.text) continue;
+        if (!record?.text) continue;
         passages.push({
           chunkId: record.chunkId,
           kind: record.kind,

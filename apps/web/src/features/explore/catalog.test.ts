@@ -1,8 +1,17 @@
 import type { CatalogEntryDto } from "@outpost/shared";
 import { describe, expect, it } from "vitest";
 import { entry } from "../downloads/test-support";
-import { countByCategory, entryAction, entrySituation, filterEntries, formatLabel,
-  licenceText, matchesQuery, sizeText, sortEntries } from "./catalog";
+import {
+  countByCategory,
+  entryAction,
+  entrySituation,
+  filterEntries,
+  formatLabel,
+  licenceText,
+  matchesQuery,
+  sizeText,
+  sortEntries,
+} from "./catalog";
 
 const knots = entry();
 const medicines = entry({
@@ -92,10 +101,14 @@ describe("wording", () => {
   });
 
   it("does not call a licence unverified just because a note explains its terms", () => {
-    expect(licenceText(entry({ license: "CC BY-NC-SA 4.0", licenseNote: "Stated inside the file. Non-commercial use only." }))).toBe("Licence: CC BY-NC-SA 4.0.");
-    expect(licenceText(entry({ license: "CC BY-SA 4.0", licenseNote: "Taken from the feed; the terms have not been verified by the maintainers." }))).toBe(
-      "Licence: CC BY-SA 4.0. Not verified by the catalogue maintainers.",
+    expect(licenceText(entry({ license: "CC BY-NC-SA 4.0", licenseNote: "Stated inside the file. Non-commercial use only." }))).toBe(
+      "Licence: CC BY-NC-SA 4.0.",
     );
+    expect(
+      licenceText(
+        entry({ license: "CC BY-SA 4.0", licenseNote: "Taken from the feed; the terms have not been verified by the maintainers." }),
+      ),
+    ).toBe("Licence: CC BY-SA 4.0. Not verified by the catalogue maintainers.");
   });
 
   it("names the kind of file for anything that is not a reference collection", () => {

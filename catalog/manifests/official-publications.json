@@ -4,9 +4,7 @@
   "id": "official-publications",
   "name": "Official publications",
   "description": "Individual handbooks, guides and textbooks as PDF files, each fetched from its publisher's own website at the moment you ask for it: aviation handbooks from the FAA, preparedness guides from Ready.gov and the National Weather Service, the USDA guide to home canning, farming manuals from the FAO, references from NASA and the US Geological Survey, mountain medicine papers from the UIAA, and textbooks from OpenStax. Every file was downloaded and its checksum recorded on the date given as last verified; if a publisher later replaces a file, the download is refused until the entry is updated.",
-  "maintainers": [
-    "Outpost maintainers"
-  ],
+  "maintainers": ["Outpost maintainers"],
   "downloadHosts": [
     "assets.openstax.org",
     "iris.who.int",
@@ -33,11 +31,7 @@
       "attribution": "US Department of Transportation, Federal Aviation Administration.",
       "homepage": "https://www.faa.gov/regulations_policies/handbooks_manuals/aviation/phak",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "aviation",
-        "handbook",
-        "flight training"
-      ],
+      "tags": ["aviation", "handbook", "flight training"],
       "sizeBytes": 77598564,
       "source": {
         "type": "http",
@@ -60,11 +54,7 @@
       "attribution": "US Department of Transportation, Federal Aviation Administration.",
       "homepage": "https://www.faa.gov/regulations_policies/handbooks_manuals/aviation/airplane_handbook",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "aviation",
-        "handbook",
-        "flight training"
-      ],
+      "tags": ["aviation", "handbook", "flight training"],
       "sizeBytes": 273248888,
       "source": {
         "type": "http",
@@ -87,11 +77,7 @@
       "attribution": "US Department of Transportation, Federal Aviation Administration.",
       "homepage": "https://www.faa.gov/regulationspolicies/handbooksmanuals/aviation/faa-h-8083-28b-aviation-weather-handbook",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "aviation",
-        "weather",
-        "handbook"
-      ],
+      "tags": ["aviation", "weather", "handbook"],
       "sizeBytes": 18515580,
       "source": {
         "type": "http",
@@ -115,11 +101,7 @@
       "attribution": "US Department of Transportation, Federal Aviation Administration.",
       "homepage": "https://www.faa.gov/regulations_policies/handbooks_manuals/aviation",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "aviation",
-        "handbook",
-        "instrument flying"
-      ],
+      "tags": ["aviation", "handbook", "instrument flying"],
       "sizeBytes": 68414993,
       "source": {
         "type": "http",
@@ -142,11 +124,7 @@
       "attribution": "US Department of Transportation, Federal Aviation Administration.",
       "homepage": "https://www.faa.gov/regulations_policies/handbooks_manuals/aviation/helicopter_flying_handbook",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "aviation",
-        "handbook",
-        "helicopter"
-      ],
+      "tags": ["aviation", "handbook", "helicopter"],
       "sizeBytes": 179110571,
       "source": {
         "type": "http",
@@ -169,12 +147,7 @@
       "attribution": "US Department of Transportation, Federal Aviation Administration.",
       "homepage": "https://www.faa.gov/regulations_policies/handbooks_manuals/aviation",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "aviation",
-        "maintenance",
-        "tools",
-        "handbook"
-      ],
+      "tags": ["aviation", "maintenance", "tools", "handbook"],
       "sizeBytes": 92539602,
       "source": {
         "type": "http",
@@ -197,11 +170,7 @@
       "attribution": "Ready.gov, Federal Emergency Management Agency, US Department of Homeland Security.",
       "homepage": "https://www.ready.gov/publications",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "disaster",
-        "planning",
-        "guide"
-      ],
+      "tags": ["disaster", "planning", "guide"],
       "sizeBytes": 4233522,
       "source": {
         "type": "http",
@@ -224,11 +193,7 @@
       "attribution": "Ready.gov, Federal Emergency Management Agency, US Department of Homeland Security.",
       "homepage": "https://www.ready.gov/publications",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "disaster",
-        "hazards",
-        "fact sheets"
-      ],
+      "tags": ["disaster", "hazards", "fact sheets"],
       "sizeBytes": 4376542,
       "source": {
         "type": "http",
@@ -251,10 +216,7 @@
       "attribution": "Ready.gov, Federal Emergency Management Agency, US Department of Homeland Security.",
       "homepage": "https://www.ready.gov/publications",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "checklist",
-        "emergency kit"
-      ],
+      "tags": ["checklist", "emergency kit"],
       "sizeBytes": 152185,
       "source": {
         "type": "http",
@@ -276,11 +238,7 @@
       "attribution": "Ready.gov, Federal Emergency Management Agency, US Department of Homeland Security.",
       "homepage": "https://www.ready.gov/publications",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "disaster",
-        "planning",
-        "older adults"
-      ],
+      "tags": ["disaster", "planning", "older adults"],
       "sizeBytes": 3588917,
       "source": {
         "type": "http",
@@ -302,10 +260,7 @@
       "attribution": "US Department of Agriculture, National Institute of Food and Agriculture. Complete Guide to Home Canning, Agriculture Information Bulletin No. 539, revised 2015. Hosted by the National Center for Home Food Preservation.",
       "homepage": "https://nchfp.uga.edu/resources/entry/introduction-usda-guide-to-home-canning",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "canning",
-        "food preservation"
-      ],
+      "tags": ["canning", "food preservation"],
       "sizeBytes": 467339,
       "source": {
         "type": "http",
@@ -328,10 +283,7 @@
       "attribution": "US Department of Agriculture, National Institute of Food and Agriculture. Complete Guide to Home Canning, Agriculture Information Bulletin No. 539, revised 2015. Hosted by the National Center for Home Food Preservation.",
       "homepage": "https://nchfp.uga.edu/resources/entry/guide-part-1-principles-of-home-canning",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "canning",
-        "food preservation"
-      ],
+      "tags": ["canning", "food preservation"],
       "sizeBytes": 3794234,
       "source": {
         "type": "http",
@@ -354,10 +306,7 @@
       "attribution": "US Department of Agriculture, National Institute of Food and Agriculture. Complete Guide to Home Canning, Agriculture Information Bulletin No. 539, revised 2015. Hosted by the National Center for Home Food Preservation.",
       "homepage": "https://nchfp.uga.edu/resources/entry/guide-part-2-fruit-and-fruit-products",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "canning",
-        "food preservation"
-      ],
+      "tags": ["canning", "food preservation"],
       "sizeBytes": 1098841,
       "source": {
         "type": "http",
@@ -380,10 +329,7 @@
       "attribution": "US Department of Agriculture, National Institute of Food and Agriculture. Complete Guide to Home Canning, Agriculture Information Bulletin No. 539, revised 2015. Hosted by the National Center for Home Food Preservation.",
       "homepage": "https://nchfp.uga.edu/resources/entry/guide-part-3-tomatoes-and-tomato-products",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "canning",
-        "food preservation"
-      ],
+      "tags": ["canning", "food preservation"],
       "sizeBytes": 976490,
       "source": {
         "type": "http",
@@ -406,10 +352,7 @@
       "attribution": "US Department of Agriculture, National Institute of Food and Agriculture. Complete Guide to Home Canning, Agriculture Information Bulletin No. 539, revised 2015. Hosted by the National Center for Home Food Preservation.",
       "homepage": "https://nchfp.uga.edu/resources/entry/guide-part-4-vegetables-and-vegetable-products",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "canning",
-        "food preservation"
-      ],
+      "tags": ["canning", "food preservation"],
       "sizeBytes": 2013613,
       "source": {
         "type": "http",
@@ -432,10 +375,7 @@
       "attribution": "US Department of Agriculture, National Institute of Food and Agriculture. Complete Guide to Home Canning, Agriculture Information Bulletin No. 539, revised 2015. Hosted by the National Center for Home Food Preservation.",
       "homepage": "https://nchfp.uga.edu/resources/entry/guide-part-5-poultry-red-meats-and-seafood",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "canning",
-        "food preservation"
-      ],
+      "tags": ["canning", "food preservation"],
       "sizeBytes": 1356485,
       "source": {
         "type": "http",
@@ -458,10 +398,7 @@
       "attribution": "US Department of Agriculture, National Institute of Food and Agriculture. Complete Guide to Home Canning, Agriculture Information Bulletin No. 539, revised 2015. Hosted by the National Center for Home Food Preservation.",
       "homepage": "https://nchfp.uga.edu/resources/entry/guide-part-6-fermented-food-and-pickled-vegetables",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "canning",
-        "food preservation"
-      ],
+      "tags": ["canning", "food preservation"],
       "sizeBytes": 3173534,
       "source": {
         "type": "http",
@@ -484,10 +421,7 @@
       "attribution": "US Department of Agriculture, National Institute of Food and Agriculture. Complete Guide to Home Canning, Agriculture Information Bulletin No. 539, revised 2015. Hosted by the National Center for Home Food Preservation.",
       "homepage": "https://nchfp.uga.edu/resources/entry/guide-part-7-jams-and-jellies",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "canning",
-        "food preservation"
-      ],
+      "tags": ["canning", "food preservation"],
       "sizeBytes": 1300368,
       "source": {
         "type": "http",
@@ -510,11 +444,7 @@
       "attribution": "© FAO, 2014. Manual “A Vegetable Garden for All”, 5th edition.",
       "homepage": "https://www.fao.org/3/i3556e/i3556e.pdf",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "gardening",
-        "vegetables",
-        "manual"
-      ],
+      "tags": ["gardening", "vegetables", "manual"],
       "sizeBytes": 8364980,
       "source": {
         "type": "http",
@@ -537,11 +467,7 @@
       "attribution": "© FAO, 2014. Small-scale aquaponic food production: integrated fish and plant farming. FAO Fisheries and Aquaculture Technical Paper 589.",
       "homepage": "https://www.fao.org/3/i4021e/i4021e.pdf",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "aquaponics",
-        "fish",
-        "growing food"
-      ],
+      "tags": ["aquaponics", "fish", "growing food"],
       "sizeBytes": 58759333,
       "source": {
         "type": "http",
@@ -564,10 +490,7 @@
       "attribution": "© FAO, 2015. Farmer's Compost Handbook: Experiences in Latin America.",
       "homepage": "https://www.fao.org/3/i3388e/i3388e.pdf",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "compost",
-        "soil"
-      ],
+      "tags": ["compost", "soil"],
       "sizeBytes": 4572583,
       "source": {
         "type": "http",
@@ -590,11 +513,7 @@
       "attribution": "© FAO, 2010. Manual on small earth dams: a guide to siting, design and construction. FAO Irrigation and Drainage Paper 64.",
       "homepage": "https://www.fao.org/3/i1531e/i1531e.pdf",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "water",
-        "dams",
-        "construction"
-      ],
+      "tags": ["water", "dams", "construction"],
       "sizeBytes": 3587339,
       "source": {
         "type": "http",
@@ -617,11 +536,7 @@
       "attribution": "US Department of Commerce, National Oceanic and Atmospheric Administration, National Weather Service.",
       "homepage": "https://www.weather.gov/owlie/publication_brochures",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "weather",
-        "storms",
-        "field guide"
-      ],
+      "tags": ["weather", "storms", "field guide"],
       "sizeBytes": 27871046,
       "source": {
         "type": "http",
@@ -644,12 +559,7 @@
       "attribution": "US Department of Commerce, National Oceanic and Atmospheric Administration, National Weather Service.",
       "homepage": "https://www.weather.gov/owlie/publication_brochures",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "weather",
-        "tornado",
-        "lightning",
-        "safety"
-      ],
+      "tags": ["weather", "tornado", "lightning", "safety"],
       "sizeBytes": 14573890,
       "source": {
         "type": "http",
@@ -671,11 +581,7 @@
       "attribution": "US Department of Commerce, National Oceanic and Atmospheric Administration, National Weather Service.",
       "homepage": "https://www.weather.gov/owlie/publication_brochures",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "weather",
-        "winter",
-        "safety"
-      ],
+      "tags": ["weather", "winter", "safety"],
       "sizeBytes": 1719119,
       "source": {
         "type": "http",
@@ -698,11 +604,7 @@
       "attribution": "US Department of Commerce, National Oceanic and Atmospheric Administration, National Weather Service.",
       "homepage": "https://www.weather.gov/owlie/publication_brochures",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "weather",
-        "clouds",
-        "chart"
-      ],
+      "tags": ["weather", "clouds", "chart"],
       "sizeBytes": 9051873,
       "source": {
         "type": "http",
@@ -724,11 +626,7 @@
       "attribution": "US Department of Commerce, National Oceanic and Atmospheric Administration, National Weather Service.",
       "homepage": "https://www.weather.gov/owlie/publication_brochures",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "weather",
-        "marine",
-        "observation"
-      ],
+      "tags": ["weather", "marine", "observation"],
       "sizeBytes": 4687856,
       "source": {
         "type": "http",
@@ -751,11 +649,7 @@
       "attribution": "US Department of Commerce, National Oceanic and Atmospheric Administration, National Weather Service.",
       "homepage": "https://www.weather.gov/owlie/publication_brochures",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "radio",
-        "weather fax",
-        "marine"
-      ],
+      "tags": ["radio", "weather fax", "marine"],
       "sizeBytes": 738317,
       "source": {
         "type": "http",
@@ -779,10 +673,7 @@
       "attribution": "National Aeronautics and Space Administration. NASA Systems Engineering Handbook, NASA/SP-2016-6105 Rev 2.",
       "homepage": "https://ntrs.nasa.gov/citations/20170001761",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "engineering",
-        "handbook"
-      ],
+      "tags": ["engineering", "handbook"],
       "sizeBytes": 4122125,
       "source": {
         "type": "http",
@@ -806,11 +697,7 @@
       "attribution": "National Aeronautics and Space Administration. Fastener Design Manual, NASA Reference Publication 1228.",
       "homepage": "https://ntrs.nasa.gov/citations/19900009424",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "engineering",
-        "fasteners",
-        "reference"
-      ],
+      "tags": ["engineering", "fasteners", "reference"],
       "sizeBytes": 5345208,
       "source": {
         "type": "http",
@@ -834,11 +721,7 @@
       "attribution": "US Department of the Interior, US Geological Survey.",
       "homepage": "https://pubs.usgs.gov/gip/TopographicMapSymbols/",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "maps",
-        "symbols",
-        "reference"
-      ],
+      "tags": ["maps", "symbols", "reference"],
       "sizeBytes": 2197818,
       "source": {
         "type": "http",
@@ -860,11 +743,7 @@
       "attribution": "US Department of the Interior, US Geological Survey.",
       "homepage": "https://pubs.usgs.gov/fs/2001/0035/",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "maps",
-        "compass",
-        "navigation"
-      ],
+      "tags": ["maps", "compass", "navigation"],
       "sizeBytes": 204850,
       "source": {
         "type": "http",
@@ -887,11 +766,7 @@
       "attribution": "US Department of the Interior, US Geological Survey. Professional Paper 1395.",
       "homepage": "https://pubs.usgs.gov/publication/pp1395",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "maps",
-        "projections",
-        "reference"
-      ],
+      "tags": ["maps", "projections", "reference"],
       "sizeBytes": 22466124,
       "source": {
         "type": "http",
@@ -914,11 +789,7 @@
       "attribution": "© Rice University. Textbook content produced by OpenStax is licensed under CC BY-NC-SA 4.0. Access for free at openstax.org.",
       "homepage": "https://openstax.org/details/books/anatomy-and-physiology-2e",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "textbook",
-        "anatomy",
-        "physiology"
-      ],
+      "tags": ["textbook", "anatomy", "physiology"],
       "sizeBytes": 476335014,
       "source": {
         "type": "http",
@@ -942,10 +813,7 @@
       "attribution": "© Rice University. Textbook content produced by OpenStax is licensed under CC BY-NC-SA 4.0. Access for free at openstax.org.",
       "homepage": "https://openstax.org/details/books/microbiology",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "textbook",
-        "microbiology"
-      ],
+      "tags": ["textbook", "microbiology"],
       "sizeBytes": 332873038,
       "source": {
         "type": "http",
@@ -969,10 +837,7 @@
       "attribution": "© Rice University. Textbook content produced by OpenStax is licensed under CC BY-NC-SA 4.0. Access for free at openstax.org.",
       "homepage": "https://openstax.org/details/books/clinical-nursing-skills",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "textbook",
-        "nursing"
-      ],
+      "tags": ["textbook", "nursing"],
       "sizeBytes": 95717314,
       "source": {
         "type": "http",
@@ -996,10 +861,7 @@
       "attribution": "© Rice University. Textbook content produced by OpenStax is licensed under CC BY-NC-SA 4.0. Access for free at openstax.org.",
       "homepage": "https://openstax.org/details/books/biology-2e",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "textbook",
-        "biology"
-      ],
+      "tags": ["textbook", "biology"],
       "sizeBytes": 401298122,
       "source": {
         "type": "http",
@@ -1023,10 +885,7 @@
       "attribution": "© Rice University. Textbook content produced by OpenStax is licensed under CC BY-NC-SA 4.0. Access for free at openstax.org.",
       "homepage": "https://openstax.org/details/books/chemistry-2e",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "textbook",
-        "chemistry"
-      ],
+      "tags": ["textbook", "chemistry"],
       "sizeBytes": 217794376,
       "source": {
         "type": "http",
@@ -1050,10 +909,7 @@
       "attribution": "© Rice University. Textbook content produced by OpenStax is licensed under CC BY-NC-SA 4.0. Access for free at openstax.org.",
       "homepage": "https://openstax.org/details/books/college-physics-2e",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "textbook",
-        "physics"
-      ],
+      "tags": ["textbook", "physics"],
       "sizeBytes": 263463256,
       "source": {
         "type": "http",
@@ -1077,10 +933,7 @@
       "attribution": "© Rice University. Textbook content produced by OpenStax is licensed under CC BY-NC-SA 4.0. Access for free at openstax.org.",
       "homepage": "https://openstax.org/details/books/astronomy-2e",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "textbook",
-        "astronomy"
-      ],
+      "tags": ["textbook", "astronomy"],
       "sizeBytes": 162975061,
       "source": {
         "type": "http",
@@ -1104,10 +957,7 @@
       "attribution": "© Rice University. Textbook content produced by OpenStax is licensed under CC BY-NC-SA 4.0. Access for free at openstax.org.",
       "homepage": "https://openstax.org/details/books/precalculus-2e",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "textbook",
-        "mathematics"
-      ],
+      "tags": ["textbook", "mathematics"],
       "sizeBytes": 114386806,
       "source": {
         "type": "http",
@@ -1131,10 +981,7 @@
       "attribution": "© Rice University. Textbook content produced by OpenStax is licensed under CC BY-NC-SA 4.0. Access for free at openstax.org.",
       "homepage": "https://openstax.org/details/books/introductory-statistics-2e",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "textbook",
-        "statistics"
-      ],
+      "tags": ["textbook", "statistics"],
       "sizeBytes": 23503369,
       "source": {
         "type": "http",
@@ -1158,11 +1005,7 @@
       "attribution": "UIAA Medical Commission. Consensus Statement No. 2.",
       "homepage": "https://www.theuiaa.org/mountain-medicine/medical-advice/",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "mountaineering",
-        "altitude",
-        "first aid"
-      ],
+      "tags": ["mountaineering", "altitude", "first aid"],
       "sizeBytes": 347635,
       "source": {
         "type": "http",
@@ -1185,11 +1028,7 @@
       "attribution": "UIAA Medical Commission. Recommendation No. 6.",
       "homepage": "https://www.theuiaa.org/mountain-medicine/medical-advice/",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "mountaineering",
-        "water",
-        "purification"
-      ],
+      "tags": ["mountaineering", "water", "purification"],
       "sizeBytes": 175465,
       "source": {
         "type": "http",
@@ -1211,11 +1050,7 @@
       "attribution": "World Health Organization and the International Committee of the Red Cross, 2018.",
       "homepage": "https://iris.who.int/handle/10665/275635",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "emergency care",
-        "first aid",
-        "training"
-      ],
+      "tags": ["emergency care", "first aid", "training"],
       "sizeBytes": 4257552,
       "source": {
         "type": "http",
@@ -1238,11 +1073,7 @@
       "attribution": "World Health Organization, Regional Office for Europe, 2022.",
       "homepage": "https://iris.who.int/handle/10665/352485",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "child health",
-        "primary care",
-        "guidelines"
-      ],
+      "tags": ["child health", "primary care", "guidelines"],
       "sizeBytes": 9184945,
       "source": {
         "type": "http",
@@ -1266,11 +1097,7 @@
       "attribution": "World Health Organization, 2017.",
       "homepage": "https://iris.who.int/handle/10665/255760",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "pregnancy",
-        "childbirth",
-        "guidelines"
-      ],
+      "tags": ["pregnancy", "childbirth", "guidelines"],
       "sizeBytes": 5110597,
       "source": {
         "type": "http",
@@ -1293,10 +1120,7 @@
       "attribution": "World Health Organization, 2023.",
       "homepage": "https://iris.who.int/handle/10665/371090",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "medicines",
-        "reference"
-      ],
+      "tags": ["medicines", "reference"],
       "sizeBytes": 926649,
       "source": {
         "type": "http",
@@ -1320,11 +1144,7 @@
       "attribution": "World Health Organization, 2022.",
       "homepage": "https://iris.who.int/handle/10665/352532",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "water",
-        "health",
-        "guidelines"
-      ],
+      "tags": ["water", "health", "guidelines"],
       "sizeBytes": 5321705,
       "source": {
         "type": "http",
@@ -1348,10 +1168,7 @@
       "attribution": "World Health Organization, 2017.",
       "homepage": "https://iris.who.int/handle/10665/255196",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "water safety",
-        "drowning"
-      ],
+      "tags": ["water safety", "drowning"],
       "sizeBytes": 3031426,
       "source": {
         "type": "http",

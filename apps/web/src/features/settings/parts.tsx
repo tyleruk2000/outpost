@@ -1,9 +1,22 @@
 import { type ReactNode, useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 
-export function SettingsSection({ id, title, description, children }: { id: string; title: string; description?: ReactNode; children: ReactNode }) {
+export function SettingsSection({
+  id,
+  title,
+  description,
+  children,
+}: {
+  id: string;
+  title: string;
+  description?: ReactNode;
+  children: ReactNode;
+}) {
   return (
-    <section aria-labelledby={`${id}-title`} className="grid gap-x-10 gap-y-4 border-t border-border py-8 first:border-t-0 first:pt-0 lg:grid-cols-[15rem_1fr]">
+    <section
+      aria-labelledby={`${id}-title`}
+      className="grid gap-x-10 gap-y-4 border-t border-border py-8 first:border-t-0 first:pt-0 lg:grid-cols-[15rem_1fr]"
+    >
       <div>
         <h2 id={`${id}-title`} className="text-lead font-semibold text-ink">
           {title}
@@ -15,7 +28,17 @@ export function SettingsSection({ id, title, description, children }: { id: stri
   );
 }
 
-export function SettingRow({ label, hint, control, htmlFor }: { label: ReactNode; hint?: ReactNode; control: ReactNode; htmlFor?: string }) {
+export function SettingRow({
+  label,
+  hint,
+  control,
+  htmlFor,
+}: {
+  label: ReactNode;
+  hint?: ReactNode;
+  control: ReactNode;
+  htmlFor?: string;
+}) {
   return (
     <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2">
       <div className="min-w-48 flex-1">
@@ -30,7 +53,21 @@ export function SettingRow({ label, hint, control, htmlFor }: { label: ReactNode
 }
 
 /** A text field that saves when the person leaves it or presses Enter. */
-export function TextSetting({ id, value, disabled, onSave, placeholder, mono }: { id: string; value: string; disabled: boolean; onSave: (value: string) => void; placeholder?: string; mono?: boolean }) {
+export function TextSetting({
+  id,
+  value,
+  disabled,
+  onSave,
+  placeholder,
+  mono,
+}: {
+  id: string;
+  value: string;
+  disabled: boolean;
+  onSave: (value: string) => void;
+  placeholder?: string;
+  mono?: boolean;
+}) {
   const [draft, setDraft] = useState(value);
   useEffect(() => setDraft(value), [value]);
   return (

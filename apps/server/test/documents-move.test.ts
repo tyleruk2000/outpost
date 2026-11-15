@@ -20,7 +20,9 @@ describe("moving documents between storage locations", () => {
     app = await createTestApp();
     first = await addDocument("tides.md", "# Tide tables\n\nHigh water at Dover is at noon.");
     await addDocument("kit.txt", "Stove, gas, lighter.");
-    ssd = (await app.api("POST", "/api/storage/locations", { name: "Field SSD", path: path.join(app.dir, "storage", "ssd"), kind: "external" })).body.location;
+    ssd = (
+      await app.api("POST", "/api/storage/locations", { name: "Field SSD", path: path.join(app.dir, "storage", "ssd"), kind: "external" })
+    ).body.location;
   });
   afterEach(() => app.close());
 

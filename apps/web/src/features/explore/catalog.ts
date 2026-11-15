@@ -106,8 +106,7 @@ export function licenceText(entry: Pick<CatalogEntryDto, "license" | "licenseNot
   // A note usually explains the terms of a licence that was read at the source. It marks
   // the licence as unchecked only when it says so, or when there is no licence to name.
   const unverified = seeSource ? Boolean(entry.licenseNote) : /not (?:been )?verified/i.test(entry.licenseNote ?? "");
-  if (seeSource)
-    return unverified ? "Licence: see the source. Not verified by the catalogue maintainers." : "Licence: see the source.";
+  if (seeSource) return unverified ? "Licence: see the source. Not verified by the catalogue maintainers." : "Licence: see the source.";
   return unverified ? `Licence: ${entry.license}. Not verified by the catalogue maintainers.` : `Licence: ${entry.license}.`;
 }
 

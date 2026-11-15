@@ -66,7 +66,9 @@ async function fakeKiwix() {
     if (url === `/content/${BOOK}/Bowline`) {
       response.setHeader("Content-Type", "text/html; charset=utf-8");
       response.setHeader("ETag", '"abc"');
-      return response.end('<html><head><title>Bowline</title><script src="./_mw_/startup.js"></script></head><body><a href="./Clove_hitch">Clove hitch</a></body></html>');
+      return response.end(
+        '<html><head><title>Bowline</title><script src="./_mw_/startup.js"></script></head><body><a href="./Clove_hitch">Clove hitch</a></body></html>',
+      );
     }
     if (url === `/content/${BOOK}/image.webp`) {
       response.setHeader("Content-Type", "image/webp");
@@ -88,11 +90,13 @@ async function fakeKiwix() {
     }
     if (url.startsWith("/suggest?")) {
       response.setHeader("Content-Type", "application/json");
-      return response.end(JSON.stringify([
-        { value: "Bowline", label: "&lt;b&gt;Bow&lt;/b&gt;line", kind: "path", path: "Bowline" },
-        { value: "Bowyer&apos;s knot", label: "x", kind: "path", path: "Bowyer&apos;s_knot" },
-        { value: "bow", label: "containing 'bow'...", kind: "pattern" },
-      ]));
+      return response.end(
+        JSON.stringify([
+          { value: "Bowline", label: "&lt;b&gt;Bow&lt;/b&gt;line", kind: "path", path: "Bowline" },
+          { value: "Bowyer&apos;s knot", label: "x", kind: "path", path: "Bowyer&apos;s_knot" },
+          { value: "bow", label: "containing 'bow'...", kind: "pattern" },
+        ]),
+      );
     }
     response.statusCode = 404;
     response.end("nope");
@@ -135,7 +139,9 @@ describe("library file", () => {
   });
 
   it("escapes everything it writes", () => {
-    const xml = renderLibrary([{ id: UUID, path: '/storage/a "b" <c>&.zim', title: "Tom & Jerry's <guide>", language: "eng", articleCount: 5 }]);
+    const xml = renderLibrary([
+      { id: UUID, path: '/storage/a "b" <c>&.zim', title: "Tom & Jerry's <guide>", language: "eng", articleCount: 5 },
+    ]);
     expect(xml).toContain('path="/storage/a &quot;b&quot; &lt;c&gt;&amp;.zim"');
     expect(xml).toContain('title="Tom &amp; Jerry&apos;s &lt;guide&gt;"');
     expect(xml).toContain('articleCount="5"');
@@ -168,7 +174,14 @@ describe("kiwix integration", () => {
 
     const { body } = await app.api("GET", "/api/kiwix/books");
     expect(body.books).toEqual([
-      expect.objectContaining({ collectionId: id, bookName: BOOK, title: "Knots by Wikipedia", articleCount: 599, ready: true, contentBase: `/kiwix/open/content/${BOOK}/` }),
+      expect.objectContaining({
+        collectionId: id,
+        bookName: BOOK,
+        title: "Knots by Wikipedia",
+        articleCount: 599,
+        ready: true,
+        contentBase: `/kiwix/open/content/${BOOK}/`,
+      }),
     ]);
     // The same archive cannot be added twice, and a non-archive not at all.
     expect((await app.api("POST", "/api/kiwix/import", { locationId: location.id, relPath })).status).toBe(409);
@@ -187,7 +200,10 @@ describe("kiwix integration", () => {
     fs.renameSync(location.path, parked);
     await app.api("POST", "/api/storage/refresh");
     await waitFor(() => !fs.readFileSync(libraryPath, "utf8").includes(UUID));
-    expect((await app.api("GET", `/api/kiwix/books/${id}`)).body).toMatchObject({ book: { ready: false }, reason: expect.stringMatching(/not connected/) });
+    expect((await app.api("GET", `/api/kiwix/books/${id}`)).body).toMatchObject({
+      book: { ready: false },
+      reason: expect.stringMatching(/not connected/),
+    });
 
     fs.renameSync(parked, location.path);
     await app.api("POST", "/api/storage/refresh");
@@ -210,28 +226,50 @@ describe("kiwix integration", () => {
       { text: "bowline", hit: true },
       { text: " with two loops & more...", hit: false },
     ]);
-    expect(inBook.results[1]).toMatchObject({ title: "Fireman's chair knot", path: "Fireman's_chair_knot", url: `/library/read/${id}/Fireman's_chair_knot` });
+    expect(inBook.results[1]).toMatchObject({
+      title: "Fireman's chair knot",
+      path: "Fireman's_chair_knot",
+      url: `/library/read/${id}/Fireman's_chair_knot`,
+    });
 
     const suggest = (await app.api("GET", `/api/kiwix/books/${id}/suggest?q=bow`)).body;
     expect(suggest.suggestions.map((item: { title: string }) => item.title)).toEqual(["Bowline", "Bowyer's knot"]);
 
-    app.ctx.services.search.upsert({ kind: "note", entityId: "n1", title: "Bowline practice", url: "/notes/n1", sections: [{ text: "Tie a bowline twenty times." }] });
+    app.ctx.services.search.upsert({
+      kind: "note",
+      entityId: "n1",
+      title: "Bowline practice",
+      url: "/notes/n1",
+      sections: [{ text: "Tie a bowline twenty times." }],
+    });
     const unified = (await app.api("GET", "/api/search?q=bowline")).body;
     const kinds = unified.results.map((result: { kind: string }) => result.kind);
     expect(kinds).toContain("note");
     expect(kinds).toContain("reference");
     const reference = unified.results.find((result: { kind: string }) => result.kind === "reference");
-    expect(reference).toMatchObject({ collection: "Knots by Wikipedia", sources: ["reference"], url: `/library/read/${id}/Portuguese_bowline` });
+    expect(reference).toMatchObject({
+      collection: "Knots by Wikipedia",
+      sources: ["reference"],
+      url: `/library/read/${id}/Portuguese_bowline`,
+    });
     // Turning the setting off leaves only the person's own material.
     await app.api("PATCH", "/api/settings", { "search.includeReference": false });
-    expect((await app.api("GET", "/api/search?q=bowline")).body.results.every((result: { kind: string }) => result.kind !== "reference")).toBe(true);
+    expect(
+      (await app.api("GET", "/api/search?q=bowline")).body.results.every((result: { kind: string }) => result.kind !== "reference"),
+    ).toBe(true);
   });
 
   it("says why reference search is missing when kiwix-serve is down, without failing the search", async () => {
     const { app, relPath, location } = await setup({ OUTPOST_KIWIX_URL: "http://127.0.0.1:9" });
     // No server answers at that address, so details cannot be read; the book still lists.
     await app.api("POST", "/api/kiwix/import", { locationId: location.id, relPath });
-    app.ctx.services.search.upsert({ kind: "note", entityId: "n1", title: "Bowline practice", url: "/notes/n1", sections: [{ text: "Tie a bowline." }] });
+    app.ctx.services.search.upsert({
+      kind: "note",
+      entityId: "n1",
+      title: "Bowline practice",
+      url: "/notes/n1",
+      sections: [{ text: "Tie a bowline." }],
+    });
     const { status, body } = await app.api("GET", "/api/search?q=bowline");
     expect(status).toBe(200);
     expect(body.results.map((result: { kind: string }) => result.kind)).toEqual(["note"]);
@@ -241,7 +279,8 @@ describe("kiwix integration", () => {
 });
 
 describe("the reader proxy", () => {
-  const get = (app: TestApp, url: string, headers: Record<string, string> = {}) => app.app.inject({ method: "GET", url, headers: { host: "localhost", ...headers } });
+  const get = (app: TestApp, url: string, headers: Record<string, string> = {}) =>
+    app.app.inject({ method: "GET", url, headers: { host: "localhost", ...headers } });
 
   it("serves pages in a sandbox of their own, with Outpost's policy in place of kiwix-serve's", async () => {
     const { app } = await setup();
@@ -280,7 +319,13 @@ describe("the reader proxy", () => {
   it("exposes only content, never the rest of kiwix-serve or anything else", async () => {
     const { app, kiwix } = await setup();
     const before = kiwix.requests.length;
-    for (const url of ["/kiwix/open/search?pattern=x", "/kiwix/open/raw/x/meta/Title", "/kiwix/open/content/../raw/x", "/kiwix/open/skin/x.js", "/kiwix/open/"]) {
+    for (const url of [
+      "/kiwix/open/search?pattern=x",
+      "/kiwix/open/raw/x/meta/Title",
+      "/kiwix/open/content/../raw/x",
+      "/kiwix/open/skin/x.js",
+      "/kiwix/open/",
+    ]) {
       expect((await get(app, url)).statusCode, url).toBe(404);
     }
     expect(kiwix.requests.length).toBe(before);
@@ -299,7 +344,12 @@ describe("the reader proxy", () => {
     // A signed-in person is given a token; the page then loads with no cookie at all.
     expect((await app.api("GET", "/api/kiwix/books")).status).toBe(401);
     const location = app.ctx.services.storage.getDefault();
-    await app.api("POST", "/api/kiwix/import", { locationId: location.id, relPath: `collections/zim/${BOOK}.zim` }, { headers: { cookie } });
+    await app.api(
+      "POST",
+      "/api/kiwix/import",
+      { locationId: location.id, relPath: `collections/zim/${BOOK}.zim` },
+      { headers: { cookie } },
+    );
     const books = await app.api("GET", "/api/kiwix/books", undefined, { headers: { cookie } });
     const token = (books.body.books[0].contentBase as string).split("/")[2]!;
     expect(token).not.toBe("open");

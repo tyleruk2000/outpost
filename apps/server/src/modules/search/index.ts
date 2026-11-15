@@ -8,7 +8,12 @@ const query = z.object({
   kinds: z
     .string()
     .optional()
-    .transform((value) => value?.split(",").map((kind) => kind.trim()).filter(Boolean)),
+    .transform((value) =>
+      value
+        ?.split(",")
+        .map((kind) => kind.trim())
+        .filter(Boolean),
+    ),
   tag: z.string().max(100).optional(),
   mode: z.enum(["keyword", "semantic", "hybrid"]).optional(),
   limit: z.coerce.number().int().min(1).max(100).default(20),

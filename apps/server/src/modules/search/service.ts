@@ -201,7 +201,13 @@ export function createSearchService(ctx: AppContext): SearchService {
 
     const current = existing
       ? db
-          .select({ ordinal: chunks.ordinal, contentHash: chunks.contentHash, indexVersion: chunks.indexVersion, heading: chunks.heading, page: chunks.page })
+          .select({
+            ordinal: chunks.ordinal,
+            contentHash: chunks.contentHash,
+            indexVersion: chunks.indexVersion,
+            heading: chunks.heading,
+            page: chunks.page,
+          })
           .from(chunks)
           .where(eq(chunks.entityRowId, rowId))
           .orderBy(chunks.ordinal)
@@ -211,7 +217,12 @@ export function createSearchService(ctx: AppContext): SearchService {
       current.length === passages.length &&
       current.every((row, index) => {
         const passage = passages[index]!;
-        return row.contentHash === passage.contentHash && row.indexVersion === INDEX_VERSION && row.heading === passage.heading && row.page === passage.page;
+        return (
+          row.contentHash === passage.contentHash &&
+          row.indexVersion === INDEX_VERSION &&
+          row.heading === passage.heading &&
+          row.page === passage.page
+        );
       });
 
     if (sameContent) {
@@ -262,7 +273,10 @@ export function createSearchService(ctx: AppContext): SearchService {
     return statement.all(match, ...(kinds ?? []), limit) as KeywordRow[];
   }
 
-  function keywordSearch(params: SearchParams, limit: number): { results: SearchResult[]; relaxed: boolean; facets: Record<string, number> } {
+  function keywordSearch(
+    params: SearchParams,
+    limit: number,
+  ): { results: SearchResult[]; relaxed: boolean; facets: Record<string, number> } {
     const parsed = parseQuery(params.q);
     const tagClause = params.tag ? ` AND {tags}: "${params.tag.replace(/"/g, '""')}"` : "";
     let match = toFtsQuery(parsed, "all");
@@ -356,7 +370,8 @@ export function createSearchService(ctx: AppContext): SearchService {
       }
 
       const keyword = mode === "semantic" ? { results: [], relaxed: false, facets: {} } : keywordSearch(params, window);
-      const lists = mode === "semantic" ? [] : [{ weight: ctx.services.settings.get("search.hybrid.keywordWeight"), items: keyword.results }];
+      const lists =
+        mode === "semantic" ? [] : [{ weight: ctx.services.settings.get("search.hybrid.keywordWeight"), items: keyword.results }];
 
       const active = sources.filter((source) => {
         if (!source.isAvailable()) return false;
@@ -383,7 +398,11 @@ export function createSearchService(ctx: AppContext): SearchService {
       if (lists.length === 1) {
         results = lists[0]!.items;
       } else {
-        const fused = reciprocalRankFusion(lists, (item) => `${item.kind}:${item.entityId}`, ctx.services.settings.get("search.hybrid.rrfK"));
+        const fused = reciprocalRankFusion(
+          lists,
+          (item) => `${item.kind}:${item.entityId}`,
+          ctx.services.settings.get("search.hybrid.rrfK"),
+        );
         const top = fused[0]?.score ?? 1;
         results = fused.map(({ item, score }) => {
           const all = lists.flatMap((list) => list.items.filter((other) => other.kind === item.kind && other.entityId === item.entityId));

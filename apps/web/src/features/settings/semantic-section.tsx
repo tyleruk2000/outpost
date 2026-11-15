@@ -10,7 +10,15 @@ import { ApiError, api, errorMessage } from "@/lib/api";
 import { formatNumber } from "@/lib/utils";
 import { SettingRow, SettingsSection, TextSetting } from "./parts";
 
-export function SemanticSection({ settings, disabled, save }: { settings: Settings; disabled: boolean; save: <K extends keyof Settings>(key: K, value: Settings[K]) => void }) {
+export function SemanticSection({
+  settings,
+  disabled,
+  save,
+}: {
+  settings: Settings;
+  disabled: boolean;
+  save: <K extends keyof Settings>(key: K, value: Settings[K]) => void;
+}) {
   const client = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const enabled = settings["search.semantic.enabled"];
@@ -35,13 +43,20 @@ export function SemanticSection({ settings, disabled, save }: { settings: Settin
   });
   const importVectors = useMutation({
     mutationFn: async (file: File) => {
-      const response = await fetch("/api/semantic/import", { method: "POST", headers: { "X-Outpost-Request": "1", "Content-Type": "application/gzip" }, body: file });
+      const response = await fetch("/api/semantic/import", {
+        method: "POST",
+        headers: { "X-Outpost-Request": "1", "Content-Type": "application/gzip" },
+        body: file,
+      });
       const body = await response.json();
-      if (!response.ok) throw new ApiError(response.status, body.error?.code ?? "http", body.error?.message ?? "The file could not be loaded.");
+      if (!response.ok)
+        throw new ApiError(response.status, body.error?.code ?? "http", body.error?.message ?? "The file could not be loaded.");
       return body as { modelId: string; vectorsInFile: number; passagesUpdated: number; vectorsWithoutPassage: number };
     },
     onSuccess: (result) => {
-      toast.success(`Loaded vectors for ${formatNumber(result.passagesUpdated)} passages. ${formatNumber(result.vectorsWithoutPassage)} in the file matched nothing in this library.`);
+      toast.success(
+        `Loaded vectors for ${formatNumber(result.passagesUpdated)} passages. ${formatNumber(result.vectorsWithoutPassage)} in the file matched nothing in this library.`,
+      );
       return refresh();
     },
     onError: (error) => toast.error(errorMessage(error)),
@@ -60,7 +75,14 @@ export function SemanticSection({ settings, disabled, save }: { settings: Settin
       <SettingRow
         label="Search by meaning"
         hint="Needs a model that turns text into numbers, running on this device or your network. Nothing is sent to the internet."
-        control={<Switch checked={enabled} disabled={disabled} onCheckedChange={(value) => save("search.semantic.enabled", value)} aria-label="Search by meaning" />}
+        control={
+          <Switch
+            checked={enabled}
+            disabled={disabled}
+            onCheckedChange={(value) => save("search.semantic.enabled", value)}
+            aria-label="Search by meaning"
+          />
+        }
       />
       {enabled ? (
         <>
@@ -91,16 +113,36 @@ export function SemanticSection({ settings, disabled, save }: { settings: Settin
               htmlFor="semantic-endpoint"
               label="Server address"
               hint="For Ollama this is usually http://127.0.0.1:11434/v1"
-              control={<TextSetting id="semantic-endpoint" value={settings["search.semantic.endpoint"]} disabled={disabled} onSave={(value) => save("search.semantic.endpoint", value)} mono />}
+              control={
+                <TextSetting
+                  id="semantic-endpoint"
+                  value={settings["search.semantic.endpoint"]}
+                  disabled={disabled}
+                  onSave={(value) => save("search.semantic.endpoint", value)}
+                  mono
+                />
+              }
             />
           ) : null}
           {provider === "demo" ? null : (
-          <SettingRow
-            htmlFor="semantic-model"
-            label="Model"
-            hint={provider === "transformers" ? "Folder name under models/, for example Xenova/all-MiniLM-L6-v2" : "The name the server knows it by, for example nomic-embed-text"}
-            control={<TextSetting id="semantic-model" value={settings["search.semantic.model"]} disabled={disabled} onSave={(value) => save("search.semantic.model", value)} mono />}
-          />
+            <SettingRow
+              htmlFor="semantic-model"
+              label="Model"
+              hint={
+                provider === "transformers"
+                  ? "Folder name under models/, for example Xenova/all-MiniLM-L6-v2"
+                  : "The name the server knows it by, for example nomic-embed-text"
+              }
+              control={
+                <TextSetting
+                  id="semantic-model"
+                  value={settings["search.semantic.model"]}
+                  disabled={disabled}
+                  onSave={(value) => save("search.semantic.model", value)}
+                  mono
+                />
+              }
+            />
           )}
 
           {status.isPending ? null : provider === "none" ? (
@@ -113,7 +155,13 @@ export function SemanticSection({ settings, disabled, save }: { settings: Settin
             <div>
               <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
                 <p className="text-small font-medium text-ink">
-                  {data.indexing ? "Building the index" : complete ? "Index is up to date" : data.embeddedChunks === 0 ? "Index not built yet" : "Index is partly built"}
+                  {data.indexing
+                    ? "Building the index"
+                    : complete
+                      ? "Index is up to date"
+                      : data.embeddedChunks === 0
+                        ? "Index not built yet"
+                        : "Index is partly built"}
                 </p>
                 <p className="tabular text-small text-ink-muted">
                   {formatNumber(data.embeddedChunks)} of {formatNumber(data.totalChunks)} passages
@@ -148,7 +196,8 @@ export function SemanticSection({ settings, disabled, save }: { settings: Settin
                 />
               </div>
               <p className="mt-2 text-small text-ink-muted">
-                Building is slow on small devices. A faster computer with the same library and model can build the vectors; save them there and load them here.
+                Building is slow on small devices. A faster computer with the same library and model can build the vectors; save them there
+                and load them here.
               </p>
             </div>
           ) : null}

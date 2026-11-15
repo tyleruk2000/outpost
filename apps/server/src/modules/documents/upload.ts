@@ -17,7 +17,7 @@ import type { AppContext } from "../../core/context.ts";
 import { AppError, badRequest } from "../../core/errors.ts";
 import type { LocationRow } from "../storage/service.ts";
 import { displayName } from "./file-types.ts";
-import { cleanTags, type CommitOptions, type DocumentsService } from "./service.ts";
+import { type CommitOptions, cleanTags, type DocumentsService } from "./service.ts";
 import { discardPart, type StagedFile, stageStream } from "./staging.ts";
 
 const MAX_FILES_PER_REQUEST = 200;
@@ -72,7 +72,8 @@ const rejected = (originalName: string, refusal: AppError): UploadResult => ({
 function describeLimit(error: unknown): unknown {
   const code = (error as { code?: string } | null)?.code;
   if (code === "FST_FILES_LIMIT") return badRequest(`Upload at most ${MAX_FILES_PER_REQUEST} files at a time.`);
-  if (code === "FST_PARTS_LIMIT" || code === "FST_FIELDS_LIMIT") return badRequest("This upload has more parts than Outpost accepts in one request.");
+  if (code === "FST_PARTS_LIMIT" || code === "FST_FIELDS_LIMIT")
+    return badRequest("This upload has more parts than Outpost accepts in one request.");
   return error;
 }
 

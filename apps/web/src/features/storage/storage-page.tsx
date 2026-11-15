@@ -44,7 +44,17 @@ function UsageLegend({ usage }: { usage: StorageUsage }) {
   );
 }
 
-function LocationRow({ location, canEdit, onlyOne, documentsElsewhere }: { location: Location; canEdit: boolean; onlyOne: boolean; documentsElsewhere: number }) {
+function LocationRow({
+  location,
+  canEdit,
+  onlyOne,
+  documentsElsewhere,
+}: {
+  location: Location;
+  canEdit: boolean;
+  onlyOne: boolean;
+  documentsElsewhere: number;
+}) {
   const client = useQueryClient();
   const [renaming, setRenaming] = useState(false);
   const [removing, setRemoving] = useState(false);
@@ -157,7 +167,8 @@ function LocationRow({ location, canEdit, onlyOne, documentsElsewhere }: { locat
             <p>{location.statusDetail}</p>
             <p className="mt-1 text-ink-muted">
               {items > 0 ? `${plural(items, "item")} stored here ${items === 1 ? "is" : "are"} unavailable until it is back. ` : ""}
-              Last seen {timeAgo(location.lastSeenAt)}. Your library records are kept; reconnect the drive and Outpost will pick it up, even at a different path.
+              Last seen {timeAgo(location.lastSeenAt)}. Your library records are kept; reconnect the drive and Outpost will pick it up, even
+              at a different path.
             </p>
           </Notice>
         )}
@@ -172,7 +183,11 @@ function LocationRow({ location, canEdit, onlyOne, documentsElsewhere }: { locat
             }}
           >
             <DialogBody>
-              <Field label="Name">{(ids) => <Input {...ids} value={name} onChange={(event) => setName(event.target.value)} autoFocus maxLength={80} required />}</Field>
+              <Field label="Name">
+                {(ids) => (
+                  <Input {...ids} value={name} onChange={(event) => setName(event.target.value)} autoFocus maxLength={80} required />
+                )}
+              </Field>
             </DialogBody>
             <DialogFooter>
               <Button onClick={() => setRenaming(false)}>Cancel</Button>
@@ -255,7 +270,16 @@ export default function StoragePage() {
       ) : storage.isError ? (
         <ErrorState error={storage.error} onRetry={() => storage.refetch()} />
       ) : locations.length === 0 ? (
-        <EmptyState title="No storage location yet" action={canEdit ? <Button variant="primary" onClick={() => setAdding(true)}>Add location</Button> : null}>
+        <EmptyState
+          title="No storage location yet"
+          action={
+            canEdit ? (
+              <Button variant="primary" onClick={() => setAdding(true)}>
+                Add location
+              </Button>
+            ) : null
+          }
+        >
           Add a folder for Outpost to keep documents, collections and maps in.
         </EmptyState>
       ) : (
@@ -267,14 +291,18 @@ export default function StoragePage() {
                 location={location}
                 canEdit={canEdit}
                 onlyOne={locations.length === 1}
-                documentsElsewhere={locations.filter((other) => other.id !== location.id).reduce((sum, other) => sum + (other.usage.byKind.document?.count ?? 0), 0)}
+                documentsElsewhere={locations
+                  .filter((other) => other.id !== location.id)
+                  .reduce((sum, other) => sum + (other.usage.byKind.document?.count ?? 0), 0)}
               />
             ))}
           </ul>
 
           <Section title="What is taking the space" description="Across every location, by kind of content.">
             {totals.length === 0 ? (
-              <p className="text-small text-ink-muted">Your library is empty. Space used will be listed here as you add documents, collections and maps.</p>
+              <p className="text-small text-ink-muted">
+                Your library is empty. Space used will be listed here as you add documents, collections and maps.
+              </p>
             ) : (
               <table className="w-full max-w-xl text-small">
                 <thead className="sr-only">
@@ -306,9 +334,7 @@ export default function StoragePage() {
 
           <Section title="Using a NAS or another drive">
             <div className="max-w-[70ch] space-y-2 text-small text-ink-muted">
-              <p>
-                Outpost can only see folders inside the storage roots set by whoever runs the server. On this installation those are:
-              </p>
+              <p>Outpost can only see folders inside the storage roots set by whoever runs the server. On this installation those are:</p>
               <ul className="space-y-1">
                 {storage.data.roots.map((root) => (
                   <li key={root} className="font-mono text-[0.8125rem] break-all text-ink">
@@ -317,7 +343,9 @@ export default function StoragePage() {
                 ))}
               </ul>
               <p>
-                Mount the share or drive under one of them (with Docker, add it as a volume in <span className="font-mono text-[0.8125rem]">compose.yaml</span>), then add it here. Outpost never stores share passwords; the operating system handles the mount.
+                Mount the share or drive under one of them (with Docker, add it as a volume in{" "}
+                <span className="font-mono text-[0.8125rem]">compose.yaml</span>), then add it here. Outpost never stores share passwords;
+                the operating system handles the mount.
               </p>
             </div>
           </Section>

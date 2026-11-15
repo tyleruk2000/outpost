@@ -22,7 +22,12 @@ export function MenuContent({ className, sideOffset = 6, align = "end", ...props
 }
 
 export function MenuItem({ className, danger, ...props }: ComponentProps<typeof Primitive.Item> & { danger?: boolean }) {
-  return <Primitive.Item className={cn(item, danger && "text-danger data-highlighted:bg-danger-soft [&_svg]:text-danger", className)} {...props} />;
+  return (
+    <Primitive.Item
+      className={cn(item, danger && "text-danger data-highlighted:bg-danger-soft [&_svg]:text-danger", className)}
+      {...props}
+    />
+  );
 }
 
 export function MenuCheckItem({ className, children, ...props }: ComponentProps<typeof Primitive.CheckboxItem>) {

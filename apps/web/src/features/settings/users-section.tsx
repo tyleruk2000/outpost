@@ -60,7 +60,11 @@ export function UsersSection() {
   });
 
   return (
-    <SettingsSection id="people" title="People" description="Administrators can change storage, downloads and settings. Members can read, search, write notes and add documents.">
+    <SettingsSection
+      id="people"
+      title="People"
+      description="Administrators can change storage, downloads and settings. Members can read, search, write notes and add documents."
+    >
       <ul className="divide-y divide-border border-y border-border">
         {users.data?.map((user) => (
           <li key={user.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 py-2.5">
@@ -73,7 +77,15 @@ export function UsersSection() {
                 {user.role === "admin" ? "Administrator" : "Member"}, last signed in {timeAgo(user.lastLoginAt)}
               </span>
             </span>
-            <Button variant="ghost" size="sm" onClick={() => { setPassword(""); setCurrentPassword(""); setPasswordFor(user); }}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setPassword("");
+                setCurrentPassword("");
+                setPasswordFor(user);
+              }}
+            >
               <KeyRound /> Change password
             </Button>
             {user.id !== session.data?.user?.id ? (
@@ -85,28 +97,70 @@ export function UsersSection() {
         ))}
       </ul>
       <div>
-        <Button onClick={() => { setPassword(""); setAdding(true); }}>
+        <Button
+          onClick={() => {
+            setPassword("");
+            setAdding(true);
+          }}
+        >
           <Plus /> Add a person
         </Button>
       </div>
 
       <Dialog open={adding} onOpenChange={setAdding}>
         <DialogContent title="Add a person" size="sm">
-          <form onSubmit={(event) => { event.preventDefault(); create.mutate(); }}>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              create.mutate();
+            }}
+          >
             <DialogBody className="grid gap-4">
-              <Field label="Username">{(ids) => <Input {...ids} value={username} onChange={(event) => setUsername(event.target.value)} autoCapitalize="none" spellCheck={false} autoComplete="off" required />}</Field>
+              <Field label="Username">
+                {(ids) => (
+                  <Input
+                    {...ids}
+                    value={username}
+                    onChange={(event) => setUsername(event.target.value)}
+                    autoCapitalize="none"
+                    spellCheck={false}
+                    autoComplete="off"
+                    required
+                  />
+                )}
+              </Field>
               <Field label="Password" hint="At least 10 characters. They can change it after signing in.">
-                {(ids) => <Input {...ids} type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" minLength={10} required />}
+                {(ids) => (
+                  <Input
+                    {...ids}
+                    type="password"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    autoComplete="new-password"
+                    minLength={10}
+                    required
+                  />
+                )}
               </Field>
               <div className="grid gap-1.5">
                 <span className="text-small font-medium text-ink">Role</span>
-                <Segmented label="Role" value={role} onChange={setRole} options={[{ value: "member", label: "Member" }, { value: "admin", label: "Administrator" }]} />
+                <Segmented
+                  label="Role"
+                  value={role}
+                  onChange={setRole}
+                  options={[
+                    { value: "member", label: "Member" },
+                    { value: "admin", label: "Administrator" },
+                  ]}
+                />
               </div>
               {create.isError ? <Notice tone="danger">{errorMessage(create.error)}</Notice> : null}
             </DialogBody>
             <DialogFooter>
               <Button onClick={() => setAdding(false)}>Cancel</Button>
-              <Button type="submit" variant="primary" loading={create.isPending}>Add person</Button>
+              <Button type="submit" variant="primary" loading={create.isPending}>
+                Add person
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -114,21 +168,48 @@ export function UsersSection() {
 
       <Dialog open={Boolean(passwordFor)} onOpenChange={(open) => !open && setPasswordFor(undefined)}>
         <DialogContent title={`Change password for ${passwordFor?.username ?? ""}`} size="sm">
-          <form onSubmit={(event) => { event.preventDefault(); changePassword.mutate(); }}>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              changePassword.mutate();
+            }}
+          >
             <DialogBody className="grid gap-4">
               {passwordFor?.id === session.data?.user?.id ? (
                 <Field label="Your current password">
-                  {(ids) => <Input {...ids} type="password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} autoComplete="current-password" autoFocus required />}
+                  {(ids) => (
+                    <Input
+                      {...ids}
+                      type="password"
+                      value={currentPassword}
+                      onChange={(event) => setCurrentPassword(event.target.value)}
+                      autoComplete="current-password"
+                      autoFocus
+                      required
+                    />
+                  )}
                 </Field>
               ) : null}
               <Field label="New password" hint="At least 10 characters. Signs this person out everywhere else.">
-                {(ids) => <Input {...ids} type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" minLength={10} required />}
+                {(ids) => (
+                  <Input
+                    {...ids}
+                    type="password"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    autoComplete="new-password"
+                    minLength={10}
+                    required
+                  />
+                )}
               </Field>
               {changePassword.isError ? <Notice tone="danger">{errorMessage(changePassword.error)}</Notice> : null}
             </DialogBody>
             <DialogFooter>
               <Button onClick={() => setPasswordFor(undefined)}>Cancel</Button>
-              <Button type="submit" variant="primary" loading={changePassword.isPending}>Change password</Button>
+              <Button type="submit" variant="primary" loading={changePassword.isPending}>
+                Change password
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>

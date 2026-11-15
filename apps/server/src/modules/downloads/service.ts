@@ -21,10 +21,10 @@ import type { AppContext } from "../../core/context.ts";
 import { AppError, badRequest, classifyNetworkError, conflict, messageOf, notFound } from "../../core/errors.ts";
 import { pathExists } from "../../core/fs-safe.ts";
 import { sha256File } from "../../core/hashing.ts";
-import { RateLimiter } from "../../core/throttle.ts";
 import { createHttpClient } from "../../core/http.ts";
 import { newId } from "../../core/ids.ts";
 import { type JobRow, type JobRun, PermanentJobError } from "../../core/jobs.ts";
+import { RateLimiter } from "../../core/throttle.ts";
 import { downloads } from "../../db/schema.ts";
 import { createHttpFetcher } from "./http-fetcher.ts";
 import { forecastQueue } from "./plan.ts";
@@ -710,7 +710,9 @@ export function createDownloadsService(ctx: AppContext): DownloadsService {
         createdAt: row.createdAt,
         startedAt: row.startedAt,
         finishedAt: row.finishedAt,
-        averageBytesPerSecond: moving.length ? Math.round(moving.reduce((sum, point) => sum + point.bytesPerSecond, 0) / moving.length) : null,
+        averageBytesPerSecond: moving.length
+          ? Math.round(moving.reduce((sum, point) => sum + point.bytesPerSecond, 0) / moving.length)
+          : null,
         peakBytesPerSecond: moving.length ? Math.max(...moving.map((point) => point.bytesPerSecond)) : null,
       },
       speedHistory: speeds,
@@ -763,7 +765,11 @@ export function createDownloadsService(ctx: AppContext): DownloadsService {
     const forecast = new Map(
       forecastQueue(
         // Verifying transfers no longer use the network; they do not hold a share of the speed.
-        forecastable.map((dto) => ({ id: dto.id, phase: phaseOf(dto.state) as "active" | "waiting", remainingBytes: dto.state === "verifying" ? 0 : remainingOf(dto) })),
+        forecastable.map((dto) => ({
+          id: dto.id,
+          phase: phaseOf(dto.state) as "active" | "waiting",
+          remainingBytes: dto.state === "verifying" ? 0 : remainingOf(dto),
+        })),
         { concurrency, bytesPerSecond: assumed },
       ).map((item) => [item.id, item]),
     );
@@ -791,7 +797,9 @@ export function createDownloadsService(ctx: AppContext): DownloadsService {
     // Space is measured now rather than read from the last periodic check.
     const locations = await Promise.all(
       storage.list().map(async (location) => {
-        const pendingBytes = queue.filter((item) => item.locationId === location.id).reduce((sum, item) => sum + (item.remainingBytes ?? 0), 0);
+        const pendingBytes = queue
+          .filter((item) => item.locationId === location.id)
+          .reduce((sum, item) => sum + (item.remainingBytes ?? 0), 0);
         const space =
           location.status === "available"
             ? await fs.promises.statfs(location.path).then(
@@ -839,7 +847,11 @@ export function createDownloadsService(ctx: AppContext): DownloadsService {
     plan,
     pauseAll() {
       let count = 0;
-      for (const row of db.select().from(downloads).where(inArray(downloads.state, ["queued", "running"])).all()) {
+      for (const row of db
+        .select()
+        .from(downloads)
+        .where(inArray(downloads.state, ["queued", "running"]))
+        .all()) {
         try {
           service.pause(row.id);
           count += 1;

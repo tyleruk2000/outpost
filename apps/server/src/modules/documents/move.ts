@@ -67,7 +67,10 @@ export function registerDocumentMoves(app: FastifyInstance, ctx: AppContext): vo
             { signal },
           );
           if (hash.digest("hex") !== row.sha256) {
-            throw new AppError("conflict", "The file no longer matches the checksum recorded when it was added, so it was left where it is.");
+            throw new AppError(
+              "conflict",
+              "The file no longer matches the checksum recorded when it was added, so it was left where it is.",
+            );
           }
           await fs.promises.rename(partial, destination);
           await ctx.services.documents.relocate(row.id, target.id, row.relPath);
@@ -82,7 +85,14 @@ export function registerDocumentMoves(app: FastifyInstance, ctx: AppContext): vo
           const code = (error as NodeJS.ErrnoException).code;
           left.push({
             title: row.title,
-            reason: code === "ENOSPC" ? "The destination is full." : code === "ENOENT" ? "The original file is missing." : error instanceof Error ? error.message : String(error),
+            reason:
+              code === "ENOSPC"
+                ? "The destination is full."
+                : code === "ENOENT"
+                  ? "The original file is missing."
+                  : error instanceof Error
+                    ? error.message
+                    : String(error),
           });
           if (code === "ENOSPC") break;
         }
@@ -103,8 +113,15 @@ export function registerDocumentMoves(app: FastifyInstance, ctx: AppContext): vo
     if (jobs.list({ states: ["queued", "running"] }).some((job) => job.type === "documents.move")) {
       throw conflict("Documents are already being moved. Wait for that to finish, or cancel it on the Downloads screen.");
     }
-    await storage.assertSpace(target.id, rows.reduce((sum, row) => sum + row.sizeBytes, 0));
-    const job = jobs.enqueue("documents.move", { locationId: target.id }, { title: `Move documents to ${target.name}`, subject: `documents-move:${target.id}` });
+    await storage.assertSpace(
+      target.id,
+      rows.reduce((sum, row) => sum + row.sizeBytes, 0),
+    );
+    const job = jobs.enqueue(
+      "documents.move",
+      { locationId: target.id },
+      { title: `Move documents to ${target.name}`, subject: `documents-move:${target.id}` },
+    );
     return { job: toJobDto(job), documents: rows.length };
   });
 }

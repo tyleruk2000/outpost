@@ -4,15 +4,8 @@
   "id": "kiwix-essentials",
   "name": "Kiwix essentials",
   "description": "A starter selection of reference archives from the Kiwix library: encyclopedias, medical and repair references, practical questions and answers, and textbooks. Every entry is fetched from Kiwix's own servers at the moment you ask for it; nothing is bundled with Outpost.",
-  "maintainers": [
-    "Outpost maintainers"
-  ],
-  "downloadHosts": [
-    "opds.library.kiwix.org",
-    "library.kiwix.org",
-    "download.kiwix.org",
-    "lb.download.kiwix.org"
-  ],
+  "maintainers": ["Outpost maintainers"],
+  "downloadHosts": ["opds.library.kiwix.org", "library.kiwix.org", "download.kiwix.org", "lb.download.kiwix.org"],
   "entries": [
     {
       "id": "kiwix.zimgit-knots-en",
@@ -26,10 +19,7 @@
       "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
       "attribution": "Zimgit. Packaged as a ZIM archive by the Kiwix project.",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "knots",
-        "rope"
-      ],
+      "tags": ["knots", "rope"],
       "sizeBytes": 28000000,
       "source": {
         "type": "kiwix",
@@ -49,10 +39,7 @@
       "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
       "attribution": "Zimgit. Packaged as a ZIM archive by the Kiwix project.",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "water",
-        "purification"
-      ],
+      "tags": ["water", "purification"],
       "sizeBytes": 21000000,
       "source": {
         "type": "kiwix",
@@ -72,10 +59,7 @@
       "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
       "attribution": "ScoutWiki. Packaged as a ZIM archive by the Kiwix project.",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "scouting",
-        "outdoors"
-      ],
+      "tags": ["scouting", "outdoors"],
       "sizeBytes": 25000000,
       "source": {
         "type": "kiwix",
@@ -95,10 +79,7 @@
       "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://en.wikipedia.org",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "knots",
-        "rope"
-      ],
+      "tags": ["knots", "rope"],
       "sizeBytes": 14000000,
       "source": {
         "type": "kiwix",
@@ -119,10 +100,7 @@
       "attribution": "NHS. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://www.nhs.uk",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "medicines",
-        "reference"
-      ],
+      "tags": ["medicines", "reference"],
       "sizeBytes": 15000000,
       "source": {
         "type": "kiwix",
@@ -142,10 +120,7 @@
       "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
       "attribution": "Zimgit. Packaged as a ZIM archive by the Kiwix project.",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "first aid",
-        "emergency"
-      ],
+      "tags": ["first aid", "emergency"],
       "sizeBytes": 70000000,
       "source": {
         "type": "kiwix",
@@ -165,10 +140,7 @@
       "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
       "attribution": "FAS Intelligence Resource Program. Packaged as a ZIM archive by the Kiwix project.",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "first aid",
-        "manuals"
-      ],
+      "tags": ["first aid", "manuals"],
       "sizeBytes": 65000000,
       "source": {
         "type": "kiwix",
@@ -188,10 +160,7 @@
       "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://en.wikipedia.org",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "medical",
-        "encyclopedia"
-      ],
+      "tags": ["medical", "encyclopedia"],
       "sizeBytes": 174000000,
       "source": {
         "type": "kiwix",
@@ -211,10 +180,7 @@
       "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://en.wikipedia.org",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "medical",
-        "encyclopedia"
-      ],
+      "tags": ["medical", "encyclopedia"],
       "sizeBytes": 1048000000,
       "source": {
         "type": "kiwix",
@@ -234,10 +200,7 @@
       "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://en.wikipedia.org",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "medical",
-        "encyclopedia"
-      ],
+      "tags": ["medical", "encyclopedia"],
       "sizeBytes": 1864000000,
       "source": {
         "type": "kiwix",
@@ -257,10 +220,7 @@
       "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
       "attribution": "USDA. Packaged as a ZIM archive by the Kiwix project.",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "canning",
-        "preserving"
-      ],
+      "tags": ["canning", "preserving"],
       "sizeBytes": 20000000,
       "source": {
         "type": "kiwix",
@@ -280,10 +240,7 @@
       "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
       "attribution": "Public Domain Recipes. Packaged as a ZIM archive by the Kiwix project.",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "recipes",
-        "cooking"
-      ],
+      "tags": ["recipes", "cooking"],
       "sizeBytes": 17000000,
       "source": {
         "type": "kiwix",
@@ -303,10 +260,7 @@
       "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
       "attribution": "Zimgit. Packaged as a ZIM archive by the Kiwix project.",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "recipes",
-        "preserving"
-      ],
+      "tags": ["recipes", "preserving"],
       "sizeBytes": 98000000,
       "source": {
         "type": "kiwix",
@@ -326,10 +280,7 @@
       "attribution": "Contributors to the Stack Exchange network. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://cooking.stackexchange.com",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "cooking",
-        "questions and answers"
-      ],
+      "tags": ["cooking", "questions and answers"],
       "sizeBytes": 238000000,
       "source": {
         "type": "kiwix",
@@ -349,10 +300,7 @@
       "attribution": "Contributors to the Stack Exchange network. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://sustainability.stackexchange.com",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "sustainability",
-        "questions and answers"
-      ],
+      "tags": ["sustainability", "questions and answers"],
       "sizeBytes": 28000000,
       "source": {
         "type": "kiwix",
@@ -372,10 +320,7 @@
       "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
       "attribution": "Gardenology. Packaged as a ZIM archive by the Kiwix project.",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "plants",
-        "gardening"
-      ],
+      "tags": ["plants", "gardening"],
       "sizeBytes": 113000000,
       "source": {
         "type": "kiwix",
@@ -396,10 +341,7 @@
       "attribution": "Appropedia. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://www.appropedia.org",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "sustainability",
-        "how-to"
-      ],
+      "tags": ["sustainability", "how-to"],
       "sizeBytes": 582000000,
       "source": {
         "type": "kiwix",
@@ -419,10 +361,7 @@
       "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
       "attribution": "CD3WD Project. Packaged as a ZIM archive by the Kiwix project.",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "development",
-        "manuals"
-      ],
+      "tags": ["development", "manuals"],
       "sizeBytes": 573000000,
       "source": {
         "type": "kiwix",
@@ -442,10 +381,7 @@
       "attribution": "Contributors to the Stack Exchange network. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://gardening.stackexchange.com",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "gardening",
-        "questions and answers"
-      ],
+      "tags": ["gardening", "questions and answers"],
       "sizeBytes": 933000000,
       "source": {
         "type": "kiwix",
@@ -465,10 +401,7 @@
       "attribution": "Contributors to the Stack Exchange network. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://3dprinting.stackexchange.com",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "3d printing",
-        "questions and answers"
-      ],
+      "tags": ["3d printing", "questions and answers"],
       "sizeBytes": 120000000,
       "source": {
         "type": "kiwix",
@@ -488,10 +421,7 @@
       "attribution": "Contributors to the Stack Exchange network. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://engineering.stackexchange.com",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "engineering",
-        "questions and answers"
-      ],
+      "tags": ["engineering", "questions and answers"],
       "sizeBytes": 259000000,
       "source": {
         "type": "kiwix",
@@ -511,11 +441,7 @@
       "attribution": "Contributors to the Stack Exchange network. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://arduino.stackexchange.com",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "arduino",
-        "electronics",
-        "questions and answers"
-      ],
+      "tags": ["arduino", "electronics", "questions and answers"],
       "sizeBytes": 260000000,
       "source": {
         "type": "kiwix",
@@ -535,10 +461,7 @@
       "attribution": "Contributors to the Stack Exchange network. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://electronics.stackexchange.com",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "electronics",
-        "questions and answers"
-      ],
+      "tags": ["electronics", "questions and answers"],
       "sizeBytes": 4261000000,
       "source": {
         "type": "kiwix",
@@ -559,10 +482,7 @@
       "attribution": "LibreTexts. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://libretexts.org",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "textbooks",
-        "engineering"
-      ],
+      "tags": ["textbooks", "engineering"],
       "sizeBytes": 678000000,
       "source": {
         "type": "kiwix",
@@ -582,10 +502,7 @@
       "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
       "attribution": "Restarters. Packaged as a ZIM archive by the Kiwix project.",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "repair",
-        "electronics"
-      ],
+      "tags": ["repair", "electronics"],
       "sizeBytes": 17000000,
       "source": {
         "type": "kiwix",
@@ -605,10 +522,7 @@
       "attribution": "Contributors to the Stack Exchange network. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://mechanics.stackexchange.com",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "vehicles",
-        "questions and answers"
-      ],
+      "tags": ["vehicles", "questions and answers"],
       "sizeBytes": 342000000,
       "source": {
         "type": "kiwix",
@@ -628,10 +542,7 @@
       "attribution": "Contributors to the Stack Exchange network. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://bicycles.stackexchange.com",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "bicycles",
-        "questions and answers"
-      ],
+      "tags": ["bicycles", "questions and answers"],
       "sizeBytes": 499000000,
       "source": {
         "type": "kiwix",
@@ -652,10 +563,7 @@
       "attribution": "iFixit. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://www.ifixit.com",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "repair",
-        "guides"
-      ],
+      "tags": ["repair", "guides"],
       "sizeBytes": 3571000000,
       "source": {
         "type": "kiwix",
@@ -675,10 +583,7 @@
       "attribution": "Contributors to the Stack Exchange network. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://ham.stackexchange.com",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "amateur radio",
-        "questions and answers"
-      ],
+      "tags": ["amateur radio", "questions and answers"],
       "sizeBytes": 77000000,
       "source": {
         "type": "kiwix",
@@ -698,10 +603,7 @@
       "attribution": "Contributors to the Stack Exchange network. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://dsp.stackexchange.com",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "signal processing",
-        "questions and answers"
-      ],
+      "tags": ["signal processing", "questions and answers"],
       "sizeBytes": 379000000,
       "source": {
         "type": "kiwix",
@@ -721,11 +623,7 @@
       "attribution": "Contributors to the Stack Exchange network. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://outdoors.stackexchange.com",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "outdoors",
-        "hiking",
-        "questions and answers"
-      ],
+      "tags": ["outdoors", "hiking", "questions and answers"],
       "sizeBytes": 142000000,
       "source": {
         "type": "kiwix",
@@ -745,11 +643,7 @@
       "attribution": "Contributors to the Stack Exchange network. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://earthscience.stackexchange.com",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "weather",
-        "geology",
-        "questions and answers"
-      ],
+      "tags": ["weather", "geology", "questions and answers"],
       "sizeBytes": 133000000,
       "source": {
         "type": "kiwix",
@@ -769,10 +663,7 @@
       "attribution": "Wikivoyage contributors. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://en.wikivoyage.org",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "travel",
-        "europe"
-      ],
+      "tags": ["travel", "europe"],
       "sizeBytes": 84000000,
       "source": {
         "type": "kiwix",
@@ -793,10 +684,7 @@
       "attribution": "OpenStreetMap. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://wiki.openstreetmap.org",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "maps",
-        "documentation"
-      ],
+      "tags": ["maps", "documentation"],
       "sizeBytes": 534000000,
       "source": {
         "type": "kiwix",
@@ -816,10 +704,7 @@
       "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
       "attribution": "Zimgit. Packaged as a ZIM archive by the Kiwix project.",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "disaster",
-        "manuals"
-      ],
+      "tags": ["disaster", "manuals"],
       "sizeBytes": 645000000,
       "source": {
         "type": "kiwix",
@@ -840,10 +725,7 @@
       "attribution": "Ready.gov (FEMA). Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://www.ready.gov",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "disaster",
-        "planning"
-      ],
+      "tags": ["disaster", "planning"],
       "sizeBytes": 2064000000,
       "source": {
         "type": "kiwix",
@@ -863,10 +745,7 @@
       "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
       "attribution": "CDC. Packaged as a ZIM archive by the Kiwix project.",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "health",
-        "travel"
-      ],
+      "tags": ["health", "travel"],
       "sizeBytes": 178000000,
       "source": {
         "type": "kiwix",
@@ -886,10 +765,7 @@
       "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
       "attribution": "Vikidia. Packaged as a ZIM archive by the Kiwix project.",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "children",
-        "encyclopedia"
-      ],
+      "tags": ["children", "encyclopedia"],
       "sizeBytes": 11000000,
       "source": {
         "type": "kiwix",
@@ -909,10 +785,7 @@
       "licenseNote": "The publisher's terms have not been verified by the catalogue maintainers. Check them at the source before redistributing this content.",
       "attribution": "Vikidia. Packaged as a ZIM archive by the Kiwix project.",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "children",
-        "encyclopedia"
-      ],
+      "tags": ["children", "encyclopedia"],
       "sizeBytes": 78000000,
       "source": {
         "type": "kiwix",
@@ -932,9 +805,7 @@
       "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://en.wikipedia.org",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "encyclopedia"
-      ],
+      "tags": ["encyclopedia"],
       "sizeBytes": 297000000,
       "source": {
         "type": "kiwix",
@@ -954,9 +825,7 @@
       "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://en.wikipedia.org",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "encyclopedia"
-      ],
+      "tags": ["encyclopedia"],
       "sizeBytes": 333000000,
       "source": {
         "type": "kiwix",
@@ -976,10 +845,7 @@
       "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://simple.wikipedia.org",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "encyclopedia",
-        "simple english"
-      ],
+      "tags": ["encyclopedia", "simple english"],
       "sizeBytes": 531000000,
       "source": {
         "type": "kiwix",
@@ -999,10 +865,7 @@
       "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://simple.wikipedia.org",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "encyclopedia",
-        "simple english"
-      ],
+      "tags": ["encyclopedia", "simple english"],
       "sizeBytes": 1095000000,
       "source": {
         "type": "kiwix",
@@ -1022,10 +885,7 @@
       "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://simple.wikipedia.org",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "encyclopedia",
-        "simple english"
-      ],
+      "tags": ["encyclopedia", "simple english"],
       "sizeBytes": 3121000000,
       "source": {
         "type": "kiwix",
@@ -1045,9 +905,7 @@
       "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://en.wikipedia.org",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "encyclopedia"
-      ],
+      "tags": ["encyclopedia"],
       "sizeBytes": 14387000000,
       "source": {
         "type": "kiwix",
@@ -1067,9 +925,7 @@
       "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://en.wikipedia.org",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "encyclopedia"
-      ],
+      "tags": ["encyclopedia"],
       "sizeBytes": 52691000000,
       "source": {
         "type": "kiwix",
@@ -1089,9 +945,7 @@
       "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://en.wikipedia.org",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "encyclopedia"
-      ],
+      "tags": ["encyclopedia"],
       "sizeBytes": 127418000000,
       "source": {
         "type": "kiwix",
@@ -1111,9 +965,7 @@
       "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://en.wikipedia.org",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "chemistry"
-      ],
+      "tags": ["chemistry"],
       "sizeBytes": 23000000,
       "source": {
         "type": "kiwix",
@@ -1133,9 +985,7 @@
       "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://en.wikipedia.org",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "physics"
-      ],
+      "tags": ["physics"],
       "sizeBytes": 53000000,
       "source": {
         "type": "kiwix",
@@ -1156,10 +1006,7 @@
       "attribution": "PhET, University of Colorado. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://phet.colorado.edu",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "simulations",
-        "education"
-      ],
+      "tags": ["simulations", "education"],
       "sizeBytes": 109000000,
       "source": {
         "type": "kiwix",
@@ -1180,10 +1027,7 @@
       "attribution": "LibreTexts. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://libretexts.org",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "textbooks",
-        "statistics"
-      ],
+      "tags": ["textbooks", "statistics"],
       "sizeBytes": 216000000,
       "source": {
         "type": "kiwix",
@@ -1204,10 +1048,7 @@
       "attribution": "LibreTexts. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://libretexts.org",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "textbooks",
-        "physics"
-      ],
+      "tags": ["textbooks", "physics"],
       "sizeBytes": 560000000,
       "source": {
         "type": "kiwix",
@@ -1227,9 +1068,7 @@
       "attribution": "Wikibooks contributors. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://en.wikibooks.org",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "textbooks"
-      ],
+      "tags": ["textbooks"],
       "sizeBytes": 3545000000,
       "source": {
         "type": "kiwix",
@@ -1249,9 +1088,7 @@
       "attribution": "Wikibooks contributors. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://en.wikibooks.org",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "textbooks"
-      ],
+      "tags": ["textbooks"],
       "sizeBytes": 4740000000,
       "source": {
         "type": "kiwix",
@@ -1271,10 +1108,7 @@
       "attribution": "Project Gutenberg. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://www.gutenberg.org",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "books",
-        "languages"
-      ],
+      "tags": ["books", "languages"],
       "sizeBytes": 13000000,
       "source": {
         "type": "kiwix",
@@ -1294,10 +1128,7 @@
       "attribution": "Wiktionary contributors. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://simple.wiktionary.org",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "dictionary",
-        "simple english"
-      ],
+      "tags": ["dictionary", "simple english"],
       "sizeBytes": 31000000,
       "source": {
         "type": "kiwix",
@@ -1317,9 +1148,7 @@
       "attribution": "Wikivoyage contributors. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://en.wikivoyage.org",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "travel"
-      ],
+      "tags": ["travel"],
       "sizeBytes": 273000000,
       "source": {
         "type": "kiwix",
@@ -1339,9 +1168,7 @@
       "attribution": "Wikivoyage contributors. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://en.wikivoyage.org",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "travel"
-      ],
+      "tags": ["travel"],
       "sizeBytes": 1071000000,
       "source": {
         "type": "kiwix",
@@ -1360,10 +1187,7 @@
       "license": "Public domain (US Government work)",
       "attribution": "CIA. Packaged as a ZIM archive by the Kiwix project.",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "countries",
-        "almanac"
-      ],
+      "tags": ["countries", "almanac"],
       "sizeBytes": 407000000,
       "source": {
         "type": "kiwix",
@@ -1383,10 +1207,7 @@
       "attribution": "Wikisource contributors. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://en.wikisource.org",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "books",
-        "library"
-      ],
+      "tags": ["books", "library"],
       "sizeBytes": 3906000000,
       "source": {
         "type": "kiwix",
@@ -1406,9 +1227,7 @@
       "attribution": "Wiktionary contributors. Packaged as a ZIM archive by the Kiwix project.",
       "homepage": "https://en.wiktionary.org",
       "lastVerified": "2026-11-15",
-      "tags": [
-        "dictionary"
-      ],
+      "tags": ["dictionary"],
       "sizeBytes": 14848000000,
       "source": {
         "type": "kiwix",

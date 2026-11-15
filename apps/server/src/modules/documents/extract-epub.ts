@@ -9,8 +9,8 @@ import path from "node:path";
 import type { Element, Nodes } from "hast";
 import rehypeParse from "rehype-parse";
 import { unified } from "unified";
-import { type Extracted, type ExtractedSection, ExtractionError, type ExtractProgress, tidyText } from "./extract-types.ts";
 import { decodeText, firstHeading, htmlText, parseHtml } from "./extract-text.ts";
+import { type Extracted, type ExtractedSection, ExtractionError, type ExtractProgress, tidyText } from "./extract-types.ts";
 import { openZip, type ZipReader } from "./zip.ts";
 
 const MAX_PACKAGE_BYTES = 16 * 1024 * 1024;
@@ -81,7 +81,9 @@ interface Package {
 }
 
 async function readPackage(zip: ZipReader): Promise<Package> {
-  const damaged = new ExtractionError("This EPUB is missing the files that describe its contents, so it could not be read. It may be damaged.");
+  const damaged = new ExtractionError(
+    "This EPUB is missing the files that describe its contents, so it could not be read. It may be damaged.",
+  );
   if (!zip.has("META-INF/container.xml")) throw damaged;
   const container = xmlElements(decodeText(await zip.read("META-INF/container.xml", MAX_PACKAGE_BYTES)));
   const opfPath = container.find((element) => element.name === "rootfile" && element.attributes["full-path"])?.attributes["full-path"];

@@ -1,4 +1,15 @@
-import { BookOpen, Compass, Download, HardDrive, Home, Map as MapIcon, NotebookText, Search, Settings, type LucideIcon } from "lucide-react";
+import {
+  BookOpen,
+  Compass,
+  Download,
+  HardDrive,
+  Home,
+  type LucideIcon,
+  Map as MapIcon,
+  NotebookText,
+  Search,
+  Settings,
+} from "lucide-react";
 
 export interface NavItem {
   to: string;

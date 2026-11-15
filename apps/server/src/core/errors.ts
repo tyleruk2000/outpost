@@ -45,13 +45,10 @@ export class AppError extends Error {
   }
 }
 
-export const badRequest = (message: string, details?: Record<string, unknown>) =>
-  new AppError("bad_request", message, details);
+export const badRequest = (message: string, details?: Record<string, unknown>) => new AppError("bad_request", message, details);
 export const notFound = (what: string) => new AppError("not_found", `${what} was not found.`);
-export const conflict = (message: string, details?: Record<string, unknown>) =>
-  new AppError("conflict", message, details);
-export const forbidden = (message = "You do not have permission to do that.") =>
-  new AppError("forbidden", message);
+export const conflict = (message: string, details?: Record<string, unknown>) => new AppError("conflict", message, details);
+export const forbidden = (message = "You do not have permission to do that.") => new AppError("forbidden", message);
 
 /** Network failures that mean "no route to the internet", across Node and undici. */
 const offlineCodes = new Set([
@@ -64,14 +61,7 @@ const offlineCodes = new Set([
   "UND_ERR_CONNECT_TIMEOUT",
 ]);
 
-const transientCodes = new Set([
-  "ECONNRESET",
-  "ETIMEDOUT",
-  "EPIPE",
-  "UND_ERR_SOCKET",
-  "UND_ERR_HEADERS_TIMEOUT",
-  "UND_ERR_BODY_TIMEOUT",
-]);
+const transientCodes = new Set(["ECONNRESET", "ETIMEDOUT", "EPIPE", "UND_ERR_SOCKET", "UND_ERR_HEADERS_TIMEOUT", "UND_ERR_BODY_TIMEOUT"]);
 
 function errorCodeOf(error: unknown): string | undefined {
   let current: unknown = error;

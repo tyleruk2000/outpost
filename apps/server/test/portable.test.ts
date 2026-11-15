@@ -9,7 +9,15 @@ import Database from "better-sqlite3";
 import { afterEach, describe, expect, it } from "vitest";
 import { createHttpClient } from "../src/core/http.ts";
 import { collections, documents } from "../src/db/schema.ts";
-import { cachePath, distFile, ensureKiwix, ensureRuntime, kiwixCachePath, kiwixSupports, parseShasums } from "../src/modules/portable/runtimes.ts";
+import {
+  cachePath,
+  distFile,
+  ensureKiwix,
+  ensureRuntime,
+  kiwixCachePath,
+  kiwixSupports,
+  parseShasums,
+} from "../src/modules/portable/runtimes.ts";
 import { extractOneFromTarGz } from "../src/modules/portable/tar.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
 
@@ -51,7 +59,13 @@ function tempDir(): string {
 /** Stands in for nodejs.org/dist: a checksum list and the runtime files. */
 async function distServer(version: string, tamper = false) {
   const fakeNode = Buffer.from("#!/bin/sh\necho fake node\n");
-  const archive = gzipSync(tar({ [`node-${version}-linux-x64/README.md`]: Buffer.from("readme"), [`node-${version}-linux-x64/bin/node`]: fakeNode, [`node-${version}-linux-x64/bin/npm`]: Buffer.from("npm") }));
+  const archive = gzipSync(
+    tar({
+      [`node-${version}-linux-x64/README.md`]: Buffer.from("readme"),
+      [`node-${version}-linux-x64/bin/node`]: fakeNode,
+      [`node-${version}-linux-x64/bin/npm`]: Buffer.from("npm"),
+    }),
+  );
   const exe = Buffer.from("MZ fake windows node");
   const sha = (buffer: Buffer) => createHash("sha256").update(buffer).digest("hex");
   const sums = `${sha(archive)}  node-${version}-linux-x64.tar.gz\n${sha(exe)}  win-x64/node.exe\n`;
@@ -59,7 +73,8 @@ async function distServer(version: string, tamper = false) {
   const server = http.createServer((request, response) => {
     requests.push(request.url ?? "");
     if (request.url === `/${version}/SHASUMS256.txt`) return response.end(sums);
-    if (request.url === `/${version}/node-${version}-linux-x64.tar.gz`) return response.end(tamper ? Buffer.concat([archive, Buffer.from("x")]) : archive);
+    if (request.url === `/${version}/node-${version}-linux-x64.tar.gz`)
+      return response.end(tamper ? Buffer.concat([archive, Buffer.from("x")]) : archive);
     if (request.url === `/${version}/win-x64/node.exe`) return response.end(exe);
     response.statusCode = 404;
     response.end();
@@ -111,21 +126,29 @@ describe("runtime downloads", () => {
     const dataDir = tempDir();
     const client = createHttpClient({ allowPrivate: true });
     cleanups.push(() => client.close());
-    await expect(ensureRuntime({ dataDir, version: "v99.0.0", platform: "linux-x64", http: client, distBase: dist.base })).rejects.toThrow(/checksum/);
+    await expect(ensureRuntime({ dataDir, version: "v99.0.0", platform: "linux-x64", http: client, distBase: dist.base })).rejects.toThrow(
+      /checksum/,
+    );
     expect(fs.existsSync(cachePath(dataDir, "v99.0.0", "linux-x64"))).toBe(false);
-    await expect(ensureRuntime({ dataDir, version: "v99.0.0", platform: "darwin-arm64", http: client, distBase: dist.base })).rejects.toThrow(/no official build/);
+    await expect(
+      ensureRuntime({ dataDir, version: "v99.0.0", platform: "darwin-arm64", http: client, distBase: dist.base }),
+    ).rejects.toThrow(/no official build/);
   });
 });
 
 describe("the reader for reference collections", () => {
   it("is fetched from the Kiwix project's builds, checked and cached", async () => {
     const binary = Buffer.from("#!/bin/sh\necho kiwix-serve\n");
-    const archive = gzipSync(tar({ "kiwix-tools_linux-x86_64-3.8.2/kiwix-manage": Buffer.from("manage"), "kiwix-tools_linux-x86_64-3.8.2/kiwix-serve": binary }));
+    const archive = gzipSync(
+      tar({ "kiwix-tools_linux-x86_64-3.8.2/kiwix-manage": Buffer.from("manage"), "kiwix-tools_linux-x86_64-3.8.2/kiwix-serve": binary }),
+    );
     const md5 = createHash("md5").update(archive).digest("hex");
     let corrupt = false;
     const server = http.createServer((request, response) => {
-      if (request.url === "/kiwix-tools_linux-x86_64-3.8.2.tar.gz.md5") return response.end(`${md5}  kiwix-tools_linux-x86_64-3.8.2.tar.gz\n`);
-      if (request.url === "/kiwix-tools_linux-x86_64-3.8.2.tar.gz") return response.end(corrupt ? archive.subarray(0, archive.length - 5) : archive);
+      if (request.url === "/kiwix-tools_linux-x86_64-3.8.2.tar.gz.md5")
+        return response.end(`${md5}  kiwix-tools_linux-x86_64-3.8.2.tar.gz\n`);
+      if (request.url === "/kiwix-tools_linux-x86_64-3.8.2.tar.gz")
+        return response.end(corrupt ? archive.subarray(0, archive.length - 5) : archive);
       response.statusCode = 404;
       response.end();
     });
@@ -171,7 +194,20 @@ describe("writing a portable drive", () => {
       const full = path.join(location.path, relPath);
       fs.mkdirSync(path.dirname(full), { recursive: true });
       fs.writeFileSync(full, content);
-      ctx.db.insert(collections).values({ id, kind: "zim", title, locationId: location.id, relPath, sizeBytes: content.length, meta: {}, installedAt: now, updatedAt: now }).run();
+      ctx.db
+        .insert(collections)
+        .values({
+          id,
+          kind: "zim",
+          title,
+          locationId: location.id,
+          relPath,
+          sizeBytes: content.length,
+          meta: {},
+          installedAt: now,
+          updatedAt: now,
+        })
+        .run();
       ctx.services.search.upsert({ kind: "collection", entityId: id, title, url: `/library/collections/${id}`, sections: [] });
     };
     addCollection("c-knots", "Knots", "collections/zim/knots.zim", "ZIM knots data");
@@ -182,11 +218,33 @@ describe("writing a portable drive", () => {
       const full = path.join(location.path, relPath);
       fs.mkdirSync(path.dirname(full), { recursive: true });
       fs.writeFileSync(full, text);
-      ctx.db.insert(documents).values({ id, title, originalName: `${title}.txt`, mime: "text/plain", ext: "txt", sizeBytes: text.length, sha256: id, locationId: location.id, relPath, extraction: "done", createdAt: now, updatedAt: now }).run();
+      ctx.db
+        .insert(documents)
+        .values({
+          id,
+          title,
+          originalName: `${title}.txt`,
+          mime: "text/plain",
+          ext: "txt",
+          sizeBytes: text.length,
+          sha256: id,
+          locationId: location.id,
+          relPath,
+          extraction: "done",
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run();
       ctx.services.search.upsert({ kind: "document", entityId: id, title, url: `/library/documents/${id}`, sections: [{ text }] });
     };
     addDocument("d-tides", "Tide tables", "High water at Dover is at noon.");
-    ctx.services.search.upsert({ kind: "note", entityId: "n1", title: "Passage plan", url: "/notes/n1", sections: [{ text: "Leave on the ebb." }] });
+    ctx.services.search.upsert({
+      kind: "note",
+      entityId: "n1",
+      title: "Passage plan",
+      url: "/notes/n1",
+      sections: [{ text: "Leave on the ebb." }],
+    });
     await app.api("PATCH", "/api/settings", { "downloads.concurrency": 4 });
 
     const drive = path.join(app.dir, "storage", "usb", "Outpost");
@@ -194,7 +252,13 @@ describe("writing a portable drive", () => {
     return { app, drive, location, bundle };
   }
 
-  const request = (drive: string, extra: Record<string, unknown> = {}) => ({ targetPath: drive, platforms: ["darwin-arm64", "win-x64"], collectionIds: ["c-knots"], documents: "all", ...extra });
+  const request = (drive: string, extra: Record<string, unknown> = {}) => ({
+    targetPath: drive,
+    platforms: ["darwin-arm64", "win-x64"],
+    collectionIds: ["c-knots"],
+    documents: "all",
+    ...extra,
+  });
 
   it("plans the copy with honest sizes and no surprises", async () => {
     const { app, drive } = await setup();
@@ -222,7 +286,21 @@ describe("writing a portable drive", () => {
     expect(job.error).toBeNull();
     expect(job.state).toBe("succeeded");
 
-    for (const file of ["Start Outpost.command", "Start Outpost.bat", "start-outpost.sh", "README.txt", "outpost-portable.json", "app/server/outpost.mjs", "app/web/index.html", "runtime/darwin-arm64/node", "runtime/win-x64/node.exe", "data/outpost.db", "library/.outpost-location.json", "library/collections/zim/knots.zim", "library/documents/d-tides/Tide tables.txt"]) {
+    for (const file of [
+      "Start Outpost.command",
+      "Start Outpost.bat",
+      "start-outpost.sh",
+      "README.txt",
+      "outpost-portable.json",
+      "app/server/outpost.mjs",
+      "app/web/index.html",
+      "runtime/darwin-arm64/node",
+      "runtime/win-x64/node.exe",
+      "data/outpost.db",
+      "library/.outpost-location.json",
+      "library/collections/zim/knots.zim",
+      "library/documents/d-tides/Tide tables.txt",
+    ]) {
       expect(fs.existsSync(path.join(drive, file)), file).toBe(true);
     }
     expect(fs.existsSync(path.join(drive, "library/collections/zim/wiki.zim"))).toBe(false);
@@ -231,11 +309,19 @@ describe("writing a portable drive", () => {
     expect(fs.readFileSync(path.join(drive, "README.txt"), "utf8")).toContain("Mac (Apple Silicon)");
 
     const manifest = JSON.parse(fs.readFileSync(path.join(drive, "outpost-portable.json"), "utf8"));
-    expect(manifest).toMatchObject({ format: "outpost-portable", platforms: ["darwin-arm64", "win-x64"], contents: { collections: 1, documents: 1 } });
+    expect(manifest).toMatchObject({
+      format: "outpost-portable",
+      platforms: ["darwin-arm64", "win-x64"],
+      contents: { collections: 1, documents: 1 },
+    });
 
     const db = new Database(path.join(drive, "data/outpost.db"), { readonly: true });
     try {
-      const locations = db.prepare("SELECT id, path, is_default FROM storage_locations").all() as Array<{ id: string; path: string; is_default: number }>;
+      const locations = db.prepare("SELECT id, path, is_default FROM storage_locations").all() as Array<{
+        id: string;
+        path: string;
+        is_default: number;
+      }>;
       expect(locations).toHaveLength(1);
       expect(locations[0]!.id).toBe(manifest.locationId);
       expect(locations[0]!.id).not.toBe(location.id);
@@ -270,7 +356,14 @@ describe("writing a portable drive", () => {
     const { buildApp } = await import("../src/app.ts");
     const { loadConfig } = await import("../src/config.ts");
     const portable = await buildApp(
-      loadConfig({ NODE_ENV: "test", OUTPOST_PORTABLE: "true", OUTPOST_DATA_DIR: path.join(elsewhere, "data"), OUTPOST_STORAGE_ROOTS: path.join(elsewhere, "library"), OUTPOST_WEB_DIR: path.join(elsewhere, "app/web"), OUTPOST_CATALOG_DIR: path.join(elsewhere, "app/catalog") }),
+      loadConfig({
+        NODE_ENV: "test",
+        OUTPOST_PORTABLE: "true",
+        OUTPOST_DATA_DIR: path.join(elsewhere, "data"),
+        OUTPOST_STORAGE_ROOTS: path.join(elsewhere, "library"),
+        OUTPOST_WEB_DIR: path.join(elsewhere, "app/web"),
+        OUTPOST_CATALOG_DIR: path.join(elsewhere, "app/catalog"),
+      }),
     );
     await portable.app.ready();
     cleanups.push(() => portable.app.close());
@@ -282,7 +375,9 @@ describe("writing a portable drive", () => {
     expect((await inject("/api/search?q=dover ")).total).toBe(1);
     expect((await inject("/api/search?q=ebb ")).total).toBe(1);
     expect((await inject("/api/system")).portable).toBe(true);
-    expect(portable.ctx.services.storage.resolve(storage.locations[0].id, "collections/zim/knots.zim")).toBe(path.join(elsewhere, "library/collections/zim/knots.zim"));
+    expect(portable.ctx.services.storage.resolve(storage.locations[0].id, "collections/zim/knots.zim")).toBe(
+      path.join(elsewhere, "library/collections/zim/knots.zim"),
+    );
   });
 
   it("updates a drive by copying only what changed, and keeps what the drive held", async () => {
@@ -299,9 +394,16 @@ describe("writing a portable drive", () => {
 
     const plan = (await app.api("POST", "/api/portable/plan", request(drive, { collectionIds: ["c-knots", "c-wiki"] }))).body;
     expect(plan.target.isOutpostDrive).toBe(true);
-    expect(plan.collections.map((item: { id: string; alreadyOnDrive: boolean }) => [item.id, item.alreadyOnDrive])).toEqual([["c-knots", true], ["c-wiki", false]]);
+    expect(plan.collections.map((item: { id: string; alreadyOnDrive: boolean }) => [item.id, item.alreadyOnDrive])).toEqual([
+      ["c-knots", true],
+      ["c-wiki", false],
+    ]);
 
-    const again = await app.api("POST", "/api/portable/build", request(drive, { collectionIds: ["c-knots", "c-wiki"], replaceExisting: true }));
+    const again = await app.api(
+      "POST",
+      "/api/portable/build",
+      request(drive, { collectionIds: ["c-knots", "c-wiki"], replaceExisting: true }),
+    );
     expect(again.status).toBe(200);
     await app.ctx.jobs.whenIdle();
     expect((await app.api("GET", `/api/jobs/${again.body.job.id}`)).body.job.state).toBe("succeeded");
@@ -350,7 +452,12 @@ describe("writing a portable drive", () => {
     const app = await createTestApp({ OUTPOST_APP_DIR: path.join(os.tmpdir(), "outpost-no-such-bundle") });
     cleanups.push(() => app.close());
     const drive = path.join(app.dir, "storage", "usb", "Outpost");
-    const { body } = await app.api("POST", "/api/portable/plan", { targetPath: drive, platforms: ["linux-x64"], collectionIds: [], documents: "none" });
+    const { body } = await app.api("POST", "/api/portable/plan", {
+      targetPath: drive,
+      platforms: ["linux-x64"],
+      collectionIds: [],
+      documents: "none",
+    });
     expect(body.app.available).toBe(false);
     expect(body.problems[0]).toMatch(/running from source/);
     expect(body.needsConnection).toBe(true);

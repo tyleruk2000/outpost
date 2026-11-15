@@ -86,7 +86,9 @@ export function applyPendingRestore(dataDir: string, log: (message: string) => v
 
 function openZip(file: string): Promise<yauzl.ZipFile> {
   return new Promise((resolve, reject) => {
-    yauzl.open(file, { lazyEntries: true, validateEntrySizes: true, strictFileNames: true }, (error, zip) => (error ? reject(error) : resolve(zip)));
+    yauzl.open(file, { lazyEntries: true, validateEntrySizes: true, strictFileNames: true }, (error, zip) =>
+      error ? reject(error) : resolve(zip),
+    );
   });
 }
 
@@ -112,7 +114,8 @@ async function unpack(file: string, target: string): Promise<BackupManifest> {
           entries += 1;
           total += entry.uncompressedSize;
           if (entries > MAX_ENTRIES || total > MAX_TOTAL_BYTES) throw badRequest("That backup is larger than Outpost accepts.");
-          if (total > Math.max(packedSize, 1024 * 1024) * MAX_RATIO) throw badRequest("That file expands far more than a backup does, so it was not unpacked.");
+          if (total > Math.max(packedSize, 1024 * 1024) * MAX_RATIO)
+            throw badRequest("That file expands far more than a backup does, so it was not unpacked.");
           if (total > room) throw badRequest("There is not enough free space in the data directory to unpack that backup.");
           const name = entry.fileName;
           if (name.endsWith("/")) return zip.readEntry();
@@ -200,7 +203,8 @@ export async function registerBackup(app: FastifyInstance, ctx: AppContext): Pro
   app.post("/api/backup/restore", { bodyLimit: MAX_TOTAL_BYTES, onRequest: adminBeforeBody }, async (request) => {
     auth.requireAdmin(request);
     const body = request.body as NodeJS.ReadableStream | undefined;
-    if (!body || typeof body.pipe !== "function") throw badRequest("Send the backup .zip as the request body with Content-Type application/zip.");
+    if (!body || typeof body.pipe !== "function")
+      throw badRequest("Send the backup .zip as the request body with Content-Type application/zip.");
 
     const pending = path.join(dataDir, PENDING);
     await fs.promises.rm(pending, { recursive: true, force: true });
@@ -248,7 +252,12 @@ export async function registerBackup(app: FastifyInstance, ctx: AppContext): Pro
         throw badRequest(`That backup was made by a newer Outpost (${manifest.appVersion}). Update Outpost, then restore it.`);
       }
       await fs.promises.writeFile(path.join(pending, READY_MARKER), manifest.createdAt);
-      return { staged: true, createdAt: manifest.createdAt, appVersion: manifest.appVersion, supervised: process.env.OUTPOST_SUPERVISED === "true" };
+      return {
+        staged: true,
+        createdAt: manifest.createdAt,
+        appVersion: manifest.appVersion,
+        supervised: process.env.OUTPOST_SUPERVISED === "true",
+      };
     } catch (error) {
       await fs.promises.rm(pending, { recursive: true, force: true });
       throw error;

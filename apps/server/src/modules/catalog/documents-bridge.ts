@@ -28,7 +28,11 @@ export function registerDocumentBridge(ctx: AppContext): void {
     // Location and path are not part of an ordinary collection update, by design:
     // moving a collection is a verified job. Here nothing moves; the record is only
     // being told where the document library keeps the same file.
-    ctx.db.update(collectionsTable).set({ locationId, relPath, meta, status: "installed", updatedAt: Date.now() }).where(eq(collectionsTable.id, collectionId)).run();
+    ctx.db
+      .update(collectionsTable)
+      .set({ locationId, relPath, meta, status: "installed", updatedAt: Date.now() })
+      .where(eq(collectionsTable.id, collectionId))
+      .run();
   }
 
   downloads.onCompleted(async (download) => {
@@ -57,7 +61,11 @@ export function registerDocumentBridge(ctx: AppContext): void {
       } else {
         // The same file was already in the library. It stays as it was; the downloaded
         // copy stays where the download put it.
-        pointAt(collection.id, collection.locationId, collection.relPath, { ...collection.meta, documentId: document.id, alreadyInLibrary: true });
+        pointAt(collection.id, collection.locationId, collection.relPath, {
+          ...collection.meta,
+          documentId: document.id,
+          alreadyInLibrary: true,
+        });
       }
       ctx.events.publish({ type: "collections.changed" });
     } catch (error) {
@@ -106,7 +114,8 @@ export function registerDocumentBridge(ctx: AppContext): void {
     }
   }
   const stop = ctx.events.subscribe((event) => {
-    if (event.type === "documents.changed") void reconcile().catch((error) => ctx.log.warn({ err: error }, "catalogue documents could not be reconciled"));
+    if (event.type === "documents.changed")
+      void reconcile().catch((error) => ctx.log.warn({ err: error }, "catalogue documents could not be reconciled"));
   });
   ctx.onClose.push(stop);
 }

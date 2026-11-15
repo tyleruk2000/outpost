@@ -30,7 +30,7 @@ for (const target of targets) {
   page.on("requestfailed", (request) => problems.push(`request failed: ${request.url()}`));
   await page.goto(new URL(route, base).toString(), { waitUntil: "networkidle" });
   await page.waitForTimeout(350);
-  const name = `${(route.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "") || "home")}-${theme}${mobile ? "-mobile" : ""}.png`;
+  const name = `${route.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "") || "home"}-${theme}${mobile ? "-mobile" : ""}.png`;
   await page.screenshot({ path: path.join(outDir, name), fullPage: flags.includes("full") });
   console.log(name, problems.length ? `PROBLEMS: ${problems.join(" | ")}` : "ok");
   await context.close();

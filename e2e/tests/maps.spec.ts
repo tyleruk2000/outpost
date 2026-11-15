@@ -76,7 +76,10 @@ test.describe("maps", () => {
     await page.goto("/maps");
     await page.getByRole("tab", { name: /Routes/ }).click();
     const chooser = page.waitForEvent("filechooser");
-    await page.getByRole("button", { name: /Import GPX/ }).first().click();
+    await page
+      .getByRole("button", { name: /Import GPX/ })
+      .first()
+      .click();
     await (await chooser).setFiles([{ name: "broken.gpx", mimeType: "application/gpx+xml", buffer: Buffer.from("this is not a route") }]);
     const dialog = page.getByRole("dialog", { name: "Import a GPX file" });
     await dialog.getByRole("button", { name: "Import" }).click();

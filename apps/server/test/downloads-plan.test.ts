@@ -44,8 +44,12 @@ describe("the speed limit", () => {
     // Two "transfers" taking turns: 40 kB in total at 100 kB/s is about 0.3 s of waiting
     // (the first chunk goes at once).
     await Promise.all([
-      (async () => { for (let i = 0; i < 2; i += 1) await limiter.take(10_000); })(),
-      (async () => { for (let i = 0; i < 2; i += 1) await limiter.take(10_000); })(),
+      (async () => {
+        for (let i = 0; i < 2; i += 1) await limiter.take(10_000);
+      })(),
+      (async () => {
+        for (let i = 0; i < 2; i += 1) await limiter.take(10_000);
+      })(),
     ]);
     const elapsed = Date.now() - started;
     expect(elapsed).toBeGreaterThanOrEqual(250);
@@ -73,7 +77,9 @@ describe("the speed limit", () => {
     server.routes.set("/big.bin", { body, chunkBytes: 16_384 });
     await app.api("PATCH", "/api/settings", { "downloads.rateLimitKbps": 300 });
     const started = Date.now();
-    const row = await app.ctx.services.downloads.start(request(server, "/big.bin", "files/big.bin", { sha256: createHash("sha256").update(body).digest("hex") }));
+    const row = await app.ctx.services.downloads.start(
+      request(server, "/big.bin", "files/big.bin", { sha256: createHash("sha256").update(body).digest("hex") }),
+    );
     await waitFor(() => app!.ctx.services.downloads.get(row.id)?.state === "completed", "the limited download", 15_000);
     const seconds = (Date.now() - started) / 1000;
     // 600 kB at 300 kB/s is two seconds; allow for the first chunk and for timer slack.
@@ -104,7 +110,9 @@ describe("forecasting the queue", () => {
   });
 
   it("gives no times when no speed is known, and none after an item of unknown size", () => {
-    expect(forecastQueue([{ id: "a", phase: "active", remainingBytes: 100 }], { concurrency: 2, bytesPerSecond: null })).toEqual([{ id: "a", startsInSeconds: 0, finishesInSeconds: null }]);
+    expect(forecastQueue([{ id: "a", phase: "active", remainingBytes: 100 }], { concurrency: 2, bytesPerSecond: null })).toEqual([
+      { id: "a", startsInSeconds: 0, finishesInSeconds: null },
+    ]);
     const forecast = forecastQueue(
       [
         { id: "a", phase: "active", remainingBytes: null },
@@ -124,10 +132,18 @@ describe("download details and the plan", () => {
     const origin = await fileServer();
     const body = testBytes(400_000);
     mirror.routes.set("/files/manual.pdf", { body, chunkBytes: 20_000, delayMs: 60 });
-    origin.routes.set("/manual.pdf", { body: Buffer.alloc(0), redirectTo: mirror.url("/files/manual.pdf").replace("127.0.0.1", "localhost") });
+    origin.routes.set("/manual.pdf", {
+      body: Buffer.alloc(0),
+      redirectTo: mirror.url("/files/manual.pdf").replace("127.0.0.1", "localhost"),
+    });
     const sha = createHash("sha256").update(body).digest("hex");
     const row = await app.ctx.services.downloads.start(
-      request(origin, "/manual.pdf", "files/manual.pdf", { sha256: sha, sizeBytes: body.length, title: "Field manual", meta: { publisher: "Example Press", license: "CC BY 4.0", version: "2026-01" } }),
+      request(origin, "/manual.pdf", "files/manual.pdf", {
+        sha256: sha,
+        sizeBytes: body.length,
+        title: "Field manual",
+        meta: { publisher: "Example Press", license: "CC BY 4.0", version: "2026-01" },
+      }),
     );
     // While it runs, speed readings accumulate.
     await waitFor(async () => (await app!.api("GET", `/api/downloads/${row.id}`)).body.speedHistory.length >= 1, "speed readings", 10_000);
@@ -142,7 +158,11 @@ describe("download details and the plan", () => {
     expect(detail.destination.freeBytes).toBeGreaterThan(0);
     expect(detail.about).toMatchObject({ publisher: "Example Press", license: "CC BY 4.0", version: "2026-01" });
     expect(detail.events.map((event: { state: string }) => event.state)).toEqual(["queued", "running", "verifying", "completed"]);
-    expect(detail.events.every((event: { at: number }, index: number, all: Array<{ at: number }>) => index === 0 || event.at >= all[index - 1]!.at)).toBe(true);
+    expect(
+      detail.events.every(
+        (event: { at: number }, index: number, all: Array<{ at: number }>) => index === 0 || event.at >= all[index - 1]!.at,
+      ),
+    ).toBe(true);
     expect(detail.attempts).toMatchObject({ made: 1, nextAttemptAt: null });
     expect((await app.api("GET", "/api/downloads/nope")).status).toBe(404);
   });
@@ -163,14 +183,27 @@ describe("download details and the plan", () => {
     app = await createTestApp();
     await app.api("PATCH", "/api/settings", { "downloads.concurrency": 1, "downloads.rateLimitKbps": 50 });
     const server = await fileServer();
-    for (const name of ["one", "two", "three"]) server.routes.set(`/${name}.bin`, { body: testBytes(200_000, name.length), chunkBytes: 8_192 });
+    for (const name of ["one", "two", "three"])
+      server.routes.set(`/${name}.bin`, { body: testBytes(200_000, name.length), chunkBytes: 8_192 });
     const rows: DownloadRow[] = [];
-    for (const name of ["one", "two", "three"]) rows.push(await app.ctx.services.downloads.start(request(server, `/${name}.bin`, `files/${name}.bin`, { sizeBytes: 200_000, title: name })));
+    for (const name of ["one", "two", "three"])
+      rows.push(
+        await app.ctx.services.downloads.start(request(server, `/${name}.bin`, `files/${name}.bin`, { sizeBytes: 200_000, title: name })),
+      );
     await waitFor(() => app!.ctx.services.downloads.get(rows[0]!.id)?.state === "running", "the first to start");
 
     const plan = (await app.api("GET", "/api/downloads/plan")).body;
-    expect(plan).toMatchObject({ concurrency: 1, rateLimitBytesPerSecond: 50_000, counts: { active: 1, waiting: 2, paused: 0, failed: 0 }, unknownSizes: 0 });
-    expect(plan.queue.map((item: { title: string; phase: string }) => [item.title, item.phase])).toEqual([["one", "active"], ["two", "waiting"], ["three", "waiting"]]);
+    expect(plan).toMatchObject({
+      concurrency: 1,
+      rateLimitBytesPerSecond: 50_000,
+      counts: { active: 1, waiting: 2, paused: 0, failed: 0 },
+      unknownSizes: 0,
+    });
+    expect(plan.queue.map((item: { title: string; phase: string }) => [item.title, item.phase])).toEqual([
+      ["one", "active"],
+      ["two", "waiting"],
+      ["three", "waiting"],
+    ]);
     expect(plan.assumedBytesPerSecond).toBeGreaterThan(0);
     // With one slot they run one after another: each starts when the one before finishes.
     const [first, second, third] = plan.queue;
@@ -191,7 +224,11 @@ describe("download details and the plan", () => {
 
     await app.api("PATCH", "/api/settings", { "downloads.rateLimitKbps": 0, "downloads.concurrency": 3 });
     expect((await app.api("POST", "/api/downloads/resume-all")).body.resumed).toBe(3);
-    await waitFor(() => rows.every((row) => app!.ctx.services.downloads.get(row.id)?.state === "completed"), "everything to finish", 20_000);
+    await waitFor(
+      () => rows.every((row) => app!.ctx.services.downloads.get(row.id)?.state === "completed"),
+      "everything to finish",
+      20_000,
+    );
     expect((await app.api("GET", "/api/downloads/plan")).body.queue).toEqual([]);
   });
 
@@ -202,7 +239,23 @@ describe("download details and the plan", () => {
     const location = app.ctx.services.storage.getDefault();
     // A paused download with an impossible size, inserted directly: start() would refuse it for lack of room.
     const { downloads } = await import("../src/db/schema.ts");
-    app.ctx.db.insert(downloads).values({ id: "huge", kind: "file", title: "Everything", url: server.url("/a.bin"), locationId: location.id, relPath: path.join("files", "huge.bin"), state: "paused", totalBytes: Number.MAX_SAFE_INTEGER, receivedBytes: 0, meta: {}, createdAt: Date.now(), updatedAt: Date.now() }).run();
+    app.ctx.db
+      .insert(downloads)
+      .values({
+        id: "huge",
+        kind: "file",
+        title: "Everything",
+        url: server.url("/a.bin"),
+        locationId: location.id,
+        relPath: path.join("files", "huge.bin"),
+        state: "paused",
+        totalBytes: Number.MAX_SAFE_INTEGER,
+        receivedBytes: 0,
+        meta: {},
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      })
+      .run();
     const plan = (await app.api("GET", "/api/downloads/plan")).body;
     const internal = plan.locations.find((item: { locationId: string }) => item.locationId === location.id);
     expect(internal.enough).toBe(false);

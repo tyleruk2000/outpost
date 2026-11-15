@@ -19,15 +19,11 @@ export const isBundled = !import.meta.filename.endsWith(".ts");
 /** Root of the app directory (packaged) or of the repository (source). */
 export const appRoot = isBundled ? path.resolve(here, "..") : path.resolve(here, "../../../..");
 
-export const migrationsDir = isBundled
-  ? path.join(here, "migrations")
-  : path.resolve(here, "../db/migrations");
+export const migrationsDir = isBundled ? path.join(here, "migrations") : path.resolve(here, "../db/migrations");
 
 export const defaultCatalogDir = path.join(appRoot, "catalog");
 
-export const defaultWebDir = isBundled
-  ? path.join(appRoot, "web")
-  : path.join(appRoot, "apps/web/dist");
+export const defaultWebDir = isBundled ? path.join(appRoot, "web") : path.join(appRoot, "apps/web/dist");
 
 /**
  * Location of a worker-thread entry point. Workers are separate files in both layouts:

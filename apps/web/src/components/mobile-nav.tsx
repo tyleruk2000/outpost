@@ -7,7 +7,8 @@ import { Lamp } from "./lamp";
 import { LogoMark } from "./logo";
 import { knowledgeNav, upkeepNav } from "./nav";
 
-const tab = "flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 pt-1.5 pb-1 text-[0.6875rem] font-medium text-ink-muted aria-[current=page]:text-primary";
+const tab =
+  "flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 pt-1.5 pb-1 text-[0.6875rem] font-medium text-ink-muted aria-[current=page]:text-primary";
 
 /** Top bar and bottom tabs for phones. The spine does not fit, so its job is split in two. */
 export function MobileNav({ onOpenSearch }: { onOpenSearch: () => void }) {
@@ -22,12 +23,20 @@ export function MobileNav({ onOpenSearch }: { onOpenSearch: () => void }) {
           <LogoMark />
           <span className="font-title text-lead">Outpost</span>
         </Link>
-        <button type="button" onClick={onOpenSearch} aria-label="Search everything" className="grid size-11 place-content-center rounded-control text-spine-ink-muted hover:text-spine-ink">
+        <button
+          type="button"
+          onClick={onOpenSearch}
+          aria-label="Search everything"
+          className="grid size-11 place-content-center rounded-control text-spine-ink-muted hover:text-spine-ink"
+        >
           <Search className="size-5" strokeWidth={1.6} />
         </button>
       </header>
 
-      <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-(--z-nav) flex border-t border-border bg-page/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-sm md:hidden">
+      <nav
+        aria-label="Main"
+        className="fixed inset-x-0 bottom-0 z-(--z-nav) flex border-t border-border bg-page/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-sm md:hidden"
+      >
         {tabs.map((item) => (
           <NavLink key={item.to} to={item.to} end={item.to === "/"} className={tab}>
             <item.icon aria-hidden className="size-[22px]" strokeWidth={1.6} />
@@ -51,7 +60,12 @@ export function MobileNav({ onOpenSearch }: { onOpenSearch: () => void }) {
                     <NavLink
                       to={item.to}
                       onClick={() => setMoreOpen(false)}
-                      className={({ isActive }) => cn("flex h-12 items-center gap-3.5 rounded-control px-3 text-body text-spine-ink-muted", isActive && "bg-spine-active text-spine-ink")}
+                      className={({ isActive }) =>
+                        cn(
+                          "flex h-12 items-center gap-3.5 rounded-control px-3 text-body text-spine-ink-muted",
+                          isActive && "bg-spine-active text-spine-ink",
+                        )
+                      }
                     >
                       <item.icon aria-hidden className="size-5" strokeWidth={1.6} />
                       {item.label}

@@ -246,7 +246,9 @@ describe("the shipped catalogue", () => {
 
   it("follows the rules for curated entries", () => {
     const { entries, manifests, downloadHosts } = loadCatalog([path.join(repoCatalogDir, "manifests")]);
-    expect(downloadHosts).toEqual(expect.arrayContaining(["download.kiwix.org", "lb.download.kiwix.org", "library.kiwix.org", "opds.library.kiwix.org"]));
+    expect(downloadHosts).toEqual(
+      expect.arrayContaining(["download.kiwix.org", "lb.download.kiwix.org", "library.kiwix.org", "opds.library.kiwix.org"]),
+    );
     expect(manifests.map((item) => item.id)).toEqual(expect.arrayContaining(["kiwix-essentials", "kiwix-more", "official-publications"]));
     for (const item of entries) {
       // Kiwix rebuilds its books; an address written down today is gone in two months.
@@ -546,7 +548,9 @@ describe("checking files that publishers host themselves", () => {
     for (const name of ["a", "b", "c"]) server.routes.set(`/${name}.pdf`, { body });
     const http = createHttpClient({ allowPrivate: true });
     try {
-      const entries = ["a", "b", "c"].map((name) => loaded(`h.${name}`, { type: "http", url: server.url(`/${name}.pdf`), sha256: sha256Of(body), sizeBytes: body.length }));
+      const entries = ["a", "b", "c"].map((name) =>
+        loaded(`h.${name}`, { type: "http", url: server.url(`/${name}.pdf`), sha256: sha256Of(body), sizeBytes: body.length }),
+      );
       const started = Date.now();
       const results = await resolveEntries(http, entries, { ...allowed(server), hostIntervalMs: 120 });
       expect(Date.now() - started).toBeGreaterThanOrEqual(240);

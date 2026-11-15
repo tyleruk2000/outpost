@@ -38,7 +38,12 @@ function freePort(): Promise<number> {
   });
 }
 
-export function createKiwixConnection(options: { url?: string; bin?: string; libraryPath: string; log: FastifyBaseLogger }): KiwixConnection {
+export function createKiwixConnection(options: {
+  url?: string;
+  bin?: string;
+  libraryPath: string;
+  log: FastifyBaseLogger;
+}): KiwixConnection {
   const { log, libraryPath } = options;
   let base = options.url;
   let child: ChildProcess | undefined;
@@ -57,7 +62,11 @@ export function createKiwixConnection(options: { url?: string; bin?: string; lib
     }
     const port = await freePort();
     base = `http://127.0.0.1:${port}`;
-    child = spawn(options.bin, ["--port", String(port), "--address", "127.0.0.1", "--library", "--monitorLibrary", "--nodatealiases", libraryPath], { stdio: ["ignore", "ignore", "pipe"] });
+    child = spawn(
+      options.bin,
+      ["--port", String(port), "--address", "127.0.0.1", "--library", "--monitorLibrary", "--nodatealiases", libraryPath],
+      { stdio: ["ignore", "ignore", "pipe"] },
+    );
     let stderr = "";
     child.stderr?.on("data", (chunk: Buffer) => {
       stderr = (stderr + chunk.toString()).slice(-2000);
@@ -104,7 +113,12 @@ export function createKiwixConnection(options: { url?: string; bin?: string; lib
         return "Reading reference collections needs the kiwix-serve program, which this installation does not have. With Docker it is the “kiwix” service in compose.yaml; otherwise set OUTPOST_KIWIX_BIN to the program's path.";
       }
       if (lastCheck.at > 0 && !lastCheck.up) {
-        return lastProblem ?? (mode === "external" ? `The Kiwix server at ${base} is not answering. Check that its container is running.` : "kiwix-serve is starting.");
+        return (
+          lastProblem ??
+          (mode === "external"
+            ? `The Kiwix server at ${base} is not answering. Check that its container is running.`
+            : "kiwix-serve is starting.")
+        );
       }
       return lastProblem;
     },

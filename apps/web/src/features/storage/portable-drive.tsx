@@ -3,7 +3,16 @@
  * with a double-click on another computer. Three steps, because it is a sequence:
  * where it goes, what goes on it, then a look at exactly what will be written.
  */
-import { type CollectionsResponse, type DocumentFacets, formatBytes, type JobDto, type PortablePlan, type PortablePlatform, type PortableRequest, type PortableStatus } from "@outpost/shared";
+import {
+  type CollectionsResponse,
+  type DocumentFacets,
+  formatBytes,
+  type JobDto,
+  type PortablePlan,
+  type PortablePlatform,
+  type PortableRequest,
+  type PortableStatus,
+} from "@outpost/shared";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Check, CircleAlert, CircleCheck, TriangleAlert, Usb } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -21,7 +30,11 @@ function StepList({ current }: { current: number }) {
   return (
     <ol className="flex flex-wrap items-center gap-x-5 gap-y-1 border-b border-border px-5 py-3 text-small">
       {steps.map((label, index) => (
-        <li key={label} aria-current={index === current ? "step" : undefined} className={cn("flex items-center gap-2", index === current ? "font-semibold text-ink" : "text-ink-muted")}>
+        <li
+          key={label}
+          aria-current={index === current ? "step" : undefined}
+          className={cn("flex items-center gap-2", index === current ? "font-semibold text-ink" : "text-ink-muted")}
+        >
           <span
             className={cn(
               "tabular grid size-5 place-content-center rounded-full text-micro",
@@ -37,7 +50,23 @@ function StepList({ current }: { current: number }) {
   );
 }
 
-function CheckRow({ id, checked, disabled, onChange, title, detail, trailing }: { id: string; checked: boolean; disabled?: boolean; onChange: (checked: boolean) => void; title: string; detail?: string; trailing?: string }) {
+function CheckRow({
+  id,
+  checked,
+  disabled,
+  onChange,
+  title,
+  detail,
+  trailing,
+}: {
+  id: string;
+  checked: boolean;
+  disabled?: boolean;
+  onChange: (checked: boolean) => void;
+  title: string;
+  detail?: string;
+  trailing?: string;
+}) {
   return (
     <li className="flex items-start gap-3 py-2.5">
       <Checkbox id={id} checked={checked} disabled={disabled} onCheckedChange={(value) => onChange(value === true)} className="mt-0.5" />
@@ -75,7 +104,14 @@ function Wizard({ status, onClose }: { status: PortableStatus; onClose: () => vo
   // Reference collections are only readable with kiwix-serve beside them.
   const takesReference = installed.some((item) => item.kind === "zim" && collectionIds.includes(item.id));
   const request = useMemo<PortableRequest>(
-    () => ({ targetPath: folder.path ?? "", platforms, collectionIds, documents: allDocuments ? "all" : "none", reader: takesReference, replaceExisting }),
+    () => ({
+      targetPath: folder.path ?? "",
+      platforms,
+      collectionIds,
+      documents: allDocuments ? "all" : "none",
+      reader: takesReference,
+      replaceExisting,
+    }),
     [folder.path, platforms, collectionIds, allDocuments, takesReference, replaceExisting],
   );
 
@@ -125,11 +161,16 @@ function Wizard({ status, onClose }: { status: PortableStatus; onClose: () => vo
                 <Fact label="Linux" value="Run “sh start-outpost.sh” in a terminal" />
               </dl>
               <p className="text-small text-ink-muted">
-                A README on the drive repeats this. Notes and documents added while running from the drive are saved on the drive; they are not sent back here.
+                A README on the drive repeats this. Notes and documents added while running from the drive are saved on the drive; they are
+                not sent back here.
               </p>
             </>
           ) : stopped ? (
-            <Notice tone="danger" icon={<CircleAlert />} title={current?.state === "cancelled" ? "Writing was cancelled" : "The drive could not be finished"}>
+            <Notice
+              tone="danger"
+              icon={<CircleAlert />}
+              title={current?.state === "cancelled" ? "Writing was cancelled" : "The drive could not be finished"}
+            >
               {current?.error ?? "Files already copied are still on the drive. Writing it again continues from there."}
             </Notice>
           ) : (
@@ -143,7 +184,9 @@ function Wizard({ status, onClose }: { status: PortableStatus; onClose: () => vo
                 ) : null}
               </div>
               <Progress value={fraction} tone="lamp" label="Writing the drive" />
-              <p className="mt-3 text-small text-ink-muted">Keep the drive plugged in. You can close this window; the work carries on and shows under Downloads.</p>
+              <p className="mt-3 text-small text-ink-muted">
+                Keep the drive plugged in. You can close this window; the work carries on and shows under Downloads.
+              </p>
             </div>
           )}
         </DialogBody>
@@ -173,7 +216,8 @@ function Wizard({ status, onClose }: { status: PortableStatus; onClose: () => vo
           <>
             <FolderPicker label="Folder on the drive" onChange={setFolder} newFolderSuggestion="Outpost" />
             <p className="text-small text-ink-muted">
-              Choose an empty folder, make a new one, or pick a folder that is already an Outpost drive to update it. Outpost writes only inside this folder. exFAT is the best format for a drive used on Mac, Windows and Linux.
+              Choose an empty folder, make a new one, or pick a folder that is already an Outpost drive to update it. Outpost writes only
+              inside this folder. exFAT is the best format for a drive used on Mac, Windows and Linux.
             </p>
           </>
         ) : null}
@@ -182,7 +226,9 @@ function Wizard({ status, onClose }: { status: PortableStatus; onClose: () => vo
           <>
             <fieldset>
               <legend className="text-small font-semibold text-ink">Computers it should start on</legend>
-              <p className="mt-0.5 text-small text-ink-muted">Each adds a small program that runs Outpost there, about 50 MB to download once and 110 MB on the drive.</p>
+              <p className="mt-0.5 text-small text-ink-muted">
+                Each adds a small program that runs Outpost there, about 50 MB to download once and 110 MB on the drive.
+              </p>
               <ul className="mt-1 divide-y divide-border border-y border-border">
                 {status.platforms.map((item) => (
                   <CheckRow
@@ -216,7 +262,9 @@ function Wizard({ status, onClose }: { status: PortableStatus; onClose: () => vo
                   <Skeleton className="w-2/3" />
                 </div>
               ) : installed.length === 0 ? (
-                <p className="mt-3 text-small text-ink-muted">No collections or maps are installed yet. You can make a drive now and update it after downloading some.</p>
+                <p className="mt-3 text-small text-ink-muted">
+                  No collections or maps are installed yet. You can make a drive now and update it after downloading some.
+                </p>
               ) : (
                 <>
                   <div className="mt-4 flex items-baseline justify-between gap-4">
@@ -224,7 +272,13 @@ function Wizard({ status, onClose }: { status: PortableStatus; onClose: () => vo
                     <button
                       type="button"
                       className="text-small text-primary underline underline-offset-2"
-                      onClick={() => setCollectionIds(collectionIds.length === installed.length ? [] : installed.filter((item) => item.locationAvailable).map((item) => item.id))}
+                      onClick={() =>
+                        setCollectionIds(
+                          collectionIds.length === installed.length
+                            ? []
+                            : installed.filter((item) => item.locationAvailable).map((item) => item.id),
+                        )
+                      }
                     >
                       {collectionIds.length === installed.length ? "Choose none" : "Choose all"}
                     </button>
@@ -238,7 +292,13 @@ function Wizard({ status, onClose }: { status: PortableStatus; onClose: () => vo
                         disabled={!item.locationAvailable || item.status !== "installed"}
                         onChange={(on) => setCollectionIds((list) => toggle(list, item.id, on))}
                         title={item.title}
-                        detail={!item.locationAvailable ? `On ${item.locationName}, which is not connected` : item.status !== "installed" ? `Not available: ${item.status}` : undefined}
+                        detail={
+                          !item.locationAvailable
+                            ? `On ${item.locationName}, which is not connected`
+                            : item.status !== "installed"
+                              ? `Not available: ${item.status}`
+                              : undefined
+                        }
                         trailing={formatBytes(item.sizeBytes)}
                       />
                     ))}
@@ -265,17 +325,31 @@ function Wizard({ status, onClose }: { status: PortableStatus; onClose: () => vo
               <dl>
                 <Fact label="Folder" value={data.target.path} />
                 <Fact label="Starts on" value={data.runtimes.map((runtime) => runtime.label).join(", ")} />
-                <Fact label="Documents" value={data.documents.count === 0 ? "None" : `${plural(data.documents.count, "document")}, ${formatBytes(data.documents.bytes)}`} />
+                <Fact
+                  label="Documents"
+                  value={
+                    data.documents.count === 0
+                      ? "None"
+                      : `${plural(data.documents.count, "document")}, ${formatBytes(data.documents.bytes)}`
+                  }
+                />
                 <Fact
                   label="Collections and maps"
-                  value={data.collections.length === 0 ? "None" : `${data.collections.length}, ${formatBytes(data.collections.reduce((sum, item) => sum + item.bytes, 0))}`}
+                  value={
+                    data.collections.length === 0
+                      ? "None"
+                      : `${data.collections.length}, ${formatBytes(data.collections.reduce((sum, item) => sum + item.bytes, 0))}`
+                  }
                 />
                 {data.reader.length > 0 ? (
                   <Fact
                     label="Reader for reference collections"
                     value={
                       data.reader.some((item) => item.supported)
-                        ? `Included for ${data.reader.filter((item) => item.supported).map((item) => item.label).join(", ")}`
+                        ? `Included for ${data.reader
+                            .filter((item) => item.supported)
+                            .map((item) => item.label)
+                            .join(", ")}`
                         : "Not available for the chosen computers"
                     }
                   />
@@ -295,11 +369,18 @@ function Wizard({ status, onClose }: { status: PortableStatus; onClose: () => vo
               ))}
               {data.target.isOutpostDrive ? (
                 <div className="flex items-start gap-3 rounded-panel border border-border p-3.5">
-                  <Checkbox id="replace-existing" checked={replaceExisting} onCheckedChange={(value) => setReplaceExisting(value === true)} className="mt-0.5" />
+                  <Checkbox
+                    id="replace-existing"
+                    checked={replaceExisting}
+                    onCheckedChange={(value) => setReplaceExisting(value === true)}
+                    className="mt-0.5"
+                  />
                   <label htmlFor="replace-existing" className="text-small text-ink">
                     <span className="font-medium">Replace the notes and library index on this drive</span>
                     <span className="mt-0.5 block text-ink-muted">
-                      It was last written on {data.target.lastWritten ? formatDate(Date.parse(data.target.lastWritten)) : "an earlier date"}. Anything added while running from the drive since then is not merged; what the drive holds now is moved into a dated folder on the drive, not deleted.
+                      It was last written on {data.target.lastWritten ? formatDate(Date.parse(data.target.lastWritten)) : "an earlier date"}
+                      . Anything added while running from the drive since then is not merged; what the drive holds now is moved into a dated
+                      folder on the drive, not deleted.
                     </span>
                   </label>
                 </div>
@@ -314,7 +395,11 @@ function Wizard({ status, onClose }: { status: PortableStatus; onClose: () => vo
           {step === 0 ? "Cancel" : "Back"}
         </Button>
         {step < 2 ? (
-          <Button variant="primary" disabled={step === 0 ? !folder.path || !folder.writable : platforms.length === 0} onClick={() => setStep(step + 1)}>
+          <Button
+            variant="primary"
+            disabled={step === 0 ? !folder.path || !folder.writable : platforms.length === 0}
+            onClick={() => setStep(step + 1)}
+          >
             Continue
           </Button>
         ) : (
@@ -338,7 +423,10 @@ export function PortableDriveSection() {
   }, [open]);
 
   return (
-    <Section title="Take it with you" description="Put Outpost and part of your library on a USB drive that runs on another computer with nothing to install.">
+    <Section
+      title="Take it with you"
+      description="Put Outpost and part of your library on a USB drive that runs on another computer with nothing to install."
+    >
       <div className="flex max-w-[70ch] flex-wrap items-start gap-x-6 gap-y-3">
         <p className="min-w-64 flex-1 text-small text-ink-muted">
           {status.data?.runningFromDrive
@@ -351,7 +439,8 @@ export function PortableDriveSection() {
       </div>
       {status.data && !status.data.packagedAppAvailable ? (
         <Notice tone="info" className="mt-4 max-w-[70ch]">
-          This Outpost is running from source code, so it has no packaged app to copy yet. Run <span className="font-mono text-[0.8125rem]">node scripts/build-app.mjs</span> once, then come back.
+          This Outpost is running from source code, so it has no packaged app to copy yet. Run{" "}
+          <span className="font-mono text-[0.8125rem]">node scripts/build-app.mjs</span> once, then come back.
         </Notice>
       ) : null}
       <Dialog open={open} onOpenChange={setOpen}>

@@ -133,7 +133,11 @@ export function registerExplain(app: FastifyInstance, ctx: AppContext): void {
     const configured = semantic.provider();
     const status = await semantic.status();
     if (configured && status.ready && status.embeddedChunks > 0) {
-      return { info: { source: "model", modelId: configured.modelId, dimensions: status.dimensions, reason: null }, provider: configured, stored: true };
+      return {
+        info: { source: "model", modelId: configured.modelId, dimensions: status.dimensions, reason: null },
+        provider: configured,
+        stored: true,
+      };
     }
     const reason = !status.enabled
       ? "Search by meaning is turned off in Settings, so word-count vectors are used here to show how it works."
@@ -150,7 +154,9 @@ export function registerExplain(app: FastifyInstance, ctx: AppContext): void {
     const total = countChunks();
     const step = Math.max(1, Math.ceil(total / DEMO_POOL));
     const rows = sqlite
-      .prepare(`SELECT ${CHUNK_COLUMNS} FROM chunks c JOIN search_entities e ON e.id = c.entity_row_id WHERE c.text <> '' AND (c.id % ? = 0 OR c.id IN (${always.map(() => "?").join(",") || "NULL"}))`)
+      .prepare(
+        `SELECT ${CHUNK_COLUMNS} FROM chunks c JOIN search_entities e ON e.id = c.entity_row_id WHERE c.text <> '' AND (c.id % ? = 0 OR c.id IN (${always.map(() => "?").join(",") || "NULL"}))`,
+      )
       .all(step, ...always) as ChunkRow[];
     return rows;
   }
@@ -158,7 +164,9 @@ export function registerExplain(app: FastifyInstance, ctx: AppContext): void {
   function chunkRows(ids: number[]): Map<number, ChunkRow> {
     if (ids.length === 0) return new Map();
     const rows = sqlite
-      .prepare(`SELECT ${CHUNK_COLUMNS} FROM chunks c JOIN search_entities e ON e.id = c.entity_row_id WHERE c.id IN (${ids.map(() => "?").join(",")})`)
+      .prepare(
+        `SELECT ${CHUNK_COLUMNS} FROM chunks c JOIN search_entities e ON e.id = c.entity_row_id WHERE c.id IN (${ids.map(() => "?").join(",")})`,
+      )
       .all(...ids) as ChunkRow[];
     return new Map(rows.map((row) => [row.chunkId, row]));
   }
@@ -205,27 +213,37 @@ export function registerExplain(app: FastifyInstance, ctx: AppContext): void {
     return { entities: rows };
   });
 
-  app.get<{ Querystring: { kind?: string; entityId?: string } }>("/api/retrieval/chunks", async (request): Promise<{ entity: ExplainEntity; chunks: ExplainChunk[]; chunkSize: number; chunkOverlap: number }> => {
-    const { kind = "", entityId = "" } = request.query;
-    const entity = sqlite.prepare("SELECT id, kind, entity_id AS entityId, title, url FROM search_entities WHERE kind = ? AND entity_id = ?").get(kind, entityId) as
-      | (ExplainEntity & { id: number })
-      | undefined;
-    if (!entity) throw notFound("That document or page");
-    const modelId = semantic.provider()?.modelId ?? "";
-    const rows = sqlite
-      .prepare(
-        `SELECT c.id AS chunkId, c.ordinal AS ordinal, c.heading AS heading, c.page AS page, c.text AS text, c.char_start AS charStart, c.char_end AS charEnd,
+  app.get<{ Querystring: { kind?: string; entityId?: string } }>(
+    "/api/retrieval/chunks",
+    async (request): Promise<{ entity: ExplainEntity; chunks: ExplainChunk[]; chunkSize: number; chunkOverlap: number }> => {
+      const { kind = "", entityId = "" } = request.query;
+      const entity = sqlite
+        .prepare("SELECT id, kind, entity_id AS entityId, title, url FROM search_entities WHERE kind = ? AND entity_id = ?")
+        .get(kind, entityId) as (ExplainEntity & { id: number }) | undefined;
+      if (!entity) throw notFound("That document or page");
+      const modelId = semantic.provider()?.modelId ?? "";
+      const rows = sqlite
+        .prepare(
+          `SELECT c.id AS chunkId, c.ordinal AS ordinal, c.heading AS heading, c.page AS page, c.text AS text, c.char_start AS charStart, c.char_end AS charEnd,
                 c.content_hash AS contentHash, EXISTS (SELECT 1 FROM embeddings m WHERE m.chunk_id = c.id AND m.model_id = ?) AS hasVector
          FROM chunks c WHERE c.entity_row_id = ? AND c.text <> '' ORDER BY c.ordinal LIMIT 400`,
-      )
-      .all(modelId, entity.id) as Array<Omit<ExplainChunk, "overlapWithPrevious" | "hasVector" | "heading"> & { heading: string; hasVector: number }>;
-    const chunks: ExplainChunk[] = rows.map((row, index) => {
-      const previous = rows[index - 1];
-      const overlap = previous && previous.charEnd !== null && row.charStart !== null ? Math.max(0, previous.charEnd - row.charStart) : 0;
-      return { ...row, heading: row.heading || null, hasVector: Boolean(row.hasVector), overlapWithPrevious: overlap };
-    });
-    return { entity: { kind: entity.kind, entityId: entity.entityId, title: entity.title, url: entity.url, chunks: chunks.length }, chunks, chunkSize: settings.get("indexing.chunkSize"), chunkOverlap: settings.get("indexing.chunkOverlap") };
-  });
+        )
+        .all(modelId, entity.id) as Array<
+        Omit<ExplainChunk, "overlapWithPrevious" | "hasVector" | "heading"> & { heading: string; hasVector: number }
+      >;
+      const chunks: ExplainChunk[] = rows.map((row, index) => {
+        const previous = rows[index - 1];
+        const overlap = previous && previous.charEnd !== null && row.charStart !== null ? Math.max(0, previous.charEnd - row.charStart) : 0;
+        return { ...row, heading: row.heading || null, hasVector: Boolean(row.hasVector), overlapWithPrevious: overlap };
+      });
+      return {
+        entity: { kind: entity.kind, entityId: entity.entityId, title: entity.title, url: entity.url, chunks: chunks.length },
+        chunks,
+        chunkSize: settings.get("indexing.chunkSize"),
+        chunkOverlap: settings.get("indexing.chunkOverlap"),
+      };
+    },
+  );
 
   // ── One query, every stage ──
   const explainBody = z.object({ query: z.string().trim().min(1).max(500), limit: z.number().int().min(3).max(20).default(8) });
@@ -240,7 +258,9 @@ export function registerExplain(app: FastifyInstance, ctx: AppContext): void {
     let expression = toFtsQuery(parsed, "all");
     const terms = parsed.required.map((term, index) => {
       const single = toFtsQuery({ required: [term], excluded: [], prefixLast: parsed.prefixLast && index === parsed.required.length - 1 });
-      const containing = single ? (sqlite.prepare("SELECT count(*) AS n FROM chunks_fts WHERE chunks_fts MATCH ?").get(single) as { n: number }).n : 0;
+      const containing = single
+        ? (sqlite.prepare("SELECT count(*) AS n FROM chunks_fts WHERE chunks_fts MATCH ?").get(single) as { n: number }).n
+        : 0;
       // The inverse document frequency used by BM25: rare words score high, common words near zero.
       return { term, chunksContaining: containing, idf: Math.log((totalChunks - containing + 0.5) / (containing + 0.5) + 1) };
     });
@@ -276,7 +296,12 @@ export function registerExplain(app: FastifyInstance, ctx: AppContext): void {
       segments: toSegments(row.snippet),
       length: row.text.length,
       score: -row.bm25,
-      fields: { title: row.titleMarked.includes(HIT_OPEN), heading: row.headingMarked.includes(HIT_OPEN), text: row.snippet.includes(HIT_OPEN), tags: row.tagsMarked.includes(HIT_OPEN) },
+      fields: {
+        title: row.titleMarked.includes(HIT_OPEN),
+        heading: row.headingMarked.includes(HIT_OPEN),
+        text: row.snippet.includes(HIT_OPEN),
+        tags: row.tagsMarked.includes(HIT_OPEN),
+      },
     }));
     const keywordMs = performance.now() - keywordStarted;
 
@@ -307,9 +332,14 @@ export function registerExplain(app: FastifyInstance, ctx: AppContext): void {
       const stored = new Map(
         (
           sqlite
-            .prepare(`SELECT chunk_id AS chunkId, vector FROM embeddings WHERE model_id = ? AND chunk_id IN (${hits.map(() => "?").join(",") || "NULL"})`)
+            .prepare(
+              `SELECT chunk_id AS chunkId, vector FROM embeddings WHERE model_id = ? AND chunk_id IN (${hits.map(() => "?").join(",") || "NULL"})`,
+            )
             .all(source.provider.modelId, ...hits.map((hit) => hit.chunkId)) as Array<{ chunkId: number; vector: Buffer }>
-        ).map((row) => [row.chunkId, new Float32Array(row.vector.buffer.slice(row.vector.byteOffset, row.vector.byteOffset + row.vector.byteLength))]),
+        ).map((row) => [
+          row.chunkId,
+          new Float32Array(row.vector.buffer.slice(row.vector.byteOffset, row.vector.byteOffset + row.vector.byteLength)),
+        ]),
       );
       semanticHits = hits.flatMap((hit, index) => {
         const row = rows.get(hit.chunkId);
@@ -345,7 +375,9 @@ export function registerExplain(app: FastifyInstance, ctx: AppContext): void {
       (chunkId) => String(chunkId),
       k,
     );
-    const known = new Map<number, ExplainKeywordHit | ExplainSemanticHit>([...semanticHits, ...keywordHits].map((hit) => [hit.chunkId, hit]));
+    const known = new Map<number, ExplainKeywordHit | ExplainSemanticHit>(
+      [...semanticHits, ...keywordHits].map((hit) => [hit.chunkId, hit]),
+    );
     const fusionRows: ExplainFusionRow[] = fused.slice(0, limit * 2).map((entry, index) => {
       const hit = known.get(entry.item)!;
       const [keywordRank, semanticRank] = entry.ranks as [number | null, number | null];
@@ -389,7 +421,9 @@ export function registerExplain(app: FastifyInstance, ctx: AppContext): void {
           contentHash: chunk.contentHash,
           indexVersion: chunk.indexVersion,
           score: row.score,
-          retrievedBy: [row.keywordRank !== null ? "keyword" : null, row.semanticRank !== null ? "semantic" : null].filter((value): value is string => value !== null),
+          retrievedBy: [row.keywordRank !== null ? "keyword" : null, row.semanticRank !== null ? "semantic" : null].filter(
+            (value): value is string => value !== null,
+          ),
         },
       ];
     });
@@ -398,7 +432,11 @@ export function registerExplain(app: FastifyInstance, ctx: AppContext): void {
       "Answer the question using only the numbered sources below.",
       "After each statement, cite the source it came from as [n].",
       "If the sources do not contain the answer, say so plainly instead of guessing.",
-      ...(assembled.safetyCritical ? ["These sources concern health, safety or food preservation. Quote the source's own wording for any instruction, dose, time or temperature."] : []),
+      ...(assembled.safetyCritical
+        ? [
+            "These sources concern health, safety or food preservation. Quote the source's own wording for any instruction, dose, time or temperature.",
+          ]
+        : []),
     ].join(" ");
     const user = `Sources:\n\n${assembled.text}\n\nQuestion: ${query}`;
     const contextMs = performance.now() - contextStarted;
@@ -420,14 +458,28 @@ export function registerExplain(app: FastifyInstance, ctx: AppContext): void {
       fusion: { k, keywordWeight, semanticWeight, rows: fusionRows },
       context: {
         text: assembled.text,
-        citations: assembled.citations.map(({ marker, chunkId, title, heading, page, url, quote }) => ({ marker, chunkId, title, heading, page, url, quote })),
+        citations: assembled.citations.map(({ marker, chunkId, title, heading, page, url, quote }) => ({
+          marker,
+          chunkId,
+          title,
+          heading,
+          page,
+          url,
+          quote,
+        })),
         omitted: assembled.omitted,
         safetyCritical: assembled.safetyCritical,
         characters: assembled.text.length,
         approxTokens: Math.ceil(assembled.text.length / 4),
       },
       prompt: { system, user, approxTokens: Math.ceil((system.length + user.length) / 4) },
-      timings: { keywordMs: round(keywordMs), semanticMs: round(semanticMs), fusionMs: round(fusionMs), contextMs: round(contextMs), totalMs: round(performance.now() - started) },
+      timings: {
+        keywordMs: round(keywordMs),
+        semanticMs: round(semanticMs),
+        fusionMs: round(fusionMs),
+        contextMs: round(contextMs),
+        totalMs: round(performance.now() - started),
+      },
     };
   });
 
@@ -461,7 +513,9 @@ export function registerExplain(app: FastifyInstance, ctx: AppContext): void {
       const step = Math.max(1, Math.ceil(total / limit));
       rows = (
         sqlite
-          .prepare(`SELECT ${CHUNK_COLUMNS} FROM chunks c JOIN search_entities e ON e.id = c.entity_row_id WHERE c.text <> '' AND c.id % ? = 0 ORDER BY c.id LIMIT ?`)
+          .prepare(
+            `SELECT ${CHUNK_COLUMNS} FROM chunks c JOIN search_entities e ON e.id = c.entity_row_id WHERE c.text <> '' AND c.id % ? = 0 ORDER BY c.id LIMIT ?`,
+          )
           .all(step, limit) as ChunkRow[]
       ).slice(0, limit);
       vectors = await source.provider.embed(

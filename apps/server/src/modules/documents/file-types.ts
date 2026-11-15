@@ -176,7 +176,10 @@ export function isEpubMimetype(content: string): boolean {
  * shown in place; everything else (HTML, SVG, EPUB) is a download, so that an uploaded
  * page can never act inside Outpost's origin even if the sandbox header were ignored.
  */
-export function servedAs(format: FileFormat | undefined, forceDownload: boolean): { disposition: "inline" | "attachment"; contentType: string } {
+export function servedAs(
+  format: FileFormat | undefined,
+  forceDownload: boolean,
+): { disposition: "inline" | "attachment"; contentType: string } {
   if (!format) return { disposition: "attachment", contentType: "application/octet-stream" };
   const utf8 = format.mime.startsWith("text/") || format.mime === "application/json" || format.mime === "image/svg+xml";
   const declared = utf8 ? `${format.mime}; charset=utf-8` : format.mime;

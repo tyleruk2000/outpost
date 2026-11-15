@@ -17,16 +17,22 @@ export const usageKinds: Array<{ kind: string; label: string; color: string }> =
  * drive, and what is free. Widths are true proportions; a sliver gets a 2px minimum so
  * it stays visible.
  */
-export function StorageBar({ location, usage, className }: { location: Pick<StorageLocation, "totalBytes" | "freeBytes" | "name">; usage?: StorageUsage; className?: string }) {
+export function StorageBar({
+  location,
+  usage,
+  className,
+}: {
+  location: Pick<StorageLocation, "totalBytes" | "freeBytes" | "name">;
+  usage?: StorageUsage;
+  className?: string;
+}) {
   const total = location.totalBytes ?? 0;
   const free = location.freeBytes ?? 0;
   if (total <= 0) return <div className={cn("h-2 rounded-full bg-surface-strong", className)} aria-hidden />;
   const ours = usage?.totalBytes ?? 0;
   const other = Math.max(0, total - free - ours);
   const segments = [
-    ...usageKinds
-      .map((entry) => ({ ...entry, bytes: usage?.byKind[entry.kind]?.bytes ?? 0 }))
-      .filter((entry) => entry.bytes > 0),
+    ...usageKinds.map((entry) => ({ ...entry, bytes: usage?.byKind[entry.kind]?.bytes ?? 0 })).filter((entry) => entry.bytes > 0),
     { kind: "other", label: "Other files on this drive", color: "var(--border-strong)", bytes: other },
   ].filter((segment) => segment.bytes > 0);
 
@@ -34,7 +40,11 @@ export function StorageBar({ location, usage, className }: { location: Pick<Stor
   return (
     <div role="img" aria-label={summary} className={cn("flex h-2 w-full gap-px overflow-hidden rounded-full bg-surface-strong", className)}>
       {segments.map((segment) => (
-        <div key={segment.kind} title={`${segment.label}: ${formatBytes(segment.bytes)}`} style={{ width: `${(segment.bytes / total) * 100}%`, background: segment.color, minWidth: 2 }} />
+        <div
+          key={segment.kind}
+          title={`${segment.label}: ${formatBytes(segment.bytes)}`}
+          style={{ width: `${(segment.bytes / total) * 100}%`, background: segment.color, minWidth: 2 }}
+        />
       ))}
     </div>
   );

@@ -17,7 +17,11 @@ export function useStationStatus(): { tone: Tone; label: string; to: string } {
   if (!connected) return { tone: "down", label: "Server not responding", to: "/settings" };
   const away = storage.data?.locations.filter((location) => location.status === "unavailable") ?? [];
   if (away.length > 0) {
-    return { tone: "warning", label: away.length === 1 ? `${away[0]!.name} is disconnected` : `${away.length} drives are disconnected`, to: "/storage" };
+    return {
+      tone: "warning",
+      label: away.length === 1 ? `${away[0]!.name} is disconnected` : `${away.length} drives are disconnected`,
+      to: "/storage",
+    };
   }
   const running = jobs.data?.filter((job) => job.state === "running" || job.state === "queued") ?? [];
   const downloads = running.filter((job) => job.queue === "download");

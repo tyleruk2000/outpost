@@ -20,7 +20,15 @@ export interface PickedFolder {
  * Browses the folders the server allows (its storage roots, and nothing outside them)
  * and lets the person choose one or name a new one inside it.
  */
-export function FolderPicker({ label, onChange, newFolderSuggestion }: { label: string; onChange: (picked: PickedFolder) => void; newFolderSuggestion?: string }) {
+export function FolderPicker({
+  label,
+  onChange,
+  newFolderSuggestion,
+}: {
+  label: string;
+  onChange: (picked: PickedFolder) => void;
+  newFolderSuggestion?: string;
+}) {
   const [path, setPath] = useState<string | undefined>();
   const [newFolder, setNewFolder] = useState<string | null>(null);
 
@@ -97,7 +105,9 @@ export function FolderPicker({ label, onChange, newFolderSuggestion }: { label: 
               ) : null}
               {listing!.entries.length === 0 && newFolder === null ? (
                 <li className="px-3 py-4 text-small text-ink-muted">
-                  {atRoots ? "No storage roots are reachable on this server." : "No folders inside this one. You can use it as it is, or make a new folder."}
+                  {atRoots
+                    ? "No storage roots are reachable on this server."
+                    : "No folders inside this one. You can use it as it is, or make a new folder."}
                 </li>
               ) : null}
               {listing!.entries.map((entry) => (
@@ -128,7 +138,9 @@ export function FolderPicker({ label, onChange, newFolderSuggestion }: { label: 
       ) : (
         <p className="mt-1.5 text-small text-ink-muted">Open a folder to choose it.</p>
       )}
-      {listing?.path && !listing.writable ? <p className="mt-1 text-small text-warning">Outpost cannot write to this folder. Check its permissions, or pick another.</p> : null}
+      {listing?.path && !listing.writable ? (
+        <p className="mt-1 text-small text-warning">Outpost cannot write to this folder. Check its permissions, or pick another.</p>
+      ) : null}
     </div>
   );
 }

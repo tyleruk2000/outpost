@@ -67,14 +67,36 @@ function traceLevel(field: Float32Array, columns: number, rows: number, level: n
       const left: [number, number] = [x, y + lerp(tl, bl)];
       const segments: Array<[[number, number], [number, number]]> = [];
       switch (index) {
-        case 1: case 14: segments.push([left, bottom]); break;
-        case 2: case 13: segments.push([bottom, right]); break;
-        case 3: case 12: segments.push([left, right]); break;
-        case 4: case 11: segments.push([top, right]); break;
-        case 6: case 9: segments.push([top, bottom]); break;
-        case 7: case 8: segments.push([left, top]); break;
-        case 5: segments.push([left, top], [bottom, right]); break;
-        case 10: segments.push([left, bottom], [top, right]); break;
+        case 1:
+        case 14:
+          segments.push([left, bottom]);
+          break;
+        case 2:
+        case 13:
+          segments.push([bottom, right]);
+          break;
+        case 3:
+        case 12:
+          segments.push([left, right]);
+          break;
+        case 4:
+        case 11:
+          segments.push([top, right]);
+          break;
+        case 6:
+        case 9:
+          segments.push([top, bottom]);
+          break;
+        case 7:
+        case 8:
+          segments.push([left, top]);
+          break;
+        case 5:
+          segments.push([left, top], [bottom, right]);
+          break;
+        case 10:
+          segments.push([left, bottom], [top, right]);
+          break;
       }
       for (const [from, to] of segments) {
         path += `M${(from[0] * cell).toFixed(1)} ${(from[1] * cell).toFixed(1)}L${(to[0] * cell).toFixed(1)} ${(to[1] * cell).toFixed(1)}`;
@@ -118,8 +140,16 @@ export const Contour = memo(function Contour({
     >
       {paths.map((path, index) => (
         // Every fourth line is an index contour, drawn heavier, as on a printed map.
-        // biome-ignore lint/suspicious/noArrayIndexKey: levels are a fixed, ordered list
-        <path key={index} d={path.d} fill="none" stroke="currentColor" strokeWidth={path.index ? 1.4 : 0.8} strokeLinecap="round" opacity={path.index ? 0.9 : 0.6} />
+        <path
+          // biome-ignore lint/suspicious/noArrayIndexKey: levels are a fixed, ordered list
+          key={index}
+          d={path.d}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={path.index ? 1.4 : 0.8}
+          strokeLinecap="round"
+          opacity={path.index ? 0.9 : 0.6}
+        />
       ))}
     </svg>
   );

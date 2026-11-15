@@ -18,9 +18,14 @@ export function BackupSection() {
 
   const restore = useMutation({
     mutationFn: async (file: File) => {
-      const response = await fetch("/api/backup/restore", { method: "POST", headers: { "X-Outpost-Request": "1", "Content-Type": "application/zip" }, body: file });
+      const response = await fetch("/api/backup/restore", {
+        method: "POST",
+        headers: { "X-Outpost-Request": "1", "Content-Type": "application/zip" },
+        body: file,
+      });
       const body = await response.json();
-      if (!response.ok) throw new ApiError(response.status, body.error?.code ?? "http", body.error?.message ?? "The backup could not be read.");
+      if (!response.ok)
+        throw new ApiError(response.status, body.error?.code ?? "http", body.error?.message ?? "The backup could not be read.");
       return body;
     },
     onSuccess: () => {
@@ -107,7 +112,9 @@ export function BackupSection() {
       ) : null}
       {status.data && status.data.previousData.length > 0 ? (
         <p className="text-small text-ink-muted">
-          Data from before earlier restores is kept in the data directory: <span className="font-mono text-[0.8125rem] text-ink">{status.data.previousData.join(", ")}</span>. Delete those folders yourself when you no longer need them.
+          Data from before earlier restores is kept in the data directory:{" "}
+          <span className="font-mono text-[0.8125rem] text-ink">{status.data.previousData.join(", ")}</span>. Delete those folders yourself
+          when you no longer need them.
         </p>
       ) : null}
       <ConfirmDialog
@@ -116,7 +123,8 @@ export function BackupSection() {
         title="Restore from this backup?"
         description={
           <>
-            <span className="font-medium text-ink">{chosen?.name}</span> will replace the notes, settings and library index on this Outpost after a restart. The current data is kept in a dated folder, not deleted.
+            <span className="font-medium text-ink">{chosen?.name}</span> will replace the notes, settings and library index on this Outpost
+            after a restart. The current data is kept in a dated folder, not deleted.
           </>
         }
         confirmLabel="Check and stage restore"

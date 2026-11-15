@@ -148,8 +148,12 @@ export function cleanTags(input: readonly string[]): string[] {
   const seen = new Set<string>();
   const names: string[] = [];
   for (const raw of input) {
-    // biome-ignore lint/suspicious/noControlCharactersInRegex: stripping control characters is the point
-    const name = raw.normalize("NFC").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
+    const name = raw
+      .normalize("NFC")
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are exactly what is being removed
+      .replace(/[\u0000-\u001f\u007f]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
     if (!name || seen.has(tagKey(name))) continue;
     if (name.includes(",")) throw badRequest(`Tags cannot contain commas ("${name}"). Add each tag separately.`);
     if (name.length > MAX_TAG_LENGTH) {
@@ -205,7 +209,12 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
   }
 
   const tagIdsOf = (documentId: string) =>
-    db.select({ tagId: documentTags.tagId }).from(documentTags).where(eq(documentTags.documentId, documentId)).all().map((row) => row.tagId);
+    db
+      .select({ tagId: documentTags.tagId })
+      .from(documentTags)
+      .where(eq(documentTags.documentId, documentId))
+      .all()
+      .map((row) => row.tagId);
 
   /**
    * Drops tags nothing uses any more, so a typo does not linger as a suggestion. The
@@ -219,7 +228,13 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
 
   /** Replaces a document's tags, creating any that do not exist. Call inside a transaction. */
   function setTags(documentId: string, names: string[]): void {
-    const known = new Map(db.select().from(tags).all().map((tag) => [tagKey(tag.name), tag.id]));
+    const known = new Map(
+      db
+        .select()
+        .from(tags)
+        .all()
+        .map((tag) => [tagKey(tag.name), tag.id]),
+    );
     const before = tagIdsOf(documentId);
     const after = new Set<string>();
     db.delete(documentTags).where(eq(documentTags.documentId, documentId)).run();
@@ -240,7 +255,12 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
 
   function toDtos(rows: DocumentRow[]): DocumentDto[] {
     const names = tagNames(rows.map((row) => row.id));
-    const connected = new Set(storage.list().filter((location) => location.status === "available").map((location) => location.id));
+    const connected = new Set(
+      storage
+        .list()
+        .filter((location) => location.status === "available")
+        .map((location) => location.id),
+    );
     return rows.map((row) => ({
       id: row.id,
       title: row.title,
@@ -433,7 +453,10 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
     try {
       await fs.promises.copyFile(source, partPath);
       if ((await fs.promises.stat(partPath)).size !== stat.size) {
-        throw new AppError("conflict", `"${originalName}" changed while it was being copied. Try again once it is no longer being written.`);
+        throw new AppError(
+          "conflict",
+          `"${originalName}" changed while it was being copied. Try again once it is no longer being written.`,
+        );
       }
     } catch (error) {
       await discardPart(partPath);
@@ -452,7 +475,11 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
   }
 
   /** Records what was read: the text itself, counts, and metadata for fields left empty. */
-  async function storeExtraction(id: string, kind: ExtractKind | "image", result: Extracted): Promise<DocumentRow["extraction"] | "removed"> {
+  async function storeExtraction(
+    id: string,
+    kind: ExtractKind | "image",
+    result: Extracted,
+  ): Promise<DocumentRow["extraction"] | "removed"> {
     const row = findRow(id);
     if (!row) return "removed";
     const textChars = result.sections.reduce((total, section) => total + section.text.length, 0);
@@ -461,7 +488,13 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
     const detail = (textChars > 0 ? result.notes : [reason, ...result.notes]).join(" ") || null;
 
     await extracted.write(id, result.sections);
-    const patch: Partial<DocumentRow> = { extraction, extractionDetail: detail, textChars, pageCount: result.pageCount, updatedAt: Date.now() };
+    const patch: Partial<DocumentRow> = {
+      extraction,
+      extractionDetail: detail,
+      textChars,
+      pageCount: result.pageCount,
+      updatedAt: Date.now(),
+    };
     // Metadata from inside the file only fills what nobody has filled in. A title still
     // equal to the file name counts as not filled in.
     if (result.meta.title && row.title === defaultTitle(row.originalName)) patch.title = result.meta.title.slice(0, MAX_TITLE_LENGTH);
@@ -528,7 +561,8 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
       } catch (error) {
         if (signal.aborted) {
           // Paused or shutting down: it will run again. Cancelled: say so.
-          if (signal.reason === "cancelled") setExtraction(id, "failed", 'Reading the text was cancelled. Choose "Read text again" to try again.');
+          if (signal.reason === "cancelled")
+            setExtraction(id, "failed", 'Reading the text was cancelled. Choose "Read text again" to try again.');
           else setExtraction(id, "pending", null);
           throw error;
         }
@@ -588,7 +622,11 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
       if (query.type) conditions.push(inArray(documents.ext, extensionsOfType(query.type)));
       if (query.tag) {
         const wanted = tagKey(query.tag.trim());
-        const tag = db.select().from(tags).all().find((candidate) => tagKey(candidate.name) === wanted);
+        const tag = db
+          .select()
+          .from(tags)
+          .all()
+          .find((candidate) => tagKey(candidate.name) === wanted);
         if (!tag) return { documents: [], total: 0 };
         conditions.push(
           sql`exists (select 1 from ${documentTags} where ${documentTags.documentId} = ${documents.id} and ${documentTags.tagId} = ${tag.id})`,
@@ -625,7 +663,10 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
         )
         .all() as Array<{ name: string; count: number }>;
       const byType = new Map<DocumentType, number>();
-      for (const row of sqlite.prepare("SELECT ext, count(*) AS count FROM documents GROUP BY ext").all() as Array<{ ext: string; count: number }>) {
+      for (const row of sqlite.prepare("SELECT ext, count(*) AS count FROM documents GROUP BY ext").all() as Array<{
+        ext: string;
+        count: number;
+      }>) {
         const type = formatForExt(row.ext)?.type ?? "text";
         byType.set(type, (byType.get(type) ?? 0) + row.count);
       }

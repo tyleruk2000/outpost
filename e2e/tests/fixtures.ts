@@ -41,6 +41,7 @@ export function watchForErrors(page: Page): string[] {
 }
 
 /** Calls the API the way the app does. */
+// biome-ignore lint/suspicious/noExplicitAny: tests read response bodies loosely and assert on them
 export async function api<T = any>(page: Page, method: string, url: string, body?: unknown): Promise<T> {
   const response = await page.request.fetch(url, {
     method,

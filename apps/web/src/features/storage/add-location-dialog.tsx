@@ -63,7 +63,16 @@ export function AddLocationDialog({ open, onOpenChange }: { open: boolean; onOpe
 
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Name" hint="How this location is shown in Outpost.">
-                {(ids) => <Input {...ids} value={name} onChange={(event) => setName(event.target.value)} placeholder="Field SSD" maxLength={80} required />}
+                {(ids) => (
+                  <Input
+                    {...ids}
+                    value={name}
+                    onChange={(event) => setName(event.target.value)}
+                    placeholder="Field SSD"
+                    maxLength={80}
+                    required
+                  />
+                )}
               </Field>
               <Field label="Kind" hint="Used for labels and warnings only.">
                 {(ids) => <Select {...ids} value={kind} onChange={setKind} options={kinds} />}

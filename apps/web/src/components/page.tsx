@@ -8,7 +8,17 @@ export function Page({ width = "wide", className, ...props }: ComponentProps<"di
   return <div className={cn("mx-auto w-full px-5 pt-8 pb-24 md:px-10 md:pt-12 md:pb-16", max, className)} {...props} />;
 }
 
-export function PageHeader({ title, description, actions, className }: { title: ReactNode; description?: ReactNode; actions?: ReactNode; className?: string }) {
+export function PageHeader({
+  title,
+  description,
+  actions,
+  className,
+}: {
+  title: ReactNode;
+  description?: ReactNode;
+  actions?: ReactNode;
+  className?: string;
+}) {
   return (
     <header className={cn("mb-8 flex flex-wrap items-end justify-between gap-x-6 gap-y-4", className)}>
       <div className="min-w-0 max-w-[60ch]">
@@ -20,7 +30,19 @@ export function PageHeader({ title, description, actions, className }: { title: 
   );
 }
 
-export function Section({ title, description, actions, className, children }: { title: ReactNode; description?: ReactNode; actions?: ReactNode; className?: string; children: ReactNode }) {
+export function Section({
+  title,
+  description,
+  actions,
+  className,
+  children,
+}: {
+  title: ReactNode;
+  description?: ReactNode;
+  actions?: ReactNode;
+  className?: string;
+  children: ReactNode;
+}) {
   return (
     <section className={cn("mt-10 first:mt-0", className)}>
       <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
@@ -55,8 +77,17 @@ export function EmptyState({
   className?: string;
 }) {
   return (
-    <div className={cn("relative isolate overflow-hidden rounded-panel border border-border", compact ? "px-6 py-8" : "px-6 py-12 md:px-10 md:py-16", className)}>
-      <Contour seed={seed} className="absolute inset-0 -z-10 size-full opacity-70 [mask-image:linear-gradient(100deg,transparent_18%,black_78%)]" />
+    <div
+      className={cn(
+        "relative isolate overflow-hidden rounded-panel border border-border",
+        compact ? "px-6 py-8" : "px-6 py-12 md:px-10 md:py-16",
+        className,
+      )}
+    >
+      <Contour
+        seed={seed}
+        className="absolute inset-0 -z-10 size-full opacity-70 [mask-image:linear-gradient(100deg,transparent_18%,black_78%)]"
+      />
       <div className="max-w-[44ch]">
         <h2 className="font-title text-heading text-ink">{title}</h2>
         {children ? <div className="mt-2 text-body text-ink-muted">{children}</div> : null}
@@ -89,7 +120,10 @@ export function Notice({
     success: "bg-success-soft text-success",
   };
   return (
-    <div role={tone === "danger" ? "alert" : "status"} className={cn("flex items-start gap-3 rounded-panel px-4 py-3 text-small", tones[tone], className)}>
+    <div
+      role={tone === "danger" ? "alert" : "status"}
+      className={cn("flex items-start gap-3 rounded-panel px-4 py-3 text-small", tones[tone], className)}
+    >
       {icon ? <span className="mt-0.5 shrink-0 [&_svg]:size-4">{icon}</span> : null}
       <div className="min-w-0 flex-1">
         {title ? <p className="font-semibold">{title}</p> : null}

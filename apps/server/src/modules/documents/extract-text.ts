@@ -114,7 +114,12 @@ function splitFrontMatter(source: string): { body: string; meta: Extracted["meta
   if (!match) return { body: source, meta: {} };
   const field = (name: string) => {
     const line = new RegExp(`^${name}[ \\t]*:[ \\t]*(.+)$`, "im").exec(match[1] ?? "");
-    return line?.[1]?.trim().replace(/^(["'])(.*)\1$/, "$2").trim() || undefined;
+    return (
+      line?.[1]
+        ?.trim()
+        .replace(/^(["'])(.*)\1$/, "$2")
+        .trim() || undefined
+    );
   };
   return { body: source.slice(match[0].length), meta: { title: field("title"), author: field("author") } };
 }
@@ -191,7 +196,9 @@ export function parseHtml(source: string): ParsedHtml {
   return {
     tree,
     // `title` is not rendered, so innerText rules give nothing; read its text directly.
-    title: titleElement ? tidyText(titleElement.children.map((child) => (child.type === "text" ? child.value : "")).join("")) || undefined : undefined,
+    title: titleElement
+      ? tidyText(titleElement.children.map((child) => (child.type === "text" ? child.value : "")).join("")) || undefined
+      : undefined,
     language: typeof lang === "string" && lang.trim() ? lang.trim().slice(0, 35) : undefined,
   };
 }

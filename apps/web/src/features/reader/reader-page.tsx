@@ -159,6 +159,7 @@ export default function ReaderPage() {
           <p className="truncate font-title text-body text-ink">{pageTitle ?? title}</p>
           {pageTitle ? <p className="truncate text-micro text-ink-muted">{title}</p> : null}
         </div>
+        {/* biome-ignore lint/a11y/useSemanticElements: a form with role="search" is the search landmark every browser and screen reader knows */}
         <form onSubmit={submit} role="search" className="relative order-last w-full md:order-none md:w-80">
           <Search aria-hidden className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-muted" />
           <input
@@ -170,17 +171,29 @@ export default function ReaderPage() {
             }}
             onFocus={() => setFocused(true)}
             onBlur={() => window.setTimeout(() => setFocused(false), 150)}
-            onKeyDown={(event) => event.key === "Escape" && (setSearchFor(undefined), setQuery(""))}
+            onKeyDown={(event) => {
+              if (event.key !== "Escape") return;
+              setSearchFor(undefined);
+              setQuery("");
+            }}
             placeholder={`Search in ${title}`}
             aria-label={`Search in ${title}`}
             disabled={!book.data.book.ready}
             className="h-9 w-full rounded-control border border-border-strong bg-page pr-3 pl-9 text-small text-ink placeholder:text-ink-faint focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus/30 max-md:h-11 [&::-webkit-search-cancel-button]:hidden"
           />
           {showSuggestions ? (
-            <ul className="absolute inset-x-0 top-full z-(--z-dropdown) mt-1.5 max-h-80 overflow-y-auto rounded-panel border border-border bg-raised p-1 shadow-float" aria-label="Article titles">
+            <ul
+              className="absolute inset-x-0 top-full z-(--z-dropdown) mt-1.5 max-h-80 overflow-y-auto rounded-panel border border-border bg-raised p-1 shadow-float"
+              aria-label="Article titles"
+            >
               {suggestions.data!.map((item) => (
                 <li key={item.path}>
-                  <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => open(item.path)} className="block w-full truncate rounded-[4px] px-2.5 py-1.5 text-left text-small text-ink hover:bg-surface-strong max-md:py-2.5">
+                  <button
+                    type="button"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => open(item.path)}
+                    className="block w-full truncate rounded-[4px] px-2.5 py-1.5 text-left text-small text-ink hover:bg-surface-strong max-md:py-2.5"
+                  >
                     {item.title}
                   </button>
                 </li>
@@ -269,7 +282,11 @@ export default function ReaderPage() {
                       <ol className="mt-3 divide-y divide-border">
                         {results.data.results.map((result) => (
                           <li key={result.path} className="py-4">
-                            <button type="button" onClick={() => open(result.path)} className="font-title text-lead text-ink decoration-primary decoration-1 underline-offset-[0.22em] hover:underline">
+                            <button
+                              type="button"
+                              onClick={() => open(result.path)}
+                              className="font-title text-lead text-ink decoration-primary decoration-1 underline-offset-[0.22em] hover:underline"
+                            >
                               {result.title}
                             </button>
                             {result.segments.length > 0 ? (

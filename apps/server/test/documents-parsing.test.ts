@@ -105,8 +105,12 @@ describe("http helpers", () => {
   });
 
   it("encodes download names for old and new clients", () => {
-    expect(contentDisposition("attachment", 'report "final".pdf')).toBe(`attachment; filename="report _final_.pdf"; filename*=UTF-8''report%20%22final%22.pdf`);
-    expect(contentDisposition("inline", "日本語 (1).txt")).toBe(`inline; filename="___ (1).txt"; filename*=UTF-8''%E6%97%A5%E6%9C%AC%E8%AA%9E%20%281%29.txt`);
+    expect(contentDisposition("attachment", 'report "final".pdf')).toBe(
+      `attachment; filename="report _final_.pdf"; filename*=UTF-8''report%20%22final%22.pdf`,
+    );
+    expect(contentDisposition("inline", "日本語 (1).txt")).toBe(
+      `inline; filename="___ (1).txt"; filename*=UTF-8''%E6%97%A5%E6%9C%AC%E8%AA%9E%20%281%29.txt`,
+    );
   });
 
   it("compares entity tags", () => {
@@ -210,7 +214,10 @@ describe("the extraction worker", () => {
 
   it("reports progress and returns one section per page", async () => {
     const seen: number[] = [];
-    const result = await runExtraction(request, { signal: new AbortController().signal, onProgress: (progress) => seen.push(progress.current) });
+    const result = await runExtraction(request, {
+      signal: new AbortController().signal,
+      onProgress: (progress) => seen.push(progress.current),
+    });
     expect(result.pageCount).toBe(40);
     expect(result.sections).toHaveLength(40);
     expect(result.sections[39]).toEqual({ page: 40, text: "Page number 40" });
@@ -234,13 +241,13 @@ describe("the extraction worker", () => {
   });
 
   it("explains a file that is missing or unreadable", async () => {
-    await expect(runExtraction({ ...request, filePath: path.join(dir, "absent.pdf") }, { signal: new AbortController().signal })).rejects.toThrowError(
-      /could not be read/,
-    );
+    await expect(
+      runExtraction({ ...request, filePath: path.join(dir, "absent.pdf") }, { signal: new AbortController().signal }),
+    ).rejects.toThrowError(/could not be read/);
     const notZip = path.join(dir, "broken.epub");
     fs.writeFileSync(notZip, "not a zip at all");
-    await expect(runExtraction({ filePath: notZip, kind: "epub", maxPdfPages: 0 }, { signal: new AbortController().signal })).rejects.toThrowError(
-      /not a readable zip archive/,
-    );
+    await expect(
+      runExtraction({ filePath: notZip, kind: "epub", maxPdfPages: 0 }, { signal: new AbortController().signal }),
+    ).rejects.toThrowError(/not a readable zip archive/);
   });
 });

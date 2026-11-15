@@ -11,9 +11,9 @@ import { AppError } from "../../core/errors.ts";
 import { safeFileName } from "../../core/fs-safe.ts";
 import { DOCUMENT_TYPES, formatForExt, servedAs } from "./file-types.ts";
 import { contentDisposition, matchesEtag, parseRange } from "./http.ts";
+import { registerDocumentMoves } from "./move.ts";
 import { createDocumentsService } from "./service.ts";
 import { receiveUpload } from "./upload.ts";
-import { registerDocumentMoves } from "./move.ts";
 
 /**
  * Sent with every original file. `sandbox` gives the response an origin of its own, so

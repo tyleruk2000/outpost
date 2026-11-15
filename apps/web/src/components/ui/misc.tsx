@@ -18,7 +18,17 @@ import { floating } from "./menu";
 
 export const TooltipProvider = TooltipPrimitive.Provider;
 
-export function Tooltip({ label, shortcut, side, children }: { label: ReactNode; shortcut?: string; side?: "top" | "right" | "bottom" | "left"; children: ReactNode }) {
+export function Tooltip({
+  label,
+  shortcut,
+  side,
+  children,
+}: {
+  label: ReactNode;
+  shortcut?: string;
+  side?: "top" | "right" | "bottom" | "left";
+  children: ReactNode;
+}) {
   return (
     <TooltipPrimitive.Root>
       <TooltipPrimitive.Trigger asChild>{children}</TooltipPrimitive.Trigger>
@@ -47,7 +57,13 @@ export const PopoverClose = PopoverPrimitive.Close;
 export function PopoverContent({ className, sideOffset = 6, align = "start", ...props }: ComponentProps<typeof PopoverPrimitive.Content>) {
   return (
     <PopoverPrimitive.Portal>
-      <PopoverPrimitive.Content sideOffset={sideOffset} align={align} collisionPadding={8} className={cn(floating, "p-3", className)} {...props} />
+      <PopoverPrimitive.Content
+        sideOffset={sideOffset}
+        align={align}
+        collisionPadding={8}
+        className={cn(floating, "p-3", className)}
+        {...props}
+      />
     </PopoverPrimitive.Portal>
   );
 }
@@ -149,7 +165,15 @@ export function Select<T extends string>({
         </SelectPrimitive.Icon>
       </SelectPrimitive.Trigger>
       <SelectPrimitive.Portal>
-        <SelectPrimitive.Content position="popper" sideOffset={6} collisionPadding={8} className={cn(floating, "max-h-(--radix-select-content-available-height) w-(--radix-select-trigger-width) min-w-(--radix-select-trigger-width) overflow-hidden p-0")}>
+        <SelectPrimitive.Content
+          position="popper"
+          sideOffset={6}
+          collisionPadding={8}
+          className={cn(
+            floating,
+            "max-h-(--radix-select-content-available-height) w-(--radix-select-trigger-width) min-w-(--radix-select-trigger-width) overflow-hidden p-0",
+          )}
+        >
           <SelectPrimitive.Viewport className="p-1">
             {options.map((option) => (
               <SelectPrimitive.Item
@@ -212,16 +236,33 @@ export function Checkbox({ className, ...props }: ComponentProps<typeof Checkbox
  * A progress bar that only ever shows real progress. With no `value` it shows that
  * work is happening without pretending to know how far along it is.
  */
-export function Progress({ value, tone = "primary", className, label }: { value?: number | null; tone?: "primary" | "lamp" | "success" | "danger" | "muted"; className?: string; label: string }) {
+export function Progress({
+  value,
+  tone = "primary",
+  className,
+  label,
+}: {
+  value?: number | null;
+  tone?: "primary" | "lamp" | "success" | "danger" | "muted";
+  className?: string;
+  label: string;
+}) {
   const fill = { primary: "bg-primary", lamp: "bg-lamp", success: "bg-success", danger: "bg-danger", muted: "bg-ink-faint" }[tone];
   const known = typeof value === "number" && Number.isFinite(value);
   const percent = known ? Math.max(0, Math.min(100, value * 100)) : null;
   return (
-    <ProgressPrimitive.Root value={percent} aria-label={label} className={cn("relative h-1.5 w-full overflow-hidden rounded-full bg-surface-strong", className)}>
+    <ProgressPrimitive.Root
+      value={percent}
+      aria-label={label}
+      className={cn("relative h-1.5 w-full overflow-hidden rounded-full bg-surface-strong", className)}
+    >
       {percent === null ? (
         <div className={cn("absolute inset-y-0 w-1/3 animate-[indeterminate_1.4s_ease-in-out_infinite] rounded-full", fill)} />
       ) : (
-        <ProgressPrimitive.Indicator className={cn("h-full rounded-full transition-[width] duration-300 ease-out", fill)} style={{ width: `${percent}%` }} />
+        <ProgressPrimitive.Indicator
+          className={cn("h-full rounded-full transition-[width] duration-300 ease-out", fill)}
+          style={{ width: `${percent}%` }}
+        />
       )}
     </ProgressPrimitive.Root>
   );
@@ -253,7 +294,12 @@ export function Spinner({ className, label = "Loading" }: { className?: string; 
 }
 
 export function Kbd({ className, ...props }: ComponentProps<"kbd">) {
-  return <kbd className={cn("rounded-[4px] border border-border bg-surface px-1.5 py-px font-mono text-micro text-ink-muted", className)} {...props} />;
+  return (
+    <kbd
+      className={cn("rounded-[4px] border border-border bg-surface px-1.5 py-px font-mono text-micro text-ink-muted", className)}
+      {...props}
+    />
+  );
 }
 
 export function Skeleton({ className, ...props }: ComponentProps<"div">) {

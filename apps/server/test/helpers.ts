@@ -8,7 +8,13 @@ import { loadConfig } from "../src/config.ts";
 export interface TestApp extends BuiltApp {
   dir: string;
   /** JSON request with the headers the web app sends. */
-  api<T = any>(method: string, url: string, body?: unknown, extra?: Partial<InjectOptions>): Promise<{ status: number; body: T; headers: Record<string, unknown> }>;
+  // biome-ignore lint/suspicious/noExplicitAny: tests read response bodies loosely and assert on them
+  api<T = any>(
+    method: string,
+    url: string,
+    body?: unknown,
+    extra?: Partial<InjectOptions>,
+  ): Promise<{ status: number; body: T; headers: Record<string, unknown> }>;
   close(): Promise<void>;
 }
 

@@ -32,16 +32,27 @@ describe("configuration", () => {
     expect(loadConfig({ OUTPOST_HOST: "0.0.0.0", OUTPOST_LAN_ACCESS: "true" }).authRequired).toBe(true);
     // In a container the listening address says nothing; the published address decides.
     expect(() => loadConfig({ OUTPOST_HOST: "0.0.0.0", OUTPOST_IN_CONTAINER: "true" })).toThrow(/published only to this computer/);
-    expect(() => loadConfig({ OUTPOST_HOST: "0.0.0.0", OUTPOST_IN_CONTAINER: "true", OUTPOST_PUBLISHED_ADDRESS: "0.0.0.0" })).toThrow(/published only to this computer/);
-    expect(loadConfig({ OUTPOST_HOST: "0.0.0.0", OUTPOST_IN_CONTAINER: "true", OUTPOST_PUBLISHED_ADDRESS: "127.0.0.1" }).authRequired).toBe(false);
-    expect(loadConfig({ OUTPOST_HOST: "0.0.0.0", OUTPOST_IN_CONTAINER: "true", OUTPOST_PUBLISHED_ADDRESS: "0.0.0.0", OUTPOST_LAN_ACCESS: "true" }).authRequired).toBe(true);
+    expect(() => loadConfig({ OUTPOST_HOST: "0.0.0.0", OUTPOST_IN_CONTAINER: "true", OUTPOST_PUBLISHED_ADDRESS: "0.0.0.0" })).toThrow(
+      /published only to this computer/,
+    );
+    expect(loadConfig({ OUTPOST_HOST: "0.0.0.0", OUTPOST_IN_CONTAINER: "true", OUTPOST_PUBLISHED_ADDRESS: "127.0.0.1" }).authRequired).toBe(
+      false,
+    );
+    expect(
+      loadConfig({
+        OUTPOST_HOST: "0.0.0.0",
+        OUTPOST_IN_CONTAINER: "true",
+        OUTPOST_PUBLISHED_ADDRESS: "0.0.0.0",
+        OUTPOST_LAN_ACCESS: "true",
+      }).authRequired,
+    ).toBe(true);
   });
 
   it("refuses LAN access without sign-in unless that is stated explicitly", () => {
     expect(() => loadConfig({ OUTPOST_LAN_ACCESS: "true", OUTPOST_AUTH: "off" })).toThrow(/OUTPOST_AUTH is off/);
-    expect(
-      loadConfig({ OUTPOST_LAN_ACCESS: "true", OUTPOST_AUTH: "off", OUTPOST_ALLOW_UNAUTHENTICATED_LAN: "true" }).authRequired,
-    ).toBe(false);
+    expect(loadConfig({ OUTPOST_LAN_ACCESS: "true", OUTPOST_AUTH: "off", OUTPOST_ALLOW_UNAUTHENTICATED_LAN: "true" }).authRequired).toBe(
+      false,
+    );
   });
 });
 
@@ -66,7 +77,18 @@ describe("path safety", () => {
 
 describe("network guards", () => {
   it("treats private, loopback and link-local addresses as non-public", () => {
-    for (const address of ["127.0.0.1", "10.1.2.3", "192.168.1.10", "172.20.0.1", "169.254.169.254", "::1", "fe80::1", "fd00::1", "::ffff:10.0.0.1", "0.0.0.0"]) {
+    for (const address of [
+      "127.0.0.1",
+      "10.1.2.3",
+      "192.168.1.10",
+      "172.20.0.1",
+      "169.254.169.254",
+      "::1",
+      "fe80::1",
+      "fd00::1",
+      "::ffff:10.0.0.1",
+      "0.0.0.0",
+    ]) {
       expect(isPublicAddress(address), address).toBe(false);
     }
     for (const address of ["1.1.1.1", "93.184.216.34", "2606:4700:4700::1111"]) {
@@ -122,7 +144,11 @@ describe("request security", () => {
     app = await createTestApp();
     await app.api("PATCH", "/api/settings", { "downloads.concurrency": 5, "maps.tileSource": "https://tiles.example/planet.pmtiles" });
     const { body } = await app.api("PATCH", "/api/settings", { "indexing.chunkSize": 900 });
-    expect(body.settings).toMatchObject({ "downloads.concurrency": 5, "maps.tileSource": "https://tiles.example/planet.pmtiles", "indexing.chunkSize": 900 });
+    expect(body.settings).toMatchObject({
+      "downloads.concurrency": 5,
+      "maps.tileSource": "https://tiles.example/planet.pmtiles",
+      "indexing.chunkSize": 900,
+    });
     // And they are still there after a restart.
     const dir = app.dir;
     await app.app.close();
@@ -193,12 +219,24 @@ describe("storage locations", () => {
     app = await createTestApp();
     const outside = await app.api("POST", "/api/storage/locations", { name: "Etc", path: "/etc/outpost", kind: "external" });
     expect(outside.status).toBe(403);
-    const traversal = await app.api("POST", "/api/storage/locations", { name: "Up", path: path.join(app.dir, "storage", "..", "..", "x"), kind: "external" });
+    const traversal = await app.api("POST", "/api/storage/locations", {
+      name: "Up",
+      path: path.join(app.dir, "storage", "..", "..", "x"),
+      kind: "external",
+    });
     expect(traversal.status).toBe(403);
     expect((await app.api("GET", `/api/storage/browse?path=${encodeURIComponent("/etc")}`)).status).toBe(403);
-    const inside = await app.api("POST", "/api/storage/locations", { name: "USB", path: path.join(app.dir, "storage", "usb"), kind: "external" });
+    const inside = await app.api("POST", "/api/storage/locations", {
+      name: "USB",
+      path: path.join(app.dir, "storage", "usb"),
+      kind: "external",
+    });
     expect(inside.status).toBe(200);
-    const overlap = await app.api("POST", "/api/storage/locations", { name: "Nested", path: path.join(app.dir, "storage", "usb", "deeper"), kind: "external" });
+    const overlap = await app.api("POST", "/api/storage/locations", {
+      name: "Nested",
+      path: path.join(app.dir, "storage", "usb", "deeper"),
+      kind: "external",
+    });
     expect(overlap.status).toBe(409);
   });
 

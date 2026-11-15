@@ -62,7 +62,10 @@ test.describe("request safety", () => {
   test("refuses requests that claim another host or come from another site", async ({ page }) => {
     const rebinding = await page.request.get("/api/health", { headers: { Host: "attacker.example" } });
     expect(rebinding.status()).toBe(403);
-    const forged = await page.request.patch("/api/settings", { data: { "downloads.concurrency": 3 }, headers: { Origin: "https://evil.example", "X-Outpost-Request": "1" } });
+    const forged = await page.request.patch("/api/settings", {
+      data: { "downloads.concurrency": 3 },
+      headers: { Origin: "https://evil.example", "X-Outpost-Request": "1" },
+    });
     expect(forged.status()).toBe(403);
     const missingHeader = await page.request.patch("/api/settings", { data: { "downloads.concurrency": 3 } });
     expect(missingHeader.status()).toBe(403);

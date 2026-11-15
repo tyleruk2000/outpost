@@ -18,7 +18,13 @@ afterEach(async () => {
 async function setup() {
   app = await createTestApp();
   server = await startFileServer();
-  const pdf = buildPdf([["Home canning", "Process pint jars for 40 minutes."], ["Altitude", "Add five minutes above 1,000 feet."]], { title: "Canning guide" });
+  const pdf = buildPdf(
+    [
+      ["Home canning", "Process pint jars for 40 minutes."],
+      ["Altitude", "Add five minutes above 1,000 feet."],
+    ],
+    { title: "Canning guide" },
+  );
   server.routes.set("/guides/canning.pdf", { body: pdf });
   const dir = path.join(app.dir, "catalog", "manifests");
   fs.mkdirSync(dir, { recursive: true });
@@ -44,7 +50,13 @@ async function setup() {
           attribution: "United States Department of Agriculture",
           homepage: "https://example.org/canning",
           lastVerified: "2026-11-15",
-          source: { type: "http", url: server.url("/guides/canning.pdf"), sha256: createHash("sha256").update(pdf).digest("hex"), sizeBytes: pdf.length, version: "2015" },
+          source: {
+            type: "http",
+            url: server.url("/guides/canning.pdf"),
+            sha256: createHash("sha256").update(pdf).digest("hex"),
+            sizeBytes: pdf.length,
+            version: "2015",
+          },
         },
       ],
     }),
@@ -63,7 +75,8 @@ async function download(target: TestApp) {
   return started.body.download.id as string;
 }
 
-const entryOf = async (target: TestApp) => (await target.api("GET", "/api/catalog")).body.entries.find((entry: { id: string }) => entry.id === "usda.canning");
+const entryOf = async (target: TestApp) =>
+  (await target.api("GET", "/api/catalog")).body.entries.find((entry: { id: string }) => entry.id === "usda.canning");
 
 describe("books and papers from the catalogue", () => {
   it("arrive in the document library: searchable by page, with their source recorded", async () => {
@@ -71,7 +84,16 @@ describe("books and papers from the catalogue", () => {
     await download(app);
 
     const document = (await app.api("GET", "/api/documents")).body.documents[0];
-    expect(document).toMatchObject({ title: "Complete Guide to Home Canning", type: "pdf", category: "Food preservation and cooking", author: "USDA", source: "https://example.org/canning", language: "en", pageCount: 2, extraction: "done" });
+    expect(document).toMatchObject({
+      title: "Complete Guide to Home Canning",
+      type: "pdf",
+      category: "Food preservation and cooking",
+      author: "USDA",
+      source: "https://example.org/canning",
+      language: "en",
+      pageCount: 2,
+      extraction: "done",
+    });
     const search = (await app.api("GET", "/api/search?q=altitude&kinds=document")).body;
     expect(search.results[0]).toMatchObject({ entityId: document.id, url: `/library/documents/${document.id}?page=2` });
 
@@ -110,11 +132,16 @@ describe("books and papers from the catalogue", () => {
   it("follows the document when documents are moved to another location", async () => {
     const { app } = await setup();
     await download(app);
-    const ssd = (await app.api("POST", "/api/storage/locations", { name: "Field SSD", path: path.join(app.dir, "storage", "ssd"), kind: "external" })).body.location;
+    const ssd = (
+      await app.api("POST", "/api/storage/locations", { name: "Field SSD", path: path.join(app.dir, "storage", "ssd"), kind: "external" })
+    ).body.location;
     await app.api("POST", "/api/documents/move", { locationId: ssd.id });
     await app.ctx.jobs.whenIdle();
     const entry = await entryOf(app);
-    await waitFor(async () => (await app.api("GET", `/api/collections/${entry.collectionId}`)).body.collection.locationId === ssd.id, "the collection to follow");
+    await waitFor(
+      async () => (await app.api("GET", `/api/collections/${entry.collectionId}`)).body.collection.locationId === ssd.id,
+      "the collection to follow",
+    );
     expect((await entryOf(app)).status).toBe("installed");
   });
 });

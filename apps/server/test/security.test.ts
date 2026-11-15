@@ -22,12 +22,31 @@ const raw = (method: string, url: string, headers: Record<string, string> = {}, 
 
 describe("sign-in cannot be sidestepped by disguising the address", () => {
   const disguises = ["/%61pi", "/a%70i", "/ap%69", "/%61%70%69", "/API", "//api", "/./api", "/api/../api"];
-  const targets = ["/documents", "/search?q=secret", "/settings", "/storage/locations", "/collections", "/downloads", "/jobs", "/events", "/catalog", "/system", "/notes/tree", "/retrieval/overview"];
+  const targets = [
+    "/documents",
+    "/search?q=secret",
+    "/settings",
+    "/storage/locations",
+    "/collections",
+    "/downloads",
+    "/jobs",
+    "/events",
+    "/catalog",
+    "/system",
+    "/notes/tree",
+    "/retrieval/overview",
+  ];
 
   it("requires a session for every API route however the path is written", async () => {
     app = await createTestApp({ OUTPOST_AUTH: "on" });
     await app.api("POST", "/api/auth/setup", { username: "keeper", password: "lantern on the north shelf" });
-    app.ctx.services.search.upsert({ kind: "note", entityId: "n", title: "Private", url: "/notes/n", sections: [{ text: "the secret passphrase" }] });
+    app.ctx.services.search.upsert({
+      kind: "note",
+      entityId: "n",
+      title: "Private",
+      url: "/notes/n",
+      sections: [{ text: "the secret passphrase" }],
+    });
 
     for (const target of targets) {
       const plain = await raw("GET", `/api${target}`);
@@ -46,7 +65,12 @@ describe("sign-in cannot be sidestepped by disguising the address", () => {
   it("applies the cross-site checks to disguised addresses too", async () => {
     app = await createTestApp();
     for (const prefix of ["/%61pi", "/a%70i"]) {
-      const forged = await raw("PATCH", `${prefix}/settings`, { origin: "https://evil.example", "sec-fetch-site": "cross-site", "content-type": "application/json" }, { "downloads.concurrency": 7 });
+      const forged = await raw(
+        "PATCH",
+        `${prefix}/settings`,
+        { origin: "https://evil.example", "sec-fetch-site": "cross-site", "content-type": "application/json" },
+        { "downloads.concurrency": 7 },
+      );
       expect(forged.statusCode).toBe(403);
       const noHeader = await raw("PATCH", `${prefix}/settings`, { "content-type": "application/json" }, { "downloads.concurrency": 7 });
       expect(noHeader.statusCode).toBe(403);
@@ -82,7 +106,8 @@ describe("guessing passwords", () => {
     await app.api("POST", "/api/users", { username: "guest", password: "a long enough password", role: "member" }, { headers: { cookie } });
     let evaluated = 0;
     for (let round = 0; round < 4; round += 1) {
-      for (let attempt = 0; attempt < 3; attempt += 1) if ((await guess("keeper", `guess ${round}-${attempt}`)).status === 401) evaluated += 1;
+      for (let attempt = 0; attempt < 3; attempt += 1)
+        if ((await guess("keeper", `guess ${round}-${attempt}`)).status === 401) evaluated += 1;
       await guess("guest", "a long enough password");
     }
     // Twelve guesses at the administrator were sent; only the first few were even checked.
@@ -96,9 +121,19 @@ describe("guessing passwords", () => {
     const id = setup.body.user.id as string;
     const without = await app.api("POST", `/api/users/${id}/password`, { password: "a brand new password" }, { headers: { cookie } });
     expect(without.status).toBe(403);
-    const wrong = await app.api("POST", `/api/users/${id}/password`, { password: "a brand new password", currentPassword: "not it at all" }, { headers: { cookie } });
+    const wrong = await app.api(
+      "POST",
+      `/api/users/${id}/password`,
+      { password: "a brand new password", currentPassword: "not it at all" },
+      { headers: { cookie } },
+    );
     expect(wrong.status).toBe(403);
-    const right = await app.api("POST", `/api/users/${id}/password`, { password: "a brand new password", currentPassword: "lantern on the north shelf" }, { headers: { cookie } });
+    const right = await app.api(
+      "POST",
+      `/api/users/${id}/password`,
+      { password: "a brand new password", currentPassword: "lantern on the north shelf" },
+      { headers: { cookie } },
+    );
     expect(right.status).toBe(200);
   });
 });
@@ -118,8 +153,15 @@ describe("large uploads", () => {
     app = await createTestApp({ OUTPOST_AUTH: "on" });
     const setup = await app.api("POST", "/api/auth/setup", { username: "keeper", password: "lantern on the north shelf" });
     const admin = String(setup.headers["set-cookie"]).split(";")[0]!;
-    await app.api("POST", "/api/users", { username: "guest", password: "a long enough password", role: "member" }, { headers: { cookie: admin } });
-    const member = String((await app.api("POST", "/api/auth/login", { username: "guest", password: "a long enough password" })).headers["set-cookie"]).split(";")[0]!;
+    await app.api(
+      "POST",
+      "/api/users",
+      { username: "guest", password: "a long enough password", role: "member" },
+      { headers: { cookie: admin } },
+    );
+    const member = String(
+      (await app.api("POST", "/api/auth/login", { username: "guest", password: "a long enough password" })).headers["set-cookie"],
+    ).split(";")[0]!;
     const big = Buffer.alloc(2 * 1024 * 1024, 65);
 
     for (const url of ["/api/backup/restore", "/api/semantic/import"]) {
@@ -142,9 +184,26 @@ describe("restoring a backup someone else made", () => {
     const setup = await theirs.api("POST", "/api/auth/setup", { username: "mallory", password: "a perfectly fine password" });
     const theirCookie = String(setup.headers["set-cookie"]).split(";")[0]!;
     fs.mkdirSync(path.join(theirs.ctx.config.dataDir, "catalog"), { recursive: true });
-    fs.writeFileSync(path.join(theirs.ctx.config.dataDir, "catalog", "evil.json"), JSON.stringify({ schemaVersion: 1, id: "evil", name: "Evil", description: "x", maintainers: [], downloadHosts: ["evil.example"], entries: [] }));
-    theirs.ctx.sqlite.prepare("INSERT INTO jobs (id, type, queue, state, title, payload, created_at, updated_at) VALUES ('j1', 'documents.move', 'transfer', 'queued', 'Planted', '{}', 1, 1)").run();
-    const backup = (await theirs.app.inject({ method: "GET", url: "/api/backup/download", headers: { host: "localhost", cookie: theirCookie } })).rawPayload;
+    fs.writeFileSync(
+      path.join(theirs.ctx.config.dataDir, "catalog", "evil.json"),
+      JSON.stringify({
+        schemaVersion: 1,
+        id: "evil",
+        name: "Evil",
+        description: "x",
+        maintainers: [],
+        downloadHosts: ["evil.example"],
+        entries: [],
+      }),
+    );
+    theirs.ctx.sqlite
+      .prepare(
+        "INSERT INTO jobs (id, type, queue, state, title, payload, created_at, updated_at) VALUES ('j1', 'documents.move', 'transfer', 'queued', 'Planted', '{}', 1, 1)",
+      )
+      .run();
+    const backup = (
+      await theirs.app.inject({ method: "GET", url: "/api/backup/download", headers: { host: "localhost", cookie: theirCookie } })
+    ).rawPayload;
     await theirs.close();
 
     // The victim restores it.
@@ -152,14 +211,21 @@ describe("restoring a backup someone else made", () => {
     let mine = await createTestApp({ OUTPOST_AUTH: "on" }, dir);
     const mySetup = await mine.api("POST", "/api/auth/setup", { username: "keeper", password: "lantern on the north shelf" });
     const myCookie = String(mySetup.headers["set-cookie"]).split(";")[0]!;
-    const staged = await mine.app.inject({ method: "POST", url: "/api/backup/restore", headers: { host: "localhost", cookie: myCookie, "x-outpost-request": "1", "content-type": "application/zip" }, payload: backup });
+    const staged = await mine.app.inject({
+      method: "POST",
+      url: "/api/backup/restore",
+      headers: { host: "localhost", cookie: myCookie, "x-outpost-request": "1", "content-type": "application/zip" },
+      payload: backup,
+    });
     expect(staged.statusCode).toBe(200);
     await mine.close();
     mine = await createTestApp({ OUTPOST_AUTH: "on" }, dir);
     app = mine;
 
     // Their session cookie is not a way in.
-    expect((await mine.app.inject({ method: "GET", url: "/api/settings", headers: { host: "localhost", cookie: theirCookie } })).statusCode).toBe(401);
+    expect(
+      (await mine.app.inject({ method: "GET", url: "/api/settings", headers: { host: "localhost", cookie: theirCookie } })).statusCode,
+    ).toBe(401);
     expect(mine.ctx.sqlite.prepare("SELECT count(*) AS n FROM sessions").get()).toEqual({ n: 0 });
     expect(mine.ctx.sqlite.prepare("SELECT count(*) AS n FROM jobs WHERE id = 'j1'").get()).toEqual({ n: 0 });
     expect(fs.existsSync(path.join(mine.ctx.config.dataDir, "catalog", "evil.json"))).toBe(false);
@@ -176,13 +242,21 @@ describe("restoring a backup someone else made", () => {
       archive.on("error", reject);
       archive.pipe(out);
     });
-    archive.append(JSON.stringify({ format: "outpost-backup", version: 1, appVersion: "0.1.0", createdAt: "2026-01-01T00:00:00Z", migrations: 1 }), { name: "manifest.json" });
+    archive.append(
+      JSON.stringify({ format: "outpost-backup", version: 1, appVersion: "0.1.0", createdAt: "2026-01-01T00:00:00Z", migrations: 1 }),
+      { name: "manifest.json" },
+    );
     archive.append(Buffer.alloc(300 * 1024 * 1024), { name: "attachments/zeros.bin" });
     await archive.finalize();
     await done;
     const payload = fs.readFileSync(file);
     expect(payload.length).toBeLessThan(1024 * 1024);
-    const response = await app.app.inject({ method: "POST", url: "/api/backup/restore", headers: { host: "localhost", "x-outpost-request": "1", "content-type": "application/zip" }, payload });
+    const response = await app.app.inject({
+      method: "POST",
+      url: "/api/backup/restore",
+      headers: { host: "localhost", "x-outpost-request": "1", "content-type": "application/zip" },
+      payload,
+    });
     expect(response.statusCode).toBe(400);
     expect(response.json().error.message).toMatch(/expands far more/);
     expect(fs.existsSync(path.join(app.ctx.config.dataDir, "restore-pending"))).toBe(false);

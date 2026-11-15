@@ -45,7 +45,9 @@ function RowLink({ to, icon, title, meta }: { to: string; icon: ReactNode; title
     <li>
       <Link to={to} className="group flex items-center gap-3 py-2.5 text-ink">
         <span className="grid w-5 shrink-0 place-content-center text-ink-muted [&_svg]:size-[17px]">{icon}</span>
-        <span className="min-w-0 flex-1 truncate font-title text-body decoration-primary decoration-1 underline-offset-[0.22em] group-hover:underline">{title}</span>
+        <span className="min-w-0 flex-1 truncate font-title text-body decoration-primary decoration-1 underline-offset-[0.22em] group-hover:underline">
+          {title}
+        </span>
         {meta ? <span className="tabular shrink-0 text-small text-ink-muted">{meta}</span> : null}
       </Link>
     </li>
@@ -53,10 +55,30 @@ function RowLink({ to, icon, title, meta }: { to: string; icon: ReactNode; title
 }
 
 const firstSteps = [
-  { to: "/library?upload=1", icon: Upload, title: "Add your documents", text: "PDFs, books, manuals and notes you already have. Their text becomes searchable, down to the page." },
-  { to: "/explore", icon: Compass, title: "Download a reference collection", text: "Wikipedia, first aid, repair guides and more, each chosen on its own and kept on storage you pick." },
-  { to: "/maps", icon: MapIcon, title: "Download a map", text: "A country, a mountain range, or any box you draw. It works with no signal." },
-  { to: "/notes?new=1", icon: NotebookText, title: "Write a page", text: "Plans, kit lists, things learned. Pages link to each other and to your documents." },
+  {
+    to: "/library?upload=1",
+    icon: Upload,
+    title: "Add your documents",
+    text: "PDFs, books, manuals and notes you already have. Their text becomes searchable, down to the page.",
+  },
+  {
+    to: "/explore",
+    icon: Compass,
+    title: "Download a reference collection",
+    text: "Wikipedia, first aid, repair guides and more, each chosen on its own and kept on storage you pick.",
+  },
+  {
+    to: "/maps",
+    icon: MapIcon,
+    title: "Download a map",
+    text: "A country, a mountain range, or any box you draw. It works with no signal.",
+  },
+  {
+    to: "/notes?new=1",
+    icon: NotebookText,
+    title: "Write a page",
+    text: "Plans, kit lists, things learned. Pages link to each other and to your documents.",
+  },
 ];
 
 export default function HomePage() {
@@ -64,15 +86,27 @@ export default function HomePage() {
   const [query, setQuery] = useState("");
   const storage = useStorage();
   const jobs = useActiveJobs();
-  const tree = useQuery({ queryKey: ["notes", "tree"], queryFn: () => api.get<NoteTreeResponse>("/api/notes/tree"), select: (data) => data.notes.length });
-  const recent = useQuery({ queryKey: ["notes", "recent", 6], queryFn: () => api.get<NoteListResponse>("/api/notes/recent", { limit: 6 }), select: (data) => data.notes });
+  const tree = useQuery({
+    queryKey: ["notes", "tree"],
+    queryFn: () => api.get<NoteTreeResponse>("/api/notes/tree"),
+    select: (data) => data.notes.length,
+  });
+  const recent = useQuery({
+    queryKey: ["notes", "recent", 6],
+    queryFn: () => api.get<NoteListResponse>("/api/notes/recent", { limit: 6 }),
+    select: (data) => data.notes,
+  });
   const facets = useQuery({ queryKey: ["documents", "facets"], queryFn: () => api.get<DocumentFacets>("/api/documents/facets") });
   const documents = useQuery({
     queryKey: ["documents", "list", "home"],
     queryFn: () => api.get<DocumentListResponse>("/api/documents", { sort: "added", order: "desc", limit: 5 }),
     select: (data) => data.documents,
   });
-  const collections = useQuery({ queryKey: ["collections", "all"], queryFn: () => api.get<CollectionsResponse>("/api/collections"), select: (data) => data.collections });
+  const collections = useQuery({
+    queryKey: ["collections", "all"],
+    queryFn: () => api.get<CollectionsResponse>("/api/collections"),
+    select: (data) => data.collections,
+  });
   const downloads = useQuery({
     queryKey: ["downloads", "list"],
     queryFn: () => api.get<DownloadsResponse>("/api/downloads"),
@@ -108,10 +142,17 @@ export default function HomePage() {
   return (
     <>
       <div className="relative isolate overflow-hidden border-b border-border">
-        <Contour seed={5} columns={120} rows={30} levels={13} className="absolute inset-0 -z-10 size-full [mask-image:linear-gradient(95deg,transparent_30%,black_88%)]" />
+        <Contour
+          seed={5}
+          columns={120}
+          rows={30}
+          levels={13}
+          className="absolute inset-0 -z-10 size-full [mask-image:linear-gradient(95deg,transparent_30%,black_88%)]"
+        />
         <div className="mx-auto w-full max-w-[70rem] px-5 pt-10 pb-9 md:px-10 md:pt-14 md:pb-11">
           <h1 className="font-title text-display text-ink">Your library</h1>
           <div className="mt-3 max-w-[56ch] text-lead text-ink-muted">{summary ?? <Skeleton className="h-6 w-96 max-w-full" />}</div>
+          {/* biome-ignore lint/a11y/useSemanticElements: a form with role="search" is the search landmark every browser and screen reader knows */}
           <form onSubmit={submit} role="search" className="relative mt-6 max-w-[34rem]">
             <Search aria-hidden className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-ink-muted" />
             <input
@@ -158,7 +199,11 @@ export default function HomePage() {
                       <span className="min-w-0 truncate text-small font-medium text-ink">{job.title}</span>
                       <span className="shrink-0 text-small text-ink-muted">{job.progress.message}</span>
                     </div>
-                    <Progress value={job.progress.total ? job.progress.current / job.progress.total : undefined} tone="lamp" label={job.title} />
+                    <Progress
+                      value={job.progress.total ? job.progress.current / job.progress.total : undefined}
+                      tone="lamp"
+                      label={job.title}
+                    />
                   </li>
                 ))}
               </ul>
@@ -173,10 +218,15 @@ export default function HomePage() {
                     <Link to={step.to} className="group flex items-start gap-4 py-4">
                       <step.icon aria-hidden className="mt-0.5 size-5 shrink-0 text-primary" strokeWidth={1.6} />
                       <span className="min-w-0 flex-1">
-                        <span className="block font-title text-lead text-ink decoration-primary decoration-1 underline-offset-[0.22em] group-hover:underline">{step.title}</span>
+                        <span className="block font-title text-lead text-ink decoration-primary decoration-1 underline-offset-[0.22em] group-hover:underline">
+                          {step.title}
+                        </span>
                         <span className="mt-0.5 block max-w-[60ch] text-small text-ink-muted">{step.text}</span>
                       </span>
-                      <ArrowRight aria-hidden className="mt-1 size-4 shrink-0 text-ink-faint transition-transform duration-150 group-hover:translate-x-0.5 group-hover:text-primary" />
+                      <ArrowRight
+                        aria-hidden
+                        className="mt-1 size-4 shrink-0 text-ink-faint transition-transform duration-150 group-hover:translate-x-0.5 group-hover:text-primary"
+                      />
                     </Link>
                   </li>
                 ))}
@@ -209,7 +259,11 @@ export default function HomePage() {
                         to={`/library/documents/${document.id}`}
                         icon={<FileText />}
                         title={document.title}
-                        meta={document.extraction === "pending" || document.extraction === "running" ? "Reading text" : timeAgo(document.createdAt)}
+                        meta={
+                          document.extraction === "pending" || document.extraction === "running"
+                            ? "Reading text"
+                            : timeAgo(document.createdAt)
+                        }
                       />
                     ))}
                   </ul>
@@ -222,7 +276,13 @@ export default function HomePage() {
                     {collections.data.slice(0, 6).map((collection) => (
                       <RowLink
                         key={collection.id}
-                        to={collection.kind === "zim" ? `/library/read/${collection.id}/` : collection.kind === "map" || collection.kind === "terrain" ? "/maps" : `/library/collections/${collection.id}`}
+                        to={
+                          collection.kind === "zim"
+                            ? `/library/read/${collection.id}/`
+                            : collection.kind === "map" || collection.kind === "terrain"
+                              ? "/maps"
+                              : `/library/collections/${collection.id}`
+                        }
                         icon={collection.kind === "map" || collection.kind === "terrain" ? <MapIcon /> : <BookOpen />}
                         title={collection.title}
                         meta={collection.locationAvailable ? formatBytes(collection.sizeBytes) : "Drive disconnected"}
@@ -255,7 +315,9 @@ export default function HomePage() {
                   <li key={location.id}>
                     <div className="mb-1.5 flex items-baseline justify-between gap-4 text-small">
                       <span className="min-w-0 truncate font-medium text-ink">{location.name}</span>
-                      <span className="tabular shrink-0 text-ink-muted">{location.status === "available" ? `${formatBytes(location.freeBytes)} free` : "Disconnected"}</span>
+                      <span className="tabular shrink-0 text-ink-muted">
+                        {location.status === "available" ? `${formatBytes(location.freeBytes)} free` : "Disconnected"}
+                      </span>
                     </div>
                     <StorageBar location={location} usage={location.usage} />
                   </li>

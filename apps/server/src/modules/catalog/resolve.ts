@@ -133,7 +133,13 @@ const isHttpEntry = (entry: LoadedEntry): entry is HttpEntry => entry.source.typ
 function fromManifest(source: HttpEntry["source"], sizeBytes = source.sizeBytes): EntryResolution {
   return {
     state: "available",
-    resolved: { availability: "available", sizeBytes, sizeExact: sizeBytes !== undefined, version: source.version, publishedAt: source.published },
+    resolved: {
+      availability: "available",
+      sizeBytes,
+      sizeExact: sizeBytes !== undefined,
+      version: source.version,
+      publishedAt: source.published,
+    },
   };
 }
 
@@ -167,7 +173,14 @@ async function resolveHttp(http: HttpClient, entry: HttpEntry, options: ResolveO
 const sleep = (ms: number, signal?: AbortSignal) =>
   new Promise<void>((resolve, reject) => {
     const timer = setTimeout(resolve, ms);
-    signal?.addEventListener("abort", () => (clearTimeout(timer), reject(signal.reason)), { once: true });
+    signal?.addEventListener(
+      "abort",
+      () => {
+        clearTimeout(timer);
+        reject(signal.reason);
+      },
+      { once: true },
+    );
   });
 
 /**

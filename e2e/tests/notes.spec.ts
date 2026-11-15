@@ -80,7 +80,10 @@ test.describe("notes", () => {
 
     await page.goto("/notes?view=trash");
     await expect(page.getByText("Stove maintenance").first()).toBeVisible();
-    await page.getByRole("button", { name: /Restore/ }).first().click();
+    await page
+      .getByRole("button", { name: /Restore/ })
+      .first()
+      .click();
     await expect(page.getByRole("treeitem", { name: /Stove maintenance/ })).toBeVisible();
   });
 });

@@ -100,7 +100,10 @@ export function AppShell({ notesTree, onNewPage }: { notesTree?: ReactNode; onNe
 
   return (
     <div className="flex min-h-dvh bg-page max-md:flex-col">
-      <a href="#content" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-(--z-tooltip) focus:rounded-control focus:bg-primary focus:px-3 focus:py-2 focus:text-primary-ink">
+      <a
+        href="#content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-(--z-tooltip) focus:rounded-control focus:bg-primary focus:px-3 focus:py-2 focus:text-primary-ink"
+      >
         Skip to content
       </a>
       <Sidebar collapsed={collapsed} onToggle={toggleSidebar} onOpenSearch={() => setPaletteOpen(true)} notesTree={notesTree} />

@@ -55,7 +55,9 @@ export function DialogBody({ className, ...props }: ComponentProps<"div">) {
 }
 
 export function DialogFooter({ className, ...props }: ComponentProps<"footer">) {
-  return <footer className={cn("flex flex-wrap items-center justify-end gap-2 border-t border-border px-5 py-3.5", className)} {...props} />;
+  return (
+    <footer className={cn("flex flex-wrap items-center justify-end gap-2 border-t border-border px-5 py-3.5", className)} {...props} />
+  );
 }
 
 /**

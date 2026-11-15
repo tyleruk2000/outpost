@@ -191,8 +191,7 @@ export function createStorageService(ctx: AppContext): StorageService {
     get,
 
     getDefault() {
-      const row =
-        db.select().from(storageLocations).where(eq(storageLocations.isDefault, true)).get() ?? list()[0];
+      const row = db.select().from(storageLocations).where(eq(storageLocations.isDefault, true)).get() ?? list()[0];
       if (!row) throw new AppError("storage_unavailable", "No storage location has been set up yet.");
       return row;
     },

@@ -15,7 +15,7 @@ describe("query parsing", () => {
   });
 
   it("neutralises FTS syntax typed by a person", () => {
-    for (const hostile of ['title: x OR y', 'a AND (b', '"unterminated', "NEAR(a b)", "x* ^y", "{text}: z", "a - b", '""']) {
+    for (const hostile of ["title: x OR y", "a AND (b", '"unterminated', "NEAR(a b)", "x* ^y", "{text}: z", "a - b", '""']) {
       const expression = toFtsQuery(parseQuery(hostile));
       // Every term is quoted, so operators and column filters are only ever plain words.
       if (expression) expect(expression.replace(/"[^"]*"\*?/g, "").replace(/\b(AND|OR|NOT)\b|[() ]/g, "")).toBe("");
@@ -148,7 +148,9 @@ describe("keyword search", () => {
   });
 
   it("filters by kind and by tag, and searches tags and headings", async () => {
-    expect((await app.api("GET", "/api/search?q=water&kinds=note")).body.results.map((r: { entityId: string }) => r.entityId)).toEqual(["n1"]);
+    expect((await app.api("GET", "/api/search?q=water&kinds=note")).body.results.map((r: { entityId: string }) => r.entityId)).toEqual([
+      "n1",
+    ]);
     expect((await app.api("GET", "/api/search?q=rope ")).body.results[0].entityId).toBe("d2");
     expect((await app.api("GET", "/api/search?q=cooking ")).body.results[0].entityId).toBe("n1");
     expect((await app.api("GET", `/api/search?q=water&tag=${encodeURIComponent("first aid")}`)).body.total).toBe(1);
@@ -170,13 +172,22 @@ describe("keyword search", () => {
   it("replaces an entity's passages on update and forgets removed entities", async () => {
     const { search } = app.ctx.services;
     const unchanged = search.upsert({
-      kind: "note", entityId: "n1", title: "Kit list (summer)", url: "/notes/n1",
+      kind: "note",
+      entityId: "n1",
+      title: "Kit list (summer)",
+      url: "/notes/n1",
       sections: [{ heading: "Cooking", text: "Stove, gas, lighter, pan for boiling water, mug." }],
     });
     expect(unchanged.changed).toBe(false);
     expect((await app.api("GET", "/api/search?q=summer ")).body.total).toBe(1);
 
-    const changed = search.upsert({ kind: "note", entityId: "n1", title: "Kit list", url: "/notes/n1", sections: [{ text: "Tent and sleeping bag." }] });
+    const changed = search.upsert({
+      kind: "note",
+      entityId: "n1",
+      title: "Kit list",
+      url: "/notes/n1",
+      sections: [{ text: "Tent and sleeping bag." }],
+    });
     expect(changed.changed).toBe(true);
     expect((await app.api("GET", "/api/search?q=stove ")).body.total).toBe(0);
     expect((await app.api("GET", "/api/search?q=tent ")).body.total).toBe(1);
@@ -187,7 +198,13 @@ describe("keyword search", () => {
   });
 
   it("keeps an entity with no text findable by title", async () => {
-    app.ctx.services.search.upsert({ kind: "document", entityId: "img", title: "Trailhead photograph", url: "/library/documents/img", sections: [] });
+    app.ctx.services.search.upsert({
+      kind: "document",
+      entityId: "img",
+      title: "Trailhead photograph",
+      url: "/library/documents/img",
+      sections: [],
+    });
     expect((await app.api("GET", "/api/search?q=trailhead ")).body.total).toBe(1);
   });
 });

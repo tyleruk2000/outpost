@@ -31,7 +31,14 @@ export interface LibraryBook {
 }
 
 const xml = (value: string | number) =>
-  String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;").replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, "");
+  String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;")
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: control characters XML forbids are exactly what is being removed
+    .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, "");
 
 export function renderLibrary(books: LibraryBook[]): string {
   const lines = ['<?xml version="1.0" encoding="UTF-8"?>', '<library version="20110515">'];
@@ -96,7 +103,11 @@ export async function readZimUuid(file: string): Promise<string | undefined> {
 
 /** The name kiwix-serve gives a book in its URLs: the file name without its extension. */
 export function bookNameOf(file: string): string {
-  return path.basename(file).replace(/\.zim$/i, "").toLowerCase().replace(/\s+/g, "_");
+  return path
+    .basename(file)
+    .replace(/\.zim$/i, "")
+    .toLowerCase()
+    .replace(/\s+/g, "_");
 }
 
 const entities: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" };

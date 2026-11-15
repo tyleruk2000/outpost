@@ -18,9 +18,7 @@ export function buildPdf(pages: string[][], info: { title?: string; author?: str
   objects[2] = `<< /Type /Pages /Kids [${pages.map((_, index) => `${pageId(index)} 0 R`).join(" ")}] /Count ${pages.length} >>`;
   objects[3] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>";
   pages.forEach((lines, index) => {
-    const stream = lines.length
-      ? `BT /F1 12 Tf 72 720 Td 16 TL ${lines.map((line) => `${pdfString(line)} Tj T*`).join(" ")} ET`
-      : "";
+    const stream = lines.length ? `BT /F1 12 Tf 72 720 Td 16 TL ${lines.map((line) => `${pdfString(line)} Tj T*`).join(" ")} ET` : "";
     objects[pageId(index)] =
       `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents ${pageId(index) + 1} 0 R >>`;
     objects[pageId(index) + 1] = `<< /Length ${Buffer.byteLength(stream, "latin1")} >>\nstream\n${stream}\nendstream`;
@@ -67,7 +65,9 @@ export interface EpubChapter {
 
 /** A small EPUB 3 book: mimetype first and uncompressed, container, package, chapters. */
 export function buildEpub(book: { title: string; author: string; chapters: EpubChapter[] }): Promise<Buffer> {
-  const manifest = book.chapters.map((chapter, index) => `<item id="c${index}" href="${chapter.file}" media-type="application/xhtml+xml"/>`);
+  const manifest = book.chapters.map(
+    (chapter, index) => `<item id="c${index}" href="${chapter.file}" media-type="application/xhtml+xml"/>`,
+  );
   const spine = book.chapters.map((_, index) => `<itemref idref="c${index}"/>`);
   const opf = `<?xml version="1.0" encoding="UTF-8"?>
 <package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="id">

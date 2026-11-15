@@ -59,16 +59,45 @@ export function SignIn({ session }: { session: SessionInfo }) {
     >
       <form onSubmit={onSubmit} className="grid gap-4">
         <Field label="Username">
-          {(ids) => <Input {...ids} value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" autoCapitalize="none" spellCheck={false} autoFocus required />}
+          {(ids) => (
+            <Input
+              {...ids}
+              value={username}
+              onChange={(event) => setUsername(event.target.value)}
+              autoComplete="username"
+              autoCapitalize="none"
+              spellCheck={false}
+              autoFocus
+              required
+            />
+          )}
         </Field>
         <Field label="Password" hint={setup ? "At least 10 characters. A few unrelated words work well." : undefined}>
           {(ids) => (
-            <Input {...ids} type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete={setup ? "new-password" : "current-password"} minLength={setup ? 10 : undefined} required />
+            <Input
+              {...ids}
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              autoComplete={setup ? "new-password" : "current-password"}
+              minLength={setup ? 10 : undefined}
+              required
+            />
           )}
         </Field>
         {setup && session.setupTokenRequired ? (
           <Field label="Setup token" hint="Printed in the server log when Outpost started. It proves you are the person who installed it.">
-            {(ids) => <Input {...ids} value={setupToken} onChange={(event) => setSetupToken(event.target.value)} autoComplete="off" spellCheck={false} className="font-mono" required />}
+            {(ids) => (
+              <Input
+                {...ids}
+                value={setupToken}
+                onChange={(event) => setSetupToken(event.target.value)}
+                autoComplete="off"
+                spellCheck={false}
+                className="font-mono"
+                required
+              />
+            )}
           </Field>
         ) : null}
         {submit.isError ? <Notice tone="danger">{errorMessage(submit.error)}</Notice> : null}
@@ -83,7 +112,9 @@ export function SignIn({ session }: { session: SessionInfo }) {
 export function ServerDown({ onRetry }: { onRetry: () => void }) {
   return (
     <Frame title="The server is not responding" lead="The Outpost app loaded, but it cannot reach its server on this device.">
-      <p className="text-small text-ink-muted">If you just started or restarted Outpost, give it a few seconds. Otherwise check that the Outpost service or container is running.</p>
+      <p className="text-small text-ink-muted">
+        If you just started or restarted Outpost, give it a few seconds. Otherwise check that the Outpost service or container is running.
+      </p>
       <Button variant="primary" className="mt-5" onClick={onRetry}>
         Try again
       </Button>
