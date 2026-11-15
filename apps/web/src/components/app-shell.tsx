@@ -53,6 +53,8 @@ export function AppShell({ notesTree, onNewPage }: { notesTree?: ReactNode; onNe
   // Keyboard: ⌘K palette, ⌘\ sidebar, "/" search, and "g" then a letter to go somewhere.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
+      // A focused control that already used the key (the editor's link shortcut) keeps it.
+      if (event.defaultPrevented) return;
       const mod = event.metaKey || event.ctrlKey;
       if (mod && event.key.toLowerCase() === "k") {
         event.preventDefault();

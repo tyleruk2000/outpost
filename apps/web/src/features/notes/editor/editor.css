@@ -1,0 +1,534 @@
+/* biome-ignore-all lint/style/noDescendingSpecificity: the rules it pairs up style different blocks and never meet on one element */
+/*
+ * What the editor adds to `.prose`: the things only an editable page has (a cursor, a
+ * placeholder, handles, selections) and the markup of the blocks Tiptap draws its own
+ * way. Everything that is also true of a page being read stays in styles/prose.css.
+ * Colours and radii are tokens; nothing here names a colour.
+ */
+
+.note-editor-frame {
+  position: relative;
+}
+
+.note-editor {
+  outline: none;
+  min-height: 8rem;
+  caret-color: var(--primary);
+  /* The column is the measure; .prose's own cap would only fight it. */
+  max-width: none;
+}
+.note-editor[contenteditable="false"] {
+  min-height: 0;
+  padding-bottom: 2rem;
+}
+/* Room under the last block. Clicking it carries on writing at the end of the page. */
+.note-editor-tail {
+  height: 6rem;
+  cursor: text;
+}
+
+/* ── Placeholders ── */
+
+.note-editor p.is-editor-empty:first-child::before,
+.note-editor :is(h1, h2, h3).is-empty::before,
+.note-editor summary.is-empty::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  color: var(--ink-faint);
+  pointer-events: none;
+}
+
+/* ── Selection ── */
+
+.note-editor .ProseMirror-selectednode {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-control);
+}
+.note-editor .react-renderer.ProseMirror-selectednode {
+  outline: none;
+}
+.note-editor hr.ProseMirror-selectednode {
+  outline-offset: 6px;
+}
+.note-editor .ProseMirror-gapcursor::after {
+  border-top-color: var(--ink);
+}
+
+/* ── Lists ── */
+
+.note-editor ul[data-type="taskList"] > li > label {
+  user-select: none;
+}
+.note-editor ul[data-type="taskList"] input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.note-editor[contenteditable="false"] ul[data-type="taskList"] input[type="checkbox"] {
+  cursor: default;
+}
+.note-editor li > p {
+  margin: 0;
+}
+
+/* ── Callouts ── */
+
+.note-editor .callout .callout-kind {
+  display: grid;
+  place-content: center;
+  width: 1.5em;
+  height: 1.5em;
+  margin: -0.12em -0.15em 0;
+  border-radius: var(--radius-control);
+  color: inherit;
+}
+.note-editor .callout button.callout-kind:hover,
+.note-editor .callout button.callout-kind[data-state="open"] {
+  background: color-mix(in oklch, var(--callout-accent, var(--primary)) 16%, transparent);
+}
+.note-editor .callout .callout-kind svg {
+  width: 1.15em;
+  height: 1.15em;
+}
+.note-editor .callout > .callout-icon {
+  margin-top: 0;
+  user-select: none;
+}
+.note-editor .callout .callout-body {
+  min-width: 0;
+}
+.note-editor .callout .callout-body > [data-node-view-content-react] > * + * {
+  margin-top: 0.5em;
+}
+
+/* ── Toggles: Tiptap draws these as a div with a button, not a native <details> ── */
+
+.note-editor .note-details {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 0.35em;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  padding: 0.5em 0.9em 0.5em 0.5em;
+}
+.note-editor .note-details > button {
+  display: grid;
+  place-content: center;
+  width: 1.5em;
+  height: 1.5em;
+  margin-top: 0.1em;
+  border-radius: var(--radius-control);
+  color: var(--ink-muted);
+}
+.note-editor .note-details > button:hover {
+  background: var(--surface-strong);
+  color: var(--ink);
+}
+.note-editor .note-details > button::before {
+  content: "";
+  width: 0.42em;
+  height: 0.42em;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: translateX(-12%) rotate(-45deg);
+  transition: transform var(--duration) var(--ease-out);
+}
+.note-editor .note-details.is-open > button::before {
+  transform: translateY(-12%) rotate(45deg);
+}
+.note-editor .note-details > div {
+  min-width: 0;
+}
+.note-editor .note-details summary {
+  list-style: none;
+  cursor: text;
+  font-family: var(--font-sans);
+  font-weight: 600;
+}
+.note-editor .note-details summary::-webkit-details-marker {
+  display: none;
+}
+.note-editor .note-details [data-type="detailsContent"] {
+  margin-top: 0.4em;
+  padding-bottom: 0.2em;
+}
+.note-editor .note-details [data-type="detailsContent"] > * + * {
+  margin-top: 0.6em;
+}
+
+/* ── Code ── */
+
+.note-editor .note-code {
+  position: relative;
+}
+.note-editor .note-code pre {
+  padding-top: 2.1em;
+}
+.note-editor .note-code:not(:has(.note-code-language)) pre {
+  padding-top: 0.9em;
+}
+.note-editor .note-code code > div {
+  white-space: pre;
+}
+.note-editor .note-code-language {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.5rem;
+  max-width: 11rem;
+  height: 1.5rem;
+  padding: 0 0.35rem;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--ink-muted);
+  font-family: var(--font-sans);
+  font-size: 0.78125rem;
+  line-height: 1.5rem;
+  cursor: pointer;
+  /* As wide as the language shown, not as the longest one in the list. */
+  field-sizing: content;
+  text-align-last: right;
+}
+.note-editor select.note-code-language:hover,
+.note-editor select.note-code-language:focus-visible {
+  background: var(--surface-strong);
+  color: var(--ink);
+}
+.note-editor span.note-code-language {
+  cursor: default;
+}
+
+/* Syntax colours, from the same few hues as the rest of the interface. */
+.note-editor .hljs-comment,
+.note-editor .hljs-quote,
+.note-editor .hljs-meta {
+  color: var(--ink-muted);
+  font-style: italic;
+}
+.note-editor .hljs-keyword,
+.note-editor .hljs-selector-tag,
+.note-editor .hljs-built_in,
+.note-editor .hljs-type,
+.note-editor .hljs-section,
+.note-editor .hljs-name {
+  color: var(--primary);
+}
+.note-editor .hljs-string,
+.note-editor .hljs-regexp,
+.note-editor .hljs-addition,
+.note-editor .hljs-attribute,
+.note-editor .hljs-symbol {
+  color: var(--success);
+}
+.note-editor .hljs-number,
+.note-editor .hljs-literal,
+.note-editor .hljs-variable,
+.note-editor .hljs-template-variable,
+.note-editor .hljs-attr,
+.note-editor .hljs-bullet {
+  color: var(--warning);
+}
+.note-editor .hljs-deletion {
+  color: var(--danger);
+}
+.note-editor .hljs-title,
+.note-editor .hljs-emphasis,
+.note-editor .hljs-strong {
+  font-weight: 600;
+}
+
+/* ── Tables ── */
+
+.note-editor .tableWrapper {
+  overflow-x: auto;
+  /* Room for the resize handle of the last column and for the focus ring. */
+  padding: 1px;
+}
+.note-editor table {
+  margin: 0;
+}
+.note-editor th,
+.note-editor td {
+  position: relative;
+  min-width: 4rem;
+}
+.note-editor th > * + *,
+.note-editor td > * + * {
+  margin-top: 0.4em;
+}
+.note-editor .selectedCell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: color-mix(in oklch, var(--primary) 14%, transparent);
+  pointer-events: none;
+}
+.note-editor .column-resize-handle {
+  position: absolute;
+  top: 0;
+  right: -2px;
+  bottom: -1px;
+  width: 3px;
+  background: var(--primary);
+  pointer-events: none;
+}
+.note-editor.resize-cursor {
+  cursor: col-resize;
+}
+
+/* ── Pictures ── */
+
+.note-editor .note-image {
+  position: relative;
+  width: fit-content;
+  max-width: 100%;
+}
+.note-editor .note-image img {
+  display: block;
+}
+.note-editor .note-image[data-selected] img,
+.note-editor .note-image[data-selected] .note-image-missing {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.note-editor .note-image-missing {
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  padding: 0.8em 1em;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-panel);
+  color: var(--ink-muted);
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+}
+.note-editor .note-image-missing svg {
+  width: 1rem;
+  height: 1rem;
+  flex: none;
+}
+.note-editor .note-image-tools {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  display: grid;
+  place-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--raised);
+  color: var(--ink-muted);
+  opacity: 0;
+  transition: opacity var(--duration) var(--ease-out);
+}
+.note-editor .note-image-tools svg {
+  width: 1rem;
+  height: 1rem;
+}
+.note-editor .note-image:hover .note-image-tools,
+.note-editor .note-image[data-selected] .note-image-tools,
+.note-editor .note-image[data-open] .note-image-tools,
+.note-editor .note-image-tools:focus-visible {
+  opacity: 1;
+}
+.note-editor .note-image-tools:hover {
+  color: var(--ink);
+}
+@media (hover: none) {
+  .note-editor .note-image-tools {
+    opacity: 1;
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+}
+
+.note-editor .note-upload {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.85em;
+  padding: 0.8rem 1rem;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-panel);
+  color: var(--ink-muted);
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  line-height: 1.3;
+}
+.note-editor .note-upload-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.note-editor .note-upload-track {
+  display: block;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--surface-strong);
+}
+.note-editor .note-upload-bar {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--lamp);
+  transition: width 200ms var(--ease-out);
+}
+
+/* ── Links to pages ── */
+
+.note-editor .page-link-view {
+  display: inline;
+}
+.note-editor .page-link > a,
+.note-editor .page-link > span {
+  display: inline;
+  padding: 0.08em 0.1em;
+  border-radius: 3px;
+  font-weight: 560;
+  text-decoration-color: color-mix(in oklch, var(--primary) 45%, transparent);
+}
+.note-editor .page-link > a:hover {
+  background: var(--primary-soft);
+}
+.note-editor .page-link svg,
+.note-editor .page-link [aria-hidden] {
+  display: inline-grid;
+  vertical-align: -0.14em;
+  margin-right: 0.28em;
+}
+.note-editor .page-link[data-selected] > * {
+  background: var(--primary-soft);
+  box-shadow: 0 0 0 1px var(--primary);
+}
+.note-editor .page-link[data-missing] > span {
+  color: var(--ink-muted);
+  font-weight: 400;
+  text-decoration: line-through;
+  text-decoration-color: var(--border-strong);
+  cursor: default;
+}
+
+/* ── Embedded documents ── */
+
+.note-editor .document-embed {
+  font-family: var(--font-sans);
+}
+.note-editor .document-embed-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7em;
+  padding: 0.6em 0.9em;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  color: var(--ink);
+  font-size: 0.9375rem;
+  line-height: 1.4;
+  text-decoration: none;
+  transition:
+    background-color var(--duration) var(--ease-out),
+    border-color var(--duration) var(--ease-out);
+}
+.note-editor a.document-embed-row:hover {
+  background: var(--surface);
+  border-color: var(--border-strong);
+}
+.note-editor .document-embed-row > svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  flex: none;
+  color: var(--ink-muted);
+}
+.note-editor .document-embed-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 560;
+}
+.note-editor .document-embed-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2em;
+  flex: none;
+  color: var(--primary);
+  font-size: 0.875rem;
+}
+.note-editor .document-embed-open svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+.note-editor .document-embed[data-selected] .document-embed-row {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.note-editor .document-embed[data-missing] .document-embed-title,
+.note-editor .document-embed[data-missing] .document-embed-open {
+  color: var(--ink-muted);
+  font-weight: 400;
+}
+
+/* ── The block handle ── */
+
+.note-block-handle {
+  z-index: var(--z-sticky);
+  /* Lines the grip up with the first line of text of each kind of block. */
+  --handle-shift: 0.16rem;
+  padding-right: 0.3rem;
+  transition: opacity var(--duration) var(--ease-out);
+}
+.note-block-handle.is-heading1 {
+  --handle-shift: 0.55rem;
+}
+.note-block-handle.is-heading2 {
+  --handle-shift: 0.3rem;
+}
+.note-block-handle.is-heading3 {
+  --handle-shift: 0.14rem;
+}
+.note-block-handle.is-callout,
+.note-block-handle.is-details,
+.note-block-handle.is-documentEmbed,
+.note-block-handle.is-codeBlock {
+  --handle-shift: 0.62rem;
+}
+.note-block-handle.is-table {
+  --handle-shift: 0.5rem;
+}
+.note-block-handle.is-horizontalRule {
+  --handle-shift: -0.75rem;
+}
+.note-block-handle button {
+  display: grid;
+  place-content: center;
+  width: 1.25rem;
+  height: 1.5rem;
+  margin-top: var(--handle-shift);
+  border-radius: var(--radius-control);
+  color: var(--ink-faint);
+  cursor: grab;
+  transition:
+    background-color var(--duration) var(--ease-out),
+    color var(--duration) var(--ease-out);
+}
+.note-block-handle button:hover,
+.note-block-handle button[data-state="open"] {
+  background: var(--surface-strong);
+  color: var(--ink);
+}
+.note-block-handle button:active {
+  cursor: grabbing;
+}
+.note-block-handle svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* The text the slash menu or the page picker is reading. */
+.note-editor .suggestion {
+  border-radius: 3px;
+  background: var(--surface-strong);
+  box-shadow: 0 0 0 0.12em var(--surface-strong);
+}
