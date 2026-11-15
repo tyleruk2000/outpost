@@ -7,8 +7,8 @@
  *
  * Ported from LogBook73 (frontend/src/features/handbook/RadioViz.tsx), copyright (c)
  * 2026 Tyler Allen, MIT licence: the same author's figures, so that the handbook and
- * the radio guides read here as they do there. The drawing is his and is unchanged.
- * What differs in Outpost: colours and type come from Outpost's design tokens; the
+ * the radio guides read here as they do there. The drawing is his and is unchanged but
+ * for one mark (the outline of a radiation pattern is solid). What differs in Outpost: colours and type come from Outpost's design tokens; the
  * figure sits in Outpost's frame, which keeps it legible on a phone; and the
  * specification is checked and bounded first (viz-spec.ts), because here it may come
  * from any Markdown file. Everything is deterministic: the noise is seeded.
@@ -366,7 +366,8 @@ function PolarPlot({ spec }: { spec: VizSpec }) {
       ))}
       <line x1={cx - R - 14} y1={cy} x2={cx + R + 14} y2={cy} stroke={GRID} />
       <line x1={cx} y1={cy - R - 14} x2={cx} y2={cy + R + 14} stroke={GRID} />
-      <polygon points={pts.join(" ")} fill="var(--primary)" opacity={0.15} stroke="var(--primary)" strokeWidth={2} />
+      {/* In LogBook73 the outline shares the fill's opacity; here it is drawn solid, so the lobe can be made out in the dark theme. */}
+      <polygon points={pts.join(" ")} fill="var(--primary)" fillOpacity={0.15} stroke="var(--primary)" strokeWidth={2} />
       <text x={cx + R + 18} y={cy + 4} fontSize={12} fill={LABEL} fontFamily={FONT}>
         0°
       </text>

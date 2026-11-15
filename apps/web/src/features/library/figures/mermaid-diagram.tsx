@@ -15,6 +15,14 @@ type State = { status: "waiting" } | { status: "drawn"; diagram: DrawnDiagram } 
 
 const loadRenderer = () => import("./mermaid-render");
 
+/** The nearest ancestor that scrolls up and down: the reading pane, not the window, is what a document scrolls in. */
+function scroller(element: HTMLElement): HTMLElement | null {
+  for (let parent = element.parentElement; parent; parent = parent.parentElement) {
+    if (/(auto|scroll)/.test(getComputedStyle(parent).overflowY)) return parent;
+  }
+  return null;
+}
+
 /** True once the element has come within a screen or so of being seen. */
 function useNear(): [ref: React.RefObject<HTMLDivElement | null>, near: boolean] {
   const ref = useRef<HTMLDivElement>(null);
@@ -26,7 +34,8 @@ function useNear(): [ref: React.RefObject<HTMLDivElement | null>, near: boolean]
       (entries) => {
         if (entries.some((entry) => entry.isIntersecting)) setNear(true);
       },
-      { rootMargin: "900px 0px" },
+      // The margin is measured from the pane the document scrolls in, so a diagram is drawn a little before it is reached.
+      { root: scroller(element), rootMargin: "800px 0px" },
     );
     observer.observe(element);
     return () => observer.disconnect();

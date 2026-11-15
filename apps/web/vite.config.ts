@@ -40,7 +40,13 @@ function pdfjsAssets(): Plugin {
 
 export default defineConfig({
   plugins: [react(), tailwindcss(), pdfjsAssets()],
-  resolve: { alias: { "@": path.resolve(import.meta.dirname, "src") } },
+  resolve: {
+    alias: {
+      "@": path.resolve(import.meta.dirname, "src"),
+      // Mermaid's optional ELK layout engine (elkjs, EPL-2.0) is not shipped; see the file this points at.
+      "elkjs/lib/elk.bundled.js": path.resolve(import.meta.dirname, "src/features/library/figures/no-elk.ts"),
+    },
+  },
   server: {
     port: Number(process.env.OUTPOST_WEB_PORT ?? 5173),
     strictPort: true,

@@ -47,6 +47,15 @@ describe("how Mermaid is set up", () => {
   });
 });
 
+describe("the ELK layout engine", () => {
+  it("is not shipped: what Mermaid would load as elkjs is a stand-in that declines", async () => {
+    // @ts-expect-error elkjs has no types here, and is not installed as a dependency of Outpost's own
+    const { default: Elk } = (await import("elkjs/lib/elk.bundled.js")) as { default: new () => { layout(): Promise<unknown> } };
+    await expect(new Elk().layout()).rejects.toThrow(/not included in Outpost/);
+    expect(Object.keys(Elk.prototype)).toEqual([]);
+  });
+});
+
 describe("the picture made from Mermaid's SVG", () => {
   const drawing = (inside: string, attributes = 'viewBox="0 0 320.4 120" style="max-width: 320px" aria-roledescription="flowchart-v2"') =>
     `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" id="d1" ${attributes}>${inside}</svg>`;

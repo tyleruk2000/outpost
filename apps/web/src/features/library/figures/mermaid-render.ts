@@ -328,7 +328,9 @@ async function draw(source: string, palette: DiagramPalette): Promise<DrawnDiagr
   document.body.append(corner);
   counter += 1;
   try {
-    const { svg } = await mermaid.render(`outpost-diagram-${counter}`, source, corner);
+    // The ELK layout engine is not shipped (see no-elk.ts); a diagram that asks for it by name gets dagre.
+    const text = source.replace(/^(\s*)flowchart-elk\b/m, "$1flowchart");
+    const { svg } = await mermaid.render(`outpost-diagram-${counter}`, text, corner);
     const picture = standalone(svg);
     const url = URL.createObjectURL(new Blob([picture.svg], { type: "image/svg+xml" }));
     return { url, width: picture.width, height: picture.height, description: picture.description };
