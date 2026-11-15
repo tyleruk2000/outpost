@@ -1,0 +1,15 @@
+/**
+ * Types and small pure helpers shared by the server and the web app. This package is
+ * the API contract: the server builds responses to these shapes and the web app reads
+ * them. Nothing here may import Node or browser APIs.
+ */
+export * from "./catalog.ts";
+export * from "./collections.ts";
+export * from "./common.ts";
+export * from "./documents.ts";
+export * from "./downloads.ts";
+export * from "./maps.ts";
+export * from "./notes.ts";
+export * from "./search.ts";
+export * from "./storage.ts";
+export * from "./system.ts";

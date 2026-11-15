@@ -5,7 +5,22 @@
  */
 import type { FastifyInstance } from "fastify";
 import type { AppContext } from "../core/context.ts";
+import { registerCatalog } from "./catalog/index.ts";
+import { registerCollections } from "./collections/index.ts";
+import { registerDocuments } from "./documents/index.ts";
+import { registerDownloads } from "./downloads/index.ts";
+import { registerMaps } from "./maps/index.ts";
+import { registerNotes } from "./notes/index.ts";
+import { registerSearch } from "./search/index.ts";
 
 export type ModuleRegister = (app: FastifyInstance, ctx: AppContext) => Promise<void>;
 
-export const modules: ModuleRegister[] = [];
+export const modules: ModuleRegister[] = [
+  registerSearch,
+  registerDocuments,
+  registerNotes,
+  registerCollections,
+  registerDownloads,
+  registerCatalog,
+  registerMaps,
+];
