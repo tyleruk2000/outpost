@@ -11,6 +11,11 @@ import { settings as settingsTable } from "../../db/schema.ts";
 export const settingsSchema = z.object({
   /** How many downloads run at once. */
   "downloads.concurrency": z.number().int().min(1).max(8).default(2),
+  /**
+   * Speed limit across all downloads together, in kilobytes per second. 0 means no
+   * limit. Useful on a shared or metered connection.
+   */
+  "downloads.rateLimitKbps": z.number().int().min(0).max(10_000_000).default(0),
   /** Attempts per download before it is marked failed. */
   "downloads.maxAttempts": z.number().int().min(1).max(20).default(8),
   /** How many documents are processed at once. Keep at 1 on a Raspberry Pi. */

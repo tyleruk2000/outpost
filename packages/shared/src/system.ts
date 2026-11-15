@@ -30,6 +30,7 @@ export interface SystemInfo {
 /** Settings people can change from the Settings screen. Mirrors the server's schema. */
 export interface Settings {
   "downloads.concurrency": number;
+  "downloads.rateLimitKbps": number;
   "downloads.maxAttempts": number;
   "indexing.concurrency": number;
   "indexing.chunkSize": number;

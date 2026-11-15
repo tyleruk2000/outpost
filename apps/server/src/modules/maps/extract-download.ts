@@ -73,6 +73,7 @@ export function createExtractFetcher(deps: ExtractFetcherDeps): Fetcher {
             partPath,
             signal,
             concurrency: deps.concurrency,
+            throttle: (bytes) => context.throttle(bytes),
             plan: () => deps.planner.planFor(archive, request, signal),
             onProgress: ({ writtenBytes, totalBytes, message }) => {
               // Why the download began again matters more than "reading the index".

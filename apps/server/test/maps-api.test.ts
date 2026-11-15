@@ -505,6 +505,7 @@ describe("the extract fetcher on its own", () => {
       partPath: path.join(dir, "test.pmtiles.part"),
       signal: new AbortController().signal,
       progress: (_received, _total, message) => message && messages.push(message),
+      throttle: async () => {},
       remember: (patch) => remembered.push(patch as Record<string, unknown>),
     };
     await fetcher(context);

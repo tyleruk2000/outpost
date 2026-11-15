@@ -14,18 +14,20 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import type { DownloadDto, JobDto } from "@outpost/shared";
+import type { DownloadDetail, DownloadDto, DownloadPlan, DownloadPlanItem, JobDto } from "@outpost/shared";
 import { and, desc, eq, inArray, ne } from "drizzle-orm";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
 import { AppError, badRequest, classifyNetworkError, conflict, messageOf, notFound } from "../../core/errors.ts";
 import { pathExists } from "../../core/fs-safe.ts";
 import { sha256File } from "../../core/hashing.ts";
+import { RateLimiter } from "../../core/throttle.ts";
 import { createHttpClient } from "../../core/http.ts";
 import { newId } from "../../core/ids.ts";
 import { type JobRow, type JobRun, PermanentJobError } from "../../core/jobs.ts";
 import { downloads } from "../../db/schema.ts";
 import { createHttpFetcher } from "./http-fetcher.ts";
+import { forecastQueue } from "./plan.ts";
 import type {
   DownloadKind,
   DownloadRow,
@@ -64,7 +66,20 @@ interface Live {
   totalBytes: number | null;
   message: string | null;
   samples: Array<{ at: number; bytes: number }>;
+  /** One reading a second for the last quarter of an hour, for the speed chart. */
+  history: Array<{ at: number; bytes: number }>;
   lastFlush: number;
+}
+
+const HISTORY_INTERVAL_MS = 1_000;
+const HISTORY_POINTS = 900;
+const EVENT_LIMIT = 80;
+
+/** One line of a download's history: when it entered a state, and why if it says. */
+export interface DownloadEvent {
+  at: number;
+  state: string;
+  detail?: string;
 }
 
 interface ActiveRun {
@@ -145,6 +160,12 @@ export function createDownloadsService(ctx: AppContext): DownloadsService {
   const afterUnwind = new Map<string, "resume" | "cancel">();
   let closed = false;
 
+  /** One limit shared by every transfer, set from Settings. */
+  const limiter = new RateLimiter();
+  const applyLimit = () => limiter.setLimit(settings.get("downloads.rateLimitKbps") * 1000);
+  applyLimit();
+  settings.onChange(applyLimit);
+
   // ── Rows ──
 
   function get(id: string): DownloadRow | undefined {
@@ -213,6 +234,15 @@ export function createDownloadsService(ctx: AppContext): DownloadsService {
   }
 
   function write(id: string, patch: Partial<typeof downloads.$inferInsert>): DownloadRow {
+    // Every change of state is kept as a line of history on the row itself.
+    const before = patch.state ? get(id) : undefined;
+    if (before && patch.state !== before.state) {
+      const meta = (patch.meta ?? before.meta) as Record<string, unknown>;
+      const events = [...((meta.events as DownloadEvent[] | undefined) ?? [])];
+      const detail = typeof patch.error === "string" ? patch.error : undefined;
+      events.push({ at: Date.now(), state: patch.state!, ...(detail ? { detail } : {}) });
+      patch = { ...patch, meta: { ...meta, events: events.slice(-EVENT_LIMIT) } };
+    }
     db.update(downloads)
       .set({ ...patch, updatedAt: Date.now() })
       .where(eq(downloads.id, id))
@@ -412,6 +442,7 @@ export function createDownloadsService(ctx: AppContext): DownloadsService {
       totalBytes: found.totalBytes,
       message: null,
       samples: [],
+      history: [{ at: Date.now(), bytes: found.receivedBytes }],
       lastFlush: 0,
     };
     running.set(id, active);
@@ -426,6 +457,10 @@ export function createDownloadsService(ctx: AppContext): DownloadsService {
       if (message !== undefined) state.message = message;
       state.samples.push({ at: now, bytes: receivedBytes });
       while (state.samples.length > 2 && now - state.samples[0]!.at > SPEED_WINDOW_MS) state.samples.shift();
+      if (now - (state.history.at(-1)?.at ?? 0) >= HISTORY_INTERVAL_MS) {
+        state.history.push({ at: now, bytes: receivedBytes });
+        if (state.history.length > HISTORY_POINTS) state.history.shift();
+      }
       run.progress({ current: receivedBytes, total: state.totalBytes, message: state.message });
       if (!spaceChecked && state.totalBytes !== null) {
         spaceChecked = true;
@@ -480,6 +515,7 @@ export function createDownloadsService(ctx: AppContext): DownloadsService {
             allowedHosts: run.payload.allowedHosts,
             signal,
             progress,
+            throttle: (bytes) => limiter.take(bytes, signal),
             remember(patch) {
               const set: Partial<typeof downloads.$inferInsert> = {};
               if (patch.etag !== undefined) set.etag = patch.etag;
@@ -618,7 +654,213 @@ export function createDownloadsService(ctx: AppContext): DownloadsService {
 
   // ── The service ──
 
+  /** Per-second speeds from the byte counts held for a running transfer. */
+  function speedHistory(id: string): Array<{ at: number; bytesPerSecond: number }> {
+    const history = live.get(id)?.history ?? [];
+    const points: Array<{ at: number; bytesPerSecond: number }> = [];
+    for (let index = 1; index < history.length; index += 1) {
+      const previous = history[index - 1]!;
+      const current = history[index]!;
+      const seconds = (current.at - previous.at) / 1000;
+      if (seconds > 0) points.push({ at: current.at, bytesPerSecond: Math.max(0, Math.round((current.bytes - previous.bytes) / seconds)) });
+    }
+    return points;
+  }
+
+  const text = (value: unknown): string | undefined => (typeof value === "string" && value ? value : undefined);
+
+  async function detail(id: string): Promise<DownloadDetail> {
+    const row = requireRow(id);
+    const meta = row.meta as Record<string, unknown>;
+    const job = row.jobId ? ctx.jobs.get(row.jobId) : undefined;
+    const location = storage.list().find((item) => item.id === row.locationId);
+    const speeds = speedHistory(id);
+    const moving = speeds.filter((point) => point.bytesPerSecond > 0);
+    let requestedHost = "";
+    try {
+      requestedHost = new URL(row.url).hostname;
+    } catch {
+      // Fetchers other than "http" may keep something that is not a plain address here.
+    }
+    const region = meta.bbox && Array.isArray(meta.bbox) ? meta : undefined;
+    return {
+      download: toDto(row),
+      source: {
+        requestedUrl: row.url,
+        requestedHost,
+        servedBy: text(meta.servedBy) && text(meta.servedBy) !== requestedHost ? text(meta.servedBy)! : null,
+        fetcher: text((job?.payload as JobPayload | undefined)?.fetcher) ?? "http",
+        etag: row.etag,
+        lastModified: row.lastModified,
+      },
+      integrity: {
+        sha256Expected: row.sha256Expected,
+        sha256Actual: row.sha256Actual,
+        verified: row.sha256Expected && row.sha256Actual ? row.sha256Expected === row.sha256Actual : null,
+      },
+      destination: {
+        locationId: row.locationId,
+        locationName: location?.name ?? "Unknown location",
+        locationAvailable: location?.status === "available",
+        relPath: row.relPath,
+        freeBytes: location?.freeBytes ?? null,
+        totalBytes: location?.totalBytes ?? null,
+      },
+      timing: {
+        createdAt: row.createdAt,
+        startedAt: row.startedAt,
+        finishedAt: row.finishedAt,
+        averageBytesPerSecond: moving.length ? Math.round(moving.reduce((sum, point) => sum + point.bytesPerSecond, 0) / moving.length) : null,
+        peakBytesPerSecond: moving.length ? Math.max(...moving.map((point) => point.bytesPerSecond)) : null,
+      },
+      speedHistory: speeds,
+      events: ((meta.events as DownloadDetail["events"] | undefined) ?? []).slice(),
+      attempts: {
+        made: job?.attempts ?? row.attempts,
+        allowed: job?.maxAttempts ?? settings.get("downloads.maxAttempts"),
+        nextAttemptAt: job?.state === "queued" && job.runAfter > Date.now() ? job.runAfter : null,
+      },
+      about:
+        text(meta.publisher) || text(meta.license) || text(meta.description)
+          ? {
+              publisher: text(meta.publisher),
+              license: text(meta.license),
+              attribution: text(meta.attribution),
+              version: text(meta.version),
+              description: text(meta.description),
+              language: text(meta.language),
+            }
+          : null,
+      region: region
+        ? {
+            bbox: region.bbox as [number, number, number, number],
+            minZoom: Number(region.minZoom ?? 0),
+            maxZoom: Number(region.maxZoom ?? 0),
+            tileType: text(region.tileType) ?? "vector",
+            sourceBuild: text(region.sourceBuild),
+          }
+        : null,
+      rateLimitBytesPerSecond: limiter.limit,
+    };
+  }
+
+  async function plan(): Promise<DownloadPlan> {
+    const rows = db
+      .select()
+      .from(downloads)
+      .where(inArray(downloads.state, ["queued", "running", "verifying", "paused", "failed"]))
+      .all()
+      .sort((a, b) => a.createdAt - b.createdAt);
+    const dtos = rows.map((row) => toDto(row));
+    const phaseOf = (state: string): DownloadPlanItem["phase"] | undefined =>
+      state === "running" || state === "verifying" ? "active" : state === "queued" ? "waiting" : state === "paused" ? "paused" : undefined;
+
+    const measured = dtos.reduce((sum, dto) => sum + (dto.bytesPerSecond ?? 0), 0);
+    const assumed = measured > 0 ? measured : limiter.limit;
+    const concurrency = settings.get("downloads.concurrency");
+    const forecastable = dtos.filter((dto) => phaseOf(dto.state) === "active" || phaseOf(dto.state) === "waiting");
+    const remainingOf = (dto: DownloadDto) => (dto.totalBytes === null ? null : Math.max(0, dto.totalBytes - dto.receivedBytes));
+    const forecast = new Map(
+      forecastQueue(
+        // Verifying transfers no longer use the network; they do not hold a share of the speed.
+        forecastable.map((dto) => ({ id: dto.id, phase: phaseOf(dto.state) as "active" | "waiting", remainingBytes: dto.state === "verifying" ? 0 : remainingOf(dto) })),
+        { concurrency, bytesPerSecond: assumed },
+      ).map((item) => [item.id, item]),
+    );
+
+    const queue: DownloadPlanItem[] = [];
+    for (const dto of dtos) {
+      const phase = phaseOf(dto.state);
+      if (!phase) continue;
+      queue.push({
+        id: dto.id,
+        title: dto.title,
+        kind: dto.kind,
+        state: dto.state,
+        phase,
+        receivedBytes: dto.receivedBytes,
+        totalBytes: dto.totalBytes,
+        remainingBytes: remainingOf(dto),
+        locationId: dto.locationId,
+        locationName: dto.locationName,
+        startsInSeconds: forecast.get(dto.id)?.startsInSeconds ?? null,
+        finishesInSeconds: forecast.get(dto.id)?.finishesInSeconds ?? null,
+      });
+    }
+
+    // Space is measured now rather than read from the last periodic check.
+    const locations = await Promise.all(
+      storage.list().map(async (location) => {
+        const pendingBytes = queue.filter((item) => item.locationId === location.id).reduce((sum, item) => sum + (item.remainingBytes ?? 0), 0);
+        const space =
+          location.status === "available"
+            ? await fs.promises.statfs(location.path).then(
+                (stats) => ({ free: stats.bavail * stats.bsize, total: stats.blocks * stats.bsize }),
+                () => undefined,
+              )
+            : undefined;
+        const freeBytes = space?.free ?? location.freeBytes;
+        return {
+          locationId: location.id,
+          name: location.name,
+          available: location.status === "available",
+          totalBytes: space?.total ?? location.totalBytes,
+          freeBytes,
+          pendingBytes,
+          freeAfterBytes: freeBytes === null ? null : freeBytes - pendingBytes,
+          enough: freeBytes === null || freeBytes - pendingBytes >= 0,
+        };
+      }),
+    );
+
+    const finishes = queue.filter((item) => item.phase !== "paused").map((item) => item.finishesInSeconds);
+    return {
+      concurrency,
+      rateLimitBytesPerSecond: limiter.limit,
+      bytesPerSecond: measured > 0 ? measured : null,
+      assumedBytesPerSecond: assumed,
+      basis: measured > 0 ? "measured" : limiter.limit ? "limit" : null,
+      remainingBytes: queue.filter((item) => item.phase !== "paused").reduce((sum, item) => sum + (item.remainingBytes ?? 0), 0),
+      unknownSizes: queue.filter((item) => item.phase !== "paused" && item.remainingBytes === null).length,
+      finishesInSeconds: finishes.length > 0 && finishes.every((value) => value !== null) ? Math.max(...(finishes as number[])) : null,
+      counts: {
+        active: queue.filter((item) => item.phase === "active").length,
+        waiting: queue.filter((item) => item.phase === "waiting").length,
+        paused: queue.filter((item) => item.phase === "paused").length,
+        failed: dtos.filter((dto) => dto.state === "failed").length,
+      },
+      queue,
+      locations: locations.filter((location) => location.pendingBytes > 0 || location.available),
+    };
+  }
+
   const service: DownloadsService = {
+    detail,
+    plan,
+    pauseAll() {
+      let count = 0;
+      for (const row of db.select().from(downloads).where(inArray(downloads.state, ["queued", "running"])).all()) {
+        try {
+          service.pause(row.id);
+          count += 1;
+        } catch {
+          // It finished or failed in the meantime; nothing to pause.
+        }
+      }
+      return count;
+    },
+    resumeAll() {
+      let count = 0;
+      for (const row of db.select().from(downloads).where(eq(downloads.state, "paused")).all()) {
+        try {
+          service.resume(row.id);
+          count += 1;
+        } catch {
+          // Still winding down from the pause; it will resume when asked again.
+        }
+      }
+      return count;
+    },
     get,
     toDto,
 
@@ -687,7 +929,7 @@ export function createDownloadsService(ctx: AppContext): DownloadsService {
           state: "queued",
           totalBytes: input.sizeBytes ?? null,
           sha256Expected: input.sha256?.toLowerCase() ?? null,
-          meta: input.meta ?? {},
+          meta: { ...(input.meta ?? {}), events: [{ at: Date.now(), state: "queued" }] },
           createdAt: now,
           updatedAt: now,
         })

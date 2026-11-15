@@ -64,6 +64,11 @@ export interface FetchContext {
   /** The hosts given to `start`, for fetchers that make their own requests. */
   allowedHosts?: string[];
   signal: AbortSignal;
+  /**
+   * Wait for permission to transfer this many bytes. Every fetcher calls this for each
+   * chunk before writing it, which is what makes the speed limit hold.
+   */
+  throttle(bytes: number): Promise<void>;
   /** Report bytes on disk so far and, once known, the final size. */
   progress(receivedBytes: number, totalBytes?: number | null, message?: string): void;
   /** Persist fields the fetcher needs to resume later (etag, last-modified, extra meta). */
@@ -101,6 +106,14 @@ export interface DownloadsService {
   retry(id: string): Promise<DownloadRow>;
   /** Removes a finished, failed or cancelled download from history, and any partial file. */
   remove(id: string): Promise<void>;
+  /** Everything known about one download: source, integrity, history, speed over time. */
+  detail(id: string): Promise<import("@outpost/shared").DownloadDetail>;
+  /** A forecast of the queue: order, timings, and space left on each location afterwards. */
+  plan(): Promise<import("@outpost/shared").DownloadPlan>;
+  /** Pauses everything that is queued or transferring. Returns how many were paused. */
+  pauseAll(): number;
+  /** Resumes everything that is paused. */
+  resumeAll(): number;
   registerFetcher(name: string, fetcher: Fetcher): void;
   /** One installer per kind. Registering twice for a kind is an error. */
   registerInstaller(kind: DownloadKind, installer: Installer): void;

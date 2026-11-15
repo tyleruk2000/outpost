@@ -125,6 +125,8 @@ async function attempt(client: HttpClient, context: FetchContext): Promise<Outco
   context.remember({
     etag: viaMirror ? null : response.headers.get("etag"),
     lastModified: viaMirror ? null : response.headers.get("last-modified"),
+    // Shown on the download's details: which server actually sent the bytes.
+    meta: { servedBy: new URL(url).hostname, resumedAt: append ? have : 0 },
   });
 
   let received = append ? have : 0;
@@ -135,6 +137,8 @@ async function attempt(client: HttpClient, context: FetchContext): Promise<Outco
       Readable.fromWeb(response.body as never),
       async function* count(chunks: AsyncIterable<Buffer>) {
         for await (const chunk of chunks) {
+          // Holding the chunk here slows the socket itself: backpressure reaches the server.
+          await context.throttle(chunk.length);
           received += chunk.length;
           context.progress(received, total);
           yield chunk;

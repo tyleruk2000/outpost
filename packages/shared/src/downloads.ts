@@ -62,3 +62,110 @@ export interface DownloadsResponse {
 export interface DownloadResponse {
   download: DownloadDto;
 }
+
+// ── Details and the plan ────────────────────────────────────────────────────
+
+/** One line of a download's history: when it entered a state, and why if it says. */
+export interface DownloadEvent {
+  at: number;
+  state: DownloadState | (string & {});
+  detail?: string;
+}
+
+/** Everything known about one download, for its details screen. */
+export interface DownloadDetail {
+  download: DownloadDto;
+  source: {
+    /** Address the download was asked from. */
+    requestedUrl: string;
+    requestedHost: string;
+    /** Host that actually sent the bytes, when a mirror did. */
+    servedBy: string | null;
+    /** How it is fetched: "http", or "pmtiles-extract" for a map region. */
+    fetcher: string;
+    etag: string | null;
+    lastModified: string | null;
+  };
+  integrity: {
+    /** Checksum published by the source, when there is one. */
+    sha256Expected: string | null;
+    /** Checksum of what was received, once it has been checked. */
+    sha256Actual: string | null;
+    /** True when both exist and match; null while unknown. */
+    verified: boolean | null;
+  };
+  destination: {
+    locationId: string;
+    locationName: string;
+    locationAvailable: boolean;
+    relPath: string;
+    freeBytes: number | null;
+    totalBytes: number | null;
+  };
+  timing: {
+    createdAt: number;
+    startedAt: number | null;
+    finishedAt: number | null;
+    /** Mean speed over the readings held in memory; null when not transferring. */
+    averageBytesPerSecond: number | null;
+    peakBytesPerSecond: number | null;
+  };
+  /** Speed readings, about one a second, for up to the last quarter of an hour. Not kept across restarts. */
+  speedHistory: Array<{ at: number; bytesPerSecond: number }>;
+  events: DownloadEvent[];
+  attempts: { made: number; allowed: number; nextAttemptAt: number | null };
+  /** What the catalogue said about the item when the download was started. */
+  about: { publisher?: string; license?: string; attribution?: string; version?: string; description?: string; language?: string } | null;
+  /** For map regions: the area and detail asked for. */
+  region: { bbox: [number, number, number, number]; minZoom: number; maxZoom: number; tileType: string; sourceBuild?: string } | null;
+  /** The shared speed limit in force, in bytes per second; null when there is none. */
+  rateLimitBytesPerSecond: number | null;
+}
+
+export interface DownloadPlanItem {
+  id: string;
+  title: string;
+  kind: DownloadKind;
+  state: DownloadState;
+  /** Transferring now, waiting for a free slot, or paused by a person. */
+  phase: "active" | "waiting" | "paused";
+  receivedBytes: number;
+  totalBytes: number | null;
+  remainingBytes: number | null;
+  locationId: string;
+  locationName: string;
+  /** Seconds from now. Estimates; null when they cannot be made. */
+  startsInSeconds: number | null;
+  finishesInSeconds: number | null;
+}
+
+export interface DownloadPlanLocation {
+  locationId: string;
+  name: string;
+  available: boolean;
+  totalBytes: number | null;
+  freeBytes: number | null;
+  /** Bytes the queue still has to write here. */
+  pendingBytes: number;
+  /** Free space once everything queued for this location has arrived. */
+  freeAfterBytes: number | null;
+  enough: boolean;
+}
+
+/** What the download queue is going to do, as far as can be told now. */
+export interface DownloadPlan {
+  concurrency: number;
+  rateLimitBytesPerSecond: number | null;
+  /** Total speed being achieved right now. */
+  bytesPerSecond: number | null;
+  /** The speed the estimates assume, and where it came from. */
+  assumedBytesPerSecond: number | null;
+  basis: "measured" | "limit" | null;
+  remainingBytes: number;
+  /** Items whose size is not known yet; estimates leave them out. */
+  unknownSizes: number;
+  finishesInSeconds: number | null;
+  counts: { active: number; waiting: number; paused: number; failed: number };
+  queue: DownloadPlanItem[];
+  locations: DownloadPlanLocation[];
+}

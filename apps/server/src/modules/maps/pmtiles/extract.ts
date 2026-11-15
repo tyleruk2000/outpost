@@ -59,6 +59,8 @@ export interface ExtractProgress {
 }
 
 export interface ExtractOptions {
+  /** Waits for permission to transfer this many bytes; how the shared speed limit is applied. */
+  throttle?: (bytes: number) => Promise<void>;
   archive: RemoteArchive;
   request: ExtractRequest;
   /** The partial output file. Sidecar files are created next to it. */
@@ -251,6 +253,7 @@ export async function extractArchive(options: ExtractOptions): Promise<ExtractRe
 
   const fetchOne = async (index: number): Promise<void> => {
     const request = requests[index]!;
+    await options.throttle?.(request.length);
     const bytes = await archive.read(request.offset, request.length, stopper.signal);
     if (bytes.length !== request.length) {
       // A shorter archive than the plan describes is a different archive.

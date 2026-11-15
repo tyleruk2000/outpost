@@ -11,7 +11,22 @@ export async function registerDownloads(app: FastifyInstance, ctx: AppContext): 
 
   app.get("/api/downloads", async () => ({ downloads: service.list().map(service.toDto) }));
 
+  // Registered before the routes with an :id so that "plan" is never taken for one.
+  app.get("/api/downloads/plan", async () => service.plan());
+
+  app.post("/api/downloads/pause-all", async (request) => {
+    auth.requireAdmin(request);
+    return { paused: service.pauseAll() };
+  });
+
+  app.post("/api/downloads/resume-all", async (request) => {
+    auth.requireAdmin(request);
+    return { resumed: service.resumeAll() };
+  });
+
   type WithId = { Params: { id: string } };
+
+  app.get<WithId>("/api/downloads/:id", async (request) => service.detail(request.params.id));
 
   app.post<WithId>("/api/downloads/:id/pause", async (request) => {
     auth.requireAdmin(request);
