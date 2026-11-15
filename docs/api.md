@@ -275,6 +275,7 @@ Types: `packages/shared/src/documents.ts`.
 | `DELETE /api/documents/:id` | Deletes the document and its file. Query `forget=true` removes only Outpost's record and leaves the file. |
 | `POST /api/documents/:id/reextract` | Reads the text again. `{ document, jobId }`. |
 | `GET /api/documents/:id/text` | The extracted text in sections (`DocumentTextResponse`). Query: `page`. |
+| `GET /api/documents/:id/markdown` | A Markdown document with its formatting, as a tree of plain values (`DocumentMarkdownResponse`): headings, paragraphs, lists, quotes, code, tables, and bold, italic, code and links inside them. Never HTML. Links are present only for `http`, `https` and `mailto` addresses; pictures become their description; embedded HTML becomes its words. `415` for a document that is not Markdown, `413` for a file over 2 MB (the web app then shows the text from `/text`), `404` when the file is missing. |
 | `GET /api/documents/:id/file` | The original file. Supports byte ranges and `ETag`. Query `download=1` forces a download. Sent with a sandbox policy. |
 | `POST /api/documents/move` | Body: `locationId`. Moves every document that is not on that location to it, as a job. `{ job, documents }`. |
 | `GET /api/tags` | `{ tags }`: every tag with the number of documents carrying it (`TagDto`). |

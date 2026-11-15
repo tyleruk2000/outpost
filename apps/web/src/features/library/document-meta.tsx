@@ -10,6 +10,7 @@ export const documentKeys = {
   facets: ["documents", "facets"] as const,
   detail: (id: string) => ["documents", "detail", id] as const,
   text: (id: string) => ["documents", "text", id] as const,
+  markdown: (id: string) => ["documents", "markdown", id] as const,
 };
 
 /** What the file picker offers. The server decides for itself; this only saves people a wasted upload. */

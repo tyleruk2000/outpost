@@ -47,6 +47,11 @@
   font-size: 1.12em;
   margin-top: 1.35em;
 }
+.prose h4 {
+  font-size: 1em;
+  font-weight: 680;
+  margin-top: 1.25em;
+}
 .prose > :first-child {
   margin-top: 0;
 }

@@ -73,7 +73,7 @@ const stripTags = (html: string) =>
     .replace(/<[^>]*>/g, " ");
 
 /** The words of a Markdown node, with its syntax gone. */
-function markdownText(node: MdastNodes): string {
+export function markdownText(node: MdastNodes): string {
   switch (node.type) {
     case "text":
     case "inlineCode":
@@ -109,7 +109,7 @@ function markdownText(node: MdastNodes): string {
  * Front matter (`---` … `---` at the very top) is metadata, not content. Without this
  * the Markdown parser would read its last line as a heading.
  */
-function splitFrontMatter(source: string): { body: string; meta: Extracted["meta"] } {
+export function splitFrontMatter(source: string): { body: string; meta: Extracted["meta"] } {
   const match = /^---[ \t]*\r?\n([\s\S]*?)\r?\n(?:---|\.\.\.)[ \t]*(?:\r?\n|$)/.exec(source);
   if (!match) return { body: source, meta: {} };
   const field = (name: string) => {

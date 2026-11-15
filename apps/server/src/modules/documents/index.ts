@@ -4,6 +4,7 @@
  */
 import fs from "node:fs";
 import fastifyMultipart from "@fastify/multipart";
+import type { DocumentMarkdownResponse } from "@outpost/shared";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
@@ -11,6 +12,7 @@ import { AppError } from "../../core/errors.ts";
 import { safeFileName } from "../../core/fs-safe.ts";
 import { DOCUMENT_TYPES, formatForExt, servedAs } from "./file-types.ts";
 import { contentDisposition, matchesEtag, parseRange } from "./http.ts";
+import { readMarkdownBlocks } from "./markdown-view.ts";
 import { registerDocumentMoves } from "./move.ts";
 import { createDocumentsService } from "./service.ts";
 import { receiveUpload } from "./upload.ts";
@@ -107,6 +109,16 @@ export async function registerDocuments(app: FastifyInstance, ctx: AppContext): 
   app.get<IdParams>("/api/documents/:id/text", async (request) => {
     const { page } = z.object({ page: z.coerce.number().int().min(1).optional() }).parse(request.query);
     return service.text(request.params.id, page);
+  });
+
+  /**
+   * A Markdown file with its formatting, as plain values the web app draws itself.
+   * The file is never sent as HTML; see `markdown-view.ts`.
+   */
+  app.get<IdParams>("/api/documents/:id/markdown", async (request): Promise<DocumentMarkdownResponse> => {
+    const document = service.get(request.params.id);
+    if (document.type !== "markdown") throw new AppError("unsupported", `"${document.title}" is not a Markdown file.`);
+    return { documentId: document.id, blocks: await readMarkdownBlocks(service.absolutePath(document.id)) };
   });
 
   /**

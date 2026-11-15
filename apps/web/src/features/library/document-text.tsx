@@ -1,4 +1,4 @@
-import type { DocumentDto, DocumentTextResponse } from "@outpost/shared";
+import type { DocumentDto, DocumentMarkdownResponse, DocumentTextResponse } from "@outpost/shared";
 import { useQuery } from "@tanstack/react-query";
 import { FileWarning, TextSearch } from "lucide-react";
 import { Fragment, type ReactNode } from "react";
@@ -6,7 +6,9 @@ import { ErrorState } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/misc";
 import { api } from "@/lib/api";
+import { MarkdownDocument } from "./document-markdown";
 import { documentKeys, isReading, kindOfDocument } from "./document-meta";
+import { DataTable } from "./document-table";
 import { ViewerMessage } from "./document-viewer-message";
 
 /** Files whose line and column positions carry meaning, shown in fixed-width type. */
@@ -59,42 +61,20 @@ function Linked({ text }: { text: string }): ReactNode {
   ));
 }
 
-/** A table from a document. It keeps its own width and scrolls inside its box, so a phone never scrolls the page sideways. */
-function DataTable({ rows }: { rows: string[][] }) {
+/** A table found in the plain text of a Markdown file (see `tableOf`). */
+function PlainTable({ rows }: { rows: string[][] }) {
   const [header = [], ...body] = rows;
   return (
-    <section
-      className="doc-table scroll-quiet"
-      // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrolling region must be reachable by keyboard
-      tabIndex={0}
-      aria-label={`Table: ${header.filter(Boolean).join(", ")}`}
-    >
-      <table>
-        <thead>
-          <tr>
-            {header.map((cell, index) => (
-              // biome-ignore lint/suspicious/noArrayIndexKey: columns have no identity beyond their order
-              <th key={index} scope="col">
-                {cell}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {body.map((row, rowIndex) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: rows have no identity beyond their order
-            <tr key={rowIndex}>
-              {row.map((cell, index) => (
-                // biome-ignore lint/suspicious/noArrayIndexKey: columns have no identity beyond their order
-                <td key={index}>
-                  <Linked text={cell} />
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </section>
+    <DataTable
+      label={header.filter(Boolean).join(", ")}
+      header={header}
+      body={body.map((row) =>
+        row.map((cell, index) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: columns have no identity beyond their order
+          <Linked key={index} text={cell} />
+        )),
+      )}
+    />
   );
 }
 
@@ -104,10 +84,22 @@ function DataTable({ rows }: { rows: string[][] }) {
  */
 export function TextViewer({ document, downloadUrl }: { document: DocumentDto; downloadUrl: string }) {
   const reading = isReading(document);
+  // Markdown is the one type whose tables arrive in a known shape (see `tableOf`).
+  const markdown = document.type === "markdown";
+  // A Markdown file is shown with its formatting, straight from the file. When that
+  // cannot be had (its drive is unplugged, or it is very large) the text read for
+  // search is shown instead, as for every other type.
+  const formatted = useQuery({
+    queryKey: documentKeys.markdown(document.id),
+    queryFn: () => api.get<DocumentMarkdownResponse>(`/api/documents/${document.id}/markdown`),
+    enabled: markdown,
+    retry: false,
+  });
+  const plain = !markdown || formatted.isError;
   const text = useQuery({
     queryKey: documentKeys.text(document.id),
     queryFn: () => api.get<DocumentTextResponse>(`/api/documents/${document.id}/text`),
-    enabled: document.extraction === "done",
+    enabled: plain && document.extraction === "done",
   });
   const kind = kindOfDocument(document);
   const download = (
@@ -116,6 +108,35 @@ export function TextViewer({ document, downloadUrl }: { document: DocumentDto; d
     </Button>
   );
 
+  if (!plain) {
+    return (
+      <section
+        // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrolling region must be reachable by keyboard
+        tabIndex={0}
+        aria-label={`Text of ${document.title}`}
+        className="scroll-quiet min-h-0 flex-1 overflow-y-auto bg-page focus-visible:outline-offset-[-2px]"
+      >
+        <div className="max-w-[68rem] px-5 pt-6 pb-16 md:px-10 md:pt-8">
+          <p className="mb-8 max-w-[48rem] border-b border-border pb-4 text-small text-ink-muted">
+            This is the Markdown file as Outpost reads it. Pictures and embedded web content are left out.{" "}
+            <a href={downloadUrl} className="font-medium text-primary underline decoration-1 underline-offset-[0.2em] hover:decoration-2">
+              Download the original
+            </a>
+          </p>
+          {formatted.data ? (
+            <MarkdownDocument blocks={formatted.data.blocks} title={document.title} />
+          ) : (
+            <div className="grid gap-3" aria-busy>
+              <Skeleton className="h-7 w-64 max-w-full" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-4/5" />
+            </div>
+          )}
+        </div>
+      </section>
+    );
+  }
   if (reading) {
     return (
       <ViewerMessage title="Reading this document">
@@ -145,8 +166,6 @@ export function TextViewer({ document, downloadUrl }: { document: DocumentDto; d
   }
 
   const sections = text.data?.sections.filter((section) => section.heading || section.text.trim()) ?? [];
-  // Markdown is the one type whose tables arrive in a known shape (see `tableOf`).
-  const markdown = document.type === "markdown";
   return (
     <section
       // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrolling region must be reachable by keyboard
@@ -192,7 +211,7 @@ export function TextViewer({ document, downloadUrl }: { document: DocumentDto; d
                       const table = markdown ? tableOf(paragraph) : null;
                       return table ? (
                         // biome-ignore lint/suspicious/noArrayIndexKey: paragraphs have no identity beyond their order
-                        <DataTable key={paragraphIndex} rows={table} />
+                        <PlainTable key={paragraphIndex} rows={table} />
                       ) : (
                         // biome-ignore lint/suspicious/noArrayIndexKey: paragraphs have no identity beyond their order
                         <p key={paragraphIndex} className="whitespace-pre-wrap">

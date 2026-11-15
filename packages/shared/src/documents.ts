@@ -115,6 +115,40 @@ export interface DocumentTextResponse {
   sections: DocumentSection[];
 }
 
+/**
+ * A run of text inside a Markdown block. This is what the server keeps of a Markdown
+ * file's formatting: enough to read it as written, and nothing that could act in a
+ * browser. A link is present only when its address is a web or mail address.
+ */
+export type MarkdownInline =
+  | { t: "text"; v: string }
+  | { t: "code"; v: string }
+  | { t: "break" }
+  | { t: "strong" | "em" | "del"; c: MarkdownInline[] }
+  | { t: "link"; href: string; c: MarkdownInline[] };
+
+export interface MarkdownListItem {
+  /** Set for a task-list item: whether its box is ticked. */
+  checked?: boolean;
+  c: MarkdownBlock[];
+}
+
+export type MarkdownBlock =
+  /** `depth` is 1 to 6, as written in the file. */
+  | { t: "heading"; depth: number; c: MarkdownInline[] }
+  | { t: "paragraph"; c: MarkdownInline[] }
+  | { t: "list"; ordered: boolean; start?: number; items: MarkdownListItem[] }
+  | { t: "quote"; c: MarkdownBlock[] }
+  | { t: "code"; v: string }
+  /** The first row is the header. Every row has the same number of cells. */
+  | { t: "table"; rows: MarkdownInline[][][] }
+  | { t: "rule" };
+
+export interface DocumentMarkdownResponse {
+  documentId: string;
+  blocks: MarkdownBlock[];
+}
+
 export interface TagDto {
   id: string;
   name: string;

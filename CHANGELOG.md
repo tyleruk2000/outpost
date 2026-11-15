@@ -44,6 +44,9 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   unmodified.
 - Text extraction for search from PDF (page by page), EPUB, Markdown, HTML and text,
   in a worker thread.
+- Markdown documents shown with their formatting: headings, bold, italic, links, lists,
+  task lists, quotations, code and tables. The file is drawn from a tree of plain values
+  and is never turned into HTML, so nothing written in it can run or load from the internet.
 - Titles, authors, categories, descriptions and tags; a PDF viewer with byte-range
   loading; originals served in a sandbox.
 
