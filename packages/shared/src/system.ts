@@ -37,7 +37,7 @@ export interface Settings {
   "indexing.chunkOverlap": number;
   "indexing.maxPdfPages": number;
   "search.semantic.enabled": boolean;
-  "search.semantic.provider": "none" | "transformers" | "openai-compatible";
+  "search.semantic.provider": "none" | "transformers" | "openai-compatible" | "demo";
   "search.semantic.model": string;
   "search.semantic.endpoint": string;
   "search.semantic.batchSize": number;

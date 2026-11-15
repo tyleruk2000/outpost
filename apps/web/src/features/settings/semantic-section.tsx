@@ -1,34 +1,14 @@
 import type { SemanticStatus, Settings } from "@outpost/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CircleAlert, Download, Trash2, Upload } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useRef } from "react";
 import { toast } from "sonner";
 import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Progress, Segmented, Switch } from "@/components/ui/misc";
 import { ApiError, api, errorMessage } from "@/lib/api";
 import { formatNumber } from "@/lib/utils";
-import { SettingRow, SettingsSection } from "./parts";
-
-/** A text field that saves when the person leaves it or presses Enter. */
-function TextSetting({ id, value, disabled, onSave, placeholder, mono }: { id: string; value: string; disabled: boolean; onSave: (value: string) => void; placeholder?: string; mono?: boolean }) {
-  const [draft, setDraft] = useState(value);
-  useEffect(() => setDraft(value), [value]);
-  return (
-    <Input
-      id={id}
-      value={draft}
-      disabled={disabled}
-      placeholder={placeholder}
-      spellCheck={false}
-      onChange={(event) => setDraft(event.target.value)}
-      onBlur={() => draft.trim() !== value && onSave(draft.trim())}
-      onKeyDown={(event) => event.key === "Enter" && (event.target as HTMLInputElement).blur()}
-      className={mono ? "w-72 max-w-full font-mono text-small" : "w-72 max-w-full"}
-    />
-  );
-}
+import { SettingRow, SettingsSection, TextSetting } from "./parts";
 
 export function SemanticSection({ settings, disabled, save }: { settings: Settings; disabled: boolean; save: <K extends keyof Settings>(key: K, value: Settings[K]) => void }) {
   const client = useQueryClient();

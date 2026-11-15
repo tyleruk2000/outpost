@@ -12,6 +12,7 @@ import type { AppContext, Services } from "./core/context.ts";
 import { AppError } from "./core/errors.ts";
 import { EventBus } from "./core/events.ts";
 import { JobQueue } from "./core/jobs.ts";
+import { isBundled } from "./core/paths.ts";
 import { openDatabase } from "./db/client.ts";
 import { registerAuth } from "./modules/auth/index.ts";
 import { applyPendingRestore } from "./modules/backup/index.ts";
@@ -54,7 +55,8 @@ export async function buildApp(config: Config): Promise<BuiltApp> {
         ? false
         : {
             level: config.logLevel,
-            ...(config.env === "development" && !config.portable
+            // Pretty logs are a development convenience; the packaged app does not carry the formatter.
+            ...(config.env === "development" && !config.portable && !isBundled
               ? { transport: { target: "pino-pretty", options: { translateTime: "HH:MM:ss", ignore: "pid,hostname" } } }
               : {}),
           },

@@ -32,10 +32,13 @@ ENV NODE_ENV=production \
     OUTPOST_PORT=8080 \
     OUTPOST_DATA_DIR=/data \
     OUTPOST_STORAGE_ROOTS=/storage \
-    OUTPOST_KIWIX_LIBRARY_PATH=/kiwix/library.xml
+    OUTPOST_KIWIX_LIBRARY_PATH=/kiwix/library.xml \
+    OUTPOST_SUPERVISED=true
 
 COPY --from=trim /out/app /app
 
+# OUTPOST_SUPERVISED tells the server that something restarts it when it exits (the
+# Compose restart policy), which is what lets a restore finish with one click.
 # /data holds the database and attachments; /storage/internal the default library.
 # Both are owned by the unprivileged "node" user (uid 1000) the server runs as.
 RUN mkdir -p /data /storage/internal /kiwix && chown -R node:node /data /storage /kiwix

@@ -143,8 +143,10 @@ search uses GeoNames data loaded into FTS5.
 - Archives are unpacked with path, size, count and ratio limits, and never onto paths
   outside the staging folder.
 - Passwords are hashed with scrypt. Sessions are random tokens stored hashed.
-- No telemetry. No outbound request happens unless a person starts a download or
-  refreshes the catalogue.
+- No telemetry. The server makes an outbound request only as the direct result of a
+  person's action: refreshing the catalogue, starting a download, estimating or
+  downloading a map region or place names, fetching the runtimes for a portable drive,
+  or, if they configured one, calling their own embedding server.
 
 See [security.md](security.md) for the threat model.
 

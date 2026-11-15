@@ -6,7 +6,7 @@
 import type { SearchResponse } from "@outpost/shared";
 import { useQuery } from "@tanstack/react-query";
 import { Command } from "cmdk";
-import { CornerDownLeft, Moon, Plus, Search, Sun, Upload } from "lucide-react";
+import { CornerDownLeft, FolderInput, Moon, Plus, Search, Sun, Upload, Waypoints } from "lucide-react";
 import { Dialog } from "radix-ui";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
@@ -133,6 +133,14 @@ export function CommandPalette({ open, onOpenChange, onNewPage }: { open: boolea
                     <Command.Item onSelect={() => go("/library?upload=1")} className={itemClass}>
                       <Upload aria-hidden />
                       Add documents
+                    </Command.Item>
+                    <Command.Item onSelect={() => go("/import")} className={itemClass}>
+                      <FolderInput aria-hidden />
+                      Import pages from Markdown or Notion
+                    </Command.Item>
+                    <Command.Item onSelect={() => go("/search/how-it-works")} className={itemClass}>
+                      <Waypoints aria-hidden />
+                      See how search works
                     </Command.Item>
                     <Command.Item onSelect={() => run(() => setTheme(resolved === "dark" ? "light" : "dark"))} className={itemClass}>
                       {resolved === "dark" ? <Sun aria-hidden /> : <Moon aria-hidden />}

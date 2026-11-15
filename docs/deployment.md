@@ -1,0 +1,509 @@
+# Installing and running Outpost
+
+This page covers running Outpost with Docker Compose, running it without Docker, the
+notes that matter on each platform, and every environment variable the server reads.
+
+Outpost is one server process plus, for reference collections such as Wikipedia, one
+helper process (kiwix-serve). See [architecture.md](architecture.md) for how the parts
+fit together.
+
+## Docker Compose quick start
+
+You need Docker with the Compose plugin (`docker compose version` should print a
+version).
+
+```bash
+git clone https://github.com/tyleruk2000/outpost.git
+cd outpost
+cp .env.example .env
+docker compose build
+docker compose up -d
+```
+
+Then open <http://localhost:8080>.
+
+- `docker compose build` builds the image from the checkout. The build needs an
+  internet connection: it installs dependencies and fetches the map fonts and icons.
+- `compose.yaml` names the image `ghcr.io/tyleruk2000/outpost:latest` (override it with
+  `OUTPOST_IMAGE`). The release workflow publishes that image, for `linux/amd64` and
+  `linux/arm64`, when a version tag is pushed. Until a release exists, build it locally
+  as above. Once an image is published, `compose.yaml` and `.env` are all you need on
+  the machine, and `docker compose up -d` pulls the image.
+- Every line in `.env` is optional. The defaults keep Outpost private to the computer it
+  runs on, with sign-in off.
+
+Check that it is running:
+
+```bash
+docker compose ps
+curl http://localhost:8080/api/health
+```
+
+The second command prints `{"status":"ok","version":"…"}`.
+
+### What the stack contains
+
+| Service | What it does | Reachable from |
+| --- | --- | --- |
+| `outpost` | The web app and API, on port 8080 inside the container. | The host, on `127.0.0.1:8080` by default. |
+| `kiwix` | `ghcr.io/kiwix/kiwix-serve:3.8.2`. Reads installed ZIM archives. | Only the `outpost` service. It is never published to the host. |
+
+The `outpost` container runs as the unprivileged `node` user (uid 1000, gid 1000).
+
+### What each volume holds
+
+| Volume | Mounted at | Holds |
+| --- | --- | --- |
+| `outpost-data` | `/data` | The database (`outpost.db`), note attachments, text extracted from documents, the signing secret, cached runtimes for portable drives, and anything else Outpost itself owns. Keep it on a local disk. |
+| `outpost-library` | `/storage/internal` | The default storage location: documents, collections and maps you have not put somewhere else. |
+| `kiwix-library` | `/kiwix` | `library.xml`, the list of installed archives that Outpost writes and kiwix-serve reads. |
+
+External drives and network shares are extra mounts under `/storage`. Each one must be
+added to **both** services (read-only for `kiwix`). [storage.md](storage.md) has
+examples.
+
+## Letting other devices use it (LAN access and sign-in)
+
+By default the port is published on `127.0.0.1` only, and the server refuses requests
+addressed to any name other than `localhost`, `127.0.0.1` or `::1`.
+
+To use Outpost from phones and other computers on your network, set both of these in
+`.env` and restart:
+
+```ini
+OUTPOST_LAN_ACCESS=true
+OUTPOST_BIND=0.0.0.0
+```
+
+```bash
+docker compose up -d
+```
+
+What changes:
+
+- Sign-in is turned on (`OUTPOST_AUTH=auto` follows `OUTPOST_LAN_ACCESS`).
+- The first visit asks you to create the administrator account. Because that form is
+  now reachable by anyone on the network, it also asks for a **setup token**. The token
+  is printed in the server log each time the server starts, until an administrator
+  exists:
+
+  ```bash
+  docker compose logs outpost | grep "setup token"
+  ```
+
+- Outpost answers to `localhost`, to IP addresses, to single-word host names, to names
+  ending in `.local`, `.lan`, `.home`, `.internal` or `.home.arpa`, and to anything you
+  list in `OUTPOST_ALLOWED_HOSTS`. Any other name gets "This address is not one Outpost
+  answers to".
+- The server refuses to start with `OUTPOST_LAN_ACCESS=true` and `OUTPOST_AUTH=off`
+  unless `OUTPOST_ALLOW_UNAUTHENTICATED_LAN=true` is also set. `compose.yaml` does not
+  pass that variable through; add it to the `environment:` block if you accept the risk.
+
+These settings can only be changed where the server is started, never from the browser.
+Traffic on the LAN is plain HTTP unless you put a reverse proxy in front (see below).
+[security.md](security.md) explains what this does and does not protect.
+
+Accounts are administrators or members. Members can read, search, upload documents
+and write notes. Only administrators can change storage, start or remove downloads,
+change settings, or delete documents and collections. Add people under **Settings**.
+
+## Updating
+
+Back up first (**Settings → Backup**, or see [storage.md](storage.md)).
+
+With a locally built image:
+
+```bash
+git pull
+docker compose build
+docker compose up -d
+```
+
+With a published image:
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+Database migrations run automatically when the server starts. Your volumes are not
+touched by an update.
+
+## Logs
+
+```bash
+docker compose logs -f outpost
+docker compose logs -f kiwix
+```
+
+The server writes one JSON object per line. `OUTPOST_LOG_LEVEL` sets the level; it is
+not passed through by `compose.yaml`, so add it to the `environment:` block if you need
+it.
+
+## Stopping and removing
+
+```bash
+docker compose stop        # stop, keep everything
+docker compose down        # remove the containers, keep the volumes
+```
+
+`docker compose down -v` also deletes the named volumes, which means the database and
+the default library. Do not run it unless that is what you want.
+
+## Platform notes
+
+The image is built for 64-bit x86 (`linux/amd64`) and 64-bit ARM (`linux/arm64`). There
+is no 32-bit build.
+
+What has been checked, so you know what you are relying on: the continuous-integration
+workflow runs the server test suite on Linux x86-64, Linux ARM64, macOS and Windows,
+runs the browser tests against the packaged app on Linux x86-64, builds the image for
+both architectures, and checks that the ARM64 image starts and answers its health
+check. It does not test specific NAS products or Raspberry Pi hardware.
+
+### macOS (Apple Silicon and Intel)
+
+- Install Docker Desktop. Apple Silicon Macs run the `arm64` image and Intel Macs the
+  `amd64` image; a local `docker compose build` produces the right one.
+- External drives appear under `/Volumes`. Mount one into both services:
+
+  ```yaml
+  services:
+    outpost:
+      volumes:
+        - /Volumes/FieldSSD:/storage/field-ssd
+    kiwix:
+      volumes:
+        - /Volumes/FieldSSD:/storage/field-ssd:ro
+  ```
+
+  The folder must be allowed under Docker Desktop's file-sharing settings. Plug the
+  drive in before starting the stack.
+- Leave `outpost-data` as the named volume it is. Do not move the database onto an
+  external or network drive.
+
+### Windows 10 and 11
+
+- Install Docker Desktop and use its WSL 2 backend.
+- Keep the Outpost folder (`compose.yaml` and `.env`) inside the WSL file system, for
+  example `~/outpost` in your WSL distribution, and run `docker compose` from a WSL
+  shell. The named volumes (`outpost-data`, `outpost-library`) live inside Docker's own
+  Linux storage, which is where the database belongs.
+- To use a Windows drive for content, mount a folder on it under `/storage`.
+
+  From a WSL shell, Windows drives are under `/mnt/<letter>`:
+
+  ```yaml
+  services:
+    outpost:
+      volumes:
+        - /mnt/d/outpost:/storage/drive-d
+    kiwix:
+      volumes:
+        - /mnt/d/outpost:/storage/drive-d:ro
+  ```
+
+  If you run `docker compose` from PowerShell instead, use the Windows path. The long
+  form avoids any confusion over the colon in the drive letter:
+
+  ```yaml
+  services:
+    outpost:
+      volumes:
+        - type: bind
+          source: D:/outpost
+          target: /storage/drive-d
+    kiwix:
+      volumes:
+        - type: bind
+          source: D:/outpost
+          target: /storage/drive-d
+          read_only: true
+  ```
+
+  Use one style or the other, matching the shell you start Compose from.
+- Do not put the database on a Windows drive (`/mnt/c/...` or `C:/...`). Files shared
+  between Windows and Linux do not give SQLite the file locking it needs. Content
+  (documents, collections, maps) is fine there.
+- Running without Docker on Windows: the packaged app runs, and the server test suite
+  runs on Windows in CI, but it has not been tested by hand. See
+  [the limits table](architecture.md#limits-and-trade-offs).
+
+### Linux (x86-64 and ARM64)
+
+- Install Docker Engine and the Compose plugin from your distribution or from Docker.
+- A folder you bind-mount under `/storage` must be writable by uid 1000:
+
+  ```bash
+  sudo mkdir -p /mnt/usb-ssd/outpost
+  sudo chown -R 1000:1000 /mnt/usb-ssd/outpost
+  ```
+
+  File systems without Unix ownership (exFAT, FAT32, NTFS) take the owner from mount
+  options instead: mount them with `uid=1000,gid=1000`.
+- Mount external drives at a fixed place (an `/etc/fstab` entry with `nofail`, for
+  example) so the path Compose refers to exists at boot.
+
+### Raspberry Pi 4 and 5
+
+- A 64-bit operating system is required (Raspberry Pi OS 64-bit, for example). There is
+  no 32-bit image.
+- Memory: the Compose file limits the two containers to 1 GB and 512 MB by default
+  (`OUTPOST_MEMORY_LIMIT`, `KIWIX_MEMORY_LIMIT`), which fits a 4 GB board for keyword
+  search, reading, notes and maps. Choose 8 GB if you plan to run an embedding server
+  on the same board for semantic search, or to index very large PDFs (a PDF is held in
+  memory while its text is read).
+- Leave **Documents processed at once** at 1 (the default) and keep downloads at 1 or 2
+  at a time.
+- Storage: an SD card works and is where the system and the database can live, but
+  large collections belong on an SSD connected over USB 3, with its own power if the
+  drive needs it. Keep the database (`outpost-data`) on storage that is always
+  attached to the Pi: the SD card or a permanently connected SSD. Never on a network
+  share, and not on a drive you unplug.
+- Building a semantic index on a Pi is slow. You can build it on a faster computer and
+  load it on the Pi; see [search.md](search.md#moving-vectors-between-installations).
+
+### NAS and home servers that run containers
+
+Any NAS or home server that offers Docker Compose (or can import a Compose file) and
+has a 64-bit x86 or ARM CPU can run the stack. Outpost has not been tested on specific
+NAS products, so treat the following as guidance:
+
+- Keep `outpost-data` on a volume that is local to the machine running the containers.
+  A NAS's own disk is local to that NAS.
+- Bind-mount the shared folders you want to use for content under `/storage`, in both
+  services, and make them writable by uid 1000.
+- If the vendor's interface does not support `build:`, use a published image.
+
+## Running without Docker
+
+### From source
+
+You need Node.js 24 or newer and pnpm 9. Nothing is compiled during installation:
+SQLite arrives as a prebuilt binary, and `package.json` allows only esbuild to run an
+install script.
+
+```bash
+git clone https://github.com/tyleruk2000/outpost.git
+cd outpost
+pnpm install
+node scripts/fetch-map-assets.mjs   # map fonts and icons; needs a connection once
+pnpm build                          # builds the web app into apps/web/dist
+pnpm start
+```
+
+Open <http://localhost:8080>.
+
+Things to know:
+
+- `pnpm start` runs the server from the `apps/server` folder and does **not** read
+  `.env`. Set variables in the shell, for example:
+
+  ```bash
+  OUTPOST_DATA_DIR=/srv/outpost/data OUTPOST_STORAGE_ROOTS=/srv/outpost/library,/mnt/nas/outpost pnpm start
+  ```
+
+- Without `OUTPOST_DATA_DIR`, data goes to `./data` relative to the folder the server
+  runs in, which for `pnpm start` is `apps/server/data`. Set it explicitly for anything
+  you intend to keep.
+- Without `OUTPOST_STORAGE_ROOTS`, content may be stored in `<data directory>/library`
+  and in the places removable drives usually appear: `/Volumes` on macOS;
+  `/media/<user>`, `/run/media/<user>` and `/mnt` on Linux. On Windows only the library
+  folder is used.
+- If you skip `fetch-map-assets.mjs`, everything works except that maps draw without
+  labels and icons.
+- For LAN access, set `OUTPOST_HOST=0.0.0.0` together with `OUTPOST_LAN_ACCESS=true`.
+
+### The packaged app
+
+The packaged app is a folder that runs with nothing but a Node 24 binary. It is what
+the Docker image and portable drives contain.
+
+```bash
+pnpm install
+node scripts/fetch-map-assets.mjs
+node scripts/build-app.mjs            # writes dist/app
+```
+
+`node scripts/build-app.mjs --skip-web` reuses an existing `apps/web/dist`, and
+`--out <dir>` writes somewhere else. Copy `dist/app` wherever you like and run it:
+
+```bash
+NODE_ENV=production \
+OUTPOST_DATA_DIR=/srv/outpost/data \
+OUTPOST_STORAGE_ROOTS=/srv/outpost/library \
+node dist/app/server/outpost.mjs
+```
+
+`NODE_ENV=production` is required: without it the server tries to load a development
+log formatter that the packaged app does not include, and stops at start-up.
+
+The folder contains prebuilt SQLite binaries for macOS, Linux (glibc and musl) and
+Windows, on x64 and arm64. The release workflow also attaches the packaged app to each
+GitHub release as `outpost-app-<tag>.tar.gz` with a `.sha256` file.
+
+### Reference collections without Docker
+
+Reading ZIM archives needs kiwix-serve from the Kiwix project. Outpost is tested
+against version 3.8.2. Two ways to provide it:
+
+- **Let Outpost run it.** Set `OUTPOST_KIWIX_BIN` to the program's path. Outpost starts
+  it on a private port on `127.0.0.1`, restarts it if it stops, and stops it on exit.
+
+  ```bash
+  OUTPOST_KIWIX_BIN=/usr/local/bin/kiwix-serve pnpm start
+  ```
+
+  The Kiwix project publishes `kiwix-tools` builds for macOS and Linux at
+  <https://download.kiwix.org/release/kiwix-tools/>. If you have made a portable drive
+  that includes reference collections, the same program is already cached at
+  `<data directory>/runtimes/kiwix-tools-3.8.2/<platform>/kiwix-serve`.
+- **Run it yourself.** Set `OUTPOST_KIWIX_URL` to its address. Start kiwix-serve with
+  the library file Outpost writes (`<data directory>/kiwix/library.xml`, or
+  `OUTPOST_KIWIX_LIBRARY_PATH`), the way `compose.yaml` does:
+
+  ```bash
+  kiwix-serve --port 8081 --address 127.0.0.1 --library --monitorLibrary --nodatealiases /srv/outpost/data/kiwix/library.xml
+  ```
+
+  It must see the archives at the same paths Outpost does, and should not be reachable
+  from the network: Outpost is what adds sign-in and sandboxing in front of it.
+
+Without either, everything else works and the interface says that reference
+collections cannot be read.
+
+## Behind a reverse proxy
+
+No test in the suite runs Outpost behind a reverse proxy. The notes below follow from
+the code; check your own set-up.
+
+- **Host names.** The proxy must pass the original `Host` header through. List the name
+  people type in `OUTPOST_ALLOWED_HOSTS` (comma separated) unless it is one of the local
+  forms Outpost already accepts with LAN access on.
+- **Sign-in.** If only the proxy can reach Outpost (it listens on `127.0.0.1`), LAN
+  access is off and so, by default, is sign-in: everyone who reaches the proxy would be
+  an administrator. Set `OUTPOST_LAN_ACCESS=true`, which turns sign-in on and protects
+  the first-run form with the setup token. `OUTPOST_AUTH=on` alone turns sign-in on
+  but does not ask for a setup token, so create the administrator account before
+  exposing the proxy if you use that.
+- **Cookies.** Set `OUTPOST_SECURE_COOKIES=true` when people reach Outpost over HTTPS,
+  so the session cookie is only sent over HTTPS.
+- **Live updates.** `/api/events` is a server-sent-events stream that stays open.
+  Outpost sends `X-Accel-Buffering: no` with it, which nginx honours. Other proxies
+  must not buffer that response, or progress will not appear until the page is
+  reloaded. A comment line is sent every 25 seconds to keep the connection alive.
+- **Upload size.** Raise the proxy's request-body limit to at least
+  `OUTPOST_MAX_UPLOAD_MB` (2048 MB by default). Restoring a backup and loading a
+  vectors file send the whole file as one request.
+- **Client addresses.** Outpost does not read `X-Forwarded-For`. Behind a proxy, the
+  slow-down applied after repeated failed sign-ins counts every visitor as one address.
+
+A minimal nginx server block:
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name outpost.example.net;
+    # ssl_certificate and ssl_certificate_key go here
+
+    client_max_body_size 2048m;
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+    }
+
+    location /api/events {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header Connection "";
+        proxy_buffering off;
+        proxy_read_timeout 1h;
+    }
+}
+```
+
+with, in `.env`:
+
+```ini
+OUTPOST_LAN_ACCESS=true
+OUTPOST_ALLOWED_HOSTS=outpost.example.net
+OUTPOST_SECURE_COOKIES=true
+```
+
+Leave `OUTPOST_BIND` at `127.0.0.1` when the proxy runs on the same machine.
+
+## Environment variables
+
+### Read by the server
+
+These are defined in `apps/server/src/config.ts`. The "Docker image" column shows the
+value the image sets when it differs from the default.
+
+| Variable | Default | Docker image | Meaning |
+| --- | --- | --- | --- |
+| `NODE_ENV` | `development` | `production` | `development`, `production` or `test`. The packaged app needs `production`. |
+| `OUTPOST_HOST` | `127.0.0.1` | `0.0.0.0` | Address the server listens on. In Docker, exposure is controlled by `OUTPOST_BIND` instead. |
+| `OUTPOST_PORT` | `8080` | `8080` | Port the server listens on. With Compose this sets the port on the host; the container always uses 8080. |
+| `OUTPOST_DATA_DIR` | `./data` | `/data` | Database, attachments and other state Outpost owns. |
+| `OUTPOST_STORAGE_ROOTS` | see [above](#from-source) | `/storage` | Comma-separated folders in which storage locations may be created. |
+| `OUTPOST_LAN_ACCESS` | `false` | | Accept requests addressed to LAN names and addresses, and (with `OUTPOST_AUTH=auto`) require sign-in. |
+| `OUTPOST_AUTH` | `auto` | | `auto` (on when LAN access is on), `on` or `off`. |
+| `OUTPOST_ALLOW_UNAUTHENTICATED_LAN` | `false` | | Allows LAN access with sign-in off. Without it that combination stops the server at start-up. |
+| `OUTPOST_ALLOWED_HOSTS` | empty | | Extra host names the server answers to, comma separated. |
+| `OUTPOST_SECURE_COOKIES` | `false` | | Mark the session cookie `Secure`. Set to `true` behind HTTPS. |
+| `OUTPOST_KIWIX_URL` | unset | set by Compose to `http://kiwix:8080` | Address of a kiwix-serve that someone else runs. |
+| `OUTPOST_KIWIX_BIN` | unset | | Path of a kiwix-serve program for Outpost to run itself. Ignored when `OUTPOST_KIWIX_URL` is set. |
+| `OUTPOST_KIWIX_LIBRARY_PATH` | `<data dir>/kiwix/library.xml` | `/kiwix/library.xml` | Where Outpost writes the library file kiwix-serve reads. |
+| `OUTPOST_CATALOG_DIR` | the `catalog` folder shipped with Outpost | | Folder holding `manifests/` and `map-regions.json`. |
+| `OUTPOST_WEB_DIR` | the built web app shipped with Outpost | | Folder the web app is served from. |
+| `OUTPOST_MAX_UPLOAD_MB` | `2048` | | Largest single uploaded file, in megabytes. |
+| `OUTPOST_DOWNLOAD_HOSTS` | empty | | Extra hosts a catalogue download may start from, comma separated. |
+| `OUTPOST_ALLOW_PRIVATE_DOWNLOADS` | `false` | | Let downloads connect to private addresses, for a mirror on your own network. |
+| `OUTPOST_PORTABLE` | `false` | | Set by the launchers on a portable drive. Quieter logging, no removable-media roots, and the port moves up if 8080 is taken. |
+| `OUTPOST_APP_DIR` | the running packaged app, or `dist/app` from source | | Packaged app copied onto portable drives. |
+| `OUTPOST_NODE_DIST_URL` | `https://nodejs.org/dist` | | Where Node runtimes for portable drives are fetched from; set for a mirror. |
+| `OUTPOST_KIWIX_DIST_URL` | `https://download.kiwix.org/release/kiwix-tools` | | Where kiwix-serve for portable drives is fetched from; set for a mirror. |
+| `OUTPOST_LOG_LEVEL` | `info` (`warn` on a portable drive, `silent` in tests) | | `fatal`, `error`, `warn`, `info`, `debug`, `trace` or `silent`. |
+
+Two more are read directly, outside `config.ts`:
+
+| Variable | Meaning |
+| --- | --- |
+| `OUTPOST_OPEN_BROWSER` | When `true`, the server opens the default browser once it is ready. The portable launchers set it. |
+| `OUTPOST_SUPERVISED` | When `true`, Outpost may stop itself after a restore so that whatever started it starts it again (exit code 75). The portable launchers set it. Neither the image nor `compose.yaml` sets it, so in Docker you restart the container yourself. |
+
+Boolean variables accept `1`, `true`, `yes` or `on`.
+
+### Read by `compose.yaml` only
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `OUTPOST_BIND` | `127.0.0.1` | Host address the port is published on. `0.0.0.0` shares it on the network. |
+| `OUTPOST_IMAGE` | `ghcr.io/tyleruk2000/outpost:latest` | Image to run. |
+| `OUTPOST_MEMORY_LIMIT` | `1g` | Memory ceiling for the `outpost` container. |
+| `KIWIX_MEMORY_LIMIT` | `512m` | Memory ceiling for the `kiwix` container. |
+
+`compose.yaml` passes only these server variables from `.env` into the container:
+`OUTPOST_LAN_ACCESS`, `OUTPOST_AUTH`, `OUTPOST_ALLOWED_HOSTS`, `OUTPOST_SECURE_COOKIES`
+and `OUTPOST_MAX_UPLOAD_MB`. Any other server variable, including
+`OUTPOST_DOWNLOAD_HOSTS` and `OUTPOST_ALLOW_PRIVATE_DOWNLOADS`, has no effect until you
+add it to the `environment:` block of the `outpost` service, for example:
+
+```yaml
+services:
+  outpost:
+    environment:
+      OUTPOST_DOWNLOAD_HOSTS: ${OUTPOST_DOWNLOAD_HOSTS:-}
+      OUTPOST_ALLOW_PRIVATE_DOWNLOADS: ${OUTPOST_ALLOW_PRIVATE_DOWNLOADS:-false}
+```
+
+Settings that people change while Outpost runs (download concurrency, search options,
+map sources) are not environment variables. They are stored in the database; see
+`GET /api/settings` in [api.md](api.md#settings).
+
+## If something goes wrong
+
+See [troubleshooting.md](troubleshooting.md).

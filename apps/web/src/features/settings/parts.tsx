@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useState } from "react";
+import { Input } from "@/components/ui/input";
 
 export function SettingsSection({ id, title, description, children }: { id: string; title: string; description?: ReactNode; children: ReactNode }) {
   return (
@@ -25,5 +26,24 @@ export function SettingRow({ label, hint, control, htmlFor }: { label: ReactNode
       </div>
       <div className="shrink-0">{control}</div>
     </div>
+  );
+}
+
+/** A text field that saves when the person leaves it or presses Enter. */
+export function TextSetting({ id, value, disabled, onSave, placeholder, mono }: { id: string; value: string; disabled: boolean; onSave: (value: string) => void; placeholder?: string; mono?: boolean }) {
+  const [draft, setDraft] = useState(value);
+  useEffect(() => setDraft(value), [value]);
+  return (
+    <Input
+      id={id}
+      value={draft}
+      disabled={disabled}
+      placeholder={placeholder}
+      spellCheck={false}
+      onChange={(event) => setDraft(event.target.value)}
+      onBlur={() => draft.trim() !== value && onSave(draft.trim())}
+      onKeyDown={(event) => event.key === "Enter" && (event.target as HTMLInputElement).blur()}
+      className={mono ? "w-72 max-w-full font-mono text-small" : "w-72 max-w-full"}
+    />
   );
 }

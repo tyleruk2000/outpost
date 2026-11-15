@@ -8,7 +8,7 @@ import { useIsAdmin, useSession, useSettings, useSystem, useUpdateSettings } fro
 import { useTheme } from "@/lib/theme";
 import { cn, plural } from "@/lib/utils";
 import { BackupSection } from "./backup-section";
-import { SettingRow, SettingsSection } from "./parts";
+import { SettingRow, SettingsSection, TextSetting } from "./parts";
 import { SemanticSection } from "./semantic-section";
 import { UsersSection } from "./users-section";
 
@@ -165,6 +165,21 @@ export default function SettingsPage({ extraSections }: { extraSections?: ReactN
           </SettingsSection>
 
           <SemanticSection settings={s} disabled={disabled} save={save} />
+
+          <SettingsSection id="maps" title="Maps" description="Where map regions are fetched from when you download them. The defaults suit almost everyone.">
+            <SettingRow
+              htmlFor="maps-source"
+              label="Map source"
+              hint="Address of a planet archive in PMTiles form. Leave empty to use the newest Protomaps build of OpenStreetMap."
+              control={<TextSetting id="maps-source" value={s["maps.tileSource"]} disabled={disabled} onSave={(value) => save("maps.tileSource", value)} placeholder="Newest Protomaps build" mono />}
+            />
+            <SettingRow
+              htmlFor="maps-terrain"
+              label="Terrain source"
+              hint="Used for hill shading when you choose to download terrain with a region."
+              control={<TextSetting id="maps-terrain" value={s["maps.terrainSource"]} disabled={disabled} onSave={(value) => save("maps.terrainSource", value)} mono />}
+            />
+          </SettingsSection>
 
           {extraSections}
 

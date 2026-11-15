@@ -113,7 +113,7 @@ export function transformersProvider(modelsDir: string, model: string): Embeddin
     } catch (error) {
       throw new AppError(
         "not_found",
-        `The model "${model}" is not in the models folder (${modelsDir}). Download it from Settings, or copy its files there. (${error instanceof Error ? error.message : error})`,
+        `The model "${model}" is not in the models folder (${modelsDir}). Copy the model's files there (see docs/search.md). (${error instanceof Error ? error.message : error})`,
       );
     }
   }
@@ -148,8 +148,71 @@ export function transformersProvider(modelsDir: string, model: string): Embeddin
   };
 }
 
+const stopwords = new Set(
+  "a an and are as at be but by for from has have he her his i if in into is it its of on or she that the their them they this to was were which will with you your not no do does did so than then there these those what when where who how why can could should would may might must about over under up down out off again more most some any each other such only own same too very just also".split(
+    " ",
+  ),
+);
+
+/** A very small stemmer: enough to make "boiling", "boiled" and "boils" meet. */
+function stem(word: string): string {
+  if (word.length > 5 && word.endsWith("ing")) return word.slice(0, -3);
+  if (word.length > 4 && word.endsWith("ed")) return word.slice(0, -2);
+  if (word.length > 4 && word.endsWith("es")) return word.slice(0, -2);
+  if (word.length > 3 && word.endsWith("s") && !word.endsWith("ss")) return word.slice(0, -1);
+  return word;
+}
+
+function hash(text: string): number {
+  let value = 2166136261;
+  for (let index = 0; index < text.length; index += 1) {
+    value ^= text.charCodeAt(index);
+    value = Math.imul(value, 16777619);
+  }
+  return value >>> 0;
+}
+
+export const DEMO_DIMENSIONS = 256;
+
+/** The words a text contributes to its demonstration vector, after stop words and stemming. */
+export function demoTerms(text: string): string[] {
+  return (text.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []).filter((word) => word.length > 1 && !stopwords.has(word)).map(stem);
+}
+
+/**
+ * Demonstration vectors made from word counts, with nothing to install.
+ *
+ * Each distinct word is assigned a position in the vector by hashing, and a text's
+ * vector is the (dampened) count of its words at those positions. Two texts that share
+ * words point in similar directions. This shows every mechanical step of vector search
+ * honestly, but it is not a language model: it cannot know that "purify" and "boil"
+ * are related unless the texts share words. It exists so that the pipeline can be seen
+ * working before a real model is set up, and results from it should be read that way.
+ */
+export function demoProvider(): EmbeddingProvider {
+  const embedOne = (text: string): Float32Array => {
+    const vector = new Float32Array(DEMO_DIMENSIONS);
+    const counts = new Map<string, number>();
+    for (const term of demoTerms(text)) counts.set(term, (counts.get(term) ?? 0) + 1);
+    for (const [term, count] of counts) {
+      const value = hash(term);
+      // The sign comes from another bit of the hash, so unrelated words that collide tend to cancel.
+      vector[value % DEMO_DIMENSIONS] = vector[value % DEMO_DIMENSIONS]! + (value & 0x80000000 ? -1 : 1) * (1 + Math.log(count));
+    }
+    return normalise(vector);
+  };
+  return {
+    modelId: "demo:word-counts",
+    provider: "demo",
+    model: "word-counts",
+    embed: async (texts) => texts.map(embedOne),
+    check: async () => ({ ok: true, dimensions: DEMO_DIMENSIONS }),
+  };
+}
+
 export function providerFromSettings(settings: Settings, modelsDir: string): EmbeddingProvider | undefined {
   const model = settings["search.semantic.model"].trim();
+  if (settings["search.semantic.provider"] === "demo") return demoProvider();
   if (!model) return undefined;
   switch (settings["search.semantic.provider"]) {
     case "transformers":

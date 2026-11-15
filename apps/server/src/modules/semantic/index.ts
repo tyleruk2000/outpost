@@ -40,6 +40,8 @@ export interface SemanticService {
   /** Queues an index build for the current model unless one is already waiting or running. */
   requestIndexing(): void;
   index: VectorIndex;
+  /** The provider semantic search is using now, if one is configured. */
+  provider(): EmbeddingProvider | undefined;
   /** Test seam: replace the provider that settings would select. */
   overrideProvider(provider: EmbeddingProvider | undefined): void;
 }
@@ -240,6 +242,7 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
     status,
     requestIndexing,
     index,
+    provider: currentProvider,
     overrideProvider(provider) {
       override = provider === undefined ? undefined : provider;
       health = undefined;

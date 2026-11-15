@@ -27,7 +27,7 @@ export const settingsSchema = z.object({
   "indexing.maxPdfPages": z.number().int().min(0).max(100000).default(5000),
   "search.semantic.enabled": z.boolean().default(false),
   /** Embedding provider: none, a local model run in-process, or a local HTTP endpoint. */
-  "search.semantic.provider": z.enum(["none", "transformers", "openai-compatible"]).default("none"),
+  "search.semantic.provider": z.enum(["none", "transformers", "openai-compatible", "demo"]).default("none"),
   "search.semantic.model": z.string().max(200).default("Xenova/all-MiniLM-L6-v2"),
   "search.semantic.endpoint": z.string().max(500).default("http://127.0.0.1:11434/v1"),
   "search.semantic.batchSize": z.number().int().min(1).max(256).default(16),
@@ -41,7 +41,7 @@ export const settingsSchema = z.object({
   "maps.tileSource": z.string().max(500).default(""),
   "maps.terrainSource": z.string().max(500).default("https://download.mapterhorn.com/planet.pmtiles"),
   "maps.defaultMaxZoom": z.number().int().min(0).max(15).default(14),
-  /** Minutes between checks that storage locations are still connected. */
+  /** Seconds between checks that storage locations are still connected. */
   "storage.checkIntervalSeconds": z.number().int().min(5).max(3600).default(30),
 });
 

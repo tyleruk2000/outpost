@@ -1,0 +1,389 @@
+# Troubleshooting
+
+Real problems, the messages Outpost shows for them, and what to do. The messages are
+quoted from the code, so you can search this page for the words on your screen.
+
+Start with the log. It usually says more than the screen does.
+
+```bash
+docker compose logs --tail 200 outpost     # Docker
+docker compose logs --tail 200 kiwix
+```
+
+Without Docker, the log is whatever the server prints in its terminal.
+
+## Starting and reaching Outpost
+
+### The server refuses to start: "OUTPOST_LAN_ACCESS is on but OUTPOST_AUTH is off"
+
+LAN access without sign-in would let anyone on your network change or delete your
+library, so the server stops. Either remove `OUTPOST_AUTH=off` (the default, `auto`,
+turns sign-in on with LAN access), or set `OUTPOST_ALLOW_UNAUTHENTICATED_LAN=true` if
+you accept that.
+
+### The port is already in use
+
+Without Docker the server stops with an `EADDRINUSE` error. With Docker,
+`docker compose up` reports that the port is already allocated. Something else is
+using port 8080. Choose another port and restart:
+
+```ini
+OUTPOST_PORT=8090
+```
+
+With Compose this goes in `.env` and changes the port on the host; then open
+`http://localhost:8090`. A portable drive moves to the next free port by itself and
+prints the address it is using.
+
+### "This address is not one Outpost answers to. Add it to OUTPOST_ALLOWED_HOSTS to use it."
+
+You opened Outpost by a name or address the server does not recognise as its own.
+
+- From another device, you need LAN access on: `OUTPOST_LAN_ACCESS=true` (and, with
+  Docker, `OUTPOST_BIND=0.0.0.0`). Without it only `localhost`, `127.0.0.1` and `::1`
+  are accepted.
+- With LAN access on, IP addresses, single-word names and names ending in `.local`,
+  `.lan`, `.home`, `.internal` or `.home.arpa` are accepted. Any other name, such as
+  `outpost.example.net`, must be listed:
+
+  ```ini
+  OUTPOST_ALLOWED_HOSTS=outpost.example.net
+  ```
+
+- Behind a reverse proxy, make sure the proxy passes the original `Host` header on.
+
+Restart after changing either setting.
+
+### "This request did not come from the Outpost app."
+
+A script or tool called a state-changing API route without the required header. Add
+`-H "X-Outpost-Request: 1"`. See [api.md](api.md#the-x-outpost-request-header).
+
+### "The server is not responding"
+
+The web app loaded but cannot reach its server. If you just started or restarted
+Outpost, wait a few seconds. Otherwise check that the service or container is running
+(`docker compose ps`) and read the log. Behind a reverse proxy, also check that the
+proxy does not buffer `/api/events`.
+
+### "The Outpost server is running, but the web app has not been built."
+
+You are running from source and `apps/web/dist` does not exist. Run `pnpm build`, or
+use `pnpm dev` for development.
+
+### The packaged app stops at start-up mentioning "pino-pretty"
+
+The message is `unable to determine transport target for "pino-pretty"`. Set
+`NODE_ENV=production` when running `dist/app/server/outpost.mjs`. See
+[deployment.md](deployment.md#the-packaged-app).
+
+## Sign-in
+
+### Where is the setup token?
+
+With LAN access on, creating the first administrator asks for a setup token. It is in
+the server log, on a line starting "First-run setup token":
+
+```bash
+docker compose logs outpost | grep "setup token"
+```
+
+A new token is made each time the server starts, until an administrator exists. If
+you see "That setup token is not correct", read the log again after the latest start.
+
+### "Too many attempts. Try again in N seconds."
+
+After five failed sign-ins from one address, attempts are refused for a while; the
+wait doubles each time, up to 15 minutes. Wait it out. Restarting the server also
+clears the count.
+
+### An administrator has forgotten their password
+
+Another administrator can set a new one under **Settings**. There is no
+password-reset tool for the case where the only administrator is locked out, so keep
+that password somewhere safe.
+
+## Storage
+
+### A storage location shows as disconnected
+
+The detail under the location says which case it is.
+
+- **"The folder is not reachable. The drive may be unplugged or the share not
+  mounted."** Plug the drive in or mount the share. Outpost notices within about 30
+  seconds, or straight away if you refresh the Storage screen. With Docker, a drive
+  that was not mounted when the containers started may need
+  `docker compose restart`.
+- **"The folder is there but is not this Outpost location. The drive mounted at this
+  path may be a different one."** The marker file `.outpost-location.json` is missing
+  or belongs to another location. Check that the right drive is mounted. If the drive
+  now appears at a different path inside a storage root, Outpost finds it by itself,
+  up to three folders deep.
+
+Nothing is lost while a location is disconnected. See
+[storage.md](storage.md#what-happens-when-a-drive-is-unplugged).
+
+### "…is not connected. Reconnect it and try again."
+
+You tried to open, download to, check or delete something on a disconnected location.
+Reconnect it. To remove an item whose drive is gone for good, remove only Outpost's
+record and leave the file.
+
+### "That folder is outside the storage roots this server allows."
+
+Storage locations can only be created inside the storage roots set when the server
+starts. The Storage screen lists them at the bottom. Mount the drive or share under a
+root (with Docker, under `/storage` in `compose.yaml`), or add its path to
+`OUTPOST_STORAGE_ROOTS`.
+
+### "Outpost cannot write to that folder. Check its permissions."
+
+Also: "That folder could not be created: … permission denied".
+
+In Docker the server runs as user id 1000. The folder must be writable by that user.
+
+```bash
+sudo chown -R 1000:1000 /mnt/usb-ssd/outpost
+```
+
+- exFAT, FAT32 and NTFS drives have no Unix ownership: mount them with
+  `uid=1000,gid=1000`.
+- SMB shares: add `uid=1000,gid=1000` to the mount options.
+- NFS shares: set ownership or permissions on the NAS, and check the export is
+  read-write.
+- A mount written with `:ro` in `compose.yaml` is read-only. Only the `kiwix` service
+  should have `:ro`.
+
+### "…does not have enough free space for this."
+
+Outpost always leaves 256 MB free on a location, so the space needed is the size of
+the item plus that reserve. Free some space or choose another location.
+
+### "…still holds N items. Move or remove them first."
+
+A storage location cannot be removed while documents or collections are recorded on
+it. Move them (see [storage.md](storage.md)) or remove them, then try again.
+
+### A collection shows as "missing" or "damaged"
+
+- **Missing:** the location is connected but the file is not there. Put the file back
+  at the same path, or download the collection again.
+- **Damaged:** the file no longer matches its recorded checksum. Download it again or
+  restore it from a backup of the drive. Run **Check files** again afterwards.
+
+## Downloads
+
+### A download says "No connection" and does not move
+
+- "No connection. This download will resume when the network is back." It is retrying
+  by itself, with longer pauses each time. Nothing to do but restore the connection.
+- "No connection. Outpost has stopped trying for now. Choose Retry when the network is
+  back; the part already downloaded is kept." It used up its attempts (8 by default;
+  **Settings → Downloads → Attempts before giving up**). Press **Retry** once you are
+  online. The download continues from where it stopped.
+
+Outpost itself runs offline by design, so check the server's own connection, not just
+your browser's: in Docker, the container must be able to reach the internet.
+
+### "The downloaded file does not match its published checksum…"
+
+The file was corrupted on the way or altered. Outpost deleted it and installed
+nothing. Press **Retry** to download it again. If it fails the same way, press
+**Refresh** on Explore so that Outpost has the source's current details, then start
+the download afresh.
+
+### "… is not a download source listed in any catalogue manifest."
+
+Downloads may only start from hosts named in a manifest. If you run your own mirror,
+add its host to `OUTPOST_DOWNLOAD_HOSTS`. With Docker Compose this variable must also
+be passed into the container; see
+[deployment.md](deployment.md#read-by-composeyaml-only).
+
+### "Downloads from … are blocked because it is not a public address."
+
+The address is on a private network. This protects your own network from being probed
+through Outpost. If the address is a mirror you run, start the server with
+`OUTPOST_ALLOW_PRIVATE_DOWNLOADS=true`.
+
+### "…was disconnected during this download."
+
+The drive it was writing to went away. The partial file is still on the drive, and
+the download continues by itself when the drive is connected again.
+
+### "…is full. Free some space on it, then retry; the part already downloaded is kept."
+
+Free space on that drive, then press **Retry**.
+
+### The catalogue will not refresh
+
+"The catalogue was not refreshed: there is no connection" is normal offline. Explore
+keeps working from the last known details. A different message names the source that
+failed; try again later.
+
+## Reference collections
+
+### "Reading reference collections needs the kiwix-serve program, which this installation does not have."
+
+Outpost was started without `OUTPOST_KIWIX_URL` or `OUTPOST_KIWIX_BIN`. With Docker,
+use the `kiwix` service in `compose.yaml`. Without Docker, see
+[deployment.md](deployment.md#reference-collections-without-docker).
+
+### "The Kiwix server at … is not answering. Check that its container is running."
+
+```bash
+docker compose ps
+docker compose logs --tail 100 kiwix
+docker compose up -d kiwix
+```
+
+The `kiwix` container starts only after `outpost` is healthy, so it comes up a little
+later.
+
+### "The kiwix-serve program was not found at …" or "kiwix-serve stopped (code …)"
+
+`OUTPOST_KIWIX_BIN` points at a missing file, or the program cannot run on this
+machine (the wrong build for the processor, for example). Outpost restarts it with
+growing pauses; the last line the program printed is included in the message.
+
+### A collection is installed but cannot be read
+
+- **Its drive is not mounted in the `kiwix` service.** Every `/storage/...` mount of
+  the `outpost` service must be repeated, read-only and at the same path, under
+  `kiwix` in `compose.yaml`. Then `docker compose up -d`.
+- **"This collection is on "…", which is not connected."** Reconnect the drive.
+- **"This collection is not ready to read yet."** kiwix-serve needs a moment to
+  notice a newly installed archive. Wait a few seconds and reload.
+
+### "This link to your library has expired. Go back to Outpost and open the page again."
+
+Links to reference pages carry a token that lasts 12 hours. Open the article again
+from Outpost.
+
+### Search results have no reference articles
+
+A note under the results says why. Either kiwix-serve is not running (see above), or
+**Settings → Search → Search inside reference collections** is off.
+
+## Maps
+
+### The map has no labels
+
+Roads and land are drawn but there are no place names or icons. The map fonts and
+icons were not present when Outpost was built. From the repository, with a
+connection:
+
+```bash
+node scripts/fetch-map-assets.mjs
+```
+
+Then rebuild whatever you run: `pnpm build` for a source installation,
+`node scripts/build-app.mjs` for the packaged app, or `docker compose build` for the
+image (the image build runs the fetch itself). `node scripts/fetch-map-assets.mjs
+--force` fetches everything again.
+
+### "Outpost could not reach the map source."
+
+Estimating and downloading a region need a connection. Installed regions do not.
+
+### "The map source is no longer available at its address."
+
+If you set `maps.tileSource`, check the address. Otherwise the daily build was
+withdrawn; try again in a few minutes, or remove the download and start the region
+again.
+
+### "That area is too large to download at zoom N in one go"
+
+Lower the maximum zoom or split the area into smaller regions. A single region is
+also limited to 60 GB.
+
+### The map is empty somewhere
+
+Only installed regions are drawn. Zoomed out, a world overview region fills the gaps.
+A region whose drive is disconnected is not drawn until it returns.
+
+## Documents and search
+
+### A PDF has no searchable text
+
+"This PDF has no text that can be read. It appears to be scanned pages…" There is no
+OCR in this version. The file is stored, opens normally, and is found by its title and
+tags. PDFs larger than 512 MB are stored but their text is not read.
+
+### An upload is refused
+
+- "…is larger than the N MB this server accepts per file." Raise
+  `OUTPOST_MAX_UPLOAD_MB` and, behind a reverse proxy, the proxy's own limit.
+- "…is a .xyz file, which the library cannot store." Only the listed types are
+  accepted.
+- "…is named like a PDF, but its contents are not one." The file is not what its
+  extension says.
+- "…is not UTF-8 text." Save the file with UTF-8 encoding and try again.
+
+### Semantic search: "The embedding server at … is not reachable."
+
+Check that the server is running and that the address is right from where Outpost
+runs. In Docker, `127.0.0.1` is the container itself; see
+[search.md](search.md#choosing-a-provider).
+
+## Notes
+
+### "This page was changed somewhere else after you opened it…"
+
+The page was saved from another tab or device after you opened it. Your changes were
+not saved over the newer version. Reload to see it.
+
+## Backup and restore
+
+### "A restore is waiting for a restart"
+
+A restore is applied when the server next starts. Restart it:
+
+```bash
+docker compose restart outpost
+```
+
+Without Docker, stop the server and start it again. From a portable drive, Outpost
+can restart itself. "Outpost cannot restart itself here. Stop it and start it again
+to finish." means nothing is supervising the server, which is the case in Docker and
+from source.
+
+To change your mind before restarting, cancel the staged restore in **Settings →
+Backup**.
+
+After the restart, the data that was replaced is in the data directory in a folder
+named `before-restore-<time>`. Delete it yourself when you are sure you do not need
+it.
+
+### "That backup was made by a newer Outpost (…). Update Outpost, then restore it."
+
+A backup can be restored into the same or a newer version, not an older one.
+
+### After a restore, documents and collections show as unavailable
+
+A backup holds the database, not the content. Add the same storage locations again:
+their marker files are recognised and the content lines up.
+
+## Portable drives
+
+### "This drive does not include Outpost for this kind of computer"
+
+The drive was made without the runtime for this platform. Update the drive from the
+Outpost that made it and tick this kind of computer.
+
+### "…is too large for this drive's format. Reformat the drive as exFAT and try again."
+
+The drive is FAT32, which cannot hold a file of 4 GB or more.
+
+### Reference collections do not open from a drive on Windows
+
+The Kiwix project publishes no Windows build of its reader at the version Outpost
+uses. Everything else works. See
+[portable.md](portable.md#which-computers-it-runs-on).
+
+## Still stuck
+
+Open an issue on the project's GitHub page with the Outpost version (**Settings →
+This installation**), how you run it (Docker, source, packaged app or portable
+drive), the operating system, and the relevant lines of the log. Remove anything
+private from the log first. For security problems, see
+[SECURITY.md](../SECURITY.md) instead.
