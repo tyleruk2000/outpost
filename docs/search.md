@@ -4,7 +4,8 @@ This page describes what the search box understands, what is searched, how resul
 are ranked, and how to turn on optional semantic search ("search by meaning").
 
 Keyword search is always available and needs no set-up. Semantic search is optional
-and off by default.
+and off by default. So is reading the text of scanned pages and images
+([OCR](#scanned-pages-and-images-ocr)).
 
 ## Seeing how it works
 
@@ -63,7 +64,7 @@ them." In the API response this is `relaxed: true`.
 
 | Kind | What is indexed |
 | --- | --- |
-| Documents | Title, author or file name, category, tags, and the text read from the file, page by page for PDFs |
+| Documents | Title, author or file name, category, tags, and the text read from the file, page by page for PDFs. For scanned pages and images, the text read by OCR once that has been run |
 | Notes | Title, the titles of parent pages, tags, and the text under each heading |
 | Installed collections | Title, publisher and description |
 | Catalogue entries | The entries listed in Explore, so you can find something to download |
@@ -78,8 +79,9 @@ Text is split into passages of about 1,200 characters with a 150-character overl
 result can point at the exact page. Changing these settings affects documents added or
 re-read afterwards.
 
-Not searchable: scanned PDFs and images. They are stored and can be opened, and are
-found by title and tags, but there is no OCR in this version.
+Scanned PDFs and images have no text of their own. They are stored and can be opened,
+and are found by title and tags; their contents become searchable once OCR has read
+them, which happens only when you ask (see [below](#scanned-pages-and-images-ocr)).
 
 ### Ranking
 
@@ -123,6 +125,114 @@ with your own results by rank.
 - If kiwix-serve is not running, your own results still appear, with a note saying why
   reference articles are missing.
 - Each reference collection also has its own search box in the reader.
+
+## Scanned pages and images (OCR)
+
+A scanned PDF is a set of pictures of pages, and a photograph of a notice is a picture
+of words. Neither has text a computer can search until something reads the picture.
+Outpost can do that reading (optical character recognition, OCR) on the machine it runs
+on. Nothing is sent anywhere, and nothing is downloaded to do it.
+
+It is **off by default**, because it is slow and it makes mistakes.
+
+### Using it
+
+- A document with scanned pages, or an image, offers **Read text from the scanned
+  pages** (or **Read text from this image**) above its pages and under **Details → Text
+  for search**. The work is a background job with progress, and can be stopped. One
+  document is read at a time.
+- **Settings → Reading documents → Read text from scans automatically** does the same
+  for every new document as it is added (`ocr.auto`).
+- What was read is stored with the document's other text, so it is found by keyword
+  search, page by page for a PDF, and by semantic search where that is set up. The
+  document says that its text was read by OCR, and **Show the text** shows exactly what
+  was read, each page marked.
+- Only pages with no text of their own are read. Text that is in the file is never
+  replaced by a reading of its picture. **Read text again** reads the file again and
+  keeps what OCR read.
+- Stopping keeps the pages read so far and offers **Read the remaining scanned pages**.
+  A restart continues where it left off. **Read the scanned pages again** throws the
+  earlier reading away and starts over.
+- OCR writes only to Outpost's data directory (`extracted/`). The original file is
+  opened for reading and nothing else.
+
+### What to expect
+
+OCR reads print well and handwriting badly. It gets words wrong on poor scans, small
+type, unusual typefaces, tables, and anything not in a language it has been given. The
+pages themselves remain the record; treat the text as a way to find them.
+
+Two measurements, on the test pictures in the repository and on pages made for the
+purpose, with the engine as shipped (Apple M2 Max, one processor core):
+
+- A clean page of 462 words at 300 dots per inch took about 3 seconds, and every word
+  came back right. That is clean, computer-set type in one typeface: the best case.
+- The same page as a 100 dpi, blurred, noisy JPEG came back with errors ("shelter" as
+  "shefter", "litre" as "ie").
+
+A Raspberry Pi will be many times slower; nobody has measured it.
+
+### How it works
+
+- The engine is [Tesseract](https://github.com/tesseract-ocr/tesseract) 5.1 compiled to
+  WebAssembly (`tesseract.js-core`), with its neural-network recogniser and Tesseract's
+  English model (the integer form of `tessdata_best`, as the tesseract.js project
+  packages it). Both are part of the installation, including
+  the Docker image and portable drives. There is no native code, so it runs wherever
+  Node does.
+- It runs in a worker thread of its own, so the server stays responsive.
+- An image is handed to the engine as it is. A PDF page is rebuilt from the pictures
+  placed on it (which is all a scanned page is), using the same PDF library that reads
+  PDF text. JPEG, fax (CCITT Group 4), JPEG 2000 and uncompressed scans, one-bit
+  stencils and pages cut into strips have been tried this way. JBIG2 scans go through
+  the same library's decoder and have not been tried.
+
+### Limits
+
+| Limit | Value |
+| --- | --- |
+| Pages read in one go | 1,000 scanned pages of one PDF; the rest are offered afterwards. Pages beyond **Most pages read from one PDF** are not read at all. |
+| Largest picture decoded | 40 million pixels (an A4 page at 600 dpi is about 35 million). Larger pictures are skipped. |
+| Size a page is read at | Its own resolution, up to 300 dpi and 12 million pixels. Finer scans are scaled down. |
+| Largest files | Images of 64 MB, PDFs of 512 MB. |
+| Image types | PNG, JPEG, GIF (the first frame) and WebP. Not SVG. |
+| Sure enough to keep | A page the engine scores below 50 out of 100, whichever way up, is treated as having no text, so that marks which only look like writing are not indexed as words. When tried, such marks scored 24 to 44 and real text 73 or more. |
+
+Things it does not do:
+
+- **Text drawn as shapes.** Only pictures on a page are read. A PDF whose words were
+  converted to outlines, or drawn as lines, has no picture to read. That would need a
+  full PDF renderer, which needs native code.
+- **Pages the wrong way up, reliably.** A page turned in the PDF itself, or a photo
+  the camera marked as turned, is simply turned. A page scanned upside down or on its
+  side is noticed only because its first reading scores badly (below 60 out of 100);
+  the other three ways up are then tried and a clearly better one kept, which takes up
+  to four times as long for that page. A poor scan lying on its right side can score
+  well while only part of it is read.
+- **Layout.** Columns are read in order; tables and forms come out as lines of words.
+
+### Other languages
+
+English is built in. Another language works once its Tesseract data file is on the
+machine. Outpost does not download language data in this version; it uses only what
+you put there:
+
+1. Get `<code>.traineddata` for the language (for example `deu.traineddata` for German)
+   from Tesseract's [tessdata_fast](https://github.com/tesseract-ocr/tessdata_fast) or
+   `tessdata_best` collection. A `.traineddata.gz` file also works.
+2. Put it in `<data directory>/ocr/tessdata/`.
+3. Set `ocr.languages` to the codes to read, joined by `+`, most likely first:
+
+```bash
+curl -X PATCH "http://localhost:8080/api/settings" \
+  -H "X-Outpost-Request: 1" -H "Content-Type: application/json" \
+  -d '{"ocr.languages": "deu+eng"}'
+```
+
+`GET /api/ocr` lists the languages found and says if one that is asked for is missing.
+More languages at once is slower. Documents already read are not read again on their
+own: use **Read the scanned pages again**. Language files are not part of a backup or a
+portable drive; copy them yourself.
 
 ## Semantic search
 

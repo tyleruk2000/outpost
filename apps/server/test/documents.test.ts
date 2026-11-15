@@ -78,9 +78,9 @@ describe("uploading and reading text", () => {
 
     const sections = (await app.api("GET", `/api/documents/${markdown.id}/text`)).body.sections;
     expect(sections).toEqual([
-      { page: null, heading: null, text: "Kept in the shed." },
-      { page: null, heading: "Water", text: "Boil it for one minute." },
-      { page: null, heading: "Filters", text: "Ceramic filters remove protozoa." },
+      { page: null, heading: null, text: "Kept in the shed.", ocr: false },
+      { page: null, heading: "Water", text: "Boil it for one minute.", ocr: false },
+      { page: null, heading: "Filters", text: "Ceramic filters remove protozoa.", ocr: false },
     ]);
 
     const protozoa = await search("protozoa ");
@@ -131,7 +131,7 @@ describe("uploading and reading text", () => {
     expect(all.sections.map((section: { page: number }) => section.page)).toEqual([1, 2, 3]);
     const second = (await app.api("GET", `/api/documents/${document.id}/text?page=2`)).body;
     expect(second.sections).toEqual([
-      { page: 2, heading: null, text: "Chemical treatment with chlorine dioxide tablets\ntakes thirty minutes." },
+      { page: 2, heading: null, text: "Chemical treatment with chlorine dioxide tablets\ntakes thirty minutes.", ocr: false },
     ]);
 
     const found = await search('"chlorine dioxide"');
@@ -150,7 +150,9 @@ describe("uploading and reading text", () => {
 
     const scan = await add({ name: "scan.pdf", content: buildPdf([[], []]) });
     expect(scan).toMatchObject({ extraction: "unsupported", pageCount: 2, textChars: 0 });
-    expect(scan.extractionDetail).toMatch(/scanned.*OCR is not available/);
+    expect(scan.extractionDetail).toMatch(/no text of its own.*scans/);
+    // The one page read under the limit above could be tried by OCR, which nobody has asked for yet.
+    expect(scan).toMatchObject({ scanPages: 1, ocrPages: null, ocrDetail: null });
     // Still findable by its title.
     expect((await search("scan ")).results[0].entityId).toBe(scan.id);
   });
@@ -189,8 +191,8 @@ describe("uploading and reading text", () => {
 
     const { sections } = (await app.api("GET", `/api/documents/${document.id}/text`)).body;
     expect(sections).toEqual([
-      { page: null, heading: "Setting out", text: "Setting out\n\nWe left before dawn with heavy packs." },
-      { page: null, heading: "The ridge", text: "The ridge was windy and exposed." },
+      { page: null, heading: "Setting out", text: "Setting out\n\nWe left before dawn with heavy packs.", ocr: false },
+      { page: null, heading: "The ridge", text: "The ridge was windy and exposed.", ocr: false },
     ]);
     const found = await search("exposed ");
     expect(found.results[0]).toMatchObject({ entityId: document.id, subtitle: "Jane Hiker" });
@@ -221,16 +223,15 @@ describe("uploading and reading text", () => {
     expect(body.results[1].reason).toContain("is not one");
     await app.ctx.jobs.whenIdle();
     const { sections } = (await app.api("GET", `/api/documents/${body.results[0].document.id}/text`)).body;
-    expect(sections).toEqual([{ page: null, heading: null, text: "Marmalade sandwiches." }]);
+    expect(sections).toEqual([{ page: null, heading: null, text: "Marmalade sandwiches.", ocr: false }]);
     expect(incoming()).toEqual([]);
   });
 
   it("stores images without text and keeps them findable by title and tags", async () => {
     const image = await add({ name: "trailhead map.png", content: tinyPng }, { tags: "maps" });
     expect(image).toMatchObject({ type: "image", mime: "image/png", extraction: "unsupported", textChars: 0 });
-    expect(image.extractionDetail).toContain(
-      "Images are stored and shown but have no searchable text (OCR is not available in this version)",
-    );
+    expect(image.extractionDetail).toContain("An image has no text of its own to search");
+    expect(image).toMatchObject({ scanPages: 1, ocrPages: null });
     expect((await search("trailhead ")).results[0].entityId).toBe(image.id);
     expect((await app.api("GET", `/api/documents/${image.id}/text`)).body.sections).toEqual([]);
   });

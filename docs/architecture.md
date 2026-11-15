@@ -67,7 +67,8 @@ browser over one server-sent-events stream. A separate job server (Redis and a w
 fleet) would be the wrong weight for a single-node tool that must run on a Pi.
 
 CPU-heavy parsing (PDF text) runs in a worker thread so that one large document cannot
-stall the HTTP server.
+stall the HTTP server. OCR does the same, on a queue of its own that runs one document
+at a time.
 
 ### Search in three layers behind one entry point
 
@@ -222,6 +223,7 @@ are not are kept outside the process or left out:
 | --- | --- | --- |
 | kiwix-serve, libzim | GPL-3.0 / GPL-2.0+ | Separate process, reached over HTTP. Not linked, not bundled in the Outpost image. |
 | `mupdf` (npm), PyMuPDF | AGPL-3.0 | Not used. PDF text comes from unpdf (PDF.js, Apache-2.0). |
+| Tesseract (`tesseract.js-core`) and its English model | Apache-2.0 | Bundled, for OCR. The model is Tesseract's English `tessdata_best` in integer form, as packaged in `@tesseract.js-data/eng` (whose own packaging is MIT). |
 | BlockNote | MPL-2.0, with GPL add-ons | Not used. The editor is Tiptap (MIT) with Outpost's own blocks. |
 | Atkinson Hyperlegible, Literata, Noto Sans | OFL-1.1 | Bundled fonts. |
 | Protomaps basemap styles | BSD-3-Clause (design CC0) | Bundled. |

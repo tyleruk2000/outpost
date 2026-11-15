@@ -209,6 +209,18 @@ export default function SettingsPage({ extraSections }: { extraSections?: ReactN
               }
             />
             <SettingRow
+              label="Read text from scans automatically"
+              hint="New scanned documents and images are read by OCR as soon as they are added. Reading runs on this device, one document at a time; it is slow, and it makes mistakes. When this is off, each such document offers it instead."
+              control={
+                <Switch
+                  checked={s["ocr.auto"]}
+                  disabled={disabled}
+                  onCheckedChange={(value) => save("ocr.auto", value)}
+                  aria-label="Read text from scans automatically"
+                />
+              }
+            />
+            <SettingRow
               htmlFor="ix-chunk"
               label="Passage length"
               hint="Text is split into passages of about this size for search results and future question answering."

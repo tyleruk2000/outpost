@@ -49,6 +49,12 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   and is never turned into HTML, so nothing written in it can run or load from the internet.
 - Titles, authors, categories, descriptions and tags; a PDF viewer with byte-range
   loading; originals served in a sandbox.
+- Optional OCR for scanned PDF pages and PNG, JPEG, GIF and WebP images, on the
+  machine and without the network: Tesseract compiled to WebAssembly with English
+  built in, run as a cancellable background job that keeps its place across restarts.
+  Off by default; offered on each scanned document, or automatic for new documents
+  with a setting. What it reads is searchable page by page and is marked as read by
+  OCR. Other languages work from a data file placed in the data directory.
 
 #### Notes
 
@@ -198,8 +204,8 @@ These are deliberate or known, and are explained in
 - **The in-process embedding model** needs an optional package that is not in the
   Docker image, the packaged app or portable drives. A local embedding server works
   everywhere.
-- **No OCR.** Scanned PDFs and images are stored and viewable but have no searchable
-  text.
+- **OCR** is slow and makes mistakes, reads only pictures of pages (not text drawn as
+  shapes), and has English only unless a language file is added by hand.
 - **No language model.** Outpost retrieves and cites; it does not generate answers.
 - **Reference collections need kiwix-serve**: the Compose sidecar, or a binary for
   installations without Docker. On a portable drive they cannot be opened on Windows,

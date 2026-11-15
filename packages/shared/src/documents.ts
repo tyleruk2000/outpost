@@ -44,6 +44,15 @@ export interface DocumentDto {
   extractionDetail: string | null;
   /** Characters of searchable text. */
   textChars: number;
+  /**
+   * Pages with no text of their own that OCR could try: scanned pages of a PDF, or 1
+   * for an image. 0 when there are none, or for a type OCR does not read.
+   */
+  scanPages: number;
+  /** Pages OCR has been run on. Null until it has been run on this document at all. */
+  ocrPages: number | null;
+  /** A sentence for people about the last OCR run: what it could not read, or why it stopped. */
+  ocrDetail: string | null;
   /** Address of the original file. Add `?download=1` to save it instead of viewing. */
   fileUrl: string;
   createdAt: number;
@@ -104,6 +113,8 @@ export interface DocumentSection {
   page: number | null;
   heading: string | null;
   text: string;
+  /** True when the text was read from a picture by OCR, and so may contain mistakes. */
+  ocr: boolean;
 }
 
 export interface DocumentTextResponse {
@@ -113,6 +124,46 @@ export interface DocumentTextResponse {
   pageCount: number | null;
   /** All sections, or only those of the requested page. */
   sections: DocumentSection[];
+}
+
+/** `POST /api/documents/:id/ocr`: the document, and the background job reading its scanned pages. */
+export interface DocumentOcrResponse {
+  document: DocumentDto;
+  jobId: string;
+}
+
+/** A language OCR has the data for on this installation. */
+export interface OcrLanguage {
+  /** The engine's code for it, such as "eng". */
+  code: string;
+  /** "English" */
+  name: string;
+  /** True for the language that ships with Outpost; false for one added to the data directory. */
+  builtIn: boolean;
+  /** Whether OCR is set to read it (the `ocr.languages` setting). */
+  selected: boolean;
+}
+
+/** `GET /api/ocr`: whether this installation can read text from scans, and with what. */
+export interface OcrStatus {
+  available: boolean;
+  /** Why not, in plain words. Null when `available`. */
+  reason: string | null;
+  /** Name of the OCR engine. */
+  engine: string;
+  languages: OcrLanguage[];
+  /** Languages named in the `ocr.languages` setting whose data is not installed. */
+  missingLanguages: string[];
+  /** Folder inside the data directory where more language files can be put. */
+  languageFolder: string;
+  /** Whether new documents without text are read by OCR automatically (the `ocr.auto` setting). */
+  auto: boolean;
+  limits: {
+    /** Most scanned pages of one PDF read in one go. */
+    pagesPerRun: number;
+    /** Largest picture read, in pixels. */
+    maxPixels: number;
+  };
 }
 
 /**

@@ -25,6 +25,17 @@ export const settingsSchema = z.object({
   "indexing.chunkOverlap": z.number().int().min(0).max(800).default(150),
   /** Largest number of PDF pages read per document; 0 means no limit. */
   "indexing.maxPdfPages": z.number().int().min(0).max(100000).default(5000),
+  /** Read text from scanned pages and images (OCR) as soon as a document without text is added. */
+  "ocr.auto": z.boolean().default(false),
+  /**
+   * Languages OCR reads, as Tesseract codes joined by "+": "eng", or "eng+deu". English
+   * ships with Outpost; others are used when their data file is in the data directory.
+   */
+  "ocr.languages": z
+    .string()
+    .max(100)
+    .regex(/^[a-z]{3,4}(_[a-z]{3,8})?(\+[a-z]{3,4}(_[a-z]{3,8})?)*$/, 'Use language codes joined by "+", such as "eng" or "eng+deu".')
+    .default("eng"),
   "search.semantic.enabled": z.boolean().default(false),
   /** Embedding provider: none, a local model run in-process, or a local HTTP endpoint. */
   "search.semantic.provider": z.enum(["none", "transformers", "openai-compatible", "demo"]).default("none"),

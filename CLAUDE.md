@@ -96,6 +96,6 @@ and `apps/web/src/features/<name>/`; API types shared by both are in
 - **Tests** use `createTestApp()` (`apps/server/test/helpers.ts`): a real server on a
   temporary directory. Tests must not touch the internet; use a local HTTP fixture.
 - **Schema changes**: edit `apps/server/src/db/schema.ts`, then
-  `pnpm --filter @outpost/server db:generate -- --name what_changed`. Never edit a
+  `pnpm --filter @outpost/server db:generate --name what_changed`. Never edit a
   shipped migration.
 - British spelling in user-facing text ("catalogue", "colour", "licence" as a noun).

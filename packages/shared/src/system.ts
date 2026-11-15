@@ -33,6 +33,8 @@ export interface Settings {
   "indexing.chunkSize": number;
   "indexing.chunkOverlap": number;
   "indexing.maxPdfPages": number;
+  "ocr.auto": boolean;
+  "ocr.languages": string;
   "search.semantic.enabled": boolean;
   "search.semantic.provider": "none" | "transformers" | "openai-compatible" | "demo";
   "search.semantic.model": string;

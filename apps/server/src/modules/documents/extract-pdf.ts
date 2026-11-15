@@ -87,7 +87,7 @@ export async function extractPdf(file: string, maxPages: number, onProgress: (pr
     }
     if (sections.length > 0 && blank > limit / 2) {
       notes.push(
-        `${blank.toLocaleString("en")} of ${limit.toLocaleString("en")} pages have no text. They may be scanned images, which cannot be searched in this version.`,
+        `${blank.toLocaleString("en")} of ${limit.toLocaleString("en")} pages have no text of their own. They may be scanned pages (pictures of text).`,
       );
     }
 
@@ -101,6 +101,7 @@ export async function extractPdf(file: string, maxPages: number, onProgress: (pr
       pageCount,
       meta: { title: title && !JUNK_TITLE.test(title) ? title : undefined, author: clean(info?.Author) },
       notes,
+      pagesWithoutText: blank + unreadable,
     };
   } finally {
     // Ends the document's parser and frees everything it loaded.

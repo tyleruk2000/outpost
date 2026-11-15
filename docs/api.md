@@ -162,6 +162,8 @@ Settings and their defaults are defined in
 | `indexing.chunkSize` | 1200 | 300 to 4000 characters |
 | `indexing.chunkOverlap` | 150 | 0 to 800 characters |
 | `indexing.maxPdfPages` | 5000 | 0 (no limit) to 100000 |
+| `ocr.auto` | false | Read new scanned documents and images by OCR as they are added |
+| `ocr.languages` | `eng` | Tesseract language codes joined by `+`, such as `deu+eng`. A language is used only if its data is installed; see `GET /api/ocr` |
 | `search.semantic.enabled` | false | |
 | `search.semantic.provider` | `none` | `none`, `transformers`, `openai-compatible`, `demo` |
 | `search.semantic.model` | `Xenova/all-MiniLM-L6-v2` | |
@@ -270,11 +272,13 @@ Types: `packages/shared/src/documents.ts`.
 | `POST /api/documents` | Uploads one or more files as `multipart/form-data` (at most 200 per request). Optional fields or query parameters: `category`, `tags` (comma separated), `locationId`, `allowDuplicate`. Answers `{ results: UploadResult[] }`, one per file with status `created`, `duplicate` or `rejected`; one bad file does not fail the others. |
 | `GET /api/documents` | Lists documents (`DocumentListResponse`). Query: `q` (title or file name), `category`, `tag`, `type` (`pdf`, `markdown`, `text`, `html`, `epub`, `image`), `sort` (`added`, `title`, `size`), `order`, `limit` (at most 200), `offset`. |
 | `GET /api/documents/facets` | Counts by category, tag and type, with totals (`DocumentFacets`). |
-| `GET /api/documents/:id` | `{ document }` (`DocumentDto`). |
+| `GET /api/documents/:id` | `{ document }` (`DocumentDto`). `scanPages` is how many pages have no text of their own (1 for an image), `ocrPages` how many of them OCR has been run on (`null` if never), and `ocrDetail` a sentence about the last OCR run. |
 | `PATCH /api/documents/:id` | Body (`DocumentPatch`): `title`, `description`, `category`, `author`, `source`, `language`, `tags`. Omitted fields are left alone; `tags` replaces the whole list. |
 | `DELETE /api/documents/:id` | Deletes the document and its file. Query `forget=true` removes only Outpost's record and leaves the file. |
-| `POST /api/documents/:id/reextract` | Reads the text again. `{ document, jobId }`. |
-| `GET /api/documents/:id/text` | The extracted text in sections (`DocumentTextResponse`). Query: `page`. |
+| `POST /api/documents/:id/reextract` | Reads the text again. `{ document, jobId }`. Text that OCR read from pages with no text of their own is kept. |
+| `POST /api/documents/:id/ocr` | Reads the text of a scanned PDF's pages, or of a PNG, JPEG, GIF or WebP image, by OCR, as a job on the `ocr` queue (one at a time). Body: `{ "redo": true }` to read again the pages OCR has read before; otherwise only pages not yet read. Answers `{ document, jobId }` (`DocumentOcrResponse`), or the job already doing it. Follow and cancel it through `/api/jobs`; cancelling keeps the pages read so far. `415` for a type OCR does not read or when OCR is not available (the message says why), `409` while the document's own text is still being read or when there is nothing left to read, `503` while its storage is disconnected. |
+| `GET /api/ocr` | Whether this installation can run OCR and with what (`OcrStatus`): `available`, `reason` when not, `engine`, the installed `languages` (each `builtIn` or added, and whether `selected`), `missingLanguages`, `languageFolder`, `auto`, and `limits`. |
+| `GET /api/documents/:id/text` | The extracted text in sections (`DocumentTextResponse`). Query: `page`. Each section has `ocr: true` when it was read from a picture by OCR. |
 | `GET /api/documents/:id/markdown` | A Markdown document with its formatting, as a tree of plain values (`DocumentMarkdownResponse`): headings, paragraphs, lists, quotes, code, tables, and bold, italic, code and links inside them. Never HTML. Links are present only for `http`, `https` and `mailto` addresses; pictures become their description; embedded HTML becomes its words. `415` for a document that is not Markdown, `413` for a file over 2 MB (the web app then shows the text from `/text`), `404` when the file is missing. |
 | `GET /api/documents/:id/file` | The original file. Supports byte ranges and `ETag`. Query `download=1` forces a download. Sent with a sandbox policy. |
 | `POST /api/documents/move` | Body: `locationId`. Moves every document that is not on that location to it, as a job. `{ job, documents }`. |

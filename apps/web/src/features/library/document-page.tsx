@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { DocumentDetails } from "./document-details";
 import { ImageViewer } from "./document-image";
 import { documentKeys } from "./document-meta";
+import { OcrTextView, ScanStrip, useDocumentOcr } from "./document-ocr";
 import { TextViewer } from "./document-text";
 import { ViewerToolbar } from "./document-toolbar";
 import type { ViewerControls, ViewerState } from "./document-viewer";
@@ -136,6 +137,10 @@ function Viewer({
   controls: Ref<ViewerControls>;
 }) {
   const downloadUrl = `${document.fileUrl}?download=1`;
+  const ocr = useDocumentOcr(document);
+  // For a scan, the text OCR read can be shown in place of the pages.
+  const [showingText, setShowingText] = useState(false);
+  const textShown = showingText && ocr.hasOcrText;
   if (!document.locationAvailable) {
     return (
       <ViewerMessage icon={<Unplug />} title="This document's file is not available right now">
@@ -149,38 +154,53 @@ function Viewer({
       </ViewerMessage>
     );
   }
+  const strip = <ScanStrip document={document} ocr={ocr} showingText={textShown} onShowText={setShowingText} />;
+  if (textShown) {
+    return (
+      <>
+        {strip}
+        <OcrTextView document={document} />
+      </>
+    );
+  }
   if (document.type === "pdf") {
     return (
-      <Suspense
-        fallback={
-          <div className="flex min-h-0 flex-1 justify-center overflow-hidden bg-surface-strong p-4" aria-busy>
-            <Skeleton className="h-[140%] w-full max-w-[52rem] rounded-none" />
-          </div>
-        }
-      >
-        <PdfViewer
-          key={document.id}
-          url={document.fileUrl}
-          title={document.title}
-          initialPage={initialPage}
-          locationName={locationName}
-          downloadUrl={downloadUrl}
-          onState={onState}
-          controls={controls}
-        />
-      </Suspense>
+      <>
+        {strip}
+        <Suspense
+          fallback={
+            <div className="flex min-h-0 flex-1 justify-center overflow-hidden bg-surface-strong p-4" aria-busy>
+              <Skeleton className="h-[140%] w-full max-w-[52rem] rounded-none" />
+            </div>
+          }
+        >
+          <PdfViewer
+            key={document.id}
+            url={document.fileUrl}
+            title={document.title}
+            initialPage={initialPage}
+            locationName={locationName}
+            downloadUrl={downloadUrl}
+            onState={onState}
+            controls={controls}
+          />
+        </Suspense>
+      </>
     );
   }
   if (document.type === "image")
     return (
-      <ImageViewer
-        key={document.id}
-        url={document.fileUrl}
-        title={document.title}
-        downloadUrl={downloadUrl}
-        onState={onState}
-        controls={controls}
-      />
+      <>
+        {strip}
+        <ImageViewer
+          key={document.id}
+          url={document.fileUrl}
+          title={document.title}
+          downloadUrl={downloadUrl}
+          onState={onState}
+          controls={controls}
+        />
+      </>
     );
   return <TextViewer document={document} downloadUrl={downloadUrl} />;
 }

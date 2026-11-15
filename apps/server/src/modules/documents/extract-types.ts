@@ -18,6 +18,8 @@ export interface ExtractedSection {
   heading?: string;
   /** 1-based page number, for PDFs. */
   page?: number;
+  /** Set when the text was read from a picture of the page by OCR, not from the file itself. */
+  ocr?: true;
 }
 
 export interface Extracted {
@@ -28,6 +30,11 @@ export interface Extracted {
   meta: { title?: string; author?: string; language?: string };
   /** Things a person should know about the result, such as that it was cut short. */
   notes: string[];
+  /**
+   * For PDFs: how many of the pages read gave no text, which is what a scanned page
+   * (a picture of text) looks like.
+   */
+  pagesWithoutText?: number;
 }
 
 export interface ExtractProgress {

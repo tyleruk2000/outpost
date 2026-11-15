@@ -20,6 +20,7 @@ import type {
   DocumentSort,
   DocumentTextResponse,
   DocumentType,
+  OcrStatus,
   TagDto,
 } from "@outpost/shared";
 import { and, asc, desc, eq, inArray, type SQL, sql } from "drizzle-orm";
@@ -44,6 +45,7 @@ import {
   isEpubHead,
   SUPPORTED_TYPES_TEXT,
 } from "./file-types.ts";
+import { createDocumentOcr } from "./ocr.ts";
 import { describeWriteError, discardPart, INCOMING_DIR, moveFile, newPartPath, readHead, type StagedFile, tooLarge } from "./staging.ts";
 import { isEpubArchive } from "./zip.ts";
 
@@ -59,9 +61,9 @@ const MAX_PDF_BYTES = 512 * 1024 * 1024;
 /** Part files older than this at start-up belong to uploads that never finished. */
 const STALE_PART_MS = 24 * 60 * 60 * 1000;
 
-const IMAGE_DETAIL = "Images are stored and shown but have no searchable text (OCR is not available in this version).";
+const IMAGE_DETAIL = "An image has no text of its own to search. It is stored and shown, and it can still be found by its title and tags.";
 const NO_TEXT_DETAIL: Record<ExtractKind, string> = {
-  pdf: "This PDF has no text that can be read. It appears to be scanned pages (pictures of text), and OCR is not available in this version. The file is stored and can be opened, and it can still be found by its title and tags.",
+  pdf: "This PDF has no text of its own. Its pages appear to be scans (pictures of text). The file is stored and can be opened, and it can still be found by its title and tags.",
   epub: "No readable text was found in this book. It may be copy-protected (DRM) or made only of images. It can still be found by its title and tags.",
   markdown: "This file has no text to search.",
   html: "This page has no text to search.",
@@ -126,6 +128,13 @@ export interface DocumentsService {
   relocate(id: string, locationId: string, relPath: string): Promise<DocumentDto>;
   /** Queues reading the text again, unless that is already under way. */
   reextract(id: string): { document: DocumentDto; job: JobRow };
+  /** Whether this installation can read text from scans (OCR), and with which languages. */
+  ocrStatus(): OcrStatus;
+  /**
+   * Queues reading the text of scanned pages or of an image by OCR, or returns the job
+   * already doing so. With `redo`, pages OCR has read before are read again.
+   */
+  ocr(id: string, options?: { redo?: boolean }): Promise<{ document: DocumentDto; job: JobRow }>;
   text(id: string, page?: number): Promise<DocumentTextResponse>;
   tags(): TagDto[];
   /** The location an upload goes to. Throws `storage_unavailable` when it is disconnected. */
@@ -284,6 +293,9 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
       extraction: row.extraction,
       extractionDetail: row.extractionDetail,
       textChars: row.textChars,
+      scanPages: row.scanPages,
+      ocrPages: row.ocrPages,
+      ocrDetail: row.ocrDetail,
       fileUrl: `/api/documents/${row.id}/file`,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
@@ -332,6 +344,23 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
   function enqueueExtraction(row: DocumentRow): JobRow {
     return ctx.jobs.enqueue(EXTRACT_JOB, { documentId: row.id }, { title: `Reading text from "${row.title}"`, subject: subjectOf(row.id) });
   }
+
+  /**
+   * Changes to one document's stored text run one at a time. Reading the file's own
+   * text and OCR both rewrite the same stored file, and may finish close together.
+   */
+  const textLocks = new Map<string, Promise<unknown>>();
+  function exclusive<T>(id: string, task: () => Promise<T>): Promise<T> {
+    const run = (textLocks.get(id) ?? Promise.resolve()).then(task, task);
+    const settled = run.catch(() => undefined);
+    textLocks.set(id, settled);
+    void settled.then(() => {
+      if (textLocks.get(id) === settled) textLocks.delete(id);
+    });
+    return run;
+  }
+
+  const ocr = createDocumentOcr(ctx, { findRow, index, changed, subjectOf, extracted, exclusive });
 
   const findBySha = (sha256: string) =>
     db.select().from(documents).where(eq(documents.sha256, sha256)).orderBy(asc(documents.createdAt)).limit(1).get();
@@ -474,43 +503,64 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
     if (result.changes > 0) changed(id);
   }
 
-  /** Records what was read: the text itself, counts, and metadata for fields left empty. */
-  async function storeExtraction(
-    id: string,
-    kind: ExtractKind | "image",
-    result: Extracted,
-  ): Promise<DocumentRow["extraction"] | "removed"> {
+  /**
+   * Records what was read: the text itself, counts, and metadata for fields left empty.
+   * Text that OCR read earlier from pages with no text of their own is kept: reading the
+   * file again cannot improve on it, and OCR is slow to repeat.
+   */
+  function storeExtraction(id: string, kind: ExtractKind | "image", result: Extracted): Promise<DocumentRow["extraction"] | "removed"> {
+    return exclusive(id, async () => {
+      const row = findRow(id);
+      if (!row) return "removed";
+
+      const before = await extracted.readAll(id);
+      const ownPages = new Set(result.sections.map((section) => section.page ?? 0));
+      const pageless = result.sections.some((section) => section.page === undefined);
+      const stillScanned = (page: number) => !ownPages.has(page) && !(page === 0 && pageless);
+      const fromOcr = before.sections.filter((section) => section.ocr && stillScanned(section.page ?? 0));
+      const ocrPages = before.ocrPages.filter(stillScanned);
+      const sections = [...result.sections, ...fromOcr].sort((a, b) => (a.page ?? 0) - (b.page ?? 0));
+
+      const textChars = sections.reduce((total, section) => total + section.text.length, 0);
+      const extraction = textChars > 0 ? "done" : "unsupported";
+      const reason = kind === "image" ? IMAGE_DETAIL : NO_TEXT_DETAIL[kind];
+      const detail = (textChars > 0 ? result.notes : [reason, ...result.notes]).join(" ") || null;
+      // What OCR could try: the PDF pages that gave no text, or the one picture of an image.
+      const scanPages = kind === "pdf" ? (result.pagesWithoutText ?? 0) : kind === "image" && ocr.kindOf(row) ? 1 : 0;
+
+      await extracted.write(id, sections, ocrPages);
+      const patch: Partial<DocumentRow> = {
+        extraction,
+        extractionDetail: detail,
+        textChars,
+        pageCount: result.pageCount,
+        scanPages,
+        ocrPages: ocrPages.length > 0 ? ocrPages.length : null,
+        updatedAt: Date.now(),
+      };
+      // Metadata from inside the file only fills what nobody has filled in. A title still
+      // equal to the file name counts as not filled in.
+      if (result.meta.title && row.title === defaultTitle(row.originalName)) patch.title = result.meta.title.slice(0, MAX_TITLE_LENGTH);
+      if (result.meta.author && !row.author) patch.author = result.meta.author.slice(0, MAX_TITLE_LENGTH);
+      if (result.meta.language && !row.language) patch.language = result.meta.language;
+      db.update(documents).set(patch).where(eq(documents.id, id)).run();
+
+      const fresh = findRow(id);
+      if (!fresh) {
+        // Deleted while its text was being written.
+        await extracted.remove(id);
+        return "removed";
+      }
+      index(fresh, sections);
+      changed(id);
+      return extraction;
+    });
+  }
+
+  /** After a document's own text has been read: OCR for what is left, if the setting asks for it. */
+  async function afterExtraction(id: string): Promise<void> {
     const row = findRow(id);
-    if (!row) return "removed";
-    const textChars = result.sections.reduce((total, section) => total + section.text.length, 0);
-    const extraction = textChars > 0 ? "done" : "unsupported";
-    const reason = kind === "image" ? IMAGE_DETAIL : NO_TEXT_DETAIL[kind];
-    const detail = (textChars > 0 ? result.notes : [reason, ...result.notes]).join(" ") || null;
-
-    await extracted.write(id, result.sections);
-    const patch: Partial<DocumentRow> = {
-      extraction,
-      extractionDetail: detail,
-      textChars,
-      pageCount: result.pageCount,
-      updatedAt: Date.now(),
-    };
-    // Metadata from inside the file only fills what nobody has filled in. A title still
-    // equal to the file name counts as not filled in.
-    if (result.meta.title && row.title === defaultTitle(row.originalName)) patch.title = result.meta.title.slice(0, MAX_TITLE_LENGTH);
-    if (result.meta.author && !row.author) patch.author = result.meta.author.slice(0, MAX_TITLE_LENGTH);
-    if (result.meta.language && !row.language) patch.language = result.meta.language;
-    db.update(documents).set(patch).where(eq(documents.id, id)).run();
-
-    const fresh = findRow(id);
-    if (!fresh) {
-      // Deleted while its text was being written.
-      await extracted.remove(id);
-      return "removed";
-    }
-    index(fresh, result.sections);
-    changed(id);
-    return extraction;
+    if (row) await ocr.startIfAutomatic(row);
   }
 
   ctx.jobs.register<{ documentId: string }>(EXTRACT_JOB, {
@@ -523,7 +573,9 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
       const empty: Extracted = { sections: [], pageCount: null, meta: {}, notes: [] };
 
       if (!format || format.type === "image") {
-        return { extraction: await storeExtraction(id, "image", empty) };
+        const extraction = await storeExtraction(id, "image", empty);
+        await afterExtraction(id);
+        return { extraction };
       }
       if (format.type === "pdf" && row.sizeBytes > MAX_PDF_BYTES) {
         const megabytes = Math.round(MAX_PDF_BYTES / (1024 * 1024));
@@ -572,6 +624,7 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
         throw new PermanentJobError(detail, "extraction");
       }
       const extraction = await storeExtraction(id, format.type, result);
+      await afterExtraction(id);
       return { extraction, sections: result.sections.length, pageCount: result.pageCount };
     },
   });
@@ -591,6 +644,18 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
     }
   }
   void sweepIncoming().catch((error) => ctx.log.warn({ err: error }, "could not clean up unfinished uploads"));
+
+  // Documents read before OCR existed have no count of scanned pages. Those with no
+  // text at all are counted here so that they offer OCR too; a PDF with only some
+  // pages scanned is counted the next time its text is read.
+  const mostPages = settings.get("indexing.maxPdfPages");
+  sqlite
+    .prepare(
+      `UPDATE documents SET scan_pages = CASE WHEN ext = 'pdf' THEN min(page_count, @most) ELSE 1 END
+       WHERE scan_pages = 0 AND ocr_pages IS NULL AND extraction = 'unsupported' AND text_chars = 0
+         AND ((ext = 'pdf' AND page_count > 0) OR ext IN ('png', 'jpg', 'jpeg', 'gif', 'webp'))`,
+    )
+    .run({ most: mostPages > 0 ? mostPages : Number.MAX_SAFE_INTEGER });
 
   // ── The service ──
 
@@ -760,8 +825,12 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
 
     reextract(id) {
       const row = requireRow(id);
-      const underWay = ctx.jobs.findBySubject(subjectOf(id)).find((job) => job.state === "queued" || job.state === "running");
+      const underWay = ctx.jobs
+        .findBySubject(subjectOf(id))
+        .find((job) => job.type === EXTRACT_JOB && (job.state === "queued" || job.state === "running"));
       if (underWay) return { document: toDto(row), job: underWay };
+      // The two would rewrite the same stored text. What OCR has finished is kept.
+      ocr.cancel(id);
       // Fails now, with a clear message, rather than later in the background.
       if (formatForExt(row.ext)?.type !== "image") storage.resolve(row.locationId, row.relPath);
       db.update(documents).set({ extraction: "pending", extractionDetail: null, updatedAt: Date.now() }).where(eq(documents.id, id)).run();
@@ -769,6 +838,13 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
       const job = enqueueExtraction(fresh);
       changed(id);
       return { document: toDto(fresh), job };
+    },
+
+    ocrStatus: () => ocr.status(),
+
+    async ocr(id, options = {}) {
+      const job = await ocr.start(requireRow(id), options);
+      return { document: toDto(requireRow(id)), job };
     },
 
     async text(id, page) {
@@ -780,7 +856,12 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
         extraction: row.extraction,
         extractionDetail: row.extractionDetail,
         pageCount: row.pageCount,
-        sections: wanted.map((section) => ({ page: section.page ?? null, heading: section.heading ?? null, text: section.text })),
+        sections: wanted.map((section) => ({
+          page: section.page ?? null,
+          heading: section.heading ?? null,
+          text: section.text,
+          ocr: section.ocr === true,
+        })),
       };
     },
 

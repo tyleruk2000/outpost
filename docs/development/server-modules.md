@@ -58,7 +58,8 @@ before it. Use `ctx.onClose.push(fn)` for cleanup.
 ### Jobs
 
 Queues in use: `download` (network transfers), `index` (text extraction, embeddings),
-`transfer` (moving and verifying files), `import`. Handlers receive an `AbortSignal`
+`ocr` (reading scanned pages, always one at a time), `transfer` (moving and verifying
+files), `import`. Handlers receive an `AbortSignal`
 and must stop promptly when it fires (pause, cancel, shutdown). Report progress with
 `run.progress({ current, total, message })`. Throw `PermanentJobError` for failures
 that retrying cannot fix.
@@ -106,7 +107,7 @@ ctx.services.search.upsert({
 `db/schema.ts` is the source of truth. After changing it:
 
 ```bash
-pnpm --filter @outpost/server db:generate -- --name describe_the_change
+pnpm --filter @outpost/server db:generate --name describe_the_change
 ```
 
 Virtual tables and triggers go in a custom migration

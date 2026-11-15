@@ -237,7 +237,11 @@ The reasoning behind each choice, the security model and the known trade-offs ar
 
 Stated here so nobody has to find them out:
 
-- **No OCR.** Scanned PDFs and images are stored and viewable but not searchable.
+- **OCR is optional, slow and imperfect.** Scanned PDFs and images are searchable only
+  after their text has been read on request (or automatically, if you turn that on).
+  English is built in; other languages need a data file you add yourself. Text drawn
+  as shapes is not read. See
+  [Search](docs/search.md#scanned-pages-and-images-ocr).
 - **No language model.** Outpost does not answer questions in prose. The retrieval and
   citation interfaces a model would use exist and are documented.
 - **Semantic search needs a model you provide**: a local embedding server such as

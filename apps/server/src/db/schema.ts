@@ -228,6 +228,12 @@ export const documents = sqliteTable(
       .default("pending"),
     extractionDetail: text("extraction_detail"),
     textChars: integer("text_chars").notNull().default(0),
+    /** Pages with no text of their own that OCR could try: scanned PDF pages, or 1 for an image. */
+    scanPages: integer("scan_pages").notNull().default(0),
+    /** Pages OCR has been run on; null until it has been run at all. */
+    ocrPages: integer("ocr_pages"),
+    /** A sentence for people about the last OCR run: what it could not read, or why it stopped. */
+    ocrDetail: text("ocr_detail"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

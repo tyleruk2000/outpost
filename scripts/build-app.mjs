@@ -9,6 +9,8 @@
  *     server/migrations/        SQL migrations
  *     server/node_modules/      the one native dependency (SQLite), with prebuilt
  *                               binaries for every supported platform
+ *     server/ocr/               English language data for OCR (the engine itself is
+ *                               WebAssembly inside workers/ocr.mjs)
  *     web/                      built web app, fonts and map assets included
  *     catalog/                  catalogue manifests
  *
@@ -114,6 +116,35 @@ const sqliteOut = path.join(out, "server/node_modules/better-sqlite3");
 fs.mkdirSync(sqliteOut, { recursive: true });
 for (const item of ["lib", "prebuilds", "package.json", "LICENSE"]) {
   fs.cpSync(path.join(sqlite, item), path.join(sqliteOut, item), { recursive: true });
+}
+
+// OCR. The engine (Tesseract compiled to WebAssembly) is JavaScript with the binary
+// inside it, so esbuild has already put it in workers/ocr.mjs; nothing native, and the
+// same file runs on every platform. Its language data is a file read at run time, and
+// has to travel beside it: see modules/ocr/tesseract-assets.ts for where it is looked for.
+const ocrOut = path.join(out, "server/ocr");
+const ocrPackage = (name) => fs.realpathSync(path.join(root, "apps/server/node_modules", name));
+fs.mkdirSync(ocrOut, { recursive: true });
+fs.copyFileSync(
+  path.join(ocrPackage("@tesseract.js-data/eng"), "4.0.0_best_int/eng.traineddata.gz"),
+  path.join(ocrOut, "eng.traineddata.gz"),
+);
+fs.copyFileSync(path.join(ocrPackage("tesseract.js-core"), "LICENSE"), path.join(ocrOut, "LICENSE-tesseract.txt"));
+fs.writeFileSync(
+  path.join(ocrOut, "NOTICE.txt"),
+  [
+    "OCR in Outpost uses Tesseract (https://github.com/tesseract-ocr/tesseract), compiled to",
+    "WebAssembly by the tesseract.js-core project (https://github.com/naptha/tesseract.js-core).",
+    "Both are under the Apache License 2.0; see LICENSE-tesseract.txt.",
+    "",
+    "eng.traineddata.gz is Tesseract's English model: the integer form of",
+    "https://github.com/tesseract-ocr/tessdata_best (Apache License 2.0), as packaged by the",
+    "tesseract.js project in @tesseract.js-data/eng (https://github.com/naptha/tessdata).",
+    "",
+  ].join("\n"),
+);
+if (!fs.existsSync(path.join(out, "server/workers/ocr.mjs"))) {
+  throw new Error("The OCR worker was not bundled (server/workers/ocr.mjs is missing).");
 }
 
 // ── Everything else ────────────────────────────────────────────────────────

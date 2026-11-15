@@ -319,9 +319,22 @@ A region whose drive is disconnected is not drawn until it returns.
 
 ### A PDF has no searchable text
 
-"This PDF has no text that can be read. It appears to be scanned pages…" There is no
-OCR in this version. The file is stored, opens normally, and is found by its title and
-tags. PDFs larger than 512 MB are stored but their text is not read.
+"This PDF has no text of its own. Its pages appear to be scans…" The file is stored,
+opens normally, and is found by its title and tags. To search inside it, choose **Read
+text from the scanned pages** on the document; see
+[Scanned pages and images](search.md#scanned-pages-and-images-ocr) for what that can
+and cannot read. PDFs larger than 512 MB are stored but their text is not read.
+
+### OCR found no text, or the wrong words
+
+- "OCR found no text…": the page may be blank, sideways, handwritten, or in a language
+  OCR has not been given. Only pictures are read, so a page whose words are drawn as
+  shapes gives "…has no picture that OCR could read".
+- Wrong words are normal on poor scans. **Read the scanned pages again** only helps if
+  something has changed, such as the language setting.
+- "Reading text from scans (OCR) is not part of this installation…": the OCR engine or
+  its English data is missing from the installation. From source, run `pnpm install`;
+  a packaged app should be rebuilt with `node scripts/build-app.mjs`.
 
 ### An upload is refused
 

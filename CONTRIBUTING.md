@@ -141,7 +141,7 @@ pnpm format    # fix what can be fixed
   action, and never add a CDN, remote font or analytics call. The browser tests fail if
   the app reaches out.
 - **Schema changes:** edit `apps/server/src/db/schema.ts`, then run
-  `pnpm --filter @outpost/server db:generate -- --name what_changed`. Never edit a
+  `pnpm --filter @outpost/server db:generate --name what_changed`. Never edit a
   migration that has shipped.
 - **Words:** messages are for people. Say what happened and what to do next. Use
   British spelling in user-facing text ("catalogue", "colour", "licence" as a noun),

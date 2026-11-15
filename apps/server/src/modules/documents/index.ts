@@ -4,7 +4,7 @@
  */
 import fs from "node:fs";
 import fastifyMultipart from "@fastify/multipart";
-import type { DocumentMarkdownResponse } from "@outpost/shared";
+import type { DocumentMarkdownResponse, DocumentOcrResponse, OcrStatus } from "@outpost/shared";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
@@ -103,6 +103,23 @@ export async function registerDocuments(app: FastifyInstance, ctx: AppContext): 
 
   app.post<IdParams>("/api/documents/:id/reextract", async (request) => {
     const { document, job } = service.reextract(request.params.id);
+    return { document, jobId: job.id };
+  });
+
+  /** Whether this installation can read text from scans, and the languages it has. */
+  app.get("/api/ocr", async (): Promise<OcrStatus> => service.ocrStatus());
+
+  /**
+   * Read the text of scanned pages, or of an image, by OCR. A background job: the
+   * answer names it, and it is followed and cancelled like any other job. Pages OCR has
+   * read before are skipped unless `redo` is set.
+   */
+  app.post<IdParams>("/api/documents/:id/ocr", async (request): Promise<DocumentOcrResponse> => {
+    const options = z
+      .object({ redo: z.boolean().optional() })
+      .strict()
+      .parse(request.body ?? {});
+    const { document, job } = await service.ocr(request.params.id, options);
     return { document, jobId: job.id };
   });
 

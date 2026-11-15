@@ -10,6 +10,7 @@ import { api, errorMessage } from "@/lib/api";
 import { cn, formatDateTime, formatNumber, plural } from "@/lib/utils";
 import { SavedField } from "./document-field";
 import { copyText, documentKeys, isReading, kindOfDocument } from "./document-meta";
+import { OcrDetails, useDocumentOcr } from "./document-ocr";
 import { TagEditor } from "./document-tags";
 
 function Group({ title, children, className }: { title: string; children: ReactNode; className?: string }) {
@@ -54,6 +55,7 @@ function Checksum({ sha256 }: { sha256: string }) {
 
 function TextStatus({ document, onDocument }: { document: DocumentDto; onDocument: (document: DocumentDto) => void }) {
   const reading = isReading(document);
+  const ocr = useDocumentOcr(document);
   const reextract = useMutation({
     mutationFn: () => api.post<DocumentResponse>(`/api/documents/${document.id}/reextract`),
     onSuccess: (data) => onDocument(data.document),
@@ -70,7 +72,13 @@ function TextStatus({ document, onDocument }: { document: DocumentDto; onDocumen
       ) : document.extraction === "done" ? (
         <p className="text-small text-ink-muted">
           Read and searchable: <span className="tabular text-ink">{plural(document.textChars, "character")}</span>
-          {document.pageCount ? ` on ${plural(document.pageCount, "page")}` : ""}.
+          {/* With some pages still unread scans, the text is not "on" every page. */}
+          {document.pageCount
+            ? document.scanPages > 0
+              ? ` from a document of ${plural(document.pageCount, "page")}`
+              : ` on ${plural(document.pageCount, "page")}`
+            : ""}
+          .
         </p>
       ) : document.extraction === "failed" ? (
         <p className="flex items-start gap-2 text-small text-danger">
@@ -81,9 +89,17 @@ function TextStatus({ document, onDocument }: { document: DocumentDto; onDocumen
         <p className="text-small text-ink-muted">No searchable text. The document can still be opened and found by its title and tags.</p>
       )}
       {document.extractionDetail && !reading ? <p className="mt-1.5 text-small text-ink">{document.extractionDetail}</p> : null}
-      <Button size="sm" className="mt-3" onClick={() => reextract.mutate()} loading={reextract.isPending} disabled={reading}>
+      {/* Reading the file again would stop OCR part-way, so it waits for that to finish. */}
+      <Button
+        size="sm"
+        className="mt-3"
+        onClick={() => reextract.mutate()}
+        loading={reextract.isPending}
+        disabled={reading || ocr.stage === "reading"}
+      >
         {reextract.isPending ? null : <RefreshCw />} Read text again
       </Button>
+      {reading ? null : <OcrDetails document={document} ocr={ocr} />}
     </Group>
   );
 }
