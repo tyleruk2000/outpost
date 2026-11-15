@@ -179,10 +179,12 @@ describe("the state and action of an entry", () => {
     expect(entryAction("installed", true)).toEqual({ kind: "open", label: "Open" });
   });
 
-  it("opens an added sheet as its document and anything else as its collection", () => {
+  it("opens anything that became a document as that document, and anything else as its collection", () => {
     expect(openTarget({ ...sheet, collectionId: "c4", documentId: "d7" })).toBe("/library/documents/d7");
     expect(openTarget({ ...sheet, collectionId: "c4" })).toBe("/library/collections/c4");
-    expect(openTarget(entry({ format: "pdf", collectionId: "c9", documentId: "d1" }))).toBe("/library/collections/c9");
+    // A PDF fetched from its publisher is read in the document viewer too: its collection page cannot show it.
+    expect(openTarget(entry({ format: "pdf", collectionId: "c9", documentId: "d1" }))).toBe("/library/documents/d1");
+    expect(openTarget(entry({ collectionId: "c2" }))).toBe("/library/collections/c2");
   });
 });
 

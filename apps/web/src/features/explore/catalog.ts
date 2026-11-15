@@ -167,11 +167,11 @@ export function entryAction(situation: EntrySituation, included = false): EntryA
 }
 
 /**
- * Where "Open" leads. A sheet that ships with Outpost opens as the document it became;
- * everything else opens its collection page, where it is read, checked and managed.
+ * Where "Open" leads. Anything that became a document (a PDF, a reference sheet) opens
+ * in the document viewer, where it is read; everything else opens its collection page.
  */
-export function openTarget(entry: Pick<CatalogEntryDto, "source" | "documentId" | "collectionId">): string {
-  return isIncluded(entry) && entry.documentId ? `/library/documents/${entry.documentId}` : `/library/collections/${entry.collectionId}`;
+export function openTarget(entry: Pick<CatalogEntryDto, "documentId" | "collectionId">): string {
+  return entry.documentId ? `/library/documents/${entry.documentId}` : `/library/collections/${entry.collectionId}`;
 }
 
 // ── Packs ──

@@ -40,6 +40,16 @@ describe("grouping installed collections", () => {
     expect(openTarget(collection({ kind: "terrain" }))?.to).toBe("/maps");
     expect(openTarget(collection({ kind: "model" }))).toBeNull();
   });
+
+  it("sends a file that became a document (a PDF or a reference sheet) to that document, where it can be read", () => {
+    expect(openTarget(collection({ kind: "file", meta: { format: "markdown", documentId: "d7" } }))).toEqual({
+      to: "/library/documents/d7",
+      label: "Read",
+    });
+    expect(openTarget(collection({ kind: "file", meta: { format: "pdf", documentId: "d8" } }))?.to).toBe("/library/documents/d8");
+    // A file the library could not take stays a plain file, with nothing to open it with.
+    expect(openTarget(collection({ kind: "file", meta: { format: "other" } }))).toBeNull();
+  });
 });
 
 describe("the state of a collection", () => {

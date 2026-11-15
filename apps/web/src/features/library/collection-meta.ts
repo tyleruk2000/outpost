@@ -33,9 +33,15 @@ export function groupCollections<T extends Pick<CollectionDto, "kind" | "title">
     .filter((group) => group.collections.length > 0);
 }
 
-/** Where a collection is used: the reader for reference collections, the map for maps. */
-export function openTarget(collection: Pick<CollectionDto, "id" | "kind">): { to: string; label: string } | null {
+/**
+ * Where a collection is used: the reader for reference collections, the map for maps,
+ * and the document viewer for a file that became a document (a PDF from the catalogue,
+ * a reference sheet). Its own page only describes and manages it.
+ */
+export function openTarget(collection: Pick<CollectionDto, "id" | "kind" | "meta">): { to: string; label: string } | null {
   if (collection.kind === "zim") return { to: `/library/read/${collection.id}/`, label: "Read" };
+  const documentId = collection.meta?.documentId;
+  if (typeof documentId === "string" && documentId) return { to: `/library/documents/${documentId}`, label: "Read" };
   if (collection.kind === "map" || collection.kind === "terrain") return { to: "/maps", label: "Open in Maps" };
   return null;
 }
