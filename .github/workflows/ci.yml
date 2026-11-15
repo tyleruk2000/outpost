@@ -1,0 +1,119 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Lint, typecheck and unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - name: Catalogue manifests are valid
+        run: pnpm catalog:validate
+      - name: Server tests
+        run: pnpm --filter @outpost/server test
+      - name: Web tests
+        run: pnpm --filter @outpost/web test
+
+  platforms:
+    name: Server tests on ${{ matrix.os }}
+    needs: check
+    strategy:
+      fail-fast: false
+      matrix:
+        # ubuntu-24.04-arm is a native ARM64 runner: the same architecture as a Raspberry Pi 5.
+        os: [ubuntu-24.04-arm, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @outpost/server test
+
+  e2e:
+    name: End-to-end and offline tests
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Fetch map fonts and sprites
+        run: node scripts/fetch-map-assets.mjs
+      - name: Build the packaged app
+        run: node scripts/build-app.mjs
+      - run: pnpm --filter @outpost/e2e exec playwright install --with-deps chromium
+      - name: Browser tests against the packaged app
+        run: pnpm e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: e2e/playwright-report
+          retention-days: 7
+
+  image:
+    name: Container image builds for amd64 and arm64
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: The arm64 image starts and answers its health check
+        run: |
+          docker buildx build --platform linux/arm64 --load -t outpost:arm64-test --cache-from type=gha .
+          docker run -d --name outpost-arm64 --platform linux/arm64 -p 127.0.0.1:8080:8080 outpost:arm64-test
+          for attempt in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:8080/api/health; then exit 0; fi
+            sleep 3
+          done
+          docker logs outpost-arm64
+          exit 1
+
+  security:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Known vulnerabilities in what ships
+        run: pnpm audit --prod --audit-level high

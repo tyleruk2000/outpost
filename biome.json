@@ -4,7 +4,7 @@
   "files": {
     "includes": ["**", "!**/dist", "!**/migrations/meta", "!apps/web/public", "!.beads", "!.claude", "!**/*.gen.ts"]
   },
-  "formatter": { "indentStyle": "space", "indentWidth": 2, "lineWidth": 100 },
+  "formatter": { "indentStyle": "space", "indentWidth": 2, "lineWidth": 140 },
   "javascript": { "formatter": { "quoteStyle": "double", "semicolons": "always" } },
   "linter": {
     "enabled": true,
