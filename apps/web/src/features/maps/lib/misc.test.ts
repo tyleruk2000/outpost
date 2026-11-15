@@ -1,6 +1,7 @@
 import type { MarkerDto, PlaceDto, TrackDto } from "@outpost/shared";
 import { describe, expect, it } from "vitest";
 import { boxData, coverageData, markersData, measureData, tracksData } from "../map/overlays";
+import { creditsFor } from "../map-footer";
 import { parseAttribution } from "./attribution";
 import { mixOklch, oklchToHex, parseOklch, tokenToHex } from "./color";
 import { formatPosition, gridFiguresFor } from "./coords";
@@ -113,6 +114,28 @@ describe("credits", () => {
       { text: "alert(2) & done" },
     ]);
     expect(parseAttribution("")).toEqual([]);
+  });
+
+  it("credits the terrain only while something is drawn from it", () => {
+    const attributions = [
+      { name: "Protomaps", html: '<a href="https://protomaps.com">Protomaps</a>', license: "ODbL", url: "https://protomaps.com" },
+      {
+        name: "Mapterhorn",
+        html: '© <a href="https://mapterhorn.com/attribution">Mapterhorn</a>',
+        license: "Various",
+        url: "https://mapterhorn.com",
+      },
+    ];
+    // Hill shading, contour lines or both: the screen passes one answer for "is terrain on the map".
+    expect(creditsFor(attributions, { hasTiles: true, terrain: true }).map((credit) => credit.key)).toEqual([
+      "Protomaps",
+      "Mapterhorn",
+      "natural-earth",
+    ]);
+    expect(creditsFor(attributions, { hasTiles: true, terrain: false }).map((credit) => credit.key)).toEqual([
+      "Protomaps",
+      "natural-earth",
+    ]);
   });
 });
 

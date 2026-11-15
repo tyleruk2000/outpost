@@ -203,10 +203,10 @@ These are deliberate, and stated so nobody has to discover them.
 | Scale | One node, one writer. | SQLite. Fine for a household or a classroom; a larger deployment needs the PostgreSQL seam filled in. |
 | Vector search | Flat index: every query compares against every stored vector. | Exact and dependency-free; comfortable to roughly 100,000 passages. `VectorIndex` is the seam for sqlite-vec or pgvector. |
 | Local embedding model | Needs the optional `@huggingface/transformers` package, which is not in the packaged app. | Its native runtime is large and has no musl or Intel-macOS builds. A local embedding server (Ollama, llama.cpp) works everywhere today. |
-| OCR | Not included. Scanned PDFs and images are stored and viewable but have no searchable text. | A provider interface and optional Tesseract are the planned route. |
+| OCR | Optional and off by default; slow, and it makes mistakes. Tesseract compiled to WebAssembly, English built in, other languages from a data file a person adds. Only pictures on a page are read: text drawn as shapes is not. A page scanned the wrong way up is found by trying the other ways, not by detecting its orientation. | No native code, so it runs everywhere Node does. Reading drawn text needs a PDF renderer with a canvas (`@napi-rs/canvas`), a native dependency. Languages could be fetched through the download manager; that is not built. `modules/ocr/types.ts` is the seam for another engine. |
 | Language model answers | Not included, by design for this release. | Interfaces exist; see ai.md. |
 | ZIM archives | Need kiwix-serve (the Compose sidecar, or a binary for non-Docker installs). | Reading the format in pure JavaScript would mean reimplementing libzim. |
-| Maps | Vector basemap only from the Protomaps schema; no contour lines; hill shading needs a separate terrain download; routing is not offered. | Contours need a contour tileset or client-side generation; both are possible later. |
+| Maps | Vector basemap only from the Protomaps schema; hill shading and contour lines need a separate terrain download; contour lines are only as fine as that terrain; routing is not offered. | Contour lines are traced in the browser from the installed terrain (see maps.md), so there is no contour tileset to download or host. |
 | Map source | Depends on the Protomaps build host staying available for new downloads. | The source address is a setting; any PMTiles archive with the same schema works, including one you host. |
 | Notes collaboration | Last writer wins, with conflict detection; no live co-editing. | The editor could take a CRDT later; the storage format would need to change. |
 | Portable drives | A drive is a copy, not a sync partner: changes made on the drive are not merged back. | Merging two diverged libraries safely is a project of its own. |
@@ -225,6 +225,7 @@ are not are kept outside the process or left out:
 | BlockNote | MPL-2.0, with GPL add-ons | Not used. The editor is Tiptap (MIT) with Outpost's own blocks. |
 | Atkinson Hyperlegible, Literata, Noto Sans | OFL-1.1 | Bundled fonts. |
 | Protomaps basemap styles | BSD-3-Clause (design CC0) | Bundled. |
+| maplibre-contour | BSD-3-Clause (includes code adapted from d3-contour, ISC, and vt-pbf, MIT) | Bundled in the web app. Traces contour lines in the browser from installed terrain. |
 | Map data | ODbL (OpenStreetMap) | Downloaded by the user; attribution shown on the map. |
 | GeoNames | CC BY 4.0 | Downloaded by the user; credited where shown. |
 | Natural Earth | Public domain | Bundled world outline. |

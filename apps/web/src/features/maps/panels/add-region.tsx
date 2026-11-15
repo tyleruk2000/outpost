@@ -322,9 +322,18 @@ export function AddRegion({
               ) : (
                 <>
                   <p className="text-small text-ink-muted">
-                    {drawing
-                      ? "Drag on the map from one corner of the area to the opposite one. Press Escape to stop."
-                      : "Draw a box on the map, then adjust it by its corners."}
+                    {drawing ? (
+                      "Drag on the map from one corner of the area to the opposite one. Press Escape to stop."
+                    ) : (
+                      <>
+                        Draw a box on the map, then adjust it by dragging its corners and edges.
+                        {/* Phones have no Tab key to reach a handle with. */}
+                        <span className="max-md:hidden">
+                          {" "}
+                          From the keyboard, Tab to a handle and use the arrow keys; Shift moves it further.
+                        </span>
+                      </>
+                    )}
                   </p>
                   <div className="flex flex-wrap gap-2">
                     <Button
@@ -366,7 +375,8 @@ export function AddRegion({
               ) : null}
               {area?.kind === "custom" && area.bbox ? (
                 <>
-                  <dl aria-label="Bounds of the box">
+                  {/* Read out as the box is adjusted from the keyboard, where there is no handle to watch. */}
+                  <dl aria-label="Bounds of the box" aria-live="polite">
                     <Fact label="Size">{formatBboxSize(area.bbox)}</Fact>
                     <Fact label="North" mono>
                       {area.bbox[3].toFixed(4)}°
@@ -455,11 +465,11 @@ export function AddRegion({
               className="mt-0.5"
             />
             <label htmlFor={terrainId} className="text-small text-ink">
-              Include terrain for hill shading
+              Include terrain for hill shading and contour lines
               <span className="block text-ink-muted">
                 Elevation data for the same area
-                {maxZoom > TERRAIN_MAX_ZOOM ? `, to zoom ${TERRAIN_MAX_ZOOM}, the most the terrain source has` : ""}. Shades the hills so
-                their shape can be read.
+                {maxZoom > TERRAIN_MAX_ZOOM ? `, to zoom ${TERRAIN_MAX_ZOOM}, the most the terrain source has` : ""}. Shades the hills and
+                draws lines of equal height, so their shape can be read.
               </span>
             </label>
           </div>

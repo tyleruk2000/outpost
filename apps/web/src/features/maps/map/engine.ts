@@ -20,11 +20,24 @@ import {
 } from "maplibre-gl";
 // Served from Outpost's own origin, as the content security policy requires.
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
+import {
+  BOX_HANDLES,
+  type BoxHandle,
+  boxHandleName,
+  boxHandlePosition,
+  edgeHandleFits,
+  edgeValue,
+  isCornerHandle,
+  moveBoxHandle,
+} from "../lib/box-handles";
+import { CONTOUR_PROTOCOL } from "../lib/contours";
 import { type BoxResult, boxFromCorners, type LatLon, wrapLongitude } from "../lib/geo";
+import { arrowNudge } from "../lib/nudge";
 import { midpoints } from "../lib/route-edit";
 import { buildStyle, countryLabelPoints, SOURCE_IDS, type StyleInput } from "../lib/style";
 import { createTileLoader, TILE_PROTOCOL } from "../lib/tiles";
 import type { CameraView } from "../lib/view";
+import { loadContourTile } from "./contours";
 import {
   boxData,
   type DrawState,
@@ -46,6 +59,8 @@ addProtocol(
     (url) => new AJAXError(404, "No tile here", url, new Blob()),
   ),
 );
+// Contour lines are traced in a worker of our own from installed terrain; see contours.ts.
+addProtocol(CONTOUR_PROTOCOL, loadContourTile);
 
 export class MapUnsupportedError extends Error {
   constructor() {
@@ -67,13 +82,17 @@ export interface MapEvents {
   /** The pointer's position over the map, or null when it leaves (and on touch screens). */
   pointer: LatLon | null;
   click: { position: LatLon; point: { x: number; y: number }; hit: MapHit | null };
-  /** Right-click or long press. */
-  context: { position: LatLon; point: { x: number; y: number } };
+  /** Right-click or long press. `hit` is the saved place or route under it, if any. */
+  context: { position: LatLon; point: { x: number; y: number }; hit: MapHit | null };
   /** True while the map is turned away from north. */
   rotated: boolean;
-  /** The pin of the place being edited was dropped somewhere new. */
+  /** The pin of the place being edited or moved was put somewhere new: dropped after a drag, or stepped with an arrow key. */
   pindrag: LatLon;
-  /** The download box was drawn or one of its corners moved. */
+  /** Enter was pressed on the pin: the person has finished moving it. */
+  pinconfirm: undefined;
+  /** A saved place was pressed and held. It is now being carried, and should become the pin. */
+  placepick: { id: string };
+  /** The download box was drawn, or one of its handles was moved by a drag or an arrow key. */
   box: BoxResult;
   /** A point of the route being drawn was pressed and let go without being moved. */
   routepoint: { index: number };
@@ -99,12 +118,44 @@ interface HeldHandle {
   moved: boolean;
 }
 
+/** A saved place under a press, before it has been held long enough to be picked up. */
+interface PlaceHold {
+  id: string;
+  position: LatLon;
+  /** Where on screen the press began. */
+  at: { x: number; y: number };
+  touch: boolean;
+  timer: number;
+}
+
+/** A saved place that has been picked up and follows the pointer until it is let go. */
+interface PlaceCarry {
+  id: string;
+  /** Where the pointer was when the place was picked up, and where the place was on screen. */
+  from: { x: number; y: number };
+  origin: { x: number; y: number };
+  /** Where it has been carried to; null until it has moved far enough to mean it. */
+  position: LatLon | null;
+}
+
 const MAP_LABEL = "Map. Arrow keys pan, plus and minus zoom.";
 const MAP_LABEL_DRAWING = `${MAP_LABEL} Enter adds a point of the route at the centre.`;
 
 /** How near a press must be to a point of the route to take hold of it, in pixels. */
 const HANDLE_REACH_MOUSE = 9;
 const HANDLE_REACH_TOUCH = 22;
+
+/**
+ * Moving a saved place straight from the map takes a press held this long on it. A drag
+ * that merely starts on a place pans the map as it always did, so a place is never
+ * moved by accident; a hold is deliberate with a finger and with a mouse alike.
+ */
+const PLACE_HOLD_MS = 500;
+const PLACE_REACH_MOUSE = 8;
+const PLACE_REACH_TOUCH = 18;
+/** A held pointer is never quite still. Further than this and it was the start of a pan, not a hold. */
+const PLACE_HOLD_SLOP_MOUSE = 4;
+const PLACE_HOLD_SLOP_TOUCH = 10;
 
 export interface PinState {
   position: LatLon;
@@ -134,8 +185,11 @@ export class MapEngine {
   private countryLabels: FeatureCollection | undefined;
   private pin: Marker | undefined;
   private pinState: PinState | undefined;
-  private boxHandles: Marker[] = [];
+  private readonly boxHandles = new Map<BoxHandle, Marker>();
   private box: Bbox | null = null;
+  private placesMovable = false;
+  private placeHold: PlaceHold | undefined;
+  private carry: PlaceCarry | undefined;
   private drawStart: LatLon | undefined;
   private drawing = false;
   private rotated = false;
@@ -201,6 +255,12 @@ export class MapEngine {
     map.on("movestart", () => {
       container.dataset.mapIdle = "false";
       this.cancelLongPress();
+      // The map moved under the press: it was a pan, not a hold on a place.
+      this.cancelPlaceHold();
+    });
+    // How long the edges of the download box are on screen decides whether they have room for a handle.
+    map.on("zoom", () => {
+      if (this.box && this.boxHandles.size > 0) this.fitEdgeHandles(this.box);
     });
     map.on("moveend", () => this.emit("moveend", this.getView()));
     map.on("dataloading", () => {
@@ -229,6 +289,8 @@ export class MapEngine {
       if (this.drawStart) this.updateDraw(lngLatOf(event.lngLat));
       if (this.held) this.dragHandle(event.point, lngLatOf(event.lngLat));
       else if (this.route) this.showHandleCursor(event.point);
+      if (this.carry) this.carryPlace(event.point);
+      else if (this.placeHold && this.strayed(this.placeHold, event.point, PLACE_HOLD_SLOP_MOUSE)) this.cancelPlaceHold();
       this.emit("pointer", lngLatOf(event.lngLat));
     });
     map.on("mouseout", () => this.emit("pointer", null));
@@ -244,6 +306,10 @@ export class MapEngine {
     });
     map.on("contextmenu", (event) => {
       event.preventDefault();
+      if (this.carry) return;
+      // Android reports its own long press as a context menu. On a saved place that is the hold itself, arriving early.
+      if (this.placeHold?.touch) return this.pickUpPlace();
+      this.cancelPlaceHold();
       this.emitContext(lngLatOf(event.lngLat), event.point);
     });
 
@@ -257,18 +323,29 @@ export class MapEngine {
       }
       // Taking hold of a point of the route being drawn: the map stays still while it is dragged.
       const handle = this.handleAt(event.point, HANDLE_REACH_MOUSE);
-      if (!handle) return;
-      event.preventDefault();
-      this.holdHandle(handle, event.point);
+      if (handle) {
+        event.preventDefault();
+        this.holdHandle(handle, event.point);
+        return;
+      }
+      // A press on a saved place may turn out to be a hold. The map is left free to pan until it does.
+      // A press on something lying over the place (a handle of the download box, a pin) belongs to that thing.
+      const place = this.onMapItself(event) ? this.placeAt(event.point, PLACE_REACH_MOUSE) : null;
+      if (place) this.holdPlace(place, event.point, false);
     });
     map.on("mouseup", (event) => {
       this.finishDraw(lngLatOf(event.lngLat));
       this.releaseHandle();
+      this.releasePlace();
     });
 
     map.on("touchstart", (event: MapTouchEvent) => {
       this.cancelLongPress();
-      if (event.points.length !== 1) return;
+      if (event.points.length !== 1) {
+        // A second finger means a pinch: whatever was held is let go where it is.
+        this.releasePlace();
+        return;
+      }
       if (this.drawing) {
         event.preventDefault();
         this.drawStart = lngLatOf(event.lngLat);
@@ -278,6 +355,12 @@ export class MapEngine {
       if (handle) {
         event.preventDefault();
         this.holdHandle(handle, event.point);
+        return;
+      }
+      // A long press on a saved place picks it up; anywhere else it opens the menu for that point.
+      const place = this.onMapItself(event) ? this.placeAt(event.point, PLACE_REACH_TOUCH) : null;
+      if (place) {
+        this.holdPlace(place, event.point, true);
         return;
       }
       const position = lngLatOf(event.lngLat);
@@ -296,16 +379,24 @@ export class MapEngine {
         if (event.points.length === 1) this.dragHandle(event.point, lngLatOf(event.lngLat));
         else this.dropHandle();
       }
+      if (this.carry) {
+        if (event.points.length === 1) this.carryPlace(event.point);
+        else this.releasePlace();
+      } else if (this.placeHold && (event.points.length !== 1 || this.strayed(this.placeHold, event.point, PLACE_HOLD_SLOP_TOUCH))) {
+        this.cancelPlaceHold();
+      }
     });
     map.on("touchend", (event) => {
       this.cancelLongPress();
       this.finishDraw(lngLatOf(event.lngLat));
       this.releaseHandle();
+      this.releasePlace();
     });
     map.on("touchcancel", () => {
       this.cancelLongPress();
       this.drawStart = undefined;
       this.dropHandle();
+      this.releasePlace();
     });
 
     // The canvas hears the keyboard; MapLibre's handler pans and zooms from it.
@@ -317,7 +408,7 @@ export class MapEngine {
     const now = Date.now();
     if (now - this.lastContextAt < 900 || this.drawing) return;
     this.lastContextAt = now;
-    this.emit("context", { position, point: { x: point.x, y: point.y } });
+    this.emit("context", { position, point: { x: point.x, y: point.y }, hit: this.hitTest(point.x, point.y, 6) });
   }
 
   private cancelLongPress(): void {
@@ -563,7 +654,7 @@ export class MapEngine {
     this.map.getCanvas().style.cursor = this.baseCursor;
   }
 
-  // ── The pin: a search result, a place about to be saved, or the place being edited ──
+  // ── The pin: a search result, a place about to be saved, or the place being edited or moved ──
 
   setPin(state: PinState | null): void {
     if (!state) {
@@ -576,6 +667,7 @@ export class MapEngine {
       const element = document.createElement("div");
       element.className = "outpost-pin";
       element.append(document.createElement("span"));
+      element.addEventListener("keydown", this.onPinKey);
       this.pin = new Marker({ element, anchor: "bottom", draggable: state.draggable })
         .setLngLat([state.position.lon, state.position.lat])
         .addTo(this.map);
@@ -588,12 +680,170 @@ export class MapEngine {
     element.style.setProperty("--pin-color", state.color);
     element.setAttribute("aria-label", state.label);
     element.dataset.draggable = String(state.draggable);
+    // A pin that can be moved can be moved from the keyboard, so it takes focus; one that only marks a spot does not.
+    if (state.draggable) {
+      element.tabIndex = 0;
+      // No ARIA role describes something moved in two directions; "application" hands the arrow keys to the page.
+      element.setAttribute("role", "application");
+      element.setAttribute("aria-roledescription", "movable pin");
+    } else {
+      element.removeAttribute("tabindex");
+      element.removeAttribute("role");
+      element.removeAttribute("aria-roledescription");
+    }
     if (this.pinState?.draggable !== state.draggable) this.pin.setDraggable(state.draggable);
     const current = this.pinState?.position;
     if (!current || current.lat !== state.position.lat || current.lon !== state.position.lon)
       this.pin.setLngLat([state.position.lon, state.position.lat]);
     this.pinState = state;
+    // A place that was picked up may already have been carried on by the time its pin arrives.
+    if (this.carry && state.draggable) {
+      element.dataset.carried = "true";
+      if (this.carry.position) this.pin.setLngLat([this.carry.position.lon, this.carry.position.lat]);
+    }
   }
+
+  /** Gives the keyboard to the pin, so the arrow keys move it. */
+  focusPin(): void {
+    this.pin?.getElement().focus({ preventScroll: true });
+  }
+
+  /** Arrow keys step a pin that can be moved; Shift steps further; Enter says it is where it should be. */
+  private readonly onPinKey = (event: KeyboardEvent): void => {
+    if (!this.pin || !this.pinState?.draggable || event.altKey || event.ctrlKey || event.metaKey) return;
+    if (event.key === "Enter") {
+      event.preventDefault();
+      event.stopPropagation();
+      this.emit("pinconfirm", undefined);
+      return;
+    }
+    const step = arrowNudge(event.key, event.shiftKey);
+    if (!step) return;
+    // Otherwise the map underneath would pan with the same key.
+    event.preventDefault();
+    event.stopPropagation();
+    const at = this.map.project(this.pin.getLngLat());
+    const next = this.map.unproject([at.x + step.x, at.y + step.y]);
+    this.pin.setLngLat(next);
+    this.keepInView(next);
+    this.emit("pindrag", lngLatOf(next));
+  };
+
+  /** Brings a position that has been stepped to the edge of the map, or past it, back into view. */
+  private keepInView(position: LngLat): void {
+    const point = this.map.project(position);
+    const canvas = this.map.getCanvas();
+    const margin = 56;
+    const { top, right, bottom, left } = this.padding;
+    const inside =
+      point.x >= left + margin &&
+      point.x <= canvas.clientWidth - right - margin &&
+      point.y >= top + margin &&
+      point.y <= canvas.clientHeight - bottom - margin;
+    if (!inside) this.map.panTo(position, { duration: prefersReducedMotion() ? 0 : 200 });
+  }
+
+  // ── Picking a saved place up from the map ──
+
+  /**
+   * While set, a press held on a saved place picks it up: `placepick` says which, the
+   * place then follows the pointer as the pin, and where it is let go arrives as
+   * `pindrag`. Nothing is saved here; the screen asks before keeping the new position.
+   */
+  setPlacesMovable(movable: boolean): void {
+    this.placesMovable = movable;
+    if (!movable) this.cancelPlaceHold();
+  }
+
+  /** The saved place nearest a point on screen, within `reach` pixels. */
+  private placeAt(at: { x: number; y: number }, reach: number): Pick<PlaceHold, "id" | "position"> | null {
+    if (!this.placesMovable || this.carry || !this.map.getLayer(OVERLAY_LAYERS.markers)) return null;
+    const found = this.map.queryRenderedFeatures(
+      [
+        [at.x - reach, at.y - reach],
+        [at.x + reach, at.y + reach],
+      ],
+      { layers: [OVERLAY_LAYERS.markers] },
+    );
+    let best: Pick<PlaceHold, "id" | "position"> | null = null;
+    let nearest = Number.POSITIVE_INFINITY;
+    for (const feature of found) {
+      const id = feature.properties?.id;
+      // The position as it was given, not as the map's tiles have rounded it.
+      const source = typeof id === "string" ? this.overlayData["o-markers"]?.features.find((item) => item.properties.id === id) : undefined;
+      const coordinates = source?.geometry.coordinates as [number, number] | undefined;
+      if (typeof id !== "string" || !coordinates) continue;
+      const point = this.map.project(coordinates);
+      const distance = Math.hypot(point.x - at.x, point.y - at.y);
+      if (distance < nearest) {
+        nearest = distance;
+        best = { id, position: { lat: coordinates[1], lon: coordinates[0] } };
+      }
+    }
+    return best;
+  }
+
+  /** Whether a press landed on the map's own surface, rather than on a pin or handle that floats over it. */
+  private onMapItself(event: MapMouseEvent | MapTouchEvent): boolean {
+    return event.originalEvent.target === this.map.getCanvas();
+  }
+
+  private strayed(hold: PlaceHold, at: { x: number; y: number }, slop: number): boolean {
+    return Math.hypot(at.x - hold.at.x, at.y - hold.at.y) > slop;
+  }
+
+  private holdPlace(place: Pick<PlaceHold, "id" | "position">, at: { x: number; y: number }, touch: boolean): void {
+    this.cancelPlaceHold();
+    this.placeHold = { ...place, at: { x: at.x, y: at.y }, touch, timer: window.setTimeout(() => this.pickUpPlace(), PLACE_HOLD_MS) };
+    // The pointer may be let go outside the map, where the map's own events do not reach.
+    window.addEventListener("mouseup", this.releasePlace);
+  }
+
+  private cancelPlaceHold(): void {
+    if (this.placeHold) window.clearTimeout(this.placeHold.timer);
+    this.placeHold = undefined;
+    if (!this.carry) window.removeEventListener("mouseup", this.releasePlace);
+  }
+
+  /** The press was held long enough: the place leaves the map and follows the pointer. */
+  private pickUpPlace(): void {
+    const hold = this.placeHold;
+    if (!hold) return;
+    window.clearTimeout(hold.timer);
+    this.placeHold = undefined;
+    const origin = this.map.project([hold.position.lon, hold.position.lat]);
+    this.carry = { id: hold.id, from: hold.at, origin: { x: origin.x, y: origin.y }, position: null };
+    // The same finger or button would otherwise drag the map along with the place.
+    this.map.dragPan.disable();
+    // The hold is not also a long press for the menu.
+    this.cancelLongPress();
+    this.lastContextAt = Date.now();
+    this.map.getCanvas().style.cursor = "grabbing";
+    this.emit("placepick", { id: hold.id });
+  }
+
+  private carryPlace(at: { x: number; y: number }): void {
+    const carry = this.carry;
+    if (!carry) return;
+    if (!carry.position && Math.hypot(at.x - carry.from.x, at.y - carry.from.y) < 4) return;
+    // It moves as far as the pointer has, from where it was: no jump to the pointer when it is picked up.
+    carry.position = lngLatOf(this.map.unproject([carry.origin.x + at.x - carry.from.x, carry.origin.y + at.y - carry.from.y]));
+    if (this.pin && this.pinState?.draggable) this.pin.setLngLat([carry.position.lon, carry.position.lat]);
+  }
+
+  /** Lets go of a place being carried and reports where; or gives up on a hold that had not got that far. */
+  private readonly releasePlace = (): void => {
+    const carry = this.carry;
+    this.carry = undefined;
+    this.cancelPlaceHold();
+    if (!carry) return;
+    if (!this.drawing) this.map.dragPan.enable();
+    this.map.getCanvas().style.cursor = this.baseCursor;
+    this.pin?.getElement().removeAttribute("data-carried");
+    // Letting go is not also a press on the map, which would open the place or whatever lies under it.
+    this.ignoreClickUntil = performance.now() + 350;
+    if (carry.position) this.emit("pindrag", carry.position);
+  };
 
   // ── The download box ──
 
@@ -606,39 +856,132 @@ export class MapEngine {
     this.setCursor(drawing ? "crosshair" : "");
   }
 
-  /** Shows a box; with `handles`, its corners can be dragged to adjust it. */
+  /**
+   * Shows a box. With `handles` it can be adjusted: a handle on each corner and in the
+   * middle of each edge, moved by dragging or, once focused, with the arrow keys.
+   */
   setBox(bbox: Bbox | null, handles: boolean): void {
     this.box = bbox;
     this.setOverlay("o-box", boxData(bbox));
     if (!bbox || !handles) {
-      for (const handle of this.boxHandles) handle.remove();
-      this.boxHandles = [];
+      for (const handle of this.boxHandles.values()) handle.remove();
+      this.boxHandles.clear();
       return;
     }
-    const corners: Array<[number, number]> = [
-      [bbox[0], bbox[3]],
-      [bbox[2], bbox[3]],
-      [bbox[2], bbox[1]],
-      [bbox[0], bbox[1]],
-    ];
-    if (this.boxHandles.length === 0) {
-      const names = ["North-west", "North-east", "South-east", "South-west"];
-      this.boxHandles = corners.map((corner, index) => {
-        const element = document.createElement("div");
-        element.className = "outpost-box-handle";
-        element.setAttribute("aria-label", `${names[index]} corner of the box. Drag to adjust.`);
-        const handle = new Marker({ element, draggable: true }).setLngLat(corner).addTo(this.map);
-        const opposite = () => this.boxHandles[(index + 2) % 4]!.getLngLat();
-        handle.on("drag", () => {
-          const result = boxFromCorners(lngLatOf(handle.getLngLat()), lngLatOf(opposite()));
-          if (result.ok) this.setOverlay("o-box", boxData(result.bbox));
-        });
-        handle.on("dragend", () => this.emit("box", boxFromCorners(lngLatOf(handle.getLngLat()), lngLatOf(opposite()))));
-        return handle;
-      });
+    // Made once and then moved, so a handle keeps the keyboard while the box changes under it.
+    if (this.boxHandles.size === 0) for (const id of BOX_HANDLES) this.boxHandles.set(id, this.createBoxHandle(id, bbox));
+    this.placeBoxHandles(bbox);
+  }
+
+  private createBoxHandle(id: BoxHandle, bbox: Bbox): Marker {
+    const element = document.createElement("div");
+    element.className = "outpost-box-handle";
+    element.dataset.handle = id;
+    element.tabIndex = 0;
+    if (isCornerHandle(id)) {
+      // No ARIA role describes something moved in two directions; "application" hands the arrow keys to the page.
+      element.setAttribute("role", "application");
+      element.setAttribute("aria-roledescription", "corner handle");
+      element.setAttribute("aria-label", `${boxHandleName(id)} of the box. Drag to adjust, or use the arrow keys; Shift moves it further.`);
     } else {
-      for (const [index, handle] of this.boxHandles.entries()) handle.setLngLat(corners[index]!);
+      // An edge moves along one line: a slider, whose value is the edge's latitude or longitude.
+      element.setAttribute("role", "slider");
+      element.setAttribute("aria-orientation", id === "n" || id === "s" ? "vertical" : "horizontal");
+      element.setAttribute("aria-label", `${boxHandleName(id)} of the box. Drag to adjust, or use the arrow keys; Shift moves it further.`);
     }
+    const start = boxHandlePosition(bbox, id);
+    const handle = new Marker({ element, draggable: true }).setLngLat([start.lon, start.lat]).addTo(this.map);
+
+    /** The box as it was when the drag began: the other edges are measured from it, not from handles that follow along. */
+    let from: Bbox | null = null;
+    const dragged = () => moveBoxHandle(from ?? this.box ?? bbox, id, lngLatOf(handle.getLngLat()));
+    handle.on("dragstart", () => {
+      from = this.box;
+    });
+    handle.on("drag", () => {
+      const result = dragged();
+      if (!result.ok) return;
+      this.setOverlay("o-box", boxData(result.bbox));
+      this.placeBoxHandles(result.bbox, id);
+    });
+    handle.on("dragend", () => {
+      const result = dragged();
+      from = null;
+      // A box that cannot be (too small, across the 180° meridian) leaves the old one, handles and all.
+      if (!result.ok && this.box) {
+        this.setOverlay("o-box", boxData(this.box));
+        this.placeBoxHandles(this.box);
+      }
+      this.emit("box", result);
+    });
+    element.addEventListener("keydown", (event) => this.nudgeBoxHandle(id, event));
+    return handle;
+  }
+
+  /** Puts every handle where it belongs on a box. The one being dragged is left under the pointer. */
+  private placeBoxHandles(bbox: Bbox, dragging?: BoxHandle): void {
+    for (const [id, handle] of this.boxHandles) {
+      const at = boxHandlePosition(bbox, id);
+      if (id !== dragging) handle.setLngLat([at.lon, at.lat]);
+      else if (!isCornerHandle(id)) {
+        // An edge handle slides across its edge only, staying in the middle of it.
+        const held = handle.getLngLat();
+        handle.setLngLat(id === "n" || id === "s" ? [at.lon, held.lat] : [held.lng, at.lat]);
+      }
+      if (id === "n" || id === "e" || id === "s" || id === "w") {
+        const value = edgeValue(bbox, id);
+        const element = handle.getElement();
+        element.setAttribute("aria-valuemin", String(value.min));
+        element.setAttribute("aria-valuemax", String(value.max));
+        element.setAttribute("aria-valuenow", String(value.now));
+        element.setAttribute("aria-valuetext", value.text);
+      }
+    }
+    this.fitEdgeHandles(bbox, dragging);
+  }
+
+  /**
+   * An edge too short on screen to hold a handle between its corners goes without one,
+   * so that no two touch targets overlap; the corners can do everything an edge can.
+   */
+  private fitEdgeHandles(bbox: Bbox, dragging?: BoxHandle): void {
+    const [west, south, east, north] = bbox;
+    const topLeft = this.map.project([west, north]);
+    const topRight = this.map.project([east, north]);
+    const bottomLeft = this.map.project([west, south]);
+    const across = edgeHandleFits(Math.hypot(topRight.x - topLeft.x, topRight.y - topLeft.y));
+    const down = edgeHandleFits(Math.hypot(bottomLeft.x - topLeft.x, bottomLeft.y - topLeft.y));
+    for (const [id, handle] of this.boxHandles) {
+      if (isCornerHandle(id)) continue;
+      const element = handle.getElement();
+      // One in use is never taken out of the person's hands.
+      if (id === dragging || element === document.activeElement) continue;
+      element.hidden = !(id === "n" || id === "s" ? across : down);
+    }
+  }
+
+  /** An arrow key on a focused handle moves it a few pixels; with Shift, further. */
+  private nudgeBoxHandle(id: BoxHandle, event: KeyboardEvent): void {
+    if (!this.box || event.altKey || event.ctrlKey || event.metaKey) return;
+    const step = arrowNudge(event.key, event.shiftKey);
+    if (!step) return;
+    // Otherwise the map underneath would pan with the same key.
+    event.preventDefault();
+    event.stopPropagation();
+    // An edge moves across itself only; the keys along it do nothing.
+    if ((id === "n" || id === "s") && step.y === 0) return;
+    if ((id === "e" || id === "w") && step.x === 0) return;
+    const at = boxHandlePosition(this.box, id);
+    const point = this.map.project([at.lon, at.lat]);
+    const target = this.map.unproject([point.x + step.x, point.y + step.y]);
+    const result = moveBoxHandle(this.box, id, lngLatOf(target));
+    if (result.ok) {
+      this.box = result.bbox;
+      this.setOverlay("o-box", boxData(result.bbox));
+      this.placeBoxHandles(result.bbox);
+      this.keepInView(target);
+    }
+    this.emit("box", result);
   }
 
   private updateDraw(position: LatLon): void {
@@ -661,9 +1004,11 @@ export class MapEngine {
     this.abort.abort();
     this.cancelLongPress();
     window.removeEventListener("mouseup", this.releaseHandle);
+    this.cancelPlaceHold();
+    window.removeEventListener("mouseup", this.releasePlace);
     this.listeners.clear();
     this.pin?.remove();
-    for (const handle of this.boxHandles) handle.remove();
+    for (const handle of this.boxHandles.values()) handle.remove();
     // Removes every source, layer, listener and the WebGL context.
     this.map.remove();
   }

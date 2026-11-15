@@ -43,6 +43,7 @@ export const FALLBACK_THEME = {
     inkMuted: "#4d595e",
     primary: "#1c6a70",
     lamp: "#e6a23c",
+    contour: "#74532b",
   },
   dark: {
     land: "#1c2224",
@@ -56,5 +57,6 @@ export const FALLBACK_THEME = {
     inkMuted: "#a7b1b4",
     primary: "#6cc3c4",
     lamp: "#edb354",
+    contour: "#d2b27e",
   },
 } as const;

@@ -1,6 +1,7 @@
 import type { MapSources } from "@outpost/shared";
 import { describe, expect, it } from "vitest";
 import { overlayLayers, overlaySources } from "../map/overlays";
+import { CONTOUR_PROTOCOL, parseContourRequest } from "./contours";
 import { FALLBACK_THEME } from "./palette";
 import { BASE_LAYER_IDS, buildStyle, countryLabelPoints, SOURCE_IDS, type StyleInput, tunedFlavor } from "./style";
 
@@ -186,6 +187,113 @@ describe("hill shading", () => {
       input({ hillshade: true, sources: { ...installed, hasTerrain: false, sources: { basemap: installed.sources.basemap } } }),
     );
     expect(ids(noTerrain)).not.toContain(BASE_LAYER_IDS.hillshade);
+  });
+});
+
+describe("contour lines", () => {
+  const contoured = buildStyle(input({ contours: true }));
+  const address = () => (contoured.sources[SOURCE_IDS.contours] as { tiles: string[] }).tiles[0]!;
+
+  it("are a source of their own, traced from the installed terrain and nowhere else", () => {
+    expect(contoured.sources[SOURCE_IDS.contours]).toMatchObject({
+      type: "vector",
+      minzoom: 9,
+      maxzoom: 15,
+      // No tile is asked for beyond the terrain there is.
+      bounds: [-4.3, 52.52, -3.43, 53.29],
+    });
+    expect(address().startsWith(`${CONTOUR_PROTOCOL}://local/{z}/{x}/{y}?`)).toBe(true);
+    const request = parseContourRequest(address().replace("{z}", "12").replace("{x}", "2000").replace("{y}", "1300"));
+    expect(request).toEqual({
+      z: 12,
+      x: 2000,
+      y: 1300,
+      // The same tiles the hill shading reads, with the same key, so a new region shows up at once.
+      dem: "/api/maps/terrain/{z}/{x}/{y}.webp?v=k1",
+      encoding: "terrarium",
+      maxZoom: 12,
+    });
+  });
+
+  it("name nothing outside Outpost's origin", () => {
+    const text = JSON.stringify(buildStyle(input({ hillshade: true, contours: true })));
+    const addresses = text.match(/[a-z][a-z0-9+.-]*:\/\/[^"\\]+/gi) ?? [];
+    expect(addresses.some((item) => item.startsWith(`${CONTOUR_PROTOCOL}://local/`))).toBe(true);
+    for (const item of addresses)
+      expect(
+        item.startsWith(origin) ||
+          item.startsWith("outpost-tiles://local/api/maps/") ||
+          item.startsWith(`${CONTOUR_PROTOCOL}://local/{z}/{x}/{y}?dem=%2Fapi%2Fmaps%2F`),
+      ).toBe(true);
+  });
+
+  it("do not need hill shading, and hill shading does not bring them", () => {
+    expect(ids(contoured)).not.toContain(BASE_LAYER_IDS.hillshade);
+    expect(contoured.sources[SOURCE_IDS.terrain]).toBeUndefined();
+    const shaded = buildStyle(input({ hillshade: true }));
+    expect(shaded.sources[SOURCE_IDS.contours]).toBeUndefined();
+    expect(ids(shaded)).not.toContain(BASE_LAYER_IDS.contourLines);
+  });
+
+  it("are left out when no terrain is installed, however they are asked for", () => {
+    const noTerrain = buildStyle(
+      input({ contours: true, sources: { ...installed, hasTerrain: false, sources: { basemap: installed.sources.basemap } } }),
+    );
+    expect(noTerrain.sources[SOURCE_IDS.contours]).toBeUndefined();
+    expect(ids(noTerrain).filter((id) => id.startsWith("contour"))).toEqual([]);
+    expect(ids(buildStyle(input({ contours: true, sources: undefined }))).filter((id) => id.startsWith("contour"))).toEqual([]);
+  });
+
+  it("lie over the shaded land and under water and roads, with their heights under every other name", () => {
+    const both = buildStyle(input({ hillshade: true, contours: true }));
+    const layers = ids(both);
+    const at = (id: string) => layers.indexOf(id);
+    expect(at(BASE_LAYER_IDS.contourLines)).toBe(at(BASE_LAYER_IDS.hillshade) + 1);
+    expect(at(BASE_LAYER_IDS.contourIndexLines)).toBe(at(BASE_LAYER_IDS.contourLines) + 1);
+    expect(at("water")).toBe(at(BASE_LAYER_IDS.contourIndexLines) + 1);
+    expect(at(BASE_LAYER_IDS.contourLabels)).toBeGreaterThan(at("roads_highway"));
+    // The first thing written on the map, so every name placed after it takes the room first.
+    expect(both.layers.findIndex((layer) => layer.type === "symbol")).toBe(at(BASE_LAYER_IDS.contourLabels));
+    expect(both.layers[at(BASE_LAYER_IDS.contourLabels) + 1]?.type).toBe("symbol");
+    expect(new Set(layers).size).toBe(layers.length);
+  });
+
+  it("draw index lines heavier and write the height in metres on them, in the theme's colour", () => {
+    const layer = (id: string) =>
+      contoured.layers.find((item) => item.id === id) as {
+        filter: unknown;
+        paint: Record<string, unknown>;
+        layout: Record<string, unknown>;
+      };
+    const lines = layer(BASE_LAYER_IDS.contourLines);
+    const index = layer(BASE_LAYER_IDS.contourIndexLines);
+    const labels = layer(BASE_LAYER_IDS.contourLabels);
+    expect(lines.paint["line-color"]).toBe(FALLBACK_THEME.light.contour);
+    expect(index.paint["line-color"]).toBe(FALLBACK_THEME.light.contour);
+    const widthAt13 = (paint: Record<string, unknown>) => (paint["line-width"] as unknown[])[6] as number;
+    expect(widthAt13(index.paint)).toBeGreaterThan(widthAt13(lines.paint) * 1.5);
+    expect(index.paint["line-opacity"]).toBeGreaterThan(lines.paint["line-opacity"] as number);
+    // Index lines and only index lines carry a label, and sea level carries no line at all.
+    expect(JSON.stringify(index.filter)).toBe('["all",["==",["get","level"],1],["!=",["get","ele"],0]]');
+    expect(labels.filter).toEqual(index.filter);
+    expect(JSON.stringify(lines.filter)).toBe('["all",["!",["==",["get","level"],1]],["!=",["get","ele"],0]]');
+    expect(labels.layout["text-field"]).toEqual(["concat", ["to-string", ["get", "ele"]], " m"]);
+    expect(labels.layout["symbol-placement"]).toBe("line");
+    expect(labels.paint).toMatchObject({ "text-color": FALLBACK_THEME.light.contour, "text-halo-color": FALLBACK_THEME.light.land });
+
+    const dark = buildStyle(input({ contours: true, flavour: "dark", theme: FALLBACK_THEME.dark }));
+    expect(dark.layers.find((item) => item.id === BASE_LAYER_IDS.contourLines)).toMatchObject({
+      paint: { "line-color": FALLBACK_THEME.dark.contour },
+    });
+  });
+
+  it("still draw over the outline map when terrain is installed without a detailed map", () => {
+    const terrainOnly = buildStyle(
+      input({ contours: true, sources: { ...installed, hasTiles: false, sources: { terrain: installed.sources.terrain } } }),
+    );
+    const layers = ids(terrainOnly);
+    expect(layers.indexOf(BASE_LAYER_IDS.contourLines)).toBeGreaterThan(layers.indexOf(BASE_LAYER_IDS.borders));
+    expect(layers.indexOf(BASE_LAYER_IDS.contourLabels)).toBeGreaterThan(layers.indexOf(BASE_LAYER_IDS.contourIndexLines));
   });
 });
 

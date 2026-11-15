@@ -1,7 +1,7 @@
 /** The Places tab: the list of saved places, and the form for adding or changing one. */
 import { haversineMeters, type MarkerColor, type MarkerDto } from "@outpost/shared";
 import type { UseQueryResult } from "@tanstack/react-query";
-import { ArrowLeft, Copy, Search, Star, Trash2, Undo2 } from "lucide-react";
+import { ArrowLeft, Copy, Move, Search, Star, Trash2, Undo2 } from "lucide-react";
 import { useId, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { ErrorState, Notice } from "@/components/page";
@@ -159,7 +159,11 @@ export function PlaceEditor({
               Moved {formatDistance(moved)} from where it was saved. “Save changes” keeps the new position.
             </Notice>
           ) : mapReady ? (
-            <p className="text-small text-ink-muted">Drag the pin on the map to move it.</p>
+            <p className="text-small text-ink-muted">
+              Drag the pin on the map to move it.
+              {/* Phones have no Tab key to reach the pin with. */}
+              <span className="max-md:hidden"> From the keyboard, Tab to the pin and use the arrow keys; Shift moves it further.</span>
+            </p>
           ) : null}
         </div>
       </div>
@@ -193,12 +197,15 @@ export function PlacesList({
   markers,
   onOpen,
   onToggleFavourite,
+  onMove,
   onAdd,
   canAddOnMap,
 }: {
   markers: UseQueryResult<MarkerDto[]>;
   onOpen: (marker: MarkerDto) => void;
   onToggleFavourite: (marker: MarkerDto) => void;
+  /** Starts moving a place on the map without opening it. Left out when there is no map to move it on. */
+  onMove?: (marker: MarkerDto) => void;
   /** Starts the "click the map to save a place" tool. */
   onAdd: () => void;
   canAddOnMap: boolean;
@@ -285,6 +292,17 @@ export function PlacesList({
                   {marker.note ? <span className="block truncate text-small text-ink-muted">{marker.note.split("\n")[0]}</span> : null}
                 </span>
               </button>
+              {onMove ? (
+                <button
+                  type="button"
+                  aria-label={`Move ${marker.name} on the map`}
+                  title="Move on the map"
+                  onClick={() => onMove(marker)}
+                  className="grid w-11 shrink-0 place-content-center text-ink-muted hover:text-ink focus-visible:-outline-offset-2"
+                >
+                  <Move className="size-4" />
+                </button>
+              ) : null}
               <button
                 type="button"
                 aria-pressed={marker.isFavorite}

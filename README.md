@@ -245,8 +245,8 @@ Stated here so nobody has to find them out:
 - **Reference collections need kiwix-serve.** It is in the Compose stack. On portable
   drives it is included for macOS and Linux; the Kiwix project publishes no Windows
   build, so collections cannot be opened from a drive on Windows.
-- **Maps** have no contour lines and no routing. Hill shading needs a separate terrain
-  download.
+- **Maps** have no routing. Hill shading and contour lines need a separate terrain
+  download, and contour lines are only as fine as that terrain.
 - **One server, one library.** There is no clustering and no PostgreSQL back end.
 - **No accounts or permissions.** Everyone who can reach Outpost can read and change
   everything in it.
@@ -256,9 +256,9 @@ Stated here so nobody has to find them out:
 
 ## Roadmap
 
-In rough order: OCR as an optional provider; a bundled local embedding option;
-question answering with citations through a local model (Ollama, llama.cpp); contour
-lines and richer topographic layers; merging a portable drive back into its source;
+In rough order: downloading OCR languages from inside Outpost; a bundled local embedding option;
+question answering with citations through a local model (Ollama, llama.cpp); richer
+topographic layers; merging a portable drive back into its source;
 storage pools; an optional PostgreSQL and pgvector back end. Work is tracked in the
 repository's issues.
 

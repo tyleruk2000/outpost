@@ -1,4 +1,4 @@
-/** The controls and cards that float over the map: tools, zoom, the measuring card, the drawing card, the pin card. */
+/** The controls and cards that float over the map: tools, zoom, the measuring card, the drawing card, the pin card, the card for moving a place. */
 import { Compass, Crosshair, LocateFixed, Minus, Mountain, PenLine, Plus, Redo2, Ruler, Undo2, X } from "lucide-react";
 import { type ReactNode, useEffect, useRef } from "react";
 import { toast } from "sonner";
@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/misc";
 import { cn } from "@/lib/utils";
 import { copyText, type LocateState } from "./hooks";
+import type { ContourReach } from "./lib/contours";
 import { formatPosition, type ReadoutFormat } from "./lib/coords";
 import { formatBearing, formatDistance, formatDistanceWithMiles, type LatLon } from "./lib/geo";
 import { measure } from "./lib/measure";
@@ -25,6 +26,35 @@ function PinPlus() {
   );
 }
 
+/** Contour lines: rings of equal height round a hill. Drawn here because the icon set has none. */
+function ContourRings() {
+  return (
+    <svg aria-hidden viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 15.5C3 9 6.5 3.5 11.5 3.5c3 0 4 2.5 6 4.5 1.7 1.7 3.5 3 3.5 6 0 4-3.5 6.5-8.5 6.5C7 20.5 3 19.5 3 15.5Z" />
+      <path d="M7.5 14.5c0-3.2 1.5-6 4-6 1.6 0 2.2 1.5 3.3 2.7.9 1 1.7 1.7 1.7 3.1 0 1.8-1.8 2.7-4.2 2.7-2.6 0-4.8-.5-4.8-2.5Z" />
+    </svg>
+  );
+}
+
+/**
+ * Why contour lines that are switched on are not on screen, as the control's own name
+ * and as the sentence said when it is pressed. The control never does nothing silently.
+ */
+export const CONTOUR_NOTES: Record<Exclude<ContourReach, "drawn">, { label: string; message: string }> = {
+  "too-far-out": {
+    label: "Contour lines: zoom in to see them",
+    message: "Contour lines are on. They appear once the map is zoomed in closer.",
+  },
+  "no-terrain-here": {
+    label: "Contour lines: no terrain is downloaded for this area",
+    message: "Contour lines are on, but no terrain is downloaded for this part of the map. They are drawn wherever terrain is.",
+  },
+  "no-terrain": {
+    label: "Contour lines: no terrain is downloaded yet",
+    message: "Contour lines are drawn from terrain, and none is downloaded yet. Download a region with its terrain to see them.",
+  },
+};
+
 export function MapControls({
   tool,
   onToolChange,
@@ -36,6 +66,9 @@ export function MapControls({
   onLocate,
   hillshade,
   onHillshadeChange,
+  contours,
+  contourReach,
+  onContoursChange,
   disabled,
   className,
 }: {
@@ -51,6 +84,11 @@ export function MapControls({
   /** Undefined when no terrain is installed, so there is nothing to shade from. */
   hillshade: boolean | undefined;
   onHillshadeChange: (on: boolean) => void;
+  /** Whether contour lines are asked for. They are drawn from the same terrain as the hill shading. */
+  contours: boolean;
+  /** Whether they can be drawn in the view on screen, and if not, why. */
+  contourReach: ContourReach;
+  onContoursChange: (on: boolean) => void;
   /** The map could not be drawn; the controls that move it have nothing to act on. */
   disabled: boolean;
   className?: string;
@@ -117,6 +155,15 @@ export function MapControls({
             <Mountain />
           </ControlButton>
         ) : null}
+        {/* Always offered, terrain or not: pressed without any, it says what it needs. */}
+        <ControlButton
+          label={contours && contourReach !== "drawn" ? CONTOUR_NOTES[contourReach].label : "Contour lines"}
+          pressed={contours}
+          onClick={() => onContoursChange(!contours)}
+          disabled={disabled}
+        >
+          <ContourRings />
+        </ControlButton>
       </ControlGroup>
     </div>
   );
@@ -297,6 +344,48 @@ export function DrawCard({
   );
 }
 
+/**
+ * Moving a saved place without opening it: the place has become a pin that can be
+ * dragged or stepped with the arrow keys, and nothing is kept until "Save new position".
+ */
+export function MoveCard({
+  name,
+  movedMeters,
+  saving,
+  onSave,
+  onCancel,
+}: {
+  name: string;
+  /** How far the pin now is from where the place is saved. */
+  movedMeters: number;
+  saving: boolean;
+  onSave: () => void;
+  onCancel: () => void;
+}) {
+  const moved = movedMeters >= 1;
+  return (
+    <MapCard title={`Move “${name}”`} onClose={onCancel} closeLabel="Cancel the move">
+      <p className="tabular mt-1 text-small text-ink-muted" aria-live="polite" aria-atomic>
+        {moved ? (
+          `Moved ${formatDistance(movedMeters)} from where it is saved. Not kept until you save.`
+        ) : (
+          <>
+            Drag the pin to where the place should be.
+            {/* Left out on a phone, where the card shares a small screen with the map and there are no arrow keys. */}
+            <span className="max-md:hidden"> From the keyboard, the arrow keys move it and Shift moves it further.</span>
+          </>
+        )}
+      </p>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <Button variant="primary" onClick={onSave} loading={saving} disabled={!moved}>
+          Save new position
+        </Button>
+        <Button onClick={onCancel}>Cancel</Button>
+      </div>
+    </MapCard>
+  );
+}
+
 /** A found position that has not been saved: what it is, where it is, and the one thing to do with it. */
 export function PinCard({
   title,
@@ -342,6 +431,7 @@ export function ContextMenu({
   point,
   bounds,
   coordinates,
+  place,
   onSave,
   onMeasure,
   onDraw,
@@ -351,6 +441,8 @@ export function ContextMenu({
   /** Size of the map area, to keep the menu inside it. */
   bounds: { width: number; height: number };
   coordinates: string;
+  /** The saved place under the point, when there is one: it can be moved from here. */
+  place?: { name: string; onMove: () => void };
   onSave: () => void;
   onMeasure: () => void;
   onDraw: () => void;
@@ -379,7 +471,7 @@ export function ContextMenu({
   }, [onClose]);
 
   const width = 232;
-  const height = 182;
+  const height = place ? 218 : 182;
   const left = Math.max(8, Math.min(point.x, bounds.width - width - 8));
   const top = Math.max(8, Math.min(point.y, bounds.height - height - 8));
   const item =
@@ -388,6 +480,11 @@ export function ContextMenu({
   return (
     <div ref={ref} role="menu" aria-label="At this point" className={cn(mapSurface, "absolute z-30 p-1")} style={{ left, top, width }}>
       <p className="tabular truncate px-2.5 pt-1.5 pb-1 font-mono text-micro text-ink-muted">{coordinates}</p>
+      {place ? (
+        <button type="button" role="menuitem" className={item} onClick={place.onMove}>
+          <span className="truncate">Move “{place.name}”</span>
+        </button>
+      ) : null}
       <button type="button" role="menuitem" className={item} onClick={onSave}>
         Save a place here
       </button>

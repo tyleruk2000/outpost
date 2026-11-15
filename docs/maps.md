@@ -1,8 +1,9 @@
 # Offline maps
 
-This page covers downloading map regions and choosing where they are kept, where the
-map data comes from and how it must be credited, using your own map source, markers,
-drawing routes and importing GPX tracks, coordinate formats, and offline place search.
+This page covers downloading map regions and choosing where they are kept, hill
+shading and contour lines, where the map data comes from and how it must be credited,
+using your own map source, markers and moving them, drawing routes and importing GPX
+tracks, coordinate formats, and offline place search.
 
 Outpost draws a vector map in the browser from tiles it serves itself. Once a region
 is installed, viewing it needs no internet connection.
@@ -18,6 +19,8 @@ that has three tabs.
 
 - **Places** lists your saved places. **Save a place** drops a pin you can drag; give
   it a name, a note, a colour, and mark it a favourite to keep it named on the map.
+  A saved place can be moved without opening it (see
+  [Moving a saved place](#moving-a-saved-place)).
 - **Routes** lists routes you have drawn and GPX tracks you have imported. Open one
   for its distance, ascent and an elevation profile; move along the profile and the
   matching point is shown on the map. **Draw a route** places one point by point (see
@@ -35,7 +38,9 @@ On the map itself:
   [Coordinate formats](#coordinate-formats), or a British grid reference.
 - The **ruler** measures a path you click out, in kilometres and miles. **Save as a
   route** keeps the measured path as a route.
-- **Hill shading** appears as a button once terrain is installed for the area in view.
+- **Hill shading** appears as a button once terrain is installed.
+- **Contour lines** is the button below it (see [Contour lines](#contour-lines)). It
+  is always there: pressed where there is nothing to draw them from, it says so.
 - The readout at the bottom shows the centre of the map; choose decimal degrees,
   degrees-minutes-seconds or British National Grid, and copy it.
 - Right-click (or press and hold) for "Save a place here", "Measure from here", "Draw
@@ -46,9 +51,8 @@ On the map itself:
 Before any region is installed the map shows a plain outline of the world, which
 ships with Outpost, and offers the world overview as a first download.
 
-Not there yet: the download box is adjusted by its corners only; saved places are
-moved by opening them first; "locate me" needs HTTPS, which browsers require for
-location, so it explains this on a plain `http://` LAN address.
+Not there yet: "locate me" needs HTTPS, which browsers require for location, so it
+explains this on a plain `http://` LAN address.
 
 ## How regions work
 
@@ -83,6 +87,22 @@ degrees, a name, and a maximum zoom.
 - West must be less than east. An area that crosses the 180° meridian has to be
   downloaded as two regions.
 - The map ends at about 85° north and south.
+
+On the Maps screen the box is drawn on the map (**Draw a box**) or taken from the view
+(**Use the current view**), and then adjusted by its eight handles:
+
+| Handle | Moves | Pointer or finger | Keyboard |
+| --- | --- | --- | --- |
+| A square on each corner | The two edges that meet there | Drag it | Tab to it, then any arrow key |
+| A bar in the middle of each edge | That edge only; the other three stay put | Drag it | Tab to it, then the arrow keys across the edge (up and down for north and south, left and right for east and west) |
+
+- An arrow key moves a handle 4 pixels on screen; with Shift, 24. Zoom in for finer
+  steps.
+- Each handle is 44 pixels to touch, whatever its drawn size. An edge too short on
+  screen to hold a handle between its corners goes without one until you zoom in; the
+  corners still do everything.
+- A box made too small, or pushed across the 180° meridian, is refused and the box
+  stays as it was.
 
 ### Zoom levels
 
@@ -133,11 +153,12 @@ ids are listed by `GET /api/storage/locations`.
 ### Terrain
 
 Asking for terrain (`includeTerrain: true` in the API) downloads a second file for the
-same box: elevation tiles, used for hill shading and for the heights of routes you
-draw. Terrain stops at zoom 12 whatever maximum you chose. Both files must fit before
-either download starts.
+same box: elevation tiles, used for hill shading, for contour lines and for the heights
+of routes you draw. Terrain stops at zoom 12 whatever maximum you chose. Both files
+must fit before either download starts.
 
-Terrain is optional. Without it the map is flat, and a drawn route has no heights.
+Terrain is optional. Without it the map is flat, with no contour lines, and a drawn
+route has no heights.
 
 ### While it downloads
 
@@ -145,6 +166,46 @@ A region is fetched by the same download manager as everything else: it appears 
 **Downloads**, can be paused and resumed, survives a restart, and continues from where
 it stopped. If the day's map build is withdrawn before a download finishes, Outpost
 starts that download again from the newest build and says so.
+
+## Contour lines
+
+**Contour lines are drawn on your device from the terrain you have already
+downloaded.** There is no contour download, no tile server and no request to the
+internet: the browser reads the same elevation tiles that shade the hills, traces
+lines of equal height through them, and draws those. Switch them on with the
+**Contour lines** button under **Hill shading**; the choice is remembered in the
+browser, like the other map preferences. They work with hill shading on or off.
+
+The height between lines follows the zoom, in metres:
+
+| Zoom | Every line | Index line (heavier, with its height written on it) |
+| --- | --- | --- |
+| Below 9 | none | none |
+| 9 | 200 m | 1,000 m |
+| 10 | 100 m | 500 m |
+| 11 and 12 | 50 m | 250 m |
+| 13 and 14 | 20 m | 100 m |
+| 15 and closer | 10 m | 50 m |
+
+- Heights are in metres above sea level, written on index lines as "450 m".
+- The line at sea level is left out: the coast is already drawn, from better data.
+- Lines stop at the edge of the terrain you have. Pressed where there is none, the
+  button says so and offers **Offline maps**; pressed with the map too far out, it says
+  to zoom in. With no terrain on the device at all it stays off and says what to
+  download.
+- **They are only as fine as the terrain.** Terrain stops at zoom 12, a grid with cells
+  some 10 m or more across, so a 10 m line is an interpolation between those cells. It
+  shows the shape of a hillside well; it does not show a crag, a small knoll or a
+  narrow gully, and it is not a surveyed contour. Do not rely on it where a few metres
+  matter.
+- Tracing happens in a background worker, so the map stays responsive, and what has
+  been traced is kept while the page is open. The first look at a new area takes a
+  moment longer than hill shading does.
+- A browser needs `OffscreenCanvas` in workers for this (every current browser; Safari
+  from 16.4). In one that lacks it the button says contour lines cannot be drawn.
+
+The tracing is done by [maplibre-contour](https://github.com/onthegomap/maplibre-contour)
+(BSD-3-Clause), built into Outpost and served from it like the rest of the app.
 
 ## Where the data comes from
 
@@ -156,9 +217,11 @@ starts that download again from the newest build and says so.
 | A simple world outline drawn beneath the map, and the boxes of the country presets | Natural Earth 1:110m | Public domain | "Natural Earth" |
 | Map style | Protomaps basemap styles | BSD-3-Clause | |
 | Map label fonts | Noto Sans | SIL Open Font License 1.1 | |
+| Contour lines | Traced on your device from the terrain above, by maplibre-contour (code, BSD-3-Clause) | As the terrain | "© Mapterhorn" |
 
-The first three are downloaded by you, on request. The outline, style, fonts and map
-icons are bundled with Outpost.
+The first three are downloaded by you, on request. The outline, style, fonts, map
+icons and the code that traces contour lines are bundled with Outpost. The terrain
+credit is shown while hill shading or contour lines are on.
 
 ### Attribution you must keep
 
@@ -222,6 +285,29 @@ curl -X POST "http://localhost:8080/api/maps/import" \
 A marker is a named point with an optional note, one of seven colours (teal, amber,
 red, green, blue, violet, slate), a favourite flag, and optionally a link to one of
 your note pages. Markers are found by the app-wide search.
+
+### Moving a saved place
+
+A saved place can be moved straight from the map, without opening it. **Nothing is
+kept until you choose "Save new position"**, and a move that has been saved can be
+undone from the message that confirms it.
+
+| To | Pointer or finger | Keyboard |
+| --- | --- | --- |
+| Start moving a place | Press and hold it on the map for half a second, then drag; or right-click it and choose **Move**; or the move button beside it in the Places list | The move button beside it in the Places list |
+| Move the pin | Drag it, as often as you like | The arrow keys while the pin has the keyboard (it does as soon as the move starts): 4 pixels a press, 24 with Shift |
+| Keep the new position | **Save new position** | Enter on the pin, or **Save new position** |
+| Put it back | **Cancel**, or the × on the card | Escape |
+
+- A drag that merely starts on a place moves the map, as anywhere else. Only a press
+  held still picks a place up, so one is not moved by accident while panning, with a
+  finger or a mouse.
+- While a place is being moved it is shown as a pin, and a card over the map says how
+  far it now is from where it is saved.
+- Places cannot be picked up while you are drawing a route, measuring, or have another
+  place open: finish that first.
+- Opening a place still works as before, and its pin can be dragged or moved with the
+  arrow keys in the same way; **Save changes** keeps the new position.
 
 ## Drawing a route
 
@@ -378,8 +464,9 @@ matches, by population, and by distance from a point when one is given
 
 ## What is not included
 
-- **Contour lines.** Hill shading is available with a terrain download; contours are
-  not drawn.
+- **Surveyed contours and other topographic detail.** Contour lines are traced from
+  the downloaded terrain (see [Contour lines](#contour-lines)) and are only as fine as
+  it is. Crags, scree, spot heights and the like are not drawn.
 - **Routing.** Outpost does not calculate routes or directions. A route is either
   imported from a GPX file or drawn by hand as straight lines between points; it never
   snaps to paths or roads.

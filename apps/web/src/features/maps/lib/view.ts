@@ -76,6 +76,7 @@ export const STORAGE_KEYS = {
   coordinateFormat: "outpost.maps.coordinates",
   hiddenTracks: "outpost.maps.hiddenTracks",
   hillshade: "outpost.maps.hillshade",
+  contours: "outpost.maps.contours",
   panel: "outpost.maps.panel",
   firstUseDismissed: "outpost.maps.firstUseDismissed",
   /** The storage location the last map download went to. */

@@ -40,6 +40,7 @@
   background: var(--pin-color, var(--primary));
   box-shadow: var(--shadow-float);
   transform: rotate(-45deg);
+  transition: scale var(--duration) var(--ease-out);
 }
 .outpost-pin > span::after {
   content: "";
@@ -49,9 +50,28 @@
   background: var(--page);
 }
 
-/* Corner of the download box. Small to look at, 44px to touch. */
+/* A pin that has the keyboard: the ring follows the pin's own shape rather than its square target. */
+.outpost-pin:focus-visible {
+  outline: none;
+}
+.outpost-pin:focus-visible > span {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+/* Picked up from the map and being carried: lifted a little, so it reads as in hand. */
+.outpost-pin[data-carried="true"] > span {
+  scale: 1.18;
+}
+@media (prefers-reduced-motion: reduce) {
+  .outpost-pin > span {
+    transition: none;
+  }
+}
+
+/* Handles of the download box: a square on each corner, a bar in the middle of each edge.
+   Small to look at, 44px to touch. */
 .outpost-box-handle {
-  position: relative;
+  position: absolute;
   width: 14px;
   height: 14px;
   border: 2px solid var(--primary);
@@ -60,8 +80,43 @@
   cursor: move;
   touch-action: none;
 }
+/* The target is measured from inside the 2px border: 10 + 2 × 17 = 44. */
 .outpost-box-handle::before {
   content: "";
   position: absolute;
-  inset: -15px;
+  inset: -17px;
+}
+.outpost-box-handle[data-handle="nw"],
+.outpost-box-handle[data-handle="se"] {
+  cursor: nwse-resize;
+}
+.outpost-box-handle[data-handle="ne"],
+.outpost-box-handle[data-handle="sw"] {
+  cursor: nesw-resize;
+}
+.outpost-box-handle[data-handle="n"],
+.outpost-box-handle[data-handle="s"] {
+  width: 24px;
+  height: 10px;
+  cursor: ns-resize;
+}
+.outpost-box-handle[data-handle="n"]::before,
+.outpost-box-handle[data-handle="s"]::before {
+  inset: -19px -12px;
+}
+.outpost-box-handle[data-handle="e"],
+.outpost-box-handle[data-handle="w"] {
+  width: 10px;
+  height: 24px;
+  cursor: ew-resize;
+}
+.outpost-box-handle[data-handle="e"]::before,
+.outpost-box-handle[data-handle="w"]::before {
+  inset: -12px -19px;
+}
+/* The handle that has the keyboard is filled as well as ringed, so it stands out from the other seven. */
+.outpost-box-handle:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+  background: var(--primary);
 }

@@ -127,11 +127,11 @@ export interface Credit {
 }
 
 /** The credits for what is on screen now. */
-export function creditsFor(attributions: MapAttribution[], options: { hasTiles: boolean; hillshade: boolean }): Credit[] {
+export function creditsFor(attributions: MapAttribution[], options: { hasTiles: boolean; terrain: boolean }): Credit[] {
   const credits: Credit[] = [];
   for (const attribution of attributions) {
-    // Terrain is credited only while hill shading is drawn from it.
-    if (attribution.name === "Mapterhorn" && !options.hillshade) continue;
+    // Terrain is credited only while something is drawn from it: hill shading, contour lines, or both.
+    if (attribution.name === "Mapterhorn" && !options.terrain) continue;
     credits.push({ key: attribution.name, parts: parseAttribution(attribution.html) });
   }
   // The outline map underneath shows wherever no region is installed.

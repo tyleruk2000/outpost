@@ -8,7 +8,7 @@
  * lists in the panel still work.
  */
 import "./maps.css";
-import { ACTIVE_DOWNLOAD_STATES, type MarkerDto, type TrackDto } from "@outpost/shared";
+import { ACTIVE_DOWNLOAD_STATES, haversineMeters, type MarkerDto, type TrackDto } from "@outpost/shared";
 import { CircleAlert, FileUp, PanelLeftOpen } from "lucide-react";
 import { type DragEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router";
@@ -31,8 +31,9 @@ import {
   useTracks,
 } from "./data";
 import { useGeolocation, useIsDesktop, useMapTheme, useStoredState } from "./hooks";
+import { type ContourReach, contourReach, contoursSupported } from "./lib/contours";
 import { formatPosition, isReadoutFormat, type ReadoutFormat } from "./lib/coords";
-import type { LatLon } from "./lib/geo";
+import { formatDistance, type LatLon } from "./lib/geo";
 import { MARKER_HEX } from "./lib/palette";
 import {
   addPoint,
@@ -59,9 +60,9 @@ import {
   withView,
   writeStored,
 } from "./lib/view";
-import type { MapEngine } from "./map/engine";
+import type { MapEngine, MapHit } from "./map/engine";
 import { coverageData, EMPTY, locationData, markersData, measureData, pointData, tracksData } from "./map/overlays";
-import { ContextMenu, DrawCard, MapCard, MapControls, MeasureCard, PinCard, type Tool } from "./map-chrome";
+import { CONTOUR_NOTES, ContextMenu, DrawCard, MapCard, MapControls, MeasureCard, MoveCard, PinCard, type Tool } from "./map-chrome";
 import { creditsFor, MapFooter } from "./map-footer";
 import { type OfflineIntent, OfflinePanel } from "./panels/offline";
 import { draftOf, type PlaceDraft, PlaceEditor, PlacesList } from "./panels/places";
@@ -81,6 +82,13 @@ const isPanelState = (value: unknown): value is PanelState =>
   (PANEL_TABS as readonly unknown[]).includes((value as PanelState).tab);
 const isBoolean = (value: unknown): value is boolean => typeof value === "boolean";
 const isStringArray = (value: unknown): value is string[] => Array.isArray(value) && value.every((item) => typeof item === "string");
+
+/** A saved place being moved on the map without being opened: where its pin is now. Nothing is kept until it is saved. */
+interface PlaceMove {
+  id: string;
+  lat: number;
+  lon: number;
+}
 
 /** A found position that has not been saved. */
 interface Pin {
@@ -155,6 +163,7 @@ export default function MapsPage() {
 
   const [format, setFormat] = useStoredState<ReadoutFormat>(STORAGE_KEYS.coordinateFormat, isReadoutFormat, "decimal");
   const [hillshade, setHillshade] = useStoredState(STORAGE_KEYS.hillshade, isBoolean, true);
+  const [contours, setContours] = useStoredState(STORAGE_KEYS.contours, isBoolean, false);
   const [hiddenTracks, setHiddenTracks] = useStoredState(STORAGE_KEYS.hiddenTracks, isStringArray, []);
   const [panel, setPanel] = useStoredState<PanelState>(STORAGE_KEYS.panel, isPanelState, { open: true, tab: "places" });
   const [detent, setDetent] = useState<Detent>("peek");
@@ -172,10 +181,13 @@ export default function MapsPage() {
   const nameShown = useCallback(() => setNameRequested(false), []);
   const [measurePoints, setMeasurePoints] = useState<LatLon[]>([]);
   const [draft, setDraft] = useState<PlaceDraft | null>(null);
+  const [moving, setMoving] = useState<PlaceMove | null>(null);
+  /** What had the keyboard when a move began from the list, to give it back when the move ends. */
+  const moveReturnFocus = useRef<HTMLElement | null>(null);
   const [pin, setPin] = useState<Pin | null>(null);
   const [trackId, setTrackId] = useState<string | null>(null);
   const [profilePoint, setProfilePoint] = useState<LatLon | null>(null);
-  const [contextMenu, setContextMenu] = useState<{ position: LatLon; point: { x: number; y: number } } | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ position: LatLon; point: { x: number; y: number }; hit: MapHit | null } | null>(null);
   const [importFiles, setImportFiles] = useState<File[] | null>(null);
   const [dropping, setDropping] = useState(false);
   const [offlineIntent, setOfflineIntent] = useState<OfflineIntent>(null);
@@ -193,8 +205,8 @@ export default function MapsPage() {
 
   const cacheKey = useMemo(() => regionsCacheKey(overview.data?.regions ?? []), [overview.data]);
   const styleInput = useMemo<Omit<StyleInput, "overlays">>(
-    () => ({ sources: sources.data, flavour, theme, hillshade, origin: window.location.origin, cacheKey }),
-    [sources.data, flavour, theme, hillshade, cacheKey],
+    () => ({ sources: sources.data, flavour, theme, hillshade, contours, origin: window.location.origin, cacheKey }),
+    [sources.data, flavour, theme, hillshade, contours, cacheKey],
   );
   const latestStyle = useRef(styleInput);
   latestStyle.current = styleInput;
@@ -302,6 +314,7 @@ export default function MapsPage() {
     (marker: MarkerDto, fly = true) => {
       setPin(null);
       setTrackId(null);
+      setMoving(null);
       setDraft(draftOf(marker));
       showPanel("places");
       if (fly) engine?.flyTo({ lat: marker.lat, lon: marker.lon });
@@ -312,6 +325,7 @@ export default function MapsPage() {
   const openTrack = useCallback(
     (track: TrackDto, fit = true) => {
       setDraft(null);
+      setMoving(null);
       setPin(null);
       setTrackId(track.id);
       // Opening a route is asking to see it.
@@ -326,6 +340,7 @@ export default function MapsPage() {
     (position: LatLon, name = "") => {
       setPin(null);
       setTrackId(null);
+      setMoving(null);
       setContextMenu(null);
       setTool("browse");
       setDraft({ name, note: "", color: "teal", isFavorite: false, lat: position.lat, lon: position.lon });
@@ -347,6 +362,7 @@ export default function MapsPage() {
       setContextMenu(null);
       setPin(null);
       setDraft(null);
+      setMoving(null);
       setMeasurePoints([]);
       resetSaveRoute();
       const reshaping = from && !from.asCopy ? from.track : undefined;
@@ -451,8 +467,9 @@ export default function MapsPage() {
   const selectedTrack = allTracks.find((track) => track.id === trackId) ?? null;
 
   useEffect(() => {
-    engine?.setOverlay("o-markers", markersData(markers.data ?? [], draft?.id ?? null));
-  }, [engine, markers.data, draft?.id]);
+    // The place being edited or moved is shown as a pin instead of its dot.
+    engine?.setOverlay("o-markers", markersData(markers.data ?? [], moving?.id ?? draft?.id ?? null));
+  }, [engine, markers.data, draft?.id, moving?.id]);
 
   // The route whose shape is being changed is drawn by the drawing tool instead, with its points.
   const reshapingId = routeDraft?.trackId ?? null;
@@ -518,27 +535,110 @@ export default function MapsPage() {
     engine?.setOverlay("o-coverage", offlineVisible ? coverageData(overview.data?.regions ?? []) : EMPTY);
   }, [engine, offlineVisible, overview.data]);
 
+  const movingMarker = moving ? markers.data?.find((marker) => marker.id === moving.id) : undefined;
   useEffect(() => {
     if (!engine) return;
-    if (draft)
+    const howToMove = "Drag to move, or use the arrow keys; Shift moves it further.";
+    if (moving && movingMarker)
+      engine.setPin({
+        position: { lat: moving.lat, lon: moving.lon },
+        color: MARKER_HEX[movingMarker.color],
+        draggable: true,
+        label: `${movingMarker.name}. ${howToMove} Enter saves the new position.`,
+      });
+    else if (draft)
       engine.setPin({
         position: { lat: draft.lat, lon: draft.lon },
         color: MARKER_HEX[draft.color],
         draggable: true,
-        label: `${draft.name || "New place"}. Drag to move.`,
+        label: `${draft.name || "New place"}. ${howToMove}`,
       });
     else if (pin) engine.setPin({ position: pin.position, color: theme.primary, draggable: false, label: pin.title });
     else engine.setPin(null);
-  }, [engine, draft, pin, theme.primary]);
+  }, [engine, draft, moving, movingMarker, pin, theme.primary]);
 
   useEffect(() => {
     if (!engine) return;
-    return engine.on("pindrag", (position) =>
-      setDraft((current) =>
-        current ? { ...current, lat: Number(position.lat.toFixed(6)), lon: Number(position.lon.toFixed(6)) } : current,
-      ),
-    );
+    return engine.on("pindrag", (position) => {
+      const at = { lat: Number(position.lat.toFixed(6)), lon: Number(position.lon.toFixed(6)) };
+      // Only one of the two has the pin at a time.
+      setMoving((current) => (current ? { ...current, ...at } : current));
+      setDraft((current) => (current ? { ...current, ...at } : current));
+    });
   }, [engine]);
+
+  // ── Moving a saved place without opening it ──
+
+  /**
+   * Turns a saved place into a pin that can be dragged or stepped with the arrow keys.
+   * It starts from a press held on the place, from the map's menu, or from the list.
+   */
+  const startMove = useCallback(
+    (marker: MarkerDto, from: "map" | "list") => {
+      moveReturnFocus.current = from === "list" && document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      setContextMenu(null);
+      setPin(null);
+      setDraft(null);
+      setMoving({ id: marker.id, lat: marker.lat, lon: marker.lon });
+      if (from === "list") {
+        // The list may be covering the place, or the place may be somewhere else entirely.
+        setDetent("peek");
+        engine?.flyTo({ lat: marker.lat, lon: marker.lon });
+      }
+    },
+    [engine],
+  );
+
+  const endMove = useCallback(() => {
+    const pinHadKeyboard = document.activeElement?.classList.contains("outpost-pin") ?? false;
+    const back = moveReturnFocus.current;
+    moveReturnFocus.current = null;
+    setMoving(null);
+    // The pin is about to go; the keyboard goes back to where the move began, or to the map.
+    if (back?.isConnected) back.focus();
+    else if (pinHadKeyboard) engine?.focus();
+  }, [engine]);
+
+  const saveMove = () => {
+    if (!moving || !movingMarker || saveMarker.isPending) return;
+    const { id, name } = movingMarker;
+    const from = { lat: movingMarker.lat, lon: movingMarker.lon };
+    const meters = haversineMeters(from.lat, from.lon, moving.lat, moving.lon);
+    if (meters < 1) return;
+    // The same request that "Save changes" on an opened place makes, with only the position in it.
+    saveMarker.mutate(
+      { id, lat: moving.lat, lon: moving.lon },
+      {
+        onSuccess: () => {
+          endMove();
+          toast.success(`Moved “${name}” ${formatDistance(meters)}.`, {
+            action: {
+              label: "Undo",
+              onClick: () => saveMarker.mutate({ id, ...from }, { onSuccess: () => toast.success(`“${name}” is back where it was.`) }),
+            },
+          });
+        },
+      },
+    );
+  };
+
+  // The pin exists once the effect above has run; give it the keyboard so the arrow keys work at once.
+  const movingId = moving?.id;
+  const movingReady = Boolean(movingMarker);
+  useEffect(() => {
+    if (engine && movingId && movingReady) engine.focusPin();
+  }, [engine, movingId, movingReady]);
+
+  // A place deleted from somewhere else while it was being moved has nothing left to move.
+  useEffect(() => {
+    if (moving && markers.data && !movingMarker) setMoving(null);
+  }, [moving, markers.data, movingMarker]);
+
+  // Places can be picked up only while nothing else is in hand: not mid-route, not while another place is open.
+  const placesMovable = tool === "browse" && !draft && !moving;
+  useEffect(() => {
+    engine?.setPlacesMovable(placesMovable);
+  }, [engine, placesMovable]);
 
   useEffect(() => {
     engine?.setCursor(tool === "browse" ? "" : "crosshair");
@@ -554,8 +654,28 @@ export default function MapsPage() {
 
   // ── What the person does on the map ──
 
-  const latest = useRef({ tool, markers: markers.data, tracks: tracks.data, openMarker, openTrack, startPlace, addRoutePoint });
-  latest.current = { tool, markers: markers.data, tracks: tracks.data, openMarker, openTrack, startPlace, addRoutePoint };
+  const latest = useRef({
+    tool,
+    markers: markers.data,
+    tracks: tracks.data,
+    openMarker,
+    openTrack,
+    startPlace,
+    addRoutePoint,
+    startMove,
+    saveMove,
+  });
+  latest.current = {
+    tool,
+    markers: markers.data,
+    tracks: tracks.data,
+    openMarker,
+    openTrack,
+    startPlace,
+    addRoutePoint,
+    startMove,
+    saveMove,
+  };
 
   useEffect(() => {
     if (!engine) return;
@@ -586,9 +706,16 @@ export default function MapsPage() {
     const offContext = engine.on("context", (event) => {
       if (latest.current.tool === "browse") setContextMenu(event);
     });
+    const offPick = engine.on("placepick", ({ id }) => {
+      const marker = latest.current.markers?.find((item) => item.id === id);
+      if (marker) latest.current.startMove(marker, "map");
+    });
+    const offConfirm = engine.on("pinconfirm", () => latest.current.saveMove());
     return () => {
       offClick();
       offContext();
+      offPick();
+      offConfirm();
     };
   }, [engine]);
 
@@ -604,6 +731,11 @@ export default function MapsPage() {
     const onKey = (event: KeyboardEvent) => {
       if (event.defaultPrevented || document.querySelector('[role="dialog"],[role="alertdialog"],[role="menu"]')) return;
       if (event.key === "Escape") {
+        if (moving) {
+          event.preventDefault();
+          endMove();
+          return;
+        }
         if (tool === "browse") return;
         event.preventDefault();
         if (tool === "draw") closeDrawing();
@@ -626,12 +758,13 @@ export default function MapsPage() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [tool, leaveTool, closeDrawing, stepRoute, addAtCentre]);
+  }, [tool, moving, endMove, leaveTool, closeDrawing, stepRoute, addAtCentre]);
 
   const takeUpTool = (next: Tool) => {
     if (next === "browse") return leaveTool();
     if (next === "draw") return startDrawing();
     setMeasurePoints([]);
+    setMoving(null);
     setTool(next);
     // On a phone the sheet would cover the map being clicked on.
     setDetent("peek");
@@ -683,6 +816,7 @@ export default function MapsPage() {
     if (result.kind === "track") return openTrack(result.track);
     if (!result.position) return;
     setDraft(null);
+    setMoving(null);
     setTrackId(null);
     setPin({ title: result.title, detail: result.detail, position: result.position });
     setDetent("peek");
@@ -733,8 +867,10 @@ export default function MapsPage() {
     (download) => download.kind === "map" && ACTIVE_DOWNLOAD_STATES.includes(download.state),
   );
   const credits = useMemo(
-    () => creditsFor(sources.data?.attributions ?? [], { hasTiles, hillshade: hillshade && (sources.data?.hasTerrain ?? false) }),
-    [sources.data, hasTiles, hillshade],
+    // Contour lines are drawn from the same terrain as the hill shading, and credit it the same way.
+    () =>
+      creditsFor(sources.data?.attributions ?? [], { hasTiles, terrain: (hillshade || contours) && (sources.data?.hasTerrain ?? false) }),
+    [sources.data, hasTiles, hillshade, contours],
   );
   const firstUse = sources.isSuccess && !hasTiles && !mapDownloading && !firstUseDismissed && !offlineVisible;
   const openOffline = (intent: OfflineIntent) => {
@@ -742,11 +878,58 @@ export default function MapsPage() {
     showPanel("offline");
   };
   const clearIntent = useCallback(() => setOfflineIntent(null), []);
+
+  // ── Contour lines ──
+
+  /** The boxes of the terrain that can be read right now: what contour lines can be drawn from. */
+  const terrainBoxes = useMemo(
+    () =>
+      (overview.data?.regions ?? [])
+        .filter(
+          (region) => region.tileType === "terrain" && region.available && (region.status === "installed" || region.status === "moving"),
+        )
+        .map((region) => region.bounds),
+    [overview.data],
+  );
+  const [reach, setReach] = useState<ContourReach>("drawn");
+  useEffect(() => {
+    if (!engine) return;
+    const update = () => setReach(contourReach({ bounds: engine.getBounds(), zoom: engine.getZoom() }, terrainBoxes));
+    update();
+    return engine.on("moveend", update);
+  }, [engine, terrainBoxes]);
+
+  const changeContours = (on: boolean) => {
+    if (!on) return setContours(false);
+    if (!contoursSupported()) {
+      toast.error("This browser cannot draw contour lines. An up-to-date browser can.");
+      return;
+    }
+    const now = engine ? contourReach({ bounds: engine.getBounds(), zoom: engine.getZoom() }, terrainBoxes) : reach;
+    // With no terrain at all there is nothing to switch on yet; the control says what it needs instead.
+    if (now !== "no-terrain") setContours(true);
+    if (now === "drawn") return;
+    toast(
+      CONTOUR_NOTES[now].message,
+      now === "too-far-out" ? undefined : { action: { label: "Offline maps", onClick: () => openOffline({ type: "add" }) } },
+    );
+  };
+
+  /** From the list: whatever tool is in hand is put down first, asking if that would lose a route. */
+  const moveFromList = (marker: MarkerDto) => {
+    if (tool === "draw") return closeDrawing(() => startMove(marker, "list"));
+    leaveTool();
+    startMove(marker, "list");
+  };
   const lowerSheet = useCallback(() => setDetent("peek"), []);
   const raiseSheet = useCallback(() => setDetent("full"), []);
   const terrainBounds = sources.data?.sources.terrain?.bounds ?? null;
   /** Whether the drawing tool's panel is on screen; when it is not, a card over the map stands in for it. */
   const editorVisible = panel.tab === "routes" && (isDesktop ? panel.open : detent !== "peek");
+
+  /** The saved place under a right-click, when places can be moved: the menu offers to move it. */
+  const contextPlace =
+    placesMovable && contextMenu?.hit?.type === "marker" ? markers.data?.find((marker) => marker.id === contextMenu.hit?.id) : undefined;
 
   const tabs = (
     <PanelTabs
@@ -774,6 +957,7 @@ export default function MapsPage() {
             markers={markers}
             onOpen={(marker) => openMarker(marker)}
             onToggleFavourite={(marker) => saveMarker.mutate({ id: marker.id, isFavorite: !marker.isFavorite })}
+            onMove={engine ? moveFromList : undefined}
             onAdd={() => changeTool("add-place")}
             canAddOnMap={Boolean(engine)}
           />
@@ -850,6 +1034,14 @@ export default function MapsPage() {
         onClear={() => setMeasurePoints([])}
         onDone={leaveTool}
         onSaveAsRoute={() => startDrawing(measurePoints)}
+      />
+    ) : moving && movingMarker ? (
+      <MoveCard
+        name={movingMarker.name}
+        movedMeters={haversineMeters(movingMarker.lat, movingMarker.lon, moving.lat, moving.lon)}
+        saving={saveMarker.isPending}
+        onSave={saveMove}
+        onCancel={endMove}
       />
     ) : routeDraft && !editorVisible ? (
       <DrawCard
@@ -987,6 +1179,9 @@ export default function MapsPage() {
             onLocate={() => (locate.state === "off" ? locate.start() : locate.stop())}
             hillshade={sources.data?.hasTerrain ? hillshade : undefined}
             onHillshadeChange={setHillshade}
+            contours={contours}
+            contourReach={reach}
+            onContoursChange={changeContours}
             disabled={!engine}
           />
         </div>
@@ -1034,6 +1229,7 @@ export default function MapsPage() {
             point={contextMenu.point}
             bounds={{ width: area.current.clientWidth, height: area.current.clientHeight }}
             coordinates={formatPosition(contextMenu.position.lat, contextMenu.position.lon, format, engine?.getZoom()).text}
+            place={contextPlace ? { name: contextPlace.name, onMove: () => startMove(contextPlace, "map") } : undefined}
             onSave={() => startPlace(contextMenu.position)}
             onMeasure={() => {
               setContextMenu(null);

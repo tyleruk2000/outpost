@@ -60,6 +60,13 @@ export function readMapTheme(): { flavour: MapFlavour; theme: MapTheme } {
   const water =
     flavour === "dark" ? hex("--spine", fallback.water) : soft && primary ? oklchToHex(mixOklch(soft, primary, 0.2)) : fallback.water;
 
+  // Contour lines are the earth brown of a printed map: the hue of the warning token, which is the
+  // only warm token that is not the lamp, quietened towards the muted ink so that a hillside of
+  // lines never reads as a screenful of amber.
+  const warm = parseOklch(token("--warning"));
+  const muted = parseOklch(token("--ink-muted"));
+  const contour = warm && muted ? oklchToHex({ l: (warm.l + muted.l) / 2, c: warm.c * 0.65, h: warm.h }) : fallback.contour;
+
   return {
     flavour,
     theme: {
@@ -74,6 +81,7 @@ export function readMapTheme(): { flavour: MapFlavour; theme: MapTheme } {
       inkMuted: hex("--ink-muted", fallback.inkMuted),
       primary: hex("--primary", fallback.primary),
       lamp: hex("--lamp", fallback.lamp),
+      contour,
     },
   };
 }

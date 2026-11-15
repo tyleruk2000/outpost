@@ -4,13 +4,21 @@
  * Bottom to top: a water-coloured background; the world's land and country outlines
  * from two small files shipped with the app, so the map is never blank; the Protomaps
  * basemap layers over Outpost's own tile endpoint, when any region is installed; hill
- * shading, when asked for and installed; then whatever overlays the caller adds
- * (tracks, saved places, the measuring line).
+ * shading and contour lines, when asked for and terrain is installed; then whatever
+ * overlays the caller adds (tracks, saved places, the measuring line).
  *
  * Nothing here touches MapLibre itself, so the result can be checked in tests.
  */
 import type { MapSources } from "@outpost/shared";
 import { type Flavor, namedFlavor, layers as protomapsLayers } from "@protomaps/basemaps";
+import {
+  CONTOUR_ELEVATION_KEY,
+  CONTOUR_LEVEL_KEY,
+  CONTOUR_MAX_ZOOM,
+  CONTOUR_MIN_ZOOM,
+  CONTOUR_SOURCE_LAYER,
+  contourTemplate,
+} from "./contours";
 import type { LayerSpecification, SourceSpecification, StyleSpecification } from "./style-types";
 import { tileTemplate } from "./tiles";
 
@@ -31,6 +39,8 @@ export interface MapTheme {
   inkMuted: string;
   primary: string;
   lamp: string;
+  /** Contour lines and the heights written on them: an earth colour that is neither a path nor a stream. */
+  contour: string;
 }
 
 export interface StyleInput {
@@ -39,6 +49,8 @@ export interface StyleInput {
   theme: MapTheme;
   /** Draw hill shading, if terrain is installed. */
   hillshade: boolean;
+  /** Draw contour lines, traced on this device from the same terrain, if any is installed. */
+  contours?: boolean;
   /** `location.origin`: MapLibre wants absolute addresses for glyphs, sprites and data files. */
   origin: string;
   /** Changes when the installed regions change; see `tileTemplate`. */
@@ -52,6 +64,7 @@ export const SOURCE_IDS = {
   countryLabels: "world-country-labels",
   basemap: "basemap",
   terrain: "terrain",
+  contours: "contours",
 } as const;
 export const BASE_LAYER_IDS = {
   background: "background",
@@ -59,6 +72,9 @@ export const BASE_LAYER_IDS = {
   borders: "world-borders",
   countryLabels: "world-country-labels",
   hillshade: "hillshade",
+  contourLines: "contour-lines",
+  contourIndexLines: "contour-index-lines",
+  contourLabels: "contour-labels",
 } as const;
 
 /** Fonts that exist under /map-assets/fonts; a style may name no others. */
@@ -126,7 +142,10 @@ export function tunedFlavor(flavour: MapFlavour, theme: MapTheme): Flavor {
 export function buildStyle(input: StyleInput): StyleSpecification {
   const { sources: installed, flavour, theme, origin } = input;
   const basemap = installed?.hasTiles ? installed.sources.basemap : undefined;
-  const terrain = input.hillshade && installed?.hasTerrain ? installed.sources.terrain : undefined;
+  const installedTerrain = installed?.hasTerrain ? installed.sources.terrain : undefined;
+  const terrain = input.hillshade ? installedTerrain : undefined;
+  const contours = input.contours ? installedTerrain : undefined;
+  const versioned = (template: string) => template + (input.cacheKey ? `?v=${encodeURIComponent(input.cacheKey)}` : "");
 
   const sources: Record<string, SourceSpecification> = {
     [SOURCE_IDS.land]: { type: "geojson", data: `${origin}/world/land.json`, attribution: "Natural Earth" },
@@ -145,6 +164,19 @@ export function buildStyle(input: StyleInput): StyleSpecification {
       paint: { "line-color": theme.outline, "line-width": ["interpolate", ["linear"], ["zoom"], 0, 0.5, 6, 1.2] },
     },
   ];
+
+  // Lines of equal height, traced in the browser from the installed terrain (see contours.ts).
+  // They are a vector source like any other to MapLibre; the address never leaves this device.
+  const contour = contours ? contourLayers(theme) : undefined;
+  if (contours) {
+    sources[SOURCE_IDS.contours] = {
+      type: "vector",
+      tiles: [contourTemplate({ dem: versioned(contours.tiles[0] ?? ""), encoding: contours.encoding, maxZoom: contours.maxzoom })],
+      minzoom: CONTOUR_MIN_ZOOM,
+      maxzoom: CONTOUR_MAX_ZOOM,
+      bounds: contours.bounds,
+    };
+  }
 
   if (basemap) {
     sources[SOURCE_IDS.basemap] = {
@@ -166,9 +198,7 @@ export function buildStyle(input: StyleInput): StyleSpecification {
     if (terrain) {
       sources[SOURCE_IDS.terrain] = {
         type: "raster-dem",
-        tiles: terrain.tiles.map(
-          (template) => absolute(origin, template) + (input.cacheKey ? `?v=${encodeURIComponent(input.cacheKey)}` : ""),
-        ),
+        tiles: terrain.tiles.map((template) => versioned(absolute(origin, template))),
         minzoom: terrain.minzoom,
         maxzoom: terrain.maxzoom,
         bounds: terrain.bounds,
@@ -190,8 +220,18 @@ export function buildStyle(input: StyleInput): StyleSpecification {
       const water = detailed.findIndex((layer) => layer.id === "water");
       detailed.splice(water === -1 ? detailed.length : water, 0, hillshade);
     }
+    if (contour) {
+      // Lines over the shaded land and under the water, roads and buildings; the heights
+      // under every other name on the map, so a place name always wins the room.
+      const water = detailed.findIndex((layer) => layer.id === "water");
+      detailed.splice(water === -1 ? detailed.length : water, 0, ...contour.lines);
+      const firstLabel = detailed.findIndex((layer) => layer.type === "symbol");
+      detailed.splice(firstLabel === -1 ? detailed.length : firstLabel, 0, contour.labels);
+    }
     layers.push(...detailed);
   } else {
+    // Terrain without a detailed map (an imported archive, say): the lines still have the outline map to sit on.
+    if (contour) layers.push(...contour.lines, contour.labels);
     // With nothing downloaded there are no place labels at all; name the countries so the outline map can be read.
     layers.push({
       id: BASE_LAYER_IDS.countryLabels,
@@ -220,6 +260,67 @@ export function buildStyle(input: StyleInput): StyleSpecification {
     sprite: absolute(origin, installed?.sprites[flavour] ?? `/map-assets/sprites/v4/${flavour}`),
     sources,
     layers,
+  };
+}
+
+/** Any layer but the background: one that draws data from a source. */
+type DrawnLayer = Exclude<LayerSpecification, { type: "background" }>;
+type FilterSpecification = NonNullable<DrawnLayer["filter"]>;
+
+/**
+ * Contour lines in three layers: every line, thin; index lines, heavier; and the height
+ * in metres written along each index line. One colour throughout, kept quiet by weight
+ * and opacity so that roads, paths and names stay in front.
+ */
+function contourLayers(theme: MapTheme): { lines: DrawnLayer[]; labels: DrawnLayer } {
+  const shared = { source: SOURCE_IDS.contours, "source-layer": CONTOUR_SOURCE_LAYER } as const;
+  const isIndex: FilterSpecification = ["==", ["get", CONTOUR_LEVEL_KEY], 1];
+  // Sea level is left out. The coast is already drawn, from better data, and a line at 0 m
+  // only traces tidal flats and the seams where the terrain's sources meet the sea.
+  const aboveOrBelowSea: FilterSpecification = ["!=", ["get", CONTOUR_ELEVATION_KEY], 0];
+  return {
+    lines: [
+      {
+        id: BASE_LAYER_IDS.contourLines,
+        type: "line",
+        ...shared,
+        filter: ["all", ["!", isIndex], aboveOrBelowSea],
+        layout: { "line-join": "round" },
+        paint: {
+          "line-color": theme.contour,
+          "line-opacity": 0.55,
+          "line-width": ["interpolate", ["linear"], ["zoom"], CONTOUR_MIN_ZOOM, 0.5, 13, 0.7, 16, 1],
+        },
+      },
+      {
+        id: BASE_LAYER_IDS.contourIndexLines,
+        type: "line",
+        ...shared,
+        filter: ["all", isIndex, aboveOrBelowSea],
+        layout: { "line-join": "round" },
+        paint: {
+          "line-color": theme.contour,
+          "line-opacity": 0.85,
+          "line-width": ["interpolate", ["linear"], ["zoom"], CONTOUR_MIN_ZOOM, 1, 13, 1.4, 16, 1.9],
+        },
+      },
+    ],
+    labels: {
+      id: BASE_LAYER_IDS.contourLabels,
+      type: "symbol",
+      ...shared,
+      filter: ["all", isIndex, aboveOrBelowSea],
+      layout: {
+        "symbol-placement": "line",
+        "symbol-spacing": 280,
+        "text-field": ["concat", ["to-string", ["get", CONTOUR_ELEVATION_KEY]], " m"],
+        "text-font": [MAP_FONTS.regular],
+        "text-size": ["interpolate", ["linear"], ["zoom"], CONTOUR_MIN_ZOOM, 10, 14, 11.5],
+        "text-max-angle": 38,
+        "text-padding": 6,
+      },
+      paint: { "text-color": theme.contour, "text-halo-color": theme.land, "text-halo-width": 1.5 },
+    },
   };
 }
 

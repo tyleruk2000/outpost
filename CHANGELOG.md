@@ -144,6 +144,12 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 - A Maps screen: saved places, routes with elevation profiles, distance measuring,
   hill shading, drawing a box to download with its exact size shown first, and a
   three-position sheet on phones.
+- Contour lines traced in the browser from installed terrain: nothing more to
+  download, spacing that follows the zoom, index lines labelled with their height.
+- The download box adjusted by handles on its edges as well as its corners, with the
+  pointer or the arrow keys.
+- Moving a saved place straight from the map (press and hold, the map's menu, or the
+  list), by pointer or keyboard, with the new position confirmed before it is kept.
 
 #### Portable drives
 
@@ -199,8 +205,8 @@ These are deliberate or known, and are explained in
   installations without Docker. On a portable drive they cannot be opened on Windows,
   because the Kiwix project publishes no Windows build of its reader at the version
   used.
-- **Maps** draw the Protomaps basemap schema only. There are no contour lines and no
-  routing, and hill shading needs a separate terrain download.
+- **Maps** draw the Protomaps basemap schema only. There is no routing, and hill
+  shading and contour lines need a separate terrain download.
 - **New map downloads depend on the map source staying available.** The source address
   is a setting, and any compatible archive works, including one you host.
 - **Notes** have conflict detection but no live co-editing.
