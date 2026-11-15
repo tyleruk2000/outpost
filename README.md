@@ -18,10 +18,12 @@ It is built for study, research, travel, the outdoors, workshops, and being prep
 | | |
 | --- | --- |
 | ![Reading a Wikipedia article offline](docs/screenshots/reader.png) | ![The notes editor](docs/screenshots/notes.png) |
-| ![An offline map with a route](docs/screenshots/maps.png) | ![Choosing collections to download](docs/screenshots/explore.png) |
+| ![An offline map with hill shading and a route](docs/screenshots/maps.png) | ![Choosing collections to download](docs/screenshots/explore.png) |
+| ![The download plan: what is left, how fast, and when it will finish](docs/screenshots/downloads.png) | ![How search works: one question followed through every step](docs/screenshots/how-search-works.png) |
 
-These are screenshots of the running application, taken by the script in
-`e2e/tools/`.
+These are screenshots of the running application with real downloaded content, taken
+by the script in `e2e/tools/`. The route on the map is a test track drawn for the
+picture, not a surveyed path.
 
 ## What it does
 
@@ -43,6 +45,10 @@ These are screenshots of the running application, taken by the script in
 - **One search.** Full-text search across documents, notes, collections and saved
   places, with ranked results, highlighted passages and filters. Optional semantic
   search finds passages by meaning, and hybrid ranking combines the two.
+- **Search you can see into.** *How search works* follows one question of yours
+  through every step (cutting documents into passages, matching words, matching
+  meaning, combining the two, building the context a language model would be given)
+  with the real numbers from your own library.
 - **Storage you control.** Internal disks, USB drives, SSDs and NAS shares. See what
   uses the space, move collections between locations with verification, and unplug a
   drive without losing your library's records.
