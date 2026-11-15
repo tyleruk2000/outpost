@@ -40,7 +40,9 @@
  * outside the ones all three servers document is refused, so a test fails if Outpost
  * starts sending something a real server might not understand.
  *
- * Run directly it listens on the port given: `node model-server.ts 8485`.
+ * Run directly it listens on the port given: `node model-server.ts 8485`. `/health`
+ * answers "ok", and `/stats` says how many chat requests have arrived, how many are being
+ * answered, and how many were abandoned by their caller.
  */
 import http from "node:http";
 import type { AddressInfo } from "node:net";
@@ -199,6 +201,14 @@ export async function startModelServer(options: StandInOptions = {}): Promise<St
 
   async function route(path: string, request: http.IncomingMessage, response: http.ServerResponse, body: unknown): Promise<void> {
     if (path === "/health") return void response.end("ok");
+    // For tests that cannot hold this object: what has been asked of the stand-in so far.
+    if (path === "/stats") {
+      return json(response, 200, {
+        chats: requests.filter((entry) => entry.path.endsWith("/chat/completions")).length,
+        abandoned,
+        writing,
+      });
+    }
     if (path.startsWith("/website")) {
       response.writeHead(200, { "Content-Type": "text/html" });
       return void response.end("<!doctype html><title>My router</title><h1>Welcome</h1>");
