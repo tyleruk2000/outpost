@@ -89,6 +89,25 @@ describe("the speed limit", () => {
     expect(detail.rateLimitBytesPerSecond).toBe(300_000);
     expect(detail.integrity.verified).toBe(true);
   });
+
+  it("holds a small file to the limit even when the network delivers it in one piece", async () => {
+    app = await createTestApp();
+    const server = await fileServer();
+    // Sent in a single write: on a fast link this reaches the downloader as one or two
+    // large chunks, which a limit applied per chunk would let straight through.
+    const body = testBytes(300_000, 3);
+    server.routes.set("/small.bin", { body });
+    await app.api("PATCH", "/api/settings", { "downloads.rateLimitKbps": 100 });
+    const started = Date.now();
+    const row = await app.ctx.services.downloads.start(
+      request(server, "/small.bin", "files/small.bin", { sha256: createHash("sha256").update(body).digest("hex") }),
+    );
+    await waitFor(() => app!.ctx.services.downloads.get(row.id)?.state === "completed", "the limited small download", 15_000);
+    const seconds = (Date.now() - started) / 1000;
+    // 300 kB at 100 kB/s is three seconds.
+    expect(seconds).toBeGreaterThan(2.4);
+    expect(seconds).toBeLessThan(6);
+  });
 });
 
 describe("forecasting the queue", () => {

@@ -1,7 +1,8 @@
 // Stands in for nodejs.org/dist during end-to-end tests, so that writing a portable
 // drive can be exercised without the internet. It serves a checksum list and, for
 // every platform, a small archive whose "node" is a stub. The drive written from it is
-// complete in shape but is not started by the tests.
+// complete in shape but is not started by the tests. It also serves one plain file, so
+// that a catalogue download can be followed from Explore to the library.
 import { createHash } from "node:crypto";
 import http from "node:http";
 import { gzipSync } from "node:zlib";
@@ -35,9 +36,16 @@ for (const platform of ["darwin-arm64", "darwin-x64", "linux-x64", "linux-arm64"
 for (const platform of ["win-x64", "win-arm64"]) files.set(`${platform}/node.exe`, Buffer.from("MZ stub runtime"));
 const sums = [...files].map(([name, body]) => `${createHash("sha256").update(body).digest("hex")}  ${name}`).join("\n");
 
+// A file for the downloads test: any bytes will do, as long as both sides agree on them.
+export const FIELD_MANUAL = Buffer.alloc(300_000, "A field manual for end-to-end tests. ");
+
 http
   .createServer((request, response) => {
     if (request.url === "/health") return response.end("ok");
+    if (request.url === "/files/field-manual.bin") {
+      response.setHeader("Content-Length", FIELD_MANUAL.length);
+      return response.end(FIELD_MANUAL);
+    }
     if (request.url === `/${version}/SHASUMS256.txt`) return response.end(`${sums}\n`);
     const body = files.get((request.url ?? "").replace(`/${version}/`, ""));
     if (!body) {

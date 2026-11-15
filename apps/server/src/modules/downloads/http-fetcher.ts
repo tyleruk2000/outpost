@@ -57,6 +57,9 @@ function validatorOf(etag: string | null, lastModified: string | null): string |
   return lastModified ?? undefined;
 }
 
+/** How much is let through per request to the speed limiter. */
+const THROTTLE_SLICE_BYTES = 16 * 1024;
+
 function sameHost(a: string, b: string): boolean {
   return new URL(a).host.toLowerCase() === new URL(b).host.toLowerCase();
 }
@@ -142,11 +145,17 @@ async function attempt(client: HttpClient, context: FetchContext): Promise<Outco
       Readable.fromWeb(response.body as never),
       async function* count(chunks: AsyncIterable<Buffer>) {
         for await (const chunk of chunks) {
-          // Holding the chunk here slows the socket itself: backpressure reaches the server.
-          await context.throttle(chunk.length);
-          received += chunk.length;
-          context.progress(received, total);
-          yield chunk;
+          // A fast link hands over 100 kB and more at a time. The speed limit is asked
+          // for in small slices, so a low limit is a steady trickle and not a burst every
+          // few seconds, and a small file cannot slip through whole.
+          for (let offset = 0; offset < chunk.length; offset += THROTTLE_SLICE_BYTES) {
+            const slice = chunk.subarray(offset, offset + THROTTLE_SLICE_BYTES);
+            // Holding the slice here slows the socket itself: backpressure reaches the server.
+            await context.throttle(slice.length);
+            received += slice.length;
+            context.progress(received, total);
+            yield slice;
+          }
         }
       },
       fs.createWriteStream(partPath, { flags: append ? "a" : "w" }),

@@ -467,11 +467,19 @@ describe("failures", () => {
     vi.spyOn(fs, "createWriteStream").mockImplementation(((file: fs.PathLike, options?: unknown) => {
       const stream = realCreate(file, options as never);
       if (String(file).endsWith(".part")) {
+        const full = () => Object.assign(new Error("ENOSPC: no space left on device, write"), { code: "ENOSPC" });
         const realWrite = stream._write.bind(stream);
         stream._write = (chunk, encoding, callback) => {
           written += (chunk as Buffer).length;
-          if (written > 200_000) callback(Object.assign(new Error("ENOSPC: no space left on device, write"), { code: "ENOSPC" }));
+          if (written > 200_000) callback(full());
           else realWrite(chunk, encoding, callback);
+        };
+        // Small pieces written close together are handed to the disk in batches.
+        const realWritev = stream._writev!.bind(stream);
+        stream._writev = (chunks, callback) => {
+          for (const item of chunks) written += (item.chunk as Buffer).length;
+          if (written > 200_000) callback(full());
+          else realWritev(chunks, callback);
         };
       }
       return stream;

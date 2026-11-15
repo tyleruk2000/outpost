@@ -9,6 +9,7 @@
  * thing under test. Set OUTPOST_E2E_SOURCE=1 to run the server from source instead
  * (the web app must have been built).
  */
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -42,6 +43,44 @@ function server(name: string, port: number, env: Record<string, string>) {
     },
   };
 }
+
+// A catalogue entry of the tests' own, pointing at the stand-in file server, so that a
+// download can be followed end to end with the internet cut off.
+const fieldManual = Buffer.alloc(300_000, "A field manual for end-to-end tests. ");
+const ownCatalog = path.join(work, "open", "data", "catalog");
+fs.mkdirSync(ownCatalog, { recursive: true });
+fs.writeFileSync(
+  path.join(ownCatalog, "e2e.json"),
+  JSON.stringify({
+    schemaVersion: 1,
+    id: "e2e-local",
+    name: "End-to-end test files",
+    description: "One file served by the test suite itself.",
+    maintainers: ["Outpost tests"],
+    downloadHosts: ["127.0.0.1"],
+    entries: [
+      {
+        id: "e2e.field-manual",
+        name: "Field manual for testing",
+        description: "A file the end-to-end tests serve to themselves.",
+        category: "reference",
+        publisher: "Outpost tests",
+        language: "en",
+        format: "other",
+        license: "Public domain",
+        attribution: "Outpost tests",
+        lastVerified: "2026-11-15",
+        source: {
+          type: "http",
+          url: "http://127.0.0.1:8473/files/field-manual.bin",
+          sha256: createHash("sha256").update(fieldManual).digest("hex"),
+          sizeBytes: fieldManual.length,
+          version: "1",
+        },
+      },
+    ],
+  }),
+);
 
 export const OPEN_URL = "http://localhost:8471";
 export const SIGNIN_URL = "http://localhost:8472";
