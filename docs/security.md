@@ -301,6 +301,53 @@ it was given. That is still worth guarding against: read the passages.
 
 Code: `apps/web/src/features/search/answer-text.ts`, `answer.tsx`.
 
+#### Conversations
+
+**Chat** uses the same model server as answers, and everything in the table above
+holds for it without exception: the same address, the same own-network rule looked up
+before every request, no credentials, no redirects, one thing written at a time. Chat
+reaches the model server through the answers module and has no way round it
+(`answers.providerFor`, `answers.guard`). What is different is listed here.
+
+| | |
+| --- | --- |
+| **Anyone who can open Outpost can read every conversation.** | Outpost has no accounts, so there is nobody for a conversation to belong to. Conversations are kept in the database so that they are on every device; every person who can reach this Outpost can read, continue, rename and delete all of them. The Chat screen says so under its title. Per-person privacy was not built and is not implied. |
+| What is sent | When a person sends a message: the standing instructions, the recent messages of that conversation that fit the budget, the message, and, with the library on, the passages found for it. Nothing in the background: no generated title, no summary. |
+| Requests that carry nothing | Opening Chat asks the model server for its list of models, and, when the address ends in `/v1`, asks `/api/tags` on the same host (Ollama's own list). Both go through the same guard. |
+| "Look for Ollama on this computer" | One press, one look: `127.0.0.1:11434`, then `host.docker.internal:11434`, both of which are this computer, both through the same guard. The addresses are fixed in the code and cannot be supplied by a request, so the route cannot be used to probe other hosts. It saves nothing; using what it found is a second, separate press. |
+| What is kept | The conversation: every message, which model wrote each reply, and for a reply from the library the passages it was given. In backups. Not on portable drives (`modules/portable/database.ts` removes them from the drive's copy). Never in the log: a test checks that a failed reply logs the kind of failure and not the message. |
+| Stopping | A reply belongs to the server, not to a browser tab, so closing a tab does not stop it (unlike an answer). **Stop**, deleting the conversation, shutting Outpost down, or a time limit does: each closes the connection to the model server. A test checks that the stand-in sees its caller go away. |
+| Limits | A message is at most 16,000 characters; a reply at most 1,024 tokens and 24,000 characters; a turn at most twice the context budget; 3 minutes to the first sign of life, 1 minute of silence, 10 minutes in all. |
+
+**A reply is untrusted text**, exactly as an answer is, and in a conversation with the
+library on it may have been steered by a planted sentence in a document. It is shown
+with its formatting, which an answer is not, so how that is done matters:
+
+- **It is never HTML and never rendered Markdown.** The server reads the reply with the
+  same reader a Markdown document goes through (`modules/documents/markdown-view.ts`)
+  into a tree of plain values, and the web app draws each value with an element of its
+  own (`features/chat/reply-body.tsx`). There is no `dangerouslySetInnerHTML`. Raw HTML
+  in a reply is reduced to its words; a reply that is nothing but HTML is shown as the
+  characters it is.
+- **A link in a reply is not a link.** Its words are shown with the address beside
+  them as text. A document's Markdown may link to the web; a reply may not, because a
+  model can be told what address to write, and a link that carried a piece of your
+  library in its address would only need a click.
+- **A picture in a reply is never fetched.** Only what was written about it is shown.
+- **A code block's copy button copies text.** Diagram and figure blocks are shown as
+  code, not drawn.
+- **The only links are Outpost's own**: citation markers and the list of passages,
+  which lead to routes inside Outpost taken from Outpost's own record of what it sent.
+- **A reply saved as a note** keeps its headings, lists, tables and code, and loses its
+  links and pictures in the same way (`modules/chat/note.ts`): a page of notes would
+  otherwise fetch a picture the moment it was opened. It is always a new page.
+
+The end-to-end suite has the stand-in write a reply containing a link, a picture, a
+`<script>` tag and an image with an `onerror` handler, and checks that the reply holds
+no link, picture or script element and that nothing ran.
+
+Code: `apps/server/src/modules/chat/`, `apps/web/src/features/chat/`.
+
 ### Backup and restore
 
 A restore is uploaded, unpacked

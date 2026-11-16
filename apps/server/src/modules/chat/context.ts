@@ -112,7 +112,8 @@ export function titleFrom(text: string, most = 60): string {
     .replace(/[`*_]/g, "")
     .replace(/\s+/g, " ")
     .trim();
-  if (plain.length <= most) return plain.replace(/[.?!:;,]+$/, "") || "New conversation";
+  // A question keeps its question mark: it is what the conversation is.
+  if (plain.length <= most) return plain.replace(/[.!:;,]+$/, "") || "New conversation";
   const cut = plain.slice(0, most + 1);
   const space = cut.lastIndexOf(" ");
   return `${(space > most * 0.5 ? cut.slice(0, space) : cut.slice(0, most)).replace(/[.?!:;,]+$/, "")}…`;

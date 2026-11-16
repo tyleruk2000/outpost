@@ -73,6 +73,21 @@ export function subjectOf(question: string): string {
   return subject && subject !== question ? subject : question;
 }
 
+/**
+ * True for a message made only of words that name no subject: "Why?", "And then?",
+ * "Can you explain that?". Searching the library for such a message finds nothing of
+ * its own, because there is nothing in it to search for.
+ */
+export function namesNoSubject(question: string): boolean {
+  const words = question.split(/\s+/).map((word) => word.toLowerCase().replace(/[^\p{L}\p{N}'’-]/gu, ""));
+  return words.filter(Boolean).every((word) => SMALL_WORDS.has(word) || FOLLOW_UP_WORDS.has(word));
+}
+
+/** Words of a follow-up that point back at what was said, in addition to the small words above. */
+const FOLLOW_UP_WORDS = new Set(
+  "again also else more now ok okay really say said sure then too yes no not go on continue it's that's mean".split(" "),
+);
+
 export interface AnswersService {
   status(): AnswersStatus;
   /** The model answers would be written by, when one is set up. */

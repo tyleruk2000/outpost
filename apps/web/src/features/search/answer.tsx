@@ -31,7 +31,7 @@ export const useAnswersStatus = () =>
   useQuery({ queryKey: ["answers", "status"], queryFn: () => api.get<AnswersStatus>("/api/answers/status"), staleTime: 30_000 });
 
 /** A source's address is only ever followed when it is a route inside Outpost. */
-const routeOf = (url: string) => (url.startsWith("/") && !url.startsWith("//") ? url : null);
+export const routeOf = (url: string) => (url.startsWith("/") && !url.startsWith("//") ? url : null);
 
 const openWords = (source: AnswerSource) =>
   source.page ? `Open it at page ${source.page}` : source.kind === "note" ? "Open the page" : "Open the document";
@@ -42,7 +42,7 @@ function Lamp({ className = "" }: { className?: string }) {
 }
 
 /** A citation marker in the answer. Pressing it shows the passage it points to, beside the claim it supports. */
-function Marker({ piece }: { piece: Extract<AnswerPiece, { kind: "marker" }> }) {
+export function Marker({ piece }: { piece: Extract<AnswerPiece, { kind: "marker" }> }) {
   const source = piece.source;
   if (!source) {
     return (

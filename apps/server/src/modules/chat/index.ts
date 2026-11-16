@@ -127,6 +127,8 @@ export async function registerChat(app: FastifyInstance, ctx: AppContext): Promi
       model,
       useLibrary: row.useLibrary,
       scope: row.scopeKind && row.scopeEntityId ? { kind: row.scopeKind, entityId: row.scopeEntityId } : null,
+      previousSearch:
+        rows.findLast((entry) => entry.role === "assistant" && entry.searchedFor && (entry.sources?.length ?? 0) > 0)?.searchedFor ?? null,
     });
     changed(id);
     return detail(id);

@@ -14,6 +14,7 @@ import type {
   MarkdownBlock,
 } from "@outpost/shared";
 import { afterEach, describe, expect, it } from "vitest";
+import { namesNoSubject } from "../src/modules/answers/index.ts";
 import { excerptOf, planHistory, type Turn, titleFrom } from "../src/modules/chat/context.ts";
 import { replyAsNote } from "../src/modules/chat/note.ts";
 import { historyBudget, turnBudget } from "../src/modules/chat/run.ts";
@@ -192,8 +193,16 @@ describe("which earlier messages go with a question", () => {
     expect(historyBudget(1000, "x".repeat(9000), false)).toBe(0);
   });
 
+  it("tells a follow-up that names no subject from a question that does", () => {
+    for (const none of ["Why?", "And then?", "Can you explain that?", "ok, go on", "What do you mean?", "Really?"])
+      expect(namesNoSubject(none), none).toBe(true);
+    for (const some of ["And at altitude?", "zeppelin mooring masts", "Why three minutes?", "What about tablets?"])
+      expect(namesNoSubject(some), some).toBe(false);
+  });
+
   it("names a conversation after its first message, and makes a plain excerpt", () => {
-    expect(titleFrom("How long should I boil water at altitude?")).toBe("How long should I boil water at altitude");
+    expect(titleFrom("How long should I boil water at altitude?")).toBe("How long should I boil water at altitude?");
+    expect(titleFrom("Notes on the stove.")).toBe("Notes on the stove");
     expect(titleFrom("## **Stove**\nsecond line")).toBe("Stove");
     expect(titleFrom(`${"word ".repeat(30)}`)).toMatch(/^(word ){11}word…$/);
     expect(titleFrom("   ")).toBe("New conversation");
@@ -235,7 +244,7 @@ describe("conversations", () => {
     await exchange(second, "Which peg for snow?");
 
     const list = (await app.api("GET", "/api/chat/conversations")).body.conversations as ChatConversationSummary[];
-    expect(list.map((entry) => entry.title)).toEqual(["Tent pegs 100%", "How do I prime a paraffin stove"]);
+    expect(list.map((entry) => entry.title)).toEqual(["Tent pegs 100%", "How do I prime a paraffin stove?"]);
     expect(list[0]).toMatchObject({ messageCount: 2, writing: false });
     expect(list[0]!.excerpt).toMatch(/^You said “Which peg for snow\?”/);
 
@@ -315,7 +324,7 @@ describe("a reply as it is written", () => {
       ["user", "complete"],
       ["assistant", "writing"],
     ]);
-    expect(sent.body.conversation.title).toBe("How do I light the stove");
+    expect(sent.body.conversation.title).toBe("How do I light the stove?");
 
     const events = await watch(id);
     expect(events[0]).toMatchObject({ type: "start", model: "stand-in-markdown", grounded: false, messageId: sent.body.messages[1]!.id });
@@ -554,6 +563,18 @@ describe("a conversation that uses the library", () => {
     expect((await detail(id)).messages.at(-1)!.sources).toEqual(reply.sources);
   });
 
+  it("does not answer a new question from what the last one turned up", async () => {
+    const { model, open, exchange } = await station();
+    const id = await open({ useLibrary: true });
+    expect((await exchange(id, "How do I tie a bowline loop?")).sources).toHaveLength(1);
+    // A different subject, which the library holds nothing for: nothing found, and the model is not asked again.
+    const other = await exchange(id, "zeppelin mooring masts");
+    expect(other).toMatchObject({ state: "nothing-found", sources: [], searchedFor: "zeppelin mooring masts" });
+    expect(chatBodies(model)).toHaveLength(1);
+    // The follow-up after that goes back to the last passages there were.
+    expect((await exchange(id, "Why?")).searchedFor).toMatch(/bowline/);
+  });
+
   it("carries a follow-up that names no subject of its own", async () => {
     const { model, open, exchange } = await station();
     const id = await open({ useLibrary: true });
@@ -677,7 +698,7 @@ describe("the model server", () => {
     const id = await open({ model: "llama9:70b" });
     const missing = await exchange(id, "Hello");
     expect(missing).toMatchObject({ state: "failed", failure: "no-such-model", model: "llama9:70b" });
-    expect(missing.notice).toMatch(/has no model called "llama9:70b"/);
+    expect(missing.notice).toMatch(/has no model called "llama9:70b"\. Choose another model for this conversation, or fetch this one/);
     await app.api("PATCH", `/api/chat/conversations/${id}`, { model: "embed-only:latest" });
     const embedding = await exchange(id, "Hello");
     expect(embedding).toMatchObject({ state: "failed", failure: "not-a-chat-model" });
@@ -777,7 +798,7 @@ describe("saving a reply as a note", () => {
     const before = (await app.api("GET", "/api/notes/tree")).body;
     const saved = await app.api("POST", `/api/chat/messages/${reply.id}/note`);
     expect(saved.status).toBe(200);
-    expect(saved.body.title).toBe("How do I light the stove");
+    expect(saved.body.title).toBe("How do I light the stove?");
     const note = (await app.api("GET", `/api/notes/${saved.body.noteId}`)).body.note;
     const content = JSON.stringify(note.content);
     expect(content).toMatch(/Written by a language model/);

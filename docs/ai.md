@@ -11,13 +11,16 @@ is several gigabytes, and which one to run is your decision.
 > llama.cpp (`apps/server/test/model-server.ts`). The requests Outpost sends were
 > checked against both projects' published documentation and source on 2026-11-15
 > (see [What this was checked against](#what-this-was-checked-against)). No real
-> model has answered a question through Outpost yet. If you try it, the steps are in
-> [Trying it](#trying-it).
+> model has answered a question through Outpost yet, and none has held a conversation
+> in [Chat](#chat) either: Ollama is not installed where this was written. If you try
+> it, the steps are in [Trying it](#trying-it).
 
 ## What exists
 
 - **Answer from my library**, a button on the Search screen. It appears once a model
   server is set up. The search results stay where they are; the answer is an extra.
+- **Chat**, a screen of its own: conversations with the same model server, kept on the
+  server, with or without your library. See [Chat](#chat).
 - **Settings → Answers from your library**: the server's address, the model, a test
   that says what is wrong, the temperature and the context budget. Off by default.
 - **A model provider** for any OpenAI-compatible chat server: Ollama, llama.cpp's
@@ -38,14 +41,22 @@ is several gigabytes, and which one to run is your decision.
 
 - No bundled model, and no download of one. Nothing here works until you run a model
   server yourself.
-- No conversation. One question, one answer. There is no chat history, no memory of
-  earlier questions, no "ask a follow-up", no agents and no tools the model can call.
+- No agents and no tools the model can call, in an answer or in a conversation. A
+  model writes words and Outpost shows them; nothing a model writes is acted on.
+- No memory between conversations, and no summary of a long one: see
+  [Long conversations](#long-conversations).
+- No downloading or removing of models from Outpost. Fetch a model with the model
+  server's own tool (`ollama pull …`). Managing Ollama's models from the Chat screen
+  was considered and left out, not half-built: it would have Ollama fetch gigabytes
+  from the internet at a press in Outpost, through an API of Ollama's own that could
+  not be tried here.
 - No answers from reference collections. Articles in ZIM archives (Wikipedia and the
   like) are searched by kiwix-serve and are not split into passages by Outpost, so an
   answer is written from **documents, notes and book chapters only**. The Search
   screen says so wherever an answer is shown.
 - No reranker. The `Reranker` interface is declared; nothing implements it.
-- No stored answers. See [What is kept](#what-is-kept).
+- No stored answers from the Search screen. See [What is kept](#what-is-kept).
+  Conversations in Chat are stored; that is what makes them conversations.
 
 ## Setting it up
 
@@ -185,6 +196,13 @@ The exact steps to see it work with a real model, since nobody has yet:
    pressing a marker shows the passage; **Stop** stops it, and the model server stops
    working (its processor use drops); the passages listed beneath are the ones the
    answer should rest on.
+
+6. Open **Chat**, type a message and press Enter. Check: the reply arrives a few words
+   at a time; **Stop** stops it and the model server's processor use drops; the model
+   picker lists your models with their sizes; with **Use my library** on, a question
+   your documents can answer comes back with markers and a list of passages; closing
+   the tab part-way and opening the conversation again finds the reply still being
+   written, or finished.
 
 Things that may differ from the stand-in and are worth reporting: how well a small
 model keeps to "one number to a bracket"; whether it writes Markdown despite being
@@ -392,9 +410,177 @@ The marker check finds markers that refer to **no source**. It cannot tell wheth
 real source says what the answer claims. That needs a reader, which is why every
 marker opens the passage.
 
-Outpost writes **one answer at a time**. A second request while one is being written,
-from any device, is refused with a message, not queued: a small model on a home
-machine cannot do two at once.
+Outpost writes **one thing at a time**, whether it is an answer here or a reply in a
+conversation. A second request while one is being written, from any device, is
+refused with a message, not queued: a small model on a home machine cannot do two at
+once.
+
+## Chat
+
+**Chat** is a screen in the navigation (on a phone, under **More**). It holds
+conversations with the model server set up above: the same address, under the same
+rule about which addresses may be contacted, with the same one-at-a-time turn.
+
+> **Read by anyone who can open Outpost.** Outpost has no accounts. Conversations are
+> kept on the server so that they are on every device, which also means every person
+> who can reach this Outpost can read, continue, rename and delete every conversation.
+> The Chat screen says so. Do not write in a conversation what you would not put in a
+> shared notebook.
+
+### Using it
+
+- **Start** by typing in the box on the Chat screen. A conversation does not exist
+  until its first message is sent, and is named after that message; rename it by
+  typing over its name. Enter sends, Shift+Enter makes a new line; on a touch keyboard
+  Enter makes a new line and the button sends.
+- **The reply arrives as it is written.** Before the first word the screen says it is
+  waiting and counts the seconds; after eight it explains that a model is loaded into
+  memory on first use, which on a small computer takes a minute or more. **Stop**
+  closes Outpost's connection to the model server, so the model stops working; what
+  it had written is kept and marked unfinished.
+- **A reply belongs to the server, not the tab.** If the phone sleeps or the tab is
+  closed, the reply goes on being written and is there when you come back, on any
+  device. Only Stop, deleting the conversation, a failure or a time limit ends it.
+- **Regenerate** throws the last reply away and writes it again. **Edit** puts your
+  last message back in the box; sending replaces it and its reply. Only the last
+  exchange can be changed.
+- **Copy** copies a reply as the model wrote it. A code block has its own **Copy
+  code**. **Save as a note** makes a *new* page of notes from a reply, never changes
+  an existing one, and opens the page with a line saying what wrote it and when.
+- **Model**: the picker at the top lists the model server's own models. A
+  conversation remembers its choice; one that has made none uses the model in
+  Settings. When the server is Ollama, each model shows its size on disk, parameter
+  count and quantisation, which is most of what decides whether a small computer can
+  run it.
+- **Find** a conversation by name on the Chat screen once there are more than five.
+  **Delete** asks first, and removes the conversation for everyone.
+
+### With or without your library
+
+Every conversation has a switch, **Use my library**, and a sentence under the message
+box that says which you are getting.
+
+| | Off (the default) | On |
+| --- | --- | --- |
+| What the model is given | The conversation so far. Nothing from your library. | The conversation so far, and passages found in your documents, notes and book chapters for the newest message. |
+| What it is told | That it is a model on your own computer having a plain conversation, that it cannot look anything up, and to say so when it does not know. | The same rules as an answer: [the prompt](#the-prompt), with the passages fenced as data. |
+| What the reply shows | The model's name, and nothing else: there is nothing to cite. | "from your library", each `[n]` as a button that shows the passage, and the list of passages given, each a link to the page, the note or the document at its page. |
+
+It is off by default because a plain conversation is what "chat" means to most
+people, and because the library's rules ("answer only from the sources") make a poor
+reply to "hello" or "write a haiku". With it on, a message the library holds nothing
+for is **not** sent to the model: the screen says so and offers **Ask without my
+library**, which turns the switch off for that conversation and asks again.
+
+Two details of searching for a conversation's message:
+
+- The library is searched for the subject of the newest message, as for an answer. A
+  message that names no subject of its own ("Why?", "And then?", "Can you explain
+  that?") is searched for as the message before it was, so it is answered from the
+  same passages. A message that does name a subject is only ever searched for as
+  itself: a new question the library holds nothing for comes back as "nothing found",
+  and is not answered from whatever the last question turned up.
+- Only the passages for the *newest* message are sent. Earlier replies are sent as the
+  model wrote them, without the passages they were written from.
+
+**Ask about this**, on a document's toolbar and in a page's menu, starts a
+conversation about that one item (shown once a model server is set up). Its messages
+are answered from that item alone: the passages of it that match the message first,
+then the item from its beginning, as far as the context budget goes. So "summarise
+this" works on a short item and covers the start of a long one.
+
+### Long conversations
+
+A model reads a limited amount at once, and Ollama cuts a longer prompt down without
+saying so. So Outpost decides what is sent, by one rule:
+
+> Each turn sends at most twice the context budget in Settings (12,000 characters by
+> default, about 3,000 tokens): your newest message whole, the passages when the
+> library is used, and then the most recent earlier exchanges that still fit. Older
+> exchanges are left out, whole, oldest first.
+
+Nothing is summarised. A summary would be a second, unasked-for request to the model,
+and a small model's summary of a conversation is not the conversation. Everything
+stays on screen and in the database; a line across the conversation, "Messages above
+this line are no longer sent to the model", marks where what is sent begins. With the
+library on, the passages' share of the budget (the context budget itself) is set
+aside whether or not it is all used, so the line does not move with what is found.
+
+A reply is at most 1,024 tokens (about 750 words) and never more than 24,000
+characters. One that reaches the limit is marked as cut off, with **Ask it to
+continue**. A message is at most 16,000 characters.
+
+### What is sent, and when, in a conversation
+
+**When you send a message:** the standing instructions, the earlier messages chosen
+by the rule above, your message, and with the library on the passages found for it.
+To the one address in `answers.endpoint`, and nowhere else.
+
+**When you open the Chat screen** (once a model server is set up): a request for the
+server's list of models, which carries nothing. When the address ends in `/v1`, a
+second request goes to `/api/tags` on the same host: Ollama's own list, which is where
+the sizes come from. A server that is not Ollama answers 404 and nothing more is
+asked.
+
+**When you press "Look for Ollama on this computer":** one request for the list of
+models to `http://127.0.0.1:11434/v1`, the address Ollama listens on, and, if nothing
+is there, to `http://host.docker.internal:11434/v1`, which is the same computer as
+seen from inside Docker. Nothing looks until the button is pressed, and finding a
+server changes no setting until you press **Use it for Outpost**.
+
+**Never:** a title is not generated by the model (it is the first line of your first
+message), nothing is summarised, and nothing is asked in the background.
+
+### What is kept, for a conversation
+
+Each conversation and every message in it, in the database (`chat_conversations`,
+`chat_messages`): your words, the model's words as it wrote them, which model wrote
+them, how the reply ended, and for a reply from the library the passages it was given
+as they were sent. They are part of a backup. They are **not** copied to a portable
+drive: a drive is made to be handed on, and conversations are not part of the
+library. Nothing of a conversation is written to the log; the log records that a
+reply failed and the kind of failure.
+
+A reply is stored as text. It is turned into what is shown each time it is sent to a
+browser, by the reader that Markdown documents go through, so a reply's headings,
+lists, tables and code are drawn with Outpost's own elements and none of it is markup
+(see [security.md](security.md#conversations)). Two things a document's Markdown may
+do, a reply may not: its links are shown as words with the address beside them, not
+as links, and its pictures are never fetched.
+
+### When something is wrong
+
+| The screen says | What it means | What to do |
+| --- | --- | --- |
+| Chat needs a language model on your own computer | No model server is set up. | Install one, fetch a model, then **Look for Ollama on this computer** or **Open the setting**. |
+| The model server is not answering | Its list of models could not be read. | Start it, check the address in Settings, **Look again**. |
+| This model is not on the model server | The conversation names a model the server does not list. | Choose another in the picker, or fetch it with the server's own tool. |
+| Waiting for … to start writing, N seconds so far | The model is loading, or reading the prompt. | Wait; or **Stop**. Outpost gives up after 3 minutes without a sign of life. |
+| The model reached its length limit | The reply was cut off at 1,024 tokens. | **Ask it to continue**. |
+| Stopped. This reply is unfinished. | You pressed Stop. | **Try again**, or carry on. |
+| The model server stopped part-way through | The connection dropped while it was writing. What was written is kept. | **Try again**. |
+| This turn was too long for the model | llama-server refused the prompt as larger than its context. | Shorten the message, lower the context budget, or start the model with a larger context. |
+| The model is writing a reply in another conversation | One thing is written at a time, across Outpost. | Wait, or open that conversation and stop it. Your message stays in the box. |
+| Outpost was restarted while this reply was being written | The server stopped mid-reply. What had been saved (every two seconds) is kept. | **Try again**. |
+
+### How Chat was tested
+
+Against the stand-in server only (`apps/server/test/model-server.ts`), which was
+extended to answer plain conversations (it repeats what it was told and says how many
+messages it was sent), to write a reply full of Markdown including a link, a picture
+and a script tag, and to answer `/api/tags` in the shape Ollama's API documentation
+gives. That documentation was read on 2026-11-16
+(`docs/api.md` in the Ollama repository, "List Local Models": `models[].name`,
+`.size` in bytes, `.details.parameter_size`, `.details.quantization_level`).
+
+Not tested, because it could not be: a real model's Markdown, which is less tidy than
+the stand-in's; how a real small model behaves with the grounded prompt across
+several turns; Ollama's real `/api/tags`; the time a real model takes to load; and
+**a telephone's on-screen keyboard**. The message box is moved above the keyboard
+using the browser's report of how much of the window is visible; that was checked
+with a stand-in for the report, in an emulated phone, not on a telephone.
+
+Code: `apps/server/src/modules/chat/`, `apps/web/src/features/chat/`.
 
 ## What this was checked against
 
@@ -429,6 +615,8 @@ Types: `packages/shared/src/answers.ts`.
 | `GET /api/answers/models` | `{ models, message }`: the models the server reports, or why they could not be read. Contacts the model server, and only while answers are switched on. |
 | `POST /api/answers/test` | `AnswerTestResult`: `ok`, the kind of `failure`, a `message` for a person, the server's `models`, the model's `reply`, `tookMs`. Always `200`; a failed test is a result, not an error. |
 | `POST /api/answers` | Body: `question` (1 to 1,000 characters), `mode?` (`keyword`, `semantic`, `hybrid`). Streams the answer. |
+
+Chat's endpoints are listed in [api.md](api.md#chat).
 
 `POST /api/answers` answers `409` when answers are not set up or another answer is
 being written (`details.busy`), and `400` for a bad body, as ordinary JSON errors.

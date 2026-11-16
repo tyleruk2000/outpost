@@ -111,6 +111,7 @@ a name and a JSON `data` of the form `{ "id": …, "data": … }`; both parts ar
 | `semantic.changed` | Vectors are built, loaded or removed | |
 | `portable.changed` | A portable drive or runtime download finishes | |
 | `merge.changed` | A merge of a drive's changes moves to another state | merge id |
+| `chat.changed` | A conversation is started, added to, renamed or deleted, or a reply finishes | conversation id |
 
 An event says that something changed, not what it now is: fetch the resource again.
 
@@ -283,6 +284,67 @@ not queued. Otherwise the response is `200` with
 Closing the connection stops the model. Nothing about the question or the answer is
 stored. Because it is a `POST`, it needs the `X-Outpost-Request` header, so a browser
 reads it with `fetch`, not `EventSource`.
+
+## Chat
+
+Conversations with the same model server, kept in the database. Types:
+`packages/shared/src/chat.ts`. See [ai.md](ai.md#chat) for what is sent, what is kept
+and how a long conversation is cut down. There are no accounts: every conversation is
+open to every caller.
+
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/chat/status` | `ChatStatus`: `enabled`, `usable`, `reason`, `defaultModel`, `server`, `place`, `writingIn` (the conversation a reply is being written in, or null). Read from settings; the model server is not contacted. |
+| `GET /api/chat/models` | `{ models, message, ollama }`: the model server's models. Each has `id`, and, when the server also answers Ollama's `/api/tags`, `sizeBytes`, `parameters`, `quantization` and `family` (otherwise null). Contacts the model server. |
+| `POST /api/chat/look-for-ollama` | Asks the address Ollama listens on by default for its models. `ChatLookResult`: `found`, `address`, `models`, `message`. Always `200`. Saves nothing. |
+| `GET /api/chat/conversations` | `{ conversations }`, newest first, at most 500. Query: `q` to find by name. Each is a `ChatConversationSummary`: the conversation, `messageCount`, `excerpt`, `writing`. |
+| `POST /api/chat/conversations` | Body, all optional: `title`, `model`, `useLibrary`, `about` (`{ kind: "document" or "note", id }`, for a conversation about one item; `404` when the item does not exist). Answers a `ChatConversationDetail`. |
+| `GET /api/chat/conversations/:id` | `ChatConversationDetail`: `conversation`, `messages`, and `sentFrom`, the id of the oldest message that would be sent with the next one (null when all would be). |
+| `PATCH /api/chat/conversations/:id` | Body: any of `title`, `model`, `useLibrary`. An unknown key is a `400`. `useLibrary` is ignored for a conversation about one item. |
+| `DELETE /api/chat/conversations/:id` | Deletes the conversation and its messages. A reply being written in it is stopped first. |
+| `POST /api/chat/conversations/:id/messages` | Body: `text` (up to 16,000 characters), `replaceLast?` (true to replace the newest message from the person and its reply). Stores the message, starts the reply, and answers at once with the `ChatConversationDetail`; the reply's `state` is `writing`. |
+| `POST /api/chat/conversations/:id/regenerate` | Throws away the reply to the newest message and starts it again. Answers the detail. |
+| `POST /api/chat/conversations/:id/stop` | Stops the reply being written, by closing the connection to the model server, and answers the detail once the reply is stored as it stands. Harmless when nothing is being written. |
+| `GET /api/chat/conversations/:id/stream` | The reply being written, as server-sent events. See below. |
+| `POST /api/chat/messages/:id/note` | Saves a reply as a **new** page of notes. Answers `{ noteId, title }`. `400` for a message that is not a reply with words in it. |
+
+Sending and regenerating answer `409 conflict`, having changed nothing, when no model
+server is set up (`details.setup`), when the conversation has no model and Settings
+names none (`details.noModel`), or when something is already being written
+(`details.busy`, with `details.conversationId` when it is a conversation). One reply
+or answer is written at a time across Outpost.
+
+A message (`ChatMessage`) has `id`, `role` (`user` or `assistant`), `text`, `blocks`
+(a reply's text as a tree of plain values, the same `MarkdownBlock` a Markdown
+document is sent as; empty for a person's message), `state` (`writing`, `complete`,
+`cut-short`, `stopped`, `failed`, `nothing-found`), `failure` and `notice` (why it did
+not finish, and what to do), `model`, `grounded`, `sources`, `searchedFor`,
+`unsupported` (citation markers that match no passage given), `omitted` (earlier
+messages that were not sent for this reply), `tookMs` and `createdAt`.
+
+`GET …/stream` is a `GET` and changes nothing; any number of browsers can watch, and
+leaving does not stop the model. Events, each with one JSON `data` line:
+
+| Event | Data |
+| --- | --- |
+| `idle` | Nothing is being written in this conversation. The stream ends. |
+| `start` | Always first otherwise: `messageId`, `phase` (`finding`, `waiting`, `writing`), `model`, `grounded`, `sources`, `searchedFor`, `omitted`, `startedAt`. |
+| `phase` | `phase`, and `sources` and `searchedFor` once the passages are known. |
+| `blocks` | `from`, `blocks`: replace the reply's blocks from index `from` onward. A browser that joins part-way is first sent the whole reply so far (`from` 0). |
+| `done` | `message`: the reply as it was stored, whatever its `state`. The stream ends. |
+
+A comment line (`: the model is working`) is sent every 15 seconds to keep the
+connection open.
+
+```bash
+# Start a conversation; the answer carries its id as conversation.id.
+curl -s -X POST http://localhost:8080/api/chat/conversations \
+  -H "X-Outpost-Request: 1" -H "Content-Type: application/json" -d '{}'
+# Send a message to it, then watch the reply being written.
+curl -s -X POST http://localhost:8080/api/chat/conversations/<id>/messages \
+  -H "X-Outpost-Request: 1" -H "Content-Type: application/json" -d '{"text": "Hello"}'
+curl -N http://localhost:8080/api/chat/conversations/<id>/stream
+```
 
 ## Retrieval
 

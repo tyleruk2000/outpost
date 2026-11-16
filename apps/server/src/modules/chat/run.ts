@@ -18,7 +18,7 @@
 import type { AnswerFailure, AnswerSource, ChatMessage, ChatPhase, ChatStreamEvent, MarkdownBlock } from "@outpost/shared";
 import type { AppContext } from "../../core/context.ts";
 import { AppError } from "../../core/errors.ts";
-import { subjectOf } from "../answers/index.ts";
+import { namesNoSubject, subjectOf } from "../answers/index.ts";
 import { type ChatModelProvider, ModelServerError, withoutThinking } from "../answers/provider.ts";
 import { isSafetyCritical } from "../retrieval/index.ts";
 import { buildAnswerPrompt } from "../retrieval/prompt.ts";
@@ -78,6 +78,8 @@ export interface RunRequest {
   model: string;
   useLibrary: boolean;
   scope: { kind: "document" | "note"; entityId: string } | null;
+  /** What the library was searched for to write the reply before this one, when it was. */
+  previousSearch: string | null;
 }
 
 /** What went wrong, reworded for a conversation where the provider's words were written for one answer. */
@@ -86,7 +88,12 @@ function noticeFor(error: ModelServerError): string {
     const sizes = / They came to \d+ tokens and the model is set up to read \d+ at once\./.exec(error.message)?.[0] ?? "";
     return `This turn was too long for the model.${sizes} Shorten your message, start a new conversation, lower the context budget in Settings, or start the model with a larger context.`;
   }
-  return error.message.replace("Choose a chat model in Settings.", "Choose another model for this conversation.");
+  return error.message
+    .replace("Choose a chat model in Settings.", "Choose another model for this conversation.")
+    .replace(
+      "Check the name in Settings, or fetch the model with your model server's own tool.",
+      "Choose another model for this conversation, or fetch this one with your model server's own tool.",
+    );
 }
 
 export function createRunner(ctx: AppContext, store: ChatStore) {
@@ -124,15 +131,19 @@ export function createRunner(ctx: AppContext, store: ChatStore) {
   }
 
   /**
-   * The passages for a question. In a conversation about one item: the passages of
-   * that item that match the question first, then the item from its beginning, as far
-   * as the budget goes. Otherwise: what the library's search finds for the question,
-   * and, when that is nothing and there was a question before it, for the two together
-   * (a follow-up such as "and at altitude?" names no subject of its own).
+   * The passages for a message. In a conversation about one item: the passages of
+   * that item that match the message first, then the item from its beginning, as far
+   * as the budget goes. Otherwise: what the library's search finds for the message.
+   *
+   * A message that names no subject of its own ("Why?", "And then?") is searched for
+   * as the message before it was, so that it is answered from the same passages. A
+   * message that does name a subject is only ever searched for as itself: a new
+   * question the library holds nothing for must come back as "nothing found", not be
+   * answered from whatever the last question turned up.
    */
   async function findPassages(request: RunRequest, signal: AbortSignal): Promise<{ context: AssembledContext; searchedFor: string }> {
     const contextChars = settings.get("answers.contextChars");
-    let searchedFor = subjectOf(request.question);
+    const searchedFor = request.previousSearch && namesNoSubject(request.question) ? request.previousSearch : subjectOf(request.question);
     let passages: RetrievedPassage[];
     if (request.scope) {
       const whole = passagesOfItem(request.scope.kind, request.scope.entityId);
@@ -144,15 +155,6 @@ export function createRunner(ctx: AppContext, store: ChatStore) {
       passages = [...matching, ...whole.filter((passage) => !seen.has(passage.chunkId))];
     } else {
       passages = await retrieval.retriever.retrieve({ query: searchedFor, limit: CHAT_PASSAGES, signal });
-      const previous = [...request.earlier].reverse().find((turn) => turn.role === "user")?.text;
-      if (passages.length === 0 && previous) {
-        const both = subjectOf(`${previous} ${request.question}`.slice(0, 900));
-        const again = await retrieval.retriever.retrieve({ query: both, limit: CHAT_PASSAGES, signal });
-        if (again.length > 0) {
-          passages = again;
-          searchedFor = both;
-        }
-      }
     }
     const context = retrieval.assembler.assemble(request.question, passages, {
       maxChars: contextChars,
