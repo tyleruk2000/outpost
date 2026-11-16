@@ -234,6 +234,16 @@ export interface PdfFile {
   drawnAsPictures: number;
 }
 
+/**
+ * The date a page's file carries: the day printed on it, not the moment it was made. The same page made twice
+ * on the same day is then the same file, byte for byte, and the library knows it already has it, as it does a
+ * prediction's PDF (dated by when the engine answered). Made on another day it says another date, and is
+ * another file.
+ */
+export function pageDay(made: Date): Date {
+  return new Date(made.getFullYear(), made.getMonth(), made.getDate());
+}
+
 /** Puts a sheet and the pictures of its map together as a PDF file. */
 export async function assemblePdf(sheet: Sheet, pictures: MapPicture[], title: string, created: Date): Promise<PdfFile> {
   const held = new Map<string, PdfPicture>();

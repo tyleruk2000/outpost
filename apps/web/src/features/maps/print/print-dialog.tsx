@@ -42,6 +42,7 @@ import {
   PREVIEW_PLAN,
   PrintMap,
   PrintMapError,
+  pageDay,
   pieceView,
 } from "./export";
 import { graticule } from "./graticule";
@@ -317,7 +318,7 @@ export function PrintDialog({
         withMapWords(sheetOf(drawn.pictures), geometry.map, words),
         drawn.pictures,
         shownTitle.trim() || "Map",
-        now,
+        pageDay(now),
       );
       if (stop.signal.aborted) return;
       setMade({

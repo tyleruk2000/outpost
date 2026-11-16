@@ -209,6 +209,18 @@ test.describe("printing the map", () => {
     const documentId = (await added.getAttribute("href"))!.split("/").pop()!;
     made.push(`document:${documentId}`);
 
+    // The same page made again the same day is the same file (it carries the day printed on it, not the moment
+    // it was made), so the library says it already has it instead of filing a second copy.
+    const title = dialog.getByRole("textbox", { name: "Title" });
+    await title.fill("Round the lake again");
+    await title.fill("Round the lake");
+    await expect(dialog.getByText("Drawing the preview")).toBeHidden({ timeout: 30_000 });
+    await dialog.getByRole("button", { name: "Make the PDF" }).click();
+    await expect(add).toBeVisible({ timeout: 120_000 });
+    await add.click();
+    await expect(status).toContainText(/Already in the library as Map, Round the lake, 1:25,000/, { timeout: 30_000 });
+    expect(posted).toEqual(["/api/documents", "/api/documents"]);
+
     await expect
       .poll(async () => (await api(page, "GET", `/api/documents/${documentId}`)).document.extraction, { timeout: 30_000 })
       .toBe("done");

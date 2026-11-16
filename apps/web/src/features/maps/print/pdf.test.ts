@@ -1,6 +1,7 @@
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { describe, expect, it } from "vitest";
 import { monoWidth } from "./courier";
+import { pageDay } from "./export";
 import { graticule } from "./graticule";
 import { encodeWinAnsi, fitText, textWidth, wrapText } from "./helvetica";
 import { pageGeometry } from "./paper";
@@ -140,6 +141,20 @@ describe("the PDF", () => {
     created: new Date(2026, 10, 16, 14, 22, 33),
   });
   const text = latin1(file);
+
+  it("is the same file when the same page is made again later the same day, and another on another day", () => {
+    const made = (at: Date) =>
+      writePdf({
+        sheet: page,
+        pictures: new Map([["map", { jpeg: JPEG, width: 8, height: 4 }]]),
+        title: "Helvellyn",
+        created: pageDay(at),
+      });
+    const morning = made(new Date(2026, 10, 16, 9, 5, 1));
+    expect(made(new Date(2026, 10, 16, 21, 47, 59))).toEqual(morning);
+    expect(made(new Date(2026, 10, 17, 9, 5, 1))).not.toEqual(morning);
+    expect(latin1(morning)).toContain("/CreationDate (D:20261116000000");
+  });
 
   it("is a well-formed file: every entry of its table points at its object", () => {
     expect(text.startsWith("%PDF-1.6\n")).toBe(true);
