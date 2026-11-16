@@ -221,7 +221,10 @@ Every response also carries `X-Content-Type-Options: nosniff`,
 `http://` address other than this computer's own (a phone on the home network), a
 browser ignores `Cross-Origin-Opener-Policy` and Chrome writes a line saying so in its
 console on every page; the header is still sent, because the server cannot tell such an
-address from one behind an HTTPS proxy. The end-to-end suite reaches its test server by
+address from one behind an HTTPS proxy. Not even in the narrowest case, a request on the
+plain listener with no forwarding header from a private address: an HTTPS proxy that adds
+no forwarding header (nginx's `proxy_pass` adds none unless told to) sends requests
+exactly like that, and the browser in front of it does honour the header. The end-to-end suite reaches its test server by
 a made-up name of that kind (`outpost-lan.test`, allowed with `OUTPOST_ALLOWED_HOSTS` for
 that server only) to walk every screen as such a phone sees it.
 
