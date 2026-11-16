@@ -12,6 +12,7 @@ import { formatBearing, formatDistance, formatDistanceWithMiles, type LatLon } f
 import { measure } from "./lib/measure";
 import { canRedo, canUndo, isFull, type RouteEdit } from "./lib/route-edit";
 import { STRAIGHT_LINES } from "./panels/route-editor";
+import { SunSection } from "./panels/sun";
 import { ControlButton, ControlGroup, mapSurface } from "./ui";
 
 export type Tool = "browse" | "measure" | "add-place" | "draw";
@@ -386,12 +387,14 @@ export function MoveCard({
   );
 }
 
-/** A found position that has not been saved: what it is, where it is, and the one thing to do with it. */
+/** A found position that has not been saved: what it is, where it is, its sun times, and the one thing to do with it. */
 export function PinCard({
   title,
   detail,
   position,
   format,
+  sunOpen,
+  closeLabel = "Remove this pin",
   onSave,
   onClose,
 }: {
@@ -399,12 +402,15 @@ export function PinCard({
   detail?: string;
   position: LatLon;
   format: ReadoutFormat;
+  /** The sun times start unfolded: they are what was asked for. */
+  sunOpen?: boolean;
+  closeLabel?: string;
   onSave: () => void;
   onClose: () => void;
 }) {
   const coordinates = formatPosition(position.lat, position.lon, format).text;
   return (
-    <MapCard title={<span className="font-title">{title}</span>} onClose={onClose} closeLabel="Remove this pin">
+    <MapCard title={<span className="font-title">{title}</span>} onClose={onClose} closeLabel={closeLabel}>
       {detail ? <p className="text-small text-ink-muted">{detail}</p> : null}
       <button
         type="button"
@@ -417,6 +423,7 @@ export function PinCard({
       >
         {coordinates}
       </button>
+      <SunSection position={position} defaultOpen={sunOpen} contained className="mt-2 border-t border-border pt-1" />
       <div className="mt-3">
         <Button size="sm" variant="primary" onClick={onSave}>
           Save this place
@@ -435,6 +442,7 @@ export function ContextMenu({
   onSave,
   onMeasure,
   onDraw,
+  onSun,
   onClose,
 }: {
   point: { x: number; y: number };
@@ -446,6 +454,8 @@ export function ContextMenu({
   onSave: () => void;
   onMeasure: () => void;
   onDraw: () => void;
+  /** Drops a pin there with its sunrise and sunset times open. */
+  onSun: () => void;
   onClose: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -471,7 +481,7 @@ export function ContextMenu({
   }, [onClose]);
 
   const width = 232;
-  const height = place ? 218 : 182;
+  const height = place ? 254 : 218;
   const left = Math.max(8, Math.min(point.x, bounds.width - width - 8));
   const top = Math.max(8, Math.min(point.y, bounds.height - height - 8));
   const item =
@@ -493,6 +503,9 @@ export function ContextMenu({
       </button>
       <button type="button" role="menuitem" className={item} onClick={onDraw}>
         Draw a route from here
+      </button>
+      <button type="button" role="menuitem" className={item} onClick={onSun}>
+        Sun times here
       </button>
       <button
         type="button"

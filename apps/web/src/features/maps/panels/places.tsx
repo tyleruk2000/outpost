@@ -15,6 +15,7 @@ import { formatPosition, type ReadoutFormat } from "../lib/coords";
 import { formatDistance } from "../lib/geo";
 import { fold } from "../lib/search";
 import { ColorDot, ColorPicker } from "../ui";
+import { SunSection } from "./sun";
 
 /** A place as it is being added or changed, before it is saved. */
 export interface PlaceDraft {
@@ -166,6 +167,7 @@ export function PlaceEditor({
             </p>
           ) : null}
         </div>
+        <SunSection position={{ lat: draft.lat, lon: draft.lon }} className="border-t border-border pt-2" />
       </div>
       <footer className="flex flex-wrap items-center gap-2 border-t border-border px-4 py-3">
         <Button type="submit" variant="primary" loading={saving} disabled={!draft.name.trim() || !changed}>

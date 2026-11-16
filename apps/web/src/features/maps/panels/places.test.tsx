@@ -82,4 +82,33 @@ describe("an opened place", () => {
     expect(screen.getByText(/Drag the pin on the map to move it\./)).toBeInTheDocument();
     expect(screen.getByText(/From the keyboard, Tab to the pin and use the arrow keys; Shift moves it further\./)).toBeInTheDocument();
   });
+
+  it("has its sun times folded away below its own details, and looking at them does not save the place", async () => {
+    localStorage.clear();
+    const saved = marker("m1", "Esk Hause shelter");
+    const onSave = vi.fn();
+    render(
+      <PlaceEditor
+        draft={{ id: saved.id, name: "Esk Hause", note: "", color: saved.color, isFavorite: false, lat: saved.lat, lon: saved.lon }}
+        saved={saved}
+        format="decimal"
+        saving={false}
+        deleting={false}
+        mapReady
+        onChange={() => {}}
+        onSave={onSave}
+        onClose={() => {}}
+        onDelete={() => {}}
+      />,
+    );
+    const sun = screen.getByRole("button", { name: /^Sun/ });
+    expect(sun).toHaveAttribute("aria-expanded", "false");
+    // After the position, which is the last of the place's own details.
+    expect(screen.getByText("Position").compareDocumentPosition(sun) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    await userEvent.click(sun);
+    await userEvent.click(screen.getByRole("button", { name: "The day after" }));
+    await userEvent.type(screen.getByLabelText("Date"), "{Enter}");
+    await userEvent.click(screen.getByRole("radio", { name: "UTC" }));
+    expect(onSave).not.toHaveBeenCalled();
+  });
 });
