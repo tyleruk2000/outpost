@@ -27,6 +27,7 @@ import {
   BUSY_PAUSE_MS,
   cleanText,
   createOverpassClient,
+  HANDOVER_WAIT_MS,
   namePattern,
   readAnswer,
   relationQuery,
@@ -911,15 +912,72 @@ describe("finding a route and adding it", () => {
     expect((await app.api("POST", "/api/maps/route-search/add", { token: "nothing-held" })).status).toBe(409);
   });
 
-  it("runs one search at a time", async () => {
+  it("runs one search at a time: a second one waits a moment for its turn and is never asked alongside the first", async () => {
     const slow = app.api("POST", "/api/maps/route-search", { text: "slow" });
     await new Promise((resolve) => setTimeout(resolve, 100));
-    const second = await app.api("POST", "/api/maps/route-search", { text: "kestrel" });
-    const first = await slow;
-    expect(first.status).toBe(200);
-    expect(second.status).toBe(409);
-    expect(second.body.error.message).toBe("Another route search is still running. Wait for it to finish, then try again.");
+    let firstDone = false;
+    void slow.then(() => {
+      firstDone = true;
+    });
+    const waiting = app.api("POST", "/api/maps/route-search", { text: "kestrel" });
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    // The source has been asked one question, and the second is still waiting for it to be over.
     expect(standIn.requests).toHaveLength(1);
+    expect(firstDone).toBe(false);
+    const second = await waiting;
+    expect(firstDone).toBe(true);
+    expect((await slow).status).toBe(200);
+    expect(second.status).toBe(200);
+    expect(standIn.requests).toHaveLength(2);
+    // What is said when the wait runs out is in "gives up on a source that does not answer in time", below.
+    expect(HANDOVER_WAIT_MS).toBe(2000);
+  });
+
+  it("lets a new search follow one that was just cancelled, as the screen does when a person changes their mind", async () => {
+    await app.app.listen({ port: 0, host: "127.0.0.1" });
+    const appPort = (app.app.server.address() as AddressInfo).port;
+    const send = (agent: http.Agent, method: string, url: string, body?: unknown) => {
+      const request = http.request({
+        host: "127.0.0.1",
+        port: appPort,
+        agent,
+        method,
+        path: url,
+        headers: { "content-type": "application/json", "x-outpost-request": "1" },
+      });
+      const answer = new Promise<{ status: number; body: string }>((resolve, reject) => {
+        request.on("error", reject);
+        request.on("response", (response) => {
+          let text = "";
+          response.on("data", (chunk) => {
+            text += chunk;
+          });
+          response.on("end", () => resolve({ status: response.statusCode ?? 0, body: text }));
+        });
+      });
+      request.end(body === undefined ? undefined : JSON.stringify(body));
+      return { request, answer };
+    };
+    // A browser keeps several connections open: the new question needs no new one, so it is not behind the old one's closing.
+    const one = new http.Agent({ keepAlive: true, maxSockets: 1 });
+    const other = new http.Agent({ keepAlive: true, maxSockets: 1 });
+    try {
+      expect((await send(other, "GET", "/api/maps/route-sources").answer).status).toBe(200);
+      const statuses: number[] = [];
+      for (let round = 0; round < 8; round += 1) {
+        const old = send(one, "POST", "/api/maps/route-search", { text: "slow" });
+        old.answer.catch(() => undefined);
+        await new Promise((resolve) => setTimeout(resolve, 60));
+        // The old question is dropped and the new one sent in the same moment.
+        old.request.destroy();
+        const next = await send(other, "POST", "/api/maps/route-search", { text: "kestrel" }).answer;
+        statuses.push(next.status);
+      }
+      expect(statuses).toEqual(statuses.map(() => 200));
+    } finally {
+      one.destroy();
+      other.destroy();
+    }
   });
 
   it("backs off for thirty seconds when the source says it is busy, without asking it again", async () => {
@@ -1021,6 +1079,43 @@ describe("when the source cannot be reached or may not be asked", () => {
       await expect(
         overpass.ask(source, searchQuery({ pattern: "kestrel", maxRoutes: 5, maxWays: 5 }), { ...ask, maxBytes: 500 }),
       ).rejects.toThrow("too large");
+      // A question that follows one just cancelled waits for the cancelling to land: it is not turned away.
+      const first = new AbortController();
+      const dropped = overpass.ask(source, searchQuery({ pattern: "slow", maxRoutes: 5, maxWays: 5 }), { ...ask, signal: first.signal });
+      dropped.catch(() => undefined);
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      const asked = standIn.requests.length;
+      first.abort();
+      await expect(overpass.ask(source, searchQuery({ pattern: "kestrel", maxRoutes: 5, maxWays: 5 }), ask)).resolves.toBeDefined();
+      await expect(dropped).rejects.toThrow("The search was cancelled.");
+      expect(standIn.requests).toHaveLength(asked + 1);
+      // A question that is still wanted is not pushed aside: the newer one waits a moment, then is told to wait.
+      const wanted = overpass.ask(source, searchQuery({ pattern: "slow", maxRoutes: 5, maxWays: 5 }), ask);
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      const began = Date.now();
+      await expect(
+        overpass.ask(source, searchQuery({ pattern: "kestrel", maxRoutes: 5, maxWays: 5 }), { ...ask, handoverMs: 200 }),
+      ).rejects.toThrow("Another route search is still running. Wait for it to finish, then try again.");
+      expect(Date.now() - began).toBeGreaterThanOrEqual(190);
+      // And one that waits while the older one finishes is asked next, never alongside it.
+      const queued = overpass.ask(source, searchQuery({ pattern: "kestrel", maxRoutes: 5, maxWays: 5 }), { ...ask, handoverMs: 5000 });
+      await expect(wanted).resolves.toBeDefined();
+      await expect(queued).resolves.toBeDefined();
+      // A person who gives up while waiting their turn is not asked for at all.
+      const second = overpass.ask(source, searchQuery({ pattern: "slow", maxRoutes: 5, maxWays: 5 }), ask);
+      const leaving = new AbortController();
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      const before = standIn.requests.length;
+      setTimeout(() => leaving.abort(), 50);
+      await expect(
+        overpass.ask(source, searchQuery({ pattern: "kestrel", maxRoutes: 5, maxWays: 5 }), {
+          ...ask,
+          signal: leaving.signal,
+          handoverMs: 5000,
+        }),
+      ).rejects.toThrow("The search was cancelled.");
+      await second;
+      expect(standIn.requests).toHaveLength(before);
       // And a person who goes away takes their question with them.
       const controller = new AbortController();
       setTimeout(() => controller.abort(), 100);

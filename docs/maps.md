@@ -1164,9 +1164,13 @@ with the route on it, the credit must be on it.**
 - It does not add the same preview twice. If "Add" arrives twice for one preview (a
   double click, or a retry while a long route's heights are being read), one route is
   made and both are answered with it.
-- One search runs at a time. A second one started meanwhile, from this or another
-  device, is asked to wait. After a server says it is busy, Outpost does not ask it
-  again for 30 seconds.
+- One search runs at a time: a source is never asked two questions at once. A second
+  one started meanwhile waits up to two seconds for its turn. That is long enough for
+  a search that was just cancelled (choosing one result and then another, or Cancel
+  and then Search) to be dropped, so the next one follows it without a refusal. If
+  the first is still running after that, from this or another device, the second is
+  asked to wait. After a server says it is busy, Outpost does not ask it again for 30
+  seconds.
 - Names in scripts where capital letters differ in ways the server does not know may
   need to be typed with the capitals the map uses.
 

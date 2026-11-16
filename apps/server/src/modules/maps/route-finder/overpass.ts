@@ -24,6 +24,14 @@ export const OVERPASS_TIMEOUT_SECONDS = 25;
 export const ANSWER_TIMEOUT_MS = 29_000;
 /** After a source says it is busy, it is not asked again for this long. Its operators ask for the pause. */
 export const BUSY_PAUSE_MS = 30_000;
+/**
+ * How long a question waits its turn when another is with the source. A browser that
+ * drops one question and sends the next does both in the same moment, on different
+ * connections, and the new one can be read before the old one's closing is: this is
+ * long enough for that closing to land on a home network, and short enough that a
+ * person whose search really is behind someone else's is told so promptly.
+ */
+export const HANDOVER_WAIT_MS = 2_000;
 
 /** The route kinds looked for, as OpenStreetMap tags them. */
 export const ROUTE_VALUES = ["hiking", "foot", "walking", "running", "bicycle", "mtb", "horse"] as const;
@@ -276,6 +284,8 @@ export interface AskOptions {
   userAgent: string;
   /** For tests: how long to wait for the whole answer. */
   timeoutMs?: number;
+  /** For tests: how long to wait for a turn while another question is with the source. */
+  handoverMs?: number;
 }
 
 export interface OverpassClient {
@@ -299,10 +309,38 @@ export function createOverpassClient(http: HttpClient, options: { now?: () => nu
   const now = options.now ?? Date.now;
   /** Sources that said they were busy, and when they may be asked again. */
   const pausedUntil = new Map<string, number>();
-  let asking = false;
+  /** The question that is with a source now: settles, without failing, when it is over. One at a time is the sources' rule. */
+  let asking: Promise<void> | null = null;
 
   return {
     async ask(source, query, ask) {
+      if (asking) {
+        // The question before this one may just have been cancelled, with word of it still on its way here: wait a moment for a turn.
+        let timer: NodeJS.Timeout | undefined;
+        let left = () => {};
+        const late = new Promise<"late">((resolve) => {
+          timer = setTimeout(() => resolve("late"), ask.handoverMs ?? HANDOVER_WAIT_MS);
+        });
+        const gone = new Promise<"gone">((resolve) => {
+          left = () => resolve("gone");
+          ask.signal?.addEventListener("abort", left, { once: true });
+        });
+        try {
+          // Looked at again each time round: another question that was waiting may have taken the turn first.
+          while (asking) {
+            const outcome = ask.signal?.aborted ? "gone" : await Promise.race([asking, late, gone]);
+            if (outcome === "gone") throw new AppError("bad_request", "The search was cancelled.");
+            if (outcome === "late") {
+              throw new AppError("conflict", "Another route search is still running. Wait for it to finish, then try again.");
+            }
+          }
+        } finally {
+          clearTimeout(timer);
+          ask.signal?.removeEventListener("abort", left);
+        }
+      }
+      // Nothing is waited for between finding no question in flight, above, and becoming the one in flight, below.
+      // Looked at after the wait: the question before may be the one that was told the source is busy.
       const wait = (pausedUntil.get(source.id) ?? 0) - now();
       if (wait > 0) {
         throw new AppError(
@@ -310,8 +348,10 @@ export function createOverpassClient(http: HttpClient, options: { now?: () => nu
           `${source.host} said it was busy a moment ago. Outpost waits before asking it again: try in ${Math.ceil(wait / 1000)} seconds.`,
         );
       }
-      if (asking) throw new AppError("conflict", "Another route search is still running. Wait for it to finish, then try again.");
-      asking = true;
+      let finished = () => {};
+      asking = new Promise<void>((resolve) => {
+        finished = resolve;
+      });
       const timeoutMs = ask.timeoutMs ?? ANSWER_TIMEOUT_MS;
       const timeout = AbortSignal.timeout(timeoutMs);
       const signal = ask.signal ? AbortSignal.any([ask.signal, timeout]) : timeout;
@@ -384,7 +424,8 @@ export function createOverpassClient(http: HttpClient, options: { now?: () => nu
         }
         throw new AppError("upstream", `The connection to ${source.host} failed part of the way through. Try again in a little while.`);
       } finally {
-        asking = false;
+        asking = null;
+        finished();
       }
     },
   };
