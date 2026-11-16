@@ -458,7 +458,9 @@ describe("a prediction on a frequency the wire is not modelled on", () => {
     expect(notice.textContent).toContain(
       "This wire is about a half-wave from 13.5 to 16.5 MHz, and run as an approximation above 16.5 MHz.",
     );
-    expect(notice.textContent).toContain("The bands below that have figures are 20 m, 17 m, 15 m, 12 m, 10 m.");
+    expect(notice.textContent).toContain(
+      "The bands below that have figures are 20 m, 17 m (approximate), 15 m (approximate), 12 m (approximate), 10 m (approximate).",
+    );
     // No reliability, ratio, signal or hop count for 7.1 MHz: a blank is not 0% and not "no path".
     expect(screen.queryByText("7.10 MHz at 12:00 UTC")).toBeNull();
     expect(screen.queryByText(/0% for SSB voice/)).toBeNull();

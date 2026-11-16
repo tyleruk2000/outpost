@@ -342,7 +342,7 @@ export function Results({ result, hour, onHour }: { result: PredictionResult; ho
         <Notice tone="warning" icon={<TriangleAlert />} title={`No figure for ${f}: an antenna is not modelled there`} className="mt-4">
           {notModelledOn(request.txAntenna, request.rxAntenna, request.frequencyMhz)}{" "}
           {bandsWith.length > 0
-            ? `The bands below that have figures are ${bandsWith.map((band) => band.label).join(", ")}. Choose one of them, or another antenna, to see a day on this path.`
+            ? `The bands below that have figures are ${bandsWith.map((band) => `${band.label}${at.bands[HF_BANDS.indexOf(band)]?.approximate ? " (approximate)" : ""}`).join(", ")}. Choose one of them, or another antenna, to see a day on this path.`
             : "None of the amateur bands has figures with this antenna. Choose another antenna, or ask about a frequency the wire is a half-wave on."}
         </Notice>
       ) : null}
