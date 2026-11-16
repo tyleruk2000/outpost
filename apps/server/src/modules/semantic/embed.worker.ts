@@ -11,9 +11,11 @@
  * How a text becomes a vector is fixed here and must match what the model was trained
  * with (the test suite compares against the model's own library):
  *   1. the model's tokenizer cuts the text into word pieces, with its markers at both ends;
- *   2. anything past the model's limit is cut off, keeping the closing marker;
- *   3. the model gives one vector per word piece, and their mean is the text's vector;
- *   4. that is scaled to length 1, so a dot product of two vectors is their cosine similarity.
+ *   2. the model gives one vector per word piece, and their mean is the text's vector;
+ *   3. that is scaled to length 1, so a dot product of two vectors is their cosine similarity.
+ * A text longer than the model can read at once is read in consecutive stretches, and
+ * its vector is the mean of theirs, each counted by its length (see `stretches.ts`). A
+ * text that fits, which every search question does, is one stretch and is unaffected.
  * Texts are run one at a time. Batching would be no faster here, and an 8-bit model
  * picks its number ranges from the whole batch, so a passage's vector would depend on
  * its neighbours.
@@ -29,6 +31,7 @@ import { parentPort, workerData } from "node:worker_threads";
 import { Tokenizer } from "@huggingface/tokenizers";
 import * as ort from "onnxruntime-web";
 import type { EmbedReply, EmbedRequest, EmbedWorkerData } from "./embed-types.ts";
+import { stretchesOf } from "./stretches.ts";
 
 const send = (message: EmbedReply, transfer: ArrayBuffer[] = []) => parentPort?.postMessage(message, transfer);
 
@@ -77,40 +80,56 @@ async function load(data: EmbedWorkerData): Promise<Loaded> {
   const session = await ort.InferenceSession.create(read(model.files.model), { executionProviders: ["wasm"] });
   const wantsTypes = session.inputNames.includes("token_type_ids");
 
+  /** One run of the model: these word pieces, markers included, to their mean vector at length 1. */
+  async function runModel(ids: number[]): Promise<Float32Array> {
+    const length = ids.length;
+    const shape = [1, length];
+    const inputIds = new BigInt64Array(length);
+    for (let token = 0; token < length; token += 1) inputIds[token] = BigInt(ids[token]!);
+    const feeds: Record<string, ort.Tensor> = {
+      input_ids: new ort.Tensor("int64", inputIds, shape),
+      attention_mask: new ort.Tensor("int64", new BigInt64Array(length).fill(1n), shape),
+    };
+    if (wantsTypes) feeds.token_type_ids = new ort.Tensor("int64", new BigInt64Array(length), shape);
+    const output = (await session.run(feeds)).last_hidden_state;
+    if (!output || output.dims[2] !== model.dimensions) throw new Error("The model answered in a shape that was not expected.");
+    const hidden = output.data as Float32Array;
+    const vector = new Float32Array(model.dimensions);
+    for (let token = 0; token < length; token += 1) {
+      const base = token * model.dimensions;
+      for (let index = 0; index < model.dimensions; index += 1) vector[index] = vector[index]! + hidden[base + index]!;
+    }
+    for (let index = 0; index < model.dimensions; index += 1) vector[index] = vector[index]! / length;
+    output.dispose();
+    return toLengthOne(vector);
+  }
+
   return {
     dimensions: model.dimensions,
     async embed(text) {
-      let ids = tokenizer.encode(text.length > MAX_CHARACTERS ? text.slice(0, MAX_CHARACTERS) : text).ids;
-      // The last id is the closing marker; the model expects it even on a text that was cut.
-      if (ids.length > model.maxTokens) ids = [...ids.slice(0, model.maxTokens - 1), ids[ids.length - 1]!];
-      const length = ids.length;
-      const shape = [1, length];
-      const inputIds = new BigInt64Array(length);
-      for (let token = 0; token < length; token += 1) inputIds[token] = BigInt(ids[token]!);
-      const feeds: Record<string, ort.Tensor> = {
-        input_ids: new ort.Tensor("int64", inputIds, shape),
-        attention_mask: new ort.Tensor("int64", new BigInt64Array(length).fill(1n), shape),
-      };
-      if (wantsTypes) feeds.token_type_ids = new ort.Tensor("int64", new BigInt64Array(length), shape);
-      const output = (await session.run(feeds)).last_hidden_state;
-      if (!output || output.dims[2] !== model.dimensions) throw new Error("The model answered in a shape that was not expected.");
-      const hidden = output.data as Float32Array;
+      const ids = tokenizer.encode(text.length > MAX_CHARACTERS ? text.slice(0, MAX_CHARACTERS) : text).ids;
+      // The first and last ids are the model's opening and closing markers; every stretch gets its own pair.
+      const stretches = stretchesOf(ids.length - 2, model.maxTokens - 2);
+      if (stretches.length === 1) return runModel(ids);
+      const opening = ids[0]!;
+      const closing = ids[ids.length - 1]!;
       const vector = new Float32Array(model.dimensions);
-      for (let token = 0; token < length; token += 1) {
-        const base = token * model.dimensions;
-        for (let index = 0; index < model.dimensions; index += 1) vector[index] = vector[index]! + hidden[base + index]!;
+      for (const stretch of stretches) {
+        const part = await runModel([opening, ...ids.slice(1 + stretch.start, 1 + stretch.end), closing]);
+        const weight = stretch.end - stretch.start;
+        for (let index = 0; index < model.dimensions; index += 1) vector[index] = vector[index]! + weight * part[index]!;
       }
-      let sum = 0;
-      for (let index = 0; index < model.dimensions; index += 1) {
-        vector[index] = vector[index]! / length;
-        sum += vector[index]! * vector[index]!;
-      }
-      const norm = Math.sqrt(sum);
-      if (norm > 0) for (let index = 0; index < model.dimensions; index += 1) vector[index] = vector[index]! / norm;
-      output.dispose();
-      return vector;
+      return toLengthOne(vector);
     },
   };
+}
+
+function toLengthOne(vector: Float32Array): Float32Array {
+  let sum = 0;
+  for (let index = 0; index < vector.length; index += 1) sum += vector[index]! * vector[index]!;
+  const norm = Math.sqrt(sum);
+  if (norm > 0) for (let index = 0; index < vector.length; index += 1) vector[index] = vector[index]! / norm;
+  return vector;
 }
 
 interface Task {

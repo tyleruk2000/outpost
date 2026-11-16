@@ -1,5 +1,5 @@
 {
-  "about": "Known-good vectors for the built-in embedding model's test. Each of 'referenceVectors' is 384 little-endian 32-bit floats in base64. 'reference' was computed by the model's own library (see embedding-reference.py beside this file) from the original PyTorch weights; 'builtIn' is what Outpost's own pipeline (8-bit ONNX weights, WebAssembly runtime) gave for the same sentences when this file was made. Regenerate both if the model, its settings or the runtime change.",
+  "about": "Known-good vectors for the built-in embedding model's test. Each of 'referenceVectors' is 384 little-endian 32-bit floats in base64. 'reference' was computed by the model's own library (see embedding-reference.py beside this file) from the original PyTorch weights; 'builtIn' is what Outpost's own pipeline (8-bit ONNX weights, WebAssembly runtime) gave for the same sentences when this file was made. The last sentence is longer than the model reads at once: the reference cut it at 256 word pieces ('tokens' counts what the reference read), while Outpost reads all of it in stretches, so the two differ for that sentence by design. Regenerate both if the model, its settings or the runtime change.",
   "reference": {
     "library": "sentence-transformers 6.3.0, torch 2.15.0",
     "model": "sentence-transformers/all-MiniLM-L6-v2",
@@ -7,7 +7,7 @@
     "maxSeqLength": 256
   },
   "builtIn": {
-    "modelId": "built-in:all-MiniLM-L6-v2-q8-84769597",
+    "modelId": "built-in:all-MiniLM-L6-v2-q8-245889ee",
     "runtime": "onnxruntime-web 1.31.1, @huggingface/tokenizers 0.2.0"
   },
   "sentences": [
@@ -48,15 +48,15 @@
     [0.1761, 0.1641, 0.2702, 0.1171, -0.0135, 0.1443, 0.2178, 0.1215, 0.0357, 1]
   ],
   "builtInSimilarities": [
-    [1, 0.5354, 0.084, 0.1812, -0.0652, 0.0028, 0.4371, 0.0869, 0.2417, 0.1472],
-    [0.5354, 1, 0.1301, 0.3365, 0.0729, 0.075, 0.5612, 0.1171, 0.1722, 0.1544],
-    [0.084, 0.1301, 1, 0.2356, 0.1146, 0.2324, 0.2375, 0.0658, 0.1603, 0.256],
-    [0.1812, 0.3365, 0.2356, 1, -0.0799, 0.0608, 0.2722, 0.0455, 0.09, 0.1295],
-    [-0.0652, 0.0729, 0.1146, -0.0799, 1, 0.4241, 0.0163, 0.0033, 0.0645, -0.0287],
-    [0.0028, 0.075, 0.2324, 0.0608, 0.4241, 1, 0.0309, -0.0406, 0.0955, 0.1341],
-    [0.4371, 0.5612, 0.2375, 0.2722, 0.0163, 0.0309, 1, 0.0553, 0.208, 0.2268],
-    [0.0869, 0.1171, 0.0658, 0.0455, 0.0033, -0.0406, 0.0553, 1, 0.0458, 0.1145],
-    [0.2417, 0.1722, 0.1603, 0.09, 0.0645, 0.0955, 0.208, 0.0458, 1, 0.0352],
-    [0.1472, 0.1544, 0.256, 0.1295, -0.0287, 0.1341, 0.2268, 0.1145, 0.0352, 1]
+    [1, 0.5354, 0.084, 0.1812, -0.0652, 0.0028, 0.4371, 0.0869, 0.2417, 0.1407],
+    [0.5354, 1, 0.1301, 0.3365, 0.0729, 0.075, 0.5612, 0.1171, 0.1722, 0.1596],
+    [0.084, 0.1301, 1, 0.2356, 0.1146, 0.2324, 0.2375, 0.0658, 0.1603, 0.2691],
+    [0.1812, 0.3365, 0.2356, 1, -0.0799, 0.0608, 0.2722, 0.0455, 0.09, 0.145],
+    [-0.0652, 0.0729, 0.1146, -0.0799, 1, 0.4241, 0.0163, 0.0033, 0.0645, -0.0252],
+    [0.0028, 0.075, 0.2324, 0.0608, 0.4241, 1, 0.0309, -0.0406, 0.0955, 0.1455],
+    [0.4371, 0.5612, 0.2375, 0.2722, 0.0163, 0.0309, 1, 0.0553, 0.208, 0.2379],
+    [0.0869, 0.1171, 0.0658, 0.0455, 0.0033, -0.0406, 0.0553, 1, 0.0458, 0.1215],
+    [0.2417, 0.1722, 0.1603, 0.09, 0.0645, 0.0955, 0.208, 0.0458, 1, 0.0427],
+    [0.1407, 0.1596, 0.2691, 0.145, -0.0252, 0.1455, 0.2379, 0.1215, 0.0427, 1]
   ]
 }

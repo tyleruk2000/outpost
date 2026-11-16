@@ -14,6 +14,7 @@ import {
   modelNameFor,
 } from "../src/modules/semantic/built-in-model.ts";
 import { type EmbeddingProvider, normalise } from "../src/modules/semantic/providers.ts";
+import { stretchesOf } from "../src/modules/semantic/stretches.ts";
 import reference from "./fixtures/embedding-reference.json" with { type: "json" };
 import { createTestApp, type TestApp } from "./helpers.ts";
 
@@ -27,6 +28,9 @@ const modelPresent = builtInInstallation(defaultModelDir()).installed;
 const NEEDS_MODEL = "run `node scripts/fetch-embedding-model.mjs` once to include these";
 if (!modelPresent)
   console.warn(`\nThe built-in embedding model is not on this machine, so the tests that run it are skipped: ${NEEDS_MODEL}.\n`);
+
+/** The id of the built-in model as first shipped, when a passage was cut at 256 word pieces. */
+const EARLIER_MODEL_ID = "built-in:all-MiniLM-L6-v2-q8-84769597";
 
 const cleanups: Array<() => Promise<void> | void> = [];
 afterEach(async () => {
@@ -72,10 +76,43 @@ describe("the built-in embedding model: what does not need its files", () => {
     // Any change that alters what a vector comes out as gives the vectors another name.
     expect(changed({ maxTokens: 512 })).not.toBe(name);
     expect(changed({ pooling: "cls" })).not.toBe(name);
+    expect(changed({ longText: "cut" })).not.toBe(name);
     expect(changed({ files: { ...manifest.files, model: { ...manifest.files.model, sha256: "0".repeat(64) } } })).not.toBe(name);
     expect(changed({ files: { ...manifest.files, tokenizer: { ...manifest.files.tokenizer, sha256: "0".repeat(64) } } })).not.toBe(name);
     // The fixture of known-good values was made for this very model; regenerate it when the model changes.
     expect(reference.builtIn.modelId).toBe(BUILT_IN_MODEL_ID);
+    // The first built-in model cut a long passage off. Its vectors must never be taken for this one's.
+    expect(BUILT_IN_MODEL_ID).not.toBe(EARLIER_MODEL_ID);
+  });
+
+  it("reads a text that is too long for one go in consecutive stretches that cover all of it", () => {
+    // What fits is read whole, in one go, as the model's own library reads it.
+    expect(stretchesOf(0, 254)).toEqual([{ start: 0, end: 0 }]);
+    expect(stretchesOf(40, 254)).toEqual([{ start: 0, end: 40 }]);
+    expect(stretchesOf(254, 254)).toEqual([{ start: 0, end: 254 }]);
+    // One word piece more, and that piece is read as a stretch of its own rather than dropped.
+    expect(stretchesOf(255, 254)).toEqual([
+      { start: 0, end: 254 },
+      { start: 254, end: 255 },
+    ]);
+    expect(stretchesOf(336, 254)).toEqual([
+      { start: 0, end: 254 },
+      { start: 254, end: 336 },
+    ]);
+    expect(stretchesOf(508, 254)).toHaveLength(2);
+    expect(stretchesOf(509, 254)).toHaveLength(3);
+    // Whatever the length: nothing left out, nothing read twice, no stretch longer than the model allows.
+    for (const count of [255, 300, 507, 508, 509, 1000, 1524, 12_000]) {
+      const stretches = stretchesOf(count, 254);
+      expect(stretches[0]!.start).toBe(0);
+      expect(stretches.at(-1)!.end).toBe(count);
+      for (const [index, stretch] of stretches.entries()) {
+        expect(stretch.end - stretch.start).toBeGreaterThan(0);
+        expect(stretch.end - stretch.start).toBeLessThanOrEqual(254);
+        if (index > 0) expect(stretch.start).toBe(stretches[index - 1]!.end);
+      }
+    }
+    expect(() => stretchesOf(10, 0)).toThrow();
   });
 
   it("uses half the processors, and no more than four", () => {
@@ -139,6 +176,36 @@ describe("the built-in embedding model: what does not need its files", () => {
     const { body } = await app.api("GET", "/api/search?q=water");
     expect(body.mode).toBe("keyword");
     expect(body.results[0].entityId).toBe("n");
+  });
+
+  it("does not use vectors made by the earlier built-in model, and says they are there", async () => {
+    const app = await testApp();
+    const { semantic, search } = app.ctx.services;
+    await semantic.replaceBuiltIn({ modelDir: emptyFolder() });
+    search.upsert({ kind: "note", entityId: "n", title: "Water", url: "/notes/n", sections: [{ text: "Boil the water." }] });
+    // An index built before the way of reading long passages changed.
+    const [chunk] = app.ctx.sqlite.prepare("SELECT id, content_hash AS hash FROM chunks").all() as Array<{ id: number; hash: string }>;
+    app.ctx.sqlite
+      .prepare("INSERT INTO embedding_models (id, provider, model, dimensions, created_at) VALUES (?, 'built-in', ?, 384, 0)")
+      .run(EARLIER_MODEL_ID, EARLIER_MODEL_ID.split(":")[1]);
+    semantic.index.upsert(EARLIER_MODEL_ID, [
+      { chunkId: chunk!.id, contentHash: chunk!.hash, vector: normalise(new Float32Array(384).fill(1)) },
+    ]);
+    await app.api("PATCH", "/api/settings", { "search.semantic.enabled": true });
+
+    // As for any change of model: nothing is built for the current one, and the old vectors are listed apart.
+    const status = (await app.api("GET", "/api/semantic/status")).body;
+    expect(status).toMatchObject({ modelId: BUILT_IN_MODEL_ID, embeddedChunks: 0, totalChunks: 1 });
+    expect(status.otherModels).toEqual([{ modelId: EARLIER_MODEL_ID, dimensions: 384, vectors: 1 }]);
+    // Searches go by words until the index is built again, and nothing rebuilds it unasked.
+    const { body } = await app.api("GET", "/api/search?q=water&mode=semantic");
+    expect(body.mode).toBe("keyword");
+    expect(body.warnings[0].source).toBe("semantic");
+    semantic.requestIndexing(false);
+    await app.ctx.jobs.whenIdle();
+    expect((await app.api("GET", "/api/semantic/status")).body.build).toBeNull();
+    // The old ones go when the person removes them.
+    expect((await app.api("DELETE", `/api/semantic/models/${encodeURIComponent(EARLIER_MODEL_ID)}`)).body.removed).toBe(1);
   });
 
   it("treats the old in-process setting as the built-in model", async () => {
@@ -264,9 +331,14 @@ describe.skipIf(!modelPresent)(`the built-in embedding model, run for real (${mo
     const provider = embedder();
     const vectors = await provider.embed(reference.sentences, "passage");
     expect(vectors).toHaveLength(reference.sentences.length);
+    // The reference cut the last text at the model's limit. Outpost reads all of it, so
+    // that one is not expected to match and is looked at on its own, below.
+    const readWhole = (index: number) => reference.tokens[index]! < BUILT_IN_MODEL.maxTokens;
+    expect(reference.tokens.map((_, index) => readWhole(index))).toEqual([true, true, true, true, true, true, true, true, true, false]);
     for (const [index, vector] of vectors.entries()) {
       expect(vector).toHaveLength(384);
       expect(Math.hypot(...vector)).toBeCloseTo(1, 5);
+      if (!readWhole(index)) continue;
       // Same direction as sentence-transformers computed from the original weights. The
       // difference is the 8-bit weights: with the full-precision file this pipeline gave
       // the reference vectors exactly. A wrong tokenizer, pooling or cut-off lands far below.
@@ -275,10 +347,12 @@ describe.skipIf(!modelPresent)(`the built-in embedding model, run for real (${mo
     for (let a = 0; a < vectors.length; a += 1) {
       for (let b = a + 1; b < vectors.length; b += 1) {
         const similarity = dot(vectors[a]!, vectors[b]!);
-        expect(
-          Math.abs(similarity - reference.referenceSimilarities[a]![b]!),
-          `sentences ${a} and ${b} against the reference`,
-        ).toBeLessThan(0.04);
+        if (readWhole(a) && readWhole(b)) {
+          expect(
+            Math.abs(similarity - reference.referenceSimilarities[a]![b]!),
+            `sentences ${a} and ${b} against the reference`,
+          ).toBeLessThan(0.04);
+        }
         // And exactly what this pipeline gave when the fixture was made, on any machine:
         // WebAssembly arithmetic does not depend on the processor underneath.
         expect(
@@ -295,23 +369,38 @@ describe.skipIf(!modelPresent)(`the built-in embedding model, run for real (${mo
         .reduce((best, value, at, all) => (value > all[best]! ? at : best), 0);
     expect(nearest(0)).toBe(1);
     expect(nearest(5)).toBe(4);
+    // The long text: most of it is what the reference read, so it still points much the same way.
+    expect(dot(vectors.at(-1)!, referenceVector(vectors.length - 1))).toBeGreaterThan(0.95);
   });
 
-  it("cuts a long text at the model's limit, and gives the same vector whatever it is batched with", { timeout: 60_000 }, async () => {
+  it("reads the whole of a long text, and gives the same vector whatever it is batched with", { timeout: 60_000 }, async () => {
     const provider = embedder();
     const long = reference.sentences.at(-1)!;
-    // The fixture's last text is longer than 256 word pieces, so text added to its end is never seen.
+    // The fixture's last text is longer than the model reads in one go: the reference stopped at the limit.
     expect(reference.tokens.at(-1)).toBe(BUILT_IN_MODEL.maxTokens);
-    const [alone] = await provider.embed([long], "passage");
-    const [, withMore, , again] = await provider.embed(
-      ["Tent", `${long} And then something else entirely about boats.`, "Stove", long],
+    const added = "The harbour master asks every visiting yacht to pay its mooring fees before the tide turns.";
+    const [alone, addition, question] = await provider.embed([long, added, "what do boats pay to tie up in the port"], "passage");
+    const [, withMore, , again] = await provider.embed(["Tent", `${long} ${added}`, "Stove", long], "passage");
+    // Batching changes nothing.
+    expect([...again!]).toEqual([...alone!]);
+    // Text added to the end is read: the vector moves towards it, though the text is still mostly about what it was about.
+    expect(dot(alone!, withMore!)).toBeLessThan(0.999);
+    expect(dot(alone!, withMore!)).toBeGreaterThan(0.9);
+    expect(dot(withMore!, addition!)).toBeGreaterThan(dot(alone!, addition!) + 0.05);
+    // And a question about the added lines, sharing none of their words, is nearer the text that has them.
+    expect(dot(question!, withMore!)).toBeGreaterThan(dot(question!, alone!) + 0.02);
+    // Many stretches: wherever the lines are in a very long text, they still tell.
+    const filler = "Check the guy lines again after the first hour, because nylon stretches when it is damp. ";
+    const [first, last, neither] = await provider.embed(
+      [`${added} ${filler.repeat(60)}`, `${filler.repeat(60)} ${added}`, filler.repeat(60)],
       "passage",
     );
-    expect(dot(alone!, withMore!)).toBeCloseTo(1, 6);
-    expect([...again!]).toEqual([...alone!]);
+    expect(dot(first!, addition!)).toBeGreaterThan(dot(neither!, addition!) + 0.01);
+    expect(dot(last!, addition!)).toBeGreaterThan(dot(neither!, addition!) + 0.01);
     // Text that is nothing at all still gets a vector rather than an error.
     const [empty] = await provider.embed([""], "passage");
     expect(Math.hypot(...empty!)).toBeCloseTo(1, 5);
+    for (const vector of [alone!, withMore!, first!, last!]) expect(Math.hypot(...vector)).toBeCloseTo(1, 5);
   });
 
   it("answers a question ahead of passages being indexed, and stops a request that is withdrawn", { timeout: 60_000 }, async () => {

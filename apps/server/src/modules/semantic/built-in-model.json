@@ -13,6 +13,7 @@
   "dimensions": 384,
   "maxTokens": 256,
   "pooling": "mean",
+  "longText": "consecutive stretches, mean by length",
   "files": {
     "model": {
       "path": "onnx/model_quantized.onnx",
