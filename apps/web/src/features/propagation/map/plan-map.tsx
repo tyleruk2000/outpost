@@ -55,6 +55,8 @@ export interface PlanMapProps {
   nuclear?: FeatureCollection;
   /** Draws installed satellite imagery beneath the roads and names, where there is any. */
   satellite?: boolean;
+  /** How far in a fit may zoom; 9 when left out. */
+  fitMaxZoom?: number;
   className?: string;
 }
 
@@ -63,7 +65,20 @@ export interface PlanMapHandle {
   bounds(): Bbox;
 }
 
-export function PlanMap({ data, places, onPress, onReady, onMoved, fit, label, greyLineAt, nuclear, satellite, className }: PlanMapProps) {
+export function PlanMap({
+  data,
+  places,
+  onPress,
+  onReady,
+  onMoved,
+  fit,
+  label,
+  greyLineAt,
+  nuclear,
+  satellite,
+  fitMaxZoom = 9,
+  className,
+}: PlanMapProps) {
   const { flavour, theme } = useMapTheme();
   const sources = useMapSources();
   const overview = useMapOverview();
@@ -88,8 +103,8 @@ export function PlanMap({ data, places, onPress, onReady, onMoved, fit, label, g
     }),
     [sources.data, flavour, theme, cacheKey, satellite],
   );
-  const latest = useRef({ style, fit, onPress, onReady, onMoved, places });
-  latest.current = { style, fit, onPress, onReady, onMoved, places };
+  const latest = useRef({ style, fit, onPress, onReady, onMoved, places, fitMaxZoom });
+  latest.current = { style, fit, onPress, onReady, onMoved, places, fitMaxZoom };
   const applied = useRef<typeof style | undefined>(undefined);
 
   const settled = !sources.isPending && !overview.isPending;
@@ -108,7 +123,7 @@ export function PlanMap({ data, places, onPress, onReady, onMoved, fit, label, g
           return;
         }
         applied.current = latest.current.style;
-        if (latest.current.fit) created.fitBounds(latest.current.fit, { animate: false, maxZoom: 9 });
+        if (latest.current.fit) created.fitBounds(latest.current.fit, { animate: false, maxZoom: latest.current.fitMaxZoom });
         created.setCursor("crosshair");
         created.on("click", (event) => {
           const place = event.hit?.type === "marker" ? (latest.current.places?.find((item) => item.id === event.hit?.id) ?? null) : null;
@@ -149,7 +164,7 @@ export function PlanMap({ data, places, onPress, onReady, onMoved, fit, label, g
   useEffect(() => {
     if (!engine || !fit || fitted.current === fitKey) return;
     fitted.current = fitKey;
-    engine.fitBounds(fit, { maxZoom: 9 });
+    engine.fitBounds(fit, { maxZoom: fitMaxZoom });
   }, [engine, fitKey]);
 
   const credits = useMemo(

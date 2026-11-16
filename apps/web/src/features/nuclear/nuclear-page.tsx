@@ -108,10 +108,10 @@ export default function NuclearPage() {
   const imagery = hasImagery(sources.data);
 
   function fitTo(result: EffectsResult, at: { lat: number; lon: number }) {
-    const reach = Math.max(
-      ...result.rings.map((ring) => ring.metres ?? 0),
-      result.fallout.drawn ? Math.min(Math.max(...result.fallout.contours.map((contour) => contour.downwindM)), 400_000) : 0,
-    );
+    // The rings, and the fallout as far as its 1,000 rads per hour contour: the farthest contours run tens of
+    // kilometres and would shrink the rings to nothing.
+    const hundred = result.fallout.drawn ? (result.fallout.contours.find((contour) => contour.rate === 1000)?.downwindM ?? 0) : 0;
+    const reach = Math.max(...result.rings.map((ring) => ring.metres ?? 0), hundred);
     const north = destination(at, 0, reach * 1.1);
     const south = destination(at, 180, reach * 1.1);
     const east = destination(at, 90, reach * 1.1);
@@ -178,7 +178,7 @@ export default function NuclearPage() {
       <OfflineLine regions={installedRegions} loading={overview.isPending} />
 
       <div className={cn("grid gap-x-8 gap-y-6", panel ? "lg:grid-cols-[minmax(0,1fr)_25rem]" : "lg:grid-cols-[minmax(0,1fr)]")}>
-        <div className="grid content-start gap-2 lg:sticky lg:top-4">
+        <div className="grid content-start gap-2 lg:sticky lg:top-4 lg:self-start">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-small text-ink-muted">
               {checked.at ? "Press the map to move ground zero." : "Press the map to put ground zero there."}
@@ -196,6 +196,7 @@ export default function NuclearPage() {
               places={showPlaces ? places : undefined}
               satellite={satellite && imagery}
               fit={fit}
+              fitMaxZoom={15}
               onPress={({ position, place }) => {
                 set("where", `${position.lat.toFixed(5)}, ${position.lon.toFixed(5)}`);
                 if (place && !form.name.trim()) set("name", `Near ${place.name}`);
@@ -584,7 +585,7 @@ function Results({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-lead font-semibold text-ink">What the model gives</h2>
         <Button size="sm" variant="ghost" onClick={onFit}>
-          Show all of it on the map
+          Fit the map to it
         </Button>
       </div>
       <Notice tone="info" title="An educational estimate">

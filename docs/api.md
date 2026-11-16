@@ -910,6 +910,22 @@ coverage map is `400` with `details.reason = "antenna-not-modelled"`. `415` with
 `details.reason = "engine-unavailable"` means the engine or its data is missing or
 damaged: the message names the file, and nothing is predicted.
 
+## Nuclear preparedness
+
+Scenarios saved in the effects simulator (Preparedness → Nuclear preparedness). Only
+what the person typed is kept; the effects are worked out in the browser from
+`computeEffects` in `@outpost/shared`. See [nuclear-preparedness.md](nuclear-preparedness.md).
+
+| Route | What it does |
+| --- | --- |
+| `GET` / `POST /api/nuclear/scenarios` | Saved scenarios, newest change first, as `{ scenarios }`. `POST` body: `name`, `notes`, `lat`, `lon`, `effects` (`{ yieldKt, burst, wind }`: `burst` is `{ kind: "surface" }`, `{ kind: "height", metres }` or `{ kind: "optimum", psi: 20 \| 10 \| 5 \| 2 \| 1 }`; `wind` is `{ fromDegrees, kmh }` or `null`). Returns the scenario, `201`. |
+| `GET` / `PATCH` / `DELETE /api/nuclear/scenarios/:id` | One scenario. `PATCH` takes the whole scenario, as `POST` does. |
+
+A scenario the model cannot answer (a yield outside 1 kiloton to 10 megatons, a height
+above 12,000 m or above the blast curves' scaled 5,000 feet, a wind outside 8 to 45
+miles per hour) is `400` with the model's reason as the message and in
+`details.problems`. The event `nuclear.changed` follows every change.
+
 ## Backup
 
 Types: `packages/shared/src/backup.ts`.
