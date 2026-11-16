@@ -509,11 +509,36 @@ export class MapEngine {
     return [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()];
   }
 
-  /** Space the floating chrome takes at each edge, so "fit" and "fly" land in the clear part of the map. */
+  /**
+   * Space the floating chrome takes at each edge. The camera keeps it: the map's centre is
+   * the middle of the part that is clear, so the point the readout and the Sun tab read is
+   * one a person can see, and "fit" and "fly" land there too. When the space changes (the
+   * sheet on a phone is raised) the same point stays the centre and the map slides to keep
+   * it in view.
+   */
   setPadding(padding: { top: number; right: number; bottom: number; left: number }): void {
+    const first = !this.paddingApplied;
     this.padding = padding;
+    const apply = () => {
+      if (this.destroyed || this.padding !== padding) return;
+      this.paddingApplied = true;
+      // The centre is named, so that it is the same point afterwards to the last digit, not one worked back from the screen.
+      const center = this.map.getCenter();
+      if (first || prefersReducedMotion()) this.map.jumpTo({ padding, center });
+      else this.map.easeTo({ padding, center, duration: 200 });
+    };
+    // A fly that is under way is left to finish: stopping it here would strand the map half-way.
+    if (this.map.isMoving()) this.map.once("moveend", apply);
+    else apply();
   }
   private padding = { top: 0, right: 0, bottom: 0, left: 0 };
+  private paddingApplied = false;
+
+  /** Where the centre of the map is on screen, relative to the map's top-left corner: the point `getCenter` names. */
+  centrePoint(): { x: number; y: number } {
+    const point = this.map.project(this.map.getCenter());
+    return { x: point.x, y: point.y };
+  }
 
   /** `clearBottom` is how much more of the bottom of the map is covered just now, beyond the usual chrome. */
   flyTo(position: LatLon, zoom?: number, clearBottom = 0): void {
@@ -540,7 +565,9 @@ export class MapEngine {
         [bbox[2], bbox[3]],
       ],
       {
+        // In place of the space the camera already keeps, not on top of it: counted twice, a phone has no room left to fit anything in.
         padding: { top: top + pad, right: right + pad, bottom: bottom + pad, left: left + pad },
+        absolutePadding: true,
         maxZoom: options.maxZoom ?? 15,
         animate: options.animate ?? true,
       },

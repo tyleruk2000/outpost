@@ -86,14 +86,36 @@ export interface ClockWriting {
 }
 
 /**
+ * An instant on a zone's clock, in the pieces a large figure is set from: the time
+ * ("07:42", or "7:42 am"), the mark when it is UTC, and the day when that is another
+ * calendar day there than the date asked about ("17 May").
+ */
+export interface ClockParts {
+  time: string;
+  mark?: "UTC";
+  day?: string;
+}
+
+export function clockParts(ms: number, zone: string, date: IsoDate, writing: ClockWriting = {}): ClockParts {
+  const reading = readingIn(zone, Math.round(ms / MINUTE) * MINUTE);
+  return {
+    time: clockText(reading.hour, reading.minute, writing.style ?? "24"),
+    ...(writing.mark ? { mark: writing.mark } : {}),
+    ...(reading.date === date ? {} : { day: formatShortDate(reading.date) }),
+  };
+}
+
+/** Clock parts as one piece of text: "07:42", "06:42 UTC", "23:53 on 17 May". */
+export const clockPartsText = (parts: ClockParts): string =>
+  `${parts.time}${parts.mark ? ` ${parts.mark}` : ""}${parts.day ? ` on ${parts.day}` : ""}`;
+
+/**
  * An instant on a zone's clock, to the nearest minute: "07:42", or "7:42 am". When that
  * falls on another calendar day there than the date asked about, the day is said:
  * "23:53 on 17 May".
  */
 export function formatClock(ms: number, zone: string, date: IsoDate, writing: ClockWriting = {}): string {
-  const reading = readingIn(zone, Math.round(ms / MINUTE) * MINUTE);
-  const time = `${clockText(reading.hour, reading.minute, writing.style ?? "24")}${writing.mark ? ` ${writing.mark}` : ""}`;
-  return reading.date === date ? time : `${time} on ${formatShortDate(reading.date)}`;
+  return clockPartsText(clockParts(ms, zone, date, writing));
 }
 
 /** "8 h 29 min" */
@@ -132,6 +154,8 @@ export interface SunRow {
   detail?: string;
   /** The detail is long enough to want a line of its own. */
   detailBelow?: boolean;
+  /** The value in pieces, when it is one clock time and nothing else: what a large figure is set from. */
+  clock?: ClockParts;
 }
 
 /** One line for the day, for when the section is folded away. UTC is marked once, at the end. */
@@ -167,8 +191,13 @@ function nauticalText(band: Band, clock: (ms: number) => string): string {
 export function sunRows(day: SunDay, change: number, moon: MoonPhase, zone: string, writing: ClockWriting = {}): SunRow[] {
   const { sun, civil, nautical, date } = day;
   const clock = (ms: number) => formatClock(ms, zone, date, writing);
+  /** A row's value when it is one clock time: the words, and the pieces they are made of. */
+  const at = (ms: number): Pick<SunRow, "value" | "clock"> => {
+    const parts = clockParts(ms, zone, date, writing);
+    return { value: clockPartsText(parts), clock: parts };
+  };
   const rows: SunRow[] = [];
-  const noon: SunRow = { key: "noon", label: "Solar noon", value: clock(day.noon), detail: noonHeight(day.noonAltitude) };
+  const noon: SunRow = { key: "noon", label: "Solar noon", ...at(day.noon), detail: noonHeight(day.noonAltitude) };
 
   // The sun up all day leaves no twilight to speak of.
   if (sun.kind === "above") {
@@ -182,7 +211,7 @@ export function sunRows(day: SunDay, change: number, moon: MoonPhase, zone: stri
       rows.push({
         key: "first-light",
         label: "First light (civil dawn)",
-        value: civil.begin === null ? "Twilight from the night before" : clock(civil.begin),
+        ...(civil.begin === null ? { value: "Twilight from the night before" } : at(civil.begin)),
       });
     }
 
@@ -193,14 +222,14 @@ export function sunRows(day: SunDay, change: number, moon: MoonPhase, zone: stri
         {
           key: "sunrise",
           label: "Sunrise",
-          value: sun.begin === null ? "Already up: it did not set the night before" : clock(sun.begin),
+          ...(sun.begin === null ? { value: "Already up: it did not set the night before" } : at(sun.begin)),
           detail: day.sunriseBearing === null ? undefined : formatBearing(day.sunriseBearing),
         },
         noon,
         {
           key: "sunset",
           label: "Sunset",
-          value: sun.end === null ? "Does not set tonight" : clock(sun.end),
+          ...(sun.end === null ? { value: "Does not set tonight" } : at(sun.end)),
           detail: day.sunsetBearing === null ? undefined : formatBearing(day.sunsetBearing),
         },
       );
@@ -210,7 +239,7 @@ export function sunRows(day: SunDay, change: number, moon: MoonPhase, zone: stri
       rows.push({
         key: "last-light",
         label: "Last light (civil dusk)",
-        value: civil.end === null ? "Twilight through the night" : clock(civil.end),
+        ...(civil.end === null ? { value: "Twilight through the night" } : at(civil.end)),
       });
     }
   }
@@ -232,4 +261,52 @@ export function sunRows(day: SunDay, change: number, moon: MoonPhase, zone: stri
     value: `${moon.name}, ${Math.round(moon.illuminated * 100)}% lit`,
   });
   return rows;
+}
+
+/**
+ * The same rows in the order a person on a hillside wants them: sunrise and sunset to be
+ * set large, first and last light under them, and the rest in a quiet list. The bearings
+ * leave the two large times and become rows of their own in that list.
+ */
+export interface SunLayout {
+  /** Sunrise and sunset, or the one row that says there is neither. */
+  main: SunRow[];
+  /** First and last light, or the one row that says how the twilight goes. Empty under the midnight sun. */
+  light: SunRow[];
+  rest: SunRow[];
+}
+
+const MAIN_KEYS = new Set(["sunrise", "sunset", "sun"]);
+const LIGHT_KEYS = new Set(["first-light", "last-light", "light"]);
+
+export function sunLayout(rows: SunRow[]): SunLayout {
+  const layout: SunLayout = { main: [], light: [], rest: [] };
+  const bearings: SunRow[] = [];
+  for (const row of rows) {
+    if (MAIN_KEYS.has(row.key)) {
+      const { detail, ...plain } = row;
+      layout.main.push(plain);
+      if (detail) bearings.push({ key: `${row.key}-bearing`, label: `${row.label} bearing`, value: detail });
+    } else if (LIGHT_KEYS.has(row.key)) layout.light.push(row);
+    else layout.rest.push(row);
+  }
+  // After solar noon, which is the sun's third direction of the day.
+  const noon = layout.rest.findIndex((row) => row.key === "noon");
+  layout.rest.splice(noon + 1, 0, ...bearings);
+  return layout;
+}
+
+/**
+ * Sunrise and sunset in a few words each, for a line that is always on the screen:
+ * "Sunrise 04:43" and "Sunset 21:21", or one piece saying the sun does not rise or set.
+ */
+export function sunGlance(day: SunDay, zone: string, writing: ClockWriting = {}): string[] {
+  const { sun } = day;
+  if (sun.kind === "below") return ["The sun does not rise"];
+  if (sun.kind === "above") return ["The sun does not set"];
+  const clock = (ms: number) => formatClock(ms, zone, day.date, writing);
+  return [
+    sun.begin === null ? "Sun already up" : `Sunrise ${clock(sun.begin)}`,
+    sun.end === null ? "No sunset tonight" : `Sunset ${clock(sun.end)}`,
+  ];
 }

@@ -57,6 +57,19 @@ describe("the list of saved places", () => {
     expect(screen.getByRole("button", { name: "Make Esk Hause shelter a favourite" })).toHaveFocus();
   });
 
+  it("says, where there are no places yet, that sun times do not need one, and opens the Sun tab", async () => {
+    const onShowSun = vi.fn();
+    render(
+      <PlacesList markers={loaded([])} onOpen={() => {}} onToggleFavourite={() => {}} onAdd={() => {}} canAddOnMap onShowSun={onShowSun} />,
+    );
+    expect(screen.getByRole("heading", { name: "No saved places yet" })).toBeInTheDocument();
+    expect(
+      screen.getByText(/Sunrise and sunset do not need a saved place\. The Sun tab gives them for the centre of the map\./),
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Show sun times" }));
+    expect(onShowSun).toHaveBeenCalledTimes(1);
+  });
+
   it("has no move button when there is no map to move it on", () => {
     render(<PlacesList markers={loaded(places)} onOpen={() => {}} onToggleFavourite={() => {}} onAdd={() => {}} canAddOnMap={false} />);
     expect(screen.queryByRole("button", { name: /^Move / })).not.toBeInTheDocument();

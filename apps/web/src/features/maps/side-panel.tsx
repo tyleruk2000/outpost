@@ -3,7 +3,7 @@
  * hold the same four tabs; only the container differs.
  */
 import { PanelLeftClose } from "lucide-react";
-import { type KeyboardEvent, type PointerEvent, type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { type KeyboardEvent, type PointerEvent, type ReactNode, type RefObject, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger, Tooltip } from "@/components/ui/misc";
 import { cn } from "@/lib/utils";
@@ -29,8 +29,9 @@ export function PanelTabs({
 }) {
   return (
     <Tabs value={tab} onValueChange={(next) => onTabChange(next as PanelTab)} className="flex min-h-0 flex-1 flex-col">
-      {/* Four names and two counts have to fit across a 320 px phone. */}
-      <TabsList className="shrink-0 px-4 max-[23rem]:gap-3.5 max-[23rem]:px-3">
+      {/* Four names and two counts fit across a 320 px phone. Where they do not (larger text, a zoomed page, counts in the
+          hundreds) the row takes a second line: a name that had slid off the edge of a row that scrolls was a tab nobody found. */}
+      <TabsList className="shrink-0 flex-wrap overflow-x-visible px-4 max-[23rem]:gap-x-3.5 max-[23rem]:px-3">
         {PANEL_TABS.map((item) => (
           <TabsTrigger key={item} value={item} onClick={onTabPress} className="max-md:min-h-11">
             {TAB_LABELS[item]}
@@ -70,23 +71,51 @@ export function DesktopPanel({ onCollapse, children }: { onCollapse: () => void;
 export const DETENTS = ["peek", "half", "full"] as const;
 export type Detent = (typeof DETENTS)[number];
 
-/** Height of the handle and the tab row: what stays on screen when the sheet is lowered. */
+/**
+ * Height of the handle and the tab row at the usual text size: what stays on screen when
+ * the sheet is lowered. The sheet measures the two itself (`usePeekHeight`), because with
+ * larger text, or the row on two lines, they are taller than this.
+ */
 export const PEEK_HEIGHT = 82;
 
-/** The sheet's height at each resting position, for a map area of the given height. */
-export function detentHeight(detent: Detent, areaHeight: number): number {
-  if (detent === "peek") return PEEK_HEIGHT;
-  if (detent === "half") return Math.max(PEEK_HEIGHT, Math.round(areaHeight * 0.5));
+/** The sheet's height at each resting position, for a map area of the given height. `peek` is the lowered height when it has been measured. */
+export function detentHeight(detent: Detent, areaHeight: number, peek = PEEK_HEIGHT): number {
+  if (detent === "peek") return peek;
+  if (detent === "half") return Math.max(peek, Math.round(areaHeight * 0.5));
   // Full leaves the search box showing, so the way back to the map is never hidden.
-  return Math.max(PEEK_HEIGHT, areaHeight - 68);
+  return Math.max(peek, areaHeight - 68);
 }
 
-export function nearestDetent(height: number, areaHeight: number): Detent {
+export function nearestDetent(height: number, areaHeight: number, peek = PEEK_HEIGHT): Detent {
   let best: Detent = "peek";
   for (const detent of DETENTS) {
-    if (Math.abs(detentHeight(detent, areaHeight) - height) < Math.abs(detentHeight(best, areaHeight) - height)) best = detent;
+    if (Math.abs(detentHeight(detent, areaHeight, peek) - height) < Math.abs(detentHeight(best, areaHeight, peek) - height)) best = detent;
   }
   return best;
+}
+
+/**
+ * How tall the lowered sheet has to be to show its handle and the whole row of tab names,
+ * measured from the page: the names are the only way into the panel, so none of them may
+ * end up below the edge of the sheet whatever size the text is.
+ */
+function usePeekHeight(sheet: RefObject<HTMLElement | null>): number {
+  const [peek, setPeek] = useState(PEEK_HEIGHT);
+  useLayoutEffect(() => {
+    const element = sheet.current;
+    const tabs = element?.querySelector<HTMLElement>('[role="tablist"]');
+    if (!element || !tabs || typeof ResizeObserver === "undefined") return;
+    const measure = () => {
+      // From the top of the sheet to the foot of the row, whatever height the sheet itself has just now.
+      const needed = Math.ceil(tabs.getBoundingClientRect().bottom - element.getBoundingClientRect().top);
+      if (needed > 0) setPeek(needed);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(tabs);
+    return () => observer.disconnect();
+  }, [sheet]);
+  return peek;
 }
 
 /**
@@ -98,13 +127,18 @@ export function nearestDetent(height: number, areaHeight: number): Detent {
 export function MobileSheet({
   detent,
   onDetentChange,
+  onPeekHeight,
   children,
 }: {
   detent: Detent;
   onDetentChange: (detent: Detent) => void;
+  /** Told how tall the lowered sheet is, once that has been measured. */
+  onPeekHeight?: (height: number) => void;
   children: ReactNode;
 }) {
   const sheet = useRef<HTMLElement>(null);
+  const peek = usePeekHeight(sheet);
+  useEffect(() => onPeekHeight?.(peek), [peek, onPeekHeight]);
   const [areaHeight, setAreaHeight] = useState(600);
   const [dragHeight, setDragHeight] = useState<number | null>(null);
   const drag = useRef<{ startY: number; startHeight: number; moved: boolean } | null>(null);
@@ -117,7 +151,7 @@ export function MobileSheet({
     return () => observer.disconnect();
   }, []);
 
-  const height = dragHeight ?? detentHeight(detent, areaHeight);
+  const height = dragHeight ?? detentHeight(detent, areaHeight, peek);
   useLayoutEffect(() => {
     const area = sheet.current?.parentElement;
     area?.style.setProperty("--sheet-height", `${height}px`);
@@ -128,20 +162,20 @@ export function MobileSheet({
 
   const onPointerDown = (event: PointerEvent<HTMLButtonElement>) => {
     event.currentTarget.setPointerCapture(event.pointerId);
-    drag.current = { startY: event.clientY, startHeight: detentHeight(detent, areaHeight), moved: false };
+    drag.current = { startY: event.clientY, startHeight: detentHeight(detent, areaHeight, peek), moved: false };
   };
   const onPointerMove = (event: PointerEvent<HTMLButtonElement>) => {
     const state = drag.current;
     if (!state) return;
     const delta = state.startY - event.clientY;
     if (Math.abs(delta) > 6) state.moved = true;
-    if (state.moved) setDragHeight(Math.max(PEEK_HEIGHT, Math.min(detentHeight("full", areaHeight), state.startHeight + delta)));
+    if (state.moved) setDragHeight(Math.max(peek, Math.min(detentHeight("full", areaHeight, peek), state.startHeight + delta)));
   };
   const onPointerUp = () => {
     const state = drag.current;
     drag.current = null;
     if (!state) return;
-    if (state.moved && dragHeight !== null) onDetentChange(nearestDetent(dragHeight, areaHeight));
+    if (state.moved && dragHeight !== null) onDetentChange(nearestDetent(dragHeight, areaHeight, peek));
     // A tap steps through the heights: up, up, then back down.
     else onDetentChange(DETENTS[(DETENTS.indexOf(detent) + 1) % DETENTS.length]!);
     setDragHeight(null);

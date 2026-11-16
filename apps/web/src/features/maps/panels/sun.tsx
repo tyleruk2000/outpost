@@ -5,12 +5,16 @@
  *
  * `SunSection` folds away to one line, so it never pushes a place's own details off the
  * screen, and remembers in this browser whether it was left open. `SunTimes` is the same
- * thing always open, under a line that gives the day's sunrise and sunset first: the Sun
- * tab of the map's panel. Both remember which clock was chosen, and write times in the
- * style chosen for the whole app (`lib/clock`), except UTC, which is always 24-hour.
+ * thing always open: the Sun tab of the map's panel. Both remember which clock was
+ * chosen, and write times in the style chosen for the whole app (`lib/clock`), except
+ * UTC, which is always 24-hour.
+ *
+ * The times are laid out to be read on a phone held at arm's length, outdoors: sunrise
+ * and sunset large at the top, first and last light under them, and everything else in
+ * a quiet list below, so that nothing crowds the two times most people came for.
  */
 import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
-import { useId, useMemo, useState } from "react";
+import { type ReactNode, useId, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +32,8 @@ import {
   formatOffset,
   formatShortDate,
   hoursFromZone,
+  type SunRow,
+  sunLayout,
   sunRows,
   sunSummary,
   zoneOffsetMinutes,
@@ -79,11 +85,90 @@ function useSun(position: LatLon, zone: string | undefined) {
   return { device, style, clock, setClock, today, date, setDate, choose, day, rows, summary, far: hoursFromZone(lon, device, day.noon) };
 }
 
+const dayParts = new Intl.DateTimeFormat("en-GB", { timeZone: "UTC", weekday: "long", day: "numeric", month: "long", year: "numeric" });
+
+/** "Today, Sunday 21 June", or "Friday 20 March 2026" for any other day. Put together from its parts: browsers differ over the commas. */
+export function dayCaption(date: IsoDate, today: IsoDate): string {
+  const parts: Record<string, string> = {};
+  for (const part of dayParts.formatToParts(new Date(`${date}T00:00:00Z`))) parts[part.type] = part.value;
+  const day = `${parts.weekday} ${parts.day} ${parts.month}`;
+  return date === today ? `Today, ${day}` : `${day} ${parts.year}`;
+}
+
+/**
+ * One time, set large. The figures stand alone; "am", "UTC" and the date of another day are
+ * small beside or under them, so that the figures are as large as the width allows. A day
+ * without the event is said in words at reading size.
+ */
+function Figure({ row, size }: { row: SunRow; size: "large" | "medium" }) {
+  if (!row.clock) return <span className="text-body font-medium text-balance text-ink">{row.value}</span>;
+  const [figures, suffix] = row.clock.time.split(" ");
+  const small = [suffix, row.clock.mark].filter(Boolean).join(" ");
+  return (
+    <>
+      <span className="whitespace-nowrap">
+        <span className={cn("tabular font-semibold text-ink", size === "large" ? "text-display" : "text-heading")}>{figures}</span>
+        {small ? <span className="text-small font-medium text-ink-muted"> {small}</span> : null}
+      </span>
+      {row.clock.day ? <span className="block text-small text-ink-muted"> on {row.clock.day}</span> : null}
+    </>
+  );
+}
+
+/**
+ * Two times side by side, each under its name. The names share one row and the times the
+ * next, so a name that takes two lines on a narrow phone does not push its time out of line
+ * with the other. Where the text is too large for two columns they stack.
+ */
+function Figures({ rows, size }: { rows: SunRow[]; size: "large" | "medium" }) {
+  return (
+    <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] gap-x-4 gap-y-2">
+      {rows.map((row) => (
+        <div key={row.key} className="row-span-2 grid grid-rows-subgrid gap-y-0">
+          <dt className="self-end text-small text-ink-muted">{row.label}</dt>
+          <dd className="min-w-0">
+            <Figure row={row} size={size} />
+          </dd>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /** The date, the day's times, and which clock they are on. */
-function SunBody({ sun, id, className }: { sun: ReturnType<typeof useSun>; id?: string; className?: string }) {
+function SunBody({
+  sun,
+  id,
+  children,
+  className,
+}: {
+  sun: ReturnType<typeof useSun>;
+  id?: string;
+  /** Said between the times and the quieter list: which point the times are for. */
+  children?: ReactNode;
+  className?: string;
+}) {
   const { device, style, clock, setClock, today, date, setDate, choose, day, rows, far } = sun;
+  const layout = useMemo(() => sunLayout(rows), [rows]);
   return (
     <div id={id} className={cn("grid gap-3", className)}>
+      {/* Before the times, because it changes how they are read. */}
+      {far ? (
+        <p className="text-small text-ink-muted">
+          By the sun, this place runs about {far.hours} hours {far.direction === "ahead" ? "ahead of" : "behind"} this device’s time zone,
+          so clocks there probably read differently. Outpost cannot tell a place’s time zone offline and does not guess. The date is the
+          date at the place.
+        </p>
+      ) : null}
+
+      <dl className="grid gap-3">
+        <div className="grid gap-1">
+          <p className="text-small font-medium text-ink">{dayCaption(date, today)}</p>
+          <Figures rows={layout.main} size="large" />
+        </div>
+        {layout.light.length > 0 ? <Figures rows={layout.light} size="medium" /> : null}
+      </dl>
+
       <div className="flex flex-wrap items-center gap-1.5">
         <Button variant="ghost" size="icon" aria-label="The day before" onClick={() => choose(addDays(date, -1))}>
           <ChevronLeft />
@@ -109,17 +194,10 @@ function SunBody({ sun, id, className }: { sun: ReturnType<typeof useSun>; id?: 
         ) : null}
       </div>
 
-      {/* Before the times, because it changes how they are read. */}
-      {far ? (
-        <p className="text-small text-ink-muted">
-          By the sun, this place runs about {far.hours} hours {far.direction === "ahead" ? "ahead of" : "behind"} this device’s time zone,
-          so clocks there probably read differently. Outpost cannot tell a place’s time zone offline and does not guess. The date is the
-          date at the place.
-        </p>
-      ) : null}
+      {children}
 
-      <dl>
-        {rows.map((row) => (
+      <dl className="border-t border-border">
+        {layout.rest.map((row) => (
           <Fact key={row.key} label={row.label}>
             {row.value}
             {row.detail ? (
@@ -202,8 +280,8 @@ export function SunSection({
         className="flex min-h-9 w-full items-center gap-3 rounded-control text-left max-md:min-h-11"
       >
         <span className="text-small font-medium text-ink">Sun</span>
-        {/* Two lines on a narrow phone rather than a sunset cut off. */}
-        <span className="tabular min-w-0 flex-1 text-right text-small text-balance text-ink-muted">{open ? "" : sun.summary}</span>
+        {/* At reading size and in ink: this line is the answer for most people. Two lines on a narrow phone rather than a sunset cut off. */}
+        <span className="tabular min-w-0 flex-1 text-right text-body font-medium text-balance text-ink">{open ? "" : sun.summary}</span>
         <ChevronDown
           aria-hidden
           className={cn("size-4 shrink-0 text-ink-muted transition-transform duration-150 ease-out", open && "rotate-180")}
@@ -214,15 +292,30 @@ export function SunSection({
   );
 }
 
-/** The same times, always open, under one line that answers the usual question first. */
-export function SunTimes({ position, zone, className }: { position: LatLon; zone?: string; className?: string }) {
+/**
+ * The same times, always open. The one line that answers the usual question is kept for
+ * screen readers, which are told when the map has moved and the times with it; on screen
+ * the two large times say the same.
+ */
+export function SunTimes({
+  position,
+  zone,
+  children,
+  className,
+}: {
+  position: LatLon;
+  zone?: string;
+  /** Said between the times and the quieter list: which point the times are for. */
+  children?: ReactNode;
+  className?: string;
+}) {
   const sun = useSun(position, zone);
   return (
-    <div className={cn("grid gap-3", className)}>
-      <p className="tabular text-lead font-semibold text-balance text-ink" aria-live="polite" aria-atomic>
+    <div className={cn("grid", className)}>
+      <p className="sr-only" aria-live="polite" aria-atomic>
         {sun.summary}
       </p>
-      <SunBody sun={sun} />
+      <SunBody sun={sun}>{children}</SunBody>
     </div>
   );
 }

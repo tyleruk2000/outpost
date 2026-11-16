@@ -2,12 +2,15 @@ import { describe, expect, it } from "vitest";
 import { moonPhase } from "./moon";
 import { dayLengthChange, sunDay } from "./sun";
 import {
+  clockPartsText,
   dateIn,
   formatClock,
   formatDayChange,
   formatDayLength,
   formatOffset,
   hoursFromZone,
+  sunGlance,
+  sunLayout,
   sunRows,
   sunSummary,
   zoneOffsetMinutes,
@@ -279,5 +282,97 @@ describe("the rows of the Sun section", () => {
         }
       }
     }
+  });
+});
+
+describe("the times laid out to be read at arm's length", () => {
+  const layoutOf = (lat: number, lon: number, date: string, zone: string, writing?: Parameters<typeof sunRows>[4]) => {
+    const day = sunDay(lat, lon, date);
+    return sunLayout(sunRows(day, dayLengthChange(lat, lon, date), moonPhase(day.noon), zone, writing));
+  };
+
+  it("puts sunrise and sunset first, first and last light next, and everything else in the list after", () => {
+    const layout = layoutOf(51.48, 0, "2026-06-21", "Europe/London");
+    expect(layout.main.map((row) => [row.label, row.value])).toEqual([
+      ["Sunrise", "04:43"],
+      ["Sunset", "21:21"],
+    ]);
+    expect(layout.light.map((row) => [row.label, row.value])).toEqual([
+      ["First light (civil dawn)", "03:55"],
+      ["Last light (civil dusk)", "22:09"],
+    ]);
+    expect(layout.rest.map((row) => row.label)).toEqual([
+      "Solar noon",
+      "Sunrise bearing",
+      "Sunset bearing",
+      "Day length",
+      "Nautical twilight",
+      "Moon",
+    ]);
+  });
+
+  it("moves the bearings out of the two large times into rows of their own, losing nothing", () => {
+    const layout = layoutOf(51.48, 0, "2026-06-21", "Europe/London");
+    expect(layout.main.every((row) => row.detail === undefined)).toBe(true);
+    const rest = Object.fromEntries(layout.rest.map((row) => [row.key, row]));
+    expect(rest["sunrise-bearing"]?.value).toBe("49° NE");
+    expect(rest["sunset-bearing"]?.value).toBe("311° NW");
+    expect(rest.noon).toMatchObject({ value: "13:02", detail: "sun 62° up" });
+    expect(rest["day-length"]).toMatchObject({ value: "16 h 38 min", detailBelow: true });
+  });
+
+  it("gives each single time in pieces, so the figures can be set large and the rest small", () => {
+    const [sunrise] = layoutOf(51.48, 0, "2026-06-21", "Europe/London", { style: "12" }).main;
+    expect(sunrise?.clock).toEqual({ time: "4:43 am" });
+    const [utc] = layoutOf(51.48, 0, "2026-06-21", "UTC", { style: "24", mark: "UTC" }).main;
+    expect(utc?.clock).toEqual({ time: "03:43", mark: "UTC" });
+    // Suva's sunrise on its 20 March is the evening of the 19th in London.
+    const [suva] = layoutOf(-18.14, 178.44, "2026-03-20", "Europe/London").main;
+    expect(suva?.clock).toEqual({ time: "18:10", day: "19 Mar" });
+    expect(suva?.value).toBe("18:10 on 19 Mar");
+    expect(clockPartsText({ time: "03:43", mark: "UTC", day: "19 Mar" })).toBe("03:43 UTC on 19 Mar");
+  });
+
+  it("has no pieces for a value that is words or two times, which are never set as one large figure", () => {
+    const summer = layoutOf(69.65, 18.96, "2026-06-21", "UTC");
+    expect(summer.main).toEqual([{ key: "sun", label: "Sun", value: "Does not set on this date (midnight sun)" }]);
+    expect(summer.light).toEqual([]);
+    expect(summer.rest.map((row) => row.key)).toEqual(["noon", "day-length", "moon"]);
+    const winter = layoutOf(69.65, 18.96, "2026-12-21", "UTC");
+    expect(winter.main.map((row) => row.clock)).toEqual([undefined]);
+    expect(winter.light.map((row) => row.key)).toEqual(["first-light", "last-light"]);
+    const greenwich = layoutOf(51.48, 0, "2026-06-21", "UTC");
+    expect(greenwich.rest.find((row) => row.key === "nautical")?.clock).toBeUndefined();
+  });
+
+  it("keeps every row of the section, whatever the day, anywhere on Earth", () => {
+    for (const lat of [-90, -66.6, 0, 51.48, 66.6, 69.65, 90]) {
+      for (let step = 0; step < 366; step += 13) {
+        const date = new Date(Date.UTC(2028, 0, 1 + step)).toISOString().slice(0, 10);
+        const day = sunDay(lat, 18.96, date);
+        const rows = sunRows(day, dayLengthChange(lat, 18.96, date), moonPhase(day.noon), "UTC");
+        const layout = sunLayout(rows);
+        const bearings = rows.filter((row) => ["sunrise", "sunset"].includes(row.key) && row.detail).length;
+        expect(layout.main.length + layout.light.length + layout.rest.length, `${lat} on ${date}`).toBe(rows.length + bearings);
+        expect(layout.main.length, `${lat} on ${date}`).toBeGreaterThanOrEqual(1);
+      }
+    }
+  });
+});
+
+describe("the line that is always on the screen", () => {
+  it("gives sunrise and sunset as two short pieces, in the clock asked for", () => {
+    const day = sunDay(51.48, 0, "2026-06-21");
+    expect(sunGlance(day, "Europe/London")).toEqual(["Sunrise 04:43", "Sunset 21:21"]);
+    expect(sunGlance(day, "Europe/London", { style: "12" })).toEqual(["Sunrise 4:43 am", "Sunset 9:21 pm"]);
+  });
+
+  it("says in words when there is no sunrise or sunset to give", () => {
+    expect(sunGlance(sunDay(69.65, 18.96, "2026-06-21"), "UTC")).toEqual(["The sun does not set"]);
+    expect(sunGlance(sunDay(69.65, 18.96, "2026-12-21"), "UTC")).toEqual(["The sun does not rise"]);
+    // The last day before the midnight sun: it rises, and does not set.
+    const edge = sunGlance(sunDay(69.65, 18.96, "2026-07-25"), "Etc/GMT-1");
+    expect(edge).toHaveLength(2);
+    expect(edge.join(" ")).not.toMatch(/NaN|null|undefined/);
   });
 });

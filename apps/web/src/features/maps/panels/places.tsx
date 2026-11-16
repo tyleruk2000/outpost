@@ -211,6 +211,7 @@ export function PlacesList({
   onMove,
   onAdd,
   canAddOnMap,
+  onShowSun,
 }: {
   markers: UseQueryResult<MarkerDto[]>;
   onOpen: (marker: MarkerDto) => void;
@@ -220,6 +221,8 @@ export function PlacesList({
   /** Starts the "click the map to save a place" tool. */
   onAdd: () => void;
   canAddOnMap: boolean;
+  /** Opens the Sun tab. Sun times do not need a saved place, and someone looking for them here is told so. */
+  onShowSun?: () => void;
 }) {
   const [filter, setFilter] = useState("");
   const all = markers.data ?? [];
@@ -259,6 +262,14 @@ export function PlacesList({
           <Button variant="primary" className="mt-4" onClick={onAdd}>
             Save a place
           </Button>
+        ) : null}
+        {onShowSun ? (
+          <p className="mt-5 border-t border-border pt-4 text-small text-ink-muted">
+            Sunrise and sunset do not need a saved place. The Sun tab gives them for the centre of the map.{" "}
+            <Button variant="link" size="sm" onClick={onShowSun}>
+              Show sun times
+            </Button>
+          </p>
         ) : null}
       </div>
     );

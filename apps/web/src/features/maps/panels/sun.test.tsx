@@ -44,8 +44,12 @@ describe("the Sun section of a place", () => {
     await userEvent.click(screen.getByRole("button", { name: /^Sun/ }));
     expect(row("First light (civil dawn)")).toHaveTextContent("03:55");
     expect(row("Sunrise")).toHaveTextContent("04:43");
-    expect(row("Sunrise")).toHaveTextContent("49° NE");
+    // The bearings are rows of their own, in the quieter list, so that the two large times stand alone.
+    expect(row("Sunrise")).not.toHaveTextContent("NE");
+    expect(row("Sunrise bearing")).toHaveTextContent("49° NE");
+    expect(row("Sunset bearing")).toHaveTextContent("311° NW");
     expect(row("Solar noon")).toHaveTextContent("13:02");
+    expect(row("Solar noon")).toHaveTextContent("sun 62° up");
     expect(row("Sunset")).toHaveTextContent("21:21");
     expect(row("Last light (civil dusk)")).toHaveTextContent("22:09");
     expect(row("Day length")).toHaveTextContent("16 h 38 min");
@@ -225,6 +229,66 @@ describe("the Sun section of a place", () => {
     expect(onOpen).toHaveBeenCalledTimes(1);
     await userEvent.click(screen.getByRole("button", { name: /^Sun/ }));
     expect(onOpen).toHaveBeenCalledTimes(1);
+  });
+
+  it("puts sunrise and sunset first and largest, first and last light next, and the rest after the date", async () => {
+    render(<SunSection position={GREENWICH} zone="Europe/London" defaultOpen />);
+    const terms = [...document.querySelectorAll("dt")].map((term) => term.textContent);
+    expect(terms).toEqual([
+      "Sunrise",
+      "Sunset",
+      "First light (civil dawn)",
+      "Last light (civil dusk)",
+      "Solar noon",
+      "Sunrise bearing",
+      "Sunset bearing",
+      "Day length",
+      "Nautical twilight",
+      "Moon",
+    ]);
+    // The figures of the two times are the largest type in the section, in the app's tabular figures.
+    const figures = (label: string) => row(label).querySelector(".tabular") as HTMLElement;
+    for (const label of ["Sunrise", "Sunset"]) {
+      expect(figures(label)).toHaveTextContent(/^\d\d:\d\d$/);
+      expect(figures(label)).toHaveClass("text-display", "tabular");
+    }
+    expect(figures("First light (civil dawn)")).toHaveClass("text-heading", "tabular");
+    expect(figures("Last light (civil dusk)")).toHaveClass("text-heading", "tabular");
+    expect(row("Solar noon")).toHaveClass("text-small");
+    // The day the times are for is said above them, and the date control comes after the times.
+    expect(screen.getByText("Today, Sunday 21 June")).toBeInTheDocument();
+    const date = screen.getByLabelText("Date");
+    expect(row("Last light (civil dusk)").compareDocumentPosition(date) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(date.compareDocumentPosition(row("Solar noon")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "The day after" }));
+    expect(screen.getByText("Monday 22 June 2026")).toBeInTheDocument();
+    expect(screen.queryByText(/^Today,/)).not.toBeInTheDocument();
+  });
+
+  it("sets “am”, “UTC” and another day’s date small beside the figures, so the figures stay large", async () => {
+    setClockChoice("12");
+    render(<SunSection position={SUVA} zone="Europe/London" defaultOpen />);
+    fireEvent.change(screen.getByLabelText("Date"), { target: { value: "2026-03-20" } });
+    const figures = row("Sunrise").querySelector(".tabular") as HTMLElement;
+    expect(figures).toHaveTextContent(/^6:10$/);
+    expect(row("Sunrise")).toHaveTextContent("6:10 pm on 19 Mar");
+    await userEvent.click(screen.getByRole("radio", { name: "UTC" }));
+    expect(row("Sunrise").querySelector(".tabular")).toHaveTextContent(/^18:10$/);
+    expect(row("Sunrise")).toHaveTextContent("18:10 UTC on 19 Mar");
+  });
+
+  it("says a day without a sunrise in words at reading size, not as a large figure", () => {
+    render(<SunSection position={TROMSO} zone="Europe/London" defaultOpen />);
+    expect(row("Sun").querySelector(".tabular")).toBeNull();
+    expect(row("Sun")).toHaveTextContent("Does not set on this date (midnight sun)");
+    // Nothing is left where first and last light would have been.
+    expect(screen.queryByText(/light/, { selector: "dt" })).not.toBeInTheDocument();
+  });
+
+  it("gives the folded line at reading size and in ink", () => {
+    render(<SunSection position={GREENWICH} zone="Europe/London" />);
+    const line = screen.getByText("Sunrise 04:43, sunset 21:21");
+    expect(line).toHaveClass("text-body", "text-ink", "tabular");
   });
 
   it("can be shown always open, under one line that gives sunrise and sunset first", () => {
