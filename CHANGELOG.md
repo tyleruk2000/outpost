@@ -584,6 +584,14 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   counts, with every entry left out given its reason and no percentage from a handful.
 - Plans, the log, equipment profiles and saved predictions are counted among a person's
   own things under Manage and clean up, and erased with everything else.
+- **A second model** beside VOACAP: under a prediction, **Compare with a second model
+  (ITU P.533)** runs the ITU's own P.533 software for the same path and shows, for each
+  band and hour, whether each model has the path open, the MUF, signal and
+  signal-to-noise ratio from each, and the difference, with both run on isotropic
+  antennas. Optional: the engine is built on your own computer from the ITU's source
+  (`scripts/build-p533-engine.mjs`, Docker) and its 137 MB of maps are downloaded when
+  you ask. Nothing of the ITU's ships with Outpost. The build reproduces the ITU's nine
+  reference outputs line for line. See [docs/hf-propagation.md](docs/hf-propagation.md#a-second-model-itu-p533).
 
 #### On a phone, out of reach of the server
 

@@ -29,8 +29,9 @@ Read [What it is not](#what-it-is-not) before relying on it.
   which the signal-to-noise ratio is predicted to reach what a mode needs. Whether a
   contact is made also depends on interference, the operators and the equipment.
 - **Not Outpost's own model.** Outpost contains no propagation physics. It runs VOACAP
-  and shows what VOACAP returns. If the engine or its data is missing or damaged, it
-  says so and predicts nothing.
+  and shows what VOACAP returns, and, if you set it up, the ITU's P.533 beside it for
+  comparison ([A second model](#a-second-model-itu-p533)). If an engine or its data is
+  missing or damaged, it says so and predicts nothing.
 - **Not permission to transmit.** Which frequencies you may use is set by your licence.
   The band sheets in the library give the limits ([radio.md](radio.md)).
 
@@ -463,49 +464,231 @@ their licence (CC BY-NC) does not allow it.
 - Nothing here adjusts the engine. A calibration that did would have to be explainable
   and testable, and none is built.
 
-## A second engine: a proposal, not built
+## A second model: ITU P.533
 
 The specification asks for the engine to be replaceable and for results to be checked
-against a trusted reference where possible. The first sitting checked VOACAP's signal
-figures against the ITU's own P.533 software by hand (see
-[How it was checked](#how-it-was-checked)). Running a second model inside Outpost, so
-that a person could see two models side by side, was looked at on 16 November 2026 and
-**was not started**.
+against a trusted reference where possible. Beside VOACAP, the planner can run a second
+model for the same path: **ITURHFProp**, the implementation of Recommendation ITU-R
+P.533 (with P.372 for noise) that ITU-R Study Group 3 publishes. It is a different
+model from VOACAP, not a second copy of it.
 
-| Candidate | What it is | Licence, as GitHub and the repository state it | State |
-| --- | --- | --- | --- |
-| [ITU-R-Study-Group-3/ITU-R-HF](https://github.com/ITU-R-Study-Group-3/ITU-R-HF) | ITURHFProp: the ITU's C implementation of Recommendation P.533 with P.372 noise. A different model from VOACAP | No licence detected. A statement that it "may be used by implementers ... free from any copyright assertions"; one header says "All rights reserved" | Last pushed 15 May 2025 |
-| [im-alfa/p533-rs](https://github.com/im-alfa/p533-rs) | "A not-very Rusty port of the C impl of ITU-R P533 & P372" | MIT, by the porter. It is a translation of the ITU's code, so the MIT label stands on whatever the ITU's statement allows | Last pushed 10 March 2026, one star, publishes no validation |
-| [WU6P/VOA](https://github.com/WU6P/VOA) | VOACAP translated to JavaScript | Not one GitHub recognises | A second copy of the same model. It would check the translation, which the Fortran comparison already does, and not the model |
+It is optional, and **nothing of the ITU's ships with Outpost**: not its source, not
+the built engine, not its maps. See [Licences and attribution](#licences-and-attribution)
+for why. Each person who wants it builds the engine on their own computer from the ITU's
+own repository and downloads the maps through the download manager.
 
-Only P.533 is a second model, and it can be had two ways:
+### Setting it up
 
-1. **Build the ITU's C to WebAssembly** (wasi-sdk), in the same sandbox as VOACAP.
-2. **Build p533-rs to WebAssembly**, as hfcast is built.
+Under the prediction, **Compare with a second model (ITU P.533)** says in one line what
+is missing and how big it is. Two things are needed:
 
-Either way it would be held to ITURHFProp's own nine reference inputs and outputs,
-which the first sitting reproduced line for line from a native build, on macOS arm64
-and in linux/arm64 and linux/amd64 containers. What is in the way:
+1. **The engine**, built once on the computer that runs Outpost. It needs Docker and the
+   internet, once:
 
-- **Licence.** Neither is cleanly inside Outpost's rule (MIT, ISC, BSD, Apache-2.0).
-  The ITU's wording is for "implementers in their implementation of the
-  Recommendation", which a P.533 engine is, so it fits better here than it does for
-  VOACAP's data. It is still the owner's decision, as the coefficients already are.
-- **Data.** P.533 needs the ITU's ionospheric maps: twelve files of 11 MB, 134 MB in
-  all. They would be an optional download through the download manager, not shipped.
-- **Antennas.** P.533 has no antenna models; it takes a gain table. Outpost must not
-  compute patterns of its own, so a comparison would be for isotropic antennas only,
-  as the first sitting's was.
-- **What it would show.** Two models agreeing on when a path is open and differing by
-  several decibels on signal, which the first sitting found. That is worth showing as
-  "one model's answer, good to several decibels", not as a second opinion on which
-  band to use.
+   ```bash
+   node scripts/build-p533-engine.mjs                       # into engines/p533/engine/
+   node scripts/build-p533-engine.mjs --install <data dir>  # also into <data dir>/propagation/p533/
+   ```
 
-Estimated at two sittings: one to build either candidate to WebAssembly reproducibly
-and hold it to the nine reference outputs on three platforms (stopping there if it
-cannot be), one for the adapter behind `engine.ts`, the optional dataset, and a
-side-by-side view limited to isotropic antennas. Neither candidate was built or run in
-this sitting; p533-rs's own tests were not run.
+   The script fetches only the source folders of github.com/ITU-R-Study-Group-3/ITU-R-HF
+   at commit `82017594a1c6` (15 May 2025), checks them against the tree checksum Outpost
+   recorded, and compiles them in a container (Debian 12 slim and wasi-sdk 34.0, both
+   pinned by checksum) with no network. The result must be, byte for byte, the file
+   Outpost recorded (`iturhfprop.wasm`, 233,329 bytes, SHA-256 `2eb26424…29b2`); if it
+   is not, it is not installed. A packaged app looks in
+   `<data directory>/propagation/p533/`, so use `--install` there. The build image is
+   about 740 MB; `--remove-image` deletes it afterwards.
+
+2. **The maps**: press **Download the P.533 maps (137 MB)**. Twenty-five files from the
+   same repository at the same commit (`P372/Data/`): the twelve monthly ionospheric maps
+   (`ionos01.bin` to `ionos12.bin`, 11.2 MB each), P.372's twelve monthly noise tables
+   (`COEFF01W.txt` to `COEFF12W.txt`) and the P.1239 decile factors, 137,270,856 bytes in
+   all. They are fetched one after another into one file on the storage location chosen,
+   checked against the checksum of the whole and of each file, and recorded as one
+   collection, which **Manage and clean up** lists and can remove. Nothing is fetched
+   unless the button is pressed.
+
+Until both are there and match their checksums, the second model is simply not offered.
+
+### What it shows
+
+Press **Compare with a second model (ITU P.533)** under a prediction. Both models are
+run for the same path, month, sunspot number, power, noise and requirement, for the
+frequency asked about and each band, through the day:
+
+- **Open or shut by hour**: for each band and hour, whether each model has the path
+  open (the frequency at or below that model's median MUF), marked where they disagree,
+  with the number of hours they agree on and, over the hours open in both, the range of
+  P.533's signal less VOACAP's.
+- **At the chosen hour**: for each band, open or shut, MUF, signal and signal-to-noise
+  ratio from each model, and the difference. VOACAP's reliability and P.533's basic
+  circuit reliability are two separate columns, each named.
+
+The difference is stated, never averaged into one answer, and nothing says which model
+is right. On London to Birmingham, 16 November 2026 (SSN 83, 5 W, urban noise, SSB),
+the two agreed on open or shut in 22 to 24 of the 24 hours on every band; while both had
+40 m open, P.533's signal was 3.6 to 9.0 dB weaker; the MUFs differed by 0.04 to
+0.32 MHz.
+
+**Antennas.** P.533 has no antenna models, and Outpost does not compute a pattern of its
+own. So the comparison runs **both** models with isotropic antennas of 0 dBi at both
+ends, with no gain added and no feedline loss, whatever antennas the prediction above
+uses. The prediction above, with your antennas, is VOACAP's alone and is not relabelled.
+A question to the P.533 engine with any other antenna is refused rather than quietly run
+isotropic. The comparison is one way only (no reply).
+
+### How Outpost's question is put to P.533
+
+The engine is the ITU's command-line program, run as it is: Outpost writes an input
+file in the program's own format and reads the CSV report it writes
+(`modules/propagation/p533/input.ts`). Every mapping:
+
+| Outpost | P.533 input | Note |
+| --- | --- | --- |
+| Transmitter and receiver | `Path.L_tx`, `Path.L_rx`, and the receiver as the one point of the area | Positions to four decimal places. Names are fixed ("Transmitter", "Receiver"): no text from a request goes into the file |
+| Date | `Path.year`, `Path.month` | By month, as VOACAP |
+| Hours | `Path.hour 1,…,24` | UTC; hour 24 is midnight at the end of the day, as in VOACAP |
+| Sunspot number | `Path.SSN` | The same number VOACAP was run at, from the same source. P.533's program takes 1 to 311; outside that it is refused with that range |
+| Power | `Path.txpower`, dB relative to 1 kW | 10·log10(W/1000). The program takes −30 to 60 dB(kW), 1 W to 1 GW; below 1 W the comparison is refused and says so |
+| Frequencies | `Path.frequency`, up to 32 per run | The one asked about, then each band's centre |
+| Antennas | `TXAntFilePath "ISOTROPIC"`, `RXAntFilePath "ISOTROPIC"`, `TXGOS 0.0`, `RXGOS 0.0` | Always. See above |
+| Noise: urban, residential, rural, remote | `Path.ManMadeNoise "CITY"`, `"RESIDENTIAL"`, `"RURAL"`, `"QUIETRURAL"` | P.372's named curves, Fam = c − d·log10(f): c = 76.8, 72.5, 67.2 with d = 27.7, and c = 53.6 with d = 28.6. At 3 MHz they give −140.4, −144.7, −150.0 and −164.0 dBW in 1 Hz; VOACAP's four settings are −140.4, −144.7, −150.0 and −164.1. Atmospheric and galactic noise are each model's own. The upper and lower decile spreads of man-made noise are P.372's for each category (P.533's program uses the rural spreads for quiet rural) |
+| The mode's requirement | `Path.SNRr` in 1 Hz, with `Path.BW 1.0` | Outpost states every ratio in 1 Hz. P.533's reliability depends on the ratio less the requirement, so asking in 1 Hz gives the same answer as asking in the mode's own bandwidth. A mode with no figure is run at 0 dB and no reliability of either kind is shown |
+| — | `Path.SNRXXp 90` | The ratio exceeded 90% of the time, read but not shown |
+| — | `Path.Modulation "ANALOG"`, `Path.SorL "SHORTPATH"` | P.533's "digital" method needs the time and frequency spread a modem tolerates, which no mode in Outpost states. Short path only, as with VOACAP |
+
+And back, from the report's columns (named as the program names them):
+
+| Shown as | P.533 column | Against VOACAP's |
+| --- | --- | --- |
+| MUF | `MUF50`, the path's basic MUF on half the days | VOACAP's MUF, the same definition. P.533's operational MUF (`OPMUF`, higher) is kept in the answer and not set against it |
+| Open | frequency ≤ `MUF50` | frequency ≤ VOACAP's MUF |
+| Field strength | `Ep`, dB(1 µV/m) | VOACAP's field strength |
+| Signal | `PR`, dBW, median available received power | VOACAP's signal power |
+| Noise | `FamT` − 204, dBW in 1 Hz | VOACAP's noise |
+| Signal-to-noise ratio | `SNR`, dB in 1 Hz | VOACAP's median ratio |
+| Basic circuit reliability | `BCR`, % | **Not VOACAP's reliability.** P.533 counts variation from hour to hour (5 and 8 dB deciles) as well as from day to day, after P.842. It is shown in its own column under its own name |
+
+**Above the MUF** the two models differ by design. P.533 adds an above-the-MUF loss
+that grows with how far the frequency is above each mode's basic MUF fb (in its
+short-path method: for E modes 46·√(f/fb − 1) + 5 dB, at most 58 dB; for F2 modes
+36·√(f/fb − 1) + 5 dB, at most 60, on paths up to 3,000 km, and 70·(f/fb − 1) + 8 dB,
+at most 80, beyond), and widens the spread of its reliability with f/MUF. VOACAP treats such
+frequencies its own way. A signal figure for a shut path is each model's own; the range
+of differences counts only hours open in both. Beyond 9,000 km P.533 uses its own
+long-path method, and the report's `Ep` is that method's field strength.
+
+The program's value −307 means "not worked out"; Outpost treats exactly that value as
+no figure. Figures below it (a very weak signal on a long path) are real.
+
+### Held to the ITU's reference
+
+**Against the ITU's own reference.** The repository carries nine reference inputs and
+the outputs the ITU committed for them (`ITURHFProp/Bin/*.in`, `*.out`). The WebAssembly
+build, run exactly as Outpost runs it (the same sandbox, a fresh instance for each run),
+printed every one of them. Tolerance: none; every line is compared as text, except line
+3 (the date the program was compiled) and line 6 (the time of the analysis), which say
+when, not what.
+
+| Case | Lines | Differing lines outside 3 and 6 |
+| --- | --- | --- |
+| 1-5-85 | 86 | 0 |
+| 1-5-85_01 | 86 | 0 |
+| 1-8-84 | 114 | 0 |
+| 164-1-78 | 86 | 0 |
+| caracas_201805_10_31_B4 (path dump, a type 13 antenna file) | 4,846 | 0 |
+| itu_old (path dump) | 401 | 0 |
+| itu_old22012020 (path dump, a type 13 antenna at the receiver) | 401 | 0 |
+| moscow_201805_10_31_B4 | 102 | 0 |
+| sydney_201805_10_31_B4 (path dump, 16,900 km) | 225 | 0 |
+
+So no floating-point tolerance was needed. These are
+`apps/server/test/propagation-p533-reference.test.ts`; because the ITU's files are not
+in the repository, they run when the built engine, the fetched source and the maps are
+on the computer (`node scripts/build-p533-engine.mjs --maps`), and are reported as
+skipped, by name, when they are not. They were run on 16 November 2026 on an Apple M2
+Max: 9 of 9 identical. Two of the nine name antenna files (`dipole_14mhz_10m_aagl.13`
+and `201-6_0.t13`, the second under the name `201-6_0.T13` that the input gives), which
+the test hands the program; Outpost itself never uses an antenna file with P.533.
+
+**Building it again gives the same bytes.** Two builds on linux/arm64 and one on
+linux/amd64 (under emulation on the same Mac) gave the same file, SHA-256
+`2eb264246a77f6fda81325bb6a71a0f3b6e1c60e6e5bbadb38f5ca05c39229b2`.
+
+**Against VOACAP**, on London to Birmingham: see [What it shows](#what-it-shows), and
+[How it was checked](#how-it-was-checked) under The engine, which compared the two at
+three sunspot numbers. Not compared with signals measured on the air. Not run on
+Windows, a Raspberry Pi or an Intel Mac.
+
+### The build
+
+`engines/p533/` holds only Outpost's own files: `build/Dockerfile` and `build/compile.sh`
+(the toolchain and the compile), `glue/` (below) and `NOTICE.txt`. **No line of the
+ITU's source is edited or reproduced.** Building for WASI needed three things, none of
+them a patch:
+
+- **`dlopen`.** On Linux ITURHFProp loads P533 and P372 as shared libraries with
+  `dlopen` and `dlsym`. WebAssembly here has none, so the three are linked into one
+  program and `glue/outpost-dl.c`, with its own `glue/include/dlfcn.h`, answers those two
+  calls from a fixed table of the functions linked in. Only the two library names and
+  the 21 function names the ITU's code asks for are known; any other is an error. The
+  sources are compiled with `__linux__` defined so that they take their Linux branches.
+- **Variables defined in headers.** Each part defines the same function-pointer
+  variables from its headers (the ITU's Linux makefiles link with `-z muldefs`). The
+  link uses `--allow-multiple-definition`; every copy is an uninitialised pointer. The
+  compile script stops if any *function* is defined twice, except five helpers for
+  printing angles and times (`degrees`, `minutes`, `seconds`, `hrs`, `mns`) that P533
+  and ITURHFProp both define with the same bodies at the pinned commit.
+- **Reproducibility.** `__DATE__` and `__TIME__`, which the program prints as its
+  compile time, come from `SOURCE_DATE_EPOCH`, set to the commit's time; paths are
+  rewritten. The flags are the ITU makefiles' (`-O2`); there is no fast-maths, and
+  WebAssembly has no fused multiply-add, which is why the outputs match to the last
+  digit. No long doubles are used by the code.
+
+The program's memory is capped at 128 MB when it is linked; a day of 32 frequencies
+uses about 36 MB.
+
+### The sandbox
+
+The ITU's program runs in a worker thread of its own (`p533/p533.worker.ts`), apart from
+VOACAP's, with its own WASI shim (`p533/wasi.ts`). It is given its command line, the
+files Outpost puts in a map (the input, the month's maps, the noise and decile tables),
+which it can read and never change, and one file it may create and write, the report,
+up to 32 MB. `..` at the top of its tree stays at the top. It has no other file, no
+network and no environment. Every run is a fresh instance of the compiled module, so no
+state carries from one answer to the next. A question unanswered in a minute ends the
+worker; the worker ends after five idle minutes.
+
+### How fast
+
+Measured on an Apple M2 Max, 16 November 2026, with other work running:
+
+| | |
+| --- | --- |
+| Engine file | 233 kB |
+| Load the engine and the first month's maps | 72 ms |
+| One path, 24 hours, ten frequencies (London to Birmingham) | 110 to 130 ms; one run of 280 ms |
+| The same, London to Sydney (16,994 km) | 460 ms |
+| The whole comparison, first time (VOACAP isotropic and P.533) | 304 ms; found again, 12 ms |
+| The program's memory for one run | 36 MB, released after the run |
+| Maps held in the worker | two months (22 MB) and the small tables |
+
+### Answers kept
+
+A comparison is kept like any other answer, under a key made from the VOACAP
+prediction's own key (the question as the engine reads it, the sunspot number, the
+solar table's checksum, VOACAP's checksum and its data's version) with P.533's engine
+checksum and the version of its maps (`p533-maps <commit> <maps checksum>`). Because the
+comparison is isotropic, the antennas in the form do not change the key.
+
+### What is not done
+
+- P.533 is not offered for coverage maps or communication plans.
+- No antenna but isotropic. A gain table (P.533's type 13 or 14 file) for each generic
+  antenna, computed by a program whose patterns can be checked, is the way to more.
+- The reply direction is not compared.
+- P.533's digital-modulation reliability, its long-path reliability details and its
+  operational MUF are not shown beside VOACAP's figures.
 
 ## Where the sunspot number comes from
 
@@ -590,7 +773,9 @@ VOACAP into Rust (Apache-2.0), compiled to WebAssembly:
 
 Everything outside `apps/server/src/modules/propagation/voacap/` knows only the
 interface in `engine.ts` (`circuit`, `ionosphere`, `listing`, `describe`, `datasets`),
-so another engine can be put behind it.
+so another engine can be put behind it. The ITU's P.533 is one, in
+`modules/propagation/p533/`, used only for the side-by-side comparison
+([A second model](#a-second-model-itu-p533)).
 
 ### Why this engine
 
@@ -598,7 +783,7 @@ Looked at on 16 November 2026.
 
 | Candidate | What it is | Licence | State | Verdict |
 | --- | --- | --- | --- | --- |
-| [ITU-R-Study-Group-3/ITU-R-HF](https://github.com/ITU-R-Study-Group-3/ITU-R-HF) | The ITU's own C implementation of Recommendation P.533-14 with P.372 noise (ITURHFProp) | No licence file. A statement that it "may be used by implementers ... free from any copyright assertions"; one header says "All rights reserved" | Last commit May 2025 | Not chosen. Needs 134 MB of ionospheric maps (twelve files of 11 MB). Has no antenna models: a gain table must be supplied for every antenna, which Outpost would have to compute itself. Not one of Outpost's licences. Used here as an independent check |
+| [ITU-R-Study-Group-3/ITU-R-HF](https://github.com/ITU-R-Study-Group-3/ITU-R-HF) | The ITU's own C implementation of Recommendation P.533-14 with P.372 noise (ITURHFProp) | No licence file. A statement that it "may be used by implementers ... free from any copyright assertions"; four headers say "All rights reserved. No part of this publication may be reproduced, by any means whatsoever, without written permission of ITU" | Last commit May 2025 | Not chosen. Needs 134 MB of ionospheric maps (twelve files of 11 MB). Has no antenna models: a gain table must be supplied for every antenna, which Outpost would have to compute itself. Not one of Outpost's licences. Used here as an independent check, and since as the optional second model, built on each computer and never shipped ([A second model](#a-second-model-itu-p533)) |
 | [jonathanmcsweet/hfcast-engine](https://github.com/jonathanmcsweet/hfcast-engine) | VOACAP translated to Rust, no dependencies | Apache-2.0 | Created August 2026, last commit 27 October 2026, two stars, one author | **Chosen**, in its `Compatible` tier only. Its claim to print what the Fortran prints was tested here and held |
 | [v0l/antenna-toolbox](https://github.com/v0l/antenna-toolbox) | A Rust application for antenna modelling, a NanoVNA and path planning | GPL-3.0 | Created September 2026 | Not usable: GPL-3.0 |
 | [jawatson/voacapl](https://github.com/jawatson/voacapl) | VOACAP itself, the Fortran, built for Linux | US Government work; the port's changes CC0 | Last commit March 2026 | Not chosen as the engine: Fortran needs a compiler per platform and writes scratch files beside its data. Used here as the reference |
@@ -731,6 +916,7 @@ Fortran at the commit used here and says how to run them.
 | --- | --- | --- | --- |
 | Ionospheric and noise coefficients (44 files) | 650 kB | Yes | No |
 | Solar cycle prediction | 17 kB | Yes, dated 16 November 2026 | Yes, when you ask |
+| ITU P.533 ionospheric and noise maps (25 files), for the second model only | 137 MB | No | Yes, when you ask, from the ITU's repository |
 
 A copy of the coefficients placed in `<data directory>/propagation/voacap-data/`
 (`dataset.json` and `itshfbc/`) is used in preference to the included one.
@@ -763,10 +949,69 @@ If the coefficients must not ship, the alternative is already built in: leave
 `engines/voacap/data` out of the package and have each person place the same files in
 their data directory. Predictions then need that one step before they work.
 
+### The second model's terms
+
+**ITURHFProp, P533 and P372, and their maps, are not under MIT or any open-source
+licence**, and none of it ships with Outpost or is in its repository. The repository
+(github.com/ITU-R-Study-Group-3/ITU-R-HF) has no licence file. At commit
+`82017594a1c6cacfaa7e86954c4ae7b3a5825a3d` it carries two texts, quoted word for word:
+
+1. `README.md`, lines 1098 to 1109 (and in nearly the same words in the headers of
+   `P533/Src/P533/P533.c`, `P372/Src/P372/Noise.c` and
+   `ITURHFProp/Src/ITURHFProp/ITURHFProp.c`):
+
+   > The ITURHFProp, P533 and P372 software has been developed collaboratively by
+   > participants in ITU-R Study Group 3. It may be used by implementers in their
+   > implementation of the Recommendation as well as in revisions of the specific
+   > original Recommendation and in other ITU Recommendations, free from any copyright
+   > assertions.
+   >
+   > The software is provided “as is” WITH NO WARRANTIES, EXPRESS OR IMPLIED, INCLUDING
+   > BUT NOT LIMITED TO, THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+   > PURPOSE AND NON-INFRINGEMENT OF INTELLECTUAL PROPERTY RIGHTS.
+   >
+   > The ITU shall not be held liable in any event for any damages whatsoever
+   > (including, without limitation, damages for loss of profits, business
+   > interruption, loss of information, or any other pecuniary loss) arising out of or
+   > related to use of the Software.
+
+2. `P533/Src/P533/Common.h`, lines 37 to 40, and the same in `P372/Src/P372/Common.h`,
+   `P372/Src/ITURNoise/Common.h` and `ITURHFProp/Src/ITURHFProp/Common.h`:
+
+   > Copyright International Telecommunication Union (ITU) 2018
+   > All rights reserved.
+   > No part of this publication may be reproduced, by any means whatsoever,
+   > without written permission of ITU
+
+The first allows use by implementers of the Recommendation, which a P.533 engine is; the
+second reserves all rights and forbids reproduction without the ITU's written
+permission. Outpost does not read the first as overriding the second for
+redistribution, so it redistributes nothing of the ITU's: the person fetches the source
+and the maps from the ITU's repository and builds the engine for their own use. The
+maps are fetched from that repository's `P372/Data/` folder (the ITU's own Linux
+makefile installs the data from there), at the pinned commit, over GitHub's ordinary
+file addresses (`raw.githubusercontent.com`), one request per file, when a person
+presses the button. The ITU's own web page for Study Group 3's software
+(itu.int, ITU-R, Study Group 3, "Software, data and validation examples for
+ionospheric and tropospheric radio wave propagation", read 16 November 2026) offers
+the same software as a Windows download, `ITU-R-HF_14.3.zip`, and says supplemental
+software is provided "as is" without warranty and without any warranty that its results
+conform to the Recommendation.
+
+The same repository is where VOACAP's foF2, M(3000)F2 and noise maps were read (the row
+above), and its headers carry the second text too.
+
+**If shipping is ever allowed** (the ITU's written permission, or the owner's decision),
+it is one step: take the four `engines/p533/` lines out of `.gitignore`, commit
+`engines/p533/engine/iturhfprop.wasm`, and add `engines/p533/engine` to what
+`scripts/build-app.mjs` copies. Outpost already checks the file against the checksum in
+`modules/propagation/p533/manifest.json` wherever it finds it. The maps would stay a
+download. The full texts are also in `engines/p533/NOTICE.txt`.
+
 ## What is not built yet
 
-- **A second engine**, to set two models side by side. See
-  [A second engine](#a-second-engine-a-proposal-not-built).
+- **The second model on coverage maps and plans**, and with antennas other than
+  isotropic. See [What is not done](#what-is-not-done).
 - **Multi-day planning** beyond one day at a time. Within a month every day is the
   same; across months, use **the same path with one thing changed**, **Months of the
   year**.

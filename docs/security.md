@@ -473,6 +473,38 @@ Outpost. It is treated as untrusted code doing arithmetic:
   JSON and accepted only if every row is a month with a sunspot number between 0 and
   500; anything else is discarded and the table already installed stays in use.
 
+### The second HF model (ITU P.533)
+
+The ITU's ITURHFProp is a second third-party program, in C, compiled to WebAssembly on
+the person's own computer (`scripts/build-p533-engine.mjs`). It is held to the same
+rules as VOACAP, with nothing shared between the two:
+
+- **Built from a pinned source, checked.** The build fetches only the ITU's source
+  folders at one commit, checks them against a tree checksum recorded in
+  `modules/propagation/p533/manifest.json`, and compiles them in a container with no
+  network, from a base image and a toolchain pinned by checksum. The server uses the
+  built file only if its SHA-256 is the recorded one; it is checked whenever the file
+  changes and again each time the worker loads it.
+- **Its own sandbox** (`modules/propagation/p533/wasi.ts`): thirteen WASI calls over a
+  map of names to bytes. It can read the files Outpost put in the map (its input and
+  the month's maps) and create and write one file, its report, held in memory up to
+  32 MB; any other path to write is refused, nothing else exists for it, `..` stays at
+  the top of its tree, and it has no environment and no network. Its memory is capped at
+  128 MB when it is linked. Each run is a fresh instance of the module.
+- **Its own worker thread** with a heap limit, apart from VOACAP's; a minute without an
+  answer ends it, and a trap ends only that run.
+- **Its input is written by Outpost from checked numbers** (positions, month, sunspot
+  number, power, frequencies, the requirement, a noise category). Station names are not
+  passed: the file has fixed names, so no text from a request reaches the program. What
+  it prints is parsed as numbers by column name, and a line count that does not match
+  the question is refused.
+- **The maps** come from one host (`raw.githubusercontent.com`, the ITU's repository at
+  the pinned commit) through the download manager and its public-address rule, only
+  when a person presses the button. Each file's size is known in advance and a file of
+  another size stops the download; the whole is checked against its SHA-256, and each
+  file again before it is recorded and each time it is read.
+- **Nothing of the ITU's is in the repository or the packaged app.**
+
 ### Coverage maps, plans and the contact log
 
 These sit on the same engine and add no way out of it. What they add, and how each is
