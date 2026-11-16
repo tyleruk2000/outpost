@@ -12,6 +12,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { defineConfig, devices } from "@playwright/test";
+import { p533StandInManifest } from "../apps/server/test/fixtures/propagation/p533-maps-stand-in.ts";
 
 const root = path.resolve(import.meta.dirname, "..");
 const fromSource = process.env.OUTPOST_E2E_SOURCE === "1";
@@ -199,6 +200,10 @@ fs.writeFileSync(
   }),
 );
 
+// Small stand-ins for the ITU's P.533 maps, served by the stand-in file server.
+const p533Maps = path.join(work, "p533-maps.json");
+fs.writeFileSync(p533Maps, JSON.stringify(p533StandInManifest(`http://127.0.0.1:${filesPort}/p533/`)));
+
 export const OPEN_URL = `http://localhost:${port}`;
 
 export default defineConfig({
@@ -250,6 +255,7 @@ export default defineConfig({
       OUTPOST_ALLOW_PRIVATE_DOWNLOADS: "true",
       OUTPOST_HTTPS_PORT: String(httpsPort),
       OUTPOST_KIWIX_URL: `http://127.0.0.1:${kiwixPort}`,
+      OUTPOST_P533_MAPS_MANIFEST: p533Maps,
     }),
   ],
 });

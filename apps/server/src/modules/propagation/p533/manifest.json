@@ -1,0 +1,312 @@
+{
+  "id": "p533",
+  "name": "ITU-R P.533",
+  "source": {
+    "repository": "https://github.com/ITU-R-Study-Group-3/ITU-R-HF",
+    "commit": "82017594a1c6cacfaa7e86954c4ae7b3a5825a3d",
+    "committedAt": "2025-05-15T16:39:37.000Z",
+    "treeSha256": "3bf5bcd24146a73842d3d85d3d80714aa511681a2f72b851e19ad8116c5618ba",
+    "files": 39
+  },
+  "model": {
+    "p533": "14.2",
+    "p372": "14.3",
+    "program": "ITURHFProp"
+  },
+  "build": {
+    "wasiSdk": "34.0",
+    "baseImage": "debian:12-slim@sha256:734a72b3d6142a71993b4bc580ca01d8ca687f77a2c422d96a961d3376b179bc",
+    "clang": "clang version 23.1.0-wasi-sdk (https://github.com/llvm/llvm-project 895aa2c896ada719451be2e3673c83da8ddf1141)",
+    "dockerfile": "engines/p533/build/Dockerfile",
+    "glue": "engines/p533/glue",
+    "editsToItuSource": 0
+  },
+  "wasm": {
+    "file": "iturhfprop.wasm",
+    "bytes": 233329,
+    "sha256": "2eb264246a77f6fda81325bb6a71a0f3b6e1c60e6e5bbadb38f5ca05c39229b2"
+  },
+  "references": [
+    {
+      "name": "1-5-85",
+      "input": {
+        "bytes": 1039,
+        "sha256": "90677a693f7cd78a4b6a5e2370058817aa0dace650988e3b520c1a7337554e7d"
+      },
+      "output": {
+        "bytes": 3250,
+        "sha256": "e2f70ee819f77b4eb8d1f13c12a2b9d037b3cc6e776a840145934e00b6cdd39d"
+      }
+    },
+    {
+      "name": "1-5-85_01",
+      "input": {
+        "bytes": 1014,
+        "sha256": "e145d2661ec62ebf0b46f14c22c45b75beba06591a714ba21992592e4becea7a"
+      },
+      "output": {
+        "bytes": 3250,
+        "sha256": "36223b70d5c40f5c5db414156fcc4a3badfeb7445206302a1ca379a34a2980b1"
+      }
+    },
+    {
+      "name": "1-8-84",
+      "input": {
+        "bytes": 1062,
+        "sha256": "7cfac54ffbe56559fb886075138e05a29c3967a85d9513b159702a24e647eddd"
+      },
+      "output": {
+        "bytes": 7146,
+        "sha256": "36647964d47b18bbac62b4287e414763e2898671a644c3ff0cb7ab4ad55c3a24"
+      }
+    },
+    {
+      "name": "164-1-78",
+      "input": {
+        "bytes": 952,
+        "sha256": "980e562ffd11da06a160637c99bae20de13aec644f0367ae82e983b2c8dd94be"
+      },
+      "output": {
+        "bytes": 3252,
+        "sha256": "41c397fb62e6ddd67ec0dca33be0800baa010ea50e4c0162932e003e19ab671a"
+      }
+    },
+    {
+      "name": "caracas_201805_10_31_B4",
+      "input": {
+        "bytes": 897,
+        "sha256": "357fd168c0be73993e0d297a06878789c27882a28ecc462dcba29ec88633a37f"
+      },
+      "output": {
+        "bytes": 192974,
+        "sha256": "a2d7aaf017d5d58f333bea353f761f37c0d6f1cde362706d6e3dc9bfaab7854a"
+      }
+    },
+    {
+      "name": "itu_old",
+      "input": {
+        "bytes": 1308,
+        "sha256": "d6d67aa41497ec2b993a92149aa50457591db840ce491b442c94bf1f6371e88c"
+      },
+      "output": {
+        "bytes": 15778,
+        "sha256": "358396106b2734302568e83ea77a41faa396ce585d508f8c5d63f018b901db29"
+      }
+    },
+    {
+      "name": "itu_old22012020",
+      "input": {
+        "bytes": 1378,
+        "sha256": "a758bade47955a7deb6f2e1cb45ab9f560749b4ae0a8b14c1c122c5d972e0c45"
+      },
+      "output": {
+        "bytes": 15812,
+        "sha256": "8ed0587ff4b1fdb5bf041ba6fbff7a41298a5e8f34e527266247618ac4aa1120"
+      }
+    },
+    {
+      "name": "moscow_201805_10_31_B4",
+      "input": {
+        "bytes": 850,
+        "sha256": "f8f3b52cbbb979ba804d1801222676ee74b2efaaffd36143542de34980814294"
+      },
+      "output": {
+        "bytes": 5230,
+        "sha256": "b30f89ffac71adb708519b06058d84ac3cd3b755cd0eb10b7837f93218490648"
+      }
+    },
+    {
+      "name": "sydney_201805_10_31_B4",
+      "input": {
+        "bytes": 765,
+        "sha256": "fa3ddccbcea27657f4287d9c2b1087cbe459afc9d1d70a8ee3fffaeb2c3ca184"
+      },
+      "output": {
+        "bytes": 9615,
+        "sha256": "514b2d413e4fda06041319067aea504bff192ca191e5d62bb64241072d15ea46"
+      }
+    }
+  ],
+  "maps": {
+    "baseUrl": "https://raw.githubusercontent.com/ITU-R-Study-Group-3/ITU-R-HF/82017594a1c6cacfaa7e86954c4ae7b3a5825a3d/",
+    "bytes": 137270856,
+    "sha256": "543ebbfcbdedc777d3e02a6ff05e559e973b22ded8ab1d27a8b6632fe7fc48a7",
+    "files": [
+      {
+        "name": "ionos01.bin",
+        "path": "P372/Data/ionos01.bin",
+        "offset": 0,
+        "bytes": 11197844,
+        "sha256": "bc85f60176ab6c3ba87786991144746d5136b1b0d8c2954dac6e4c1d9ed73f29"
+      },
+      {
+        "name": "ionos02.bin",
+        "path": "P372/Data/ionos02.bin",
+        "offset": 11197844,
+        "bytes": 11197844,
+        "sha256": "8968d0d7f89488d2fda5ca5449e2625f1830b08652a628b4540c87cce4665395"
+      },
+      {
+        "name": "ionos03.bin",
+        "path": "P372/Data/ionos03.bin",
+        "offset": 22395688,
+        "bytes": 11197844,
+        "sha256": "b4f4505adce4be843a56914b9d1031e0fbb4b48d4f401d47aedaf77d66f25eb2"
+      },
+      {
+        "name": "ionos04.bin",
+        "path": "P372/Data/ionos04.bin",
+        "offset": 33593532,
+        "bytes": 11197844,
+        "sha256": "f5e00cdf933924737eb58440e75cf8aff6fad6c1c1ee8f1b46d7088f275a9293"
+      },
+      {
+        "name": "ionos05.bin",
+        "path": "P372/Data/ionos05.bin",
+        "offset": 44791376,
+        "bytes": 11197844,
+        "sha256": "5e9fac4ddda38730747ac3a8d621a1817f86d5cd18457d180c469e216cb11fcc"
+      },
+      {
+        "name": "ionos06.bin",
+        "path": "P372/Data/ionos06.bin",
+        "offset": 55989220,
+        "bytes": 11197844,
+        "sha256": "d9e565e5fabbd6c45e9b7832aa05765edcc21f94d79e4a01ca1b012acd29b46a"
+      },
+      {
+        "name": "ionos07.bin",
+        "path": "P372/Data/ionos07.bin",
+        "offset": 67187064,
+        "bytes": 11197844,
+        "sha256": "ef44f7dbbf5fce17b115fbb8ae4252959c90a462b96334ce722910ee94b5b422"
+      },
+      {
+        "name": "ionos08.bin",
+        "path": "P372/Data/ionos08.bin",
+        "offset": 78384908,
+        "bytes": 11197844,
+        "sha256": "c3fc2104df2e2b9608bc5c4c693d2a2e8a4b622a97152da10b4318b1c92f574e"
+      },
+      {
+        "name": "ionos09.bin",
+        "path": "P372/Data/ionos09.bin",
+        "offset": 89582752,
+        "bytes": 11197844,
+        "sha256": "0e1326da42f9cfd3b11d4540f14ba8870c0d88f8aa034d84e9f89f5138b74796"
+      },
+      {
+        "name": "ionos10.bin",
+        "path": "P372/Data/ionos10.bin",
+        "offset": 100780596,
+        "bytes": 11197844,
+        "sha256": "2a32b327d7fcc12bfa53e4668dcbf66a8b686bc6f0022de7617ca2802237b50a"
+      },
+      {
+        "name": "ionos11.bin",
+        "path": "P372/Data/ionos11.bin",
+        "offset": 111978440,
+        "bytes": 11197844,
+        "sha256": "81a9165f356a4b860278b05279f1b716501d40652c5b52a9f8e27815f30250d6"
+      },
+      {
+        "name": "ionos12.bin",
+        "path": "P372/Data/ionos12.bin",
+        "offset": 123176284,
+        "bytes": 11197844,
+        "sha256": "44e2ea84b3d2d169a3749d0e058319b739528e516b1a5e7fcffa09cdda89f29f"
+      },
+      {
+        "name": "COEFF01W.txt",
+        "path": "P372/Data/COEFF01W.txt",
+        "offset": 134374128,
+        "bytes": 235276,
+        "sha256": "535ed4f03a0f35d4061f1878b06397cc9e46610cf599a6930696a8adb2836c24"
+      },
+      {
+        "name": "COEFF02W.txt",
+        "path": "P372/Data/COEFF02W.txt",
+        "offset": 134609404,
+        "bytes": 235275,
+        "sha256": "2f38315584d249a3437bc32112acf1a0d995ef312f7257befa1a3284e120e50c"
+      },
+      {
+        "name": "COEFF03W.txt",
+        "path": "P372/Data/COEFF03W.txt",
+        "offset": 134844679,
+        "bytes": 235275,
+        "sha256": "ec7557912e3cf0fb74c0dc5ac7dc66bac8fa52d765993f560ba16ff1004b0ceb"
+      },
+      {
+        "name": "COEFF04W.txt",
+        "path": "P372/Data/COEFF04W.txt",
+        "offset": 135079954,
+        "bytes": 235275,
+        "sha256": "61cac0db7f4de48241d4ee4aed2943a8498bb1dc44fe41895f13a937775b3f84"
+      },
+      {
+        "name": "COEFF05W.txt",
+        "path": "P372/Data/COEFF05W.txt",
+        "offset": 135315229,
+        "bytes": 235275,
+        "sha256": "95c7363f1605ab4ab85190ab6cad4f7218e39b480adee2ddcf19e6a20b57d105"
+      },
+      {
+        "name": "COEFF06W.txt",
+        "path": "P372/Data/COEFF06W.txt",
+        "offset": 135550504,
+        "bytes": 235275,
+        "sha256": "1935e05fc16d8476c071b3a9aa7b46f5b458fcaf12aca99131cf151f0bcd583a"
+      },
+      {
+        "name": "COEFF07W.txt",
+        "path": "P372/Data/COEFF07W.txt",
+        "offset": 135785779,
+        "bytes": 235275,
+        "sha256": "f70793c6f8718b73a3c40984d55815091a660a9a29acc6f6b06e49a5429df5fb"
+      },
+      {
+        "name": "COEFF08W.txt",
+        "path": "P372/Data/COEFF08W.txt",
+        "offset": 136021054,
+        "bytes": 235275,
+        "sha256": "548ece698b3337bac73c83479f5f2670cc01aceccd676ecead870342490a2983"
+      },
+      {
+        "name": "COEFF09W.txt",
+        "path": "P372/Data/COEFF09W.txt",
+        "offset": 136256329,
+        "bytes": 235275,
+        "sha256": "9b954efdaafd00cee24fdf91da9b794ebe1bab2d124cba1d5c944f76d8e4ec67"
+      },
+      {
+        "name": "COEFF10W.txt",
+        "path": "P372/Data/COEFF10W.txt",
+        "offset": 136491604,
+        "bytes": 235275,
+        "sha256": "5eb812b10eac52a6b8b95c128b44bf223ad673120df4e6f82656686ba84063f2"
+      },
+      {
+        "name": "COEFF11W.txt",
+        "path": "P372/Data/COEFF11W.txt",
+        "offset": 136726879,
+        "bytes": 235275,
+        "sha256": "f2cd45593a65e76c5502921dc7d51f8e02457021a36e4a8e4a6092326425cd25"
+      },
+      {
+        "name": "COEFF12W.txt",
+        "path": "P372/Data/COEFF12W.txt",
+        "offset": 136962154,
+        "bytes": 235275,
+        "sha256": "9ca240655c28afd09aef6cfebae2ce7d02fd3a16ae3dcebc5c733c42aec5a9e0"
+      },
+      {
+        "name": "P1239-3 Decile Factors.txt",
+        "path": "P372/Data/P1239-3 Decile Factors.txt",
+        "offset": 137197429,
+        "bytes": 73427,
+        "sha256": "1ca1a014e11b2f33a7f8c7c47b824e5fd53dd3a9ff89f07bb257e02d33b20aa9"
+      }
+    ]
+  }
+}

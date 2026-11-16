@@ -34,6 +34,7 @@ import { createDatasetsService, type DatasetsService } from "./datasets.ts";
 import { EngineUnavailable } from "./engine.ts";
 import { createEngineHost } from "./host.ts";
 import { type ObservationsService, registerObservations } from "./observations.ts";
+import { registerSecondModel } from "./p533/index.ts";
 import { type PlansService, registerPlans } from "./plans.ts";
 import { createProfilesService, type ProfilesService } from "./profiles.ts";
 import { createPropagationService, type PropagationService } from "./service.ts";
@@ -109,7 +110,10 @@ export async function registerPropagation(app: FastifyInstance, ctx: AppContext)
     },
   };
   ctx.services.propagation = { ...service, profiles, datasets, coverage, plans, observations, kept };
-  ctx.services.downloads.registerInstaller("dataset", datasets.installer);
+  const secondModel = registerSecondModel(app, ctx, service);
+  ctx.services.downloads.registerInstaller("dataset", (job) =>
+    secondModel.owns(job.download) ? secondModel.installer(job) : datasets.installer(job),
+  );
 
   // A day on one path is a twentieth of a second and is answered directly. Anything
   // that is thousands of paths (a coverage grid, in coverage.ts) is a job: it shows on

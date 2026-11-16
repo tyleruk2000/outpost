@@ -46,6 +46,7 @@ import {
 import { PlaceInput } from "./place-field";
 import { PredictionExport } from "./prediction-export";
 import { bestHour, Results } from "./results";
+import { SecondModel } from "./second-model";
 
 const longDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 
@@ -500,6 +501,7 @@ export function Planner() {
           <>
             <PredictionExport result={result} savedName={opened && !("problem" in opened) ? opened.name : undefined} />
             <Results result={result} hour={hour} onHour={setHour} />
+            <SecondModel result={result} hour={hour} onHour={setHour} />
           </>
         ) : (
           <EmptyState

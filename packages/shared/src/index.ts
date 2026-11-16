@@ -28,6 +28,7 @@ export * from "./notes.ts";
 export * from "./portable.ts";
 export * from "./propagation.ts";
 export * from "./propagation-coverage.ts";
+export * from "./propagation-p533.ts";
 export * from "./propagation-plans.ts";
 export * from "./radio.ts";
 export * from "./radio-observations.ts";

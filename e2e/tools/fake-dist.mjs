@@ -10,6 +10,7 @@ import { createHash } from "node:crypto";
 import http from "node:http";
 import { gzipSync } from "node:zlib";
 import { createOverpassStandIn } from "../../apps/server/test/fixtures/maps/overpass-answers.ts";
+import { serveP533StandIn } from "../../apps/server/test/fixtures/propagation/p533-maps-stand-in.ts";
 import { createRepeaterSourceStandIn } from "../../apps/server/test/fixtures/repeaters/source-stand-in.ts";
 
 const port = Number(process.argv[2] ?? 8473);
@@ -52,6 +53,7 @@ http
     if (request.url === "/health") return response.end("ok");
     if (request.url?.startsWith("/overpass/")) return routeSource.handle(request, response);
     if (request.url?.startsWith("/repeater-lists/")) return repeaterSource.handle(request, response);
+    if (request.url?.startsWith("/p533/")) return serveP533StandIn(request, response);
     if (request.url === "/files/field-manual.bin") {
       response.setHeader("Content-Length", FIELD_MANUAL.length);
       return response.end(FIELD_MANUAL);
