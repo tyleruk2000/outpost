@@ -310,7 +310,7 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 
 #### Reference collections
 
-- A catalogue of 308 items in JSON manifests, with a validator: 155 Kiwix archives; 128
+- A catalogue of 310 items in JSON manifests, with a validator: 155 Kiwix archives; 130
   official handbooks, rules, guides and textbooks fetched as PDFs from their publishers
   (FAA, NASA, USGS, the US National Weather Service, FAO, WHO, Ready.gov, USDA, OpenStax,
   UIAA, Ofcom, IARU, CEPT, NIST, NTIA, CISA, the Met Office, the Health and Safety
@@ -344,6 +344,10 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   (`docs/sources.md`).
 - A catalogue refresh that does not contact a publisher about a pinned file, and a
   maintainers' online check that paces itself to publishers' crawl delays.
+- The check no longer takes "not found" in answer to `HEAD` as a file being gone until
+  a request for its first byte is refused too: two publishers answer `HEAD` with 404 for
+  files they serve. NIST Special Publication 811 and the Met Office's Thunderstorms
+  factsheet, left out for that reason, are listed.
 - A download manager: pause, resume, retry, resumable transfers across mirrors,
   checksum verification against the publisher's value, a shared speed limit applied
   smoothly, a queue forecast and per-download history.

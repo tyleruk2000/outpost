@@ -486,7 +486,8 @@ describe("refreshing from the Kiwix library", () => {
     const refreshed = await app.api("POST", "/api/catalog/refresh");
     expect(refreshed.status).toBe(200);
     expect(refreshed.body).toMatchObject({ checked: 2, available: 1, unavailable: [{ entryId: "h.gone" }] });
-    expect(server.requests.map((seen) => seen.method)).toEqual(["HEAD", "HEAD"]);
+    // The file that is gone is asked for twice: "not found" to HEAD is only believed once the first byte is refused too.
+    expect(server.requests.map((seen) => `${seen.method} ${seen.path}`)).toEqual(["HEAD /guide.pdf", "HEAD /gone.pdf", "GET /gone.pdf"]);
     expect(await entryOf(app, "h.guide")).toMatchObject({ availability: "available", sizeBytes: 12_345, version: "3" });
     expect(await entryOf(app, "h.gone")).toMatchObject({ availability: "unavailable" });
   });
@@ -537,6 +538,37 @@ describe("checking files that publishers host themselves", () => {
         ["HEAD", undefined],
         ["GET", "bytes=0-0"],
       ]);
+    } finally {
+      await http.close();
+    }
+  });
+
+  it("does not take a 404 or a 410 to HEAD as the file being gone until the first byte has been asked for too", async () => {
+    // Two publishers answer HEAD with 404 while serving the file (nvlpubs.nist.gov, and the Met Office's file service on a cold cache).
+    const server = await fileServer();
+    server.routes.set("/sp330.pdf", { body: testBytes(9_000, 25), headStatus: 404 });
+    server.routes.set("/factsheet.pdf", { body: testBytes(7_000, 26), headStatus: 410 });
+    server.routes.set("/withdrawn.pdf", { body: testBytes(10), status: 410 });
+    const http = createHttpClient({ allowPrivate: true });
+    try {
+      const entries = [
+        loaded("h.sp330", { type: "http", url: server.url("/sp330.pdf") }),
+        loaded("h.factsheet", { type: "http", url: server.url("/factsheet.pdf") }),
+        loaded("h.withdrawn", { type: "http", url: server.url("/withdrawn.pdf") }),
+        loaded("h.gone", { type: "http", url: server.url("/gone.pdf") }),
+      ];
+      const results = await resolveEntries(http, entries, allowed(server));
+      expect(results.get("h.sp330")).toMatchObject({ state: "available", resolved: { sizeBytes: 9_000 } });
+      expect(results.get("h.factsheet")).toMatchObject({ state: "available", resolved: { sizeBytes: 7_000 } });
+      // Gone is still gone, once both ways of asking say so.
+      expect(results.get("h.withdrawn")).toMatchObject({ state: "unavailable" });
+      expect(results.get("h.gone")).toMatchObject({ state: "unavailable" });
+      for (const path of ["/sp330.pdf", "/gone.pdf"]) {
+        expect(server.requests.filter((seen) => seen.path === path).map((seen) => [seen.method, seen.range])).toEqual([
+          ["HEAD", undefined],
+          ["GET", "bytes=0-0"],
+        ]);
+      }
     } finally {
       await http.close();
     }

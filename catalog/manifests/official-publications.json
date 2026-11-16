@@ -3,7 +3,7 @@
   "schemaVersion": 1,
   "id": "official-publications",
   "name": "Official publications",
-  "description": "Individual handbooks, guides, leaflets and textbooks as PDF files, each fetched from its publisher's own website at the moment you ask for it: aviation handbooks from the FAA, preparedness guides from Ready.gov and the National Weather Service, the USDA guide to home canning, farming manuals from the FAO, references from NASA, NOAA and the US Geological Survey, training handbooks from the US Department of Energy, UK weather factsheets from the Met Office, safety guidance from the Health and Safety Executive, UK government guides from GOV.UK, map reading guides from Ordnance Survey, mountain medicine papers from the UIAA, health manuals from the WHO, textbooks from OpenStax, and Lessons In Electric Circuits. Every file was downloaded and its checksum recorded on the date given as last verified; if a publisher later replaces a file, the download is refused until the entry is updated.",
+  "description": "Individual handbooks, guides, leaflets and textbooks as PDF files, each fetched from its publisher's own website at the moment you ask for it: aviation handbooks from the FAA, preparedness guides from Ready.gov and the National Weather Service, the USDA guide to home canning, farming manuals from the FAO, references from NASA, NOAA, NIST and the US Geological Survey, training handbooks from the US Department of Energy, UK weather factsheets from the Met Office, safety guidance from the Health and Safety Executive, UK government guides from GOV.UK, map reading guides from Ordnance Survey, mountain medicine papers from the UIAA, health manuals from the WHO, textbooks from OpenStax, and Lessons In Electric Circuits. Every file was downloaded and its checksum recorded on the date given as last verified; if a publisher later replaces a file, the download is refused until the entry is updated.",
   "maintainers": ["Outpost maintainers"],
   "downloadHosts": [
     "assets.openstax.org",
@@ -21,7 +21,8 @@
     "assets.publishing.service.gov.uk",
     "nauticalcharts.noaa.gov",
     "www.energy.gov",
-    "www.ibiblio.org"
+    "www.ibiblio.org",
+    "nvlpubs.nist.gov"
   ],
   "entries": [
     {
@@ -1209,6 +1210,29 @@
       }
     },
     {
+      "id": "metoffice.factsheet-2-thunderstorms",
+      "name": "Met Office Factsheet 2: Thunderstorms",
+      "description": "How cumulonimbus clouds form and produce lightning, the kinds of lightning, how strikes are detected and located, and how to stay safe in a thunderstorm. 24 pages.",
+      "category": "science",
+      "publisher": "Met Office",
+      "language": "en",
+      "format": "pdf",
+      "license": "Open Government Licence v3.0, except photographs credited to others",
+      "licenseNote": "The Met Office's factsheets page says all information originating from the Met Office is subject to Crown copyright and is available under the terms of the Open Government Licence. Where a photograph or figure in a factsheet is credited to a named person or another body, it remains its owner's and is not covered by the open licence.",
+      "attribution": "Met Office, National Meteorological Library and Archive. © Crown copyright. Contains public sector information licensed under the Open Government Licence v3.0.",
+      "homepage": "https://www.metoffice.gov.uk/research/library-and-archive/publications/factsheets",
+      "lastVerified": "2026-11-16",
+      "tags": ["weather", "thunderstorms", "lightning", "UK"],
+      "sizeBytes": 5113428,
+      "source": {
+        "type": "http",
+        "url": "https://www.metoffice.gov.uk/api/assets/file/Factsheet_2_Thunderstorms_2026pdf?prefix=assets&prefix=assets",
+        "sha256": "7074caad0a3f1c2c52c84148a1e6e55b6236717bdbd89c5c54ed7196338ddbc6",
+        "sizeBytes": 5113428,
+        "version": "2026"
+      }
+    },
+    {
       "id": "metoffice.factsheet-4-climate-of-the-british-isles",
       "name": "Met Office Factsheet 4: Climate of the British Isles",
       "description": "The main characteristics of the UK's climate, with maps and tables of average temperature, rainfall, sunshine and snow. 20 pages.",
@@ -2128,6 +2152,29 @@
         "sizeBytes": 4024856,
         "version": "First edition, minor revision 2023-02-03",
         "published": "2023-02-03"
+      }
+    },
+    {
+      "id": "nist.sp-811-guide-for-the-use-of-the-si",
+      "name": "Guide for the Use of the International System of Units (NIST Special Publication 811)",
+      "description": "NIST's guide to writing and using SI units: the units and prefixes, the rules and style conventions for unit symbols, names and values, a check list for reviewing a manuscript, and an appendix of factors for converting other units to the SI. 2008 edition, 90 pages, written before the SI's base units were redefined in 2019.",
+      "category": "science",
+      "publisher": "NIST",
+      "language": "en",
+      "format": "pdf",
+      "license": "Public domain (US Government work)",
+      "licenseNote": "Written by two NIST employees. NIST's statement on its technical series publications says works authored by NIST employees are not subject to copyright protection within the United States, and grants the public a worldwide right to reprint them where NIST may assert rights elsewhere; it asks for the citation followed by \"Republished courtesy of the National Institute of Standards and Technology\". The guide says its appendix of conversion factors descends, much revised, from one reprinted in 1991 from an IEEE standard with the IEEE's permission.",
+      "attribution": "Ambler Thompson and Barry N. Taylor, Guide for the Use of the International System of Units (SI), NIST Special Publication 811, 2008 edition. National Institute of Standards and Technology, US Department of Commerce.",
+      "homepage": "https://www.nist.gov/pml/special-publication-811",
+      "lastVerified": "2026-11-16",
+      "tags": ["SI", "units", "metric", "conversion factors", "NIST"],
+      "sizeBytes": 2027518,
+      "source": {
+        "type": "http",
+        "url": "https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication811e2008.pdf",
+        "sha256": "788dd8f0bcb0ec06e40c300690266742532a7e760a93be57764b77ed0ef3482f",
+        "sizeBytes": 2027518,
+        "version": "2008"
       }
     }
   ]
