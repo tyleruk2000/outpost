@@ -1,8 +1,8 @@
 # Notes and imports
 
 This page describes the notes workspace (pages, blocks, links, templates, trash,
-attachments and Markdown export) and how to import existing notes, including an export
-from Notion.
+attachments and Markdown export), how to import existing notes, including an export
+from Notion, and what happens to notes written on a portable drive.
 
 ## The notes workspace
 
@@ -93,6 +93,10 @@ There is no live co-editing; see
 
 If the server cannot be reached, unsaved changes are kept and retried until it
 answers.
+
+Pages do not keep a history of their versions. The one place an earlier version is
+kept is the record of a merge from a portable drive, for the pages that merge updated;
+see [Notes written on a portable drive](#notes-written-on-a-portable-drive).
 
 ### Trash
 
@@ -319,4 +323,34 @@ upload limit is left out and the rest imported. See [security.md](security.md#ar
 - It does not import into the document library, except PDFs. To add documents, upload
   them in the Library.
 - It does not read Word (`.docx`), OneNote or Evernote (`.enex`) files.
-- It does not merge two workspaces or sync with the source afterwards.
+- It does not merge two workspaces or sync with the source afterwards. (Notes written
+  on a portable drive are a different matter: see below.)
+
+## Notes written on a portable drive
+
+A portable drive carries all your notes, and pages can be written and edited while
+running Outpost from it. When the drive comes home, those changes are brought back
+from **Storage → Bring back changes from a drive**, not through an import. The full
+guide is in [portable.md](portable.md#bringing-changes-back-from-a-drive); what it
+means for notes:
+
+- **New pages** arrive with their sub-pages, tags, cover, pictures and files, and keep
+  the dates they were written. Links between pages keep working, and a link to a
+  document added on the drive points at the library's copy.
+- **A page edited only on the drive** updates the page at home. Notes keep no history
+  of their own, so the version home had is kept in the record of the merge, and
+  undoing the merge puts it back. If you have edited the page again by then, your
+  newer text is left alone and the earlier version is added beside it as a page named
+  "… (as it was before the merge of <date>)".
+- **A page edited on both sides** is never settled for you. Unless you choose
+  otherwise both are kept: home's page is untouched, and the drive's version arrives
+  as the next page along, named "… (from drive <name>, <date>)". You can read the two
+  side by side first, and instead keep home's or use the drive's, per page or for all.
+- **A page deleted on the drive** stays at home unless you tick it. Ticked, it goes to
+  the trash with its sub-pages and can be restored from there.
+- **A page moved on the drive** is moved at home too, if it was not also moved at home.
+- Content from a drive goes through the same sanitiser as an import: only the blocks
+  and marks listed above can arrive.
+- A template made on the drive arrives as a template.
+- Not brought back: the favourite mark on pages that already exist at home, the order
+  of pages among their siblings, and pages in the drive's trash.

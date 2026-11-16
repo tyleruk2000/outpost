@@ -5,8 +5,13 @@
  * then narrowed to what actually travels on the drive: one storage location (the
  * drive's own library folder) and only the collections and documents that were chosen.
  * Machine-specific state (job and download history) is cleared.
+ *
+ * Last, the copy records what everything in it is at this moment (see
+ * modules/merge/fingerprint.ts). When the drive comes home, that record is how Outpost
+ * tells what was changed on the drive from what was changed at home.
  */
 import Database from "better-sqlite3";
+import { writeBaseline } from "../merge/fingerprint.ts";
 
 export interface DriveContents {
   /** Identity of the drive's library folder (its marker id). */
@@ -17,6 +22,8 @@ export interface DriveContents {
   collectionIds: string[];
   /** Ids of documents whose files are on the drive. */
   documentIds: string[];
+  /** Identity of the library the drive is written from; see `MergeService.libraryId`. */
+  madeFrom: string;
 }
 
 export function prepareDriveDatabase(file: string, contents: DriveContents): { collections: number; documents: number; notes: number } {
@@ -45,6 +52,7 @@ export function prepareDriveDatabase(file: string, contents: DriveContents): { c
         DELETE FROM jobs;
         DELETE FROM imports;
         DELETE FROM network_shares;
+        DELETE FROM drive_merges;
       `);
 
       // Everything that remains lives in the drive's one location, at the same relative paths.
@@ -56,6 +64,7 @@ export function prepareDriveDatabase(file: string, contents: DriveContents): { c
         `INSERT INTO storage_locations (id, name, path, kind, is_default, status, created_at, updated_at)
          VALUES (?, ?, ?, 'external', 1, 'available', ?, ?)`,
       ).run(contents.locationId, contents.locationName, contents.locationPath, now, now);
+      writeBaseline(db, { madeFrom: contents.madeFrom, writtenAt: now });
     });
     apply();
 

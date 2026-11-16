@@ -79,7 +79,8 @@ picture, not a surveyed path.
   removes what you no longer want, clears leftovers, and can start again from nothing.
 - **Take it with you.** Write a portable drive: a USB stick holding Outpost itself and
   part of your library, which starts with a double-click on another Mac, Windows or
-  Linux computer with nothing installed.
+  Linux computer with nothing installed. When you are home, bring back what you wrote
+  on it: you see every change first, and where both sides changed you choose.
 - **Private by construction.** No accounts, no telemetry, no external AI. The app is
   forbidden by its own content policy from contacting any other server.
 
@@ -201,7 +202,14 @@ blocked and fail if the app tries to reach it. Details and a pre-departure check
 From **Storage → Take it with you**, write Outpost and chosen content to a folder on
 a USB drive. On another computer, open the folder and double-click the launcher. The
 drive carries its own copy of the app and of the program that runs it, so nothing is
-installed. See [docs/portable.md](docs/portable.md).
+installed.
+
+Notes written and documents added while running from the drive stay on the drive until
+you bring them back: plug it into the computer that runs your main Outpost and choose
+**Storage → Bring back changes from a drive**. You get a preview of what changed on
+each side; new things are added, a page changed on both sides is kept twice unless you
+choose otherwise, and nothing is removed at home unless you tick it. The drive itself
+is never changed. See [docs/portable.md](docs/portable.md).
 
 ## Architecture
 
@@ -272,13 +280,15 @@ Stated here so nobody has to find them out:
   everything in it.
 - **No live collaboration.** Two people editing the same page are warned of the
   conflict rather than merged.
-- **A portable drive is a copy.** Changes made on the drive are not merged back.
+- **A portable drive is a copy, not a live sync.** Its changes come home when you plug
+  it in and bring them back. Conflicts are settled per page, not line by line, and the
+  path has not yet been tried with a physical drive carried to a second computer.
 
 ## Roadmap
 
 In rough order: downloading OCR languages from inside Outpost; a bundled local embedding option;
 answers that can also draw on reference collections; richer
-topographic layers; merging a portable drive back into its source;
+topographic layers;
 storage pools; an optional PostgreSQL and pgvector back end. Work is tracked in the
 repository's issues.
 

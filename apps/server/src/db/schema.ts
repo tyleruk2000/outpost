@@ -518,4 +518,102 @@ export const tracks = sqliteTable("tracks", {
   updatedAt: updatedAt(),
 });
 
+// ── Portable drives: bringing changes back ──────────────────────────────────
+
+/**
+ * Small facts about this library that are not settings and must survive "reset
+ * settings". At home: `library.id`, a random identity made the first time it is needed.
+ * On a portable drive: `drive.madeFrom` (the id of the library that wrote the drive),
+ * `drive.writtenAt` and `drive.baseline` (the version of the record below).
+ */
+export const libraryMeta = sqliteTable("library_meta", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+});
+
+/**
+ * Written on a portable drive when it is made or updated, and empty everywhere else:
+ * what each page, document, saved place and track was at that moment. When the drive
+ * comes home, anything that differs from this record was changed on the drive, and
+ * anything at home that differs from it was changed at home. See modules/merge.
+ */
+export const driveBaseline = sqliteTable(
+  "drive_baseline",
+  {
+    kind: text("kind", { enum: ["page", "document", "place", "track"] }).notNull(),
+    itemId: text("item_id").notNull(),
+    /** Fingerprint of what the person made: see modules/merge/fingerprint.ts. */
+    hash: text("hash").notNull(),
+    /** Pages: the page it sat under. */
+    parentId: text("parent_id"),
+    /** Pages: it was in the trash already. */
+    trashed: integer("trashed", { mode: "boolean" }).notNull().default(false),
+  },
+  (table) => [primaryKey({ columns: [table.kind, table.itemId] })],
+);
+
+/** One attempt to bring a drive's changes home: what was found, what was chosen, how it ended. */
+export const driveMerges = sqliteTable(
+  "drive_merges",
+  {
+    id: id(),
+    /** Identity of the drive: the id of its library folder, which survives updates. */
+    driveId: text("drive_id").notNull(),
+    /** When the data that was read had been written to the drive. With `driveId` it names one generation of a drive. */
+    driveWrittenAt: integer("drive_written_at").notNull().default(0),
+    /** Folder of the drive as it was mounted, for people; never used to find it again without checking. */
+    drivePath: text("drive_path").notNull(),
+    /** "data", or a kept "data-before-update-…" folder. */
+    sourceFolder: text("source_folder").notNull(),
+    driveLabel: text("drive_label").notNull(),
+    state: text("state", {
+      enum: ["analysing", "ready", "merging", "completed", "stopped", "failed", "discarded"],
+    }).notNull(),
+    baseline: text("baseline", { enum: ["recorded", "dates", "other-library"] }),
+    analysis: json<Record<string, unknown>>("analysis"),
+    choices: json<Record<string, unknown>>("choices"),
+    error: text("error"),
+    createdAt: createdAt(),
+    completedAt: integer("completed_at"),
+    undoneAt: integer("undone_at"),
+  },
+  (table) => [index("drive_merges_drive_idx").on(table.driveId, table.driveWrittenAt)],
+);
+
+/**
+ * Everything a merge did, one row per thing, written in the same transaction as the
+ * change it describes. It is the record shown to the person, what "undo" works from
+ * (`undo` holds what was there before), and how a later merge of the same drive knows
+ * what has been dealt with already (`driveHash` is the drive's version that was).
+ */
+export const driveMergeActions = sqliteTable(
+  "drive_merge_actions",
+  {
+    mergeId: text("merge_id")
+      .notNull()
+      .references(() => driveMerges.id, { onDelete: "cascade" }),
+    seq: integer("seq").notNull(),
+    /** The item of the preview this row answers; a stopped merge that carries on skips what it has done. */
+    itemKey: text("item_key"),
+    kind: text("kind", { enum: ["page", "document", "place", "track", "collection", "attachment"] }).notNull(),
+    outcome: text("outcome", {
+      enum: ["added", "updated", "copied", "trashed", "removed", "moved", "kept", "already", "skipped", "failed"],
+    }).notNull(),
+    title: text("title").notNull(),
+    message: text("message").notNull().default(""),
+    driveItemId: text("drive_item_id"),
+    homeItemId: text("home_item_id"),
+    /** The drive's version this decision was about; "deleted" when it was gone from the drive. */
+    driveHash: text("drive_hash"),
+    /** The home item right after the change; null when the two sides were left to differ. */
+    homeHash: text("home_hash"),
+    /** What is needed to put things back: the page as it was, the place that was removed. */
+    undo: json<Record<string, unknown>>("undo"),
+    undoneAt: integer("undone_at"),
+    undoMessage: text("undo_message"),
+    createdAt: createdAt(),
+  },
+  (table) => [primaryKey({ columns: [table.mergeId, table.seq] }), index("drive_merge_actions_item_idx").on(table.kind, table.driveItemId)],
+);
+
 export const nowMs = sql`(unixepoch('subsec') * 1000)`;

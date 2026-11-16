@@ -14,8 +14,9 @@ import {
   type PortableStatus,
 } from "@outpost/shared";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Check, CircleAlert, CircleCheck, TriangleAlert, Usb } from "lucide-react";
+import { Check, CircleAlert, CircleCheck, CornerDownLeft, TriangleAlert, Usb } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router";
 import { Notice, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
@@ -136,7 +137,7 @@ function Fact({ label, value, strong, path }: { label: string; value: string; st
   );
 }
 
-function Wizard({ status, onClose }: { status: PortableStatus; onClose: () => void }) {
+function Wizard({ status, onClose, startAt }: { status: PortableStatus; onClose: () => void; startAt?: string }) {
   const [step, setStep] = useState(0);
   const [folder, setFolder] = useState<PickedFolder>({ path: undefined, writable: false });
   const [platforms, setPlatforms] = useState<PortablePlatform[]>(() => (status.thisComputer ? [status.thisComputer] : ["win-x64"]));
@@ -209,8 +210,8 @@ function Wizard({ status, onClose }: { status: PortableStatus; onClose: () => vo
                 <Fact label="Linux" value="Run “sh start-outpost.sh” in a terminal" />
               </dl>
               <p className="text-small text-ink-muted">
-                A README on the drive repeats this. Notes and documents added while running from the drive are saved on the drive; they are
-                not sent back here.
+                A README on the drive repeats this. Notes and documents added while running from the drive are saved on the drive. When it
+                comes home, bring them back from Storage with “Bring back changes from a drive”.
               </p>
             </>
           ) : stopped ? (
@@ -262,7 +263,7 @@ function Wizard({ status, onClose }: { status: PortableStatus; onClose: () => vo
       <DialogBody className={dialogColumn}>
         {step === 0 ? (
           <>
-            <FolderPicker label="Folder on the drive" onChange={setFolder} newFolderSuggestion="Outpost" />
+            <FolderPicker label="Folder on the drive" onChange={setFolder} newFolderSuggestion="Outpost" startAt={startAt} />
             <p className="text-small text-ink-muted">
               Choose an empty folder, make a new one, or pick a folder that is already an Outpost drive to update it. Outpost writes only
               inside this folder. exFAT is the best format for a drive used on Mac, Windows and Linux.
@@ -434,8 +435,9 @@ function Wizard({ status, onClose }: { status: PortableStatus; onClose: () => vo
                     </span>
                     <span className="mt-0.5 block text-ink-muted">
                       It was last written on {data.target.lastWritten ? formatDate(Date.parse(data.target.lastWritten)) : "an earlier date"}
-                      . Anything added while running from the drive since then is not merged; what the drive holds now is moved into a dated
-                      folder on the drive, not deleted.
+                      . If anything was written on the drive since then, bring it back first (Storage, “Bring back changes from a drive”):
+                      updating does not do that. What the drive holds now is moved into a dated folder on the drive, not deleted, and can
+                      still be brought back from there.
                     </span>
                   </span>
                 </label>
@@ -471,6 +473,23 @@ export function PortableDriveSection() {
   const [open, setOpen] = useState(false);
   const status = useQuery({ queryKey: ["portable", "status"], queryFn: () => api.get<PortableStatus>("/api/portable/status") });
 
+  // "Update this drive", from the end of a merge: the wizard opens at that drive's folder.
+  const [params, setParams] = useSearchParams();
+  const updating = params.get("update-drive") ?? undefined;
+  const [startAt, setStartAt] = useState<string>();
+  useEffect(() => {
+    if (!updating) return;
+    setStartAt(updating);
+    setOpen(true);
+    setParams(
+      (current) => {
+        current.delete("update-drive");
+        return current;
+      },
+      { replace: true },
+    );
+  }, [updating, setParams]);
+
   // A fresh wizard each time it is opened.
   const [session, setSession] = useState(0);
   useEffect(() => {
@@ -486,11 +505,24 @@ export function PortableDriveSection() {
         <p className="min-w-64 flex-1 text-small text-ink-muted">
           {status.data?.runningFromDrive
             ? "This Outpost is running from a portable drive. You can make another drive from it."
-            : "The drive holds its own copy of the app, your notes, and the documents, collections and maps you choose. Plug it in, double-click, and it opens in the browser, with no network needed."}
+            : "The drive holds its own copy of the app, your notes, and the documents, collections and maps you choose. Plug it in, double-click, and it opens in the browser, with no network needed. What you write on it while away can be brought back here afterwards."}
         </p>
-        <Button onClick={() => setOpen(true)} disabled={!status.data}>
-          <Usb /> Make a portable drive
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            onClick={() => {
+              setStartAt(undefined);
+              setOpen(true);
+            }}
+            disabled={!status.data}
+          >
+            <Usb /> Make a portable drive
+          </Button>
+          <Button asChild>
+            <Link to="/storage/merge">
+              <CornerDownLeft /> Bring back changes from a drive
+            </Link>
+          </Button>
+        </div>
       </div>
       {status.data && !status.data.packagedAppAvailable ? (
         <Notice tone="info" className="mt-4 max-w-[70ch]">
@@ -500,7 +532,7 @@ export function PortableDriveSection() {
       ) : null}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent title="Make a portable drive" size="lg" className={phoneSheet}>
-          {status.data ? <Wizard key={session} status={status.data} onClose={() => setOpen(false)} /> : null}
+          {status.data ? <Wizard key={session} status={status.data} onClose={() => setOpen(false)} startAt={startAt} /> : null}
         </DialogContent>
       </Dialog>
     </Section>

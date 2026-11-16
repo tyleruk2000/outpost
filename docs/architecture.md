@@ -59,9 +59,9 @@ without checking it against those roots.
 
 ### One job queue for all long work
 
-Downloads, text extraction, imports, moving and verifying collections, index builds
-and writing portable drives are rows in a `jobs` table, run in-process on named queues
-with their own concurrency limits. Rows survive restarts; whatever was running is
+Downloads, text extraction, imports, moving and verifying collections, index builds,
+writing portable drives and bringing their changes back are rows in a `jobs` table,
+run in-process on named queues with their own concurrency limits. Rows survive restarts; whatever was running is
 queued again and its handler resumes from what is on disk. Progress reaches the
 browser over one server-sent-events stream. A separate job server (Redis and a worker
 fleet) would be the wrong weight for a single-node tool that must run on a Pi.
@@ -166,6 +166,27 @@ and looked up when a chapter is shown, so they work across books and say plainly
 the other book has not been added. Code: `modules/books`, `modules/catalog`
 (`addBook`), `documents/markdown-view.ts`.
 
+### A drive comes home as a three-way comparison, not a sync
+
+A portable drive is a second copy of the library that changes on its own, on computers
+with clocks nobody controls. To bring its changes home without guessing, three states
+are needed for every page, document, saved place and track: what it is on the drive,
+what it is at home, and what it was when the two were last the same. So a drive is
+written with that third state on it (`drive_baseline`: a fingerprint of each thing,
+and `library_meta`: which library wrote it and when), and every merge records what it
+did with each of the drive's things (`drive_merge_actions`), which serves as the base
+the next time the same drive is read. Dates are only consulted for a drive that has no
+record, and there anything they do not settle is a conflict for a person to decide.
+
+The drive is untrusted and is never written to. Its database is copied into the data
+directory (with its write-ahead log, which holds the newest changes after an unclean
+stop) and read from the copy, read-only, table by table, with every value checked.
+Changes at home go through the owning services, so a page from a drive is sanitised,
+linked and indexed like any other, and each change is written in one transaction with
+its line in the merge's record. That record is what a person reads afterwards, what
+"undo" works from, and why stopping part-way leaves a whole library. Code:
+`modules/merge` (`drive.ts`, `fingerprint.ts`, `diff.ts`, `apply.ts`, `service.ts`).
+
 ### Maps: regional extracts of a planet archive, composited on the server
 
 Tiles come from the Protomaps daily planet build (OpenStreetMap data, ODbL), a single
@@ -243,7 +264,7 @@ e2e/                 Playwright tests against the packaged app
 ```
 
 Modules, in registration order: search, semantic, retrieval, answers, documents, notes, imports,
-collections, books, kiwix, downloads, links, catalog, maps, backup, portable, manage. A module may use the
+collections, books, kiwix, downloads, links, catalog, maps, backup, portable, merge, manage. A module may use the
 services of those before it. [development/server-modules.md](development/server-modules.md)
 is the contract a module works to.
 
@@ -262,7 +283,8 @@ These are deliberate, and stated so nobody has to discover them.
 | Maps | Vector basemap only from the Protomaps schema; hill shading and contour lines need a separate terrain download; contour lines are only as fine as that terrain; routing is not offered. | Contour lines are traced in the browser from the installed terrain (see maps.md), so there is no contour tileset to download or host. |
 | Map source | Depends on the Protomaps build host staying available for new downloads. | The source address is a setting; any PMTiles archive with the same schema works, including one you host. |
 | Notes collaboration | Last writer wins, with conflict detection; no live co-editing. | The editor could take a CRDT later; the storage format would need to change. |
-| Portable drives | A drive is a copy, not a sync partner: changes made on the drive are not merged back. | Merging two diverged libraries safely is a project of its own. |
+| Portable drives | A drive is a copy, not a live sync partner. Changes made on it come home only when a person plugs it in and brings them back, one drive at a time, after reading a preview. Conflicts are settled per item, as whole pages: text is not merged line by line. Settings, the order of pages among their siblings, and the favourite mark on existing pages are not brought back. | Deliberate: nothing is overwritten that a person has not seen. Merging inside a page would need the editor to keep a history of edits (a CRDT), as live co-editing would. |
+| Bringing a drive back | Tested with two real libraries on one computer, with the drive as a folder. Not tried with a physical USB drive carried to a second computer and back, nor with a drive written by a genuinely older release (there is none yet; the tests strip the record from a drive to stand in for one). A drive is read up to 100,000 pages, 100,000 documents, 100,000 saved places, 20,000 tracks and a 32 GB database. A document removed at home because it was ticked in a merge cannot be brought back by undo. | A manual pass with a real drive. The limits are constants in `modules/merge/fingerprint.ts` and `drive.ts`. |
 | Windows without Docker | Untried. Nobody has run the server tests or the packaged app on Windows. | A manual pass on a Windows machine. |
 | Access | No accounts and no per-person permissions: everyone who can reach Outpost can read, add, change and delete everything. | Outpost is for one household or one trusted network. Anything wider needs an authenticating proxy in front of it. |
 

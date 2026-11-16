@@ -237,6 +237,19 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   Windows and Linux, a narrowed copy of the database and the chosen content.
 - The reader for reference collections included for macOS and Linux.
 - Updating a drive in place, keeping what it held before.
+- Bringing a drive's changes back into the library it was made from (**Storage →
+  Bring back changes from a drive**). A preview groups what changed on each side: new
+  pages, documents, saved places and tracks; things changed only on the drive; things
+  changed on both sides; things removed on the drive; and collections downloaded
+  there. New things are added and one-sided changes applied; a conflict keeps both
+  versions unless you choose home's or the drive's, with the two shown side by side;
+  nothing is removed at home unless ticked. The merge runs as a job that can be
+  stopped part-way, keeps a record of everything it did, and can be undone from that
+  record. The drive is only read, never written to.
+- A drive now carries a record of what every page, document, saved place and track was
+  when it was written, so changes on the drive are told from changes at home exactly.
+  A drive written before this is compared by content and dates, and anything unsure
+  is a conflict to decide.
 
 #### Backup
 
@@ -296,8 +309,10 @@ These are deliberate or known, and are explained in
 - **New map downloads depend on the map source staying available.** The source address
   is a setting, and any compatible archive works, including one you host.
 - **Notes** have conflict detection but no live co-editing.
-- **A portable drive is a copy, not a sync partner.** Changes made on the drive are
-  not merged back.
+- **A portable drive is a copy, not a live sync partner.** Its changes come home when
+  the drive is plugged in and they are brought back. Conflicts are settled per page,
+  not line by line. Bringing a drive back has been tested with the drive as a folder
+  on one computer, not with a physical drive carried to a second one.
 - **Tried on one platform.** Outpost has been run by hand on macOS on Apple Silicon,
   including the Compose stack with the `arm64` image. Linux on x86-64, Intel Macs,
   Windows, Raspberry Pi hardware and NAS products are untried. Nothing builds or tests

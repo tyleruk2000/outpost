@@ -35,6 +35,7 @@ import {
   attachments as attachmentsTable,
   documents as documentsTable,
   downloads as downloadsTable,
+  driveMerges as driveMergesTable,
   embeddingModels,
   embeddings,
   imports as importsTable,
@@ -533,6 +534,8 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
     sqlite.transaction(() => {
       if (!pagesLeft) db.delete(attachmentsTable).run();
       db.delete(importsTable).run();
+      // Records of drive merges hold earlier versions of pages: they are the person's own words too.
+      db.delete(driveMergesTable).run();
       db.delete(downloadsTable).run();
       db.delete(embeddings).run();
       db.delete(embeddingModels).run();

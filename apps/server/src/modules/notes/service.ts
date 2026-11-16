@@ -63,9 +63,34 @@ export interface UpdateNoteInput {
   baseUpdatedAt?: number;
 }
 
+/** A page brought in whole from another library; see `NotesService.adopt`. */
+export interface AdoptNoteInput {
+  /** Keep this id when no page has it; the page is refused when one does. */
+  id?: string;
+  parentId: string | null;
+  /** Place the page right after this sibling instead of last. */
+  afterId?: string;
+  title: string;
+  icon: string | null;
+  content: unknown;
+  tags: string[];
+  coverAttachmentId?: string | null;
+  isTemplate?: boolean;
+  isFavorite?: boolean;
+  /** When the page was written where it came from. Dates in the future are brought back to now. */
+  createdAt?: number;
+  updatedAt?: number;
+}
+
 export interface NotesService {
   tree(): NoteTreeItem[];
   create(input?: CreateNoteInput): NoteDetail;
+  /**
+   * Adds a page that already exists in another library (a portable drive coming home),
+   * keeping its id and dates where it can. The content goes through the same sanitiser
+   * as every other page. Used by the merge module; nothing else should need it.
+   */
+  adopt(input: AdoptNoteInput): NoteDetail;
   /** `view: true` also records that the page was opened, for the list of recent pages. */
   get(id: string, options?: { view?: boolean }): NoteDetail;
   /** Applies a change. Throws 409 `conflict` when `baseUpdatedAt` is older than the stored page. */
@@ -677,6 +702,45 @@ export function createNotesService(ctx: AppContext, attachments: AttachmentStore
     return { deletedNotes: ids.length, deletedAttachments };
   }
 
+  const adopt = sqlite.transaction((input: AdoptNoteInput): string => {
+    const id = input.id ?? newId();
+    if (db.select({ id: notes.id }).from(notes).where(eq(notes.id, id)).get()) {
+      throw conflict("A page with that id already exists, so the incoming page was not added over it.");
+    }
+    const isTemplate = input.isTemplate === true;
+    // A template lives outside the tree.
+    const parentId = isTemplate ? null : input.parentId;
+    if (parentId) assertParent(parentId);
+    if (input.coverAttachmentId) {
+      const cover = attachments.find(input.coverAttachmentId);
+      if (!cover || !attachments.isImage(cover)) throw badRequest("A page cover has to be a picture that is stored here.");
+    }
+    const doc = sanitizeDoc(input.content);
+    const now = Date.now();
+    const createdAt = Math.min(input.createdAt ?? now, now);
+    db.insert(notes)
+      .values({
+        id,
+        parentId,
+        title: cleanTitle(input.title).slice(0, 300),
+        icon: input.icon,
+        coverAttachmentId: input.coverAttachmentId ?? null,
+        content: doc as unknown as Record<string, unknown>,
+        ...derive(doc),
+        position: isTemplate ? 0 : place(parentId, null, input.afterId),
+        isTemplate,
+        isFavorite: !isTemplate && input.isFavorite === true,
+        createdAt,
+        updatedAt: Math.max(createdAt, Math.min(input.updatedAt ?? now, now)),
+      })
+      .run();
+    const tagList = cleanTags(input.tags);
+    if (tagList.length > 0) setTags(id, tagList);
+    writeLinks(id, doc);
+    index(getRow(id));
+    return id;
+  });
+
   // ── Lists ─────────────────────────────────────────────────────────────────
 
   const toListItem = (row: Omit<NoteListItem, "isFavorite"> & { isFavorite: number }): NoteListItem => ({
@@ -750,6 +814,12 @@ export function createNotesService(ctx: AppContext, attachments: AttachmentStore
 
     create(input) {
       const id = create.immediate(input);
+      changed(id);
+      return toDetail(getRow(id));
+    },
+
+    adopt(input) {
+      const id = adopt.immediate(input);
       changed(id);
       return toDetail(getRow(id));
     },
