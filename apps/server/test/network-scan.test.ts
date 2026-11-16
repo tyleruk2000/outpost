@@ -244,6 +244,40 @@ describe("the Devices screen's server", () => {
     expect(after).toMatchObject({ devices: [], lastScan: null, job: null });
   });
 
+  it("lets every device start a scan unless the administrator set it to the computer Outpost runs on", async () => {
+    const phone = { remoteAddress: "192.168.1.20" };
+    const lan = { OUTPOST_LAN_ACCESS: "true", OUTPOST_HOST: "0.0.0.0" };
+
+    // The default: open to the phone, as before.
+    app = await createTestApp(lan);
+    app.ctx.services.network.useSystem(standInSystem(standInWorld()), { limits: FAST });
+    expect((await app.api<NetworkStatus>("GET", "/api/network", undefined, phone)).body.scanRight).toEqual({
+      allowed: true,
+      reason: "open",
+    });
+    const open = await app.api("POST", "/api/network/scan", undefined, phone);
+    expect(open.status).toBe(200);
+    await app.ctx.jobs.whenIdle();
+    await app.close();
+
+    app = await createTestApp({ ...lan, OUTPOST_NETWORK_SCAN_LOCAL_ONLY: "true", OUTPOST_ALLOW_REMOTE_ERASE: "true" });
+    app.ctx.services.network.useSystem(standInSystem(standInWorld()), { limits: FAST });
+    expect((await app.api<NetworkStatus>("GET", "/api/network", undefined, phone)).body.scanRight).toEqual({
+      allowed: false,
+      reason: "remote",
+    });
+    const refused = await app.api("POST", "/api/network/scan", undefined, phone);
+    expect(refused.status).toBe(403);
+    expect(refused.body.error.message).toMatch(/OUTPOST_NETWORK_SCAN_LOCAL_ONLY=true/);
+    // A proxy's forwarded request is not this computer's.
+    expect((await app.api("POST", "/api/network/scan", undefined, { headers: { "x-forwarded-for": "192.168.1.20" } })).status).toBe(403);
+    // The computer itself still may; the list stays readable everywhere.
+    expect((await app.api<NetworkStatus>("GET", "/api/network")).body.scanRight).toEqual({ allowed: true, reason: "local" });
+    expect((await app.api("POST", "/api/network/scan")).status).toBe(200);
+    await app.ctx.jobs.whenIdle();
+    expect((await app.api<NetworkStatus>("GET", "/api/network", undefined, phone)).body.devices).toHaveLength(5);
+  });
+
   it("in a container, says so and does not scan", async () => {
     app = await createTestApp();
     app.ctx.services.network.useSystem(standInSystem(standInWorld()), { inContainer: true });

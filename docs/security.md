@@ -735,8 +735,15 @@ that reasoning is weaker:
   sees that computer scanning. On a home network this is rarely noticed; on a managed
   network (a workplace, a campsite's Wi-Fi) it may be against the rules there.
 
-If either matters, `assertBackupRight` (`modules/backup/right.ts`) is the one line that
-would limit starting a scan to the computer itself.
+If either matters, start Outpost with `OUTPOST_NETWORK_SCAN_LOCAL_ONLY=true`. Then a
+scan may be started only from the computer Outpost runs on, by the test of where a
+request comes from that restoring a backup uses (`isLocalRequest`: loopback or the
+computer's own address, never through a forwarding proxy). `OUTPOST_ALLOW_REMOTE_ERASE`
+does not lift it, because whoever set this option asked for it in particular. Other
+devices still see the list and may name or forget devices; the screen says that a scan
+is started on the computer itself and offers no button. Off by default, which is the
+behaviour described above. (`scanRight` in `modules/network/index.ts`; tested in
+`apps/server/test/network-scan.test.ts`.)
 
 **What is kept.** Device names can be people's names ("Anna's iPhone"). The list is
 in the database (and so in backups), shown only on its own screen, never put in search,

@@ -340,7 +340,8 @@ export function createNetworkService(ctx: AppContext) {
       inContainer = options.inContainer ?? false;
       limits = options.limits;
     },
-    async status(): Promise<NetworkStatus> {
+    // Who may start a scan depends on the request, so the route adds `scanRight`.
+    async status(): Promise<Omit<NetworkStatus, "scanRight">> {
       const plan = planSubnets(system.interfaces());
       const job = activeJob();
       const [last] = scans();

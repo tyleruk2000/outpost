@@ -39,6 +39,7 @@ function device(over: Partial<NetworkDevice> = {}): NetworkDevice {
 function status(over: Partial<NetworkStatus> = {}): NetworkStatus {
   return {
     unavailable: null,
+    scanRight: { allowed: true, reason: "open" },
     os: "macos",
     abilities: { ping: true, neighbourTable: "arp -an and ndp -an", announcements: "dns-sd (Bonjour)", router: "route -n get default" },
     subnets: [
@@ -102,6 +103,13 @@ describe("the Devices on this network screen", () => {
     expect(await screen.findByText("Outpost is running in a container")).toBeInTheDocument();
     expect(screen.getByText(/host networking/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Look for devices/ })).not.toBeInTheDocument();
+  });
+
+  it("where the administrator kept scans to the computer Outpost runs on, offers none on another device and says why", async () => {
+    fakeApi({ "GET /api/network": status({ scanRight: { allowed: false, reason: "remote" } }) });
+    renderScreen(<NetworkPage />, "/tools/network");
+    expect(await screen.findByText("Started on the computer Outpost runs on")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Look for devices|Look again/ })).not.toBeInTheDocument();
   });
 
   it("says what this computer lacks", async () => {

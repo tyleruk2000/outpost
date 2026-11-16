@@ -1140,6 +1140,9 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   One ping per address and two fixed ports for those that ignore it, 20 probes a
   second; no port scanning or probing of services. Names and notes of your own;
   migration 0016.
+- Devices on this network: `OUTPOST_NETWORK_SCAN_LOCAL_ONLY=true` lets only the
+  computer Outpost runs on start a scan. Off by default, so nothing changes unless an
+  administrator sets it.
 
 #### Deployment
 
