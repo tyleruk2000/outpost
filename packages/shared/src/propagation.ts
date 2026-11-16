@@ -266,8 +266,9 @@ export type RadioProfileInput = Omit<RadioProfile, "id" | "createdAt" | "updated
  *   the horizontal half-wave dipole at the height given, and say so wherever shown. The
  *   end-fed one is a wire whose length follows the frequency: a half-wave on every band.
  * - `end-fed-horizontal`: one wire of a stated length (`lengthM`), level, fed at an end.
- *   Run as type 23 with that length, only where the wire is about a half-wave; on other
- *   frequencies no figure is given (see `wireOn`).
+ *   Run as type 23 with that length where the wire is about a half-wave; where it is
+ *   longer, as VOACAP's sloping long wire (type 41) laid level, and the figures are
+ *   labelled approximate; where it is shorter no figure is given (see `wireOn`).
  * - `end-fed-vertical`: one wire of a stated length standing upright from the ground,
  *   fed at the bottom. Run as VOACAP's vertical monopole (type 22) of that height on
  *   every frequency.
@@ -389,10 +390,25 @@ export function halfWaveRangeMhz(lengthM: number): { fromMhz: number; toMhz: num
   return { fromMhz: Math.max(HF_MIN_MHZ, at(HALF_WAVE_FROM)), toMhz: Math.min(HF_MAX_MHZ, at(HALF_WAVE_TO)) };
 }
 
+/**
+ * Where a level wire is longer than a half-wave and run as VOACAP's sloping long wire
+ * (type 41) laid level: from the top of its half-wave range to the top of the engine's
+ * range. Null when the wire is not longer than a half-wave anywhere below 30 MHz.
+ */
+export function longWireRangeMhz(lengthM: number): { fromMhz: number; toMhz: number } | null {
+  const fromMhz = (HALF_WAVE_TO * 299.792458) / lengthM;
+  return fromMhz >= HF_MAX_MHZ ? null : { fromMhz: Math.max(HF_MIN_MHZ, fromMhz), toMhz: HF_MAX_MHZ };
+}
+
 const mhzWords = (mhz: number): string => `${Number(mhz.toFixed(2))} MHz`;
 const rangeWords = (lengthM: number): string => {
   const { fromMhz, toMhz } = halfWaveRangeMhz(lengthM);
   return `${fromMhz.toFixed(1)} to ${toMhz.toFixed(1)} MHz`;
+};
+/** "approximate above 16.5 MHz", or nothing for a wire that is never longer than a half-wave below 30 MHz. */
+const longWords = (lengthM: number): string => {
+  const range = longWireRangeMhz(lengthM);
+  return range ? `, and run as an approximation above ${range.fromMhz.toFixed(1)} MHz` : "";
 };
 
 /**
@@ -402,10 +418,14 @@ const rangeWords = (lengthM: number): string => {
  * - `other-length`: a vertical wire that is not a half-wave here. The engine's vertical
  *   monopole is a wire of any height fed at the bottom, so it is still run, and the
  *   figure is for a wire of that length, said in wavelengths.
- * - `not-modelled`: a horizontal wire that is not a half-wave here. VOACAP's dipole is
- *   fed at its centre; no figure is given.
+ * - `approximate`: a level wire longer than a half-wave here. Run as VOACAP's sloping
+ *   long wire (type 41) laid level: a model of a wire fed at one end, but one whose
+ *   level was never checked against the engine's checked models and reads about 1.3 dB
+ *   below the dipole at a half-wave. The figure is given and labelled approximate.
+ * - `not-modelled`: a level wire shorter than a half-wave here. Neither model describes
+ *   it; no figure is given.
  */
-export type WireState = "half-wave" | "other-length" | "not-modelled";
+export type WireState = "half-wave" | "other-length" | "approximate" | "not-modelled";
 
 export interface WireOnFrequency {
   /** The wire's length in free-space wavelengths at this frequency. */
@@ -428,10 +448,16 @@ export function wireOn(spec: AntennaSpec, mhz: number): WireOnFrequency | null {
         state: "half-wave",
         note: `${said}, about a half-wave: run as VOACAP's horizontal dipole (type 23) of that length.`,
       };
+    if (wavelengths > HALF_WAVE_TO)
+      return {
+        wavelengths,
+        state: "approximate",
+        note: `Approximate: ${said}, longer than a half-wave. Run as VOACAP's sloping long wire (type 41) laid level at the wire's height, which is a wire fed at one end; its level is unchecked and reads about 1.3 dB below the dipole model at a half-wave. A wire this long is not strongest broadside.`,
+      };
     return {
       wavelengths,
       state: "not-modelled",
-      note: `Not modelled: ${said}, not a half-wave. VOACAP's dipole is fed at its centre and does not describe a wire fed at its end unless the wire is a half-wave, so no figure is given. This wire is about a half-wave from ${rangeWords(spec.lengthM)}.`,
+      note: `Not modelled: ${said}, shorter than a half-wave. A level wire this short, fed at one end, draws current at the feed that an end-fed half-wave has no ground or counterpoise to return, so no model in the engine describes it and no figure is given. This wire is about a half-wave from ${rangeWords(spec.lengthM)}${longWords(spec.lengthM)}.`,
     };
   }
   if (half)
@@ -455,7 +481,11 @@ export function wireOn(spec: AntennaSpec, mhz: number): WireOnFrequency | null {
   };
 }
 
-/** Whether the engine's model describes this antenna at this frequency. True for every antenna that is not a wire of a stated length. */
+/**
+ * Whether the engine gives figures for this antenna at this frequency: false only for a
+ * level wire shorter than a half-wave. An approximate figure is a figure (see
+ * `antennaRunOn` for the three states).
+ */
 export const antennaModelledOn = (spec: AntennaSpec, mhz: number): boolean => wireOn(spec, mhz)?.state !== "not-modelled";
 
 /** Why a path cannot be given figures at a frequency: the note of whichever antenna is not modelled there, or null. */
@@ -470,7 +500,111 @@ export function notModelledOn(txAntenna: AntennaSpec, rxAntenna: AntennaSpec, mh
   return null;
 }
 
+/**
+ * How an antenna was run at one frequency, in the three states the planner shows:
+ *
+ * - `modelled`: one of the engine's models that describes the antenna (for a level wire
+ *   of a stated length, the half-wave dipole where it is about a half-wave);
+ * - `approximate`: a level wire longer than a half-wave, run as the sloping long wire
+ *   laid level, whose figures are given and labelled approximate everywhere;
+ * - `not-modelled`: no figure.
+ */
+export type AntennaRunState = "modelled" | "approximate" | "not-modelled";
+
+export function antennaRunOn(spec: AntennaSpec, mhz: number): AntennaRunState {
+  const state = wireOn(spec, mhz)?.state;
+  return state === "not-modelled" ? "not-modelled" : state === "approximate" ? "approximate" : "modelled";
+}
+
+/** How a path was run at one frequency: the less certain of its two antennas. */
+export function pathRunOn(txAntenna: AntennaSpec, rxAntenna: AntennaSpec, mhz: number): AntennaRunState {
+  const states = [antennaRunOn(txAntenna, mhz), antennaRunOn(rxAntenna, mhz)];
+  return states.includes("not-modelled") ? "not-modelled" : states.includes("approximate") ? "approximate" : "modelled";
+}
+
+/** Why the figures of a path at a frequency are approximate: the note of whichever antenna is, or null. */
+export function approximateOn(txAntenna: AntennaSpec, rxAntenna: AntennaSpec, mhz: number): string | null {
+  const notes: string[] = [];
+  for (const [spec, whose] of [
+    [txAntenna, "The transmitting antenna"],
+    [rxAntenna, "The receiving antenna"],
+  ] as const) {
+    const wire = wireOn(spec, mhz);
+    if (wire?.state === "approximate") notes.push(`${whose}: ${wire.note.replace(/^Approximate: /, "")}`);
+  }
+  return notes.length > 0 ? notes.join(" ") : null;
+}
+
+/** The three states in a few words, as the band table, the lists and the exports name them. */
+export const RUN_LABELS = {
+  halfWave: "Half-wave: VOACAP's dipole",
+  approximate:
+    "Approximate: VOACAP's sloping long wire, laid level; its level is unchecked and reads about 1.3 dB below the dipole model at a half-wave",
+  notModelled: "Not modelled",
+} as const;
+
+/**
+ * The mark a figure in a printed or exported table carries when it is approximate, beside
+ * "n/m" for one that is not modelled. A tilde, because the PDFs are written in the
+ * standard PDF fonts, which have no "≈".
+ */
+export const APPROXIMATE_MARK = "~";
+
+/**
+ * Said wherever a level wire's figures stand side by side across bands: where the model
+ * changes, so do the figures, and neither model is adjusted to meet the other. Measured
+ * on this engine: at the top of the half-wave range (0.55 wavelengths) the sloping long
+ * wire reads 0.7 to 1.0 dB below the dipole, and at a half-wave about 1.3 dB below.
+ */
+export const MODEL_JOIN_NOTE =
+  "The figures step where the model changes. At the top of its half-wave range the wire's figures change from VOACAP's dipole to its sloping long wire, and the two do not meet: measured on this engine, the long wire reads 0.7 to 1.0 dB below the dipole there and about 1.3 dB below it at a half-wave. Neither is adjusted to meet the other, so an approximate band can read about a decibel low beside a half-wave one.";
+
+/** How one end was run at one frequency, in a few words. */
+export function runWords(spec: AntennaSpec, mhz: number): string {
+  const wire = wireOn(spec, mhz);
+  if (spec.kind === "end-fed-horizontal" && wire) {
+    if (wire.state === "half-wave") return RUN_LABELS.halfWave;
+    if (wire.state === "approximate") return RUN_LABELS.approximate;
+    return RUN_LABELS.notModelled;
+  }
+  if (spec.kind === "end-fed-vertical" && wire)
+    return `VOACAP's vertical monopole, a wire ${wire.wavelengths.toFixed(2)} wavelengths high${wire.state === "half-wave" ? " (about a half-wave)" : ""}`;
+  return antennaModelLabel(spec.kind, spec.lengthM);
+}
+
+/** `PredictionResult.runs`: how the path was run on the frequency asked about and on each band. */
+export interface AntennaRunLine {
+  mhz: number;
+  state: AntennaRunState;
+  tx: string;
+  rx: string;
+}
+
+export function runLine(txAntenna: AntennaSpec, rxAntenna: AntennaSpec, mhz: number): AntennaRunLine {
+  return { mhz, state: pathRunOn(txAntenna, rxAntenna, mhz), tx: runWords(txAntenna, mhz), rx: runWords(rxAntenna, mhz) };
+}
+
+/** Whether any of these antennas is run as an approximation on any of these frequencies. */
+export const approximateAnywhere = (specs: readonly AntennaSpec[], frequenciesMhz: readonly number[]): boolean =>
+  specs.some((spec) => frequenciesMhz.some((mhz) => antennaRunOn(spec, mhz) === "approximate"));
+
+/** The state of a cell an answer gives: what the engine marked it, so that a kept answer reads as it was made. */
+export const cellRun = (cell: { notModelled?: true; approximate?: true } | null | undefined): AntennaRunState =>
+  cell?.notModelled ? "not-modelled" : cell?.approximate ? "approximate" : "modelled";
+
 const MATCHING_UNIT_NOTE = "The matching unit's loss is not modelled: take it off as feedline loss in a profile.";
+
+/** How a level wire of this length is run across the engine's range, in sentences. */
+export function levelWireRuns(lengthM: number): string {
+  const { fromMhz, toMhz } = halfWaveRangeMhz(lengthM);
+  const long = longWireRangeMhz(lengthM);
+  const half = `From ${fromMhz.toFixed(1)} to ${toMhz.toFixed(1)} MHz, where it is about a half-wave, it is run as VOACAP's horizontal dipole (type 23) of that length.`;
+  const longer = long
+    ? ` Above ${long.fromMhz.toFixed(1)} MHz, where it is longer, the figures are approximate: it is run as VOACAP's sloping long wire (type 41) laid level, whose level is unchecked. Turned towards the other station, its broadside faces it on every band, and on those bands broadside is not where a longer wire is strongest.`
+    : "";
+  const shorter = fromMhz > HF_MIN_MHZ ? ` Below ${fromMhz.toFixed(1)} MHz, where it is shorter, no figure is given.` : "";
+  return `${half}${longer}${shorter}`;
+}
 
 function wirePreset(lengthM: number, upright: boolean, halfWaveBand: string): AntennaPreset {
   const spec: AntennaSpec = {
@@ -488,7 +622,7 @@ function wirePreset(lengthM: number, upright: boolean, halfWaveBand: string): An
     spec,
     modelledAs: upright
       ? `A wire ${lengthM} m long standing upright with its bottom end at the ground, fed there: a half-wave on the ${halfWaveBand} band. Run as VOACAP's vertical monopole (type 22) ${lengthM} m high on every frequency. Off the ${halfWaveBand} band the figure is for a wire that is not a half-wave, fed against the ground, and says how long it is in wavelengths. ${MATCHING_UNIT_NOTE}`
-      : `A wire ${lengthM} m long hung level 6 m up, fed at one end: a half-wave on the ${halfWaveBand} band. From ${rangeWords(lengthM)} it is run as VOACAP's horizontal dipole (type 23) of that length. On other frequencies no figure is given: the engine's dipole is fed at its centre and does not describe an end-fed wire that is not a half-wave. ${MATCHING_UNIT_NOTE}`,
+      : `A wire ${lengthM} m long hung level 6 m up, fed at one end: a half-wave on the ${halfWaveBand} band. ${levelWireRuns(lengthM)} ${MATCHING_UNIT_NOTE}`,
   };
 }
 
@@ -554,7 +688,7 @@ export function antennaModelLabel(kind: AntennaKind, lengthM?: number): string {
     case "end-fed-half-wave":
       return "End-fed half-wave recut for every band, run as a horizontal half-wave dipole (approximation)";
     case "end-fed-horizontal":
-      return `${wire}, horizontal (VOACAP type 23 where it is a half-wave, no figure elsewhere)`;
+      return `${wire}, horizontal (VOACAP type 23 where it is a half-wave, approximate where longer, no figure where shorter)`;
     case "end-fed-vertical":
       return `${wire}, vertical (VOACAP type 22 of that height)`;
     case "vertical-monopole":
@@ -664,6 +798,13 @@ export interface PredictionCell {
    * is 0, and none of them is a prediction.
    */
   notModelled?: true;
+  /**
+   * Set when one of the antennas is a level wire longer than a half-wave at this
+   * frequency, run as VOACAP's sloping long wire laid level (`wireOn`, state
+   * `approximate`). The figures are the engine's, and approximate: every screen and
+   * export that shows them says so.
+   */
+  approximate?: true;
 }
 
 /** The ionosphere over the middle of the path at one hour, from the engine's maps. */
@@ -785,6 +926,12 @@ export interface PredictionResult {
   hours: PredictionHour[];
   /** How each end's antenna was run, in words. */
   antennas: { tx: string; rx: string };
+  /**
+   * How the path was run on the frequency asked about (first) and on each band, in the
+   * order of `HF_BANDS`: modelled, approximate or not modelled, with each end in a few
+   * words. Missing from an answer kept before it was added.
+   */
+  runs?: AntennaRunLine[];
   /** The card deck the engine was given for the frequency asked about: what the original program would be fed to ask the same question. */
   deck: string;
   /** Things a reader must know before relying on the figures. */
@@ -843,6 +990,8 @@ export interface CompareSeries {
   foF2: number[];
   /** Set when an antenna of this series is not modelled at the frequency compared: `reliability` and `snrDbHz` then hold no figures. */
   notModelled?: true;
+  /** Set when an antenna of this series is run as an approximation at the frequency compared (`PredictionCell.approximate`). */
+  approximate?: true;
 }
 
 export interface CompareResult {

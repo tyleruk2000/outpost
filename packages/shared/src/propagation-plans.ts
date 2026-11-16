@@ -100,6 +100,12 @@ export interface PlanPairBand {
   /** From the first station of the pair to the second, and back. */
   forward: PlanDirection;
   back: PlanDirection;
+  /**
+   * Set when an antenna of the pair is a level wire longer than a half-wave on this band,
+   * run as VOACAP's sloping long wire: the figures are approximate, and the matrix, the
+   * recommendation and both exports say so.
+   */
+  approximate?: true;
 }
 
 export interface PlanPair {
@@ -170,6 +176,8 @@ export interface PlanChoice {
   bestHour: number;
   /** True when the band reaches `PLAN_SERVES` at no hour of the window. */
   belowHalf: boolean;
+  /** True when the band's figures are approximate (`PlanPairBand.approximate`): it may be recommended, and says so. */
+  approximate: boolean;
 }
 
 export interface PlanRecommendation {
@@ -218,6 +226,7 @@ export function planRecommendation(pair: PlanPair, hours: number[], byRatio: boo
       best: top.value,
       bestHour: top.hour,
       belowHalf,
+      approximate: band.approximate === true,
       ratio: ratios.length > 0 ? ratios.reduce((sum, value) => sum + value, 0) / ratios.length : Number.NEGATIVE_INFINITY,
     });
   }

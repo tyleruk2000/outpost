@@ -12,6 +12,8 @@
 import { createHash } from "node:crypto";
 import {
   ANTENNA_PRESETS,
+  type AntennaSpec,
+  approximateAnywhere,
   type CompareRequest,
   type CompareResult,
   type CompareSeries,
@@ -26,6 +28,7 @@ import {
   noiseSetting,
   OPERATING_MODES,
   type PredictionBasis,
+  runLine,
   type PredictionHour,
   type PredictionRequest,
   type PredictionResult,
@@ -64,6 +67,17 @@ const RESULT_VERSION = 1;
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const monthName = (month: string) => `${MONTHS[Number(month.slice(5, 7)) - 1]} ${month.slice(0, 4)}`;
+
+/**
+ * What a key gains when a level wire longer than a half-wave is among the antennas and
+ * frequencies of a question. Such a wire was given no figure until it was run as VOACAP's
+ * sloping long wire, and an answer kept from then is not this question's answer. Only
+ * those questions gain it: every other kept answer is found under the key it always had,
+ * since the engine and its data have not changed.
+ */
+export function wireRunsMark(specs: readonly AntennaSpec[], frequenciesMhz: readonly number[]): { wireRuns?: string } {
+  return approximateAnywhere(specs, frequenciesMhz) ? { wireRuns: "level-long-wire-type-41" } : {};
+}
 
 export interface PropagationService {
   predict(request: PredictionRequest, signal?: AbortSignal): Promise<PredictionResult>;
@@ -374,14 +388,21 @@ export function createPropagationService(ctx: AppContext, host: EngineHost): Pro
       const described = await host.describe();
       const { description, datasets } = described;
       const { basis, tableSha } = await basisOf(request, engineOf(described), signal);
-      const key = keyOf("point", { request, ssn: basis.ssn, tableSha, engine: description.sha256, datasets });
+      const bandMhz = HF_BANDS.map((band) => band.mhz);
+      const key = keyOf("point", {
+        request,
+        ssn: basis.ssn,
+        tableSha,
+        engine: description.sha256,
+        datasets,
+        ...wireRunsMark([request.txAntenna, request.rxAntenna], [request.frequencyMhz, ...bandMhz, ...SWEEP_MHZ]),
+      });
       const found = kept<PredictionResult>(key);
       if (found) return { ...found, basis, cached: true };
 
       // A mode with no figure is still run, at a requirement of 0 dB in 1 Hz that every
       // signal meets; its reliability is then thrown away and only the ratios are kept.
       const required = mode.requiredSnrDbHz ?? 0;
-      const bandMhz = HF_BANDS.map((band) => band.mhz);
       const main = await host.circuit(circuitOf(request, basis.ssn, [request.frequencyMhz, ...bandMhz, ...SWEEP_MHZ], required), signal);
       const ionosphere = await host.ionosphere(
         { tx: request.tx, rx: request.rx, year: Number(request.date.slice(0, 4)), month: Number(request.date.slice(5, 7)), ssn: basis.ssn },
@@ -447,6 +468,7 @@ export function createPropagationService(ctx: AppContext, host: EngineHost): Pro
         sweepMhz: SWEEP_MHZ,
         hours,
         antennas: main.antennas,
+        runs: [request.frequencyMhz, ...bandMhz].map((mhz) => runLine(request.txAntenna, request.rxAntenna, mhz)),
         deck: main.deck,
         limits: LIMITS,
       };
@@ -477,6 +499,10 @@ export function createPropagationService(ctx: AppContext, host: EngineHost): Pro
         datasets,
         // The generic antennas are part of the question when they are what is compared: an answer kept for another list is not this one's.
         ...(input.what === "antennas" ? { antennas: ANTENNA_PRESETS.map((preset) => [preset.name, preset.spec]) } : {}),
+        ...wireRunsMark(
+          [base.txAntenna, base.rxAntenna, ...(input.what === "antennas" ? ANTENNA_PRESETS.map((preset) => preset.spec) : [])],
+          [base.frequencyMhz],
+        ),
       });
       const found = kept<CompareResult>(key);
       if (found) return { ...found, basis };
@@ -533,6 +559,8 @@ export function createPropagationService(ctx: AppContext, host: EngineHost): Pro
           foF2: iono.map((hour) => hour.foF2),
           // An antenna that is a wire the engine's model does not describe at this frequency: the figures above are blanks.
           ...(run.hours[0]?.cells[0]?.notModelled ? { notModelled: true as const } : {}),
+          // One that is run as an approximation there: the figures are the engine's, and approximate.
+          ...(run.hours[0]?.cells[0]?.approximate ? { approximate: true as const } : {}),
         });
       }
       const result: CompareResult = { what: input.what, frequencyMhz: base.frequencyMhz, mode, series, engine: description, basis };

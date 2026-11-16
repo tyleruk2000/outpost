@@ -1,7 +1,7 @@
 /**
  * A wire of a stated length, put to the real engine: what VOACAP's antenna models do
- * with a length in metres, which is what decides how Outpost runs an end-fed wire and
- * where it gives no figure.
+ * with a length in metres, which is what decides how Outpost runs an end-fed wire, where
+ * its figures are approximate and where it gives none.
  *
  * The engine does not hand out a pattern, only the gain at the angle a signal leaves at.
  * So a pattern is sampled here: one antenna file, one frequency, paths of twelve lengths
@@ -13,11 +13,11 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { ANTENNA_PRESETS, type AntennaSpec, HF_BANDS, initialBearingDeg } from "@outpost/shared";
+import { ANTENNA_PRESETS, type AntennaSpec, HF_BANDS, initialBearingDeg, type PredictionCell } from "@outpost/shared";
 import { afterAll, expect, it } from "vitest";
 import type { CircuitRequest } from "../src/modules/propagation/engine.ts";
 import { antennaFile } from "../src/modules/propagation/voacap/antenna-files.ts";
-import { createVoacapEngine } from "../src/modules/propagation/voacap/engine.ts";
+import { createVoacapEngine, type WireCell, withOutsideGain } from "../src/modules/propagation/voacap/engine.ts";
 import { loadDataset, loadEngineFile, voacapPaths } from "../src/modules/propagation/voacap/files.ts";
 import { VoacapInstance } from "../src/modules/propagation/voacap/instance.ts";
 import { REFERENCE_CASES } from "./fixtures/propagation/cases.ts";
@@ -193,28 +193,212 @@ describeWithVoacapData("VOACAP's vertical monopole (type 22) given a height", ()
   });
 });
 
-describeWithVoacapData("VOACAP's sloping long wire (type 41), which Outpost does not use for the horizontal wire", () => {
-  it("laid level as a half-wave reads more than a decibel below the dipole model of the same wire", () => {
-    // Its pattern is a wire fed at one end, but it works its gain out against the wire as
-    // a monopole over perfect ground. Seen broadside at 14.18 MHz, 6 m up: 1.2 to 1.4 dB
-    // below type 23 at every angle. Which of the two is right for a whole wavelength
-    // cannot be checked against anything else in the engine.
-    const { mean, most } = apart(pattern(longWire(0, -0.5, 6), 14.18, 90), pattern(dipole(-0.5, 6), 14.18));
-    expect(mean).toBeLessThan(-1);
-    expect(mean).toBeGreaterThan(-1.7);
-    expect(most).toBeLessThan(1.8);
+// ── Type 41 laid level: what Outpost runs a level wire longer than a half-wave as ──
+
+/** Type 41 as Outpost writes it for one frequency: length and height in wavelengths there. */
+const longWireAt = (metres: number, heightM: number, mhz: number) => longWire(0, -wavelengths(metres, mhz), -wavelengths(heightM, mhz));
+
+/** Gain at one path's noon take-off angle, for each turn of the antenna's reference direction away from the path. */
+function turning(text: string, mhz: number, km: number, offsDeg: number[]): number[] {
+  const file = `outpost/wire${files++}`;
+  instance.writeFile(`antennas/${file}`, encoder.encode(text));
+  const tx = { name: "A", lat: 45, lon: 0 };
+  const rx = { name: "B", lat: 45, lon: km / 111.19 / Math.cos((45 * Math.PI) / 180) };
+  return offsDeg.map((off) => {
+    const answer = instance.run<{ hours: Array<{ freqs: Array<{ txGainDbi: number }> }> }>({
+      task: "systems",
+      tx,
+      rx,
+      month: 6,
+      year: 2026,
+      ssn: 100,
+      powerWatts: 100,
+      freqs: [mhz],
+      requiredSnrDb: 24,
+      noiseDbw: 145,
+      txAntennas: [{ file, beamDeg: (initialBearingDeg(tx, rx) + off + 360) % 360 }],
+      rxAntennas: [{ file: "default/isotrope" }],
+    });
+    return answer.hours[11]!.freqs[0]!.txGainDbi;
   });
-});
+}
+
+/** The mean and spread of the difference between two patterns at take-off angles from 5° to 30°, where HF paths of any length leave. */
+function lowAngles(a: Map<number, number>, b: Map<number, number>) {
+  return apart(new Map([...a].filter(([degree]) => degree <= 30)), b);
+}
+
+describeWithVoacapData(
+  "VOACAP's sloping long wire (type 41) laid level, which Outpost runs a level wire longer than a half-wave as",
+  () => {
+    it("is fed at one end and runs from the feed towards its reference direction; laid level, either way along it is the same", () => {
+      // Sloping 20° up from a feed 1 m above the ground, 10 m of wire at 21.22 MHz: seen
+      // -16.3 dBi along the reference direction (up the wire) and -0.2 dBi the other way.
+      const sloping = turning(longWire(20, 10, 1), 21.22, 2500, [0, 180]);
+      expect(sloping[1]! - sloping[0]!).toBeGreaterThan(10);
+      // Laid level the pattern is the same whichever end is fed: the field of a standing
+      // wave on a wire has the same size towards either end.
+      for (const mhz of [18.12, 21.22, 28.85]) {
+        const [ahead, behind, left, right] = turning(longWire(0, 10, 6), mhz, 2500, [30, 210, 60, 300]);
+        expect(Math.abs(ahead! - behind!)).toBeLessThan(0.05);
+        expect(Math.abs(left! - right!)).toBeLessThan(0.05);
+      }
+    });
+
+    it("moves its lobes from broadside towards the wire as the wire lengthens, with a null broadside at whole wavelengths", () => {
+      // 2500 km at noon leaves at 31° at 14.18 MHz; the wire 0.3 wavelengths up. Turned in
+      // whole degrees from along the wire (0) to broadside (90). Seen: 0.6 wavelengths
+      // strongest broadside (+5.5 dBi); 0.75 at 49° from the wire (+5.2), 1.1 dBi broadside;
+      // one wavelength at 48° (+4.5), -30 dBi broadside (the engine's floor); 1.5 at 33°;
+      // two wavelengths at 24° with -30 dBi broadside.
+      const offs = Array.from({ length: 91 }, (_, index) => index);
+      const strongest = (wavelengthsLong: number) => {
+        const gains = turning(longWire(0, -wavelengthsLong, -0.3), 14.18, 2500, offs);
+        const best = Math.max(...gains);
+        return { at: gains.indexOf(best), best, broadside: gains[90]! };
+      };
+      const [w06, w075, w1, w15, w2] = [0.6, 0.75, 1, 1.5, 2].map(strongest);
+      expect(w06!.at).toBeGreaterThanOrEqual(85);
+      expect(w075!.at).toBeGreaterThan(40);
+      expect(w075!.at).toBeLessThan(60);
+      expect(w1!.broadside).toBeLessThan(-25);
+      expect(w1!.at).toBeGreaterThan(40);
+      expect(w15!.at).toBeLessThan(w1!.at);
+      expect(w2!.at).toBeLessThan(w15!.at);
+      expect(w2!.broadside).toBeLessThan(-25);
+    });
+
+    it("reads 1.2 to 1.6 dB below the dipole model at a half-wave and at every odd number of half-waves, where both have the same current", () => {
+      // A wire an odd number of half-waves long carries the same standing wave fed at its
+      // end or at its centre, so there type 23 is a check on type 41's level. Seen at
+      // 14.18 MHz, 0.3 wavelengths up, angles 5 to 30°: 1.36 dB below at 0.5 wavelengths,
+      // 1.49 at 1.5, 1.52 at 2.5, 1.54 at 3.5 and 1.58 at 7.5. The two also differ at steep
+      // angles, by an amount that depends on height and not on length (seen at a half-wave
+      // too), and in where the nulls fall off broadside.
+      for (const n of [0.5, 1.5, 2.5, 3.5, 7.5]) {
+        const { mean, most } = lowAngles(pattern(longWire(0, -n, -0.3), 14.18, 90), pattern(dipole(-n, -0.3), 14.18));
+        expect(mean).toBeLessThan(-1.2);
+        expect(mean).toBeGreaterThan(-1.7);
+        expect(most).toBeLessThan(1.8);
+      }
+    });
+
+    it("at the top of the half-wave range, where Outpost changes from one model to the other, reads 0.7 to 1.0 dB below the dipole", () => {
+      // The join, as Outpost writes each file. Seen at 5 to 30°: 10 m of wire 6 m up at
+      // 16.49 MHz (0.55 wavelengths) 0.72 dB below; 20 m at 8.24 MHz 0.99 below at 6 m and
+      // 0.85 below at 10 m. At a half-wave (14.99 MHz) the 10 m wire reads 1.36 dB below.
+      const join = (metres: number, height: number, mhz: number) =>
+        lowAngles(pattern(longWireAt(metres, height, mhz), mhz, 90), pattern(dipole(metres, height), mhz)).mean;
+      for (const [metres, height] of [
+        [10, 6],
+        [20, 6],
+        [20, 10],
+      ] as const) {
+        const mhz = Number(((0.55 * 299.792458) / metres).toFixed(2));
+        expect(join(metres, height, mhz)).toBeLessThan(-0.5);
+        expect(join(metres, height, mhz)).toBeGreaterThan(-1.2);
+      }
+      expect(join(10, 6, 14.99)).toBeLessThan(-1.2);
+      expect(join(10, 6, 14.99)).toBeGreaterThan(-1.5);
+    });
+
+    it("reads between whole-megahertz patterns, so a long wire's length in metres is not that wire's pattern; in wavelengths at the frequency it is", () => {
+      // The engine keeps a pattern for each whole megahertz. For 10 m of wire at 21.22 MHz
+      // the patterns at 21 and 22 MHz are near enough: seen 0.1 dB at most. For 82 m at
+      // 5.33 MHz (1.46 wavelengths, but 1.37 at 5 MHz and 1.64 at 6) they are not: seen up to
+      // 11.7 dB apart 60° from broadside. So Outpost writes each frequency's own file.
+      const most = (metres: number, mhz: number, off: number) =>
+        apart(pattern(longWire(0, metres, 6), mhz, off), pattern(longWire(0, -wavelengths(metres, mhz), 6), mhz, off)).most;
+      expect(most(10, 21.22, 60)).toBeLessThan(0.3);
+      expect(most(82, 5.33, 30)).toBeGreaterThan(5);
+    });
+
+    it("has no line for added gain, and lowering the requirement by the gain gives what that line gives", () => {
+      // Type 23 with -3.5 dB at the transmitter and +2 dB at the receiver in its files,
+      // against the same files with no gain and the requirement 1.5 dB higher, the figures
+      // then moved as engine.ts moves them. Seen: the same to 0.001 in every figure, at
+      // every hour, except the transmitting gain printed at take-off angles below 2°.
+      const withGain = (db: number) =>
+        dipole(-0.5, 6).replace("   0.0  [ 8] Gain ab dipole:", `${db.toFixed(1).padStart(6)}  [ 8] Gain ab dipole:`);
+      // Its first line ("Max Gain dBi") does not move it either: seen, the same pattern at 0 and at 3.
+      const flat = pattern(longWire(0, -1, 6), 14.18, 60);
+      const raised = pattern(longWire(0, -1, 6).replace("  0.00  [ 1] Max Gain dBi..:", "  3.00  [ 1] Max Gain dBi..:"), 14.18, 60);
+      expect(apart(raised, flat).most).toBeLessThan(0.01);
+      expect(antennaFile({ ...preset("efhw-10m-horizontal"), gainDb: 3 }, 28.85)).not.toContain("Gain ab dipole");
+      const write = (text: string) => {
+        const file = `outpost/wire${files++}`;
+        instance.writeFile(`antennas/${file}`, encoder.encode(text));
+        return file;
+      };
+      const [lossy, gainy, plain] = [write(withGain(-3.5)), write(withGain(2)), write(withGain(0))];
+      const run = (txFile: string, rxFile: string, required: number) =>
+        instance.run<{ hours: Array<{ freqs: WireCell[] }> }>({
+          task: "systems",
+          tx: { name: "A", lat: 51.5, lon: -0.12 },
+          rx: { name: "B", lat: 40.7, lon: -74 },
+          month: 11,
+          year: 2026,
+          ssn: 100,
+          powerWatts: 0.5,
+          freqs: [7.1, 14.18, 21.22],
+          requiredSnrDb: required,
+          noiseDbw: 145,
+          txAntennas: [{ file: txFile, beamDeg: 290 }],
+          rxAntennas: [{ file: rxFile, beamDeg: 50 }],
+        });
+      const inFile = run(lossy, gainy, 45);
+      const outside = run(plain, plain, 45 - (-3.5 + 2));
+      let compared = 0;
+      for (const [hour, answered] of inFile.hours.entries())
+        for (const [at, expected] of answered.freqs.entries()) {
+          if (expected.mode === null) continue;
+          const moved = withOutsideGain(outside.hours[hour]!.freqs[at]!, -3.5, 2);
+          for (const key of ["reliability", "snrDb", "signalDbw", "fieldDbu", "lossDb", "rxGainDbi", "snrLowDb", "snrUpDb"] as const)
+            expect(Math.abs(moved[key]! - expected[key]!)).toBeLessThan(0.01);
+          // The gain the engine prints at a take-off angle below 2°, near its -30 dBi floor, is not quite the
+          // gain line's (seen: 0.15 to 0.21 dB apart at 1.6 to 1.7°, with every other figure the same).
+          if (expected.takeoffDeg! >= 2) expect(Math.abs(moved.txGainDbi! - expected.txGainDbi!)).toBeLessThan(0.01);
+          compared++;
+        }
+      expect(compared).toBeGreaterThan(30);
+    });
+
+    it("gives figures for a level wire shorter than a half-wave too, which Outpost does not use", () => {
+      // Seen, 10 m of wire 6 m up against a half-wave dipole at the same height: 3.3 dB
+      // below at 7.1 MHz (0.24 wavelengths) and 3.6 below at 3.65 MHz (0.12). The model's
+      // current is that of a wire fed against something at its end; an end-fed half-wave has
+      // nothing there to feed against, so Outpost gives no figure (wireOn: not modelled).
+      for (const mhz of [3.65, 7.1]) {
+        const { mean } = apart(pattern(longWire(0, 10, 6), mhz, 90), pattern(dipole(-0.5, 6), mhz));
+        expect(mean).toBeLessThan(-2.5);
+        expect(mean).toBeGreaterThan(-4.5);
+      }
+    });
+  },
+);
 
 describeWithVoacapData("an end-fed wire of a stated length, as Outpost runs it", () => {
   const bands = HF_BANDS.map((band) => band.mhz);
   const noon = (request: CircuitRequest) => engine.circuit({ ...request, frequenciesMhz: bands }).hours[11]!.cells;
   const index = (id: string) => HF_BANDS.findIndex((band) => band.id === id);
+  const states = (cells: PredictionCell[]) =>
+    Object.fromEntries(
+      HF_BANDS.map((band, at) => [band.id, cells[at]!.notModelled ? "n/m" : cells[at]!.approximate ? "approximate" : "modelled"]),
+    );
 
-  it("writes the wire's length in metres into the engine's own two models", () => {
+  it("writes the wire's length in metres into the engine's own two models, and in wavelengths into the long wire", () => {
     expect(antennaFile(preset("efhw-10m-horizontal"))).toContain("  23    [ 2] Antenna Type");
     expect(antennaFile(preset("efhw-10m-horizontal"))).toContain(" 10.00  [ 6] Antenna Length:");
     expect(antennaFile(preset("efhw-10m-horizontal"))).toContain("  6.00  [ 7] Antenna Height:");
+    // On a frequency where it is a half-wave, the same file.
+    expect(antennaFile(preset("efhw-10m-horizontal"), 14.18)).toBe(antennaFile(preset("efhw-10m-horizontal")));
+    // Longer than a half-wave: type 41, level, its length and height in wavelengths at that frequency.
+    const long = antennaFile(preset("efhw-10m-horizontal"), 28.85);
+    expect(long).toContain("  41    [ 2] Antenna Type");
+    expect(long).toContain("  0.00  [ 6] Slope from Hor:");
+    expect(long).toContain("-0.962  [ 7] Wire Length   :");
+    expect(long).toContain("-0.577  [ 8] Feed Height   :");
+    expect(long).not.toContain("Gain ab dipole");
     expect(antennaFile(preset("efhw-5m-vertical"))).toContain("  22    [ 2] Antenna Type");
     expect(antennaFile(preset("efhw-5m-vertical"))).toContain("  5.00  [ 6] Antenna Height:");
     expect(() => antennaFile({ ...preset("efhw-5m-vertical"), lengthM: undefined })).toThrow(/without its length/);
@@ -223,39 +407,108 @@ describeWithVoacapData("an end-fed wire of a stated length, as Outpost runs it",
   it("leaves the antenna that follows the frequency exactly as it was", () => {
     // What was "End-fed half-wave, horizontal at 6 m": still the half-wave dipole at 6 m.
     expect(antennaFile(preset("efhw"))).toBe(antennaFile({ ...preset("low-dipole"), heightM: 6 }));
+    expect(antennaFile(preset("efhw"), 28.85)).toBe(antennaFile(preset("efhw")));
     expect(antennaFile(preset("efhw"))).toContain("  -.50  [ 6] Antenna Length:");
   });
 
-  it("gives the horizontal 10 m wire figures on 20 m only, and those of a half-wave dipole at its height", () => {
+  it("gives the horizontal 10 m wire the dipole's figures on 20 m, approximate figures above, and none below", () => {
     const wire = noon({ ...acceptance, txAntenna: preset("efhw-10m-horizontal") });
     const half = noon({ ...acceptance, txAntenna: { ...preset("low-dipole"), heightM: 6 } });
-    for (const [at, band] of HF_BANDS.entries()) {
-      if (band.id === "20m") {
-        expect(wire[at]!.notModelled).toBeUndefined();
-        expect(wire[at]!.txGainDbi).toBeCloseTo(half[at]!.txGainDbi, 0);
-        expect(Math.abs(wire[at]!.txGainDbi - half[at]!.txGainDbi)).toBeLessThan(0.3);
-        expect(wire[at]!.path).toBe(half[at]!.path);
-      } else {
-        // No figure at all: not the centre-fed model's, and not a nought that could be read as a poor band.
-        expect(wire[at]).toMatchObject({ mhz: band.mhz, notModelled: true, path: null, reliability: 0, snrDbHz: 0, txGainDbi: 0 });
-      }
-    }
+    expect(states(wire)).toEqual({
+      "80m": "n/m",
+      "60m": "n/m",
+      "40m": "n/m",
+      "30m": "n/m",
+      "20m": "modelled",
+      "17m": "approximate",
+      "15m": "approximate",
+      "12m": "approximate",
+      "10m": "approximate",
+    });
+    expect(Math.abs(wire[index("20m")]!.txGainDbi - half[index("20m")]!.txGainDbi)).toBeLessThan(0.3);
+    // No figure at all below: not the centre-fed model's, and not a nought that could be read as a poor band.
+    expect(wire[index("40m")]).toMatchObject({ notModelled: true, path: null, reliability: 0, snrDbHz: 0, txGainDbi: 0 });
+    // Above, the engine's figures, from a path it found.
+    expect(wire[index("15m")]!.path).not.toBeNull();
+    expect(wire[index("15m")]!.notModelled).toBeUndefined();
   });
 
-  it("gives the horizontal 5 m wire figures on 10 m only", () => {
+  it("runs the long wire turned 90° from its broadside, so that it is the same wire hung the same way as on its half-wave band", () => {
+    // The 10 m band asked of the circuit against the long wire written by hand and turned
+    // to the bearing the circuit says it used: its broadside towards the other station.
+    const request = { ...acceptance, txAntenna: preset("efhw-10m-horizontal"), frequenciesMhz: [28.85] };
+    const circuit = engine.circuit(request);
+    const bearing = initialBearingDeg(acceptance.tx, acceptance.rx);
+    const file = "outpost/hand";
+    instance.writeFile(`antennas/${file}`, encoder.encode(antennaFile(preset("efhw-10m-horizontal"), 28.85)));
+    instance.writeFile("antennas/outpost/hand-rx", encoder.encode(antennaFile(acceptance.rxAntenna)));
+    const back = Math.round(initialBearingDeg(acceptance.rx, acceptance.tx) * 10) / 10;
+    const answer = instance.run<{ hours: Array<{ freqs: WireCell[] }> }>({
+      task: "systems",
+      tx: acceptance.tx,
+      rx: acceptance.rx,
+      month: acceptance.month,
+      year: acceptance.year,
+      ssn: acceptance.ssn,
+      powerWatts: acceptance.powerWatts,
+      freqs: [28.85],
+      requiredSnrDb: acceptance.requiredSnrDbHz,
+      noiseDbw: Math.abs(acceptance.noiseDbwAt3Mhz),
+      txAntennas: [{ file, beamDeg: (Math.round(bearing * 10) / 10 + 90) % 360 }],
+      rxAntennas: [{ file: "outpost/hand-rx", beamDeg: back }],
+    });
+    let compared = 0;
+    for (const [hour, expected] of answer.hours.entries()) {
+      const got = circuit.hours[hour]!.cells[0]!;
+      if (expected.freqs[0]!.mode === null) continue;
+      expect(got.approximate).toBe(true);
+      expect(got.txGainDbi).toBeCloseTo(expected.freqs[0]!.txGainDbi!, 1);
+      expect(got.reliability).toBeCloseTo(expected.freqs[0]!.reliability!, 2);
+      compared++;
+    }
+    expect(compared).toBeGreaterThan(5);
+    expect(circuit.antennas.tx).toContain("the wire running");
+  });
+
+  it("gives the horizontal 5 m wire figures on 10 m only, and is never approximate: it is never longer than a half-wave below 30 MHz", () => {
     const wire = noon({ ...acceptance, txAntenna: preset("efhw-5m-horizontal") });
     expect(wire.map((cell, at) => (cell.notModelled ? null : HF_BANDS[at]!.id)).filter((id) => id !== null)).toEqual(["10m"]);
+    expect(wire.some((cell) => cell.approximate)).toBe(false);
   });
 
-  it("blanks a frequency when it is the receiving antenna that is not modelled", () => {
+  it("gives a 20 m wire the dipole on 40 m, approximate figures from 30 m up, and none on 80 m and 60 m", () => {
+    const twenty = { ...preset("efhw-10m-horizontal"), lengthM: 20 };
+    expect(states(noon({ ...acceptance, txAntenna: twenty }))).toEqual({
+      "80m": "n/m",
+      "60m": "n/m",
+      "40m": "modelled",
+      "30m": "approximate",
+      "20m": "approximate",
+      "17m": "approximate",
+      "15m": "approximate",
+      "12m": "approximate",
+      "10m": "approximate",
+    });
+  });
+
+  it("marks a frequency by the less certain of the two ends", () => {
     const cells = noon({ ...acceptance, rxAntenna: preset("efhw-10m-horizontal") });
     expect(cells[index("40m")]!.notModelled).toBe(true);
     expect(cells[index("20m")]!.notModelled).toBeUndefined();
+    expect(cells[index("15m")]!.approximate).toBe(true);
+    // A 20 m wire sending to a 10 m wire on 40 m: modelled at one end, not at the other.
+    const both = noon({
+      ...acceptance,
+      txAntenna: { ...preset("efhw-10m-horizontal"), lengthM: 20 },
+      rxAntenna: preset("efhw-10m-horizontal"),
+    });
+    expect(both[index("40m")]!.notModelled).toBe(true);
+    expect(both[index("20m")]!.approximate).toBe(true);
   });
 
   it("gives the vertical wire figures on every band, as the monopole of its height", () => {
     const cells = noon({ ...acceptance, txAntenna: preset("efhw-10m-vertical") });
-    expect(cells.every((cell) => cell.notModelled === undefined)).toBe(true);
+    expect(cells.every((cell) => cell.notModelled === undefined && cell.approximate === undefined)).toBe(true);
     // London to Birmingham leaves steeply, where a half-wave vertical sends less than a
     // quarter-wave one (seen in the patterns above: 5.7 dB less at 60°).
     const wire = cells[index("20m")]!;
@@ -268,11 +521,19 @@ describeWithVoacapData("an end-fed wire of a stated length, as Outpost runs it",
     );
   });
 
-  it("adds a person's gain and takes off feedline loss on both wires, decibel for decibel", () => {
-    for (const id of ["efhw-10m-horizontal", "efhw-10m-vertical"]) {
-      const plain = noon({ ...acceptance, txAntenna: preset(id) })[index("20m")]!;
-      const lossy = noon({ ...acceptance, txAntenna: { ...preset(id), feedlineLossDb: 1.5 } })[index("20m")]!;
+  it("adds a person's gain and takes off feedline loss on both wires, decibel for decibel, the long wire included", () => {
+    for (const [id, band] of [
+      ["efhw-10m-horizontal", "20m"],
+      ["efhw-10m-vertical", "20m"],
+      ["efhw-10m-horizontal", "15m"],
+    ] as const) {
+      const plain = noon({ ...acceptance, txAntenna: preset(id) })[index(band)]!;
+      const lossy = noon({ ...acceptance, txAntenna: { ...preset(id), feedlineLossDb: 1.5 } })[index(band)]!;
+      expect(plain.path).not.toBeNull();
       expect(plain.txGainDbi - lossy.txGainDbi).toBeCloseTo(1.5, 1);
+      expect(plain.snrDbHz - lossy.snrDbHz).toBeCloseTo(1.5, 1);
+      expect(plain.signalDbw - lossy.signalDbw).toBeCloseTo(1.5, 1);
+      expect(lossy.reliability).toBeLessThanOrEqual(plain.reliability);
     }
   });
 
@@ -281,21 +542,27 @@ describeWithVoacapData("an end-fed wire of a stated length, as Outpost runs it",
     expect(flat).toContain("End-fed wire 10 m long, horizontal, 6 m above average ground, broadside towards 313° (the other station)");
     expect(flat).toContain("type 23");
     expect(flat).toContain("from 13.5 to 16.5 MHz");
-    expect(flat).toContain("no figure is given on other frequencies");
+    expect(flat).toContain(
+      "Above 16.5 MHz, where it is longer, approximate: run as VOACAP's sloping long wire (type 41) laid level, the wire running 43° to 223°",
+    );
+    expect(flat).toContain("Below 13.5 MHz, where it is shorter, not modelled");
     expect(flat).toContain("matching unit's loss is not modelled");
+    const five = engine.circuit({ ...acceptance, txAntenna: preset("efhw-5m-horizontal") }).antennas.tx;
+    expect(five).not.toContain("type 41");
     const upright = engine.circuit({ ...acceptance, txAntenna: preset("efhw-5m-vertical") }).antennas.tx;
     expect(upright).toContain("End-fed wire 5 m long, vertical with its bottom end at the ground");
     expect(upright).toContain("type 22");
     expect(upright).toContain("matching unit's loss is not modelled");
   });
 
-  it("prints the engine's page for the frequencies it is modelled on, and no page when there are none", () => {
+  it("prints the engine's page for the frequencies it gives figures on, a page of its own for each approximate one, and no page when there are none", () => {
     const request = { ...acceptance, txAntenna: preset("efhw-10m-horizontal"), frequenciesMhz: [7.1, 14.18, 21.22] };
     const page = engine.listing(request);
-    const frequencies = page.split("\n").find((line) => /^\s+1\.0 .* FREQ$/.test(line))!;
-    expect(frequencies).toContain("14.2");
-    expect(frequencies).not.toContain("7.1");
-    expect(frequencies).not.toContain("21.2");
-    expect(() => engine.listing({ ...request, frequenciesMhz: [7.1, 21.22] })).toThrow(/no page to print/);
+    const frequencyLines = page.split("\n").filter((line) => /^\s+1\.0 .* FREQ$/.test(line));
+    expect(frequencyLines.length).toBe(2);
+    expect(frequencyLines[0]).toContain("14.2");
+    expect(page).not.toMatch(/^\s+1\.0 .*\b7\.1\b.* FREQ$/m);
+    expect(page).toContain("Outpost: 21.22 MHz, approximate. The transmitting antenna is a level wire longer than a half-wave");
+    expect(() => engine.listing({ ...request, frequenciesMhz: [7.1, 3.65] })).toThrow(/no page to print/);
   });
 });

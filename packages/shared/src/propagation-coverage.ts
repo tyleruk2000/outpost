@@ -184,6 +184,12 @@ export interface CoverageResult {
   cells: Array<CoverageCell | null>;
   unanswered: Array<{ index: number; reason: string }>;
   antennas: { tx: string; rx: string };
+  /**
+   * Set when an antenna is a level wire longer than a half-wave at the map's frequency,
+   * run as VOACAP's sloping long wire: every figure of the map is approximate, and this
+   * says why. Shown in the map's legend and on paper. Missing from a map kept before it was added.
+   */
+  approximate?: string | null;
   /** What a reader must know before relying on the picture. */
   limits: string[];
 }
