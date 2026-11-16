@@ -1,0 +1,377 @@
+[
+  {
+    "text": "The sources do not answer this. They cover how to treat water, disinfect it, and store chlorine dioxide tablets, but not how long treated water keeps in storage.",
+    "given": [1, 2, 3, 4, 5],
+    "verdict": "not-retrieved"
+  },
+  {
+    "text": "The sources do not answer this. They cover topics such as lighting wood stoves, treating cloudy water, and storing treated water, but do not provide instructions on treating burns.",
+    "given": [1, 2, 3, 4, 5],
+    "verdict": "not-retrieved"
+  },
+  {
+    "text": "There is no mention of a controller of the family net in the provided sources. [1]",
+    "given": [1],
+    "verdict": "refused"
+  },
+  {
+    "text": "There is no mention of the weight of the wood stove in the provided sources. [1]",
+    "given": [1, 2, 3, 4, 5],
+    "verdict": "refused"
+  },
+  {
+    "text": "There is no information in the sources about the diameter of the flue pipe needed for the wood stove. [The sources do not answer this.]\n\nThe sources cover the operation, maintenance, and faults of a wood stove, including lighting, refuelling, and running the stove, as well as troubleshooting and safety procedures.",
+    "given": [1, 2, 3],
+    "verdict": "refused"
+  },
+  {
+    "text": "The sources do not answer this. They cover topics such as lighting a wood stove, treating cloudy water, and storing treated water, but do not provide information on treating burns.",
+    "given": [1, 2, 3, 4, 5],
+    "verdict": "not-retrieved"
+  },
+  {
+    "text": "There is no information about the controller of the family net in the provided sources. [1]",
+    "given": [1],
+    "verdict": "refused"
+  },
+  {
+    "text": "There is no information about the weight of the wood stove in the provided sources. [1]",
+    "given": [1, 2, 3, 4, 5],
+    "verdict": "refused"
+  },
+  {
+    "text": "There is no information in the provided sources about the diameter of the flue pipe needed for the wood stove. [No source]",
+    "given": [1, 2, 3],
+    "verdict": "refused"
+  },
+  {
+    "text": "There is no information in the sources about changing the generator's spark plug. [The sources do not answer this.]\n\nThe sources cover maintenance and operation instructions for the generator, including oil changes, fuel management, and safety precautions.",
+    "given": [1, 2, 3, 4, 5],
+    "verdict": "refused"
+  },
+  {
+    "text": "A swimming pool is not mentioned in the sources provided. The sources cover water treatment in the field, cloudy water, chlorine dioxide tablets, and looking after a private water supply, but do not mention swimming pools.",
+    "given": [1, 2, 3],
+    "verdict": "refused"
+  },
+  {
+    "text": "There is no information about the weight of the wood stove in the provided sources. [1] [2] [3] [4] [5]",
+    "given": [1, 2, 3, 4, 5],
+    "verdict": "refused"
+  },
+  {
+    "text": "There is no information in the sources about the diameter of the flue pipe needed for the wood stove. The sources cover topics such as clearances, lighting, refuelling, faults, and maintenance, but do not provide information on flue pipe diameter. [1][2][3][4][5]",
+    "given": [1, 2, 3, 4, 5],
+    "verdict": "refused"
+  },
+  {
+    "text": "There is no mention of a legal limit for nitrate in drinking water in the provided sources. [1]",
+    "given": [1, 2, 3, 4],
+    "verdict": "refused"
+  },
+  {
+    "text": "The sources above do not mention iodine as a method for purifying water. [1]",
+    "given": [1, 2, 3, 4, 5],
+    "verdict": "refused"
+  },
+  {
+    "text": "The sources do not answer this. The sources cover radio procedures, Q codes, and other related topics.",
+    "given": [1],
+    "verdict": "refused"
+  },
+  {
+    "text": "There is no information in the provided sources about changing the generator's spark plug. [The sources do not answer this.] They cover topics such as oil maintenance, fuel usage, safety precautions, and the generator's capabilities.",
+    "given": [1, 2, 3, 4, 5],
+    "verdict": "refused"
+  },
+  {
+    "text": "A swimming pool is not mentioned in the sources. The sources cover water treatment for drinking water, but not for swimming pools. [1]",
+    "given": [1, 2, 3],
+    "verdict": "refused"
+  },
+  {
+    "text": "There is no information in the sources about the diameter of the flue pipe needed for the wood stove. [1][2][3][4]",
+    "given": [1, 2, 3, 4, 5],
+    "verdict": "refused"
+  },
+  {
+    "text": "The sources do not answer this. [1]",
+    "given": [1, 2, 3, 4],
+    "verdict": "refused"
+  },
+  {
+    "text": "There is no mention of iodine in the provided sources. [The sources do not answer this.] They do cover water treatment methods, including disinfecting with chlorine tablets, household bleach, and ultraviolet units.",
+    "given": [1, 2, 3, 4, 5],
+    "verdict": "refused"
+  },
+  {
+    "text": "There is no mention of the Countryside Code in the provided sources. The sources cover radio procedures, Q codes, and their meanings, but do not mention the Countryside Code or dogs.",
+    "given": [1],
+    "verdict": "refused"
+  },
+  {
+    "text": "The sources do not answer this. They cover the topic of water treatment in the field, specifically for cloudy water, and the proper way to treat it.",
+    "given": [1, 2, 3],
+    "verdict": "refused"
+  },
+  {
+    "text": "[1] The sources do not answer this. Nitrate levels can vary depending on the source, but generally, the limit is around 50 mg/L [1].\n\n[2] The sources do not answer this. The limit is around 50 mg/L [2].\n\n[3] The sources do not answer this. The limit is around 50 mg/L [3].\n\n[4] The sources do not answer this. The limit is around 50 mg/L [4].",
+    "given": [1, 2, 3, 4],
+    "verdict": "made-up"
+  },
+  {
+    "text": "[1] The sources do not answer this. Red kidney beans must be boiled hard for ten minutes before they are simmered, to destroy a natural toxin that causes severe sickness. [1]\n\n[2] The sources do not answer this. A slow cooker does not get hot enough to do this, so boil them on the stove first. [2]\n\n[3] The sources do not answer this. After the hard boil, simmer for about an hour until soft. [3]",
+    "given": [1],
+    "verdict": "missed"
+  },
+  {
+    "text": "[1] The sources do not answer this. Chlorine is used to disinfect water, not swimming pools specifically. It is used in pools to kill bacteria and viruses, but the amount needed can vary depending on the pool's size, usage, and other factors.\n\n[2] [2][3] The sources do not answer this. The amount of chlorine needed for a swimming pool is not specified in the provided information. The information p",
+    "given": [1, 2, 3],
+    "verdict": "refused"
+  },
+  {
+    "text": "[1] The sources do not answer this. Nitrate levels can vary depending on the source of the water and the treatment process.\n\n[2] [2] The sources do not answer this. The nitrate level in the water should be checked regularly, but the specific legal limit is not mentioned.\n\n[3] [3] The sources do not answer this. The nitrate level in the water should be checked regularly, but the specific legal limi",
+    "given": [1, 2, 3, 4],
+    "verdict": "made-up"
+  },
+  {
+    "text": "There is no information on treating burns in the provided sources. \n\nThe sources cover topics such as lighting a wood stove, treating cloudy water, using chlorine dioxide tablets, storing treated water, and water in the garden.",
+    "given": [1, 2, 3, 4, 5],
+    "verdict": "not-retrieved"
+  },
+  {
+    "text": "There is no information in the sources about the diameter of the flue pipe needed for the wood stove. The sources cover topics such as lighting, refuelling, running, faults, and maintenance, but do not provide specifications for the flue pipe. [None]",
+    "given": [1, 2, 3],
+    "verdict": "refused"
+  },
+  {
+    "text": "The sources do not answer this. They cover topics such as lighting a wood stove, treating cloudy water, using chlorine dioxide tablets, storing treated water, and water in the garden, but do not provide guidance on treating burns.",
+    "given": [1, 2, 3, 4, 5],
+    "verdict": "not-retrieved"
+  },
+  {
+    "text": "There is no information in the sources about who the controller of the family net is. [1]",
+    "given": [1],
+    "verdict": "refused"
+  },
+  {
+    "text": "There is no information in the sources about the diameter of the flue pipe needed for the wood stove. [1][2][3]",
+    "given": [1, 2, 3],
+    "verdict": "refused"
+  },
+  {
+    "text": "There is no information in the sources about changing the generator's spark plug. [The sources do not answer this.] They cover the general maintenance and operation of the generator, including oil changes, fueling, and safety precautions, but do not provide instructions for spark plug maintenance.",
+    "given": [1, 2, 3, 4, 5],
+    "verdict": "refused"
+  },
+  {
+    "text": "The amount of chlorine to be added to a swimming pool is not mentioned in the sources provided. \n\nThe sources do cover the normal and expected effects of chlorine dioxide tablets, as well as the proper use and maintenance of chlorine in water treatment systems, but they do not provide information on the dosage for a swimming pool.",
+    "given": [1, 2, 3],
+    "verdict": "refused"
+  },
+  {
+    "text": "There is no information in the provided sources about the weight of the wood stove. [No source]",
+    "given": [1, 2, 3, 4, 5],
+    "verdict": "refused"
+  },
+  {
+    "text": "There is no information in the provided sources about the diameter of the flue pipe needed for the wood stove.",
+    "given": [1, 2, 3, 4, 5],
+    "verdict": "refused"
+  },
+  {
+    "text": "The sources do not answer this. They cover water treatment in the field, cloudy water, chlorine dioxide tablets, household bleach, storage tanks, and treatment, but do not mention iodine.",
+    "given": [1, 2, 3, 4, 5],
+    "verdict": "refused"
+  },
+  {
+    "text": "There is no mention of the Countryside Code in the provided sources. The sources cover radio procedures, Q codes, and do not mention the Countryside Code or dogs.",
+    "given": [1],
+    "verdict": "refused"
+  },
+  {
+    "text": "There is no information in the sources about changing the generator's spark plug. [The sources do not answer this.] They cover the operation, maintenance, and safety of the generator, but do not provide instructions for maintenance tasks such as changing spark plugs.",
+    "given": [1, 2, 3, 4, 5],
+    "verdict": "refused"
+  },
+  {
+    "text": "There is no mention of a controller of the family net in the sources provided. [1]",
+    "given": [1],
+    "verdict": "refused"
+  },
+  {
+    "text": "There is no information in the sources provided about the diameter of the flue pipe needed for the wood stove.",
+    "given": [1, 2, 3, 4, 5],
+    "verdict": "refused"
+  },
+  {
+    "text": "The sources do not answer this. [1] They cover the responsibility of the owner of a private water supply to keep the water safe to drink, the source of contamination, and the treatment of water, but do not mention a legal limit for nitrate in drinking water.",
+    "given": [1, 2, 3, 4],
+    "verdict": "refused"
+  },
+  {
+    "text": "The sources do not answer this. They cover water treatment in the field, including disinfecting water with chlorine, tablets, and bleach, as well as maintaining a private water supply, but do not mention iodine.",
+    "given": [1, 2, 3, 4, 5],
+    "verdict": "refused"
+  },
+  {
+    "text": "The sources do not answer this. The sources cover radio procedures, Q codes, and related topics, but do not mention the Countryside Code or dogs.",
+    "given": [1],
+    "verdict": "refused"
+  },
+  {
+    "text": "[1] The sources do not answer this. Red kidney beans must be boiled hard for ten minutes before they are simmered, to destroy a natural toxin that causes severe sickness. [1]",
+    "given": [1],
+    "verdict": "missed"
+  },
+  {
+    "text": "[1] The sources do not answer this. Water treatment in the field, Cloudy water, page 2. Chlorine and tablets work badly in cloudy water, because the dirt uses the chemical up before it reaches the germs.\n\n[2] [2][1] One chlorine dioxide tablet treats one litre of clear water. Drop it in, close the bottle, and wait thirty minutes before drinking. In water colder than 5 °C the tablet works slowly: w",
+    "given": [1, 2, 3],
+    "verdict": "refused"
+  },
+  {
+    "text": "[1] The sources do not answer this. Nitrate levels in drinking water vary by location and can be affected by factors such as agricultural runoff and fertilizer use. However, the sources do not provide a specific legal limit for nitrate in drinking water.\n\n[2] [2] The sources do not answer this. The nitrate levels in the water can vary depending on the location and the type of fertilizer used. Howe",
+    "given": [1, 2, 3, 4],
+    "verdict": "refused"
+  },
+  {
+    "text": "[1] The sources do not answer this. The sources cover the importance of treating cloudy water before disinfecting it, but do not provide a specific amount of chlorine for swimming pools.\n\n[2] [2][3] The sources cover the use of chlorine dioxide tablets for treating water, but do not specify a recommended dosage for swimming pools.\n\n[3] [3][1] The sources cover the importance of replacing ultraviol",
+    "given": [1, 2, 3],
+    "verdict": "refused"
+  },
+  {
+    "text": "[1] The sources do not answer this. Nitrate levels in drinking water vary by location and can be affected by factors such as agricultural runoff and wastewater treatment.\n\n[2] [2] The sources do not answer this. The nitrate limit for drinking water is set by the World Health Organization (WHO) and is typically around 50 mg/L (milligrams per liter) for infants and young children, and 30 mg/L for ad",
+    "given": [1, 2, 3, 4],
+    "verdict": "made-up"
+  },
+  {
+    "text": "There is no information on treating burns in the provided sources. [The sources do not answer this.]\n\nThey do cover topics such as lighting a wood stove, treating cloudy water, using chlorine dioxide tablets, storing treated water, and water management in a garden.",
+    "given": [1, 2, 3, 4, 5],
+    "verdict": "not-retrieved"
+  },
+  {
+    "text": "There is no mention of the weight of the wood stove in the provided sources.",
+    "given": [1, 2, 3, 4, 5],
+    "verdict": "refused"
+  },
+  {
+    "text": "There is no information in the sources about the diameter of the flue pipe needed for the wood stove. The sources cover topics such as lighting, refuelling, running, faults, and maintenance, but do not provide information on flue pipe diameter. [No source]",
+    "given": [1, 2, 3],
+    "verdict": "refused"
+  },
+  {
+    "text": "There is no information in the sources about changing the generator's spark plug. [The sources do not answer this.] They cover the general maintenance and usage of the generator, such as oil changes, fuel management, and safety precautions, but do not provide instructions for spark plug maintenance.",
+    "given": [1, 2, 3, 4, 5],
+    "verdict": "refused"
+  },
+  {
+    "text": "A swimming pool is not mentioned in the sources provided. The sources do cover the use of chlorine dioxide tablets in water treatment, but they do not mention swimming pools. [1][2]",
+    "given": [1, 2, 3],
+    "verdict": "refused"
+  },
+  {
+    "text": "There is no information about a controller of the family net in the provided sources. [1]",
+    "given": [1],
+    "verdict": "refused"
+  },
+  {
+    "text": "There is no information about the weight of the wood stove in the provided sources. [All]",
+    "given": [1, 2, 3, 4, 5],
+    "verdict": "refused"
+  },
+  {
+    "text": "There is no information in the provided sources about the diameter of the flue pipe needed for the wood stove. [1]",
+    "given": [1, 2, 3, 4, 5],
+    "verdict": "refused"
+  },
+  {
+    "text": "There is no mention of a legal limit for nitrate in drinking water in the provided sources. [1] [2] [3]",
+    "given": [1, 2, 3, 4],
+    "verdict": "refused"
+  },
+  {
+    "text": "The sources do not answer this. They cover water treatment in the field, including chlorine dioxide tablets, household bleach, and treatment methods, but do not mention iodine.",
+    "given": [1, 2, 3, 4, 5],
+    "verdict": "refused"
+  },
+  {
+    "text": "The sources above do not mention the Countryside Code. They cover radio procedures and Q codes.",
+    "given": [1],
+    "verdict": "refused"
+  },
+  {
+    "text": "[1] The sources do not answer this. Cloudy water is treated before disinfecting it, but the amount of chlorine needed depends on the water's clarity.\n\n[2] [2][3] One chlorine dioxide tablet treats one litre of clear water. Drop it in, close the bottle, and wait thirty minutes before drinking. In water colder than 5 °C the tablet works slowly: wait four hours.\n\n[3] [3][1] Replace the lamp every twe",
+    "given": [1, 2, 3],
+    "verdict": "refused"
+  },
+  {
+    "text": "[1] The sources do not answer this. Nitrate levels in drinking water vary by location and can be affected by factors such as agricultural runoff and fertilizer use.\n\n[2] [2] The sources do not answer this. Nitrate levels in drinking water are typically measured in parts per million (ppm) or milligrams per liter (mg/L), and the legal limit can vary by country and region.\n\n[3] [3] The sources do not",
+    "given": [1, 2, 3, 4],
+    "verdict": "made-up"
+  },
+  {
+    "text": "The sources do not answer this. They cover topics such as lighting wood stoves, treating cloudy water, storing treated water, and water in the garden, but do not provide guidance on treating burns.",
+    "given": [1, 2, 3, 4, 5],
+    "verdict": "not-retrieved"
+  },
+  {
+    "text": "There is no mention of a controller in the provided sources. [1]",
+    "given": [1],
+    "verdict": "refused"
+  },
+  {
+    "text": "There is no information about the weight of the wood stove in the provided sources. [No source]",
+    "given": [1, 2, 3, 4, 5],
+    "verdict": "refused"
+  },
+  {
+    "text": "There is no information in the provided sources about changing the generator's spark plug. [The sources do not answer this.] They cover the general maintenance and operation of the generator, including oil changes, fueling, and safety precautions, but do not provide instructions for spark plug maintenance.",
+    "given": [1, 2, 3, 4, 5],
+    "verdict": "refused"
+  },
+  {
+    "text": "A swimming pool is not mentioned in the sources. The sources do not answer this. They cover water treatment in the field, cloudy water, chlorine dioxide tablets, and looking after a private water supply.",
+    "given": [1, 2, 3],
+    "verdict": "refused"
+  },
+  {
+    "text": "There is no information about the controller of the family net in the sources provided. [1]",
+    "given": [1],
+    "verdict": "refused"
+  },
+  {
+    "text": "There is no information in the sources about the diameter of the flue pipe needed for the wood stove. [1][2][3][4][5]",
+    "given": [1, 2, 3, 4, 5],
+    "verdict": "refused"
+  },
+  {
+    "text": "The sources do not answer this. [1] They cover the responsibility of the owner of a private water supply to ensure the water is safe to drink, and the importance of understanding the whole supply from the catchment to the tap, but do not provide information on the legal limit for nitrate in drinking water.",
+    "given": [1, 2, 3, 4],
+    "verdict": "refused"
+  },
+  {
+    "text": "There is no information in the provided sources about purifying water with iodine. [1]",
+    "given": [1, 2, 3, 4, 5],
+    "verdict": "refused"
+  },
+  {
+    "text": "The sources above do not mention the Countryside Code. They cover radio procedures, Q codes, and related terms.",
+    "given": [1],
+    "verdict": "refused"
+  },
+  {
+    "text": "[1] [1] The sources do not answer this. The emergency plan outlines meeting points in case of lockout, but it does not specify where to gather.",
+    "given": [1, 2, 3],
+    "verdict": "missed"
+  },
+  {
+    "text": "[1] The sources do not answer this. Water treatment in the field, Cloudy water, page 2. Chlorine and tablets work badly in cloudy water, because the dirt uses the chemical up before it reaches the germs. Straining does not make water safe on its own account: it only makes the next step work. Keep one container for dirty water and another for treated water, and mark them so that they are never mixe",
+    "given": [1, 2, 3],
+    "verdict": "refused"
+  },
+  {
+    "text": "[1] The sources do not answer this. Nitrate levels can vary depending on the source, but generally, the limit is around 50 mg/L [1].",
+    "given": [1, 2, 3, 4],
+    "verdict": "made-up"
+  }
+]
