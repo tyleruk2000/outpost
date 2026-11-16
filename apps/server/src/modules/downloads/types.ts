@@ -118,8 +118,12 @@ export interface DownloadsService {
   /** Resumes everything that is paused. */
   resumeAll(): number;
   registerFetcher(name: string, fetcher: Fetcher): void;
-  /** One installer per kind. Registering twice for a kind is an error. */
-  registerInstaller(kind: DownloadKind, installer: Installer): void;
+  /**
+   * One installer per kind; registering twice for a kind is an error. An installer given
+   * with `owns` is instead one of several for the kind: it takes the downloads `owns`
+   * recognises, before the kind's own installer is asked.
+   */
+  registerInstaller(kind: DownloadKind, installer: Installer, owns?: (download: DownloadRow) => boolean): void;
   /** Called once a download has been verified and installed, with its final row. */
   onCompleted(listener: (download: DownloadRow) => void | Promise<void>): void;
   /** The row as the API reports it, with live progress, speed and time remaining. */

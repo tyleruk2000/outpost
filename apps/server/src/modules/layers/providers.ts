@@ -1,0 +1,248 @@
+/**
+ * Every source of reference data the module knows, with its licence and the words of its
+ * terms that decide what Outpost does with it. Read on 16 November 2026; the full
+ * account, with every page and what could not be read, is in docs/reference-layers.md.
+ *
+ * "fetch": Outpost downloads it when a person presses Download, after showing the size.
+ * "import": the person obtains the file and gives it to Outpost.
+ * "link": the source is linked, and nothing is fetched or imported from it as data.
+ */
+import type { ReferenceCatalogueResponse, ReferenceProviderDto } from "@outpost/shared";
+
+const READ = "2026-11-16";
+
+export const MILITARY_CAUTION =
+  "The OpenStreetMap wiki warns: “In some territories … it is illegal to create maps of military facilities, or even mapping their location … using OpenStreetMap can be illegal when other contributors have mapped these things.” Check the law where you are before downloading or keeping this layer.";
+
+export const PROVIDERS: ReferenceProviderDto[] = [
+  {
+    id: "natural-earth",
+    name: "Natural Earth",
+    publisher: "Natural Earth (North American Cartographic Information Society)",
+    url: "https://www.naturalearthdata.com",
+    license: "Public domain",
+    licenseUrl: "https://www.naturalearthdata.com/about/terms-of-use/",
+    termsUrl: "https://www.naturalearthdata.com/about/terms-of-use/",
+    termsQuote:
+      "“All versions of Natural Earth raster + vector map data found on this website are in the public domain.” “No permission is needed to use Natural Earth.” “Crediting the authors is unnecessary.”",
+    termsRead: READ,
+    verdict: "fetch",
+    why: "Public domain. Fetched as GeoJSON from the project's own repository at release v5.1.2, so the same file is had every time.",
+    layers: ["boundaries", "regions", "towns"],
+    scopes: ["world", "country"],
+    importFormats: [],
+    caution: null,
+    incremental: "Released in versions; a new version replaces the old pack whole.",
+  },
+  {
+    id: "ourairports",
+    name: "OurAirports",
+    publisher: "OurAirports (David Megginson and contributors)",
+    url: "https://ourairports.com/data/",
+    license: "Public domain (Unlicense)",
+    licenseUrl: "https://github.com/davidmegginson/ourairports-data/blob/main/LICENSE",
+    termsUrl: "https://github.com/davidmegginson/ourairports-data",
+    termsQuote:
+      "The data repository's licence: “This is free and unencumbered software released into the public domain.” Its README: “Open-data downloads for OurAirports, updated daily.” The ourairports.com pages could not be read on the day: the site's certificate had expired on 6 November 2026.",
+    termsRead: READ,
+    verdict: "fetch",
+    why: "Public domain, published as one CSV file of the world's airports, refreshed nightly. The whole file is fetched (about 13 MB) and the chosen countries kept.",
+    layers: ["airports"],
+    scopes: ["world", "country", "bbox"],
+    importFormats: [],
+    caution:
+      "OurAirports has no field that says an airfield is military; some names say so (“Air Base”). Outpost does not guess from names: military airfields as OpenStreetMap maps them are in the military sites layer.",
+    incremental: "No: the publisher gives the whole file each night. An update replaces the pack.",
+  },
+  {
+    id: "osm",
+    name: "OpenStreetMap, by tag query (Overpass API)",
+    publisher: "OpenStreetMap contributors",
+    url: "https://www.openstreetmap.org",
+    license: "ODbL 1.0",
+    licenseUrl: "https://opendatacommons.org/licenses/odbl/1-0/",
+    termsUrl: "https://wiki.openstreetmap.org/wiki/Overpass_API#Public_Overpass_API_instances",
+    termsQuote:
+      "OpenStreetMap: “If you alter or build upon our data, you may distribute the result only under the same license.” The Overpass manual lists as problematic “Setting up an app for more than just OSM mappers and relying on the public instances as backend”; users “keep their download volume below about 1 GB per day”. The dresel.systems servers (Europe, North America): “Free to use, no API key. Limit of 4 parallel queries per IP address”, “Please send a User-Agent or Referer that identifies your app.”",
+    termsRead: READ,
+    verdict: "fetch",
+    why: "One layer of one country or box per question, one question at a time, to a public server whose operator allows it (dresel.systems, for Europe and North America) or to one you declare yourself. Private.coffee's server is not used: its terms exclude “projects related to warfare, military applications”. overpass-api.de is not used: its operators ask that applications not rely on it. Elsewhere, use a Geofabrik extract.",
+    layers: ["military", "nuclear", "hospitals", "emergency", "shelters"],
+    scopes: ["country", "bbox"],
+    importFormats: [],
+    caution: MILITARY_CAUTION,
+    incremental: "No: a pack is asked for again whole. Overpass can say what changed, but not what was deleted.",
+  },
+  {
+    id: "osm-extract",
+    name: "OpenStreetMap, from a Geofabrik extract",
+    publisher: "OpenStreetMap contributors; extracts by Geofabrik GmbH",
+    url: "https://download.geofabrik.de/",
+    license: "ODbL 1.0",
+    licenseUrl: "https://opendatacommons.org/licenses/odbl/1-0/",
+    termsUrl: "https://download.geofabrik.de/",
+    termsQuote:
+      "“License: ODbL 1.0”, “Data processed by Geofabrik GmbH and created by OpenStreetMap Contributors”. Geofabrik's “Download responsibly!” (10 September 2025): “There's a limit to the outgoing network bandwidth”; “monitor what your script is doing or build in appropriate catches”.",
+    termsRead: READ,
+    verdict: "fetch",
+    why: "One file per country, with an MD5 beside it that is checked. Fetched once on a press and never retried in a loop. The file holds all of OpenStreetMap for the country; Outpost reads the five layers' tags from it and keeps the file so that it can be read again. A file you downloaded yourself can be imported instead.",
+    layers: ["military", "nuclear", "hospitals", "emergency", "shelters"],
+    scopes: ["country"],
+    importFormats: ["osm-pbf"],
+    caution: MILITARY_CAUTION,
+    incremental: "Geofabrik publishes daily change files; Outpost does not apply them. An update fetches the extract again.",
+  },
+  {
+    id: "wikidata",
+    name: "Wikidata",
+    publisher: "Wikidata contributors (Wikimedia Foundation)",
+    url: "https://www.wikidata.org",
+    license: "CC0 1.0",
+    licenseUrl: "https://creativecommons.org/publicdomain/zero/1.0/",
+    termsUrl: "https://www.mediawiki.org/wiki/Wikidata_Query_Service/User_Manual#Query_limits",
+    termsQuote:
+      "Licensing: “All structured data (i.e. the main, Property, Lexeme, and EntitySchema namespaces) is released into the public domain” (CC0). Query service: a 60-second limit per query, five queries at once per address; “Scripts should use an informative User-Agent string with contact information, or they may be blocked without notice.”",
+    termsRead: READ,
+    verdict: "fetch",
+    why: "One query per press, for nuclear power stations and research reactors that have a position, sent with Outpost's name and address.",
+    layers: ["nuclear"],
+    scopes: ["world", "country"],
+    importFormats: [],
+    caution: null,
+    incremental: "No: each fetch asks again; the answer is small.",
+  },
+  {
+    id: "worldpop",
+    name: "WorldPop",
+    publisher: "WorldPop, University of Southampton",
+    url: "https://www.worldpop.org",
+    license: "CC BY 4.0",
+    licenseUrl: "https://creativecommons.org/licenses/by/4.0/",
+    termsUrl: "https://hub.worldpop.org/data/licence.txt",
+    termsQuote: "“WorldPop datasets are licensed under the Creative Commons Attribution 4.0 International License”.",
+    termsRead: READ,
+    verdict: "fetch",
+    why: "One country's population count for 2020 at 30 arc-seconds (about 1 km), unconstrained, adjusted to the United Nations' totals: the coarsest product that still serves a map layer and a sum within a circle. DOI 10.5258/SOTON/WP00671.",
+    layers: [],
+    scopes: ["country"],
+    importFormats: [],
+    caution: null,
+    incremental: "No: 2020 is a fixed release.",
+  },
+  {
+    id: "babs",
+    name: "Swiss emergency meeting points (BABS)",
+    publisher: "Federal Office for Civil Protection (BABS), Switzerland",
+    url: "https://www.geo.admin.ch",
+    license: "Open use, source to be given (opendata.swiss “terms_by”)",
+    licenseUrl: "https://opendata.swiss/en/terms-of-use",
+    termsUrl: "https://www.geo.admin.ch/en/general-terms-of-use-fsdi",
+    termsQuote:
+      "Federal geodata infrastructure: “Obtaining and using the data and services is free-of-charge, subject to the provisions on fair use”; “Automatic parsing of geoservices via bots with high query intensities is to be avoided.” The dataset is listed with the opendata.swiss “terms_by” licence (open use, with the source named). The opendata.swiss terms page itself refused to be read on the day.",
+    termsRead: READ,
+    verdict: "fetch",
+    why: "An official list of the places Swiss people are told to go in an emergency, published as one GeoJSON file (about 1.5 MB). Fetched once on a press.",
+    layers: ["shelters"],
+    scopes: ["country"],
+    importFormats: [],
+    caution: null,
+    incremental: "No: the file is fetched again whole.",
+  },
+  {
+    id: "import",
+    name: "A file you import",
+    publisher: "As stated by the person importing",
+    url: "",
+    license: "As stated by the person importing",
+    licenseUrl: null,
+    termsUrl: "",
+    termsQuote: "",
+    termsRead: READ,
+    verdict: "import",
+    why: "For sources that do not allow automated download, or publish only for you to fetch: emergency planning zones, official shelter registers, historical records you have transcribed or obtained, and country-level figures from published reports. Every row says who published it, under what licence, how exactly it is placed, and whether it is a published record or unverified.",
+    layers: ["shelters", "planning-zones", "military", "nuclear", "hospitals", "emergency", "historical"],
+    scopes: [],
+    importFormats: ["features-csv", "geojson", "historical-csv", "country-figures-csv", "osm-pbf"],
+    caution: null,
+    incremental: "Importing the file again replaces the pack it made.",
+  },
+];
+
+/** Sources the specification names that Outpost links to and does not fetch, with the reason. */
+export const LINKED: ReferenceCatalogueResponse["linked"] = [
+  {
+    id: "fas",
+    name: "FAS Nuclear Notebook and Status of World Nuclear Forces",
+    url: "https://fas.org/initiative/status-world-nuclear-forces/",
+    why: "Copyrighted, with no licence for reuse and no data file; the Bulletin of the Atomic Scientists, which publishes the Notebook, forbids automated access. Read it there. A country-level figure can be typed into a figures file with its citation and imported.",
+    termsQuote:
+      "FAS pages: “Federation of American Scientists © 2026”, no licence. The Bulletin's terms: users may not “use any robot, spider, scraper, crawler, or other automated means to access, extract, harvest” data, “regardless of whether the data is publicly accessible”.",
+    termsRead: READ,
+  },
+  {
+    id: "sipri",
+    name: "SIPRI Yearbook: World nuclear forces",
+    url: "https://www.sipri.org/yearbook/2026",
+    why: "Copyrighted. SIPRI allows downloading for non-commercial use and single copies for private use, but reproducing its data needs permission beyond 10%. So nothing is fetched or bundled: open the page and save the free summary or the sample chapter yourself, then add the PDF to your library. Figures typed from it, with the citation, can be imported.",
+    termsQuote:
+      "“SIPRI freely authorizes the downloading or printing of the contents of its website for any non-commercial use.” “you may make single copies for your own private use.” “Any reproduction—in any medium, electronic or printed—of the data requires authorization”; “permission is only needed if you want to directly reproduce more than 10% of the data set.”",
+    termsRead: READ,
+  },
+  {
+    id: "nti",
+    name: "NTI Index",
+    url: "https://www.ntiindex.org",
+    why: "No data file and no terms could be read (the site turned automated reading away). Linked only.",
+    termsQuote: "Not read: ntiindex.org answered automated requests with a browser check, and nti.org/terms-of-use refused.",
+    termsRead: READ,
+  },
+  {
+    id: "iaea",
+    name: "IAEA Power Reactor Information System (PRIS)",
+    url: "https://pris.iaea.org",
+    why: "The IAEA's terms of use could not be read (iaea.org refused). Until they are, nothing is taken from PRIS. Nuclear power stations come from OpenStreetMap and Wikidata instead.",
+    termsQuote: "Not read: every iaea.org terms page answered 402 or 403.",
+    termsRead: READ,
+  },
+  {
+    id: "nsarchive",
+    name: "National Security Archive: SAC Atomic Weapons Requirements Study for 1959",
+    url: "https://nsarchive2.gwu.edu/nukevault/ebb538-Cold-War-Nuclear-Target-List-Declassified-First-Ever/",
+    why: "A declassified United States government document (public domain), published by the Archive as scanned pages, not as data. No transcription under an open licence was found. Open the scans there and save them to your library; records you transcribe from them can be imported as historical records, each citing its page.",
+    termsQuote:
+      "“Copyright is not claimed as to any work of the United States government.” “Contents of this website Copyright 1995-2017 National Security Archive. All rights reserved.”",
+    termsRead: READ,
+  },
+  {
+    id: "napb-90",
+    name: "FEMA, Nuclear Attack Planning Base 1990 (NAPB-90), 1987",
+    url: "https://nuke.fas.org/guide/usa/napb-90/index.html",
+    why: "A United States government planning document, released in 2005 and kept by FAS as scans. Linked; its files could not be confirmed as stable downloads.",
+    termsQuote: "Released in April 2005 and provided “for its academic and historical value only”.",
+    termsRead: READ,
+  },
+  {
+    id: "tna",
+    name: "The National Archives (UK): Square Leg and Hard Rock civil-defence exercises",
+    url: "https://discovery.nationalarchives.gov.uk/",
+    why: "Files HO 322/950–951 (Square Leg, 1980) and HO 322/983–1020 (Hard Rock, 1982) are open but not digitised: they are read at Kew. Search the catalogue for those references. Linked only.",
+    termsQuote: "The National Archives' copyright pages refused to be read on the day.",
+    termsRead: READ,
+  },
+  {
+    id: "uk-depz",
+    name: "UK detailed emergency planning zones (REPPIR 2019)",
+    url: "https://www.hse.gov.uk/radiation/ionising/reppir.htm",
+    why: "Published by each local authority, mostly as maps in PDFs (the link is the Health and Safety Executive's page on the regulations); no national dataset with a licence was found (data.gov.uk lists one as “unpublished”). A zone your council publishes as a file can be imported as an emergency planning zone, with its licence.",
+    termsQuote: "data.gov.uk, “Nuclear Emergency Planning Zones”: licence “unpublished”, “There are no links to this data.”",
+    termsRead: READ,
+  },
+  {
+    id: "ensi",
+    name: "Swiss zone plans for emergency planning round nuclear facilities (ENSI)",
+    url: "https://map.geo.admin.ch/?layers=ch.ensi.zonenplan-notfallschutz-kernanlagen",
+    why: "Published as geodata, but its licence signals disagree (“proprietary” in one record, “no restriction” in another). Not fetched until that is settled; a copy you obtain can be imported (Swiss grid coordinates are converted).",
+    termsQuote: "The federal administration's terms: “Any reproduction requires the prior written consent of the copyright holder.” The geocat.ch record: “keine Einschränkungen”.",
+    termsRead: READ,
+  },
+];
