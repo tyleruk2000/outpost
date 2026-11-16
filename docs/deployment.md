@@ -234,9 +234,9 @@ Linux on x86-64, not an Intel Mac, not Windows, not a Raspberry Pi, not a NAS.
 - Memory: the Compose file limits the two containers to 1 GB and 512 MB by default
   (`OUTPOST_MEMORY_LIMIT`, `KIWIX_MEMORY_LIMIT`), which fits a 4 GB board for keyword
   search, reading, notes and maps. The built-in model for semantic search takes about
-  550 MB while it is loaded (measured on a Mac, not on a Pi), which does not fit in the
-  default 1 GB beside everything else: raise `OUTPOST_MEMORY_LIMIT` to `2g` before
-  switching it on. Choose 8 GB if you plan to run an embedding server
+  300 MB more while it is loaded (the container used 430 MiB during an index build on a
+  laptop; a Pi has not been measured), which fits the default. Choose 8 GB if you plan
+  to run an embedding server
   on the same board for semantic search, or to index very large PDFs (a PDF is held in
   memory while its text is read).
 - Leave **Documents processed at once** at 1 (the default) and keep downloads at 1 or 2

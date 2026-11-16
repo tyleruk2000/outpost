@@ -267,12 +267,23 @@ threads):
 | A search with the index built | 12 to 20 ms. |
 | Starting the model | About 0.3 seconds, the first time it is needed and again after five idle minutes. |
 | Disk | **2.16 kB per passage** inside the database (14.3 MB for those 6,614), so about 2.2 MB per thousand. The numbers are 1.5 kB of that; the rest is how the database stores them. |
-| Memory | About 550 MB while the model is loaded, on top of the server's own use. It is given back after five minutes without a search or a build. |
+| Memory | About 300 MB while the model is loaded, measured in the Docker image: the container used 133 MiB before and 430 MiB during a build, inside its default 1 GB limit. (macOS reports more for the same work, about 550 MB.) It is given back after five minutes without a search or a build. |
+| The same build in the Docker image | 246 seconds for the same 6,614 passages (Linux on ARM64, on the same laptop): 37 seconds per thousand. |
 | Size of the model and its runtime | 39 MB in the packaged app: the model 23.7 MB, the WebAssembly runtime 14.8 MB, licence texts 0.4 MB. |
 
-A small computer will be several times slower. Nobody has measured a Raspberry Pi; the
-build's own progress line shows the time left at the speed it is really going. A build
-can be made on a faster computer and [moved](#moving-vectors-between-installations).
+These were taken while other work was running on the laptop, so a quiet one does a
+little better. A small computer will be several times slower. Nobody has measured a
+Raspberry Pi; the build's own progress line shows the time left at the speed it is
+really going. A build can be made on a faster computer and
+[moved](#moving-vectors-between-installations).
+
+Where it has been run: on an Apple Silicon Mac from source and from the packaged app;
+in the Docker image on ARM64, and on AMD64 under emulation (which says it works there,
+and nothing about its speed on a real PC); and from a copy of the packaged app started
+the way a portable drive starts it. Each of those was done with the network blocked or
+absent. The 6,563 distinct vectors built on the Mac and in the ARM64 image were the same
+bit for bit, as were those of the two images. It has not been run on a Raspberry Pi, an
+Intel Mac, Windows, or a musl-based Linux such as Alpine.
 
 ### Choosing where the model runs
 
@@ -297,9 +308,10 @@ How it runs:
   time it loads, and refuses files that do not match.
 - **The server stays responsive.** The model uses half the processor threads, four at
   most. A search's question is embedded ahead of passages waiting to be indexed.
-- **A vector does not depend on the machine.** The same text gives the same numbers on
-  every platform and with any number of threads, so vectors built on one computer can be
-  loaded on another, and a portable drive's index works wherever the drive is plugged in.
+- **A vector does not depend on the machine.** The same text gave the same numbers,
+  bit for bit, on every platform tried and with one thread or four, so vectors built on
+  one computer can be loaded on another, and a portable drive's index works wherever the
+  drive is plugged in.
 
 What to know about the model:
 

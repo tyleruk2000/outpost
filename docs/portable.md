@@ -191,9 +191,10 @@ the whole workspace as Markdown from Notes, documents from the Library.
   `data` folder.
 - **Search by meaning.** The built-in model is part of the app on the drive, and the
   vectors travel in the database, so semantic search works from the drive on every
-  platform the drive starts on, with no connection: the model runs as WebAssembly and
-  gives the same vectors on every kind of computer. Only starting it on an Apple Silicon
-  Mac has been tried.
+  platform the drive starts on, with no connection: the model runs as WebAssembly, with
+  no program of its own per platform. This has been tried from a copy of the app on an
+  Apple Silicon Mac, and in Linux containers on ARM64 and AMD64, where the vectors came
+  out identical; not on Windows or an Intel Mac.
 - **Embedding servers.** Settings travel with the drive. If semantic search was set to
   a local embedding server, the drive will look for one at the same address on the new
   computer. If none answers, searches return keyword results with a note saying so.
