@@ -58,8 +58,13 @@ import { dayText, passesOf, type Scene, sceneSchema, searchScenes } from "./stac
 
 export const IMAGERY_FETCHER = "imagery-build";
 
-/** Bytes per Sentinel-2 tile, measured on real builds (docs/maps.md, "How big an area"). */
-const SENTINEL_BYTES_PER_TILE = 6_000;
+/**
+ * Bytes per tile position of a Sentinel-2 area, for the size shown before fetching. Two
+ * real builds of the same 100 km² near Keswick came to 2.9 kB (12 July 2026) and 5.2 kB
+ * (12 November 2026) a position (transparent tiles are not stored); this is the larger,
+ * rounded up, so the estimate errs on the side of more.
+ */
+const SENTINEL_BYTES_PER_TILE = 5_500;
 /** Milliseconds to make one tile on the computer this was measured on; four times it for a small computer. */
 const MS_PER_TILE = 15;
 /** How long a search's results can be chosen from before searching again. */
