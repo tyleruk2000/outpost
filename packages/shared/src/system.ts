@@ -31,6 +31,7 @@ export interface Settings {
   "answers.model": string;
   "answers.temperature": number;
   "answers.contextChars": number;
+  "contacts.carddav": boolean;
   "downloads.concurrency": number;
   "downloads.rateLimitKbps": number;
   "downloads.maxAttempts": number;

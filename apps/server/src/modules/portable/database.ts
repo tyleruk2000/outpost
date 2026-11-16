@@ -25,6 +25,8 @@ export interface DriveContents {
   documentIds: string[];
   /** Identity of the library the drive is written from; see `MergeService.libraryId`. */
   madeFrom: string;
+  /** False leaves the contacts off the drive. They travel unless that was asked for. */
+  contacts?: boolean;
 }
 
 export function prepareDriveDatabase(file: string, contents: DriveContents): { collections: number; documents: number; notes: number } {
@@ -55,8 +57,14 @@ export function prepareDriveDatabase(file: string, contents: DriveContents): { c
         DELETE FROM network_shares;
         DELETE FROM drive_merges;
         DELETE FROM settings WHERE key = 'backup.schedule';
+        DELETE FROM settings WHERE key = 'contacts.carddav';
         DELETE FROM library_meta WHERE key = 'backup.state';
       `);
+
+      if (contents.contacts === false) {
+        // Search entries first, as above; a contact's tags and links go with it.
+        db.exec("DELETE FROM search_entities WHERE kind = 'contact'; DELETE FROM contacts;");
+      }
 
       // Everything that remains lives in the drive's one location, at the same relative paths.
       db.exec("PRAGMA defer_foreign_keys = ON");

@@ -518,6 +518,71 @@ export const tracks = sqliteTable("tracks", {
   updatedAt: updatedAt(),
 });
 
+// ── Contacts ────────────────────────────────────────────────────────────────
+
+/**
+ * People and places to reach. What a person typed is in `data`; the columns beside it
+ * are worked out from it for listing and finding. See modules/contacts.
+ */
+export const contacts = sqliteTable(
+  "contacts",
+  {
+    id: id(),
+    /** The card's own identity (vCard UID): how a file brought in twice is known to hold the same contact. */
+    uid: text("uid").notNull(),
+    kind: text("kind", { enum: ["person", "organisation"] }).notNull().default("person"),
+    displayName: text("display_name").notNull(),
+    /** Lower case with accents folded, family name first: what the list is ordered by. */
+    sortKey: text("sort_key").notNull(),
+    /** The contact's fields (`ContactFields` in the shared package; its tags are in `contact_tags`). */
+    data: json<Record<string, unknown>>("data").notNull(),
+    /** Lower case words and bare digits, for the filter on the Contacts screen. */
+    searchText: text("search_text").notNull().default(""),
+    isEmergency: integer("is_emergency", { mode: "boolean" }).notNull().default(false),
+    /** The saved place on the map it points at. */
+    markerId: text("marker_id"),
+    /** vCard lines Outpost has no field for, one to a line as they came, so that an export gives them back. */
+    extra: text("extra").notNull().default(""),
+    source: text("source", { enum: ["manual", "file", "picker"] }).notNull().default("manual"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    uniqueIndex("contacts_uid_idx").on(table.uid),
+    index("contacts_sort_idx").on(table.sortKey),
+    index("contacts_emergency_idx").on(table.isEmergency),
+  ],
+);
+
+/**
+ * A contact's tags. They are kept by name and are not rows of `tags`: that table is
+ * tidied by the notes and the documents whenever one of theirs stops using a tag, which
+ * would take a contact's tag with it.
+ */
+export const contactTags = sqliteTable(
+  "contact_tags",
+  {
+    contactId: text("contact_id")
+      .notNull()
+      .references(() => contacts.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.contactId, table.name] }), index("contact_tags_name_idx").on(table.name)],
+);
+
+/** Contact → page of notes. A page that has been deleted leaves a row behind that is not shown. */
+export const contactPages = sqliteTable(
+  "contact_pages",
+  {
+    contactId: text("contact_id")
+      .notNull()
+      .references(() => contacts.id, { onDelete: "cascade" }),
+    noteId: text("note_id").notNull(),
+    position: integer("position").notNull().default(0),
+  },
+  (table) => [primaryKey({ columns: [table.contactId, table.noteId] }), index("contact_pages_note_idx").on(table.noteId)],
+);
+
 // ── Portable drives: bringing changes back ──────────────────────────────────
 
 /**

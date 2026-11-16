@@ -60,6 +60,8 @@ const requestSchema = z.object({
   platforms: z.array(z.enum(PORTABLE_PLATFORMS)).min(1).max(PORTABLE_PLATFORMS.length),
   collectionIds: z.array(z.string().max(64)).max(5000).default([]),
   documents: z.enum(["all", "none"]).default("all"),
+  /** Contacts travel as notes do unless they are left off: a drive may be handed to someone else. */
+  contacts: z.enum(["all", "none"]).default("all"),
   /** Also put kiwix-serve on the drive, so reference collections can be read from it. */
   reader: z.boolean().default(false),
   /** Required when the folder is already an Outpost drive: its notes and index will be replaced. */
@@ -514,6 +516,7 @@ export async function registerPortable(app: FastifyInstance, ctx: AppContext): P
         collectionIds: gathered.includedCollectionIds,
         documentIds: gathered.includedDocumentIds,
         madeFrom: libraryId(),
+        contacts: request.contacts !== "none",
       });
 
       // 4. Swap the data folder in. Whatever the drive held is kept beside it.

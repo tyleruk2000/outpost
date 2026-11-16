@@ -10,6 +10,7 @@ import { registerBackup } from "./backup/index.ts";
 import { registerBooks } from "./books/index.ts";
 import { registerCatalog } from "./catalog/index.ts";
 import { registerCollections } from "./collections/index.ts";
+import { registerContacts } from "./contacts/index.ts";
 import { registerDocuments } from "./documents/index.ts";
 import { registerDownloads } from "./downloads/index.ts";
 import { registerHttps } from "./https/index.ts";
@@ -49,4 +50,5 @@ export const modules: ModuleRegister[] = [
   registerMerge,
   registerManage,
   registerHttps,
+  registerContacts,
 ];

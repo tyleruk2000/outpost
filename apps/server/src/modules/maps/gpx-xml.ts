@@ -211,6 +211,11 @@ export class XmlTokenizer {
     }
   }
 
+  /** The name of the element just opened, without any prefix. */
+  get local(): string {
+    return this.source.slice(this.localStart, this.nameEnd);
+  }
+
   /** Whether the element just opened has this name, leaving any prefix aside. */
   is(local: string): boolean {
     return this.nameEnd - this.localStart === local.length && this.source.startsWith(local, this.localStart);
