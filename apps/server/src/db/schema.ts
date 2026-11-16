@@ -778,6 +778,12 @@ export const repeaterLists = sqliteTable("repeater_lists", {
   mapping: json<Record<string, string>>("mapping"),
   fileName: text("file_name"),
   dataDate: integer("data_date").notNull(),
+  /**
+   * For a list Outpost fetched from a declared source: the source's id, the address, when,
+   * and the publisher's terms as they were read then. Null for a list from a file the
+   * person chose.
+   */
+  fetched: json<Record<string, unknown>>("fetched"),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });
@@ -788,7 +794,9 @@ export const repeaterLists = sqliteTable("repeater_lists", {
  * next, and `sourceRow` is what the list last said: an entry the person changed
  * (`editedAt`) or removed (`removedAt`) is recognised by them, so an update can leave it
  * alone and still tell whether the list has moved on. A removed entry of a list stays as
- * a row, so that the next update does not bring it back. See modules/repeaters.
+ * a row, so that the next update does not bring it back. An entry that is the same
+ * repeater as another is set aside the same way, with `mergedInto` naming the entry that
+ * is shown in its place; it comes back if that entry goes. See modules/repeaters.
  */
 export const repeaters = sqliteTable(
   "repeaters",
@@ -825,11 +833,14 @@ export const repeaters = sqliteTable(
     sourceRow: json<Record<string, unknown>>("source_row"),
     editedAt: integer("edited_at"),
     removedAt: integer("removed_at"),
+    /** The entry shown in place of this one. Set only with `removedAt`. Not a foreign key: the entry it names may go first. */
+    mergedInto: text("merged_into"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (table) => [
     index("repeaters_list_idx").on(table.listId, table.sourceKey),
+    index("repeaters_merged_idx").on(table.mergedInto),
     // Everything the map and a sort by distance read, so that neither has to visit the rows themselves.
     index("repeaters_position_idx").on(table.lat, table.lon, table.removedAt, table.id),
     index("repeaters_output_idx").on(table.outputHz),

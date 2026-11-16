@@ -85,6 +85,13 @@
       "when": 1794817549786,
       "tag": "0011_hf_propagation",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1794819529961,
+      "tag": "0012_repeater_sources_and_duplicates",
+      "breakpoints": true
     }
   ]
 }

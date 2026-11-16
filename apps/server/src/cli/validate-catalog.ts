@@ -26,6 +26,7 @@ import { bundledDirFor, type LoadedCatalog, loadCatalog, manifestJsonSchema } fr
 import { loadPacks } from "../modules/catalog/packs.ts";
 import { type EntryResolution, resolveEntries } from "../modules/catalog/resolve.ts";
 import { loadRouteSources } from "../modules/maps/route-finder/sources.ts";
+import { loadRepeaterSources } from "../modules/repeaters/sources.ts";
 
 export interface CatalogValidation {
   manifests: number;
@@ -153,6 +154,10 @@ export function validateCatalog(catalogDir: string = defaultCatalogDir, options:
   // Route sources are declared beside the manifests; a file that cannot be read would leave the Maps screen with nowhere to search.
   const routeSources = loadRouteSources({ catalogDir, dataDir: path.join(catalogDir, ".no-data-directory") });
   for (const problem of routeSources.problems) problems.push(`route-sources.json: ${problem}`);
+
+  // So are the sources of repeater lists.
+  const repeaterSources = loadRepeaterSources({ catalogDir, dataDir: path.join(catalogDir, ".no-data-directory") });
+  for (const problem of repeaterSources.problems) problems.push(`repeater-sources.json: ${problem}`);
 
   if (options.checkSchemaFile ?? true) {
     const file = schemaPath(catalogDir);

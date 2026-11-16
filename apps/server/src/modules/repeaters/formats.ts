@@ -3,20 +3,25 @@
  * row as Outpost keeps it. Nothing here touches the database, so all of it can be
  * tested with a string.
  *
- * Every layout is a CSV with a row of headings. Four are recognised by those headings
- * (three files the RSGB's ETCC offers, and CHIRP's); anything else is read by matching
- * its headings to what they usually mean, and the person can correct the matching
- * before anything is kept.
+ * A file is a CSV with a row of headings, or a JSON list of records, which is read as
+ * the same thing: its field names are the headings. Some layouts are recognised by
+ * their headings (three files the RSGB's ETCC offers, CHIRP's, the Wireless Institute
+ * of Australia's directory, and the list hearham.com offers to applications); anything
+ * else is read by matching its headings to what they usually mean, and the person can
+ * correct the matching before anything is kept.
  *
  * The ETCC layouts were learned from one copy of each file, fetched from
  * ukrepeater.net on 16 November 2026 to read their headings and the forms their values
  * take. CHIRP's columns and its words for tones and modes are from `chirp_common.py` in
- * CHIRP's own source, read the same day. No row of either is in this repository: the
- * tests use made-up stations. See docs/sources.md.
+ * CHIRP's own source, read the same day. The Hearham and WIA layouts were learned the
+ * same way, from one copy of each file fetched on 16 November 2026 from the address its
+ * publisher offers it at. No row of any of them is in this repository: the tests use
+ * made-up stations. See docs/sources.md.
  */
 import {
   bandOfHz,
   formatMHz,
+  isGuessedRepeaterFormat,
   MAX_REPEATER_ROWS,
   ownValue,
   parseBand,
@@ -38,8 +43,76 @@ import { AppError, badRequest } from "../../core/errors.ts";
 // ── The file as a table ─────────────────────────────────────────────────────
 
 export interface RepeaterTable {
+  /** What the file was: rows and columns, or a JSON list of records. */
+  kind: "csv" | "json";
   columns: string[];
   rows: Array<{ line: number; cells: string[] }>;
+}
+
+/** No more field names than this are taken from a JSON list. */
+const MAX_JSON_COLUMNS = 200;
+
+const tooManyRows = () =>
+  new AppError(
+    "too_large",
+    `That file has more than ${MAX_REPEATER_ROWS.toLocaleString("en-GB")} rows. Split it, or export a smaller area, and import the parts as separate lists.`,
+  );
+
+/**
+ * A JSON file as a table: a list of records, or an object with one such list in it.
+ * Each record's own simple values become cells (a number as it is written, true and
+ * false as "1" and "0"); a list or a record inside a record is passed over. The "line"
+ * of a row is its place in the list, counting from 2 as a CSV's first row of data does.
+ */
+function readJsonTable(source: string): RepeaterTable {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(source);
+  } catch {
+    throw badRequest(
+      "That file starts like JSON but could not be read as JSON. Outpost reads repeater lists as CSV, or as a JSON list of records.",
+    );
+  }
+  const isRecord = (value: unknown): value is Record<string, unknown> =>
+    typeof value === "object" && value !== null && !Array.isArray(value);
+  const listOf = (value: unknown): unknown[] | null => (Array.isArray(value) && value.some(isRecord) ? value : null);
+  let list = listOf(parsed);
+  if (!list && isRecord(parsed)) {
+    for (const key of Object.keys(parsed).slice(0, 50)) {
+      list = listOf(parsed[key]);
+      if (list) break;
+    }
+  }
+  if (!list) throw badRequest("That JSON file is not a list of records, so there are no rows to read.");
+  if (list.length > MAX_REPEATER_ROWS) throw tooManyRows();
+  const columns: string[] = [];
+  const position = new Map<string, number>();
+  for (const record of list.slice(0, 500)) {
+    if (!isRecord(record)) continue;
+    for (const key of Object.keys(record)) {
+      const name = key.trim().slice(0, 80);
+      if (!name || position.has(name) || columns.length >= MAX_JSON_COLUMNS) continue;
+      position.set(name, columns.length);
+      columns.push(name);
+    }
+  }
+  if (columns.length < 2) throw badRequest("The records in that JSON file have no named fields to read.");
+  const rows: RepeaterTable["rows"] = [];
+  for (const [index, record] of list.entries()) {
+    if (!isRecord(record)) continue;
+    const cells = columns.map(() => "");
+    for (const key of Object.keys(record)) {
+      const at = position.get(key.trim().slice(0, 80));
+      if (at === undefined) continue;
+      const value = record[key];
+      if (typeof value === "string") cells[at] = value.slice(0, 4000).trim();
+      else if (typeof value === "number" && Number.isFinite(value)) cells[at] = String(value);
+      else if (typeof value === "boolean") cells[at] = value ? "1" : "0";
+    }
+    if (cells.every((cell) => cell === "")) continue;
+    rows.push({ line: index + 2, cells });
+  }
+  return { kind: "json", columns, rows };
 }
 
 /** The separator a file uses, judged from its first line: a comma unless semicolons or tabs outnumber them. */
@@ -67,6 +140,14 @@ export async function readTable(text: string): Promise<RepeaterTable> {
       "That is not a text file. Outpost reads repeater lists as CSV: export the list as CSV from the program or website that holds it.",
     );
   }
+  // A page of a website saved in place of the file, or sent in its place by a server that wanted something else.
+  if (/^\s*<(!doctype|html|head|body|\?xml)\b/i.test(source.slice(0, 400))) {
+    throw new AppError(
+      "unsupported",
+      "That is a web page, not a list of repeaters. If it was saved from a website, look for the link to the file itself (CSV) on that page.",
+    );
+  }
+  if (/^\s*[[{]/.test(source.slice(0, 200))) return readJsonTable(source);
   const parser = parse(source, {
     delimiter: delimiterOf(source),
     relax_column_count: true,
@@ -84,12 +165,7 @@ export async function readTable(text: string): Promise<RepeaterTable> {
         continue;
       }
       if (item.record.every((cell) => cell === "")) continue;
-      if (rows.length >= MAX_REPEATER_ROWS) {
-        throw new AppError(
-          "too_large",
-          `That file has more than ${MAX_REPEATER_ROWS.toLocaleString("en-GB")} rows. Split it, or export a smaller area, and import the parts as separate lists.`,
-        );
-      }
+      if (rows.length >= MAX_REPEATER_ROWS) throw tooManyRows();
       rows.push({ line: item.info.lines, cells: item.record });
     }
   } catch (error) {
@@ -103,7 +179,7 @@ export async function readTable(text: string): Promise<RepeaterTable> {
   if (!columns || columns.length < 2) {
     throw badRequest("That file has no row of column headings. Outpost needs the first row to name the columns.");
   }
-  return { columns, rows };
+  return { kind: "csv", columns, rows };
 }
 
 // ── Which layout, and which column is what ──────────────────────────────────
@@ -259,6 +335,40 @@ const KNOWN_FORMATS: KnownFormat[] = [
     },
   },
   {
+    // The JSON list hearham.com offers: frequencies and shifts in whole hertz, the shift with its sign.
+    id: "hearham",
+    needs: ["id", "callsign", "latitude", "longitude", "frequency", "offset", "encode", "operational"],
+    map: {
+      id: "id",
+      callsign: "callsign",
+      output: "frequency",
+      offset: "offset",
+      modes: "mode",
+      ctcss: "encode",
+      place: "city",
+      lat: "latitude",
+      lon: "longitude",
+      status: "operational",
+      accessNote: "restriction",
+      notes: "description",
+    },
+  },
+  {
+    // The Wireless Institute of Australia's directory. It gives no positions.
+    id: "wia",
+    needs: ["output", "input", "call", "location", "service area", "s", "sp", "tone"],
+    map: {
+      callsign: "call",
+      output: "output",
+      input: "input",
+      place: "location",
+      region: "service area",
+      status: "s",
+      keeper: "sp",
+      ctcss: "tone",
+    },
+  },
+  {
     id: "chirp",
     needs: ["location", "name", "frequency", "duplex", "offset", "tone", "rtonefreq", "ctonefreq"],
     map: {
@@ -307,7 +417,7 @@ const SYNONYMS: Array<[RepeaterColumnField, string[]]> = [
   ["id", ["id"]],
 ];
 
-export function detectFormat(columns: string[]): { format: RepeaterFormatId; mapping: RepeaterColumnMap } {
+export function detectFormat(columns: string[], kind: "csv" | "json" = "csv"): { format: RepeaterFormatId; mapping: RepeaterColumnMap } {
   const byFolded = new Map<string, string>();
   for (const column of columns) if (!byFolded.has(fold(column))) byFolded.set(fold(column), column);
 
@@ -332,7 +442,7 @@ export function detectFormat(columns: string[]): { format: RepeaterFormatId; map
       break;
     }
   }
-  return { format: "csv", mapping };
+  return { format: kind, mapping };
 }
 
 /** A mapping sent by the browser, kept to fields that exist and columns that are in the file. */
@@ -460,8 +570,25 @@ const ETCC_FLAGS: Record<string, RepeaterMode> = {
 
 const inOrder = (modes: Set<RepeaterMode>) => REPEATER_MODE_IDS.filter((mode) => modes.has(mode));
 
-export function parseModes(text: string, style: "words" | "etcc-letters"): RepeaterMode[] {
+/** Modes named anywhere in a run of letters, for a list that writes several with nothing between them ("P25YSFD-STAR/FM"). */
+const MODES_WITHIN: Array<[RegExp, RepeaterMode]> = [
+  [/FM|ANALOG/, "fm"],
+  [/DMR/, "dmr"],
+  [/D-?STAR/, "dstar"],
+  [/YSF|C4FM|FUSION/, "fusion"],
+  [/NXDN/, "nxdn"],
+  [/P25/, "p25"],
+  [/M17/, "m17"],
+  [/TETRA/, "tetra"],
+];
+
+export function parseModes(text: string, style: "words" | "etcc-letters" | "within"): RepeaterMode[] {
   const found = new Set<RepeaterMode>();
+  if (style === "within") {
+    const upper = text.toUpperCase();
+    for (const [pattern, mode] of MODES_WITHIN) if (pattern.test(upper)) found.add(mode);
+    return inOrder(found);
+  }
   if (style === "etcc-letters") {
     // "AF", "ADM", and with an access code after a colon ("M:1").
     for (const letter of text.toUpperCase().replace(/:\d+/g, "").replace(/PX/g, "")) {
@@ -526,7 +653,11 @@ export interface ReadRow extends RepeaterFields {
   key: string;
 }
 
-export type RowOutcome = { ok: true; row: ReadRow } | { ok: false; line: number; reason: string; text: string };
+export type RowOutcome =
+  | { ok: true; row: ReadRow }
+  | { ok: false; line: number; reason: string; text: string }
+  /** A row that is not an entry and not a fault: a heading inside the file, or a second listing of a row already read. */
+  | { ok: false; ignored: true };
 
 export interface RowReader {
   read(row: { line: number; cells: string[] }): RowOutcome;
@@ -543,6 +674,10 @@ export function createRowReader(columns: string[], mapping: RepeaterColumnMap, f
   const byFolded = new Map(columns.map((column, position) => [fold(column), position]));
   const seen = new Map<string, number>();
   const etcc = format.startsWith("etcc-");
+  const guessed = isGuessedRepeaterFormat(format);
+  /** The WIA's file is in sections, each headed by a row that names a mode; and it lists a repeater once for each of its modes. */
+  let sectionMode: RepeaterMode | null = null;
+  const wiaRows = new Map<string, ReadRow>();
 
   const problem = !mapping.callsign
     ? "No column is set as the callsign. Choose which column holds it."
@@ -555,7 +690,7 @@ export function createRowReader(columns: string[], mapping: RepeaterColumnMap, f
   const units = new Map<RepeaterColumnField, FrequencyUnit | null>();
   for (const field of ["output", "input", "offset"] as const) {
     const column = mapping[field];
-    units.set(field, (column === undefined ? null : unitOfHeading(column)) ?? (format === "csv" ? null : "mhz"));
+    units.set(field, (column === undefined ? null : unitOfHeading(column)) ?? (guessed ? null : format === "hearham" ? "hz" : "mhz"));
   }
   const unitOf = (field: "output" | "input" | "offset") => units.get(field) ?? null;
   const notAFrequency = (which: string, text: string, readings: number[]) =>
@@ -575,9 +710,27 @@ export function createRowReader(columns: string[], mapping: RepeaterColumnMap, f
       const raw = (heading: string): string => (cells[byFolded.get(heading) ?? -1] ?? "").trim();
       const skip = (reason: string): RowOutcome => ({ ok: false, line, reason, text: clip(cells.join(", "), 160) });
 
+      if (format === "wia") {
+        // "{{2M;FM;VK3}}" heads a section; "{;;}" ends the file.
+        const section = /^\{\{?([^;{}]*);([^;{}]*);[^{}]*\}?\}$/.exec(raw("notes"));
+        if (section && !get("callsign")) {
+          sectionMode = parseModes(section[2] ?? "", "within")[0] ?? null;
+          return { ok: false, ignored: true };
+        }
+      }
+
       const name = get("callsign").replace(/\s+/g, " ");
       if (!name) return skip("No callsign.");
-      const callsign = clip(looksLikeCallsign(name) ? name.toUpperCase() : name, 40);
+      let callsign = clip(looksLikeCallsign(name) ? name.toUpperCase() : name, 40);
+      // CHIRP has one column for a channel's name, and lists put the town after the callsign in it ("QZ3AB Thornwick").
+      let placeFromName = "";
+      if (format === "chirp") {
+        const parts = /^(\S+)\s+(.+)$/.exec(name);
+        if (parts && looksLikeCallsign(parts[1]!)) {
+          callsign = clip(parts[1]!.toUpperCase(), 40);
+          placeFromName = parts[2]!;
+        }
+      }
 
       const outputText = get("output");
       const output = readFrequency(outputText, unitOf("output"));
@@ -586,7 +739,7 @@ export function createRowReader(columns: string[], mapping: RepeaterColumnMap, f
 
       // The input: given outright, or as a shift with its direction.
       let inputHz: number | null = null;
-      const inputText = get("input");
+      const inputText = format === "wia" && !/\d/.test(get("input")) ? "" : get("input");
       if (inputText) {
         const input = readFrequency(inputText, unitOf("input"));
         if (input.hz === null) return skip(notAFrequency("input", inputText, input.readings));
@@ -614,7 +767,11 @@ export function createRowReader(columns: string[], mapping: RepeaterColumnMap, f
           if (shift === null) return skip(`The shift “${clip(offsetText, 30)}” is not a number.`);
           inputHz = outputHz + (offsetText.trim().startsWith("-") ? -shift : shift);
         }
-        if (inputHz !== null && inputHz < 1e6) return skip("The shift takes the input below 1 MHz.");
+        if (inputHz !== null && inputHz < 1e6) {
+          // A shift that cannot be right says nothing about where to transmit; in Hearham's list the repeater is still worth having.
+          if (format !== "hearham") return skip("The shift takes the input below 1 MHz.");
+          inputHz = null;
+        }
       }
 
       // Modes.
@@ -629,6 +786,10 @@ export function createRowReader(columns: string[], mapping: RepeaterColumnMap, f
         ];
         for (const [heading, mode] of flags) if (/^y/i.test(raw(heading))) flagged.add(mode);
         modes = inOrder(flagged);
+      } else if (format === "hearham") {
+        modes = parseModes(get("modes"), "within");
+      } else if (format === "wia") {
+        modes = sectionMode ? [sectionMode] : [];
       } else {
         modes = parseModes(get("modes"), etcc ? "etcc-letters" : "words");
       }
@@ -656,6 +817,19 @@ export function createRowReader(columns: string[], mapping: RepeaterColumnMap, f
           else if (cross.startsWith("DTCS->")) dcsCode = parseDcs(get("dcs"));
           accessNotes.push(`CHIRP cross mode ${cross}: check the tone each way.`);
         }
+      } else if (format === "hearham") {
+        // One field holds whatever is needed to get in, parts divided by "/": a tone, "CC1", "DCS023", "NAC293".
+        for (const part of toneText.split("/").map((item) => item.trim())) {
+          if (!part || /^0+(\.0+)?$/.test(part)) continue;
+          const colour = /^CC\s*(\d{1,2})$/i.exec(part);
+          const dcs = /^D(?:CS)?\s*\d{3}[NRI]?$/i.test(part) ? parseDcs(part) : null;
+          if (colour && Number(colour[1]) <= 15) dmrColourCode = Number(colour[1]);
+          else if (dcs) dcsCode = dcs;
+          else if (parseTone(part) !== null) ctcssHz = parseTone(part);
+          else accessNotes.push(`Access as listed: ${clip(part, 40)}.`);
+        }
+        const node = raw("internet_node");
+        if (node) accessNotes.push(`Internet node ${clip(node, 40)}.`);
       } else if (toneText) {
         const tone = parseTone(toneText);
         const dcs = /d(cs|tcs)/i.test(toneText) ? parseDcs(toneText) : null;
@@ -710,7 +884,18 @@ export function createRowReader(columns: string[], mapping: RepeaterColumnMap, f
       }
 
       const antennaValue = numberOf(get("antenna"));
-      const statusText = clip(get("status"), 80);
+      let statusText = clip(get("status"), 80);
+      let status = parseStatus(statusText);
+      if (format === "hearham") {
+        // 1 and 0, for in use and not.
+        status = statusText === "1" ? "operational" : statusText === "0" ? "off-air" : "unknown";
+        statusText = status === "operational" ? "operational" : status === "off-air" ? "not operational" : "";
+      } else if (format === "wia") {
+        // The page that offers the file says O is operational and W is operational and carries the weekly broadcast.
+        // What its other letters mean is in a document that was not read, so they are kept as written and not interpreted.
+        status = statusText === "O" || statusText === "W" ? "operational" : "unknown";
+        statusText = statusText ? `status ${statusText} in the directory` : "";
+      }
       const bandText = get("band");
 
       const fields: RepeaterFields = {
@@ -724,16 +909,16 @@ export function createRowReader(columns: string[], mapping: RepeaterColumnMap, f
         talkgroups: clip(get("talkgroups"), 500),
         accessNote: clip(accessNotes.join(" "), 500),
         channel: clip(get("channel"), 40),
-        place: clip(get("place").replace(/\s+/g, " "), 120),
+        place: clip((get("place") || placeFromName).replace(/\s+/g, " "), 120),
         region: clip(get("region"), 80),
-        country: clip(get("country"), 80),
+        country: clip(get("country") || (format === "wia" ? "Australia" : ""), 80),
         lat,
         lon,
         locator: square ? square.locator : "",
         positionPrecisionMeters,
         antennaMeters: antennaValue !== null && antennaValue >= 0 && antennaValue <= 1000 ? antennaValue : null,
         keeper: clip(get("keeper"), 80),
-        status: parseStatus(statusText),
+        status,
         statusText,
         notes: clip(get("notes"), 2000),
       };
@@ -747,13 +932,23 @@ export function createRowReader(columns: string[], mapping: RepeaterColumnMap, f
       }
 
       // The list's own number for the entry where it has one; otherwise what identifies a repeater on the air.
+      // (The whole of a CHIRP name, as before the town was told apart from it, so that lists already held still match.)
       const own = get("id");
-      const base = own ? `id:${own}` : `${callsign.toUpperCase()}|${outputHz}`;
+      const base = own ? `id:${own}` : `${(format === "chirp" ? name : callsign).toUpperCase()}|${outputHz}`;
+      if (format === "wia") {
+        // Listed again under another mode: one repeater, with both modes.
+        const earlier = wiaRows.get(`${base}|${inputHz}`);
+        if (earlier) {
+          earlier.modes = inOrder(new Set([...earlier.modes, ...modes]));
+          return { ok: false, ignored: true };
+        }
+      }
       const count = (seen.get(base) ?? 0) + 1;
       seen.set(base, count);
       const key = count === 1 ? base : `${base}#${count}`;
-
-      return { ok: true, row: { ...fields, line, band: (bandText && parseBand(bandText)) || bandOfHz(outputHz), key } };
+      const row: ReadRow = { ...fields, line, band: (bandText && parseBand(bandText)) || bandOfHz(outputHz), key };
+      if (format === "wia") wiaRows.set(`${base}|${inputHz}`, row);
+      return { ok: true, row };
     },
   };
 }

@@ -45,7 +45,7 @@ async function rowsOf(text: string, mapping?: Record<string, string>): Promise<{
   for (const row of table.rows) {
     const outcome = reader.read(row);
     if (outcome.ok) rows.push(outcome.row);
-    else reasons.push(`${outcome.line}: ${outcome.reason}`);
+    else if (!("ignored" in outcome)) reasons.push(`${outcome.line}: ${outcome.reason}`);
   }
   return { format: detected.format, rows, reasons };
 }
