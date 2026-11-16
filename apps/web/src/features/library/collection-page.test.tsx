@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Route, Routes } from "react-router";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
@@ -47,6 +47,38 @@ describe("the Collections tab", () => {
     expect(screen.getByRole("link", { name: "Read: Vikidia (without images)" })).toHaveAttribute("href", "/library/read/c1/");
     expect(screen.getByRole("link", { name: "Open in Maps: Scotland" })).toHaveAttribute("href", "/maps");
     expect(screen.getByText("2 collections installed, 21.1 MB in all")).toBeInTheDocument();
+  });
+
+  it("finds a collection by any words of its name, description or publisher, and says how many match", async () => {
+    fakeServer({
+      "GET /api/collections": {
+        collections: [
+          collection(),
+          collection({ id: "c2", title: "Appropedia", description: "Sustainable living and appropriate technology", publisher: "Kiwix" }),
+          collection({ id: "m1", kind: "map", title: "Scotland", version: null }),
+        ],
+      },
+    });
+    renderScreen(<CollectionsPanel />);
+    const box = await screen.findByRole("searchbox", { name: "Search your collections by name" });
+    // Part of a name, in any case.
+    fireEvent.change(box, { target: { value: "scot" } });
+    expect(screen.getByText("1 of 3 collections matches")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Scotland" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Appropedia" })).not.toBeInTheDocument();
+    // A heading with nothing under it is not shown.
+    expect(screen.queryByRole("heading", { name: "Reference collections" })).not.toBeInTheDocument();
+    // Words from the description and the publisher, in any order.
+    fireEvent.change(box, { target: { value: "kiwix sustainable" } });
+    expect(screen.getByRole("link", { name: "Appropedia" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Scotland" })).not.toBeInTheDocument();
+    // Nothing found: said plainly, with the way to look inside collections and the way back.
+    fireEvent.change(box, { target: { value: "zebra" } });
+    expect(screen.getByText("0 of 3 collections match")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "the Search page" })).toHaveAttribute("href", "/search?q=zebra");
+    fireEvent.click(screen.getByRole("button", { name: "Show all collections" }));
+    expect(screen.getByText(/^3 collections installed/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Scotland" })).toBeInTheDocument();
   });
 
   it("shows state only when something is not simply fine", async () => {

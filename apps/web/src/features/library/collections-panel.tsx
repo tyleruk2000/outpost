@@ -1,9 +1,10 @@
 import { type CollectionDto, formatBytes } from "@outpost/shared";
-import { CircleAlert, CircleArrowUp, Unplug } from "lucide-react";
-import { Fragment, type ReactNode } from "react";
+import { CircleAlert, CircleArrowUp, Search, Unplug } from "lucide-react";
+import { Fragment, type ReactNode, useState } from "react";
 import { Link } from "react-router";
 import { EmptyState, ErrorState, Rows } from "@/components/page";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/misc";
 import { cn, plural, timeAgo } from "@/lib/utils";
 import { useCollections } from "./collection-data";
@@ -99,9 +100,21 @@ function RowSkeleton() {
   );
 }
 
+/** The words of a search, each of which must be somewhere in what a collection says of itself. */
+export function matchesCollection(collection: CollectionDto, text: string): boolean {
+  const words = text.toLocaleLowerCase().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return true;
+  const about = [collection.title, collection.description, collection.publisher, collection.category, collection.locationName]
+    .filter(Boolean)
+    .join(" ")
+    .toLocaleLowerCase();
+  return words.every((word) => about.includes(word));
+}
+
 /** The Collections tab of the Library: everything installed, under plain headings by kind. */
 export default function CollectionsPanel() {
   const collections = useCollections();
+  const [text, setText] = useState("");
 
   if (collections.isPending) {
     return (
@@ -147,19 +160,52 @@ export default function CollectionsPanel() {
     );
   }
 
-  const groups = groupCollections(all);
+  const found = all.filter((collection) => matchesCollection(collection, text));
+  const searching = text.trim() !== "";
+  const groups = groupCollections(found);
   const totalBytes = all.reduce((sum, item) => sum + item.sizeBytes, 0);
 
   return (
     <div className="mt-6">
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        <p className="tabular text-small text-ink-muted">
-          {plural(all.length, "collection")} installed, {formatBytes(totalBytes)} in all
+        <p className="tabular text-small text-ink-muted" aria-live="polite">
+          {searching
+            ? `${found.length} of ${plural(all.length, "collection")} ${found.length === 1 ? "matches" : "match"}`
+            : `${plural(all.length, "collection")} installed, ${formatBytes(totalBytes)} in all`}
         </p>
         <Button asChild>
           <Link to="/explore">Find more in Explore</Link>
         </Button>
       </div>
+
+      {/* Looks through the names, descriptions, publishers and where each is kept. What is inside them is the Search page's. */}
+      <div className="relative mt-4 max-w-md">
+        <Search aria-hidden className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-faint" />
+        <Input
+          type="search"
+          aria-label="Search your collections by name"
+          placeholder="Search your collections by name"
+          className="pl-9"
+          value={text}
+          onChange={(event) => setText(event.target.value)}
+        />
+      </div>
+
+      {searching && found.length === 0 ? (
+        <div className="mt-6 text-small text-ink-muted">
+          <p>
+            No collection is called anything like “{text.trim()}”. This looks at their names, descriptions and publishers; to look inside
+            them, use{" "}
+            <Link to={`/search?q=${encodeURIComponent(text.trim())}`} className="text-primary underline underline-offset-2">
+              the Search page
+            </Link>
+            .
+          </p>
+          <Button className="mt-3" onClick={() => setText("")}>
+            Show all collections
+          </Button>
+        </div>
+      ) : null}
 
       {groups.map((group) => (
         <section key={group.id} className="mt-7 first-of-type:mt-4" aria-labelledby={`collections-${group.id}`}>
