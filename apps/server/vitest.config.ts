@@ -3,6 +3,8 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     include: ["test/**/*.test.ts", "src/**/*.test.ts"],
+    // No test may reach a real Ollama on this machine: connections to its port are refused, and fail the test.
+    setupFiles: ["./test/no-ollama.ts"],
     testTimeout: 20_000,
     hookTimeout: 20_000,
     pool: "forks",

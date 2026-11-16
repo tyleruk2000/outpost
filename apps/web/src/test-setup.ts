@@ -1,9 +1,34 @@
 import "@testing-library/jest-dom/vitest";
+import net from "node:net";
 import { cleanup } from "@testing-library/react";
-import { afterEach, beforeEach } from "vitest";
+import { afterEach, beforeEach, expect } from "vitest";
 import { setClockChoice, setDeviceClockStyle } from "@/lib/clock";
 
 afterEach(() => cleanup());
+
+// A machine that runs these tests may have a real Ollama on it, and no test may depend on that. A
+// connection to the port Ollama listens on is refused before it is made, as if nothing were there,
+// and fails the test that tried it. (The server's tests have the same guard: apps/server/test/no-ollama.ts.)
+const OLLAMA_PORT = 11434;
+const ollamaAttempts: string[] = [];
+const connect = net.Socket.prototype.connect;
+// biome-ignore lint/suspicious/noExplicitAny: the arguments are passed through as they came
+net.Socket.prototype.connect = function guarded(this: net.Socket, ...args: any[]) {
+  // `net.connect` hands its arguments over already gathered into one list; a direct call gives them loose.
+  const first = Array.isArray(args[0]) ? args[0][0] : args[0];
+  const port = first && typeof first === "object" ? first.port : first;
+  if (Number(port) === OLLAMA_PORT) {
+    ollamaAttempts.push(`port ${OLLAMA_PORT}`);
+    process.nextTick(() =>
+      this.destroy(Object.assign(new Error("connect ECONNREFUSED (refused by the test suite)"), { code: "ECONNREFUSED" })),
+    );
+    return this;
+  }
+  return connect.apply(this, args as never);
+} as typeof connect;
+afterEach(() => {
+  expect(ollamaAttempts.splice(0), "a test contacted the address a real Ollama listens on").toEqual([]);
+});
 
 // A test file that asks for the plain Node environment (`// @vitest-environment node`,
 // for code that needs Node's own streams and cryptography) has no window to prepare.

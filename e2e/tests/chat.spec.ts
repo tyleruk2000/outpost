@@ -48,9 +48,11 @@ test.describe("chat with a local model", () => {
 
     // Nothing has been asked of any model server by opening the screen.
     expect((await stats(page)).chats).toBe(before.chats);
-    // Looking is one press. Whether an Ollama happens to be running on the machine under test is not ours to say.
+    // Looking is one press. The suite's server is told that Ollama listens where nothing does, and the address
+    // in Settings is put there too, so a real Ollama on the machine under test is never asked and never found.
+    await api(page, "PATCH", "/api/settings", { "answers.endpoint": "http://127.0.0.1:9/v1" });
     await page.getByRole("button", { name: "Look for Ollama on this computer" }).click();
-    await expect(page.getByText(/^(Ollama was not found$|Found a model server )/)).toBeVisible();
+    await expect(page.getByText("Ollama was not found", { exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: "Set-up guide" })).toHaveAttribute("href", "/help/search-and-answers#answers-and-chat");
     // Finding one changes no setting: chat is still not set up until the person says to use it.
     expect((await api(page, "GET", "/api/chat/status")).usable).toBe(false);

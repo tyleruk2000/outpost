@@ -790,7 +790,7 @@ describe("the model server", () => {
     app.ctx.services.chat.setOllamaAddresses(["http://127.0.0.1:9/v1"]);
     const missing = (await app.api("POST", "/api/chat/look-for-ollama")).body as ChatLookResult;
     expect(missing).toMatchObject({ found: false, address: null, models: [] });
-    expect(missing.message).toMatch(/Nothing answered at 127\.0\.0\.1:11434/);
+    expect(missing.message).toMatch(/Nothing answered at 127\.0\.0\.1:9, which is where Ollama listens/);
   });
 });
 

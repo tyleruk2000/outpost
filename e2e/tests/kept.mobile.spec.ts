@@ -46,6 +46,8 @@ async function startServer(webDir?: string): Promise<void> {
       OUTPOST_DATA_DIR: path.join(work, "data"),
       OUTPOST_STORAGE_ROOTS: storage,
       OUTPOST_LOG_LEVEL: "warn",
+      // The same guard as the suite's own server: this one may not reach a real Ollama either.
+      NODE_OPTIONS: process.env.OUTPOST_E2E_SERVER_NODE_OPTIONS ?? "",
       ...(webDir ? { OUTPOST_WEB_DIR: webDir } : fromSource ? { OUTPOST_WEB_DIR: path.join(root, "apps/web/dist") } : {}),
     },
   });

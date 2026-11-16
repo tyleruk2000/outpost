@@ -50,6 +50,7 @@ const envSchema = z.object({
   OUTPOST_SOLAR_TABLE_URL: z.string().url().default("https://services.swpc.noaa.gov/json/solar-cycle/predicted-solar-cycle.json"),
   OUTPOST_ALLOW_REMOTE_ERASE: bool(false),
   OUTPOST_ALLOW_REMOTE_MODEL_SERVER: bool(false),
+  OUTPOST_OLLAMA_ADDRESSES: list,
   OUTPOST_DOWNLOAD_HOSTS: list,
   OUTPOST_PORTABLE: bool(false),
   OUTPOST_APP_DIR: z.string().optional(),
@@ -95,6 +96,12 @@ export interface Config {
   allowRemoteErase: boolean;
   /** Let answers be written by a model server on the internet, not only one on this computer or the local network. */
   allowRemoteModelServer: boolean;
+  /**
+   * Where "Look for Ollama on this computer" looks, after the address in Settings. Empty means the
+   * two places Ollama listens by default. Set for an Ollama on another port; the end-to-end tests set
+   * it so that they never ask a real Ollama on the machine they run on.
+   */
+  ollamaAddresses: string[];
   logLevel: string;
   /** Running from a portable drive: paths are relative to the drive, nothing is assumed about the host. */
   portable: boolean;
@@ -169,6 +176,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     extraDownloadHosts: parsed.OUTPOST_DOWNLOAD_HOSTS.map((host) => host.toLowerCase()),
     allowRemoteErase: parsed.OUTPOST_ALLOW_REMOTE_ERASE,
     allowRemoteModelServer: parsed.OUTPOST_ALLOW_REMOTE_MODEL_SERVER,
+    ollamaAddresses: parsed.OUTPOST_OLLAMA_ADDRESSES,
     // A portable drive runs in a window a person is looking at: keep it quiet.
     logLevel: parsed.OUTPOST_LOG_LEVEL ?? (parsed.NODE_ENV === "test" ? "silent" : parsed.OUTPOST_PORTABLE ? "warn" : "info"),
     portable: parsed.OUTPOST_PORTABLE,

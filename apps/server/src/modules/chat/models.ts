@@ -131,6 +131,9 @@ export async function lookForOllama(
   addresses: readonly string[] = OLLAMA_DEFAULT_ADDRESSES,
 ): Promise<ChatLookResult> {
   const quick = { ...timeouts, probeMs: Math.min(timeouts.probeMs, 3_000) };
+  // The message names the usual place, or the place whoever started Outpost said Ollama is (OUTPOST_OLLAMA_ADDRESSES).
+  const named = addresses.find((candidate) => (OLLAMA_DEFAULT_ADDRESSES as readonly string[]).includes(candidate)) ?? addresses.at(-1);
+  const usual = named ? parseModelServerAddress(named).host : "127.0.0.1:11434";
   for (const candidate of addresses) {
     const address = parseModelServerAddress(candidate);
     try {
@@ -152,7 +155,6 @@ export async function lookForOllama(
     found: false,
     address: null,
     models: [],
-    message:
-      "Nothing answered at 127.0.0.1:11434, which is where Ollama listens. If it is installed, start it and look again. If your model server is somewhere else, enter its address in Settings.",
+    message: `Nothing answered at ${usual}, which is where Ollama listens. If it is installed, start it and look again. If your model server is somewhere else, enter its address in Settings.`,
   };
 }

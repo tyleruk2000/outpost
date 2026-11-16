@@ -389,7 +389,8 @@ describe("answers: set up in three steps", () => {
     app.ctx.services.chat.setOllamaAddresses([NOBODY]);
     const missing = (await app.api("POST", "/api/chat/setup/look")).body as ModelSetupLook;
     expect(missing).toMatchObject({ found: false, address: null, models: [], recommended: null });
-    expect(missing.message).toMatch(/Nothing answered at 127\.0\.0\.1:11434/);
+    // The message names where it looked: here the one place the test gave it, never the real Ollama's.
+    expect(missing.message).toMatch(/Nothing answered at 127\.0\.0\.1:9, which is where Ollama listens/);
   });
 
   it("tries the model, and when it answers saves the address and the model and switches answers on", async () => {

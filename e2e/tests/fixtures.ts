@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import { test as base, expect, type Page, type Request } from "@playwright/test";
 
 export interface OfflineGuard {
@@ -23,12 +24,25 @@ export const test = base.extend<{ sealed: OfflineGuard }>({
       });
       await use(guard);
       expect(guard.external, "the app tried to reach the internet").toEqual([]);
+      expect(ollamaAttempts(), "the server under test tried to reach the address a real Ollama listens on").toEqual([]);
     },
     { auto: true },
   ],
 });
 
 export { expect };
+
+/**
+ * Connections the servers under test tried to make to the port a real Ollama listens on,
+ * since this was last asked. They were refused (see tools/no-ollama.mjs); none should be tried.
+ */
+export function ollamaAttempts(): string[] {
+  const file = process.env.OUTPOST_E2E_OLLAMA_ATTEMPTS;
+  if (!file || !fs.existsSync(file)) return [];
+  const made = fs.readFileSync(file, "utf8").split("\n").filter(Boolean);
+  fs.rmSync(file, { force: true });
+  return made;
+}
 
 /** Fails the test on any uncaught error or console error in the page. */
 export function watchForErrors(page: Page): string[] {
