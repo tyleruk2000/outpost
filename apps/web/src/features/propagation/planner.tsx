@@ -43,6 +43,7 @@ import {
   useSavePrediction,
   wireHint,
 } from "./data";
+import { EngineNotReady } from "./engine-data";
 import { PlaceInput } from "./place-field";
 import { PredictionExport } from "./prediction-export";
 import { bestHour, Results } from "./results";
@@ -124,11 +125,9 @@ export function Planner() {
 
   return (
     <div>
-      {engine && !engine.ready ? (
-        <Notice tone="danger" title="The propagation engine cannot run, so nothing can be predicted">
-          {engine.problem} Outpost does not estimate propagation any other way. See the Data tab for what is installed.
-        </Notice>
-      ) : null}
+      <EngineNotReady engine={engine} title="The propagation engine cannot run, so nothing can be predicted" className="mb-8">
+        Outpost does not estimate propagation any other way. See the Data tab for what is installed.
+      </EngineNotReady>
 
       <form
         className="grid gap-x-10 gap-y-8 lg:grid-cols-2"

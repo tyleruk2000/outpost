@@ -10,3 +10,4 @@ e2e/playwright-report
 *.log
 .env
 engines/voacap/.upstream
+engines/voacap/.cache

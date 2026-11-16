@@ -4,6 +4,7 @@ import path from "node:path";
 import type { InjectOptions } from "fastify";
 import { type BuiltApp, buildApp } from "../src/app.ts";
 import { loadConfig } from "../src/config.ts";
+import { seedVoacapData } from "./voacap-data.ts";
 
 export interface TestApp extends BuiltApp {
   dir: string;
@@ -18,8 +19,17 @@ export interface TestApp extends BuiltApp {
   close(): Promise<void>;
 }
 
-/** A complete server on a throwaway data directory. Nothing touches the real one. */
-export async function createTestApp(env: Record<string, string> = {}, existingDir?: string): Promise<TestApp> {
+/**
+ * A complete server on a throwaway data directory. Nothing touches the real one.
+ *
+ * VOACAP's coefficients are put in its data directory from the tests' copy, when this
+ * computer has one (`voacap-data.ts`); `{ voacapData: false }` starts it without them.
+ */
+export async function createTestApp(
+  env: Record<string, string> = {},
+  existingDir?: string,
+  options: { voacapData?: boolean } = {},
+): Promise<TestApp> {
   const dir = existingDir ?? fs.mkdtempSync(path.join(os.tmpdir(), "outpost-test-"));
   const config = loadConfig({
     NODE_ENV: "test",
@@ -31,6 +41,7 @@ export async function createTestApp(env: Record<string, string> = {}, existingDi
     ...env,
   });
   fs.mkdirSync(path.join(dir, "storage"), { recursive: true });
+  if (options.voacapData !== false) seedVoacapData(config.dataDir);
   const built = await buildApp(config);
   await built.app.ready();
   return {

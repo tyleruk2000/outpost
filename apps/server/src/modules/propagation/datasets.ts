@@ -2,9 +2,10 @@
  * The data HF propagation rests on: what is installed, how big, how old, whether it
  * still matches its checksums, and fetching a newer solar cycle table.
  *
- * Two sets are needed and both ship with Outpost: the engine's coefficients, and a
- * solar cycle table. Only the table goes out of date, and only it can be fetched
- * again, when a person asks, through the download manager.
+ * Two sets are needed: the engine's coefficients, which do not ship with Outpost and are
+ * fetched once when a person asks (`engine-data.ts`), and a solar cycle table, which
+ * ships and goes out of date; a newer one can be fetched, when a person asks, through
+ * the download manager.
  */
 import fs from "node:fs";
 import type { PropagationDataset, PropagationDatasets } from "@outpost/shared";
@@ -12,7 +13,7 @@ import type { AppContext } from "../../core/context.ts";
 import { AppError, conflict } from "../../core/errors.ts";
 import { PermanentJobError } from "../../core/jobs.ts";
 import type { DownloadRow, Installer } from "../downloads/types.ts";
-import { EngineUnavailable } from "./engine.ts";
+import type { EngineData } from "./engine-data.ts";
 import {
   currentSolarTable,
   daysBetween,
@@ -25,7 +26,6 @@ import {
   parseSolarTable,
   SolarTableError,
 } from "./solar.ts";
-import { datasetFingerprint, findDataset, loadDataset, type VoacapPaths } from "./voacap/files.ts";
 
 /** What marks a download or a collection as the solar table. */
 const SOLAR = "solar-cycle";
@@ -59,69 +59,43 @@ export interface DatasetsService {
   installer: Installer;
 }
 
-export function createDatasetsService(ctx: AppContext, paths: VoacapPaths): DatasetsService {
+const HOW: Record<string, string> = {
+  downloaded: "Downloaded",
+  adopted: "Taken over from the app folder of an earlier Outpost",
+  "set-up": "Fetched when Outpost was set up",
+};
+
+export function createDatasetsService(ctx: AppContext, engineData: EngineData): DatasetsService {
   const today = () => new Date().toISOString().slice(0, 10);
 
   function coefficients(): PropagationDataset {
-    const base = {
+    const data = engineData.status();
+    const when = data.at ? data.at.slice(0, 10) : null;
+    return {
       id: "voacap-coefficients",
       title: "Ionospheric and noise coefficients",
-      kind: "required" as const,
-      licence:
-        'Not under an open-source licence. Part is NTIA/ITS work (United States Government); the foF2, M(3000)F2 and noise maps are CCIR data that the ITU publishes for implementers "free from any copyright assertions". See engines/voacap/NOTICE.txt.',
-      downloadable: false,
+      description:
+        "Monthly maps of foF2 and M(3000)F2 (CCIR Report 340) and of atmospheric radio noise (CCIR Report 322), with the E, F1 and sporadic-E maps, F2 height ratio and prediction-error tables of NTIA/ITS in the same files, and two short-whip patterns: what the engine reads. Not shipped with Outpost. " +
+        data.why,
+      kind: "required",
+      where: data.installed
+        ? `${data.how ? HOW[data.how] : "In the data directory"}${when ? ` on ${when}` : ""}; kept in the data directory`
+        : data.downloading
+          ? "Downloading"
+          : "Not downloaded",
+      installed: data.installed,
+      version: data.version,
       dataDate: null,
+      bytes: data.bytes,
+      files: data.files,
+      verified: data.installed ? true : data.line && !data.line.includes("not on this computer yet") ? false : null,
+      sha256: data.sha256,
+      licence:
+        "Not under an open-source licence. Part is NTIA/ITS work (United States Government); the foF2, M(3000)F2 and noise maps are CCIR data, which the ITU publishes for implementers of its Recommendations but has not given permission to pass on. See engines/voacap/NOTICE.txt.",
+      source: data.from && data.from !== data.source ? `${data.source} (this copy from ${data.from})` : data.source,
+      downloadable: !data.installed,
+      note: data.installed ? null : data.line,
     };
-    try {
-      const found = findDataset(paths);
-      const description = found.manifest.groups.map((group) => group.description).join(" ");
-      const where = found.included ? "Included with Outpost" : `A copy in the data directory (${found.dir})`;
-      const source = `${found.manifest.source.repository} at ${found.manifest.source.commit.slice(0, 12)}, ${found.manifest.source.path}`;
-      try {
-        const loaded = loadDataset(paths);
-        return {
-          ...base,
-          description,
-          where,
-          source,
-          installed: true,
-          version: found.manifest.version,
-          bytes: loaded.bytes,
-          files: loaded.files.length,
-          verified: true,
-          sha256: datasetFingerprint(found.dir),
-          note: null,
-        };
-      } catch (error) {
-        return {
-          ...base,
-          description,
-          where,
-          source,
-          installed: true,
-          version: found.manifest.version,
-          bytes: null,
-          files: null,
-          verified: false,
-          sha256: datasetFingerprint(found.dir),
-          note: error instanceof Error ? error.message : String(error),
-        };
-      }
-    } catch (error) {
-      return {
-        ...base,
-        description: "Monthly maps of the ionosphere and of radio noise that the engine reads.",
-        where: "Not found",
-        source: "",
-        installed: false,
-        version: null,
-        bytes: null,
-        files: null,
-        verified: null,
-        sha256: null,
-        note: error instanceof EngineUnavailable ? error.message : String(error),
-      };
-    }
   }
 
   function solar(): PropagationDataset {

@@ -18,6 +18,7 @@ import {
 } from "@outpost/shared";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createTestApp, type TestApp } from "./helpers.ts";
+import { describeWithVoacapData } from "./voacap-data.ts";
 
 const dipole = ANTENNA_PRESETS.find((preset) => preset.id === "low-dipole")!.spec;
 const vertical = ANTENNA_PRESETS.find((preset) => preset.id === "vertical")!.spec;
@@ -147,7 +148,7 @@ describe("the rule for choosing bands", () => {
   });
 });
 
-describe("a plan", () => {
+describeWithVoacapData("a plan", () => {
   let plan: CommunicationPlan;
   let matrix: PlanResult;
 

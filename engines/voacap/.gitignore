@@ -1,1 +1,4 @@
 .upstream/
+# The coefficients VOACAP reads are not in this repository; a copy for the tests is
+# kept here by `node scripts/fetch-voacap-data.mjs --cache` (docs/hf-propagation.md, "Data").
+.cache/

@@ -7,6 +7,7 @@ import { Worker } from "node:worker_threads";
 import type { EngineDescription, IonosphereHour } from "@outpost/shared";
 import { workerUrl } from "../../core/paths.ts";
 import { type CircuitRequest, type CircuitResult, EngineUnavailable, type IonosphereRequest } from "./engine.ts";
+import { EngineDataMissing } from "./voacap/coefficients.ts";
 import type { VoacapPaths } from "./voacap/files.ts";
 
 export type WorkerRequest =
@@ -17,7 +18,7 @@ export type WorkerRequest =
 
 export type WorkerReply =
   | { id: number; ok: true; value: unknown }
-  | { id: number; ok: false; message: string; kind: "unavailable" | "engine" | "other" };
+  | { id: number; ok: false; message: string; kind: "unavailable" | "data-missing" | "engine" | "other" };
 
 /** The engine answered that it cannot work the question out, in its own words. */
 export class EngineRefused extends Error {
@@ -54,10 +55,22 @@ export interface EngineHost {
   listing(request: CircuitRequest): Promise<string>;
   /** Whether a worker is loaded at this moment. */
   readonly loaded: boolean;
+  /** Ends a loaded worker, so that the next question loads the engine and its data afresh. */
+  reset(reason: string): Promise<void>;
   close(): Promise<void>;
 }
 
-export function createEngineHost(paths: VoacapPaths, options: { idleMs?: number } = {}): EngineHost {
+export interface EngineHostOptions {
+  idleMs?: number;
+  /**
+   * Asked before a worker is started, in this thread: throws when the engine cannot run
+   * for a reason known without loading it (its data is not here), so that no thread is
+   * started to say so.
+   */
+  ready?: () => void;
+}
+
+export function createEngineHost(paths: VoacapPaths, options: EngineHostOptions = {}): EngineHost {
   let worker: Worker | undefined;
   let idleTimer: NodeJS.Timeout | undefined;
   let nextId = 1;
@@ -97,6 +110,7 @@ export function createEngineHost(paths: VoacapPaths, options: { idleMs?: number 
       const entry = settle(reply.id);
       if (entry) {
         if (reply.ok) entry.resolve(reply.value);
+        else if (reply.kind === "data-missing") entry.reject(new EngineDataMissing(reply.message));
         else if (reply.kind === "unavailable") entry.reject(new EngineUnavailable(reply.message));
         else if (reply.kind === "engine") entry.reject(new EngineRefused(reply.message));
         else entry.reject(new Error(reply.message));
@@ -117,6 +131,14 @@ export function createEngineHost(paths: VoacapPaths, options: { idleMs?: number 
       if (signal?.aborted) {
         reject(new Error("The prediction was stopped."));
         return;
+      }
+      if (!worker && options.ready) {
+        try {
+          options.ready();
+        } catch (error) {
+          reject(error as Error);
+          return;
+        }
       }
       worker ??= start();
       clearTimeout(idleTimer);
@@ -149,6 +171,7 @@ export function createEngineHost(paths: VoacapPaths, options: { idleMs?: number 
     get loaded() {
       return worker !== undefined;
     },
+    reset: (reason) => stop(new EngineUnavailable(reason)),
     close: () => stop(new Error("Outpost is shutting down.")),
   };
 }

@@ -17,8 +17,10 @@
  *     web/                      built web app, fonts and map assets included
  *     web/vendor/openpgp/       OpenPGP.js as published (LGPL), with its licences
  *     catalog/                  catalogue manifests
- *     engines/                  the HF propagation engine (WebAssembly), its data and
+ *     engines/                  the HF propagation engine (WebAssembly), its antenna
+ *                               files, the list of the coefficients it fetches, and
  *                               the solar cycle table, with their notices
+ *     scripts/fetch-voacap-data.mjs  fetches those coefficients at set-up (optional)
  *
  * Usage: node scripts/build-app.mjs [--skip-web] [--out <dir>]
  */
@@ -198,13 +200,26 @@ if (modelFiles.every((file) => fs.existsSync(path.join(fetchedModels, embedModel
 copyDir(path.join(root, "catalog"), path.join(out, "catalog"));
 
 // HF propagation. The engine is WebAssembly that the propagation worker loads from a
-// file, with the coefficient files it reads and the solar cycle table, all committed
-// in engines/ (see scripts/build-hf-engine.mjs). The Rust sources of Outpost's bridge
-// and the engine's fetched source are not needed to run it and stay behind.
+// file, with the antenna files it reads and the solar cycle table, all committed in
+// engines/ (see scripts/build-hf-engine.mjs). VOACAP's coefficients are not shipped:
+// only their list (coefficients.json) is, with the script that fetches them at set-up
+// (scripts/fetch-voacap-data.mjs); the app fetches them when a person asks. The Rust
+// sources of Outpost's bridge, the engine's fetched source and the tests' copy of the
+// coefficients (engines/voacap/.cache) stay behind.
 const enginesOut = path.join(out, "engines");
 copyDir(path.join(root, "engines/voacap/engine"), path.join(enginesOut, "voacap/engine"));
 copyDir(path.join(root, "engines/voacap/data"), path.join(enginesOut, "voacap/data"));
 fs.copyFileSync(path.join(root, "engines/voacap/NOTICE.txt"), path.join(enginesOut, "voacap/NOTICE.txt"));
+fs.copyFileSync(path.join(root, "engines/voacap/coefficients.json"), path.join(enginesOut, "voacap/coefficients.json"));
+fs.mkdirSync(path.join(out, "scripts"), { recursive: true });
+fs.copyFileSync(path.join(root, "scripts/fetch-voacap-data.mjs"), path.join(out, "scripts/fetch-voacap-data.mjs"));
+{
+  const listed = JSON.parse(fs.readFileSync(path.join(root, "engines/voacap/coefficients.json"), "utf8"));
+  for (const file of listed.files) {
+    if (fs.existsSync(path.join(enginesOut, "voacap/data/itshfbc", file.path)))
+      throw new Error(`${file.path} is one of VOACAP's coefficients, which Outpost does not ship; it must not be in the app.`);
+  }
+}
 copyDir(path.join(root, "engines/solar"), path.join(enginesOut, "solar"));
 if (!fs.existsSync(path.join(out, "server/workers/propagation.mjs"))) {
   throw new Error("The propagation worker was not bundled (server/workers/propagation.mjs is missing).");

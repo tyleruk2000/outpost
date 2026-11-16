@@ -9,11 +9,15 @@
  * everything one screen of the planner asks for, and to work out one day at one
  * frequency, which is the unit a coverage map is made of, and then a whole coverage grid
  * at each of the three resolutions offered. Nothing is written.
+ *
+ * It reads VOACAP's coefficients from the tests' copy (`node scripts/fetch-voacap-data.mjs
+ * --cache`), or from OUTPOST_DATA_DIR's copy when that is set.
  */
 import os from "node:os";
 import path from "node:path";
 import { ANTENNA_PRESETS, COVERAGE_MAX_CELLS, COVERAGE_RESOLUTIONS, coverageCellCentre, coverageGrid, HF_BANDS } from "@outpost/shared";
 import type { CircuitRequest } from "../modules/propagation/engine.ts";
+import { VOACAP_CACHE_DIR } from "../modules/propagation/voacap/coefficients.ts";
 import { createVoacapEngine } from "../modules/propagation/voacap/engine.ts";
 import { voacapPaths } from "../modules/propagation/voacap/files.ts";
 
@@ -48,7 +52,9 @@ const show = (label: string, result: { median: number; worst: number }) =>
 console.log(
   `${os.cpus()[0]?.model ?? "unknown processor"}, ${os.cpus().length} cores, ${os.arch()}, ${os.platform()}, Node ${process.version}`,
 );
-const paths = voacapPaths(path.join(os.tmpdir(), "outpost-bench-no-data"));
+const paths = process.env.OUTPOST_DATA_DIR
+  ? voacapPaths(process.env.OUTPOST_DATA_DIR)
+  : voacapPaths(path.join(os.tmpdir(), "outpost-bench-no-data"), { coefficientsDir: VOACAP_CACHE_DIR });
 const loadStart = performance.now();
 let engine = createVoacapEngine(paths);
 engine.circuit(base);

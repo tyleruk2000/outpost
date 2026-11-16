@@ -38,7 +38,16 @@ function fileUrl(maps: MapsManifest, path: string): string {
   return new URL(path.split("/").map(encodeURIComponent).join("/"), maps.baseUrl).toString();
 }
 
-export function createMapsFetcher(ctx: AppContext, maps: () => MapsManifest): Fetcher {
+/**
+ * Fetches the files of a list like this one, one after another, into one bundle. Also
+ * used for VOACAP's coefficients (`../engine-data.ts`), with its own words for where they
+ * are and what they are.
+ */
+export function createMapsFetcher(
+  ctx: AppContext,
+  maps: () => MapsManifest,
+  words: { where: string; what: string } = { where: "the ITU's repository", what: "the maps" },
+): Fetcher {
   const client = createHttpClient({ allowPrivate: ctx.config.allowPrivateDownloads });
   ctx.onClose.push(() => client.close());
   return async (context) => {
@@ -64,7 +73,7 @@ export function createMapsFetcher(ctx: AppContext, maps: () => MapsManifest): Fe
       const { response } = await client.fetch(fileUrl(manifest, file.path), { headers, signal, allowedHosts: context.allowedHosts });
       if (response.status === 404 || response.status === 410) {
         await response.body?.cancel();
-        throw new PermanentJobError(`${file.name} is no longer at its address in the ITU's repository.`, "not_found");
+        throw new PermanentJobError(`${file.name} is no longer at its address in ${words.where}.`, "not_found");
       }
       if (response.status >= 500 || response.status === 429) {
         await response.body?.cancel();
@@ -84,7 +93,7 @@ export function createMapsFetcher(ctx: AppContext, maps: () => MapsManifest): Fe
       if (Number.isFinite(length) && length !== end - have) {
         await response.body?.cancel();
         throw new PermanentJobError(
-          `${file.name} on the server is ${length} bytes, not the ${file.bytes} Outpost expects, so the maps were not downloaded.`,
+          `${file.name} on the server is ${length} bytes, not the ${file.bytes} Outpost expects, so ${words.what} were not downloaded.`,
           "upstream",
         );
       }

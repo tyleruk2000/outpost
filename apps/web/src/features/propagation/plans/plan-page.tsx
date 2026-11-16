@@ -39,6 +39,7 @@ import { errorMessage } from "@/lib/api";
 import { formatDateTime } from "@/lib/utils";
 import { HourGrid } from "../charts";
 import { useEngines, usePlaces, useProfiles } from "../data";
+import { EngineNotReady } from "../engine-data";
 import { BasisNotice } from "../results";
 import { inputOf, useKeptMatrix, useLinkSearch, usePlan, useRemovePlan, useSavePlan, useWorkOut } from "./data";
 import { choiceWords, pairNotModelled, planFigure, planMarkdown, saveFile } from "./document";
@@ -384,11 +385,9 @@ export default function PlanPage() {
         }
       />
       <PlanPdfStatus file={pdf} className="-mt-4 mb-6" />
-      {engine && !engine.ready ? (
-        <Notice tone="danger" title="The propagation engine cannot run, so the plan cannot be worked out" className="mb-6">
-          {engine.problem} The plan itself can still be written and changed.
-        </Notice>
-      ) : null}
+      <EngineNotReady engine={engine} title="The propagation engine cannot run, so the plan cannot be worked out" className="mb-6">
+        The plan itself can still be written and changed.
+      </EngineNotReady>
 
       <Section
         title="Stations"

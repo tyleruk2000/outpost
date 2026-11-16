@@ -96,6 +96,13 @@ function RemoveSteps({ items, onClose, onStarted }: { items: ManagedItem[]; onCl
               </div>
             ) : null}
             <RefusedNotice refused={data.refused} />
+            {items
+              .filter((item) => item.warning)
+              .map((item) => (
+                <Notice key={item.key} tone="warning" icon={<CircleAlert />} title={`Without ${item.title}`}>
+                  {item.warning}
+                </Notice>
+              ))}
           </>
         ) : null}
         {remove.isError ? (

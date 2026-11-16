@@ -162,7 +162,7 @@ export function createVoacapEngine(paths: VoacapPaths): PropagationEngine {
 
   return {
     describe: () => description,
-    datasets: () => [{ id: dataset.manifest.id, version: dataset.manifest.version }],
+    datasets: () => [{ id: dataset.coefficients.id, version: dataset.coefficients.version }],
 
     circuit(request: CircuitRequest): CircuitResult {
       if (request.frequenciesMhz.length === 0) throw new Error("No frequency was asked for.");

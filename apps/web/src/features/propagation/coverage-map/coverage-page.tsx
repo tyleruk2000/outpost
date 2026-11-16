@@ -43,6 +43,7 @@ import { CoverageGreyLine, coverageMoment, useCoverageGreyLine } from "@/feature
 import { errorMessage } from "@/lib/api";
 import { formatDateTime, formatNumber } from "@/lib/utils";
 import { antennaOf, formOf, rememberForm, useEngines, usePlaces, useProfiles, wireHint } from "../data";
+import { EngineNotReady } from "../engine-data";
 import { CELL_OPACITY, coverageFeatures } from "../map/layers";
 import type { PlanMapHandle } from "../map/plan-map";
 import { PlaceInput } from "../place-field";
@@ -396,11 +397,9 @@ export default function CoveragePage() {
           </Button>
         }
       />
-      {engine && !engine.ready ? (
-        <Notice tone="danger" title="The propagation engine cannot run, so no coverage can be worked out" className="mb-6">
-          {engine.problem} Outpost does not estimate coverage any other way.
-        </Notice>
-      ) : null}
+      <EngineNotReady engine={engine} title="The propagation engine cannot run, so no coverage can be worked out" className="mb-6">
+        Outpost does not estimate coverage any other way.
+      </EngineNotReady>
 
       <div className="grid gap-x-10 gap-y-8 lg:grid-cols-[21rem_minmax(0,1fr)]">
         <form

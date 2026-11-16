@@ -49,6 +49,8 @@ export const useEngines = () =>
     queryKey: keys.engines,
     queryFn: () => api.get<{ engines: EngineStatus[] }>("/api/radio/propagation/engines"),
     select: (data) => data.engines,
+    // While VOACAP's data is downloading, look again now and then; the end of it also says so.
+    refetchInterval: (query) => (query.state.data?.engines[0]?.data?.downloading ? 3_000 : false),
   });
 export const useDatasets = () =>
   useQuery({ queryKey: keys.datasets, queryFn: () => api.get<PropagationDatasets>("/api/radio/propagation/datasets") });

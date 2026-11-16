@@ -127,6 +127,30 @@ describe("everything installed", () => {
     expect(screen.queryByRole("region", { name: "Selection" })).not.toBeInTheDocument();
   });
 
+  it("says what stops working without an item before it is removed", async () => {
+    fakeApi({
+      "GET /api/manage/items": {
+        items: [
+          item({
+            key: "collection:v1",
+            id: "v1",
+            title: "VOACAP ionospheric and noise coefficients",
+            kind: "dataset",
+            warning: "Without these files the HF propagation planner stops working until they are downloaded again.",
+          }),
+        ],
+      },
+      "POST /api/manage/plan": plan({ changes: 1 }),
+    });
+    renderScreen(<ItemsView busy={false} />);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("checkbox", { name: "Select everything" }));
+    await user.click(screen.getByRole("button", { name: "Remove" }));
+    const dialog = await screen.findByRole("dialog", { name: "Remove 1 item" });
+    expect(await within(dialog).findByText("Without VOACAP ionospheric and noise coefficients")).toBeVisible();
+    expect(within(dialog).getByText(/HF propagation planner stops working/)).toBeVisible();
+  });
+
   it("will not start a removal when nothing would change, or while another clean-up runs", async () => {
     fakeApi({
       "GET /api/manage/items": { items: sampleItems },

@@ -8,8 +8,9 @@
  * surrounds a prediction: equipment profiles, the data the engine reads and how old it
  * is, keeping answers already worked out, and the routes.
  *
- * Nothing here makes an outbound request except fetching a newer solar cycle table,
- * when a person asks for it, through the download manager.
+ * Nothing here makes an outbound request except, when a person asks, through the
+ * download manager: a newer solar cycle table, and VOACAP's coefficients, which Outpost
+ * does not ship (`engine-data.ts`).
  */
 import {
   type EngineStatus,
@@ -32,6 +33,7 @@ import { propagationSaved } from "../../db/schema.ts";
 import { type CoverageService, registerCoverage } from "./coverage.ts";
 import { createDatasetsService, type DatasetsService } from "./datasets.ts";
 import { EngineUnavailable } from "./engine.ts";
+import { type EngineData, registerEngineData } from "./engine-data.ts";
 import { createEngineHost } from "./host.ts";
 import { type ObservationsService, registerObservations } from "./observations.ts";
 import { registerSecondModel } from "./p533/index.ts";
@@ -39,6 +41,7 @@ import { type PlansService, registerPlans } from "./plans.ts";
 import { createProfilesService, type ProfilesService } from "./profiles.ts";
 import { createPropagationService, type PropagationService } from "./service.ts";
 import { antenna, checked, modes, power } from "./shapes.ts";
+import { coefficientsManifest } from "./voacap/coefficients.ts";
 import { readEngineManifest, voacapPaths } from "./voacap/files.ts";
 
 declare module "../../core/context.ts" {
@@ -46,6 +49,7 @@ declare module "../../core/context.ts" {
     propagation: PropagationService & {
       profiles: ProfilesService;
       datasets: DatasetsService;
+      engineData: EngineData;
       coverage: CoverageService;
       plans: PlansService;
       observations: ObservationsService;
@@ -76,12 +80,20 @@ const antennaProfile = z
 type IdParams = { Params: { id: string } };
 
 export async function registerPropagation(app: FastifyInstance, ctx: AppContext): Promise<void> {
-  const paths = voacapPaths(ctx.config.dataDir);
-  const host = createEngineHost(paths);
+  const coefficients = coefficientsManifest(ctx.config.voacapDataManifest);
+  const paths = voacapPaths(ctx.config.dataDir, { coefficients });
+  // The coefficients are looked at before a worker is started: without them it is not.
+  const engineData = registerEngineData(
+    app,
+    ctx,
+    () => host,
+    () => coefficients,
+  );
+  const host = createEngineHost(paths, { ready: () => engineData.ready() });
   ctx.onClose.push(() => host.close());
 
   const profiles = createProfilesService(ctx);
-  const datasets = createDatasetsService(ctx, paths);
+  const datasets = createDatasetsService(ctx, engineData);
   const service = createPropagationService(ctx, host);
   const coverage = registerCoverage(app, ctx, service);
   const plans = registerPlans(app, ctx, service);
@@ -109,10 +121,14 @@ export async function registerPropagation(app: FastifyInstance, ctx: AppContext)
       return had;
     },
   };
-  ctx.services.propagation = { ...service, profiles, datasets, coverage, plans, observations, kept };
+  ctx.services.propagation = { ...service, profiles, datasets, engineData, coverage, plans, observations, kept };
   const secondModel = registerSecondModel(app, ctx, service);
   ctx.services.downloads.registerInstaller("dataset", (job) =>
-    secondModel.owns(job.download) ? secondModel.installer(job) : datasets.installer(job),
+    engineData.owns(job.download)
+      ? engineData.installer(job)
+      : secondModel.owns(job.download)
+        ? secondModel.installer(job)
+        : datasets.installer(job),
   );
 
   // A day on one path is a twentieth of a second and is answered directly. Anything
@@ -139,9 +155,10 @@ export async function registerPropagation(app: FastifyInstance, ctx: AppContext)
 
   app.get("/api/radio/propagation/engines", async () => {
     let status: EngineStatus;
+    const data = engineData.status();
     try {
       const { description } = await host.describe();
-      status = { ...description, ready: true, problem: null, selected: true };
+      status = { ...description, ready: true, problem: null, selected: true, data };
     } catch (error) {
       // Say what is known about the engine even when it cannot run.
       let known: { name: string; model: string; implementation: string; licence: string; sha256: string } = {
@@ -175,6 +192,7 @@ export async function registerPropagation(app: FastifyInstance, ctx: AppContext)
             ? error.message
             : `The propagation engine could not be started: ${error instanceof Error ? error.message : String(error)}`,
         selected: true,
+        data,
       };
     }
     return { engines: [status] };

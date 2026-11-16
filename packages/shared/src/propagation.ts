@@ -863,6 +863,39 @@ export interface EngineStatus extends EngineDescription {
   problem: string | null;
   /** Used by default. */
   selected: boolean;
+  /** The engine's data that does not ship with Outpost, and whether it is here. */
+  data?: EngineDataStatus;
+}
+
+/**
+ * VOACAP's ionospheric and noise coefficients, which Outpost does not ship and fetches
+ * when a person asks. `GET /api/radio/propagation/engine-data`
+ */
+export interface EngineDataStatus {
+  /** Every file is here and matches its checksum. */
+  installed: boolean;
+  /** Where a prediction would be asked for, when they are not here or are damaged: what is wrong, in one line. */
+  line: string | null;
+  /** Why they are not shipped, in one sentence. */
+  why: string;
+  bytes: number;
+  files: number;
+  downloading: boolean;
+  /** How they came to be here, when they are. */
+  how: "downloaded" | "adopted" | "set-up" | null;
+  /** When, as an ISO date and time. */
+  at: string | null;
+  /** The address or folder they came from. */
+  from: string | null;
+  /** Where Download fetches them from. */
+  source: string;
+  version: string;
+  /** Checksum of all the files one after another, as listed in engines/voacap/coefficients.json. */
+  sha256: string;
+  /** The collection that stands for them under "Manage and clean up", when they were downloaded in the app. */
+  collectionId: string | null;
+  /** What removing them does. */
+  removalWarning: string;
 }
 
 export type DatasetKind = "required" | "optional";

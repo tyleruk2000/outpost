@@ -314,8 +314,9 @@ export async function registerPortable(app: FastifyInstance, ctx: AppContext): P
         `${skippedDocuments} document${skippedDocuments === 1 ? " is" : "s are"} on a storage location that is not connected and will be left out.`,
       );
 
-    // Notes attachments and extracted text travel with the database.
-    for (const folder of ["attachments", "extracted"]) {
+    // Notes attachments and extracted text travel with the database, and so does the
+    // copy of VOACAP's coefficients the planner reads, so that the drive predicts offline.
+    for (const folder of ["attachments", "extracted", "propagation/voacap-coefficients"]) {
       const root = path.join(config.dataDir, folder);
       for (const file of await listFiles(root)) {
         if (folder === "extracted" && !includedDocumentIds.includes(path.basename(file.rel, ".json"))) continue;
@@ -323,7 +324,7 @@ export async function registerPortable(app: FastifyInstance, ctx: AppContext): P
           from: path.join(root, file.rel),
           to: path.join(target, "data-incoming", folder, file.rel),
           bytes: file.bytes,
-          label: "Notes and index",
+          label: folder.startsWith("propagation/") ? "HF propagation data" : "Notes and index",
         });
       }
     }

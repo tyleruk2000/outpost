@@ -47,21 +47,38 @@ runs VOACAP, the Voice of America Coverage Analysis Program, through these parts
    under CC0 1.0 Universal. https://github.com/jawatson/voacapl. Its two GPL programs
    (dst2csv, dst2ascii) are not used and not included.
 
-4. The data files (data/itshfbc/)
-   Copied unchanged from the hfcast repository's embedded/ folder; data/dataset.json
-   lists every file with its checksum. They are not covered by any of the licences
-   above and keep their own status:
+4. The data files
+   Two sets, and only the first ships with Outpost.
 
-   - antennas/ and database/ (about 16 KB) and roughly 195 KB of coeffs/ (sporadic E, E
-     and F1 maps, the F2 height ratio, the solar index table, prediction error
-     statistics): part of the VOACAP distribution, NTIA/ITS work, under the notices in 2.
-   - roughly 216 KB of coeffs/: atmospheric radio noise from CCIR Report 322.
-   - roughly 134 KB of coeffs/: the foF2 and M(3000)F2 maps from CCIR Report 340.
+   Shipped (data/itshfbc/, listed with checksums in data/dataset.json): the antenna
+   definition files of antennas/default/ (except the two named below) and
+   database/version.w32, 29 files, 14,548 bytes. Part of the VOACAP distribution,
+   NTIA/ITS work, under the notices in 2. They are copied unchanged from the hfcast
+   repository's embedded/ folder. The files named ccir.000 to ccir.025 are VOACAP's own
+   input definitions for antenna types that carry CCIR's names (HR 4/4/1 and the like):
+   a type code, dimensions and two gain figures each; they are treated as NTIA/ITS work,
+   as the hfcast project records them.
 
-   The split is the hfcast project's own measurement (engine/NOTICE-hfcast.txt). The
-   CCIR data is published by the ITU itself in the reference software of ITU-R Study
-   Group 3 (https://github.com/ITU-R-Study-Group-3/ITU-R-HF, read on 16 November 2026)
-   with this statement:
+   Not shipped (listed in coefficients.json; fetched when a person asks, or at set-up):
+   15 files, 559,336 bytes.
+
+   - coeffs/coeff01w.bin to coeff12w.bin (38,552 bytes each). Each month's file holds
+     the M(3000)F2 map of CCIR Report 340 and the atmospheric radio noise maps of CCIR
+     Report 322, with NTIA/ITS's sporadic-E, E, F1 and F2 height-ratio maps and
+     prediction-error tables in the same file. Mixed, so treated as CCIR-derived.
+   - coeffs/fof2CCIR.daw (94,848 bytes): the foF2 maps of CCIR Report 340.
+   - antennas/default/ccir.026 (921 bytes) and antennas/default/swwhip.voa (943 bytes):
+     a short whip's elevation pattern, 91 figures, headed "SWWhip for REC533". Where the
+     figures come from is not stated anywhere read, so they are treated as CCIR-derived.
+
+   Which file holds what is the hfcast project's own reading of VOACAP's REDMAP, record
+   by record (engine/NOTICE-hfcast.txt and its docs/licence.md): about 195 kB of NTIA/ITS
+   tables, 216 kB of Report 322 noise and 134 kB of Report 340 maps, in the 13 files
+   above. That reading was not checked against the CCIR Reports themselves.
+
+   Why the second set is not shipped. The CCIR data was bundled on the strength of a
+   statement in the reference software of ITU-R Study Group 3
+   (https://github.com/ITU-R-Study-Group-3/ITU-R-HF, read on 16 November 2026):
 
      The ITURHFProp, P533 and P372 software has been developed collaboratively by
      participants in ITU-R Study Group 3. It may be used by implementers in their
@@ -69,9 +86,46 @@ runs VOACAP, the Voice of America Coverage Analysis Program, through these parts
      original Recommendation and in other ITU Recommendations, free from any copyright
      assertions.
 
-   That statement is worded for implementations of ITU Recommendations, and VOACAP is
-   not one. Outpost's own licence policy (MIT, ISC, BSD, Apache-2.0) does not cover
-   these files; docs/hf-propagation.md says what that means and what the alternative is.
+   Four header files in that same repository (P533/Src/P533/Common.h,
+   P372/Src/P372/Common.h, P372/Src/ITURNoise/Common.h and
+   ITURHFProp/Src/ITURHFProp/Common.h) say:
+
+     Copyright International Telecommunication Union (ITU) 2018
+     All rights reserved.
+     No part of this publication may be reproduced, by any means whatsoever,
+     without written permission of ITU
+
+   The first is worded for implementations of ITU Recommendations, and VOACAP is not
+   one; the second reserves all rights. Outpost does not bundle copyrighted material
+   without permission, so these files are not in its repository or its packaged app.
+
+   Where they are fetched from. The engine's own repository, at the commit the engine
+   was built from:
+
+     https://raw.githubusercontent.com/jonathanmcsweet/hfcast-engine/
+       bf34e8f9f375e190ed43fcac19f25d800992e0e6/embedded/<file>
+
+   On 16 November 2026 every one of the 15 files fetched from there was byte for byte
+   the file this repository held until then. The project publishes them in a public
+   repository; it offers them under no licence, and says so. Its NOTICE reads:
+
+     Apache-2.0 covers the software in this repository. It does not cover these data
+     files, which are the work of other bodies and keep their own status. They are
+     listed here so that status travels with them.
+
+   and its embedded/README.md:
+
+     Whether these files may be redistributed to other people is an open question,
+     recorded with its reasoning in `docs/licence.md`. Embedding them for builds used
+     on one's own devices is not redistribution, which is why they are here while that
+     stays undecided.
+
+   NTIA/ITS publishes VOACAP as a Windows installer; voacapl publishes the
+   coefficients only as text sources that its installer converts. Neither offers these
+   exact files. Outpost fetches them for one person's own use, when that person asks,
+   and does not pass them on. Each is checked against the size and SHA-256 checksum in
+   coefficients.json, and the engine refuses to run on a set that is not whole or does
+   not match.
 
 No endorsement of Outpost by NTIA/ITS, the United States Government, the ITU or the
 authors of hfcast or voacapl is implied.

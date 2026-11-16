@@ -1,22 +1,23 @@
 /**
  * Where the VOACAP engine and its data are, and reading them with their checksums
- * checked. Nothing is used that does not match what was recorded when it was built:
- * a damaged coefficient file would give wrong predictions with no other sign.
+ * checked. Nothing is used that does not match what was recorded: a damaged coefficient
+ * file would give wrong predictions with no other sign.
  *
- *   <app>/engines/voacap/engine/voacap.wasm, engine.json
- *   <app>/engines/voacap/data/dataset.json, itshfbc/...
+ *   <app>/engines/voacap/engine/voacap.wasm, engine.json      shipped
+ *   <app>/engines/voacap/data/dataset.json, itshfbc/...        shipped: antennas and version (NTIA/ITS)
+ *   <app>/engines/voacap/coefficients.json                     shipped: the list of what is not
+ *   <data directory>/propagation/voacap-coefficients/          not shipped: see coefficients.ts
  *
  * `<app>` is the repository when running from source and the app folder when packaged
- * (`scripts/build-app.mjs` copies both folders). A copy of the data placed in
- * `<data directory>/propagation/voacap-data/` (the same two entries) is used in
- * preference to the included one; that is the seam for supplying the coefficients
- * separately from Outpost.
+ * (`scripts/build-app.mjs` copies what is shipped). The engine sees the two sets as one
+ * folder, as VOACAP's own `itshfbc` tree.
  */
 import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { appRoot } from "../../../core/paths.ts";
 import { EngineUnavailable } from "../engine.ts";
+import { type CoefficientsManifest, coefficientsManifest, readCoefficients, workingCopyDir } from "./coefficients.ts";
 
 export interface EngineManifest {
   id: string;
@@ -43,13 +44,22 @@ export interface DatasetManifest {
 export interface VoacapPaths {
   /** Folder holding voacap.wasm and engine.json. */
   engineDir: string;
-  /** Folders that may hold dataset.json and itshfbc/, in order of preference. */
-  dataDirs: string[];
+  /** Folder holding the shipped dataset.json and itshfbc/. */
+  shippedDir: string;
+  /** Folder holding the coefficients that are not shipped. */
+  coefficientsDir: string;
+  /** What those must be. Handed to the worker as it is, so that both threads check against the same list. */
+  coefficients: CoefficientsManifest;
 }
 
-export function voacapPaths(dataDir: string): VoacapPaths {
+export function voacapPaths(dataDir: string, options: { coefficientsDir?: string; coefficients?: CoefficientsManifest } = {}): VoacapPaths {
   const home = path.join(appRoot, "engines/voacap");
-  return { engineDir: path.join(home, "engine"), dataDirs: [path.join(dataDir, "propagation/voacap-data"), path.join(home, "data")] };
+  return {
+    engineDir: path.join(home, "engine"),
+    shippedDir: path.join(home, "data"),
+    coefficientsDir: options.coefficientsDir ?? workingCopyDir(dataDir),
+    coefficients: options.coefficients ?? coefficientsManifest(),
+  };
 }
 
 const sha256 = (bytes: Uint8Array) => createHash("sha256").update(bytes).digest("hex");
@@ -96,65 +106,44 @@ export function loadEngineFile(paths: VoacapPaths): LoadedEngineFile {
   return { manifest, wasm };
 }
 
-/** The first of the folders that holds a dataset, and its manifest. */
-export function findDataset(paths: VoacapPaths): { dir: string; manifest: DatasetManifest; included: boolean } {
-  for (const [index, dir] of paths.dataDirs.entries()) {
-    if (!fs.existsSync(path.join(dir, "dataset.json"))) continue;
-    return {
-      dir,
-      manifest: readJson<DatasetManifest>(path.join(dir, "dataset.json"), "The list of propagation data files"),
-      included: index === paths.dataDirs.length - 1,
-    };
-  }
-  throw new EngineUnavailable(
-    `The ionospheric and noise coefficients the propagation engine needs are missing (looked in ${paths.dataDirs.join(" and ")}). Without them no prediction can be made.`,
-  );
-}
-
 export interface LoadedDataset {
+  /** The shipped part's list. */
   manifest: DatasetManifest;
-  dir: string;
-  included: boolean;
+  coefficients: CoefficientsManifest;
   files: Array<[string, Uint8Array]>;
   bytes: number;
 }
 
-/** Reads every data file, refusing the whole set if any is missing or does not match its checksum. */
+/**
+ * Reads every data file, shipped and not, refusing the whole set if any is missing or
+ * does not match its checksum. The coefficients are read first: when they are not here,
+ * that is what a person is told, with what to press.
+ */
 export function loadDataset(paths: VoacapPaths): LoadedDataset {
-  const { dir, manifest, included } = findDataset(paths);
+  const coefficients = readCoefficients(paths.coefficientsDir, paths.coefficients);
+  const manifest = readJson<DatasetManifest>(path.join(paths.shippedDir, "dataset.json"), "The list of propagation data files");
   const files: Array<[string, Uint8Array]> = [];
-  let bytes = 0;
   for (const group of manifest.groups) {
     for (const entry of group.files) {
-      // The names come from a manifest, which may be a person's own copy: keep them inside the folder.
       if (entry.path.split("/").some((part) => part === ".." || part === ""))
         throw new EngineUnavailable(`The list of propagation data files names a file outside its folder (${entry.path}).`);
-      const file = path.join(dir, "itshfbc", entry.path);
+      const file = path.join(paths.shippedDir, "itshfbc", entry.path);
       let content: Uint8Array;
       try {
         content = fs.readFileSync(file);
       } catch {
         throw new EngineUnavailable(
-          `A propagation data file is missing: ${entry.path} (${group.title.toLowerCase()}), expected at ${file}. Without it no prediction can be made.`,
+          `A propagation data file is missing: ${entry.path} (${group.title.toLowerCase()}), expected at ${file}. Reinstall Outpost to put it back.`,
         );
       }
       if (sha256(content) !== entry.sha256) {
         throw new EngineUnavailable(
-          `A propagation data file is damaged: ${entry.path} (${group.title.toLowerCase()}) does not match its checksum. Predictions are refused rather than made from it; reinstall Outpost, or replace the file at ${file}.`,
+          `A propagation data file is damaged: ${entry.path} (${group.title.toLowerCase()}) does not match its checksum. Predictions are refused rather than made from it; reinstall Outpost to put it back.`,
         );
       }
       files.push([entry.path, content]);
-      bytes += content.length;
     }
   }
-  return { manifest, dir, included, files, bytes };
-}
-
-/** Checksum of a dataset's manifest, which names every file's own checksum: one value that stands for the whole set. */
-export function datasetFingerprint(dir: string): string | null {
-  try {
-    return sha256(fs.readFileSync(path.join(dir, "dataset.json")));
-  } catch {
-    return null;
-  }
+  files.push(...coefficients);
+  return { manifest, coefficients: paths.coefficients, files, bytes: files.reduce((sum, [, bytes]) => sum + bytes.length, 0) };
 }

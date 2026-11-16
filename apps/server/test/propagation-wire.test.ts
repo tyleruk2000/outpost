@@ -14,20 +14,23 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { ANTENNA_PRESETS, type AntennaSpec, HF_BANDS, initialBearingDeg } from "@outpost/shared";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, expect, it } from "vitest";
 import type { CircuitRequest } from "../src/modules/propagation/engine.ts";
 import { antennaFile } from "../src/modules/propagation/voacap/antenna-files.ts";
 import { createVoacapEngine } from "../src/modules/propagation/voacap/engine.ts";
 import { loadDataset, loadEngineFile, voacapPaths } from "../src/modules/propagation/voacap/files.ts";
 import { VoacapInstance } from "../src/modules/propagation/voacap/instance.ts";
 import { REFERENCE_CASES } from "./fixtures/propagation/cases.ts";
+import { describeWithVoacapData, seedVoacapData, voacapDataAbsent } from "./voacap-data.ts";
 
 const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "outpost-hf-wire-"));
 afterAll(() => fs.rmSync(scratch, { recursive: true, force: true }));
 
+// The real engine and its data (voacap-data.ts): without the coefficients every test here is reported as skipped.
+seedVoacapData(path.join(scratch, "data"));
 const paths = voacapPaths(path.join(scratch, "data"));
-const engine = createVoacapEngine(paths);
-const instance = new VoacapInstance(loadEngineFile(paths).wasm, loadDataset(paths).files);
+const engine = voacapDataAbsent ? (null as never) : createVoacapEngine(paths);
+const instance = voacapDataAbsent ? (null as never) : new VoacapInstance(loadEngineFile(paths).wasm, loadDataset(paths).files);
 const preset = (id: string): AntennaSpec => ANTENNA_PRESETS.find((item) => item.id === id)!.spec;
 const acceptance = REFERENCE_CASES[0]!.request;
 
@@ -106,7 +109,7 @@ function peak(samples: Map<number, number>): { degree: number; gain: number } {
 
 const wavelengths = (metres: number, mhz: number) => (metres * mhz) / 299.792458;
 
-describe("VOACAP's horizontal dipole (type 23) given a length in metres", () => {
+describeWithVoacapData("VOACAP's horizontal dipole (type 23) given a length in metres", () => {
   it("takes it: on the band where 10 m is about a half-wave it gives what a half-wave gives", () => {
     // 10 m at 14.18 MHz is 0.473 wavelengths. Seen: 0.1 dB below the half-wave at every angle.
     const metres = pattern(dipole(10, 6), 14.18);
@@ -142,7 +145,7 @@ describe("VOACAP's horizontal dipole (type 23) given a length in metres", () => 
   });
 });
 
-describe("VOACAP's vertical monopole (type 22) given a height", () => {
+describeWithVoacapData("VOACAP's vertical monopole (type 22) given a height", () => {
   it("lowers its lobe as it lengthens to 5/8 of a wavelength, and splits it beyond", () => {
     // Seen at 14.18 MHz over average ground, strongest angle and gain there:
     // 0.25 wavelengths 25 to 30° at -0.7 dBi; 0.5 at 20°, +0.2 dBi; 0.625 at 15°, +1.2 dBi;
@@ -190,7 +193,7 @@ describe("VOACAP's vertical monopole (type 22) given a height", () => {
   });
 });
 
-describe("VOACAP's sloping long wire (type 41), which Outpost does not use for the horizontal wire", () => {
+describeWithVoacapData("VOACAP's sloping long wire (type 41), which Outpost does not use for the horizontal wire", () => {
   it("laid level as a half-wave reads more than a decibel below the dipole model of the same wire", () => {
     // Its pattern is a wire fed at one end, but it works its gain out against the wire as
     // a monopole over perfect ground. Seen broadside at 14.18 MHz, 6 m up: 1.2 to 1.4 dB
@@ -203,7 +206,7 @@ describe("VOACAP's sloping long wire (type 41), which Outpost does not use for t
   });
 });
 
-describe("an end-fed wire of a stated length, as Outpost runs it", () => {
+describeWithVoacapData("an end-fed wire of a stated length, as Outpost runs it", () => {
   const bands = HF_BANDS.map((band) => band.mhz);
   const noon = (request: CircuitRequest) => engine.circuit({ ...request, frequenciesMhz: bands }).hours[11]!.cells;
   const index = (id: string) => HF_BANDS.findIndex((band) => band.id === id);

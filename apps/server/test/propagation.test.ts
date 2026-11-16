@@ -22,8 +22,10 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { appRoot } from "../src/core/paths.ts";
 import { createEngineHost, type EngineHost } from "../src/modules/propagation/host.ts";
 import { createPropagationService, normalise, type PropagationService } from "../src/modules/propagation/service.ts";
+import { workingCopyDir } from "../src/modules/propagation/voacap/coefficients.ts";
 import { voacapPaths } from "../src/modules/propagation/voacap/files.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
+import { describeWithVoacapData } from "./voacap-data.ts";
 
 const dipole = ANTENNA_PRESETS.find((preset) => preset.id === "low-dipole")!.spec;
 
@@ -66,7 +68,7 @@ afterAll(async () => {
 const predict = (patch: Partial<PredictionRequest> = {}) =>
   app.api<PredictionResult>("POST", "/api/radio/propagation/predict", { ...acceptance, ...patch });
 
-describe("the acceptance path", () => {
+describeWithVoacapData("the acceptance path", () => {
   it("is worked out by the engine, with where every figure came from", async () => {
     const { status, body } = await predict();
     expect(status).toBe(200);
@@ -201,7 +203,7 @@ describe("the acceptance path", () => {
   });
 });
 
-describe("where the sunspot number comes from", () => {
+describeWithVoacapData("where the sunspot number comes from", () => {
   it("is NOAA's forecast for the month, from the included table, and is never called live", async () => {
     const { body } = await predict();
     expect(body.basis.ssn).toBe(83);
@@ -242,7 +244,7 @@ describe("where the sunspot number comes from", () => {
   });
 });
 
-describe("the search for the sunspot number that gives a measured foF2", () => {
+describeWithVoacapData("the search for the sunspot number that gives a measured foF2", () => {
   // The service on an engine host of its own, with every question put to the engine counted.
   let host: EngineHost;
   let service: PropagationService;
@@ -269,6 +271,7 @@ describe("the search for the sunspot number that gives a measured foF2", () => {
     get loaded() {
       return inner.loaded;
     },
+    reset: (reason) => inner.reset(reason),
     close: () => inner.close(),
   });
 
@@ -413,7 +416,7 @@ describe("what is asked", () => {
   });
 });
 
-describe("answers already worked out", () => {
+describeWithVoacapData("answers already worked out", () => {
   it("are kept under a key made from the question, the engine and the data", async () => {
     const first = (await predict({ powerWatts: 7 })).body;
     expect(first.cached).toBe(false);
@@ -450,7 +453,7 @@ describe("answers already worked out", () => {
   });
 });
 
-describe("the same path with one thing changed", () => {
+describeWithVoacapData("the same path with one thing changed", () => {
   const compare = (what: string) => app.api<CompareResult>("POST", "/api/radio/propagation/compare", { base: acceptance, what });
 
   it("shows the seasons at one sunspot number", async () => {
@@ -491,7 +494,7 @@ describe("the same path with one thing changed", () => {
   });
 });
 
-describe("equipment profiles", () => {
+describeWithVoacapData("equipment profiles", () => {
   it("keeps radios", async () => {
     const radio = {
       name: "Xiegu G90",
@@ -560,7 +563,7 @@ describe("equipment profiles", () => {
   });
 });
 
-describe("the data it rests on", () => {
+describeWithVoacapData("the data it rests on", () => {
   it("is listed with versions, sizes, dates and checksums", async () => {
     const { body } = await app.api<PropagationDatasets>("GET", "/api/radio/propagation/datasets");
     const [coefficients, solar] = body.datasets;
@@ -568,13 +571,15 @@ describe("the data it rests on", () => {
       id: "voacap-coefficients",
       installed: true,
       verified: true,
-      files: 44,
-      where: "Included with Outpost",
+      files: 15,
+      bytes: 559_336,
       downloadable: false,
     });
-    expect(coefficients!.bytes).toBeGreaterThan(500_000);
+    // The tests' servers are given the data as a set-up leaves it.
+    expect(coefficients!.where).toMatch(/^Fetched when Outpost was set up on \d{4}-\d{2}-\d{2}; kept in the data directory$/);
     expect(coefficients!.sha256).toMatch(/^[0-9a-f]{64}$/);
-    expect(coefficients!.licence).toContain("free from any copyright assertions");
+    expect(coefficients!.licence).toContain("has not given permission to pass on");
+    expect(coefficients!.source).toContain("https://github.com/jonathanmcsweet/hfcast-engine at bf34e8f9f375");
     expect(solar).toMatchObject({
       id: "solar-cycle",
       installed: true,
@@ -633,25 +638,26 @@ describe("the data it rests on", () => {
   });
 });
 
-describe("when the engine cannot run", () => {
+describeWithVoacapData("when the engine cannot run", () => {
   it("says why, and predicts nothing", async () => {
     const broken = await createTestApp();
     try {
-      // A copy of the data in the data directory takes precedence; damage one file of it.
-      const copy = path.join(broken.ctx.config.dataDir, "propagation/voacap-data");
-      fs.cpSync(path.join(appRoot, "engines/voacap/data"), copy, { recursive: true });
-      fs.writeFileSync(path.join(copy, "itshfbc/coeffs/coeff11w.bin"), "not the coefficients");
+      // Damage one file of the copy in the data directory.
+      const file = path.join(workingCopyDir(broken.ctx.config.dataDir), "coeffs/coeff11w.bin");
+      const good = fs.readFileSync(file);
+      fs.writeFileSync(file, "not the coefficients");
       const engines = (await broken.api("GET", "/api/radio/propagation/engines")).body.engines;
-      expect(engines).toMatchObject([{ id: "voacap", name: "VOACAP", ready: false }]);
+      expect(engines).toMatchObject([{ id: "voacap", name: "VOACAP", ready: false, data: { installed: false } }]);
       expect(engines[0].problem).toContain("coeffs/coeff11w.bin");
       const { status, body } = await broken.api("POST", "/api/radio/propagation/predict", acceptance);
       expect(status).toBe(415);
-      expect(body.error.message).toContain("A propagation data file is damaged: coeffs/coeff11w.bin");
+      expect(body.error.message).toContain("VOACAP's data on this computer is damaged: coeffs/coeff11w.bin does not match its checksum");
+      expect(body.error.details).toMatchObject({ reason: "engine-data-missing" });
       expect(body.hours).toBeUndefined();
       const datasets = (await broken.api<PropagationDatasets>("GET", "/api/radio/propagation/datasets")).body.datasets;
-      expect(datasets[0]).toMatchObject({ installed: true, verified: false });
+      expect(datasets[0]).toMatchObject({ installed: false, verified: false, downloadable: true });
       // Put right, it works again without a restart.
-      fs.rmSync(copy, { recursive: true });
+      fs.writeFileSync(file, good);
       expect((await broken.api("POST", "/api/radio/propagation/predict", acceptance)).status).toBe(200);
     } finally {
       await broken.close();
