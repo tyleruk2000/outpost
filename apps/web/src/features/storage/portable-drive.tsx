@@ -4,8 +4,8 @@
  * where it goes, what goes on it, then a look at exactly what will be written.
  */
 import {
-  type ContactListResponse,
   type CollectionsResponse,
+  type ContactListResponse,
   type DocumentFacets,
   formatBytes,
   type JobDto,
@@ -150,7 +150,10 @@ function Wizard({ status, onClose, startAt }: { status: PortableStatus; onClose:
 
   const collections = useQuery({ queryKey: ["collections", "all"], queryFn: () => api.get<CollectionsResponse>("/api/collections") });
   const facets = useQuery({ queryKey: ["documents", "facets"], queryFn: () => api.get<DocumentFacets>("/api/documents/facets") });
-  const contacts = useQuery({ queryKey: ["contacts", "count"], queryFn: () => api.get<ContactListResponse>("/api/contacts", { limit: 1 }) });
+  const contacts = useQuery({
+    queryKey: ["contacts", "count"],
+    queryFn: () => api.get<ContactListResponse>("/api/contacts", { limit: 1 }),
+  });
 
   const installed = collections.data?.collections ?? [];
   // Reference collections are only readable with kiwix-serve beside them.

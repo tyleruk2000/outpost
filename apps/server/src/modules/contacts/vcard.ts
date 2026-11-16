@@ -89,8 +89,10 @@ const NAME = /^[A-Za-z0-9-]+$/;
 
 /** A file saved as UTF-16 (some Windows programs do) becomes UTF-8; a UTF-8 byte-order mark is dropped. */
 function toSingleByteFriendly(input: Buffer): Buffer {
-  if (input.length >= 2 && input[0] === 0xff && input[1] === 0xfe) return Buffer.from(new TextDecoder("utf-16le").decode(input.subarray(2)));
-  if (input.length >= 2 && input[0] === 0xfe && input[1] === 0xff) return Buffer.from(new TextDecoder("utf-16be").decode(input.subarray(2)));
+  if (input.length >= 2 && input[0] === 0xff && input[1] === 0xfe)
+    return Buffer.from(new TextDecoder("utf-16le").decode(input.subarray(2)));
+  if (input.length >= 2 && input[0] === 0xfe && input[1] === 0xff)
+    return Buffer.from(new TextDecoder("utf-16be").decode(input.subarray(2)));
   if (input.length >= 3 && input[0] === 0xef && input[1] === 0xbb && input[2] === 0xbf) return input.subarray(3);
   return input;
 }
@@ -254,7 +256,11 @@ export async function parseVcards(input: Buffer): Promise<ParsedVcards> {
 
   const finishProperty = () => {
     if (card && current !== null && !skipping) {
-      if (current.length > VCARD_LIMITS.line || card.chars + current.length > VCARD_LIMITS.card || card.lines.length >= VCARD_LIMITS.properties) {
+      if (
+        current.length > VCARD_LIMITS.line ||
+        card.chars + current.length > VCARD_LIMITS.card ||
+        card.lines.length >= VCARD_LIMITS.properties
+      ) {
         card.tooBig = true;
       } else if (current.trim()) {
         card.lines.push(current);
@@ -356,7 +362,10 @@ export async function parseVcards(input: Buffer): Promise<ParsedVcards> {
           else closeCard();
         } else if (card.nested > 0) {
           // Inside a card within the card.
-        } else if (BINARY_PROPERTIES.has(name) && (/ENCODING=B|BASE64/.test(head) || /^\s*data:/i.test(line.slice(colon + 1)) || end - at > 2000)) {
+        } else if (
+          BINARY_PROPERTIES.has(name) &&
+          (/ENCODING=B|BASE64/.test(head) || /^\s*data:/i.test(line.slice(colon + 1)) || end - at > 2000)
+        ) {
           card.binaryLeftOut += 1;
           skipping = true;
         } else {
@@ -399,12 +408,7 @@ export function unescapeText(value: string): string {
 }
 
 export function escapeText(text: string): string {
-  return text
-    .replace(/\r\n?/g, "\n")
-    .replace(/\\/g, "\\\\")
-    .replace(/\n/g, "\\n")
-    .replace(/,/g, "\\,")
-    .replace(/;/g, "\\;");
+  return text.replace(/\r\n?/g, "\n").replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/,/g, "\\,").replace(/;/g, "\\;");
 }
 
 // ── Writing ─────────────────────────────────────────────────────────────────

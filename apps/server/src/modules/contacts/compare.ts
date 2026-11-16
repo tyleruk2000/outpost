@@ -17,8 +17,8 @@ import {
   type ContactAddress,
   type ContactCompareLine,
   type ContactFields,
-  contactDisplayName,
   type ContactImportMatchReason,
+  contactDisplayName,
 } from "@outpost/shared";
 
 /** Letters that are not a plain letter with a mark on it, and so are not separated by Unicode's own folding. */
@@ -131,7 +131,8 @@ export function mergeFields(base: ContactFields, incoming: ContactFields): Conta
   const either = (a: string, b: string) => (a.trim() ? a : b);
   const baseNote = base.note.trim();
   const incomingNote = incoming.note.trim();
-  const note = !incomingNote || fold(baseNote).includes(fold(incomingNote)) ? base.note : baseNote ? `${baseNote}\n\n${incomingNote}` : incoming.note;
+  const note =
+    !incomingNote || fold(baseNote).includes(fold(incomingNote)) ? base.note : baseNote ? `${baseNote}\n\n${incomingNote}` : incoming.note;
   const hasName = Object.values(base.name).some((part) => part.trim());
   return {
     kind: base.kind,
@@ -198,7 +199,10 @@ function sides(fields: ContactFields): Array<{ label: string; values: string[]; 
     .filter(Boolean)
     .join(" ");
   const work = [fields.organisation, fields.department, fields.title].map((part) => part.trim()).filter(Boolean);
-  const radio = [fields.callsign.trim(), ...fields.channels.map((channel) => [channel.frequency, channel.mode].filter(Boolean).join(" "))].filter(Boolean);
+  const radio = [
+    fields.callsign.trim(),
+    ...fields.channels.map((channel) => [channel.frequency, channel.mode].filter(Boolean).join(" ")),
+  ].filter(Boolean);
   const line = (label: string, values: string[], keys: string[] = values.map(fold)) => ({ label, values, keys });
   return [
     line("Name", personal ? [personal] : []),
@@ -231,7 +235,11 @@ function sides(fields: ContactFields): Array<{ label: string; values: string[]; 
     ),
     line("Birthday", fields.birthday.trim() ? [fields.birthday.trim()] : []),
     line("Note", fields.note.trim() ? [fields.note.trim()] : []),
-    line("Tags", fields.tags, fields.tags.map((tag) => tag.toLowerCase())),
+    line(
+      "Tags",
+      fields.tags,
+      fields.tags.map((tag) => tag.toLowerCase()),
+    ),
     line("Radio", radio),
     line("In an emergency", fields.isEmergency ? [fields.emergencyNote.trim() || "Marked"] : []),
   ];

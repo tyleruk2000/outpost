@@ -14,14 +14,9 @@
  * mark, a callsign, frequencies) is written as `X-OUTPOST-…` lines, which another
  * Outpost reads back and a phone ignores.
  */
-import {
-  type ContactAddress,
-  type ContactFields,
-  contactDisplayName,
-  emptyContactFields,
-  type PickedContact,
-} from "@outpost/shared";
+
 import { randomUUID } from "node:crypto";
+import { type ContactAddress, type ContactFields, contactDisplayName, emptyContactFields, type PickedContact } from "@outpost/shared";
 import { fold } from "./compare.ts";
 import {
   escapeText,
@@ -236,7 +231,8 @@ export function contactFromCard(card: ParsedCard): CardContact {
         for (const part of splitValue(property.value, ",")) {
           const tag = unescapeText(part).replace(/\s+/g, " ").trim();
           // Google Contacts puts every contact in "myContacts"; it says nothing about the person.
-          if (tag && tag !== "myContacts" && !fields.tags.some((existing) => existing.toLowerCase() === tag.toLowerCase())) fields.tags.push(tag);
+          if (tag && tag !== "myContacts" && !fields.tags.some((existing) => existing.toLowerCase() === tag.toLowerCase()))
+            fields.tags.push(tag);
         }
         break;
       case "KIND":
@@ -270,7 +266,8 @@ export function contactFromCard(card: ParsedCard): CardContact {
   }
   // A label whose property was not one of ours stays with it.
   for (const property of card.properties) {
-    if (property.name === "X-ABLABEL" && !(property.group && usedLabels.has(property.group.toLowerCase()))) extra.push(propertyLine(property));
+    if (property.name === "X-ABLABEL" && !(property.group && usedLabels.has(property.group.toLowerCase())))
+      extra.push(propertyLine(property));
   }
 
   fields.note = notes.join("\n\n");
@@ -279,7 +276,12 @@ export function contactFromCard(card: ParsedCard): CardContact {
     // A card with only a formatted name (2.1 allows it, and the phone's picker gives nothing else).
     if (fields.organisation && fold(fullName) === fold(fields.organisation)) fields.kind = "organisation";
     else fields.name.given = fullName;
-  } else if (hasName && fullName && fold(fullName) !== fold(contactDisplayName({ ...fields, kind: "person" })) && fold(fullName) !== fold(fields.organisation)) {
+  } else if (
+    hasName &&
+    fullName &&
+    fold(fullName) !== fold(contactDisplayName({ ...fields, kind: "person" })) &&
+    fold(fullName) !== fold(fields.organisation)
+  ) {
     // The card names the person one way and spells the parts another. The parts are what is shown; the other is kept.
     extra.push(`X-OUTPOST-FULL-NAME:${escapeText(fullName)}`);
   }
@@ -352,7 +354,8 @@ export function cardLines(contact: CardContact & { updatedAt: number }, version:
   };
 
   for (const phone of fields.phones) labelled("TEL", escapeText(phone.value), phone.label, PHONE_LABEL_TYPES);
-  for (const email of fields.emails) labelled("EMAIL", escapeText(email.value), email.label, PLAIN_LABEL_TYPES, version === "3.0" ? ["INTERNET"] : []);
+  for (const email of fields.emails)
+    labelled("EMAIL", escapeText(email.value), email.label, PLAIN_LABEL_TYPES, version === "3.0" ? ["INTERNET"] : []);
   for (const address of fields.addresses) {
     const value = ["", "", address.street, address.locality, address.region, address.postcode, address.country].map(escapeText).join(";");
     labelled("ADR", value, address.label, PLAIN_LABEL_TYPES);
@@ -402,7 +405,15 @@ const OTHER_NAMES: Record<string, string> = {
   BDAY: "Another birthday",
 };
 /** Lines that are kept for the phone's sake and mean nothing to a reader. */
-const NOT_SHOWN = new Set(["X-ABUID", "X-ABADR", "X-ABLABEL", "X-IMAGETYPE", "X-IMAGEHASH", "X-ADDRESSBOOKSERVER-KIND", "X-APPLE-SUBLOCALITY"]);
+const NOT_SHOWN = new Set([
+  "X-ABUID",
+  "X-ABADR",
+  "X-ABLABEL",
+  "X-IMAGETYPE",
+  "X-IMAGEHASH",
+  "X-ADDRESSBOOKSERVER-KIND",
+  "X-APPLE-SUBLOCALITY",
+]);
 
 /** The kept lines as "what: value", for the screen. */
 export function otherFieldsOf(extra: string[]): string[] {

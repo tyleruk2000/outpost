@@ -17,15 +17,15 @@ import {
   CONTACT_LIMITS,
   type ContactDto,
   type ContactFields,
+  type ContactImportApplyRequest,
+  type ContactImportChoice,
+  type ContactImportPreview,
+  type ContactImportResult,
   type ContactListResponse,
   type ContactSource,
   type ContactSummary,
   contactDisplayName,
   emptyContactFields,
-  type ContactImportApplyRequest,
-  type ContactImportChoice,
-  type ContactImportPreview,
-  type ContactImportResult,
   type PickedContact,
 } from "@outpost/shared";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
@@ -35,16 +35,7 @@ import { badRequest, conflict, notFound } from "../../core/errors.ts";
 import { newId, randomToken, sha256Hex } from "../../core/ids.ts";
 import { contactPages, contacts, contactTags, markers, notes } from "../../db/schema.ts";
 import { type CardContact, contactFromCard, contactFromPicked, newUid, otherFieldsOf, vcardOf } from "./card.ts";
-import {
-  addsNothing,
-  compareLines,
-  createMatchIndex,
-  describeAdditions,
-  fold,
-  type Known,
-  mergeFields,
-  replaceFields,
-} from "./compare.ts";
+import { addsNothing, compareLines, createMatchIndex, describeAdditions, fold, type Known, mergeFields, replaceFields } from "./compare.ts";
 import { parseVcards, VcardError } from "./vcard.ts";
 
 type Row = typeof contacts.$inferSelect;
@@ -65,7 +56,9 @@ const lines = (max: number, what: string) =>
 const list = <T extends z.ZodType>(item: T, what: string, max: number = L.values) =>
   z.array(item).max(max, `A contact can have at most ${max} ${what}.`);
 const labelled = (what: string) =>
-  z.object({ value: oneLine(L.value, what), label: oneLine(L.label, "A label").default("") }).refine((entry) => entry.value !== "", `${what} is empty.`);
+  z
+    .object({ value: oneLine(L.value, what), label: oneLine(L.label, "A label").default("") })
+    .refine((entry) => entry.value !== "", `${what} is empty.`);
 
 export const contactFieldsSchema = z.object({
   kind: z.enum(["person", "organisation"]),
@@ -117,7 +110,9 @@ function tidy(fields: ContactFields): ContactFields {
   for (const tag of fields.tags) if (tag && !tags.some((existing) => existing.toLowerCase() === tag.toLowerCase())) tags.push(tag);
   return {
     ...fields,
-    addresses: fields.addresses.filter((address) => address.street || address.locality || address.region || address.postcode || address.country),
+    addresses: fields.addresses.filter(
+      (address) => address.street || address.locality || address.region || address.postcode || address.country,
+    ),
     related: fields.related.filter((related) => related.name),
     channels: fields.channels.filter((channel) => channel.frequency || channel.mode),
     tags,
@@ -168,13 +163,21 @@ function fieldsFrom(data: unknown, tags: string[]): ContactFields {
   const empty = emptyContactFields();
   const text = (value: unknown) => (typeof value === "string" ? value : "");
   const rows = <T>(value: unknown, read: (item: Record<string, unknown>) => T): T[] =>
-    Array.isArray(value) ? value.filter((item) => item && typeof item === "object").map((item) => read(item as Record<string, unknown>)) : [];
+    Array.isArray(value)
+      ? value.filter((item) => item && typeof item === "object").map((item) => read(item as Record<string, unknown>))
+      : [];
   const valueRows = (value: unknown) => rows(value, (item) => ({ value: text(item.value), label: text(item.label) }));
   const name = (stored.name ?? {}) as Record<string, unknown>;
   return {
     ...empty,
     kind: stored.kind === "organisation" ? "organisation" : "person",
-    name: { prefix: text(name.prefix), given: text(name.given), additional: text(name.additional), family: text(name.family), suffix: text(name.suffix) },
+    name: {
+      prefix: text(name.prefix),
+      given: text(name.given),
+      additional: text(name.additional),
+      family: text(name.family),
+      suffix: text(name.suffix),
+    },
     nickname: text(stored.nickname),
     organisation: text(stored.organisation),
     department: text(stored.department),
@@ -289,9 +292,18 @@ export function createContactsService(ctx: AppContext): ContactsService {
   function toDto(row: Row): ContactDto {
     const fields = fieldsFrom(row.data, tagsOf(row.id));
     const place = row.markerId
-      ? db.select({ id: markers.id, name: markers.name, lat: markers.lat, lon: markers.lon }).from(markers).where(eq(markers.id, row.markerId)).get()
+      ? db
+          .select({ id: markers.id, name: markers.name, lat: markers.lat, lon: markers.lon })
+          .from(markers)
+          .where(eq(markers.id, row.markerId))
+          .get()
       : undefined;
-    const linked = db.select({ noteId: contactPages.noteId }).from(contactPages).where(eq(contactPages.contactId, row.id)).orderBy(contactPages.position).all();
+    const linked = db
+      .select({ noteId: contactPages.noteId })
+      .from(contactPages)
+      .where(eq(contactPages.contactId, row.id))
+      .orderBy(contactPages.position)
+      .all();
     const pages =
       linked.length === 0
         ? []
@@ -344,7 +356,9 @@ export function createContactsService(ctx: AppContext): ContactsService {
     const facts = [
       ...fields.phones.map((phone) => `${phone.label || "Phone"}: ${phone.value}`),
       ...fields.emails.map((email) => `${email.label || "Email"}: ${email.value}`),
-      ...fields.addresses.map((address) => [address.street, address.locality, address.region, address.postcode, address.country].filter(Boolean).join(", ")),
+      ...fields.addresses.map((address) =>
+        [address.street, address.locality, address.region, address.postcode, address.country].filter(Boolean).join(", "),
+      ),
       fields.callsign ? `Callsign: ${fields.callsign}` : "",
       ...fields.channels.map((channel) => [channel.frequency, channel.mode].filter(Boolean).join(" ")),
       fields.emergencyNote,
@@ -354,11 +368,17 @@ export function createContactsService(ctx: AppContext): ContactsService {
       kind: "contact",
       entityId: row.id,
       title: row.displayName,
-      subtitle: [fields.title, fields.kind === "person" ? fields.organisation : fields.department].filter(Boolean).join(", ") || fields.phones[0]?.value || null,
+      subtitle:
+        [fields.title, fields.kind === "person" ? fields.organisation : fields.department].filter(Boolean).join(", ") ||
+        fields.phones[0]?.value ||
+        null,
       collection: "Contacts",
       url: `/contacts/${row.id}`,
       tags: fields.tags,
-      sections: [...(facts.length > 0 ? [{ text: facts.join("\n") }] : []), ...(fields.note ? [{ heading: "Note", text: fields.note }] : [])],
+      sections: [
+        ...(facts.length > 0 ? [{ text: facts.join("\n") }] : []),
+        ...(fields.note ? [{ heading: "Note", text: fields.note }] : []),
+      ],
     });
   }
 
@@ -374,7 +394,7 @@ export function createContactsService(ctx: AppContext): ContactsService {
       if (found.length !== unique.length) throw badRequest("One of those pages no longer exists. Choose the pages again.");
     }
     db.delete(contactPages).where(eq(contactPages.contactId, id)).run();
-    unique.forEach((noteId, position) => db.insert(contactPages).values({ contactId: id, noteId, position }).run());
+    for (const [position, noteId] of unique.entries()) db.insert(contactPages).values({ contactId: id, noteId, position }).run();
   }
 
   function checkMarker(markerId: string | null | undefined): void {
@@ -406,7 +426,10 @@ export function createContactsService(ctx: AppContext): ContactsService {
       source: more.source,
       updatedAt: now,
     };
-    if (more.isNew) db.insert(contacts).values({ id, ...values, createdAt: more.createdAt }).run();
+    if (more.isNew)
+      db.insert(contacts)
+        .values({ id, ...values, createdAt: more.createdAt })
+        .run();
     else db.update(contacts).set(values).where(eq(contacts.id, id)).run();
     setTags(id, tags);
     written.delete(id);
@@ -424,7 +447,10 @@ export function createContactsService(ctx: AppContext): ContactsService {
   function cardOf(row: Row): { updatedAt: number; etag: string; body: string } {
     const cached = written.get(row.id);
     if (cached && cached.updatedAt === row.updatedAt) return cached;
-    const body = vcardOf({ uid: row.uid, fields: fieldsFrom(row.data, tagsOf(row.id)), extra: extraLines(row.extra), updatedAt: row.updatedAt }, "3.0");
+    const body = vcardOf(
+      { uid: row.uid, fields: fieldsFrom(row.data, tagsOf(row.id)), extra: extraLines(row.extra), updatedAt: row.updatedAt },
+      "3.0",
+    );
     const entry = { updatedAt: row.updatedAt, etag: sha256Hex(body).slice(0, 32), body };
     written.set(row.id, entry);
     return entry;
@@ -468,7 +494,10 @@ export function createContactsService(ctx: AppContext): ContactsService {
       const match = matches.find(card.uid, card.fields);
       if (!match) {
         entry.cards.push({ index: position, card, state: "fresh" });
-        const detail = [card.fields.organisation && card.fields.kind === "person" ? card.fields.organisation : "", card.fields.phones[0]?.value ?? card.fields.emails[0]?.value ?? ""]
+        const detail = [
+          card.fields.organisation && card.fields.kind === "person" ? card.fields.organisation : "",
+          card.fields.phones[0]?.value ?? card.fields.emails[0]?.value ?? "",
+        ]
           .filter(Boolean)
           .join(", ");
         result.fresh.push({ index: position, displayName: contactDisplayName(card.fields), detail });
@@ -502,7 +531,8 @@ export function createContactsService(ctx: AppContext): ContactsService {
   /** A card as a contact Outpost can keep, or the reason it cannot. */
   function checked(card: CardContact): CardContact | string {
     const parsed = contactFieldsSchema.safeParse(card.fields);
-    if (!parsed.success) return `${parsed.error.issues[0]?.message ?? "A field is not one Outpost can keep."} It was left out whole, so that nothing is cut short.`;
+    if (!parsed.success)
+      return `${parsed.error.issues[0]?.message ?? "A field is not one Outpost can keep."} It was left out whole, so that nothing is cut short.`;
     const fields = tidy(parsed.data);
     if (!hasSomething(fields)) return "It has no name, number or address.";
     return { uid: card.uid, fields, extra: card.extra.filter((line) => line.length <= 4000).slice(0, 200) };
@@ -514,7 +544,10 @@ export function createContactsService(ctx: AppContext): ContactsService {
     list(query) {
       const conditions: string[] = [];
       const values: unknown[] = [];
-      for (const word of fold(query.q ?? "").split(" ").filter(Boolean).slice(0, 8)) {
+      for (const word of fold(query.q ?? "")
+        .split(" ")
+        .filter(Boolean)
+        .slice(0, 8)) {
         conditions.push("c.search_text LIKE ? ESCAPE '\\'");
         values.push(`%${word.replace(/[\\%_]/g, "\\$&")}%`);
       }
@@ -543,19 +576,45 @@ export function createContactsService(ctx: AppContext): ContactsService {
       const ids = sqlite
         .prepare(`SELECT c.id FROM contacts c ${where} ORDER BY c.is_emergency DESC, c.sort_key, c.id LIMIT ? OFFSET ?`)
         .all(...values, query.limit, query.offset) as Array<{ id: string }>;
-      const rows = ids.length === 0 ? [] : db.select().from(contacts).where(inArray(contacts.id, ids.map((row) => row.id))).all();
+      const rows =
+        ids.length === 0
+          ? []
+          : db
+              .select()
+              .from(contacts)
+              .where(
+                inArray(
+                  contacts.id,
+                  ids.map((row) => row.id),
+                ),
+              )
+              .all();
       const byId = new Map(rows.map((row) => [row.id, row]));
       const tagRows =
         ids.length === 0
           ? []
-          : db.select().from(contactTags).where(inArray(contactTags.contactId, ids.map((row) => row.id))).all();
+          : db
+              .select()
+              .from(contactTags)
+              .where(
+                inArray(
+                  contactTags.contactId,
+                  ids.map((row) => row.id),
+                ),
+              )
+              .all();
       const tagsById = new Map<string, string[]>();
       for (const tag of tagRows) tagsById.set(tag.contactId, [...(tagsById.get(tag.contactId) ?? []), tag.name]);
       const tags = sqlite
         .prepare("SELECT min(name) AS name, count(*) AS count FROM contact_tags GROUP BY name COLLATE NOCASE ORDER BY name COLLATE NOCASE")
         .all() as Array<{ name: string; count: number }>;
       return {
-        contacts: ids.map(({ id }) => toSummary(byId.get(id)!, (tagsById.get(id) ?? []).sort((a, b) => a.localeCompare(b)))),
+        contacts: ids.map(({ id }) =>
+          toSummary(
+            byId.get(id)!,
+            (tagsById.get(id) ?? []).sort((a, b) => a.localeCompare(b)),
+          ),
+        ),
         total,
         all: count(),
         emergency: (sqlite.prepare("SELECT count(*) AS n FROM contacts WHERE is_emergency = 1").get() as { n: number }).n,
@@ -573,7 +632,14 @@ export function createContactsService(ctx: AppContext): ContactsService {
       checkMarker(markerId);
       const id = newId();
       const row = sqlite.transaction(() => {
-        const made = write(id, fields, { uid: newUid(), extra: [], source: "manual", markerId: markerId ?? null, createdAt: Date.now(), isNew: true });
+        const made = write(id, fields, {
+          uid: newUid(),
+          extra: [],
+          source: "manual",
+          markerId: markerId ?? null,
+          createdAt: Date.now(),
+          isNew: true,
+        });
         if (pageIds) setPages(id, pageIds);
         return made;
       })();
@@ -585,9 +651,12 @@ export function createContactsService(ctx: AppContext): ContactsService {
       const current = rowOf(id);
       const { markerId, pageIds, baseUpdatedAt, ...given } = patch;
       if (baseUpdatedAt !== undefined && baseUpdatedAt !== current.updatedAt) {
-        throw conflict("This contact was changed somewhere else after you opened it. Nothing was saved. Open it again to see how it is now.", {
-          updatedAt: current.updatedAt,
-        });
+        throw conflict(
+          "This contact was changed somewhere else after you opened it. Nothing was saved. Open it again to see how it is now.",
+          {
+            updatedAt: current.updatedAt,
+          },
+        );
       }
       const fields = tidy(contactFieldsSchema.parse({ ...fieldsFrom(current.data, tagsOf(id)), ...given }));
       if (!hasSomething(fields)) throw badRequest("Give the contact a name, a number or an address.");
@@ -633,11 +702,27 @@ export function createContactsService(ctx: AppContext): ContactsService {
       }
       if (rows.length === 0) throw notFound("Any contact to export");
       const body = rows
-        .map((row) => vcardOf({ uid: row.uid, fields: fieldsFrom(row.data, tagsOf(row.id)), extra: extraLines(row.extra), updatedAt: row.updatedAt }, version))
+        .map((row) =>
+          vcardOf(
+            { uid: row.uid, fields: fieldsFrom(row.data, tagsOf(row.id)), extra: extraLines(row.extra), updatedAt: row.updatedAt },
+            version,
+          ),
+        )
         .join("");
       const stampOf = new Date().toISOString().slice(0, 10);
-      const one = rows.length === 1 ? rows[0]!.displayName.replace(/[^\p{L}\p{N} _.-]+/gu, " ").replace(/\s+/g, " ").trim().slice(0, 60) : "";
-      const filename = one ? `${one}.vcf` : selection.emergency ? `outpost-emergency-contacts-${stampOf}.vcf` : `outpost-contacts-${stampOf}.vcf`;
+      const one =
+        rows.length === 1
+          ? rows[0]!.displayName
+              .replace(/[^\p{L}\p{N} _.-]+/gu, " ")
+              .replace(/\s+/g, " ")
+              .trim()
+              .slice(0, 60)
+          : "";
+      const filename = one
+        ? `${one}.vcf`
+        : selection.emergency
+          ? `outpost-emergency-contacts-${stampOf}.vcf`
+          : `outpost-contacts-${stampOf}.vcf`;
       return { filename, body, count: rows.length };
     },
 
@@ -674,10 +759,21 @@ export function createContactsService(ctx: AppContext): ContactsService {
 
     async applyImport(request) {
       const entry = staged.get(request.token);
-      if (!entry) throw conflict("That file is no longer waiting: it was read more than half an hour ago, or Outpost has restarted. Choose it again.");
+      if (!entry)
+        throw conflict(
+          "That file is no longer waiting: it was read more than half an hour ago, or Outpost has restarted. Choose it again.",
+        );
       staged.delete(request.token);
       const leaveOut = new Set(request.leaveOut ?? []);
-      const result: ContactImportResult = { added: 0, merged: 0, replaced: 0, kept: 0, alreadyHere: entry.alreadyHere, leftOut: 0, overLimit: 0 };
+      const result: ContactImportResult = {
+        added: 0,
+        merged: 0,
+        replaced: 0,
+        kept: 0,
+        alreadyHere: entry.alreadyHere,
+        leftOut: 0,
+        overLimit: 0,
+      };
       let room = Math.max(0, L.contacts - count());
 
       const add = (card: CardContact) => {
@@ -687,7 +783,14 @@ export function createContactsService(ctx: AppContext): ContactsService {
         }
         // A card whose identity is taken (it was chosen to be kept beside the one that has it) gets its own.
         const taken = db.select({ id: contacts.id }).from(contacts).where(eq(contacts.uid, card.uid)).get();
-        write(newId(), card.fields, { uid: taken ? newUid() : card.uid, extra: card.extra, source: entry.source, markerId: null, createdAt: Date.now(), isNew: true });
+        write(newId(), card.fields, {
+          uid: taken ? newUid() : card.uid,
+          extra: card.extra,
+          source: entry.source,
+          markerId: null,
+          createdAt: Date.now(),
+          isNew: true,
+        });
         room -= 1;
         result.added += 1;
       };
@@ -751,7 +854,12 @@ export function createContactsService(ctx: AppContext): ContactsService {
     },
 
     cards() {
-      return db.select().from(contacts).orderBy(contacts.id).all().map((row) => ({ id: row.id, etag: cardOf(row).etag }));
+      return db
+        .select()
+        .from(contacts)
+        .orderBy(contacts.id)
+        .all()
+        .map((row) => ({ id: row.id, etag: cardOf(row).etag }));
     },
 
     card(id) {

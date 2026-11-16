@@ -530,7 +530,9 @@ export const contacts = sqliteTable(
     id: id(),
     /** The card's own identity (vCard UID): how a file brought in twice is known to hold the same contact. */
     uid: text("uid").notNull(),
-    kind: text("kind", { enum: ["person", "organisation"] }).notNull().default("person"),
+    kind: text("kind", { enum: ["person", "organisation"] })
+      .notNull()
+      .default("person"),
     displayName: text("display_name").notNull(),
     /** Lower case with accents folded, family name first: what the list is ordered by. */
     sortKey: text("sort_key").notNull(),
@@ -543,7 +545,9 @@ export const contacts = sqliteTable(
     markerId: text("marker_id"),
     /** vCard lines Outpost has no field for, one to a line as they came, so that an export gives them back. */
     extra: text("extra").notNull().default(""),
-    source: text("source", { enum: ["manual", "file", "picker"] }).notNull().default("manual"),
+    source: text("source", { enum: ["manual", "file", "picker"] })
+      .notNull()
+      .default("manual"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

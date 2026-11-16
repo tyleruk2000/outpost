@@ -28,7 +28,8 @@ afterEach(async () => {
   await app.close();
 });
 
-const vcf = (...cards: string[][]) => Buffer.from(cards.map((lines) => ["BEGIN:VCARD", "VERSION:3.0", ...lines, "END:VCARD", ""].join("\r\n")).join(""));
+const vcf = (...cards: string[][]) =>
+  Buffer.from(cards.map((lines) => ["BEGIN:VCARD", "VERSION:3.0", ...lines, "END:VCARD", ""].join("\r\n")).join(""));
 
 function upload(file: Buffer, name = "contacts.vcf") {
   const boundary = "----outpost-test-boundary";
@@ -65,7 +66,10 @@ describe("keeping contacts", () => {
       tags: ["Family", "family", "Has a key"],
       note: "Line one\r\nLine two",
       callsign: "M0XYZ",
-      channels: [{ frequency: "145.500 MHz", mode: "FM" }, { frequency: "", mode: "" }],
+      channels: [
+        { frequency: "145.500 MHz", mode: "FM" },
+        { frequency: "", mode: "" },
+      ],
     });
     expect(made.displayName).toBe("Maya Okafor");
     expect(made.phones).toEqual([
@@ -83,7 +87,12 @@ describe("keeping contacts", () => {
       baseUpdatedAt: made.updatedAt,
     });
     expect(changed.status).toBe(200);
-    expect(changed.body.contact).toMatchObject({ isEmergency: true, emergencyNote: "Has a spare key", callsign: "M0XYZ", displayName: "Maya Okafor" });
+    expect(changed.body.contact).toMatchObject({
+      isEmergency: true,
+      emergencyNote: "Has a spare key",
+      callsign: "M0XYZ",
+      displayName: "Maya Okafor",
+    });
     // What was not sent is as it was.
     expect(changed.body.contact.phones).toHaveLength(2);
 
@@ -95,7 +104,10 @@ describe("keeping contacts", () => {
   it("does not save over a change made somewhere else", async () => {
     const made = await create(named("Sam", "Whitlock"));
     await new Promise((resolve) => setTimeout(resolve, 3));
-    const first = await app.api<{ contact: ContactDto }>("PATCH", `/api/contacts/${made.id}`, { nickname: "Sammy", baseUpdatedAt: made.updatedAt });
+    const first = await app.api<{ contact: ContactDto }>("PATCH", `/api/contacts/${made.id}`, {
+      nickname: "Sammy",
+      baseUpdatedAt: made.updatedAt,
+    });
     expect(first.status).toBe(200);
     const stale = await app.api("PATCH", `/api/contacts/${made.id}`, { nickname: "Samuel", baseUpdatedAt: made.updatedAt });
     expect(stale.status).toBe(409);
@@ -108,18 +120,37 @@ describe("keeping contacts", () => {
     const long = await app.api("POST", "/api/contacts", { ...named("A", "B"), note: "x".repeat(20_001) });
     expect(long.status).toBe(400);
     expect(long.body.error.message).toMatch(/A note can be at most 20,000 characters/);
-    const many = await app.api("POST", "/api/contacts", { ...named("A", "B"), phones: Array.from({ length: 31 }, (_unused, i) => ({ value: `0${i}` })) });
+    const many = await app.api("POST", "/api/contacts", {
+      ...named("A", "B"),
+      phones: Array.from({ length: 31 }, (_unused, i) => ({ value: `0${i}` })),
+    });
     expect(many.body.error.message).toMatch(/at most 30 phone numbers/);
   });
 
   it("lists the marked contacts first, then by family name, and finds by name, number, tag and callsign", async () => {
     await create({ ...named("Zoë", "Łukasiewicz"), phones: [{ value: "+44 7700 900456", label: "mobile" }], tags: ["Neighbours"] });
-    await create({ ...named("Adaeze", "Okafor"), organisation: "Fell Road Surgery", title: "GP", emails: [{ value: "ada@fellroad.example" }] });
-    await create({ kind: "organisation", organisation: "Borrowdale Mountain Rescue", phones: [{ value: "01632 960999", label: "main" }], isEmergency: true, callsign: "GB3MR" });
+    await create({
+      ...named("Adaeze", "Okafor"),
+      organisation: "Fell Road Surgery",
+      title: "GP",
+      emails: [{ value: "ada@fellroad.example" }],
+    });
+    await create({
+      kind: "organisation",
+      organisation: "Borrowdale Mountain Rescue",
+      phones: [{ value: "01632 960999", label: "main" }],
+      isEmergency: true,
+      callsign: "GB3MR",
+    });
     await create({ ...named("Tom", "Abbott"), tags: ["neighbours"], isEmergency: true });
 
     const all = await list();
-    expect(all.contacts.map((contact) => contact.displayName)).toEqual(["Tom Abbott", "Borrowdale Mountain Rescue", "Zoë Łukasiewicz", "Adaeze Okafor"]);
+    expect(all.contacts.map((contact) => contact.displayName)).toEqual([
+      "Tom Abbott",
+      "Borrowdale Mountain Rescue",
+      "Zoë Łukasiewicz",
+      "Adaeze Okafor",
+    ]);
     expect(all.contacts.map((contact) => contact.initial)).toEqual(["A", "B", "L", "O"]);
     expect(all).toMatchObject({ total: 4, all: 4, emergency: 2 });
     expect(all.tags).toEqual([{ name: "Neighbours", count: 2 }]);
@@ -143,10 +174,22 @@ describe("keeping contacts", () => {
   });
 
   it("is found by the search across everything, and leaves it when removed", async () => {
-    const made = await create({ ...named("Ibrahim", "Al-Sayed"), note: "Keeps the key to the pump house.", phones: [{ value: "01632 960321" }], tags: ["Water"] });
-    const search = async (q: string) => (await app.api("GET", `/api/search?q=${encodeURIComponent(q)}`)).body.results as Array<Record<string, unknown>>;
+    const made = await create({
+      ...named("Ibrahim", "Al-Sayed"),
+      note: "Keeps the key to the pump house.",
+      phones: [{ value: "01632 960321" }],
+      tags: ["Water"],
+    });
+    const search = async (q: string) =>
+      (await app.api("GET", `/api/search?q=${encodeURIComponent(q)}`)).body.results as Array<Record<string, unknown>>;
     const byNote = await search("pump house");
-    expect(byNote[0]).toMatchObject({ kind: "contact", title: "Ibrahim Al-Sayed", url: `/contacts/${made.id}`, collection: "Contacts", tags: ["Water"] });
+    expect(byNote[0]).toMatchObject({
+      kind: "contact",
+      title: "Ibrahim Al-Sayed",
+      url: `/contacts/${made.id}`,
+      collection: "Contacts",
+      tags: ["Water"],
+    });
     expect((await search("Al-Sayed"))[0]).toMatchObject({ kind: "contact" });
     await app.api("PATCH", `/api/contacts/${made.id}`, { note: "Keeps the key to the boat shed." });
     expect(await search("pump house")).toEqual([]);
@@ -209,7 +252,10 @@ describe("bringing contacts in from a file", () => {
     // The same person from another phone, with one of the two things Outpost already has.
     const less = await preview(app, vcf(["UID:other-phone", "N:Okafor;Maya;;;", "FN:Maya Okafor", "TEL:+44 7700 900123"]));
     expect(less).toMatchObject({ alreadyHere: 1, fresh: [], duplicates: [] });
-    expect((await app.api<ContactImportResult>("POST", "/api/contacts/import/apply", { token: less.token })).body).toMatchObject({ added: 0, alreadyHere: 1 });
+    expect((await app.api<ContactImportResult>("POST", "/api/contacts/import/apply", { token: less.token })).body).toMatchObject({
+      added: 0,
+      alreadyHere: 1,
+    });
   });
 
   it("shows a contact that looks like one already here beside it, and changes nothing unless asked", async () => {
@@ -220,7 +266,15 @@ describe("bringing contacts in from a file", () => {
 
     const file = vcf(
       // The same card with a new number and a note: the phone's copy has moved on.
-      ["UID:card-maya", "N:Okafor;Maya;;;", "FN:Maya Okafor", "TEL;TYPE=CELL:07700 900123", "TEL;TYPE=WORK:01632 960200", "NOTE:Night shifts", "X-ABDATE:2020-01-01"],
+      [
+        "UID:card-maya",
+        "N:Okafor;Maya;;;",
+        "FN:Maya Okafor",
+        "TEL;TYPE=CELL:07700 900123",
+        "TEL;TYPE=WORK:01632 960200",
+        "NOTE:Night shifts",
+        "X-ABDATE:2020-01-01",
+      ],
       // Another card for Sam, same name and number, written the other way round.
       ["UID:someone-elses-phone", "N:Whitlock;Sam;;;", "FN:Whitlock, Sam", "TEL:+44 1632 960777", "EMAIL:sam@whitlock.example"],
       // Same name as Sam and nothing else in common.
@@ -297,7 +351,10 @@ describe("bringing contacts in from a file", () => {
     expect(picked.body.fresh.map((entry) => entry.displayName)).toEqual(["Layla Haddad"]);
     expect(picked.body.duplicates.map((entry) => entry.reason)).toEqual(["name-and-number"]);
     expect(picked.body.unreadable).toEqual([{ position: 3, reason: "It has no name, number or address." }]);
-    const applied = await app.api<ContactImportResult>("POST", "/api/contacts/import/apply", { token: picked.body.token, choices: { "0": "merge" } });
+    const applied = await app.api<ContactImportResult>("POST", "/api/contacts/import/apply", {
+      token: picked.body.token,
+      choices: { "0": "merge" },
+    });
     expect(applied.body).toMatchObject({ added: 1, merged: 1 });
     const layla = (await list("?q=layla")).contacts[0]!;
     expect((await app.api("GET", `/api/contacts/${layla.id}`)).body.contact.source).toBe("picker");
@@ -324,10 +381,16 @@ describe("sending contacts out", () => {
     expect(response.headers["content-disposition"]).toMatch(/^attachment; filename="outpost-contacts-\d{4}-\d{2}-\d{2}\.vcf"/);
     expect(response.body.match(/BEGIN:VCARD/g)).toHaveLength(2);
 
-    const marked = await app.app.inject({ method: "GET", url: "/api/contacts/export.vcf?emergency=1&version=4.0", headers: { host: "localhost" } });
+    const marked = await app.app.inject({
+      method: "GET",
+      url: "/api/contacts/export.vcf?emergency=1&version=4.0",
+      headers: { host: "localhost" },
+    });
     expect(marked.body.match(/BEGIN:VCARD/g)).toHaveLength(1);
     expect(marked.body).toContain("VERSION:4.0");
-    expect((await app.app.inject({ method: "GET", url: "/api/contacts/export.vcf?tag=nobody", headers: { host: "localhost" } })).statusCode).toBe(404);
+    expect(
+      (await app.app.inject({ method: "GET", url: "/api/contacts/export.vcf?tag=nobody", headers: { host: "localhost" } })).statusCode,
+    ).toBe(404);
 
     // Into an empty Outpost and out again: nothing gained, nothing lost.
     const other = await createTestApp();
@@ -336,7 +399,12 @@ describe("sending contacts out", () => {
       expect(found.fresh).toHaveLength(2);
       await other.api("POST", "/api/contacts/import/apply", { token: found.token });
       const names = (await other.api<ContactListResponse>("GET", "/api/contacts")).body.contacts;
-      const maya = (await other.api<{ contact: ContactDto }>("GET", `/api/contacts/${names.find((contact) => contact.displayName === "Maya Okafor")!.id}`)).body.contact;
+      const maya = (
+        await other.api<{ contact: ContactDto }>(
+          "GET",
+          `/api/contacts/${names.find((contact) => contact.displayName === "Maya Okafor")!.id}`,
+        )
+      ).body.contact;
       expect(maya).toMatchObject({
         phones: [{ value: "07700 900123", label: "boat shed" }],
         tags: ["Family"],
@@ -373,7 +441,12 @@ describe("backups, drives and erasing", () => {
       await target.app.close();
       target = await createTestApp({}, dir);
       const restored = (await target.api<{ contact: ContactDto }>("GET", `/api/contacts/${made.id}`)).body.contact;
-      expect(restored).toMatchObject({ displayName: "Maya Okafor", tags: ["Family"], isEmergency: true, phones: [{ value: "07700 900123", label: "" }] });
+      expect(restored).toMatchObject({
+        displayName: "Maya Okafor",
+        tags: ["Family"],
+        isEmergency: true,
+        phones: [{ value: "07700 900123", label: "" }],
+      });
       expect((await target.api("GET", "/api/search?q=Okafor")).body.results[0]).toMatchObject({ kind: "contact" });
     } finally {
       await target.app.close();
@@ -387,7 +460,15 @@ describe("backups, drives and erasing", () => {
     const drive = async (contacts: boolean) => {
       const file = path.join(app.dir, `drive-${contacts}.db`);
       await app.ctx.sqlite.backup(file);
-      prepareDriveDatabase(file, { locationId: "drive-location", locationName: "This drive", locationPath: "/drive/library", collectionIds: [], documentIds: [], madeFrom: "home", contacts });
+      prepareDriveDatabase(file, {
+        locationId: "drive-location",
+        locationName: "This drive",
+        locationPath: "/drive/library",
+        collectionIds: [],
+        documentIds: [],
+        madeFrom: "home",
+        contacts,
+      });
       const db = new Database(file, { readonly: true });
       try {
         const count = (sql: string) => (db.prepare(sql).get() as { n: number }).n;

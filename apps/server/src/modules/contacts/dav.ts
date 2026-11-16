@@ -157,13 +157,16 @@ function response(href: string, has: Props, request: DavRequest, hidden: string[
     }
   }
   let out = `<D:response><D:href>${escapeXml(href)}</D:href>`;
-  if (found.length > 0 || missing.length === 0) out += `<D:propstat><D:prop>${found.join("")}</D:prop><D:status>HTTP/1.1 200 OK</D:status></D:propstat>`;
+  if (found.length > 0 || missing.length === 0)
+    out += `<D:propstat><D:prop>${found.join("")}</D:prop><D:status>HTTP/1.1 200 OK</D:status></D:propstat>`;
   if (missing.length > 0) out += `<D:propstat><D:prop>${missing.join("")}</D:prop><D:status>HTTP/1.1 404 Not Found</D:status></D:propstat>`;
   return `${out}</D:response>`;
 }
 
-const gone = (href: string): string => `<D:response><D:href>${escapeXml(href)}</D:href><D:status>HTTP/1.1 404 Not Found</D:status></D:response>`;
-const multistatus = (responses: string[]): string => `<?xml version="1.0" encoding="utf-8"?>\n<D:multistatus ${ROOT_ATTRIBUTES}>${responses.join("")}</D:multistatus>`;
+const gone = (href: string): string =>
+  `<D:response><D:href>${escapeXml(href)}</D:href><D:status>HTTP/1.1 404 Not Found</D:status></D:response>`;
+const multistatus = (responses: string[]): string =>
+  `<?xml version="1.0" encoding="utf-8"?>\n<D:multistatus ${ROOT_ATTRIBUTES}>${responses.join("")}</D:multistatus>`;
 const href = (path: string) => `<D:href>${path}</D:href>`;
 const READ_ONLY = "<D:privilege><D:read/></D:privilege><D:privilege><D:read-current-user-privilege-set/></D:privilege>";
 
@@ -311,11 +314,7 @@ export async function registerContactsDav(app: FastifyInstance, ctx: AppContext,
       }
       return send(reply, 207, multistatus(responses));
     }
-    return send(
-      reply,
-      403,
-      `<?xml version="1.0" encoding="utf-8"?>\n<D:error ${ROOT_ATTRIBUTES}><D:supported-report/></D:error>`,
-    );
+    return send(reply, 403, `<?xml version="1.0" encoding="utf-8"?>\n<D:error ${ROOT_ATTRIBUTES}><D:supported-report/></D:error>`);
   }
 
   async function handle(request: FastifyRequest, reply: FastifyReply) {
@@ -363,7 +362,9 @@ export async function registerContactsDav(app: FastifyInstance, ctx: AppContext,
         return reply
           .type("text/plain; charset=utf-8")
           .header("DAV", DAV_HEADER)
-          .send("This is Outpost's address book for phones (CardDAV). Give this address to a contacts app; there is nothing to read here in a browser.\n");
+          .send(
+            "This is Outpost's address book for phones (CardDAV). Give this address to a contacts app; there is nothing to read here in a browser.\n",
+          );
       }
       return reply.status(404).send();
     }

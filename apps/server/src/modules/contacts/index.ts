@@ -129,18 +129,23 @@ export async function registerContacts(app: FastifyInstance, ctx: AppContext): P
 
   // ── Phones that subscribe ──
 
-  app.get("/api/contacts/phones", async (): Promise<ContactsPhoneStatus> => ({
-    enabled: ctx.services.settings.get("contacts.carddav") && !ctx.config.portable,
-    unavailable: ctx.config.portable ? "portable" : null,
-    lanAccess: ctx.config.lanAccess,
-    userName: DAV_USER_NAME,
-    path: DAV_PRINCIPAL_PATH,
-    contacts: service.count(),
-  }));
+  app.get(
+    "/api/contacts/phones",
+    async (): Promise<ContactsPhoneStatus> => ({
+      enabled: ctx.services.settings.get("contacts.carddav") && !ctx.config.portable,
+      unavailable: ctx.config.portable ? "portable" : null,
+      lanAccess: ctx.config.lanAccess,
+      userName: DAV_USER_NAME,
+      path: DAV_PRINCIPAL_PATH,
+      contacts: service.count(),
+    }),
+  );
 
   // ── One contact ──
 
-  app.get<{ Params: { id: string } }>("/api/contacts/:id", async (request) => ({ contact: service.get(idParams.parse(request.params).id) }));
+  app.get<{ Params: { id: string } }>("/api/contacts/:id", async (request) => ({
+    contact: service.get(idParams.parse(request.params).id),
+  }));
 
   app.patch<{ Params: { id: string } }>("/api/contacts/:id", async (request) => ({
     contact: service.update(idParams.parse(request.params).id, contactPatchSchema.parse(request.body)),
