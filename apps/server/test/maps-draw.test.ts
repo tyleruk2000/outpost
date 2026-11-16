@@ -1,6 +1,5 @@
 import fs from "node:fs";
 import path from "node:path";
-import zlib from "node:zlib";
 import {
   haversineMeters,
   MAX_ROUTE_POINTS,
@@ -18,6 +17,7 @@ import { Compression, TileType } from "../src/modules/maps/pmtiles/header.ts";
 import { decodePng } from "../src/modules/maps/terrain/png.ts";
 import { decodeLosslessWebp, ImageDecodeError } from "../src/modules/maps/terrain/webp-lossless.ts";
 import { buildArchive, type FixtureTile } from "./fixtures/maps/archive.ts";
+import { encodePng, groundTiles } from "./fixtures/maps/terrain.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
 
 // ── Images ──────────────────────────────────────────────────────────────────
@@ -90,70 +90,6 @@ const FLAGS_WEBP = "UklGRjAAAABXRUJQVlA4TCMAAAAvFAACEApFbdtATMYf1ADd/7S6AvJRtPrf
 const FLAG_COLOURS = [0xffc81e28, 0x00000000, 0xff0adc5a];
 
 const rgbOf = (value: number) => (0xff000000 | (value & 0xffffff)) >>> 0;
-
-/** A PNG writer for tests: 8-bit RGB or RGBA, each row stored with the filter asked for. */
-function encodePng(
-  width: number,
-  height: number,
-  pixel: (x: number, y: number) => number,
-  options: { alpha?: boolean; filter?: number } = {},
-) {
-  const channels = options.alpha ? 4 : 3;
-  const stride = width * channels;
-  const rows: Buffer[] = [];
-  let previous = Buffer.alloc(stride);
-  for (let y = 0; y < height; y += 1) {
-    const row = Buffer.alloc(stride);
-    for (let x = 0; x < width; x += 1) {
-      const argb = pixel(x, y);
-      row[x * channels] = (argb >>> 16) & 0xff;
-      row[x * channels + 1] = (argb >>> 8) & 0xff;
-      row[x * channels + 2] = argb & 0xff;
-      if (options.alpha) row[x * channels + 3] = argb >>> 24;
-    }
-    // Rows cycle through all five filters unless one is asked for.
-    const filter = options.filter ?? y % 5;
-    const stored = Buffer.alloc(stride + 1);
-    stored[0] = filter;
-    for (let index = 0; index < stride; index += 1) {
-      const left = index >= channels ? row[index - channels]! : 0;
-      const up = previous[index]!;
-      const upperLeft = index >= channels ? previous[index - channels]! : 0;
-      const estimate = left + up - upperLeft;
-      const nearest =
-        Math.abs(estimate - left) <= Math.abs(estimate - up) && Math.abs(estimate - left) <= Math.abs(estimate - upperLeft)
-          ? left
-          : Math.abs(estimate - up) <= Math.abs(estimate - upperLeft)
-            ? up
-            : upperLeft;
-      const predicted = [0, left, up, (left + up) >> 1, nearest][filter]!;
-      stored[index + 1] = (row[index]! - predicted) & 0xff;
-    }
-    rows.push(stored);
-    previous = row;
-  }
-  const chunk = (kind: string, data: Buffer) => {
-    const body = Buffer.concat([Buffer.from(kind, "latin1"), data]);
-    const framed = Buffer.alloc(body.length + 8);
-    framed.writeUInt32BE(data.length, 0);
-    body.copy(framed, 4);
-    framed.writeUInt32BE(zlib.crc32(body), body.length + 4);
-    return framed;
-  };
-  const header = Buffer.alloc(13);
-  header.writeUInt32BE(width, 0);
-  header.writeUInt32BE(height, 4);
-  header.set([8, options.alpha ? 6 : 2, 0, 0, 0], 8);
-  const packed = zlib.deflateSync(Buffer.concat(rows));
-  return Buffer.concat([
-    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-    chunk("IHDR", header),
-    // Split in two, as large images are.
-    chunk("IDAT", packed.subarray(0, packed.length >> 1)),
-    chunk("IDAT", packed.subarray(packed.length >> 1)),
-    chunk("IEND", Buffer.alloc(0)),
-  ]);
-}
 
 describe("reading lossless WebP", () => {
   it("decodes every pixel of images with a known rule", () => {
@@ -272,29 +208,8 @@ const worldOf = (lat: number, lon: number): [number, number] => [
 ];
 const heightAt = (lat: number, lon: number) => groundAt(...worldOf(lat, lon));
 
-/** Terrain tiles (64 px, PNG, Terrarium) for every tile from zoom 0 to `maxZoom` that `keep` accepts. */
-function terrainTiles(maxZoom: number, keep: (z: number, x: number) => boolean = () => true): FixtureTile[] {
-  const size = 64;
-  const tiles: FixtureTile[] = [];
-  for (let z = 0; z <= maxZoom; z += 1) {
-    for (let x = 0; x < 2 ** z; x += 1) {
-      if (!keep(z, x)) continue;
-      for (let y = 0; y < 2 ** z; y += 1) {
-        const data = encodePng(
-          size,
-          size,
-          (i, j) => {
-            const value = Math.round((groundAt((x + (i + 0.5) / size) / 2 ** z, (y + (j + 0.5) / size) / 2 ** z) + 32768) * 256);
-            return (0xff000000 | value) >>> 0;
-          },
-          { filter: 0 },
-        );
-        tiles.push({ z, x, y, data });
-      }
-    }
-  }
-  return tiles;
-}
+/** Terrain tiles of that ground for every tile from zoom 0 to `maxZoom` that `keep` accepts. */
+const terrainTiles = (maxZoom: number, keep?: (z: number, x: number) => boolean) => groundTiles(groundAt, { maxZoom, keep });
 
 /** Installs a terrain archive the way a person would: a file on a storage location, registered. */
 async function installTerrain(name: string, tiles: FixtureTile[], bounds: [number, number, number, number]) {

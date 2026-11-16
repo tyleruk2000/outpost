@@ -68,6 +68,11 @@ import { type OfflineIntent, OfflinePanel } from "./panels/offline";
 import { draftOf, type PlaceDraft, PlaceEditor, PlacesList } from "./panels/places";
 import { hasUnsavedWork, type RouteDraft, RouteEditor } from "./panels/route-editor";
 import { ImportGpxDialog, RouteDetail, RoutesList } from "./panels/routes";
+import { locatorOf } from "./radio/locator";
+import { SightCard } from "./radio/sight-card";
+import { SightPanel } from "./radio/sight-panel";
+import { useLocatorGrid } from "./radio/use-locator-grid";
+import { useSight } from "./radio/use-sight";
 import { SearchBox } from "./search-box";
 import { DesktopPanel, type Detent, detentHeight, MobileSheet, PANEL_TABS, type PanelTab, PanelTabs } from "./side-panel";
 
@@ -182,6 +187,8 @@ export default function MapsPage() {
   const [nameRequested, setNameRequested] = useState(false);
   const nameShown = useCallback(() => setNameRequested(false), []);
   const [measurePoints, setMeasurePoints] = useState<LatLon[]>([]);
+  /** The two ends a line-of-sight check starts with, when it is taken up from a measured path. */
+  const [sightStart, setSightStart] = useState<[LatLon, LatLon] | null>(null);
   const [draft, setDraft] = useState<PlaceDraft | null>(null);
   const [moving, setMoving] = useState<PlaceMove | null>(null);
   /** What had the keyboard when a move began from the list, to give it back when the move ends. */
@@ -201,6 +208,8 @@ export default function MapsPage() {
   const area = useRef<HTMLDivElement>(null);
   const container = useRef<HTMLDivElement>(null);
   const [engine, setEngine] = useState<MapEngine | null>(null);
+  const [locatorGrid, setLocatorGrid] = useLocatorGrid(engine);
+  const sight = useSight({ engine, active: tool === "sight", markers: markers.data ?? [], start: sightStart });
   const [mapStatus, setMapStatus] = useState<MapStatus>("loading");
   const [mapError, setMapError] = useState<string>();
 
@@ -693,6 +702,8 @@ export default function MapsPage() {
         now.startPlace(position);
         return;
       }
+      // The line-of-sight card hears presses on the map for itself.
+      if (now.tool === "sight") return;
       // While drawing, a press on a saved place or another route is still a press on the map.
       if (now.tool === "draw") {
         now.addRoutePoint(position);
@@ -725,6 +736,7 @@ export default function MapsPage() {
   const leaveTool = useCallback(() => {
     setTool("browse");
     setMeasurePoints([]);
+    setSightStart(null);
   }, []);
 
   // Escape puts down whatever tool is in hand. Dialogs and menus handle their own.
@@ -1029,6 +1041,24 @@ export default function MapsPage() {
     </PanelTabs>
   );
 
+  const panelVisible = isDesktop ? panel.open : detent !== "peek";
+  /** What the panel beside the map holds: its three tabs, or the tool that has taken it over. */
+  const panelBody =
+    tool === "sight" ? (
+      <SightPanel
+        sight={sight}
+        format={format}
+        mapReady={Boolean(engine)}
+        onDone={leaveTool}
+        onOpenOffline={() => {
+          leaveTool();
+          openOffline({ type: "add" });
+        }}
+      />
+    ) : (
+      tabs
+    );
+
   const card =
     tool === "measure" ? (
       <MeasureCard
@@ -1037,7 +1067,25 @@ export default function MapsPage() {
         onClear={() => setMeasurePoints([])}
         onDone={leaveTool}
         onSaveAsRoute={() => startDrawing(measurePoints)}
+        onSight={() => {
+          setSightStart([measurePoints[0]!, measurePoints.at(-1)!]);
+          setMeasurePoints([]);
+          setTool("sight");
+        }}
       />
+    ) : tool === "sight" ? (
+      // The whole answer is in the panel; the card stands in for it while a point is chosen and while the panel is out of sight.
+      sight.picking || !panelVisible ? (
+        <SightCard
+          sight={sight}
+          onUseCentre={engine ? () => sight.place({ position: engine.getCenter() }) : undefined}
+          onShowDetails={() => {
+            setPanel((current) => ({ ...current, open: true }));
+            setDetent((current) => (current === "peek" ? "half" : current));
+          }}
+          onDone={leaveTool}
+        />
+      ) : null
     ) : moving && movingMarker ? (
       <MoveCard
         name={movingMarker.name}
@@ -1105,7 +1153,7 @@ export default function MapsPage() {
   return (
     <div className="relative isolate flex h-dvh overflow-hidden max-md:h-[calc(100dvh-3.25rem)] max-md:pb-14">
       {isDesktop && panel.open ? (
-        <DesktopPanel onCollapse={() => setPanel((current) => ({ ...current, open: false }))}>{tabs}</DesktopPanel>
+        <DesktopPanel onCollapse={() => setPanel((current) => ({ ...current, open: false }))}>{panelBody}</DesktopPanel>
       ) : null}
 
       {/* biome-ignore lint/a11y/noStaticElementInteractions: a place to drop files, not a control; the same import is a button in the Routes tab */}
@@ -1203,6 +1251,8 @@ export default function MapsPage() {
             contours={contours}
             contourReach={reach}
             onContoursChange={changeContours}
+            locatorGrid={locatorGrid}
+            onLocatorGridChange={setLocatorGrid}
             disabled={!engine}
           />
         </div>
@@ -1250,6 +1300,7 @@ export default function MapsPage() {
             point={contextMenu.point}
             bounds={{ width: area.current.clientWidth, height: area.current.clientHeight }}
             coordinates={formatPosition(contextMenu.position.lat, contextMenu.position.lon, format, engine?.getZoom()).text}
+            locator={format === "maidenhead" ? undefined : locatorOf(contextMenu.position)}
             place={contextPlace ? { name: contextPlace.name, onMove: () => startMove(contextPlace, "map") } : undefined}
             onSave={() => startPlace(contextMenu.position)}
             onMeasure={() => {
@@ -1281,7 +1332,7 @@ export default function MapsPage() {
 
         {!isDesktop ? (
           <MobileSheet detent={detent} onDetentChange={setDetent}>
-            {tabs}
+            {panelBody}
           </MobileSheet>
         ) : null}
       </div>

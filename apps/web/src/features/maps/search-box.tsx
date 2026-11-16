@@ -1,7 +1,7 @@
 /**
  * The search box over the map. One field finds place names (when a place-name list is
- * installed), a typed position or British grid reference, and the person's own saved
- * places and routes.
+ * installed), a typed position, British grid reference or Maidenhead locator, and the
+ * person's own saved places and routes.
  */
 import type { MarkerDto, TrackDto } from "@outpost/shared";
 import { Crosshair, MapPin, Route, Search, Star, X } from "lucide-react";
@@ -57,6 +57,7 @@ export function SearchBox({
         query,
         // A slow answer for older text must not be shown against newer text.
         coordinate: search.data && search.data.query === query ? search.data.coordinate : null,
+        otherReadings: search.data?.otherReadings,
         places: search.data?.places ?? [],
         markers,
         tracks,
@@ -113,7 +114,7 @@ export function SearchBox({
           aria-autocomplete="list"
           aria-activedescendant={showList && results[active] ? `${listId}-${active}` : undefined}
           aria-label="Search the map"
-          placeholder="Place, coordinates or grid reference"
+          placeholder="Place, coordinates, grid ref or locator"
           value={text}
           onChange={(event) => {
             setText(event.target.value);
@@ -193,7 +194,7 @@ export function SearchBox({
           ) : nothing ? (
             <p className="px-2.5 py-2 text-small text-ink-muted">
               {placesInstalled
-                ? "Nothing matches. Try a different spelling, or type a position such as 53.068, -4.076 or a grid reference such as SH 609 543."
+                ? "Nothing matches. Try a different spelling, or type a position such as 53.068, -4.076, a grid reference such as SH 609 543, or a locator such as IO83QM."
                 : "None of your saved places or routes match."}
             </p>
           ) : null}
@@ -201,7 +202,8 @@ export function SearchBox({
             <div
               className={cn("px-2.5 py-2 text-small text-ink-muted", results.length > 0 || nothing ? "mt-1 border-t border-border" : "")}
             >
-              Place names are not installed, so towns and hills cannot be found by name yet. Positions and grid references still work.{" "}
+              Place names are not installed, so towns and hills cannot be found by name yet. Positions, grid references and locators still
+              work.{" "}
               <button
                 type="button"
                 onMouseDown={(event) => event.preventDefault()}

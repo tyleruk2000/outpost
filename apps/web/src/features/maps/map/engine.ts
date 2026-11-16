@@ -448,6 +448,8 @@ export class MapEngine {
   }
 
   setOverlay(id: OverlaySource, data: FeatureCollection): void {
+    // A tool that tidies up after itself may do so just after the map has gone.
+    if (this.destroyed) return;
     this.overlayData[id] = data;
     this.map.getSource<GeoJSONSource>(id)?.setData(data as never);
   }

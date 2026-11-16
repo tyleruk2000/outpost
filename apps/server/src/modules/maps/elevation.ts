@@ -31,6 +31,25 @@ export interface ElevationSampler {
    * sampled coarsely is read from coarser tiles, so it never touches thousands of them.
    */
   sample(positions: ReadonlyArray<readonly [lon: number, lat: number]>, spacingMeters: number): Promise<Array<number | null>>;
+  /**
+   * The same, and for each position the width in metres of one cell of the tile its
+   * height was read from (null where there is none): a caller that has to say how fine
+   * its heights are can.
+   */
+  sampleWithCells(positions: ReadonlyArray<readonly [lon: number, lat: number]>, spacingMeters: number): Promise<SampledHeights>;
+}
+
+export interface SampledHeights {
+  heights: Array<number | null>;
+  cells: Array<number | null>;
+}
+
+/**
+ * Width in metres of one cell (one height) of a terrain tile at a zoom and latitude.
+ * The terrain Outpost downloads has tiles 512 cells across; an imported archive may not.
+ */
+export function terrainCellMeters(zoom: number, latitude: number, tileSize = 512): number {
+  return (EARTH_CIRCUMFERENCE * Math.max(0.01, Math.cos(latitude * DEG))) / (tileSize * 2 ** zoom);
 }
 
 interface HeightTile {
@@ -80,16 +99,19 @@ function interpolate(tile: HeightTile, u: number, v: number): number | null {
 }
 
 export function createElevationSampler(ctx: AppContext, tiles: TileServer): ElevationSampler {
-  return {
+  const sampler: ElevationSampler = {
     async sample(positions, spacingMeters) {
+      return (await sampler.sampleWithCells(positions, spacingMeters)).heights;
+    },
+
+    async sampleWithCells(positions, spacingMeters) {
       const terrain = tiles.sources().sources.terrain;
-      if (!terrain || positions.length === 0) return positions.map(() => null);
+      if (!terrain || positions.length === 0) return { heights: positions.map(() => null), cells: positions.map(() => null) };
       const [west, south, east, north] = terrain.bounds;
 
       // Tiles fine enough that a pixel is about half the spacing, and no finer than is installed.
       const middle = positions[positions.length >> 1]![1];
-      const metersPerPixelAtZero = (EARTH_CIRCUMFERENCE * Math.max(0.01, Math.cos(middle * DEG))) / 512;
-      const wanted = Math.ceil(Math.log2(metersPerPixelAtZero / Math.max(1, spacingMeters / 2)));
+      const wanted = Math.ceil(Math.log2(terrainCellMeters(0, middle) / Math.max(1, spacingMeters / 2)));
       const startZoom = Math.min(terrain.maxzoom, Math.max(terrain.minzoom, wanted));
       // Where the detailed tile is missing a coarser one is used, but only so far: a pixel
       // a kilometre wide says nothing useful about the height of a point on a hillside.
@@ -115,7 +137,12 @@ export function createElevationSampler(ctx: AppContext, tiles: TileServer): Elev
           ctx.log.warn({ err: error, tile: key }, "terrain tile could not be read for heights");
         }
         cache.set(key, tile);
-        if (tile) decoded += 1;
+        if (tile) {
+          decoded += 1;
+          // Decoding a tile is tens of milliseconds of arithmetic. A long line reads many, so
+          // other requests get a turn between one tile and the next.
+          await new Promise<void>((resolve) => setImmediate(resolve));
+        }
         for (const [oldest, value] of cache) {
           if (decoded <= MAX_DECODED_TILES) break;
           if (!value || oldest === key) continue;
@@ -126,8 +153,10 @@ export function createElevationSampler(ctx: AppContext, tiles: TileServer): Elev
       };
 
       const heights: Array<number | null> = [];
+      const cells: Array<number | null> = [];
       for (const [lon, lat] of positions) {
         let height: number | null = null;
+        let cell: number | null = null;
         if (lon >= west && lon <= east && lat >= south && lat <= north && Math.abs(lat) < MAX_LATITUDE) {
           const worldX = (lon + 180) / 360;
           const worldY = (1 - Math.log(Math.tan(lat * DEG) + 1 / Math.cos(lat * DEG)) / Math.PI) / 2;
@@ -138,11 +167,14 @@ export function createElevationSampler(ctx: AppContext, tiles: TileServer): Elev
             const y = Math.min(scale - 1, Math.floor(worldY * scale));
             const tile = await load(z, x, y);
             if (tile) height = interpolate(tile, worldX * scale - x, worldY * scale - y);
+            if (tile && height !== null) cell = terrainCellMeters(z, lat, tile.size);
           }
         }
         heights.push(height);
+        cells.push(cell);
       }
-      return heights;
+      return { heights, cells };
     },
   };
+  return sampler;
 }

@@ -12,13 +12,16 @@ import { trackEnds, trackLines } from "../lib/profile";
 import { midpoints } from "../lib/route-edit";
 import { MAP_FONTS, type MapTheme } from "../lib/style";
 import type { LayerSpecification, SourceSpecification } from "../lib/style-types";
+import { gridLayers, sightLayers } from "../radio/layers";
 
 export const OVERLAY_SOURCES = [
+  "o-grid",
   "o-coverage",
   "o-box",
   "o-tracks",
   "o-track-ends",
   "o-measure",
+  "o-sight",
   "o-draw",
   "o-location",
   "o-markers",
@@ -59,6 +62,8 @@ export function overlayLayers(theme: MapTheme): LayerSpecification[] {
   const label = { "text-font": [MAP_FONTS.medium] as string[], "text-size": 12.5 };
   const halo = { "text-color": theme.ink, "text-halo-color": theme.page, "text-halo-width": 1.6 } as const;
   return [
+    // The Maidenhead locator grid, when it is switched on.
+    ...gridLayers(theme),
     // Installed coverage, shown while the downloads panel is open.
     {
       id: "o-coverage-line",
@@ -158,6 +163,8 @@ export function overlayLayers(theme: MapTheme): LayerSpecification[] {
       layout: { ...label, "text-field": ["get", "label"], "text-anchor": "bottom", "text-offset": [0, -0.8], "text-allow-overlap": false },
       paint: halo,
     },
+    // The path of a line-of-sight check.
+    ...sightLayers(theme),
     // The person's own position.
     {
       id: "o-location-accuracy",

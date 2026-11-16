@@ -3,6 +3,7 @@
  * need (the server to understand what someone typed into the search box, the web app
  * to show the position under the cursor). Everything here is pure arithmetic.
  */
+import { parseMaidenhead } from "./locator.ts";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -241,12 +242,17 @@ export interface PlaceSearchResponse {
   query: string;
   /** Set when the text is a position rather than a name. */
   coordinate: ParsedCoordinate | null;
+  /**
+   * Other positions the same text can mean. Four characters such as "NN16" are both a
+   * British grid reference and a Maidenhead locator, and nothing in the text says which.
+   */
+  otherReadings?: ParsedCoordinate[];
   places: PlaceDto[];
 }
 
 // ── Coordinates ─────────────────────────────────────────────────────────────
 
-export type CoordinateFormat = "decimal" | "ddm" | "dms" | "geo" | "osgb";
+export type CoordinateFormat = "decimal" | "ddm" | "dms" | "geo" | "osgb" | "maidenhead";
 
 export interface ParsedCoordinate {
   lat: number;
@@ -254,6 +260,8 @@ export interface ParsedCoordinate {
   format: CoordinateFormat;
   /** For grid references: the size of the square the reference names, in metres. */
   precisionMeters?: number;
+  /** For Maidenhead locators: the locator as it is written, in upper case. The position is the middle of its cell. */
+  locator?: string;
 }
 
 const DEG = Math.PI / 180;
@@ -597,15 +605,38 @@ function parseLatLon(text: string): ParsedCoordinate | null {
 }
 
 /**
+ * A Maidenhead locator of 4, 6 or 8 characters ("IO83", "IO83QM", "IO83QM27"). The
+ * position is the middle of the cell it names. A field alone ("IO") is not read: it is
+ * two letters, and 20° wide.
+ */
+function parseLocator(text: string): ParsedCoordinate | null {
+  const square = parseMaidenhead(text);
+  if (!square || square.locator.length < 4) return null;
+  return { lat: square.lat, lon: square.lon, format: "maidenhead", locator: square.locator };
+}
+
+/**
+ * Every position a piece of typed text can mean, most likely first. Almost always one
+ * or none. The exception is four characters such as "NN16": a British grid reference
+ * for a 10 km square in the Highlands, and a Maidenhead locator for a square in central
+ * Asia. Both are returned, the grid reference first.
+ */
+export function parseCoordinateReadings(input: string): ParsedCoordinate[] {
+  const text = input.trim();
+  if (text.length < 3 || text.length > 80) return [];
+  const first = parseGeoUri(text) ?? parseOsGridRef(text) ?? parseEastingNorthing(text) ?? parseLatLon(text);
+  const locator = parseLocator(text);
+  return [first, locator].filter((reading) => reading !== null);
+}
+
+/**
  * Understands a position typed by hand: decimal degrees ("54.4609, -3.0886"), with
  * hemisphere letters, degrees and decimal minutes, degrees-minutes-seconds, `geo:`
- * links and British National Grid references. Returns null for anything else, so the
- * caller can treat the text as a place name.
+ * links, British National Grid references and Maidenhead locators. Returns null for
+ * anything else, so the caller can treat the text as a place name.
  */
 export function parseCoordinates(input: string): ParsedCoordinate | null {
-  const text = input.trim();
-  if (text.length < 3 || text.length > 80) return null;
-  return parseGeoUri(text) ?? parseOsGridRef(text) ?? parseEastingNorthing(text) ?? parseLatLon(text);
+  return parseCoordinateReadings(input)[0] ?? null;
 }
 
 // ── Formatting ──────────────────────────────────────────────────────────────

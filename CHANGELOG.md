@@ -300,6 +300,13 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   against US Naval Observatory times.
 - A card for where you are while the map follows the device: its position to copy or
   save, and how closely the device claims to know it.
+- Maidenhead locators: a grid over the map (fields, squares, subsquares and extended
+  squares as the zoom allows), the locator of a position beside its coordinates, and
+  locators of four, six or eight characters read by the map's search.
+- A line-of-sight check between two points, from installed terrain: distance, bearing
+  each way, the path drawn from the side with the ray, the Earth's curve (4/3 radius)
+  and the first Fresnel zone, and the answer in words. It is geometry over terrain,
+  not a prediction of coverage, and gives no verdict where terrain is missing.
 
 #### Portable drives
 

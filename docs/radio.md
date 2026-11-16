@@ -1,6 +1,7 @@
-# Radio: reference sheets, a handbook and radio guides
+# Radio: reference sheets, a handbook, radio guides and tools on the map
 
-Outpost ships with two kinds of radio material, both usable with no connection at all:
+Outpost ships with two kinds of radio material, both usable with no connection at all,
+and two radio tools on its map:
 
 - **Nine reference sheets** about amateur radio, licence-free radio and emergency
   frequencies, written for Outpost from the regulators' own documents. The tables are in
@@ -11,6 +12,42 @@ Outpost ships with two kinds of radio material, both usable with no connection a
   in ninety chapters, and fifteen companion guides for particular radios. They were
   written for another project by the same author and are copied in, not written for
   Outpost. See [The handbook and the radio guides](#the-handbook-and-the-radio-guides).
+- **On the map: Maidenhead locators and a line-of-sight check.** See
+  [Radio tools on the map](#radio-tools-on-the-map).
+
+## Radio tools on the map
+
+Both are on the **Maps** screen and work from what is installed, with no connection.
+[maps.md](maps.md) has the detail; this is what they are and what they are not.
+
+- **Maidenhead locators.** A grid that can be switched on over the map (fields,
+  squares, subsquares and extended squares as you zoom in), the locator of a position
+  written beside its coordinates wherever the map shows them, and locators of four,
+  six or eight characters understood by the map's search box. See
+  [maps.md](maps.md#maidenhead-locators).
+- **Line of sight between two points.** Pick two points, give an antenna height at
+  each and a band. Outpost gives the distance, the bearing each way and the locator of
+  each end, draws the ground between them with the ray and the first Fresnel zone, and
+  says whether the path is clear, or blocked and by how much, and how much of the
+  Fresnel zone is clear at its tightest. See [maps.md](maps.md#line-of-sight).
+
+Read these before relying on the line-of-sight check:
+
+- **It is geometry, not propagation.** It does not predict signal strength or
+  coverage. A blocked path may still be worked (signals bend over ridges and are
+  carried by the weather), and a clear one may still be poor.
+- **Terrain only.** It uses the terrain installed on the device: cells about 11.5 m
+  wide in Britain at best, from source data that is 30 m over most of the world. It
+  knows nothing of buildings, trees or masts.
+- **The Earth's curve is the standard radio one**, an Earth of 4/3 its real radius. That
+  is an average for the atmosphere, not what the air is doing today.
+- **No terrain, no verdict.** Where terrain is not installed for part of a path it says
+  which part and does not call the path clear.
+- **The bands on offer** are those of the United Kingdom amateur licence from 10 m to
+  13 cm, and PMR446, each standing for one frequency near the middle of the band;
+  any frequency from 1 MHz to 100 GHz can be typed instead. The band only sets the
+  width of the Fresnel zone. Nothing here says who may transmit where: that is in the
+  sheets below.
 
 ## Where to find them
 

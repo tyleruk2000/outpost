@@ -18,8 +18,8 @@
  *   A  countries and their first two levels of division, so "Scotland" finds Scotland
  *   V  forests
  */
-import type { ParsedCoordinate, PlaceDto, PlaceSearchResponse, PlacesDataset } from "@outpost/shared";
-import { haversineMeters, parseCoordinates } from "@outpost/shared";
+import type { PlaceDto, PlaceSearchResponse, PlacesDataset } from "@outpost/shared";
+import { haversineMeters, parseCoordinateReadings } from "@outpost/shared";
 import { sql } from "drizzle-orm";
 import yauzl from "yauzl";
 import { z } from "zod";
@@ -530,8 +530,9 @@ export function createPlacesService(ctx: AppContext, options: { baseUrl?: string
 
   function search(query: string, searchOptions: { limit?: number; near?: { lat: number; lon: number } } = {}): PlaceSearchResponse {
     const text = query.trim().slice(0, 200);
-    const coordinate: ParsedCoordinate | null = parseCoordinates(text);
-    if (coordinate) return { query: text, coordinate, places: [] };
+    // Nearly always one reading or none; a few four-character texts are both a grid reference and a locator.
+    const [coordinate, ...otherReadings] = parseCoordinateReadings(text);
+    if (coordinate) return { query: text, coordinate, ...(otherReadings.length > 0 ? { otherReadings } : {}), places: [] };
     const tokens = searchTokens(text).map(fold).filter(Boolean);
     if (tokens.length === 0) return { query: text, coordinate: null, places: [] };
 

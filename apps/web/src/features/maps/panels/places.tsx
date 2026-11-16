@@ -14,6 +14,7 @@ import { copyText } from "../hooks";
 import { formatPosition, type ReadoutFormat } from "../lib/coords";
 import { formatDistance } from "../lib/geo";
 import { fold } from "../lib/search";
+import { Locator } from "../radio/locator";
 import { ColorDot, ColorPicker } from "../ui";
 import { SunSection } from "./sun";
 
@@ -147,6 +148,7 @@ export function PlaceEditor({
             {coordinates}
             <Copy aria-hidden className="size-3.5 text-ink-faint group-hover:text-ink" />
           </button>
+          {format === "maidenhead" ? null : <Locator position={draft} className="self-start" />}
           {saved && moved >= 1 ? (
             <Notice
               tone="info"

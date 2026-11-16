@@ -23,6 +23,8 @@ function controls(overrides: Partial<ComponentProps<typeof MapControls>> = {}) {
         contours={false}
         contourReach="drawn"
         onContoursChange={onContoursChange}
+        locatorGrid={false}
+        onLocatorGridChange={() => {}}
         disabled={false}
         {...overrides}
       />
