@@ -5,7 +5,9 @@
  * The file is never turned into HTML. It becomes a small tree of plain values
  * (`MarkdownBlock`) that the web app draws with its own elements, so nothing written in
  * a file can run, load a picture from the internet, or style the page. Embedded HTML
- * is reduced to its words; a picture is reduced to its description.
+ * is reduced to its words; a picture is reduced to its description, unless the file
+ * carries the picture itself (see `embedded-pictures.ts`), in which case the tree names
+ * it by number and the web app asks this server for it.
  *
  * A link survives in one of three forms, and in no other: a web or mail address; a jump
  * to a heading of the same document (`#heading-words`); or a reference to something in
@@ -15,14 +17,15 @@
  * A fenced block keeps the word after its opening fence (`mermaid`, `viz`), so the web
  * app can draw the diagram it describes. The block's text is still only text.
  */
-import fs from "node:fs";
-import type { MarkdownBlock, MarkdownInline, MarkdownListItem, MarkdownRef } from "@outpost/shared";
+import type { MarkdownBlock, MarkdownInline, MarkdownListItem, MarkdownRef, SavedFrom } from "@outpost/shared";
 import type { Nodes, Root, RootContent } from "mdast";
 import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
 import { unified } from "unified";
 import { AppError } from "../../core/errors.ts";
+import { PICTURE_LABEL, readTextPart, withoutPictureData } from "./embedded-pictures.ts";
 import { decodeText, markdownText, splitFrontMatter } from "./extract-text.ts";
+import { savedFromOf } from "./saved-page.ts";
 
 /**
  * The largest Markdown file shown with its formatting. The tree sent to the browser is
@@ -110,6 +113,8 @@ interface Context {
   /** Every heading id in the document: a jump is kept only when it has somewhere to land. */
   headingIds: Set<string>;
   resolve?: LinkResolver;
+  /** The numbers of the pictures the file carries. */
+  pictures?: ReadonlySet<number>;
 }
 
 /** A link that stays inside Outpost: to a heading of this document, or to a catalogue entry or chapter. */
@@ -164,8 +169,11 @@ function inline(node: Nodes, context: Context): MarkdownInline[] {
     }
     case "image":
     case "imageReference": {
-      // The picture itself is never fetched or shown. What its author wrote about it is.
       const alt = (node.alt ?? "").trim();
+      // A picture the file carries is named by its number, which is all the browser is given.
+      const carried = node.type === "imageReference" ? Number(PICTURE_LABEL.exec(node.identifier)?.[1]) : 0;
+      if (carried && context.pictures?.has(carried)) return [{ t: "image", alt, picture: carried }];
+      // Any other picture is never fetched or shown. What its author wrote about it is.
       const caption = node.type === "image" ? (node.title ?? "").trim() : "";
       return alt || caption ? [{ t: "image", alt, ...(caption ? { caption } : {}) }] : [];
     }
@@ -277,23 +285,53 @@ function headingsOf(node: Nodes, found = new Map<Nodes, string>(), used = new Ma
   return found;
 }
 
-export function markdownBlocks(source: string, options: { resolve?: LinkResolver } = {}): MarkdownBlock[] {
-  const { body } = splitFrontMatter(source);
+export interface MarkdownOptions {
+  resolve?: LinkResolver;
+  /** The numbers of the pictures the file carries; a reference to any other is shown as its description. */
+  pictures?: ReadonlySet<number>;
+}
+
+export function markdownBlocks(source: string, options: MarkdownOptions = {}): MarkdownBlock[] {
+  // Picture data is megabytes of one line; the parser is given the text without it.
+  const { body } = splitFrontMatter(withoutPictureData(source));
   const tree = unified().use(remarkParse).use(remarkGfm).parse(body) as Root;
   const headings = headingsOf(tree);
   return blocks(
     tree.children,
-    { definitions: definitionsOf(tree), headings, headingIds: new Set(headings.values()), resolve: options.resolve },
+    {
+      definitions: definitionsOf(tree),
+      headings,
+      headingIds: new Set(headings.values()),
+      resolve: options.resolve,
+      pictures: options.pictures,
+    },
     0,
   );
 }
 
-/** Reads a Markdown file for display. Refuses one too large to send as a tree. */
+/**
+ * Reads a Markdown file for display, with where it was saved from if it is a saved web
+ * page. Refuses one whose text is too large to send as a tree; pictures the file
+ * carries do not count towards that, since they are not part of the tree.
+ */
+export async function readMarkdownDocument(
+  file: string,
+  options: { resolve?: LinkResolver } = {},
+): Promise<{ blocks: MarkdownBlock[]; savedFrom?: SavedFrom }> {
+  const { bytes, index } = await readTextPart(
+    file,
+    MAX_FORMATTED_BYTES,
+    () => new AppError("too_large", "This Markdown file is too large to show with its formatting, so it is shown as plain text."),
+  );
+  const source = decodeText(bytes);
+  const savedFrom = savedFromOf(source);
+  return {
+    blocks: markdownBlocks(source, { ...options, pictures: new Set(index.pictures.keys()) }),
+    ...(savedFrom ? { savedFrom } : {}),
+  };
+}
+
+/** The blocks of a Markdown file; see `readMarkdownDocument`. */
 export async function readMarkdownBlocks(file: string, options: { resolve?: LinkResolver } = {}): Promise<MarkdownBlock[]> {
-  const stat = await fs.promises.stat(file).catch(() => undefined);
-  if (!stat?.isFile()) throw new AppError("not_found", "The file is missing from its storage location.");
-  if (stat.size > MAX_FORMATTED_BYTES) {
-    throw new AppError("too_large", "This Markdown file is too large to show with its formatting, so it is shown as plain text.");
-  }
-  return markdownBlocks(decodeText(await fs.promises.readFile(file)), options);
+  return (await readMarkdownDocument(file, options)).blocks;
 }
