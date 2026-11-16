@@ -1,5 +1,5 @@
 import type { SearchKind, SearchResult, SearchSegment } from "@outpost/shared";
-import { BookMarked, BookOpen, Compass, FileText, type LucideIcon, MapPin, NotebookText, Route } from "lucide-react";
+import { BookMarked, BookOpen, Compass, Contact, FileText, type LucideIcon, MapPin, NotebookText, Route } from "lucide-react";
 
 export const kindMeta: Record<string, { label: string; plural: string; icon: LucideIcon }> = {
   document: { label: "Document", plural: "Documents", icon: FileText },
@@ -9,6 +9,7 @@ export const kindMeta: Record<string, { label: string; plural: string; icon: Luc
   catalog: { label: "Available to download", plural: "Available to download", icon: Compass },
   marker: { label: "Saved place", plural: "Saved places", icon: MapPin },
   track: { label: "Route", plural: "Routes", icon: Route },
+  contact: { label: "Contact", plural: "Contacts", icon: Contact },
 };
 
 export function kindOf(kind: SearchKind) {

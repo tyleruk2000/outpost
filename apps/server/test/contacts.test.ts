@@ -294,8 +294,11 @@ describe("bringing contacts in from a file", () => {
       here: ["07700 900123 (mobile)"],
       incoming: ["07700 900123 (mobile)", "01632 960200 (work)"],
       differs: true,
+      adds: true,
     });
-    expect(mayaLines.find((line) => line.label === "Name")).toMatchObject({ differs: false });
+    expect(mayaLines.find((line) => line.label === "Name")).toMatchObject({ differs: false, adds: false });
+    // What Outpost has and the file lacks is a difference, and nothing the file would add.
+    expect(mayaLines.find((line) => line.label === "Email")).toMatchObject({ differs: true, adds: false, incoming: [] });
     expect(found.duplicates[0]!.mergeAdds).toEqual(["1 phone number", "a note"]);
     expect(found.duplicates[1]!.mergeAdds).toEqual(["1 email address"]);
 

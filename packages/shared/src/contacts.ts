@@ -244,12 +244,15 @@ export type ContactImportChoice = "keep" | "merge" | "replace" | "both";
 
 export type ContactImportMatchReason = "same-card" | "name-and-number" | "name";
 
-/** One line of a side-by-side comparison. `differs` marks what is not the same on both sides. */
+/** One line of a side-by-side comparison. */
 export interface ContactCompareLine {
   label: string;
   here: string[];
   incoming: string[];
+  /** The two sides are not the same. */
   differs: boolean;
+  /** The incoming side says something Outpost's does not: the lines worth reading first. */
+  adds: boolean;
 }
 
 export interface ContactImportDuplicate {

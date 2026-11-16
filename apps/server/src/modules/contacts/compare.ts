@@ -191,6 +191,17 @@ function canonical(value: unknown): string {
 
 // ── Side by side ────────────────────────────────────────────────────────────
 
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+/** "9 March 1984", or "9 March" when the card gives no year. Anything else is shown as it was written. */
+function birthdayWords(value: string): string {
+  const full = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  const short = /^--(\d{2})-(\d{2})$/.exec(value);
+  const month = MONTHS[Number((full ?? short)?.[full ? 2 : 1]) - 1];
+  if (!month) return value;
+  return full ? `${Number(full[3])} ${month} ${full[1]}` : `${Number(short![2])} ${month}`;
+}
+
 const withLabel = (value: string, label: string) => (label.trim() ? `${value} (${label.trim()})` : value);
 
 function sides(fields: ContactFields): Array<{ label: string; values: string[]; keys: string[] }> {
@@ -233,7 +244,11 @@ function sides(fields: ContactFields): Array<{ label: string; values: string[]; 
       fields.related.map((related) => withLabel(related.name, related.label)),
       fields.related.map((related) => fold(related.name)),
     ),
-    line("Birthday", fields.birthday.trim() ? [fields.birthday.trim()] : []),
+    line(
+      "Birthday",
+      fields.birthday.trim() ? [birthdayWords(fields.birthday.trim())] : [],
+      fields.birthday.trim() ? [fields.birthday.trim()] : [],
+    ),
     line("Note", fields.note.trim() ? [fields.note.trim()] : []),
     line(
       "Tags",
@@ -254,7 +269,14 @@ export function compareLines(here: ContactFields, incoming: ContactFields): Cont
     const theirs = right[index]!;
     if (mine.values.length === 0 && theirs.values.length === 0) return;
     const differs = [...mine.keys].sort().join("\n") !== [...theirs.keys].sort().join("\n");
-    lines.push({ label: mine.label, here: mine.values, incoming: theirs.values, differs });
+    const known = new Set(mine.keys);
+    lines.push({
+      label: mine.label,
+      here: mine.values,
+      incoming: theirs.values,
+      differs,
+      adds: theirs.keys.some((key) => !known.has(key)),
+    });
   });
   return lines;
 }

@@ -1,0 +1,62 @@
+/* The emergency sheet for the browser's own Print: a copy of it is kept out of sight on
+   screen, as a child of the page's body, and is the only thing on the paper. */
+.outpost-contacts-print {
+  display: none;
+}
+@media print {
+  body:has(.outpost-contacts-print) {
+    margin: 0;
+    background: #fff;
+  }
+  body:has(.outpost-contacts-print) > :not(.outpost-contacts-print) {
+    display: none;
+  }
+  .outpost-contacts-print {
+    display: block;
+  }
+  @page {
+    margin: 14mm;
+  }
+}
+
+/* Paper is white and ink is black whatever the screen's theme. */
+.outpost-contacts-paper {
+  background: #fff;
+}
+.outpost-contacts-sheet {
+  color: #111;
+  background: #fff;
+  font-size: 11pt;
+  line-height: 1.4;
+}
+.outpost-contacts-sheet h1 {
+  font-size: 20pt;
+  line-height: 1.2;
+}
+.outpost-contacts-sheet .sheet-entry {
+  break-inside: avoid;
+  border-top: 0.75pt solid #999;
+  padding: 7pt 0 8pt;
+}
+.outpost-contacts-sheet .sheet-name {
+  font-size: 13pt;
+  font-weight: 650;
+}
+.outpost-contacts-sheet .sheet-number {
+  font-size: 13pt;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.outpost-contacts-sheet .sheet-quiet {
+  color: #444;
+}
+/* The same width in every entry, so that the numbers stand in one column down the page. */
+.outpost-contacts-sheet .sheet-label {
+  width: 8.5em;
+  padding-right: 10pt;
+  color: #444;
+  font-weight: 400;
+  text-align: left;
+  vertical-align: baseline;
+}
