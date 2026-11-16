@@ -322,7 +322,7 @@ describe("flood zones", () => {
         />,
       ),
     );
-    const legend = screen.getByRole("group", { name: "Flood zones legend" });
+    const legend = screen.getByRole("region", { name: "Flood zones legend" });
     expect(legend).toHaveTextContent("Zoom in to see the flood zones");
     expect(legend).toHaveTextContent(
       "Deeper tone, solid edge. Flood Zone 3 – Areas shown to be at a 1% (1 in 100) or greater annual probability",

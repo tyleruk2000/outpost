@@ -27,7 +27,7 @@ function ZoneMark({ colour, zone }: { colour: string; zone: 2 | 3 }) {
 
 export function FloodZonesLegend({ colour, status }: { colour: string; status: "zoom-in" | "too-many" | null | undefined }) {
   return (
-    <div className="mt-2 grid gap-2 pl-[30px]" aria-label="Flood zones legend" role="group">
+    <section className="mt-2 grid gap-2 pl-[30px]" aria-label="Flood zones legend">
       {status === "zoom-in" ? (
         <p className="text-small text-ink">Zoom in to see the flood zones: they are drawn from about a town's width across.</p>
       ) : status === "too-many" ? (
@@ -52,6 +52,6 @@ export function FloodZonesLegend({ colour, status }: { colour: string; status: "
       </p>
       <p className="text-small text-ink-muted">{FLOOD_ZONE_WORDS.notForecast}</p>
       <p className="text-micro text-ink-muted">{FLOOD_ZONE_WORDS.attribution} Open Government Licence v3.0.</p>
-    </div>
+    </section>
   );
 }
