@@ -562,9 +562,9 @@ download and can be fetched again.
 - Removes: reference archives, maps, terrain, place names, catalogue sheets and books
   (with the documents they are in your library), and downloads still under way or left
   unfinished, with their partial files.
-- Keeps: documents you added, notes, contacts, chat conversations, repeaters, saved places and
-  routes, archives and maps of your own that you pointed Outpost at, settings, storage
-  locations and network shares.
+- Keeps: documents you added, notes, contacts, chat conversations, repeaters, radio
+  plans and logged contacts, saved places and routes, archives and maps of your own
+  that you pointed Outpost at, settings, storage locations and network shares.
 - Content on a location that is not connected is left behind and stays in your
   library. The summary lists it; tick **Forget them as well** to remove Outpost's
   records and leave the files on the drive.
@@ -591,7 +591,9 @@ cannot be downloaded again.
 - Removes: everything the first clean-up removes; documents you added, files and all;
   notes and their attachments; saved places and routes; contacts; every chat conversation
   with its messages; every repeater, both the lists you imported and the entries you
-  added or changed; settings; search data; the history of downloads and other work; and
+  added or changed; what the HF planner keeps for you (communication plans, the contact
+  log, radio and antenna profiles, saved predictions and coverage maps, and every
+  answer worked out); settings; search data; the history of downloads and other work; and
   the copies of earlier data that a restore set aside (they hold the same notes). The
   summary shown before it starts counts each of these.
 - Keeps: storage locations and their marker files; network shares and any password
@@ -606,8 +608,9 @@ cannot be downloaded again.
   the notes that are being erased; delete them from **Settings → Automatic backups**
   first, or by hand from the `outpost-backups` folder, if you want them gone.
 - Needs the words "erase everything" typed, and offers a backup first. A backup holds
-  notes, attachments, saved places, routes, contacts, chat conversations, repeaters and
-  settings. It does **not** hold the files
+  notes, attachments, saved places, routes, contacts, chat conversations, repeaters,
+  radio plans, logged contacts and equipment profiles, and settings. It does **not**
+  hold the files
   of documents you added: copy those from the `documents` folder of each storage
   location if you want to keep them.
 - Can only be started on the computer Outpost runs on, unless Outpost was started with

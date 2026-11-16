@@ -798,9 +798,33 @@ Predictions are worked out by VOACAP on the server, with no connection. See
 | `POST /api/radio/propagation/listing` | The page VOACAP itself prints for the request, as `{ listing }`. |
 | `GET /api/radio/propagation/results/:key` | An answer already worked out. `404` once it has been cleared to make room. |
 | `GET` / `POST /api/radio/propagation/saved`, `DELETE …/saved/:id` | Predictions kept by name. `POST` body: `{ name, request, key? }`. |
+| `POST /api/radio/propagation/coverage` | A coverage map: the engine asked about a receiver at the centre of every cell of a grid. Body below. Returns `{ coverage }` (a `CoverageResult`, `packages/shared/src/propagation-coverage.ts`) when the map is already worked out, else `{ job }`: the job reports cells done of cells in all, can be cancelled, and its result holds the map's `key`. The same map asked for again while it is being worked out returns the same job. `409` when three coverage maps are already waiting. `400` for an area under 0.5° either way, wider than 360°, or reaching beyond 89° of latitude. |
+| `GET /api/radio/propagation/coverage` | `{ saved, limits }`: coverage maps kept by name, and the most cells and waiting jobs allowed. |
+| `GET /api/radio/propagation/coverage/:key` | `{ coverage }` for a map already worked out. `404` once it has been cleared to make room (a saved map never is). |
+| `POST /api/radio/propagation/coverage/saved`, `DELETE …/coverage/saved/:id` | Keeps a worked-out map by name (`{ name, key }`; saving the same map again renames it), and takes it off the list. |
+| `GET` / `POST /api/radio/communication-plans` | Communication plans. `POST` body: `name`, `notes`, `stations` (up to 8, each `id`, `name`, `lat`, `lon`, `powerWatts`, `antenna`, `antennaName`, `noise`), `date`, `fromUtc`, `toUtc` (1 to 24), `bands` (ids such as `40m`), `mode`, `requiredSnrDb`, `referenceBandwidthHz`, `solar` (`table` or `manual`), `links` (`{ kind: "note" \| "document", id }`). Returns `{ plan }` with `linked` (each link with its title, or `null` when what it pointed at is gone) and `workedOut`. |
+| `GET` / `PATCH` / `DELETE /api/radio/communication-plans/:id` | One plan. `PATCH` takes the whole plan, as `POST` does. |
+| `POST /api/radio/communication-plans/:id/matrix` | Works the plan out: for every pair of stations, each band of the plan through the 24 hours, each way. Returns `{ matrix }` (a `PlanResult`, `packages/shared/src/propagation-plans.ts`). Answered directly: at most 56 runs of the engine. `400` for a plan of fewer than two stations. The primary and alternate bands are not in the answer; they are the rule `planRecommendation` (same file) applied to it. |
+| `GET /api/radio/communication-plans/:id/matrix` | The matrix last worked out for the plan as it stands. `404` when the plan has changed since in a way the engine is asked about, or was never worked out. |
+| `GET /api/radio/observations` | The contact log, newest first: `{ observations, total, imports, adif }`. `limit` (up to 500) and `offset`. `adif` names the ADIF version and fields the importer reads. |
+| `POST /api/radio/observations`, `DELETE …/observations/:id` | One entry typed in: `at` (UTC, ISO), `frequencyMhz`, `band`, `mode`, `outcome` (`contact`, `heard`, `failed`), `tx` and `rx` (`call`, `lat`, `lon`; a position may be `null`), `powerWatts`, `antenna`, `reportSent`, `reportReceived`, `notes`. `409` when the same entry is already in the log. |
+| `POST /api/radio/observations/import` | An ADIF file (`.adi`) as a multipart upload, 64 MB at most. Returns `{ import }`: `records`, `imported`, `duplicates`, `skipped` (reason and count for every record left out) and `notes` (reason and count for anything read with a loss, such as an end left without a position). `400` for a file that is not ADIF. |
+| `DELETE /api/radio/observations/imports/:id` | Takes an import back: removes the entries it brought in. Returns `{ removed }`. |
+| `POST /api/radio/observations/compare` | The log set beside the engine. Body: `myAntenna`, `theirAntenna`, `noise`, `defaultPowerWatts` (or `null`), `ssnByMonth` (`{ "2014-03": 115 }`, for months the solar table does not reach). Returns `{ comparison }`: how many entries were compared, how many fell at a low, middling or high predicted reliability by outcome, every entry left out by reason, the months still without a sunspot number, each compared entry with the engine's figures, and what the comparison cannot show. At most 500 different paths are put to the engine. |
 | `GET /api/radio/profiles` | `{ radios, antennas }`. |
 | `POST /api/radio/profiles/radios`, `PATCH` / `DELETE …/radios/:id` | A radio: `name`, `model`, `powerWatts`, `minMhz`, `maxMhz`, `modes`, `receiver`, `notes`. |
 | `POST /api/radio/profiles/antennas`, `PATCH` / `DELETE …/antennas/:id` | An antenna: `name`, `kind`, `heightM`, `ground`, `broadsideDeg`, `gainDb`, `feedlineLossDb`, `minMhz`, `maxMhz`, `notes`. |
+
+A coverage request is a prediction's body without `rx` and `reply`, with the antenna
+and noise assumed at every cell in `rxAntenna` and `noise`, `solar` as `table` or
+`manual` only, and:
+
+```json
+{ "area": { "west": -11, "south": 49, "east": 3, "north": 59 }, "resolution": "coarse" }
+```
+
+`resolution` is `coarse`, `medium` or `fine`: 16, 32 or 48 cells on the longer side of
+the area. `east` may run past 180 for an area across the date line.
 
 A prediction's body:
 

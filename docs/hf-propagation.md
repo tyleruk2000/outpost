@@ -6,6 +6,15 @@ you have. It works on the computer Outpost runs on, with no connection, and goes
 working for as long as you like without one.
 
 It is in **Radio**, then **HF propagation**. On a phone it is in the **More** sheet.
+Three more screens are built on the same engine, each listed under **Radio** and in the
+**More** sheet:
+
+- **HF coverage**: where one transmitter is predicted to be heard, as a layer over the
+  offline map. See [Coverage maps](#coverage-maps).
+- **Communication plans**: several stations, and which band serves each pair at which
+  hour. See [Communication plans](#communication-plans).
+- **Contact log**: what actually happened on the air, typed in or read from an ADIF
+  file, set beside what the engine predicted. See [The contact log](#the-contact-log).
 
 Read [What it is not](#what-it-is-not) before relying on it.
 
@@ -28,8 +37,9 @@ Read [What it is not](#what-it-is-not) before relying on it.
 ## Making a prediction
 
 1. **Where.** Give the transmitter and the receiver as coordinates (`51.5074, -0.1278`),
-   a British grid reference or a Maidenhead locator (`IO91WM`), or choose a saved place.
-   Saved places are the markers you keep on the map; there is no second list.
+   a British grid reference or a Maidenhead locator (`IO91WM`), choose a saved place, or
+   press **Choose on the map**. Saved places are the markers you keep on the map; there
+   is no second list. See [Choosing a place on the map](#choosing-a-place-on-the-map).
 2. **Date.** Any day. The model works by month, so every day of a month gets the same
    answer. The planner opens on today's date (UTC). The rest of the form is remembered
    in the browser from one visit to the next; a date you chose is remembered only until
@@ -156,6 +166,346 @@ noise.
 
 A low horizontal antenna radiates upwards and suits these paths; a vertical does not.
 That shows in the antenna gain at the take-off angle, which is the engine's.
+
+## Choosing a place on the map
+
+Wherever a position is asked for (the planner's transmitter and receiver, a coverage
+map's transmitter, a plan's stations, the two ends of a logged contact), **Choose on
+the map** opens the offline map: the same map, style and installed regions as the Maps
+screen.
+
+- Press the map and a pin is put there. The line under the map gives its coordinates
+  and locator.
+- Press one of your saved places and its position is taken, with its name.
+- **Use the middle of the map** takes the centre of what is shown, for a keyboard: the
+  arrow keys move the map and plus and minus zoom it.
+- Nothing is chosen until **Use this place** is pressed. A place chosen this way is used
+  where it was asked for and is not saved as a place; to keep one, save it on the Maps
+  screen.
+
+It works by touch. If the browser cannot draw the map (no WebGL 2), the screen says so
+and positions can still be typed.
+
+## Coverage maps
+
+**Radio**, **HF coverage**. A coverage map answers "where can this transmitter be
+heard?" by asking the engine the planner's question about every cell of a grid: the
+transmitter fixed, a receiver at the centre of each cell in turn.
+
+1. Say where the transmitter is, and with what: the date, a band or frequency, a mode,
+   the power, the transmitting antenna, the antenna and the noise assumed at every
+   receiver, and where the sunspot number comes from (the table, or a number of your
+   own; a measured foF2 belongs to one path and is not taken here).
+2. Move the map to the area you care about. **The grid is laid over whatever the map
+   shows.** The line above the map says how many cells that is and how large each one
+   is on the ground.
+3. Choose a grid (coarse, medium or fine) and press **Work out coverage**. The work is a
+   job: the screen counts the cells as they are done, **Stop** ends it, and it is also
+   listed with the other work under Downloads.
+
+### Reading it
+
+- **What the map shows**: *Reliability*, *Signal to noise* or *Signal strength*, for any
+  of the 24 hours (the engine gives the whole day for every cell, so changing the hour
+  asks nothing new).
+- **The legend says exactly what the number is**:
+  - Reliability: the share of the days of the month on which the signal-to-noise ratio
+    at the cell's centre is predicted to reach what the mode needs. The engine's own
+    figure, in the planner's five classes (10, 30, 50, 70 and 90%).
+  - Signal to noise: the median ratio in a 1 Hz bandwidth less what the mode needs, in
+    10 dB classes from 20 dB short to 20 dB over. Zero is exactly enough on the median
+    day.
+  - Signal strength: the median signal power at the receiving antenna as an S-meter
+    reading, by the convention S9 = -73 dBm and 6 dB to the unit.
+- **Shades** are the five steps of one hue (the sequential ramp the planner's charts
+  use), light to dark on the light map and dark to light on the dark one, so that
+  "more" always stands further from the ground. A hairline in the page colour separates
+  the cells. The cells are see-through enough for coasts, roads and names to show.
+- **A cell below the lowest class is not shaded**, nor is an hour at which the engine
+  found no path. The dashed line is the edge of the area that was worked out, so "no
+  shade" inside it is told from "not asked" outside it.
+- **A cell the engine did not answer is crossed through and never shaded**, and reading
+  it gives the reason. The cell whose centre is the transmitter's own position is one:
+  a path needs two different places.
+- **The legend counts the cells in each class** at the hour shown, and states the grid:
+  how many cells, their size in degrees and in kilometres.
+- **Read a cell** by pressing it, or by typing a place: its position and locator, its
+  distance and bearing from the transmitter, and its reliability, signal-to-noise ratio
+  and signal at the hour shown. **Open this path in the planner** takes the same
+  question there for the full account.
+
+Nothing is smoothed, and nothing is filled in between cells. Every cell is one answer
+from the engine for one place; a coverage map made of distance rings would give every
+cell at one distance the same figure, and these differ (the server's tests check that
+they do).
+
+**The transmitting antenna's bearing.** A horizontal antenna with no bearing is turned
+broadside to each cell in turn, which shows the best it can do in every direction and
+not the pattern of one fixed wire. The map says so first among its limits. Give the
+bearing (**Its broadside faces, degrees**) to see the pattern of the antenna as it
+hangs.
+
+### Saved coverage maps
+
+**Save this map** keeps the map under a name, with its figures. A saved map opens with
+the figures it was saved with (the screen says when they were worked out, with which
+engine and data and at what sunspot number); it is not worked out again. Deleting it
+from the list deletes nothing else.
+
+### How large, and how long
+
+| Grid | Cells on the longer side | Britain and Ireland from London (14° by 10°) | On this machine |
+| --- | --- | --- | --- |
+| Coarse | 16 | 13 x 16 = 208 cells of about 70 km | 0.6 s |
+| Medium | 32 | 26 x 32 = 832 cells of about 35 km | 2.2 s |
+| Fine | 48 | 39 x 48 = 1,872 cells of about 23 km | 4.9 s |
+
+Measured on 16 November 2026 on an Apple M2 Max through the coverage job of the
+packaged app, while other work was running on the machine: 2.6 to 2.8 ms a cell. The
+largest grid a request can ask for is 48 x 48 = 2,304 cells, about 6 s here. The linux/arm64
+container on the same Mac ran a cell about a tenth slower in the first sitting's
+measurements; a Raspberry Pi will be several times slower, and that has not been
+measured. `node apps/server/src/cli/bench-propagation.ts` times all three grids on any
+machine.
+
+A request is bounded: one of the three grids (so at most 2,304 cells), an area at least
+half a degree each way and no wider than the Earth, cell centres no nearer the poles
+than 89°. One grid is worked out at a time; up to three may be waiting, and a fourth is
+refused until one finishes. The same map asked for twice while it is being worked out
+is one job. A job that is stopped keeps nothing; a server restarted part of the way
+through a grid starts that grid again from the first cell.
+
+### What a coverage map leaves out
+
+- A cell is the answer for its centre. A coarse grid can miss a skip zone narrower than
+  its cells: use a finer grid, or a smaller area, where that matters.
+- Every cell assumes the same receiving antenna and the same noise.
+- An area may cross the date line (the map can be moved across it). It may not reach
+  the poles.
+- The map is of one frequency. For another band, work out another map.
+
+## Communication plans
+
+**Radio**, **Communication plans**. A plan names several stations (home, a shelter, a
+relative's house, a portable station, a rendezvous point) and says which band is
+predicted to serve each pair of them at which hour.
+
+1. **New plan**, and give it a name.
+2. **Add a station** for each place: a name, where it is (typed, a saved place, or
+   pressed on the map), the transmitter power (a radio profile fills it in), the antenna
+   (a profile or a generic antenna) and the noise where that station listens. Up to
+   eight stations.
+3. **When, and on what**: the date (the model works by month), the hours of interest in
+   UTC (a window may run past midnight), the bands of interest, the mode, and where the
+   sunspot number comes from. Changes are saved as they are made.
+4. **Work out the plan.** For every pair of stations the engine is asked for the day
+   each way, on every band of the plan: the two directions differ, because the power,
+   the antennas and the noise at the two ends differ.
+
+### The matrix, and how the bands are chosen
+
+For each pair the screen gives the distance and bearings, a **primary** and an
+**alternate** band with the hours recommended for each, a grid of every band of the
+plan through the 24 hours, and, for the hour pressed, each direction's figure and the
+two-way figure.
+
+The recommendation is a rule applied to the engine's figures. It is written out on the
+screen above the matrix and in every export:
+
+- For each band and hour, the **two-way figure** is the lower of the two directions'
+  reliabilities, because a contact needs the path to work both ways. It is an upper
+  bound on how often a contact can be expected, not a prediction of it.
+- The **primary** band is the one whose two-way figure, averaged over the hours of the
+  window, is highest. The **alternate** is the next highest. A tie goes to the band with
+  the higher median signal-to-noise ratio.
+- The **hours given** for a band are those at which its two-way figure is 50% of days or
+  more. If it reaches that at no hour, the hours given are those within 5 points of its
+  best, and it is marked as below half the days.
+- A band whose two-way figure never reaches 10% of days in the window is not recommended
+  at all. A pair may have no alternate, or no primary; the plan then says so.
+- An hour at which the engine found no path counts as no days.
+
+For a mode with no stated requirement (**Another narrowband digital mode**) the engine
+gives no reliability, and the bands are compared by the lower of the two directions'
+median signal-to-noise ratios instead; the hours given are those within 3 dB of the
+band's best. The screen and the exports say which rule was used.
+
+The matrix is kept. Renaming a plan, changing its notes, links or hours does not ask the
+engine again; changing a station, the month, the bands, the mode or the sunspot number
+does, and the screen shows nothing for the plan until it has been worked out as it
+stands.
+
+### Exports
+
+**Export as PDF** and **Export as Markdown** write the plan out to print and carry: the
+date and hours, where the sunspot number came from, the stations, the primary and
+alternate for each pair, each pair's bands hour by hour through the window, the rule,
+the limits, the engine and data versions, your notes, and the titles of what is linked.
+
+- The **PDF** is A4, made in the browser by the same writer as the map's printed pages:
+  headings and prose in Helvetica, tables in Courier so that their columns stand in
+  line, a footer on every page saying it is a monthly median. A table too wide for the
+  page is set smaller (24 hours across still fits at a size that can be read).
+  Characters the PDF's typeface cannot write (anything outside Western European
+  letters) are printed as "?", and the screen says which; the Markdown export keeps
+  them.
+- The **Markdown** reads as plain text: its tables are padded so that every line of a
+  table is the same width.
+
+Neither is sent anywhere: the file is made in the browser and saved by it.
+
+### Notes and links
+
+A plan has notes of its own, printed with it. **Linked notes and documents** ties a
+plan to notes and documents in Outpost (a net procedure, a frequency list): find one by
+words from its title or text and press **Link**. The link opens the note or document.
+If one is deleted later, the plan says a note or document is no longer in Outpost.
+Deleting a plan does not touch what it linked to.
+
+## The contact log
+
+**Radio**, **Contact log**. A log of what actually happened: contacts made, stations
+heard, and calls that got no answer.
+
+- **Log an entry** takes the date and time (UTC), what happened, the frequency, the
+  mode, the two stations (callsign and place; either may be left empty), the
+  transmitter power, the antenna, the reports sent and received, and notes.
+- **Import an ADIF file** reads the log your logging program exports.
+
+### Reading ADIF
+
+The reader was written from the ADIF specification, **version 3.1.8** ("Released ADIF
+Version 3.1.8, updated 2026-10-12", `adif.org/318/ADIF_318.htm`, read on 16 November
+2026): section IV.A, "ADI File Format", and the QSO field definitions. It reads the
+`.adi` form. The XML form (`.adx`) is not read.
+
+Fields read: `QSO_DATE`, `TIME_ON`, `CALL`, `STATION_CALLSIGN`, `OPERATOR`, `FREQ`,
+`BAND`, `MODE`, `SUBMODE`, `RST_SENT`, `RST_RCVD`, `TX_PWR`, `GRIDSQUARE`,
+`MY_GRIDSQUARE`, `LAT`, `LON`, `MY_LAT`, `MY_LON`, `MY_ANTENNA`, `COMMENT`, `NOTES`,
+`SWL` and `PROP_MODE`; from the header, `ADIF_VER`, `PROGRAMID` and `PROGRAMVERSION`.
+Every other field is ignored.
+
+- **Every record is accounted for.** After an import the screen gives the number of
+  records in the file, how many were brought in, how many were already in the log, and
+  how many were left out, with each reason and its count: no callsign (`CALL`), no date
+  or time, a date or time the specification does not allow, neither a frequency nor a
+  band, no mode, or a file that ends in the middle of a record.
+- **A position is only what the file states.** An end gets a position from `LAT` and
+  `LON` (or `MY_LAT`, `MY_LON`) when both are in the specification's `XDDD MM.MMM` form,
+  and otherwise from `GRIDSQUARE` (or `MY_GRIDSQUARE`) when it is a locator of four
+  characters or more, as the middle of that square. A two-character locator is a field
+  20° wide and is not used. An end with neither has no position, is listed as "no
+  position", and is left out of comparisons. **Nothing works a position out from a
+  callsign, a country or anything else.** `GRIDSQUARE_EXT` is not used: the first eight
+  characters are already within half a kilometre.
+- **The same contact is never added twice.** Two entries are the same contact when the
+  minute, the two callsigns (or, where there is none, the position), the band and the
+  mode are the same. That holds within one file, across files, and against entries
+  typed in. A typed entry that is already there is refused.
+- **Taking a file back** (**Files imported**, **Take back**) removes the entries it
+  brought in and nothing else. The file itself was never kept.
+- A record marked `SWL` is a station heard: the station in `CALL` is the transmitter,
+  and the power in the file, which is the listener's, is not used.
+- The specification says ADI data is ASCII. Files in the wild hold accented letters,
+  and programs disagree on whether a field's length then counts characters or bytes.
+  The reader counts bytes, which is the same thing for ASCII, and reads a value as
+  UTF-8 when it is valid UTF-8 and as Latin-1 otherwise.
+- A file of more than 64 MB or 200,000 records is refused; export it in parts.
+
+No ADIF file from a real logging program was available here. The reader was tested
+against files written for the tests from the specification.
+
+### Comparing with predictions
+
+**Compare with predictions** puts each entry that can be compared to the engine as a
+path, at its own month, the nearest whole hour and its own frequency, and counts how
+many entries fell where the engine gave a **low** (under 30% of days), **middling** (30
+to 69%) or **high** (70% or more) reliability.
+
+A log does not say what antenna or noise the other stations had, so you choose them:
+your antenna, the antenna assumed at every other station, the noise assumed at every
+receiver, and, if you wish, a power to assume where the log gives none.
+
+An entry is left out, and counted under its reason, when:
+
+- one end or both have no stated position;
+- the frequency is outside 2 to 30 MHz (an entry with a band and no frequency is
+  compared at the band's middle frequency);
+- the mode has no published requirement here (only SSB, CW, FT8 and JS8 have one; ADIF's
+  `MFSK` with submode `JS8` is JS8, `SSB` with `USB` or `LSB` is SSB);
+- no power was logged and none was given to assume;
+- the log says the signal travelled another way (`PROP_MODE` other than `F2`: a
+  satellite, a repeater, the internet, sporadic E);
+- the solar table has no sunspot number for that month and none was given;
+- the two ends are in the same place to a hundredth of a degree, or the engine found no
+  path at that hour;
+- it is beyond the 500 most recent different paths, which is the most put to the engine
+  for one comparison.
+
+**Past months.** The solar table is NOAA's forecast and does not reach back. For a
+month it does not cover, the screen asks for the smoothed sunspot number of that month;
+left empty, that month's entries stay out. Outpost does not ship past sunspot numbers:
+their licence (CC BY-NC) does not allow it.
+
+**What the comparison is, and is not.** The screen says this itself:
+
+- A log holds the contacts that were made. It does not hold the calls that went
+  unanswered, unless you logged them as such, so it cannot show how often a low
+  prediction was right to be low.
+- Each entry is compared in one direction only, from the transmitting end, with the
+  same assumed antenna at every other station and the same assumed noise at every
+  receiver.
+- The engine gives a monthly median; a contact happened on one day.
+- A position read from a four-character locator is the middle of a square two degrees
+  wide and one tall.
+- With fewer than 30 entries compared, no percentages are shown at all, only counts.
+  With 30 or more, each percentage is shown beside the count it rests on.
+- Nothing here adjusts the engine. A calibration that did would have to be explainable
+  and testable, and none is built.
+
+## A second engine: a proposal, not built
+
+The specification asks for the engine to be replaceable and for results to be checked
+against a trusted reference where possible. The first sitting checked VOACAP's signal
+figures against the ITU's own P.533 software by hand (see
+[How it was checked](#how-it-was-checked)). Running a second model inside Outpost, so
+that a person could see two models side by side, was looked at on 16 November 2026 and
+**was not started**.
+
+| Candidate | What it is | Licence, as GitHub and the repository state it | State |
+| --- | --- | --- | --- |
+| [ITU-R-Study-Group-3/ITU-R-HF](https://github.com/ITU-R-Study-Group-3/ITU-R-HF) | ITURHFProp: the ITU's C implementation of Recommendation P.533 with P.372 noise. A different model from VOACAP | No licence detected. A statement that it "may be used by implementers ... free from any copyright assertions"; one header says "All rights reserved" | Last pushed 15 May 2025 |
+| [im-alfa/p533-rs](https://github.com/im-alfa/p533-rs) | "A not-very Rusty port of the C impl of ITU-R P533 & P372" | MIT, by the porter. It is a translation of the ITU's code, so the MIT label stands on whatever the ITU's statement allows | Last pushed 10 March 2026, one star, publishes no validation |
+| [WU6P/VOA](https://github.com/WU6P/VOA) | VOACAP translated to JavaScript | Not one GitHub recognises | A second copy of the same model. It would check the translation, which the Fortran comparison already does, and not the model |
+
+Only P.533 is a second model, and it can be had two ways:
+
+1. **Build the ITU's C to WebAssembly** (wasi-sdk), in the same sandbox as VOACAP.
+2. **Build p533-rs to WebAssembly**, as hfcast is built.
+
+Either way it would be held to ITURHFProp's own nine reference inputs and outputs,
+which the first sitting reproduced line for line from a native build, on macOS arm64
+and in linux/arm64 and linux/amd64 containers. What is in the way:
+
+- **Licence.** Neither is cleanly inside Outpost's rule (MIT, ISC, BSD, Apache-2.0).
+  The ITU's wording is for "implementers in their implementation of the
+  Recommendation", which a P.533 engine is, so it fits better here than it does for
+  VOACAP's data. It is still the owner's decision, as the coefficients already are.
+- **Data.** P.533 needs the ITU's ionospheric maps: twelve files of 11 MB, 134 MB in
+  all. They would be an optional download through the download manager, not shipped.
+- **Antennas.** P.533 has no antenna models; it takes a gain table. Outpost must not
+  compute patterns of its own, so a comparison would be for isotropic antennas only,
+  as the first sitting's was.
+- **What it would show.** Two models agreeing on when a path is open and differing by
+  several decibels on signal, which the first sitting found. That is worth showing as
+  "one model's answer, good to several decibels", not as a second opinion on which
+  band to use.
+
+Estimated at two sittings: one to build either candidate to WebAssembly reproducibly
+and hold it to the nine reference outputs on three platforms (stopping there if it
+cannot be), one for the adapter behind `engine.ts`, the optional dataset, and a
+side-by-side view limited to isotropic antennas. Neither candidate was built or run in
+this sitting; p533-rs's own tests were not run.
 
 ## Where the sunspot number comes from
 
@@ -324,9 +674,13 @@ Raspberry Pi or on an Intel Mac.
 | One day on all nine bands | 4.6 ms | 5.5 ms |
 | Everything one planner screen asks for | 26 ms | 30 ms |
 | One day, one frequency, one place (a coverage cell) | 2.5 ms | 2.8 ms |
+| A coverage grid: coarse 208 cells, medium 832, fine 1,872 | 0.6 s, 2.2 s, 4.9 s | not measured |
+| A communication plan of eight stations (28 pairs, 56 runs): three bands, all nine | 0.2 s, 0.3 s | not measured |
 
 The container has the Pi's architecture, not its speed: a Raspberry Pi will be several
-times slower, and that has not been measured.
+times slower, and that has not been measured. The grid and plan rows were measured in
+the second sitting, on the same Mac while other work was running on it; see
+[How large, and how long](#how-large-and-how-long).
 
 ### Answers already worked out
 
@@ -336,6 +690,11 @@ of a watt), the sunspot number, the solar table's checksum, the engine's checksu
 the data's version. The same key is always the same answer. The 300 most recently used
 are kept. `POST /api/radio/propagation/predict?background=true` runs the same work as a
 job, for anything long.
+
+Coverage maps and plans' matrices are kept the same way, under keys made the same way,
+and counted apart: they are large (a fine coverage map is about a megabyte) and few.
+The eight most recently used are kept beyond those a person saved by name and those
+that belong to a plan, which are never dropped while the saved map or the plan exists.
 
 The sunspot number found from a measured foF2 is part of that key, and finding it is a
 search: ten or eleven questions to the engine. The number is remembered, while the
@@ -406,26 +765,36 @@ their data directory. Predictions then need that one step before they work.
 
 ## What is not built yet
 
-- **Coverage maps** over the offline map. The engine answers one place in 2.5 ms, so a
-  grid is a job of seconds; the job, the cache and the engine interface are ready for
-  it, and the map layer is not written.
-- **Choosing a place by pressing on the map.** Saved places and typed positions work.
-- **Communication plans** between several places, with their matrix and PDF and
-  Markdown exports.
-- **Logged contacts**, ADIF import, and comparing predictions with what happened.
+- **A second engine**, to set two models side by side. See
+  [A second engine](#a-second-engine-a-proposal-not-built).
 - **Multi-day planning** beyond one day at a time. Within a month every day is the
   same; across months, use **the same path with one thing changed**, **Months of the
   year**.
+- **A coverage map of several bands at once**, or of the best band in each cell. One
+  map is one frequency.
+- **A job for a comparison of a long log.** A comparison is answered directly and takes
+  the 500 most recent different paths.
+- **Calibration** from logged contacts. The comparison counts and adjusts nothing.
+- **ADIF's XML form** (`.adx`), and exporting the log as ADIF.
 
 ## Limits
 
-- Radio and antenna profiles and saved predictions travel to a portable drive with the
-  rest of the database, but changes made to them on the drive are not brought home by a
-  merge. A solar table you downloaded does not travel; a drive uses the included one.
+- Radio and antenna profiles, saved predictions and coverage maps, communication plans
+  and the contact log travel to a portable drive with the rest of the database, but
+  changes made to them on the drive are not brought home by a merge. A solar table you
+  downloaded does not travel; a drive uses the included one.
+- They are a person's own data: they are in the database a backup holds, they are
+  counted where **Manage and clean up** says what erasing everything would take, and
+  erasing everything takes them, with every answer worked out (an answer holds the
+  places it was asked about).
+- Communication plans and logged contacts are not in the search across everything.
 - 2 to 30 MHz. 160 m is outside the engine's stated range and is not offered.
 - Short path only. The long way round the Earth is not predicted.
 - Sporadic E is switched off, which is VOACAP's standard practice.
 - The minimum take-off angle is 0.1°, the multipath settings and the required
   reliability of 90% are VOACAP's defaults as hfcast fixes them.
 - Positions are read to a hundredth of a degree (about a kilometre).
+- The coverage layer was looked at over the outline map and over the test suite's own
+  made-up map tiles, in light and dark, at desktop width and at 390 px. No region of
+  real map tiles was installed where this was built, so it was not looked at over one.
 - Tested in Chromium. Not tried on a real phone.

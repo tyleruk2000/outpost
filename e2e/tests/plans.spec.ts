@@ -6,7 +6,7 @@ async function addStation(page: Page, name: string, where: string, watts: string
   await page.getByRole("button", { name: "Add a station" }).click();
   const dialog = page.getByRole("dialog", { name: "Add a station" });
   await dialog.getByLabel("Name").fill(name);
-  await dialog.getByLabel("Where it is").fill(where);
+  await dialog.getByLabel("Where it is", { exact: true }).fill(where);
   await dialog.getByLabel("Transmitter power, watts").fill(watts);
   await dialog.getByRole("button", { name: "Add station" }).click();
   await expect(dialog).toBeHidden();

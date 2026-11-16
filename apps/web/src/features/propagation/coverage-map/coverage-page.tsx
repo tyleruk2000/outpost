@@ -41,7 +41,7 @@ import { Progress, Segmented, Select, Skeleton } from "@/components/ui/misc";
 import { errorMessage } from "@/lib/api";
 import { formatDateTime, formatNumber } from "@/lib/utils";
 import { antennaOf, formOf, rememberForm, useEngines, usePlaces, useProfiles } from "../data";
-import { coverageFeatures } from "../map/layers";
+import { CELL_OPACITY, coverageFeatures } from "../map/layers";
 import type { PlanMapHandle } from "../map/plan-map";
 import { PlaceInput } from "../place-field";
 import { BasisNotice } from "../results";
@@ -117,11 +117,10 @@ function Legend({ result, quantity, utcHour }: { result: CoverageResult; quantit
       <ul className="grid gap-x-6 gap-y-1 sm:grid-cols-2" aria-label="What the shades mean, and how many cells are in each at this hour">
         {[...classes.entries()].reverse().map(([index, item]) => (
           <li key={item.label} className="flex items-center gap-2">
-            <span
-              aria-hidden
-              className="size-4 shrink-0 rounded-[3px] border border-border-strong"
-              style={{ background: `var(--chart-seq-${index + 1})` }}
-            />
+            {/* Over the land colour and as see-through as a cell, so that it is the shade the map shows. */}
+            <span aria-hidden className="size-4 shrink-0 overflow-hidden rounded-[3px] border border-border-strong bg-surface-strong">
+              <span className="block size-full" style={{ background: `var(--chart-seq-${index + 1})`, opacity: CELL_OPACITY }} />
+            </span>
             <span className="text-ink">{item.label}</span>
             <span className="tabular ml-auto">{cells(counts.classes[index]!)}</span>
           </li>

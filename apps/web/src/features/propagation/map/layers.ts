@@ -18,6 +18,13 @@ import type { FeatureCollection } from "@/features/maps/map/overlays";
 export const PROPAGATION_SOURCE = "o-propagation";
 
 /**
+ * How solid a shaded cell is. Low enough that roads, coasts and names show through it,
+ * high enough that the five shades stay apart. The legend's swatches are drawn the same
+ * way, so that a shade in the legend is the shade on the map.
+ */
+export const CELL_OPACITY = 0.62;
+
+/**
  * Cells first, beneath every other thing drawn over the map; then the marks for cells
  * with no answer, the outline of the cell being read, and the two kinds of point. A
  * cell's colour travels with the cell (`fill`), so the layers hold no scale of their own.
@@ -30,7 +37,7 @@ export function propagationLayers(theme: MapTheme): LayerSpecification[] {
       type: "fill",
       source: PROPAGATION_SOURCE,
       filter: kind("cell"),
-      paint: { "fill-color": ["get", "fill"], "fill-opacity": 0.82, "fill-antialias": false },
+      paint: { "fill-color": ["get", "fill"], "fill-opacity": CELL_OPACITY, "fill-antialias": false },
     },
     {
       // A hairline between cells in the page colour: it shows the grid for what it is, and

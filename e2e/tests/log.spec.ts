@@ -32,7 +32,7 @@ test.describe("The contact log", () => {
     // The same file again adds nothing.
     await page.getByLabel("ADIF file to import").setInputFiles(file);
     await expect(page.getByText("november.adi: 0 entries brought in")).toBeVisible();
-    await expect(page.getByText(/0 brought in, 5 already in the log, 2 left out\./)).toBeVisible();
+    await expect(page.getByText(/7 records in the file.* 0 brought in, 5 already in the log, 2 left out\./)).toBeVisible();
 
     // Compared with the engine: one entry has all it needs, and with one compared there are counts and no percentages.
     await page.getByRole("button", { name: "Compare", exact: true }).click();
@@ -46,12 +46,13 @@ test.describe("The contact log", () => {
     await expect(compared.getByRole("row", { name: /G4DSK to G4BBB/ })).toContainText(/\d+% at 12:00, SSN 83/);
     await expect(page.getByText("These counts do not adjust the engine in any way.")).toBeVisible();
 
-    // Taking the first file back removes what it brought in.
-    await page.getByRole("button", { name: "Take back november.adi" }).first().click();
+    // Taking the first file back (the older of the two) removes the four entries it brought in.
+    await page.getByRole("button", { name: "Take back november.adi" }).last().click();
     const confirm = page.getByRole("alertdialog");
-    await expect(confirm).toContainText("will be removed from the log");
+    await expect(confirm).toContainText("The 4 entries that “november.adi” brought in will be removed from the log.");
     await confirm.getByRole("button", { name: "Take back" }).click();
     await expect(confirm).toBeHidden();
+    await expect(page.getByText("G4DSK (IO91WM) to G4BBB (IO92BL)")).toHaveCount(0);
     expect(errors).toEqual([]);
   });
 });
