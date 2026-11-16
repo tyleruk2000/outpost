@@ -620,3 +620,33 @@ export interface WeatherKept {
   copies: number;
   copyBytes: number;
 }
+
+/** Where the tendency words and thresholds come from (quoted in docs/weather.md). */
+export const TENDENCY_SOURCE = {
+  name: "Met Office, Glossary of terms used in the shipping forecast and other marine forecasts: “Pressure tendency in station reports”",
+  url: "https://weather.metoffice.gov.uk/guides/coast-and-sea/glossary",
+  read: "2026-11-16",
+} as const;
+
+/**
+ * What a tendency is conventionally taken to suggest, in the Met Office's own words.
+ * A rule of thumb, not a forecast: shown with that label, and never instead of one.
+ */
+export const PRESSURE_RULES_OF_THUMB = [
+  {
+    quote: "Generally, low pressure brings unsettled weather, while high pressure leads to settled conditions.",
+    source: "Met Office, “High and low pressure”",
+    url: "https://weather.metoffice.gov.uk/learn-about/weather/how-weather-works/high-and-low-pressure",
+  },
+  {
+    quote: "As a warm front approaches, temperature and dew-point within the cold air gradually rise and pressure falls more quickly.",
+    source: "Met Office for schools, “Understanding weather”",
+    url: "https://weather.metoffice.gov.uk/learn-about/met-office-for-schools/other-content/other-resources/understanding-weather",
+  },
+  {
+    quote:
+      "You can tell when a cold front has passed by a rise of pressure, a fall of temperature and dew point, and a change in wind direction.",
+    source: "Met Office for schools, “Understanding weather”",
+    url: "https://weather.metoffice.gov.uk/learn-about/met-office-for-schools/other-content/other-resources/understanding-weather",
+  },
+] as const;
