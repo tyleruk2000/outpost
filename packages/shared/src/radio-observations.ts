@@ -6,6 +6,7 @@
  * A position is only ever what a person or their log stated. Nothing here, and nothing
  * on the server, works a position out from a callsign or anything else.
  */
+import type { JobDto } from "./common.ts";
 import type { AntennaSpec, EngineDescription, ModeId, NoiseEnvironment } from "./propagation.ts";
 
 /** "contact": worked both ways. "heard": one station heard the other. "failed": a call that got no answer. */
@@ -85,11 +86,20 @@ export interface ObservationImport {
   createdAt: number;
 }
 
+/**
+ * What `POST /api/radio/observations/import` answers: the import, for a small file
+ * brought in while the request waited, or the job bringing a larger one in. The job's
+ * result, when it has succeeded, is `{ kind: "adif-import", import: ObservationImport }`.
+ */
+export type ObservationImportResponse = { import: ObservationImport; job?: undefined } | { job: JobDto; import?: undefined };
+
 /** `GET /api/radio/observations` */
 export interface ObservationList {
   observations: Observation[];
   total: number;
   imports: ObservationImport[];
+  /** The job bringing a large file in, while there is one. None of what it has read is in the lists above until it has finished. */
+  importing: JobDto | null;
 }
 
 /** The ADIF version read for this importer, and the fields it reads. Shown on the screen and in the docs. */

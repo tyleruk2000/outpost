@@ -2,6 +2,7 @@ import {
   ADIF_READ,
   type ComparisonRequest,
   type ComparisonResult,
+  type JobDto,
   type Observation,
   type ObservationImport,
   type ObservationInput,
@@ -100,9 +101,34 @@ function comparisonOf(made: [number, number, number], patch: Partial<ComparisonR
   };
 }
 
+/** The job a large file is brought in by, as `/api/jobs/:id` gives it. */
+const importJob = (patch: Partial<JobDto> = {}): JobDto => ({
+  id: "j1",
+  type: "propagation.adif-import",
+  queue: "import",
+  state: "running",
+  title: "Contact log from years.adi",
+  subject: "adif-import:i9",
+  progress: { current: 12_000_000, total: 30_000_000, message: "Reading the log" },
+  error: null,
+  errorKind: null,
+  attempts: 1,
+  maxAttempts: 1,
+  result: null,
+  createdAt: 1,
+  startedAt: 2,
+  finishedAt: null,
+  updatedAt: 3,
+  ...patch,
+});
+
 interface Server {
   posted: Array<{ path: string; body: unknown }>;
   deleted: string[];
+  /** What the job is answered as from now on: a test moves it on by setting this. */
+  job: JobDto;
+  /** How many times the log itself was asked for. */
+  listed: number;
 }
 
 function show(
@@ -110,13 +136,15 @@ function show(
     observations?: Observation[] | "fails";
     total?: number;
     imports?: ObservationImport[];
-    importAnswer?: ObservationImport | "refused";
+    importAnswer?: ObservationImport | "refused" | "job";
+    /** A job found under way when the screen is opened. */
+    importing?: JobDto;
     addAnswer?: "duplicate";
     comparison?: ComparisonResult | "fails";
     engineReady?: boolean;
   } = {},
 ): Server {
-  const server: Server = { posted: [], deleted: [] };
+  const server: Server = { posted: [], deleted: [], job: options.importing ?? importJob(), listed: 0 };
   const observations = options.observations ?? [];
   vi.stubGlobal(
     "fetch",
@@ -133,7 +161,13 @@ function show(
               { error: { code: "bad_request", message: "That is not an ADIF file Outpost can read: it has no <EOH> or <EOR> tag." } },
               400,
             );
+          if (options.importAnswer === "job")
+            return json({ job: importJob({ state: "queued", progress: { current: 0, total: null, message: null } }) });
           return json({ import: options.importAnswer ?? imported() });
+        }
+        if (pathname === "/api/jobs/j1/cancel") {
+          server.job = importJob({ state: "cancelled" });
+          return json({ job: server.job });
         }
         if (pathname.endsWith("/compare")) {
           if (options.comparison === "fails")
@@ -158,8 +192,17 @@ function show(
       }
       if (pathname === "/api/radio/observations") {
         if (observations === "fails") return json({ error: { code: "internal", message: "The database is busy." } }, 500);
-        return json({ observations, total: options.total ?? observations.length, imports: options.imports ?? [], adif: ADIF_READ });
+        server.listed += 1;
+        const underWay = !["succeeded", "failed", "cancelled"].includes(server.job.state);
+        return json({
+          observations,
+          total: options.total ?? observations.length,
+          imports: options.imports ?? [],
+          importing: options.importing && underWay ? server.job : null,
+          adif: ADIF_READ,
+        });
       }
+      if (pathname === "/api/jobs/j1") return json({ job: server.job });
       if (pathname === "/api/radio/propagation/engines")
         return json({
           engines: [{ id: "voacap", name: "VOACAP", ready: options.engineReady ?? true, problem: "A data file is damaged." }],
@@ -248,6 +291,65 @@ describe("the contact log", () => {
     chooseFile("log.csv");
     expect(await screen.findByText("Nothing was imported")).toBeInTheDocument();
     expect(screen.getByText(/That is not an ADIF file Outpost can read/)).toBeInTheDocument();
+  });
+
+  it("follows a large file as the job it is: how far it has read, then every record accounted for", async () => {
+    const server = show({ observations: [entry()], importAnswer: "job" });
+    await screen.findByText(/16 Nov 2026, 12:04 UTC/);
+    chooseFile("years.adi");
+    const bar = await screen.findByRole("progressbar", { name: "Log read" });
+    const row = bar.closest("div[aria-live]")!;
+    await waitFor(() => expect(row.textContent).toContain("Contact log from years.adi: 12.0 MB of 30.0 MB read."));
+    expect(row.textContent).toContain("None of it is in the log until all of it is.");
+    expect(bar).toHaveAttribute("aria-valuenow", "40");
+    expect(screen.getByRole("button", { name: /Import an ADIF file/ })).toBeDisabled();
+    expect(screen.queryByText(/brought in/)).not.toBeInTheDocument();
+
+    const before = server.listed;
+    server.job = importJob({
+      state: "succeeded",
+      result: { kind: "adif-import", import: imported({ fileName: "years.adi", records: 100_000, imported: 99_990, duplicates: 4 }) },
+    });
+    expect(await screen.findByText("years.adi: 99,990 entries brought in")).toBeInTheDocument();
+    expect(screen.getByText(/100,000 records in the file/).textContent).toContain("99,990 brought in, 4 already in the log, 6 left out.");
+    expect(screen.queryByRole("progressbar", { name: "Log read" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Import an ADIF file/ })).toBeEnabled();
+    // The log is asked for again, now that the file is in it.
+    await waitFor(() => expect(server.listed).toBeGreaterThan(before));
+  });
+
+  it("stops a large import when asked, and says that nothing of the file is in the log", async () => {
+    const server = show({ observations: [entry()], importAnswer: "job" });
+    await screen.findByText(/16 Nov 2026, 12:04 UTC/);
+    chooseFile("years.adi");
+    await screen.findByRole("progressbar", { name: "Log read" });
+    fireEvent.click(screen.getByRole("button", { name: "Stop" }));
+    const notice = (await screen.findByText("The import was stopped")).closest("div")!.parentElement!;
+    expect(notice.textContent).toContain("Nothing from the file is in the log.");
+    expect(server.posted.map((item) => item.path)).toContain("/api/jobs/j1/cancel");
+    expect(screen.queryByRole("progressbar", { name: "Log read" })).not.toBeInTheDocument();
+  });
+
+  it("gives the job's own words when a large file could not be brought in", async () => {
+    const server = show({ observations: [entry()], importAnswer: "job" });
+    await screen.findByText(/16 Nov 2026, 12:04 UTC/);
+    server.job = importJob({
+      state: "failed",
+      error: "That file holds more than 200,000 contacts. Export it in parts and import each.",
+    });
+    chooseFile("lifetime.adi");
+    expect(await screen.findByText("Nothing was imported")).toBeInTheDocument();
+    expect(screen.getByText("That file holds more than 200,000 contacts. Export it in parts and import each.")).toBeInTheDocument();
+  });
+
+  it("shows an import already under way when the screen is opened part of the way through", async () => {
+    const server = show({ observations: [entry()], importing: importJob() });
+    const bar = await screen.findByRole("progressbar", { name: "Log read" });
+    await waitFor(() => expect(bar.closest("div[aria-live]")!.textContent).toContain("12.0 MB of 30.0 MB read."));
+    expect(screen.getByRole("button", { name: "Stop" })).toBeInTheDocument();
+    server.job = importJob({ state: "succeeded", result: { kind: "adif-import", import: imported({ fileName: "years.adi" }) } });
+    expect(await screen.findByText("years.adi: 5 entries brought in")).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole("progressbar", { name: "Log read" })).not.toBeInTheDocument());
   });
 
   it("takes a typed entry with or without positions, and says what is wrong before sending", async () => {

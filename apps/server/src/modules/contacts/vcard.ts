@@ -23,8 +23,10 @@
  * No library is used. `vcf` and `vcard4` (MIT) read 3.0 and 4.0 only, and the 2.1
  * rules (quoted-printable, a character set for each line) are where the work is.
  */
+
 import { isUtf8 } from "node:buffer";
 import { TextDecoder } from "node:util";
+import { yieldToEventLoop } from "../../core/event-loop.ts";
 
 export const VCARD_LIMITS = {
   /** Cards in one file. */
@@ -232,8 +234,6 @@ interface OpenCard {
   nested: number;
 }
 
-const pause = () => new Promise<void>((resolve) => setImmediate(resolve));
-
 /**
  * Reads every card in a file. Cards that cannot be read are listed with the reason and
  * the rest are still returned; only a file that is not vCard at all, or holds more
@@ -333,7 +333,7 @@ export async function parseVcards(input: Buffer): Promise<ParsedVcards> {
         if (sinceLastPause >= 200) {
           sinceLastPause = 0;
           // Other requests are answered while a large file is read.
-          await pause();
+          await yieldToEventLoop();
         }
       }
     } else if (skipping && (continues || (end > at && !hasColon(buffer, at, end)))) {

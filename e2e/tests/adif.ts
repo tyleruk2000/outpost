@@ -24,3 +24,28 @@ export function adifLog(mine: string): Buffer {
       record({ ...base, CALL: "G4DDD", QSO_DATE: "16/11/2026", TIME_ON: "1500" }),
   );
 }
+
+/**
+ * A log of `count` contacts from the station `mine`, two minutes apart from the start of
+ * 2015: more than is brought in while the request waits, so that it goes in as a job.
+ */
+export function longAdifLog(mine: string, count: number): Buffer {
+  const parts = [`Exported by the end-to-end tests\n${field("ADIF_VER", "3.1.8")} ${field("PROGRAMID", "E2ELog")} <EOH>\n`];
+  for (let n = 0; n < count; n++) {
+    const at = new Date(Date.UTC(2015, 0, 1) + n * 120_000).toISOString();
+    parts.push(
+      record({
+        STATION_CALLSIGN: mine,
+        CALL: `F${n % 10}${String.fromCharCode(65 + (n % 26))}${String.fromCharCode(65 + ((n >> 4) % 26))}Q`,
+        QSO_DATE: at.slice(0, 10).replaceAll("-", ""),
+        TIME_ON: at.slice(11, 16).replace(":", ""),
+        FREQ: "14.074",
+        BAND: "20m",
+        MODE: "FT8",
+        MY_GRIDSQUARE: "IO91WM",
+        COMMENT: `Contact number ${n} of a long log`,
+      }),
+    );
+  }
+  return Buffer.from(parts.join(""));
+}

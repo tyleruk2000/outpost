@@ -8,12 +8,12 @@
  * everyone who can open Outpost can read, change and export every one of them. The
  * Contacts screen says so, and docs/security.md says what follows from it.
  */
-import fastifyMultipart from "@fastify/multipart";
 import { CONTACT_LIMITS, type ContactsPhoneStatus } from "@outpost/shared";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
 import { badRequest } from "../../core/errors.ts";
+import { registerMultipart } from "../../core/multipart.ts";
 import { contentDisposition } from "../notes/attachments.ts";
 import { DAV_PRINCIPAL_PATH, DAV_USER_NAME, registerContactsDav } from "./dav.ts";
 import { contactCreateSchema, contactPatchSchema, createContactsService } from "./service.ts";
@@ -80,10 +80,8 @@ export async function registerContacts(app: FastifyInstance, ctx: AppContext): P
   const service = createContactsService(ctx);
   ctx.services.contacts = service;
 
-  // Another module may have registered the multipart parser already; twice is an error.
-  if (!app.hasContentTypeParser("multipart/form-data")) {
-    await app.register(fastifyMultipart, { limits: { fileSize: CONTACT_LIMITS.fileBytes } });
-  }
+  // The limits are the routes' own, given with each request (see core/multipart.ts).
+  await registerMultipart(app);
 
   app.get("/api/contacts", async (request) => service.list(listQuery.parse(request.query)));
 

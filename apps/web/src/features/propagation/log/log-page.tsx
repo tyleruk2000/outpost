@@ -10,6 +10,7 @@ import {
   COMPARISON_MAX_PATHS,
   COMPARISON_MIN_FOR_SHARES,
   type ComparisonResult,
+  formatBytes,
   modeById,
   NOISE_ENVIRONMENTS,
   type NoiseEnvironment,
@@ -20,25 +21,29 @@ import {
   type ObservationOutcome,
   parseCoordinates,
 } from "@outpost/shared";
+import { useQueryClient } from "@tanstack/react-query";
 import { Upload } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { EmptyState, ErrorState, Notice, Page, PageHeader, Rows, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog, Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input, Textarea } from "@/components/ui/input";
-import { Select, Skeleton } from "@/components/ui/misc";
+import { Progress, Select, Skeleton } from "@/components/ui/misc";
 import { errorMessage } from "@/lib/api";
 import { formatNumber, plural } from "@/lib/utils";
 import { antennaOf, type PlaceField, useEngines, usePlaces, useProfiles } from "../data";
 import { PlaceInput } from "../place-field";
 import {
+  logKeys,
   monthWords,
   rememberedSsn,
   rememberSsn,
+  stopImport,
   useAddObservation,
   useCompareLog,
   useImportAdif,
+  useImportJob,
   useLog,
   useRemoveImport,
   useRemoveObservation,
@@ -92,6 +97,8 @@ function ImportSummary({ result }: { result: ObservationImport }) {
     </Notice>
   );
 }
+
+type ImportOutcome = { kind: "done"; result: ObservationImport } | { kind: "refused"; message: string } | { kind: "stopped" };
 
 const nowUtc = () => new Date().toISOString().slice(0, 16);
 
@@ -446,6 +453,38 @@ export default function LogPage() {
   const [power, setPower] = useState("");
   const [ssn, setSsn] = useState<Record<string, string>>(rememberedSsn);
   const [problem, setProblem] = useState("");
+  const client = useQueryClient();
+  // How the last import ended. A large file is a job, so its end comes from the job and not from the upload's answer.
+  const [outcome, setOutcome] = useState<ImportOutcome | null>(null);
+  const [startedJob, setStartedJob] = useState<string | null>(null);
+  const [settledJobs, setSettledJobs] = useState<readonly string[]>([]);
+  // The job this screen started, or one found under way when the screen was opened part of the way through.
+  const importJobId = [startedJob, log.data?.importing?.id].find((id) => id && !settledJobs.includes(id)) ?? null;
+  const importJob = useImportJob(importJobId);
+  const importState = importJob.data?.id === importJobId ? importJob.data?.state : undefined;
+  const importResult = importJob.data?.result as { import?: ObservationImport } | null | undefined;
+  const importError = importJob.data?.error;
+  useEffect(() => {
+    if (!importJobId || !importState || !["succeeded", "failed", "cancelled"].includes(importState)) return;
+    setSettledJobs((current) => [...current, importJobId]);
+    if (importState === "succeeded" && importResult?.import) setOutcome({ kind: "done", result: importResult.import });
+    else if (importState === "cancelled") setOutcome({ kind: "stopped" });
+    else setOutcome({ kind: "refused", message: importError ?? "The file could not be brought in." });
+    void client.invalidateQueries({ queryKey: logKeys.all });
+  }, [importJobId, importState, importResult, importError, client]);
+  const importProgress = importJob.data?.progress;
+  const importing = importAdif.isPending || importJobId !== null;
+
+  const startImport = (file: File) => {
+    setOutcome(null);
+    importAdif.mutate(file, {
+      onSuccess: (answer) => {
+        if (answer.job) setStartedJob(answer.job.id);
+        else setOutcome({ kind: "done", result: answer.import });
+      },
+      onError: (error) => setOutcome({ kind: "refused", message: errorMessage(error) }),
+    });
+  };
 
   const antennas = profiles.data?.antennas ?? [];
   const engine = engines.data?.[0];
@@ -475,7 +514,7 @@ export default function LogPage() {
   const actions = (
     <>
       <Button onClick={() => setAdding(true)}>Log an entry</Button>
-      <Button variant="primary" loading={importAdif.isPending} onClick={() => picker.current?.click()}>
+      <Button variant="primary" loading={importing} onClick={() => picker.current?.click()}>
         <Upload aria-hidden />
         Import an ADIF file
       </Button>
@@ -489,7 +528,7 @@ export default function LogPage() {
         onChange={(event) => {
           const file = event.target.files?.[0];
           event.target.value = "";
-          if (file) importAdif.mutate(file);
+          if (file) startImport(file);
         }}
       />
     </>
@@ -502,12 +541,36 @@ export default function LogPage() {
         description="What actually happened on the air: contacts, stations heard, and calls that got no answer. Typed in, or read from your logging program's ADIF file, and set beside what the engine predicted for the same paths."
         actions={actions}
       />
-      {importAdif.isError ? (
+      {importJobId ? (
+        <div className="mb-6 flex flex-wrap items-center gap-3" aria-live="polite">
+          <div className="min-w-40 flex-1">
+            <Progress
+              tone="lamp"
+              label="Log read"
+              value={importProgress?.total ? (importProgress.current ?? 0) / importProgress.total : null}
+            />
+            <p className="tabular mt-1.5 text-small text-ink-muted">
+              {importJob.data?.title ?? "A contact log"}:{" "}
+              {importState === "running" && importProgress?.total
+                ? `${formatBytes(importProgress.current ?? 0)} of ${formatBytes(importProgress.total)} read.`
+                : "waiting its turn."}{" "}
+              None of it is in the log until all of it is.
+            </p>
+          </div>
+          <Button size="sm" onClick={() => void stopImport(importJobId).catch(() => undefined)}>
+            Stop
+          </Button>
+        </div>
+      ) : outcome?.kind === "refused" ? (
         <Notice tone="danger" title="Nothing was imported" className="mb-6">
-          {errorMessage(importAdif.error)}
+          {outcome.message}
         </Notice>
-      ) : importAdif.data ? (
-        <ImportSummary result={importAdif.data} />
+      ) : outcome?.kind === "stopped" ? (
+        <Notice tone="warning" title="The import was stopped" className="mb-6">
+          Nothing from the file is in the log. Import it again to bring it in.
+        </Notice>
+      ) : outcome?.kind === "done" ? (
+        <ImportSummary result={outcome.result} />
       ) : null}
 
       {log.isPending ? (

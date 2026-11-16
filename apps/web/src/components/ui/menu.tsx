@@ -7,6 +7,11 @@ export const Menu = Primitive.Root;
 export const MenuTrigger = Primitive.Trigger;
 export const MenuGroup = Primitive.Group;
 
+/**
+ * The panel of a menu, a popover or a drop-down's list. Its layer is above a dialog's:
+ * any of them may be opened from inside a dialog, and at the layer below (where the
+ * page's own floating things sit) it opened under the dialog, unseen and out of reach.
+ */
 export const floating =
   "z-(--z-popover) min-w-44 rounded-panel border border-border bg-raised p-1 text-small text-ink shadow-float data-[state=open]:animate-enter focus:outline-none";
 

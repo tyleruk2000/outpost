@@ -28,6 +28,10 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   Settings → Appearance → Clock and kept in the browser. It follows the device until
   someone chooses, and applies to every time the app writes; UTC is always 24-hour.
 - Database migrations applied automatically at start.
+- A drop-down, a menu or a popover opened inside a dialog is drawn above the dialog.
+  It was drawn underneath, so the drop-downs of every form in a dialog ("Log an entry"
+  on the contact log, a plan's station, an equipment profile) opened where they could
+  not be seen or pressed.
 - The packaged app and the Docker image include `THIRD-PARTY-LICENSES.txt`, the licences
   of the projects bundled into them.
 
@@ -199,6 +203,8 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   small pieces.
 - Imports that can be stopped and continued without creating anything twice, and a
   report of what was created, updated, skipped and failed.
+- A block of code in an imported HTML file, or in a saved web page, keeps its indents
+  and line ends when a highlighter has put them in elements of their own.
 
 #### Search
 
@@ -542,6 +548,11 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   the bands run to 1 mm (250 GHz), so 24, 47 and 76 GHz given in megahertz are no longer
   read a thousand times too low. A number that could be two frequencies, with nothing
   to say which, is left out with the reason in the preview.
+- Bringing a list up to date sees a new row that repeats an entry the list already
+  has, as importing the same file afresh does. Two repeaters that may be one are
+  offered as that even when each is also held twice. A fetched file whose name in the
+  address cannot be decoded is kept, under the name as written, and not reported as a
+  failed connection.
 #### HF propagation
 
 - A planner under **Radio** that predicts how a shortwave signal gets between two
@@ -584,6 +595,19 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   counts, with every entry left out given its reason and no percentage from a handful.
 - Plans, the log, equipment profiles and saved predictions are counted among a person's
   own things under Manage and clean up, and erased with everything else.
+- A large ADIF file (over 128 kB) is brought in by a job, a batch of 200 contacts at a
+  time, with progress and a Stop button on the log screen. Done in the request, 20,000
+  contacts held the server for 3.1 seconds and 200,000 for 28; the longest hold is now
+  under 50 ms at any size. All of a file is in the log or none of it.
+- An ADIF file with no header that starts with a byte-order mark or a blank line is
+  read (it was recorded as an import of no records), and a file with nothing in it to
+  read is refused in words.
+- A new coverage map is no longer cleared before it can be saved when eight or more
+  maps and plans are already kept: the eight most recently used are counted among the
+  unsaved ones, and listing saved maps and plans no longer counts as using them, or
+  reads their results (ten saved fine maps: 88 ms a list before, 0.6 ms now).
+- The limit of three coverage maps waiting, and one job for the same map asked for
+  twice, hold however much other work is queued.
 
 #### On a phone, out of reach of the server
 

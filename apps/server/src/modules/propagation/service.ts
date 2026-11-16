@@ -90,7 +90,10 @@ export interface PropagationInternals {
     datasets: Array<{ id: string; version: string }>;
   }>;
   keyOf(kind: KeptKind, body: unknown): string;
+  /** The answer kept under a key, for someone who asked for it: reading it counts as a use. */
   kept<T>(key: string): T | undefined;
+  /** Whether an answer is kept under a key. For lists: nothing is read, and it is not a use. */
+  has(key: string): boolean;
   keep(key: string, kind: KeptKind, engine: EngineDescription, request: unknown, result: unknown): void;
 }
 
@@ -101,10 +104,12 @@ export function engineProblem(error: unknown): never {
   throw error;
 }
 
+/** A number to so many decimal places, as a number: what the engine is given, and so what an answer is kept under. */
+export const fix = (value: number, places: number): number => Number(value.toFixed(places));
+
 /** Inputs as the engine will read them: positions to a hundredth of a degree, frequency to 10 kHz, power to a tenth of a watt. */
 export function normalise(request: PredictionRequest): PredictionRequest {
   const grid = (value: number, step: number) => Math.round(value / step) * step;
-  const fix = (value: number, places: number) => Number(value.toFixed(places));
   const site = (s: PredictionRequest["tx"]) => ({
     name: s.name.trim().slice(0, 60),
     lat: fix(grid(s.lat, 0.01), 2),
@@ -167,6 +172,9 @@ export function createPropagationService(ctx: AppContext, host: EngineHost): Pro
     return row.result as T;
   }
 
+  const hasKey = ctx.sqlite.prepare("SELECT 1 FROM propagation_results WHERE key = ?").pluck();
+  const has = (key: string): boolean => hasKey.get(key) !== undefined;
+
   function keep(key: string, kind: KeptKind, engine: EngineDescription, request: unknown, result: unknown): void {
     const now = Date.now();
     db.insert(propagationResults)
@@ -186,11 +194,16 @@ export function createPropagationService(ctx: AppContext, host: EngineHost): Pro
     db.run(
       sql`DELETE FROM propagation_results WHERE kind IN ('point', 'compare') AND key NOT IN (SELECT key FROM propagation_results WHERE kind IN ('point', 'compare') ORDER BY last_used_at DESC LIMIT ${MAX_KEPT_RESULTS})`,
     );
+    // The eight are counted among the ones nobody has pinned. Counted among them all, eight
+    // saved maps and plans would fill every place and a new map would go as soon as it was made.
     db.run(
-      sql`DELETE FROM propagation_results WHERE kind IN ('coverage', 'plan')
-          AND key NOT IN (SELECT result_key FROM propagation_saved WHERE result_key IS NOT NULL)
-          AND key NOT IN (SELECT result_key FROM communication_plans WHERE result_key IS NOT NULL)
-          AND key NOT IN (SELECT key FROM propagation_results WHERE kind IN ('coverage', 'plan') ORDER BY last_used_at DESC LIMIT ${MAX_KEPT_LARGE})`,
+      sql`WITH loose AS (
+            SELECT key, last_used_at FROM propagation_results WHERE kind IN ('coverage', 'plan')
+              AND key NOT IN (SELECT result_key FROM propagation_saved WHERE result_key IS NOT NULL)
+              AND key NOT IN (SELECT result_key FROM communication_plans WHERE result_key IS NOT NULL)
+          )
+          DELETE FROM propagation_results WHERE key IN (SELECT key FROM loose)
+            AND key NOT IN (SELECT key FROM loose ORDER BY last_used_at DESC LIMIT ${MAX_KEPT_LARGE})`,
     );
   }
 
@@ -524,6 +537,7 @@ export function createPropagationService(ctx: AppContext, host: EngineHost): Pro
       host,
       keyOf,
       kept,
+      has,
       keep,
       async basis(date, solar) {
         const described = await host.describe();

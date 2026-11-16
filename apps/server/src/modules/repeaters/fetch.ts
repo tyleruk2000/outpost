@@ -74,6 +74,20 @@ const seconds = (ms: number) => {
   return `${Math.ceil(count / 3600)} hours`;
 };
 
+/**
+ * The last part of an address's path, for a file name. An escape that is not UTF-8
+ * ("r%E9p.csv", an é written as one Latin-1 byte) cannot be decoded; the name is then
+ * used as it is written, and the file that was fetched is not thrown away over its name.
+ */
+function lastSegment(url: string): string {
+  const written = new URL(url).pathname.split("/").filter(Boolean).at(-1) ?? "";
+  try {
+    return decodeURIComponent(written);
+  } catch {
+    return written;
+  }
+}
+
 export function createRepeaterFetchClient(
   http: HttpClient,
   options: { userAgent: string; now?: () => number; timeoutMs?: number; maxBytes?: number },
@@ -168,7 +182,7 @@ export function createRepeaterFetchClient(
         if (!text.trim()) throw new AppError("upstream", `${host} answered with an empty file. Try again later.`);
         const modified = Date.parse(response.headers.get("last-modified") ?? "");
         const sane = !Number.isNaN(modified) && modified <= now() + 86_400_000 && modified > Date.UTC(2000, 0, 1);
-        const last = decodeURIComponent(new URL(url).pathname.split("/").filter(Boolean).at(-1) ?? "").replace(/[^\w .()-]/g, "_");
+        const last = lastSegment(url).replace(/[^\w .()-]/g, "_");
         return {
           text,
           url,

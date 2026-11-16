@@ -30,10 +30,8 @@ import { newId } from "../../core/ids.ts";
 import { communicationPlans, documents, notes } from "../../db/schema.ts";
 import type { CircuitResult } from "./engine.ts";
 import { EngineRefused } from "./host.ts";
-import { engineProblem, modeLine, type PropagationService } from "./service.ts";
+import { engineProblem, fix, modeLine, type PropagationService } from "./service.ts";
 import { antenna, checkedMode, date, modes, noise, power } from "./shapes.ts";
-
-const fix = (value: number, places: number) => Number(value.toFixed(places));
 
 const station = z.object({
   id: z.string().min(1).max(40),
@@ -141,7 +139,8 @@ export function registerPlans(app: FastifyInstance, ctx: AppContext, service: Pr
       solar: row.solar as unknown as PlanInput["solar"],
       links,
       linked: linkedOf(links),
-      workedOut: row.resultKey !== null && internals.kept<PlanResult>(row.resultKey) !== undefined,
+      // Asked without reading the matrix: a list of plans is not a use of any of them.
+      workedOut: row.resultKey !== null && internals.has(row.resultKey),
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     };

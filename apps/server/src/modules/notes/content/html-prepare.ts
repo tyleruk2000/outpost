@@ -16,7 +16,8 @@
  * Neither shape says anything, so both are taken away here, in one walk of the tree
  * that costs in proportion to its size: elements with nothing in them are dropped,
  * comments and `<wbr>` are dropped, elements that only pass their words on are opened,
- * and text that ends up side by side is joined once.
+ * and text that ends up side by side is joined once. Inside `<pre>`, where white space
+ * is the content, none of it is changed.
  *
  * Used for a web page being saved (`webpages/convert.ts`) and for HTML that is imported
  * or found inside imported Markdown (`html-pipeline.ts`). Run it after the allow-list
@@ -39,10 +40,20 @@ export interface PrepareOptions {
 /** Real pages are nowhere near this deep; below it the tree is left as it came. */
 const MAX_PREPARE_DEPTH = 400;
 
+/**
+ * Elements whose white space is the content: every space, tab and line end inside one
+ * is shown as written. A highlighter puts a line's indent, and sometimes the line end
+ * itself, in an element of its own, so in here an element that holds only white space
+ * gives exactly that white space and not the one space it would stand for in a sentence.
+ */
+const KEEPS_WHITE_SPACE = new Set(["pre", "textarea", "listing", "plaintext", "xmp"]);
+
 const wordless = (node: ElementContent): boolean => node.type === "text" && !node.value.trim();
 
-export function prepareForConversion(node: Element | Root, options: PrepareOptions, depth = 0): void {
+/** `keepsWhiteSpace` is for the walk's own use: whether `node` is inside an element that keeps its white space. */
+export function prepareForConversion(node: Element | Root, options: PrepareOptions, depth = 0, keepsWhiteSpace = false): void {
   if (depth > MAX_PREPARE_DEPTH) return;
+  const exact = keepsWhiteSpace || (node.type === "element" && KEEPS_WHITE_SPACE.has(node.tagName));
   const children: ElementContent[] = [];
   const add = (child: ElementContent) => {
     const last = children.at(-1);
@@ -56,10 +67,12 @@ export function prepareForConversion(node: Element | Root, options: PrepareOptio
       continue;
     }
     if (child.tagName === "wbr") continue;
-    prepareForConversion(child, options, depth + 1);
+    prepareForConversion(child, options, depth + 1, exact);
     // An element with nothing in it says nothing. One that held only a space still parts the words either side.
     if (child.children.every(wordless) && !options.keepEmpty(child.tagName)) {
-      if (child.children.length > 0) add({ type: "text", value: " " });
+      // Where white space is kept, what it held comes through as it was written. Its children are all text here.
+      if (exact) for (const inner of child.children) add(inner);
+      else if (child.children.length > 0) add({ type: "text", value: " " });
       continue;
     }
     const instead = options.replace?.(child, { parent: node, preceded: children.length > 0 });

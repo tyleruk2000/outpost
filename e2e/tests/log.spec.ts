@@ -1,4 +1,4 @@
-import { adifLog } from "./adif";
+import { adifLog, longAdifLog } from "./adif";
 import { expect, test, watchForErrors } from "./fixtures";
 
 test.describe("The contact log", () => {
@@ -53,6 +53,69 @@ test.describe("The contact log", () => {
     await confirm.getByRole("button", { name: "Take back" }).click();
     await expect(confirm).toBeHidden();
     await expect(page.getByText("G4DSK (IO91WM) to G4BBB (IO92BL)")).toHaveCount(0);
+    expect(errors).toEqual([]);
+  });
+
+  test("the drop-down in the form for an entry works with a mouse and with the keyboard", async ({ page }) => {
+    const errors = watchForErrors(page);
+    await page.goto("/radio/log");
+    await page.getByRole("button", { name: "Log an entry" }).click();
+    const dialog = page.getByRole("dialog", { name: "Log an entry" });
+    const what = dialog.getByRole("combobox", { name: "What happened" });
+
+    // With a mouse: the list is over the form, where the pointer is.
+    await what.click();
+    const item = page.getByRole("option", { name: "Called, not heard" });
+    await expect(item).toBeVisible();
+    expect(
+      await item.evaluate((element) => {
+        const box = element.getBoundingClientRect();
+        return element.contains(document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2));
+      }),
+    ).toBe(true);
+    await item.click();
+    await expect(what).toHaveText("Called, not heard");
+
+    // With the keyboard: opened from the field, moved through with the arrows, taken with Enter.
+    await what.focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("listbox")).toBeVisible();
+    // The list opens with the focus on the one chosen, a moment after it appears; the arrows move from there.
+    await expect(page.getByRole("option", { name: "Called, not heard" })).toBeFocused();
+    await page.keyboard.press("ArrowUp");
+    await expect(page.getByRole("option", { name: "Heard, no contact" })).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(what).toHaveText("Heard, no contact");
+    await expect(page.getByRole("listbox")).toHaveCount(0);
+    await dialog.getByRole("button", { name: "Cancel" }).click();
+    await expect(dialog).toBeHidden();
+    expect(errors).toEqual([]);
+  });
+
+  test("a long log is brought in by a job, and is in the log whole or not at all", async ({ page, request }) => {
+    const errors = watchForErrors(page);
+    await page.goto("/radio/log");
+    await expect(page.getByRole("heading", { level: 1, name: "Contact log" })).toBeVisible();
+    const buffer = longAdifLog("G4LNG", 4000);
+    expect(buffer.length).toBeGreaterThan(128 * 1024);
+    await page.getByLabel("ADIF file to import").setInputFiles({ name: "years.adi", mimeType: "text/plain", buffer });
+    // The job is quick; what must be seen is its end, said in the same words as a small file's.
+    await expect(page.getByText("years.adi: 4,000 entries brought in")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText(/4,000 records in the file.* 4,000 brought in, 0 already in the log, 0 left out\./)).toBeVisible();
+    await expect(page.getByRole("progressbar", { name: "Log read" })).toHaveCount(0);
+    const jobs = (await (await request.get("/api/jobs?limit=50")).json()).jobs as Array<{ type: string; state: string; title: string }>;
+    expect(jobs.find((job) => job.type === "propagation.adif-import")).toMatchObject({
+      state: "succeeded",
+      title: "Contact log from years.adi",
+    });
+
+    // Taken back, all of it goes.
+    await page.getByRole("button", { name: "Take back years.adi" }).click();
+    const confirm = page.getByRole("alertdialog");
+    await expect(confirm).toContainText("The 4,000 entries that “years.adi” brought in will be removed from the log.");
+    await confirm.getByRole("button", { name: "Take back" }).click();
+    await expect(confirm).toBeHidden();
+    await expect(page.getByRole("button", { name: "Take back years.adi" })).toHaveCount(0);
     expect(errors).toEqual([]);
   });
 });

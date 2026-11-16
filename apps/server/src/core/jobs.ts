@@ -168,10 +168,20 @@ export class JobQueue {
     return this.db.select().from(jobs).where(eq(jobs.subject, subject)).orderBy(asc(jobs.createdAt)).all();
   }
 
-  list(filter: { states?: JobState[]; limit?: number } = {}): JobRow[] {
-    const query = this.db.select().from(jobs);
-    const rows = filter.states?.length ? query.where(inArray(jobs.state, filter.states)) : query;
-    return rows
+  /**
+   * The newest jobs first. `states` and `types` are applied in the query, before the
+   * limit: a caller looking for its own kind of job must pass `types`, or a few hundred
+   * newer jobs of another kind push the ones it is looking for out of what it is given.
+   */
+  list(filter: { states?: JobState[]; types?: string[]; limit?: number } = {}): JobRow[] {
+    const wanted = and(
+      filter.states?.length ? inArray(jobs.state, filter.states) : undefined,
+      filter.types ? inArray(jobs.type, filter.types) : undefined,
+    );
+    return this.db
+      .select()
+      .from(jobs)
+      .where(wanted)
       .orderBy(sql`${jobs.createdAt} desc`)
       .limit(filter.limit ?? 100)
       .all();

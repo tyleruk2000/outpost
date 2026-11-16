@@ -99,6 +99,32 @@ describe("HTML the converter is slow at", () => {
     expect(doc("<details></details><p>x</p>")).not.toContain("details");
     expect(doc("<details><summary>More</summary></details>")).toContain("detailsSummary");
   });
+
+  it("keeps white space exactly where the page keeps it, inside a block of code", () => {
+    const code = (html: string) => {
+      const block = htmlToDoc(html).doc.content?.find((node) => node.type === "codeBlock");
+      return (block?.content ?? []).map((node) => node.text ?? "").join("");
+    };
+    // A highlighter puts the indent, and sometimes the end of a line, in an element of its own.
+    expect(code('<pre><code><span class="k">def</span> f():\n<span class="w">    </span>return 1</code></pre>')).toBe(
+      "def f():\n    return 1",
+    );
+    expect(code('<pre><code>a = 1<span class="w">\n</span>b = 2<span><span>\n\n\t</span></span>c = 3</code></pre>')).toBe(
+      "a = 1\nb = 2\n\n\tc = 3",
+    );
+    // Outside one, the same element is still the single space that parts two words.
+    expect(docToText(htmlToDoc("<p>one<span>    </span>two</p>").doc)).toBe("one two");
+    // And an element with nothing at all in it is dropped there as anywhere.
+    expect(code("<pre><code>a<span></span>b<i></i></code></pre>")).toBe("ab");
+  });
+
+  it("is no slower at a block of code made of such elements", () => {
+    for (const shape of ["<span>    </span>", "<i><b> </b></i>", "<span></span>", "<span>x</span>\n"]) {
+      const { ms, value } = timed(() => htmlToDoc(page(`<pre><code>${shape.repeat(40_000)}</code></pre><p>After.</p>`)));
+      expect(docToText(value.doc), shape).toContain("After.");
+      expect(ms, shape).toBeLessThan(3_000);
+    }
+  }, 60_000);
 });
 
 describe("converting in a process of its own", () => {

@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createTestApp, type TestApp } from "./helpers.ts";
+import { createTestApp, queueWaitingJobs, type TestApp } from "./helpers.ts";
 
 describe("moving documents between storage locations", () => {
   let app: TestApp;
@@ -58,6 +58,15 @@ describe("moving documents between storage locations", () => {
     expect(fs.existsSync(path.join(ssd.path, first.relPath))).toBe(false);
     expect(fs.existsSync(`${path.join(ssd.path, first.relPath)}.part`)).toBe(false);
     expect((await app.api("GET", `/api/documents/${first.id}`)).body.document.locationId).toBe(first.locationId);
+  });
+
+  it("refuses a second move while one is waiting, however much other work has been queued since", async () => {
+    queueWaitingJobs(app, "documents.move", 1);
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    queueWaitingJobs(app, "test.other", 150);
+    const second = await app.api("POST", "/api/documents/move", { locationId: ssd.id });
+    expect(second.status).toBe(409);
+    expect(second.body.error.message).toContain("Documents are already being moved");
   });
 
   it("needs a connected destination, and checks for room", async () => {

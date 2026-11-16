@@ -3,13 +3,13 @@
  * validates input, checks who is asking, and shapes responses.
  */
 import fs from "node:fs";
-import fastifyMultipart from "@fastify/multipart";
 import type { DocumentMarkdownResponse, DocumentOcrResponse, DocumentResponse, OcrStatus } from "@outpost/shared";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
 import { AppError } from "../../core/errors.ts";
 import { safeFileName } from "../../core/fs-safe.ts";
+import { registerMultipart } from "../../core/multipart.ts";
 import { readPicture } from "./embedded-pictures.ts";
 import { registerEpubReader } from "./epub-reader.ts";
 import { DOCUMENT_TYPES, formatForExt, servedAs } from "./file-types.ts";
@@ -77,11 +77,8 @@ export async function registerDocuments(app: FastifyInstance, ctx: AppContext): 
   registerDocumentMoves(app, ctx);
   registerEpubReader(app, ctx, service);
 
-  // Another module may have registered the multipart parser already; twice is an error.
-  // Limits are passed with each request, so it does not matter whose registration won.
-  if (!app.hasContentTypeParser("multipart/form-data")) {
-    await app.register(fastifyMultipart, { limits: { fileSize: ctx.config.maxUploadBytes } });
-  }
+  // The limits are the routes' own, given with each request (see core/multipart.ts).
+  await registerMultipart(app);
 
   /**
    * Upload one or more files. Optional fields `category`, `tags` (comma separated),

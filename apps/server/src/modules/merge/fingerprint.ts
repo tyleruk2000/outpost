@@ -11,7 +11,9 @@
  * every value is checked for its type and size, and a row that does not hold up is
  * left out and counted, never passed on.
  */
+
 import type Database from "better-sqlite3";
+import { yieldToEventLoop } from "../../core/event-loop.ts";
 import { sha256Hex } from "../../core/ids.ts";
 
 type Sqlite = InstanceType<typeof Database>;
@@ -183,8 +185,6 @@ function real(value: unknown): number {
 
 const flag = (value: unknown): boolean => value === 1 || value === true;
 
-const yieldToOthers = () => new Promise<void>((resolve) => setImmediate(resolve));
-
 /** Tags are the same tag whatever their capitalisation; the notes and documents modules agree. */
 export const tagKey = (name: string) => name.normalize("NFC").toLowerCase();
 const sortedTagKeys = (tags: string[]) => tags.map(tagKey).sort();
@@ -277,7 +277,7 @@ async function walk(
         unreadable[table] = (unreadable[table] ?? 0) + 1;
       }
     }
-    await yieldToOthers();
+    await yieldToEventLoop();
   }
 }
 

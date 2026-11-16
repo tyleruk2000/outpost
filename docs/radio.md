@@ -244,11 +244,19 @@ choose, for that import:
 Nothing is deleted by any of the three: an entry that is set aside can be brought
 back from its repeater's page.
 
+Bringing a list up to date counts the same way as importing it afresh. A row that is
+new in this copy and is the same repeater as an entry the list already has (the list
+now gives it twice, or once more under another spelling of the callsign) is counted as
+repeating within the file, wherever in the file it comes, and with either of the first
+two choices it is set aside for the entry already shown.
+
 **Find duplicates**, beside the lists, does the same for what is already held. Each
 group is shown side by side, with the entry Outpost would keep already chosen: the
 one from the list with the newest data. You can choose another and merge that group,
 or **Merge all** the certain ones at once. The possible ones are merged only one pair
-at a time, when you say so of that pair.
+at a time, when you say so of that pair. Two entries that are already known to be the
+same are not also offered as possibly the same; two that each have a twin of their own
+still are, when they share a frequency and a place under different callsigns.
 
 What merging does, and does not do:
 

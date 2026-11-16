@@ -13,6 +13,7 @@
  * Everything in a contact is text. Nothing is fetched, run or looked up because a
  * contact says so, and a number or an address is never checked against anything.
  */
+
 import {
   CONTACT_LIMITS,
   type ContactDto,
@@ -32,6 +33,7 @@ import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
 import { badRequest, conflict, notFound } from "../../core/errors.ts";
+import { yieldToEventLoop } from "../../core/event-loop.ts";
 import { newId, randomToken, sha256Hex } from "../../core/ids.ts";
 import { contactPages, contacts, contactTags, markers, notes } from "../../db/schema.ts";
 import { type CardContact, contactFromCard, contactFromPicked, newUid, otherFieldsOf, vcardOf } from "./card.ts";
@@ -226,7 +228,6 @@ interface Staged {
 
 const STAGED_FOR = 30 * 60 * 1000;
 const STAGED_AT_ONCE = 4;
-const pause = () => new Promise<void>((resolve) => setImmediate(resolve));
 
 export interface ListQuery {
   q?: string;
@@ -831,7 +832,7 @@ export function createContactsService(ctx: AppContext): ContactsService {
           }
         })();
         // Other requests are answered between batches of a large file.
-        await pause();
+        await yieldToEventLoop();
       }
       changed();
       return result;

@@ -90,11 +90,30 @@ describe("reading ADIF", () => {
     expect(Object.fromEntries(file.records[0]!.fields)).toEqual({ CALL: "M0XX", NAME: "" });
   });
 
-  it("counts a record the file stops in the middle of, and reads nothing from a header that never ends", () => {
+  it("counts a record the file stops in the middle of, and reads nothing from a header that never ends", async () => {
     expect(parseAdif(Buffer.from("<CALL:4>M0XX<EOR><CALL:5>G4BBB<QSO_DATE:8>2026")).truncated).toBe(1);
     expect(parseAdif(Buffer.from("<CALL:4>M0XX<EOR><CALL:5>G4BBB")).truncated).toBe(1);
     expect(parseAdif(Buffer.from("Not a log at all <CALL:4>M0XX<EOR>")).records).toEqual([]);
-    expect(looksLikeAdif(Buffer.from("callsign,date\nG4BBB,2026-11-16"))).toBe(false);
+    expect(await looksLikeAdif(Buffer.from("callsign,date\nG4BBB,2026-11-16"))).toBe(false);
+  });
+
+  it("takes a byte-order mark or white space before the first data-specifier as no header at all", () => {
+    const one = "<CALL:4>M0XX<QSO_DATE:8>20261116<EOR>";
+    for (const lead of ["\uFEFF", "\n", " ", "\r\n\r\n", "\uFEFF\r\n \t"]) {
+      const file = parseAdif(Buffer.from(lead + one));
+      expect(
+        file.records.map((item) => Object.fromEntries(item.fields)),
+        JSON.stringify(lead),
+      ).toEqual([{ CALL: "M0XX", QSO_DATE: "20261116" }]);
+      expect(file.header.size).toBe(0);
+      expect(file.headerNeverEnds).toBe(false);
+    }
+    // With an <EOH>, what comes before it is the header, mark or no mark.
+    const headed = parseAdif(Buffer.from(`\uFEFF<ADIF_VER:5>3.1.8 <PROGRAMID:7>MonoLog<EOH>${one}`));
+    expect(Object.fromEntries(headed.header)).toEqual({ ADIF_VER: "3.1.8", PROGRAMID: "MonoLog" });
+    expect(headed.records).toHaveLength(1);
+    // Words before the first data-specifier are a header, and one that never ends is said to be so.
+    expect(parseAdif(Buffer.from(`Not a log at all ${one}`))).toMatchObject({ records: [], headerNeverEnds: true });
   });
 
   it("counts lengths in bytes and reads accents written as UTF-8 or as Latin-1", () => {
@@ -279,9 +298,37 @@ describe("importing a log", () => {
     const none = await app.api("POST", "/api/radio/observations/import", { file: "x" });
     expect(none.status).toBe(400);
     expect((await list()).total).toBe(5);
-    // A header and no records is a file with nothing in it, and says so by its counts.
-    const empty = await importFile("empty.adi", header);
-    expect(empty.body.import).toMatchObject({ records: 0, imported: 0, duplicates: 0, skipped: [] });
+  });
+
+  it("brings in a file with no header that starts with a byte-order mark or a blank line", async () => {
+    const lone = (call: string) => record({ CALL: call, QSO_DATE: "20261101", TIME_ON: "0800", BAND: "40m", MODE: "CW" });
+    const marked = await importFile("marked.adi", `\uFEFF${lone("G7AAA")}`);
+    expect(marked.status).toBe(200);
+    expect(marked.body.import).toMatchObject({ records: 1, imported: 1, skipped: [] });
+    const blank = await importFile("blank.adi", `\r\n ${lone("G7BBB")}${lone("G7CCC")}`);
+    expect(blank.body.import).toMatchObject({ records: 2, imported: 2 });
+    for (const done of [marked, blank]) await app.api("DELETE", `/api/radio/observations/imports/${done.body.import.id}`);
+  });
+
+  it("says so when a file has nothing in it to read, and records no import", async () => {
+    const before = await list();
+    const refused = async (name: string, content: string) => {
+      const answer = await importFile(name, content);
+      expect(answer.status, name).toBe(400);
+      expect((answer.body.error as { details?: { reason?: string } }).details?.reason, name).toBe("nothing-to-read");
+      return answer.body.error!.message;
+    };
+    // A header and no records.
+    expect(await refused("empty.adi", header)).toContain("has a header and no contacts after it");
+    // Words before the first data-specifier and no <EOH>: a header that never ends.
+    expect(
+      await refused("words.adi", "Exported by hand <CALL:4>M0XX<QSO_DATE:8>20261116<TIME_ON:4>0800<BAND:3>40m<MODE:2>CW<EOR>"),
+    ).toContain("no <EOH> tag");
+    // End-of-record tags with nothing between them.
+    expect(await refused("tags.adi", "<EOR>\n<EOR>\n")).toContain("no contacts");
+    const after = await list();
+    expect(after.total).toBe(before.total);
+    expect(after.imports).toHaveLength(before.imports.length);
   });
 });
 

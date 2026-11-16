@@ -3,6 +3,7 @@
  * tracks (lines imported from GPX files, or drawn on the map point by point). Both are
  * indexed for the app-wide search.
  */
+
 import {
   asMarkerIcon,
   type Bbox,
@@ -24,6 +25,7 @@ import { desc, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
 import { badRequest, notFound } from "../../core/errors.ts";
+import { yieldToEventLoop } from "../../core/event-loop.ts";
 import { newId } from "../../core/ids.ts";
 import { markers, tracks } from "../../db/schema.ts";
 import { buildDrawnLine, type DrawnLine, routePointsSchema } from "./drawn-route.ts";
@@ -179,8 +181,6 @@ export interface AnnotationsService {
 export const MAX_WAYPOINTS_AS_MARKERS = 20_000;
 /** Markers written before the server looks up from the work: about a fortieth of a second's worth. */
 const MARKER_WRITE_BATCH = 100;
-
-const yieldToEventLoop = () => new Promise<void>((resolve) => setImmediate(resolve));
 
 /** Characters kept of the symbol a place had in a GPX file: as many as the reader keeps of one. */
 const GPX_SYM_LENGTH = GPX_LIMITS.textLength;

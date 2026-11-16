@@ -3,8 +3,9 @@ import type {
   ADIF_READ,
   ComparisonRequest,
   ComparisonResult,
+  JobDto,
   Observation,
-  ObservationImport,
+  ObservationImportResponse,
   ObservationInput,
   ObservationList,
 } from "@outpost/shared";
@@ -34,12 +35,24 @@ export const useAddObservation = () =>
   useChange((input: ObservationInput) => api.post<{ observation: Observation }>("/api/radio/observations", input), true);
 export const useRemoveObservation = () => useChange((id: string) => api.delete(`/api/radio/observations/${id}`));
 export const useRemoveImport = () => useChange((id: string) => api.delete<{ removed: number }>(`/api/radio/observations/imports/${id}`));
+/** A small file is answered with the import; a large one with the job bringing it in. */
 export const useImportAdif = () =>
   useChange((file: File) => {
     const form = new FormData();
     form.append("file", file, file.name);
-    return api.upload<{ import: ObservationImport }>("/api/radio/observations/import", form).then((data) => data.import);
+    return api.upload<ObservationImportResponse>("/api/radio/observations/import", form);
   }, true);
+
+/** The job bringing a large file in, asked about several times a second while it runs. */
+export const useImportJob = (id: string | null) =>
+  useQuery({
+    queryKey: ["jobs", "propagation-adif-import", id ?? ""],
+    queryFn: () => api.get<{ job: JobDto }>(`/api/jobs/${id}`).then((data) => data.job),
+    enabled: id !== null,
+    refetchInterval: (query) => (["succeeded", "failed", "cancelled"].includes(query.state.data?.state ?? "") ? false : 400),
+  });
+
+export const stopImport = (id: string) => api.post(`/api/jobs/${id}/cancel`);
 export const useCompareLog = () =>
   useMutation({
     mutationFn: (request: ComparisonRequest) =>

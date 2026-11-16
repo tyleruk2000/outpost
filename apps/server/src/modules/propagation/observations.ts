@@ -10,8 +10,8 @@
  * and counts how many contacts fell where the engine gave a low, middling or high
  * reliability. It adjusts nothing in the engine, and it says what a log cannot show.
  */
+
 import { createHash } from "node:crypto";
-import fastifyMultipart from "@fastify/multipart";
 import {
   ADIF_READ,
   bandOf,
@@ -28,24 +28,41 @@ import {
   noiseSetting,
   type Observation,
   type ObservationImport,
+  type ObservationImportResponse,
   type ObservationList,
   type ObservationOutcome,
   parseMaidenhead,
 } from "@outpost/shared";
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, isNull, notInArray, or } from "drizzle-orm";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
 import { AppError, badRequest, conflict, notFound } from "../../core/errors.ts";
+import { yieldToEventLoop } from "../../core/event-loop.ts";
 import { newId } from "../../core/ids.ts";
+import { PermanentJobError, toJobDto } from "../../core/jobs.ts";
+import { registerMultipart } from "../../core/multipart.ts";
 import { observationImports, radioObservations } from "../../db/schema.ts";
-import { adifInstant, adifLocation, looksLikeAdif, MAX_ADIF_RECORDS, parseAdif } from "./adif.ts";
+import { adifInstant, adifLocation, adifReader, looksLikeAdif, MAX_ADIF_RECORDS } from "./adif.ts";
 import { EngineRefused } from "./host.ts";
 import { engineProblem, modeLine, type PropagationService } from "./service.ts";
 import { antenna, noise, power } from "./shapes.ts";
 
 /** An ADIF file larger than this is refused. A log of 100,000 contacts is about 30 MB. */
 export const MAX_ADIF_BYTES = 64 * 1024 * 1024;
+/**
+ * A file no larger than this is brought in while the request waits; a larger one is a
+ * job. Set by measurement (docs/hf-propagation.md has the figures): reading and writing
+ * a contact takes about 17 millionths of a second, so at the usual 300 bytes a contact
+ * this is some 450 contacts and 8 ms, and a file of the barest contacts (70 bytes) about
+ * 25 ms.
+ */
+export const ADIF_DIRECT_BYTES = 128 * 1024;
+export const ADIF_IMPORT_JOB = "propagation.adif-import";
+/** Records read and written before a job looks up from the work. */
+const IMPORT_BATCH = 200;
+/** Rows taken out at a time when an import is undone. */
+const UNDO_BATCH = 1000;
 
 type Row = typeof radioObservations.$inferSelect;
 type NewRow = typeof radioObservations.$inferInsert;
@@ -135,6 +152,8 @@ const importDto = (row: typeof observationImports.$inferSelect): ObservationImpo
   };
 };
 
+const isPending = (row: typeof observationImports.$inferSelect) => (row.skipped as { pending?: boolean }).pending === true;
+
 const coordinate = (limit: number) => z.number().min(-limit).max(limit).nullable();
 const end = z
   .object({ call: z.string().trim().max(20).default(""), lat: coordinate(90), lon: coordinate(180) })
@@ -204,11 +223,24 @@ const READING = [
   "These counts do not adjust the engine in any way.",
 ];
 
+export interface Unhurried {
+  /** The id the import is to have, when something outside already knows it by one. */
+  importId?: string;
+  signal?: AbortSignal;
+  progress?(readBytes: number, totalBytes: number): void;
+  /** The most contacts taken from one file: `MAX_ADIF_RECORDS` unless a test asks for fewer. */
+  mostRecords?: number;
+}
+
 export interface ObservationsService {
   list(limit: number, offset: number): ObservationList;
   create(body: unknown): Observation;
   remove(id: string): void;
-  importAdif(fileName: string, bytes: Buffer): ObservationImport;
+  /**
+   * Reads a file into the log, all of it or none. Given `unhurried`, it looks up from the
+   * work between batches, reports how far it has read, and stops when the signal says so.
+   */
+  importAdif(fileName: string, bytes: Buffer, unhurried?: Unhurried): Promise<ObservationImport>;
   removeImport(id: string): number;
   compare(body: unknown): Promise<ComparisonResult>;
   count(): number;
@@ -223,139 +255,236 @@ export async function registerObservations(
   const { db, sqlite } = ctx;
   const { internals } = service;
   const changed = () => ctx.events.publish({ type: "propagation.changed" });
-  const count = () => (sqlite.prepare("SELECT count(*) AS n FROM radio_observations").get() as { n: number }).n;
-  const exists = (same: string) =>
-    db.select({ id: radioObservations.id }).from(radioObservations).where(eq(radioObservations.sameAs, same)).get();
+  // ── Imports under way ─────────────────────────────────────────────────────
+  //
+  // A file is written in batches, and for a large one the server answers other requests
+  // between them. Until the last batch is in, the import's row is marked `pending`, and
+  // nothing here shows it or the entries it has brought in so far: the log has all of a
+  // file or none of it. The mark is in the row's JSON, so it needed no change of schema.
 
-  function importAdif(fileName: string, bytes: Buffer): ObservationImport {
-    if (!looksLikeAdif(bytes)) {
-      throw badRequest(
-        "That is not an ADIF file Outpost can read: it has no <EOH> or <EOR> tag. Export the log from your logging program as ADIF (a .adi file); the XML form (.adx) is not read.",
-        { reason: "not-adif" },
-      );
+  const pendingImports = sqlite.prepare("SELECT id FROM observation_imports WHERE json_extract(skipped, '$.pending') = 1").pluck();
+  const pending = () => pendingImports.all() as string[];
+  /** What a reading of the log is narrowed by, so that an import under way is not in it. Nothing, when none is. */
+  const settled = () => {
+    const ids = pending();
+    return ids.length === 0 ? undefined : or(isNull(radioObservations.importId), notInArray(radioObservations.importId, ids));
+  };
+  const countAll = sqlite.prepare("SELECT count(*) FROM radio_observations").pluck();
+  const countSettled = sqlite
+    .prepare(
+      "SELECT count(*) FROM radio_observations WHERE import_id IS NULL OR import_id NOT IN (SELECT id FROM observation_imports WHERE json_extract(skipped, '$.pending') = 1)",
+    )
+    .pluck();
+  const count = () => (pending().length === 0 ? countAll.get() : countSettled.get()) as number;
+  const sameEntry = sqlite.prepare("SELECT id, import_id AS importId FROM radio_observations WHERE same_as = ?");
+  const exists = (same: string) => sameEntry.get(same) as { id: string; importId: string | null } | undefined;
+
+  const startImport = sqlite.prepare(
+    `INSERT INTO observation_imports (id, file_name, records, imported, duplicates, skipped, created_at)
+     VALUES (@id, @fileName, 0, 0, 0, '{"pending":true}', @now)`,
+  );
+  const finishImport = sqlite.prepare(
+    `UPDATE observation_imports SET adif_version = @adifVersion, program = @program, records = @records,
+            imported = @imported, duplicates = @duplicates, skipped = @skipped WHERE id = @id`,
+  );
+  // The same contact twice in the file, or already in the log from an earlier import or by hand,
+  // meets the unique index on `same_as` and is left out: no look-up of its own for each record.
+  const insertEntry = sqlite.prepare(
+    `INSERT INTO radio_observations (id, at, frequency_mhz, band, mode, outcome, tx_call, tx_lat, tx_lon, tx_from,
+            rx_call, rx_lat, rx_lon, rx_from, power_watts, antenna, report_sent, report_received, notes, prop_mode,
+            source, import_id, same_as, created_at, updated_at)
+     VALUES (@id, @at, @frequencyMhz, @band, @mode, @outcome, @txCall, @txLat, @txLon, @txFrom,
+            @rxCall, @rxLat, @rxLon, @rxFrom, @powerWatts, @antenna, @reportSent, @reportReceived, @notes, @propMode,
+            @source, @importId, @sameAs, @createdAt, @updatedAt)
+     ON CONFLICT (same_as) DO NOTHING`,
+  );
+  /** Writes a batch as one transaction and says how many of it were new. */
+  const writeBatch = sqlite.transaction((rows: NewRow[]): number => {
+    let added = 0;
+    for (const row of rows) added += insertEntry.run(row).changes;
+    return added;
+  });
+  const undoEntries = sqlite.prepare(
+    `DELETE FROM radio_observations WHERE id IN (SELECT id FROM radio_observations WHERE import_id = ? LIMIT ${UNDO_BATCH})`,
+  );
+  const undoImport = sqlite.prepare("DELETE FROM observation_imports WHERE id = ? AND json_extract(skipped, '$.pending') = 1");
+  /** Takes out everything an import that never finished has written, a batch at a time. An import that finished is not touched. */
+  async function undo(importId: string, pause: boolean): Promise<void> {
+    if (!pending().includes(importId)) return;
+    while (undoEntries.run(importId).changes > 0) if (pause) await yieldToEventLoop();
+    undoImport.run(importId);
+  }
+
+  const notAdif = () =>
+    badRequest(
+      "That is not an ADIF file Outpost can read: it has no <EOH> or <EOR> tag. Export the log from your logging program as ADIF (a .adi file); the XML form (.adx) is not read.",
+      { reason: "not-adif" },
+    );
+
+  /** What a record of the file becomes in the log, or nothing, with the reason counted. */
+  function entryOf(
+    fields: Map<string, string>,
+    importId: string,
+    now: number,
+    skipped: Map<string, number>,
+    notes: Map<string, number>,
+  ): NewRow | null {
+    const get = (name: string) => fields.get(name) ?? "";
+    const call = get("CALL").toUpperCase();
+    if (!call) {
+      bump(skipped, "No callsign for the station contacted (CALL)");
+      return null;
     }
-    let file: ReturnType<typeof parseAdif>;
-    try {
-      file = parseAdif(bytes);
-    } catch {
-      throw new AppError(
-        "too_large",
-        `That file holds more than ${MAX_ADIF_RECORDS.toLocaleString("en-GB")} contacts. Export it in parts and import each.`,
+    const at = adifInstant(get("QSO_DATE"), get("TIME_ON"));
+    if (at === null) {
+      bump(
+        skipped,
+        get("QSO_DATE") && get("TIME_ON")
+          ? "The date or the time is not one the specification allows"
+          : "No date or no time (QSO_DATE, TIME_ON)",
       );
+      return null;
     }
+    const freqText = get("FREQ");
+    const frequency = freqText && /^\d+(\.\d+)?$/.test(freqText) && Number(freqText) > 0 ? Number(freqText) : null;
+    if (freqText && frequency === null) bump(notes, "A frequency that is not a number of megahertz was left out");
+    const band = (get("BAND") || (frequency === null ? "" : adifBandOf(frequency))).toLowerCase();
+    if (frequency === null && !band) {
+      bump(skipped, "Neither a frequency nor a band (FREQ, BAND)");
+      return null;
+    }
+    const mode = get("MODE").toUpperCase();
+    if (!mode) {
+      bump(skipped, "No mode (MODE)");
+      return null;
+    }
+    const submode = get("SUBMODE").toUpperCase();
+    const mine = statedPosition(fields, { lat: "MY_LAT", lon: "MY_LON", grid: "MY_GRIDSQUARE" }, notes, "The logging station's");
+    const theirs = statedPosition(fields, { lat: "LAT", lon: "LON", grid: "GRIDSQUARE" }, notes, "The contacted station's");
+    if (mine.lat === null) bump(notes, "No position was given for the logging station, so that end has none");
+    if (theirs.lat === null) bump(notes, "No position was given for the contacted station, so that end has none");
+    const myCall = (get("STATION_CALLSIGN") || get("OPERATOR")).toUpperCase();
+    const powerText = get("TX_PWR");
+    const watts = powerText && /^\d+(\.\d+)?$/.test(powerText) && Number(powerText) > 0 ? Number(powerText) : null;
+    // An SWL report is a station heard, not worked: the station heard is the transmitter and its power is not in the file.
+    const heard = get("SWL").toUpperCase() === "Y";
+    const [tx, rx] = heard
+      ? [
+          { call, ...theirs },
+          { call: myCall, ...mine },
+        ]
+      : [
+          { call: myCall, ...mine },
+          { call, ...theirs },
+        ];
+    const row: NewRow = {
+      id: newId(),
+      at,
+      frequencyMhz: frequency,
+      band,
+      mode: submode ? `${mode}/${submode}` : mode,
+      outcome: heard ? "heard" : "contact",
+      txCall: tx.call.slice(0, 20),
+      txLat: tx.lat,
+      txLon: tx.lon,
+      txFrom: tx.from,
+      rxCall: rx.call.slice(0, 20),
+      rxLat: rx.lat,
+      rxLon: rx.lon,
+      rxFrom: rx.from,
+      powerWatts: heard ? null : watts,
+      antenna: get("MY_ANTENNA").slice(0, 120),
+      reportSent: get("RST_SENT").slice(0, 20),
+      reportReceived: get("RST_RCVD").slice(0, 20),
+      notes: [get("COMMENT"), get("NOTES")].filter(Boolean).join("\n").slice(0, 4000),
+      propMode: get("PROP_MODE").toUpperCase().slice(0, 12),
+      source: "adif",
+      importId,
+      sameAs: "",
+      createdAt: now,
+      updatedAt: now,
+    };
+    row.sameAs = sameAs(row);
+    return row;
+  }
+
+  /**
+   * Reads the file a batch of records at a time and writes each batch as it is read, so
+   * that no step is longer than a batch whatever the size of the file. All of the file
+   * is brought in or none of it: stopped, refused or failed part of the way, what was
+   * written is taken out again (unless the server is stopping, when the job that runs
+   * again at the next start does it).
+   */
+  async function importAdif(fileName: string, bytes: Buffer, unhurried?: Unhurried): Promise<ObservationImport> {
+    const pause = unhurried ? yieldToEventLoop : undefined;
+    if (!(await looksLikeAdif(bytes, pause))) throw notAdif();
+    const importId = unhurried?.importId ?? newId();
+    const now = Date.now();
+    const reader = adifReader(bytes);
+    const most = unhurried?.mostRecords ?? MAX_ADIF_RECORDS;
     const skipped = new Map<string, number>();
     const notes = new Map<string, number>();
-    const rows: NewRow[] = [];
-    const seen = new Set<string>();
+    let imported = 0;
     let duplicates = 0;
-    const importId = newId();
-    const now = Date.now();
-    if (file.truncated > 0) skipped.set("The file ends in the middle of a record", file.truncated);
-
-    for (const { fields } of file.records) {
-      const get = (name: string) => fields.get(name) ?? "";
-      const call = get("CALL").toUpperCase();
-      if (!call) {
-        bump(skipped, "No callsign for the station contacted (CALL)");
-        continue;
+    startImport.run({ id: importId, fileName: fileName.slice(0, 200) || "log.adi", now });
+    try {
+      while (!reader.done) {
+        const records = reader.read(IMPORT_BATCH);
+        if (reader.count > most) {
+          throw new AppError(
+            "too_large",
+            `That file holds more than ${most.toLocaleString("en-GB")} contacts. Export it in parts and import each.`,
+          );
+        }
+        const rows: NewRow[] = [];
+        for (const { fields } of records) {
+          const row = entryOf(fields, importId, now, skipped, notes);
+          if (row) rows.push(row);
+        }
+        if (rows.length > 0) {
+          const added = writeBatch(rows);
+          imported += added;
+          duplicates += rows.length - added;
+        }
+        if (pause) {
+          unhurried?.progress?.(reader.position, bytes.length);
+          await pause();
+          if (unhurried?.signal?.aborted) throw new Error("The import was stopped.");
+        }
       }
-      const at = adifInstant(get("QSO_DATE"), get("TIME_ON"));
-      if (at === null) {
-        bump(
-          skipped,
-          get("QSO_DATE") && get("TIME_ON")
-            ? "The date or the time is not one the specification allows"
-            : "No date or no time (QSO_DATE, TIME_ON)",
+      // A file with not one whole record in it is refused in words. Recorded as an import of
+      // nothing, it would read as a log that had been looked through and found empty.
+      if (reader.count === 0) {
+        const nothing = (message: string) => badRequest(`${message} Nothing was brought in.`, { reason: "nothing-to-read" });
+        if (reader.headerNeverEnds) {
+          throw nothing(
+            "This file begins with text, which ADIF takes as a header, but has no <EOH> tag to end the header, so its contacts cannot be told from it. Export the log again, or delete the text before the first < in the file.",
+          );
+        }
+        if (reader.truncated > 0)
+          throw nothing("This file ends in the middle of its first contact: it has no <EOR> tag that ends a whole one.");
+        throw nothing(
+          reader.headerEnded
+            ? "This file has a header and no contacts after it."
+            : "This file has no contacts in it: no fields come before any of its <EOR> tags.",
         );
-        continue;
       }
-      const freqText = get("FREQ");
-      const frequency = freqText && /^\d+(\.\d+)?$/.test(freqText) && Number(freqText) > 0 ? Number(freqText) : null;
-      if (freqText && frequency === null) bump(notes, "A frequency that is not a number of megahertz was left out");
-      const band = (get("BAND") || (frequency === null ? "" : adifBandOf(frequency))).toLowerCase();
-      if (frequency === null && !band) {
-        bump(skipped, "Neither a frequency nor a band (FREQ, BAND)");
-        continue;
-      }
-      const mode = get("MODE").toUpperCase();
-      if (!mode) {
-        bump(skipped, "No mode (MODE)");
-        continue;
-      }
-      const submode = get("SUBMODE").toUpperCase();
-      const mine = statedPosition(fields, { lat: "MY_LAT", lon: "MY_LON", grid: "MY_GRIDSQUARE" }, notes, "The logging station's");
-      const theirs = statedPosition(fields, { lat: "LAT", lon: "LON", grid: "GRIDSQUARE" }, notes, "The contacted station's");
-      if (mine.lat === null) bump(notes, "No position was given for the logging station, so that end has none");
-      if (theirs.lat === null) bump(notes, "No position was given for the contacted station, so that end has none");
-      const myCall = (get("STATION_CALLSIGN") || get("OPERATOR")).toUpperCase();
-      const powerText = get("TX_PWR");
-      const watts = powerText && /^\d+(\.\d+)?$/.test(powerText) && Number(powerText) > 0 ? Number(powerText) : null;
-      // An SWL report is a station heard, not worked: the station heard is the transmitter and its power is not in the file.
-      const heard = get("SWL").toUpperCase() === "Y";
-      const [tx, rx] = heard
-        ? [
-            { call, ...theirs },
-            { call: myCall, ...mine },
-          ]
-        : [
-            { call: myCall, ...mine },
-            { call, ...theirs },
-          ];
-      const row: NewRow = {
-        id: newId(),
-        at,
-        frequencyMhz: frequency,
-        band,
-        mode: submode ? `${mode}/${submode}` : mode,
-        outcome: heard ? "heard" : "contact",
-        txCall: tx.call.slice(0, 20),
-        txLat: tx.lat,
-        txLon: tx.lon,
-        txFrom: tx.from,
-        rxCall: rx.call.slice(0, 20),
-        rxLat: rx.lat,
-        rxLon: rx.lon,
-        rxFrom: rx.from,
-        powerWatts: heard ? null : watts,
-        antenna: get("MY_ANTENNA").slice(0, 120),
-        reportSent: get("RST_SENT").slice(0, 20),
-        reportReceived: get("RST_RCVD").slice(0, 20),
-        notes: [get("COMMENT"), get("NOTES")].filter(Boolean).join("\n").slice(0, 4000),
-        propMode: get("PROP_MODE").toUpperCase().slice(0, 12),
-        source: "adif",
-        importId,
-        sameAs: "",
-        createdAt: now,
-        updatedAt: now,
-      };
-      row.sameAs = sameAs(row);
-      // The same contact twice in the file, or already in the log from an earlier import or by hand.
-      if (seen.has(row.sameAs) || exists(row.sameAs)) {
-        duplicates += 1;
-        continue;
-      }
-      seen.add(row.sameAs);
-      rows.push(row);
+      const left = new Map(reader.truncated > 0 ? [["The file ends in the middle of a record", reader.truncated]] : []);
+      for (const [reason, n] of skipped) left.set(reason, n);
+      // The one write that makes the import, and everything it brought in, part of the log.
+      finishImport.run({
+        id: importId,
+        adifVersion: (reader.header.get("ADIF_VER") ?? "").slice(0, 20),
+        program: [reader.header.get("PROGRAMID"), reader.header.get("PROGRAMVERSION")].filter(Boolean).join(" ").slice(0, 80),
+        records: reader.count + reader.truncated,
+        imported,
+        duplicates,
+        skipped: JSON.stringify({ skipped: tally(left), notes: tally(notes) }),
+      });
+    } catch (error) {
+      if (unhurried?.signal?.reason !== "shutdown") await undo(importId, pause !== undefined);
+      throw error;
     }
-
-    const record = {
-      id: importId,
-      fileName: fileName.slice(0, 200) || "log.adi",
-      adifVersion: (file.header.get("ADIF_VER") ?? "").slice(0, 20),
-      program: [file.header.get("PROGRAMID"), file.header.get("PROGRAMVERSION")].filter(Boolean).join(" ").slice(0, 80),
-      records: file.records.length + file.truncated,
-      imported: rows.length,
-      duplicates,
-      skipped: { skipped: tally(skipped), notes: tally(notes) },
-      createdAt: now,
-    };
-    sqlite.transaction(() => {
-      db.insert(observationImports).values(record).run();
-      for (let start = 0; start < rows.length; start += 200)
-        db.insert(radioObservations)
-          .values(rows.slice(start, start + 200))
-          .run();
-    })();
     changed();
     return importDto(db.select().from(observationImports).where(eq(observationImports.id, importId)).get()!);
   }
@@ -375,7 +504,7 @@ export async function registerObservations(
         Promise<{ distanceKm: number; hours: Array<{ reliability: number; snrDbHz: number; path: string | null }> } | string>
       >();
       const ssnOf = new Map<string, number | null>();
-      const all = db.select().from(radioObservations).orderBy(desc(radioObservations.at)).all();
+      const all = db.select().from(radioObservations).where(settled()).orderBy(desc(radioObservations.at)).all();
       for (const row of all) {
         const out = (reason: string) => bump(excluded, reason);
         if (row.propMode && row.propMode !== "F2") {
@@ -534,13 +663,21 @@ export async function registerObservations(
         observations: db
           .select()
           .from(radioObservations)
+          .where(settled())
           .orderBy(desc(radioObservations.at), desc(radioObservations.id))
           .limit(limit)
           .offset(offset)
           .all()
           .map(dto),
         total: count(),
-        imports: db.select().from(observationImports).orderBy(desc(observationImports.createdAt)).all().map(importDto),
+        imports: db
+          .select()
+          .from(observationImports)
+          .orderBy(desc(observationImports.createdAt))
+          .all()
+          .filter((row) => !isPending(row))
+          .map(importDto),
+        importing: importsWaiting().map(toJobDto)[0] ?? null,
       };
     },
     create(body) {
@@ -578,10 +715,14 @@ export async function registerObservations(
         updatedAt: now,
       };
       row.sameAs = sameAs(row);
-      if (exists(row.sameAs)) {
-        throw conflict("That entry is already in the log: the same minute, stations, band and mode. Nothing was added.", {
-          reason: "duplicate",
-        });
+      const same = exists(row.sameAs);
+      if (same) {
+        throw conflict(
+          same.importId !== null && pending().includes(same.importId)
+            ? "The same entry is in the file being brought in at the moment: the same minute, stations, band and mode. Nothing was added."
+            : "That entry is already in the log: the same minute, stations, band and mode. Nothing was added.",
+          { reason: "duplicate" },
+        );
       }
       db.insert(radioObservations).values(row).run();
       changed();
@@ -596,7 +737,8 @@ export async function registerObservations(
     importAdif,
     removeImport(id) {
       const row = db.select().from(observationImports).where(eq(observationImports.id, id)).get();
-      if (!row) throw notFound("That import");
+      // One still being brought in is stopped as the job it is, not taken back from here.
+      if (!row || isPending(row)) throw notFound("That import");
       const held = (sqlite.prepare("SELECT count(*) AS n FROM radio_observations WHERE import_id = ?").get(id) as { n: number }).n;
       sqlite.transaction(() => {
         db.delete(radioObservations).where(eq(radioObservations.importId, id)).run();
@@ -617,12 +759,59 @@ export async function registerObservations(
     },
   };
 
+  // ── The job a large file is brought in by ─────────────────────────────────
+
+  /**
+   * The files of imports waiting or under way. They are held in memory, at most one at a
+   * time and at most 64 MB: a file is not written to the person's disk to be read back.
+   * The cost is that an import does not outlast the server: started again, its job finds
+   * no file, clears what was written and says so.
+   */
+  const files = new Map<string, Buffer>();
+  const importsWaiting = () => ctx.jobs.list({ states: ["queued", "running", "paused"], types: [ADIF_IMPORT_JOB], limit: 1 });
+  const busy = () =>
+    conflict("Another log is being brought in. Wait for it to finish, or stop it, then import this one.", { reason: "import-busy" });
+
+  ctx.jobs.register<{ importId: string; fileName: string }>(ADIF_IMPORT_JOB, {
+    queue: "import",
+    async run({ payload, signal, progress }) {
+      const bytes = files.get(payload.importId);
+      if (!bytes) {
+        await undo(payload.importId, true);
+        throw new PermanentJobError(
+          "Outpost was restarted before this log had been brought in, and the file was held in memory only. Nothing was brought in: import the file again.",
+          "import",
+        );
+      }
+      progress({ current: 0, total: bytes.length, message: "Reading the log" });
+      const done = await importAdif(payload.fileName, bytes, {
+        importId: payload.importId,
+        signal,
+        progress: (current, total) => progress({ current, total }),
+      });
+      return { kind: "adif-import", import: done as unknown as Record<string, unknown> };
+    },
+    onSettled(job) {
+      files.delete((job.payload as { importId: string }).importId);
+    },
+  });
+
+  // An import left part written by a server that stopped, whose job is no longer there to clear it.
+  {
+    const waiting = new Set(
+      ctx.jobs
+        .list({ states: ["queued", "running", "paused"], types: [ADIF_IMPORT_JOB], limit: 1000 })
+        .map((job) => (job.payload as { importId: string }).importId),
+    );
+    for (const id of pending()) {
+      if (!waiting.has(id)) void undo(id, true).catch((error) => ctx.log.error({ err: error }, "clearing an unfinished log import failed"));
+    }
+  }
+
   // ── Routes ────────────────────────────────────────────────────────────────
 
-  // Another module may have registered the multipart parser already; twice is an error.
-  if (!app.hasContentTypeParser("multipart/form-data")) {
-    await app.register(fastifyMultipart, { limits: { fileSize: ctx.config.maxUploadBytes } });
-  }
+  // The limits are the routes' own, given with each request (see core/multipart.ts).
+  await registerMultipart(app);
 
   async function receive(request: FastifyRequest): Promise<{ fileName: string; bytes: Buffer }> {
     if (!request.isMultipart()) throw badRequest("Send the file as a multipart/form-data upload.");
@@ -656,9 +845,23 @@ export async function registerObservations(
     observations.remove(request.params.id);
     return { ok: true };
   });
-  app.post("/api/radio/observations/import", async (request) => {
+  app.post("/api/radio/observations/import", async (request): Promise<ObservationImportResponse> => {
     const { fileName, bytes } = await receive(request);
-    return { import: observations.importAdif(fileName, bytes) };
+    if (importsWaiting().length > 0) throw busy();
+    if (bytes.length <= ADIF_DIRECT_BYTES) return { import: await observations.importAdif(fileName, bytes) };
+    // Refused here, in the answer, when it is not a log at all; anything else wrong with it the job says.
+    if (!(await looksLikeAdif(bytes, yieldToEventLoop))) throw notAdif();
+    // Asked again: the look through the file let other requests in.
+    if (importsWaiting().length > 0) throw busy();
+    const importId = newId();
+    const name = fileName.slice(0, 200) || "log.adi";
+    files.set(importId, bytes);
+    const job = ctx.jobs.enqueue(
+      ADIF_IMPORT_JOB,
+      { importId, fileName: name },
+      { title: `Contact log from ${name}`, subject: `adif-import:${importId}`, maxAttempts: 1 },
+    );
+    return { job: toJobDto(job) };
   });
   app.delete<IdParams>("/api/radio/observations/imports/:id", async (request) => ({
     removed: observations.removeImport(request.params.id),
