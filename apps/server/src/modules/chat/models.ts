@@ -13,8 +13,9 @@
  * The shape of `/api/tags` was read from Ollama's API documentation
  * (docs/api.md, "List Local Models") on 2026-11-16: `{"models":[{"name","model",
  * "modified_at","size","digest","details":{"parent_model","format","family",
- * "families","parameter_size","quantization_level"}}]}`. It has not been checked
- * against a running Ollama: none is installed where this was written.
+ * "families","parameter_size","quantization_level"}}]}`. It was then read from a
+ * running Ollama (version 0.40.16, on 2026-11-16), which answered in that shape and
+ * with one field more for each model: `"capabilities":["completion","tools"]`.
  */
 import type { ChatLookResult, ChatModel, ChatModelsResponse } from "@outpost/shared";
 import { AppError } from "../../core/errors.ts";
@@ -68,12 +69,15 @@ async function ollamaDetails(
     for (const entry of body.models.slice(0, 500) as Array<Record<string, unknown>>) {
       if (!entry || typeof entry !== "object") continue;
       const details = (entry.details && typeof entry.details === "object" ? entry.details : {}) as Record<string, unknown>;
-      const info = {
+      const info: Omit<ChatModel, "id"> = {
         sizeBytes: typeof entry.size === "number" && Number.isFinite(entry.size) && entry.size > 0 ? entry.size : null,
         parameters: text(details.parameter_size, 24),
         quantization: text(details.quantization_level, 24),
         family: text(details.family, 40),
       };
+      // Not in the documentation that was read, but sent by the Ollama that was tried (0.40.16): what each
+      // model can do. One that lists no "completion" cannot write; an embedding model lists "embedding".
+      if (Array.isArray(entry.capabilities) && entry.capabilities.length > 0) info.writes = entry.capabilities.includes("completion");
       for (const name of [entry.name, entry.model]) if (typeof name === "string" && name) found.set(name, info);
     }
     return found;

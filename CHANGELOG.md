@@ -246,6 +246,28 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 - Hybrid ranking by reciprocal rank fusion.
 - Retrieval endpoints that return passages with full provenance and numbered, cited
   context for use with a language model, with a flag for safety-critical sources.
+- Search by meaning and answers were made as simple as they can honestly be, with a
+  set-up guide. **Search by meaning is one switch**: turning it on uses the built-in
+  model and builds the index by itself, says how long is left from the build's own
+  speed, says when it is ready, and reads what is added later without being asked;
+  turning it off pauses a build and says what is kept. A set-up left pointing at an
+  embedding server that is not there is said plainly, on or off, and put right in one
+  press. **Answers and chat are three presses**: look for Ollama, use the model
+  offered, try it; when the model answers, the address and the model are saved and
+  answers are switched on. The section's first line says whether it is working (it
+  asks the model server, not only the settings) or the one next step. Everything both
+  sections could do before is behind **More options**, where the three numbers that
+  weigh the two searches now live too. **A short list of small models** that suit a
+  laptop or a Raspberry Pi 5 is shown where a model is chosen and where there is none
+  yet, with each one's download size, memory and what to expect, and the command for
+  the one to start with; the list is one data file. **The set-up guide** is a page
+  inside Outpost (`/help/search-and-answers`), so it works with no internet, linked
+  from both sections and from Chat; the same guide is
+  [docs/setup-guide.md](docs/setup-guide.md), written from the same source. Its
+  commands, setting names and ports were read from the publishers' pages on
+  2026-11-16. The three presses, a few answers and a chat turn were run by hand against
+  a real Ollama with two small models that day; the automated tests still use the
+  stand-in. See [docs/ai.md](docs/ai.md#tried-with-a-real-model).
 
 #### Answers from your library
 

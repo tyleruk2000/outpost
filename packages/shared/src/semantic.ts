@@ -39,7 +39,28 @@ export interface SemanticStatus {
    * running, paused, failed, stopped or finished. Null when none has been started.
    */
   build: JobDto | null;
+  /**
+   * Seconds the running build still needs, judged from how fast it has gone since it
+   * last started. Null when nothing is being built, or it is too early to say.
+   */
+  secondsLeft: number | null;
+  /**
+   * Passages already read for the model that switching on would use. They are kept
+   * while search by meaning is off, so this is counted whether it is on or not.
+   */
+  keptChunks: number;
   builtIn: BuiltInModelInfo;
+}
+
+/**
+ * Seconds a build still needs, judged from how far it got between two moments. Null
+ * until there is enough to judge by: five seconds and eight passages.
+ */
+export function secondsLeft(first: { at: number; done: number }, now: { at: number; done: number }, total: number): number | null {
+  const elapsed = (now.at - first.at) / 1000;
+  const made = now.done - first.done;
+  if (elapsed < 5 || made < 8) return null;
+  return Math.max(0, total - now.done) / (made / elapsed);
 }
 
 /**

@@ -6,14 +6,19 @@ passage. The model is **one you run yourself**, on the same machine or on your o
 network. Outpost does not include a language model and does not download one: a model
 is several gigabytes, and which one to run is your decision.
 
-> **Not yet run against a real model.** Everything on this page was built and tested
-> against a small stand-in server that speaks the same protocol as Ollama and
-> llama.cpp (`apps/server/test/model-server.ts`). The requests Outpost sends were
-> checked against both projects' published documentation and source on 2026-11-15
-> (see [What this was checked against](#what-this-was-checked-against)). No real
-> model has answered a question through Outpost yet, and none has held a conversation
-> in [Chat](#chat) either: Ollama is not installed where this was written. If you try
-> it, the steps are in [Trying it](#trying-it).
+> **Setting it up:** the short guide is [setup-guide.md](setup-guide.md), and the same
+> guide is inside Outpost at `/help/search-and-answers`, linked from Settings and from
+> Chat. This page is the reference behind it.
+
+> **Tried with a real model, briefly.** Everything on this page was built and is
+> tested automatically against a small stand-in server that speaks the same protocol
+> as Ollama and llama.cpp (`apps/server/test/model-server.ts`), and the requests
+> Outpost sends were checked against both projects' published documentation and source
+> on 2026-11-15 (see [What this was checked against](#what-this-was-checked-against)).
+> On 2026-11-16 the set-up, a few answers and one conversation turn were also run by
+> hand against a real Ollama with two small models: see
+> [Tried with a real model](#tried-with-a-real-model) for exactly what, and what was
+> not. llama.cpp and LM Studio have still not been run.
 
 ## What exists
 
@@ -21,8 +26,14 @@ is several gigabytes, and which one to run is your decision.
   server is set up. The search results stay where they are; the answer is an extra.
 - **Chat**, a screen of its own: conversations with the same model server, kept on the
   server, with or without your library. See [Chat](#chat).
-- **Settings → Answers from your library**: the server's address, the model, a test
-  that says what is wrong, the temperature and the context budget. Off by default.
+- **Settings → Answers from your library**: whether it is working, or the one next
+  step. Setting up is three presses (find the model server, use the model offered,
+  try it), after which it is on. The server's address, the model by name, the test,
+  the temperature and the context budget are behind **More options**. Off by default.
+- **A short list of small models** that suit a laptop or a Raspberry Pi 5, shown where
+  a model is chosen and where there is none yet. See [Which model](#which-model).
+- **A set-up guide inside Outpost** (`/help/search-and-answers`), which is also
+  [setup-guide.md](setup-guide.md).
 - **A model provider** for any OpenAI-compatible chat server: Ollama, llama.cpp's
   server, LM Studio.
 - **`POST /api/answers`**, which finds passages, sends them with the question, and
@@ -46,7 +57,7 @@ is several gigabytes, and which one to run is your decision.
 - No memory between conversations, and no summary of a long one: see
   [Long conversations](#long-conversations).
 - No downloading or removing of models from Outpost. Fetch a model with the model
-  server's own tool (`ollama pull …`). Managing Ollama's models from the Chat screen
+  server's own tool (`ollama pull …`); Outpost shows the command and nothing more. Managing Ollama's models from the Chat screen
   was considered and left out, not half-built: it would have Ollama fetch gigabytes
   from the internet at a press in Outpost, through an API of Ollama's own that could
   not be tried here.
@@ -61,48 +72,74 @@ is several gigabytes, and which one to run is your decision.
 ## Setting it up
 
 You need a model server and a model. These are separate programs with their own
-downloads; Outpost only needs to be told where the server is.
+downloads; Outpost only needs to find the server. **The steps are in
+[setup-guide.md](setup-guide.md)**: getting Ollama on macOS, Windows, Linux and a
+Raspberry Pi, getting a model, the three presses in Outpost, Ollama on another
+computer, Outpost in Docker, and what goes wrong. They are not repeated here, so that
+there is one place to keep them right. What follows is the detail behind them.
+
+### The three presses, and what each does
+
+| Press | What Outpost does | What is saved |
+| --- | --- | --- |
+| **Look for Ollama on this computer** | `POST /api/chat/setup/look`: asks the address in `answers.endpoint` for its models, then `127.0.0.1:11434`, then `host.docker.internal:11434`, stopping at the first that answers. | Nothing. |
+| **Use this model** | Nothing leaves the browser. The model offered first is chosen by the rule under [Which model](#which-model). | Nothing. |
+| **Try it** | `POST /api/chat/setup/try`: asks that model at that address to "Reply with the one word: ready", the same request as **Test**. | Only if it answered: `answers.endpoint`, `answers.model`, and `answers.enabled` set to true. |
+
+A model is only tried at an address the first press looks at. `/api/chat/setup/try`
+refuses any other, so it cannot be used to ask after hosts of a caller's choosing; a
+server somewhere else is reached by putting its address in Settings (under **More
+options**), which is the same act as before.
+
+The first line of the section then says one of: **Ready: answers are written by
+*model* on this computer**; **On, but not working yet**, with why (the model server is
+not answering, the model is no longer on it, or the address is one Outpost will not
+use) and the one next step; or **Off**. "Ready" rests on the model server having
+answered with its list of models when the section was opened, not on the settings
+alone.
 
 ### Which model
 
 Any model that writes text ("chat" or "instruct"), small enough to run on your
-machine. The table lists small models and their download sizes as the Ollama library
-stated them on 2026-11-15. They are **suggestions, not recommendations from testing**:
-none has been run with Outpost. You download a model yourself, with the model server's
-own tool.
+machine. Outpost suggests a short list of small ones, all of which a Raspberry Pi 5
+with 8 GB of memory could hold. The list is **one data file**,
+`packages/shared/src/recommended-models.ts`, which Settings, Chat, the in-app guide
+and [setup-guide.md](setup-guide.md#step-2-get-a-model) all draw from; that is the
+place to bring it up to date, and it says how. As it stood on 2026-11-16:
 
-| Model (Ollama name) | Download | Notes |
-| --- | --- | --- |
-| `gemma3:1b` | 806 MB | The smallest here. For a Raspberry Pi or an old laptop. |
-| `llama3.2:1b` | 1.3 GB | |
-| `qwen2.5:3b` | 1.9 GB | |
-| `llama3.2:3b` | 2.0 GB | A reasonable first choice on a laptop with 8 GB of memory. |
-| `phi4-mini` | 2.5 GB | |
-| `qwen3:4b` | 2.5 GB | Thinks before it answers, so it is slower to start. Outpost hides the thinking. |
-| `gemma3:4b` | 3.4 GB | |
+| Model | Download | Memory once loaded | Smallest computer |
+| --- | --- | --- | --- |
+| `llama3.2:3b` (the one to start with) | 2.0 GB | 2.3 GB, measured | 8 GB of memory |
+| `llama3.2:1b` | 1.3 GB | 1.5 GB, measured | 4 GB |
+| `gemma3:1b` | 806 MB | about 1.1 GB, estimated | 4 GB |
+| `phi4-mini` | 2.5 GB | about 2.8 GB, estimated | 8 GB |
+| `gemma3:4b` | 3.4 GB | about 3.7 GB, estimated | 8 GB |
 
-A model needs roughly its download size in free memory, and a little more. Smaller
-models are quicker and worse at following the instruction to cite. Do not choose an
-*embedding* model (such as `nomic-embed-text`): those turn text into numbers for
-[search by meaning](search.md#semantic-search) and cannot write. The test in Settings
-tells you if you have.
+Names and download sizes are as Ollama's library pages stated them that day
+(`ollama.com/library/<model>/tags`). "Measured" is what Ollama reported holding for the
+model once loaded with its default 4,096-token context, on an Apple Silicon Mac;
+"estimated" is the download size plus 0.3 GB. Which computer each fits is a judgement
+from those figures. **No model has been run on a Raspberry Pi by this project.**
+
+Which model is offered first when a model server is found, in order: the one already
+named in Settings, while the server still has it; the first of the list above that
+the server has; otherwise the smallest model that writes and is large enough to be
+worth trying (at least about 0.9 billion parameters, or 700 MB on disk when the server
+states no parameter count); or, for a server that states no sizes at all (llama.cpp,
+LM Studio), its first model. A model that cannot write is never offered first, and is
+shown last and marked: Ollama says what each model can do (`capabilities` in
+`/api/tags`), and where a server does not, embedding models are recognised by family
+and name. Code: `packages/shared/src/model-choice.ts`.
+
+Smaller models are quicker and worse at following the instruction to cite. Do not
+choose an *embedding* model (such as `nomic-embed-text`): those turn text into numbers
+for [search by meaning](search.md#semantic-search) and cannot write. Trying one says so.
 
 ### With Ollama
 
-1. Install Ollama from its own site and start it. It listens on
-   `127.0.0.1:11434`.
-2. Fetch a model: `ollama pull llama3.2:3b` (a 2.0 GB download).
-3. In Outpost, open **Settings → Answers from your library** and set:
-
-   | Setting | Value |
-   | --- | --- |
-   | Write answers | on |
-   | Server address | `http://127.0.0.1:11434/v1` |
-   | Model | choose `llama3.2:3b` from the list |
-
-4. Press **Test**. "The model is answering" means the address, the model's name and
-   its ability to write are all in order. The first test can take a while, because
-   Ollama loads the model into memory then.
+The steps are in [setup-guide.md](setup-guide.md#answers-and-chat-with-ollama). By
+hand, under **More options**: the server address is `http://127.0.0.1:11434/v1`, and
+the model is chosen from the server's list.
 
 **Context size.** Ollama reads 4,096 tokens at once by default on most machines
 (more on machines with a great deal of video memory). A prompt that is longer is
@@ -131,10 +168,12 @@ for Outpost to set this for you.
 2. Note the address it prints. Current builds listen on `127.0.0.1:9931`; older
    builds used port 8080, **which is also Outpost's own default port**, so start one
    of them on another port (`--port`).
-3. In Outpost set the server address to `http://127.0.0.1:9931/v1` (or whatever it
-   printed, with `/v1` on the end). llama-server has one model loaded and answers with
-   it whatever name it is sent; choose the one entry in the list.
-4. Press **Test**.
+3. In Outpost, under **Settings → Answers from your library → More options**, set the
+   server address to `http://127.0.0.1:9931/v1` (or whatever it printed, with `/v1` on
+   the end). Then press **Look for Ollama on this computer**, which asks that address
+   first. llama-server has one model loaded and answers with it whatever name it is
+   sent; it is the one entry offered.
+4. Press **Use this model**, then **Try it**.
 
 `-c` is the context size in tokens. Unlike Ollama, llama-server **refuses** a prompt
 that does not fit, and Outpost passes the reason on: "The passages and the question
@@ -150,9 +189,11 @@ three. Unknown errors are shown with whatever the server said.
 
 ### In Docker, or with the model on another machine
 
-If Outpost runs in Docker, `127.0.0.1` is the container itself. With Docker Desktop
-use `http://host.docker.internal:11434/v1`. On Linux, add
-`extra_hosts: ["host.docker.internal:host-gateway"]` to the `outpost` service, and make
+The steps are in [setup-guide.md](setup-guide.md#when-outpost-runs-in-docker). In
+short: if Outpost runs in Docker, `127.0.0.1` is the container itself. With Docker
+Desktop use `http://host.docker.internal:11434/v1`, which **Look for Ollama on this
+computer** tries by itself. On Linux, add
+`extra_hosts: ["host.docker.internal=host-gateway"]` to the `outpost` service, and make
 the model server listen on an address the container can reach (for Ollama,
 `OLLAMA_HOST=0.0.0.0:11434`; for llama-server, `--host 0.0.0.0`).
 
@@ -176,20 +217,21 @@ does with that limit; and three time limits. Outpost waits 3 minutes for the fir
 sign of life from the model, allows 1 minute of silence after that, and stops an answer
 that is still being written after 10 minutes.
 
-**Test** asks the server for its list of models and then asks the chosen model for one
-word. It tells apart: nothing answering at the address; something answering that is
+**Test** (under **More options**, and the third press of setting up) asks the server
+for its list of models and then asks the chosen model for one word. It tells apart: nothing answering at the address; something answering that is
 not a model server; a model the server does not have (and lists the ones it has); a
 model that cannot write text; an address with no chat endpoint; and a model that did
 not answer within a minute.
 
 ## Trying it
 
-The exact steps to see it work with a real model, since nobody has yet:
+The exact steps to see it work with a real model:
 
-1. `ollama pull llama3.2:3b`, and check `ollama list` shows it.
+1. `ollama pull llama3.2:3b`, and check `ollama ls` shows it.
 2. Make sure your library has at least one document or note with real text in it.
-3. **Settings → Answers from your library**: turn on **Write answers**, leave the
-   address as `http://127.0.0.1:11434/v1`, choose `llama3.2:3b`, press **Test**.
+3. **Settings → Answers from your library**: press **Look for Ollama on this
+   computer**, then **Use this model**, then **Try it**. The section should then say
+   "Ready: answers are written by llama3.2:3b on this computer."
 4. Open **Search**, type a question your documents can answer, and press **Answer
    from my library**.
 5. Check: the answer appears a few words at a time; it carries markers such as `[1]`;
@@ -209,6 +251,32 @@ model keeps to "one number to a bracket"; whether it writes Markdown despite bei
 told not to (only `**bold**` is shown as formatting, the rest as typed); how long the
 first word takes on your machine; and anything Outpost reports as "The model server
 answered with an error".
+
+## Tried with a real model
+
+On 2026-11-16, by hand, from a private copy of Outpost run from source on an Apple
+Silicon Mac, against Ollama 0.40.16 on the same machine with `llama3.2:3b` and
+`llama3.2:1b` (the only two models it had). The library was thirty pages of made-up
+notes written for the purpose, so this says the plumbing works and says little about
+how good answers are on a real library.
+
+| What | What happened |
+| --- | --- |
+| **Look for Ollama on this computer** | Found it at `127.0.0.1:11434` in under a tenth of a second, with both models, their sizes, and Ollama's word that both can write. `llama3.2:3b` was offered first. |
+| **Try it**, `llama3.2:3b`, already in memory | Answered "ready" in 2.2 to 2.8 seconds. Answers were switched on and the section said "Ready". |
+| **Try it**, `llama3.2:1b`, not yet in memory | Took 20 seconds, nearly all of it Ollama loading the model, and answered "Yes." rather than "ready". Any words count as an answer, so it passed. |
+| Memory Ollama held | 2.34 GB for `llama3.2:3b` and 1.46 GB for `llama3.2:1b`, each with a 4,096-token context. |
+| An answer from the library, `llama3.2:3b` | "Above two thousand metres, water should be boiled for three minutes. [1][2][3][4][5]", first word after 1.5 seconds, whole answer after 1.7. A second question likewise: one or two sentences, every statement cited, though it cited all five passages each time, not only the ones it used. |
+| The same question, `llama3.2:1b` | It did not answer. It copied the passages out one after another and numbered them up to [10]; Outpost marked [6] to [10] as referring to no source it was given. This is why the list says to expect less of it. |
+| One turn in Chat, `llama3.2:3b` | A one-sentence reply in 0.6 seconds. |
+
+Not tried here with a real model: answers on a real library. (One report from a real
+library of reference books: for two plain questions the passages found did not contain
+the answer, and the model rightly said that the sources did not answer. Finding the
+right passages is the weaker half, and no model can make up for it.) Also not tried:
+**Stop** in mid-answer; a long conversation; a model that thinks before answering; a prompt longer
+than the model's context; anything on Windows, Linux, a Raspberry Pi or in Docker; a
+model server on another computer; llama.cpp; LM Studio.
 
 ## What happens when you ask
 
@@ -328,8 +396,11 @@ passages found (their titles, headings, page numbers and exact text) and your
 question. Nothing else: no file names or paths beyond titles, no other part of your
 library, nothing about you or your device.
 
-**When:** only when you ask for an answer, press **Test**, or open the Answers section
-of Settings while it is switched on (which asks the server for its list of models).
+**When:** only when you ask for an answer; press **Look for Ollama on this
+computer**, **Try it** or **Test**; or open the Answers section of Settings while it is
+switched on (which asks the server for its list of models, and, when the address ends
+in `/v1`, asks `/api/tags` on the same host for their sizes, as Chat does). While
+answers are switched off, opening Settings asks no model server for anything.
 The Search screen itself contacts nothing; whether to show the button is decided from
 settings alone. If no passage is found, nothing is sent at all.
 
@@ -524,10 +595,14 @@ the sizes come from. A server that is not Ollama answers 404 and nothing more is
 asked.
 
 **When you press "Look for Ollama on this computer":** one request for the list of
-models to `http://127.0.0.1:11434/v1`, the address Ollama listens on, and, if nothing
-is there, to `http://host.docker.internal:11434/v1`, which is the same computer as
-seen from inside Docker. Nothing looks until the button is pressed, and finding a
-server changes no setting until you press **Use it for Outpost**.
+models (and one to `/api/tags` beside it, for sizes) to the address in Settings, when
+that is not where Ollama listens anyway; then to `http://127.0.0.1:11434/v1`, the
+address Ollama listens on; and, if nothing is there, to
+`http://host.docker.internal:11434/v1`, which is the same computer as seen from inside
+Docker. It stops at the first that answers. Nothing looks until the button is pressed,
+and finding a server changes no setting: that happens only when **Try it** has had an
+answer from the model. (`POST /api/chat/look-for-ollama`, which the screen used before,
+still exists and asks only the two fixed addresses.)
 
 **Never:** a title is not generated by the model (it is the first line of your first
 message), nothing is summarised, and nothing is asked in the background.
@@ -554,7 +629,7 @@ as links, and its pictures are never fetched.
 
 | The screen says | What it means | What to do |
 | --- | --- | --- |
-| Chat needs a language model on your own computer | No model server is set up. | Install one, fetch a model, then **Look for Ollama on this computer** or **Open the setting**. |
+| Chat needs a language model on your own computer | No model server is set up. | Install one and fetch a model ([the guide](setup-guide.md) has the steps, and is linked from the screen), then **Look for Ollama on this computer**, **Use this model**, **Try it**. |
 | The model server is not answering | Its list of models could not be read. | Start it, check the address in Settings, **Look again**. |
 | This model is not on the model server | The conversation names a model the server does not list. | Choose another in the picker, or fetch it with the server's own tool. |
 | Waiting for the model to start writing, N seconds so far | The model is loading, or reading the prompt. | Wait; or **Stop**. Outpost gives up after 3 minutes without a sign of life. |
@@ -601,6 +676,26 @@ protocol was read from the projects' own pages on 2026-11-15:
 | Failure in mid-stream | The stream closes without a finish reason or `[DONE]` (inferred from source; the reason is lost) | One `data: {"error":{…}}` line, then the stream closes | Not described |
 | Default address | `127.0.0.1:11434` | `127.0.0.1:9931` (8080 in older builds) | `127.0.0.1:1234` |
 
+The set-up guide's commands, setting names, ports and model names were read from the
+publishers' own pages on 2026-11-16. The guide lists each page and what it gave, under
+[Where this was checked](setup-guide.md#where-this-was-checked): Ollama's download
+page, its macOS, Windows, Linux and command-line pages, its questions and answers
+(`OLLAMA_HOST`, the default address) and its library pages; Apple's and Microsoft's
+pages on opening a terminal; the Raspberry Pi documentation on its 64-bit system;
+Docker's on `host.docker.internal` and `host-gateway`; llama.cpp's server README
+(`--port`, default 9931); and LM Studio's local-server and OpenAI-compatibility pages
+(the Developer tab, port 1234 in its examples). Two things could not be found on a
+publisher's page and are worded accordingly in the guide: how to open a terminal on
+Linux and on Raspberry Pi OS, and Raspberry Pi as a named target of Ollama. A switch in
+the Ollama application's own settings for listening on the network is mentioned by
+other projects but not by Ollama's documentation, so the guide gives the documented
+way (`OLLAMA_HOST`) and does not mention the switch.
+
+One thing a real Ollama sent that its API documentation of 2026-11-16 did not list:
+each model in `/api/tags` carries `"capabilities"`, for example
+`["completion","tools"]`. Outpost reads it, to tell models that write from models that
+do not, and does without it when it is absent.
+
 The stand-in server reproduces the Ollama and llama.cpp columns, and refuses any
 request carrying a field outside the first row, so that the tests fail if Outpost
 starts sending something a real server might not understand. That is the extent of
@@ -616,6 +711,8 @@ Types: `packages/shared/src/answers.ts`.
 | `GET /api/answers/status` | `AnswersStatus`: whether answers are switched on and ready, the model, where the server is, and whether an answer is being written. Read from settings; the model server is not contacted. |
 | `GET /api/answers/models` | `{ models, message }`: the models the server reports, or why they could not be read. Contacts the model server, and only while answers are switched on. |
 | `POST /api/answers/test` | `AnswerTestResult`: `ok`, the kind of `failure`, a `message` for a person, the server's `models`, the model's `reply`, `tookMs`. Always `200`; a failed test is a result, not an error. |
+| `POST /api/chat/setup/look` | `ModelSetupLook`: a `ChatLookResult` and `recommended`, the model to offer first. Asks the address in Settings, then where Ollama listens. Saves nothing. |
+| `POST /api/chat/setup/try` | Body: `address`, `model`. `ModelSetupTry`: an `AnswerTestResult` and `saved`. When the model answers, saves the address and the model and switches answers on. Refuses an address `setup/look` does not ask. |
 | `POST /api/answers` | Body: `question` (1 to 1,000 characters), `mode?` (`keyword`, `semantic`, `hybrid`). Streams the answer. |
 
 Chat's endpoints are listed in [api.md](api.md#chat).
@@ -741,9 +838,10 @@ that:
   never compared with each other. The built-in model's id carries a fingerprint of its
   files and settings (`built-in:all-MiniLM-L6-v2-q8-245889ee`), so a release of Outpost
   that ships another model, or changes how text is fed to it, starts a new set.
-- Switching the model in Settings does not delete anything. Searches use the new
-  model's vectors as soon as some exist; until then they are keyword searches. Start
-  **Build index** for the new model.
+- Switching the model in Settings (under **More options**) does not delete anything.
+  Searches use the new model's vectors as soon as some exist; until then they are
+  keyword searches. While search by meaning is on, the index for the new model starts
+  building by itself, provided the model answers.
 - The old model's vectors stay, listed under "Vectors from other models", until you
   remove them (`DELETE /api/semantic/models/:modelId`). Switching back uses them
   again.

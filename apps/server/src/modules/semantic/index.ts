@@ -1,15 +1,19 @@
 /**
  * Semantic search: optional vectors alongside the keyword index.
  *
- * Turning it on is a setting plus a provider (see providers.ts). Building the index is
- * a background job that embeds every passage that has no vector yet for the current
- * model; it can be stopped and resumed at any point because it only ever looks for
- * what is missing. Vectors can be exported and imported, so a fast machine can build
- * the index for a Raspberry Pi holding the same library.
+ * Turning it on is one setting. The model that ships with Outpost is used unless a
+ * person chose another provider (see providers.ts), and the index is built without
+ * being asked for: switching on starts the build, and new passages are added to it as
+ * they arrive. Building is a background job that embeds every passage that has no
+ * vector yet for the current model; it can be stopped and resumed at any point because
+ * it only ever looks for what is missing. Switching off pauses a build and keeps what
+ * was built. Vectors can be exported and imported, so a fast machine can build the
+ * index for a Raspberry Pi holding the same library.
  */
 
 import { Readable } from "node:stream";
 import { createGunzip, createGzip } from "node:zlib";
+import { secondsLeft } from "@outpost/shared";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
@@ -37,6 +41,10 @@ export interface SemanticStatus {
   indexing: boolean;
   /** The latest index build for the current model, in whatever state it is. */
   build: JobDto | null;
+  /** Seconds the running build still needs at the speed it is going. Null when none is running or it is too early to say. */
+  secondsLeft: number | null;
+  /** Passages already embedded for the model that switching on would use, counted whether it is on or not. */
+  keptChunks: number;
   /** The model that ships with Outpost, whether or not it is the one in use. */
   builtIn: {
     installed: boolean;
@@ -55,10 +63,13 @@ export interface SemanticService {
   status(fresh?: boolean): Promise<SemanticStatus>;
   /**
    * Starts or continues the index build for the current model, unless one is already
-   * waiting or running. Pass false when nobody asked: then nothing happens before the
-   * first build, or after a person paused or stopped one.
+   * waiting or running. Pass false when nobody asked: then nothing happens while search
+   * by meaning is switched off and has never been built, or after a person paused or
+   * stopped a build.
    */
   requestIndexing(byPerson?: boolean): void;
+  /** Resolves when a build that switching on (or changing the model) set going has been started or given up on. For tests. */
+  settled(): Promise<void>;
   index: VectorIndex;
   /** The provider semantic search is using now, if one is configured. */
   provider(): EmbeddingProvider | undefined;
@@ -88,14 +99,23 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
   let cached: { key: string; provider: EmbeddingProvider | undefined } | undefined;
   let health: { modelId: string; at: number; result: Awaited<ReturnType<EmbeddingProvider["check"]>> } | undefined;
 
-  function currentProvider(): EmbeddingProvider | undefined {
-    if (override !== null) return override;
+  /** What the settings choose between: a change to any of these is a change of model, or of whether one is used. */
+  const choiceOf = (all: ReturnType<typeof settings.all>) =>
+    `${all["search.semantic.provider"]}|${all["search.semantic.model"]}|${all["search.semantic.endpoint"]}`;
+
+  /** The provider the settings name, whether or not search by meaning is switched on. */
+  function chosenProvider(): EmbeddingProvider | undefined {
     const all = settings.all();
-    if (!all["search.semantic.enabled"]) return undefined;
-    const key = `${all["search.semantic.provider"]}|${all["search.semantic.model"]}|${all["search.semantic.endpoint"]}`;
+    const key = choiceOf(all);
     if (cached?.key !== key)
       cached = { key, provider: providerFromSettings(all, builtIn, { allowRemote: ctx.config.allowRemoteModelServer }) };
     return cached.provider;
+  }
+
+  function currentProvider(): EmbeddingProvider | undefined {
+    if (override !== null) return override;
+    if (!settings.get("search.semantic.enabled")) return undefined;
+    return chosenProvider();
   }
 
   async function checkProvider(provider: EmbeddingProvider, maxAgeMs = 60_000) {
@@ -115,7 +135,10 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
   }
 
   const countChunks = () => (sqlite.prepare("SELECT count(*) AS n FROM chunks WHERE text <> ''").get() as { n: number }).n;
-  const isIndexing = () => jobs.list({ states: ["queued", "running"] }).some((job) => job.type === "semantic.index");
+  const buildsUnderWay = () => jobs.list({ states: ["queued", "running"] }).filter((job) => job.type === "semantic.index");
+  const isIndexing = () => buildsUnderWay().length > 0;
+  /** Where the running build stood when it last started, to judge its speed by. */
+  let pace: { modelId: string; first: { at: number; done: number }; done: number; total: number } | undefined;
 
   // ── Index build ──
   jobs.register<{ modelId: string }>("semantic.index", {
@@ -147,6 +170,7 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
       ).n;
       let done = 0;
       progress({ current: 0, total, message: "Reading passages" });
+      pace = { modelId: provider.modelId, first: { at: Date.now(), done: 0 }, done: 0, total };
       for (;;) {
         signal.throwIfAborted();
         const rows = missing.all(provider.modelId, batchSize) as Array<{
@@ -165,6 +189,8 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
           rows.map((row, position) => ({ chunkId: row.chunkId, contentHash: row.contentHash, vector: vectors[position]! })),
         );
         done += rows.length;
+        pace.done = done;
+        pace.total = Math.max(total, done);
         progress({ current: done, total: Math.max(total, done), message: `${done} of ${Math.max(total, done)} passages` });
         // Give requests a turn between batches.
         await new Promise((resolve) => setImmediate(resolve));
@@ -176,21 +202,53 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
 
   /**
    * Starts or continues the build for the current model. `byPerson` is false when the
-   * library changed and Outpost is keeping the index up to date by itself: that only
-   * happens once a person has built the index, and never undoes their pausing or
-   * stopping a build.
+   * library changed and Outpost is keeping the index up to date by itself. Switching
+   * search by meaning on is what asks for that, so it happens whenever the switch is on
+   * (or an index exists already), except that it never undoes a person's pausing or
+   * stopping a build, and does not start one for a model that has just said it cannot run.
    */
   function requestIndexing(byPerson = true): void {
     const provider = currentProvider();
     if (!provider || isIndexing()) return;
     const subject = `semantic:${provider.modelId}`;
     const last = jobs.findBySubject(subject).at(-1);
-    if (!byPerson && (index.count(provider.modelId) === 0 || last?.state === "paused" || last?.state === "cancelled")) return;
+    if (!byPerson) {
+      const asked = settings.get("search.semantic.enabled") || last !== undefined || index.count(provider.modelId) > 0;
+      if (!asked || last?.state === "paused" || last?.state === "cancelled") return;
+      if (health && health.modelId === provider.modelId && !health.result.ok && Date.now() - health.at < 60_000) return;
+    }
     if (last?.state === "paused") {
       jobs.resume(last.id);
       return;
     }
     jobs.enqueue("semantic.index", { modelId: provider.modelId }, { title: "Build semantic search index", subject, maxAttempts: 3 });
+  }
+
+  /**
+   * What switching on, or choosing another model while on, sets going: the model is
+   * asked whether it can run, and if it can the index is built without anyone pressing
+   * anything more. A model that cannot run starts nothing; the status says why.
+   */
+  let starting: Promise<void> = Promise.resolve();
+  function startByItself(): void {
+    starting = starting
+      .then(async () => {
+        const provider = currentProvider();
+        if (!provider) return;
+        const check = await checkProvider(provider, 0);
+        // The settings may have changed again while the model was being asked.
+        if (check.ok && currentProvider() === provider) requestIndexing(true);
+      })
+      .catch((error) => ctx.log.warn({ err: error }, "search by meaning could not start its index build"))
+      .finally(() => ctx.events.publish({ type: "semantic.changed" }));
+  }
+
+  /** Pauses a build that is for a model no longer in use, or for any model once search by meaning is off. What it built is kept. */
+  function pauseBuildsNotWanted(): void {
+    const wanted = currentProvider()?.modelId;
+    for (const job of buildsUnderWay()) {
+      if (job.subject !== `semantic:${wanted}`) jobs.pause(job.id);
+    }
   }
 
   // New or changed passages get vectors without anyone asking, a little after the
@@ -263,6 +321,8 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
     const all = settings.all();
     const provider = currentProvider();
     const check = provider ? await checkProvider(provider, fresh ? 0 : undefined) : undefined;
+    const indexing = isIndexing();
+    const chosen = provider ?? chosenProvider();
     const models = sqlite
       .prepare(
         `SELECT em.id AS modelId, em.dimensions AS dimensions, count(m.chunk_id) AS vectors
@@ -288,8 +348,13 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
       totalChunks: countChunks(),
       embeddedChunks: provider ? index.count(provider.modelId) : 0,
       otherModels: models.filter((model) => model.modelId !== provider?.modelId && model.vectors > 0),
-      indexing: isIndexing(),
+      indexing,
       build: provider ? latestBuild(provider.modelId) : null,
+      secondsLeft:
+        indexing && provider && pace?.modelId === provider.modelId
+          ? secondsLeft(pace.first, { at: Date.now(), done: pace.done }, pace.total)
+          : null,
+      keptChunks: chosen ? index.count(chosen.modelId) : 0,
       builtIn: describeBuiltIn(),
     };
   }
@@ -320,6 +385,7 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
     requestIndexing,
     index,
     provider: currentProvider,
+    settled: () => starting,
     overrideProvider(provider) {
       override = provider === undefined ? undefined : provider;
       health = undefined;
@@ -332,9 +398,20 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
     },
   };
 
-  // The health check result depends on settings; forget it when they change.
-  settings.onChange(() => {
+  // The health check result depends on settings; forget it when they change. And a
+  // change that switches search by meaning on, or names another model while it is on,
+  // is a person asking for an index: the build starts without a second press. Other
+  // settings changing (they all arrive here) start nothing.
+  const stateOf = (all: ReturnType<typeof settings.all>) => (all["search.semantic.enabled"] ? choiceOf(all) : null);
+  let before = stateOf(settings.all());
+  settings.onChange((all) => {
     health = undefined;
+    const now = stateOf(all);
+    if (now === before) return;
+    before = now;
+    pauseBuildsNotWanted();
+    if (now !== null) startByItself();
+    else ctx.events.publish({ type: "semantic.changed" });
   });
 
   // ── Routes ──
@@ -349,6 +426,28 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
     const check = await checkProvider(provider, 0);
     if (!check.ok) throw new AppError("conflict", check.reason);
     requestIndexing();
+    return status();
+  });
+
+  /**
+   * The repair for a set-up that cannot work, in one request: search by meaning is
+   * switched on with the model that ships with Outpost, whatever it was pointed at
+   * before, and its index starts building. The address and model name of a server of
+   * the person's own stay in the settings, so choosing it again loses nothing.
+   */
+  app.post("/api/semantic/use-built-in", async () => {
+    const found = builtIn.installation();
+    if (!found.installed) throw new AppError("conflict", found.reason);
+    const all = settings.all();
+    if (all["search.semantic.enabled"] && all["search.semantic.provider"] === "built-in") {
+      // Already so: carry on with the build if one is wanted.
+      const provider = currentProvider();
+      const check = provider ? await checkProvider(provider, 0) : undefined;
+      if (check?.ok) requestIndexing();
+    } else {
+      settings.update({ "search.semantic.provider": "built-in", "search.semantic.enabled": true });
+      await starting;
+    }
     return status();
   });
 

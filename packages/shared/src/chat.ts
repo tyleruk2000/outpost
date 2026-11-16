@@ -8,7 +8,7 @@
  * server reads it as Markdown into the same tree of plain values a Markdown document
  * becomes (`MarkdownBlock`), and the web app draws that tree with its own elements.
  */
-import type { AnswerFailure, AnswerSource, ModelServerPlace } from "./answers.ts";
+import type { AnswerFailure, AnswerSource, AnswerTestResult, ModelServerPlace } from "./answers.ts";
 import type { MarkdownBlock } from "./documents.ts";
 
 /** One item of the library a conversation is about, when it was started with "Ask about this". */
@@ -117,6 +117,11 @@ export interface ChatModel {
   /** How the weights were compressed, for example "Q4_K_M". */
   quantization: string | null;
   family: string | null;
+  /**
+   * Whether the model can write text, when the server says (Ollama lists each model's
+   * capabilities). Absent when it does not: then the name is all there is to go by.
+   */
+  writes?: boolean;
 }
 
 export interface ChatModelsResponse {
@@ -134,6 +139,27 @@ export interface ChatLookResult {
   address: string | null;
   models: ChatModel[];
   message: string;
+}
+
+/**
+ * The result of the first step of setting up answers and chat: the model server that
+ * was found, what it has, and which of its models Outpost would start with.
+ */
+export interface ModelSetupLook extends ChatLookResult {
+  /**
+   * The model to offer first: the one already chosen in Settings when the server has
+   * it, otherwise the smallest that can write well enough to be worth trying. Null
+   * when the server has no model that writes.
+   */
+  recommended: string | null;
+}
+
+/**
+ * The result of the last step: the model was asked one short question. When it
+ * answered, the address and the model were saved and answers were switched on.
+ */
+export interface ModelSetupTry extends AnswerTestResult {
+  saved: boolean;
 }
 
 /** What a reply is doing at this moment. */

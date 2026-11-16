@@ -1,25 +1,35 @@
-import type { AnswerModelsResponse, AnswersStatus, AnswerTestResult, Settings } from "@outpost/shared";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { CircleAlert, CircleCheck, RefreshCw } from "lucide-react";
-import { useEffect } from "react";
+/**
+ * Answers from your library, and chat, as simply as they can honestly be.
+ *
+ * The first thing shown is whether it is working, or the one next step if it is not.
+ * Setting up is the three steps in features/setup/model-setup.tsx, and when the last of
+ * them passes the server switches answers on by itself. The address, the numbers and
+ * the rest are in answers-options.tsx, behind "More options".
+ */
+import type { AnswersStatus, ChatModelsResponse, ModelSetupLook, ModelSetupTry, Settings } from "@outpost/shared";
+import { recommendModel, sameModelName } from "@outpost/shared";
+import { useQuery } from "@tanstack/react-query";
+import { CircleAlert, CircleCheck } from "lucide-react";
+import { useState } from "react";
 import { Link } from "react-router";
 import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
-import { Select, Switch } from "@/components/ui/misc";
+import { Skeleton, Switch } from "@/components/ui/misc";
+import { chatKeys } from "@/features/chat/chat-data";
+import { ModelSetup } from "@/features/setup/model-setup";
 import { api, errorMessage } from "@/lib/api";
-import { formatNumber } from "@/lib/utils";
-import { NumberSetting, SettingRow, SettingsSection, TextSetting } from "./parts";
+import { AnswersOptions } from "./answers-options";
+import { GuideLink, MoreOptions, SettingsSection } from "./parts";
 
-const PLACE: Record<NonNullable<AnswersStatus["place"]>, string> = {
-  "this-computer": "this computer",
-  "local-network": "a machine on your network",
-  elsewhere: "an address that is not on this computer or your home network",
-};
+/** Where the model runs, for the end of a sentence: "on this computer", "on your network, at 192.168.1.20:11434". */
+export function whereWords(status: Pick<AnswersStatus, "place" | "server">): string {
+  if (status.place === "this-computer") return "on this computer";
+  if (status.place === "local-network") return `on your network, at ${status.server}`;
+  return `at ${status.server}, which is not on your own network`;
+}
 
-/**
- * Setting up "Answer from my library": where the person's own model server is, which
- * model writes, and a test that says what is wrong when something is.
- */
+const link = "text-primary underline decoration-1 underline-offset-2 hover:decoration-2";
+
 export function AnswersSection({
   settings,
   disabled,
@@ -32,217 +42,181 @@ export function AnswersSection({
   const enabled = settings["answers.enabled"];
   const endpoint = settings["answers.endpoint"];
   const model = settings["answers.model"];
-  const budget = settings["answers.contextChars"];
+  /** What the model said when it was tried a moment ago, to show once beside "Ready". */
+  const [tried, setTried] = useState<ModelSetupTry | null>(null);
 
   const status = useQuery({
     queryKey: ["answers", "status", enabled, endpoint, model],
     queryFn: () => api.get<AnswersStatus>("/api/answers/status"),
+    // A change made under More options asks again; what is on screen stays until the new answer is in, so that More options stays open.
+    placeholderData: (previous) => previous,
   });
-  // Asking the server what it has is the first sign of whether the address is right.
+  // "Ready" should mean the model server is there. While answers are on, opening this section asks it for its
+  // list of models, which is the cheapest way to know; while they are off, nothing is asked.
   const models = useQuery({
-    queryKey: ["answers", "models", endpoint],
-    queryFn: () => api.get<AnswerModelsResponse>("/api/answers/models"),
+    queryKey: [...chatKeys.models, endpoint],
+    queryFn: () => api.get<ChatModelsResponse>("/api/chat/models"),
     enabled,
     staleTime: 60_000,
     retry: false,
+    placeholderData: (previous) => previous,
   });
-  const test = useMutation({ mutationFn: () => api.post<AnswerTestResult>("/api/answers/test") });
-  // A result describes the address and model it was run against, and nothing else.
-  const resetTest = test.reset;
-  // biome-ignore lint/correctness/useExhaustiveDependencies: the result is cleared whenever what it tested changes
-  useEffect(() => resetTest(), [endpoint, model, enabled, resetTest]);
 
-  const reported = models.data?.models ?? [];
-  const place = status.data?.place ?? null;
-  const server = status.data?.server ?? null;
-  const result = test.data;
+  const data = status.data;
+  const list = models.data;
+  const listed = list && !list.message ? list.models : null;
+  // While a change is being read back from the server, what is on screen is the state before it: say nothing new yet.
+  const settling = status.isPlaceholderData || (enabled && models.isPlaceholderData);
+  const setUp = model !== "";
+  const on = enabled && setUp && !settling && Boolean(data?.ready);
+  const refused = Boolean(
+    enabled && !settling && data && !data.ready && data.reason && (data.place === "elsewhere" || data.server === null),
+  );
+  const held = Boolean(listed?.some((entry) => sameModelName(entry.id, model)));
+  const working = on && held;
+  const silent = on && Boolean(list?.message);
+  const gone = on && listed !== null && !held;
+  const checking = enabled && setUp && (settling || (Boolean(data?.ready) && !list && models.isFetching));
+  // The model server in Settings, as the first step would have found it, for choosing again from its list.
+  const known: ModelSetupLook | undefined =
+    (gone || (enabled && !setUp && !settling)) && listed && data?.server
+      ? { found: true, address: endpoint, models: listed, message: "", recommended: recommendModel(listed) }
+      : undefined;
 
   return (
     <SettingsSection
       id="answers"
       title="Answers from your library"
-      description="Optional. A language model you run yourself writes a short answer to a question from passages of your library, and cites them. Chat uses the same model server. Search works without it."
+      description="A program on your own computer writes a short answer to a question from your library, and says which passage each part came from. Chat uses it too. Optional."
     >
-      <SettingRow
-        label="Write answers"
-        hint="Needs a model server on this device or your network, such as Ollama, llama.cpp or LM Studio. Outpost does not include a language model and does not download one: which model to run is your choice."
-        control={
-          <Switch
-            checked={enabled}
-            disabled={disabled}
-            onCheckedChange={(value) => save("answers.enabled", value)}
-            aria-label="Write answers"
-          />
-        }
-      />
-      {enabled ? (
+      {status.isPending ? (
+        <div className="grid gap-2" aria-busy>
+          <Skeleton className="w-64" />
+          <Skeleton className="w-40" />
+        </div>
+      ) : status.isError || !data ? (
+        <Notice tone="danger" icon={<CircleAlert aria-hidden />} title="The state of answers could not be read">
+          {errorMessage(status.error)}
+        </Notice>
+      ) : (
         <>
-          <SettingRow
-            htmlFor="answers-endpoint"
-            label="Server address"
-            hint="Ollama is usually at http://127.0.0.1:11434/v1, LM Studio at http://127.0.0.1:1234/v1. llama.cpp’s server prints its address when it starts."
-            control={
-              <TextSetting
-                id="answers-endpoint"
-                value={endpoint}
+          {setUp ? (
+            <div className="flex items-start justify-between gap-x-6 gap-y-2">
+              <div className="min-w-0 flex-1 text-small" aria-live="polite" data-testid="answers-state">
+                {!enabled ? (
+                  <>
+                    <p className="font-medium text-ink">Off</p>
+                    <p className="mt-0.5 text-ink-muted">
+                      Turning it on uses <ModelName>{model}</ModelName>
+                      {data.server ? ` ${whereWords(data)}` : ""}.
+                    </p>
+                  </>
+                ) : working ? (
+                  <>
+                    <p className="flex items-start gap-1.5 font-medium text-ink">
+                      <CircleCheck className="mt-0.5 size-4 shrink-0 text-success" aria-hidden />
+                      <span>
+                        Ready: answers are written by <ModelName>{model}</ModelName> {whereWords(data)}.
+                      </span>
+                    </p>
+                    {tried?.ok ? <p className="mt-0.5 text-ink-muted">{triedWords(tried)}</p> : null}
+                  </>
+                ) : checking ? (
+                  <p className="font-medium text-ink">On. Asking the model server whether it is there…</p>
+                ) : (
+                  <p className="font-medium text-ink">On, but not working yet</p>
+                )}
+              </div>
+              <Switch
+                id="answers-switch"
+                checked={enabled}
                 disabled={disabled}
-                onSave={(value) => save("answers.endpoint", value)}
-                mono
+                onCheckedChange={(value) => {
+                  setTried(null);
+                  save("answers.enabled", value);
+                }}
+                aria-label="Write answers"
               />
-            }
-          />
-          {server && place === "elsewhere" && status.data?.reason && !status.data.ready ? (
-            // Refused: the server says why, and names the start-up option that allows it.
-            <Notice tone="warning" icon={<CircleAlert aria-hidden />}>
-              {status.data.reason}
-            </Notice>
-          ) : server && place ? (
-            <Notice
-              tone={place === "elsewhere" ? "warning" : "info"}
-              icon={place === "elsewhere" ? <CircleAlert aria-hidden /> : undefined}
-            >
-              When you ask for an answer, your question and the passages found for it are sent to{" "}
-              <span className="font-mono text-[0.8125rem] [overflow-wrap:anywhere]">{server}</span>, {PLACE[place]}. They are sent nowhere
-              else, and nothing is sent until you ask.
-              {place === "elsewhere" ? " Use this only if that machine is yours." : ""}
-            </Notice>
-          ) : status.data?.reason && !server ? (
-            <Notice tone="warning" icon={<CircleAlert aria-hidden />}>
-              {status.data.reason}
-            </Notice>
+            </div>
           ) : null}
 
-          <SettingRow
-            htmlFor="answers-model"
-            label="Model"
-            hint={
-              models.isPending
-                ? "Asking the server which models it has."
-                : reported.length > 0
-                  ? `The server has ${reported.length === 1 ? "one model" : `${formatNumber(reported.length)} models`}. Choose one that writes text, not one that makes embeddings.`
-                  : `${models.data?.message ?? "The server’s list of models could not be read."} You can still type the model’s name as the server knows it.`
-            }
-            control={
-              <span className="flex max-w-full items-center gap-1">
-                {reported.length > 0 ? (
-                  <Select
-                    id="answers-model"
-                    value={model || undefined}
-                    onChange={(value) => save("answers.model", value)}
-                    disabled={disabled}
-                    placeholder="Choose a model"
-                    className="w-64 max-w-full font-mono"
-                    options={[
-                      ...(model && !reported.includes(model)
-                        ? [{ value: model, label: model, description: "Not in the server’s list" }]
-                        : []),
-                      ...reported.map((name) => ({ value: name, label: name })),
-                    ]}
-                  />
-                ) : (
-                  <TextSetting
-                    id="answers-model"
-                    value={model}
-                    disabled={disabled}
-                    onSave={(value) => save("answers.model", value)}
-                    placeholder="For example llama3.2:3b"
-                    mono
-                  />
-                )}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Ask the server for its models again"
-                  loading={models.isFetching}
-                  onClick={() => void models.refetch()}
-                >
-                  {models.isFetching ? null : <RefreshCw />}
-                </Button>
-              </span>
-            }
-          />
+          {working ? (
+            <p className="text-small text-ink-muted">
+              To use it, press <span className="font-medium text-ink">Answer from my library</span> on the{" "}
+              <Link to="/search" className={link}>
+                Search
+              </Link>{" "}
+              screen, or open{" "}
+              <Link to="/chat" className={link}>
+                Chat
+              </Link>
+              . What you ask is sent to that program and nowhere else. A small model is a helper, not an expert: when the passages found do
+              not hold the answer, it should say so.
+            </p>
+          ) : null}
 
-          <div>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-              <Button onClick={() => test.mutate()} loading={test.isPending} disabled={disabled}>
-                Test
-              </Button>
-              <p className="min-w-48 flex-1 text-small text-ink-muted">
-                Asks the model for one word, to check the address, the model’s name and that it can write. A model that has to be loaded
-                first can take a while.
+          {refused ? (
+            <Notice tone="warning" icon={<CircleAlert aria-hidden />} title="The address in More options cannot be used">
+              {data.reason}
+            </Notice>
+          ) : silent ? (
+            <Notice tone="warning" icon={<CircleAlert aria-hidden />} title="The model server is not answering">
+              <p>{list?.message}</p>
+              <p className="mt-1.5">
+                Start Ollama on that computer, then press Look again. <GuideLink part="when-it-does-not-work">What else to check</GuideLink>
               </p>
-            </div>
-            {test.isError ? (
-              <Notice tone="danger" className="mt-3">
-                {errorMessage(test.error)}
+              <div className="mt-3">
+                <Button size="sm" loading={models.isFetching} onClick={() => void models.refetch()}>
+                  Look again
+                </Button>
+              </div>
+            </Notice>
+          ) : gone && known ? (
+            <>
+              <Notice tone="warning" icon={<CircleAlert aria-hidden />} title="This model is not on the model server">
+                The model server {whereWords(data)} is running, but it no longer has <ModelName>{model}</ModelName>. Choose one it has.
               </Notice>
-            ) : result ? (
-              <Notice
-                tone={result.ok ? "success" : "warning"}
-                icon={result.ok ? <CircleCheck aria-hidden /> : <CircleAlert aria-hidden />}
-                title={result.ok ? "The model is answering" : "Not working yet"}
-                className="mt-3"
-              >
-                {result.message}
-                {result.ok
-                  ? result.tookMs < 950
-                    ? " It took under a second."
-                    : ` It took ${(result.tookMs / 1000).toFixed(1)} seconds.`
-                  : ""}
-              </Notice>
-            ) : null}
-          </div>
+              <ModelSetup key={`${endpoint}|${listed?.length}`} start={known} onReady={setTried} />
+            </>
+          ) : null}
 
-          <SettingRow
-            htmlFor="answers-temperature"
-            label="Temperature"
-            hint="How freely the model varies its wording. Low keeps an answer close to its sources: 0.2 suits most models, and 0 is the most literal."
-            control={
-              <NumberSetting
-                id="answers-temperature"
-                value={settings["answers.temperature"]}
-                min={0}
-                max={2}
-                decimals
-                disabled={disabled}
-                onSave={(value) => save("answers.temperature", value)}
-              />
-            }
-          />
-          <SettingRow
-            htmlFor="answers-context"
-            label="Context budget"
-            hint={
-              <>
-                The most quoted text sent with a question: now about {formatNumber(Math.ceil(budget / 4))} tokens. More lets the model see
-                more passages but takes longer, and it must fit the model’s context window with room left for the rules and the answer.
-                Ollama reads 4,096 tokens at once unless you tell it otherwise.{" "}
-                <Link to="/search/how-it-works#stage-context" className="text-primary underline underline-offset-2">
-                  How the context is built
-                </Link>
-              </>
-            }
-            control={
-              <NumberSetting
-                id="answers-context"
-                value={budget}
-                min={1000}
-                max={60000}
-                disabled={disabled}
-                onSave={(value) => save("answers.contextChars", value)}
-                unit="characters"
-              />
-            }
-          />
-          <p className="text-small text-ink-muted">
-            Questions and answers are not kept, on the server or in this browser. Answers draw on documents, notes and book chapters;
-            reference collections such as Wikipedia are not read.{" "}
-            <Link to="/search/how-it-works#stage-model" className="text-primary underline underline-offset-2">
-              See the exact prompt that is sent
-            </Link>
-          </p>
+          {!setUp ? (
+            <>
+              <p className="text-small text-ink-muted">
+                Outpost does not come with this program. You install one, called Ollama, once: about 2 GB to download, which needs the
+                internet. After that, what you ask stays on this computer or your own network.
+              </p>
+              <ModelSetup key={known ? "known" : "new"} start={known} onReady={setTried} />
+            </>
+          ) : (
+            <p className="text-small text-ink-muted">
+              <GuideLink part="answers-and-chat" />
+            </p>
+          )}
+
+          <MoreOptions>
+            <AnswersOptions
+              settings={settings}
+              disabled={disabled}
+              save={save}
+              status={data}
+              models={enabled ? list : undefined}
+              asking={models.isFetching}
+              askAgain={() => void models.refetch()}
+            />
+          </MoreOptions>
         </>
-      ) : null}
+      )}
     </SettingsSection>
   );
+}
+
+const ModelName = ({ children }: { children: string }) => (
+  <span className="font-mono text-[0.8125rem] text-ink [overflow-wrap:anywhere]">{children}</span>
+);
+
+/** "It answered “ready” in 2.3 seconds." */
+function triedWords(result: ModelSetupTry): string {
+  const took = result.tookMs < 950 ? "under a second" : `${(result.tookMs / 1000).toFixed(1)} seconds`;
+  return result.reply ? `Just now it answered “${result.reply}” in ${took}.` : `Just now it answered in ${took}.`;
 }

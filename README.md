@@ -282,6 +282,7 @@ The reasoning behind each choice, the security model and the known trade-offs ar
 | [Encryption](docs/encryption.md) | OpenPGP keys, text, files and encrypted pages; ciphers to work by hand |
 | [Security](docs/security.md) | Threat model and controls |
 | [API](docs/api.md) | HTTP API reference |
+| [Setting up search by meaning, answers and chat](docs/setup-guide.md) | The short guide: one switch, and Ollama in three steps. Also inside Outpost |
 | [Answers and language models](docs/ai.md) | Setting up a model of your own, the exact prompt, what is sent where |
 | [Troubleshooting](docs/troubleshooting.md) | Common problems |
 | [Architecture](docs/architecture.md) | Design decisions and trade-offs |

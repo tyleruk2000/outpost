@@ -53,34 +53,43 @@ test.describe("answer from my library", () => {
     expect((await stats(page)).chats).toBe(0);
   });
 
-  test("is set up in Settings: address, the server's own list of models, and a test that says what failed", async ({ page }) => {
+  test("can be set up by hand under More options: address, the server's own list of models, and a test that says what failed", async ({
+    page,
+  }) => {
     const errors = watchForErrors(page);
     await page.goto("/settings#answers-title");
     await expect(page.getByRole("heading", { name: "Answers from your library" })).toBeVisible();
-    await page.getByRole("switch", { name: "Write answers" }).click();
+    const section = page.getByRole("region", { name: "Answers from your library" });
+    await section.getByText("More options").click();
 
-    // An address with nothing behind it: the list cannot be read, and the test says why.
-    const address = page.getByLabel("Server address");
+    // An address with nothing behind it, and a model named by hand: switched on, it says the server is not answering.
+    const address = section.getByLabel("Server address");
     await address.fill("http://127.0.0.1:9/v1");
     await address.press("Enter");
-    await expect(page.getByText(/No model server answered at 127\.0\.0\.1:9/).first()).toBeVisible();
+    const name = section.getByLabel("Model", { exact: true });
+    await name.fill("stand-in");
+    await name.press("Enter");
+    await section.getByRole("switch", { name: "Write answers" }).click();
+    await expect(section.getByText("The model server is not answering")).toBeVisible();
+    await expect(section.getByText(/No model server answered at 127\.0\.0\.1:9/).first()).toBeVisible();
 
     await address.fill(`${MODEL_URL}/v1`);
     await address.press("Enter");
-    await expect(page.getByText(/your question and the passages found for it are sent to/)).toContainText("this computer");
-    await expect(page.getByText(/The server has \d+ models/)).toBeVisible();
+    await expect(section.getByTestId("answers-state")).toContainText("Ready: answers are written by stand-in on this computer.");
+    await expect(section.getByText(/your question and the passages found for it are sent to/)).toContainText("this computer");
+    await expect(section.getByText(/The server has \d+ models/)).toBeVisible();
 
     // An embedding model is in the list too; choosing it fails the test with the reason.
-    await page.getByRole("combobox").filter({ hasText: "Choose a model" }).click();
+    await section.getByRole("combobox").click();
     await page.getByRole("option", { name: "embed-only:latest" }).click();
-    await page.getByRole("button", { name: "Test", exact: true }).click();
-    await expect(page.getByText("Not working yet")).toBeVisible();
-    await expect(page.getByText(/cannot write text\. It is probably an embedding model/)).toBeVisible();
+    await section.getByRole("button", { name: "Test", exact: true }).click();
+    await expect(section.getByText("Not working yet")).toBeVisible();
+    await expect(section.getByText(/cannot write text\. It is probably an embedding model/)).toBeVisible();
 
-    await page.getByRole("combobox").filter({ hasText: "embed-only:latest" }).click();
+    await section.getByRole("combobox").click();
     await page.getByRole("option", { name: "stand-in:latest", exact: true }).click();
-    await page.getByRole("button", { name: "Test", exact: true }).click();
-    await expect(page.getByText("The model is answering")).toBeVisible();
+    await section.getByRole("button", { name: "Test", exact: true }).click();
+    await expect(section.getByText("The model is answering")).toBeVisible();
     expect(errors).toEqual([]);
   });
 

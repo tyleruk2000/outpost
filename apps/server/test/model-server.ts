@@ -324,6 +324,8 @@ export async function startModelServer(options: StandInOptions = {}): Promise<St
             parameter_size: name === "embed-only" ? "137M" : "3.2B",
             quantization_level: name === "embed-only" ? "F16" : "Q4_K_M",
           },
+          // As Ollama 0.40.16 sent it on 2026-11-16; its API documentation of that day does not list the field.
+          capabilities: name === "embed-only" ? ["embedding"] : ["completion", "tools"],
         })),
       });
     }

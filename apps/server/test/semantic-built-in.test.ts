@@ -197,7 +197,8 @@ describe("the built-in embedding model: what does not need its files", () => {
     const status = (await app.api("GET", "/api/semantic/status")).body;
     expect(status).toMatchObject({ modelId: BUILT_IN_MODEL_ID, embeddedChunks: 0, totalChunks: 1 });
     expect(status.otherModels).toEqual([{ modelId: EARLIER_MODEL_ID, dimensions: 384, vectors: 1 }]);
-    // Searches go by words until the index is built again, and nothing rebuilds it unasked.
+    // Searches go by words until the index is built again. Switching on would have built it by itself,
+    // but this installation's model is missing, and nothing is started for a model that cannot run.
     const { body } = await app.api("GET", "/api/search?q=water&mode=semantic");
     expect(body.mode).toBe("keyword");
     expect(body.warnings[0].source).toBe("semantic");
@@ -273,14 +274,15 @@ describe("the index build, as the settings screen sees it", () => {
     expect(waiting.indexing).toBe(true);
   });
 
-  it("keeps the index up to date by itself only after a person has built it, and never against their pause", async () => {
+  it("keeps the index up to date by itself only once a person has asked for one, and never against their pause", async () => {
     const app = await testApp();
     const provider = standIn();
     const { semantic } = app.ctx.services;
     semantic.overrideProvider(provider);
     addNote(app, "a", "Carry water.");
 
-    // The library changed, but nobody has asked for an index: nothing is embedded.
+    // The library changed, but nobody has asked for an index (search by meaning is not switched on in
+    // Settings, and nothing has been built): nothing is embedded.
     semantic.requestIndexing(false);
     await app.ctx.jobs.whenIdle();
     expect(provider.embedded).toBe(0);

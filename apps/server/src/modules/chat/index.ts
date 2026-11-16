@@ -16,7 +16,15 @@
  * goes to the one configured model server and nowhere else. Opening the Chat screen
  * asks that server for its list of models; that request carries nothing.
  */
-import type { ChatConversationDetail, ChatLookResult, ChatModelsResponse, ChatStatus, ChatStreamEvent } from "@outpost/shared";
+import type {
+  ChatConversationDetail,
+  ChatLookResult,
+  ChatModelsResponse,
+  ChatStatus,
+  ChatStreamEvent,
+  ModelSetupLook,
+  ModelSetupTry,
+} from "@outpost/shared";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
@@ -25,6 +33,7 @@ import { planHistory, titleFrom } from "./context.ts";
 import { chatModels, lookForOllama, OLLAMA_DEFAULT_ADDRESSES } from "./models.ts";
 import { replyAsNote } from "./note.ts";
 import { type ChatRunner, createRunner, historyBudget } from "./run.ts";
+import { lookForModelServer, placesToLook, tryModel } from "./setup.ts";
 import { type ChatStore, createChatStore, toConversation, toMessage } from "./store.ts";
 
 /** The longest message a person can send, in characters. */
@@ -162,6 +171,37 @@ export async function registerChat(app: FastifyInstance, ctx: AppContext): Promi
     "/api/chat/look-for-ollama",
     async (): Promise<ChatLookResult> => lookForOllama(answers.timeouts(), answers.guard, ollamaAddresses),
   );
+
+  /**
+   * Setting up, step one: looks for a model server at the address in Settings and then
+   * where Ollama listens, because a person pressed the button. Says which of its models
+   * to start with. Saves nothing.
+   */
+  app.post(
+    "/api/chat/setup/look",
+    async (): Promise<ModelSetupLook> => lookForModelServer(settings.all(), answers.timeouts(), answers.guard, ollamaAddresses),
+  );
+
+  const tryBody = z.object({ address: z.string().trim().min(1).max(500), model: z.string().trim().min(1).max(200) });
+
+  /**
+   * Setting up, the last step: asks the chosen model at the address that was found for
+   * one word. When it answers, the address and the model are saved and answers are
+   * switched on; when it does not, nothing changes and the result says what failed.
+   */
+  app.post("/api/chat/setup/try", async (request): Promise<ModelSetupTry> => {
+    const input = tryBody.parse(request.body);
+    return tryModel(
+      input,
+      placesToLook(settings.get("answers.endpoint"), ollamaAddresses),
+      answers.timeouts(),
+      answers.guard,
+      runner.current() !== undefined || answers.status().busy,
+      (saved) => {
+        settings.update(saved);
+      },
+    );
+  });
 
   app.get("/api/chat/conversations", async (request) => {
     const query = z.object({ q: z.string().max(200).optional() }).parse(request.query);

@@ -1,64 +1,36 @@
-import { formatBytes, formatDuration, type SemanticStatus, type Settings, vectorBytes } from "@outpost/shared";
+/**
+ * Search by meaning, as one switch.
+ *
+ * Turning it on is all a person does: the server uses the model that comes with
+ * Outpost and reads the library by itself (modules/semantic). This section says what
+ * that will cost before, how far it has got during, and when it is ready. A set-up
+ * that cannot work, such as one left pointing at a server that is not there, is said
+ * plainly and put right with one press. Everything else is in semantic-options.tsx,
+ * behind "More options".
+ */
+import { formatBytes, formatDuration, type SemanticStatus, type Settings, secondsLeft, vectorBytes } from "@outpost/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CircleAlert, CircleCheck, Download, Pause, Square, Trash2, Upload } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { CircleAlert, CircleCheck } from "lucide-react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
-import { Progress, Segmented, Skeleton, Switch } from "@/components/ui/misc";
-import { ApiError, api, errorMessage } from "@/lib/api";
-import { formatNumber, plural } from "@/lib/utils";
-import { SettingRow, SettingsSection, TextSetting } from "./parts";
+import { Progress, Skeleton, Switch } from "@/components/ui/misc";
+import { api, errorMessage } from "@/lib/api";
+import { cn, formatNumber, plural } from "@/lib/utils";
+import { GuideLink, MoreOptions, SettingsSection } from "./parts";
+import { indexCost, indexStage, LAPTOP_SECONDS_PER_THOUSAND, SemanticOptions } from "./semantic-options";
 
-/**
- * Seconds the built-in model takes for every thousand passages on a recent laptop,
- * quoted before anything is built. Measured on an Apple M2 Max with four threads: 33
- * for the bundled books, whose passages are mostly shorter than the longest allowed,
- * and 54 for a library made only of full-length ones. Once a build is running, the time
- * left comes from its own speed. See "What it costs" in docs/search.md.
- */
-export const LAPTOP_SECONDS_PER_THOUSAND = 45;
+export { indexCost, indexStage, LAPTOP_SECONDS_PER_THOUSAND, secondsLeft };
 
-/** What an index of this many passages costs, in plain words, before it is built. */
-export function indexCost(passages: number, dimensions: number): { disk: string; time: string } {
-  return {
-    disk: formatBytes(passages * vectorBytes(dimensions)),
-    time: formatDuration(Math.max(1, (passages / 1000) * LAPTOP_SECONDS_PER_THOUSAND)),
-  };
+/** Host and port of an address, for showing; the address as typed when it cannot be read. */
+function hostOf(address: string): string {
+  try {
+    return new URL(address).host || address;
+  } catch {
+    return address;
+  }
 }
-
-/**
- * Seconds a running build still needs, judged from how far it got while this screen
- * watched. Null until there is enough to judge by.
- */
-export function secondsLeft(first: { at: number; done: number }, now: { at: number; done: number }, total: number): number | null {
-  const elapsed = (now.at - first.at) / 1000;
-  const made = now.done - first.done;
-  if (elapsed < 5 || made < 8) return null;
-  return Math.max(0, total - now.done) / (made / elapsed);
-}
-
-/** The states the index can be in, as the screen names them. */
-type Stage = "empty" | "building" | "waiting" | "paused" | "failed" | "partial" | "complete";
-
-export function indexStage(status: Pick<SemanticStatus, "indexing" | "build" | "embeddedChunks" | "totalChunks">): Stage {
-  const { build } = status;
-  if (status.indexing) return build?.state === "queued" && build.error ? "waiting" : "building";
-  if (build?.state === "paused") return "paused";
-  if (build?.state === "failed") return "failed";
-  if (status.totalChunks > 0 && status.embeddedChunks >= status.totalChunks) return "complete";
-  return status.embeddedChunks === 0 ? "empty" : "partial";
-}
-
-const stageTitle: Record<Stage, string> = {
-  empty: "Index not built yet",
-  building: "Building the index",
-  waiting: "Waiting to try again",
-  paused: "Building is paused",
-  failed: "The build stopped",
-  partial: "Index is partly built",
-  complete: "Index is up to date",
-};
 
 export function SemanticSection({
   settings,
@@ -70,366 +42,304 @@ export function SemanticSection({
   save: <K extends keyof Settings>(key: K, value: Settings[K]) => void;
 }) {
   const client = useQueryClient();
-  const fileRef = useRef<HTMLInputElement>(null);
   const enabled = settings["search.semantic.enabled"];
   const provider = settings["search.semantic.provider"];
+  // Between the switch being turned on and the server saying it has begun, the screen says "starting".
+  const [turnedOnAt, setTurnedOnAt] = useState<number | null>(null);
+  const turnedOnRef = useRef(false);
+  turnedOnRef.current = turnedOnAt !== null;
 
   const status = useQuery({
     queryKey: ["semantic", "status", enabled, provider, settings["search.semantic.model"], settings["search.semantic.endpoint"]],
     queryFn: () => api.get<SemanticStatus>("/api/semantic/status"),
-    refetchInterval: (query) => (query.state.data?.indexing ? 2000 : false),
+    // A change made under More options asks again; what is on screen stays until the new answer is in, so that More options stays open.
+    placeholderData: (previous) => previous,
+    // While something is being read, or is about to be (new passages wait a few seconds), the screen keeps up with it.
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      if (!data?.enabled || !data.ready) return false;
+      if (data.indexing) return 2000;
+      const behind = data.embeddedChunks < data.totalChunks;
+      return behind && (turnedOnRef.current || data.build?.state === "succeeded") ? 2000 : false;
+    },
   });
   const refresh = () => client.invalidateQueries({ queryKey: ["semantic"] });
   const failed = (error: unknown) => toast.error(errorMessage(error));
+  // The repair changes two settings on the server; the screen reads them again, and the state with them.
+  const settled = () => {
+    setTurnedOnAt(Date.now());
+    void client.invalidateQueries({ queryKey: ["settings"] });
+    return refresh();
+  };
 
-  const build = useMutation({ mutationFn: () => api.post<SemanticStatus>("/api/semantic/index"), onSuccess: refresh, onError: failed });
-  const recheck = useMutation({
-    mutationFn: () => api.get<SemanticStatus>("/api/semantic/status?fresh=1"),
-    onSuccess: refresh,
-    onError: failed,
-  });
-  const steer = useMutation({
-    mutationFn: ({ id, action }: { id: string; action: "pause" | "cancel" }) => api.post(`/api/jobs/${id}/${action}`),
-    onSettled: refresh,
-    onError: failed,
-  });
-  const removeModel = useMutation({
-    mutationFn: (modelId: string) => api.delete(`/api/semantic/models/${encodeURIComponent(modelId)}`),
-    onSuccess: refresh,
-    onError: failed,
-  });
-  const importVectors = useMutation({
-    mutationFn: async (file: File) => {
-      const response = await fetch("/api/semantic/import", {
-        method: "POST",
-        headers: { "X-Outpost-Request": "1", "Content-Type": "application/gzip" },
-        body: file,
-      });
-      const body = await response.json();
-      if (!response.ok)
-        throw new ApiError(response.status, body.error?.code ?? "http", body.error?.message ?? "The file could not be loaded.");
-      return body as { modelId: string; vectorsInFile: number; passagesUpdated: number; vectorsWithoutPassage: number };
-    },
-    onSuccess: (result) => {
-      toast.success(
-        `Loaded vectors for ${formatNumber(result.passagesUpdated)} passages. ${formatNumber(result.vectorsWithoutPassage)} in the file matched nothing in this library.`,
-      );
-      return refresh();
-    },
+  const read = useMutation({ mutationFn: () => api.post<SemanticStatus>("/api/semantic/index"), onSuccess: refresh, onError: failed });
+  const useBuiltIn = useMutation({
+    mutationFn: () => api.post<SemanticStatus>("/api/semantic/use-built-in"),
+    onSuccess: settled,
     onError: failed,
   });
 
+  // While a change is being read back from the server, what is held is the state before it.
+  const settling = status.isPlaceholderData;
   const data = status.data;
-  const builtIn = data?.builtIn;
-  const usesBuiltIn = provider === "built-in";
   const stage = data ? indexStage(data) : "empty";
-  const active = stage === "building" || stage === "waiting";
-  const fraction = data && data.totalChunks > 0 ? data.embeddedChunks / data.totalChunks : 0;
-  const remaining = data ? Math.max(0, data.totalChunks - data.embeddedChunks) : 0;
-  const left = useTimeLeft(active, data?.embeddedChunks ?? 0, data?.totalChunks ?? 0);
-  // Before anything is built the cost is quoted for the built-in model, which is what switching on gives.
-  const cost = data && builtIn ? indexCost(remaining, data.dimensions ?? builtIn.dimensions) : null;
+  const underWay = stage === "building" || stage === "waiting";
+  const starting =
+    enabled && turnedOnAt !== null && Boolean(data?.ready) && !underWay && stage !== "complete" && (data?.totalChunks ?? 0) > 0;
+  useEffect(() => {
+    if (turnedOnAt === null) return;
+    // The server begins within a second or two. If it has not after ten, say what is so instead of "starting".
+    const timer = window.setTimeout(() => setTurnedOnAt(null), 10_000);
+    return () => window.clearTimeout(timer);
+  }, [turnedOnAt]);
+
+  const builtIn = data?.builtIn;
+  const ownServer = provider !== "built-in";
+  // A set-up that names something other than what comes with Outpost, and is off or not answering.
+  const offerBuiltIn = Boolean(data && !settling && builtIn?.installed && ownServer && (!enabled || !data.ready));
 
   return (
     <SettingsSection
       id="semantic"
       title="Search by meaning"
-      description="Optional. Finds passages about the same thing even when they use different words. Ordinary search works without it."
+      description="Finds things that are about what you typed, even when they use different words. Optional: ordinary search works without it."
     >
-      <SettingRow
-        label="Search by meaning"
-        hint={
-          enabled
-            ? "On. Nothing is sent to the internet."
-            : "Off. A small model on this device reads every passage once and keeps a list of numbers for each. Nothing is sent to the internet."
-        }
-        control={
-          <Switch
-            checked={enabled}
-            disabled={disabled}
-            onCheckedChange={(value) => save("search.semantic.enabled", value)}
-            aria-label="Search by meaning"
-          />
-        }
-      />
-
-      {!enabled && data && builtIn ? <Cost passages={data.totalChunks} dimensions={builtIn.dimensions} /> : null}
-
-      {enabled ? (
-        <>
-          <SettingRow
-            label="Where the model runs"
-            hint={
-              usesBuiltIn
-                ? "A small model that comes with Outpost and runs on this device. Nothing to install, nothing to download."
-                : provider === "demo"
-                  ? "Vectors made from word counts, to show the mechanics. Results follow shared words, not meaning; choose Built in for the real thing."
-                  : "A server on this device or network that speaks the OpenAI embeddings format, such as Ollama or llama.cpp. Use it for a larger model, or one trained on other languages."
-            }
-            control={
-              <Segmented
-                label="Where the model runs"
-                value={provider}
-                onChange={(value) => save("search.semantic.provider", value)}
-                options={[
-                  { value: "built-in", label: "Built in" },
-                  { value: "openai-compatible", label: "Local server" },
-                  // Offered only to someone who already chose it; "How search works" uses it by itself.
-                  ...(provider === "demo" ? [{ value: "demo" as const, label: "Demonstration" }] : []),
-                ]}
-              />
-            }
-          />
-
-          {usesBuiltIn && builtIn ? (
-            <p className="text-small text-ink-muted">
-              The built-in model is <span className="font-medium text-ink">{builtIn.name}</span> ({formatBytes(builtIn.bytes)}), made by the
-              Sentence Transformers project and used under the {builtIn.licence} licence. It was trained on {builtIn.languages} text and
-              matches other languages poorly.
-            </p>
-          ) : null}
-
-          {provider === "openai-compatible" ? (
-            <>
-              <SettingRow
-                htmlFor="semantic-endpoint"
-                label="Server address"
-                hint="For Ollama this is usually http://127.0.0.1:11434/v1"
-                control={
-                  <TextSetting
-                    id="semantic-endpoint"
-                    value={settings["search.semantic.endpoint"]}
-                    disabled={disabled}
-                    onSave={(value) => save("search.semantic.endpoint", value)}
-                    mono
-                  />
-                }
-              />
-              <SettingRow
-                htmlFor="semantic-model"
-                label="Model"
-                hint="The name the server knows it by, for example nomic-embed-text"
-                control={
-                  <TextSetting
-                    id="semantic-model"
-                    value={settings["search.semantic.model"]}
-                    disabled={disabled}
-                    onSave={(value) => save("search.semantic.model", value)}
-                    mono
-                  />
-                }
-              />
-            </>
-          ) : null}
-
+      <div className="flex items-start justify-between gap-x-6 gap-y-2">
+        <div className="min-w-0 flex-1 text-small" aria-live="polite">
           {status.isPending ? (
-            <div className="grid gap-2" aria-busy>
-              <Skeleton className="w-40" />
-              <Skeleton />
+            <Skeleton className="mt-1 w-56" />
+          ) : status.isError || !data || !builtIn ? (
+            <State word="Not known" tone="danger">
+              The state of search by meaning could not be read. {errorMessage(status.error)}
+            </State>
+          ) : !enabled ? (
+            <State word="Off">{settling ? null : <Off data={data} ownServer={ownServer} />}</State>
+          ) : settling ? (
+            <State word="Starting" />
+          ) : !data.ready ? (
+            <State word="On, but not working yet" />
+          ) : starting ? (
+            <State word="Starting">Outpost is about to read your library.</State>
+          ) : stage === "complete" ? (
+            <State word="Ready" tone="success">
+              Search now also finds things by meaning. What you add is read as it arrives. Nothing leaves this computer.
+            </State>
+          ) : data.totalChunks === 0 ? (
+            <State word="On">There is nothing to read yet. What you add is read as it arrives.</State>
+          ) : underWay ? (
+            <State word="Reading your library" />
+          ) : (
+            <State word="On, and not finished reading" />
+          )}
+        </div>
+        <Switch
+          id="semantic-switch"
+          checked={enabled}
+          disabled={disabled}
+          onCheckedChange={(value) => {
+            setTurnedOnAt(value ? Date.now() : null);
+            save("search.semantic.enabled", value);
+          }}
+          aria-label="Search by meaning"
+        />
+      </div>
+
+      {data && enabled && data.ready && !settling ? (
+        <Reading data={data} stage={stage} starting={starting} busy={read.isPending} disabled={disabled} onRead={() => read.mutate()} />
+      ) : null}
+
+      {data && builtIn && offerBuiltIn ? (
+        <Notice
+          tone={enabled ? "warning" : "info"}
+          icon={enabled ? <CircleAlert aria-hidden /> : undefined}
+          title={
+            !enabled
+              ? "This was set up to use a separate program"
+              : provider === "openai-compatible"
+                ? "The program this was set up to use is not answering"
+                : "Nothing has been chosen to do the reading"
+          }
+        >
+          <p>
+            {provider === "openai-compatible" ? (
+              <>
+                Search by meaning was pointed at a program of your own at{" "}
+                <span className="font-mono text-[0.8125rem] [overflow-wrap:anywhere]">{hostOf(settings["search.semantic.endpoint"])}</span>
+                {enabled ? ", and nothing there is answering. " : ". If you do not run one, there is no need to: "}
+              </>
+            ) : provider === "demo" ? (
+              "It is set to a demonstration that matches shared words, not meaning. "
+            ) : null}
+            Outpost comes with what it needs, with nothing to install.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button variant="primary" size="sm" loading={useBuiltIn.isPending} disabled={disabled} onClick={() => useBuiltIn.mutate()}>
+              Use what comes with Outpost
+            </Button>
+            {enabled && provider === "openai-compatible" ? (
+              <Button size="sm" loading={read.isPending} disabled={disabled} onClick={() => read.mutate()}>
+                Try my own again
+              </Button>
+            ) : null}
+          </div>
+        </Notice>
+      ) : null}
+
+      {data && builtIn && enabled && !settling && !data.ready && !offerBuiltIn ? (
+        <Notice
+          tone="warning"
+          icon={<CircleAlert aria-hidden />}
+          title={
+            !ownServer && !builtIn.installed
+              ? "This installation is missing the part that does this"
+              : !ownServer
+                ? "The part of Outpost that does this could not be started"
+                : "The program this was set up to use is not answering"
+          }
+        >
+          <p>{data.reason}</p>
+          <p className="mt-1.5">Ordinary search is not affected.</p>
+          {/* Missing files do not come back by asking again; anything else might. */}
+          {!ownServer && !builtIn.installed ? null : (
+            <div className="mt-3">
+              <Button size="sm" loading={read.isPending} disabled={disabled} onClick={() => read.mutate()}>
+                Try again
+              </Button>
             </div>
-          ) : status.isError ? (
-            <Notice tone="danger" icon={<CircleAlert />} title="The state of the index could not be read">
-              {errorMessage(status.error)}
-            </Notice>
-          ) : provider === "none" ? (
-            <Notice tone="info">Choose where the model runs to continue.</Notice>
-          ) : data && !data.ready ? (
-            <Notice
-              tone="warning"
-              icon={<CircleAlert />}
-              title={
-                usesBuiltIn
-                  ? builtIn?.installed
-                    ? "The built-in model could not be started"
-                    : "The built-in model is not part of this installation"
-                  : "The model is not answering"
-              }
-              action={
-                // Missing files do not come back by asking again; anything else might.
-                usesBuiltIn && !builtIn?.installed ? null : (
-                  <Button size="sm" loading={recheck.isPending} onClick={() => recheck.mutate()}>
-                    Check again
-                  </Button>
-                )
-              }
-            >
-              <p>{data.reason}</p>
-              {usesBuiltIn ? <p className="mt-1.5">Ordinary search is not affected. A local server can be used instead.</p> : null}
-            </Notice>
-          ) : data ? (
-            <div>
-              <div className="mb-2 flex flex-wrap items-center justify-between gap-x-6 gap-y-1">
-                <p className="flex items-center gap-1.5 text-small font-medium text-ink">
-                  {stage === "complete" ? <CircleCheck className="size-4 text-success" aria-hidden /> : null}
-                  {stageTitle[stage]}
-                </p>
-                <p className="tabular text-small text-ink-muted">
-                  {formatNumber(data.embeddedChunks)} of {plural(data.totalChunks, "passage")}
-                  {active && left !== null ? `, about ${formatDuration(left)} left` : ""}
-                </p>
-              </div>
-              <Progress
-                value={fraction}
-                tone={active ? "lamp" : stage === "complete" ? "success" : stage === "failed" ? "danger" : "primary"}
-                label="Semantic index"
-              />
+          )}
+        </Notice>
+      ) : null}
 
-              {stage === "failed" || stage === "waiting" ? (
-                <p className="mt-2 text-small text-danger" role={stage === "failed" ? "alert" : undefined}>
-                  {data.build?.error ?? "The build stopped without saying why."}
-                  {stage === "waiting" ? " It will be tried again shortly." : " What was built before that is kept."}
-                </p>
-              ) : null}
-              {stage === "empty" && cost && data.totalChunks > 0 ? (
-                <p className="mt-2 text-small text-ink-muted">
-                  Building reads {plural(remaining, "passage")} and adds about {cost.disk} to the database.
-                  {usesBuiltIn ? ` On a recent laptop that takes about ${cost.time}; a small computer takes several times longer.` : ""} It
-                  runs in the background and can be paused.
-                </p>
-              ) : null}
-              {stage === "empty" && data.totalChunks === 0 ? (
-                <p className="mt-2 text-small text-ink-muted">There is nothing to index yet. Add a document or write a note first.</p>
-              ) : null}
-              {stage === "paused" || stage === "partial" ? (
-                <p className="mt-2 text-small text-ink-muted">
-                  {plural(remaining, "passage")} still to read. Searches already use the part that is built.
-                </p>
-              ) : null}
+      <p className="text-small text-ink-muted">
+        <GuideLink part="search-by-meaning" />
+      </p>
 
-              <div className="mt-3 flex flex-wrap gap-2 empty:hidden">
-                {active ? (
-                  <>
-                    <Button
-                      disabled={disabled || !data.build}
-                      loading={steer.isPending && steer.variables?.action === "pause"}
-                      onClick={() => data.build && steer.mutate({ id: data.build.id, action: "pause" })}
-                    >
-                      <Pause /> Pause
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      disabled={disabled || !data.build}
-                      loading={steer.isPending && steer.variables?.action === "cancel"}
-                      onClick={() => data.build && steer.mutate({ id: data.build.id, action: "cancel" })}
-                    >
-                      <Square /> Stop
-                    </Button>
-                  </>
-                ) : stage === "complete" ? null : (
-                  <Button
-                    variant="primary"
-                    onClick={() => build.mutate()}
-                    loading={build.isPending}
-                    disabled={disabled || data.totalChunks === 0}
-                  >
-                    {stage === "empty" ? "Build index" : stage === "failed" ? "Try again" : "Continue building"}
-                  </Button>
-                )}
-              </div>
-
-              <div className="mt-5 border-t border-border pt-4">
-                <p className="text-small font-medium text-ink">Building on another computer</p>
-                <p className="mt-0.5 text-small text-ink-muted">
-                  Building is slow on small devices. A faster computer with the same library and model can build the vectors; save them
-                  there and load them here.
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <Button asChild size="sm" disabled={data.embeddedChunks === 0}>
-                    <a href="/api/semantic/export" download aria-disabled={data.embeddedChunks === 0}>
-                      <Download /> Save vectors to a file
-                    </a>
-                  </Button>
-                  <Button size="sm" disabled={disabled} loading={importVectors.isPending} onClick={() => fileRef.current?.click()}>
-                    <Upload /> Load vectors from a file
-                  </Button>
-                  <input
-                    ref={fileRef}
-                    type="file"
-                    accept=".gz,application/gzip"
-                    className="sr-only"
-                    tabIndex={-1}
-                    aria-label="Vectors file"
-                    onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      if (file) importVectors.mutate(file);
-                      event.target.value = "";
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-          ) : null}
-
-          {data && data.otherModels.length > 0 ? (
-            <div>
-              <p className="text-small font-medium text-ink">Vectors from other models</p>
-              {usesBuiltIn && data.otherModels.some((model) => model.modelId.startsWith("built-in:")) ? (
-                <p className="mt-0.5 text-small text-ink-muted">
-                  An earlier version of the built-in model made some of these. It read passages differently, so they are not used: build the
-                  index again, then remove them.
-                </p>
-              ) : null}
-              <ul className="mt-1 divide-y divide-border border-y border-border">
-                {data.otherModels.map((model) => (
-                  <li key={model.modelId} className="flex items-center justify-between gap-4 py-2">
-                    <span className="min-w-0">
-                      <span className="block truncate font-mono text-small text-ink">{model.modelId}</span>
-                      <span className="tabular block text-small text-ink-muted">
-                        {plural(model.vectors, "passage")}, {formatBytes(model.vectors * vectorBytes(model.dimensions))}
-                      </span>
-                    </span>
-                    <Button variant="danger-ghost" size="sm" disabled={disabled} onClick={() => removeModel.mutate(model.modelId)}>
-                      <Trash2 /> Remove
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-        </>
+      {data ? (
+        <MoreOptions>
+          <SemanticOptions settings={settings} disabled={disabled} save={save} data={data} />
+        </MoreOptions>
       ) : null}
     </SettingsSection>
   );
 }
 
-/** What switching on will cost, said before the switch is touched. */
-function Cost({ passages, dimensions }: { passages: number; dimensions: number }) {
-  const cost = indexCost(passages, dimensions);
-  const perThousand = indexCost(1000, dimensions);
+/** What it is and what switching it on will cost, or what is being kept while it is off. */
+function Off({ data, ownServer }: { data: SemanticStatus; ownServer: boolean }) {
+  const kept = data.keptChunks;
+  if (kept > 0) {
+    const size = formatBytes(kept * vectorBytes(data.dimensions ?? data.builtIn.dimensions));
+    const more = Math.max(0, data.totalChunks - kept);
+    return (
+      <>
+        What Outpost read before is kept ({plural(kept, "passage")}, {size}), so turning it on again{" "}
+        {more > 0 ? `only has ${plural(more, "new passage")} to read.` : "takes no time."}
+      </>
+    );
+  }
+  if (ownServer) return null;
+  if (data.totalChunks === 0) {
+    return <>Turn it on and Outpost reads what you add, as you add it, on this computer. Nothing leaves this computer.</>;
+  }
+  const cost = indexCost(data.totalChunks, data.builtIn.dimensions);
   return (
-    <dl className="grid gap-x-6 gap-y-3 border-y border-border py-3 text-small sm:grid-cols-2">
-      <div>
-        <dt className="font-medium text-ink">Time to build the index</dt>
-        <dd className="mt-0.5 text-ink-muted">
-          About {perThousand.time} for every thousand passages on a recent laptop; several times longer on a small computer such as a
-          Raspberry Pi.{passages > 0 ? ` This library has ${formatNumber(passages)}: about ${cost.time} on that laptop.` : ""}
-        </dd>
-      </div>
-      <div>
-        <dt className="font-medium text-ink">Disk for the index</dt>
-        <dd className="mt-0.5 text-ink-muted">
-          About {perThousand.disk} for every thousand passages, inside the database.
-          {passages > 0 ? ` For this library, about ${cost.disk}.` : ""}
-        </dd>
-      </div>
-    </dl>
+    <>
+      Turn it on and Outpost reads your library once, on this computer: about {cost.time} for its {plural(data.totalChunks, "passage")} on a
+      recent laptop, longer on a small computer, and about {cost.disk} of disk. Nothing leaves this computer.
+    </>
   );
 }
 
-/** Watches a running build and says how long is left at the speed it is actually going. */
-function useTimeLeft(active: boolean, done: number, total: number): number | null {
-  const first = useRef<{ at: number; done: number } | null>(null);
-  const [left, setLeft] = useState<number | null>(null);
-  useEffect(() => {
-    if (!active) {
-      first.current = null;
-      setLeft(null);
-      return;
-    }
-    const now = { at: Date.now(), done };
-    // A count that went backwards means another model or a cleared index: start judging afresh.
-    if (!first.current || done < first.current.done) first.current = now;
-    setLeft(secondsLeft(first.current, now, total));
-  }, [active, done, total]);
-  return left;
+/** The state in a word or two, which is what a person looks for first, and a sentence about it. */
+function State({ word, tone, children }: { word: string; tone?: "success" | "danger"; children?: ReactNode }) {
+  return (
+    <>
+      <p className={cn("flex items-center gap-1.5 font-medium", tone === "danger" ? "text-danger" : "text-ink")}>
+        {tone === "success" ? <CircleCheck className="size-4 shrink-0 text-success" aria-hidden /> : null}
+        {word}
+      </p>
+      {children ? <p className="mt-0.5 text-ink-muted">{children}</p> : null}
+    </>
+  );
+}
+
+/** "about 5 minutes left"; "a few seconds left" once it is too close to count. */
+export function timeLeft(seconds: number): string {
+  return seconds < 10 ? "a few seconds left" : `about ${formatDuration(seconds)} left`;
+}
+
+/** How far the reading has got, in plain words, with the one next step when there is one. */
+function Reading({
+  data,
+  stage,
+  starting,
+  busy,
+  disabled,
+  onRead,
+}: {
+  data: SemanticStatus;
+  stage: ReturnType<typeof indexStage>;
+  starting: boolean;
+  busy: boolean;
+  disabled: boolean;
+  onRead: () => void;
+}) {
+  if (stage === "complete" || data.totalChunks === 0) return null;
+  const active = stage === "building" || stage === "waiting" || starting;
+  const remaining = Math.max(0, data.totalChunks - data.embeddedChunks);
+  const fraction = data.totalChunks > 0 ? data.embeddedChunks / data.totalChunks : 0;
+  // Until the build has gone long enough to judge its own speed, the estimate is the measured laptop figure, and says so.
+  const left =
+    data.secondsLeft !== null
+      ? timeLeft(data.secondsLeft)
+      : `about ${formatDuration(Math.max(10, (remaining / 1000) * LAPTOP_SECONDS_PER_THOUSAND))} on a recent laptop`;
+  return (
+    <div>
+      <p className="tabular mb-2 text-small text-ink">
+        {active ? (
+          <>
+            Reading {plural(data.totalChunks, "passage")}, {left}.
+          </>
+        ) : stage === "paused" ? (
+          <>Paused. {plural(remaining, "passage")} still to read.</>
+        ) : stage === "failed" ? (
+          <>Reading stopped with {plural(remaining, "passage")} still to read.</>
+        ) : (
+          <>
+            {formatNumber(data.embeddedChunks)} of {plural(data.totalChunks, "passage")} read.
+          </>
+        )}
+      </p>
+      <Progress
+        value={starting && data.embeddedChunks === 0 ? null : fraction}
+        tone={active ? "lamp" : stage === "failed" ? "danger" : "primary"}
+        label="Reading your library"
+      />
+      {stage === "failed" || stage === "waiting" ? (
+        <p className="mt-2 text-small text-danger" role={stage === "failed" ? "alert" : undefined}>
+          {data.build?.error ?? "It stopped without saying why."}
+          {stage === "waiting" ? " It will be tried again shortly." : " What was read before that is kept."}
+        </p>
+      ) : null}
+      <p className="mt-2 text-small text-ink-muted">
+        {active
+          ? `${formatNumber(data.embeddedChunks)} read so far, and searches already use them. You can leave this page; it carries on. Turning the switch off pauses it and keeps what was read.`
+          : data.embeddedChunks > 0
+            ? "Searches already use what has been read."
+            : "Searches go by words until some of it has been read."}
+      </p>
+      {active ? null : (
+        <div className="mt-3">
+          <Button variant="primary" loading={busy} disabled={disabled} onClick={onRead}>
+            {stage === "failed"
+              ? "Try again"
+              : stage === "paused"
+                ? "Carry on reading"
+                : data.embeddedChunks > 0
+                  ? "Read the rest"
+                  : "Start reading"}
+          </Button>
+        </div>
+      )}
+    </div>
+  );
 }
