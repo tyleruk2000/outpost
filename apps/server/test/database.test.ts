@@ -90,7 +90,7 @@ describe("the database on the Storage screen", () => {
 
     expect(now.contents!.method).toBe("dbstat");
     const groups = now.contents!.groups!;
-    expect(groups.map((group) => group.id)).toEqual(["search", "meaning", "library", "notes", "maps", "radio", "other"]);
+    expect(groups.map((group) => group.id)).toEqual(["search", "meaning", "library", "notes", "maps", "radio", "prepare", "other"]);
     // Every page belongs to a table or index or is unused, so the figures add up to the file exactly.
     const total = groups.reduce((sum, group) => sum + group.bytes, 0) + now.contents!.unusedBytes;
     expect(total).toBe(now.contents!.fileBytes);

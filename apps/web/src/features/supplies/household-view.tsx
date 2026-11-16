@@ -1,0 +1,375 @@
+/**
+ * Who the supplies are for: the people (by age band, since needs differ), anyone with a
+ * need of their own, pets, and how many days the household wants covered. Each figure
+ * is an official planning figure that the person can change, and says whose it is.
+ */
+import {
+  type AgeBand,
+  DEFAULT_HOUSEHOLD,
+  ENERGY_BANDS,
+  ENERGY_SOURCE,
+  type Household,
+  type HouseholdInput,
+  type HouseholdMember,
+  type MemberSex,
+  memberNeeds,
+  tableKcal,
+  WATER_FIGURES,
+  type WaterBasis,
+} from "@outpost/shared";
+import { PawPrint, Trash2, UserPlus } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
+import { Notice, Section } from "@/components/page";
+import { Button } from "@/components/ui/button";
+import { Field, Input } from "@/components/ui/input";
+import { Segmented, Select } from "@/components/ui/misc";
+import { errorMessage } from "@/lib/api";
+import { formatNumber, localId, plural } from "@/lib/utils";
+import { useSetHousehold } from "./data";
+import { Stepper } from "./item-form";
+import { amount } from "./words";
+
+/** A member as the form holds it: numbers as typed. */
+interface MemberDraft {
+  key: string;
+  id?: string;
+  kind: "person" | "pet";
+  name: string;
+  band: AgeBand;
+  sex: MemberSex;
+  kcal: string;
+  drinking: string;
+  allUses: string;
+  note: string;
+}
+
+const typed = (value: number | null) => (value === null ? "" : String(value));
+const toDraft = (member: HouseholdMember): MemberDraft => ({
+  key: member.id,
+  id: member.id,
+  kind: member.kind,
+  name: member.name,
+  band: member.band ?? "19-64",
+  sex: member.sex ?? "unstated",
+  kcal: typed(member.kcalPerDay),
+  drinking: typed(member.drinkingLitres),
+  allUses: typed(member.allUsesLitres),
+  note: member.note,
+});
+const read = (value: string): number | null | undefined => {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const parsed = Number(trimmed);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
+};
+
+export function HouseholdView({ household }: { household: Household }) {
+  const [days, setDays] = useState(String(household.daysWanted));
+  const [basis, setBasis] = useState<WaterBasis>(household.waterBasis);
+  const [drinking, setDrinking] = useState(String(household.drinkingLitres));
+  const [allUses, setAllUses] = useState(String(household.allUsesLitres));
+  const [members, setMembers] = useState<MemberDraft[]>(() => household.members.map(toDraft));
+  const [problem, setProblem] = useState<string | null>(null);
+  const save = useSetHousehold();
+
+  const change = (key: string, patch: Partial<MemberDraft>) =>
+    setMembers((list) => list.map((member) => (member.key === key ? { ...member, ...patch } : member)));
+  const addMember = (kind: "person" | "pet") =>
+    setMembers((list) => [
+      ...list,
+      { key: localId(), kind, name: "", band: "19-64", sex: "unstated", kcal: "", drinking: "", allUses: "", note: "" },
+    ]);
+
+  const input = (): HouseholdInput | string => {
+    const daysWanted = Number(days);
+    if (!Number.isInteger(daysWanted) || daysWanted < 1 || daysWanted > 3650) return "Give the days wanted as a whole number, from 1.";
+    const drink = read(drinking);
+    const all = read(allUses);
+    if (!drink || drink < 0.5) return "Give the water to drink a day in litres: 0.5 or more.";
+    if (!all || all < 0.5) return "Give the water for all uses a day in litres: 0.5 or more.";
+    const list: HouseholdInput["members"] = [];
+    for (const member of members) {
+      const kcal = read(member.kcal);
+      const ownDrinking = read(member.drinking);
+      const ownAll = read(member.allUses);
+      const who = member.name.trim() || (member.kind === "pet" ? "a pet" : "a person");
+      if (kcal === undefined || ownDrinking === undefined || ownAll === undefined) return `A figure for ${who} is not a number.`;
+      list.push({
+        id: member.id,
+        kind: member.kind,
+        name: member.name.trim(),
+        band: member.kind === "person" ? member.band : null,
+        sex: member.kind === "person" ? member.sex : null,
+        kcalPerDay: kcal,
+        drinkingLitres: ownDrinking,
+        allUsesLitres: ownAll,
+        note: member.note.trim(),
+      });
+    }
+    return { daysWanted, waterBasis: basis, drinkingLitres: drink, allUsesLitres: all, members: list };
+  };
+
+  const preview = input();
+  const needs =
+    typeof preview === "string"
+      ? null
+      : memberNeeds({ ...preview, members: preview.members.map((member, index) => ({ ...member, id: String(index) })), updatedAt: null });
+  const kcalTotal = needs ? needs.filter((need) => need.kind === "person").reduce((sum, need) => sum + (need.kcal ?? 0), 0) : 0;
+  const waterTotal = needs ? needs.reduce((sum, need) => sum + ((basis === "all" ? need.allUses : need.drinking) ?? 0), 0) : 0;
+
+  const submit = () => {
+    const value = input();
+    if (typeof value === "string") return setProblem(value);
+    setProblem(null);
+    save.mutate(value, {
+      onSuccess: () => toast.success("Household saved. The days and the shopping list are worked out for it."),
+      onError: (error) => setProblem(errorMessage(error)),
+    });
+  };
+
+  return (
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        submit();
+      }}
+    >
+      <Notice className="mb-8">
+        These are planning figures for a store of food and water, from official guidance, and not dietary advice. A baby, someone pregnant,
+        breastfeeding, ill, or working hard, and anyone in hot weather needs more: give their own figure.
+      </Notice>
+
+      <Section title="How long to plan for">
+        <div className="grid gap-6 sm:grid-cols-2">
+          <Field label="Days wanted" hint="UK and US guidance both start at three days; many keep more.">
+            {(ids) => <Stepper id={ids.id} describedBy={ids["aria-describedby"]} value={days} onChange={setDays} label="days wanted" />}
+          </Field>
+          <div className="grid gap-1.5">
+            <span className="text-small font-medium text-ink">Water is worked out for</span>
+            <Segmented<WaterBasis>
+              label="Water is worked out for"
+              value={basis}
+              onChange={setBasis}
+              options={[
+                { value: "drinking", label: "Drinking" },
+                { value: "all", label: "Drinking, cooking, washing" },
+              ]}
+              className="justify-self-start"
+            />
+          </div>
+        </div>
+      </Section>
+
+      <Section
+        title="Who it is for"
+        description={
+          needs && needs.length > 0
+            ? `A day: ${formatNumber(kcalTotal)} kcal for ${plural(needs.filter((need) => need.kind === "person").length, "person", "people")}, ${amount(waterTotal)} litres of water ${basis === "all" ? "for all uses" : "to drink"}.`
+            : "Add each person, and any pets."
+        }
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" onClick={() => addMember("person")}>
+              <UserPlus />
+              Add a person
+            </Button>
+            <Button size="sm" onClick={() => addMember("pet")}>
+              <PawPrint />
+              Add a pet
+            </Button>
+          </div>
+        }
+      >
+        {members.length === 0 ? (
+          <p className="border-y border-border py-4 text-body text-ink-muted">
+            Nobody yet. The days of food and water are worked out once someone is added.
+          </p>
+        ) : (
+          <ul className="divide-y divide-border border-y border-border" aria-label="Household">
+            {members.map((member, index) => {
+              const label = member.name.trim() || (member.kind === "pet" ? `Pet ${index + 1}` : `Person ${index + 1}`);
+              const table = member.kind === "person" ? tableKcal(member.band, member.sex) : null;
+              return (
+                <li key={member.key} className="grid gap-3 py-4">
+                  <div className="flex items-end gap-2">
+                    <Field label={member.kind === "pet" ? "Pet's name" : "Name, if you like"} className="min-w-0 flex-1">
+                      {(ids) => (
+                        <Input
+                          {...ids}
+                          value={member.name}
+                          onChange={(event) => change(member.key, { name: event.target.value })}
+                          maxLength={80}
+                        />
+                      )}
+                    </Field>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-11"
+                      aria-label={`Remove ${label}`}
+                      onClick={() => setMembers((list) => list.filter((entry) => entry.key !== member.key))}
+                    >
+                      <Trash2 />
+                    </Button>
+                  </div>
+                  {member.kind === "person" ? (
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <Field label="Age">
+                        {(ids) => (
+                          <Select<AgeBand>
+                            {...ids}
+                            value={member.band}
+                            onChange={(band) => change(member.key, { band })}
+                            options={ENERGY_BANDS.map((band) => ({ value: band.id, label: band.label }))}
+                          />
+                        )}
+                      </Field>
+                      <div className="grid gap-1.5">
+                        <span className="text-small font-medium text-ink">Sex, for the energy table</span>
+                        <Segmented<MemberSex>
+                          label={`Sex of ${label}`}
+                          value={member.sex}
+                          onChange={(sex) => change(member.key, { sex })}
+                          options={[
+                            { value: "female", label: "Female" },
+                            { value: "male", label: "Male" },
+                            { value: "unstated", label: "Not said" },
+                          ]}
+                          className="justify-self-start"
+                        />
+                      </div>
+                    </div>
+                  ) : null}
+                  <div className="grid grid-cols-3 gap-3">
+                    <Field
+                      label="kcal a day"
+                      hint={
+                        member.kind === "pet"
+                          ? "From the food or your vet"
+                          : table === null
+                            ? "None in the table: give one"
+                            : `Table: ${formatNumber(table)}`
+                      }
+                    >
+                      {(ids) => (
+                        <Input
+                          {...ids}
+                          value={member.kcal}
+                          onChange={(event) => change(member.key, { kcal: event.target.value })}
+                          inputMode="decimal"
+                          placeholder={table === null ? "" : String(table)}
+                          className="tabular"
+                        />
+                      )}
+                    </Field>
+                    <Field label="Litres to drink" hint={member.kind === "pet" ? "From your vet" : `Usual: ${amount(read(drinking) ?? 0)}`}>
+                      {(ids) => (
+                        <Input
+                          {...ids}
+                          value={member.drinking}
+                          onChange={(event) => change(member.key, { drinking: event.target.value })}
+                          inputMode="decimal"
+                          className="tabular"
+                        />
+                      )}
+                    </Field>
+                    <Field
+                      label="Litres, all uses"
+                      hint={member.kind === "pet" ? "Same as drinking if empty" : `Usual: ${amount(read(allUses) ?? 0)}`}
+                    >
+                      {(ids) => (
+                        <Input
+                          {...ids}
+                          value={member.allUses}
+                          onChange={(event) => change(member.key, { allUses: event.target.value })}
+                          inputMode="decimal"
+                          className="tabular"
+                        />
+                      )}
+                    </Field>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </Section>
+
+      <Section title="Water for everyone without a figure of their own">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field
+            label="To drink, litres a day"
+            hint={`UK government (Be ready): ${WATER_FIGURES.drinking.litres} litres. WHO gives ${WATER_FIGURES.drinking.range.join(" to ")} for drinking and food.`}
+          >
+            {(ids) => (
+              <Input
+                {...ids}
+                value={drinking}
+                onChange={(event) => setDrinking(event.target.value)}
+                inputMode="decimal"
+                className="tabular max-w-32"
+              />
+            )}
+          </Field>
+          <Field
+            label="Drinking, cooking and washing, litres a day"
+            hint={`WHO technical note 9: ${WATER_FIGURES.allUses.range.join(" to ")} litres; ${WATER_FIGURES.allUses.litres} is the low end. FEMA asks for one US gallon (3.8 litres) for drinking and sanitation.`}
+          >
+            {(ids) => (
+              <Input
+                {...ids}
+                value={allUses}
+                onChange={(event) => setAllUses(event.target.value)}
+                inputMode="decimal"
+                className="tabular max-w-32"
+              />
+            )}
+          </Field>
+        </div>
+        <details className="mt-4 text-small text-ink-muted">
+          <summary className="cursor-pointer text-ink select-none">Where the figures come from</summary>
+          <ul className="mt-2 grid list-disc gap-1.5 pl-5">
+            <li>
+              Energy: {ENERGY_SOURCE}. Estimated average requirements, averaged over each age group; for ages 11 to 64 capped at 2,500 kcal
+              (males) and 2,000 kcal (females). There is no figure for a baby under one. “Not said” uses the mean of the two.
+            </li>
+            <li>
+              Water to drink: UK government, “Be ready: get prepared for emergencies”: 3 litres per person per day for drinking, more for
+              cooking and washing.
+            </li>
+            <li>
+              Water for all uses: WHO, Technical notes on drinking-water, sanitation and hygiene in emergencies, note 9 (July 2013), table
+              9.1, adapted from Sphere: 2.5 to 3 litres for survival, 2 to 6 for basic hygiene, 3 to 6 for basic cooking; 7.5 to 15 in all.
+            </li>
+            <li>
+              FEMA (ready.gov/water, updated February 2021): one US gallon a day for drinking and sanitation; needs can double in very hot
+              weather.
+            </li>
+            <li>Pets: no official figure was found that Outpost could quote, so a pet counts only with the figures you give.</li>
+          </ul>
+        </details>
+      </Section>
+
+      <div className="sticky bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-(--z-sticky) mt-8 flex flex-wrap items-center gap-3 border-t border-border bg-page py-3 md:bottom-0">
+        <Button type="submit" variant="primary" loading={save.isPending}>
+          Save household
+        </Button>
+        <Button
+          variant="ghost"
+          onClick={() => {
+            setDrinking(String(DEFAULT_HOUSEHOLD.drinkingLitres));
+            setAllUses(String(DEFAULT_HOUSEHOLD.allUsesLitres));
+          }}
+        >
+          Water figures as published
+        </Button>
+        {problem ? (
+          <p role="alert" className="w-full text-small text-danger">
+            {problem}
+          </p>
+        ) : null}
+      </div>
+    </form>
+  );
+}

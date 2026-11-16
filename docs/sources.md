@@ -616,6 +616,20 @@ The second sitting, for the sources by country.
   SRAL's site were written from what their terms and scripts say, not by doing them
   in a browser. The steps for ukrepeater.net and the WIA are from the pages as read.
 
+## Planning figures for supplies, read on 2026-11-16
+
+Not catalogue entries: figures that Preparedness → Supplies works with, each quoted in
+[supplies.md](supplies.md) with where it is used. Nothing is fetched from any of them.
+
+| Source | What is used | Terms |
+| --- | --- | --- |
+| Public Health England, *Government Dietary Recommendations* (August 2016), tables 1 and 2 ([PDF](https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/618167/government_dietary_recommendations.pdf)) | Energy a day by age band and sex | Crown copyright, Open Government Licence v3.0 (stated on page 2) |
+| UK government, *Be ready: get prepared for emergencies* ([beready.campaign.gov.uk](https://beready.campaign.gov.uk/get-prepared-for-emergencies), formerly prepare.campaign.gov.uk) | 3 litres a person a day to drink | GOV.UK campaign page; a figure quoted, nothing copied |
+| WHO, *Technical notes on drinking-water, sanitation and hygiene in emergencies*, note 9 (WEDC, July 2013) ([PDF of all notes](https://wedc-knowledge.lboro.ac.uk/resources/who_notes/WHO_TNE_ALL.pdf)) | 7.5 to 15 litres a day for drinking, cooking and basic hygiene (table 9.1) | © WHO 2013, all rights reserved: figures quoted, nothing copied |
+| FEMA, [ready.gov/water](https://www.ready.gov/water) (updated 22 February 2021) | One US gallon a day for drinking and sanitation; needs can double in heat | US government work |
+| GOV.UK, [Best before and use-by dates](https://www.gov.uk/understanding-food-labelling/best-before-and-use-by-dates) (updated 25 June 2026) | Use-by is safety, best before is quality | Open Government Licence v3.0 |
+| Open Food Facts, [data](https://world.openfoodfacts.org/data) | Nothing used. What it would allow is in supplies.md | ODbL (database), DbCL (contents), CC BY-SA (images) |
+
 ## Sources that are not integrated: what you can do
 
 - **Import a repeater list you obtained.** See [radio.md](radio.md#repeaters). Outpost

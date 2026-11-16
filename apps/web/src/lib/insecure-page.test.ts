@@ -26,6 +26,9 @@ describe("features that only a secure page has", () => {
       const text = fs.readFileSync(file, "utf8");
       // Identifiers come from localId() in lib/utils.ts, which works everywhere.
       if (/crypto\s*\.\s*randomUUID\s*\(/.test(text)) found.push(`${path.relative(root, file)}: crypto.randomUUID() (use localId)`);
+      // The camera is missing on such a page: a file that asks for it must check first, and say what to do (see supplies/barcode/camera.ts).
+      if (/getUserMedia\s*\(/.test(text) && !/isSecureContext/.test(text))
+        found.push(`${path.relative(root, file)}: getUserMedia() without checking window.isSecureContext first`);
     }
     expect(found).toEqual([]);
   });

@@ -631,6 +631,36 @@ bounded, given that anyone who can reach Outpost can use them:
 - **Places chosen on the map** use the map already installed. Choosing a place fetches
   no tile that the Maps screen would not, and nothing from outside the computer.
 
+### Supplies and the barcode scanner
+
+Preparedness → Supplies keeps a household's stock, who it is for and a shopping list
+([supplies.md](supplies.md)). As everywhere, anyone who can reach Outpost can read and
+change all of it; it is not a secret, and the screen holds nothing a person would not
+show a visitor to their kitchen. What it adds, and how each is bounded:
+
+- **No lookups.** A barcode is matched against the supplies and nothing else. No route
+  of the module makes an outbound request, and the end-to-end suite fails if the app
+  tries one (`e2e/tests/supplies-not-secure.mobile.spec.ts` scans an unknown code).
+- **The camera** is asked for only after a press of "Use the camera", only on a page
+  the browser treats as secure (the check comes first; at a plain http address the
+  button is not there and the screen says why), and is stopped when a code is read, the
+  dialog closes or "Stop the camera" is pressed. Frames are read in the browser and
+  never sent anywhere; nothing is recorded. `apps/web/src/lib/insecure-page.test.ts`
+  fails any file that asks for the camera without checking for a secure page.
+- **Photos** chosen to read a barcode are read in the browser, drawn onto a canvas no
+  larger than 1,280 pixels, and dropped. They are not uploaded or kept.
+- **The CSV importer** (`modules/supplies/csv.ts`) takes a file of at most 2 MB as text
+  in a JSON body, parsed by `csv-parse` into rows of text, at most 5,000. A file that
+  starts like a web page is refused. Every value is read into a number, a date, one of
+  a fixed set of words, or a string cut to a length; nothing is run, fetched or used as
+  a path. The preview changes nothing; applying is one transaction.
+- **The CSV export** writes a text cell that starts with `=`, `+`, `-` or `@` with an
+  apostrophe before it, so that a spreadsheet does not take a name or a note as a
+  formula, and is sent as a download.
+- **Limits.** 5,000 rows of stock, 40 members, 500 lines of the shopping list, field
+  lengths as in `SUPPLY_LIMITS`. Adjusting a count is one SQL statement, so two phones
+  pressing at once both count, and it never goes below nought.
+
 ### Paths
 
 Content is recorded as *(storage location, relative path)*, and storage locations can

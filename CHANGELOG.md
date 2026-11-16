@@ -784,6 +784,29 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   download. The engine refuses cleanly without them and never runs on a partial or
   altered set. See [docs/hf-propagation.md](docs/hf-propagation.md#data).
 
+#### Supplies (Preparedness)
+
+- **Preparedness → Supplies** keeps stored food, water, fuel, medicine, batteries and
+  equipment: how many, where they are kept, and the date on them, use-by (safety) and
+  best before (quality) treated differently. Made for a phone: large plus and minus on
+  every row, one press to use one, and "Add, then another like this".
+- How many days the food (by energy, eaten in use-by order) and the water last for the
+  household, with what was counted and left out; what runs out first; what to use
+  first; totals by category and by place. The household's needs are official planning
+  figures, each named and changeable: energy from Public Health England's Government
+  Dietary Recommendations (2016), water from the UK government's 3 litres a day to drink
+  and WHO's 7.5 to 15 litres for all uses.
+- A shopping list: the shortfall to the days wanted in whole packs of what is already
+  kept, what is below a minimum and what is past its use-by; edited, ticked off into
+  stock with the date asked for, made a PDF and copied as text.
+- A barcode scanner: a typed number or a keyboard-like scanner, a photo (which works
+  at a plain http address), and the live camera on a secure page, with a reader of
+  Outpost's own for EAN-13, UPC-A, EAN-8 and Code 128 where the browser has none.
+  Nothing is looked up on the internet.
+- CSV out and in, with a preview and a choice for duplicates. Items have addresses a
+  note can link to; `GET /api/supplies/outlook` answers days of food and water and what
+  is missing for other screens. Migration 0016. See [docs/supplies.md](docs/supplies.md).
+
 #### On a phone, out of reach of the server
 
 - The web app keeps itself in the browser with a service worker, so it opens when the

@@ -1039,6 +1039,35 @@ home too); `skip` leaves home as it is and the item is offered again; `both` kee
 home's version and adds the drive's beside it; `home` keeps home's and remembers the
 decision; `drive` replaces home's version, which is kept in the record.
 
+## Supplies
+
+Types: `packages/shared/src/supplies.ts`. See [supplies.md](supplies.md). Nothing here
+makes an outbound request: a barcode is looked up in the supplies only. Dates are
+calendar days (`YYYY-MM-DD`). Routes that work something out for "today" take
+`?today=YYYY-MM-DD` (the device's day; the web app sends it) and otherwise use this
+computer's.
+
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/supplies` | Every row of stock, the household and the places in use (`SuppliesResponse`). |
+| `GET /api/supplies/outlook` | **For other screens (the scenario planner).** `SupplyOutlookResponse`: `outlook` (`SupplyOutlook`: `food` and `water`, each with `perDay` (kcal or litres a day for the household), `counted`, `items`, `days` (null with nobody to plan for), `lost` (reaches its use-by before its turn) and `leftOut` (rows not counted, with why); `water` also `basis`, `drinkingPerDay`, `allUsesPerDay`, `daysDrinking`, `daysAllUses`; `petFood`; `runsOutFirst` (`{ what: "food" \| "water", days }`); `daysWanted`; `expired`, `pastBestBefore` and `within` 30, 90 and 180 days, in date order; totals `byCategory` and `byLocation`) and `missing` (`ShoppingSuggestion[]`: what to buy to reach the days wanted, worked out now, each with `name`, `quantity` in whole packs or null, `unit`, `reasons` and `note`). Days are exact here; say them with `daysWords` (rounded down, "about"). |
+| `POST /api/supplies/items` | Add a row. Body: `name`, `category` (`food`, `water`, `pet-food`, `fuel`, `medical`, `hygiene`, `batteries`, `equipment`, `other`), `quantity`, and optionally `unit`, `location`, `dateKind` (`use-by` or `best-before`), `date`, `kcalPerUnit`, or `kcalPer100g` with `gramsPerUnit`, `litresPerUnit`, `minimum`, `barcode`, `notes`. A date with no kind is a best before. At most 5,000 rows. |
+| `GET /api/supplies/items/:id` | One row. |
+| `PATCH /api/supplies/items/:id` | Change the fields given. |
+| `POST /api/supplies/items/:id/adjust` | Body: `by` (negative to use some). Never below nought; two at once both count. |
+| `DELETE /api/supplies/items/:id` | Remove a row. Its barcode stays remembered. |
+| `PUT /api/supplies/household` | The household, whole (`HouseholdInput`): `daysWanted`, `drinkingLitres`, `allUsesLitres`, `waterBasis` (`drinking` or `all`), `members` (each `kind` `person` or `pet`, `name`, `band` and `sex` for a person, and optionally `kcalPerDay`, `drinkingLitres`, `allUsesLitres`, `note`). A person needs an age band or a figure. |
+| `GET /api/supplies/barcodes/:code` | What the supplies know of a barcode (`BarcodeLookup`): the rows with it and the product remembered. A retail number is matched as a 14-digit GTIN. |
+| `GET /api/supplies/shopping` | The stored list (`ShoppingList`), when it was worked out, and whether the stock has changed since (`stale`). |
+| `POST /api/supplies/shopping/work-out` | Work the list out again: the worked-out lines are replaced, the person's own kept. |
+| `POST /api/supplies/shopping` | Add a line: `name`, and optionally `quantity`, `unit`, `note`. |
+| `PATCH /api/supplies/shopping/:id` | Change a line's `name`, `quantity`, `unit` or `note`. |
+| `DELETE /api/supplies/shopping/:id` | Take a line off. |
+| `POST /api/supplies/shopping/:id/bought` | Body: `quantity`, `dateKind`, `date`, and optionally `location`, and `category` for a line with no stock row behind it. Adds them to the stock (to a row of the same product, place and date, or a new row like the old one) and takes the line off, or lowers it when fewer were bought. Answers `{ item, line }`. |
+| `GET /api/supplies/export.csv` | Every row as a CSV download (see supplies.md for the columns). |
+| `POST /api/supplies/import/preview` | Body: `text` (the file, at most 2 MB). Reads it and says what each row is (`ImportPreview`), and which are already in the supplies. Changes nothing. |
+| `POST /api/supplies/import/apply` | Body: `rows`, each `{ action: "add" \| "update" \| "skip", id?, item }`. All or nothing. Answers `ImportResult`. |
+
 ## Everything else
 
 Any other `GET` address without a file extension returns the web app, so that in-app
