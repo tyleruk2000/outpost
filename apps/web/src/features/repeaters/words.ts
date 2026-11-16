@@ -6,6 +6,7 @@ import {
   formatTone,
   modeName,
   type RepeaterDto,
+  type RepeaterDuplicateSide,
   type RepeaterListDto,
   repeaterDataAge,
 } from "@outpost/shared";
@@ -66,6 +67,19 @@ export function ageWarning(list: RepeaterListDto, now = Date.now()): string | nu
   return age === "very-old"
     ? `This data is ${formatAge(days)} old. Repeaters change tone, frequency and keeper, and close: check anything that matters against a current list.`
     : `This data is ${formatAge(days)} old. Some of it will have changed.`;
+}
+
+/** "16 Nov 2026", from a day written 2026-11-16. */
+export function dayText(day: string): string {
+  const time = Date.parse(`${day}T00:00:00Z`);
+  return Number.isNaN(time) ? day : formatDate(time);
+}
+
+/** Where one of two entries set side by side is from: a line of the file, a list with the date of its data, or the person. */
+export function sideLabel(side: Pick<RepeaterDuplicateSide, "line" | "listName" | "dataDate" | "byHand">): string {
+  if (side.line !== null) return `In this file, line ${side.line}`;
+  if (side.listName === null) return "Entered by hand";
+  return `${side.listName}${side.dataDate === null ? "" : `, data of ${formatDate(side.dataDate)}`}${side.byHand ? ", changed by you" : ""}`;
 }
 
 /** Whether a listed position is too rough to rest an exact answer on. */

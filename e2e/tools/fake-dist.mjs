@@ -4,11 +4,13 @@
 // complete in shape but is not started by the tests. It also serves one plain file, so
 // that a catalogue download can be followed from Explore to the library. And under
 // /overpass/ it stands in for a route source, answering with made-up routes, so that
-// finding a route can be followed from the search to the GPX export.
+// finding a route can be followed from the search to the GPX export. Under
+// /repeater-lists/ it stands in for a publisher of repeater lists, with made-up stations.
 import { createHash } from "node:crypto";
 import http from "node:http";
 import { gzipSync } from "node:zlib";
 import { createOverpassStandIn } from "../../apps/server/test/fixtures/maps/overpass-answers.ts";
+import { createRepeaterSourceStandIn } from "../../apps/server/test/fixtures/repeaters/source-stand-in.ts";
 
 const port = Number(process.argv[2] ?? 8473);
 const version = process.version;
@@ -43,11 +45,13 @@ const sums = [...files].map(([name, body]) => `${createHash("sha256").update(bod
 export const FIELD_MANUAL = Buffer.alloc(300_000, "A field manual for end-to-end tests. ");
 
 const routeSource = createOverpassStandIn();
+const repeaterSource = createRepeaterSourceStandIn();
 
 http
   .createServer((request, response) => {
     if (request.url === "/health") return response.end("ok");
     if (request.url?.startsWith("/overpass/")) return routeSource.handle(request, response);
+    if (request.url?.startsWith("/repeater-lists/")) return repeaterSource.handle(request, response);
     if (request.url === "/files/field-manual.bin") {
       response.setHeader("Content-Length", FIELD_MANUAL.length);
       return response.end(FIELD_MANUAL);

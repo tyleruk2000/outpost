@@ -37,7 +37,18 @@ test.describe("repeaters", () => {
     await page.goto("/radio/repeaters");
     await expect(page.getByRole("heading", { name: "Repeaters", level: 1 })).toBeVisible();
     await expect(page.getByRole("heading", { name: "No repeaters yet" })).toBeVisible();
-    await expect(page.getByText(/Outpost does not fetch repeater lists itself/)).toBeVisible();
+    await expect(page.getByText(/Outpost fetches one itself only where its publisher's terms allow a program to/)).toBeVisible();
+    // Where lists can be had is there before anything is held: one Outpost can get, one to download by hand, one with nothing.
+    const sources = page.locator("section").filter({ has: page.getByRole("heading", { name: "Get a list" }) });
+    await expect(
+      sources.getByText("Getting a list needs the internet for the moment it takes; nothing else on this screen does."),
+    ).toBeVisible();
+    await expect(sources.getByRole("button", { name: "Get the list" })).toBeVisible();
+    const byHand = sources.getByRole("listitem").filter({ hasText: "Careful list" }).first();
+    await expect(byHand).toContainText("To be downloaded by hand: Outpost does not fetch this one.");
+    await expect(byHand.getByRole("link", { name: "Open example.org" })).toHaveAttribute("target", "_blank");
+    await expect(byHand).toContainText("Save the CSV file.");
+    await expect(sources.getByRole("listitem").filter({ hasText: "A map only" }).first()).toContainText("Nothing usable here.");
 
     await page.getByRole("button", { name: "Import a list" }).click();
     const dialog = page.getByRole("dialog", { name: "Import a list of repeaters" });
@@ -193,6 +204,85 @@ test.describe("repeaters", () => {
     await expect(page.getByRole("list", { name: "Repeaters" }).getByRole("listitem").first()).toContainText("CTCSS 77.0 Hz");
     await expect(page.getByRole("list", { name: "Repeaters" }).getByRole("listitem").first()).toContainText("Changed by you");
     expect(errors).toEqual([]);
+  });
+
+  test("gets a list from a source, shows what is already held side by side, then finds and merges the duplicates", async ({
+    page,
+    sealed,
+  }) => {
+    const errors = watchForErrors(page);
+    await page.goto("/radio/repeaters");
+    const sources = page.locator("section").filter({ has: page.getByRole("heading", { name: "Get a list" }) });
+    // The map was last left over the made-up hillside, so its sources come first.
+    await expect(sources.getByText("The sources for where your map was last looking come first.")).toBeVisible();
+    const source = sources.getByRole("listitem").filter({ hasText: "Stand-in list" }).first();
+    await expect(source).toContainText("Outpost can get this list. Not held yet.");
+
+    // One press: the server fetches the one file, and nothing is kept until it has been looked at.
+    await source.getByRole("button", { name: "Get the list" }).click();
+    const dialog = page.getByRole("dialog", { name: "Import a list of repeaters" });
+    await expect(dialog.getByText(/Fetched from 127\.0\.0\.1:\d+ at .* Nothing is kept until you import it\./)).toBeVisible();
+    await expect(dialog.getByText(/there is no checksum to hold it to/)).toBeVisible();
+    await expect(dialog.getByText(/Read as/)).toHaveText(
+      "Read as RSGB ETCC list: voice repeaters and gateways, with status. 6 of 9 rows can be kept, 6 with a position.",
+    );
+    expect((await api(page, "GET", "/api/repeaters/overview")).total).toBe(6);
+
+    // All six are the repeaters of the list imported earlier, one of them changed by the person since.
+    const held = dialog.getByRole("region", { name: "Repeaters already held" });
+    await expect(held.getByRole("heading")).toHaveText("6 rows of this file are repeaters already here");
+    await expect(held).toContainText("6 are held already, in another list or entered by hand (1 of them typed or changed by you).");
+    await expect(held.getByRole("radio", { name: /^Keep both/ })).toBeChecked();
+    const pair = held.getByRole("table", { name: "QZ3AB, 145.6625 MHz: what is held beside what the file says" });
+    await expect(pair.getByRole("row", { name: /CTCSS tone/ })).toHaveText(/77\.0 Hz.*94\.8 Hz/);
+
+    // The date of the data is the publisher's own for the file.
+    await expect(dialog.getByLabel("Date of the data")).toHaveValue("2026-10-01");
+    await dialog.getByRole("button", { name: "Import 6 repeaters" }).click();
+    await expect(dialog.getByText("“Stand-in list” is imported")).toBeVisible();
+    await dialog.getByRole("button", { name: "Done" }).click();
+    await expect(source).toContainText("Held as “Stand-in list”: 6 repeaters, data of 1 Oct 2026");
+    const lists = page.getByRole("list", { name: "Imported lists" });
+    await expect(lists.getByRole("listitem").filter({ hasText: "Stand-in list" })).toContainText(
+      /Fetched by Outpost from 127\.0\.0\.1:\d+ on /,
+    );
+
+    // Kept both, so each repeater is listed twice. Find duplicates shows them side by side and makes one of each.
+    const rows = page.getByRole("list", { name: "Repeaters" }).getByRole("listitem");
+    await expect(rows).toHaveCount(12);
+    await page.getByRole("button", { name: "Find duplicates" }).click();
+    const find = page.getByRole("dialog", { name: "Find duplicates" });
+    await expect(find.getByRole("heading", { name: "6 repeaters held more than once" })).toBeVisible();
+    const group = find.getByRole("table", { name: "QZ3AB, 145.6625 MHz: the entries side by side" });
+    await expect(group.getByRole("row", { name: /CTCSS tone/ })).toContainText("77.0 Hz");
+    // The list fetched just now has the later data, so its entry is the one that would be kept.
+    await expect(group.getByRole("radio", { name: /Stand-in list/ })).toBeChecked();
+    await find.getByRole("button", { name: "Merge all 6" }).click();
+    await expect(find.getByText("No duplicates are left")).toBeVisible();
+    await expect(find.getByText("6 entries set aside. Each repeater is listed once.")).toBeVisible();
+    await find.getByRole("button", { name: "Done" }).click();
+
+    // Once each, in the list and in the count; and the person's tone came through the merge.
+    await expect(rows).toHaveCount(6);
+    await expect(page.getByText("6 repeaters held on this device, from 2 lists.")).toBeVisible();
+    await expect(rows.first()).toContainText("QZ3AB");
+    await expect(rows.first()).toContainText("CTCSS 77.0 Hz");
+    await expect(rows.first()).toContainText("End-to-end stand-in, data of 1 Oct 2026");
+    expect((await api(page, "GET", "/api/repeaters/overlay?bbox=-10,49,5,61")).total).toBe(6);
+
+    // The repeater's own screen says what was set aside for it, and can separate them again.
+    await rows.first().getByRole("link").click();
+    const merged = page.getByRole("region", { name: "Merged entries" });
+    await expect(merged).toContainText("QZ3AB, 145.6625 MHz: from “North list”, data of 1 Oct 2026");
+    await merged.getByRole("button", { name: "Separate them" }).click();
+    await expect(merged).toHaveCount(0);
+    expect((await api(page, "GET", "/api/repeaters/overview")).total).toBe(7);
+    // Put back as it was for the tests that follow: the fetched list goes, and what it stood for is shown from the first list again.
+    const overview = await api<{ lists: Array<{ id: string; name: string }> }>(page, "GET", "/api/repeaters/overview");
+    await api(page, "DELETE", `/api/repeaters/lists/${overview.lists.find((list) => list.name === "Stand-in list")!.id}`);
+    expect((await api(page, "GET", "/api/repeaters/overview")).total).toBe(6);
+    expect(errors).toEqual([]);
+    expect(sealed.external).toEqual([]);
   });
 
   test("exports the filtered set for CHIRP, with a plain note to check it", async ({ page }) => {

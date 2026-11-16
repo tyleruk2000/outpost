@@ -881,15 +881,27 @@ describe("sources and duplicates through the API", () => {
     expect(body.duplicates).toMatchObject({ held: 5, heldByHand: 1, withinFile: 1, possible: 1 });
     const pairs = body.duplicates.examples;
     const held = pairs.find((pair) => pair.against === "held" && pair.strength === "same" && pair.incoming.callsign === "QZ3AB")!;
-    expect(held.incoming).toMatchObject({ id: null, from: "In this file, line 2", place: "Thornwick, Northshire", byHand: false });
-    expect(held.existing).toMatchObject({ from: "North list, data of 2026-10-01", place: "THORNWICK", channel: "RV53", byHand: false });
+    expect(held.incoming).toMatchObject({ id: null, line: 2, listName: null, place: "Thornwick, Northshire", byHand: false });
+    expect(held.existing).toMatchObject({
+      line: null,
+      listName: "North list",
+      dataDate: Date.UTC(2026, 9, 1),
+      place: "THORNWICK",
+      channel: "RV53",
+      byHand: false,
+    });
     expect(held.distanceMeters).toBeLessThan(50);
     expect(pairs.find((pair) => pair.against === "file")).toMatchObject({
-      incoming: { from: "In this file, line 7", notes: "Listed a second time." },
-      existing: { from: "In this file, line 2" },
+      incoming: { line: 7, notes: "Listed a second time." },
+      existing: { line: 2, id: null },
     });
     // The person's own entry is the one put beside the row, when a row matches both it and a list.
-    expect(pairs.find((pair) => pair.incoming.callsign === "QZ3GH")!.existing).toMatchObject({ from: "Entered by hand", byHand: true });
+    expect(pairs.find((pair) => pair.incoming.callsign === "QZ3GH")!.existing).toMatchObject({
+      listName: null,
+      line: null,
+      dataDate: null,
+      byHand: true,
+    });
     expect(pairs.find((pair) => pair.strength === "possible")).toMatchObject({
       incoming: { callsign: "QZ7CD B" },
       existing: { callsign: "QZ7CD" },
@@ -1036,12 +1048,11 @@ describe("sources and duplicates through the API", () => {
     expect(body.possible[0]!.entries.map((item) => item.callsign).sort()).toEqual(["QZ7CD", "QZ7CD B"]);
 
     const gh = body.same.find((group) => group.entries[0]!.callsign === "QZ3GH")!;
-    expect(gh.entries.map((item) => item.from).sort()).toEqual([
-      "North list, data of 2026-10-01, changed by you",
-      "World list, data of 2026-11-10",
-    ]);
+    expect(
+      gh.entries.map((item) => `${item.listName}, ${new Date(item.dataDate!).toISOString().slice(0, 10)}, ${item.byHand}`).sort(),
+    ).toEqual(["North list, 2026-10-01, true", "World list, 2026-11-10, false"]);
     // The newer data is the one Outpost would keep.
-    const keep = gh.entries.find((item) => item.from.startsWith("World list"))!;
+    const keep = gh.entries.find((item) => item.listName === "World list")!;
     expect(gh.keepId).toBe(keep.id);
     expect(gh.spreadMeters).toBeLessThan(100);
     const kl = body.same.find((group) => group.entries[0]!.callsign === "QZ3KL")!;

@@ -910,8 +910,6 @@ export function createRepeatersService(ctx: AppContext, deps: RepeaterServiceDep
       ).map((row) => [row.id, row]),
     );
 
-  const day = (time: number) => new Date(time).toISOString().slice(0, 10);
-
   /** An entry that is held, as one side of a pair. */
   function sideOf(row: Row, lists: ReturnType<typeof listDates>): RepeaterDuplicateSide {
     const list = row.listId ? lists.get(row.listId) : undefined;
@@ -919,7 +917,8 @@ export function createRepeatersService(ctx: AppContext, deps: RepeaterServiceDep
       ...fieldsOfRow(row),
       id: row.id,
       band: row.band as RepeaterBand,
-      from: list ? `${list.name}, data of ${day(list.dataDate)}${row.editedAt !== null ? ", changed by you" : ""}` : "Entered by hand",
+      line: null,
+      listName: list?.name ?? null,
       dataDate: list?.dataDate ?? null,
       byHand: !row.listId || row.editedAt !== null,
     };
@@ -929,7 +928,8 @@ export function createRepeatersService(ctx: AppContext, deps: RepeaterServiceDep
     ...fieldsOf(row),
     id: null,
     band: row.band,
-    from: `In this file, line ${row.line}`,
+    line: row.line,
+    listName: null,
     dataDate,
     byHand: false,
   });
@@ -1144,6 +1144,7 @@ export function createRepeatersService(ctx: AppContext, deps: RepeaterServiceDep
     sourceId: file.sourceId,
     url: file.url,
     fetchedAt: file.fetchedAt,
+    dataDate: file.dataDate,
     sizeBytes: file.sizeBytes,
     fileName: file.fileName,
     listId,

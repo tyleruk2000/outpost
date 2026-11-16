@@ -474,8 +474,10 @@ export interface RepeaterDuplicateSide extends RepeaterFields {
   /** Null for a row of a file that has not been brought in. */
   id: string | null;
   band: RepeaterBand;
-  /** "In this file, line 12", "North list, data of 1 Oct 2026", "Entered by hand". */
-  from: string;
+  /** For a row of the file being brought in: its line. Null for an entry that is held. */
+  line: number | null;
+  /** The list a held entry is in; null for a row of a file and for an entry made by hand. */
+  listName: string | null;
   /** The date of its data; null for an entry made by hand. */
   dataDate: number | null;
   /** Typed or changed by the person: an entry made by hand, or one of a list that they changed. */
@@ -606,6 +608,8 @@ export interface RepeaterFetchedFile {
   /** The address it came from, after any redirect. */
   url: string;
   fetchedAt: number;
+  /** The day the data is from: the publisher's own date for the file where it gives one, otherwise when it was fetched. */
+  dataDate: number;
   sizeBytes: number;
   fileName: string;
   /** The list this would bring up to date, when one from the same source is held. */

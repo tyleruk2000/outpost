@@ -6,13 +6,18 @@ import type {
   RepeaterBand,
   RepeaterDetailResponse,
   RepeaterDto,
+  RepeaterDuplicateChoice,
+  RepeaterDuplicatesResponse,
   RepeaterExportFormat,
+  RepeaterFetchResponse,
   RepeaterImportPreview,
   RepeaterImportResult,
   RepeaterListDto,
   RepeaterListResponse,
+  RepeaterMergeResult,
   RepeaterMode,
   RepeaterOverlayResponse,
+  RepeaterSourcesResponse,
   RepeaterStatus,
   RepeatersOverview,
 } from "@outpost/shared";
@@ -154,6 +159,7 @@ export interface ImportChoices {
   dataDate?: string;
   edited?: "keep" | "replace";
   gone?: "remove" | "keep";
+  duplicates?: RepeaterDuplicateChoice;
 }
 
 function form(file: File, choices: ImportChoices): FormData {
@@ -189,3 +195,43 @@ export function exportHref(
   }
   return `/api/repeaters/export?${params.toString()}`;
 }
+
+// ── Where lists can be had ──
+
+/** The declared sources, with what is held from each. Asking contacts nobody outside this server. */
+export const useRepeaterSources = () =>
+  useQuery({ queryKey: ["repeaters", "sources"], queryFn: () => api.get<RepeaterSourcesResponse>("/api/repeaters/sources") });
+
+/** Has the server fetch a source's file, once. This is the request that needs the internet. */
+export const fetchSource = (id: string) => api.post<RepeaterFetchResponse>(`/api/repeaters/sources/${id}/fetch`);
+
+/** The choices as the fetched routes take them: the same as for a file, without the file. */
+const fetchedBody = ({ sourceUrl: _sourceUrl, ...choices }: ImportChoices) =>
+  Object.fromEntries(Object.entries(choices).filter(([, value]) => value !== undefined && value !== ""));
+
+export const previewFetched = (token: string, choices: ImportChoices) =>
+  api.post<RepeaterImportPreview>(`/api/repeaters/fetched/${token}/preview`, fetchedBody(choices));
+
+export const useImportFetched = () =>
+  useChange(({ token, choices }: { token: string; choices: ImportChoices }) =>
+    api.post<RepeaterImportResult>(`/api/repeaters/fetched/${token}/import`, fetchedBody(choices)),
+  );
+
+/** Tells the server to forget a fetched file the person decided against. Nothing depends on the answer. */
+export const discardFetched = (token: string) => void api.delete(`/api/repeaters/fetched/${token}`).catch(() => undefined);
+
+// ── The same repeater twice ──
+
+export const useRepeaterDuplicates = (enabled: boolean) =>
+  useQuery({
+    queryKey: ["repeaters", "duplicates"],
+    queryFn: () => api.get<RepeaterDuplicatesResponse>("/api/repeaters/duplicates"),
+    enabled,
+  });
+
+export const useMergeDuplicates = () =>
+  useChange((input: { keepId: string; mergeIds: string[] }) => api.post<RepeaterMergeResult>("/api/repeaters/duplicates/merge", input));
+
+export const useMergeAllDuplicates = () => useChange(() => api.post<RepeaterMergeResult>("/api/repeaters/duplicates/merge-all"));
+
+export const useSeparate = () => useChange((id: string) => api.post<{ separated: number }>(`/api/repeaters/${id}/separate`));
