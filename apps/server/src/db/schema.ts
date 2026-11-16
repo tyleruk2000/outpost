@@ -113,7 +113,8 @@ export interface CollectionMeta {
     bounds: [number, number, number, number];
     minZoom: number;
     maxZoom: number;
-    tileType: "vector" | "terrain";
+    /** "imagery": satellite pictures as WebP tiles (modules/maps/imagery), not a region of the map. */
+    tileType: "vector" | "terrain" | "imagery";
     sourceBuild?: string;
     format: "pmtiles" | "mbtiles";
   };
