@@ -124,9 +124,9 @@ export function AntennaPicker({
           aria-invalid={invalid}
           aria-haspopup="listbox"
           aria-expanded={open}
-          className="flex h-9 w-full items-center justify-between gap-2 rounded-control border border-border-strong bg-page px-3 text-left text-small text-ink transition-colors hover:border-ink-faint focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus/30 max-md:h-11"
+          className="flex h-9 w-full min-w-0 items-center justify-between gap-2 rounded-control border border-border-strong bg-page px-3 text-left text-small text-ink transition-colors hover:border-ink-faint focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus/30 max-md:h-11"
         >
-          <span className={cn("truncate", !chosen && "text-ink-faint")}>{chosen?.name ?? "Choose an antenna"}</span>
+          <span className={cn("min-w-0 truncate", !chosen && "text-ink-faint")}>{chosen?.name ?? "Choose an antenna"}</span>
           <ChevronDown aria-hidden className="size-4 shrink-0 text-ink-muted" />
         </button>
       </PopoverTrigger>
@@ -194,7 +194,7 @@ export function AntennaPicker({
                             pick(choice.value);
                           } else move(event, options().indexOf(event.currentTarget));
                         }}
-                        className="relative flex cursor-default items-start gap-2 rounded-[4px] py-1.5 pr-8 pl-2.5 text-small text-ink outline-none select-none hover:bg-surface-strong focus:bg-surface-strong max-md:min-h-11 max-md:py-2.5"
+                        className="relative flex cursor-default items-start gap-2 rounded-[4px] py-1.5 pr-8 pl-2.5 text-small text-ink outline-none select-none hover:bg-surface-strong focus:bg-surface-strong max-md:min-h-12 max-md:py-2.5"
                       >
                         <div className="min-w-0">
                           <div>{choice.label}</div>

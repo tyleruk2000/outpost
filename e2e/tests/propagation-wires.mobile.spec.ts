@@ -7,6 +7,14 @@ async function choose(page: Page, list: string, option: string) {
   await page.getByRole("option", { name: option }).click();
 }
 
+/** Chooses an antenna: under its heading in the antenna chooser, by the words it is listed with there. */
+async function chooseAntenna(page: Page, list: string, group: string, option: string) {
+  await page.getByRole("button", { name: list, exact: true }).click();
+  await page.getByRole("listbox", { name: "Antennas" }).getByRole("group", { name: group }).getByRole("option", { name: option }).click();
+}
+const TEN = "End-fed wire, 10 m (a half-wave on 20 m)";
+const FIVE = "End-fed wire, 5 m (a half-wave on 10 m)";
+
 /** Presses Predict and waits for the engine's answer to that press, so that nothing is read off the answer before it. */
 async function predict(page: Page) {
   const answered = page.waitForResponse((response) => response.url().endsWith("/api/radio/propagation/predict"));
@@ -27,7 +35,7 @@ test.describe("End-fed wires on the HF planner, on a phone", () => {
     await page.getByLabel("Date (UTC)").fill("2026-11-16");
 
     // ── 10 m of wire, level. On 40 m it is a quarter-wave: said under the antenna before anything is asked.
-    await choose(page, "Transmitting antenna", "End-fed half-wave, 10 m wire, horizontal");
+    await chooseAntenna(page, "Transmitting antenna", TEN, "Horizontal, level 6 m up");
     await expect(page.getByText(/^Not modelled: 10 m of wire is 0\.24 wavelengths at 7\.1 MHz, shorter than a half-wave\./)).toBeVisible();
     await predict(page);
     await expect(page.getByText("No figure for 7.10 MHz: an antenna is not modelled there")).toBeVisible();
@@ -74,7 +82,7 @@ test.describe("End-fed wires on the HF planner, on a phone", () => {
     await expect(page.getByText(/The frequencies an antenna is not modelled on are left off this page/)).toBeVisible();
 
     // ── 10 m of wire, upright. It has figures on every band; off 20 m they are for a wire that is not a half-wave.
-    await choose(page, "Transmitting antenna", "End-fed half-wave, 10 m wire, vertical");
+    await chooseAntenna(page, "Transmitting antenna", TEN, "Vertical, from the ground up");
     await choose(page, "Band", "40 m");
     await expect(
       page.getByText(/0\.24 wavelengths at 7\.1 MHz, shorter than a half-wave\. The figure is VOACAP's vertical monopole/),
@@ -91,7 +99,7 @@ test.describe("End-fed wires on the HF planner, on a phone", () => {
     await expect(page.getByText(/End-fed wire 10 m long, vertical with its bottom end at the ground/)).toBeVisible();
 
     // ── 5 m of wire, level: a half-wave on 10 m.
-    await choose(page, "Transmitting antenna", "End-fed half-wave, 5 m wire, horizontal");
+    await chooseAntenna(page, "Transmitting antenna", FIVE, "Horizontal, level 6 m up");
     await choose(page, "Band", "10 m");
     await expect(page.getByText(/5 m of wire is 0\.48 wavelengths at 28\.85 MHz, about a half-wave/).first()).toBeVisible();
     await predict(page);
@@ -101,7 +109,7 @@ test.describe("End-fed wires on the HF planner, on a phone", () => {
     await expect(ranked.getByRole("listitem").filter({ hasText: "10 m" }).first()).not.toContainText("Not modelled");
 
     // ── 5 m of wire, upright.
-    await choose(page, "Transmitting antenna", "End-fed half-wave, 5 m wire, vertical");
+    await chooseAntenna(page, "Transmitting antenna", FIVE, "Vertical, from the ground up");
     await expect(page.getByText(/about a half-wave: run as VOACAP's vertical monopole \(type 22\) of that height/).first()).toBeVisible();
     await predict(page);
     await expect(page.getByText(/End-fed wire 5 m long, vertical with its bottom end at the ground/)).toBeVisible();
@@ -110,7 +118,7 @@ test.describe("End-fed wires on the HF planner, on a phone", () => {
     await fits(page);
 
     // The list is reached by a thumb.
-    expect((await page.getByRole("combobox", { name: "Transmitting antenna", exact: true }).boundingBox())!.height).toBeGreaterThanOrEqual(
+    expect((await page.getByRole("button", { name: "Transmitting antenna", exact: true }).boundingBox())!.height).toBeGreaterThanOrEqual(
       44,
     );
     expect(errors).toEqual([]);
@@ -125,7 +133,7 @@ test.describe("End-fed wires on the HF planner, on a phone", () => {
       await page.getByRole("button", { name: "Try London to Birmingham on 40 m" }).click();
       await expect(page.getByRole("heading", { name: "London to Birmingham" })).toBeVisible();
       await page.getByLabel("Date (UTC)").fill("2026-11-16");
-      await choose(page, "Transmitting antenna", "End-fed half-wave, 10 m wire, horizontal");
+      await chooseAntenna(page, "Transmitting antenna", TEN, "Horizontal, level 6 m up");
       const ranked = page.getByRole("list", { name: /Bands ranked by reliability at/ });
       const lengths = page.getByRole("list", { name: "The wire on each band" });
 

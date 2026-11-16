@@ -900,7 +900,7 @@ describe("a sloping wire", () => {
       frequencyMhz: "14.18",
       txBearing: "200",
     };
-    const built = coverageRequestOf(form, []);
+    const built = coverageRequestOf(form, [], { west: -8, south: 49, east: 4, north: 59 });
     if (!("request" in built)) throw new Error(`expected a request: ${JSON.stringify(built)}`);
     expect(built.request.txAntenna).toMatchObject({ kind: "end-fed-sloping", highEndDeg: 200, broadsideDeg: null });
   });
