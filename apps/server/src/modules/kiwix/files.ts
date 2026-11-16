@@ -67,34 +67,85 @@ export interface ArchiveFilesOptions {
   bookNameOf(row: CollectionRow): string;
 }
 
-export function registerArchiveFiles(app: FastifyInstance, ctx: AppContext, options: ArchiveFilesOptions): void {
+const encode = (filePath: string) => filePath.split("/").map(encodeURIComponent).join("/");
+
+/**
+ * Asks the archive for something inside a book, following the archive's own redirects as
+ * long as they stay inside that book. `relPath` is a path inside the book; empty asks for
+ * the book's first page. Answers with the response and the path it came from, or
+ * undefined when a redirect leads out of the book or they do not end.
+ */
+export async function followInsideBook(
+  upstream: ArchiveFilesOptions["upstream"],
+  bookName: string,
+  relPath: string,
+): Promise<{ response: Response; path: string } | undefined> {
+  const root = `content/${encodeURIComponent(bookName)}`;
+  let target = relPath ? `${root}/${encode(relPath)}` : root;
+  for (let hop = 0; hop <= MAX_REDIRECTS; hop += 1) {
+    const response = await upstream(target);
+    const location = response.status >= 300 && response.status < 400 ? response.headers.get("location") : null;
+    if (!location) {
+      try {
+        return { response, path: decodeURIComponent(target.slice(root.length + 1)) };
+      } catch {
+        await response.body?.cancel();
+        return undefined;
+      }
+    }
+    await response.body?.cancel();
+    const next = new URL(location, `http://archive/${target}`);
+    if (next.host !== "archive" || !next.pathname.startsWith(`/${root}/`)) break;
+    target = next.pathname.slice(1);
+  }
+  return undefined;
+}
+
+export interface ArchiveFilesService {
+  /** Which of these paths inside a book are already documents in the library: path to document id. */
+  savedDocuments(row: CollectionRow, paths: string[]): Map<string, string>;
+}
+
+export function registerArchiveFiles(app: FastifyInstance, ctx: AppContext, options: ArchiveFilesOptions): ArchiveFilesService {
   const { documents } = ctx.services;
-  const encode = (filePath: string) => filePath.split("/").map(encodeURIComponent).join("/");
 
   const savedAs = (sources: string[]): Map<string, string> => {
-    if (sources.length === 0) return new Map();
-    const rows = ctx.db
-      .select({ id: documentsTable.id, source: documentsTable.source })
-      .from(documentsTable)
-      .where(inArray(documentsTable.source, sources))
-      .all();
-    return new Map(rows.map((row) => [row.source!, row.id]));
+    const found = new Map<string, string>();
+    // A few hundred at a time: a query takes only so many values.
+    for (let from = 0; from < sources.length; from += 500) {
+      const rows = ctx.db
+        .select({ id: documentsTable.id, source: documentsTable.source })
+        .from(documentsTable)
+        .where(inArray(documentsTable.source, sources.slice(from, from + 500)))
+        .all();
+      for (const row of rows) found.set(row.source!, row.id);
+    }
+    return found;
   };
+
+  function savedDocuments(row: CollectionRow, paths: string[]): Map<string, string> {
+    const sources = new Map<string, string>();
+    for (const raw of paths) {
+      try {
+        sources.set(raw, sourceOfArchiveFile(row.title, parseArchivePath(raw).path));
+      } catch {
+        // Not a file the library keeps, so it cannot have been added.
+      }
+    }
+    const saved = savedAs([...new Set(sources.values())]);
+    const found = new Map<string, string>();
+    for (const [raw, source] of sources) {
+      const documentId = saved.get(source);
+      if (documentId) found.set(raw, documentId);
+    }
+    return found;
+  }
 
   /** Asks the archive for the file, following its own redirects as long as they stay inside the book. */
   async function open(bookName: string, file: ArchiveFile): Promise<Response> {
-    const root = `content/${encodeURIComponent(bookName)}/`;
-    let target = `${root}${encode(file.path)}`;
-    for (let hop = 0; hop <= MAX_REDIRECTS; hop += 1) {
-      const response = await options.upstream(target);
-      const location = response.status >= 300 && response.status < 400 ? response.headers.get("location") : null;
-      if (!location) return response;
-      await response.body?.cancel();
-      const next = new URL(location, `http://archive/${target}`);
-      if (next.host !== "archive" || !next.pathname.startsWith(`/${root}`)) break;
-      target = next.pathname.slice(1);
-    }
-    throw new AppError("upstream", `"${file.name}" could not be read from this collection.`);
+    const found = await followInsideBook(options.upstream, bookName, file.path);
+    if (!found) throw new AppError("upstream", `"${file.name}" could not be read from this collection.`);
+    return found.response;
   }
 
   async function save(
@@ -165,19 +216,14 @@ export function registerArchiveFiles(app: FastifyInstance, ctx: AppContext, opti
   app.post<{ Params: { collectionId: string } }>("/api/kiwix/books/:collectionId/files/check", async (request) => {
     const row = options.requireBook(request.params.collectionId);
     const { paths } = checkBody.parse(request.body);
-    const sources = paths.map((raw) => {
-      try {
-        return sourceOfArchiveFile(row.title, parseArchivePath(raw).path);
-      } catch {
-        return undefined;
-      }
-    });
-    const saved = savedAs(sources.filter((source): source is string => source !== undefined));
+    const saved = savedDocuments(row, paths);
     return {
-      files: paths.map((raw, index) => {
-        const documentId = sources[index] ? saved.get(sources[index]) : undefined;
+      files: paths.map((raw) => {
+        const documentId = saved.get(raw);
         return documentId ? { path: raw, state: "saved" as const, documentId } : { path: raw, state: "new" as const };
       }),
     };
   });
+
+  return { savedDocuments };
 }
