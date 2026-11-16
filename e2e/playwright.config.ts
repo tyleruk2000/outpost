@@ -26,6 +26,8 @@ const filesPort = Number(process.env.OUTPOST_E2E_FILES_PORT ?? 8473);
 // The stand-in for a local model server (not a language model; see apps/server/test/model-server.ts).
 const modelPort = Number(process.env.OUTPOST_E2E_MODEL_PORT ?? filesPort + 1);
 process.env.OUTPOST_E2E_MODEL_URL = `http://127.0.0.1:${modelPort}`;
+// The stand-in for kiwix-serve, holding one archive that is a list of documents (apps/server/test/nautilus-archive.ts).
+const kiwixPort = Number(process.env.OUTPOST_E2E_KIWIX_PORT ?? filesPort + 2);
 
 const work = fs.mkdtempSync(path.join(os.tmpdir(), "outpost-e2e-"));
 process.env.OUTPOST_E2E_WORK = work;
@@ -119,7 +121,16 @@ export default defineConfig({
       reuseExistingServer: false,
       env: { STAND_IN_LONG_DELAY_MS: "40" },
     },
+    {
+      command: `node "${path.join(root, "apps/server/test/nautilus-archive.ts")}" ${kiwixPort}`,
+      url: `http://127.0.0.1:${kiwixPort}/health`,
+      reuseExistingServer: false,
+    },
     // The open server fetches portable-drive runtimes from the stand-in above, which is on a private address.
-    server("open", port, { OUTPOST_NODE_DIST_URL: `http://127.0.0.1:${filesPort}`, OUTPOST_ALLOW_PRIVATE_DOWNLOADS: "true" }),
+    server("open", port, {
+      OUTPOST_NODE_DIST_URL: `http://127.0.0.1:${filesPort}`,
+      OUTPOST_ALLOW_PRIVATE_DOWNLOADS: "true",
+      OUTPOST_KIWIX_URL: `http://127.0.0.1:${kiwixPort}`,
+    }),
   ],
 });

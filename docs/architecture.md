@@ -152,6 +152,15 @@ the document library, which needs no connection. A link that really does leave t
 archive is never followed inside the frame; if it points at a file the library keeps,
 the reader offers to fetch it through the download manager.
 
+A page in that sandbox has no storage: the browser gives none to a page without an
+origin of its own. A collection made with openZIM's nautilus, which is a set of
+documents with a list, draws its list from a browser database and so draws nothing.
+For those the server reads the list out of the archive, with a parser of its own that
+runs nothing, and the reader shows it as a list of its own in place of the page
+(`modules/kiwix/nautilus.ts`, `literal.ts`, `document-lists.ts`;
+[security.md](security.md#reference-zim-content) says why the sandbox was not loosened
+instead).
+
 kiwix-serve trusts its library file and will not search a book that has no language
 recorded, so Outpost writes complete metadata, which it reads back from each archive.
 

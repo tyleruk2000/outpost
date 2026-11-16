@@ -13,6 +13,8 @@ Everything you have already installed or written:
 - reading and searching documents, notes and installed reference collections;
 - opening a PDF that is inside a reference collection, and adding PDFs and e-books
   from a collection to your documents (they are copied from the archive on your disk);
+- listing, searching and opening the documents of a collection that is a set of files
+  and not a web site;
 - keyword search, and semantic search if its index is built: the built-in model needs
   no connection, and neither does a local embedding server on your own machine (see
   [search.md](search.md));

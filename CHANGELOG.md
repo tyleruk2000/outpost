@@ -238,6 +238,13 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   addresses only, and kept only if it is the kind of file its name says.
 - Links read before a web-site archive's own script can rewrite them, so a file inside
   the archive is not mistaken for one on the internet.
+- Collections that are a set of documents with a list (those made with openZIM's
+  nautilus, such as the Post Disaster Resource Library) are shown as that list in the
+  reader: searched by title, author and description, each PDF opened in the built-in
+  viewer and added to the library, recordings and films played, and the titles found
+  by Outpost's own search. Their own page drew nothing, because it keeps its list in
+  browser storage that a page in the sandbox does not have. The list is read on the
+  server by a parser that accepts one shape and runs nothing.
 - Registering a ZIM archive that is already on a storage location.
 - Updating an installed collection to a newer version from the catalogue.
 

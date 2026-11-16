@@ -141,6 +141,52 @@ field is checked, and nothing the page reports is acted on without a person pres
 a button. Code: `apps/server/src/modules/kiwix/index.ts`,
 `apps/web/src/features/reader/reader-page.tsx`.
 
+**What the sandbox costs, and what was done about it.** A page without an origin of
+its own is refused storage by the browser: `indexedDB.open` and `localStorage` throw.
+An archive whose page needs storage to draw itself therefore draws nothing. This was
+seen with the Post Disaster Resource Library, made with openZIM's nautilus: its page
+builds its list of 108 documents in IndexedDB (through PouchDB) from a script,
+`database.js`. In the sandbox the first thing its script does, opening that database
+(`new PouchDB(…)`), throws `SecurityError: Failed to execute 'open' on 'IDBFactory':
+access to the Indexed Database API is denied in this context`, and nothing after it
+runs: `database.js` is never asked for. Seen in Chromium on 16 November 2026, with the
+archive's page opened under Outpost's policy and again inside the reader's frame.
+
+The sandbox was not loosened. Three ways round it were weighed:
+
+- *Adding `allow-same-origin`.* Refused. It would give every archive's scripts
+  Outpost's own origin, and with it the API: the reason the sandbox exists.
+- *Giving archive pages a stand-in for storage*, by having the script Outpost adds to
+  each page define an `indexedDB` that lives in memory. Not done: PouchDB needs a full
+  IndexedDB (stores, indexes, cursors, transactions), which means shipping a library
+  of that size into every archive page, and the result would be the archive's list in
+  the archive's layout, rebuilt on every visit, with none of it known to Outpost's
+  viewer, library or search.
+- *Serving archives from a second origin*, where storage would work and
+  `allow-same-origin` would be harmless. Not done: Outpost is one address and one
+  port, reached by IP address on a home network where there are no subdomains to be
+  had, so a second origin is a second port, to be opened, mapped in Docker, put behind
+  a proxy and documented. It may yet be worth it for archives that are whole
+  applications; it is too much for a list.
+
+What was done instead is to read the list on the server and draw it in the reader.
+The list is JavaScript from an archive of unknown origin, so:
+
+| Control | Detail | Code |
+| --- | --- | --- |
+| The list is never run | `database.js` is fetched as bytes and read by a parser written for it. It accepts `var DATABASE = [ … ];` where each value is a string in single or double quotes, a plain decimal number, an array, or an object with quoted names, and nothing else: no identifier, call, operator, comment, template string, regular expression or second statement. Anything else refuses the whole file. Nothing from the archive is passed to `eval`, `Function`, `JSON.parse` or a script engine. | `apps/server/src/modules/kiwix/literal.ts` |
+| Names cannot reach into the server | Objects are read into `Map`s, so an entry named `__proto__`, `constructor` or `toString` is a name like any other. | same |
+| Size is bounded before and after reading | The file is refused over 4 MB, by its declared length or by the bytes that arrive. Values may sit six deep and number a million. At most 20,000 documents are kept, 50 files to a document; a title or author is cut at 300 characters, a description at 2,000, and a file whose name is over 500 characters is left out. Measured on 16 November 2026 (Node 24.15, Apple M2 Max), files of the full 4 MB built to be slow to read took at most 0.15 seconds, on the server's own thread: one string, 16 ms; a million numbers, 80 ms; a string made only of escapes, 145 ms; 322,000 smallest entries, 138 ms. The real list of 108 documents takes 4 ms. What is read is held in memory and not written anywhere: 12.7 MB for a list of 20,000 documents, and no more than 50,000 documents across all collections, the list used longest ago being let go first. | `literal.ts`, `nautilus.ts`, `document-lists.ts` |
+| Every string is text | Titles, authors, descriptions and file names are stripped of control characters and sent as JSON; the reader draws them as text. Nothing from the list is ever put into the page as markup or used as an address without being escaped. | `nautilus.ts`, `apps/web/src/features/reader/document-list.tsx` |
+| A file name cannot leave the collection | nautilus stores each file at `files/` followed by its name. A name is refused if it is empty, starts with a slash, holds a backslash, a control character or two dots together, or has an empty or `.` part. The path built from it is then escaped part by part wherever it becomes an address, so `%2e%2e` in a name stays those six characters; the proxy refuses any address holding `..`; and adding a file to the library goes through the same check as any other file inside an archive. The furthest a crafted name can reach is another entry of the same archive. | `nautilusFilePath` in `nautilus.ts`, `parseArchivePath` in `files.ts` |
+| Only the page and the list are fetched | To recognise such an archive the server asks kiwix-serve for the book's first page (at most 2 MB is looked at, for the list element and the script tag nautilus writes) and then for `database.js` beside it. Redirects are followed only inside the same book. The archive's scripts are not fetched. | `document-lists.ts`, `followInsideBook` in `files.ts` |
+| Files open where archive content always opens | A PDF opens in Outpost's viewer, read through the proxy. A recording or film is given to the browser's own `<audio>` or `<video>` element. Any other kind is a link to the proxy's address that opens in a new tab with `noopener noreferrer`, where the response's `sandbox` policy applies as it does in the frame, so an HTML file posing as a document still runs without Outpost's origin. | `apps/web/src/features/reader/` |
+
+Tested in `apps/server/test/nautilus.test.ts` (hostile and odd lists, path names, the
+route, limits), `apps/web/src/features/reader/document-list.test.tsx` and
+`e2e/tests/reader.spec.ts`, which also shows the archive's own page being refused
+storage inside the frame.
+
 ### Downloads (the SSRF guard)
 
 Server-side request forgery means tricking a server into fetching an address inside

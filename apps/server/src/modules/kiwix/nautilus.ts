@@ -5,7 +5,7 @@
  * Such an archive has one page. It holds an empty list, and a script fills that list in
  * the browser from `database.js`, by way of a database the browser keeps for the page
  * (IndexedDB). A page in Outpost's sandbox has no origin of its own to keep a database
- * under, so the script stops at its first line and the list stays empty. Outpost reads
+ * under, so the script stops as it starts and the list stays empty. Outpost reads
  * `database.js` itself and shows the documents in its own reader.
  *
  * This file knows the format and nothing else: how the page is recognised, what the
@@ -52,16 +52,19 @@ export function isNautilusHome(html: string): boolean {
  *
  * nautilus stores each file at `files/` followed by its name, and its page links to
  * exactly that. A name may hold folders ("guides/water.pdf"). It may not be used to
- * leave `files/`: no empty, "." or ".." part, no leading slash, no backslash, no control
- * character. Percent signs need no rule; the name is text, and is escaped whole wherever
- * it is put into an address, so "%2e%2e" stays those six characters.
+ * leave `files/`: no empty or "." part, no two dots together anywhere, no leading slash,
+ * no backslash, no control character. Two dots are refused even inside a name ("a..b"),
+ * because the proxy that serves archive content refuses every address that holds them,
+ * so such a file could be listed but never opened. Percent signs need no rule; the name
+ * is text, and is escaped whole wherever it is put into an address, so "%2e%2e" stays
+ * those six characters.
  */
 export function nautilusFilePath(name: unknown): string | undefined {
   if (typeof name !== "string" || name.length === 0 || name.length > MAX_FILE_NAME) return undefined;
   if (LONE_SURROGATE.test(name)) return undefined;
   // biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are exactly what is being refused
   if (/[\u0000-\u001f\u007f\\]/.test(name)) return undefined;
-  if (name.split("/").some((part) => part === "" || part === "." || part === "..")) return undefined;
+  if (name.includes("..") || name.split("/").some((part) => part === "" || part === ".")) return undefined;
   return `${FILES_PREFIX}${name}`;
 }
 

@@ -163,6 +163,15 @@ with your own results by rank.
 - If kiwix-serve is not running, your own results still appear, with a note saying why
   reference articles are missing.
 - Each reference collection also has its own search box in the reader.
+- A collection that is a set of documents with a list (see
+  [troubleshooting.md](troubleshooting.md#a-collection-opens-as-a-list-of-documents))
+  has no articles for kiwix-serve to search. Its documents are found by their titles
+  and authors instead: every word typed must start a word of one or the other. A result
+  that is one PDF, e-book, recording or film opens it in the reader; any other opens
+  the collection's list at that document. The text inside the files is not searched
+  until a file is added to your library. Outpost reads each such list once after it
+  starts and keeps it in memory, up to 50,000 documents across all collections; past
+  that, the list used longest ago is found by search again only after it is next opened.
 
 ## Scanned pages and images (OCR)
 

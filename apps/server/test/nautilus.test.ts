@@ -235,9 +235,7 @@ describe("where a listed file is inside its archive", () => {
     expect(nautilusFilePath("guides/first aid/splint.pdf")).toBe("files/guides/first aid/splint.pdf");
     expect(nautilusFilePath("Schrift & Zeichen #1?.pdf")).toBe("files/Schrift & Zeichen #1?.pdf");
     expect(nautilusFilePath("初級 😀.pdf")).toBe("files/初級 😀.pdf");
-    // Dots that are part of a name are a name.
-    expect(nautilusFilePath("...pdf")).toBe("files/...pdf");
-    expect(nautilusFilePath("a..b/c.pdf")).toBe("files/a..b/c.pdf");
+    expect(nautilusFilePath(".hidden/v1.2.pdf")).toBe("files/.hidden/v1.2.pdf");
     // Percent signs are text: escaped whole when put into an address, they cannot turn into dots or slashes.
     expect(nautilusFilePath("%2e%2e%2fhome")).toBe("files/%2e%2e%2fhome");
     expect(encodeURIComponent("%2e%2e%2fhome")).toBe("%252e%252e%252fhome");
@@ -254,6 +252,9 @@ describe("where a listed file is inside its archive", () => {
       "../../raw/book/meta/Title",
       "a/../../home",
       "a/./b.pdf",
+      // Two dots inside a name climb nowhere, but the proxy serves no address that holds them.
+      "...pdf",
+      "a..b/c.pdf",
       "a//b.pdf",
       "/etc/passwd",
       "/files/a.pdf",
