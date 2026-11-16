@@ -124,6 +124,8 @@ export interface CleanupPlan {
     supplies?: SuppliesKept;
     /** Scenarios saved in the nuclear effects simulator. Absent from a plan made before they were counted. */
     nuclearScenarios?: number;
+    /** Devices found on the network, with any names and notes given them. Absent from a plan made before it was counted. */
+    networkDevices?: number;
     settings: number;
     vectors: number;
     /** Copies of the database and attachments that a restore set aside. */
@@ -194,6 +196,7 @@ export interface CleanupResult extends Record<string, unknown> {
     powerPlans?: number;
     supplies?: SuppliesKept;
     nuclearScenarios?: number;
+    networkDevices?: number;
     settings: number;
   };
 }

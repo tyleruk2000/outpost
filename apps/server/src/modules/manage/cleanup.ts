@@ -262,6 +262,7 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
         powerPlans: ctx.services.power.kept.count(),
         supplies: ctx.services.supplies.count(),
         nuclearScenarios: ctx.services.nuclear.count(),
+        networkDevices: ctx.services.network.count(),
         settings: count("SELECT count(*) AS n FROM settings"),
         vectors: count("SELECT count(*) AS n FROM embeddings"),
         previous: previousData(),
@@ -519,6 +520,7 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
       powerPlans: 0,
       supplies: { items: 0, members: 0, shopping: 0, barcodes: 0 },
       nuclearScenarios: 0,
+      networkDevices: 0,
       settings: 0,
     };
     personal.attachments = (sqlite.prepare("SELECT count(*) AS n FROM attachments").get() as { n: number }).n;
@@ -564,6 +566,8 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
     personal.supplies = ctx.services.supplies.eraseAll();
     // Scenarios saved in the nuclear effects simulator: the places and notes are the person's own.
     personal.nuclearScenarios = ctx.services.nuclear.eraseAll();
+    // Devices found on the network, with the names and notes given them: names there can be people's names.
+    personal.networkDevices = ctx.services.network.eraseAll();
 
     // Whatever is left belongs to records that no longer exist: attachments no page
     // used, import reports, history, vectors, and the settings.
@@ -651,6 +655,7 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
           "repeaters.changed",
           "propagation.changed",
           "supplies.changed",
+          "network.changed",
           "documents.changed",
           "collections.changed",
           "semantic.changed",

@@ -1082,6 +1082,26 @@ computer's.
 | `GET /api/supplies/export.csv` | Every row as a CSV download (see supplies.md for the columns). |
 | `POST /api/supplies/import/preview` | Body: `text` (the file, at most 2 MB). Reads it and says what each row is (`ImportPreview`), and which are already in the supplies. Changes nothing. |
 | `POST /api/supplies/import/apply` | Body: `rows`, each `{ action: "add" \| "update" \| "skip", id?, item }`. All or nothing. Answers `ImportResult`. |
+## Devices on this network
+
+Types: `packages/shared/src/network.ts`. See
+[tools-qr-and-network.md](tools-qr-and-network.md#devices-on-this-network-toolsnetwork)
+for what a scan looks at and sends. The QR code screen has no routes: codes are made in
+the browser.
+
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/network` | `NetworkStatus`: `unavailable` (`container`, `platform`, `portable` or null), `os`, `abilities` (whether ping can be used, where the neighbour table, announcements and router are read from, each null when missing), `subnets` (each with `cidr`, `kind`, `plan`: `sweep`, `narrowed` or `listen`, `swept`, `addresses` and `reason`), `skipped` (with reasons), `limits`, `lastScan`, the scan `job` under way, `devices` (`NetworkDevice[]`), `makers` (whether the IEEE's registry is here, its size and date, and where it comes from) and `makersJob`. Sends nothing onto the network. |
+| `POST /api/network/scan` | Starts a `network.scan` job: `{ job }`. Takes no body; what is scanned is worked out on the server. `409` while one is queued or running; `415 unsupported` in a container without host networking, from a portable drive, on another system, or with no private network. Stop it with `POST /api/jobs/:id/cancel`; a stopped scan keeps nothing. |
+| `PATCH /api/network/devices/:id` | Body: any of `label` (80 characters) and `note` (2,000). Returns `{ device }`. |
+| `DELETE /api/network/devices/:id` | Forgets one device, with its name and note. |
+| `DELETE /api/network/devices` | Forgets every device and the record of scans: `{ removed }`. |
+| `GET /api/network/devices.csv` | The list as a CSV file, sent only when asked for. |
+| `POST /api/network/makers` | Fetches the IEEE's registry of hardware-address prefixes as a `network.makers` job: `{ job }`. The only route here that reaches the internet. |
+| `DELETE /api/network/makers` | Removes the fetched registry. |
+
+The server publishes `network.changed` on the event stream when a scan finishes, a
+device is changed or forgotten, or the registry arrives or goes.
 
 ## Everything else
 

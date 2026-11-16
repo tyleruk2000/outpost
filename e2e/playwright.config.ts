@@ -14,6 +14,7 @@ import os from "node:os";
 import path from "node:path";
 import { defineConfig, devices } from "@playwright/test";
 import { standInWorld } from "../apps/server/test/fixtures/maps/imagery-stand-in.ts";
+import { standInWorld as standInNetwork } from "../apps/server/test/fixtures/network/stand-in.ts";
 import { p533StandInManifest } from "../apps/server/test/fixtures/propagation/p533-maps-stand-in.ts";
 
 const root = path.resolve(import.meta.dirname, "..");
@@ -230,6 +231,29 @@ fs.writeFileSync(
 const p533Maps = path.join(work, "p533-maps.json");
 fs.writeFileSync(p533Maps, JSON.stringify(p533StandInManifest(`http://127.0.0.1:${filesPort}/p533/`)));
 
+// A made-up home network for "Devices on this network": no test may probe a real one.
+// A /28, so that a scan at the real rate of 20 probes a second takes a couple of seconds.
+const networkStandIn = path.join(work, "network-stand-in.json");
+fs.writeFileSync(
+  networkStandIn,
+  JSON.stringify(
+    standInNetwork({
+      interfaces: {
+        eth0: [
+          {
+            address: "192.168.77.5",
+            netmask: "255.255.255.240",
+            family: "IPv4",
+            mac: "02:00:5e:00:00:05",
+            internal: false,
+            cidr: "192.168.77.5/28",
+          },
+        ],
+      },
+    }),
+  ),
+);
+
 export const OPEN_URL = `http://localhost:${port}`;
 // Kept in step with NOT_SECURE_HOST in tests/every-screen.ts and the offline guard in tests/fixtures.ts.
 const notSecureHost = "outpost-lan.test";
@@ -308,6 +332,7 @@ export default defineConfig({
       OUTPOST_IMAGERY_WORLD_URL: `http://127.0.0.1:${filesPort}/imagery/world.tif`,
       OUTPOST_IMAGERY_WORLD_BYTES: String(standInWorld().length),
       OUTPOST_IMAGERY_LINZ_BASE: `http://127.0.0.1:${filesPort}/imagery/linz`,
+      OUTPOST_NETWORK_STAND_IN: networkStandIn,
       // The made-up name the "not secure" projects use; for this test server only.
       OUTPOST_ALLOWED_HOSTS: notSecureHost,
     }),

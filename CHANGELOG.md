@@ -1036,6 +1036,20 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   keychain made for the purpose; nothing was tried on a real iPhone, Android phone,
   Windows or Linux computer.
 
+#### Tools: QR codes and devices on this network
+
+- QR codes: make a code from text or a web address, a Wi-Fi network, a contact (typed
+  or from Contacts, with the fields chosen), a phone number, an email address or a
+  saved place, in the browser with Outpost's own encoder written from ISO/IEC 18004;
+  save it as PNG or SVG, copy, print, or save, add to the library or share a printed
+  sheet. Nothing typed leaves the page.
+- Devices on this network: lists what answers on the private networks the computer
+  running Outpost is on, with names, addresses, what each announces, the maker (once
+  the IEEE's registry is fetched on a press), and what is new or gone since last time.
+  One ping per address and two fixed ports for those that ignore it, 20 probes a
+  second; no port scanning or probing of services. Names and notes of your own;
+  migration 0016.
+
 #### Deployment
 
 - A Dockerfile for `linux/amd64` and `linux/arm64`, and a Compose stack that builds the

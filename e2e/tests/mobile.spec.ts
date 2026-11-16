@@ -93,6 +93,8 @@ test.describe("on a phone", () => {
       ["Building", "/tools/building"],
       ["Cooking", "/tools/cooking"],
       ["Power and batteries", "/tools/power"],
+      ["QR codes", "/tools/qr"],
+      ["Devices on this network", "/tools/network"],
       ["Preparedness", "/prepare"],
       ["Supplies", "/prepare/supplies"],
       ["Nuclear preparedness", "/prepare/nuclear"],

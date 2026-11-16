@@ -1159,3 +1159,50 @@ export const nuclearScenarios = sqliteTable("nuclear_scenarios", {
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });
+
+// ── Devices on this network ─────────────────────────────────────────────────
+
+/**
+ * What answered when the person scanned the networks this computer is on, and the name
+ * and note they gave each device. Device names can be people's names ("Anna's
+ * iPhone"): this is shown on the Devices screen only, never put in search, and erased
+ * with everything else.
+ */
+export const networkDevices = sqliteTable(
+  "network_devices",
+  {
+    id: id(),
+    /** "mac:a0:b1:c2:d3:e4:f5" when the hardware address is known, else "ip:192.168.1.20". */
+    key: text("key").notNull(),
+    mac: text("mac"),
+    addresses: json<string[]>("addresses").notNull(),
+    /** The name it gave itself, as last seen. */
+    name: text("name").notNull().default(""),
+    /** What it announces, as `NetworkAdvert[]`. */
+    services: json<Array<Record<string, unknown>>>("services").notNull(),
+    /** Ports of the fixed list that accepted a connection when it was last found. */
+    openPorts: json<number[]>("open_ports").notNull(),
+    isSelf: integer("is_self", { mode: "boolean" }).notNull().default(false),
+    isRouter: integer("is_router", { mode: "boolean" }).notNull().default(false),
+    /** The person's own name for it, and their note. */
+    label: text("label").notNull().default(""),
+    note: text("note").notNull().default(""),
+    firstSeenAt: integer("first_seen_at").notNull(),
+    lastSeenAt: integer("last_seen_at").notNull(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [uniqueIndex("network_devices_key").on(table.key)],
+);
+
+/** Each scan that finished: when, what was looked at, and what it found and sent. The last twenty are kept. */
+export const networkScans = sqliteTable("network_scans", {
+  id: id(),
+  startedAt: integer("started_at").notNull(),
+  finishedAt: integer("finished_at").notNull(),
+  subnets: json<string[]>("subnets").notNull(),
+  found: integer("found").notNull(),
+  named: integer("named").notNull(),
+  packets: integer("packets").notNull(),
+  newDevices: integer("new_devices").notNull(),
+  goneDevices: integer("gone_devices").notNull(),
+});

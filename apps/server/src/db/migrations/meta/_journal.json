@@ -134,6 +134,13 @@
       "when": 1794847345195,
       "tag": "0018_nuclear_scenarios",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "6",
+      "when": 1794848623225,
+      "tag": "0019_network_devices",
+      "breakpoints": true
     }
   ]
 }

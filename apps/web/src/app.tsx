@@ -48,6 +48,8 @@ const RadioToolsPage = lazy(() => import("./features/tools/radio/radio-tools-pag
 const BuildingToolsPage = lazy(() => import("./features/tools/building/building-page"));
 const CookingToolsPage = lazy(() => import("./features/tools/cooking/cooking-page"));
 const NuclearPage = lazy(() => import("./features/nuclear/nuclear-page"));
+const QrPage = lazy(() => import("./features/qr/qr-page"));
+const NetworkPage = lazy(() => import("./features/network/network-page"));
 const PropagationPage = lazy(() => import("./features/propagation/propagation-page"));
 const PlansPage = lazy(() => import("./features/propagation/plans/plans-page"));
 const PlanPage = lazy(() => import("./features/propagation/plans/plan-page"));
@@ -138,6 +140,8 @@ export function App() {
           <Route path="prepare/supplies" element={<SuppliesPage />} />
           <Route path="prepare/supplies/items/:id" element={<SupplyItemPage />} />
           <Route path="prepare/nuclear" element={<NuclearPage />} />
+          <Route path="tools/qr" element={<QrPage />} />
+          <Route path="tools/network" element={<NetworkPage />} />
           <Route path="radio/propagation" element={<PropagationPage />} />
           <Route path="radio/coverage" element={<CoveragePage />} />
           <Route path="radio/log" element={<LogPage />} />

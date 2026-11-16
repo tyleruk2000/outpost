@@ -773,6 +773,19 @@ Not catalogue entries: figures that Preparedness → Supplies works with, each q
 | FEMA, [ready.gov/water](https://www.ready.gov/water) (updated 22 February 2021) | One US gallon a day for drinking and sanitation; needs can double in heat | US government work |
 | GOV.UK, [Best before and use-by dates](https://www.gov.uk/understanding-food-labelling/best-before-and-use-by-dates) (updated 25 June 2026) | Use-by is safety, best before is quality | Open Government Licence v3.0 |
 | Open Food Facts, [data](https://world.openfoodfacts.org/data) | Nothing used. What it would allow is in supplies.md | ODbL (database), DbCL (contents), CC BY-SA (images) |
+## The IEEE's registry of device makers, read on 2026-11-16
+
+"Devices on this network" can show who made a device from the first half of its
+hardware address. The list of those prefixes is the IEEE Registration Authority's
+public listing (MA-L), offered as a download at
+<https://standards-oui.ieee.org/oui/oui.csv> from
+<https://standards.ieee.org/products-programs/regauth/>. Those pages state no licence
+and no permission to redistribute the file; the site's footer reads "© Copyright 2026
+IEEE – All rights reserved", and links to the IEEE's site terms, whose text could not
+be fetched. Since the terms do not clearly allow passing the file on, it is not
+bundled: Outpost fetches it from the IEEE when a person presses "Fetch the registry",
+states the size first (3,876,189 bytes on 2026-11-16), and keeps it in that computer's
+data directory. See [tools-qr-and-network.md](tools-qr-and-network.md#who-made-each-device).
 
 ## Sources that are not integrated: what you can do
 

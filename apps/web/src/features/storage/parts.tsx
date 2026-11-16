@@ -61,7 +61,7 @@ export function tailPath(path: string, keep = 2): string {
  * Copies text. Outpost is often opened over plain http on a home network, where the
  * browser's clipboard API is switched off, so there is an older way to fall back on.
  */
-async function copyText(text: string): Promise<boolean> {
+export async function copyText(text: string): Promise<boolean> {
   try {
     if (navigator.clipboard && window.isSecureContext) {
       await navigator.clipboard.writeText(text);

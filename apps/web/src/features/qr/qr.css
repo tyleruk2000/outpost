@@ -1,0 +1,58 @@
+/* The sheet the browser prints: the code and its words, alone on the paper. */
+.outpost-qr-print {
+  display: none;
+}
+@media print {
+  body:has(.outpost-qr-print) {
+    margin: 0;
+    background: #fff;
+  }
+  body:has(.outpost-qr-print) > :not(.outpost-qr-print) {
+    display: none;
+  }
+  .outpost-qr-print {
+    display: block;
+  }
+  @page {
+    margin: 20mm;
+  }
+}
+
+/* Paper is white and ink is black whatever the screen's theme. */
+.outpost-qr-sheet {
+  color: #111;
+  background: #fff;
+  font-size: 12pt;
+  line-height: 1.4;
+}
+.outpost-qr-sheet h1 {
+  margin: 0 0 6mm;
+  font-size: 18pt;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+/* 80 mm of code with its 4-module margin on each side: the PDF's size, for a phone at arm's length and well beyond. */
+.outpost-qr-sheet .outpost-qr-code {
+  width: 88mm;
+  margin: 0 auto 6mm;
+}
+.outpost-qr-sheet dl {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 1mm 5mm;
+  margin: 0 0 5mm;
+}
+.outpost-qr-sheet dt {
+  font-weight: 700;
+}
+.outpost-qr-sheet dd {
+  margin: 0;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.outpost-qr-sheet p {
+  color: #444;
+  font-size: 10pt;
+}

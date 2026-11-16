@@ -20,6 +20,7 @@ export type DatabaseCountId =
   | "conversations"
   | "repeaters"
   | "plans"
+  | "networkDevices"
   | "observations"
   | "equipment"
   | "predictions"

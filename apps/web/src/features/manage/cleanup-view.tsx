@@ -369,6 +369,7 @@ export default function CleanupView({ status, loading }: { status: CleanupStatus
         ]}
         keeps={[
           "Documents you added, your notes, saved places, routes, contacts, chat conversations, repeaters, radio plans and logged contacts, and supplies",
+          "Documents you added, your notes, saved places, routes, contacts, chat conversations, repeaters, radio plans and logged contacts, and the devices found on your network",
           "Archives and maps of your own that you pointed Outpost at",
           "Settings, storage locations and network shares",
         ]}

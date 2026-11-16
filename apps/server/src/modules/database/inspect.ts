@@ -65,6 +65,7 @@ const COUNTS: Array<{ id: DatabaseCountId; table: string; sql: string }> = [
   { id: "powerPlans", table: "power_plans", sql: "SELECT count(*) AS n FROM power_plans" },
   { id: "supplies", table: "supply_items", sql: "SELECT count(*) AS n FROM supply_items" },
   { id: "scenarios", table: "nuclear_scenarios", sql: "SELECT count(*) AS n FROM nuclear_scenarios" },
+  { id: "networkDevices", table: "network_devices", sql: "SELECT count(*) AS n FROM network_devices" },
 ];
 
 function groupOf(table: string): DatabaseGroupId {

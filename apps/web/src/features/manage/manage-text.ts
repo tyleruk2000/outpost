@@ -271,6 +271,7 @@ export function personalWords(personal: NonNullable<CleanupPlan["personal"]>): s
   const supplies = suppliesWords(personal.supplies);
   if (supplies) parts.push(supplies);
   if ((personal.nuclearScenarios ?? 0) > 0) parts.push(plural(personal.nuclearScenarios!, "saved nuclear effects scenario"));
+  if (personal.networkDevices) parts.push(plural(personal.networkDevices, "device found on the network", "devices found on the network"));
   if (personal.settings > 0) parts.push(plural(personal.settings, "changed setting"));
   if (personal.vectors > 0) parts.push(plural(personal.vectors, "semantic vector"));
   parts.push("the history of downloads and other work");
