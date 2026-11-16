@@ -11,9 +11,11 @@ import {
   GROUNDS,
   type GroundKind,
   HF_BANDS,
+  HF_MIN_MHZ,
   halfWaveRangeMhz,
   hasStatedLength,
   isHorizontalAntenna,
+  longWireRangeMhz,
   type ModeId,
   OPERATING_MODES,
   type RadioProfile,
@@ -49,7 +51,7 @@ const KIND_NAMES: Record<AntennaKind, string> = {
 };
 const WIRE_NOTES: Partial<Record<AntennaKind, string>> = {
   "end-fed-horizontal":
-    "One wire of the length you give, hung level and fed at an end. Where it is about a half-wave it is run as VOACAP's horizontal dipole (type 23) of that length. On other frequencies no figure is given: the engine's dipole is fed at its centre and does not describe an end-fed wire that is not a half-wave.",
+    "One wire of the length you give, hung level and fed at an end. Where it is about a half-wave it is run as VOACAP's horizontal dipole (type 23) of that length. Where it is longer its figures are approximate: it is run as VOACAP's sloping long wire (type 41) laid level, whose level is unchecked. Where it is shorter no figure is given. The bearing is the one its broadside faces on every band; on a band where the wire is longer than a half-wave, broadside is not where it is strongest.",
   "end-fed-vertical":
     "One wire of the length you give, upright with its bottom end at the ground and fed there. Run as VOACAP's vertical monopole (type 22) of that height on every frequency. Off its half-wave band the figure is for a wire that is not a half-wave, fed against the ground.",
 };
@@ -62,9 +64,9 @@ function lengthHint(kind: AntennaKind, text: string): string {
   const { fromMhz, toMhz } = halfWaveRangeMhz(lengthM);
   const bands = HF_BANDS.filter((band) => band.mhz >= fromMhz && band.mhz <= toMhz).map((band) => band.label);
   const where = `${fromMhz.toFixed(1)} to ${toMhz.toFixed(1)} MHz${bands.length > 0 ? ` (${bands.join(", ")})` : ", which is none of the amateur bands"}`;
-  return kind === "end-fed-horizontal"
-    ? `About a half-wave from ${where}: figures are given there only.`
-    : `About a half-wave from ${where}.`;
+  if (kind !== "end-fed-horizontal") return `About a half-wave from ${where}.`;
+  const long = longWireRangeMhz(lengthM);
+  return `About a half-wave from ${where}.${long ? ` Approximate above ${long.fromMhz.toFixed(1)} MHz.` : ""}${fromMhz > HF_MIN_MHZ ? ` No figure below ${fromMhz.toFixed(1)} MHz.` : ""}`;
 }
 const number = (text: string, fallback = Number.NaN) => (text.trim() === "" ? fallback : Number(text));
 

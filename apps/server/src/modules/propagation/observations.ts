@@ -495,6 +495,8 @@ export async function registerObservations(
     const excluded = new Map<string, number>();
     const months = new Map<string, number>();
     const levels = new Map(COMPARISON_LEVELS.map((level) => [level.id, { id: level.id, contact: 0, heard: 0, failed: 0 }]));
+    // Entries whose figure is approximate (a level wire longer than a half-wave) are counted apart.
+    const approximateLevels = new Map(COMPARISON_LEVELS.map((level) => [level.id, { id: level.id, contact: 0, heard: 0, failed: 0 }]));
     const rows: ComparedObservation[] = [];
     try {
       const { description } = await internals.host.describe();
@@ -502,7 +504,11 @@ export async function registerObservations(
       const asked = new Map<
         string,
         Promise<
-          { distanceKm: number; hours: Array<{ reliability: number; snrDbHz: number; path: string | null; notModelled?: true }> } | string
+          | {
+              distanceKm: number;
+              hours: Array<{ reliability: number; snrDbHz: number; path: string | null; notModelled?: true; approximate?: true }>;
+            }
+          | string
         >
       >();
       const ssnOf = new Map<string, number | null>();
@@ -628,7 +634,7 @@ export async function registerObservations(
           continue;
         }
         const level = comparisonLevel(cell.reliability);
-        levels.get(level)![row.outcome as ObservationOutcome] += 1;
+        (cell.approximate ? approximateLevels : levels).get(level)![row.outcome as ObservationOutcome] += 1;
         rows.push({
           id: row.id,
           at: row.at,
@@ -643,6 +649,7 @@ export async function registerObservations(
           snrDbHz: cell.snrDbHz,
           ssn,
           level,
+          ...(cell.approximate ? { approximate: true as const } : {}),
         });
       }
       return {
@@ -653,6 +660,8 @@ export async function registerObservations(
         total: all.length,
         compared: rows.length,
         levels: [...levels.values()],
+        approximateLevels: [...approximateLevels.values()],
+        comparedApproximate: rows.filter((item) => item.approximate).length,
         excluded: tally(excluded),
         monthsWithoutSsn: [...months].map(([month, n]) => ({ month, count: n })).sort((a, b) => a.month.localeCompare(b.month)),
         rows,

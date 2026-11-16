@@ -199,6 +199,12 @@ export interface ComparedObservation {
   snrDbHz: number;
   ssn: number;
   level: ComparisonLevel;
+  /**
+   * Set when an antenna of the comparison is a level wire longer than a half-wave on this
+   * frequency, so that the engine's figure is approximate. Such entries are counted in
+   * `approximateLevels`, not in `levels`: reality against an approximate model says less.
+   */
+  approximate?: true;
 }
 
 export interface ComparisonResult {
@@ -209,8 +215,15 @@ export interface ComparisonResult {
   /** How many observations there are, and how many were compared. */
   total: number;
   compared: number;
-  /** For each level, how many of each outcome fell in it. */
+  /** For each level, how many of each outcome fell in it. Entries whose figure is approximate are not among them. */
   levels: Array<{ id: ComparisonLevel; contact: number; heard: number; failed: number }>;
+  /**
+   * The same for the entries on frequencies where an antenna is run as an approximation
+   * (`ComparedObservation.approximate`), counted apart. `compared` includes them.
+   */
+  approximateLevels?: Array<{ id: ComparisonLevel; contact: number; heard: number; failed: number }>;
+  /** How many of `compared` are approximate. */
+  comparedApproximate?: number;
   /** Observations left out, by reason. */
   excluded: Array<{ reason: string; count: number }>;
   /** Months the solar table does not reach and no number was given for, with how many observations wait on each. */

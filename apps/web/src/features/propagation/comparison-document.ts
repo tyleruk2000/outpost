@@ -11,7 +11,7 @@
 import { bandOf, COMPARISONS, type CompareResult, type PredictionResult } from "@outpost/shared";
 import { writePdfPages } from "@/features/maps/print/pdf";
 import { type Block, toMarkdown, toSheets } from "./plans/document";
-import { NO_FIGURE, type PredictionPaper } from "./prediction-document";
+import { APPROXIMATE, APPROXIMATE_KEY, NO_FIGURE, NOT_MODELLED, type PredictionPaper } from "./prediction-document";
 
 const longDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 const shortDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
@@ -37,11 +37,23 @@ export function comparisonDocument(result: PredictionResult, comparison: Compare
   const { mode } = comparison;
   const hours = Array.from({ length: 24 }, (_, index) => String(index + 1).padStart(2, "0"));
   const right = hours.map((_, index) => index + 1);
-  const byHour = (values: unknown, write: (value: number) => string) =>
+  type Series = CompareResult["series"][number];
+  // A series whose antenna is not modelled on the frequency has no figures (its zeros are blanks); one that is approximate is marked.
+  const byHour = (series: Series, values: unknown, write: (value: number) => string) =>
     hours.map((_, index) => {
+      if (series.notModelled) return NOT_MODELLED;
       const value = Array.isArray(values) ? values[index] : undefined;
-      return isNumber(value) ? write(value) : NO_FIGURE;
+      return isNumber(value) ? `${series.approximate ? APPROXIMATE : ""}${write(value)}` : NO_FIGURE;
     });
+  const anyApproximate = comparison.series.some((series) => series.approximate);
+  const anyNotModelled = comparison.series.some((series) => series.notModelled);
+  const keys = [
+    ...(anyApproximate ? [APPROXIMATE_KEY] : []),
+    ...(anyNotModelled
+      ? [`${NOT_MODELLED} is not modelled: the antenna of that row is a level wire shorter than a half-wave here, so there is no figure.`]
+      : []),
+  ].join(" ");
+  const withKeys = (text: string) => (keys ? `${text} ${keys}` : text);
 
   return [
     {
@@ -62,7 +74,7 @@ export function comparisonDocument(result: PredictionResult, comparison: Compare
       right: [2, 3],
       rows: comparison.series.map((series) => [
         series.label,
-        series.detail,
+        `${series.notModelled ? "Not modelled on this frequency. " : series.approximate ? "Approximate on this frequency. " : ""}${series.detail}`,
         isNumber(series.ssn) ? String(series.ssn) : NO_FIGURE,
         isNumber(series.foF2?.[11]) ? series.foF2[11]!.toFixed(1) : NO_FIGURE,
       ]),
@@ -72,26 +84,35 @@ export function comparisonDocument(result: PredictionResult, comparison: Compare
       kind: "table",
       head: ["UTC", ...hours],
       right,
-      rows: comparison.series.map((series) => [series.label, ...byHour(series.reliability, (value) => String(Math.round(value * 100)))]),
+      rows: comparison.series.map((series) => [
+        series.label,
+        ...byHour(series, series.reliability, (value) => String(Math.round(value * 100))),
+      ]),
     },
     {
       kind: "para",
-      text: `Each figure is the share of the month's days on which ${mode.label} reaches what it is taken to need, in per cent, at the hour UTC above it (24 is midnight at the end of the day). A dash is an hour for which the engine gave no figure.`,
+      text: withKeys(
+        `Each figure is the share of the month's days on which ${mode.label} reaches what it is taken to need, in per cent, at the hour UTC above it (24 is midnight at the end of the day). A dash is an hour for which the engine gave no figure.`,
+      ),
     },
     { kind: "heading", text: "Median signal-to-noise ratio by hour" },
     {
       kind: "table",
       head: ["UTC", ...hours],
       right,
-      rows: comparison.series.map((series) => [series.label, ...byHour(series.snrDbHz, (value) => String(Math.round(value)))]),
+      rows: comparison.series.map((series) => [series.label, ...byHour(series, series.snrDbHz, (value) => String(Math.round(value)))]),
     },
-    { kind: "para", text: "In dB, in a 1 Hz bandwidth." },
+    { kind: "para", text: withKeys("In dB, in a 1 Hz bandwidth.") },
     { kind: "heading", text: "The path's MUF by hour" },
     {
       kind: "table",
       head: ["UTC", ...hours],
       right,
-      rows: comparison.series.map((series) => [series.label, ...byHour(series.mufMhz, (value) => String(Math.round(value)))]),
+      // The MUF does not depend on the antenna: it is the engine's for every series.
+      rows: comparison.series.map((series) => [
+        series.label,
+        ...byHour({ ...series, notModelled: undefined, approximate: undefined }, series.mufMhz, (value) => String(Math.round(value))),
+      ]),
     },
     { kind: "para", text: "In MHz, to the nearest whole one: the frequency below which the path is open on half the days of the month." },
     { kind: "heading", text: "Before relying on it" },

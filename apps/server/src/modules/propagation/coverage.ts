@@ -10,6 +10,8 @@
  * so nothing is kept of a half-finished one).
  */
 import {
+  antennaRunOn,
+  approximateOn,
   COVERAGE_MAX_CELLS,
   COVERAGE_MAX_LAT,
   COVERAGE_MIN_SPAN_DEG,
@@ -31,7 +33,7 @@ import { newId } from "../../core/ids.ts";
 import { toJobDto } from "../../core/jobs.ts";
 import { propagationSaved } from "../../db/schema.ts";
 import { EngineRefused } from "./host.ts";
-import { engineProblem, fix, type PropagationService } from "./service.ts";
+import { engineProblem, fix, type PropagationService, wireRunsMark } from "./service.ts";
 import { antenna, checkedMode, checkedModelled, date, frequency, modes, noise, power, site } from "./shapes.ts";
 import { hasAzimuthPattern } from "./voacap/antenna-files.ts";
 
@@ -120,7 +122,14 @@ export function registerCoverage(app: FastifyInstance, ctx: AppContext, service:
   async function keyed(request: CoverageRequest) {
     const mode = checkedMode(request);
     const { basis, tableSha, description, datasets } = await internals.basis(request.date, request.solar);
-    const key = internals.keyOf("coverage", { request, ssn: basis.ssn, tableSha, engine: description.sha256, datasets });
+    const key = internals.keyOf("coverage", {
+      request,
+      ssn: basis.ssn,
+      tableSha,
+      engine: description.sha256,
+      datasets,
+      ...wireRunsMark([request.txAntenna, request.rxAntenna], [request.frequencyMhz]),
+    });
     return { mode, basis, tableSha, description, datasets, key };
   }
 
@@ -193,17 +202,25 @@ export function registerCoverage(app: FastifyInstance, ctx: AppContext, service:
       if (!antennas) throw badRequest("The engine answered for none of the cells, so there is no map to show.");
 
       const turned = (spec: CoverageRequest["txAntenna"]) => hasAzimuthPattern(spec) && spec.broadsideDeg === null;
+      const approximate = approximateOn(request.txAntenna, request.rxAntenna, request.frequencyMhz);
       const limits = [
+        ...(approximate ? [`Every figure on this map is approximate. ${approximate}`] : []),
         ...(turned(request.txAntenna)
           ? [
-              "The transmitting antenna has no bearing, so it was turned broadside to each cell in turn: the picture is of the best the antenna can do in every direction, not of one fixed wire. Give the antenna a bearing to see its pattern.",
+              antennaRunOn(request.txAntenna, request.frequencyMhz) === "approximate"
+                ? "The transmitting antenna has no bearing, so it was turned broadside to each cell in turn: the picture is of the wire broadside to every direction, not of one fixed wire, and a wire longer than a half-wave is not strongest broadside. Give the antenna a bearing to see its pattern."
+                : "The transmitting antenna has no bearing, so it was turned broadside to each cell in turn: the picture is of the best the antenna can do in every direction, not of one fixed wire. Give the antenna a bearing to see its pattern.",
             ]
           : []),
         ...LIMITS,
       ];
       // The words for the antennas are the first answered cell's, less the bearing that belongs to that one cell.
       const plain = (words: string, spec: CoverageRequest["txAntenna"], whom: string) =>
-        turned(spec) ? words.replace(/, broadside towards \d+° \(the other station\)/, `, broadside turned towards ${whom}`) : words;
+        turned(spec)
+          ? words
+              .replace(/, broadside towards \d+° \(the other station\)/, `, broadside turned towards ${whom}`)
+              .replace(/, the wire running \d+° to \d+°/, "")
+          : words;
       const result: CoverageResult = {
         key,
         request,
@@ -221,6 +238,7 @@ export function registerCoverage(app: FastifyInstance, ctx: AppContext, service:
           tx: plain(antennas.tx, request.txAntenna, "each cell"),
           rx: plain(antennas.rx, request.rxAntenna, "the transmitter"),
         },
+        approximate,
         limits,
       };
       internals.keep(key, "coverage", description, request, result);

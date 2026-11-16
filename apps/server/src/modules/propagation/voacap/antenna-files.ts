@@ -24,13 +24,39 @@
  *   half-wave it is no model of an end-fed wire: it is fed at its centre, and it refers
  *   its gain to the current at that feed point, so a wire a whole wavelength long reads
  *   some 17 dB below a half-wave broadside, where an end-fed wire of that length has a
- *   null. So the file is written, and `engine.ts` gives no figure for a frequency on
- *   which the wire is not about a half-wave (`wireOn` in `@outpost/shared`).
+ *   null. So it is written only where the wire is about a half-wave.
+ * - Type 41 (the ITS-78 "sloping long wire", `sample.41`) is written for a level wire
+ *   longer than a half-wave: slope 0, the wire's length, and its height as the feed
+ *   height. Its current is that of a wire fed at one end, and laid level its pattern is
+ *   the same whichever end the feed is at; its reference direction is along the wire.
+ *   Its gain is worked out against the wire as a monopole over perfect ground, so it
+ *   reads about 1.3 dB below type 23 at a half-wave, and its figures are labelled
+ *   approximate. Two things differ from the other files, both checked against the
+ *   engine in `test/propagation-wire.test.ts`:
+ *   - The length and height are written in wavelengths at the one frequency the file is
+ *     for. The engine keeps a pattern for each whole megahertz and reads between them;
+ *     for a long wire a length in metres is a different number of wavelengths at each
+ *     whole megahertz, and reading between two such patterns is not the pattern of the
+ *     wire (seen: up to 12 dB apart for 82 m of wire). So each frequency gets its own file.
+ *   - The file has no "gain above dipole" line. The gain added and feedline loss are
+ *     applied by `engine.ts` instead, by lowering the requirement and raising the ratio
+ *     and signal by the same figure, which the engine shows gives what that line gives.
+ * - A level wire shorter than a half-wave is given no figure (`wireOn`); type 23 is
+ *   written for it, and `engine.ts` throws the answer away.
  *
- * Type 41 (the ITS-78 "sloping long wire", `sample.41`) was looked at for the horizontal
- * wire and is not used: see docs/hf-propagation.md, "Equipment".
+ * See docs/hf-propagation.md, "Equipment".
  */
-import { type AntennaSpec, antennaModelLabel, groundSetting, halfWaveRangeMhz, isHorizontalAntenna } from "@outpost/shared";
+import {
+  type AntennaSpec,
+  antennaModelLabel,
+  antennaRunOn,
+  groundSetting,
+  HF_MIN_MHZ,
+  halfWaveRangeMhz,
+  hfWavelengthMeters,
+  isHorizontalAntenna,
+  longWireRangeMhz,
+} from "@outpost/shared";
 
 /** A number in a column of the given width, as the sample files write them. */
 function field(value: number, width: number, decimals: number): string {
@@ -52,9 +78,32 @@ function wireLength(spec: AntennaSpec): number {
   return spec.lengthM;
 }
 
-/** The text of the antenna file for one end. */
-export function antennaFile(spec: AntennaSpec): string {
+/** Whether an antenna is run as the sloping long wire laid level at this frequency: an approximation, with a file of its own. */
+export const runsAsLongWire = (spec: AntennaSpec, mhz: number): boolean => antennaRunOn(spec, mhz) === "approximate";
+
+/**
+ * The text of the antenna file for one end. `mhz` is the frequency the file is for: it
+ * matters only for a level wire longer than a half-wave there, whose file holds that
+ * frequency's wavelengths; every other file serves every frequency.
+ */
+export function antennaFile(spec: AntennaSpec, mhz?: number): string {
   const gain = netGainDb(spec);
+  if (mhz !== undefined && runsAsLongWire(spec, mhz)) {
+    const wavelength = hfWavelengthMeters(mhz);
+    return [
+      "End-fed wire, horizontal, longer than a half-wave (Outpost)",
+      " 8     8 parameters",
+      "  0.00  [ 1] Max Gain dBi..:",
+      "  41    [ 2] Antenna Type..:",
+      ...groundLines(spec),
+      "10.000  [ 5] Operating Freq:",
+      "  0.00  [ 6] Slope from Hor:",
+      // Negative: wavelengths, at this file's one frequency.
+      `${field(-wireLength(spec) / wavelength, 6, 3)}  [ 7] Wire Length   :`,
+      `${field(-spec.heightM / wavelength, 6, 3)}  [ 8] Feed Height   :`,
+      "",
+    ].join("\n");
+  }
   switch (spec.kind) {
     case "isotropic": {
       // A table of gain against elevation angle (type 11) that is flat: the same gain,
@@ -145,8 +194,16 @@ export function describeAntenna(spec: AntennaSpec, beamDeg: number): string {
     case "end-fed-vertical":
       return `End-fed wire ${wireLength(spec)} m long, vertical with its bottom end at the ground, over ${ground.label.toLowerCase()} ground${adjust}. Run as VOACAP's vertical monopole (type 22) ${wireLength(spec)} m high on every frequency; off its half-wave frequencies the figures are for a wire that is not a half-wave. ${MATCHING_UNIT}`;
     case "end-fed-horizontal": {
-      const { fromMhz, toMhz } = halfWaveRangeMhz(wireLength(spec));
-      return `End-fed wire ${wireLength(spec)} m long, horizontal, ${spec.heightM} m above ${ground.label.toLowerCase()} ground, ${facing}${adjust}. Run as VOACAP's horizontal dipole (type 23) of that length from ${fromMhz.toFixed(1)} to ${toMhz.toFixed(1)} MHz, where the wire is about a half-wave; no figure is given on other frequencies. ${MATCHING_UNIT}`;
+      const length = wireLength(spec);
+      const { fromMhz, toMhz } = halfWaveRangeMhz(length);
+      const long = longWireRangeMhz(length);
+      const line = Math.round((beamDeg + 90) % 180);
+      const longer = long
+        ? ` Above ${long.fromMhz.toFixed(1)} MHz, where it is longer, approximate: run as VOACAP's sloping long wire (type 41) laid level, the wire running ${line}° to ${line + 180}°, whose level is unchecked and reads about 1.3 dB below the dipole model at a half-wave.`
+        : "";
+      const shorter =
+        fromMhz > HF_MIN_MHZ ? ` Below ${fromMhz.toFixed(1)} MHz, where it is shorter, not modelled: no figure is given.` : "";
+      return `End-fed wire ${length} m long, horizontal, ${spec.heightM} m above ${ground.label.toLowerCase()} ground, ${facing}${adjust}. Run as VOACAP's horizontal dipole (type 23) of that length from ${fromMhz.toFixed(1)} to ${toMhz.toFixed(1)} MHz, where the wire is about a half-wave.${longer}${shorter} ${MATCHING_UNIT}`;
     }
     default:
       return `${antennaModelLabel(spec.kind)}, ${spec.heightM} m above ${ground.label.toLowerCase()} ground, ${facing}${adjust}`;

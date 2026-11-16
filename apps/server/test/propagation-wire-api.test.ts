@@ -1,8 +1,9 @@
 /**
  * End-fed wires of a stated length through the API, with the real engine: what a
  * request may hold, profiles that keep a length, predictions saved before and after
- * lengths existed, and what each kind of answer does on a band the wire is not
- * modelled on. No test reaches the internet.
+ * lengths existed, and what each kind of answer does on a band where the wire is a
+ * half-wave, where it is longer and its figures are approximate, and where it is shorter
+ * and not modelled. No test reaches the internet.
  */
 import {
   ANTENNA_PRESETS,
@@ -16,6 +17,7 @@ import {
   type PredictionResult,
   planHours,
   planRecommendation,
+  RUN_LABELS,
   type SavedPrediction,
   sameAntennaSpec,
   wireOn,
@@ -99,7 +101,19 @@ describe("the four wires offered", () => {
     for (const mhz of [28.0, 29.7]) expect(wireOn(preset("efhw-5m-horizontal"), mhz)?.state).toBe("half-wave");
     expect(wireOn(flat10, 7.1)).toMatchObject({ state: "not-modelled" });
     expect(wireOn(flat10, 7.1)!.wavelengths).toBeCloseTo(0.237, 3);
-    expect(wireOn(flat10, 7.1)!.note).toContain("about a half-wave from 13.5 to 16.5 MHz");
+    expect(wireOn(flat10, 7.1)!.note).toContain("shorter than a half-wave");
+    expect(wireOn(flat10, 7.1)!.note).toContain("about a half-wave from 13.5 to 16.5 MHz, and run as an approximation above 16.5 MHz");
+    // Longer than a half-wave, a level wire is approximate: the sloping long wire laid level.
+    expect(wireOn(flat10, 21.22)).toMatchObject({ state: "approximate" });
+    expect(wireOn(flat10, 21.22)!.note).toContain("0.71 wavelengths at 21.22 MHz, longer than a half-wave");
+    expect(wireOn(flat10, 21.22)!.note).toContain("sloping long wire (type 41) laid level");
+    expect(wireOn(flat10, 21.22)!.note).toContain("reads about 1.3 dB below the dipole model at a half-wave");
+    // The edges: 0.55 wavelengths is still a half-wave, a hair above is approximate.
+    expect(wireOn(flat10, (0.55 * 299.792458) / 10)!.state).toBe("half-wave");
+    expect(wireOn(flat10, (0.551 * 299.792458) / 10)!.state).toBe("approximate");
+    expect(wireOn(flat10, (0.449 * 299.792458) / 10)!.state).toBe("not-modelled");
+    // The 5 m wire is never longer than a half-wave below 30 MHz.
+    expect(HF_BANDS.filter((item) => wireOn(preset("efhw-5m-horizontal"), item.mhz)!.state === "approximate")).toEqual([]);
     expect(wireOn(upright10, 7.1)).toMatchObject({ state: "other-length" });
     expect(wireOn(upright10, 7.1)!.note).toContain("0.24 wavelengths at 7.1 MHz, shorter than a half-wave");
     expect(wireOn(upright10, 7.1)!.note).toContain("no ground system");
@@ -152,17 +166,52 @@ describeWithVoacapData("a prediction with a level wire", () => {
     expect(Math.abs(noon.asked.snrDbHz - half.asked.snrDbHz)).toBeLessThan(0.5);
   });
 
-  it("has no figure on any other band, at any hour, and a blank is not a poor prediction", () => {
+  it("has approximate figures on the bands above, none on the bands below, at every hour, and a blank is not a poor prediction", () => {
     for (const hour of result.hours) {
       for (const [index, item] of HF_BANDS.entries()) {
         const cell = hour.bands[index]!;
-        if (item.id === "20m") expect(cell.notModelled).toBeUndefined();
-        else expect(cell).toMatchObject({ notModelled: true, path: null, reliability: 0, snrDbHz: 0, signalDbw: 0 });
+        if (item.id === "20m") expect(cell.notModelled ?? cell.approximate).toBeUndefined();
+        else if (item.mhz > 16.5) {
+          expect(cell.approximate).toBe(true);
+          expect(cell.notModelled).toBeUndefined();
+        } else expect(cell).toMatchObject({ notModelled: true, path: null, reliability: 0, snrDbHz: 0, signalDbw: 0 });
       }
     }
-    // The whole megahertz of the heat map that the wire is a half-wave on are 14, 15 and 16.
-    const modelled = result.sweepMhz.filter((mhz) => wireOn(flat10, mhz)!.state === "half-wave");
-    expect(modelled).toEqual([14, 15, 16]);
+    // Above, the engine found paths and gave figures.
+    expect(result.hours.some((hour) => hour.bands[band("15m")]!.path !== null && hour.bands[band("15m")]!.snrDbHz !== 0)).toBe(true);
+    // The whole megahertz of the heat map: 14, 15 and 16 a half-wave, 17 to 30 approximate, below 14 none.
+    expect(result.sweepMhz.filter((mhz) => wireOn(flat10, mhz)!.state === "half-wave")).toEqual([14, 15, 16]);
+    expect(result.sweepMhz.filter((mhz) => wireOn(flat10, mhz)!.state === "approximate")).toEqual(
+      Array.from({ length: 14 }, (_, at) => 17 + at),
+    );
+  });
+
+  it("carries, for the frequency asked about and each band, how it was run", () => {
+    expect(result.runs!.map((line) => [line.mhz, line.state])).toEqual([
+      [14.18, "modelled"],
+      [3.65, "not-modelled"],
+      [5.33, "not-modelled"],
+      [7.1, "not-modelled"],
+      [10.12, "not-modelled"],
+      [14.18, "modelled"],
+      [18.12, "approximate"],
+      [21.22, "approximate"],
+      [24.94, "approximate"],
+      [28.85, "approximate"],
+    ]);
+    expect(result.runs![0]!.tx).toBe(RUN_LABELS.halfWave);
+    expect(result.runs![7]!.tx).toBe(RUN_LABELS.approximate);
+    expect(result.runs![1]!.tx).toBe(RUN_LABELS.notModelled);
+    expect(result.runs![0]!.rx).toBe("Horizontal half-wave dipole (VOACAP type 23)");
+    expect(result.antennas.tx).toContain("Above 16.5 MHz, where it is longer, approximate");
+  });
+
+  it("marks the frequency asked about as approximate where the wire is longer, and gives the reply the same mark", async () => {
+    const { status, body } = await predict({ frequencyMhz: 21.22, reply: { powerWatts: 5, noise: "city" } });
+    expect(status).toBe(200);
+    expect(body.hours.every((hour) => hour.asked.approximate === true)).toBe(true);
+    expect(body.runs![0]).toMatchObject({ mhz: 21.22, state: "approximate" });
+    expect(body.hours.some((hour) => hour.reply !== null && hour.reply.snrDbHz !== 0)).toBe(true);
   });
 
   it("says so when the frequency asked about is one of them, and still answers for the band it can", async () => {
@@ -193,11 +242,13 @@ describeWithVoacapData("a prediction with a level wire", () => {
         .slice(2, -1)
         .filter((column) => column !== "0.0"),
     ).toEqual(["14.2", "14.2"]);
-    // 12 m of wire is a half-wave from 11.2 to 13.7 MHz, where no amateur band lies.
+    // Each band where the wire is longer is a page of its own, headed as approximate.
+    for (const mhz of [18.12, 21.22, 24.94, 28.85]) expect(page.body.listing).toContain(`Outpost: ${mhz} MHz, approximate.`);
+    // 4.5 m of wire is shorter than a half-wave on every band and at 7.1 MHz.
     const none = await app.api("POST", "/api/radio/propagation/listing", {
       ...base,
       frequencyMhz: 7.1,
-      txAntenna: { ...flat10, lengthM: 12 },
+      txAntenna: { ...flat10, lengthM: 4.5 },
     });
     expect(none.status).toBe(400);
     expect(none.body.error.message).toContain("There is no page to print");
@@ -269,6 +320,18 @@ describeWithVoacapData("the same path with one thing changed", () => {
   it("marks every series when it is the antenna of the question itself", async () => {
     const { body } = await compare({ ...base, frequencyMhz: 7.1 }, "power");
     expect(body.series.every((series) => series.notModelled === true)).toBe(true);
+    const above = (await compare({ ...base, frequencyMhz: 21.22 }, "power")).body;
+    expect(above.series.every((series) => series.approximate === true && series.notModelled === undefined)).toBe(true);
+  });
+
+  it("marks the level 10 m wire approximate on a band where it is longer, with figures", async () => {
+    const { body } = await compare({ ...base, txAntenna: dipole, frequencyMhz: 28.85 }, "antennas");
+    expect(body.series.filter((series) => series.approximate).map((series) => series.label)).toEqual([
+      "End-fed half-wave, 10 m wire, horizontal",
+    ]);
+    expect(body.series.filter((series) => series.notModelled)).toEqual([]);
+    const wire = body.series.find((series) => series.approximate)!;
+    expect(wire.snrDbHz.some((value) => value !== 0)).toBe(true);
   });
 });
 
@@ -308,6 +371,31 @@ describeWithVoacapData("a coverage map", () => {
       "End-fed wire 10 m long, horizontal, 6 m above average ground, broadside turned towards each cell",
     );
     expect(coverage.cells.filter((cell: unknown) => cell !== null).length).toBeGreaterThan(10);
+  });
+
+  it("is worked out on a frequency where the level wire is approximate, and says so", async () => {
+    const asked = await app.api("POST", "/api/radio/propagation/coverage", { ...map, frequencyMhz: 21.22 });
+    expect(asked.status).toBe(200);
+    await app.ctx.jobs.whenIdle();
+    const job = (await app.api("GET", `/api/jobs/${asked.body.job.id}`)).body.job;
+    expect(job.state).toBe("succeeded");
+    const coverage = (await app.api("GET", `/api/radio/propagation/coverage/${job.result.key}`)).body.coverage;
+    expect(coverage.approximate).toContain(
+      "The transmitting antenna: 10 m of wire is 0.71 wavelengths at 21.22 MHz, longer than a half-wave",
+    );
+    expect(coverage.limits[0]).toMatch(/^Every figure on this map is approximate\./);
+    expect(coverage.limits.join(" ")).toContain("a wire longer than a half-wave is not strongest broadside");
+    // The bearing of the wire belongs to one cell, and is not left in the words for the whole map.
+    expect(coverage.antennas.tx).not.toMatch(/the wire running \d+°/);
+    expect(coverage.cells.filter((cell: unknown) => cell !== null).length).toBeGreaterThan(10);
+    // On the half-wave band nothing is approximate.
+    const half = await app.api("POST", "/api/radio/propagation/coverage", { ...map, frequencyMhz: 14.18 });
+    expect(half.status).toBe(200);
+    await app.ctx.jobs.whenIdle();
+    if (half.body.job) {
+      const done = (await app.api("GET", `/api/jobs/${half.body.job.id}`)).body.job;
+      expect((await app.api("GET", `/api/radio/propagation/coverage/${done.result.key}`)).body.coverage.approximate).toBeNull();
+    } else expect(half.body.coverage.approximate).toBeNull();
   });
 
   it("is worked out on any frequency for an upright wire", async () => {
@@ -368,6 +456,39 @@ describeWithVoacapData("a communication plan", () => {
     // The pair without the level wire has figures on both bands: the upright wire is run on 40 m as a wire of its length.
     expect(figures("b", "c", "40m").forward.snrDbHz.some((value) => value !== null)).toBe(true);
     expect(figures("b", "c", "20m").forward.snrDbHz.some((value) => value !== null)).toBe(true);
+    expect(matrix.pairs.every((item) => item.bands.every((entry) => entry.approximate === undefined))).toBe(true);
+  });
+
+  it("gives approximate figures on a band where a station's level wire is longer, may recommend it, and says so", async () => {
+    const created = await app.api("POST", "/api/radio/communication-plans", {
+      name: "Wires up high",
+      notes: "",
+      stations: [
+        station("a", "Home", 51.5074, -0.1278, flat10, "End-fed half-wave, 10 m wire, horizontal"),
+        station("b", "Rome", 41.9, 12.5, dipole, "Low horizontal dipole, 5 m"),
+      ],
+      date: "2026-06-16",
+      fromUtc: 9,
+      toUtc: 15,
+      bands: ["40m", "20m", "15m"],
+      mode: "cw",
+      requiredSnrDb: null,
+      referenceBandwidthHz: null,
+      solar: { source: "manual", ssn: 150 },
+      links: [],
+    });
+    const matrix = (await app.api("POST", `/api/radio/communication-plans/${created.body.plan.id}/matrix`)).body.matrix as PlanResult;
+    const pair = matrix.pairs[0]!;
+    const byBand = Object.fromEntries(pair.bands.map((entry) => [entry.bandId, entry]));
+    expect(byBand["15m"]!.approximate).toBe(true);
+    expect(byBand["15m"]!.forward.snrDbHz.some((value) => value !== null)).toBe(true);
+    expect(byBand["20m"]!.approximate).toBeUndefined();
+    expect(byBand["40m"]!.approximate).toBeUndefined();
+    expect(new Set(byBand["40m"]!.forward.snrDbHz)).toEqual(new Set([null]));
+    const pick = planRecommendation(pair, planHours(9, 15), false);
+    const chosen = [pick.primary, pick.alternate].filter((choice) => choice !== null);
+    expect(chosen.map((choice) => choice!.bandId)).not.toContain("40m");
+    for (const choice of chosen) expect(choice!.approximate).toBe(choice!.bandId === "15m");
   });
 });
 
@@ -397,6 +518,34 @@ describeWithVoacapData("the contact log compared with predictions", () => {
     const plain = (await app.api("POST", "/api/radio/observations/compare", { ...assumptions, myAntenna: dipole })).body
       .comparison as ComparisonResult;
     expect(plain.compared).toBe(1);
+    expect(plain.comparedApproximate).toBe(0);
+  });
+
+  it("counts an entry on a band where the wire is longer apart from the rest, since its figure is approximate", async () => {
+    const made = await app.api("POST", "/api/radio/observations", {
+      at: "2026-11-16T12:00:00Z",
+      frequencyMhz: 21.074,
+      band: "",
+      mode: "ft8",
+      outcome: "contact",
+      tx: { call: "G4AAA", lat: 51.5074, lon: -0.1278 },
+      rx: { call: "I0CCC", lat: 41.9, lon: 12.5 },
+      powerWatts: 5,
+      antenna: "",
+      reportSent: "",
+      reportReceived: "",
+      notes: "",
+    });
+    expect(made.status).toBe(200);
+    const assumptions = { myAntenna: flat10, theirAntenna: dipole, noise: "city", defaultPowerWatts: null, ssnByMonth: {} };
+    const wire = (await app.api("POST", "/api/radio/observations/compare", assumptions)).body.comparison as ComparisonResult;
+    expect(wire.compared).toBe(1);
+    expect(wire.comparedApproximate).toBe(1);
+    expect(wire.rows[0]!.approximate).toBe(true);
+    const count = (levels: ComparisonResult["levels"] | undefined) =>
+      (levels ?? []).reduce((sum, level) => sum + level.contact + level.heard + level.failed, 0);
+    expect(count(wire.levels)).toBe(0);
+    expect(count(wire.approximateLevels)).toBe(1);
   });
 });
 
@@ -461,6 +610,76 @@ describeWithVoacapData("equipment profiles", () => {
     // Its length still follows the frequency: figures on every band, as before.
     expect(body.hours[11]!.bands.every((cell) => cell.notModelled === undefined)).toBe(true);
     expect(body.antennas.tx).toContain("run as a horizontal half-wave dipole (approximation), 6 m above average ground");
+  });
+});
+
+describeWithVoacapData("answers kept while the bands above a level wire's half-wave were not modelled", () => {
+  /** The key a question had before: the same body with nothing about how a level wire is run. */
+  const keyBefore = async (asked: PredictionRequest) => {
+    const { internals } = app.ctx.services.propagation;
+    const request = normalise(asked);
+    const { basis, tableSha, description, datasets } = await internals.basis(request.date, { source: "table" });
+    return {
+      key: internals.keyOf("point", { request, ssn: basis.ssn, tableSha, engine: description.sha256, datasets }),
+      description,
+    };
+  };
+
+  it("are not served for a question with a level wire that is now approximate somewhere; every other question keeps its key", async () => {
+    const { internals } = app.ctx.services.propagation;
+    // As kept then: every band above 20 m blank.
+    const asked = { ...base, date: "2026-12-16" };
+    const before = await keyBefore(asked);
+    internals.keep(before.key, "point", before.description, asked, { kept: "before", hours: [] });
+    const now = (await predict({ date: "2026-12-16" })).body;
+    expect(now.key).not.toBe(before.key);
+    expect(now.cached).toBe(false);
+    expect(now.hours[11]!.bands[band("15m")]!.approximate).toBe(true);
+    // A dipole's answer, and the 5 m level wire's (never longer than a half-wave below 30 MHz), keep the key they had.
+    for (const txAntenna of [dipole, preset("efhw-5m-horizontal"), upright10]) {
+      const same = await keyBefore({ ...asked, txAntenna });
+      expect((await predict({ date: "2026-12-16", txAntenna })).body.key).toBe(same.key);
+    }
+  });
+
+  it("leave a saved prediction to be asked again as it was saved, and answered as the wire is run now", async () => {
+    const asked: PredictionRequest = { ...base, date: "2026-10-16", frequencyMhz: 21.22 };
+    const before = await keyBefore(asked);
+    const { internals } = app.ctx.services.propagation;
+    internals.keep(before.key, "point", before.description, asked, { kept: "before", hours: [] });
+    const made = await app.api("POST", "/api/radio/propagation/saved", { name: "15 m before", request: asked, key: before.key });
+    expect(made.status).toBe(200);
+    const kept = (await app.api("GET", "/api/radio/propagation/saved")).body.saved.find(
+      (item: SavedPrediction) => item.name === "15 m before",
+    ) as SavedPrediction;
+    expect(kept.request).toEqual(made.body.saved.request);
+    expect(kept.request.txAntenna).toEqual(flat10);
+    const again = (await app.api<PredictionResult>("POST", "/api/radio/propagation/predict", kept.request)).body;
+    expect(again.key).not.toBe(before.key);
+    expect(again.hours[11]!.asked.approximate).toBe(true);
+  });
+
+  it("are not served for a coverage map, a comparison or a plan that now has an approximate band; others keep their keys", async () => {
+    const { wireRunsMark } = await import("../src/modules/propagation/service.ts");
+    expect(wireRunsMark([flat10, dipole], [21.22])).toEqual({ wireRuns: "level-long-wire-type-41" });
+    expect(wireRunsMark([flat10, dipole], [14.18, 7.1])).toEqual({});
+    expect(wireRunsMark([preset("efhw-5m-horizontal"), upright10, dipole], [3.65, 28.85])).toEqual({});
+    // A comparison of the generic antennas is marked wherever the 10 m level wire is longer.
+    const { internals } = app.ctx.services.propagation;
+    const asked = normalise({ ...base, txAntenna: dipole, frequencyMhz: 24.94 });
+    const { basis, tableSha, description, datasets } = await internals.basis(asked.date, { source: "table" });
+    const old = internals.keyOf("compare", {
+      base: asked,
+      what: "antennas",
+      ssn: basis.ssn,
+      tableSha,
+      engine: description.sha256,
+      datasets,
+      antennas: ANTENNA_PRESETS.map((item) => [item.name, item.spec]),
+    });
+    internals.keep(old, "compare", description, {}, { what: "antennas", series: [], kept: "before" });
+    const { body } = await app.api<CompareResult>("POST", "/api/radio/propagation/compare", { base: asked, what: "antennas" });
+    expect(body.series.length).toBe(ANTENNA_PRESETS.length);
   });
 });
 

@@ -22,14 +22,19 @@
  * how the library knows it already has it.
  */
 import {
+  APPROXIMATE_KEY,
+  APPROXIMATE_MARK,
+  approximateOn,
   bandOf,
   dbwToDbm,
   HF_BANDS,
+  MODEL_JOIN_NOTE,
   NOISE_ENVIRONMENTS,
   notModelledOn,
   type PredictionCell,
   type PredictionHour,
   type PredictionResult,
+  RUN_LABELS,
   sMeter,
   utcLabel,
 } from "@outpost/shared";
@@ -49,9 +54,21 @@ export const NO_FIGURE = "-";
 /** What is printed where the engine has no model of an antenna on a band: not a poor prediction, no prediction. */
 export const NOT_MODELLED = "n/m";
 
-/** A cell the answer marks as not modelled (an end-fed wire away from the band it is a half-wave on). */
+/** What a figure carries where it is approximate: "~62". The key to it is printed with every table that has one. */
+export const APPROXIMATE = APPROXIMATE_MARK;
+
+/** A cell the answer marks as not modelled (a level wire shorter than a half-wave). */
 const notModelled = (cell: PredictionCell | null | undefined): boolean =>
   Boolean(cell) && typeof cell === "object" && cell!.notModelled === true;
+/** A cell the answer marks as approximate (a level wire longer than a half-wave, run as VOACAP's sloping long wire). */
+const approximate = (cell: PredictionCell | null | undefined): boolean =>
+  Boolean(cell) && typeof cell === "object" && cell!.approximate === true;
+/** A figure as a table prints it, with the mark when the cell is approximate. */
+const marked = (cell: PredictionCell | null | undefined, text: string): string =>
+  approximate(cell) && text !== NO_FIGURE ? `${APPROXIMATE}${text}` : text;
+
+/** Said once under every table that holds an approximate figure. */
+export { APPROXIMATE_KEY };
 
 const isNumber = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
 const mhz = (value: number) => `${value.toFixed(value >= 10 ? 1 : 2)} MHz`;
@@ -143,6 +160,7 @@ const KNOWN_PARTS = new Set([
   "sweepMhz",
   "hours",
   "antennas",
+  "runs",
   "deck",
   "limits",
 ]);
@@ -197,7 +215,10 @@ export function predictionDocument(result: PredictionResult): Block[] {
     : `taken to need ${mode.requiredSnrDb} dB in ${mode.referenceBandwidthHz} Hz, which is ${mode.requiredSnrDbHz} dB in 1 Hz (${mode.source})`;
 
   const blocks: Block[] = [
-    { kind: "title", text: `HF prediction: ${request.tx.name} to ${request.rx.name}, ${f}${band ? ` (${band.label})` : ""}` },
+    {
+      kind: "title",
+      text: `HF prediction: ${request.tx.name} to ${request.rx.name}, ${f}${band ? ` (${band.label})` : ""}${approximate(result.hours[0]?.asked) ? ", approximate" : ""}`,
+    },
     {
       kind: "para",
       text: `For ${longDate.format(dateOf(request.date))}. The model works by month, so this is a prediction for any day of ${monthYear.format(dateOf(request.date))}. Mode: ${mode.label}, ${needs}.`,
@@ -231,9 +252,34 @@ export function predictionDocument(result: PredictionResult): Block[] {
   }
   blocks.push({ kind: "list", items: stations });
 
+  // ── How a wire of a stated length was run on each band, where the answer says ──
+  const runs = Array.isArray(result.runs) ? result.runs : [];
+  const levelWire = [request.txAntenna, request.rxAntenna].some((spec) => spec.kind === "end-fed-horizontal");
+  if (levelWire && runs.length === HF_BANDS.length + 1) {
+    const states = new Set(runs.slice(1).map((line) => line.state));
+    blocks.push(
+      { kind: "heading", text: "How the antennas were run on each band" },
+      {
+        kind: "list",
+        items: HF_BANDS.map((item, index) => {
+          const line = runs[index + 1]!;
+          const state = line.state === "approximate" ? "approximate" : line.state === "not-modelled" ? NOT_MODELLED : "modelled";
+          return `${item.label} (${item.mhz} MHz), ${state}. Transmitting: ${line.tx}. Receiving: ${line.rx}.`;
+        }),
+      },
+    );
+    if (states.has("approximate") && runs.slice(1).some((line) => [line.tx, line.rx].includes(RUN_LABELS.halfWave)))
+      blocks.push({ kind: "para", text: MODEL_JOIN_NOTE });
+  }
+
   // ── The best of it, as the screen states it ──
   const best = bestHourOf(result);
   const findings: string[] = [];
+  if (approximate(result.hours[0]?.asked)) {
+    findings.push(
+      `Approximate: every figure for ${f} is. ${approximateOn(request.txAntenna, request.rxAntenna, request.frequencyMhz) ?? ""}`.trim(),
+    );
+  }
   if (notModelled(result.hours[0]?.asked)) {
     const why = notModelledOn(result.request.txAntenna, result.request.rxAntenna, result.request.frequencyMhz);
     findings.push(
@@ -270,7 +316,10 @@ export function predictionDocument(result: PredictionResult): Block[] {
       findings.push(
         `Best bands at ${utcLabel(best.utc)} UTC: ${ranked
           .slice(0, 3)
-          .map((item) => `${item.band.label} (${mhz(item.band.mhz)}) ${percent(item.share)}, ${item.cell.path}, ${whole(item.ratio)} dB`)
+          .map(
+            (item) =>
+              `${item.band.label} (${mhz(item.band.mhz)}) ${marked(item.cell, percent(item.share))}${approximate(item.cell) ? " (approximate)" : ""}, ${item.cell.path}, ${whole(item.ratio)} dB`,
+          )
           .join("; ")}.`,
       );
     }
@@ -279,7 +328,8 @@ export function predictionDocument(result: PredictionResult): Block[] {
 
   // ── The frequency asked about, hour by hour ──
   const withReply = !noMode && result.hours.some((hour) => hour.reply);
-  blocks.push({ kind: "heading", text: `${f} hour by hour` });
+  const askedApproximate = approximate(result.hours[0]?.asked);
+  blocks.push({ kind: "heading", text: `${f} hour by hour${askedApproximate ? ", approximate" : ""}` });
   const head = [
     "UTC",
     ...(noMode ? [] : ["Rel %"]),
@@ -307,9 +357,9 @@ export function predictionDocument(result: PredictionResult): Block[] {
       const signal = figure(cell, "signalDbw");
       return [
         utcLabel(hour.utc),
-        ...(noMode ? [] : [share(reliability(result, cell))]),
-        ...(withReply ? [share(replyOf(hour))] : []),
-        whole(ratio),
+        ...(noMode ? [] : [marked(cell, share(reliability(result, cell)))]),
+        ...(withReply ? [marked(cell, share(replyOf(hour)))] : []),
+        marked(cell, whole(ratio)),
         whole(ratio === null || low === null ? null : ratio - low),
         whole(ratio === null || up === null ? null : ratio + up),
         whole(signal === null ? null : dbwToDbm(signal)),
@@ -327,7 +377,7 @@ export function predictionDocument(result: PredictionResult): Block[] {
       noMode
         ? ""
         : `Rel is the share of the month's days on which ${mode.label} reaches what it is taken to need, in per cent${withReply ? "; Reply is the same for the way back" : ""}. `
-    }SNR is the median signal-to-noise ratio in 1 Hz, with the ratio on the worst and on the best tenth of days. Signal is the median power at the receiver; the S-meter reading follows the convention that S9 is -73 dBm, which real meters seldom do. MUF (open on half the days) and FOT (on nine days in ten) are in MHz. Path is the hops and the layer that returns the signal; angle is how far above the horizon it leaves. 24:00 is midnight at the end of the day. ${notModelled(result.hours[0]?.asked) ? "There are no figures here because the antenna is not modelled on this frequency (see above); that is not the same as no path." : "A dash is an hour for which the engine gave no figure: it found no path."}`,
+    }SNR is the median signal-to-noise ratio in 1 Hz, with the ratio on the worst and on the best tenth of days. Signal is the median power at the receiver; the S-meter reading follows the convention that S9 is -73 dBm, which real meters seldom do. MUF (open on half the days) and FOT (on nine days in ten) are in MHz. Path is the hops and the layer that returns the signal; angle is how far above the horizon it leaves. 24:00 is midnight at the end of the day. ${notModelled(result.hours[0]?.asked) ? "There are no figures here because the antenna is not modelled on this frequency (see above); that is not the same as no path." : "A dash is an hour for which the engine gave no figure: it found no path."}${askedApproximate ? ` ${APPROXIMATE_KEY} Every figure in this table is.` : ""}`,
   });
 
   // ── Every band, hour by hour ──
@@ -342,11 +392,12 @@ export function predictionDocument(result: PredictionResult): Block[] {
       ...result.hours.map((hour) => {
         const cell = hour.bands?.[index];
         if (notModelled(cell)) return NOT_MODELLED;
-        return noMode ? whole(figure(cell, "snrDbHz")) : share(reliability(result, cell));
+        return marked(cell, noMode ? whole(figure(cell, "snrDbHz")) : share(reliability(result, cell)));
       }),
     ]),
   });
   const without = HF_BANDS.filter((_item, index) => result.hours.some((hour) => notModelled(hour.bands?.[index])));
+  const roughly = HF_BANDS.filter((_item, index) => result.hours.some((hour) => approximate(hour.bands?.[index])));
   blocks.push({
     kind: "para",
     text: `${
@@ -355,6 +406,14 @@ export function predictionDocument(result: PredictionResult): Block[] {
         : `Each figure is the reliability of ${mode.label} in per cent of days,`
     } on one frequency near the middle of the band (${HF_BANDS.map((item) => `${item.label} ${item.mhz}`).join(", ")} MHz), at the hour UTC above it. A dash is an hour for which the engine gave no figure for that band. Your licence decides which bands you may use.`,
   });
+  if (roughly.length > 0) {
+    blocks.push({
+      kind: "para",
+      text: `${APPROXIMATE_KEY} Approximate here: ${roughly.map((item) => item.label).join(", ")}.${
+        runs.some((line) => [line.tx, line.rx].includes(RUN_LABELS.halfWave)) ? ` ${MODEL_JOIN_NOTE}` : ""
+      }`,
+    });
+  }
   if (without.length > 0) {
     const why = notModelledOn(result.request.txAntenna, result.request.rxAntenna, without[0]!.mhz);
     blocks.push({

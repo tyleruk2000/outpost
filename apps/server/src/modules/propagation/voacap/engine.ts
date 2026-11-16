@@ -7,7 +7,7 @@
  */
 import {
   type AntennaSpec,
-  antennaModelledOn,
+  antennaRunOn,
   type EngineDescription,
   greatCirclePoint,
   HF_MAX_MHZ,
@@ -19,14 +19,14 @@ import {
   type PropagationSite,
 } from "@outpost/shared";
 import type { CircuitHour, CircuitRequest, CircuitResult, IonosphereRequest, PropagationEngine } from "../engine.ts";
-import { antennaFile, describeAntenna, hasAzimuthPattern } from "./antenna-files.ts";
+import { antennaFile, describeAntenna, hasAzimuthPattern, netGainDb, runsAsLongWire } from "./antenna-files.ts";
 import { type LoadedDataset, type LoadedEngineFile, loadDataset, loadEngineFile, type VoacapPaths } from "./files.ts";
-import { VoacapInstance } from "./instance.ts";
+import { EngineError, VoacapInstance } from "./instance.ts";
 
 /** How many frequencies one run of VOACAP takes. */
 export const FREQUENCIES_PER_RUN = 11;
 
-interface WireCell {
+export interface WireCell {
   mhz: number;
   mode: string | null;
   hops?: number;
@@ -99,11 +99,38 @@ function cell(wire: WireCell): PredictionCell {
 
 /**
  * What stands at a frequency on which an antenna is a wire the engine's model does not
- * describe: no figures, and a mark saying why. The engine was run with the file all the
- * same (one file serves every frequency); what it answered there is thrown away, because
- * it is the answer for a different antenna.
+ * describe: no figures, and a mark saying why. The engine was run with a file all the
+ * same (the one that serves every other frequency); what it answered there is thrown
+ * away, because it is the answer for a different antenna.
  */
 const notModelledCell = (mhz: number): PredictionCell => ({ ...cell({ mhz, mode: null }), notModelled: true });
+
+/**
+ * A cell from a run in which one end was the sloping long wire, whose file cannot carry
+ * the person's gain and feedline loss. The run was made with the requirement lowered by
+ * that figure (so the reliability is the engine's own for the antenna with it), and here
+ * the figure is added to what it moves: the ratio and the signal by both ends' figure,
+ * the field strength by the transmitting end's (it is measured before the receiving
+ * antenna), each end's gain by its own, and the system loss, which counts both gains, the
+ * other way. This is what the "gain above dipole" line of the other files does; the
+ * engine was run both ways to show it (`test/propagation-wire.test.ts`).
+ */
+export function withOutsideGain(wire: WireCell, txDb: number, rxDb: number): WireCell {
+  if (wire.mode === null || (txDb === 0 && rxDb === 0)) return wire;
+  const add = (value: number | undefined, db: number) => (value === undefined ? undefined : value + db);
+  return {
+    ...wire,
+    snrDb: add(wire.snrDb, txDb + rxDb),
+    signalDbw: add(wire.signalDbw, txDb + rxDb),
+    fieldDbu: add(wire.fieldDbu, txDb),
+    txGainDbi: add(wire.txGainDbi, txDb),
+    rxGainDbi: add(wire.rxGainDbi, rxDb),
+    lossDb: add(wire.lossDb, -(txDb + rxDb)),
+  };
+}
+
+/** The lowest and highest requirement the engine's card takes, dB in 1 Hz. */
+const REQUIRED_RANGE = [-30, 99.9] as const;
 
 const wireSite = (site: PropagationSite) => ({ name: site.name.slice(0, 20), lat: site.lat, lon: site.lon });
 
@@ -132,20 +159,66 @@ export function createVoacapEngine(paths: VoacapPaths): PropagationEngine {
     maxMhz: HF_MAX_MHZ,
   };
 
-  /** Writes the two antenna files and returns the cards that name them. */
-  function antennas(request: { tx: PropagationSite; rx: PropagationSite; txAntenna: AntennaSpec; rxAntenna: AntennaSpec }) {
-    const engine = live();
-    const beam = (spec: AntennaSpec, from: PropagationSite, to: PropagationSite) =>
-      hasAzimuthPattern(spec) ? Math.round((spec.broadsideDeg ?? initialBearingDeg(from, to)) * 10) / 10 : 0;
-    const txBeam = beam(request.txAntenna, request.tx, request.rx);
-    const rxBeam = beam(request.rxAntenna, request.rx, request.tx);
-    engine.writeFile("antennas/outpost/tx", encoder.encode(antennaFile(request.txAntenna)));
-    engine.writeFile("antennas/outpost/rx", encoder.encode(antennaFile(request.rxAntenna)));
-    return {
-      cards: { txAntennas: [{ file: "outpost/tx", beamDeg: txBeam }], rxAntennas: [{ file: "outpost/rx", beamDeg: rxBeam }] },
-      words: { tx: describeAntenna(request.txAntenna, txBeam), rx: describeAntenna(request.rxAntenna, rxBeam) },
-    };
+  /** The broadside bearing of an end's antenna, as the engine is given it for a dipole: the person's, or turned to the other station. */
+  const broadsideOf = (spec: AntennaSpec, from: PropagationSite, to: PropagationSite) =>
+    hasAzimuthPattern(spec) ? Math.round((spec.broadsideDeg ?? initialBearingDeg(from, to)) * 10) / 10 : 0;
+
+  /**
+   * One end at one frequency: the file, the bearing the engine is given, and the gain the
+   * file cannot carry. A level wire longer than a half-wave gets a file of its own for the
+   * frequency, and since its model's reference direction is along the wire, its bearing
+   * is the broadside's turned 90°: the same wire, hung the same way, as on every band.
+   */
+  function endAt(spec: AntennaSpec, from: PropagationSite, to: PropagationSite, mhz: number) {
+    const broadside = broadsideOf(spec, from, to);
+    if (runsAsLongWire(spec, mhz))
+      return { text: antennaFile(spec, mhz), beamDeg: Math.round(((broadside + 90) % 360) * 10) / 10, outsideDb: netGainDb(spec) };
+    return { text: antennaFile(spec), beamDeg: broadside, outsideDb: 0 };
   }
+
+  /**
+   * The frequencies of a request in runs that share both antenna files, in the order each
+   * first appears, so that the first run holds the first frequency asked for. Every
+   * frequency on which neither end is the long wire shares one file per end.
+   */
+  function runsOf(request: CircuitRequest, frequencies: number[]) {
+    const groups = new Map<string, { tx: ReturnType<typeof endAt>; rx: ReturnType<typeof endAt>; at: number[] }>();
+    frequencies.forEach((mhz, at) => {
+      const tx = endAt(request.txAntenna, request.tx, request.rx, mhz);
+      const rx = endAt(request.rxAntenna, request.rx, request.tx, mhz);
+      const key = JSON.stringify([tx.text, tx.beamDeg, rx.text, rx.beamDeg]);
+      const group = groups.get(key) ?? groups.set(key, { tx, rx, at: [] }).get(key)!;
+      group.at.push(at);
+    });
+    const runs: Array<{ tx: ReturnType<typeof endAt>; rx: ReturnType<typeof endAt>; at: number[] }> = [];
+    for (const group of groups.values())
+      for (let start = 0; start < group.at.length; start += FREQUENCIES_PER_RUN)
+        runs.push({ ...group, at: group.at.slice(start, start + FREQUENCIES_PER_RUN) });
+    return runs;
+  }
+
+  /** Writes one run's two antenna files and returns the cards that name them. */
+  function cardsFor(run: { tx: { text: string; beamDeg: number }; rx: { text: string; beamDeg: number } }) {
+    const engine = live();
+    engine.writeFile("antennas/outpost/tx", encoder.encode(run.tx.text));
+    engine.writeFile("antennas/outpost/rx", encoder.encode(run.rx.text));
+    return { txAntennas: [{ file: "outpost/tx", beamDeg: run.tx.beamDeg }], rxAntennas: [{ file: "outpost/rx", beamDeg: run.rx.beamDeg }] };
+  }
+
+  /** The requirement a run is made at: lowered by the gain its files cannot carry. */
+  function requirementFor(request: CircuitRequest, outsideDb: number): number {
+    const required = Math.round((request.requiredSnrDbHz - outsideDb) * 10) / 10;
+    if (required < REQUIRED_RANGE[0] || required > REQUIRED_RANGE[1])
+      throw new EngineError(
+        `with the gain added and feedline loss of the long-wire antenna (${outsideDb.toFixed(1)} dB) the requirement is ${required} dB in 1 Hz, outside what the engine takes (${REQUIRED_RANGE[0]} to ${REQUIRED_RANGE[1]}). Check the gain and loss given for the antenna.`,
+      );
+    return required;
+  }
+
+  const words = (request: CircuitRequest) => ({
+    tx: describeAntenna(request.txAntenna, broadsideOf(request.txAntenna, request.tx, request.rx)),
+    rx: describeAntenna(request.rxAntenna, broadsideOf(request.rxAntenna, request.rx, request.tx)),
+  });
 
   const base = (request: CircuitRequest, freqs: number[]) => ({
     tx: wireSite(request.tx),
@@ -166,36 +239,47 @@ export function createVoacapEngine(paths: VoacapPaths): PropagationEngine {
 
     circuit(request: CircuitRequest): CircuitResult {
       if (request.frequenciesMhz.length === 0) throw new Error("No frequency was asked for.");
-      const { cards, words } = antennas(request);
       const engine = live();
+      const states = request.frequenciesMhz.map((mhz) => [antennaRunOn(request.txAntenna, mhz), antennaRunOn(request.rxAntenna, mhz)]);
+      const cells: PredictionCell[][] = [];
       let first: WireSystems | undefined;
-      const hours: CircuitHour[] = [];
-      for (let start = 0; start < request.frequenciesMhz.length; start += FREQUENCIES_PER_RUN) {
-        const freqs = request.frequenciesMhz.slice(start, start + FREQUENCIES_PER_RUN);
-        const answer = engine.run<WireSystems>({ task: "systems", ...base(request, freqs), ...cards });
-        if (!first) {
-          first = answer;
-          for (const hour of answer.hours) {
-            hours.push({
-              utc: Math.round(hour.utc),
-              localTime: round(hour.localMeanTime, 2),
-              mufMhz: round(hour.mufMhz, 2),
-              fotMhz: round(hour.fotMhz, 2),
-              hpfMhz: round(hour.hpfMhz, 2),
-              cells: [],
-            });
-          }
+      for (const run of runsOf(request, request.frequenciesMhz)) {
+        const freqs = run.at.map((at) => request.frequenciesMhz[at]!);
+        const outside = run.tx.outsideDb + run.rx.outsideDb;
+        const answer = engine.run<WireSystems>({
+          task: "systems",
+          ...base(request, freqs),
+          requiredSnrDb: requirementFor(request, outside),
+          ...cardsFor(run),
+        });
+        first ??= answer;
+        for (const [hour, answered] of answer.hours.entries()) {
+          if (!cells[hour]) cells[hour] = [];
+          const row = cells[hour];
+          answered.freqs.forEach((wire, index) => {
+            const at = run.at[index]!;
+            const [tx, rx] = states[at]!;
+            if (tx === "not-modelled" || rx === "not-modelled") row[at] = notModelledCell(wire.mhz);
+            else if (tx === "approximate" || rx === "approximate")
+              row[at] = { ...cell(withOutsideGain(wire, run.tx.outsideDb, run.rx.outsideDb)), approximate: true };
+            else row[at] = cell(wire);
+          });
         }
-        const modelled = freqs.map((mhz) => antennaModelledOn(request.txAntenna, mhz) && antennaModelledOn(request.rxAntenna, mhz));
-        for (const [index, hour] of answer.hours.entries())
-          hours[index]!.cells.push(...hour.freqs.map((wire, at) => (modelled[at] ? cell(wire) : notModelledCell(wire.mhz))));
       }
+      const hours: CircuitHour[] = first!.hours.map((hour, index) => ({
+        utc: Math.round(hour.utc),
+        localTime: round(hour.localMeanTime, 2),
+        mufMhz: round(hour.mufMhz, 2),
+        fotMhz: round(hour.fotMhz, 2),
+        hpfMhz: round(hour.hpfMhz, 2),
+        cells: cells[index]!,
+      }));
       return {
         distanceKm: round(first!.distanceKm, 1),
         bearingDeg: round(first!.bearingTxDeg, 1),
         backBearingDeg: round(first!.bearingRxDeg, 1),
         hours,
-        antennas: words,
+        antennas: words(request),
         deck: first!.deck,
       };
     },
@@ -239,20 +323,42 @@ export function createVoacapEngine(paths: VoacapPaths): PropagationEngine {
     listing(request: CircuitRequest): string {
       // The printed page has no way to mark a column as not this antenna, so a frequency
       // on which an antenna is not modelled is left off the page.
-      const modelled = request.frequenciesMhz.filter(
-        (mhz) => antennaModelledOn(request.txAntenna, mhz) && antennaModelledOn(request.rxAntenna, mhz),
-      );
+      const modelled = request.frequenciesMhz
+        .filter((mhz) => antennaRunOn(request.txAntenna, mhz) !== "not-modelled" && antennaRunOn(request.rxAntenna, mhz) !== "not-modelled")
+        .slice(0, FREQUENCIES_PER_RUN);
       if (modelled.length === 0)
         throw new Error(
           "There is no page to print: on every frequency asked about, one of the antennas is a wire the engine's model does not describe.",
         );
-      const { cards } = antennas(request);
-      return live().run<{ listing: string }>({
-        task: "systems",
-        listing: true,
-        ...base(request, modelled.slice(0, FREQUENCIES_PER_RUN)),
-        ...cards,
-      }).listing;
+      // A frequency on which a level wire is run as the long wire has a file of its own, so
+      // it is a run, and a page, of its own: each page is what the engine prints for it,
+      // headed with what Outpost changed.
+      const pages: string[] = [];
+      for (const run of runsOf(request, modelled)) {
+        const freqs = run.at.map((at) => modelled[at]!);
+        const outside = run.tx.outsideDb + run.rx.outsideDb;
+        const page = live().run<{ listing: string }>({
+          task: "systems",
+          listing: true,
+          ...base(request, freqs),
+          requiredSnrDb: requirementFor(request, outside),
+          ...cardsFor(run),
+        }).listing;
+        const long = [runsAsLongWire(request.txAntenna, freqs[0]!), runsAsLongWire(request.rxAntenna, freqs[0]!)];
+        if (!long[0] && !long[1]) {
+          pages.push(page);
+          continue;
+        }
+        const which = long[0] && long[1] ? "Both antennas are" : long[0] ? "The transmitting antenna is" : "The receiving antenna is";
+        const lowered =
+          outside === 0
+            ? ""
+            : ` Its file cannot carry the gain added and feedline loss (${outside.toFixed(1)} dB), so the requirement on this page is lowered by that much and the signal, ratio and gains printed do not include it.`;
+        pages.push(
+          `Outpost: ${freqs[0]} MHz, approximate. ${which} a level wire longer than a half-wave, run as VOACAP's sloping long wire (type 41) laid level.${lowered}\n\n${page}`,
+        );
+      }
+      return pages.join("\n\f\n");
     },
   };
 }

@@ -159,10 +159,11 @@ working, which the screen shows for one chosen hour.
   side.
 - **Bands**: each amateur band from 80 m to 10 m, ranked at the chosen hour and shown
   through the day. One frequency near the middle stands for each band; the edges are
-  those of the United Kingdom licence. With an end-fed wire of a stated length, a band
-  the wire is not modelled on is hatched and reads "Not modelled" (it has no figure,
-  which is not a poor figure), and **The wire on each band** gives the wire's length in
-  wavelengths; see Equipment.
+  those of the United Kingdom licence. With an end-fed wire of a stated length each band
+  is in one of three states: modelled (shaded as usual); approximate (shaded, framed
+  with a dashed line and marked ≈, its bar striped); or not modelled (hatched, reading
+  "Not modelled": no figure, which is not a poor figure). **The wire on each band**
+  gives the wire's length in wavelengths and how it was run; see Equipment.
 - **The steep path (NVIS)**: see below.
 - **Where these figures come from**: the engine, the data and their versions, how each
   antenna was run, and **Show the page VOACAP prints**, the listing the original
@@ -895,7 +896,7 @@ An antenna is always run as one of VOACAP's own antenna models:
 | --- | --- | --- |
 | Horizontal dipole | VOACAP type 23, a horizontal half-wave dipole over ground at the height given, resonant on whichever frequency is asked about | A wire cut for one band, bent, sloping or near buildings |
 | Inverted-V | The same dipole at the *mean* height of the wire | VOACAP has no inverted-V. A real one radiates a little less upwards and more off its ends. Labelled an approximation wherever shown |
-| End-fed half-wave wire, horizontal (a stated length) | VOACAP type 23 with the wire's length in metres, on the frequencies where the wire is about a half-wave (0.45 to 0.55 wavelengths). **On every other frequency: not modelled, no figure** | A sloping wire, the matching unit's loss, and every band on which the wire is not a half-wave, harmonics included |
+| End-fed half-wave wire, horizontal (a stated length) | Three states, by the wire's length in wavelengths at the frequency. **Half-wave** (0.45 to 0.55): VOACAP type 23 with the wire's length in metres. **Longer** (above 0.55): **approximate**, VOACAP type 41, the ITS-78 sloping long wire, laid level at the wire's height, its length and height in wavelengths at that frequency; labelled approximate wherever shown. **Shorter** (below 0.45): **not modelled, no figure** | A sloping wire and the matching unit's loss. On the approximate bands, a model whose level was never checked against the engine's checked models and reads 0.7 to 1.6 dB below the dipole where both can be compared; a wire whose current is a pure standing wave with no loss along it. Nothing on the bands where it is shorter |
 | End-fed half-wave wire, vertical (a stated length) | VOACAP type 22, the vertical monopole, with the wire's length in metres as its height, on every frequency. The result says how long the wire is in wavelengths on each band | The matching unit's loss. Off the half-wave band the model is a wire fed against the ground at its base, which an end-fed half-wave is not: see below |
 | End-fed half-wave recut for every band | The half-wave dipole of the first row at the wire's height: a wire whose length follows the frequency | Not one wire. VOACAP has no end-fed model. A sloping wire and the matching unit's loss. Labelled an approximation |
 | Quarter-wave vertical | VOACAP type 22 | A short or loaded vertical, or few radials: take the difference off as gain |
@@ -920,31 +921,90 @@ lengths that are a half-wave somewhere between 2 and 30 MHz. A profile also sets
 height of a level wire, the ground and the bearing.
 
 Nothing about a wire's pattern is worked out by Outpost. What it does is choose which
-of the engine's models to hand the wire to, and refuse to give a figure where none of
-them describes it.
+of the engine's models to hand the wire to, say how sure that is, and refuse to give a
+figure where none of them describes the wire.
 
-**On each band the screen says which of three things the wire is:**
+**A level wire is in one of three states on each band**, by its length in free-space
+wavelengths at the band's frequency:
 
-- **About a half-wave** (0.45 to 0.55 free-space wavelengths; a real half-wave wire is
-  cut about 5% short of 0.5). Run as the table says. The limits are Outpost's own choice
-  of where to stop trusting the half-wave model, not a figure from VOACAP. For the 10 m
-  wire that is 13.5 to 16.5 MHz, the whole of 20 m and no other amateur band; for the
-  5 m wire 27.0 to 30 MHz, the whole of 10 m.
-- **Not a half-wave, run as a wire of this length** (the vertical wire only). The figure
-  is the engine's for a vertical wire that long, fed at the bottom. The planner gives
-  the length in wavelengths for every band under **The wire on each band**.
-- **Not modelled** (the horizontal wire off its half-wave band). There is no figure. On
-  the planner the band is hatched on the charts and reads "Not modelled" in the ranking;
-  a prediction asked on such a frequency shows a notice in place of the figures; a
-  coverage map on such a frequency is refused with the reason; a communication plan
-  shows the band as not modelled for that pair, never recommends it, and its PDF and
-  Markdown write "n/m" with the reason; the comparison of antennas marks the series; the
-  contact log leaves the entry out and says why; **Show the page VOACAP prints** leaves
-  those frequencies off the page. A band with no figure is not a band that does badly,
-  and nowhere is it shown as 0%.
+| State | Where | Run as | Shown as |
+| --- | --- | --- | --- |
+| **Half-wave** | 0.45 to 0.55 wavelengths (a real half-wave wire is cut about 5% short of 0.5) | VOACAP's dipole, type 23, with the wire's length in metres | Figures, as for any antenna. "Half-wave: VOACAP's dipole" |
+| **Approximate** | Longer than 0.55 wavelengths, up to 30 MHz | VOACAP's sloping long wire, type 41, laid level at the wire's height | Figures, marked approximate everywhere: "Approximate: VOACAP's sloping long wire, laid level; its level is unchecked and reads about 1.3 dB below the dipole model at a half-wave" |
+| **Not modelled** | Shorter than 0.45 wavelengths | Nothing | No figure. "Not modelled" |
+
+The limits 0.45 and 0.55 are Outpost's own choice of where to stop trusting the
+half-wave model, not a figure from VOACAP. For the 10 m wire: not modelled below
+13.5 MHz (80, 60, 40 and 30 m), the dipole from 13.5 to 16.5 MHz (20 m), approximate
+above (17, 15, 12 and 10 m). For the 5 m wire: not modelled below 27.0 MHz, the dipole
+from 27.0 to 30 MHz (10 m); it is never longer than a half-wave below 30 MHz, so it has
+no approximate band. A 20 m wire: not modelled on 80 and 60 m, the dipole on 40 m,
+approximate from 30 m to 10 m. An 82 m wire is approximate from 2.0 MHz up.
+
+An upright wire is run as VOACAP's vertical monopole (type 22) of its height on every
+band; off its half-wave band the figure is for a wire of that length fed against the
+ground, and the screen says how long it is in wavelengths.
+
+**Where each state is shown, and how.** Never by colour alone.
+
+- *The planner.* The band table: an approximate row is shaded as any other, framed with
+  a dashed line, and its label carries "≈"; in the ranking its bar is striped and framed
+  and its figure reads "≈62%"; a row that is not modelled is hatched with no shade and
+  reads "Not modelled". The heat map of every whole megahertz does the same, and its
+  legend names all three. For a frequency asked about that is approximate, the first
+  line of the answer reads "Approximate figures for 28.9 MHz", above it a notice gives
+  the reason, and the reliability, ratio and gains are each followed by "(approximate)".
+  **The wire on each band** gives each band's length in wavelengths and its state in the
+  words above. Where the dipole and the long wire stand side by side across bands, a
+  notice above the band table, "Two of VOACAP's models side by side", says where the
+  model changes and by how much the two differ (below), and the list says it again.
+- *Coverage maps* may be made on an approximate frequency. The legend says "≈
+  Approximate map" with the reason, and so do the map's PDF and Markdown, in the title
+  and beside the legend. A map on a frequency that is not modelled is refused.
+- *Communication plans* may recommend an approximate band. The matrix marks it ≈ (on
+  screen) or ~ (in the PDF and Markdown) beside every figure, the recommendation says
+  "approximate" in its words and in the summary table, and the pair says which station's
+  wire it is. A band that is not modelled is "n/m" and never recommended.
+- *The comparison* ("with one thing changed") marks a series approximate or not
+  modelled, on screen and in its PDF and Markdown (which until now printed a series that
+  was not modelled as noughts; it now prints "n/m").
+- *The contact log's comparison* counts entries on approximate frequencies apart, in a
+  table of their own headed "≈ Compared with approximate figures": comparing what
+  happened with an approximate model says less, and they are not mixed in with the
+  rest. An entry on a frequency that is not modelled is left out and the reason given.
+- *The prediction's PDF and Markdown* print "~" before an approximate figure and "n/m"
+  for none, with the key to both under each table, a list of how each band was run,
+  and the step between the models where both appear. The title and the first finding
+  say "approximate" when the frequency asked about is.
+- *Show the page VOACAP prints*: each approximate frequency is a page of its own (it has
+  a file of its own, below), headed by Outpost "approximate"; the page names the model
+  "HFMUFES#41". A frequency that is not modelled is left off.
+
+**Which way the wire runs.** The bearing a person gives is the one the wire's broadside
+faces, and "turned towards the other station" puts the broadside towards it. That is
+kept on every band, because it is one wire hung one way: on its half-wave band its
+broadside is its best direction, and on a band where it is longer it is not (a wire a
+whole wavelength long has a null broadside, below). So on an approximate band the figure
+is for the wire hung broadside to the path, which may be well below what the same wire
+gives turned another way; the screen, the preset and the equipment form say so. Give
+the bearing to model how yours hangs. The long wire's own reference direction is along
+the wire, so Outpost hands the engine the broadside bearing turned 90°; the antenna's
+words in the result give the line the wire runs, "the wire running 43° to 223°". Laid
+level, the model gives the same pattern whichever end is fed (below), so which end the
+feed is at does not need to be asked.
 
 **The matching unit is not modelled.** An end-fed half-wave is fed through a transformer
 that loses some power. Put its loss in the profile as feedline loss.
+
+**Old answers.** Answers kept while these bands were not modelled are not served as
+current. The key an answer is kept under gains a mark when a level wire is approximate
+on any frequency the question covers (a prediction's frequency, bands and whole
+megahertz; a comparison's frequency, and the generic antennas when they are what is
+compared; a coverage map's frequency; a plan's bands), so those questions are worked out
+again. Every other question keeps the key it had: the engine and its data have not
+changed, and a dipole's answer, the 5 m wire's or an upright wire's is the same as
+before. A saved prediction is asked again as it was saved, and so is answered as the
+wire is run now.
 
 **What VOACAP's models do with a length in metres**, and why the wires are run as they
 are. Read from the sources on 16 November 2026 and then run on this engine (hfcast
@@ -953,7 +1013,8 @@ are. Read from the sources on 16 November 2026 and then run on this engine (hfca
 at the angle a signal leaves at, so a pattern was sampled: one antenna file, one
 frequency, paths of twelve lengths from 150 to 6000 km through the 24 hours, which
 between them leave at angles from 3° to about 75°; gains were compared at the same whole
-degree. Average ground throughout.
+degree. Average ground throughout. Where a direction is given, one path of 2500 km was
+asked at noon with the antenna turned.
 
 1. **Type 23, the horizontal dipole, takes a length in metres and is fed at its centre.**
    Its formula is that of a centre-fed wire with a sinusoidal current (VOACAP's
@@ -982,7 +1043,6 @@ degree. Average ground throughout.
    Report 83-127, *Ionospheric Communications Analysis and Prediction Program User's
    Manual*, Teters, Lloyd, Haydon and Lucas, July 1983, section 4.4, page 41;
    its.ntia.gov/publications/download/83-127_ocr_reduced.pdf). So a level wire is given
-   figures only where it is about a half-wave.
 
 2. **Type 22, the vertical monopole, takes any height, and is the wire fed at its
    bottom end.** The manual draws it with its feed at the ground (Figure 45, page 114)
@@ -1011,30 +1071,105 @@ degree. Average ground throughout.
    cannot give. The screen says so on every such band. For a wire a whole wavelength
    long the manual's warning in 1 applies, and the screen says that too.
 
-3. **Other models looked at.**
-   - *Type 41, the "sloping long wire"* of the ITS-78 set (`antennas/samples/sample.41`
-     in the VOACAP distribution: slope from horizontal, wire length, feed height;
-     `mufesgan.for`, KOP 11). It is in this engine, and its pattern is that of a wire
-     fed at one end with a standing wave on it, at any slope: laid level it gave the
-     null broadside and the four lobes of a whole wavelength in 1. It was **not used**
-     for the level wire, for two reasons. It works its gain out against the resistance
-     of the wire as a monopole over perfect ground, the same expression as type 22,
-     whatever the slope and height: laid level as a half-wave 6 m up it read 1.2 to
-     1.4 dB below type 23 at every angle, and for a whole wavelength there is nothing
-     else in the engine to check its level against. And the source marks which of these
-     models "have been checked against the equations in Ma and Walters (1969) and where
-     necessary brought into agreement with that report": the sloping long wire is not
-     one of them. It is the model to use if figures on the harmonic bands of a level
-     wire are wanted more than that caution; the change is small (which file is written
-     in `antenna-files.ts`, and which frequencies count as modelled in `wireOn`).
+
+3. **Type 41, the "sloping long wire" of the ITS-78 set, is a wire fed at one end, and
+   is what a level wire longer than a half-wave is run as.** Its parameters are the
+   slope from horizontal, the wire's length and the height of its feed
+   (`antennas/samples/sample.41` in the VOACAP distribution, "Sample type 41 ITS-78
+   Sloping Long Wire": a wire 91.44 m long, about three wavelengths at 10 MHz, sloping
+   10° from a feed on the ground). Its source is `mufesgan.for`, `SUBROUTINE MUFESGAN`,
+   "SLOPING LONG WIRE, KOP = 11" (voacapl commit `c12a98b`), after Ma and Walters, ESSA
+   Technical Report ERL 104-ITS 74 (1969). Its field is that of a wire carrying the
+   standing wave sin k(L − z), nought at the far end, with the ground's reflection
+   added; its gain divides by `RIN`, the resistance of a monopole of the same length
+   over perfect ground, whatever the slope and height. Run on this engine:
+   - *Which end, which way.* Sloping 20° up from a feed 1 m above the ground, 10 m of
+     wire at 21.22 MHz read -16.3 dBi along its reference direction and -0.2 dBi the
+     other way: the reference direction runs from the feed up the wire. Laid level the
+     pattern is the same towards either end, to 0.05 dB at 18.12, 21.22 and 28.85 MHz:
+     the field of a standing wave has the same size both ways along the wire. So the feed
+     end does not matter for a level wire, only the line it runs along.
+   - *Its pattern as the wire lengthens* (14.18 MHz, 0.3 wavelengths up, a path leaving
+     at 31°, strongest direction measured from the wire): 0.6 wavelengths, broadside
+     (+5.5 dBi); 0.75, 49° (+5.2 dBi, 1.1 dBi broadside); one wavelength, 48° (+4.5 dBi),
+     with -30 dBi broadside (the engine's floor); 1.5, 33°; two wavelengths, 24° with
+     -30 dBi broadside; 2.5, 16°; three, 7°; and beyond, many narrower lobes (four,
+     at 21°, 42°, 64° and 82°, for four wavelengths). That is the textbook course of a
+     standing-wave long wire, seen at a raised angle. On the path of finding 1 at
+     28.85 MHz the 10 m wire read -29.2 dBi broadside and +4.0 dBi 40° off it.
+   - *Its level, where it can be checked.* A wire an odd number of half-waves long
+     carries the same standing wave fed at its centre or at its end, and there type 23
+     refers its gain to a current maximum, so there the dipole is a check on the long
+     wire. At angles from 5° to 30°, 0.3 wavelengths up, the long wire read 1.36 dB below
+     type 23 at 0.5 wavelengths, 1.49 at 1.5, 1.52 at 2.5, 1.54 at 3.5, 1.56 at 4.5 and
+     1.58 at 7.5; at 0.15 wavelengths up 1.41 to 1.59; at 0.5 and one wavelength up 1.18
+     to 1.46. Above 30° the two differ by an amount that depends on height and not on
+     length (up to about 1.7 dB either way on average, seen at a half-wave too), and
+     they place the nulls off broadside a little differently. The step of 1.3 to 1.6 dB
+     is what dividing by a monopole's resistance gives: worked out in free space by
+     Outpost for this note (not used in any figure), a monopole of length L over perfect
+     ground has 1.34 dB more resistance than a level wire of length L at a half-wave,
+     1.47 dB more at 1.5 wavelengths, 1.53 at four and 1.56 at eight; between whole
+     numbers of half-waves the sum gives a fraction of a decibel the other way (−0.13 dB
+     at 0.6 and 0.75 wavelengths, −0.63 at 1.25), where nothing in the engine can check
+     it. So the long wire's level is unchecked off the odd half-waves, and about 1.3 to
+     1.6 dB low on them.
+   - *At the join.* Where Outpost changes from the dipole to the long wire, at 0.55
+     wavelengths, the long wire as Outpost writes it read 0.72 dB below type 23 for the
+     10 m wire 6 m up (16.49 MHz), 0.99 dB for a 20 m wire 6 m up and 0.85 dB 10 m up
+     (8.24 MHz), at 5° to 30°; at a half-wave 1.36 dB. Neither model is adjusted to meet
+     the other, and the screen says so where the bands stand side by side.
+   - *A length in metres is read between patterns.* The engine works out a pattern for
+     each whole megahertz and reads between them. A length in metres is a different
+     number of wavelengths at each, and for a long wire the two patterns differ: 82 m of
+     wire at 5.33 MHz (1.46 wavelengths; 1.37 at 5 MHz and 1.64 at 6) read up to 11.7 dB
+     away from the pattern of the wire at 5.33 MHz itself; 10 m at 21.22 MHz, within
+     0.1 dB. So Outpost writes the long wire's file for one frequency at a time, with
+     its length and height in wavelengths there (negative figures, as VOACAP takes
+     them), and runs each such frequency on its own.
+   - *Gain added and feedline loss.* The type 41 file has no "gain above dipole" line,
+     and its first line ("Max Gain dBi") moves nothing (seen: the same pattern at 0 and 3).
+     So Outpost lowers the requirement the engine is given by the antenna's net figure and
+     adds the figure to the ratio, the signal, the field strength (the transmitting end's
+     only), each end's gain, and takes it off the system loss. Run both ways with the
+     dipole, whose file does carry the line: the same to 0.01 in every figure at every
+     hour, except the transmitting gain printed at take-off angles below 2° (0.15 to
+     0.21 dB apart). The engine reads the requirement to a tenth of a decibel, as it reads
+     the gain line. (Raising the transmitter's power instead was tried and is worse: the
+     engine reads power to a tenth of a watt, which is half a decibel at half a watt.)
+   - *Shorter than a half-wave* it gives figures too: 10 m of wire 6 m up read 3.3 dB
+     below a half-wave dipole at 7.1 MHz and 3.6 dB below at 3.65 MHz. They are not used.
+     Its current there is largest at the feed, and the model feeds it against something;
+     an end-fed half-wave has nothing at its feed to return that current (no ground, no
+     counterpoise, and a matching unit made for the high impedance of a half-wave), so
+     what the real antenna does depends on its feedline, which no model here describes.
+
+   **Why it is labelled approximate.** VOACAP's source marks which of these models "have
+   been checked against the equations in Ma and Walters (1969) and where necessary
+   brought into agreement with that report"; the sloping long wire is not one of them
+   (`mufesgan.for`, the list of KOP numbers at its head). Its level is about 1.3 to
+   1.6 dB below the dipole where the two can be compared and unchecked elsewhere. Its
+   current is a standing wave with no loss along the wire, which a real long wire is
+   not, increasingly so the longer it is. The program's manual's caution about wires a
+   whole wavelength or more long (finding 1) is about its centre-fed models' feed point,
+   which the long wire does not share, but it is a caution all the same. And nothing here
+   was compared with NEC or a real antenna.
+
+   **Why no upper limit.** The check against the dipole holds to within 0.2 dB from 0.5
+   to 7.5 wavelengths, and with a file per frequency the engine's reading between
+   patterns is gone, so the engine itself gives no reason to stop below 30 MHz. The
+   range used, from 0.55 wavelengths to 30 MHz, is Outpost's choice; a shorter one
+   would be safer against a long wire's lobes being narrower than anyone knows the
+   bearing of their wire, and is a change to `wireOn` alone.
+
+4. **Other models looked at.**
    - *Type 28, the inverted L, type 44, the arbitrary tilted dipole, and type 35, the
      vertical dipole*: each is fed at its centre or against ground, and none is a wire
      fed at one end. *Type 47, the vertical with a ground screen*: an end-fed half-wave
      has no radials. Not run.
-   - *An end-fed wire on an odd harmonic* (three half-waves) has the same standing wave
-     as the centre-fed wire of type 23, by the same argument as for a half-wave. It was
-     not offered: the manual's caution about wires far from a half-wave applies, and
-     neither wire asked for reaches three half-waves below 30 MHz.
+   - *Type 23 on an odd harmonic* (three half-waves) would describe the same standing
+     wave as the long wire, and was used above as a check; it is not used for figures,
+     so that a level wire is run one way on every band longer than a half-wave.
 
 **What was there before.** The generic antenna "End-fed half-wave, horizontal at 6 m" is
 now **End-fed half-wave recut for every band, horizontal at 6 m**: it was always a wire

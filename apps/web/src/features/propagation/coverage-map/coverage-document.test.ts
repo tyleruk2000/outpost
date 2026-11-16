@@ -69,6 +69,18 @@ function mapOf(): CoverageResult {
 }
 
 describe("a coverage map written out", () => {
+  it("says it is approximate in its title and beside its legend when an antenna is run as an approximation", () => {
+    const approximate = "The transmitting antenna: 10 m of wire is 0.71 wavelengths at 21.22 MHz, longer than a half-wave.";
+    const blocks = coverageDocument({ ...mapOf(), approximate }, "reliability", 12, null);
+    expect(blocks[0]).toMatchObject({ kind: "title", text: "HF coverage: London, 7.10 MHz (40 m), approximate" });
+    const words = wordsOf(blocks);
+    expect(words).toContain(`Approximate map: every figure on it is. ${approximate}`);
+    // Next to the legend: the paragraph comes straight before it.
+    const at = blocks.findIndex((block) => block.kind === "para" && block.text.startsWith("Approximate map"));
+    expect(blocks[at + 1]).toMatchObject({ kind: "drawing" });
+    expect(wordsOf(coverageDocument(mapOf(), "reliability", 12, null))).not.toContain("Approximate");
+  });
+
   it("is named for the transmitter, the band, what it shades by, the hour and the day", () => {
     expect(coverageTitle(mapOf(), "reliability", 12)).toBe("HF coverage, London, 40 m, reliability at 12:00 UTC, for 16 Nov 2026");
     expect(coverageTitle(mapOf(), "signal", 3)).toBe("HF coverage, London, 40 m, signal strength at 03:00 UTC, for 16 Nov 2026");

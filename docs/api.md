@@ -900,13 +900,26 @@ stated length (`kind` `end-fed-horizontal` or `end-fed-vertical`) with its `leng
 from 4.5 to 82 and no other kind with one, and a requirement between -30 and 99.9 dB
 once restated in 1 Hz. `400` says which.
 
-An `end-fed-horizontal` wire is modelled only on the frequencies where it is about a
-half-wave (docs/hf-propagation.md, "End-fed wires of a stated length"). Elsewhere a
-prediction's cell (`asked`, each of `bands`) has `notModelled: true`, `path: null` and
-noughts for its figures, which are not predictions; a comparison's series has
-`notModelled: true`; a communication plan's matrix has `null` at every hour of that
-band; the listing leaves the frequency off, or is `400` when none is left; and a
-coverage map is `400` with `details.reason = "antenna-not-modelled"`. `415` with
+An `end-fed-horizontal` wire is in one of three states on each frequency
+(docs/hf-propagation.md, "End-fed wires of a stated length"): about a half-wave (run as
+VOACAP's dipole), longer (run as VOACAP's sloping long wire laid level, **approximate**)
+or shorter (**not modelled**). Where it is approximate a prediction's cell (`asked`, each
+of `bands`) has `approximate: true` and the engine's figures; a comparison's series has
+`approximate: true`; a plan's band (`pairs[].bands[]`) has `approximate: true`, and the
+recommendation drawn from it (`PlanChoice.approximate`) says so; a coverage map is
+worked out and its result has `approximate` set to the reason (null otherwise); the log
+comparison's rows have `approximate: true` and are counted in `approximateLevels`, apart
+from `levels`, with `comparedApproximate` saying how many; and the listing gives each
+such frequency a page of its own headed by Outpost. Where it is not modelled a cell has
+`notModelled: true`, `path: null` and noughts for its figures, which are not predictions;
+a comparison's series has `notModelled: true`; a plan's matrix has `null` at every hour
+of that band; the listing leaves the frequency off, or is `400` when none is left; and a
+coverage map is `400` with `details.reason = "antenna-not-modelled"`. A prediction's
+`runs` lists, for the frequency asked about and then each band, `{ mhz, state, tx, rx }`:
+`state` is `modelled`, `approximate` or `not-modelled`, and `tx` and `rx` say in a few
+words how each end was run. An answer kept before a level wire was run as the long wire
+is not served for a question in which one is approximate somewhere: such a question has
+a new key. `415` with
 `details.reason = "engine-unavailable"` means the engine or its data is missing or
 damaged: the message names the file, and nothing is predicted.
 

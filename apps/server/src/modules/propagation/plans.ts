@@ -30,7 +30,7 @@ import { newId } from "../../core/ids.ts";
 import { communicationPlans, documents, notes } from "../../db/schema.ts";
 import type { CircuitResult } from "./engine.ts";
 import { EngineRefused } from "./host.ts";
-import { engineProblem, fix, modeLine, type PropagationService } from "./service.ts";
+import { engineProblem, fix, modeLine, type PropagationService, wireRunsMark } from "./service.ts";
 import { antenna, checkedMode, date, modes, noise, power } from "./shapes.ts";
 
 const station = z.object({
@@ -209,6 +209,10 @@ export function registerPlans(app: FastifyInstance, ctx: AppContext, service: Pr
       tableSha,
       engine: description.sha256,
       datasets,
+      ...wireRunsMark(
+        current.stations.map((station) => station.antenna),
+        HF_BANDS.filter((band) => current.bands.includes(band.id)).map((band) => band.mhz),
+      ),
     });
     return { current, mode, basis, tableSha, description, datasets, key };
   }
@@ -278,6 +282,10 @@ export function registerPlans(app: FastifyInstance, ctx: AppContext, service: Pr
                 mhz: band.mhz,
                 forward: direction(forward, index),
                 back: direction(back, index),
+                // Either way round, an antenna of the pair is a level wire longer than a half-wave here.
+                ...(forward.hours[0]?.cells[index]?.approximate || back.hours[0]?.cells[index]?.approximate
+                  ? { approximate: true as const }
+                  : {}),
               })),
               problem: null,
             });
