@@ -259,13 +259,24 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 
 #### Reference collections
 
-- A catalogue of 236 items in JSON manifests, with a validator: 128 Kiwix archives; 83
-  official handbooks, rules and textbooks fetched as PDFs from their publishers (FAA,
-  NASA, USGS, the US National Weather Service, FAO, WHO, Ready.gov, USDA, OpenStax,
-  UIAA, Ofcom, IARU, CEPT, NIST, NTIA, CISA and others), each pinned by size and
-  SHA-256; and nine radio reference sheets and sixteen radio books that ship with
-  Outpost. Downloaded PDFs join
+- A catalogue of 311 items in JSON manifests, with a validator: 155 Kiwix archives; 131
+  official handbooks, rules, guides and textbooks fetched as PDFs from their publishers
+  (FAA, NASA, USGS, the US National Weather Service, FAO, WHO, Ready.gov, USDA, OpenStax,
+  UIAA, Ofcom, IARU, CEPT, NIST, NTIA, CISA, the Met Office, the Health and Safety
+  Executive, GOV.UK, Ordnance Survey, the US Department of Energy and others), each
+  pinned by size and SHA-256; and nine radio reference sheets and sixteen radio books
+  that ship with Outpost. Downloaded PDFs join
   the document library and are searchable to the page.
+- 75 of those were added in a second pass on 16 November 2026, each fetched and its
+  licence read that day: Met Office weather factsheets, Ordnance Survey's map reading
+  guides, HSE safety guidance, UK government guides (life saving signals, the
+  Countryside Code, a flood plan, the National Risk Register, traffic signs), US
+  Department of Energy handbooks on electricity, drawings and machinery, the six
+  volumes of Lessons In Electric Circuits, six more OpenStax textbooks, U.S. Chart
+  No. 1, Ofcom's EMF guidance, the space weather scales, a book on wireless networking,
+  and 27 more Kiwix archives. Three packs were added (Weather in Britain, Coast and
+  sea, Electricity and electronics) and nine extended. `docs/sources.md` also records
+  what was looked at and left out, and why.
 - Radio reference sheets included with Outpost and added with no connection: amateur
   bands (UK, US, worldwide), licence-free radio, emergency and calling frequencies,
   weather and time broadcasts, repeaters and data modes, an operating reference, and

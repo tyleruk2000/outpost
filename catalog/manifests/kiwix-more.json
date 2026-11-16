@@ -1289,6 +1289,550 @@
         "name": "canadian-prepper_en_preppingfood",
         "flavour": ""
       }
+    },
+    {
+      "id": "kiwix.diy.stackexchange.com-en-all",
+      "name": "Home Improvement Q&A",
+      "description": "Questions and answers from the Stack Exchange site for contractors and people who do their own home repairs and improvements.",
+      "category": "repair",
+      "publisher": "Stack Exchange",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0 (older posts under earlier versions)",
+      "attribution": "Contributors to the Stack Exchange network. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://diy.stackexchange.com",
+      "lastVerified": "2026-11-16",
+      "tags": ["DIY", "home repair", "home improvement", "questions and answers"],
+      "sizeBytes": 2086000000,
+      "source": {
+        "type": "kiwix",
+        "name": "diy.stackexchange.com_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.woodworking.stackexchange.com-en-all",
+      "name": "Woodworking Q&A",
+      "description": "Questions and answers from the Stack Exchange site for professional and amateur woodworkers.",
+      "category": "repair",
+      "publisher": "Stack Exchange",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0 (older posts under earlier versions)",
+      "attribution": "Contributors to the Stack Exchange network. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://woodworking.stackexchange.com",
+      "lastVerified": "2026-11-16",
+      "tags": ["woodworking", "questions and answers"],
+      "sizeBytes": 107000000,
+      "source": {
+        "type": "kiwix",
+        "name": "woodworking.stackexchange.com_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.travel.stackexchange.com-en-all",
+      "name": "Travel Q&A",
+      "description": "Questions and answers from the Stack Exchange site for travellers. Rules for travel change, so check anything that matters.",
+      "category": "reference",
+      "publisher": "Stack Exchange",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0 (older posts under earlier versions)",
+      "attribution": "Contributors to the Stack Exchange network. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://travel.stackexchange.com",
+      "lastVerified": "2026-11-16",
+      "tags": ["travel", "questions and answers"],
+      "sizeBytes": 462000000,
+      "source": {
+        "type": "kiwix",
+        "name": "travel.stackexchange.com_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.medicalsciences.stackexchange.com-en-all",
+      "name": "Medical Sciences Q&A",
+      "description": "Questions and answers from the Stack Exchange site about medicine and the healthcare sciences. It is discussion among contributors, not medical advice.",
+      "category": "medicine",
+      "publisher": "Stack Exchange",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0 (older posts under earlier versions)",
+      "attribution": "Contributors to the Stack Exchange network. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://medicalsciences.stackexchange.com",
+      "lastVerified": "2026-11-16",
+      "tags": ["medicine", "health", "questions and answers"],
+      "sizeBytes": 61000000,
+      "source": {
+        "type": "kiwix",
+        "name": "medicalsciences.stackexchange.com_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.homebrew.stackexchange.com-en-all",
+      "name": "Homebrewing Q&A",
+      "description": "Questions and answers from the Stack Exchange site for people who brew beer, wine and other drinks at home.",
+      "category": "food",
+      "publisher": "Stack Exchange",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0 (older posts under earlier versions)",
+      "attribution": "Contributors to the Stack Exchange network. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://homebrew.stackexchange.com",
+      "lastVerified": "2026-11-16",
+      "tags": ["brewing", "fermentation", "questions and answers"],
+      "sizeBytes": 37000000,
+      "source": {
+        "type": "kiwix",
+        "name": "homebrew.stackexchange.com_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.astronomy.stackexchange.com-en-all",
+      "name": "Astronomy Q&A",
+      "description": "Questions and answers from the Stack Exchange site for astronomers and astrophysicists.",
+      "category": "science",
+      "publisher": "Stack Exchange",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0 (older posts under earlier versions)",
+      "attribution": "Contributors to the Stack Exchange network. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://astronomy.stackexchange.com",
+      "lastVerified": "2026-11-16",
+      "tags": ["astronomy", "stars", "questions and answers"],
+      "sizeBytes": 197000000,
+      "source": {
+        "type": "kiwix",
+        "name": "astronomy.stackexchange.com_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.physics.stackexchange.com-en-all",
+      "name": "Physics Q&A",
+      "description": "Questions and answers from the Stack Exchange site for researchers, academics and students of physics.",
+      "category": "science",
+      "publisher": "Stack Exchange",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0 (older posts under earlier versions)",
+      "attribution": "Contributors to the Stack Exchange network. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://physics.stackexchange.com",
+      "lastVerified": "2026-11-16",
+      "tags": ["physics", "questions and answers"],
+      "sizeBytes": 1839000000,
+      "source": {
+        "type": "kiwix",
+        "name": "physics.stackexchange.com_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.chemistry.stackexchange.com-en-all",
+      "name": "Chemistry Q&A",
+      "description": "Questions and answers from the Stack Exchange site for scientists, teachers and students of chemistry.",
+      "category": "science",
+      "publisher": "Stack Exchange",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0 (older posts under earlier versions)",
+      "attribution": "Contributors to the Stack Exchange network. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://chemistry.stackexchange.com",
+      "lastVerified": "2026-11-16",
+      "tags": ["chemistry", "questions and answers"],
+      "sizeBytes": 420000000,
+      "source": {
+        "type": "kiwix",
+        "name": "chemistry.stackexchange.com_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.biology.stackexchange.com-en-all",
+      "name": "Biology Q&A",
+      "description": "Questions and answers from the Stack Exchange site for biology researchers, academics and students.",
+      "category": "science",
+      "publisher": "Stack Exchange",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0 (older posts under earlier versions)",
+      "attribution": "Contributors to the Stack Exchange network. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://biology.stackexchange.com",
+      "lastVerified": "2026-11-16",
+      "tags": ["biology", "questions and answers"],
+      "sizeBytes": 425000000,
+      "source": {
+        "type": "kiwix",
+        "name": "biology.stackexchange.com_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.math.stackexchange.com-en-all",
+      "name": "Mathematics Q&A",
+      "description": "Questions and answers from the Stack Exchange site for people studying mathematics at any level. A large archive.",
+      "category": "science",
+      "publisher": "Stack Exchange",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0 (older posts under earlier versions)",
+      "attribution": "Contributors to the Stack Exchange network. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://math.stackexchange.com",
+      "lastVerified": "2026-11-16",
+      "tags": ["mathematics", "questions and answers"],
+      "sizeBytes": 7417000000,
+      "source": {
+        "type": "kiwix",
+        "name": "math.stackexchange.com_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.gis.stackexchange.com-en-all",
+      "name": "Geographic Information Systems Q&A",
+      "description": "Questions and answers from the Stack Exchange site for cartographers, geographers and people who work with geographic data.",
+      "category": "navigation",
+      "publisher": "Stack Exchange",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0 (older posts under earlier versions)",
+      "attribution": "Contributors to the Stack Exchange network. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://gis.stackexchange.com",
+      "lastVerified": "2026-11-16",
+      "tags": ["maps", "GIS", "cartography", "questions and answers"],
+      "sizeBytes": 2135000000,
+      "source": {
+        "type": "kiwix",
+        "name": "gis.stackexchange.com_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.unix.stackexchange.com-en-all",
+      "name": "Unix & Linux Q&A",
+      "description": "Questions and answers from the Stack Exchange site for users of Linux, FreeBSD and other Unix-like systems.",
+      "category": "engineering",
+      "publisher": "Stack Exchange",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0 (older posts under earlier versions)",
+      "attribution": "Contributors to the Stack Exchange network. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://unix.stackexchange.com",
+      "lastVerified": "2026-11-16",
+      "tags": ["Linux", "Unix", "command line", "questions and answers"],
+      "sizeBytes": 1316000000,
+      "source": {
+        "type": "kiwix",
+        "name": "unix.stackexchange.com_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.serverfault.com-en-all",
+      "name": "Server Fault",
+      "description": "Questions and answers from the Stack Exchange site for system and network administrators.",
+      "category": "engineering",
+      "publisher": "Stack Exchange",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0 (older posts under earlier versions)",
+      "attribution": "Contributors to the Stack Exchange network. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://serverfault.com",
+      "lastVerified": "2026-11-16",
+      "tags": ["servers", "networks", "system administration", "questions and answers"],
+      "sizeBytes": 1636000000,
+      "source": {
+        "type": "kiwix",
+        "name": "serverfault.com_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.security.stackexchange.com-en-all",
+      "name": "Information Security Q&A",
+      "description": "Questions and answers from the Stack Exchange site for information security professionals.",
+      "category": "engineering",
+      "publisher": "Stack Exchange",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0 (older posts under earlier versions)",
+      "attribution": "Contributors to the Stack Exchange network. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://security.stackexchange.com",
+      "lastVerified": "2026-11-16",
+      "tags": ["security", "questions and answers"],
+      "sizeBytes": 440000000,
+      "source": {
+        "type": "kiwix",
+        "name": "security.stackexchange.com_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.stackoverflow.com-en-all",
+      "name": "Stack Overflow",
+      "description": "The whole of Stack Overflow, the question-and-answer site for programmers. A very large archive, well over 100 GB.",
+      "category": "engineering",
+      "publisher": "Stack Exchange",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0 (older posts under earlier versions)",
+      "attribution": "Contributors to the Stack Exchange network. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://stackoverflow.com",
+      "lastVerified": "2026-11-16",
+      "tags": ["programming", "questions and answers"],
+      "sizeBytes": 114856000000,
+      "source": {
+        "type": "kiwix",
+        "name": "stackoverflow.com_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.french.stackexchange.com-mul-all",
+      "name": "French Language Q&A",
+      "description": "Questions and answers from the Stack Exchange site about the finer points of the French language, in English and French.",
+      "category": "reference",
+      "publisher": "Stack Exchange",
+      "language": "mul",
+      "format": "zim",
+      "license": "CC BY-SA 4.0 (older posts under earlier versions)",
+      "attribution": "Contributors to the Stack Exchange network. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://french.stackexchange.com",
+      "lastVerified": "2026-11-16",
+      "tags": ["French", "language learning", "questions and answers"],
+      "sizeBytes": 95000000,
+      "source": {
+        "type": "kiwix",
+        "name": "french.stackexchange.com_mul_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.german.stackexchange.com-mul-all",
+      "name": "German Language Q&A",
+      "description": "Questions and answers from the Stack Exchange site about the finer points of the German language, in English and German.",
+      "category": "reference",
+      "publisher": "Stack Exchange",
+      "language": "mul",
+      "format": "zim",
+      "license": "CC BY-SA 4.0 (older posts under earlier versions)",
+      "attribution": "Contributors to the Stack Exchange network. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://german.stackexchange.com",
+      "lastVerified": "2026-11-16",
+      "tags": ["German", "language learning", "questions and answers"],
+      "sizeBytes": 120000000,
+      "source": {
+        "type": "kiwix",
+        "name": "german.stackexchange.com_mul_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.spanish.stackexchange.com-mul-all",
+      "name": "Spanish Language Q&A",
+      "description": "Questions and answers from the Stack Exchange site about the finer points of the Spanish language, in English and Spanish.",
+      "category": "reference",
+      "publisher": "Stack Exchange",
+      "language": "mul",
+      "format": "zim",
+      "license": "CC BY-SA 4.0 (older posts under earlier versions)",
+      "attribution": "Contributors to the Stack Exchange network. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://spanish.stackexchange.com",
+      "lastVerified": "2026-11-16",
+      "tags": ["Spanish", "language learning", "questions and answers"],
+      "sizeBytes": 72000000,
+      "source": {
+        "type": "kiwix",
+        "name": "spanish.stackexchange.com_mul_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.languagelearning.stackexchange.com-en-all",
+      "name": "Language Learning Q&A",
+      "description": "Questions and answers from the Stack Exchange site about ways of learning a second language.",
+      "category": "reference",
+      "publisher": "Stack Exchange",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0 (older posts under earlier versions)",
+      "attribution": "Contributors to the Stack Exchange network. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://languagelearning.stackexchange.com",
+      "lastVerified": "2026-11-16",
+      "tags": ["language learning", "questions and answers"],
+      "sizeBytes": 12000000,
+      "source": {
+        "type": "kiwix",
+        "name": "languagelearning.stackexchange.com_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.wikiversity-en-all-nopic",
+      "name": "Wikiversity (without images)",
+      "description": "Wikiversity's tutorials, courses and other learning materials, written by volunteers. This edition has the full text without images.",
+      "category": "science",
+      "publisher": "Wikiversity",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0",
+      "attribution": "Wikiversity contributors. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://en.wikiversity.org",
+      "lastVerified": "2026-11-16",
+      "tags": ["courses", "learning"],
+      "sizeBytes": 1615000000,
+      "source": {
+        "type": "kiwix",
+        "name": "wikiversity_en_all",
+        "flavour": "nopic"
+      }
+    },
+    {
+      "id": "kiwix.wikipedia-en-top1m-nopic",
+      "name": "Wikipedia: one million top articles (without images)",
+      "description": "Kiwix's selection of the best one million articles of the English Wikipedia, with the full text and no images: about a third of the size of the complete edition without images.",
+      "category": "encyclopedias",
+      "publisher": "Wikipedia",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0",
+      "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://en.wikipedia.org",
+      "lastVerified": "2026-11-16",
+      "tags": ["encyclopedia"],
+      "sizeBytes": 17134000000,
+      "source": {
+        "type": "kiwix",
+        "name": "wikipedia_en_top1m",
+        "flavour": "nopic"
+      }
+    },
+    {
+      "id": "kiwix.wikipedia-en-history-nopic",
+      "name": "History by Wikipedia (without images)",
+      "description": "A selection of Wikipedia articles on history. This edition has the full text without images.",
+      "category": "reference",
+      "publisher": "Wikipedia",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0",
+      "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://en.wikipedia.org",
+      "lastVerified": "2026-11-16",
+      "tags": ["history"],
+      "sizeBytes": 772000000,
+      "source": {
+        "type": "kiwix",
+        "name": "wikipedia_en_history",
+        "flavour": "nopic"
+      }
+    },
+    {
+      "id": "kiwix.wikipedia-en-climate-change-nopic",
+      "name": "Climate change by Wikipedia (without images)",
+      "description": "A selection of Wikipedia articles on climate change. This edition has the full text without images.",
+      "category": "science",
+      "publisher": "Wikipedia",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0",
+      "attribution": "Wikipedia contributors. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://en.wikipedia.org",
+      "lastVerified": "2026-11-16",
+      "tags": ["climate", "weather"],
+      "sizeBytes": 90000000,
+      "source": {
+        "type": "kiwix",
+        "name": "wikipedia_en_climate-change",
+        "flavour": "nopic"
+      }
+    },
+    {
+      "id": "kiwix.rabbitwaves.ca-en-all",
+      "name": "Rabbit Waves",
+      "description": "Useful knowledge drawn as comics by the Hundred Rabbits studio: Morse code, signal flags, ship lights and day shapes, a first aid kit, the triangular bandage, an emergency bag, pen-and-paper ciphers and lactofermentation.",
+      "category": "survival",
+      "publisher": "Hundred Rabbits",
+      "language": "en",
+      "format": "zim",
+      "license": "MIT (the licence of the site's repository)",
+      "licenseNote": "The website itself states no licence. The authors' repository for the site, which holds its pages and drawings, carries the MIT licence (© 2024 Rek Bell). The authors license the artwork of their other sites separately for non-commercial use, so ask before using these drawings commercially.",
+      "attribution": "Rek Bell and Devine Lu Linvega (Hundred Rabbits). Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://rabbitwaves.ca",
+      "lastVerified": "2026-11-16",
+      "tags": ["Morse code", "signal flags", "first aid", "seafaring", "comics"],
+      "sizeBytes": 71000000,
+      "source": {
+        "type": "kiwix",
+        "name": "rabbitwaves.ca_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.grimgrains-en-all",
+      "name": "Grimgrains",
+      "description": "Plant-based recipes from the Hundred Rabbits studio, who live on a small sailing boat and cook with no refrigerator, often with hand-powered tools, with a hand-drawn illustration for each ingredient.",
+      "category": "food",
+      "publisher": "Hundred Rabbits",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-NC-SA 4.0",
+      "licenseNote": "The site's about page says its art, photographs, text and recipes are licensed under CC BY-NC-SA 4.0 unless stated otherwise: non-commercial use only, with attribution and under the same licence.",
+      "attribution": "Rek Bell and Devine Lu Linvega (Hundred Rabbits), grimgrains.com. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://grimgrains.com",
+      "lastVerified": "2026-11-16",
+      "tags": ["recipes", "cooking", "plant-based"],
+      "sizeBytes": 27000000,
+      "source": {
+        "type": "kiwix",
+        "name": "grimgrains_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.based.cooking-en-all",
+      "name": "Based Cooking",
+      "description": "A plain recipe site with no advertising or tracking: recipes sent in by its readers.",
+      "category": "food",
+      "publisher": "Based Cooking",
+      "language": "en",
+      "format": "zim",
+      "license": "Public domain (Unlicense)",
+      "licenseNote": "The website states no licence on its pages. Its repository, where the recipes are kept, carries the Unlicense, which dedicates the work to the public domain.",
+      "attribution": "Contributors to based.cooking. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://based.cooking",
+      "lastVerified": "2026-11-16",
+      "tags": ["recipes", "cooking"],
+      "sizeBytes": 23000000,
+      "source": {
+        "type": "kiwix",
+        "name": "based.cooking_en_all",
+        "flavour": ""
+      }
+    },
+    {
+      "id": "kiwix.openwrt.org-en-all",
+      "name": "OpenWrt Wiki",
+      "description": "The documentation wiki of OpenWrt, a Linux operating system for routers and other embedded devices.",
+      "category": "engineering",
+      "publisher": "OpenWrt",
+      "language": "en",
+      "format": "zim",
+      "license": "CC BY-SA 4.0",
+      "licenseNote": "The wiki's licence page says that, except where otherwise noted, its content is licensed under CC Attribution-Share Alike 4.0 International. The OpenWrt software itself is under the GNU General Public License version 2.",
+      "attribution": "OpenWrt wiki contributors. Packaged as a ZIM archive by the Kiwix project.",
+      "homepage": "https://openwrt.org",
+      "lastVerified": "2026-11-16",
+      "tags": ["routers", "networking", "Linux"],
+      "sizeBytes": 520000000,
+      "source": {
+        "type": "kiwix",
+        "name": "openwrt.org_en_all",
+        "flavour": ""
+      }
     }
   ]
 }

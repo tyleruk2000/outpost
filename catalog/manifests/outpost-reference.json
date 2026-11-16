@@ -156,7 +156,7 @@
       "license": "MIT",
       "licenseNote": "An original compilation of facts from the official sources listed at the end of the sheet, checked on the date shown there. It is not an official document and not legal advice: rules change, so confirm with the source before relying on a figure.",
       "attribution": "Compiled for Outpost from the regulators and bodies named in the sheet's list of sources.",
-      "lastVerified": "2026-11-15",
+      "lastVerified": "2026-11-16",
       "tags": [
         "distress",
         "emergency",
@@ -172,7 +172,7 @@
       "source": {
         "type": "bundled",
         "file": "radio/emergency-frequencies.md",
-        "version": "2026-11-15",
+        "version": "2026-11-16",
         "published": "2026-11-15"
       }
     },

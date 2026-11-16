@@ -49,6 +49,12 @@ What travels:
 The drive's library folder is found by its marker file, so the drive works whatever
 letter or mount point the next computer gives it.
 
+A drive is a copy for your own use. Outpost copies what you tick without looking at
+licences, and the drive's README says only that each collection carries its own. A few
+catalogue entries may be kept but not passed on (their licence note says so): leave
+those off a drive you make for someone else. See
+[how the catalogue treats licences](sources.md#how-the-catalogue-treats-licences).
+
 ## Making a drive
 
 The drive's folder must be somewhere Outpost can reach: inside a storage root. With

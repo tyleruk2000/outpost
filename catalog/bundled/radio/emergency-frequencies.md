@@ -31,6 +31,8 @@ FCC GMRS rules, section 95.1705: a licence holder "may allow anyone to operate h
 | 156.450 MHz | 9 | United States only: general calling by non-commercial vessels. Distress calls should still start on channel 16 or DSC channel 70 |
 | 161.975 MHz and 162.025 MHz | AIS 1 and AIS 2 | AIS search and rescue transmitters |
 
+Other channels, by number only. The Maritime and Coastguard Agency's guidance on the use of VHF at sea says that channel 13 "is designated for use on a worldwide basis as a navigation safety communication channel, primarily for inter-ship navigation safety communications", and that channels 6, 8, 72 and 77 "have been made available, in UK waters, for routine ship-to-ship communications". It says that channel 16 may only be used for distress, urgency and very brief safety communications and for calling, and channel 70 only for digital selective calling. The guidance names these channels without their frequencies, so none is given here, and it does not say which channel numbers belong to 156.300 and 156.650 MHz in the table above.
+
 ## Marine MF and HF
 
 | Frequency | Use |
@@ -123,7 +125,7 @@ Nobody is required to monitor any of these, in either country.
 
 ## Checked
 
-15 November 2026. Every frequency in the marine, aeronautical and beacon tables was found again in a second copy of its source. Most are in both the Ofcom annex and the FCC rules. Four are in the Ofcom annex only (156.650 MHz, the two AIS frequencies and 243 MHz), and 156.450 MHz is in the FCC rules only.
+15 November 2026, with one addition on 16 November 2026: the paragraph on marine VHF channels 13, 6, 8, 72 and 77, which is quoted from the MCA's guidance note and was compared with it again after writing. Every frequency in the marine, aeronautical and beacon tables was found again in a second copy of its source. Most are in both the Ofcom annex and the FCC rules. Four are in the Ofcom annex only (156.650 MHz, the two AIS frequencies and 243 MHz), and 156.450 MHz is in the FCC rules only.
 
 ## Sources
 
@@ -132,6 +134,7 @@ Nobody is required to monitor any of these, in either country.
 - 47 CFR Parts 95 and 97, same edition: sections 95.931, 95.1705, 97.401, 97.403 and 97.405.
 - United States Coast Guard, notice in the Federal Register, 15 July 2013 (78 FR 42102): the end of the 2182 kHz watch. https://www.govinfo.gov/content/pkg/FR-2013-07-15/html/2013-16801.htm
 - Maritime and Coastguard Agency, Maritime Safety Information Leaflet, January 2026: UK NAVTEX and the announcement of MF broadcasts on 2182 kHz. https://assets.publishing.service.gov.uk/media/697c7ec82ff8d10a830d5dab/MSI_Leaflet.pdf
+- Maritime and Coastguard Agency, MGN 324 (M+F) Amendment 2, Navigation: watchkeeping safety, use of VHF radio and AIS, 22 March 2022: paragraphs 2.1 to 2.3, on channels 16, 70, 6, 8, 72, 77 and 13. https://www.gov.uk/government/publications/mgn-324-mf-amendment-2-navigation-watchkeeping-safety-use-of-very-high-frequency-vhf-radio-and-automatic-identification-system-ais/mgn-324-mf-amendment-2
 - GOV.UK, Maritime safety: 406 MHz beacons: beacon types and registration. https://www.gov.uk/maritime-safety-weather-and-navigation/406-mhz-beacons
 - Ofcom, Amateur Radio Licence Conditions Booklet OFW611: Condition 7(5). https://www.ofcom.org.uk/siteassets/resources/documents/spectrum/emf/emf-amateur-licence-terms-and-conditions.pdf
 - IARU Region 1, Emergency Communications Frequencies: centres of activity and national frequencies. https://www.iaru-r1.org/about-us/committees-and-working-groups/emcomm/emergency-communications-frequencies/
@@ -140,7 +143,7 @@ Nobody is required to monitor any of these, in either country.
 ## Not covered
 
 - The United States Coast Guard Navigation Center's own frequency tables: its website refused the automated check on 15 November 2026, so nothing was taken from it. The 2013 notice was read in the Federal Register instead.
-- Marine VHF channel numbers other than 16, 70 and 9, and the full marine channel plan.
+- The full marine VHF channel plan: the frequencies of the channels named above by number only, and the channel numbers of 156.300 and 156.650 MHz.
 - Whether HM Coastguard keeps a listening watch on 2182 kHz today: the sources read confirm only that broadcasts are announced there.
 - Aeronautical procedures, and the frequencies used inside the Cospas-Sarsat satellite system beyond the beacon band.
 - A calling frequency for the 70 cm band in Region 1, which was not in the IARU documents read.
