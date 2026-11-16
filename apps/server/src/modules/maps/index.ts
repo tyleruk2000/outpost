@@ -31,6 +31,7 @@ import { createPlanner } from "./planner.ts";
 import { removeExtractSidecars } from "./pmtiles/extract.ts";
 import { createRegionsService, estimateSchema, importSchema, type RegionsService, startRegionSchema } from "./regions.ts";
 import { createSourceResolver } from "./source.ts";
+import { createTerrainProfiler, terrainProfileQuery } from "./terrain-profile.ts";
 import { createTileServer, type TileServer } from "./tile-server.ts";
 
 export interface MapsService {
@@ -86,7 +87,9 @@ export async function registerMaps(app: FastifyInstance, ctx: AppContext): Promi
   const planner = createPlanner(client);
   const tiles = createTileServer(ctx);
   const places = createPlacesService(ctx);
-  const annotations = createAnnotationsService(ctx, { elevation: createElevationSampler(ctx, tiles) });
+  const elevation = createElevationSampler(ctx, tiles);
+  const annotations = createAnnotationsService(ctx, { elevation });
+  const terrainProfile = createTerrainProfiler(elevation, tiles);
   const regions = createRegionsService(ctx, { planner, sources });
 
   const service: MapsService = {
@@ -203,6 +206,12 @@ export async function registerMaps(app: FastifyInstance, ctx: AppContext): Promi
 
   app.get<TileParams>("/api/maps/terrain/:z/:x/:file", async (request, reply) => {
     return sendTile(reply, "terrain", tileCoordinates(request.params, "(?:webp|png)"));
+  });
+
+  // The ground between two points, read from installed terrain: what a line-of-sight check is made from.
+  app.get("/api/maps/terrain-profile", async (request) => {
+    const query = terrainProfileQuery.parse(request.query);
+    return terrainProfile(query.from, query.to);
   });
 
   // ── Places ──
