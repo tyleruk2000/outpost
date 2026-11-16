@@ -362,6 +362,8 @@ describe("satellite imagery through the API", () => {
       expect(body.sources.map((source) => source.credit)).toEqual([
         "NASA Earth Observatory",
         "Contains modified Copernicus Sentinel data [Year]",
+        "Licensed by [the licensor] for re-use under CC-BY-4.0",
+        "NAIP imagery provided by USDA Farm Service Agency",
       ]);
       const sources = await app.api<MapSources>("GET", "/api/maps/sources");
       expect(sources.body.imagery).toEqual([]);

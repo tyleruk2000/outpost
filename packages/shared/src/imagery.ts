@@ -4,7 +4,9 @@
  */
 import type { Bbox } from "./maps.ts";
 
-export type ImagerySourceId = "blue-marble" | "sentinel-2";
+export type ImagerySourceId = "blue-marble" | "sentinel-2" | AerialSourceId;
+/** National aerial photographs that can be had openly (docs/maps.md, "Aerial photographs"). */
+export type AerialSourceId = "linz-aerial" | "naip";
 
 /** A source of imagery as the map credits it. */
 export interface ImagerySourceInfo {
@@ -75,13 +77,34 @@ export interface ImageryOverview {
   sources: ImagerySourceInfo[];
   /** Area warnings, in square kilometres, and the hard ceiling (see docs/maps.md). */
   limits: { noticeKm2: number; warnKm2: number; maxKm2: number };
+  /** For aerial photographs the warnings go by bytes and tiles, not area: a 10 cm photograph of a square kilometre is far more than 10 m. */
+  aerialLimits: AerialLimits;
 }
 
-/** A pass of the satellite over the area: the scenes taken that day by one satellite. */
+export interface AerialLimits {
+  noticeBytes: number;
+  warnBytes: number;
+  maxBytes: number;
+  warnTiles: number;
+  maxTiles: number;
+}
+
+/**
+ * One picture of the area that can be chosen: a pass of the satellite (the scenes taken
+ * that day by one satellite), or one survey of a national aerial photograph.
+ */
 export interface SceneOption {
-  /** Stable key for choosing it: the scene ids joined. */
+  /** Stable key for choosing it: the scene ids joined, or the survey's own. */
   key: string;
+  source: "sentinel-2" | AerialSourceId;
+  /** Metres on the ground of one pixel of the picture. */
+  resolutionMeters: number;
+  /** For an aerial photograph: the survey's name, and who holds the rights to it. */
+  title?: string;
+  licensor?: string | null;
+  /** The day of a pass; the first day flown of a survey. */
   date: string;
+  /** "12 July 2026"; for a survey, the span it was flown in: "January to April 2023". */
   dateText: string;
   platform: string;
   sceneIds: string[];
@@ -99,6 +122,8 @@ export interface SceneSearchResponse {
   from: string;
   to: string;
   searchedAt: number;
+  /** Plain sentences about a source that could not be asked, or found nothing: shown under the choices. */
+  notes: string[];
 }
 
 export type AreaWarningLevel = "none" | "notice" | "warn" | "refuse";
@@ -120,6 +145,12 @@ export interface ImageryEstimate {
   estimatedSeconds: { low: number; high: number };
   /** Cloud and cloud shadow over the area, from the scene classification, in percent; null if it could not be read. */
   areaCloudPercent: number | null;
+  /**
+   * For an aerial photograph: the pixel size actually read (the publisher's reduced copy
+   * that is as fine as the deepest zoom; the full photograph when it is not finer), the
+   * number of the publisher's files the area needs, and the credit in words.
+   */
+  aerial?: { readMeters: number; files: number; credit: string };
   warning: { level: AreaWarningLevel; message: string | null };
   /** Free bytes on the storage location the set would go to. */
   freeBytes: number | null;

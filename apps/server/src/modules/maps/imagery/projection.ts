@@ -74,9 +74,30 @@ export function utmZoneOf(epsg: number): { zone: number; south: boolean } | unde
 
 /** Easting and northing, in metres, of a longitude and latitude in a UTM zone. */
 export function lonLatToUtm(lon: number, lat: number, zone: number, south: boolean): [number, number] {
-  const lambda0 = (((zone - 1) * 6 - 180 + 3) * Math.PI) / 180;
+  return lonLatToTransverseMercator(lon, lat, {
+    centralMeridian: (zone - 1) * 6 - 180 + 3,
+    scale: K0,
+    falseEasting: 500000,
+    falseNorthing: south ? 10000000 : 0,
+  });
+}
+
+/**
+ * A Transverse Mercator grid on the WGS 84 ellipsoid (GRS 80 differs from it by 0.1 mm
+ * in the semi-minor axis, which makes no difference here), with its origin of latitude
+ * on the equator: UTM, and national grids built the same way, such as New Zealand's.
+ */
+export interface TransverseMercator {
+  centralMeridian: number;
+  scale: number;
+  falseEasting: number;
+  falseNorthing: number;
+}
+
+/** Easting and northing, in metres, of a longitude and latitude on a Transverse Mercator grid. */
+export function lonLatToTransverseMercator(lon: number, lat: number, grid: TransverseMercator): [number, number] {
   const phi = (lat * Math.PI) / 180;
-  const lambda = (lon * Math.PI) / 180 - lambda0;
+  const lambda = ((lon - grid.centralMeridian) * Math.PI) / 180;
   const sinPhi = Math.sin(phi);
   const t = Math.sinh(Math.atanh(sinPhi) - E * Math.atanh(E * sinPhi));
   const xiPrime = Math.atan2(t, Math.cos(lambda));
@@ -88,7 +109,5 @@ export function lonLatToUtm(lon: number, lat: number, zone: number, south: boole
     xi += alpha * Math.sin(2 * j * xiPrime) * Math.cosh(2 * j * etaPrime);
     eta += alpha * Math.cos(2 * j * xiPrime) * Math.sinh(2 * j * etaPrime);
   }
-  const easting = 500000 + K0 * RECTIFYING * eta;
-  const northing = (south ? 10000000 : 0) + K0 * RECTIFYING * xi;
-  return [easting, northing];
+  return [grid.falseEasting + grid.scale * RECTIFYING * eta, grid.falseNorthing + grid.scale * RECTIFYING * xi];
 }

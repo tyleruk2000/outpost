@@ -229,8 +229,8 @@ public tile servers are never used.
 
 Satellite imagery is the same kind of archive with WebP pictures in it, made on the
 person's computer by a download-manager fetcher from NASA's GeoTIFFs or from the parts
-of a Sentinel-2 scene that cover a chosen area, read by range requests
-(`modules/maps/imagery/`, [maps.md](maps.md#satellite-imagery)).
+of a Sentinel-2 scene or of a national aerial photograph that cover a chosen area, read
+by range requests (`modules/maps/imagery/`, [maps.md](maps.md#satellite-imagery)).
 
 The browser sees one tile endpoint. The server looks through installed regions for
 the best archive holding each tile, so regions join seamlessly and a world overview

@@ -37,12 +37,20 @@ export interface RangeFetcherOptions {
   /** Called for every chunk before it is used, for the download speed limit. */
   throttle?: (bytes: number) => Promise<void>;
   concurrency?: number;
+  /**
+   * Adds what a publisher asks to be sent with each request (a short-lived token in the
+   * query, for Microsoft's Planetary Computer). What is kept between runs is filed under
+   * the address without it, so a new token does not mean fetching again.
+   */
+  sign?: (url: string) => Promise<string>;
   /** Waits before a retry; replaced in tests. */
   sleep?: (ms: number, signal?: AbortSignal) => Promise<void>;
 }
 
 export interface RangeFetcher {
   read(url: string, offset: number, length: number): Promise<Uint8Array>;
+  /** As `read`, but undefined when the publisher has no such file (403, 404 or 410): for files that may not exist. */
+  readIfExists(url: string, offset: number, length: number): Promise<Uint8Array | undefined>;
   readonly transfer: Transfer;
 }
 
@@ -96,7 +104,9 @@ export function createRangeFetcher(options: RangeFetcherOptions): RangeFetcher {
 
   async function once(url: string, offset: number, length: number): Promise<Uint8Array> {
     const host = hostOf(url);
-    const { response } = await options.client.fetch(url, {
+    const signed = options.sign ? await options.sign(url) : url;
+    if (hostOf(signed) !== host) throw new PermanentJobError(`${host} is not where this file was to come from.`);
+    const { response } = await options.client.fetch(signed, {
       headers: { range: `bytes=${offset}-${offset + length - 1}`, "accept-encoding": "identity" },
       signal: options.signal,
       allowedHosts: [host],
@@ -177,5 +187,14 @@ export function createRangeFetcher(options: RangeFetcherOptions): RangeFetcher {
     return bytes;
   }
 
-  return { read, transfer };
+  async function readIfExists(url: string, offset: number, length: number): Promise<Uint8Array | undefined> {
+    try {
+      return await read(url, offset, length);
+    } catch (error) {
+      if (error instanceof PermanentJobError && error.kind === "not_found") return undefined;
+      throw error;
+    }
+  }
+
+  return { read, readIfExists, transfer };
 }

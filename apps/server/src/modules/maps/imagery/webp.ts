@@ -79,6 +79,42 @@ async function load(): Promise<Codec> {
   return tryLoad("webp_enc_simd").catch(() => tryLoad("webp_enc"));
 }
 
+interface Decoder {
+  decode(data: Uint8Array): { data: Uint8ClampedArray; width: number; height: number } | null;
+}
+
+let decoder: Promise<Decoder> | undefined;
+let loadedDecoder: Decoder | undefined;
+
+function decoderDir(): string {
+  if (isBundled) return path.join(import.meta.dirname, "imagery");
+  const require = createRequire(import.meta.url);
+  return path.join(path.dirname(require.resolve("@jsquash/webp/package.json")), "codec/dec");
+}
+
+/**
+ * Loads the WebP decoder, which some publishers' GeoTIFFs need (New Zealand's aerial
+ * photographs are WebP inside the TIFF). Afterwards `decodeWebpSync` can be used.
+ */
+export async function loadWebpDecoder(): Promise<void> {
+  decoder ??= (async () => {
+    const dir = decoderDir();
+    const factory = (await import(pathToFileURL(path.join(dir, "webp_dec.js")).href)).default as (
+      options: Record<string, unknown>,
+    ) => Promise<Decoder>;
+    return factory({ wasmBinary: fs.readFileSync(path.join(dir, "webp_dec.wasm")), noInitialRun: true });
+  })();
+  loadedDecoder = await decoder;
+}
+
+/** RGBA pixels of a WebP image. `loadWebpDecoder` must have finished first. */
+export function decodeWebpSync(bytes: Uint8Array): { data: Uint8ClampedArray; width: number; height: number } {
+  if (!loadedDecoder) throw new Error("The WebP decoder is not loaded.");
+  const out = loadedDecoder.decode(bytes);
+  if (!out) throw new Error("A WebP image could not be decoded.");
+  return out;
+}
+
 /** WebP of an RGBA picture, `width` × `height`. */
 export async function encodeWebp(rgba: Uint8Array | Uint8ClampedArray, width: number, height: number): Promise<Uint8Array> {
   codec ??= load();

@@ -155,6 +155,8 @@ export function passesOf(scenes: Scene[], bbox: Bbox): Array<SceneOption & { sce
     const chosen = used.length > 0 ? used : group.slice(0, 1);
     return {
       key: chosen.map((scene) => scene.id).join(","),
+      source: "sentinel-2" as const,
+      resolutionMeters: 10,
       date,
       dateText: dayText(date),
       platform: chosen[0]!.platform,

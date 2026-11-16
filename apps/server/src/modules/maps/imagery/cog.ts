@@ -10,7 +10,8 @@
  * fixtures use is read: classic TIFF or BigTIFF, either byte order, tiled or in strips
  * (a strip is read as a tile as wide as the picture), one sample per pixel or several
  * interleaved, 8 or 16 bits unsigned, no compression or Deflate, with or without the
- * horizontal-differencing predictor. Anything else is refused with a plain message
+ * horizontal-differencing predictor, and 8-bit colour compressed as WebP (as GDAL writes
+ * it, compression 50001). Anything else is refused with a plain message
  * rather than guessed at. The georeferencing is the pixel scale and tie point (a
  * north-up grid) and the projected EPSG code from the GeoKey directory.
  *
@@ -18,6 +19,32 @@
  * remote file by HTTP range requests in use.
  */
 import zlib from "node:zlib";
+import { decodeWebpSync, loadWebpDecoder } from "./webp.ts";
+
+/** TIFF compression code GDAL uses for WebP. */
+const WEBP_COMPRESSION = 50001;
+
+/** A WebP-compressed tile as interleaved samples: RGB, or RGBA when the image has four. */
+function webpTile(bytes: Uint8Array, image: CogImage): Uint8Array {
+  let decoded: { data: Uint8ClampedArray; width: number; height: number };
+  try {
+    decoded = decodeWebpSync(bytes);
+  } catch {
+    throw new CogError("A tile of this GeoTIFF could not be decompressed.");
+  }
+  if (decoded.width !== image.tileWidth || decoded.height !== image.tileHeight) {
+    throw new CogError("A tile of this GeoTIFF is not the size its directory says.");
+  }
+  const count = image.tileWidth * image.tileHeight;
+  if (image.samplesPerPixel === 4) return new Uint8Array(decoded.data.buffer, decoded.data.byteOffset, count * 4).slice();
+  const out = new Uint8Array(count * 3);
+  for (let i = 0, j = 0; i < count; i += 1, j += 4) {
+    out[i * 3] = decoded.data[j]!;
+    out[i * 3 + 1] = decoded.data[j + 1]!;
+    out[i * 3 + 2] = decoded.data[j + 2]!;
+  }
+  return out;
+}
 
 export interface ByteSource {
   /** Exactly `length` bytes from `offset`, or fewer only at the end of the file. */
@@ -50,6 +77,7 @@ const TAG = {
   StripByteCounts: 279,
   TileOffsets: 324,
   TileByteCounts: 325,
+  ExtraSamples: 338,
   SampleFormat: 339,
   ModelPixelScale: 33550,
   ModelTiepoint: 33922,
@@ -97,6 +125,8 @@ export interface CogImage {
   tileByteCounts: number[];
   /** True for a reduced-resolution copy (an overview). */
   overview: boolean;
+  /** True when the last sample is transparency (ExtraSamples 1 or 2), not another colour or band. */
+  alpha: boolean;
 }
 
 export interface Georeference {
@@ -275,12 +305,16 @@ export class Cog {
       const samplesPerPixel = await one(TAG.SamplesPerPixel, 1);
       const compression = await one(TAG.Compression, 1);
       const predictor = await one(TAG.Predictor, 1);
+      const extra = (await values(fields, TAG.ExtraSamples)) ?? [];
       if (sampleFormat !== 1 || !bits.every((bit) => bit === bits[0]) || (bits[0] !== 8 && bits[0] !== 16)) {
         throw new CogError("This GeoTIFF holds values Outpost does not read (only 8- and 16-bit unsigned whole numbers).");
       }
       if (planar !== 1 && samplesPerPixel > 1)
         throw new CogError("This GeoTIFF stores its colours in separate planes, which Outpost does not read.");
-      if (compression !== 1 && compression !== 8 && compression !== 32946) {
+      if (compression === WEBP_COMPRESSION && (bits[0] !== 8 || (samplesPerPixel !== 3 && samplesPerPixel !== 4))) {
+        throw new CogError("This GeoTIFF holds WebP in a form Outpost does not read (only 8-bit colour).");
+      }
+      if (compression !== 1 && compression !== 8 && compression !== 32946 && compression !== WEBP_COMPRESSION) {
         throw new CogError(`This GeoTIFF is compressed in a way Outpost does not read (TIFF compression ${compression}).`);
       }
       if (predictor !== 1 && predictor !== 2) throw new CogError("This GeoTIFF uses a predictor Outpost does not read.");
@@ -296,9 +330,11 @@ export class Cog {
         tileOffsets,
         tileByteCounts,
         overview: (subfile & 1) === 1,
+        alpha: extra.length > 0 && (extra.at(-1) === 1 || extra.at(-1) === 2),
       });
     }
     if (images.length === 0) throw new CogError("This GeoTIFF holds no picture.");
+    if (images.some((image) => image.compression === WEBP_COMPRESSION)) await loadWebpDecoder();
 
     const first = ifds[0]!;
     const scale = await values(first, TAG.ModelPixelScale);
@@ -366,6 +402,8 @@ export class Cog {
       raw = new Uint8Array(count * bytesPerSample);
     } else if (image.compression === 1) {
       raw = bytes;
+    } else if (image.compression === WEBP_COMPRESSION) {
+      return webpTile(bytes, image);
     } else {
       try {
         raw = zlib.inflateSync(bytes);

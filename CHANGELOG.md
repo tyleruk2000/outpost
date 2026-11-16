@@ -536,6 +536,14 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   exact bytes to fetch, size, time, licence and cost (free, no account) are shown, with
   warnings for large areas. Each picture's credit and day are shown on the map and on
   printed pages. No migration.
+- Aerial photographs for small areas, where a government publishes them openly in a
+  form Outpost reads: New Zealand's (LINZ, CC BY 4.0, 5 cm to 30 cm, WebP inside
+  Cloud-Optimised GeoTIFFs) and the lower 48 United States' (USDA NAIP, public domain,
+  30 cm to 1 m, through Microsoft's Planetary Computer). They are offered beside the
+  Sentinel-2 days when an area is chosen, with the same confirmation, and warnings by
+  bytes and tiles rather than area. England's Environment Agency photographs were
+  researched and are not offered: they are published only as ECW, a closed format
+  (docs/sources.md). No migration, no new dependency.
 - Markers, GPX import and export, and coordinate parsing including British National
   Grid references.
 - Exported GPX checked against the GPX 1.1 schema with a wider set of exports. Two

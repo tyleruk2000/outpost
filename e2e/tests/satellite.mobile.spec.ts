@@ -88,4 +88,28 @@ test.describe("satellite imagery on a phone", () => {
     expect(await wrong(page), "the picture on the map").toEqual([]);
     expect(errors).toEqual([]);
   });
+
+  test("an aerial photograph is chosen and its figures read on the phone's screen", async ({ page }) => {
+    test.setTimeout(120_000);
+    const errors = watchForErrors(page);
+    // Christchurch, where the stand-in for New Zealand's photographs has one sheet.
+    await page.goto("/maps?lat=-43.426&lon=172.5405&z=16");
+    await expect(page.locator('.outpost-map[data-map-idle="true"]')).toBeVisible({ timeout: 20_000 });
+    await page.waitForTimeout(450);
+    await page.getByRole("tab", { name: "Offline maps" }).tap();
+    const section = page.getByRole("region", { name: "Satellite imagery" });
+    await section.getByRole("button", { name: "Choose an area" }).first().tap();
+    await page.getByRole("button", { name: "Use the current view" }).tap();
+    await page.getByRole("textbox", { name: "Name for this area" }).fill("Phone streets");
+    await page.getByRole("button", { name: "Find pictures" }).tap();
+    await page.getByRole("radio", { name: /Aerial photograph, 2 m/ }).tap();
+    expect(await wrong(page), "choosing the picture").toEqual([]);
+    await page.getByRole("button", { name: "Continue" }).tap();
+    await expect(page.getByText("Kept on disk")).toBeVisible({ timeout: 20_000 });
+    expect(await wrong(page), "the photograph's figures before fetching").toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+    const fetch = page.getByRole("button", { name: /^Fetch / });
+    expect((await fetch.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    expect(errors).toEqual([]);
+  });
 });
