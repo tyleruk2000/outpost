@@ -384,6 +384,18 @@ describe("answers: set up in three steps", () => {
     expect(found.models).toEqual([{ id: "stand-in.gguf", sizeBytes: null, parameters: null, quantization: null, family: null }]);
   });
 
+  it("looks where whoever started Outpost said Ollama is, not at the usual port", async () => {
+    const server = await startModelServer();
+    cleanups.push(() => server.close());
+    const app = await createTestApp({ OUTPOST_OLLAMA_ADDRESSES: `${NOBODY}, ${server.url}/v1` });
+    cleanups.push(() => app.close());
+    await app.api("PATCH", "/api/settings", { "answers.endpoint": "http://127.0.0.1:8/v1" });
+    const found = (await app.api("POST", "/api/chat/setup/look")).body as ModelSetupLook;
+    expect(found).toMatchObject({ found: true, address: `${server.url}/v1` });
+    // An address that cannot be read stops the start, with the reason.
+    await expect(createTestApp({ OUTPOST_OLLAMA_ADDRESSES: "not an address" })).rejects.toThrow(/is not an address/);
+  });
+
   it("says so when nothing is found, and recommends nothing", async () => {
     const { app } = await station();
     app.ctx.services.chat.setOllamaAddresses([NOBODY]);

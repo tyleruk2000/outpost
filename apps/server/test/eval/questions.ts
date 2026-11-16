@@ -161,7 +161,6 @@ export const QUESTIONS: EvalQuestion[] = [
     question: "How far must the wood stove be from things that can burn at its sides?",
     answeredBy: { document: "stove", heading: "Clearances and hearth", holds: /400 mm/ },
     says: [/\b400\s*mm\b|\b40\s*cm\b/],
-    mustNotSay: [/sides?[^.]*\b(600|100|150|300)\s*mm\b/],
   },
   {
     id: "stove-load",

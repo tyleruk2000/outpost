@@ -87,7 +87,7 @@ export function AnswersSection({
     <SettingsSection
       id="answers"
       title="Answers from your library"
-      description="A program on your own computer writes a short answer to a question from your library, and says which passage each part came from. Chat uses it too. Optional."
+      description="A program on your own computer writes a short answer to a question from your library, and says which passage each part came from. A small model gets some answers wrong, so the passages are always shown beside the answer. Chat uses it too. Optional."
     >
       {status.isPending ? (
         <div className="grid gap-2" aria-busy>

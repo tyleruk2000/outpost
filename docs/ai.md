@@ -10,15 +10,15 @@ is several gigabytes, and which one to run is your decision.
 > guide is inside Outpost at `/help/search-and-answers`, linked from Settings and from
 > Chat. This page is the reference behind it.
 
-> **Tried with a real model, briefly.** Everything on this page was built and is
-> tested automatically against a small stand-in server that speaks the same protocol
-> as Ollama and llama.cpp (`apps/server/test/model-server.ts`), and the requests
-> Outpost sends were checked against both projects' published documentation and source
-> on 2026-11-15 (see [What this was checked against](#what-this-was-checked-against)).
-> On 2026-11-16 the set-up, a few answers and one conversation turn were also run by
-> hand against a real Ollama with two small models: see
-> [Tried with a real model](#tried-with-a-real-model) for exactly what, and what was
-> not. llama.cpp and LM Studio have still not been run.
+> **Measured with two small real models, and no more than that.** Everything on this
+> page is tested automatically against a small stand-in server that speaks the same
+> protocols as Ollama and llama.cpp (`apps/server/test/model-server.ts`); the automated
+> tests never contact a real model server, and fail if one tries. On 2026-11-16 answers
+> were also measured with a real Ollama and two small models, on a fixed set of 45
+> questions: see [Measured with a real model](#measured-with-a-real-model) for the
+> figures, what was changed because of them, and the list of things that were **not**
+> tried with a real model, which is long. llama.cpp and LM Studio have still not been
+> run.
 
 ## What exists
 
@@ -131,7 +131,11 @@ shown last and marked: Ollama says what each model can do (`capabilities` in
 `/api/tags`), and where a server does not, embedding models are recognised by family
 and name. Code: `packages/shared/src/model-choice.ts`.
 
-Smaller models are quicker and worse at following the instruction to cite. Do not
+Smaller models are quicker and worse at answering from passages. Of the two that were
+measured, `llama3.2:3b` answered about nine in ten of the test questions its library
+held and declined the ones it did not; `llama3.2:1b` is not reliable for this, and the
+list says so where a model is chosen
+([the figures](#measured-with-a-real-model)). Do not
 choose an *embedding* model (such as `nomic-embed-text`): those turn text into numbers
 for [search by meaning](search.md#semantic-search) and cannot write. Trying one says so.
 
@@ -141,14 +145,46 @@ The steps are in [setup-guide.md](setup-guide.md#answers-and-chat-with-ollama). 
 hand, under **More options**: the server address is `http://127.0.0.1:11434/v1`, and
 the model is chosen from the server's list.
 
-**Context size.** Ollama reads 4,096 tokens at once by default on most machines
-(more on machines with a great deal of video memory). A prompt that is longer is
-**cut down without any error**: Ollama drops what does not fit and answers anyway, so
-sources could go missing and nothing would say so. Outpost's default context budget
-(6,000 characters, about 1,500 tokens) fits with room for the rules and the answer. If
-you raise the budget, raise Ollama's context too, for example by starting it with
-`OLLAMA_CONTEXT_LENGTH=8192 ollama serve`. Ollama's OpenAI-compatible API has no way
-for Outpost to set this for you.
+**Context size.** A model reads a fixed number of tokens at once: the rules, the
+passages, the conversation and the reply it is writing must all fit. Ollama's own page
+on the subject (`docs.ollama.com/context-length`, read 2026-11-16) gives its default
+as "4k" on a machine with less than 24 GiB of video memory, "32k" with 24 to 48 GiB,
+and "256k" with 48 GiB or more; the Ollama that was tried reported 4,096 tokens for
+both models. What Ollama 0.40.16 did with a prompt that does not fit, when tried:
+
+- Asked the ordinary way, it **cut the prompt down without any error**. A prompt of
+  13,739 tokens was answered from 2,050 of them: the front was dropped until half the
+  context was left, so the first thing in the prompt was simply gone.
+- When a prompt fitted but left too little room for the reply, it made room part-way
+  through the reply by dropping the start of the prompt, again without a word.
+- Its OpenAI-compatible endpoint has no way to set the context size (its own
+  documentation says so) and no way to ask it not to cut.
+
+So when the server at the address in Settings is Ollama (an address ending in `/v1`
+that answers `/api/version` beside it), Outpost uses Ollama's own endpoint,
+`/api/chat`, and:
+
+- **asks for a context size**: 4,096 tokens with the default context budget, and the
+  next of 8,192, 16,384 and 32,768 that holds the budget when you raise it. The size
+  follows from the setting alone, so every request asks for the same one and the
+  model is not loaded afresh between an answer and a conversation. A larger context
+  takes more memory; how much was not measured;
+- **asks Ollama to refuse a prompt that does not fit** (`"truncate": false`) and to
+  **stop a reply that runs out of room** (`"shift": false`). A refusal reaches you as
+  "too long for the model", with the two figures. Neither field is on Ollama's API
+  page as read on 2026-11-16; 0.40.16 acted on both when tried, and a version that
+  does not know a field ignores it and behaves as in the list above.
+
+You no longer need to start Ollama with a larger `OLLAMA_CONTEXT_LENGTH` after raising
+the budget. Two costs, both measured with `llama3.2:1b` on an Apple Silicon Mac: when
+another program has been using the same model with Ollama's defaults, Ollama loads the
+model again for the next request from Outpost (about half a second there; longer on a
+small computer); and **Try it** and **Test** still use the ordinary endpoint, so the
+first answer after them pays that once.
+
+Outpost has no tokeniser and plans on 3.5 characters to a token. With the models tried,
+English prose came to 4.4 characters a token, German to 3.9, and a table of figures to
+1.8, so a passage that is mostly figures can still be refused as too long.
 
 ### With llama.cpp
 
@@ -211,7 +247,7 @@ it. See [Which addresses are contacted](#which-addresses-are-contacted).
 | `answers.temperature` | 0.2 | 0 to 2. How freely the model varies its wording. Low keeps an answer close to its sources. |
 | `answers.contextChars` | 6000 | 1,000 to 60,000. The most characters of quoted passages sent with one question. About four characters make a token. |
 
-Fixed, not settings: at most 8 passages per question; an answer of at most 1,024
+Fixed, not settings: at most 5 passages per question; an answer of at most 1,024
 tokens (about 750 words), and never more than 24,000 characters whatever the server
 does with that limit; and three time limits. Outpost waits 3 minutes for the first
 sign of life from the model, allows 1 minute of silence after that, and stops an answer
@@ -270,13 +306,148 @@ how good answers are on a real library.
 | The same question, `llama3.2:1b` | It did not answer. It copied the passages out one after another and numbered them up to [10]; Outpost marked [6] to [10] as referring to no source it was given. This is why the list says to expect less of it. |
 | One turn in Chat, `llama3.2:3b` | A one-sentence reply in 0.6 seconds. |
 
-Not tried here with a real model: answers on a real library. (One report from a real
-library of reference books: for two plain questions the passages found did not contain
-the answer, and the model rightly said that the sources did not answer. Finding the
-right passages is the weaker half, and no model can make up for it.) Also not tried:
-**Stop** in mid-answer; a long conversation; a model that thinks before answering; a prompt longer
-than the model's context; anything on Windows, Linux, a Raspberry Pi or in Docker; a
-model server on another computer; llama.cpp; LM Studio.
+That was the first, short trial. What followed is below.
+
+## Measured with a real model
+
+On 2026-11-16, with Ollama 0.40.16 on an Apple Silicon Mac and the two models it had,
+`llama3.2:3b` (Q4_K_M, 2.0 GB) and `llama3.2:1b` (Q8_0, 1.3 GB).
+
+### The evaluation set
+
+`apps/server/test/eval/` holds a small library written for the purpose (16 made-up
+household documents, 67 passages: water treatment, first aid, a generator, a wood
+stove, radio procedures and so on), 45 questions over it, and a script that asks them
+through Outpost itself (`POST /api/answers`, as the Search screen does) and judges
+what comes back by rule. 32 of the questions are answered by one passage, which the
+set names; 13 are not answered by the library, some because the subject is there and
+the fact is not, some because only a word is shared ("What does the Countryside Code
+say about dogs?", in a library that holds Q codes and one line about dogs).
+
+```bash
+node apps/server/test/eval/answers-eval.ts --models llama3.2:3b,llama3.2:1b --runs 2
+```
+
+It needs a model server, so it is not part of the test suites. It downloads nothing
+and changes nothing on the model server. `--rejudge FILE` judges saved replies again
+without one. The judging is crude and the same every time: a right answer must match
+the question's patterns ("one minute" or "1 minute") and cite the passage that holds
+the fact; a reply that opens by saying the passages hold no answer counts as declining.
+
+The library is small and tidy. A real library of scanned manuals has longer, messier
+passages, and the figures below are better than a real library will give.
+
+### Before and after
+
+Each cell is counted over the 32 questions the library answers or the 13 it does not,
+times the number of runs. "Words" is keyword search alone (what a new Outpost uses);
+"words and meaning" has search by meaning on, with the model that comes with Outpost.
+
+**Before**, as Outpost stood (two runs of the set):
+
+| Model | Search | Search gave the passage that answers | Right, citing the passage | Right, passage not cited | Said it could not, though the passage was given | Said it could not; passage not found by search | Wrong | Declined rightly | Answered what the library does not hold | Citation faults: invented / cites all / cites after declining / none | First word, s: median (longest) | Whole answer, s: median (longest) | Cut short | Failed |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `llama3.2:3b` | words | 60 of 64 | 56 of 64 | 0 | 1 | 2 | 5 | 24 of 26 | 2 | 0 / 0 / 9 / 0 | 1.1 (2.2) | 1.4 (3.0) | 0 | 0 |
+| `llama3.2:3b` | words and meaning | 62 of 64 | 61 of 64 | 0 | 1 | 0 | 2 | 25 of 26 | 1 | 0 / 1 / 8 / 0 | 1.5 (2.3) | 1.8 (3.2) | 0 | 0 |
+| `llama3.2:1b` | words | 60 of 64 | 41 of 64 | 0 | 9 | 0 | 14 | 8 of 26 | 18 | 30 / 29 / 18 / 0 | 0.4 (0.8) | 1.0 (5.7) | 0 | 0 |
+| `llama3.2:1b` | words and meaning | 62 of 64 | 42 of 64 | 0 | 3 | 0 | 19 | 6 of 26 | 20 | 0 / 51 / 9 / 0 | 0.6 (0.9) | 2.1 (11.9) | 3 | 0 |
+
+**After** the changes listed below (**one run** of the set; a second was not made
+before the work was stopped, and small models vary by a question or two from run to
+run):
+
+| Model | Search | Search gave the passage that answers | Right, citing the passage | Right, passage not cited | Said it could not, though the passage was given | Said it could not; passage not found by search | Wrong | Declined rightly | Answered what the library does not hold | Citation faults: invented / cites all / cites after declining / none | First word, s: median (longest) | Whole answer, s: median (longest) | Cut short | Failed |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `llama3.2:3b` | words | 29 of 32 | 29 of 32 | 0 | 0 | 2 | 1 | 13 of 13 | 0 | 0 / 0 / 2 / 0 | 0.4 (1.8) | 0.7 (2.2) | 0 | 0 |
+| `llama3.2:3b` | words and meaning | 32 of 32 | 31 of 32 | 0 | 0 | 0 | 1 | 13 of 13 | 0 | 0 / 0 / 3 / 0 | 0.6 (1.6) | 0.9 (2.3) | 0 | 0 |
+| `llama3.2:1b` | words | 29 of 32 | 25 of 32 | 0 | 2 | 1 | 4 | 10 of 13 | 3 | 18 / 7 / 2 / 0 | 0.1 (0.9) | 0.5 (2.1) | 0 | 0 |
+| `llama3.2:1b` | words and meaning | 32 of 32 | 27 of 32 | 0 | 1 | 0 | 4 | 6 of 13 | 7 | 16 / 15 / 3 / 0 | 0.2 (0.6) | 0.7 (3.2) | 0 | 0 |
+
+Both tables are the script's own, judged by the questions as they now stand
+(`--rejudge` over the saved replies: one pattern of one question was found to mark a
+right answer wrong after the runs, and was corrected). Times are with the model
+already in memory, on a fast desktop machine; a Raspberry Pi will be many times slower,
+and **no model has been run on one by this project**.
+
+In words: `llama3.2:3b` went from 88% and 95% of the answerable questions right (words;
+words and meaning) to 91% and 97%, from declining 24 and 25 of 26 unanswerable ones to
+all 13 of 13, and answers arrived in about half the time, because it is given fewer
+passages. `llama3.2:1b` went from 64% and 66% right to 78% and 84%, and from making up
+an answer to 18 and 20 of 26 unanswerable questions to 3 and 7 of 13. It is still not
+reliable, and it numbers its sentences "[1]", "[2]", "[3]" as if the numbers were
+passages, which is what the "invented" column counts for it.
+
+### What was changed because of it
+
+- **Passages are chosen one by one, not three to a document.** Search ranks documents,
+  and answers used to take the best documents and up to three passages of each, so a
+  long manual that matched brought three of its pages whether or not they were the
+  best three passages in the library. Answers and conversations now rank the passages
+  themselves ([search.md](search.md#which-passages-an-answer-is-given)).
+- **Five passages at most, not eight.** Fewer when few are good: the 32 test questions
+  the library answers were given 1.6 passages on average by words alone, and 2.5 with
+  meaning as well.
+- **A passage that shares one common word with the question is not handed over.** When
+  no passage holds every word of the question, a passage must hold at least half of
+  what the question is about, each word weighed by how rare it is in the library.
+  "What does the Countryside Code say about dogs?" then finds nothing, and the model is
+  not asked, where before it was given radio pages for "code" and answered from them.
+- **A passage found by meaning alone must be near the question** (a similarity of at
+  least 0.3), **and not far behind the nearest passage** (within 0.2 of it).
+- **"The generator's oil" is searched for as "generator oil".** The index holds no
+  word "generator's", and the question used to find nothing.
+- **Ollama is asked in its own way**, with a context size, and told not to cut a prompt
+  down ([above](#with-ollama)).
+- **The list of models says what was counted** for the two that were measured, where a
+  model is chosen.
+
+### Tried and not kept
+
+- **Rewording the prompt.** Three shorter wordings of the rules were each run once
+  with both models (one with an example sentence, one without, one ending "Answer:"
+  in place of the reminder). With the 3b, right answers came to 29, 29 and 27 of 32 by
+  words and 32, 30 and 29 by words and meaning, against 29 and 31 with the prompt as
+  it was: no more than two questions either way, which one run can vary by. For the
+  1b, ending with "Answer:" cut its numbered lists (4 "invented" markers against 18
+  in the words column) and cost it six right answers in each column. Relabelling the passages "Passage 1 (…):" did not stop the
+  numbering, so it is not copying the passages' layout; it reads "put the number in
+  brackets after each sentence" as "number your sentences". The prompt is unchanged.
+- **A worked example given as an earlier exchange** was being run when the work was
+  stopped. There is no result.
+
+### Known and not done
+
+The work was stopped part-way. These were seen and are not fixed:
+
+- **Citing after declining.** The 3b says "There is no information about … in the
+  provided sources. [1][2]" in two or three of the 13 questions it declines. Outpost
+  reports those markers as passages the answer used. Code that recognises a reply
+  which declines, takes its markers out and says "your library does not seem to cover
+  this" was written and unit-tested but not wired in or measured
+  (`apps/server/src/modules/answers/tidy.ts` on the branch `feat/real-model-unfinished`).
+- **A marker to a number that was never given** is still struck through, with a
+  notice; it is not pointed at the passage that holds the sentence's words, nor
+  removed. The same unfinished code does both.
+- **Citing every passage** is not reported.
+- **No limit shorter than 1,024 tokens** on an answer, and no stop text, were tried.
+- **A prompt refused as too long** is reported and not retried with fewer passages.
+- **A model that is being loaded** is not told apart from one that is reading: the
+  screen still says the model is reading the passages, and that it can be a minute.
+
+### Not tried with a real model
+
+Stop in the middle of an answer or a reply (it is tested against the stand-in, which
+counts abandoned requests; whether Ollama's processor use drops was not looked at); a
+conversation long enough to pass the context size; a conversation with **Use my
+library** on; the first answer after the model has been put out of memory, through
+Outpost (asked directly, Ollama took 20 seconds to load `llama3.2:1b` cold in the
+first trial and about half a second to load it again from the system's file cache);
+the model server stopping in mid-answer; two devices asking at once; a model that
+thinks before answering; anything on Windows, Linux, a Raspberry Pi or in Docker; a
+model server on another computer; llama.cpp; LM Studio; and any model but the two
+named. Answers on a real library were looked at only as far as which passages search
+returns (one report from the earlier trial: for two plain questions the passages found
+did not contain the answer, and the model rightly said so).
 
 ## What happens when you ask
 
@@ -301,10 +472,11 @@ question ─▶ Retriever ─▶ [Reranker] ─▶ ContextAssembler ─▶ Model
    so on; English only) are left out, and Outpost searches for "boil water". The
    answer says which words were searched for. A question in another language, or one
    using search syntax (quotes, a minus sign), is searched for as typed.
-2. **Up to 8 passages are chosen** from documents, notes and book chapters, in the
-   mode the Search screen is using (words, meaning, or both), and fitted to the
-   context budget. Passages from one source are kept together in reading order and
-   numbered from 1.
+2. **Up to 5 passages are chosen** from documents, notes and book chapters, in the
+   mode the Search screen is using (words, meaning, or both), passage by passage
+   ([search.md](search.md#which-passages-an-answer-is-given) has the rule), and fitted
+   to the context budget. Passages from one source are kept together in reading order
+   and numbered from 1.
 3. **If no passage was found, it stops there.** The model is not asked. An answer
    written from nothing would be the model's guess, and Outpost says so instead.
 4. **The prompt is sent** to the model server, and the answer is passed to the
@@ -378,6 +550,24 @@ llama.cpp and LM Studio all document:
   "max_tokens": 1024
 }
 ```
+
+When the server is Ollama, the same question goes to its own endpoint instead, for the
+reasons under [With Ollama](#with-ollama): one `POST <host>/api/chat`, after a
+`GET <host>/api/version` that tells Outpost it is Ollama (remembered for five minutes):
+
+```json
+{
+  "model": "llama3.2:3b",
+  "messages": [ … the same two … ],
+  "stream": true,
+  "truncate": false,
+  "shift": false,
+  "options": { "temperature": 0.2, "num_predict": 1024, "num_ctx": 4096 }
+}
+```
+
+Its reply is read a line of JSON at a time, the last line saying why it ended
+(`done_reason`) and how many tokens the prompt came to.
 
 No API key or other header is sent, so the server must accept requests without one.
 Redirects are refused. The reply is read as server-sent events
@@ -636,7 +826,7 @@ as links, and its pictures are never fetched.
 | The model reached its length limit | The reply was cut off at 1,024 tokens. | **Ask it to continue**. |
 | Stopped. This reply is unfinished. | You pressed Stop. | **Try again**, or carry on. |
 | The model server stopped part-way through | The connection dropped while it was writing. What was written is kept. | **Try again**. |
-| This turn was too long for the model | llama-server refused the prompt as larger than its context. | Shorten the message, lower the context budget, or start the model with a larger context. |
+| This turn was too long for the model | The model server refused the prompt as larger than its context: llama-server does, and Ollama does because Outpost asks it to. | Shorten the message or start a new conversation. With Ollama, raising the context budget in Settings asks for a larger context; with llama-server, start it with one. |
 | The model is writing a reply in another conversation | One thing is written at a time, across Outpost. | Wait, or open that conversation and stop it. Your message stays in the box. |
 | Outpost was restarted while this reply was being written | The server stopped mid-reply. What had been saved (every two seconds) is kept. | **Try again**. |
 
@@ -672,7 +862,7 @@ protocol was read from the projects' own pages on 2026-11-15:
 | Model list | `GET /v1/models`: `{"object":"list","data":[{"id",…}]}` | The same shape, always one element | Endpoint documented, shape not shown |
 | Unknown model | 404, `model 'x' not found` | Not applicable: the loaded model answers | Not described |
 | Not a chat model | 400, `"x" does not support chat` | 501, `not_supported_error` | Not described |
-| Prompt too long | Cut down silently, no error | 400, `exceed_context_size_error` with `n_prompt_tokens` and `n_ctx` | Not described |
+| Prompt too long | Cut down silently, no error; on `/api/chat` with `"truncate": false`, 400 with `request (N tokens) exceeds the available context size (M tokens)` (tried with 0.40.16; the field is not on its API page) | 400, `exceed_context_size_error` with `n_prompt_tokens` and `n_ctx` | Not described |
 | Failure in mid-stream | The stream closes without a finish reason or `[DONE]` (inferred from source; the reason is lost) | One `data: {"error":{…}}` line, then the stream closes | Not described |
 | Default address | `127.0.0.1:11434` | `127.0.0.1:9931` (8080 in older builds) | `127.0.0.1:1234` |
 
@@ -696,9 +886,20 @@ each model in `/api/tags` carries `"capabilities"`, for example
 `["completion","tools"]`. Outpost reads it, to tell models that write from models that
 do not, and does without it when it is absent.
 
-The stand-in server reproduces the Ollama and llama.cpp columns, and refuses any
-request carrying a field outside the first row, so that the tests fail if Outpost
-starts sending something a real server might not understand. That is the extent of
+Ollama's own endpoint was read from `docs.ollama.com/api/chat` on 2026-11-16: the
+request fields `model`, `messages`, `stream`, `options` (`temperature`, `num_ctx`,
+`num_predict`, `stop` and others) and `keep_alive`; a streamed reply of one JSON object
+to a line with `message.content`, `message.thinking` and `done`; and a last object with
+`done_reason`, `prompt_eval_count` and the durations. `truncate` and `shift` are not on
+that page and were found by trying them.
+
+The stand-in server reproduces the Ollama and llama.cpp columns, Ollama's own
+endpoint, and its silent cutting of a prompt that is too long. It refuses any
+request carrying a field outside the ones named here, so that the tests fail if Outpost
+starts sending something a real server might not understand. It can also be asked to
+show the faults the two real models showed: copying the passages out and numbering
+past the last of them, citing a number that was never given, declining with markers,
+and citing everything. That is the extent of
 the evidence: the shapes match the documentation, and a real server may still
 surprise.
 
@@ -760,9 +961,11 @@ Both take the same JSON body.
 | `kinds` | array of strings | `["document", "note"]` | Which kinds of item to retrieve from. |
 | `mode` | `keyword`, `semantic` or `hybrid` | hybrid when semantic search is ready, otherwise keyword | How to search. |
 
-The query is handled like a search-box query: every word must match, with a fallback
-to any word (see [search.md](search.md#keyword-search)). These endpoints do not drop
-small words for you; a few key terms retrieve better than a sentence.
+Passages are ranked one by one, as for an answer
+([search.md](search.md#which-passages-an-answer-is-given)): those that hold every word
+first, then those that hold at least half of what the words say, and with search by
+meaning on, those near the question in meaning. These endpoints do not drop small
+words for you; a few key terms retrieve better than a sentence.
 
 `RetrievedPassage` (from `/api/retrieval/passages`, in `passages`):
 

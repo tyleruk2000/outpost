@@ -35,6 +35,9 @@ net.Socket.prototype.connect = function guarded(this: net.Socket, ...args: any[]
   return connect.apply(this, args as never);
 } as typeof connect;
 
+/** The connections tried since this was last asked, forgotten as they are returned. For the test of this guard itself. */
+export const takeOllamaAttempts = (): string[] => attempts.splice(0);
+
 afterEach(() => {
   const made = attempts.splice(0);
   expect(made, "a test contacted the address a real Ollama listens on; point it at the stand-in or at a port nothing uses").toEqual([]);

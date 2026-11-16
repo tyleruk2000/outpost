@@ -69,8 +69,47 @@ Things to know:
 - **Nothing is kept.** No question or answer is stored on the server or in the
   browser; an answer goes when the tab is closed or reloaded.
 - **It is one question and one answer.** There is no conversation and no follow-up.
-- **It has not been run against a real model yet**, only against a stand-in server
-  that speaks the same protocol. See [ai.md](ai.md).
+- **It has been measured with two small models, on a small test library.** The larger
+  of the two answered about nine in ten of the questions the library held; the smaller
+  is not reliable. See [ai.md](ai.md#measured-with-a-real-model) for the figures and
+  for what has not been tried.
+
+### Which passages an answer is given
+
+Search ranks documents and shows a few passages of each. An answer needs the best
+passages, whichever documents they are in, and as few beside-the-point ones as
+possible: a small model handed a passage that shares a word with the question will
+often answer from it. So answers, conversations that use the library, and the
+retrieval API rank passages one by one, by this rule:
+
+1. **By words.** The passages that hold every word of the question, in the full-text
+   index's own order. If fewer do than are wanted (five, for an answer), passages that hold only some of the words
+   are added, but only those that hold at least half of what the question is about:
+   each word is weighed by how rare it is in your library, so "countryside" counts for
+   much more than "say". A word the library does not hold at all counts as one found
+   in a single passage. A passage that falls short is not handed over, and if none is
+   left, nothing was found and the model is not asked.
+2. **By meaning**, when search by meaning is on. The passages nearest the question,
+   kept only if their similarity to it is at least 0.3 and within 0.2 of the nearest
+   one's. A passage that holds some of the question's words stays whatever its
+   similarity.
+3. **Fused.** The two lists are combined passage by passage with the same reciprocal
+   rank fusion as [hybrid ranking](#hybrid-ranking), so a passage both found comes
+   first. Only passages that hold every word count as found by words here; the ones
+   that hold some of them count only if meaning found them too, or if nothing else was
+   found at all.
+4. **The same text is taken once.** A file kept in two places would otherwise fill two
+   of the five places.
+
+Up to five passages are handed over. The three thresholds (half, 0.3 and 0.2) are
+fixed in `apps/server/src/modules/search/service.ts`; they were chosen on the test
+library described in [ai.md](ai.md#measured-with-a-real-model), which is small, and the
+similarity figures are those of the embedding model that comes with Outpost.
+
+*How search works* shows the two lists and their fusion passage by passage for a
+question of yours. It does not apply the thresholds or the top-up of step 1, so the
+passages it lists under "the numbered sources" can be more than an answer would be
+given.
 
 ## Keyword search
 

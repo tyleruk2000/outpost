@@ -21,6 +21,9 @@
  *   --runs N          ask everything N times over (default 1). Small models vary from run to run.
  *   --only id,id      only these questions
  *   --json FILE       also write every question, passage list and reply to FILE
+ *   --rejudge FILE    ask nothing: judge the replies saved in FILE (by --json) again, by the
+ *                     questions and rules as they now stand, and print the table. For when a
+ *                     pattern in questions.ts turns out to be wrong. Needs no model server.
  *   --quiet           the tables only, not a line for each question
  */
 import "../../src/core/v8-flags.ts";
@@ -40,15 +43,16 @@ const { values: options } = parseArgs({
     runs: { type: "string", default: "1" },
     only: { type: "string" },
     json: { type: "string" },
+    rejudge: { type: "string" },
     quiet: { type: "boolean", default: false },
   },
 });
 
-if (!options.models) {
+if (!options.models && !options.rejudge) {
   console.error("Name the models to try: --models llama3.2:3b,llama3.2:1b");
   process.exit(2);
 }
-const models = options.models
+const models = (options.models ?? "")
   .split(",")
   .map((name) => name.trim())
   .filter(Boolean);
@@ -205,7 +209,30 @@ const HEADER = [
   "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
 ].join("\n");
 
+/** Judges saved replies again, and prints the table they now make. */
+function rejudge(file: string): void {
+  const saved = JSON.parse(fs.readFileSync(file, "utf8")) as Array<Omit<Row, "question" | "judgement"> & { id: string }>;
+  const rows: Row[] = saved.flatMap((row) => {
+    const question = QUESTIONS.find((entry) => entry.id === row.id);
+    return question ? [{ ...row, question, judgement: judge(question, row.reply) }] : [];
+  });
+  const groups = [...new Set(rows.map((row) => `${row.model}\n${row.mode}`))].map((key) => key.split("\n") as [string, string]);
+  const runsSaved = Math.max(0, ...rows.map((row) => row.run));
+  console.log(`Judged again from ${file}: ${rows.length} replies, ${runsSaved === 1 ? "one run" : `${runsSaved} runs`} of the set.\n`);
+  console.log(HEADER);
+  for (const [model, mode] of groups) {
+    console.log(
+      `| ${tableRow(
+        model,
+        mode,
+        rows.filter((row) => row.model === model && row.mode === mode),
+      )} |`,
+    );
+  }
+}
+
 async function main(): Promise<void> {
+  if (options.rejudge) return rejudge(options.rejudge);
   const app = await createTestApp();
   const all: Row[] = [];
   try {
