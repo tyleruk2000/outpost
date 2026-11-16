@@ -13,7 +13,7 @@ import { createTestApp, type TestApp } from "./helpers.ts";
 
 let app: TestApp;
 beforeAll(async () => {
-  app = await createTestApp({ voacapData: false });
+  app = await createTestApp({}, undefined, { voacapData: false });
 });
 afterAll(async () => {
   await app?.close();
