@@ -64,6 +64,8 @@ export interface ScanProgress {
 export function createPacer(limits: { perSecond: number; concurrent: number }, signal: AbortSignal) {
   const gap = 1000 / limits.perSecond;
   let nextAt = 0;
+  /** When the last piece of work actually began, which a late timer can make later than it was planned for. */
+  let lastStart = Number.NEGATIVE_INFINITY;
   let active = 0;
   const waiting: Array<() => void> = [];
   const release = () => {
@@ -78,7 +80,15 @@ export function createPacer(limits: { perSecond: number; concurrent: number }, s
       const at = Math.max(now, nextAt);
       nextAt = at + gap;
       if (at > now) await new Promise((resolve) => setTimeout(resolve, at - now));
-      if (signal.aborted) return undefined;
+      // Timers held up while the computer was busy all fire together once it is free. The gap is kept between
+      // the moments work really starts, not the moments it was planned for, so a stall is never followed by a burst.
+      for (;;) {
+        if (signal.aborted) return undefined;
+        const short = lastStart + gap - Date.now();
+        if (short <= 0) break;
+        await new Promise((resolve) => setTimeout(resolve, short));
+      }
+      lastStart = Date.now();
       return await work();
     } finally {
       release();

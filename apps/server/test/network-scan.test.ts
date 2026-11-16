@@ -7,7 +7,7 @@ import type { AddressInfo } from "node:net";
 import type { CleanupPlan, CleanupResult, NetworkStatus } from "@outpost/shared";
 import { NETWORK_SCAN_LIMITS } from "@outpost/shared";
 import { afterEach, describe, expect, it } from "vitest";
-import { runScan, type ScanLimits } from "../src/modules/network/scan.ts";
+import { createPacer, runScan, type ScanLimits } from "../src/modules/network/scan.ts";
 import { webUrlOf } from "../src/modules/network/service.ts";
 import { planSubnets } from "../src/modules/network/subnets.ts";
 import { standInSystem } from "../src/modules/network/system.ts";
@@ -117,6 +117,22 @@ describe("a scan", () => {
     expect(times.at(-1)! - times[0]!).toBeGreaterThanOrEqual((times.length - 1) * 10 - 5);
     for (let i = 1; i < times.length; i += 1) expect(times[i]! - times[i - 1]!).toBeGreaterThanOrEqual(5);
     expect(Date.now() - started).toBeGreaterThanOrEqual((times.length - 1) * 9);
+  });
+
+  it("does not send a burst after the computer has been too busy to keep time", async () => {
+    // Four probes are planned 20 ms apart; the thread is then held for 150 ms, so every timer is overdue at once.
+    const paced = createPacer({ perSecond: 50, concurrent: 4 }, new AbortController().signal);
+    const starts: number[] = [];
+    const all = Promise.all([1, 2, 3, 4].map(() => paced(async () => void starts.push(Date.now()))));
+    const until = Date.now() + 150;
+    while (Date.now() < until) {
+      // Busy on purpose: nothing else can run.
+    }
+    await all;
+    starts.sort((a, b) => a - b);
+    expect(starts).toHaveLength(4);
+    // 20 ms between starts, give or take the millisecond or two a timer may be early.
+    for (let i = 1; i < starts.length; i += 1) expect(starts[i]! - starts[i - 1]!).toBeGreaterThanOrEqual(17);
   });
 
   it("stops sending when stopped, and keeps nothing", async () => {
