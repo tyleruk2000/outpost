@@ -743,25 +743,157 @@ describe("answers over HTTP", () => {
     expect((await pairs.ask("water")).events.at(-1)).toMatchObject({ type: "done", used: [1, 2], unsupported: [] });
   });
 
-  it("flag what they can of the faults two real small models showed", async () => {
-    // The right words with a number that was never given: nothing in the answer is then left resting on a source.
+  it("settle the faults two real small models showed before the answer is shown as finished", async () => {
+    // The passage's own sentence with a number that was never given: pointed at the passage that holds those words.
     const misnumbers = await listening("stand-in-misnumbers");
     const wrong = await misnumbers.ask("water");
     expect(wrong.text).toMatch(/^Bring the water to a rolling boil for one minute \[8\]\.$/);
-    expect(wrong.events.at(-1)).toMatchObject({ type: "done", outcome: "answered", used: [], unsupported: [8] });
+    expect(wrong.events.at(-1)).toMatchObject({
+      type: "done",
+      outcome: "answered",
+      text: "Bring the water to a rolling boil for one minute [1].",
+      used: [1],
+      unsupported: [8],
+      repointed: [{ from: 8, to: 1 }],
+    });
 
-    // The passages copied out, and the numbering carried on past the last of them.
+    // The passages copied out, and the numbering carried on past the last of them: each stray number is
+    // pointed at the passage whose sentence it labels.
     const copies = await listening("stand-in-copies");
     const copied = await copies.ask("water");
     expect(copied.text).toContain("[1] Bring the water to a rolling boil for one minute.");
-    expect(copied.events.at(-1)).toMatchObject({ type: "done", used: [1, 2], unsupported: [3, 4] });
+    const done = copied.events.at(-1) as Extract<AnswerEvent, { type: "done" }>;
+    expect(done).toMatchObject({
+      used: [1, 2],
+      unsupported: [3, 4],
+      repointed: [
+        { from: 3, to: 1 },
+        { from: 4, to: 2 },
+      ],
+    });
+    expect(done.text).not.toMatch(/\[[34]\]/);
 
-    // Declining, with markers on the sentence that declines; and citing everything. Neither is told apart from an answer:
-    // the markers are real passages, so they are reported as used. (docs/ai.md says so, under what is not done.)
+    // A number with words of the model's own: taken out, and the sentence stands without a source.
+    const invents = await listening("stand-in-invents");
+    const invented = (await invents.ask("water")).events.at(-1) as Extract<AnswerEvent, { type: "done" }>;
+    expect(invented).toMatchObject({ outcome: "answered", used: [1], unsupported: [8], repointed: [] });
+    expect(invented.text).toBe("Bring the water to a rolling boil for one minute [1]. It is also widely known that this works every time.");
+
+    // Declining, with markers on the sentence that declines: the library does not cover it, and nothing is cited.
     const declines = await listening("stand-in-declines");
-    expect((await declines.ask("water")).events.at(-1)).toMatchObject({ type: "done", outcome: "answered", used: [1, 2], unsupported: [] });
+    expect((await declines.ask("water")).events.at(-1)).toMatchObject({
+      type: "done",
+      outcome: "not-covered",
+      text: "There is no information about that in the provided sources.",
+      used: [],
+      unsupported: [],
+    });
+    const notAnswered = await listening("stand-in-not-answered");
+    expect((await notAnswered.ask("water")).events.at(-1)).toMatchObject({ type: "done", outcome: "not-covered", text: "", used: [] });
+
+    // Citing everything is only reported: Outpost cannot tell which passage was meant.
     const all = await listening("stand-in-cites-all");
-    expect((await all.ask("water")).events.at(-1)).toMatchObject({ type: "done", used: [1, 2], unsupported: [] });
+    const cited = (await all.ask("water knots bowline")).events;
+    const sources = (cited[0] as Extract<AnswerEvent, { type: "sources" }>).sources.length;
+    expect(cited.at(-1)).toMatchObject({ type: "done", outcome: "answered", unsupported: [], citesAll: sources >= 3 });
+
+    // An ordinary answer is sent back as it was written: no `text` in the last event.
+    const plain = await listening("stand-in");
+    const answered = (await plain.ask("water")).events.at(-1);
+    expect(answered).toMatchObject({ type: "done", outcome: "answered", repointed: [], citesAll: false });
+    expect(answered).not.toHaveProperty("text");
+  });
+
+  /** An Outpost whose model server (llama-server, which enforces its context) reads `contextTokens` at once, over five long passages. */
+  async function longPassages(contextTokens: number) {
+    const server = await standIn({ contextTokens });
+    const app = await createTestApp();
+    cleanups.push(() => app.close());
+    app.ctx.services.answers.setTimeouts(QUICK);
+    await app.api("PATCH", "/api/settings", {
+      "answers.enabled": true,
+      "answers.endpoint": `${server.url}/llamacpp/v1`,
+      "answers.model": "stand-in",
+      "answers.contextChars": 20_000,
+      "indexing.chunkSize": 2400,
+      "indexing.chunkOverlap": 0,
+    });
+    const sentence = (n: number) => `Section ${n} of the pump manual says the pump must be primed with clean water before it is started. `;
+    app.ctx.services.search.upsert({
+      kind: "document",
+      entityId: "d-pump",
+      title: "Hand pump manual",
+      url: "/library/documents/d-pump",
+      tags: [],
+      sections: [1, 2, 3, 4, 5].map((n) => ({ page: n, heading: `Part ${n}`, text: sentence(n).repeat(24) })),
+    });
+    await app.app.listen({ port: 0, host: "127.0.0.1" });
+    const origin = `http://127.0.0.1:${(app.app.server.address() as AddressInfo).port}`;
+    const ask = async () => {
+      const response = await fetch(`${origin}/api/answers`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-outpost-request": "1" },
+        body: JSON.stringify({ question: "pump primed" }),
+      });
+      const events: AnswerEvent[] = [];
+      let type = "";
+      for (const line of (await response.text()).split("\n")) {
+        if (line.startsWith("event: ")) type = line.slice(7);
+        else if (line.startsWith("data: ")) events.push({ type, ...JSON.parse(line.slice(6)) } as AnswerEvent);
+      }
+      return events;
+    };
+    return { server, ask };
+  }
+
+  it("ask again with fewer passages when the model server refuses them as too long, and say how many were left out", async () => {
+    const { server, ask } = await longPassages(3000);
+    const events = await ask();
+    const lists = events.filter((event): event is Extract<AnswerEvent, { type: "sources" }> => event.type === "sources");
+    expect(lists).toHaveLength(2);
+    expect(lists[0]).toMatchObject({ leftOut: 0 });
+    expect(lists[0]!.sources).toHaveLength(5);
+    // The best passages are kept, in the order they were found, and the rest counted.
+    expect(lists[1]!.sources.length).toBeGreaterThan(0);
+    expect(lists[1]!.sources.length).toBeLessThan(5);
+    expect(lists[1]!.leftOut).toBe(5 - lists[1]!.sources.length);
+    expect(lists[1]!.omitted).toBe(lists[0]!.omitted);
+    expect(events.at(-1)).toMatchObject({ type: "done", outcome: "answered" });
+    // The first request was refused, the second answered, and no third was made.
+    const chats = chatRequests(server);
+    expect(chats).toHaveLength(2);
+    expect(JSON.stringify(chats[1]!.body).length).toBeLessThan(JSON.stringify(chats[0]!.body).length);
+  });
+
+  it("report the refusal when not even the best passage would fit, without asking again", async () => {
+    const { server, ask } = await longPassages(1200);
+    const events = await ask();
+    expect(events.at(-1)).toMatchObject({ type: "error", failure: "context-too-long" });
+    expect((events.at(-1) as { message: string }).message).toMatch(/too long for the model/);
+    expect(chatRequests(server)).toHaveLength(1);
+    expect(events.filter((event) => event.type === "sources")).toHaveLength(1);
+  });
+
+  it("say the model is being loaded only when Ollama says it is not in memory", async () => {
+    const { ask, model } = await listening("stand-in", { loadMs: 50 });
+    const cold = await ask("water");
+    expect(cold.events.map((event) => event.type)).toContain("loading");
+    // Loading comes before any words.
+    const types = cold.events.map((event) => event.type);
+    expect(types.indexOf("loading")).toBeLessThan(types.indexOf("delta"));
+    // Now in memory, for the same context size: nothing is said.
+    expect((await ask("water")).events.map((event) => event.type)).not.toContain("loading");
+    // Put out of memory, as after sitting idle: said again.
+    model.unload();
+    expect((await ask("water")).events.map((event) => event.type)).toContain("loading");
+  });
+
+  it("say nothing about loading where the server cannot be asked", async () => {
+    // llama-server has no /api/ps; nor does an Ollama-like server without Ollama's own endpoints.
+    const llama = await listening("stand-in", {}, "/llamacpp/v1");
+    expect((await llama.ask("water")).events.map((event) => event.type)).not.toContain("loading");
+    const plain = await listening("stand-in", { ollamaApi: false, loadMs: 20 });
+    expect((await plain.ask("water")).events.map((event) => event.type)).not.toContain("loading");
   });
 
   it("leave a model's reasoning out of the answer and out of the citation check", async () => {

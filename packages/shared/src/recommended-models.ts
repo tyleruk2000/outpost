@@ -69,7 +69,7 @@ export const RECOMMENDED_MODELS: readonly RecommendedModel[] = [
     memoryMeasured: true,
     fits: "4 GB",
     suits:
-      "Lighter, for a computer with 4 GB of memory, and not reliable for answers from your library. Asked the same 45 test questions, it got about one in five of the answerable ones wrong or said the passages held no answer when they did, made up an answer to between a quarter and a half of those the library did not hold, and numbered its sentences as if the numbers were sources.",
+      "Lighter, for a computer with 4 GB of memory, and not reliable for answers from your library. Asked the same 45 test questions, it got between one in five and one in four of the answerable ones wrong or said the passages held no answer when they did, made up an answer to between one in six and one in two of those the library did not hold, and numbered its sentences as if the numbers were sources (Outpost takes those markers out, or points them at the passage that holds the words).",
     start: false,
     page: "https://ollama.com/library/llama3.2",
   },

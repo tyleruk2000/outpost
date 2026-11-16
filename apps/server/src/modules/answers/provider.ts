@@ -242,6 +242,26 @@ export function openAiChatProvider(
     return ollama;
   }
 
+  /**
+   * Whether Ollama will have to load the model before it can read anything: it is not
+   * among the models `/api/ps` lists, or is there for another context size, which Ollama
+   * loads afresh. False whenever that cannot be told (no answer, or an answer of another
+   * shape), so that nothing untrue is said.
+   */
+  async function needsLoading(contextTokens: number | undefined, signal: AbortSignal): Promise<boolean> {
+    const answer = (await ask(`${ollamaRoot}/api/ps`, signal)) as { models?: unknown } | null | undefined;
+    if (!answer || !Array.isArray(answer.models)) return false;
+    const names = new Set([model, model.includes(":") ? model : `${model}:latest`]);
+    const present = (answer.models as Array<{ name?: unknown; model?: unknown; context_length?: unknown } | null>).some(
+      (entry) =>
+        entry !== null &&
+        typeof entry === "object" &&
+        (names.has(String(entry.name)) || names.has(String(entry.model))) &&
+        (contextTokens === undefined || typeof entry.context_length !== "number" || entry.context_length === contextTokens),
+    );
+    return !present;
+  }
+
   async function* generate(request: GenerationRequest): AsyncGenerator<string> {
     const outer = request.signal;
     outer?.throwIfAborted();
@@ -348,6 +368,7 @@ export function openAiChatProvider(
 
     /** Ollama's own way: one JSON object to a line, the last one saying why it ended and what the prompt came to. */
     async function* viaOllama(): AsyncGenerator<string> {
+      if (request.onLoading && (await needsLoading(request.contextTokens, controller.signal))) request.onLoading();
       const response = await post(`${ollamaRoot}/api/chat`, "application/x-ndjson", {
         model,
         messages,
@@ -371,6 +392,7 @@ export function openAiChatProvider(
           done?: unknown;
           done_reason?: unknown;
           prompt_eval_count?: unknown;
+          eval_count?: unknown;
         };
         try {
           event = JSON.parse(line);
@@ -387,6 +409,7 @@ export function openAiChatProvider(
           request.onFinish?.({
             finishReason: typeof event.done_reason === "string" ? event.done_reason : null,
             promptTokens: typeof event.prompt_eval_count === "number" ? event.prompt_eval_count : null,
+            replyTokens: typeof event.eval_count === "number" ? event.eval_count : null,
           });
           break;
         }

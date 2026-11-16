@@ -393,12 +393,23 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   budget allows, and passes on a refusal as "too long for the model".
 - `OUTPOST_OLLAMA_ADDRESSES` names where "Look for Ollama on this computer" looks, for
   an Ollama on another port.
+- **A finished answer is settled before it is shown as finished.** A reply that says
+  the passages hold no answer is shown as "Your library does not seem to cover this",
+  citing nothing. A marker to a number no passage carried is pointed at a passage only
+  when the words it stands on are, word for word, whole sentences of exactly one
+  passage, and is otherwise taken out; the answer says which. An answer that cites
+  every passage says so. Measured again with both models: no right answer was lost.
+- **"Loading the model"**: when Ollama says the model is not in memory, the answer and
+  the reply say it is being loaded. Nothing is said for servers that cannot be asked.
+- **Too long for the model**: a refused answer is asked once more with fewer passages,
+  and says how many were left out.
 
 #### Chat
 
 - **Chat**, a screen for conversations with a language model you run yourself, on the
-  same model server and under the same own-network rule as answers. Tested against a
-  stand-in server; no real model has yet held a conversation through Outpost.
+  same model server and under the same own-network rule as answers. Tried with
+  `llama3.2:3b` and `llama3.2:1b` on Ollama: Stop, a conversation past the context
+  size, Use my library, a model loading, and two requests at once (see `docs/ai.md`).
 - Conversations are kept on the server, so they are on every device: start one by
   typing, rename, find by name, delete after asking. There are no accounts, so
   everyone who can open Outpost can read them, and the screen says so.
@@ -420,6 +431,10 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   installed, a model still loading, a reply cut off, a reply stopped.
 - Conversations are counted and removed by "erase everything", which stops a reply
   being written first.
+- A turn the model server refuses as too long is sent once more without its earliest
+  messages, and the reply says so; a reply that Ollama stops because the context is
+  full says it ran out of room, not that it reached its length limit. Replies from the
+  library are settled as answers are.
 
 #### Reference collections
 
@@ -972,8 +987,9 @@ These are deliberate or known, and are explained in
   shapes), and has English only unless a language file is added by hand.
 - **No language model is included.** Answers need a model server you run yourself.
   They are one question and one answer, from documents, notes and book chapters only
-  (reference collections are not read), and have been tested against a stand-in
-  server, not a real model.
+  (reference collections are not read), and have been run with two small models
+  (`llama3.2:3b`, `llama3.2:1b`) on Ollama on a Mac only; llama.cpp, LM Studio and a
+  Raspberry Pi have not been tried.
 - **Reference collections need kiwix-serve**: the Compose sidecar, or a binary for
   installations without Docker. On a portable drive they cannot be opened on Windows,
   because the Kiwix project publishes no Windows build of its reader at the version

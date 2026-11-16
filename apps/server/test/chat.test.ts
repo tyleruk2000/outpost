@@ -532,6 +532,42 @@ describe("a conversation longer than the model can read", () => {
     );
   });
 
+  it("is sent again without its earliest messages when the server refuses it, and the reply says so", async () => {
+    const { app, model, open, exchange, detail } = await station("stand-in", { contextTokens: 700 }, "/llamacpp/v1");
+    await app.api("PATCH", "/api/settings", { "answers.contextChars": 1000 });
+    const id = await open();
+    const filler = "kettle ".repeat(128).trim();
+    // Each fits by itself: the server reads 700 tokens, and the stand-in counts four characters to one.
+    expect((await exchange(id, `One. ${filler}`)).state).toBe("complete");
+    expect((await exchange(id, `Two. ${filler}`)).state).toBe("complete");
+    const third = await exchange(id, `Three. ${"kettle ".repeat(57).trim()}`);
+    // Outpost planned to send both earlier exchanges; the server refused; the turn was sent again without them.
+    expect(third).toMatchObject({ state: "complete", omitted: 4 });
+    expect(third.notice).toMatch(
+      /^The model server said this turn was more than the model can read at once, so it was sent again without the 4 earliest messages/,
+    );
+    const bodies = chatBodies(model);
+    expect(bodies).toHaveLength(4);
+    expect(bodies[2].messages.length).toBeGreaterThan(bodies[3].messages.length);
+    expect(bodies[3].messages.map((message: { role: string }) => message.role)).toEqual(["system", "user"]);
+    expect((await detail(id)).messages.at(-1)).toMatchObject({ omitted: 4 });
+  });
+
+  it("says a reply ran out of room, not that it reached its length limit, when Ollama stops it at the edge of the context", async () => {
+    const { open, exchange } = await station("stand-in-long", { longChunkDelayMs: 1 });
+    // About 3,900 of the 4,096 tokens asked for (the stand-in counts four characters to a token): it fits, and leaves little room.
+    const reply = await exchange(await open(), "kettle ".repeat(2200));
+    expect(reply.state).toBe("cut-short");
+    expect(reply.notice).toMatch(
+      /^The model ran out of room, so this reply stops before its end: this turn came to \d+ tokens, and with the reply that filled the 4096/,
+    );
+    // A reply that reaches the limit it was given is still called that.
+    const limited = await station("stand-in-length");
+    expect((await limited.exchange(await limited.open(), "Hello")).notice).toBe(
+      "The model reached its length limit, so this reply stops before its end.",
+    );
+  });
+
   it("is refused by Ollama too, which is asked for a context size and told not to cut the turn down", async () => {
     const { app, model, open, exchange } = await station();
     // More than the 4,096 tokens that are asked for with the settings a new Outpost has (the stand-in counts four characters to a token).
@@ -617,10 +653,53 @@ describe("a conversation that uses the library", () => {
     expect(chatBodies(model)).toHaveLength(0);
   });
 
-  it("marks a citation that matches no passage the model was given", async () => {
-    const { open, exchange } = await station("stand-in-invents");
+  it("takes out a citation that matches no passage the model was given, and keeps the words as written", async () => {
+    const { open, exchange, detail } = await station("stand-in-invents");
+    const id = await open({ useLibrary: true });
+    const reply = await exchange(id, "boil water");
+    expect(reply).toMatchObject({ unsupported: [7], used: [1], repointed: [], declined: false });
+    // Stored as the model wrote it; shown without the marker that leads nowhere.
+    expect(reply.text).toMatch(/every time \[7\]\.$/);
+    expect(wordsOf(reply.blocks)).not.toContain("[7]");
+    expect(wordsOf(reply.blocks)).toContain("[1]");
+    // The same when the conversation is read again.
+    expect((await detail(id)).messages.at(-1)).toMatchObject({ unsupported: [7], used: [1] });
+  });
+
+  it("points a stray citation at the passage whose own sentence it stands on", async () => {
+    const { open, exchange } = await station("stand-in-misnumbers");
     const reply = await exchange(await open({ useLibrary: true }), "boil water");
-    expect(reply.unsupported).toEqual([7]);
+    expect(reply).toMatchObject({ used: [1], unsupported: [7], repointed: [{ from: 7, to: 1 }] });
+    expect(wordsOf(reply.blocks)).toContain("[1]");
+    expect(wordsOf(reply.blocks)).not.toContain("[7]");
+  });
+
+  it("shows a reply that says the passages hold no answer as that, citing nothing", async () => {
+    const { open, exchange } = await station("stand-in-declines");
+    const reply = await exchange(await open({ useLibrary: true }), "boil water");
+    expect(reply).toMatchObject({ state: "complete", declined: true, used: [], unsupported: [] });
+    expect(wordsOf(reply.blocks)).toContain("There is no information about that in the provided sources.");
+    expect(wordsOf(reply.blocks)).not.toMatch(/\[\d\]/);
+    // A plain conversation is never read that way: there were no passages to decline.
+    const plain = await station("stand-in-declines");
+    expect(await plain.exchange(await plain.open(), "Hello")).toMatchObject({ declined: false, used: [] });
+  });
+
+  it("says when the model is being loaded, and only when Ollama says so", async () => {
+    const { open, send, watch, app } = await station("stand-in-slow-start", { loadMs: 300, slowMs: 200 });
+    const id = await open();
+    expect((await send(id, "Hello")).status).toBe(200);
+    const events = await watch(id);
+    const phases = events.flatMap((event) => (event.type === "phase" || event.type === "start" ? [event.phase] : []));
+    expect(phases).toContain("loading");
+    expect(phases.indexOf("loading")).toBeLessThan(phases.lastIndexOf("writing"));
+    await app.ctx.services.chat.runner.current()?.finished;
+
+    const llama = await station("stand-in", {}, "/llamacpp/v1");
+    const other = await llama.open();
+    expect((await llama.send(other, "Hello")).status).toBe(200);
+    const seen = await llama.watch(other);
+    expect(seen.flatMap((event) => (event.type === "phase" ? [event.phase] : []))).not.toContain("loading");
   });
 
   it("can be turned on and off for a conversation, and the next reply follows", async () => {

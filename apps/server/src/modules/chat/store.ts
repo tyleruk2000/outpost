@@ -21,8 +21,8 @@ import type { AppContext } from "../../core/context.ts";
 import { notFound } from "../../core/errors.ts";
 import { newId } from "../../core/ids.ts";
 import { chatConversations, chatMessages } from "../../db/schema.ts";
+import { type TidiedReply, tidyReply } from "../answers/tidy.ts";
 import { markdownBlocks } from "../documents/markdown-view.ts";
-import { CITATION_MARKER } from "../retrieval/index.ts";
 import { excerptOf } from "./context.ts";
 
 type ConversationRow = typeof chatConversations.$inferSelect;
@@ -44,13 +44,6 @@ export function replyBlocks(text: string): MarkdownBlock[] {
   }
 }
 
-/** The citation markers a reply uses, by the same rule as `checkCitations`, in order. */
-function markersIn(text: string): number[] {
-  const found = new Set<number>();
-  for (const match of text.matchAll(CITATION_MARKER)) for (const number of match[1]?.split(/[,;]/) ?? []) found.add(Number(number));
-  return [...found].sort((a, b) => a - b);
-}
-
 const routeOf = (kind: "document" | "note", id: string) => (kind === "note" ? `/notes/${id}` : `/library/documents/${id}`);
 
 function scopeOf(row: ConversationRow): ChatScope | null {
@@ -70,14 +63,33 @@ export function toConversation(row: ConversationRow): ChatConversation {
   };
 }
 
-export function toMessage(row: MessageRow, blocks?: MarkdownBlock[]): ChatMessage {
+/**
+ * A reply as it is shown. A finished reply from the library is read the way an answer
+ * is (answers/tidy.ts): one that says the passages hold no answer loses its markers, and
+ * a marker to a number no passage carried is taken out or pointed at the passage whose
+ * own sentences it stood on. It is worked out each time from the stored text, which
+ * stays as the model wrote it.
+ */
+export function shownReply(
+  row: Pick<MessageRow, "role" | "text" | "state" | "grounded" | "sources">,
+): Omit<TidiedReply, "outcome"> & { declined: boolean } {
   const sources = (row.sources ?? []) as AnswerSource[];
   const settled = row.state === "complete" || row.state === "cut-short";
+  if (row.role !== "assistant" || !row.grounded || !settled || sources.length === 0) {
+    return { text: row.text, declined: false, used: [], unsupported: [], repointed: [], citesAll: false };
+  }
+  const tidied = tidyReply(row.text, sources);
+  return { ...tidied, declined: tidied.outcome === "not-covered" };
+}
+
+export function toMessage(row: MessageRow, blocks?: MarkdownBlock[]): ChatMessage {
+  const sources = (row.sources ?? []) as AnswerSource[];
+  const shown = shownReply(row);
   return {
     id: row.id,
     role: row.role,
     text: row.text,
-    blocks: row.role === "assistant" ? (blocks ?? replyBlocks(row.text)) : [],
+    blocks: row.role === "assistant" ? (blocks ?? replyBlocks(shown.text)) : [],
     state: row.state as ChatReplyState,
     failure: (row.failure as AnswerFailure | null) ?? null,
     notice: row.notice,
@@ -86,7 +98,11 @@ export function toMessage(row: MessageRow, blocks?: MarkdownBlock[]): ChatMessag
     sources,
     searchedFor: row.searchedFor,
     // Markers are judged once the reply is whole; half a reply has not cited anything wrongly yet.
-    unsupported: row.grounded && settled ? markersIn(row.text).filter((marker) => !sources.some((source) => source.marker === marker)) : [],
+    declined: shown.declined,
+    used: shown.used,
+    unsupported: shown.unsupported,
+    repointed: shown.repointed,
+    citesAll: shown.citesAll,
     omitted: row.omitted,
     tookMs: row.tookMs,
     createdAt: row.createdAt,

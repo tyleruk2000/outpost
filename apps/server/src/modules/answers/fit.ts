@@ -15,7 +15,9 @@
  * asked for a named context size, told to refuse a prompt that does not fit, and told
  * to stop a reply that runs out of room (see provider.ts); a refusal reaches the person
  * as "too long for the model", with the two figures, and never as an answer written
- * from half of what was sent.
+ * from half of what was sent. An answer refused that way is asked once more with fewer
+ * passages, and a turn of a conversation without its earliest messages, by the
+ * server's own figures (`passageCharsAfterRefusal`, `charsThatFit`).
  */
 
 /** Characters to a token, for planning. Prose runs higher (more room than planned); figures and some languages run lower. */
@@ -36,6 +38,39 @@ const INSTRUCTIONS_CHARS = 2200;
 const QUESTION_CHARS = 1000;
 
 const tokensFor = (chars: number) => Math.ceil(chars / CHARS_PER_TOKEN);
+
+/**
+ * The model server refused a prompt of `sentChars` characters as more than the model can
+ * read at once, and gave its figures. How many characters should fit beside a reply of
+ * `replyTokens`, at the characters to a token this very prompt came to with the model's
+ * own tokeniser (which is what a table of figures needs), with a tenth kept in hand.
+ */
+export function charsThatFit(sizes: { promptTokens: number; contextTokens: number }, sentChars: number, replyTokens: number): number {
+  const charsPerToken = sentChars / Math.max(1, sizes.promptTokens);
+  return Math.max(0, Math.floor((sizes.contextTokens - replyTokens - SPARE_TOKENS) * charsPerToken * 0.9));
+}
+
+/**
+ * The model server refused a prompt as more than the model can read at once. How many
+ * characters of passages to send when it is asked again, so that the prompt and a reply
+ * of `replyTokens` fit. When the server gave its figures (llama-server and Ollama both
+ * do), the characters to a token are taken from this very prompt as the model's own
+ * tokeniser counted it, which is what a table of figures needs; the instructions and the
+ * question cannot be shrunk, so they are taken off first, and a tenth is kept in hand.
+ * Without figures, two thirds of what was sent.
+ */
+export function passageCharsAfterRefusal(input: {
+  promptChars: number;
+  passageChars: number;
+  sizes: { promptTokens: number; contextTokens: number } | null;
+  replyTokens: number;
+}): number {
+  const { promptChars, passageChars, sizes, replyTokens } = input;
+  if (!sizes || sizes.promptTokens <= 0) return Math.floor(passageChars * 0.66);
+  const charsPerToken = promptChars / sizes.promptTokens;
+  const room = (sizes.contextTokens - replyTokens - SPARE_TOKENS) * charsPerToken;
+  return Math.max(0, Math.floor((room - (promptChars - passageChars)) * 0.9));
+}
 
 /**
  * The context to ask for, given the context budget in Settings and the longest reply

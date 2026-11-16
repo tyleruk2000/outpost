@@ -87,6 +87,11 @@ export type AnswerFailure =
  * What `POST /api/answers` sends, as server-sent events named by `type`. Always
  * `sources` first; then either `done` at once (nothing was found, so no model was
  * asked), or `delta` events as the model writes, ended by `done` or `error`.
+ *
+ * `sources` can come a second time before any `delta`: the model server refused the
+ * passages as more than the model can read at once, and Outpost asked again with
+ * fewer. The second list replaces the first, and its `leftOut` counts the passages
+ * that were taken away for that reason.
  */
 export type AnswerEvent =
   | {
@@ -103,17 +108,44 @@ export type AnswerEvent =
       sources: AnswerSource[];
       /** Passages that were found but did not fit the context budget. */
       omitted: number;
+      /**
+       * Passages that were sent once and refused by the model server as more than the
+       * model can read at once, and so left out when it was asked again. Usually 0.
+       */
+      leftOut: number;
       /** A source is from a field where a wrong paraphrase can hurt someone. */
       safetyCritical: boolean;
     }
+  /**
+   * The model server says the model is not in memory, so it is loaded before it can
+   * read anything. Only a server that can be asked (Ollama) ever causes this; with any
+   * other, a slow first word may be loading or may be reading, and Outpost cannot tell.
+   */
+  | { type: "loading" }
   | { type: "delta"; text: string }
   | {
       type: "done";
-      outcome: "answered" | "nothing-found";
-      /** Markers the answer used that are real sources. */
+      /**
+       * `answered`: the model wrote an answer. `nothing-found`: no passage matched, so the
+       * model was not asked. `not-covered`: the model read the passages and said they do
+       * not hold the answer; nothing it wrote is then shown as resting on a passage.
+       */
+      outcome: "answered" | "nothing-found" | "not-covered";
+      /**
+       * The answer as it is to be shown, when that is not exactly what the `delta` events
+       * added up to: markers to numbers no passage carried are taken out or pointed at
+       * the one passage whose own sentences they stood on, and a reply that says the
+       * passages do not answer loses every marker. Absent when nothing was changed.
+       */
+      text?: string;
+      /** Markers left in the answer, each a passage that was given. */
       used: number[];
-      /** Markers the answer used that refer to no source it was given. */
+      /** Numbers the model cited that no passage carried. None is left in the answer as shown. */
       unsupported: number[];
+      /** Which of those were pointed at the one passage whose own whole sentences the marker stood on. */
+      repointed: Array<{ from: number; to: number }>;
+      /** Three or more passages were given and the answer cites every one, which says nothing about which was used. */
+      citesAll: boolean;
       /** The model stopped at the length limit, not because it had finished. */
       cutShort: boolean;
       tookMs: number;

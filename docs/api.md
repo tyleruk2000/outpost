@@ -345,9 +345,10 @@ not queued. Otherwise the response is `200` with
 
 | Event | Data |
 | --- | --- |
-| `sources` | Always first: `question`, `searchedFor`, `model`, `server`, `sources`, `omitted`, `safetyCritical`. Each source has `marker`, `kind`, `entityId`, `title`, `collection`, `url`, `page`, `heading`, `quote` and `safetyCritical`. |
+| `sources` | Always first: `question`, `searchedFor`, `model`, `server`, `sources`, `omitted`, `leftOut`, `safetyCritical`. Sent again, before any `delta`, when the model server refused the passages as too long and Outpost asked once more with fewer; `leftOut` counts those taken away. Each source has `marker`, `kind`, `entityId`, `title`, `collection`, `url`, `page`, `heading`, `quote` and `safetyCritical`. |
+| `loading` | No data. Ollama said the model is not in memory and is loading it. Never sent for a server that cannot be asked. |
 | `delta` | `text`: the next piece of the answer. |
-| `done` | `outcome` (`answered`, or `nothing-found` when no passage matched and the model was not asked), `used` and `unsupported` (citation markers that are and are not real sources), `cutShort`, `tookMs`. |
+| `done` | `outcome` (`answered`; `nothing-found` when no passage matched and the model was not asked; `not-covered` when the model said the passages do not answer), `text` (the answer as shown, only when it differs from the `delta`s), `used`, `unsupported` (numbers no passage carried, none left in `text`), `repointed` (`{ from, to }`), `citesAll`, `cutShort`, `tookMs`. See [ai.md](ai.md#the-answer-on-screen). |
 | `error` | `failure` and a `message` for a person. Sent in place of `done` when the model server fails after the stream has begun. |
 
 Closing the connection stops the model. Nothing about the question or the answer is
@@ -390,7 +391,7 @@ A message (`ChatMessage`) has `id`, `role` (`user` or `assistant`), `text`, `blo
 document is sent as; empty for a person's message), `state` (`writing`, `complete`,
 `cut-short`, `stopped`, `failed`, `nothing-found`), `failure` and `notice` (why it did
 not finish, and what to do), `model`, `grounded`, `sources`, `searchedFor`,
-`unsupported` (citation markers that match no passage given), `omitted` (earlier
+`declined` (a reply from the library that says the passages do not answer; its markers are taken out of `blocks`), `used` (markers left in `blocks`), `unsupported` (numbers no passage carried, none left in `blocks`), `repointed` (`{ from, to }`), `citesAll`, `omitted` (earlier
 messages that were not sent for this reply), `tookMs` and `createdAt`.
 
 `GET …/stream` is a `GET` and changes nothing; any number of browsers can watch, and
@@ -399,7 +400,7 @@ leaving does not stop the model. Events, each with one JSON `data` line:
 | Event | Data |
 | --- | --- |
 | `idle` | Nothing is being written in this conversation. The stream ends. |
-| `start` | Always first otherwise: `messageId`, `phase` (`finding`, `waiting`, `writing`), `model`, `grounded`, `sources`, `searchedFor`, `omitted`, `startedAt`. |
+| `start` | Always first otherwise: `messageId`, `phase` (`finding`, `loading` (only when Ollama says the model is not in memory), `waiting`, `writing`), `model`, `grounded`, `sources`, `searchedFor`, `omitted`, `startedAt`. |
 | `phase` | `phase`, and `sources` and `searchedFor` once the passages are known. |
 | `blocks` | `from`, `blocks`: replace the reply's blocks from index `from` onward. A browser that joins part-way is first sent the whole reply so far (`from` 0). |
 | `done` | `message`: the reply as it was stored, whatever its `state`. The stream ends. |

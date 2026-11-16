@@ -14,11 +14,11 @@ import { Link } from "react-router";
 import { Notice } from "@/components/page";
 import { kindOf } from "@/components/search-hit";
 import { Button } from "@/components/ui/button";
-import { routeOf } from "@/features/search/answer";
+import { routeOf, StrayMarkers } from "@/features/search/answer";
 import { whereOf } from "@/features/search/answer-text";
 import { cn, plural } from "@/lib/utils";
 import { type LiveReply, SETTINGS_MODEL, useElapsedSeconds } from "./chat-data";
-import { markersIn, ReplyBody, useCopied } from "./reply-body";
+import { ReplyBody, useCopied } from "./reply-body";
 
 /** The two columns of a turn: who is speaking, and what they said. One column on a narrow screen. */
 export const TURN = "grid grid-cols-1 gap-x-6 gap-y-1.5 md:grid-cols-[8.5rem_minmax(0,1fr)]";
@@ -186,7 +186,8 @@ function Sources({ message, sources, settled, last }: { message: ChatMessage; so
   const [open, setOpen] = useState(last || critical || sources.length <= 3);
   const id = useId();
   if (sources.length === 0) return null;
-  const used = settled ? new Set(markersIn(message.text)) : null;
+  // A reply that declined cites nothing, so no passage is marked either way.
+  const used = settled && !message.declined ? new Set(message.used) : null;
   return (
     <section aria-label="Passages the model was given" className="mt-4 max-w-[46rem]">
       <button
@@ -197,7 +198,9 @@ function Sources({ message, sources, settled, last }: { message: ChatMessage; so
         className="-ml-1.5 flex items-center gap-1 rounded-control px-1.5 py-0.5 text-left text-small font-semibold text-ink hover:bg-surface-strong max-md:min-h-11"
       >
         <ChevronDown aria-hidden className={cn("size-4 text-ink-muted transition-transform duration-150", !open && "-rotate-90")} />
-        Written from {plural(sources.length, "passage")} of your library
+        {message.declined
+          ? `The ${plural(sources.length, "passage")} the model read`
+          : `Written from ${plural(sources.length, "passage")} of your library`}
       </button>
       {open ? (
         <div id={id}>
@@ -226,19 +229,30 @@ function Sources({ message, sources, settled, last }: { message: ChatMessage; so
 function Waiting({ live }: { live: LiveReply | null }) {
   const seconds = useElapsedSeconds(live?.since ?? null, true);
   const finding = live?.phase === "finding";
+  // Only Ollama can be asked whether the model is in memory. Elsewhere nothing says which of the two a slow start is.
+  const loading = live?.phase === "loading";
   return (
     <div className="text-ink" data-testid="reply-waiting">
       <p>
         <span>
           {/* The margin already names the model. */}
-          {finding ? "Finding passages in your library" : "Waiting for the model to start writing"}
+          {finding
+            ? "Finding passages in your library"
+            : loading
+              ? "The model server is loading the model into memory"
+              : "Waiting for the model to start writing"}
           {seconds >= 3 ? <span className="tabular text-ink-muted">, {plural(seconds, "second")} so far</span> : null}
         </span>
       </p>
-      {!finding && seconds >= 8 ? (
+      {loading ? (
         <p className="mt-1.5 max-w-[60ch] text-small text-ink-muted">
-          A model is loaded into memory the first time it is used, and again after it has sat idle. On a small computer that can take a
-          minute or more; it is working, not stuck. Later replies start sooner.
+          It said the model was not loaded. That happens the first time a model is used and after it has sat idle. Outpost waits up to 3
+          minutes for the first word.
+        </p>
+      ) : !finding && seconds >= 8 ? (
+        <p className="mt-1.5 max-w-[60ch] text-small text-ink-muted">
+          On a small computer a model can take a minute or more before its first word, more when it has to be loaded into memory first.
+          Outpost waits up to 3 minutes.
         </p>
       ) : null}
     </div>
@@ -303,8 +317,9 @@ function ReplyTurn({
   const model = message.model ?? live?.model ?? "";
   const settled = message.state === "complete" || message.state === "cut-short";
   const critical = sources.some((source) => source.safetyCritical);
-  const uncited = settled && message.grounded && sources.length > 0 && markersIn(message.text).length === 0;
-  const invented = message.unsupported.map((marker) => `[${marker}]`).join(" ");
+  const declined = settled && message.declined;
+  const uncited =
+    settled && message.grounded && !declined && sources.length > 0 && message.used.length === 0 && message.unsupported.length === 0;
 
   return (
     <article
@@ -354,6 +369,15 @@ function ReplyTurn({
         ) : null}
 
         {writing && blocks.length === 0 ? <Waiting live={live} /> : null}
+        {declined ? (
+          <div className="mb-2 max-w-[60ch]" data-testid="reply-declined">
+            <p className="font-medium text-ink">Your library does not seem to cover this.</p>
+            <p className="mt-1 text-small text-ink-muted">
+              The model said the passages it was given do not hold the answer, so nothing in this reply is cited. A small model sometimes
+              says this when a passage does hold it: they are listed below.
+            </p>
+          </div>
+        ) : null}
         {blocks.length > 0 ? <ReplyBody blocks={blocks} sources={sources} writing={writing} /> : null}
 
         {message.state === "nothing-found" ? (
@@ -371,6 +395,12 @@ function ReplyTurn({
         ) : null}
 
         {message.state === "stopped" ? <p className="mt-2 text-small text-ink-muted">{message.notice}</p> : null}
+        {/* A finished reply has a notice only when it was written from less than was planned. */}
+        {message.state === "complete" && message.notice ? (
+          <p className="mt-2 max-w-[60ch] text-small text-ink-muted" data-testid="reply-shortened">
+            {message.notice}
+          </p>
+        ) : null}
 
         {message.state === "cut-short" ? (
           <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-small text-ink-muted">
@@ -415,16 +445,18 @@ function ReplyTurn({
           </Notice>
         ) : null}
 
-        {settled && message.unsupported.length > 0 ? (
-          <Notice
-            tone="warning"
-            title={`${invented} ${message.unsupported.length === 1 ? "refers" : "refer"} to no passage`}
+        {settled && !declined && message.unsupported.length > 0 ? (
+          <StrayMarkers
+            unsupported={message.unsupported}
+            repointed={message.repointed}
+            count={sources.length}
             className="mt-3 max-w-[46rem]"
-          >
-            The model was given{" "}
-            {sources.length === 1 ? "one passage, numbered 1" : `${plural(sources.length, "passage")}, numbered 1 to ${sources.length}`}.
-            Whatever {message.unsupported.length === 1 ? "that marker is" : "those markers are"} attached to is unsupported.
-          </Notice>
+          />
+        ) : null}
+        {settled && !declined && message.citesAll ? (
+          <p className="mt-2 max-w-[60ch] text-small text-ink-muted">
+            The reply cites every passage it was given, so its markers do not show which passage each statement rests on.
+          </p>
         ) : null}
         {uncited ? (
           <p className="mt-2 max-w-[60ch] text-small text-ink-muted">

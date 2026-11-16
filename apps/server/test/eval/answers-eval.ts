@@ -73,7 +73,13 @@ interface Row {
   totalMs: number;
   searchedFor: string;
   omitted: number;
+  /** Passages the model server refused as too long and Outpost left out when it asked again. */
+  leftOut: number;
+  /** Outpost said the model was being loaded first (only Ollama can be asked). */
+  loading: boolean;
   promptChars: number;
+  /** What the model wrote, before Outpost settled the answer it shows (`reply.text`). */
+  written: string;
 }
 
 /** Asks one question the way the Search screen does, and reads the stream to its end. */
@@ -92,10 +98,22 @@ async function ask(
   let firstWordMs: number | null = null;
   let searchedFor = "";
   let omitted = 0;
+  let leftOut = 0;
+  let loading = false;
   let promptChars = 0;
   if (!response.ok || !response.body) {
     reply.failure = `http-${response.status}`;
-    return { reply, firstWordMs, totalMs: Math.round(performance.now() - started), searchedFor, omitted, promptChars };
+    return {
+      reply,
+      firstWordMs,
+      totalMs: Math.round(performance.now() - started),
+      searchedFor,
+      omitted,
+      leftOut,
+      loading,
+      promptChars,
+      written: "",
+    };
   }
   const titles = new Map(LIBRARY.map((document) => [document.title, document.id]));
   let written = "";
@@ -104,6 +122,7 @@ async function ask(
     if (type === "sources") {
       searchedFor = String(data.searchedFor ?? "");
       omitted = Number(data.omitted ?? 0);
+      leftOut = Number(data.leftOut ?? 0);
       const sources = data.sources as Array<{ marker: number; title: string; heading: string | null; quote: string }>;
       promptChars = sources.reduce((sum, source) => sum + source.quote.length, 0);
       reply.given = sources.map(
@@ -114,6 +133,8 @@ async function ask(
           quote: source.quote,
         }),
       );
+    } else if (type === "loading") {
+      loading = true;
     } else if (type === "delta") {
       if (firstWordMs === null && String(data.text ?? "").trim()) firstWordMs = Math.round(performance.now() - started);
       written += String(data.text ?? "");
@@ -141,7 +162,17 @@ async function ask(
     }
   }
   reply.text = finalText ?? written;
-  return { reply, firstWordMs, totalMs: Math.round(performance.now() - started), searchedFor, omitted, promptChars };
+  return {
+    reply,
+    firstWordMs,
+    totalMs: Math.round(performance.now() - started),
+    searchedFor,
+    omitted,
+    leftOut,
+    loading,
+    promptChars,
+    written,
+  };
 }
 
 function seed(app: TestApp): void {

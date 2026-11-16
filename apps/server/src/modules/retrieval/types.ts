@@ -112,12 +112,20 @@ export interface GenerationRequest {
   contextTokens?: number;
   signal?: AbortSignal;
   /**
-   * Called once when the model ends the answer itself, with why it stopped:
-   * "stop" (it had finished), "length" (it reached `maxTokens`), or null when the
-   * server did not say; and how many tokens the prompt came to, when the server says.
-   * Not called when generation fails or is cancelled.
+   * Called once, before the request is sent, when the model server has said that the
+   * model is not in memory (or is there for another context size) and so must be loaded
+   * first. Only a server that can be asked (Ollama, by `/api/ps`) ever causes this; with
+   * any other it is never called, because a slow start there may be loading or reading
+   * and nothing says which.
    */
-  onFinish?: (info: { finishReason: string | null; promptTokens?: number | null }) => void;
+  onLoading?: () => void;
+  /**
+   * Called once when the model ends the answer itself, with why it stopped:
+   * "stop" (it had finished), "length" (it reached `maxTokens`, or, with Ollama told not to make room, filled the context), or null when the
+   * server did not say; how many tokens the prompt came to, and how many the reply did,
+   * when the server says (Ollama does). Not called when generation fails or is cancelled.
+   */
+  onFinish?: (info: { finishReason: string | null; promptTokens?: number | null; replyTokens?: number | null }) => void;
 }
 
 /** A locally hosted language model. Implemented for OpenAI-compatible servers in `modules/answers/provider.ts`. */

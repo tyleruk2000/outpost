@@ -37,11 +37,21 @@ export interface AnswerState {
   server: string;
   sources: AnswerSource[];
   omitted: number;
+  /** Passages the model server refused as more than the model can read at once, left out when it was asked again. */
+  leftOut: number;
   safetyCritical: boolean;
-  /** What the model has written so far. */
+  /** The model server said the model was not in memory, so it is being loaded first. Only Ollama can be asked. */
+  loading: boolean;
+  /** What the model has written so far; once it has finished, the answer as Outpost shows it. */
   text: string;
+  /** The model read the passages and said they do not hold the answer. */
+  declined: boolean;
   used: number[];
+  /** Numbers the model cited that no passage carried. None is left in `text` once the answer is finished. */
   unsupported: number[];
+  /** Which of those now point at the one passage whose own sentences they stood on. */
+  repointed: Array<{ from: number; to: number }>;
+  citesAll: boolean;
   cutShort: boolean;
   tookMs: number | null;
   /** What went wrong, in words for the person, when something did. */
@@ -57,10 +67,15 @@ const EMPTY: AnswerState = {
   server: "",
   sources: [],
   omitted: 0,
+  leftOut: 0,
   safetyCritical: false,
+  loading: false,
   text: "",
+  declined: false,
   used: [],
   unsupported: [],
+  repointed: [],
+  citesAll: false,
   cutShort: false,
   tookMs: null,
   error: null,
@@ -153,18 +168,28 @@ export function createAnswerStore() {
               server: event.server,
               sources: event.sources,
               omitted: event.omitted,
+              leftOut: event.leftOut ?? 0,
               safetyCritical: event.safetyCritical,
             });
             break;
+          case "loading":
+            set({ loading: true });
+            break;
           case "delta":
-            set({ phase: "writing", text: state.text + event.text });
+            set({ phase: "writing", loading: false, text: state.text + event.text });
             break;
           case "done":
             ended = true;
             set({
               phase: event.outcome === "nothing-found" ? "nothing" : "done",
+              loading: false,
+              // What Outpost settled on once the model had finished: stray markers out, a refusal citing nothing.
+              text: event.text ?? state.text,
+              declined: event.outcome === "not-covered",
               used: event.used,
               unsupported: event.unsupported,
+              repointed: event.repointed ?? [],
+              citesAll: event.citesAll ?? false,
               cutShort: event.cutShort,
               tookMs: event.tookMs,
             });
