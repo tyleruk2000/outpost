@@ -114,7 +114,7 @@ describe("the maps of a scenario's PDF", () => {
     const { draw } = standIn();
     const file = await makeScenarioPdf({ ...base, written: [plume, rings, far], regions: [region(WORLD)], draw });
     expect(images(file.figures.overview)).toHaveLength(1);
-    expect(words(file.figures.overview)).toMatch(/The 3 scenarios shown, A, B and C.*Nothing is added up across them/);
+    expect(words(file.figures.overview)).toMatch(/The 3 scenarios shown, A, B and C.*nothing is added up across them/);
     expect(images(file.figures.maps.A!)).toHaveLength(2);
     expect(images(file.figures.maps.B!)).toHaveLength(1);
     expect(images(file.figures.maps.C!)).toHaveLength(1);
@@ -146,7 +146,7 @@ describe("the maps of a scenario's PDF", () => {
     const chosen = standIn();
     const file = await makeScenarioPdf({ ...base, written: [plume, rings], regions: [region(WORLD)], places: [home], draw: chosen.draw });
     for (const style of chosen.styles) {
-      const markers = style.sources["o-markers"] as { data: { features: Array<{ properties: { name: string } }> } };
+      const markers = style.sources["o-markers"] as unknown as { data: { features: Array<{ properties: { name: string } }> } };
       expect(markers.data.features.map((feature) => feature.properties.name)).toEqual(["Home"]);
       expect(style.layers.some((layer) => "source" in layer && layer.source === "o-markers")).toBe(true);
     }

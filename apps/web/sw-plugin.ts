@@ -65,11 +65,14 @@ export function serviceWorker(): Plugin {
       const byFile = new Map(chunks.map((chunk) => [chunk.fileName, chunk]));
       const wanted = new Set<string>();
 
+      const stylesOnly = new Set<string>();
       /** A chunk, with everything it needs before it can run. */
       const take = (fileName: string): void => {
-        if (wanted.has(fileName)) return;
-        wanted.add(fileName);
+        if (wanted.has(fileName) || stylesOnly.has(fileName)) return;
         const chunk = byFile.get(fileName);
+        // A chunk of nothing but styles: Vite writes its CSS and leaves its empty script out of the build, so only the CSS is kept.
+        if (chunk && chunk.moduleIds.length > 0 && chunk.moduleIds.every((id) => /\.css($|\?)/.test(id))) stylesOnly.add(fileName);
+        else wanted.add(fileName);
         if (!chunk) return;
         for (const file of chunk.viteMetadata?.importedCss ?? []) wanted.add(file);
         for (const file of chunk.viteMetadata?.importedAssets ?? []) wanted.add(file);

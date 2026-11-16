@@ -279,7 +279,7 @@ export function ScenarioExport({
             )}
           </div>
           {made.status === "making" ? (
-            <p role="status" className="text-small text-ink-muted tabular">
+            <p role="status" className="text-small text-ink-muted tabular" data-testid="pdf-progress">
               {made.words}
               {made.of > 0 ? ` (${Math.min(made.step, made.of)} of ${made.of})` : ""}…
             </p>

@@ -23,6 +23,7 @@ from the screen that made it.**
 | Radio → Communication plans → a plan | The plan written out. See [hf-propagation.md](hf-propagation.md#exports). | "Communication plan, *name*, for 16 Nov 2026", tag `Communication plan` |
 | Encryption → By hand → paper aids | One-time pads and the cipher square. A pad asks first; see below. | "One-time pads, …", tag `One-time pads`; `Cipher aid` |
 | Contacts → Emergency sheet | The marked contacts, as on the sheet, with the date and time it was made. **Asks first**; see below. See [contacts.md](contacts.md#using-them). | "Emergency sheet, 3 contacts, made 16 Nov 2026", tag `Emergency sheet` |
+| Preparedness → Nuclear preparedness, under the results | The scenarios shown, each under its letter, with a map of its rings (and of its fallout pattern) unless maps are switched off, and an overview map when there are several. With saved places ticked, **asks first**. See [nuclear-preparedness.md](nuclear-preparedness.md#on-paper). | "Nuclear effects scenario: *name*", tag `Nuclear effects scenario` |
 | Maps → Sun tab, or a place's Sun section | Sun times day by day for two weeks, a month or a year. See [maps.md](maps.md#sun-times-on-paper). | "Sun times, Helvellyn, November 2026", tag `Sun times` |
 
 Every one of them offers the same three things, in the same words:
@@ -93,6 +94,11 @@ The duplicate check is by checksum, so "the same PDF" means the same bytes.
   until the engine or its data changes or the kept answer is cleared.
 - **A communication plan** says the day it was written out, and the file's own date is
   that day. Written out twice in a day it is the same file; the next day it is another.
+- **Nuclear scenarios** are dated by the scenarios' own last change. Made again
+  unchanged, with or without maps, the file came out the same, byte for byte, in the
+  tests (the maps are drawn again each time, from the same tiles by the same device), so
+  the library says it already has it. A different device, or a map region installed
+  or removed in between, can draw the pictures differently: then it is another document.
 - **Sun times** say the day they were made, and the file's date is that day: the same
   sheet made twice in a day is the same file.
 - **The emergency sheet** says the minute it was made, so it is made afresh each time
@@ -228,6 +234,7 @@ blobs and exports, November 2026):
 | Lines drawn as pictures; words in any script, unseen | `apps/web/src/features/maps/print/lettering.ts`, `pdf.ts` |
 | The guard that nothing prints or makes a PDF without the actions | `apps/web/src/lib/made-pdf-rule.test.ts` |
 | A prediction and a comparison as pages | `apps/web/src/features/propagation/prediction-document.ts`, `comparison-document.ts`, `prediction-export.tsx` |
+| The nuclear scenarios as pages, and their maps | `apps/web/src/features/nuclear/document.ts`, `print-maps.ts`, `print-frames.ts`, `print-figures.ts`, `pdf-export.tsx` |
 | A coverage map as pages, and its picture | `apps/web/src/features/propagation/coverage-map/coverage-document.ts`, `coverage-picture.ts`, `coverage-export.tsx` |
 | A plan's PDF | `apps/web/src/features/propagation/plans/plan-export.tsx`, `document.ts` |
 | A map's words | `apps/web/src/features/maps/print/map-words.ts` |

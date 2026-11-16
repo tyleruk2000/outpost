@@ -21,16 +21,13 @@ import { distanceText, listText } from "./words";
 /** The words under every map of a pattern: the screen's, said again where the pattern is seen. */
 export const PATTERN_CAVEAT =
   "The fallout pattern is an idealised shape for a steady wind, which real fallout never follows: it says nothing about where fallout would land on a real day.";
-/** The sentence the screen has beside several scenarios, said again under the picture of them together. */
-export const SEPARATE_SCENARIOS =
-  "Each scenario is worked out on its own, under its own letter. Nothing is added up across them: they are separate illustrations of what a published model says, not an estimate of anything happening together.";
 /** Where an offline map comes from, for the line that says there is none. */
 export const GET_A_MAP = "Add a region for this area under Maps, Offline maps, and make the PDF again for a map here.";
 
 const CAPTION = 7;
 const CAPTION_LEADING = 8.6;
-/** Room under the picture for the scale bar and north, in points. */
-const FURNITURE = 34;
+/** Room under the picture for the scale bar and north, in points: the miles' figures end about 30 below its top. */
+const FURNITURE = 42;
 
 /** A piece of a map's picture: its id among the PDF's pictures and its place in the box, in points. */
 export interface PicturePiece {
@@ -77,7 +74,7 @@ export function mapCaptions(input: {
   const lines: string[] = [];
   if (part === "overview")
     lines.push(
-      `The ${letters.length} scenarios shown, ${listText(letters)}, each at its ground zero with its letter, at a scale that takes them all in. ${SEPARATE_SCENARIOS}`,
+      `The ${letters.length} scenarios shown, ${listText(letters)}, each at its ground zero with its letter, at a scale that takes them all in. Each is worked out on its own: nothing is added up across them.`,
     );
   else if (part === "pattern")
     lines.push(
@@ -287,14 +284,21 @@ export function diagramBlock(letter: ScenarioLetter, result: EffectsResult): Blo
       const toPage = ([lon, lat]: [number, number]): Point => [mid[0] + (lon / east) * perMetre, mid[1] - (lat / north) * perMetre];
       const items: SheetItem[] = [];
       if (result.fallout.drawn) {
-        const contours = result.fallout.contours.filter((contour) => (DRAWN_FALLOUT_RATES as readonly number[]).includes(contour.rate));
+        // Paper's fills are solid, so they are laid outermost first, each stronger contour darker over the one outside it,
+        // as the screen's translucent ones stack; the edges go on top of all of them.
+        const contours = result.fallout.contours
+          .filter((contour) => (DRAWN_FALLOUT_RATES as readonly number[]).includes(contour.rate))
+          .sort((a, b) => a.rate - b.rate);
         const hue = printHue("fallout");
-        contours.forEach((contour, index) => {
-          const outline = plumePolygon(centre, contour, result.fallout.drawn ? result.fallout.fromDegrees : 0, 48).map(toPage);
+        const outlines = contours.map((contour) =>
+          plumePolygon(centre, contour, result.fallout.drawn ? result.fallout.fromDegrees : 0, 48).map(toPage),
+        );
+        outlines.forEach((outline, index) => {
           const cut = clipToBox(outline, x, y, DIAGRAM_SIZE);
-          if (cut.length > 2) items.push({ kind: "polygon", points: cut, fill: overPaper(hue, 0.08 + index * 0.05) });
-          for (const run of insideRuns(outline, x, y, DIAGRAM_SIZE)) items.push(...pathLines(run, hue, 0.6, [2.4, 1.2]));
+          if (cut.length > 2) items.push({ kind: "polygon", points: cut, fill: overPaper(hue, 0.1 + index * 0.08) });
         });
+        for (const outline of outlines)
+          for (const run of insideRuns(outline, x, y, DIAGRAM_SIZE)) items.push(...pathLines(run, hue, 0.6, [2.4, 1.2]));
       }
       for (const ring of [...rings].sort((a, b) => b.metres! - a.metres!)) {
         const line = FAMILY_LINES[ring.family as EffectFamily];
