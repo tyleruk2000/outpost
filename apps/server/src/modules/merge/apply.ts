@@ -41,6 +41,20 @@ import {
 } from "./fingerprint.ts";
 
 export type MergeRow = typeof driveMerges.$inferSelect;
+
+/** The drive went away while it was being read. Nothing more is attempted: half a page's pictures is not a page. */
+export class DriveGone extends AppError {
+  constructor() {
+    super(
+      "storage_unavailable",
+      "The drive was disconnected before everything had been brought back. Plug it in and look at it again; what is already here is not brought back twice.",
+    );
+  }
+}
+
+/** True while the drive's folder is still where it was. */
+export const driveIsThere = (merge: Pick<MergeRow, "drivePath">): boolean =>
+  fs.existsSync(path.join(merge.drivePath, "outpost-portable.json"));
 type ActionRow = typeof driveMergeActions.$inferSelect;
 type NewAction = Omit<typeof driveMergeActions.$inferInsert, "mergeId" | "seq" | "createdAt">;
 
@@ -308,6 +322,8 @@ export async function applyMerge(ctx: AppContext, input: ApplyInput): Promise<vo
       for (const id of notes.content.extractLinks(doc).attachmentIds.slice(0, 5000)) {
         if (!(await ensureAttachment(id))) missing += 1;
       }
+      // One picture that cannot be copied is reported; a drive that has gone is a reason to stop.
+      if (missing > 0 && !driveIsThere(merge)) throw new DriveGone();
       const mapHref = (href: string): string => {
         const target = notes.content.parseInAppHref(href);
         if (!target) return href;
@@ -577,6 +593,7 @@ export async function applyMerge(ctx: AppContext, input: ApplyInput): Promise<vo
       const theirs = drive.documents.get(item.driveItemId);
       if (!theirs) throw badRequest("This document's record could not be read from the drive.");
       const source = await fileInside(libraryRoot, theirs.relPath);
+      if (!source && !driveIsThere(merge)) throw new DriveGone();
       if (!source) throw badRequest("Its file is not on the drive, so it was not added.");
       if ((await sha256File(source.file, { signal })) !== theirs.sha256) {
         throw badRequest("The file on the drive does not match its checksum. It may be damaged, so it was not added.");
@@ -923,11 +940,13 @@ export async function applyMerge(ctx: AppContext, input: ApplyInput): Promise<vo
         throw badRequest("Its record on the drive is incomplete, so it was not copied. Download it at home from Explore instead.");
       }
       const source = await fileInside(libraryRoot, theirs.relPath);
+      if (!source && !driveIsThere(merge)) throw new DriveGone();
       if (!source) throw badRequest("Its file is not on the drive, so it was not copied.");
 
       const location = storage.getDefault();
       const fileName = safeFileName(path.basename(theirs.relPath.replaceAll("\\", "/")), `collection-${item.driveItemId}`);
-      const relPath = `collections/${kind}/${fileName}`;
+      // The same folders a download uses: collections/zim, collections/maps, collections/terrain.
+      const relPath = `collections/${kind === "map" ? "maps" : kind}/${fileName}`;
       const target = storage.resolve(location.id, relPath);
       if (fs.existsSync(target)) {
         throw badRequest(`A file named “${fileName}” is already in your library’s folder, so nothing was copied over it.`);
@@ -1134,7 +1153,7 @@ export async function applyMerge(ctx: AppContext, input: ApplyInput): Promise<vo
       try {
         await step.run();
       } catch (error) {
-        if (signal.aborted) throw error;
+        if (signal.aborted || error instanceof DriveGone) throw error;
         ctx.log.warn({ err: error, item: step.item.key }, "merge item failed");
         const known = error instanceof AppError || error instanceof z.ZodError;
         record({

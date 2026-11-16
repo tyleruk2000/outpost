@@ -31,7 +31,7 @@ import { AppError, badRequest, conflict, messageOf, notFound } from "../../core/
 import { newId } from "../../core/ids.ts";
 import { PermanentJobError, StoppedWithResult } from "../../core/jobs.ts";
 import { driveMergeActions, driveMerges } from "../../db/schema.ts";
-import { applyMerge, type MergeRow, undoMerge } from "./apply.ts";
+import { applyMerge, driveIsThere, type MergeRow, undoMerge } from "./apply.ts";
 import { diffLibraries, type MemoryEntry, toAnalysis } from "./diff.ts";
 import { fileInside, inspectDrive, openStaged, sourceFolderOf, stageDatabase } from "./drive.ts";
 import { LIMITS, readBaseline, readSnapshot, TooManyRows } from "./fingerprint.ts";
@@ -42,6 +42,8 @@ const ANALYSE_JOB = "merge.analyse";
 const APPLY_JOB = "merge.apply";
 const ACTIVE = new Set(["queued", "running", "paused"]);
 const COMPARE_TEXT_LIMIT = 200_000;
+/** The most changes one preview will hold. Beyond this a person cannot check it, and a browser cannot show it. */
+const MAX_ITEMS = 20_000;
 const subjectOf = (id: string) => `merge:${id}`;
 
 export interface MergeService {
@@ -244,7 +246,12 @@ export function createMergeService(ctx: AppContext): MergeService {
           const mine = recorded !== null && recorded.madeFrom === libraryId();
           writtenAt = recorded?.writtenAt ?? staged.locationCreatedAt;
           const drive = await readSnapshot(staged.db, signal);
-          const home = await readSnapshot(sqlite, signal);
+          const home = await readSnapshot(sqlite, signal).catch((error) => {
+            if (!(error instanceof TooManyRows)) throw error;
+            throw new PermanentJobError(
+              `Your library holds more ${error.what} than a merge can compare (${error.limit.toLocaleString("en-GB")}), so the drive was not compared.`,
+            );
+          });
           const result = diffLibraries({
             home,
             drive,
@@ -253,6 +260,12 @@ export function createMergeService(ctx: AppContext): MergeService {
             writtenAt,
             memory: memoryFor(row.driveId, writtenAt ?? 0, row.id),
           });
+
+          if (result.items.length > MAX_ITEMS) {
+            throw new PermanentJobError(
+              `There are ${result.items.length.toLocaleString("en-GB")} differences between this drive and your library, more than one merge can show (${MAX_ITEMS.toLocaleString("en-GB")}). Nothing was changed.`,
+            );
+          }
 
           // What the comparison cannot know: whether the files it would copy are really there.
           const libraryRoot = path.join(row.drivePath, "library");
@@ -368,6 +381,14 @@ export function createMergeService(ctx: AppContext): MergeService {
         const message = "The copy of the drive’s database that this merge was reading is gone. Look at the drive again from Storage.";
         setState(row.id, { state: "failed", error: message, completedAt: Date.now() });
         throw new PermanentJobError(message);
+      }
+      if (!driveIsThere(row)) {
+        // Nothing has been done; the preview still stands for when the drive is back.
+        const message = "The drive is not connected, so nothing was brought back. Plug it in and try again.";
+        if (!reportOf(row.id)) {
+          setState(row.id, { state: "ready", error: message });
+          throw new PermanentJobError(message);
+        }
       }
       try {
         await applyMerge(ctx, {
@@ -638,7 +659,7 @@ export function createMergeService(ctx: AppContext): MergeService {
         });
       }
       if (!fs.existsSync(stagedFileOf(id))) throw conflict("The preview is out of date. Look at the drive again.");
-      setState(id, { state: "merging", choices });
+      setState(id, { state: "merging", choices, error: null });
       jobs.enqueue(APPLY_JOB, { mergeId: id }, { title: `Bring back changes from the drive ${row.driveLabel}`, subject: subjectOf(id) });
       return toDto(mustFind(id));
     },

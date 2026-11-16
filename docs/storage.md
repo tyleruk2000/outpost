@@ -20,6 +20,7 @@ folder you choose. You can have several, on different drives.
 | Your own catalogue manifests: `catalog/` | Map regions: `collections/maps/`, terrain: `collections/terrain/` |
 | Embedding model files, if you use the in-process provider: `models/` | Downloaded place-name files: `collections/places/` |
 | Cached programs for portable drives: `runtimes/` | Files still arriving: `*.part`, and `documents/.incoming/` |
+| The copy of a portable drive's database, while its changes are being brought back: `merges/` | |
 | `secret.key`, used to sign links to reference content | The marker file `.outpost-location.json` |
 
 Outpost never writes anything but content and the marker file to a storage location.

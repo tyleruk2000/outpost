@@ -570,6 +570,59 @@ describe("a drive that has been travelling", () => {
     expect(find(await preview(world), "page", "conflict").title).toBe("Kit list");
   });
 
+  it("does nothing when the drive has been unplugged, and carries on when it is back", async () => {
+    const world = await makeWorld();
+    const { home, ids } = world;
+    await goTravelling(world);
+    const merge = await preview(world);
+    const pages = home.ctx.services.notes.tree().length;
+    const elsewhere = `${world.drive}-unplugged`;
+    fs.renameSync(world.drive, elsewhere);
+
+    const waiting = await commit(world, merge);
+    expect(waiting.state).toBe("ready");
+    expect(waiting.error).toMatch(/drive is not connected, so nothing was brought back/);
+    expect(waiting.report).toBeNull();
+    expect(home.ctx.services.notes.tree()).toHaveLength(pages);
+    expect(await noteText(home, ids.kit!)).toBe("Stove, fuel, matches.");
+
+    fs.renameSync(elsewhere, world.drive);
+    const merged = await commit(world, waiting);
+    expect(merged.state).toBe("completed");
+    expect(merged.error).toBeNull();
+    expect(merged.report!.counts.failed).toBe(0);
+    expect(await noteText(home, ids.kit!)).toContain("spare gas canister");
+  });
+
+  it("stops, rather than bring pages without their pictures, when the drive goes part-way through", async () => {
+    const world = await makeWorld();
+    const { home } = world;
+    await goTravelling(world);
+    const merge = await preview(world);
+    const elsewhere = `${world.drive}-unplugged`;
+    const sent = await home.api("POST", `/api/merge/${merge.id}/commit`, { choices: {} });
+    expect(sent.status).toBe(200);
+    // The job has not run yet: the drive is there when it starts, and gone when it reaches the first file.
+    const unsubscribe = home.ctx.events.subscribe((event) => {
+      if (event.type === "job.updated" && fs.existsSync(world.drive) && (event.data as { state?: string }).state === "running") {
+        fs.renameSync(world.drive, elsewhere);
+      }
+    });
+    await home.ctx.jobs.whenIdle();
+    unsubscribe();
+    const after = (await home.api("GET", `/api/merge/${merge.id}`)).body.merge as MergeDto;
+    expect(after.state).toBe("failed");
+    expect(after.error).toMatch(/drive was disconnected before everything had been brought back/);
+    expect(home.ctx.services.notes.tree().some((page) => page.title === "Trip notes")).toBe(false);
+    expect(home.ctx.services.documents.list({ q: "Pilot" }).documents).toEqual([]);
+
+    fs.renameSync(elsewhere, world.drive);
+    const again = await commit(world, await preview(world));
+    expect(again.state).toBe("completed");
+    expect(home.ctx.services.notes.get(world.ids.trip!).title).toBe("Trip notes");
+    expect(home.ctx.sqlite.prepare("SELECT count(*) AS n FROM attachments").get()).toEqual({ n: 1 });
+  });
+
   it("can be stopped part-way, leaving a whole library and a record of how far it got", async () => {
     const world = await makeWorld();
     const { home } = world;

@@ -110,6 +110,7 @@ a name and a JSON `data` of the form `{ "id": …, "data": … }`; both parts ar
 | `imports.changed` | An import changes state | import id |
 | `semantic.changed` | Vectors are built, loaded or removed | |
 | `portable.changed` | A portable drive or runtime download finishes | |
+| `merge.changed` | A merge of a drive's changes moves to another state | merge id |
 
 An event says that something changed, not what it now is: fetch the resource again.
 
@@ -126,7 +127,7 @@ queued again and continues from what is on disk.
 
 Job types in use: `download.run`, `document.extract`, `documents.move`,
 `collection.verify`, `collection.move`, `semantic.index`, `import.analyse`,
-`import.commit`, `portable.build`, `portable.runtimes`, `manage.remove`,
+`import.commit`, `portable.build`, `portable.runtimes`, `merge.analyse`, `merge.apply`, `manage.remove`,
 `manage.derived`, `manage.erase`.
 
 A job that was cancelled part of the way through work that cannot be undone keeps a
@@ -521,6 +522,29 @@ Types: `packages/shared/src/portable.ts`. See [portable.md](portable.md).
 | `POST /api/portable/plan` | Body (`PortableRequest`): `targetPath`, `platforms`, `collectionIds`, `documents` (`all` or `none`), `reader?`, `replaceExisting?`. Answers a `PortablePlan`: sizes, free space, problems and warnings. Writes nothing. |
 | `POST /api/portable/build` | Same body. Starts writing the drive, as a job. `409` if the plan has problems, or the folder is already a drive and `replaceExisting` is not true. |
 | `POST /api/portable/runtimes` | Body: `platforms`. Downloads Node runtimes into the cache ahead of time, as a job. |
+
+### Bringing changes back from a drive
+
+Types: `packages/shared/src/merge.ts`. See
+[portable.md](portable.md#bringing-changes-back-from-a-drive). Nothing here writes to
+the drive. One merge is read or carried out at a time.
+
+| Route | What it does |
+| --- | --- |
+| `GET /api/merge/inspect` | Query: `path`, a folder inside a storage root. Whether it is an Outpost drive, when and by which version it was written, and the sets of notes it holds: the current `data` folder and any `data-before-update-…` folders kept by an update (`DriveInspection`). Reads two small files; `403` outside the storage roots. |
+| `POST /api/merge` | Body: `path`, `source?` (one of the folders named by `inspect`; the current one when omitted). Starts job `merge.analyse`, which copies the drive's database into the data directory and compares it with the library. `409` while another merge is being read or carried out. Answers the merge (`MergeDto`) in state `analysing`. |
+| `GET /api/merge` | Earlier merges, newest first, without their previews or records. Query: `limit`. |
+| `GET /api/merge/:id` | One merge. `analysis` (the preview, `MergeAnalysis`) once its state is `ready`: every item with its `key`, `kind`, `change`, the `choices` it allows and its `defaultChoice`, and `blocked` with the reason when it cannot be brought back. `report` once anything has been done: every action with its outcome, a sentence, and whether it can be undone. States: `analysing`, `ready`, `merging`, `completed`, `stopped`, `failed`, `discarded`. |
+| `GET /api/merge/:id/compare` | Query: `key`. Both versions of one item as text, `home` and `drive` (`MergeCompareResponse`); pages are given as Markdown. Only while the merge is `ready`. |
+| `POST /api/merge/:id/commit` | Body: `choices` (item key → `apply`, `skip`, `both`, `home` or `drive`; only those that differ from the defaults need sending), `deletionsConfirmed?`. Starts job `merge.apply`. `400` for a choice an item does not allow or a key not in the preview; `409` with `details.needsConfirmation` and `details.removing` when anything would be removed at home and `deletionsConfirmed` is not true. |
+| `POST /api/merge/:id/cancel` | Stops the job. While reading, the merge is discarded. While merging, what was done stays, the merge becomes `stopped` and its record says how far it got. |
+| `POST /api/merge/:id/undo` | Body: `removeDocuments?` (also remove documents the merge copied in; default false). Puts back what the record allows; each action then carries `undoMessage`. `409` unless the merge is `completed` or `stopped` and not already undone. |
+| `DELETE /api/merge/:id` | Gives up a preview that was not carried out, or clears a failed one, and removes the copy of the drive's database. The record of a merge that was carried out cannot be deleted. |
+
+What each choice means: `apply` brings the change home (for a removal: removes it at
+home too); `skip` leaves home as it is and the item is offered again; `both` keeps
+home's version and adds the drive's beside it; `home` keeps home's and remembers the
+decision; `drive` replaces home's version, which is kept in the record.
 
 ## Everything else
 

@@ -288,6 +288,11 @@ export function PreviewStep({ dto, analysis, onDiscarded }: { dto: MergeDto; ana
           : "Nothing has been changed yet, here or on the drive. The drive itself is never changed by this."}
       </p>
 
+      {dto.error ? (
+        <Notice tone="danger" icon={<CircleAlert />} className="mt-5 max-w-[65ch]">
+          {dto.error}
+        </Notice>
+      ) : null}
       {baseline ? (
         <Notice tone="info" title={baseline.title} className="mt-5 max-w-[65ch]">
           {baseline.body}

@@ -22,6 +22,9 @@ public internet and must not be exposed to it.
 - **Hostile files.** An uploaded HTML page or SVG, a crafted archive, a renamed
   executable, a malicious GPX file or imported page cannot run script in Outpost,
   write outside its folders, or fill the disk without limit.
+- **A drive that comes home.** A portable drive has been in other computers. Bringing
+  its changes back cannot make Outpost read or write outside the drive's own folder,
+  run anything, or take in a table, a page or a file it did not check.
 - **Hostile reference content.** A ZIM archive is a copy of someone else's web site,
   scripts included. Its pages cannot change your library or reach the internet.
 - **Misuse of the download feature.** Outpost cannot be made to fetch from addresses
@@ -208,6 +211,34 @@ because they name the hosts downloads may start from; unfinished jobs and rememb
 network shares in the restored database are deleted, so a backup from another machine
 cannot make this one start work or connect to a file server.
 Code: `apps/server/src/modules/backup/index.ts`.
+
+### Bringing a drive back
+
+A portable drive that comes home is untrusted input: it has been plugged into other
+computers, and nothing says the database and files on it are the ones Outpost wrote.
+Bringing its changes back (see
+[portable.md](portable.md#bringing-changes-back-from-a-drive)) is built on that.
+
+| Risk | Control |
+| --- | --- |
+| The merge changes the drive | It never writes to it. The drive's database is not even opened in place, because SQLite can create files beside a database it opens; the file (and its write-ahead log) is copied into the data directory and read from the copy. The tests hash every file on the drive before and after each merge. |
+| The browser points the server at any folder | The drive's folder must be inside a storage root and must not be Outpost's own data directory. The set of notes to read is one of the names the drive was found to hold (`data`, or `data-before-update-<date>`), matched against a fixed pattern. |
+| A database that is not what it claims | The copy is opened read-only with SQLite's defences for schemas it did not write (`trusted_schema` off, cell size checks, no memory mapping). Only the tables a merge needs are read, and only after checking that each is a real table (not a view) with the plain columns expected (not generated ones). Other tables, views and triggers in the file are never read, never run, and never copied. |
+| A newer or unreadable version | The number of migrations in the drive's database is compared with home's. A drive from a newer Outpost is refused with a message saying so; one whose tables lack a needed column is refused too. Nothing is read from either. |
+| Rows of the wrong shape | Every value is checked for its type and length before use; ids must match the id pattern. A row that fails is left out and counted in the preview. |
+| Too much of everything | At most 100,000 pages, 100,000 documents, 100,000 saved places, 20,000 tracks, 200,000 attachments and a 32 GB database; a drive beyond that is refused whole. A page over 5 MB or a track over 20 MB is never read into memory and stays on the drive. The data directory must have room for the copy plus a reserve. |
+| A file name that climbs out of the drive | Paths recorded on the drive for documents, attachments and collections are resolved inside the drive's `library` or `attachments` folder (`resolveInside`), the result must be a regular file, and its real path, after following links, must still be inside. A link pointing elsewhere on the computer is not followed. |
+| A file that is not what its record says | Each file is hashed and compared with the checksum the drive recorded before it is used, and a document or collection is hashed again once copied. Documents then go through the same checks as an upload (type by content, size limit) and attachments through the same checks as a page attachment. |
+| Page content that carries script | Content from the drive goes through `sanitizeDoc`, the same code that sanitises imports and the editor's saves, before anything else looks at it: unknown nodes are reduced to their text, attributes are whitelisted, `javascript:` and `data:` links are removed, and depth is bounded. |
+| A track that is not a track | Geometry is rebuilt keeping only lines, waypoints and names, written out as GPX, and read back by the same parser, in its own worker with its own limits, as any GPX file. |
+| A collection record that lies | Only reference collections and maps are copied, only when ticked, with a metadata shape that is checked; the file is verified against its checksum. As with any ZIM archive, what it contains is then served only through the sandboxing proxy. |
+| Something removed at home | Never by default. A removal has to be ticked per item and confirmed again by name (`deletionsConfirmed`), and the server compares each item with what the preview showed before changing it: anything that changed at home in the meantime is left alone. |
+
+The copy of the drive's database is removed when the merge ends or is given up, and at
+start-up if a merge was interrupted. A merge is read and carried out by whoever can
+reach Outpost, like everything else; there is no separate permission for it.
+Code: `apps/server/src/modules/merge/` (`drive.ts` for reading a drive, `fingerprint.ts`
+for checking rows).
 
 ### Removing in bulk
 
