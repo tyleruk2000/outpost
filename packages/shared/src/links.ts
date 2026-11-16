@@ -40,7 +40,11 @@ export type PageFile =
 /** The kinds of file inside an archive that can be opened and kept as documents. */
 export const ARCHIVE_FILE = /\.(pdf|epub)$/i;
 
-export type ArchiveFileState = { path: string; state: "new" } | { path: string; state: "saved"; documentId: string };
+export type ArchiveFileState =
+  | { path: string; state: "new" }
+  /** Being copied into the library now, or waiting its turn in an "add all". */
+  | { path: string; state: "adding"; turn: "now" | "waiting" }
+  | { path: string; state: "saved"; documentId: string };
 
 export interface SaveArchiveFileResponse {
   /** "already": this file had been added before. "duplicate": the library held the same file from elsewhere. */

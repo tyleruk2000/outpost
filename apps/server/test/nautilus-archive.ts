@@ -18,7 +18,9 @@
  * documents and their words were written for these tests.
  *
  * Run directly it listens on the port given: `node nautilus-archive.ts 8475`. `/health`
- * answers when it is up.
+ * answers when it is up. `/control?delay=<ms>&missing=<file name>` makes its files slow to
+ * arrive, or one of them absent, for a test that drives it from outside; `/control` alone
+ * puts it back as it was.
  */
 import fs from "node:fs";
 import http from "node:http";
@@ -186,8 +188,18 @@ export function zimHeader(uuid = NAUTILUS_UUID): Buffer {
 
 export interface NautilusArchive {
   url: string;
-  /** Every address asked for, in order. */
+  /** Every address asked for, in order, except those asked only for their headers. */
   requests: string[];
+  /** Addresses asked for with HEAD: how large a file is, without the file. */
+  heads: string[];
+  /** How long each file takes to begin arriving, in milliseconds. */
+  fileDelayMs: number;
+  /** Names of listed files the archive does not hold after all. */
+  missing: Set<string>;
+  /** The length a file is said to have when only its headers are asked for, by name, in place of its real one. */
+  saysOnHead: Map<string, number>;
+  /** The same for when the file itself is asked for. */
+  saysOnGet: Map<string, number>;
   /** What database.js holds. Set it to try another list; undefined makes the file missing. */
   database: string | Buffer | undefined;
   /** The first page. Set it to stand in for an ordinary archive. */
@@ -220,6 +232,11 @@ export async function startNautilusArchive(options: { port?: number } = {}): Pro
   const archive: NautilusArchive = {
     url: "",
     requests: [],
+    heads: [],
+    fileDelayMs: 0,
+    missing: new Set(),
+    saysOnHead: new Map(),
+    saysOnGet: new Map(),
     database: databaseJs(NAUTILUS_DOCUMENTS),
     home: HOME,
     close: () => new Promise<void>((resolve) => server.close(() => resolve())),
@@ -229,7 +246,14 @@ export async function startNautilusArchive(options: { port?: number } = {}): Pro
   const server = http.createServer((request, response) => {
     const url = request.url ?? "";
     if (url === "/health") return response.end("ok");
-    archive.requests.push(url);
+    if (url.startsWith("/control")) {
+      const asked = new URL(url, "http://kiwix").searchParams;
+      archive.fileDelayMs = Number(asked.get("delay")) || 0;
+      archive.missing = new Set(asked.getAll("missing"));
+      return response.end("ok");
+    }
+    const head = request.method === "HEAD";
+    (head ? archive.heads : archive.requests).push(url);
     // kiwix-serve sends its own, weaker, sandbox policy; Outpost must replace it.
     response.setHeader("Content-Security-Policy", "default-src 'self'; sandbox allow-scripts allow-same-origin;");
     const send = (type: string, body: string | Buffer) => {
@@ -277,9 +301,20 @@ export async function startNautilusArchive(options: { port?: number } = {}): Pro
     if (inside === "home") return send("text/html; charset=utf-8", archive.home);
     if (inside === "nautilus.js") return send("text/javascript", SCRIPT);
     if (inside === "database.js") return archive.database === undefined ? missing() : send("text/javascript", archive.database);
-    const file = inside.startsWith("files/") ? files.get(inside.slice("files/".length)) : undefined;
+    const name = inside.startsWith("files/") ? inside.slice("files/".length) : "";
+    const file = archive.missing.has(name) ? undefined : files.get(name);
     if (!file) return missing();
-    return send(TYPES[inside.split(".").pop() ?? ""] ?? "application/octet-stream", file);
+    const type = TYPES[inside.split(".").pop() ?? ""] ?? "application/octet-stream";
+    const said = (head ? archive.saysOnHead : archive.saysOnGet).get(name);
+    const deliver = () => {
+      if (response.destroyed) return;
+      if (said === undefined) return send(type, file);
+      response.setHeader("Content-Type", type);
+      response.setHeader("Content-Length", said);
+      response.end(head ? undefined : file);
+    };
+    if (head || archive.fileDelayMs <= 0) return deliver();
+    setTimeout(deliver, archive.fileDelayMs);
   });
   await new Promise<void>((resolve) => server.listen(options.port ?? 0, "127.0.0.1", resolve));
   archive.url = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
