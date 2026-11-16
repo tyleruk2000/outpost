@@ -23,7 +23,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Compression, TileType } from "../src/modules/maps/pmtiles/header.ts";
 import { MAX_PROFILE_SAMPLES } from "../src/modules/maps/terrain-profile.ts";
-import { buildArchive, type FixtureTile, tileInBbox } from "./fixtures/maps/archive.ts";
+import { buildArchive, type FixtureTile } from "./fixtures/maps/archive.ts";
 import { type Ground, groundTiles, positionOf, worldOf } from "./fixtures/maps/terrain.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
 
@@ -393,7 +393,7 @@ const ridgeGround: Ground = (worldX, worldY) => {
 const ridgeHeight = (lat: number, lon: number) => ridgeGround(...worldOf(lat, lon));
 const RIDGE_BOX: [number, number, number, number] = [-4.3, 52.9, -3.7, 53.1];
 /** The deepest zoom only, 64 cells to a tile: cells of 92 m at this latitude. */
-const ridgeTiles = () => groundTiles(ridgeGround, { minZoom: 12, maxZoom: 12, keep: (z, x, y) => tileInBbox(RIDGE_BOX, z, x, y) });
+const ridgeTiles = () => groundTiles(ridgeGround, { minZoom: 12, maxZoom: 12, bbox: RIDGE_BOX });
 
 describe("the ground between two points", () => {
   it("reads the ground along the path from installed terrain, sample by sample", async () => {
@@ -487,7 +487,7 @@ describe("the ground between two points", () => {
       ["west", west],
       ["east", east],
     ] as const) {
-      await installTerrain(name, groundTiles(ridgeGround, { minZoom: 12, maxZoom: 12, keep: (z, x, y) => tileInBbox(box, z, x, y) }), box);
+      await installTerrain(name, groundTiles(ridgeGround, { minZoom: 12, maxZoom: 12, bbox: box }), box);
     }
     const from = { lat: 53, lon: -4.1 };
     const { body } = await profileOf(from, { lat: 53, lon: -3.9 });
@@ -532,15 +532,13 @@ describe("the ground between two points", () => {
   it("reads a path of hundreds of kilometres from a handful of coarser tiles", async () => {
     // Terrain from zoom 8 to 12 in a strip along 53° N, three degrees and more wide.
     const strip: [number, number, number, number] = [-5.2, 52.9, -0.3, 53.4];
-    const tiles = groundTiles(ridgeGround, { minZoom: 8, maxZoom: 12, keep: (z, x, y) => tileInBbox(strip, z, x, y) });
+    const tiles = groundTiles(ridgeGround, { minZoom: 8, maxZoom: 12, bbox: strip });
     await installTerrain("strip", tiles, strip);
     const read = vi.spyOn(app.ctx.services.maps.tiles, "getTile");
 
     const from = { lat: 53, lon: -5 };
     const to = { lat: 53, lon: -0.5 };
-    const started = performance.now();
     const { body } = await profileOf(from, to);
-    const took = performance.now() - started;
     expect(body.distanceMeters).toBeGreaterThan(300_000);
     expect(body.coverage).toBe("terrain");
     // As many samples as a profile may hold and no more, so the step is wider than a cell of the finest terrain.
@@ -563,8 +561,7 @@ describe("the ground between two points", () => {
     const crest = Math.max(...(body.heights as number[]));
     expect(crest).toBeGreaterThan(440);
     expect(crest).toBeLessThanOrEqual(500);
-    // Generous, for a machine doing other things.
-    expect(took).toBeLessThan(5_000);
+    // (The tiles counted above are what makes it quick; a time taken is not checked, being the machine's as much as the code's.)
 
     // A short path over the same terrain is read at the finest zoom there is.
     read.mockClear();

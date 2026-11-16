@@ -91,9 +91,12 @@ describe("the books shipped with Outpost", () => {
     }
   });
 
-  it("link only to chapters that exist, to web addresses, or to headings of the same chapter", () => {
-    let refs = 0;
-    let jumps = 0;
+  // One book at a time: all of them together are six megabytes of Markdown, which took a third of the time
+  // allowed for a test alone and all of it on a busy machine. The counts are added up for the test after.
+  let refs = 0;
+  let jumps = 0;
+  const linking = "link only to chapters that exist, to web addresses, or to headings of the same chapter: %s";
+  it.each(books.map((entry) => entry.id))(linking, (id) => {
     const resolve = (entryId: string, chapterKey?: string) => {
       refs += 1;
       const keys = keysOf.get(entryId);
@@ -102,20 +105,21 @@ describe("the books shipped with Outpost", () => {
         throw new Error(`a chapter links to ${entryId}/${chapterKey}, which does not exist`);
       return { entryId, entryName: entryId, collectionId: "c", documentId: chapterKey ? "d" : undefined };
     };
-    for (const entry of books) {
-      for (const chapter of catalog.books.get(entry.id)!.chapters) {
-        const text = fs.readFileSync(chapter.path, "utf8");
-        const where = `${entry.id}/${chapter.fileName}`;
-        // LogBook73's site paths are all gone; what is left of them is an outpost: link or plain words.
-        expect(text.match(/\]\(\/(?!handbook-figures\/)[^)]*\)/g) ?? [], where).toEqual([]);
-        for (const [, url = ""] of text.matchAll(/\]\((outpost:[^)\s]*)\)/g))
-          expect(parseOutpostLink(url), `${where}: ${url}`).not.toBeNull();
-        const runs = runsOf(markdownBlocks(text, { resolve }));
-        jumps += runs.filter((run) => run.t === "jump").length;
-        // A link written `](#heading)` survives only when the chapter has that heading.
-        expect(runs.filter((run) => run.t === "jump").length, where).toBe((text.match(/\]\(#[^)]+\)/g) ?? []).length);
-      }
+    for (const chapter of catalog.books.get(id)!.chapters) {
+      const text = fs.readFileSync(chapter.path, "utf8");
+      const where = `${id}/${chapter.fileName}`;
+      // LogBook73's site paths are all gone; what is left of them is an outpost: link or plain words.
+      expect(text.match(/\]\(\/(?!handbook-figures\/)[^)]*\)/g) ?? [], where).toEqual([]);
+      for (const [, url = ""] of text.matchAll(/\]\((outpost:[^)\s]*)\)/g))
+        expect(parseOutpostLink(url), `${where}: ${url}`).not.toBeNull();
+      const runs = runsOf(markdownBlocks(text, { resolve }));
+      jumps += runs.filter((run) => run.t === "jump").length;
+      // A link written `](#heading)` survives only when the chapter has that heading.
+      expect(runs.filter((run) => run.t === "jump").length, where).toBe((text.match(/\]\(#[^)]+\)/g) ?? []).length);
     }
+  });
+
+  it("between them link to one another thousands of times, and to their own headings", () => {
     expect(refs).toBeGreaterThan(3000);
     expect(jumps).toBeGreaterThan(5);
   });
