@@ -1,0 +1,54 @@
+/*
+ * Printing the paper aids (a Vigenère square, one-time pad sheets).
+ *
+ * The sheet to print is put straight under <body>, outside the app, by `PrintSheet`.
+ * On screen it is not shown. On paper it is the only thing shown: black on white
+ * whatever the theme, in the mono face so that letters line up in columns.
+ *
+ * These rules are outside every cascade layer, so they win over the app's own styles
+ * (which are all in layers) without needing to shout.
+ */
+.print-sheet {
+  display: none;
+}
+
+@media print {
+  body:has(> .print-sheet) > :not(.print-sheet) {
+    display: none;
+  }
+
+  body:has(> .print-sheet) {
+    background: white;
+  }
+
+  .print-sheet {
+    display: block;
+    background: white;
+    color: black;
+    font-family: var(--font-mono);
+    font-size: 10pt;
+    line-height: 1.35;
+  }
+
+  .print-sheet * {
+    color: black;
+    border-color: black;
+    background: transparent;
+  }
+
+  .print-sheet .sheet-part {
+    break-inside: avoid;
+  }
+
+  .print-sheet .sheet-page {
+    break-after: page;
+  }
+
+  .print-sheet .sheet-page:last-child {
+    break-after: auto;
+  }
+
+  @page {
+    margin: 12mm;
+  }
+}

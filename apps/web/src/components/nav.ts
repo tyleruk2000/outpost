@@ -6,6 +6,7 @@ import {
   HardDrive,
   Home,
   ListChecks,
+  LockKeyhole,
   type LucideIcon,
   Map as MapIcon,
   NotebookText,
@@ -31,6 +32,7 @@ export const knowledgeNav: NavItem[] = [
   { to: "/explore", label: "Explore", icon: Compass, key: "e" },
   { to: "/library", label: "Library", icon: BookOpen, key: "l" },
   { to: "/maps", label: "Maps", icon: MapIcon, key: "m" },
+  { to: "/encryption", label: "Encryption", icon: LockKeyhole, key: "k" },
   { to: "/notes", label: "Notes", icon: NotebookText, key: "n" },
 ];
 

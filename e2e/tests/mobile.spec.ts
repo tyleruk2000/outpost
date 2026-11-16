@@ -76,6 +76,7 @@ test.describe("on a phone", () => {
       ["Search", "/search"],
       ["How search works", "/search/how-it-works"],
       ["Explore", "/explore"],
+      ["Encryption", "/encryption"],
       ["Import files", "/import"],
       ["Downloads", "/downloads"],
       ["Storage", "/storage"],

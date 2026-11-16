@@ -394,7 +394,10 @@ export function oneTimePad(text: string, pad: string, direction: Direction = "en
  * thrown away and drawn again: 234 is 9 × 26, so what is left divides evenly among the
  * letters and none is favoured.
  */
-export function randomLetters(count: number, fill: (bytes: Uint8Array) => void = (bytes) => void crypto.getRandomValues(bytes)): string {
+export function randomLetters(
+  count: number,
+  fill: (bytes: Uint8Array<ArrayBuffer>) => void = (bytes) => void crypto.getRandomValues(bytes),
+): string {
   if (!Number.isInteger(count) || count < 0 || count > 100_000) throw new CipherError("That is not a sensible number of letters.");
   let letters = "";
   const bytes = new Uint8Array(256);

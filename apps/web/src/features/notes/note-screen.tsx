@@ -8,7 +8,7 @@ import { attachmentUrl, type NoteDetail, type NoteDoc, type NoteResponse } from 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Editor } from "@tiptap/react";
 import { ArchiveRestore, CircleAlert, History, LayoutTemplate, TriangleAlert } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { toast } from "sonner";
 import { ErrorState, Notice, Page } from "@/components/page";
@@ -24,6 +24,10 @@ import { NoteTopBar } from "./note-top-bar";
 import { noteKeys, saveNote, uploadAttachment, useNoteActions, useNoteTree } from "./notes-data";
 import { TagEditor } from "./tag-editor";
 import { clearDraft, draftDiffers, PAGE_FIELDS, type PageDraft, type PageFields, readDraft, usePageSaver } from "./use-page-saver";
+
+// Encryption is not needed to read or write an ordinary page, so its code is fetched only when it is asked for.
+const EncryptPageDialog = lazy(() => import("./encrypt-page-dialog"));
+const EncryptedNote = lazy(() => import("./encrypted-note"));
 
 /** The measure of the text: the 70 characters of `.prose`, as a width the whole page column shares. */
 const column = "mx-auto w-full max-w-[calc(43.125rem+2.5rem)] px-5 md:max-w-[calc(43.125rem+7rem)] md:px-14";
@@ -87,14 +91,17 @@ export function NoteScreen({ id }: { id: string }) {
       </Page>
     );
   }
+  const reload = async () => (await note.refetch()).data?.note;
+  // An encrypted page is opened by its own screen. In the trash it is shown as it is stored, like any page there.
+  if (note.data.note.encrypted && note.data.note.trashedAt === null) {
+    return (
+      <Suspense fallback={<NoteSkeleton />}>
+        <EncryptedNote key={id} note={note.data.note} />
+      </Suspense>
+    );
+  }
   // The editor is made for one page in one mode; a restored page gets a fresh, editable one.
-  return (
-    <LoadedNote
-      key={`${id}:${note.data.note.trashedAt === null}`}
-      note={note.data.note}
-      reload={async () => (await note.refetch()).data?.note}
-    />
-  );
+  return <LoadedNote key={`${id}:${note.data.note.trashedAt === null}`} note={note.data.note} reload={reload} />;
 }
 
 function LoadedNote({ note, reload }: { note: NoteDetail; reload(): Promise<NoteDetail | undefined> }) {
@@ -111,6 +118,7 @@ function LoadedNote({ note, reload }: { note: NoteDetail; reload(): Promise<Note
   );
   const [coverUploading, setCoverUploading] = useState(false);
   const [moving, setMoving] = useState(false);
+  const [encrypting, setEncrypting] = useState(false);
   const [choosing, setChoosing] = useState(false);
   const [draft, setDraft] = useState<PageDraft | null>(() => {
     if (!editable) return null;
@@ -260,6 +268,23 @@ function LoadedNote({ note, reload }: { note: NoteDetail; reload(): Promise<Note
     }
   };
 
+  /** For the encryption dialog: saves anything unsaved, then answers with the page exactly as the server now has it. */
+  const prepareToEncrypt = async () => {
+    const queue = saver.current;
+    queue?.flush();
+    for (let waited = 0; queue && !queue.isClean() && queue.status().kind === "saving" && waited < 100; waited += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    if (queue && !queue.isClean()) {
+      throw new Error(
+        "Your latest changes to this page have not been saved yet, so it cannot be encrypted. Wait for “Saved”, or sort out the notice above the page.",
+      );
+    }
+    const editor = editorRef.current;
+    if (editor && !editor.isDestroyed) lastContent.current = editor.getJSON() as NoteDoc;
+    return { content: lastContent.current, baseUpdatedAt: queue?.baseUpdatedAt() ?? note.updatedAt };
+  };
+
   const createSubPage = useCallback(
     (subTitle: string) => actions.create({ parentId: note.id, title: subTitle }, { open: false }),
     [actions, note.id],
@@ -283,6 +308,7 @@ function LoadedNote({ note, reload }: { note: NoteDetail; reload(): Promise<Note
         onAddCover={() => coverInput.current?.click()}
         onRemoveCover={removeCover}
         onTemplate={(next) => void setTemplate(next)}
+        onEncrypt={() => setEncrypting(true)}
       />
 
       {cover ? (
@@ -445,6 +471,11 @@ function LoadedNote({ note, reload }: { note: NoteDetail; reload(): Promise<Note
       </div>
 
       {moving && tree.data ? <MoveDialog page={note} index={tree.data} onClose={() => setMoving(false)} /> : null}
+      {encrypting ? (
+        <Suspense fallback={null}>
+          <EncryptPageDialog note={note} prepare={prepareToEncrypt} onClose={() => setEncrypting(false)} />
+        </Suspense>
+      ) : null}
     </article>
   );
 }
