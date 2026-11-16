@@ -141,7 +141,8 @@ export function registerPlans(app: FastifyInstance, ctx: AppContext, service: Pr
       solar: row.solar as unknown as PlanInput["solar"],
       links,
       linked: linkedOf(links),
-      workedOut: row.resultKey !== null && internals.kept<PlanResult>(row.resultKey) !== undefined,
+      // Asked without reading the matrix: a list of plans is not a use of any of them.
+      workedOut: row.resultKey !== null && internals.has(row.resultKey),
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     };

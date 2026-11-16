@@ -90,7 +90,10 @@ export interface PropagationInternals {
     datasets: Array<{ id: string; version: string }>;
   }>;
   keyOf(kind: KeptKind, body: unknown): string;
+  /** The answer kept under a key, for someone who asked for it: reading it counts as a use. */
   kept<T>(key: string): T | undefined;
+  /** Whether an answer is kept under a key. For lists: nothing is read, and it is not a use. */
+  has(key: string): boolean;
   keep(key: string, kind: KeptKind, engine: EngineDescription, request: unknown, result: unknown): void;
 }
 
@@ -166,6 +169,9 @@ export function createPropagationService(ctx: AppContext, host: EngineHost): Pro
     db.update(propagationResults).set({ lastUsedAt: Date.now() }).where(eq(propagationResults.key, key)).run();
     return row.result as T;
   }
+
+  const hasKey = ctx.sqlite.prepare("SELECT 1 FROM propagation_results WHERE key = ?").pluck();
+  const has = (key: string): boolean => hasKey.get(key) !== undefined;
 
   function keep(key: string, kind: KeptKind, engine: EngineDescription, request: unknown, result: unknown): void {
     const now = Date.now();
@@ -529,6 +535,7 @@ export function createPropagationService(ctx: AppContext, host: EngineHost): Pro
       host,
       keyOf,
       kept,
+      has,
       keep,
       async basis(date, solar) {
         const described = await host.describe();

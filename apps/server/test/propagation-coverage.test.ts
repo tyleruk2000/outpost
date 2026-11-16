@@ -412,6 +412,19 @@ describe("what is kept of maps and plans", () => {
     await own.close();
   });
 
+  it("is not reordered by the lists that only say what there is", async () => {
+    const before = used();
+    expect(before).toHaveLength(8);
+    await pause();
+    const overview = (await own.api<CoverageOverview>("GET", "/api/radio/propagation/coverage")).body;
+    expect(overview.saved).toHaveLength(6);
+    expect(overview.saved[0]).toMatchObject({ name: "Strip 5", cells: 16, ssn: 83 });
+    const plans = (await own.api("GET", "/api/radio/communication-plans")).body.plans;
+    expect(plans.map((plan: { workedOut: boolean }) => plan.workedOut)).toEqual([true, true]);
+    expect((await own.api("GET", `/api/radio/communication-plans/${plans[0].id}`)).body.plan.workedOut).toBe(true);
+    expect(used()).toEqual(before);
+  });
+
   it("keeps a new map that is not saved yet, however many saved maps and plans there are", async () => {
     const { map } = own as TestApp & { map: (request: CoverageRequest) => Promise<CoverageResult> };
     const fresh = await map(strip(50));
@@ -446,5 +459,27 @@ describe("what is kept of maps and plans", () => {
       n: number;
     };
     expect(count.n).toBe(9 + 8);
+  });
+
+  it("lists a saved map with the figures of the result it has now, and not at all when it has none", async () => {
+    const { map } = own as TestApp & { map: (request: CoverageRequest) => Promise<CoverageResult> };
+    const listed = async () => (await own.api<CoverageOverview>("GET", "/api/radio/propagation/coverage")).body.saved;
+    const first = (await listed()).find((item) => item.name === "Strip 0")!;
+    const stored = (await own.api("GET", `/api/radio/propagation/coverage/${first.key}`)).body.coverage as CoverageResult;
+    expect(first).toMatchObject({
+      computedAt: stored.computedAt,
+      ssn: stored.basis.ssn,
+      cells: stored.cells.length,
+      request: stored.request,
+    });
+    // The result goes (as "erase" would take it, or a fault), and the map cannot be shown.
+    own.ctx.sqlite.prepare("DELETE FROM propagation_results WHERE key = ?").run(first.key);
+    expect((await listed()).map((item) => item.name)).not.toContain("Strip 0");
+    // Worked out again it is the same question under the same key, with figures of its own.
+    await pause();
+    const again = await map(strip(40));
+    expect(again.key).toBe(first.key);
+    expect(again.computedAt).toBeGreaterThan(first.computedAt);
+    expect((await listed()).find((item) => item.name === "Strip 0")).toMatchObject({ key: first.key, computedAt: again.computedAt });
   });
 });

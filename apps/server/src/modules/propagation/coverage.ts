@@ -22,7 +22,7 @@ import {
   noiseSetting,
   type SavedCoverage,
 } from "@outpost/shared";
-import { and, desc, eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
@@ -279,33 +279,61 @@ export function registerCoverage(app: FastifyInstance, ctx: AppContext, service:
 
   const keyParams = z.object({ key: z.string().regex(/^[0-9a-f]{40}$/) });
 
-  const savedOf = (row: typeof propagationSaved.$inferSelect): SavedCoverage | null => {
-    const result = row.resultKey ? internals.kept<CoverageResult>(row.resultKey) : undefined;
-    // A saved map without its figures cannot be shown; it is not listed as if it could.
-    if (!result) return null;
-    return {
-      id: row.id,
-      name: row.name,
-      key: result.key,
-      request: result.request,
-      computedAt: result.computedAt,
-      ssn: result.basis.ssn,
-      cells: result.cells.length,
-      createdAt: row.createdAt,
-    };
+  /**
+   * The saved maps, or one of them, without their stored results. A fine map is most of a
+   * megabyte: a list does not bring ten of them into the server to be parsed and counted,
+   * and listing a map is not a use of it. A saved map without its figures cannot be shown,
+   * and the join leaves it out.
+   */
+  const savedRows = (only: string) =>
+    ctx.sqlite.prepare(
+      `SELECT s.id, s.name, s.created_at AS createdAt, r.key, r.request, r.created_at AS keptAt
+         FROM propagation_saved s JOIN propagation_results r ON r.key = s.result_key
+        WHERE s.kind = 'coverage'${only} ORDER BY s.created_at DESC, s.id`,
+    );
+  const everySaved = savedRows("");
+  const oneSaved = savedRows(" AND s.id = ?");
+  interface SavedRow extends Pick<SavedCoverage, "id" | "name" | "key" | "createdAt"> {
+    request: string;
+    keptAt: number;
+  }
+
+  /**
+   * The three figures a list shows of a result, read out of it by the database (one pass
+   * over the text, about 4 ms for a fine map) the first time they are wanted and then
+   * remembered. A result never changes under its key; `keptAt` tells a result that was
+   * cleared and worked out again from the one remembered.
+   */
+  type Figures = Pick<SavedCoverage, "computedAt" | "ssn" | "cells"> & { keptAt: number };
+  let figures = new Map<string, Figures>();
+  const readFigures = ctx.sqlite.prepare(
+    `SELECT json_extract(result, '$.computedAt') AS computedAt, json_extract(result, '$.basis.ssn') AS ssn,
+            json_array_length(result, '$.cells') AS cells
+       FROM propagation_results WHERE key = ?`,
+  );
+  const figuresOf = (key: string, keptAt: number): Figures => {
+    let found = figures.get(key);
+    if (found?.keptAt !== keptAt) {
+      found = { ...(readFigures.get(key) as Omit<Figures, "keptAt">), keptAt };
+      figures.set(key, found);
+    }
+    return found;
+  };
+  const savedOf = (row: SavedRow): SavedCoverage => {
+    const { computedAt, ssn, cells } = figuresOf(row.key, row.keptAt);
+    return { id: row.id, name: row.name, key: row.key, request: JSON.parse(row.request), computedAt, ssn, cells, createdAt: row.createdAt };
+  };
+  const listSaved = (): SavedCoverage[] => {
+    const saved = (everySaved.all() as SavedRow[]).map(savedOf);
+    // Only the figures of maps still saved are remembered.
+    figures = new Map(saved.map((item) => [item.key, figures.get(item.key)!]));
+    return saved;
   };
 
   app.get(
     "/api/radio/propagation/coverage",
     async (): Promise<CoverageOverview> => ({
-      saved: ctx.db
-        .select()
-        .from(propagationSaved)
-        .where(eq(propagationSaved.kind, "coverage"))
-        .orderBy(desc(propagationSaved.createdAt))
-        .all()
-        .map(savedOf)
-        .filter((item) => item !== null),
+      saved: listSaved(),
       limits: { maxCells: COVERAGE_MAX_CELLS, maxWaiting: COVERAGE_MAX_WAITING },
     }),
   );
@@ -346,7 +374,7 @@ export function registerCoverage(app: FastifyInstance, ctx: AppContext, service:
         .run();
     }
     ctx.events.publish({ type: "propagation.changed" });
-    return { saved: savedOf(ctx.db.select().from(propagationSaved).where(eq(propagationSaved.id, id)).get()!) };
+    return { saved: savedOf(oneSaved.get(id) as SavedRow) };
   });
 
   app.delete<{ Params: { id: string } }>("/api/radio/propagation/coverage/saved/:id", async (request) => {
