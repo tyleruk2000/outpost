@@ -381,10 +381,10 @@ most 50,000 files and 8 GB unpacked, including archives inside the archive; a fi
 that inflates more than 200 times is treated as a zip bomb; a single file over the
 upload limit is left out and the rest imported. See [security.md](security.md#archives).
 
-A Markdown, HTML or text file is turned into a page in a worker thread, not on the
-thread that answers requests, because what that costs depends on what is in the file
-and not on its size. A file of at most 4 MB is read; one that takes more than a minute
-or more memory than the worker is allowed (1 GB) is stopped, and comes in as an empty
+A Markdown, HTML or text file is turned into a page in a process of its own, not in the
+server, because what that costs in time and memory depends on what is in the file and
+not on its size. A file of at most 4 MB is read; one that takes more than a minute or
+more memory than the converter is allowed (1 GB) is stopped, and comes in as an empty
 page with a note saying why, as a file that cannot be converted always has. The rest of
 the import carries on. See [security.md](security.md#notes-markdown-and-html).
 

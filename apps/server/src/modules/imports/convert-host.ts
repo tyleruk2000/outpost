@@ -1,20 +1,27 @@
 /**
- * Converts imported files to pages in a worker thread.
+ * Converts imported files to pages in a process of their own.
  *
  * What converting a file costs depends on what is in it, not on its size: the Markdown
  * parser takes fourteen seconds over 120 kB of `*x*` written forty thousand times, and
- * an ordinary HTML file of a few megabytes takes a few seconds however well it is
- * written. On the server's own thread either would stop every other request being
- * answered for that long. In a worker they hold up nothing, and a file that takes too
- * long is stopped and reported, as a file that cannot be read is.
+ * an ordinary file of a few megabytes takes seconds and a gigabyte or more of memory
+ * however well it is written. On the server's own thread either would stop every other
+ * request being answered for that long, and the memory would be the server's.
  *
- * One worker is kept while an import is using it, because starting one costs more than
- * converting a small file and an import is hundreds of small files. It is ended when
- * nothing has been asked of it for a while, when a file runs out of time, and when the
- * job that is waiting is stopped. Ending it is always safe: it holds nothing but the
+ * A worker thread would free the server's thread but not protect its memory: a worker
+ * that runs out of its heap is ended alone most of the time, and has also been seen to
+ * end the whole process (sixteen such crash reports were on the machine this was written
+ * on, from another reader). A process that runs out of memory takes nothing with it. So
+ * the converter is a child process with a heap limit of its own, and a file that runs
+ * out of time or memory is reported as a file that could not be converted.
+ *
+ * One converter is kept while an import is using it, because starting one costs more
+ * than converting a small file and an import is hundreds of small files. It is ended
+ * when nothing has been asked of it for a while, when a file runs out of time, and when
+ * the job that is waiting is stopped. Ending it is always safe: it holds nothing but the
  * text it was given.
  */
-import { Worker } from "node:worker_threads";
+import { type ChildProcess, fork } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import type { ImportConstructKind, ImportItemFormat } from "@outpost/shared";
 import { AppError, type ErrorCode } from "../../core/errors.ts";
 import { workerUrl } from "../../core/paths.ts";
@@ -42,9 +49,11 @@ export type ConvertAnswer =
 export interface ConvertOptions {
   links?: Record<string, InAppTarget>;
   scan?: boolean;
-  /** Stops waiting, and stops the worker, when the job is paused, cancelled or shut down. */
+  /** Stops waiting, and ends the converter, when the job is paused, cancelled or shut down. */
   signal?: AbortSignal;
   timeoutMs?: number;
+  /** A tighter heap than usual, for tests that show what running out of it does. */
+  heapMb?: number;
 }
 
 /**
@@ -53,10 +62,14 @@ export interface ConvertOptions {
  * would never finish.
  */
 export const CONVERT_TIMEOUT_MS = 60_000;
-/** How long the worker is kept after the last file, so that the next one need not start it again. */
+/** How long the converter is kept after the last file, so that the next one need not start it again. */
 const IDLE_MS = 10_000;
-/** JavaScript heap the worker may use. A source file is at most 4 MB and a page at most 5 MB; this is a last line behind those. */
-const WORKER_HEAP_MB = 1024;
+/**
+ * JavaScript heap the converter may use. The heaviest 4 MB files measured needed 1.6 GB
+ * to convert on the server's own thread, and every one of those becomes a page too large
+ * to save; the largest file that does become a page needed about 0.6 GB.
+ */
+const CONVERTER_HEAP_MB = 1024;
 
 const TOO_SLOW = "This file took too long to convert, so Outpost stopped.";
 const STOPPED = "Converting this file stopped unexpectedly.";
@@ -67,28 +80,29 @@ interface Waiting {
   reject(error: unknown): void;
 }
 
-let worker: Worker | undefined;
+let converter: ChildProcess | undefined;
+let converterHeapMb = 0;
 let nextId = 1;
 let idle: NodeJS.Timeout | undefined;
-/** The file the worker is on. Files are converted one at a time, in the order they were asked for. */
+/** The file the converter is on. Files are converted one at a time, in the order they were asked for. */
 let current: { id: number; waiting: Waiting } | undefined;
 let line: Promise<unknown> = Promise.resolve();
 
-/** Whether a worker is running, for tests. */
-export const convertWorkerRunning = () => worker !== undefined;
+/** Whether a converter process is running, for tests. */
+export const converterRunning = () => converter !== undefined;
 
 function end(): void {
   clearTimeout(idle);
   idle = undefined;
-  const ending = worker;
-  worker = undefined;
+  const ending = converter;
+  converter = undefined;
   if (ending) {
     ending.removeAllListeners();
-    void ending.terminate();
+    ending.kill("SIGKILL");
   }
 }
 
-/** Ends the worker and tells whoever is waiting on it why. */
+/** Ends the converter and tells whoever is waiting on it why. */
 function fail(error: unknown): void {
   const waiting = current?.waiting;
   current = undefined;
@@ -96,12 +110,17 @@ function fail(error: unknown): void {
   waiting?.reject(error);
 }
 
-function start(): Worker {
-  const started = new Worker(workerUrl(new URL("./convert.worker.ts", import.meta.url), "convert"), {
-    resourceLimits: { maxOldGenerationSizeMb: WORKER_HEAP_MB },
+function start(heapMb: number): ChildProcess {
+  converterHeapMb = heapMb;
+  const started = fork(fileURLToPath(workerUrl(new URL("./convert.worker.ts", import.meta.url), "convert")), [], {
+    // Nothing of how this process was started is passed on but the limit on its memory.
+    execArgv: [`--max-old-space-size=${heapMb}`],
+    serialization: "advanced",
+    stdio: ["ignore", "ignore", "ignore", "ipc"],
   });
-  // The worker never keeps the server from stopping.
+  // The converter never keeps the server from stopping.
   started.unref();
+  started.channel?.unref();
   started.on("message", (answer: ConvertAnswer) => {
     if (!current || answer.id !== current.id) return;
     const { waiting } = current;
@@ -109,10 +128,11 @@ function start(): Worker {
     if (answer.ok) waiting.resolve(answer);
     else waiting.reject(new AppError(answer.code, answer.message));
   });
-  started.on("error", (error: NodeJS.ErrnoException) => {
-    fail(new AppError("unsupported", error.code === "ERR_WORKER_OUT_OF_MEMORY" ? TOO_MUCH_MEMORY : STOPPED));
-  });
-  started.on("exit", () => fail(new AppError("unsupported", STOPPED)));
+  started.on("error", () => fail(new AppError("unsupported", STOPPED)));
+  // Out of memory, V8 ends the process itself: an abort signal, or its own exit status on Windows.
+  started.on("exit", (code, signal) =>
+    fail(new AppError("unsupported", signal === "SIGABRT" || signal === "SIGTRAP" || code === 134 ? TOO_MUCH_MEMORY : STOPPED)),
+  );
   return started;
 }
 
@@ -126,12 +146,14 @@ function convertNow(format: PageFormat, raw: string, options: ConvertOptions): P
     }
     clearTimeout(idle);
     idle = undefined;
-    worker ??= start();
+    const heapMb = options.heapMb ?? CONVERTER_HEAP_MB;
+    if (converter && converterHeapMb !== heapMb) end();
+    converter ??= start(heapMb);
     const id = nextId++;
     const done = () => {
       clearTimeout(timer);
       signal?.removeEventListener("abort", onAbort);
-      if (worker) {
+      if (converter) {
         idle = setTimeout(end, IDLE_MS);
         idle.unref();
       }
@@ -152,15 +174,15 @@ function convertNow(format: PageFormat, raw: string, options: ConvertOptions): P
     const onAbort = () => fail(stoppedBy());
     const timer = setTimeout(() => fail(new AppError("unsupported", TOO_SLOW)), options.timeoutMs ?? CONVERT_TIMEOUT_MS);
     signal?.addEventListener("abort", onAbort, { once: true });
-    worker.postMessage({ id, format, raw, links: options.links, scan: options.scan === true } satisfies ConvertRequest);
+    converter.send({ id, format, raw, links: options.links, scan: options.scan === true } satisfies ConvertRequest);
   });
 }
 
 /**
- * Converts one file off the server's thread, in its turn. Rejects with an `AppError`
- * that says why in a sentence, or with the signal's reason when stopped.
+ * Converts one file outside the server's process, in its turn. Rejects with an
+ * `AppError` that says why in a sentence, or with the signal's reason when stopped.
  */
-export function convertPageInWorker(
+export function convertPageApart(
   format: PageFormat,
   raw: string,
   options: ConvertOptions = {},

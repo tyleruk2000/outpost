@@ -1,16 +1,15 @@
 /**
- * Worker-thread entry point for converting imported files to pages. One worker converts
- * one file at a time for as long as an import keeps it busy (`convert-host.ts`).
- * Somebody else's Markdown and HTML is parsed here so that a file built to be slow, or
- * simply a very large one, holds up this thread, which can be stopped, and not the one
- * that answers requests.
+ * Entry point of the process that converts imported files to pages (`convert-host.ts`).
+ * It is named and bundled as the worker threads are, and run as a process of its own.
+ * Somebody else's Markdown and HTML is parsed here so that a file built to be slow, or to
+ * need more memory than there is, or simply a very large one, costs this process, which
+ * can be ended, and not the one that answers requests.
  */
-import { parentPort } from "node:worker_threads";
 import { AppError } from "../../core/errors.ts";
 import { convertPage, scanConstructs } from "./convert.ts";
 import type { ConvertAnswer, ConvertRequest } from "./convert-host.ts";
 
-parentPort?.on("message", (request: ConvertRequest) => {
+process.on("message", (request: ConvertRequest) => {
   let answer: ConvertAnswer;
   try {
     const links = request.links;
@@ -22,5 +21,7 @@ parentPort?.on("message", (request: ConvertRequest) => {
         ? { id: request.id, ok: false, code: error.code, message: error.message }
         : { id: request.id, ok: false, code: "unsupported", message: "The file could not be read as a page." };
   }
-  parentPort?.postMessage(answer);
+  process.send?.(answer);
 });
+// The server has gone, or has let go: there is nobody to convert for.
+process.on("disconnect", () => process.exit(0));

@@ -472,13 +472,19 @@ text in many separate pieces, each of which it handled in time growing with the 
 of their number. Measured on 16 November 2026 (Node 24.15, an Apple M-series laptop):
 4,000 empty `<i>` in a 28 kB file took 16.0 seconds and now take 15 ms; 80,000
 `<span>x</span>` (1.1 MB) took 4.4 seconds and now take 0.2. And every conversion of an
-imported Markdown, HTML or text file runs in a worker thread (`imports/convert-host.ts`),
-because not every slow shape can be taken out: the Markdown parser itself takes 14
-seconds over `*x*` written 40,000 times (120 kB), and a 4 MB file of ordinary writing
-takes seconds and around a gigabyte of memory however it is written. The worker is
-given one file at a time, a minute for each and a heap of 1 GB; a file that runs out of
-either is stopped and imported as an empty page that says so. While the slowest of
-those files was being converted, the longest the server's own thread was held was 2 ms.
+imported Markdown, HTML or text file runs in a child process (`imports/convert-host.ts`),
+because not every costly shape can be taken out: the Markdown parser itself takes 14
+seconds over `*x*` written 40,000 times (120 kB), and a 4 MB file needs seconds and
+between 1 and 1.6 GB of heap to convert, which used to be the server's own thread and
+the server's own memory. The converter is given one file at a time, a minute for each
+and a heap of 1 GB; a file that runs out of either ends the converter, and is imported
+as an empty page that says so. It is a process and not a worker thread because a worker
+that runs out of heap does not reliably end alone on Node 24: sixteen crash reports on
+the machine this was measured on are of a worker thread's out-of-memory ending the
+whole process. While the heaviest of these files were converted, the longest the
+server's own thread was held was 18 ms and its memory did not grow. On macOS a
+converter that runs out of memory leaves a crash report for `node` in the system's
+diagnostic reports; that is the converter, not the server.
 Tests: `apps/server/test/imports-conversion.test.ts`.
 
 Search snippets and reference-collection snippets reach the browser as plain text

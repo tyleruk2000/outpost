@@ -30,7 +30,7 @@ import { resolveInside } from "../../core/fs-safe.ts";
 import { sha256Hex } from "../../core/ids.ts";
 import { docToText, type InAppTarget } from "../notes/content/index.ts";
 import { type ConvertedPage, kindOfWarning } from "./convert.ts";
-import { convertPageInWorker } from "./convert-host.ts";
+import { convertPageApart } from "./convert-host.ts";
 import {
   type CsvTable,
   countCsvRows,
@@ -130,7 +130,7 @@ type Renderable = Pick<ImportItem, "path" | "title" | "format" | "source">;
 
 /**
  * Reads an item's source file and converts it to a page. `item.title` is used when the
- * file names no title. Markdown, HTML and text are converted in a worker thread
+ * file names no title. Markdown, HTML and text are converted in a process of their own
  * (`convert-host.ts`); a table is small enough by its limits to be read here.
  */
 export async function renderItem(treeDir: string, item: Renderable, options: RenderOptions = {}): Promise<RenderedItem> {
@@ -144,7 +144,7 @@ export async function renderItem(treeDir: string, item: Renderable, options: Ren
     return { title: item.title, doc: tableDoc(table, options), tags: [], table };
   }
   const raw = await fs.promises.readFile(file, "utf8");
-  const { page: converted, constructs } = await convertPageInWorker(format, raw, {
+  const { page: converted, constructs } = await convertPageApart(format, raw, {
     links: options.links,
     scan: options.scan,
     signal: options.signal,

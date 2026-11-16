@@ -3,12 +3,13 @@
  *
  * Two faults, both found with files of a few kilobytes: the HTML converter took time by
  * the square of a run of empty elements or of separate pieces of text (4,000 empty `<i>`,
- * 28 kB, sixteen seconds), and every conversion ran on the thread that answers requests.
+ * 28 kB, sixteen seconds), and every conversion ran on the thread that answers requests,
+ * in the server's own memory.
  */
 import { monitorEventLoopDelay } from "node:perf_hooks";
 import { afterEach, describe, expect, it } from "vitest";
 import { convertPage } from "../src/modules/imports/convert.ts";
-import { convertPageInWorker, convertWorkerRunning } from "../src/modules/imports/convert-host.ts";
+import { converterRunning, convertPageApart } from "../src/modules/imports/convert-host.ts";
 import { docToText, htmlToDoc, markdownToDoc } from "../src/modules/notes/content/index.ts";
 import { analyse, commit, findNote } from "./fixtures/imports/builders.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
@@ -100,17 +101,17 @@ describe("HTML the converter is slow at", () => {
   });
 });
 
-describe("converting in a worker", () => {
+describe("converting in a process of its own", () => {
   it("gives the page the same as converting here would, links placed from the table it is handed", async () => {
     const markdown =
       "---\ntitle: Water\ntags: [a, b]\n---\n\n# Water\n\nSee [shelter](shelter.md) and [fire](fire.md). <aside>Boil it.</aside>\n";
     const links = { "shelter.md": { type: "note", noteId: "n1" } } as const;
     const here = convertPage("markdown", markdown, (href) => (href === "shelter.md" ? links["shelter.md"] : null));
-    const there = await convertPageInWorker("markdown", markdown, { links, scan: true });
+    const there = await convertPageApart("markdown", markdown, { links, scan: true });
     expect(there.page).toEqual(here);
     expect(there.page.missing).toEqual(["fire.md"]);
     expect(there.constructs).toEqual({ callout: 1 });
-    expect(convertWorkerRunning()).toBe(true);
+    expect(converterRunning()).toBe(true);
   });
 
   it("stops a file that takes too long, says so, and converts the next one", async () => {
@@ -119,31 +120,43 @@ describe("converting in a worker", () => {
     const loop = monitorEventLoopDelay({ resolution: 5 });
     loop.enable();
     const started = performance.now();
-    await expect(convertPageInWorker("markdown", slow, { timeoutMs: 1_500 })).rejects.toThrow(
+    await expect(convertPageApart("markdown", slow, { timeoutMs: 1_500 })).rejects.toThrow(
       "This file took too long to convert, so Outpost stopped.",
     );
     loop.disable();
     expect(performance.now() - started).toBeLessThan(5_000);
     // This thread went on answering all the while. Generous, for a machine busy with other tests.
     expect(loop.max / 1e6).toBeLessThan(1_000);
-    expect(convertWorkerRunning()).toBe(false);
+    expect(converterRunning()).toBe(false);
 
-    const next = await convertPageInWorker("html", page("<p>Still here.</p>"));
+    const next = await convertPageApart("html", page("<p>Still here.</p>"));
     expect(next.page.title).toBe("Rain");
     expect(docToText(next.page.doc)).toBe("Still here.");
   }, 30_000);
 
+  it("ends alone when a file needs more memory than it is allowed, and converts the next one", async () => {
+    // A megabyte of one-letter italics is some 150,000 pieces of a tree: far more than 48 MB will hold.
+    const heavy = page(`<p>${"<i>x</i>".repeat(150_000)}</p>`);
+    await expect(convertPageApart("html", heavy, { heapMb: 48 })).rejects.toThrow(
+      "Converting this file needed more memory than Outpost allows.",
+    );
+    expect(converterRunning()).toBe(false);
+    // This process, which is the server in these tests, is untouched and goes on.
+    const next = await convertPageApart("text", "Still here.", { heapMb: 48 });
+    expect(docToText(next.page.doc)).toBe("Still here.");
+  }, 60_000);
+
   it("stops when the job waiting for it is stopped", async () => {
     const gone = new AbortController();
-    const converting = convertPageInWorker("markdown", `${"*x*".repeat(40_000)}\n`, { signal: gone.signal });
+    const converting = convertPageApart("markdown", `${"*x*".repeat(40_000)}\n`, { signal: gone.signal });
     setTimeout(() => gone.abort(new Error("The import was cancelled")), 100);
     await expect(converting).rejects.toThrow("The import was cancelled");
-    expect(convertWorkerRunning()).toBe(false);
+    expect(converterRunning()).toBe(false);
   }, 30_000);
 
   it("takes files in turn, each getting its own answer", async () => {
     const answers = await Promise.all(
-      Array.from({ length: 8 }, (_, index) => convertPageInWorker("text", `Page ${index}\n\nSecond paragraph of ${index}.`)),
+      Array.from({ length: 8 }, (_, index) => convertPageApart("text", `Page ${index}\n\nSecond paragraph of ${index}.`)),
     );
     expect(answers.map((answer) => docToText(answer.page.doc).split("\n")[0])).toEqual(
       Array.from({ length: 8 }, (_, index) => `Page ${index}`),

@@ -191,10 +191,12 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 - Hierarchy, links between pages, pictures, tags and Notion databases reconstructed.
 - Skip, copy or replace for pages that already exist; hand-written pages are never
   overwritten.
-- Imported files are converted to pages in a worker thread, with a minute and 1 GB for
-  each, so a file built to be slow (or simply a very large one) no longer stops the
-  server answering: 4,000 empty `<i>` in a 28 kB HTML file held it for 16 seconds. The
-  HTML converter is also no longer slow at that file, or at text in many small pieces.
+- Imported files are converted to pages in a process of their own, with a minute and
+  1 GB for each, so a file built to be slow or to need a great deal of memory (or simply
+  a very large one) no longer stops the server answering or grows its memory: 4,000
+  empty `<i>` in a 28 kB HTML file held it for 16 seconds, and a 4 MB file could take
+  2 GB. The HTML converter is also no longer slow at that file, or at text in many
+  small pieces.
 - Imports that can be stopped and continued without creating anything twice, and a
   report of what was created, updated, skipped and failed.
 
