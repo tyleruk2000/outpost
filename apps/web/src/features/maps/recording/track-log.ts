@@ -207,7 +207,7 @@ export function formatDuration(milliseconds: number): string {
 /** "about 4 minutes", for a stretch of time that is said in a sentence. */
 export function formatSpan(milliseconds: number): string {
   const seconds = Math.round(milliseconds / 1000);
-  if (seconds < 90) return `${seconds} seconds`;
+  if (seconds < 90) return `${seconds} ${seconds === 1 ? "second" : "seconds"}`;
   const minutes = Math.round(seconds / 60);
   if (minutes < 90) return `${minutes} minutes`;
   const hours = Math.floor(minutes / 60);

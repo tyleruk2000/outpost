@@ -347,6 +347,7 @@ describe("small things", () => {
 
   it("says a stretch of time in words", () => {
     expect(formatSpan(75_000)).toBe("75 seconds");
+    expect(formatSpan(1_000)).toBe("1 second");
     expect(formatSpan(4 * 60_000 + 10_000)).toBe("4 minutes");
     expect(formatSpan(89 * 60_000)).toBe("89 minutes");
     expect(formatSpan(2 * 3_600_000)).toBe("2 hours");
