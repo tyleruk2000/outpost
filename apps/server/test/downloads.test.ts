@@ -62,6 +62,15 @@ async function midway(target: TestApp, id: string): Promise<void> {
   }, "the first bytes to arrive");
 }
 
+/**
+ * Bytes are counted as they arrive, a moment before they are written. A test that goes
+ * on to measure the partial file waits for the first of them to be on disk.
+ */
+async function onDisk(target: TestApp, id: string): Promise<void> {
+  const part = `${finalPath(target, downloads(target).get(id)!)}.part`;
+  await waitFor(() => fs.existsSync(part) && fs.statSync(part).size > 0, "the first bytes to reach the disk");
+}
+
 describe("downloading a file", () => {
   it("fetches, verifies the checksum, installs a collection and reports it", async () => {
     app = await createTestApp();
@@ -261,6 +270,7 @@ describe("resuming", () => {
 
     const started = await downloads(app).start(request(server, "/slow", "slow.bin", { sha256: sha256(body) }));
     await midway(app, started.id);
+    await onDisk(app, started.id);
     const paused = await app.api("POST", `/api/downloads/${started.id}/pause`);
     expect(paused.status).toBe(200);
     expect(paused.body.download.state).toBe("paused");
@@ -334,6 +344,7 @@ describe("cancelling, retrying and removing", () => {
 
     const started = await downloads(app).start(request(server, "/slow", "slow.bin", { sha256: sha256(body) }));
     await midway(app, started.id);
+    await onDisk(app, started.id);
     const cancelled = await app.api("POST", `/api/downloads/${started.id}/cancel`);
     expect(cancelled.body.download.state).toBe("cancelled");
     await app.ctx.jobs.whenIdle();

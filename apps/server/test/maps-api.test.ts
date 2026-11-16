@@ -527,10 +527,8 @@ describe("downloading a region", () => {
     const otherPart = `${app.ctx.services.storage.resolve(failed.locationId, failed.relPath)}.part`;
     expect(fs.existsSync(planPathOf(otherPart))).toBe(true);
     expect((await app.api("DELETE", `/api/downloads/${failed.id}`)).status).toBe(200);
-    await waitFor(
-      () => (fs.existsSync(planPathOf(otherPart)) || fs.existsSync(headPathOf(otherPart)) ? undefined : true),
-      "the working files to be removed",
-    );
+    // Each working file goes in turn, just after the record does; wait for the last of them.
+    await waitFor(() => (fs.readdirSync(path.dirname(otherPart)).length > 1 ? undefined : true), "the working files to be removed");
     expect(fs.readdirSync(path.dirname(otherPart))).toEqual(["flaky-20261115.pmtiles"]);
   });
 });

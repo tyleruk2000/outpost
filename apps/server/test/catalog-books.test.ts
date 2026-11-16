@@ -468,7 +468,8 @@ describe("a book in the library", () => {
     for (const id of [ids.overview, ids.menus]) expect((await app.api("DELETE", `/api/documents/${id}`)).status).toBe(200);
     await waitFor(async () => (await entryOf(target)).status === "not_installed", "the catalogue to notice the book has gone");
     expect((await app.api("GET", "/api/collections")).body.collections).toEqual([]);
-    expect(fs.existsSync(folder)).toBe(false);
+    // The empty folder goes just after the record does.
+    await waitFor(() => !fs.existsSync(folder), "the book's empty folder to be removed");
   });
 
   it("can be checked, and moves to another location with its chapters", async () => {
