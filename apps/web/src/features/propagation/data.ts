@@ -1,8 +1,8 @@
 /**
  * What the HF planner asks the server for, and the form a person fills in.
  *
- * The form is remembered in this browser between visits (a convenience, nothing more);
- * a prediction worth keeping is saved on the server by name.
+ * The form is remembered in this browser between visits (a convenience, nothing more),
+ * all but its date; a prediction worth keeping is saved on the server by name.
  */
 import {
   ANTENNA_PRESETS,
@@ -195,10 +195,20 @@ export const exampleForm = (): PlannerForm => ({
 
 const STORE = "outpost.propagation.form.v1";
 
+/**
+ * The form as it was left, on today's date. The date is the one thing that goes stale:
+ * brought back weeks later it would ask about a month gone by, on a screen that reads
+ * as a plan for now. It is kept only through the day (UTC) it was chosen on, so that
+ * leaving the planner for the equipment and coming back does not lose it.
+ */
 export function rememberedForm(): PlannerForm {
   try {
     const stored = localStorage.getItem(STORE);
-    if (stored) return { ...emptyForm(), ...(JSON.parse(stored) as Partial<PlannerForm>) };
+    if (stored) {
+      const { rememberedOn, ...kept } = JSON.parse(stored) as Partial<PlannerForm> & { rememberedOn?: string };
+      const today = todayUtc();
+      return { ...emptyForm(), ...kept, date: rememberedOn === today && kept.date ? kept.date : today };
+    }
   } catch {
     // Private windows and blocked storage: start from the empty form.
   }
@@ -207,7 +217,7 @@ export function rememberedForm(): PlannerForm {
 
 export function rememberForm(form: PlannerForm): void {
   try {
-    localStorage.setItem(STORE, JSON.stringify(form));
+    localStorage.setItem(STORE, JSON.stringify({ ...form, rememberedOn: todayUtc() }));
   } catch {
     // Nothing depends on it.
   }

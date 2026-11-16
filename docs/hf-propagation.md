@@ -31,7 +31,9 @@ Read [What it is not](#what-it-is-not) before relying on it.
    a British grid reference or a Maidenhead locator (`IO91WM`), or choose a saved place.
    Saved places are the markers you keep on the map; there is no second list.
 2. **Date.** Any day. The model works by month, so every day of a month gets the same
-   answer.
+   answer. The planner opens on today's date (UTC). The rest of the form is remembered
+   in the browser from one visit to the next; a date you chose is remembered only until
+   the end of that day, so the planner never opens on a date from weeks ago.
 3. **With what.** Transmitter power, an antenna at each end, a band or a frequency, and
    a mode. A radio profile fills in the power.
 4. **Noise where the receiver is.** Urban, residential, rural or remote. These are

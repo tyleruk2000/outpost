@@ -13,7 +13,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { HourGrid, HourLines, percent, ShareBars, shareFill } from "./charts";
-import { AS_SAVED, emptyForm, exampleForm, formOf, openSaved, requestOf } from "./data";
+import { AS_SAVED, emptyForm, exampleForm, formOf, openSaved, rememberedForm, rememberForm, requestOf } from "./data";
 import { Planner } from "./planner";
 import { bestHour, windows } from "./results";
 
@@ -222,6 +222,37 @@ describe("a saved prediction", () => {
     const notice = screen.getByText("Saved prediction: Garden to Birmingham").closest('[role="status"]')!;
     expect(notice.textContent).toContain("9 March 2026");
     expect(notice.textContent).toContain("as it was saved");
+  });
+});
+
+describe("the form remembered in this browser", () => {
+  const on = (instant: string) => vi.setSystemTime(new Date(instant));
+
+  it("opens on today's date when it was last used on another day, with the rest as it was left", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    on("2026-11-16T10:00:00Z");
+    rememberForm({ ...exampleForm(), powerWatts: "20", band: "80m", frequencyMhz: "3.7" });
+    expect(rememberedForm().date).toBe("2026-11-16");
+    on("2027-01-20T10:00:00Z");
+    expect(rememberedForm()).toEqual({ ...exampleForm(), date: "2027-01-20", powerWatts: "20", band: "80m", frequencyMhz: "3.7" });
+  });
+
+  it("does not bring back a date planned for on an earlier day, or one kept before the day was recorded", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    on("2026-11-16T10:00:00Z");
+    rememberForm({ ...exampleForm(), date: "2026-12-24" });
+    on("2026-11-17T00:00:01Z");
+    expect(rememberedForm().date).toBe("2026-11-17");
+    localStorage.setItem("outpost.propagation.form.v1", JSON.stringify({ ...exampleForm(), date: "2026-06-01" }));
+    expect(rememberedForm()).toEqual({ ...exampleForm(), date: "2026-11-17" });
+  });
+
+  it("keeps a date chosen earlier the same day, which is what leaving the tab and coming back is", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    on("2026-11-16T09:00:00Z");
+    rememberForm({ ...exampleForm(), date: "2026-12-24" });
+    on("2026-11-16T21:00:00Z");
+    expect(rememberedForm().date).toBe("2026-12-24");
   });
 });
 
