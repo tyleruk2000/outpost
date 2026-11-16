@@ -346,16 +346,41 @@ compares them with the vector of your query.
 
 A small model is **built in**: it is part of the packaged app, the Docker image and
 portable drives, and there is nothing to install or download. It is **off by default**,
-because building the index takes processor time and disk space.
+because building the index takes processor time and disk space. Turning it on is one
+switch; the short version is in [setup-guide.md](setup-guide.md#search-by-meaning),
+which is also a page inside Outpost.
 
 Nothing is sent to the internet. Text goes only to the model: the built-in one, on the
 machine Outpost runs on, or a server you configure.
 
 ### Turning it on
 
-Open **Settings → Search by meaning**. The section says what the index will cost for
-your library before you touch anything. Switch it on; **Built in** is already chosen.
-Then choose **Build index**. That is all.
+Open **Settings → Search by meaning**. The section says what turning it on will cost
+for your library before you touch anything. Turn the switch on. That is all: the
+built-in model is used, and the index is built without anything more being pressed.
+
+The section then says, in order: **Starting**; **Reading your library**, with a
+progress bar and "Reading 7,556 passages, about 5 minutes left"; and **Ready: Search now
+also finds things by meaning**. The time left is judged from the build's own speed
+once it has run for five seconds; before that the figure is the measured one for a
+recent laptop, and says so. You can leave the page; the build carries on.
+
+Turning the switch off stops using it, pauses a build that is running, and keeps what
+was built: the section says how many passages are kept and how much room they take,
+and turning it on again carries on from there.
+
+**If it was left pointing somewhere that cannot work.** An installation can have been
+set, by hand or by an earlier version, to use an embedding server of its own that is
+not there. The section says so, whether the switch is on or off, and offers **Use what
+comes with Outpost**: one press that switches to the built-in model, turns search by
+meaning on and starts the build (`POST /api/semantic/use-built-in`). The address and
+model name of the server are left in the settings, in case it is wanted again.
+
+Everything else is behind **More options** in the same section, and nothing there has
+been taken away: where the model runs (built in, or a server of your own), the build
+with its **Pause**, **Stop** and **Build index**, the costs in the figures below, the
+three numbers that weigh the two searches against each other (they used to be under
+**Search**), saving and loading vectors, and vectors left by other models.
 
 ### What it costs
 
@@ -539,17 +564,24 @@ someone who had already chosen it.
 
 ### Building the index
 
-Choose **Build index** in the same settings section (or `POST /api/semantic/index`).
-This starts a background job that sends every passage without a vector to the model,
-in batches of 16 (`search.semantic.batchSize`).
+Turning search by meaning on starts the build. So does choosing another model under
+**More options** while it is on, when that model answers. **Build index** under **More
+options** (or `POST /api/semantic/index`) starts it by hand. The build is a background
+job that sends every passage without a vector to the model, in batches of 16
+(`search.semantic.batchSize`).
 
 - Each passage is embedded together with its title and heading.
 - The job only does what is missing. **Pause** and **Stop** are beside the progress
-  line; after either, or after a restart of the server, **Continue building** carries
-  on from where it was. What is already built is used by searches in the meantime.
-- After the first build, new and changed passages are embedded automatically a few
-  seconds after they are indexed. That never starts a first build, and never restarts
-  one you paused or stopped: only you do that.
+  line under **More options**; after either, **Carry on reading** on the first level
+  (or **Continue building** under More options) carries on from where it was. A build
+  that was running when the server stopped carries on by itself when it starts again.
+  What is already built is used by searches in the meantime.
+- While search by meaning is on, new and changed passages are embedded automatically
+  a few seconds after they are indexed, whether or not there was anything to build
+  when it was switched on. That never restarts a build you paused or stopped: only
+  you do that. And it does not start one for a model that has just said it cannot run.
+- Switching search by meaning off pauses a running build; switching it on again
+  continues it.
 - A build that fails says why in the same place, keeps what it had built, and offers
   **Try again**.
 - Until at least one vector exists, searches remain keyword searches, with the note
@@ -557,9 +589,10 @@ in batches of 16 (`search.semantic.batchSize`).
 
 ### Changing the model
 
-Vectors are stored per model. If you switch model, the old vectors are kept and listed
-under "Vectors from other models" until you delete them, and the new model needs its
-own build. Vectors from different models are never mixed. See
+Vectors are stored per model. If you switch model (under **More options**), the old
+vectors are kept and listed under "Vectors from other models" until you delete them,
+and the new model needs its own build, which starts by itself while search by meaning
+is on. A build that was running for the old model is paused. Vectors from different models are never mixed. See
 [ai.md](ai.md#planning-for-a-change-of-embedding-model).
 
 ### Moving vectors between installations

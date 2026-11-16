@@ -285,9 +285,10 @@ Types: `SemanticStatus` in `packages/shared/src/semantic.ts`.
 
 | Method and path | Purpose |
 | --- | --- |
-| `GET /api/semantic/status` | Whether it is enabled and ready, the model, counts of passages and vectors, other models with stored vectors, whether a build is running, `build` (the latest index build for the current model as a job, in whatever state, or null) and `builtIn` (the model that ships with Outpost: whether it is installed, its name, licence, size, dimensions and threads). `?fresh=1` asks the model again now rather than trusting an answer from the last minute. |
+| `GET /api/semantic/status` | Whether it is enabled and ready, the model, counts of passages and vectors, other models with stored vectors, whether a build is running, `build` (the latest index build for the current model as a job, in whatever state, or null), `secondsLeft` (what a running build still needs at its own speed, or null), `keptChunks` (passages already embedded for the model that switching on would use, counted whether it is on or off) and `builtIn` (the model that ships with Outpost: whether it is installed, its name, licence, size, dimensions and threads). `?fresh=1` asks the model again now rather than trusting an answer from the last minute. |
 | `POST /api/jobs/:id/pause`, `/cancel` | Pause or stop the build named in `build`. `POST /api/semantic/index` continues a paused one. |
-| `POST /api/semantic/index` | Starts (or continues) building vectors for the current model. `409` if no provider is configured or it does not answer. Answers the status. |
+| `POST /api/semantic/index` | Starts (or continues) building vectors for the current model. `409` if no provider is configured or it does not answer. Answers the status. Not needed in the ordinary way: setting `search.semantic.enabled` to true starts the build, and so does naming another model while it is on. |
+| `POST /api/semantic/use-built-in` | Switches search by meaning on with the model that ships with Outpost, whatever it was pointed at before, and starts the build. Answers the status. `409` when that model is not part of the installation; nothing is changed then. |
 | `POST /api/semantic/test` | Body: `text`. Embeds it once and answers `{ modelId, dimensions, tookMs }`. |
 | `DELETE /api/semantic/models/:modelId` | Deletes every vector of one model. `{ removed }`. |
 | `GET /api/semantic/export` | Downloads vectors as gzip-compressed JSON lines. Query: `model` (a model id; default the current one). |
@@ -336,8 +337,10 @@ open to every caller.
 | Method and path | Purpose |
 | --- | --- |
 | `GET /api/chat/status` | `ChatStatus`: `enabled`, `usable`, `reason`, `defaultModel`, `server`, `place`, `writingIn` (the conversation a reply is being written in, or null). Read from settings; the model server is not contacted. |
-| `GET /api/chat/models` | `{ models, message, ollama }`: the model server's models. Each has `id`, and, when the server also answers Ollama's `/api/tags`, `sizeBytes`, `parameters`, `quantization` and `family` (otherwise null). Contacts the model server. |
+| `GET /api/chat/models` | `{ models, message, ollama }`: the model server's models. Each has `id`, and, when the server also answers Ollama's `/api/tags`, `sizeBytes`, `parameters`, `quantization` and `family` (otherwise null), and `writes` when Ollama says what the model can do. Contacts the model server. |
 | `POST /api/chat/look-for-ollama` | Asks the address Ollama listens on by default for its models. `ChatLookResult`: `found`, `address`, `models`, `message`. Always `200`. Saves nothing. |
+| `POST /api/chat/setup/look` | Setting up, step one. Asks the address in `answers.endpoint`, then the addresses Ollama listens on by default. `ModelSetupLook`: a `ChatLookResult` with `recommended`, the model to offer first (see [ai.md](ai.md#which-model)). Always `200`. Saves nothing. |
+| `POST /api/chat/setup/try` | Setting up, the last step. Body: `address`, `model`. Asks that model for one word. `ModelSetupTry`: an `AnswerTestResult` with `saved`. When the model answered, `answers.endpoint`, `answers.model` and `answers.enabled` have been saved. An address that `setup/look` would not ask is refused (`failure: "address"`) without being contacted. Always `200` for a well-formed body. |
 | `GET /api/chat/conversations` | `{ conversations }`, newest first, at most 500. Query: `q` to find by name. Each is a `ChatConversationSummary`: the conversation, `messageCount`, `excerpt`, `writing`. |
 | `POST /api/chat/conversations` | Body, all optional: `title`, `model`, `useLibrary`, `about` (`{ kind: "document" or "note", id }`, for a conversation about one item; `404` when the item does not exist). Answers a `ChatConversationDetail`. |
 | `GET /api/chat/conversations/:id` | `ChatConversationDetail`: `conversation`, `messages`, and `sentFrom`, the id of the oldest message that would be sent with the next one (null when all would be). |
