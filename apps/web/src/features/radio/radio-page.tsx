@@ -35,6 +35,12 @@ const TOOLS = [
       "Lists of repeaters you have brought in, and entries of your own: by band, mode and distance from a place, on the map, and written out for programming a radio.",
   },
   {
+    to: "/radio/morse",
+    name: "Morse trainer",
+    about:
+      "Learn Morse by ear with the Koch method, send it on the screen or on a real key, work a practice contact, and get a call ready for the air. Progress is kept for everyone who uses this copy.",
+  },
+  {
     to: "/maps",
     name: "Line of sight, on the map",
     about: "Whether two points can see each other over the terrain installed, for VHF and above. Geometry, not a prediction of signal.",

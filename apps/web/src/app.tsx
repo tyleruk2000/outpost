@@ -28,6 +28,7 @@ const UnderstandPage = lazy(() => import("./features/understand/understand-page"
 const MapsPage = lazy(() => import("./features/maps/maps-page"));
 const RepeatersPage = lazy(() => import("./features/repeaters/repeaters-page"));
 const RepeaterPage = lazy(() => import("./features/repeaters/repeater-page"));
+const MorsePage = lazy(() => import("./features/morse/morse-page"));
 const SearchPage = lazy(() => import("./features/search/search-page"));
 const StoragePage = lazy(() => import("./features/storage/storage-page"));
 const ManagePage = lazy(() => import("./features/manage/manage-page"));
@@ -116,6 +117,7 @@ export function App() {
           <Route path="maps" element={<MapsPage />} />
           <Route path="radio/repeaters" element={<RepeatersPage />} />
           <Route path="radio/repeaters/:id" element={<RepeaterPage />} />
+          <Route path="radio/morse" element={<MorsePage />} />
           <Route path="notes" element={<NotesPage />} />
           <Route path="notes/:id" element={<NotesPage />} />
           <Route path="chat" element={<ChatPage />} />

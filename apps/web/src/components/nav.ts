@@ -8,6 +8,7 @@
  * top (`ScreensUnder`). `nav.test.ts` fails if a route in app.tsx is missing from here.
  */
 import {
+  AudioWaveform,
   BookOpen,
   ClipboardList,
   Compass,
@@ -87,6 +88,7 @@ export const knowledgeNav: NavItem[] = [
       { to: "/radio/plans", label: "Communication plans", icon: ListTree },
       { to: "/radio/log", label: "Contact log", icon: ClipboardList },
       { to: "/radio/repeaters", label: "Repeaters", icon: RadioReceiver },
+      { to: "/radio/morse", label: "Morse trainer", icon: AudioWaveform },
     ],
   },
   // Two sections that are lists of screens, each drawn from its own registry (features/<section>/screens.ts).
