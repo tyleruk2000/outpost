@@ -5,8 +5,10 @@ import { AppShell } from "./components/app-shell";
 import { Page } from "./components/page";
 import { ServerDown } from "./components/server-down";
 import { Skeleton } from "./components/ui/misc";
+import { giveUpAfter, OutOfReach, PROBE_TIMEOUT_MS, ReachGate } from "./features/kept/reach";
+import { canOpenOutOfReach } from "./features/kept/register";
 import { NotesTree } from "./features/notes/notes-tree";
-import { api } from "./lib/api";
+import { ApiError, api } from "./lib/api";
 import { EventsProvider } from "./lib/events";
 
 const HomePage = lazy(() => import("./features/home/home-page"));
@@ -26,6 +28,7 @@ const StoragePage = lazy(() => import("./features/storage/storage-page"));
 const ManagePage = lazy(() => import("./features/manage/manage-page"));
 const MergePage = lazy(() => import("./features/merge/merge-page"));
 const SettingsPage = lazy(() => import("./features/settings/settings-page"));
+const KeptPage = lazy(() => import("./features/kept/kept-page"));
 
 function NotFound() {
   return (
@@ -38,10 +41,14 @@ function NotFound() {
 
 export function App() {
   // There are no accounts: the only thing to find out before drawing the app is whether its server is there.
+  // Where the app itself is kept on this device, it can open without the server: the question is then asked once,
+  // with a limit on the wait, because a phone away from home may get no answer at all rather than a refusal.
+  const keptHere = canOpenOutOfReach();
   const server = useQuery({
     queryKey: ["health"],
-    queryFn: () => api.get<{ status: string }>("/api/health"),
+    queryFn: () => api.get<{ status: string }>("/api/health", undefined, keptHere ? giveUpAfter(PROBE_TIMEOUT_MS) : undefined),
     staleTime: Number.POSITIVE_INFINITY,
+    ...(keptHere ? { retry: false } : {}),
   });
   const navigate = useNavigate();
 
@@ -52,12 +59,22 @@ export function App() {
       </div>
     );
   }
-  if (server.isError) return <ServerDown onRetry={() => server.refetch()} />;
+  if (server.isError) {
+    const outOfReach = keptHere && server.error instanceof ApiError && server.error.isUnreachable;
+    return outOfReach ? <OutOfReach onReachable={() => void server.refetch()} /> : <ServerDown onRetry={() => server.refetch()} />;
+  }
 
   return (
     <EventsProvider enabled>
       <Routes>
-        <Route element={<AppShell notesTree={<NotesTree />} onNewPage={() => navigate("/notes?new=1")} />}>
+        <Route
+          element={
+            // The gate swaps the whole shell for the kept copies when the server goes out of reach.
+            <ReachGate>
+              <AppShell notesTree={<NotesTree />} onNewPage={() => navigate("/notes?new=1")} />
+            </ReachGate>
+          }
+        >
           <Route index element={<HomePage />} />
           <Route path="search" element={<SearchPage />} />
           <Route path="explore" element={<ExplorePage />} />
@@ -76,6 +93,7 @@ export function App() {
           <Route path="storage/manage" element={<ManagePage />} />
           <Route path="storage/merge" element={<MergePage />} />
           <Route path="settings" element={<SettingsPage />} />
+          <Route path="kept" element={<KeptPage />} />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>

@@ -105,6 +105,11 @@ export default defineConfig({
     baseURL: OPEN_URL,
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
+    // The app's service worker keeps a copy of the app for when the server is out of reach, and answers
+    // the app's own files from it. That would hide those requests from the tests' guards and stand-ins, and
+    // every test would first copy the app again. It is switched on only where it is the thing under test
+    // (kept.mobile.spec.ts), which brings a server and a guard of its own.
+    serviceWorkers: "block",
   },
   projects: [
     { name: "desktop", use: { ...devices["Desktop Chrome"], viewport: { width: 1360, height: 860 } }, testIgnore: /mobile\.spec\.ts/ },

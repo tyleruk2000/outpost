@@ -20,6 +20,9 @@ apps/web/src/
   lib/queries.ts         shared data hooks (system, storage, jobs, settings)
   lib/utils.ts           cn, timeAgo, formatDate, plural, modKey
   features/<name>/       one folder per screen or feature
+  features/kept/         what is kept in the browser for when the server is out of reach,
+                         and the app as it is then (see docs/offline.md)
+  sw/                    the service worker and its rules; built into /sw.js by sw-plugin.ts
 ```
 
 `features/storage/storage-page.tsx` is the reference screen. Match its structure and
@@ -124,6 +127,19 @@ goes through `ConfirmDialog`, which names what will be removed.
   least 44 px on small screens (the `ui` controls already grow under `md`).
 - Body text contrast is at least 4.5:1. `text-ink-faint` is for placeholders and
   disabled text only.
+
+## Out of reach of the server
+
+Where the app is kept on the device (HTTPS, packaged build), it goes on without the
+server: `features/kept/out-of-reach-app.tsx` replaces the routes with the few that can
+work from kept copies, and every other address gets a page saying it needs the server.
+A new screen needs nothing for this. Two things to know:
+
+- A file a screen must have *out of reach* has to be reachable from
+  `out-of-reach-app.tsx`; that is how `sw-plugin.ts` decides what the phone holds.
+- The service worker is not registered in development, and the end-to-end suite
+  blocks it except in `kept.mobile.spec.ts`. To try it by hand, build the packaged app
+  and open it on `localhost`.
 
 ## Checking your work
 

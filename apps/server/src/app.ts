@@ -115,6 +115,11 @@ export async function buildApp(config: Config): Promise<BuiltApp> {
         if (file.endsWith(".html")) {
           reply.header("Content-Security-Policy", APP_CSP);
           reply.header("Cache-Control", "no-cache");
+        } else if (path.basename(file) === "sw.js" || file.endsWith(".webmanifest")) {
+          // The service worker is how a phone learns of a new build: it must never be answered from a cache.
+          // The policy on the script is the one its own requests are held to.
+          reply.header("Cache-Control", "no-cache");
+          if (file.endsWith(".js")) reply.header("Content-Security-Policy", "default-src 'self'; connect-src 'self'");
         } else if (file.includes(`${path.sep}assets${path.sep}`)) {
           // Vite fingerprints everything under assets/.
           reply.header("Cache-Control", "public, max-age=31536000, immutable");

@@ -14,6 +14,7 @@ import {
   Undo2,
   Waypoints,
 } from "lucide-react";
+import { DeviceIcon, ON_THIS_DEVICE } from "@/features/kept/device";
 
 export interface NavItem {
   to: string;
@@ -38,6 +39,8 @@ export const knowledgeNav: NavItem[] = [
 export const upkeepNav: NavItem[] = [
   { to: "/downloads", label: "Downloads", icon: Download, key: "d" },
   { to: "/storage", label: "Storage", icon: HardDrive, key: "t" },
+  // "On this phone", "On this tablet" or "On this computer": what is kept in this browser for when the server is out of reach.
+  { to: "/kept", label: ON_THIS_DEVICE, icon: DeviceIcon, key: "p" },
   { to: "/settings", label: "Settings", icon: Settings, key: "," },
 ];
 

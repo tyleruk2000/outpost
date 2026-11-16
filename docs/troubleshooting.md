@@ -92,6 +92,29 @@ Outpost, wait a few seconds. Otherwise check that the service or container is ru
 (`docker compose ps`) and read the log. Behind a reverse proxy, also check that the
 proxy does not buffer `/api/events`.
 
+### "The server is out of reach. Showing what is kept on this phone, for reading only."
+
+The app opened from the copy kept in the browser, and the server did not answer within
+a few seconds. Away from home this is expected. At home, check that the phone is on
+the same network and the server is running; the app asks again every ten seconds and
+goes back to normal by itself, or press **Try again**. See
+[offline.md](offline.md#a-phone-out-of-reach-of-the-server).
+
+### "Nothing can be kept on this phone over plain HTTP"
+
+Browsers only let a site keep itself and its data on a secure address: HTTPS, or
+`localhost` on the computer itself. Give Outpost an HTTPS address (Settings → HTTPS on
+your network) and open it there.
+
+### Something kept on the phone has gone
+
+The browser removed it; Outpost never removes a kept copy by itself. On an iPhone or
+iPad, Safari deletes a site's stored data after seven days of using Safari without
+visiting the site, unless the site is on the Home Screen; any browser may clear data
+when the device runs short of room. Add Outpost to the Home Screen, keep things from
+there, and use "Ask the browser to keep this data" on "On this phone". The details and
+sources are in [offline.md](offline.md#what-the-browser-may-do-with-kept-copies).
+
 ### "The Outpost server is running, but the web app has not been built."
 
 You are running from source and `apps/web/dist` does not exist. Run `pnpm build`, or

@@ -1,6 +1,7 @@
 import { type ReactNode, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router";
 import { RecordingIndicator } from "@/features/maps/recording/indicator";
+import { ReachNotice } from "@/features/kept/reach";
 import { CommandPalette } from "./command-palette";
 import { MobileNav } from "./mobile-nav";
 import { allNav } from "./nav";
@@ -113,6 +114,7 @@ export function AppShell({ notesTree, onNewPage }: { notesTree?: ReactNode; onNe
       <main id="content" ref={mainRef} tabIndex={-1} className="min-w-0 flex-1 focus:outline-none">
         <UpdateNotice />
         <RecordingIndicator />
+        <ReachNotice />
         <Suspense fallback={<PageFallback />}>
           <Outlet />
         </Suspense>

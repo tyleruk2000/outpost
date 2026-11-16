@@ -26,6 +26,7 @@ import {
 import { createElevationSampler } from "./elevation.ts";
 import { createExtractFetcher, createTilesInstaller, EXTRACT_FETCHER } from "./extract-download.ts";
 import { MAX_GPX_BYTES } from "./gpx.ts";
+import { areaSizeQuery, createAreaMeter } from "./kept-area.ts";
 import { createPlacesService, datasetSchema, type PlacesService } from "./places.ts";
 import { createPlanner } from "./planner.ts";
 import { removeExtractSidecars } from "./pmtiles/extract.ts";
@@ -190,22 +191,39 @@ export async function registerMaps(app: FastifyInstance, ctx: AppContext): Promi
 
   // ── Tiles ──
 
-  async function sendTile(reply: FastifyReply, tileType: "vector" | "terrain", coordinates: [number, number, number] | undefined) {
+  async function sendTile(
+    reply: FastifyReply,
+    tileType: "vector" | "terrain",
+    coordinates: [number, number, number] | undefined,
+    raw = false,
+  ) {
     if (!coordinates) throw new AppError("not_found", "That is not a map tile address.");
     const tile = await tiles.getTile(tileType, ...coordinates);
-    reply.header("Cache-Control", TILE_CACHE_CONTROL);
+    reply.header("Cache-Control", raw ? "no-store" : TILE_CACHE_CONTROL);
     // MapLibre treats 204 as "nothing here" and draws the tile empty, without an error.
     if (!tile) return reply.status(204).send();
-    if (tile.contentEncoding) reply.header("Content-Encoding", tile.contentEncoding);
+    // A phone keeping this tile for later asks for it as stored: still gzipped, and said to be
+    // so in a header of our own, because a browser would unpack anything marked Content-Encoding
+    // before the page could store it. Kept that way it takes a half to a third of the room.
+    if (raw && tile.contentEncoding === "gzip") reply.header("X-Outpost-Tile-Encoding", "gzip");
+    else if (tile.contentEncoding) reply.header("Content-Encoding", tile.contentEncoding);
     return reply.header("Content-Type", tile.contentType).send(tile.data);
   }
 
+  const isRaw = (request: FastifyRequest) => (request.query as { raw?: unknown }).raw === "1";
+
   app.get<TileParams>("/api/maps/tiles/:z/:x/:file", async (request, reply) => {
-    return sendTile(reply, "vector", tileCoordinates(request.params, "mvt"));
+    return sendTile(reply, "vector", tileCoordinates(request.params, "mvt"), isRaw(request));
   });
 
   app.get<TileParams>("/api/maps/terrain/:z/:x/:file", async (request, reply) => {
-    return sendTile(reply, "terrain", tileCoordinates(request.params, "(?:webp|png)"));
+    return sendTile(reply, "terrain", tileCoordinates(request.params, "(?:webp|png)"), isRaw(request));
+  });
+
+  // What keeping a box of the map on a phone would fetch. Read-only: the phone does the fetching.
+  const areaMeter = createAreaMeter(tiles);
+  app.get("/api/maps/area-size", async (request) => {
+    return areaMeter.size(areaSizeQuery.parse(request.query));
   });
 
   // The ground between two points, read from installed terrain: what a line-of-sight check is made from.

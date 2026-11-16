@@ -12,6 +12,7 @@ export * from "./documents.ts";
 export * from "./downloads.ts";
 export * from "./https.ts";
 export * from "./imports.ts";
+export * from "./kept.ts";
 export * from "./kiwix.ts";
 export * from "./links.ts";
 export * from "./locator.ts";

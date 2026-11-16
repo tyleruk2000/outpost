@@ -8,5 +8,6 @@
     "types": ["vite/client"],
     "paths": { "@/*": ["./src/*"] }
   },
-  "include": ["src", "vite.config.ts"]
+  "include": ["src", "vite.config.ts", "sw-plugin.ts"],
+  "exclude": ["src/sw/sw.ts"]
 }
