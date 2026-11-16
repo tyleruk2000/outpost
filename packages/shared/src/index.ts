@@ -26,6 +26,8 @@ export * from "./maps.ts";
 export * from "./merge.ts";
 export * from "./model-choice.ts";
 export * from "./notes.ts";
+export * from "./nuclear.ts";
+export * from "./nuclear-effects.ts";
 export * from "./portable.ts";
 export * from "./power.ts";
 export * from "./propagation.ts";

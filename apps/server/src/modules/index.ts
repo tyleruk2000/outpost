@@ -24,6 +24,7 @@ import { registerManage } from "./manage/index.ts";
 import { registerMaps } from "./maps/index.ts";
 import { registerMerge } from "./merge/index.ts";
 import { registerNotes } from "./notes/index.ts";
+import { registerNuclear } from "./nuclear/index.ts";
 import { registerPortable } from "./portable/index.ts";
 import { registerPower } from "./power/index.ts";
 import { registerPropagation } from "./propagation/index.ts";
@@ -65,4 +66,5 @@ export const modules: ModuleRegister[] = [
   registerPropagation,
   registerPower,
   registerSupplies,
+  registerNuclear,
 ];

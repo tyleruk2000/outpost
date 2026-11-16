@@ -938,6 +938,27 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   assumption listed. Plans are kept on the server (migration `0016_power_plans`),
   copied, compared, written out as a PDF (Save as PDF, Add to library, Share), counted
   on the Storage screen and erased with everything else.
+#### Nuclear preparedness
+
+- Preparedness → Nuclear preparedness: a workspace over the offline map (and satellite
+  imagery, where downloaded) with an educational nuclear effects simulator. A place, a
+  yield from 1 kiloton to 10 megatons, a surface burst, a height of burst or the height
+  that carries a chosen overpressure farthest, and a wind give rings for blast (20, 10,
+  5, 2 and 1 psi), second- and third-degree burns, initial radiation (600 and 100
+  rads), the fireball and the crater, and, for a surface burst, the idealised fallout
+  plume along the wind. Every figure is read from Glasstone and Dolan, *The Effects of
+  Nuclear Weapons* (1977), cited to its figure or table, tested against the book's own
+  worked examples, and rounded to two significant figures. Parameters the model does not
+  cover are refused with the reason.
+- Rings are circles on the ground, labelled with their scenario, level and distance and
+  told apart by line style as well as colour; saved places are measured against a
+  scenario in words; scenarios are saved (migration `0018_nuclear_scenarios`), opened
+  again, compared two at a time as A and B, and written out as a PDF or Markdown with
+  every assumption, limitation and source. Saved scenarios are counted under Storage,
+  Database, and erased by "erase everything".
+- The plan for the rest of the module (data sources and their terms, layers, a
+  historical records category, the dataset manager and personal planning) is in
+  `docs/nuclear-preparedness.md`.
 
 #### Security
 

@@ -5,6 +5,7 @@
  * MapLibre.
  */
 import { type Bbox, haversineMeters, type InstalledRegion, type MarkerDto, type TrackWithGeometryDto } from "@outpost/shared";
+import { nuclearLayers } from "@/features/nuclear/layers";
 import { propagationLayers } from "@/features/propagation/map/layers";
 import { repeaterLayers } from "@/features/repeaters/map/layers";
 import { greyLineLineLayers, greyLineShadeLayers } from "../grey-line/layers";
@@ -22,6 +23,7 @@ import { recordingLayers } from "../recording/overlay";
 export const OVERLAY_SOURCES = [
   "o-grey-line",
   "o-propagation",
+  "o-nuclear",
   "o-grid",
   "o-coverage",
   "o-box",
@@ -105,6 +107,7 @@ export function overlayLayers(theme: MapTheme): LayerSpecification[] {
     ...greyLineShadeLayers(theme),
     // The cells of an HF coverage map and the place being chosen for the planner, on the maps of that feature.
     ...propagationLayers(theme),
+    ...nuclearLayers(theme),
     ...greyLineLineLayers(theme),
     // The Maidenhead locator grid, when it is switched on.
     ...gridLayers(theme),

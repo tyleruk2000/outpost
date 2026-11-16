@@ -934,6 +934,21 @@ Types: `packages/shared/src/power.ts`. The server keeps plans and works nothing 
 | `GET` / `POST /api/power/plans` | Power plans, by name. `POST` body: `name`, `notes`, `battery`, `loads` (up to 60, each a `device` or a `radio`), `inverter`, `solar` (with `sunHours`, twelve numbers or `null`), `charger`, `cableRatingA`. Returns `{ plan }`. `400` with the reason for figures out of range, or a radio's hours adding up to more than a day. |
 | `GET` / `PUT` / `DELETE /api/power/plans/:id` | One plan. `PUT` takes the whole plan, as `POST` does. |
 | `POST /api/power/plans/:id/copy` | A copy under the name "… (copy)". Returns `{ plan }`. |
+## Nuclear preparedness
+
+Scenarios saved in the effects simulator (Preparedness → Nuclear preparedness). Only
+what the person typed is kept; the effects are worked out in the browser from
+`computeEffects` in `@outpost/shared`. See [nuclear-preparedness.md](nuclear-preparedness.md).
+
+| Route | What it does |
+| --- | --- |
+| `GET` / `POST /api/nuclear/scenarios` | Saved scenarios, newest change first, as `{ scenarios }`. `POST` body: `name`, `notes`, `lat`, `lon`, `effects` (`{ yieldKt, burst, wind }`: `burst` is `{ kind: "surface" }`, `{ kind: "height", metres }` or `{ kind: "optimum", psi: 20 \| 10 \| 5 \| 2 \| 1 }`; `wind` is `{ fromDegrees, kmh }` or `null`). Returns the scenario, `201`. |
+| `GET` / `PATCH` / `DELETE /api/nuclear/scenarios/:id` | One scenario. `PATCH` takes the whole scenario, as `POST` does. |
+
+A scenario the model cannot answer (a yield outside 1 kiloton to 10 megatons, a height
+above 12,000 m or above the blast curves' scaled 5,000 feet, a wind outside 8 to 45
+miles per hour) is `400` with the model's reason as the message and in
+`details.problems`. The event `nuclear.changed` follows every change.
 
 ## Backup
 

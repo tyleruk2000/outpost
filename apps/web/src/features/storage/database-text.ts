@@ -21,6 +21,7 @@ const COUNT_WORDS: Record<DatabaseCountId, [string, string]> = {
   predictions: ["saved prediction or coverage map", "saved predictions and coverage maps"],
   powerPlans: ["power plan", "power plans"],
   supplies: ["row of supplies", "rows of supplies"],
+  scenarios: ["saved nuclear effects scenario", "saved nuclear effects scenarios"],
 };
 
 /** "68,600 passages in the search index", for each count above nought. */
