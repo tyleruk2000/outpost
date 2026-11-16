@@ -15,12 +15,12 @@ import type { Node as PMNode } from "@tiptap/pm/model";
 import { NodeSelection, TextSelection } from "@tiptap/pm/state";
 import type { Editor } from "@tiptap/react";
 import { GripVertical } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Menu, MenuContent, MenuTrigger } from "@/components/ui/menu";
 import { isMac } from "@/lib/utils";
 import { BlockMenuItems } from "./block-menu";
 import { blockKinds, type TopBlock, topBlockAt } from "./blocks";
-import { isListItem, type ListItemTarget, listItemAt, movesWholeBlock } from "./list-items";
+import { isList, isListItem, type ListItemTarget, listItemAt, movesWholeBlock } from "./list-items";
 
 const wholeKey = isMac ? "Option" : "Alt";
 const position = { placement: "left-start" as const, strategy: "absolute" as const };
@@ -39,19 +39,16 @@ export function handleTargetDeduction({
 }: {
   node: PMNode;
   depth: number;
-  $pos: { node(depth: number): PMNode };
+  $pos: { parent: PMNode; node(depth: number): PMNode };
 }): number {
+  // On the bullet itself, and in the gap between two items, the pointer is on no item. Having
+  // no target there leaves the grip on the item it was on, rather than sending it to the list.
+  if (isList($pos.parent)) return 1000;
   if (depth === 1) return 0;
   if (!isListItem(node)) return 1000;
   for (let above = depth - 1; above > 0; above -= 1) if ($pos.node(above).type.name === "table") return 1000;
   return 0;
 }
-
-const targets = {
-  defaultRules: false,
-  edgeDetection: "none" as const,
-  rules: [{ id: "pageBlocksAndListItems", evaluate: handleTargetDeduction }],
-};
 
 const kindOf = (node: { type: { name: string }; attrs: Record<string, unknown> }) =>
   node.type.name === "heading" ? `heading${String(node.attrs.level)}` : node.type.name;
@@ -60,6 +57,39 @@ export function BlockHandle({ editor }: { editor: Editor }) {
   const hovered = useRef<{ pos: number; item: boolean } | null>(null);
   const [typeName, setTypeName] = useState("paragraph");
   const [menu, setMenu] = useState<{ block: TopBlock; item: ListItemTarget | null; kind: string | undefined } | null>(null);
+
+  /** Where the pointer last was over the page, for the two things below that the handle does not tell us. */
+  const pointer = useRef<{ x: number; y: number } | null>(null);
+
+  // The grip of a list item stands left of its bullet, so the pointer reaches it across a strip
+  // that is not the item's: the bullet, the list's padding, the edge of a callout. While the
+  // pointer is in that strip, on the item's own line, the grip stays on the item.
+  const targets = useMemo(() => {
+    const held = (): number | null => {
+      const at = hovered.current;
+      const point = pointer.current;
+      if (!at?.item || !point || editor.isDestroyed) return null;
+      const dom = editor.view.nodeDOM(at.pos);
+      if (!(dom instanceof HTMLElement)) return null;
+      const box = dom.getBoundingClientRect();
+      const line = dom.querySelector("p")?.getBoundingClientRect() ?? box;
+      return point.x < box.left && point.y >= line.top && point.y <= line.bottom ? at.pos : null;
+    };
+    return {
+      defaultRules: false,
+      edgeDetection: "none" as const,
+      rules: [
+        {
+          id: "pageBlocksAndListItems",
+          evaluate: (context: { node: PMNode; pos: number; depth: number; $pos: { parent: PMNode; node(depth: number): PMNode } }) => {
+            const keep = held();
+            if (keep !== null) return context.pos === keep ? 0 : 1000;
+            return handleTargetDeduction(context);
+          },
+        },
+      ],
+    };
+  }, [editor]);
 
   const onNodeChange = useCallback(({ node, pos }: { node: PMNode | null; pos: number }) => {
     hovered.current = node ? { pos, item: isListItem(node) } : null;
@@ -126,17 +156,17 @@ export function BlockHandle({ editor }: { editor: Editor }) {
     };
 
     // Any key hides the handle, which is right for typing and wrong for Alt: the handle has to
-    // still be there to press. After a bare modifier key, show it again where the pointer last was.
-    let pointer: { x: number; y: number } | null = null;
+    // still be there to press. If it was showing when Alt went down, show it again where the
+    // pointer last was. (Listening in the capture phase sees the key before the handle hides.)
     const track = (event: MouseEvent) => {
-      if (editor.view.dom.contains(event.target as Node)) pointer = { x: event.clientX, y: event.clientY };
+      if (editor.view.dom.contains(event.target as Node)) pointer.current = { x: event.clientX, y: event.clientY };
     };
     const forget = () => {
-      pointer = null;
+      pointer.current = null;
     };
     const keepHandle = (event: KeyboardEvent) => {
-      const at = pointer;
-      if (!at || !["Alt", "Shift", "Control", "Meta"].includes(event.key)) return;
+      const at = pointer.current;
+      if (event.key !== "Alt" || !at || hovered.current === null) return;
       requestAnimationFrame(() => {
         if (!editor.isDestroyed)
           editor.view.dom.dispatchEvent(new MouseEvent("mousemove", { bubbles: true, clientX: at.x, clientY: at.y }));
@@ -144,14 +174,15 @@ export function BlockHandle({ editor }: { editor: Editor }) {
     };
 
     frame.addEventListener("dragstart", takeWholeBlock);
-    frame.addEventListener("mousemove", track);
+    // In the capture phase, so the pointer is known before the handle works out its target.
+    frame.addEventListener("mousemove", track, true);
     frame.addEventListener("mouseleave", forget);
-    frame.addEventListener("keydown", keepHandle);
+    frame.addEventListener("keydown", keepHandle, true);
     return () => {
       frame.removeEventListener("dragstart", takeWholeBlock);
-      frame.removeEventListener("mousemove", track);
+      frame.removeEventListener("mousemove", track, true);
       frame.removeEventListener("mouseleave", forget);
-      frame.removeEventListener("keydown", keepHandle);
+      frame.removeEventListener("keydown", keepHandle, true);
     };
   }, [editor]);
 

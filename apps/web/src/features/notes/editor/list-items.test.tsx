@@ -150,6 +150,14 @@ describe("what the handle takes hold of", () => {
     expect(deduction(instance, "Fill water", 2)).toBe(0);
   });
 
+  it("is nothing at all between two items, so the grip stays on the item it was on", () => {
+    const instance = open(page());
+    // Right before the "Stove" item: a position in the list itself, as the pointer reports on a bullet.
+    const $between = instance.state.doc.resolve(item(instance, "Stove").pos);
+    expect($between.parent.type.name).toBe("bulletList");
+    expect(handleTargetDeduction({ node: $between.node(1), depth: 1, $pos: $between })).toBe(1000);
+  });
+
   it("leaves a list inside a table to the table", () => {
     const cell = (type: string, ...content: Json[]): Json => ({ type, attrs: { colspan: 1, rowspan: 1, colwidth: null }, content });
     const instance = open(

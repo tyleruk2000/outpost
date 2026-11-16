@@ -84,4 +84,61 @@ test.describe("on a phone", () => {
     const box = await button.boundingBox();
     expect(box!.height).toBeGreaterThanOrEqual(44);
   });
+
+  test("moves a page with a long press and a drag, and with Move to… without dragging", async ({ page }) => {
+    const errors = watchForErrors(page);
+    const kit = (await api(page, "POST", "/api/notes", { title: "Kit" })).note;
+    const ropes = (await api(page, "POST", "/api/notes", { title: "Ropes" })).note;
+    const parentOf = async (id: string) =>
+      (await api(page, "GET", "/api/notes/tree")).notes.find((note: { id: string }) => note.id === id).parentId as string | null;
+
+    await page.goto("/notes");
+    const tree = page.getByRole("main").getByRole("tree", { name: "Pages" });
+    const row = (name: string) => tree.getByRole("treeitem", { name, exact: true });
+    await row("Ropes").scrollIntoViewIfNeeded();
+    const from = (await row("Ropes").boundingBox())!;
+    const onto = (await row("Kit").boundingBox())!;
+
+    // Touches through the browser's own input, as a finger makes them.
+    const session = await page.context().newCDPSession(page);
+    const touch = (type: string, x?: number, y?: number) =>
+      session.send("Input.dispatchTouchEvent", {
+        type: type as "touchStart",
+        touchPoints: x === undefined || y === undefined ? [] : [{ x: Math.round(x), y: Math.round(y), id: 1 }],
+      });
+    const start = { x: from.x + 120, y: from.y + from.height / 2 };
+    const end = { x: onto.x + 120, y: onto.y + onto.height / 2 };
+    const scrolledBefore = await page.evaluate(() => window.scrollY);
+
+    await touch("touchStart", start.x, start.y);
+    const lifted = page.locator("[data-page-lifted]");
+    await expect(lifted).toBeVisible();
+    for (let step = 1; step <= 10; step += 1) {
+      await touch("touchMove", start.x + ((end.x - start.x) * step) / 10, start.y + ((end.y - start.y) * step) / 10);
+      await page.waitForTimeout(20);
+    }
+    // The chip says in words where the page will land, and the list has not scrolled under the finger.
+    await expect(lifted).toContainText("Inside “Kit”");
+    expect(await page.evaluate(() => window.scrollY)).toBe(scrolledBefore);
+    await touch("touchEnd");
+
+    await expect.poll(() => parentOf(ropes.id)).toBe(kit.id);
+    await expect(lifted).toBeHidden();
+    await expect(page).toHaveURL(/\/notes$/);
+    await page.getByRole("button", { name: "Undo" }).tap();
+    await expect.poll(() => parentOf(ropes.id)).toBe(null);
+
+    // The same move with no dragging at all.
+    const actions = row("Ropes").getByRole("button", { name: "Actions for Ropes" });
+    expect((await actions.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    await actions.tap();
+    await page.getByRole("menuitem", { name: "Move to…" }).tap();
+    const picker = page.getByRole("dialog", { name: "Move “Ropes”" });
+    await expect(picker).toBeVisible();
+    const choice = picker.getByRole("option", { name: "Kit", exact: true });
+    expect((await choice.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    await choice.tap();
+    await expect.poll(() => parentOf(ropes.id)).toBe(kit.id);
+    expect(errors).toEqual([]);
+  });
 });

@@ -12,13 +12,38 @@ Notes are **pages** arranged in a tree. Any page can have sub-pages, to any dept
 Each page has a title, an optional icon, an optional cover picture, tags and content.
 
 - Pages are ordered by hand among their siblings, and can be moved to another parent
-  or to the top level. A page cannot be moved inside itself.
+  or to the top level. A page cannot be moved inside itself. See
+  [Moving pages](#moving-pages).
 - A page can be duplicated, with or without its sub-pages. The copy is named
   "… (copy)".
 - Tags are shared with the document library, and "Water" and "water" are the same
   tag. A page can have up to 50 tags.
 - Pages are found by the app-wide search, by title, tags, parent titles and text.
 - Opening a page records it for the list of recent pages.
+
+### Moving pages
+
+The page tree is in the sidebar and, on a phone, on the Notes screen.
+
+- **With a mouse**, drag a page. The middle of a row puts it inside that page; the top
+  or bottom edge puts it before or after, and the line shows the level it will have.
+  Resting on a closed page opens it. The list scrolls when the page is held near its
+  top or bottom edge.
+- **With a finger**, press and hold a page for a moment until it lifts, then drag. A
+  label that travels with the finger says where the page will land ("Inside …",
+  "Before …", "After …"). A swipe that does not start with a hold scrolls the list as
+  usual.
+- **Without dragging**, open the page's menu (the "…" on its row): **Move to…** opens
+  a list of pages to put it inside, with a search field, and **Move up** and **Move
+  down** change its place among its neighbours. From the keyboard, Alt with the up or
+  down arrow moves the focused page a place, and Shift+F10 opens its menu.
+- Every move shows a message with **Undo**, which puts the page back exactly where it
+  was.
+- A page is never offered its own sub-pages as a place to go.
+
+The tree copes with thousands of pages: past two hundred rows it draws only the rows
+near the part on screen. Arrow keys, Home and End, the focus and screen readers work
+as in a small tree; each row carries its level and its position among its siblings.
 
 ### Blocks
 
@@ -57,13 +82,28 @@ A page can hold up to 5 MB of content and 40 levels of nesting.
 - **Select text** for the formatting bar: bold, italic, underline, strikethrough,
   code, highlight, link, and "Turn into" to change the kind of block.
 - **The grip beside a block** drags it to a new position, and opens a menu to turn it
-  into something else, duplicate it or delete it. It works on whole top-level blocks,
-  not on single list items.
+  into something else, duplicate it, move it up or down, or delete it.
+- **In a list the grip belongs to one item**: the one under the pointer, at any depth,
+  in bulleted, numbered and to-do lists. Dragging it moves that item with everything
+  nested under it. Dropped in another list it becomes an item of that kind of list (a
+  bullet dropped among to-dos becomes an unticked to-do); dropped outside any list it
+  becomes a list of its own kind. The menu acts on that item: "Turn into" changes just
+  that item and leaves a list either side of it, a numbered one carrying on counting.
+- **To move a whole list**, hold Alt (Option on a Mac) while starting to drag any of
+  its items' grips, or switch the grip's menu from "This item" to "Whole list". The
+  same goes for a quote, callout or toggle that holds a list. Lists inside a table are
+  not split up: there the grip is the table's.
+- **From the keyboard**, Alt+Shift+↑ and Alt+Shift+↓ move a block, and ⌘/Ctrl+Shift+D
+  duplicates it. With the cursor in a list item they act on that item, which stops at
+  the top and bottom of its list. With several items selected they act on the whole
+  list, and a list of one item moves as a whole.
+- Each move of a list item, by dragging, menu or keyboard, is one step of undo.
 - **Pictures** can be pasted, dropped in or chosen from the block menu. Upload progress
   is shown in place.
-- **On a phone or tablet** there is no floating bar; a formatting bar sits above the
-  keyboard, and pages are rearranged with "Move to…" because drag and drop needs a
-  mouse.
+- **On a phone or tablet** there is no floating bar and no grip; a formatting bar sits
+  above the keyboard. Its "Block actions" menu does what the grip's menu does, for the
+  list item the cursor is in or for the whole list. List items are not dragged by
+  touch.
 
 ### Links and backlinks
 
@@ -144,7 +184,9 @@ written the way GitHub renders them, and Outpost reads all of them back:
 #### What does not survive
 
 The round trip is exact for every block type (the test suite checks each one), with
-these known exceptions:
+these known exceptions. Moving or converting single list items does not add to them:
+a page stores the same lists and items as before, and where two lists end up directly
+after one another the export tells them apart by alternating `-` and `*`.
 
 - **Empty paragraphs** and spaces or line breaks at the very end of a paragraph are
   dropped.

@@ -96,6 +96,17 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 - A block editor with a slash menu, Markdown shortcuts, a selection toolbar, block
   handles, page-link pickers, a page tree with drag and drop, and a formatting bar
   above the keyboard on phones.
+- A page tree that stays quick with thousands of pages: past two hundred rows only the
+  rows near the part on screen are drawn, with keyboard movement, focus and
+  screen-reader positions unchanged.
+- Moving pages by touch: press and hold to lift a page, drag it with a label that says
+  where it will land, and let the list scroll at its edges. Without dragging: "Move
+  to…", "Move up" and "Move down" in the page's menu, and Alt with an arrow key.
+  Every move can be undone from its message.
+- A block handle for single list items: drag one item, with what is nested under it,
+  within its list or to another list, and turn into, duplicate, move or delete just
+  that item from the handle's menu or the keyboard. Alt (Option) and drag still moves
+  the whole list.
 - Markdown export of one page or the whole workspace, with relative links and
   attachments.
 

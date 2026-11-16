@@ -71,6 +71,17 @@
 .note-editor li > p {
   margin: 0;
 }
+/*
+ * The grip beside a list item is reached across its bullet or number. That strip is the
+ * list's own padding, so the editor takes a pointer there to be on the list, not on the
+ * item, and the grip would jump away on the way to it. The item's first line is stretched
+ * over the strip, and its text pushed back by as much: nothing moves, and the pointer
+ * stays on the item. 1.5em is the list padding in prose.css.
+ */
+.note-editor :is(ul:not([data-type="taskList"]), ol) > li > p:first-child {
+  margin-left: -1.5em;
+  padding-left: 1.5em;
+}
 
 /* ── Callouts ── */
 

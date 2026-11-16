@@ -99,7 +99,7 @@ export interface TreeWindow {
   /** Height of a row plus the gap under it, in pixels. */
   stride: number;
   scroller(): Scroller;
-  /** Scrolls just enough for a row to be on screen. `centre` puts a far-off row in the middle instead. */
+  /** Scrolls just enough for a row to be on screen with room around it. `centre` puts a row that is off screen in the middle, and leaves one that is on screen alone. */
   reveal(at: number, how?: "nearest" | "centre"): void;
 }
 
@@ -168,11 +168,12 @@ export function useTreeWindow(treeRef: RefObject<HTMLElement | null>, count: num
       const bottom = top + rowStride;
       const margin = Math.min(rowStride * MARGIN_ROWS, (edge.bottom - edge.top) / 4);
       let delta = 0;
-      if (top < edge.top + margin) delta = top - (edge.top + margin);
-      else if (bottom > edge.bottom - margin) delta = bottom - (edge.bottom - margin);
-      if (delta !== 0 && how === "centre" && (top < edge.top || bottom > edge.bottom)) {
+      if (how === "centre") {
+        // A row that can be seen is left where it is: this is for a page opened from somewhere else.
+        if (top >= edge.top && bottom <= edge.bottom) return;
         delta = (top + bottom) / 2 - (edge.top + edge.bottom) / 2;
-      }
+      } else if (top < edge.top + margin) delta = top - (edge.top + margin);
+      else if (bottom > edge.bottom - margin) delta = bottom - (edge.bottom - margin);
       if (delta === 0) return;
       scrollByY(target, delta);
       // Draw the rows there now, not a frame later when the scroll event arrives.
