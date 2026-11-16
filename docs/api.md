@@ -1068,6 +1068,26 @@ computer's.
 | `POST /api/supplies/import/preview` | Body: `text` (the file, at most 2 MB). Reads it and says what each row is (`ImportPreview`), and which are already in the supplies. Changes nothing. |
 | `POST /api/supplies/import/apply` | Body: `rows`, each `{ action: "add" \| "update" \| "skip", id?, item }`. All or nothing. Answers `ImportResult`. |
 
+## Weather and hazards
+
+Types: `packages/shared/src/weather.ts`. See [weather.md](weather.md). Only
+`POST /api/weather/update` makes outbound requests, and only `POST`s can cause it.
+
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/weather` | `WeatherResponse`: `places` (`WeatherPlace[]`: `id`, `name`, `lat`, `lon`, `markerId`, `isHome` (its saved place has the home icon), `region` (a Met Office warning region id or null)), `kept` (`KeptCopy[]`, the latest copy of each kind for each place: `kind` (`forecast`, `warnings`, `flood`, `climate`, `solar`), `source`, `placeId` (null for the UK's warnings), `fetchedAt`, `validFrom`, `validUntil`, `bytes` (received), `sent` (what was sent, in words), `data`), `sources` (`WeatherSourceInfo[]`: publisher, host, what is sent, licence, credit, live page, terms), `updateOnOpen` and the server's `now`. Fetches nothing. |
+| `POST /api/weather/places` | Add a place: `markerId` (a saved place), or `name`, `lat` and `lon`; optionally `region`. At most 12. |
+| `PATCH /api/weather/places/:id` | Change `name` or `region`. |
+| `DELETE /api/weather/places/:id` | Remove a place and its copies. |
+| `POST /api/weather/update` | **Fetches.** Body: `kinds` (any of the five) and optionally `placeIds` (all places when left out). Answers `UpdateResponse`: `outcomes`, one for each kind and place, each with `ok`, `bytes` and a `message` for a person when it failed. A failed fetch leaves the previous copy. One update at a time (409 otherwise). |
+| `DELETE /api/weather/kept/:id` | Remove one copy. |
+| `PUT /api/weather/options` | Body: `updateOnOpen` (boolean). Stored as the setting `weather.updateOnOpen`, off by default. |
+| `GET /api/weather/home-warnings` | **For other screens (the scenario planner).** `HomeWarningsResponse`: `place` (the first place whose saved place has the home icon: `id`, `name`, `region` name; null when there is none), `fetchedAt` (of the UK's warnings, null if never fetched), `weather` (`WarningItem[]`: the Met Office warnings for the home place's region whose stated period had not ended at `now`, each with the publisher's `title` and `description` unaltered, `level` (`yellow`, `amber`, `red`), `region`, `validFrom`, `validUntil`, `link`), `flood` (`FloodWarning[]`: the Environment Agency's warnings within 15 km of the home place that were in force when fetched (severity 1 to 3), with `severity` in its words and `message`), `floodFetchedAt`, `stale` (either copy is past its fresh time: 3 hours for warnings, 1 hour for flood), `note` (a sentence: how old, and where the live warnings are), `now`. Fetches nothing: what it says is what was fetched last. |
+| `GET /api/weather/readings` | Barometer readings, oldest first (`PressureReading[]`: `takenAt`, `value` and `unit` as given, `stationHpa`, `heightM`, `seaLevelHpa`, `note`, `origin` (`typed` or `file`)). |
+| `POST /api/weather/readings` | Keep a reading: `takenAt` (ms), `value`, `unit` (`hPa` or `inHg`), `heightM` (−450 to 3000), optionally `note`. Refused when it comes to under 850 or over 1100 hPa at sea level. |
+| `DELETE /api/weather/readings/:id` | Remove a reading. |
+| `POST /api/weather/readings/import` | Body: `text` (a CSV file, at most 4 MB), `unit` and `heightM` for rows that give none, `zone` (an IANA time zone, for times with none), `apply`. Answers `ReadingImportResult`: `rows` (each marked `duplicate` when a reading at that time is kept), `problems` (`line`, `message`) and `added` (0 unless `apply`). |
+
 ## Everything else
 
 Any other `GET` address without a file extension returns the web app, so that in-app

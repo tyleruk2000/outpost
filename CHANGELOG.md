@@ -807,6 +807,31 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   note can link to; `GET /api/supplies/outlook` answers days of food and water and what
   is missing for other screens. Migration 0016. See [docs/supplies.md](docs/supplies.md).
 
+
+#### Weather and hazards (Preparedness)
+
+- **Preparedness → Weather and hazards** keeps forecasts, severe-weather warnings,
+  flood warnings and river levels, and climate and sunshine averages for saved places,
+  so that they can be read with no connection. Everything says who it came from, when it
+  was fetched and the period it covers, and says in words when it is old or has run out
+  ("Fetched 3 days ago: this forecast has run out").
+- Nothing is fetched by itself: **Update now**, or the tick box "also update when I open
+  this screen", off by default. The server fetches and keeps one copy for every device.
+- Sources, each with its terms quoted in docs/sources.md: Open-Meteo, asked for the Met
+  Office's models; the Met Office's UK warnings feed (no position sent), shown in its
+  own words with a link to each warning; the Environment Agency's flood warnings and
+  river levels (England); NASA POWER's monthly climate averages; PVGIS's peak sun hours
+  for a solar panel, which Tools → Power and batteries asks for. Positions are sent
+  rounded to two decimal places.
+- A barometer log: readings typed in hPa or inHg with the barometer's height, reduced to
+  sea level by the standard atmosphere's formula; a chart; and the three-hour tendency in
+  the Met Office's words (rising slowly, quickly, very rapidly; now falling), with the
+  Met Office's general rule quoted as a rule of thumb, not a forecast. Readings can be
+  brought in from a logger's CSV file.
+- `GET /api/weather/home-warnings` gives other screens the warnings in force for the
+  home place when they were last fetched.
+- The fetched copies are listed and cleared under Manage and clean up; places, copies
+  and readings go with "erase everything". Migration `0018_weather`.
 #### On a phone, out of reach of the server
 
 - The web app keeps itself in the browser with a service worker, so it opens when the

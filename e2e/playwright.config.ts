@@ -307,6 +307,8 @@ export default defineConfig({
       OUTPOST_IMAGERY_SENTINEL_HOST: "127.0.0.1",
       OUTPOST_IMAGERY_WORLD_URL: `http://127.0.0.1:${filesPort}/imagery/world.tif`,
       OUTPOST_IMAGERY_WORLD_BYTES: String(standInWorld().length),
+      // Every weather publisher, stood in for by the file server above.
+      OUTPOST_WEATHER_STAND_IN: `http://127.0.0.1:${filesPort}/weather`,
       // The made-up name the "not secure" projects use; for this test server only.
       OUTPOST_ALLOWED_HOSTS: notSecureHost,
     }),
