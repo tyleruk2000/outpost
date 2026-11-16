@@ -1,0 +1,32 @@
+{
+  "collection": {
+    "type": "FeatureCollection",
+    "features": [
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "Home\n      and back",
+          "time": "2026-01-05T09:00:00Z",
+          "_gpxType": "trk",
+          "coordinateProperties": {
+            "times": ["2026-01-05T09:00:00Z", "2026-01-05T09:30:00Z"]
+          }
+        },
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [[0.1, 52.1, 10], [0.2, 52.2, 12]]
+        }
+      }
+    ]
+  },
+  "name": "Line endings from Windows",
+  "description": "First line\nsecond line",
+  "lines": 1,
+  "waypoints": 0,
+  "stats": {
+    "distanceMeters": 13045.9,
+    "ascentMeters": 0,
+    "pointCount": 2,
+    "bounds": [0.1, 52.1, 0.2, 52.2]
+  }
+}

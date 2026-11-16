@@ -1,0 +1,36 @@
+{
+  "collection": {
+    "type": "FeatureCollection",
+    "features": [
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "By hand",
+          "_gpxType": "trk"
+        },
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [[-1.5, 53.1, 120], [-1.6, 53.2, 135.6], [-1.7, 53.3]]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {},
+        "geometry": {
+          "type": "Point",
+          "coordinates": [-1.5, 53.1]
+        }
+      }
+    ]
+  },
+  "name": "By hand",
+  "description": null,
+  "lines": 1,
+  "waypoints": 1,
+  "stats": {
+    "distanceMeters": 25923.8,
+    "ascentMeters": 15.6,
+    "pointCount": 3,
+    "bounds": [-1.7, 53.1, -1.5, 53.3]
+  }
+}

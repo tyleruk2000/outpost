@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Outpost corpus" xmlns="http://www.topografix.com/GPX/1/1">
+  <trk><name>Track first</name><trkseg><trkpt lat="1" lon="1"/><trkpt lat="1.1" lon="1.1"/></trkseg></trk>
+  <wpt lat="2" lon="2"><name>Waypoint in the middle</name></wpt>
+  <rte><name>Route third</name><rtept lat="3" lon="3"/><rtept lat="3.1" lon="3.1"/></rte>
+  <trk><name>Track fourth</name><trkseg><trkpt lat="4" lon="4"/><trkpt lat="4.1" lon="4.1"/></trkseg></trk>
+  <rte><name>Route fifth</name><rtept lat="5" lon="5"/><rtept lat="5.1" lon="5.1"/></rte>
+  <wpt lat="6" lon="6"><name>Waypoint sixth</name></wpt>
+  <metadata><name>The name comes last</name><desc>And still counts</desc></metadata>
+</gpx>

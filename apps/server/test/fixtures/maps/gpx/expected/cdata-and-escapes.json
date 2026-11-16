@@ -1,0 +1,72 @@
+{
+  "collection": {
+    "type": "FeatureCollection",
+    "features": [
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "<trk> & \"co\"",
+          "desc": "]] > is fine, and so is ]]>",
+          "_gpxType": "trk"
+        },
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [[-5.9, 50.5, 12], [-6, 50.6, 13]]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "Café <b>bold</b> ]]> end & more",
+          "desc": "Zürich, 北京, Ελλάδα, 😀"
+        },
+        "geometry": {
+          "type": "Point",
+          "coordinates": [-5.5, 50.1]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "Spread over\n      several lines",
+          "desc": "tab\tinside and a non-breaking space at the end"
+        },
+        "geometry": {
+          "type": "Point",
+          "coordinates": [-5.6, 50.2]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name. A long name",
+          "desc": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy          "
+        },
+        "geometry": {
+          "type": "Point",
+          "coordinates": [-5.7, 50.3]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "Marked up inside the name"
+        },
+        "geometry": {
+          "type": "Point",
+          "coordinates": [-5.8, 50.4]
+        }
+      }
+    ]
+  },
+  "name": "Tom & Ann's <\"long\"> day",
+  "description": "Fish & chips <after> the \"walk\" — it's 🚶 time",
+  "lines": 1,
+  "waypoints": 4,
+  "stats": {
+    "distanceMeters": 13174.3,
+    "ascentMeters": 0,
+    "pointCount": 2,
+    "bounds": [-6, 50.1, -5.5, 50.6]
+  }
+}

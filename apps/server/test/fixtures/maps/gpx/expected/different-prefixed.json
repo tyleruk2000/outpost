@@ -1,0 +1,42 @@
+{
+  "collection": {
+    "type": "FeatureCollection",
+    "features": [
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "A prefixed track",
+          "time": "2026-02-02T12:00:00Z",
+          "_gpxType": "trk",
+          "coordinateProperties": {
+            "times": ["2026-02-02T12:00:00Z", "2026-02-02T13:00:00Z"]
+          }
+        },
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [[11.5, 48.1, 519], [11.6, 48.2, 515]]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "Marienplatz"
+        },
+        "geometry": {
+          "type": "Point",
+          "coordinates": [11.5, 48.1]
+        }
+      }
+    ]
+  },
+  "name": "Prefixed throughout",
+  "description": null,
+  "lines": 1,
+  "waypoints": 1,
+  "stats": {
+    "distanceMeters": 13367.2,
+    "ascentMeters": 0,
+    "pointCount": 2,
+    "bounds": [11.5, 48.1, 11.6, 48.2]
+  }
+}

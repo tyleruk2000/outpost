@@ -1,0 +1,87 @@
+{
+  "collection": {
+    "type": "FeatureCollection",
+    "features": [
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "Fairfield Horseshoe",
+          "desc": "Recorded on the day",
+          "time": "2026-06-14T08:05:00Z",
+          "_gpxType": "trk",
+          "coordinateProperties": {
+            "times": [
+              [
+                "2026-06-14T08:05:00Z",
+                "2026-06-14T08:35:00Z",
+                "2026-06-14T08:50:00Z",
+                "2026-06-14T09:30:00Z",
+                "2026-06-14T09:45:00Z",
+                "2026-06-14T11:10:00Z"
+              ],
+              ["2026-06-14T11:40:00Z", "2026-06-14T12:30:00Z", "2026-06-14T13:00:00Z", "2026-06-14T14:20:00Z"]
+            ]
+          }
+        },
+        "geometry": {
+          "type": "MultiLineString",
+          "coordinates": [
+            [
+              [-2.962, 54.432, 55],
+              [-2.97, 54.44, 180],
+              [-2.98, 54.45, 181.5],
+              [-2.985, 54.46, 400],
+              [-2.99, 54.47, 398],
+              [-2.9921, 54.4972, 873]
+            ],
+            [[-2.9921, 54.4972, 873], [-2.96, 54.48, 620], [-2.95, 54.46, 640], [-2.962, 54.432, 55]]
+          ]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "Low-level alternative",
+          "_gpxType": "rte"
+        },
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [[-2.962, 54.432], [-2.98, 54.448], [-3.02, 54.456]]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "Car park",
+          "desc": "Rydal Road, pay & display",
+          "time": "2026-06-14T08:00:00Z",
+          "sym": "Parking Area"
+        },
+        "geometry": {
+          "type": "Point",
+          "coordinates": [-2.962, 54.432, 55]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "Fairfield summit"
+        },
+        "geometry": {
+          "type": "Point",
+          "coordinates": [-2.9921, 54.4972, 873]
+        }
+      }
+    ]
+  },
+  "name": "Fairfield Horseshoe",
+  "description": "A round from Ambleside & back, with a \"short cut\" <if needed>",
+  "lines": 2,
+  "waypoints": 2,
+  "stats": {
+    "distanceMeters": 20864.8,
+    "ascentMeters": 838,
+    "pointCount": 13,
+    "bounds": [-3.02, 54.432, -2.95, 54.4972]
+  }
+}

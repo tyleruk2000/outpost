@@ -1,0 +1,29 @@
+{
+  "collection": {
+    "type": "FeatureCollection",
+    "features": [
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "ACTIVE LOG 002",
+          "desc": "No name for the file itself",
+          "_gpxType": "trk"
+        },
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [[-4.6, 56.1, 10], [-4.7, 56.2, 20]]
+        }
+      }
+    ]
+  },
+  "name": "ACTIVE LOG 002",
+  "description": "No name for the file itself",
+  "lines": 1,
+  "waypoints": 0,
+  "stats": {
+    "distanceMeters": 12728.2,
+    "ascentMeters": 10,
+    "pointCount": 2,
+    "bounds": [-4.7, 56.1, -4.6, 56.2]
+  }
+}

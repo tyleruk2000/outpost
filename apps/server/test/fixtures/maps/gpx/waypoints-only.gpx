@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="A list of places" xmlns="http://www.topografix.com/GPX/1/1">
+  <wpt lat="57.0704" lon="-3.6690">
+    <ele>1309</ele>
+    <time>2026-07-02T10:45:00Z</time>
+    <name>Ben Macdui</name>
+    <cmt>Second highest</cmt>
+    <desc>Summit cairn and trig point</desc>
+    <sym>Summit</sym>
+    <type>peak</type>
+  </wpt>
+  <wpt lat="57.0415" lon="-3.6803">
+    <name>Corrour Bothy</name>
+    <cmt>Comment stands in for the description</cmt>
+    <link href="https://example.org/bothy"><text>Bothy page</text><type>text/html</type></link>
+  </wpt>
+  <wpt lat="57.1" lon="-3.6"/>
+  <wpt lat="57.2" lon="-3.7"><name>   Padded name   </name><time>not a time</time><sym>  </sym></wpt>
+  <wpt lat="97.2" lon="-3.7"><name>Nowhere on Earth</name></wpt>
+  <wpt lat="57.2" lon="-183.7"><name>Nor here</name></wpt>
+  <wpt lon="-3.7"><name>No latitude</name></wpt>
+  <wpt lat="" lon="-3.7"><name>Empty latitude</name></wpt>
+  <wpt lat="north" lon="west"><name>Words</name></wpt>
+</gpx>

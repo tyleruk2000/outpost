@@ -1,0 +1,59 @@
+{
+  "collection": {
+    "type": "FeatureCollection",
+    "features": [
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "Day 1: Linn of Dee to Corrour",
+          "desc": "Comment only, no description",
+          "time": "2026-07-01T08:00:00Z",
+          "_gpxType": "trk",
+          "coordinateProperties": {
+            "times": ["2026-07-01T08:00:00Z", "2026-07-01T09:10:00Z", "2026-07-01T11:00:00Z"]
+          }
+        },
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [[-3.545, 56.9886, 370], [-3.6011, 57.0102, 452.4], [-3.6803, 57.0415, 560]]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "Day 2: Ben Macdui",
+          "desc": "Over the top",
+          "time": "2026-07-02T07:30:00+01:00",
+          "_gpxType": "trk",
+          "coordinateProperties": {
+            "times": ["2026-07-02T07:30:00+01:00", "2026-07-02T11:45:00+01:00"]
+          }
+        },
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [[-3.6803, 57.0415, 560], [-3.669, 57.0704, 1309]]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "_gpxType": "trk"
+        },
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [[-3.669, 57.0704], [-3.6447, 57.1163], [-3.6707, 57.1338]]
+        }
+      }
+    ]
+  },
+  "name": "Three days in the Cairngorms",
+  "description": "One track a day",
+  "lines": 3,
+  "waypoints": 0,
+  "stats": {
+    "distanceMeters": 21180.2,
+    "ascentMeters": 939,
+    "pointCount": 8,
+    "bounds": [-3.6803, 56.9886, -3.545, 57.1338]
+  }
+}

@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<gpx version="1.0" creator="An old receiver" xmlns="http://www.topografix.com/GPX/1/0">
+  <time>2004-06-01T08:00:00Z</time>
+  <trk>
+    <name>ACTIVE LOG 002</name>
+    <desc>No name for the file itself</desc>
+    <trkseg>
+      <trkpt lat="56.1" lon="-4.6"><ele>10</ele></trkpt>
+      <trkpt lat="56.2" lon="-4.7"><ele>20</ele></trkpt>
+    </trkseg>
+  </trk>
+</gpx>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Outpost corpus" xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata>
+    <author><name>An author is not the file</name></author>
+    <desc>Described, but not named</desc>
+  </metadata>
+  <metadata><name>A second metadata block is not read</name></metadata>
+  <rte><name>The first route</name><desc>Route description</desc><rtept lat="1" lon="1"/><rtept lat="2" lon="2"/></rte>
+  <trk><name>The first track gives the file its name</name><desc>Track description</desc><trkseg><trkpt lat="3" lon="3"/><trkpt lat="4" lon="4"/></trkseg></trk>
+</gpx>

@@ -1,0 +1,29 @@
+{
+  "collection": {
+    "type": "FeatureCollection",
+    "features": [
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "Two points that are the same",
+          "desc": "Kept: it is a line of no length",
+          "_gpxType": "trk"
+        },
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [[10, 10], [10, 10]]
+        }
+      }
+    ]
+  },
+  "name": "Two points that are the same",
+  "description": "Kept: it is a line of no length",
+  "lines": 1,
+  "waypoints": 0,
+  "stats": {
+    "distanceMeters": 0,
+    "ascentMeters": null,
+    "pointCount": 2,
+    "bounds": [10, 10, 10, 10]
+  }
+}

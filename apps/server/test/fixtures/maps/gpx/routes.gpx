@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="A route planner" xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata><name>Plans for the autumn</name></metadata>
+  <rte>
+    <name>Coast to coast, stage 1</name>
+    <desc>St Bees to Ennerdale Bridge</desc>
+    <number>1</number>
+    <rtept lat="54.4920" lon="-3.6130"><ele>10</ele><name>St Bees</name><sym>Flag, Blue</sym></rtept>
+    <rtept lat="54.5230" lon="-3.6300"><ele>95</ele><name>St Bees Head</name></rtept>
+    <rtept lat="54.5140" lon="-3.4400"><name>Ennerdale Bridge</name><time>2026-09-20T16:00:00Z</time></rtept>
+  </rte>
+  <rte>
+    <cmt>Only a comment</cmt>
+    <rtept lat="54.5140" lon="-3.4400"/>
+    <rtept lat="54.5110" lon="-3.1480"/>
+  </rte>
+  <rte>
+    <name>Too short to be a line</name>
+    <rtept lat="54.5" lon="-3.1"/>
+  </rte>
+  <rte>
+    <name>Empty</name>
+  </rte>
+</gpx>

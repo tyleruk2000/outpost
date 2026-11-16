@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Outpost corpus" xmlns="http://www.topografix.com/GPX/1/1">
+  <trk>
+    <name>The first segment has no times, the second has</name>
+    <trkseg>
+      <trkpt lat="65.1" lon="24.9"/>
+      <trkpt lat="65.2" lon="24.8"/>
+    </trkseg>
+    <trkseg>
+      <trkpt lat="65.3" lon="24.7"><time>2026-03-06T11:00:00Z</time></trkpt>
+      <trkpt lat="65.4" lon="24.6"><time>2026-03-06T11:01:00Z</time></trkpt>
+    </trkseg>
+  </trk>
+</gpx>

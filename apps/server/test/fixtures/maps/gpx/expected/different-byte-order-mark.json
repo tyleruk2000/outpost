@@ -1,0 +1,28 @@
+{
+  "collection": {
+    "type": "FeatureCollection",
+    "features": [
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "Starts with a byte-order mark",
+          "_gpxType": "trk"
+        },
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [[0.1, 52.1], [0.2, 52.2]]
+        }
+      }
+    ]
+  },
+  "name": "Starts with a byte-order mark",
+  "description": null,
+  "lines": 1,
+  "waypoints": 0,
+  "stats": {
+    "distanceMeters": 13045.9,
+    "ascentMeters": null,
+    "pointCount": 2,
+    "bounds": [0.1, 52.1, 0.2, 52.2]
+  }
+}

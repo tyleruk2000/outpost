@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Outpost corpus" xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata><name></name><desc>   </desc></metadata>
+  <trk><name>Nothing in it</name></trk>
+  <trk><name>An empty segment</name><trkseg></trkseg></trk>
+  <trk><name>One point</name><trkseg><trkpt lat="10" lon="10"/></trkseg></trk>
+  <trk><name>Two points that are the same</name><desc>Kept: it is a line of no length</desc><trkseg><trkpt lat="10" lon="10"/><trkpt lat="10" lon="10"/></trkseg></trk>
+  <trk><name>Points outside any segment</name><trkpt lat="11" lon="11"/><trkpt lat="12" lon="12"/></trk>
+  <rte><name>One point</name><rtept lat="10" lon="10"/></rte>
+</gpx>

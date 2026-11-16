@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="A pretty-printer" xmlns="http://www.topografix.com/GPX/1/1">
+  <trk>
+    <name>Times with space around them</name>
+    <trkseg>
+      <trkpt lat="60.1" lon="24.9">
+        <time>
+          2026-03-01T10:00:00Z
+        </time>
+      </trkpt>
+      <trkpt lat="60.2" lon="24.8"><time> 2026-03-01T10:00:01Z </time></trkpt>
+    </trkseg>
+  </trk>
+</gpx>

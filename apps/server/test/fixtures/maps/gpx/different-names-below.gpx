@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Outpost corpus" xmlns="http://www.topografix.com/GPX/1/1">
+  <rte>
+    <rtept lat="54.4920" lon="-3.6130"><name>St Bees</name><desc>Start here</desc></rtept>
+    <rtept lat="54.5140" lon="-3.4400"><name>Ennerdale Bridge</name></rtept>
+  </rte>
+  <trk>
+    <trkseg>
+      <trkpt lat="54.5" lon="-3.4"><name>A named track point</name><cmt>With a comment</cmt></trkpt>
+      <trkpt lat="54.6" lon="-3.3"/>
+    </trkseg>
+  </trk>
+  <wpt lat="54.7" lon="-3.2">
+    <extensions><name>A name inside extensions</name><ele>999</ele><time>2020-01-01T00:00:00Z</time></extensions>
+    <link href="https://example.org"><text>Link text</text></link>
+  </wpt>
+</gpx>

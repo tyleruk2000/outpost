@@ -1,0 +1,32 @@
+{
+  "collection": {
+    "type": "FeatureCollection",
+    "features": [
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "The first segment has no times, the second has",
+          "time": "2026-03-06T11:00:00Z",
+          "_gpxType": "trk",
+          "coordinateProperties": {
+            "times": [[null, null], ["2026-03-06T11:00:00Z", "2026-03-06T11:01:00Z"]]
+          }
+        },
+        "geometry": {
+          "type": "MultiLineString",
+          "coordinates": [[[24.9, 65.1], [24.8, 65.2]], [[24.7, 65.3], [24.6, 65.4]]]
+        }
+      }
+    ]
+  },
+  "name": "The first segment has no times, the second has",
+  "description": null,
+  "lines": 1,
+  "waypoints": 0,
+  "stats": {
+    "distanceMeters": 24109.4,
+    "ascentMeters": null,
+    "pointCount": 4,
+    "bounds": [24.6, 65.1, 24.9, 65.4]
+  }
+}
