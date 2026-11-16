@@ -31,8 +31,9 @@ test.describe("Nuclear preparedness", () => {
     test.setTimeout(120_000);
     const errors = watchForErrors(page);
     installed = await installTestMaps(page);
+    // A delete answers 204 with no body, which `api` would try to read as JSON.
     for (const scenario of (await api(page, "GET", "/api/nuclear/scenarios")).scenarios as Array<{ id: string }>)
-      await api(page, "DELETE", `/api/nuclear/scenarios/${scenario.id}`);
+      await page.request.delete(`/api/nuclear/scenarios/${scenario.id}`, { headers: { "X-Outpost-Request": "1" } });
     await api(page, "POST", "/api/nuclear/scenarios", {
       name: "Two kilotons, east of the lake",
       notes: "",

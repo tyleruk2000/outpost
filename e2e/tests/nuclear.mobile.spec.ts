@@ -6,8 +6,9 @@ test.describe("Nuclear preparedness on a phone", () => {
   test("a tap on the map puts ground zero there, the rings are given in words, and a scenario is saved and compared", async ({ page }) => {
     test.setTimeout(90_000);
     const errors = watchForErrors(page);
+    // A delete answers 204 with no body, which `api` would try to read as JSON.
     for (const scenario of (await api(page, "GET", "/api/nuclear/scenarios")).scenarios as Array<{ id: string }>)
-      await api(page, "DELETE", `/api/nuclear/scenarios/${scenario.id}`);
+      await page.request.delete(`/api/nuclear/scenarios/${scenario.id}`, { headers: { "X-Outpost-Request": "1" } });
     await api(page, "POST", "/api/nuclear/scenarios", {
       name: "Megaton airburst for comparison",
       notes: "",
