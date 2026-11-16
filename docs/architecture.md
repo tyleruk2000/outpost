@@ -227,6 +227,11 @@ implemented in Node so that it is resumable, reports progress, goes through the 
 download manager as everything else, and adds no binary dependency. OpenStreetMap's
 public tile servers are never used.
 
+Satellite imagery is the same kind of archive with WebP pictures in it, made on the
+person's computer by a download-manager fetcher from NASA's GeoTIFFs or from the parts
+of a Sentinel-2 scene that cover a chosen area, read by range requests
+(`modules/maps/imagery/`, [maps.md](maps.md#satellite-imagery)).
+
 The browser sees one tile endpoint. The server looks through installed regions for
 the best archive holding each tile, so regions join seamlessly and a world overview
 fills in when zoomed out. Styles, fonts and sprites are served by Outpost. Place-name
@@ -413,6 +418,7 @@ written by `scripts/build-app.mjs` from the installed packages.
 | Helvetica's character widths (`apps/web/src/features/maps/print/helvetica.ts`) | Adobe's notice for the Core 14 AFM files: free to use, copy and distribute with the notice kept | Bundled in the web app: 448 numbers, used to lay out the lettering of a printed map. The typeface itself is not bundled; every PDF reader supplies it. |
 | jsPDF, pdf-lib, pdfkit | MIT | Not used. A printed map is written by Outpost's own PDF writer (`apps/web/src/features/maps/print/pdf.ts`); the reasons are at the top of that file. |
 | maplibre-contour | BSD-3-Clause (includes code adapted from d3-contour, ISC, and vt-pbf, MIT) | Bundled in the web app. Traces contour lines in the browser from installed terrain. |
+| `@jsquash/webp` 1.5.0 (libwebp 1.0.2 compiled to WebAssembly) | Apache-2.0 (libwebp itself BSD-3-Clause) | Bundled in the server; encodes satellite imagery tiles as WebP. Pinned exactly. Its `.wasm` and loader are copied to `server/imagery/` with its licence (`scripts/build-app.mjs`); only the encoder is used, never libwebp's decoder. Chosen over `sharp` because sharp's prebuilt libvips is LGPL-3.0, and over a JPEG encoder because the edge of an area must be transparent. Runs wherever Node runs, so on macOS arm64, Linux arm64 and Linux amd64 alike with no native build step; tried only on macOS arm64. GeoTIFF reading, reprojection and the PMTiles writer are Outpost's own (`modules/maps/imagery/`), not `geotiff.js`, whose dependency `xml-utils` is CC0. See [maps.md](maps.md#satellite-imagery). |
 | Map data | ODbL (OpenStreetMap) | Downloaded by the user; attribution shown on the map. |
 | GeoNames | CC BY 4.0 | Downloaded by the user; credited where shown. |
 | Natural Earth | Public domain | Bundled world outline. |

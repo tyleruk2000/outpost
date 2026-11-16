@@ -211,6 +211,44 @@ preview, which shows how the file was read before anything is kept
 | 26 | USGS (usgs.gov) | The US Geological Survey | **Direct: 4 entries** (Topographic Map Symbols; Finding Your Way with Map and Compass; Map Projections: A Working Manual; and, added on 2026-11-16, The Universal Transverse Mercator (UTM) Grid). USGS map and elevation data are not integrated. | The Publications Warehouse [says](https://pubs.usgs.gov/documentation/faq) that PDF files of USGS-published reports are in the public domain, though some illustrations are used with permission. The main usgs.gov site returned an empty page to the catalogue check. |
 | 27 | NASA Earthdata Search | A search tool over NASA's Earth-observation datasets | **Not integrated.** It is an interactive search over scientific data files, not a set of documents or map tiles; nothing in it is a single stable file that the library or the map could use as it stands. | NASA's [data use guidance](https://www.earthdata.nasa.gov/engage/open-data-services-software-policies/data-use-guidance) says the data are freely accessible and asks for citation. |
 
+### Satellite imagery
+
+Read on 16 November 2026. Nothing below is bundled with Outpost: each picture is
+fetched from its publisher when a person asks for it (see
+[maps.md](maps.md#satellite-imagery)).
+
+| Source | What it is | How Outpost uses it | Licence and terms, in the publisher's words |
+| --- | --- | --- | --- |
+| NASA Blue Marble: Next Generation | Monthly cloud-free composites of the whole world for 2004, at 500 m | **Built in, downloaded on request.** July 2004, from the 2 km single GeoTIFF (255,799,706 bytes) or the eight 500 m GeoTIFFs (3,259,890,999 bytes), at `assets.science.nasa.gov`. | [The Blue Marble page](https://science.nasa.gov/earth/earth-observatory/blue-marble-next-generation/): "Blue Marble: Next Generation was produced by Reto Stöckli, NASA Earth Observatory (NASA Goddard Space Flight Center)." and "Anyone using or republishing Blue Marble: Next Generation please credit “NASA Earth Observatory.”" [NASA's media guidelines](https://www.nasa.gov/nasa-brand-center/images-and-media/): NASA content "generally are not subject to copyright in the United States. You may use this material for educational or informational purposes, including photo collections, textbooks, public exhibits, computer graphical simulations and Internet Web pages." "NASA should be acknowledged as the source of the material." "If the NASA material is to be used for commercial purposes, including advertisements, it must not explicitly or implicitly convey NASA’s endorsement of commercial goods or services." The old Visible Earth "image use policy" addresses now lead to a page without one. |
+| Copernicus Sentinel-2, Level-2A, Collection 1 | Surface reflectance at 10 m, every few days, from 2015 | **Built in, for areas chosen on the map.** Scenes found with [Earth Search](https://earth-search.aws.element84.com/v1) (collection `sentinel-2-c1-l2a`); only the parts of the red, green, blue and scene-classification files that cover the area are fetched, from `e84-earth-search-sentinel-data.s3.us-west-2.amazonaws.com`. | [Legal notice on the use of Copernicus Sentinel Data and Service Information](https://sentinels.copernicus.eu/documents/247904/690755/Sentinel_Data_Legal_Notice): "the law provides that users shall have a free, full and open access to Copernicus Sentinel Data and Service Information without any express or implied warranty, including as regards quality and suitability for any purpose." and "Where the Copernicus Sentinel Data and Service Information have been adapted or modified, the user shall provide the following notice: (1) 'Contains modified Copernicus Sentinel data [Year]' for Sentinel data". The [AWS Open Data registry](https://registry.opendata.aws/sentinel-2-l2a-cogs/) lists both buckets in us-west-2 under "Access (No AWS account required)", with no requester-pays; its licence line reads "Access to Sentinel data is free, full and open for the broad Regional, National, European and International user community." |
+| Element 84 Earth Search | The STAC catalogue of those files | One search per press of **Find pictures** (`POST /v1/search`). | Its [README](https://github.com/Element84/earth-search): "Earth Search is a free-to-use SpatioTemporal Asset Catalog (STAC) API" and "This public API does not come with any guaranteed service." No terms of use or numeric rate limit were found. Outpost sends one search per press and, for a build, at most four requests at once to the bucket, backing off on 429 and 503. |
+| EOX Sentinel-2 cloudless ("EOxCloudless") | A cloud-free 10 m mosaic, by year | **Not integrated.** See below. | [Licence page](https://cloudless.eox.at/license-non-commercial): "For the years 2018 to 2025, EOxCloudless WM(T)S layers is licensed under the Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License." and "For the year 2016, EOxCloudless is licensed under the Creative Commons Attribution 4.0 International License." [FAQ](https://cloudless.eox.at/documentation/faq): "2018+ Layers: No. Using the public WMS/WMTS endpoints for commercial production apps is strictly prohibited." and "2016 Layer: Commercial apps may access the free 2016 endpoint under CC BY 4.0, provided traffic is reasonable." Prices there: "starting at €1,500 excluding VAT per country/region"; "€5,000 excluding VAT per vintage"; "€6,000 excluding VAT (perpetual, one-off payment)". |
+| USGS Landsat on AWS | 30 m imagery from 1982 | **Not integrated.** | The [registry page](https://registry.opendata.aws/usgs-landsat/) quotes USGS: "There are no restrictions on Landsat data downloaded from the USGS; it can be used or redistributed as desired." The bucket `usgs-landsat` is "Requester Pays": every download is billed to the downloader's AWS account. The USGS's own FAQ page refused automated reading on the day, so its wording was not read there. |
+| Copernicus Data Space Ecosystem | ESA's own catalogue and archive | **Not used.** Its catalogue answers without an account, but files need one: "For downloading products you need an authorization token as only authorized users are allowed to download data products." ([OData documentation](https://documentation.dataspace.copernicus.eu/APIs/OData.html)). Its products are JPEG 2000, not cloud-optimised GeoTIFFs. | |
+
+**The EOX route, checked and set aside.** The brief asked for EOX's cloudless mosaic
+through the person's own AWS account, from a requester-pays bucket. EOX's 2017 post
+([eox.at](https://www.eox.at/2017/03/sentinel-2-cloudless-original-tiles-available/))
+said: "The bucket uses the "requester pays" setting which means you need to access it
+using your AWS credentials", "Bucket ID: eox-s2maps Region: eu-central-1". On 16
+November 2026 `https://eox-s2maps.s3.eu-central-1.amazonaws.com/` answered
+`NoSuchBucket`, and no current EOX page mentions a bucket. With no files to read and
+the map service's terms not permitting bulk downloads for keeping, nothing was built.
+What building it would need, were the files offered again: EOX's terms for keeping a
+copy of the year chosen (only 2016 is CC BY 4.0); credentials kept in the operating
+system's secret store and accepted only from the computer Outpost runs on; requests
+signed with AWS Signature Version 4 by Outpost's own code; and before each download the
+transfer in gigabytes, the number of requests, AWS's price for the bucket's region (the
+price list read on 16 November 2026 gave 0.09 USD a GB out to the internet in both
+eu-central-1 and us-west-2 after the first 100 GB a month, which AWS gives free across
+all services) and a hard cap the job stops at.
+
+**A finding about Earth Search's older collection.** In `sentinel-2-l2a` (bucket
+`sentinel-cogs`) the values of many files do not agree with the scale and offset in
+the metadata ([issue 71](https://github.com/Element84/earth-search/issues/71), open on
+16 November 2026, with no reply from the maintainers). Outpost uses Collection 1, whose
+values were checked against its metadata on a scene over Keswick.
+
 ### Routes
 
 Added on 2026-11-16 with "Find a route" on the Maps screen ([maps.md](maps.md#finding-a-known-route)).

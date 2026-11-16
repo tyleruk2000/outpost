@@ -6,7 +6,7 @@ data comes from and how it must be credited, using your own map source, markers,
 icons and moving them, sunrise and sunset, the centre of the map, drawing routes, finding a known route by
 name, recording a track as you walk, importing GPX tracks, coordinate formats,
 Maidenhead locators, checking line of sight between two points, repeaters on the map,
-and offline place search.
+satellite imagery, and offline place search.
 
 Outpost draws a vector map in the browser from tiles it serves itself. Once a region
 is installed, viewing it needs no internet connection.
@@ -55,6 +55,8 @@ On the map itself:
 - **Hill shading** appears as a button once terrain is installed.
 - **Contour lines** is the button below it (see [Contour lines](#contour-lines)). It
   is always there: pressed where there is nothing to draw them from, it says so.
+- **Satellite** follows: pictures of the ground under the map, once some are downloaded
+  (see [Satellite imagery](#satellite-imagery)).
 - **Print or save as PDF** is the button below that (see
   [Printing a map](#printing-a-map)).
 - **Maidenhead locator grid**, **Grey line (day and night)** and **Line of sight
@@ -2051,6 +2053,206 @@ matches, by population, and by distance from a point when one is given
 - No reverse look-up from a position to a place name.
 - Only installed datasets are searched. Without any, typing a coordinate still works.
 
+## Satellite imagery
+
+**Satellite** (the button with a satellite on it, after **Contour lines**) draws
+pictures of the ground under the map's roads, paths, names and everything you have put
+on it. The choice is remembered in the browser. The pictures come from Outpost's own
+disk: nothing is fetched from the internet while you look at the map.
+
+Two kinds can be downloaded, under **Offline maps → Satellite imagery**. Both are free
+and need no account.
+
+| | The world | A small area in detail |
+| --- | --- | --- |
+| From | NASA's Blue Marble: Next Generation, July 2004 | The European Union's Sentinel-2 satellites, Level-2A, one pass |
+| Detail | 2 km a pixel (zoom 0 to 6), or 500 m (zoom 0 to 8) | 10 m a pixel, to about zoom 14 |
+| What can be made out | Coasts, mountains, deserts, forests; at 500 m large towns, lakes and valleys | Fields, woods, lakes, rivers, the shape of a town; not single houses |
+| Fetched | 256 MB (2 km) or 3.26 GB (500 m), from NASA | Only the parts of the scene's files that cover the area: about 16 MB for 100 km² |
+| Kept on disk | 15.5 MB (2 km), measured; about 350 MB (500 m), estimated | Under 1 MB for 100 km² |
+| Cloud | None: it is a cloud-free composite of a month | Whatever there was that day; you choose the day |
+
+Several can be installed: the world and as many areas as you like. **The most detailed
+one that covers the screen is drawn on top**; outside an area, or beyond the edge of a
+scene, the coarser one beneath shows through, enlarged if need be, and where there is
+none the map shows as usual. The button says when there is nothing to draw: "Satellite:
+none downloaded yet", or "none downloaded for this area", and pressed, it says where to
+get some.
+
+**A picture is of one day.** The day is written in the credits under the map whenever
+the picture is on screen ("Imagery 12 July 2026: Contains modified Copernicus Sentinel
+data 2026"), beside each set in the list, and on a printed page. The world is how it
+looked in July 2004; an area is how it looked on the day of its pass, with that day's
+cloud, shadow, snow and season.
+
+**Over a picture, names are given a wider halo** in the page colour (2 pixels, slightly
+blurred) instead of the land colour they normally sit on, so that they stay readable
+over dark woods and bright fields alike. Roads and paths keep their colours. Hill
+shading, the land and water colours and buildings are beneath the picture and do not
+show while it is on; contour lines are drawn over it.
+
+### Choosing an area
+
+1. **Offline maps → Satellite imagery → Choose an area.** Draw a box, or use the
+   current view, and name it.
+2. **Find pictures** asks the Sentinel-2 catalogue (Element 84's Earth Search) for
+   scenes of the area from the last year, with no more than 80% cloud over the whole
+   scene. Scenes taken by one satellite on one day are one pass and are joined. Each
+   pass is listed with its day, its satellite, the publisher's cloud figure for the
+   whole 110 km scene, and how much of the area it covers; those that cover all of it
+   first, then the least cloudy.
+3. **Continue** reads the index at the start of each of the scene's three files and
+   its cloud map (a few hundred kilobytes) and shows, before anything else is fetched:
+
+   - the picture, its day and its detail;
+   - **cloud and cloud shadow over your area**, from the scene's own classification of
+     every pixel (classes 3, 8, 9 and 10: shadow, cloud of medium and high
+     probability, thin cirrus), read at about 80 m;
+   - the area in km², **the bytes to fetch, exactly** (the publisher's files are cut
+     into 10 km tiles, and only those the area touches are fetched), and the number of
+     requests;
+   - the size on disk (estimated), the time it will take (at 50 and at 10 megabits a
+     second, plus the time to make the tiles), the number of scenes and so of seams;
+   - the free space where it will be kept;
+   - who it is from, the licence, and **the cost: none, and to nobody**;
+   - that it is one moment's picture and not a seamless mosaic.
+
+   If cloud covers what you care about, go back and choose another day.
+4. **Fetch** starts it. It is a download like any other: it shows under Downloads, can
+   be paused and resumed, survives a restart, and checks for room first. What has been
+   fetched is kept beside the partial file until it is installed, so carrying on after
+   a pause fetches nothing twice. Once installed it is listed with what was fetched to
+   make it, and can be removed from the list or from Manage and clean up.
+
+### How big an area
+
+Above 400 km² the figures are spelled out in a sentence before the button. Above
+2,500 km² the warning says it is large and that several smaller areas of the places
+that matter are usually better (quicker, smaller, each with its own clear day), and
+the download needs a tick that you have read it. Above 10,000 km² it is refused: one
+job asking a free public service for several hundred megabytes, from many scenes, is
+not what this is for.
+
+Measured on 16 November 2026, a 10 km square over Derwentwater and Keswick (100 km²,
+the scene of 12 July 2026), on this project's Mac (Apple M2 Max) and a home connection:
+
+| | |
+| --- | --- |
+| Searching | 1 second |
+| Working out the figures | 2 seconds, 0.27 MB read |
+| Fetched | 16.3 MB in 17 requests (the estimate said 16.2 MB and 15) |
+| Made | 111 tile positions from zoom 6 to 14, 7.3 seconds from start to installed |
+| Kept | 327 kB (the same area from the scene of 12 November 2026 came to 574 kB) |
+| Memory | about 90 MB more while it is made |
+
+Transfer goes by the publisher's 10 km tiles, not by area: a 35 km² area within those
+same tiles also needs 16.2 MB, and an area of 100 km² that straddles more of them needs
+more, up to about four times as much. Not measured on a Raspberry Pi; the time shown
+before fetching assumes one is four times slower than the Mac.
+
+### What is done to the picture
+
+Sentinel-2's Level-2A product is surface reflectance in thirteen bands. Outpost makes
+true colour from the red, green and blue bands (B04, B03, B02), at their native 10 m:
+
+1. Each value becomes reflectance by the scale and offset the publisher's metadata
+   gives (for current scenes: value × 0.0001 − 0.1).
+2. Reflectance from 0 to 0.3 is mapped to 0 to 1, anything above held at 1, and then
+   put on the sRGB curve that screens expect, as 8 bits. These numbers are the same for
+   every scene: no stretch is fitted to a picture, no colours are balanced, nothing is
+   sharpened. 0.3 was chosen by looking at real scenes: bright enough for fields and
+   woods to read, with cloud, snow and bright roofs going white.
+3. Each map pixel at the deepest zoom is taken back to the scene's UTM grid and read by
+   bilinear interpolation between the four nearest 10 m pixels; at the edge of the data
+   the nearest pixel is used instead. Each coarser zoom is the average of four pixels
+   of the one below. Nothing finer than the data is made: the deepest zoom is the first
+   whose pixels are as fine as 10 m at the area's latitude (zoom 14 in Britain), and
+   the map enlarges that if you zoom in further.
+4. Where a scene has no data (beyond the edge of its swath) the next scene of the same
+   pass is used; outside the area, and where no scene has data, the picture is
+   transparent.
+
+Tiles are WebP at quality 78, WebP rather than JPEG because the edge of an area must be
+transparent. The quality was chosen by looking: zoom-14 tiles of Keswick at 60, 70, 78
+and 90, beside the tile before compression, enlarged three times. At 60 and 70 the
+streets of the town smear into blocks; 78 is close to 90 at about half the size (6.2 kB
+a tile against 11.7 kB). Blue Marble tiles were looked at only at 78. A full tile at
+zoom 14 is 3 to 9 kB: a screen of a phone holds about twenty, so a few hundred
+kilobytes to fill it.
+
+The world is made the same way, from NASA's picture in latitude and longitude: each
+map pixel at the deepest zoom is the average of the picture's pixels whose centres fall
+inside it, and each coarser zoom the average of four.
+
+**What it would take to go further.** A cloud-free picture of an area means taking,
+for each pixel, a clear view from many passes (a median of the scenes in a season,
+with the scene classification used to throw out cloud and shadow first): perhaps
+fifteen to thirty times the transfer of one scene, a pixel-by-pixel mask, and the
+work of matching colours between days. Outpost has the pieces (the reader, the
+classification, the reprojection) but not the compositing; it is not built.
+
+### The world
+
+**The world, 2 km a pixel** fetches NASA's single 21,600 × 10,800 GeoTIFF (256 MB)
+and makes 5,461 tiles. Measured on the Mac above: 50 seconds to fetch, 36 seconds to
+make, 15.5 MB kept, at most 700 MB of memory in use while making it.
+
+**The world, 500 m a pixel** fetches NASA's eight 90° squares (3.26 GB) and makes
+87,381 tiles. **It was not run**: the size kept (about 350 MB) and the time (perhaps
+half an hour on the Mac above, most of it fetching) are estimates from the 2 km build.
+
+Both are made from NASA's GeoTIFFs because they can be read a row at a time with the
+compression Node already has, so the picture never has to be held in memory whole.
+NASA's JPEG files are eight to thirteen times smaller to fetch, but reading them a
+little at a time needs a JPEG decoder Outpost does not have.
+
+### Where the pictures come from, and the terms
+
+| | Blue Marble: Next Generation | Sentinel-2 Level-2A, Collection 1 |
+| --- | --- | --- |
+| Publisher | NASA Earth Observatory (produced by Reto Stöckli) | The European Union's Copernicus programme (ESA) |
+| Fetched from | `assets.science.nasa.gov` | `e84-earth-search-sentinel-data.s3.us-west-2.amazonaws.com` (AWS Open Data, "No AWS account required", not requester-pays); scenes found through `earth-search.aws.element84.com` |
+| Terms | NASA media "generally are not subject to copyright in the United States"; NASA asks to be acknowledged | "Free, full and open access" (Copernicus Sentinel data legal notice) |
+| Credit shown | "NASA Earth Observatory" | "Contains modified Copernicus Sentinel data 2026" (the year of the picture) |
+| Cost | Free | Free |
+
+The publishers' own words, and where they were read, are in
+[sources.md](sources.md#satellite-imagery). Nothing is bundled with Outpost.
+
+**Why Collection 1.** Earth Search also lists the older `sentinel-2-l2a` collection
+(bucket `sentinel-cogs`). In many of its files the values do not match the scale and
+offset its own metadata gives: the scene of 12 July 2026 over Keswick has red values
+around 130 where the metadata implies reflectance = value × 0.0001 − 0.1, which would
+be negative. Earth Search's issue 71 reports the same, unanswered on 16 November 2026.
+A picture made from it by the metadata comes out black. Collection 1's values (around
+1,130 for the same pixel) agree with its metadata.
+
+### The EOX cloudless mosaic, and why it is not here
+
+EOX's Sentinel-2 cloudless is a cloud-free 10 m mosaic. Its original tiles were once
+offered from an Amazon S3 bucket set to "requester pays" (`eox-s2maps`, eu-central-1,
+named in EOX's 2017 post). On 16 November 2026 that bucket answered `NoSuchBucket`,
+and none of EOX's current pages (cloudless.eox.at) mentions a bucket. EOX now offers
+its data as purchased offline caches (from €1,500 a region; €5,000 to €6,000 a year's
+mosaic of the world) and through its public map service, whose terms allow commercial
+use of the 2016 layer "provided traffic is reasonable", prohibit it for 2018 onwards,
+and say nothing that permits bulk downloading for keeping. So there is no route to
+the files that a person's own AWS account could pay for, and Outpost does not fetch
+EOX's mosaic at all. If EOX publishes files again on terms that allow keeping a copy,
+the area tool could read them the same way it reads Sentinel-2's.
+
+### Limits
+
+- Areas cannot cross the 180° meridian, as for regions.
+- **Not kept on a phone.** "Map areas on this phone" keeps map tiles and terrain, not
+  imagery: out of reach of the server, a phone shows no pictures.
+- Not tried on an iPhone, an iPad or a Raspberry Pi. Built and tested in Chromium on a
+  Mac, at desktop size and at 390 pixels wide with touch.
+- The 500 m world was not built (see above).
+- Landsat (30 m) is not offered: on AWS its files are in a requester-pays bucket, so
+  each download would be billed to an AWS account, and at 30 m it shows less than
+  Sentinel-2.
+
 ## Keeping a map area on a phone
 
 A phone that leaves the house cannot reach the server, and so cannot ask it for tiles.
@@ -2078,7 +2280,9 @@ its limits and what browsers do with the kept data are in
 - **Repeater coverage, and repeaters you have not put in.** The map draws the repeaters
   you hold as points (see [Repeaters on the map](#repeaters-on-the-map)); it downloads
   no list and draws no coverage.
-- **Satellite or aerial imagery.**
+- **Aerial photographs, imagery finer than 10 m, and cloud-free mosaics.** Satellite
+  imagery is the world at 2 km or 500 m and chosen areas at 10 m, each a picture of
+  one day (see [Satellite imagery](#satellite-imagery)).
 - **The time zone of a place, moonrise and moonset.** Sun times are shown on the
   device's clock or in UTC (see [Time zones](#time-zones)).
 - **Other map schemas.** The bundled styles draw the Protomaps basemap schema only.

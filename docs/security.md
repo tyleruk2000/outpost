@@ -484,6 +484,19 @@ people search for and the areas they look at, with the address the request came 
 as any web server does. And a route is only as right as OpenStreetMap is: Outpost
 checks that a line is made of places on Earth, not that it is safe to walk.
 
+**Satellite imagery.** Getting pictures of the ground makes requests to three hosts,
+each only as the direct result of a press (see [maps.md](maps.md#satellite-imagery)).
+
+| Control | Detail | Code |
+| --- | --- | --- |
+| Where requests go | `earth-search.aws.element84.com` for **Find pictures** (one `POST`, never redirected); `e84-earth-search-sentinel-data.s3.us-west-2.amazonaws.com` for a scene's files; `assets.science.nasa.gov` for the world. The hosts are fixed in code. A scene whose files the catalogue says are anywhere else is not offered, and a file request to any other host is refused, redirects included (`everyHop`). Every connection goes through the guarded client, so rule 2 applies. | `modules/maps/imagery/catalogue.ts`, `stac.ts`, `ranges.ts` |
+| What causes a request | **Find pictures** (one search); **Continue** (the first 64 kB of each of the scene's three band files and some of its cloud map, a few hundred kilobytes); **Fetch** and **Download** (the download itself). Viewing the map never reaches out: tiles come from the server's own archives. Searches and estimates are `POST` routes, held to the cross-site rules above. | `modules/maps/imagery/index.ts` |
+| What is sent | The box of the area and a year of dates, to the catalogue; byte ranges of public files, to the buckets. The client name is the one every download uses, `Outpost (self-hosted offline library)`. No account, key, cookie or anything about the person. The catalogue's operator, and AWS, see the address of the computer Outpost runs on and which area was asked about. | `core/http.ts` |
+| What can be fetched | Only scenes that a search on this server returned in the last hour, by a key the server made: the browser cannot name a file to fetch. Only byte ranges are asked for, and anything but a `206` stops the job (a server that ignored `Range` would send a whole 150 MB file). An answer longer than asked for is cut off and refused. A build stops if the scene's files would now need more than 110% of the bytes shown before it started. | `ranges.ts`, `index.ts` |
+| Politeness | At most four requests at once. A `429` or `503` is waited out (the server's `Retry-After`, up to two minutes, or 2, 8 and 30 seconds) and tried at most three more times; then the job stops and says so. Areas over 10,000 km² are refused. | `ranges.ts`, `catalogue.ts` |
+| What is read | The files are parsed by Outpost's own GeoTIFF reader, which reads only tiled or striped 8- and 16-bit pictures, Deflate or uncompressed, refuses anything else, and checks every length against the file before using it; a directory loop, more than 64 directories or 4,096 entries is refused. Decompressed tiles must be the size the header says. The catalogue's answer is checked field by field (zod) and anything malformed is dropped. | `cog.ts`, `stac.ts` |
+| Nothing billed | Both buckets are public and not requester-pays: no AWS account, no credential and no bill exist in this feature. The billed EOX route was not built (see [sources.md](sources.md#satellite-imagery)). | |
+
 Three outbound paths do not use this client, because their address is a setting: the
 embedding server for semantic search, the model server for answers (see
 [below](#answers-from-a-language-model)), and kiwix-serve.

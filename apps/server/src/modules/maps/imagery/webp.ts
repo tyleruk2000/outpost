@@ -9,7 +9,7 @@
  *
  * WebP rather than JPEG because a tile at the edge of an area must be transparent
  * outside it, so that the coarser imagery underneath shows through; JPEG has no
- * transparency. At the quality chosen it is also about a third smaller than JPEG.
+ * transparency.
  */
 import fs from "node:fs";
 import { createRequire } from "node:module";
@@ -17,7 +17,11 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { isBundled } from "../../../core/paths.ts";
 
-/** Chosen by looking at Sentinel-2 and Blue Marble tiles side by side at 70, 75, 80 and 90 (docs/maps.md). */
+/**
+ * Chosen by looking: zoom-14 Sentinel-2 tiles of Keswick at 60, 70, 78 and 90 beside the
+ * uncompressed tile, enlarged three times. 60 and 70 smear a town's streets into blocks;
+ * 78 is close to 90 at about half its size (6.2 kB against 11.7 kB). See docs/maps.md.
+ */
 export const WEBP_QUALITY = 78;
 
 interface Codec {
