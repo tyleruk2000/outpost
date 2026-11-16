@@ -18,6 +18,7 @@ import { safeFileName } from "../../core/fs-safe.ts";
 import { createHttpClient } from "../../core/http.ts";
 import { registerMultipart } from "../../core/multipart.ts";
 import { TEMPLATES } from "./adapters/imports.ts";
+import { PROVIDERS } from "./providers.ts";
 import { createQueryFetcher, QUERY_FETCHER } from "./query-fetcher.ts";
 import { createLayersService, type ImportInput, isReferenceDownload, type LayersService } from "./service.ts";
 
@@ -85,11 +86,23 @@ const scopeSchema = z.object({
     .refine(([, south, , north]) => south < north, "A box has its south edge below its north edge.")
     .optional(),
 });
-const estimateSchema = z.object({
-  provider: z.string().min(1).max(40),
-  scope: scopeSchema.refine((scope) => (scope.countries?.length ?? 0) > 0 || scope.bbox || true),
-  layers: z.array(z.enum(REFERENCE_LAYERS)).max(20).optional(),
-});
+const estimateSchema = z
+  .object({
+    provider: z.string().min(1).max(40),
+    scope: scopeSchema,
+    layers: z.array(z.enum(REFERENCE_LAYERS)).max(20).optional(),
+  })
+  .superRefine((request, issues) => {
+    // A request for nothing in particular is the whole world: only a source that is published for the whole world as one can answer it.
+    if ((request.scope.countries?.length ?? 0) > 0 || request.scope.bbox) return;
+    const provider = PROVIDERS.find((entry) => entry.id === request.provider);
+    if (!provider || provider.scopes.includes("world")) return;
+    issues.addIssue({
+      code: "custom",
+      path: ["scope"],
+      message: `Choose at least one country, or draw a box on the map: ${provider.name} is not downloaded for the whole world at once.`,
+    });
+  });
 const startSchema = z.object({
   estimateId: z.string().min(1).max(40),
   keys: z.array(z.string().min(1).max(200)).min(1).max(40),

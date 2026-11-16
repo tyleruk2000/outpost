@@ -751,6 +751,20 @@ describe("downloading through the download manager from an Overpass server", () 
     expect((await app.api("GET", "/api/health")).status).toBe(200);
   });
 
+  it("refuses an estimate with no countries and no box, unless the source covers the world by nature", async () => {
+    declare("local-test");
+    for (const provider of ["osm", "worldpop", "babs"]) {
+      for (const scope of [{}, { countries: [] }]) {
+        const refused = await app.api("POST", "/api/reference/estimate", { provider, scope, layers: ["military"] });
+        expect(refused.status, provider).toBe(400);
+        expect(refused.body.error.message).toMatch(/Choose at least one country, or draw a box on the map/);
+      }
+    }
+    // Asked for nothing in particular, a source of the whole world gives the whole world.
+    const world = await app.api("POST", "/api/reference/estimate", { provider: "natural-earth", scope: {}, layers: ["boundaries"] });
+    expect(world.status).not.toBe(400);
+  });
+
   it("will not start from an estimate it did not make", async () => {
     const started = await app.api("POST", "/api/reference/downloads", { estimateId: "nothing", keys: ["x"] });
     expect(started.status).toBe(409);
