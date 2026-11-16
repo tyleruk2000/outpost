@@ -405,9 +405,16 @@ test("the README's pictures", async ({ browser }) => {
   await api(page, "POST", "/api/nuclear/scenarios", {
     name: "Educational example: 10 kilotons",
     notes: "An idealised case on the test map, for the picture.",
-    lat: CENTRE.lat + 0.01,
+    lat: CENTRE.lat + 0.006,
     lon: CENTRE.lon + 0.02,
     effects: { yieldKt: 10, burst: { kind: "surface" }, wind: { fromDegrees: 250, kmh: 24 } },
+  });
+  await api(page, "POST", "/api/nuclear/scenarios", {
+    name: "Educational example: 2 kilotons, in the air",
+    notes: "A second idealised case, to show two on the map.",
+    lat: CENTRE.lat,
+    lon: CENTRE.lon,
+    effects: { yieldKt: 2, burst: { kind: "optimum", psi: 5 }, wind: null },
   });
   await api(page, "PATCH", "/api/settings", {
     "answers.enabled": true,
@@ -494,7 +501,12 @@ test("the README's pictures", async ({ browser }) => {
 
   await page.goto("/prepare/nuclear");
   await page.getByRole("tab", { name: /Saved/ }).click();
-  await page.getByRole("button", { name: /^Open/ }).first().click();
+  // Both saved scenarios on the map. The air burst is selected, so that the map is fitted to its rings and they can
+  // be read; the surface burst beside it is drawn fainter, with its fallout pattern running off downwind.
+  for (const name of ["10 kilotons", "2 kilotons, in the air"]) {
+    await page.getByRole("listitem").filter({ hasText: name }).getByRole("button", { name: "Put it on the map" }).click();
+    await page.getByRole("tab", { name: /Saved/ }).click();
+  }
   await page.getByRole("tab", { name: "Scenario" }).click();
   await page.getByRole("button", { name: "Fit the map to it" }).click();
   await page.evaluate(() => window.scrollTo(0, 0));

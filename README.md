@@ -225,10 +225,11 @@ real network's devices are shown.*
 
 *A plan made from the power cut template: each step says whose words it is.*
 
-![The nuclear preparedness workspace with an educational scenario on the test map](docs/screenshots/nuclear.webp)
+![The nuclear preparedness workspace with two educational scenarios on the test map, one with an idealised fallout pattern](docs/screenshots/nuclear.webp)
 
-*The nuclear preparedness workspace: an educational scenario on the test suite's
-made-up map, with the model's rings and idealised fallout pattern.*
+*The nuclear preparedness workspace: two educational scenarios on the test suite's
+made-up map, each kind of effect in its own colour, one with the model's idealised
+fallout pattern.*
 
 ### Looking after it
 
