@@ -367,16 +367,13 @@ export function WrongSection() {
             documents added or read again from then on, not to passages already cut.
           </li>
           <li>
-            <Link to={SETTINGS_MEANING}>Settings, under “Search by meaning”</Link>: switching it on, choosing where the model runs, and
-            building the index of vectors.
+            <Link to={SETTINGS_MEANING}>Settings, under “Search by meaning”</Link>: switching it on, which builds the index of vectors by
+            itself. Under “More options” there: where the model runs, and the fusion numbers (<em>k</em> and the two weights). The sliders{" "}
+            <a href="#fig-formula">above</a> let you see what a change would do before making it.
           </li>
           <li>
             <Link to={SETTINGS_ANSWERS}>Settings, under “Answers from your library”</Link>: which model writes, how freely it words things,
             and the context budget.
-          </li>
-          <li>
-            <Link to="/settings#search-title">Settings, under “Search”</Link>: the fusion numbers (<em>k</em> and the two weights). The
-            sliders <a href="#fig-formula">above</a> let you see what a change would do before making it.
           </li>
         </ul>
       </Prose>

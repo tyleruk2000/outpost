@@ -1,7 +1,7 @@
 import { formatBytes, type Settings } from "@outpost/shared";
 import { Monitor, Moon, Sun } from "lucide-react";
 import { type ReactNode, useEffect } from "react";
-import { Link, useLocation } from "react-router";
+import { useLocation } from "react-router";
 import { ErrorState, Page, PageHeader } from "@/components/page";
 import { Segmented, Skeleton, Switch } from "@/components/ui/misc";
 import { useClockStyle } from "@/lib/clock";
@@ -217,62 +217,6 @@ export default function SettingsPage({ extraSections }: { extraSections?: ReactN
                   disabled={disabled}
                   onCheckedChange={(value) => save("search.includeReference", value)}
                   aria-label="Search inside reference collections"
-                />
-              }
-            />
-            <SettingRow
-              htmlFor="search-keyword-weight"
-              label="Weight of matching words"
-              hint="How much the search by words counts when the two searches are combined. Only matters while search by meaning is on. 0 leaves it out."
-              control={
-                <NumberSetting
-                  id="search-keyword-weight"
-                  value={s["search.hybrid.keywordWeight"]}
-                  min={0}
-                  max={10}
-                  decimals
-                  disabled={disabled}
-                  onSave={(value) => save("search.hybrid.keywordWeight", value)}
-                />
-              }
-            />
-            <SettingRow
-              htmlFor="search-semantic-weight"
-              label="Weight of matching meaning"
-              hint="How much the search by meaning counts. Raise it if results that share your words but miss your point rank too high."
-              control={
-                <NumberSetting
-                  id="search-semantic-weight"
-                  value={s["search.hybrid.semanticWeight"]}
-                  min={0}
-                  max={10}
-                  decimals
-                  disabled={disabled}
-                  onSave={(value) => save("search.hybrid.semanticWeight", value)}
-                />
-              }
-            />
-            <SettingRow
-              htmlFor="search-rrf-k"
-              label="Evenness of combining"
-              hint={
-                <>
-                  The constant in the combining formula. A larger number makes first place count for less against tenth; 60 is the usual
-                  value.{" "}
-                  <Link to="/search/how-it-works#fig-formula" className="text-primary underline underline-offset-2">
-                    Try the three settings on a question of your own
-                  </Link>{" "}
-                  before changing them.
-                </>
-              }
-              control={
-                <NumberSetting
-                  id="search-rrf-k"
-                  value={s["search.hybrid.rrfK"]}
-                  min={1}
-                  max={1000}
-                  disabled={disabled}
-                  onSave={(value) => save("search.hybrid.rrfK", value)}
                 />
               }
             />

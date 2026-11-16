@@ -1,4 +1,7 @@
+import { SETUP_GUIDE_PATH } from "@outpost/shared";
+import { ChevronRight } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
+import { Link } from "react-router";
 import { Input } from "@/components/ui/input";
 
 export function SettingsSection({
@@ -16,7 +19,7 @@ export function SettingsSection({
     <section
       id={id}
       aria-labelledby={`${id}-title`}
-      className="grid gap-x-10 gap-y-4 border-t border-border py-8 first:border-t-0 first:pt-0 lg:grid-cols-[15rem_1fr]"
+      className="grid grid-cols-[minmax(0,1fr)] gap-x-10 gap-y-4 border-t border-border py-8 first:border-t-0 first:pt-0 lg:grid-cols-[15rem_minmax(0,1fr)]"
     >
       <div>
         <h2 id={`${id}-title`} className="text-lead font-semibold text-ink">
@@ -24,7 +27,7 @@ export function SettingsSection({
         </h2>
         {description ? <p className="mt-1 text-small text-ink-muted">{description}</p> : null}
       </div>
-      <div className="grid max-w-[40rem] gap-5">{children}</div>
+      <div className="grid max-w-[40rem] grid-cols-[minmax(0,1fr)] gap-5">{children}</div>
     </section>
   );
 }
@@ -136,5 +139,31 @@ export function NumberSetting({
       />
       {unit ? <span className="w-16 text-small text-ink-muted">{unit}</span> : null}
     </span>
+  );
+}
+
+/**
+ * Everything a section can do beyond its first level, behind one quiet line. What is
+ * inside is not drawn, and asks the server for nothing, until the line is opened.
+ */
+export function MoreOptions({ children, label = "More options" }: { children: ReactNode; label?: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <details className="group border-t border-border" onToggle={(event) => setOpen(event.currentTarget.open)}>
+      <summary className="flex min-h-11 cursor-default items-center gap-1.5 text-small font-medium text-ink-muted marker:content-none hover:text-ink [&::-webkit-details-marker]:hidden">
+        <ChevronRight aria-hidden className="size-4 transition-transform duration-150 group-open:rotate-90" />
+        {label}
+      </summary>
+      {open ? <div className="grid grid-cols-[minmax(0,1fr)] gap-5 pt-2 pb-1">{children}</div> : null}
+    </details>
+  );
+}
+
+/** The link from a section to its part of the set-up guide, which is a page inside Outpost. */
+export function GuideLink({ part, children = "Set-up guide" }: { part: string; children?: ReactNode }) {
+  return (
+    <Link to={`${SETUP_GUIDE_PATH}#${part}`} className="text-primary underline decoration-1 underline-offset-2 hover:decoration-2">
+      {children}
+    </Link>
   );
 }

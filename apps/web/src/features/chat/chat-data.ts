@@ -17,6 +17,8 @@ import type {
   ChatStatus,
   ChatStreamEvent,
   MarkdownBlock,
+  ModelSetupLook,
+  ModelSetupTry,
 } from "@outpost/shared";
 import { type QueryClient, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
@@ -73,6 +75,10 @@ export const chatApi = {
   stop: (id: string) => api.post<ChatConversationDetail>(`/api/chat/conversations/${id}/stop`),
   saveAsNote: (messageId: string) => api.post<{ noteId: string; title: string }>(`/api/chat/messages/${messageId}/note`),
   lookForOllama: () => api.post<ChatLookResult>("/api/chat/look-for-ollama"),
+  /** Setting up, step one: finds the model server and says which of its models to start with. Saves nothing. */
+  setupLook: () => api.post<ModelSetupLook>("/api/chat/setup/look"),
+  /** Setting up, the last step: asks the model for one word; when it answers, the server saves the set-up and switches answers on. */
+  setupTry: (address: string, model: string) => api.post<ModelSetupTry>("/api/chat/setup/try", { address, model }),
 };
 
 /** Puts a conversation the server just sent into the cache, and lets the lists catch up. */
