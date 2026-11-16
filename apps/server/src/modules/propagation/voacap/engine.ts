@@ -5,8 +5,18 @@
  * a time, an antenna file for each end) and its answers into Outpost's own shapes. No
  * figure is worked out here: values are copied across and rounded for sending.
  */
-import { type AntennaSpec, type EngineDescription, HF_MAX_MHZ, HF_MIN_MHZ, type IonosphereHour, initialBearingDeg, type PredictionCell, type PropagationSite, haversineMeters } from "@outpost/shared";
-import { greatCirclePoint } from "@outpost/shared";
+import {
+  type AntennaSpec,
+  type EngineDescription,
+  greatCirclePoint,
+  HF_MAX_MHZ,
+  HF_MIN_MHZ,
+  haversineMeters,
+  type IonosphereHour,
+  initialBearingDeg,
+  type PredictionCell,
+  type PropagationSite,
+} from "@outpost/shared";
 import type { CircuitHour, CircuitRequest, CircuitResult, IonosphereRequest, PropagationEngine } from "../engine.ts";
 import { antennaFile, describeAntenna, hasAzimuthPattern } from "./antenna-files.ts";
 import { type LoadedDataset, type LoadedEngineFile, loadDataset, loadEngineFile, type VoacapPaths } from "./files.ts";
@@ -44,7 +54,18 @@ interface WireSystems {
 }
 
 interface WireParameters {
-  rows: Array<{ lat: number; lon: number; utc: number; foE: number; foF1: number; foF2: number; hmF2: number; virtualHeightF2Km: number; m3000: number; sunZenithDeg: number }>;
+  rows: Array<{
+    lat: number;
+    lon: number;
+    utc: number;
+    foE: number;
+    foF1: number;
+    foF2: number;
+    hmF2: number;
+    virtualHeightF2Km: number;
+    m3000: number;
+    sunZenithDeg: number;
+  }>;
 }
 
 const round = (value: number | undefined, places: number): number => {
@@ -146,7 +167,14 @@ export function createVoacapEngine(paths: VoacapPaths): PropagationEngine {
         if (!first) {
           first = answer;
           for (const hour of answer.hours) {
-            hours.push({ utc: Math.round(hour.utc), localTime: round(hour.localMeanTime, 2), mufMhz: round(hour.mufMhz, 2), fotMhz: round(hour.fotMhz, 2), hpfMhz: round(hour.hpfMhz, 2), cells: [] });
+            hours.push({
+              utc: Math.round(hour.utc),
+              localTime: round(hour.localMeanTime, 2),
+              mufMhz: round(hour.mufMhz, 2),
+              fotMhz: round(hour.fotMhz, 2),
+              hpfMhz: round(hour.hpfMhz, 2),
+              cells: [],
+            });
           }
         }
         for (const [index, hour] of answer.hours.entries()) hours[index]!.cells.push(...hour.freqs.map(cell));
@@ -199,7 +227,12 @@ export function createVoacapEngine(paths: VoacapPaths): PropagationEngine {
 
     listing(request: CircuitRequest): string {
       const { cards } = antennas(request);
-      return live().run<{ listing: string }>({ task: "systems", listing: true, ...base(request, request.frequenciesMhz.slice(0, FREQUENCIES_PER_RUN)), ...cards }).listing;
+      return live().run<{ listing: string }>({
+        task: "systems",
+        listing: true,
+        ...base(request, request.frequenciesMhz.slice(0, FREQUENCIES_PER_RUN)),
+        ...cards,
+      }).listing;
     },
   };
 }

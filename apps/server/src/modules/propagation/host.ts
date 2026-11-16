@@ -15,7 +15,9 @@ export type WorkerRequest =
   | { id: number; op: "ionosphere"; request: IonosphereRequest }
   | { id: number; op: "listing"; request: CircuitRequest };
 
-export type WorkerReply = { id: number; ok: true; value: unknown } | { id: number; ok: false; message: string; kind: "unavailable" | "engine" | "other" };
+export type WorkerReply =
+  | { id: number; ok: true; value: unknown }
+  | { id: number; ok: false; message: string; kind: "unavailable" | "engine" | "other" };
 
 /** The engine answered that it cannot work the question out, in its own words. */
 export class EngineRefused extends Error {
@@ -39,7 +41,11 @@ interface Pending {
   onAbort?: () => void;
 }
 
-type Question = { op: "describe" } | { op: "circuit"; request: CircuitRequest } | { op: "ionosphere"; request: IonosphereRequest } | { op: "listing"; request: CircuitRequest };
+type Question =
+  | { op: "describe" }
+  | { op: "circuit"; request: CircuitRequest }
+  | { op: "ionosphere"; request: IonosphereRequest }
+  | { op: "listing"; request: CircuitRequest };
 
 export interface EngineHost {
   describe(): Promise<{ description: EngineDescription; datasets: Array<{ id: string; version: string }> }>;
@@ -119,7 +125,10 @@ export function createEngineHost(paths: VoacapPaths, options: { idleMs?: number 
         resolve: resolve as (value: unknown) => void,
         reject,
         signal,
-        timer: setTimeout(() => void stop(new EngineUnavailable("The propagation engine took too long to answer and was stopped. Try again.")), STALL_MS),
+        timer: setTimeout(
+          () => void stop(new EngineUnavailable("The propagation engine took too long to answer and was stopped. Try again.")),
+          STALL_MS,
+        ),
       };
       if (signal) {
         // The only way to interrupt the engine is to end its thread. Whatever else was

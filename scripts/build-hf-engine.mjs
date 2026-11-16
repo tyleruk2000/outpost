@@ -66,7 +66,8 @@ const DATA_GROUPS = [
 ];
 
 const log = (message) => console.log(`[hf-engine] ${message}`);
-const run = (command, args, options = {}) => execFileSync(command, args, { stdio: ["ignore", "pipe", "inherit"], encoding: "utf8", ...options });
+const run = (command, args, options = {}) =>
+  execFileSync(command, args, { stdio: ["ignore", "pipe", "inherit"], encoding: "utf8", ...options });
 const sha256 = (file) => createHash("sha256").update(fs.readFileSync(file)).digest("hex");
 
 function walk(dir, base = dir) {
@@ -108,26 +109,15 @@ log(`${UPSTREAM.name} ${crateVersion} at ${head.slice(0, 12)} (${commitDate})`);
 const targetDir = path.join(upstreamDir, "target-outpost");
 const cargoHome = process.env.CARGO_HOME ?? path.join(process.env.HOME ?? "", ".cargo");
 log(`building for ${TARGET}`);
-execFileSync(
-  "cargo",
-  [
-    "build",
-    "--release",
-    "--lib",
-    "--locked",
-    "--target",
-    TARGET,
-  ],
-  {
-    cwd: path.join(home, "wrapper"),
-    stdio: "inherit",
-    env: {
-      ...process.env,
-      CARGO_TARGET_DIR: targetDir,
-      RUSTFLAGS: `--remap-path-prefix=${root}=/outpost --remap-path-prefix=${cargoHome}=/cargo`,
-    },
+execFileSync("cargo", ["build", "--release", "--lib", "--locked", "--target", TARGET], {
+  cwd: path.join(home, "wrapper"),
+  stdio: "inherit",
+  env: {
+    ...process.env,
+    CARGO_TARGET_DIR: targetDir,
+    RUSTFLAGS: `--remap-path-prefix=${root}=/outpost --remap-path-prefix=${cargoHome}=/cargo`,
   },
-);
+});
 const built = path.join(targetDir, TARGET, "release/outpost_voacap.wasm");
 
 // 4. The data: the files the engine's repository carries for embedding, laid out as the
@@ -143,7 +133,14 @@ const engine = {
   id: "voacap",
   name: "VOACAP",
   model: `VOACAP ${voacapVersion}`,
-  implementation: { name: UPSTREAM.name, version: crateVersion, repository: UPSTREAM.repository, commit: UPSTREAM.commit, committed: commitDate, licence: UPSTREAM.licence },
+  implementation: {
+    name: UPSTREAM.name,
+    version: crateVersion,
+    repository: UPSTREAM.repository,
+    commit: UPSTREAM.commit,
+    committed: commitDate,
+    licence: UPSTREAM.licence,
+  },
   build: { rustc: RUSTC, target: TARGET, patch: "engines/voacap/wasm.patch" },
   wasm: { file: "voacap.wasm", bytes: fs.statSync(built).size, sha256: sha256(built) },
 };
@@ -153,7 +150,13 @@ const dataset = {
   source: { repository: UPSTREAM.repository, commit: UPSTREAM.commit, path: "embedded/", committed: commitDate },
   groups: DATA_GROUPS.map((group) => {
     const files = dataFiles.filter((file) => group.match(file.rel));
-    return { id: group.id, title: group.title, description: group.description, bytes: files.reduce((sum, file) => sum + file.bytes, 0), files: files.map((file) => ({ path: file.rel, bytes: file.bytes, sha256: file.sha256 })) };
+    return {
+      id: group.id,
+      title: group.title,
+      description: group.description,
+      bytes: files.reduce((sum, file) => sum + file.bytes, 0),
+      files: files.map((file) => ({ path: file.rel, bytes: file.bytes, sha256: file.sha256 })),
+    };
   }),
 };
 const unplaced = dataFiles.filter((file) => !DATA_GROUPS.some((group) => group.match(file.rel)));
@@ -164,8 +167,10 @@ const json = (value) => `${JSON.stringify(value, null, 2)}\n`;
 if (checkOnly) {
   const problems = [];
   const same = (file, text) => fs.existsSync(file) && fs.readFileSync(file, "utf8") === text;
-  if (!same(path.join(engineDir, "engine.json"), json(engine))) problems.push("engine/engine.json differs (the WebAssembly file or its sources changed)");
-  if (!fs.existsSync(path.join(engineDir, "voacap.wasm")) || sha256(path.join(engineDir, "voacap.wasm")) !== engine.wasm.sha256) problems.push("engine/voacap.wasm is not what this build gives");
+  if (!same(path.join(engineDir, "engine.json"), json(engine)))
+    problems.push("engine/engine.json differs (the WebAssembly file or its sources changed)");
+  if (!fs.existsSync(path.join(engineDir, "voacap.wasm")) || sha256(path.join(engineDir, "voacap.wasm")) !== engine.wasm.sha256)
+    problems.push("engine/voacap.wasm is not what this build gives");
   if (!same(path.join(dataDir, "dataset.json"), json(dataset))) problems.push("data/dataset.json differs");
   for (const file of dataFiles) {
     const committed = path.join(dataDir, "itshfbc", file.rel);

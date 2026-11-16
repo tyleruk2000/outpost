@@ -1,0 +1,505 @@
+/**
+ * A prediction, laid out to be read: where the figures come from, then one chosen hour
+ * in words and numbers, then the day in charts, then the steep-path working, then the
+ * provenance. Every number on it is one the engine returned; the sentences only say
+ * what the numbers are.
+ */
+import {
+  COMPARISONS,
+  type CompareWhat,
+  dbwToDbm,
+  HF_BANDS,
+  type PredictionHour,
+  type PredictionResult,
+  rankBands,
+  secantLawMhz,
+  sMeter,
+  snrInBandwidth,
+  steepPathGeometry,
+  utcLabel,
+} from "@outpost/shared";
+import { Info, TriangleAlert } from "lucide-react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { Notice, Rows, Section } from "@/components/page";
+import { Button } from "@/components/ui/button";
+import { Select, Skeleton } from "@/components/ui/misc";
+import { errorMessage } from "@/lib/api";
+import { ChartFrame, HourGrid, HourLines, percent, ShareBars } from "./charts";
+import { useCompare, useListing } from "./data";
+
+const BASIS_TITLE = {
+  climatology: "A monthly median, with an old solar forecast",
+  "recent-solar": "A monthly median, with a recent solar forecast",
+  "own-measurement": "A monthly median, run at your own figure",
+} as const;
+
+const db = (value: number, places = 0) => `${value.toFixed(places)} dB`;
+const mhz = (value: number) => `${value.toFixed(value >= 10 ? 1 : 2)} MHz`;
+
+function Fact({ term, children, note }: { term: string; children: ReactNode; note?: ReactNode }) {
+  return (
+    <li className="grid gap-x-6 gap-y-0.5 py-2.5 sm:grid-cols-[13rem_minmax(0,1fr)]">
+      <span className="text-small text-ink-muted">{term}</span>
+      <span className="min-w-0">
+        <span className="tabular text-ink">{children}</span>
+        {note ? <span className="mt-0.5 block text-small text-ink-muted">{note}</span> : null}
+      </span>
+    </li>
+  );
+}
+
+/** The hour at which the frequency asked about does best: by reliability, then by signal-to-noise ratio. */
+export function bestHour(result: PredictionResult): number {
+  return [...result.hours].sort((a, b) => b.asked.reliability - a.asked.reliability || b.asked.snrDbHz - a.asked.snrDbHz)[0]!.utc;
+}
+
+/** Runs of consecutive hours in which the share is at or above a level, as "08:00 to 16:00". */
+export function windows(hours: PredictionHour[], level: number): string[] {
+  const runs: string[] = [];
+  let start: number | null = null;
+  for (let index = 0; index <= hours.length; index++) {
+    const open = index < hours.length && hours[index]!.asked.reliability >= level;
+    if (open && start === null) start = index;
+    if (!open && start !== null) {
+      runs.push(start === index - 1 ? utcLabel(hours[start]!.utc) : `${utcLabel(hours[start]!.utc)} to ${utcLabel(hours[index - 1]!.utc)}`);
+      start = null;
+    }
+  }
+  return runs;
+}
+
+/** What the chosen hour's figures say, in sentences. Nothing is concluded that the figures do not state. */
+function Reading({ result, hour }: { result: PredictionResult; hour: PredictionHour }) {
+  const cell = hour.asked;
+  const f = mhz(cell.mhz);
+  const noMode = result.mode.requiredSnrDbHz === null;
+  const ranked = rankBands(hour);
+  const better = ranked[0] && ranked[0].cell.reliability >= cell.reliability + 0.1 ? ranked[0] : null;
+  const good = windows(result.hours, 0.5);
+  return (
+    <div className="max-w-[70ch] space-y-2 text-body text-ink">
+      {cell.path === null ? (
+        <p>
+          At {utcLabel(hour.utc)} UTC the engine finds no way for {f} to reach the receiver.
+        </p>
+      ) : (
+        <p>
+          At {utcLabel(hour.utc)} UTC the path's MUF is {mhz(hour.mufMhz)}, and {f} is below it on {percent(cell.mufDays)} of the days of
+          the month.{" "}
+          {noMode ? (
+            <>The median signal-to-noise ratio is {db(cell.snrDbHz)} in 1 Hz. Give the ratio your mode needs to get a reliability.</>
+          ) : (
+            <>
+              {result.mode.label} reaches the {db(result.mode.requiredSnrDbHz!, 1)} (in 1 Hz) it is taken to need on{" "}
+              <strong className="font-semibold">{percent(cell.reliability)}</strong> of days; the median is {db(cell.snrDbHz)},{" "}
+              {cell.snrDbHz >= result.mode.requiredSnrDbHz! ? "above" : "below"} it by{" "}
+              {db(Math.abs(cell.snrDbHz - result.mode.requiredSnrDbHz!))}.
+            </>
+          )}
+        </p>
+      )}
+      {hour.reply && !noMode ? (
+        <p>
+          The reply reaches it on {percent(hour.reply.reliability)} of days. A contact needs both directions, so it can be expected on no
+          more than {percent(Math.min(cell.reliability, hour.reply.reliability))} of days, and that is before interference, operators and
+          equipment are counted.
+        </p>
+      ) : null}
+      {!noMode && better ? (
+        <p>
+          At this hour {better.band.label} ({mhz(better.band.mhz)}) does better: {percent(better.cell.reliability)}.
+        </p>
+      ) : null}
+      {!noMode ? (
+        <p className="text-ink-muted">
+          {good.length > 0
+            ? `Through the day ${f} reaches half the days or more at ${good.join(", ")} UTC.`
+            : `At no hour of the day does ${f} reach half the days with ${result.mode.label}.`}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function Compare({ result, hour, onHour }: { result: PredictionResult; hour: number; onHour: (hour: number) => void }) {
+  const [what, setWhat] = useState<CompareWhat>("seasons");
+  const compare = useCompare();
+  const chosen = COMPARISONS.find((item) => item.id === what)!;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: asked again only when the prediction or the choice changes
+  useEffect(() => {
+    if (result.mode.requiredSnrDbHz !== null) compare.mutate({ base: result.request, what });
+  }, [result.key, what]);
+  if (result.mode.requiredSnrDbHz === null) return null;
+  return (
+    <ChartFrame title={`${mhz(result.request.frequencyMhz)} with one thing changed`} reading={chosen.reading}>
+      <div className="mb-3 max-w-xs">
+        <Select<CompareWhat>
+          aria-label="What to change"
+          value={what}
+          onChange={setWhat}
+          options={COMPARISONS.map((item) => ({ value: item.id, label: item.label }))}
+        />
+      </div>
+      {compare.isPending ? (
+        <Skeleton className="h-40 w-full" />
+      ) : compare.isError ? (
+        <Notice tone="danger">{errorMessage(compare.error)}</Notice>
+      ) : compare.data ? (
+        <HourGrid
+          name={`Reliability of ${mhz(result.request.frequencyMhz)} by hour: ${chosen.label.toLowerCase()}`}
+          hour={hour}
+          onHour={onHour}
+          rowHeight={20}
+          rows={compare.data.series.map((series) => ({
+            label: series.label,
+            values: series.reliability,
+            detail: `midday foF2 ${series.foF2[11]!.toFixed(1)} MHz`,
+          }))}
+        />
+      ) : null}
+    </ChartFrame>
+  );
+}
+
+function Listing({ result }: { result: PredictionResult }) {
+  const listing = useListing();
+  return (
+    <div className="mt-3">
+      {listing.data ? (
+        <section
+          aria-label="The page VOACAP prints for this path"
+          className="max-h-96 overflow-auto rounded-panel border border-border bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+          // biome-ignore lint/a11y/noNoninteractiveTabindex: a box that scrolls must be reachable to be scrolled with the keyboard
+          tabIndex={0}
+        >
+          <pre className="p-3 font-mono text-[0.75rem] leading-snug text-ink">{listing.data.listing}</pre>
+        </section>
+      ) : (
+        <Button variant="secondary" size="sm" loading={listing.isPending} onClick={() => listing.mutate(result.request)}>
+          Show the page VOACAP prints
+        </Button>
+      )}
+      {listing.isError ? <p className="mt-2 text-small text-danger">{errorMessage(listing.error)}</p> : null}
+    </div>
+  );
+}
+
+export function Results({ result, hour, onHour }: { result: PredictionResult; hour: number; onHour: (hour: number) => void }) {
+  const at = result.hours[hour - 1]!;
+  const cell = at.asked;
+  const { mode } = result;
+  const f = mhz(result.request.frequencyMhz);
+  const required = mode.requiredSnrDbHz;
+
+  const sweepRows = useMemo(() => {
+    const asked = Math.round(result.request.frequencyMhz);
+    return [...result.sweepMhz]
+      .map((value, index) => ({
+        label: `${value} MHz`,
+        values: result.hours.map((h) => (required === null ? null : h.sweepReliability[index]!)),
+        marked: value === asked,
+        mhz: value,
+      }))
+      .reverse();
+  }, [result, required]);
+  const top = result.sweepMhz[result.sweepMhz.length - 1]!;
+  const geometry = steepPathGeometry(
+    result.path.distanceKm,
+    cell.virtualHeightKm > 0 ? cell.virtualHeightKm : at.ionosphere.virtualHeightF2Km,
+  );
+  const secant = secantLawMhz(at.ionosphere.foF2, geometry.incidenceDeg);
+  const modeColors = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)"];
+  const withFigure = result.modes.map((item, index) => ({ item, index })).filter(({ item }) => item.requiredSnrDbHz !== null);
+
+  return (
+    <div>
+      <Notice
+        tone={result.basis.kind === "climatology" ? "warning" : "info"}
+        icon={result.basis.kind === "climatology" ? <TriangleAlert /> : <Info />}
+        title={BASIS_TITLE[result.basis.kind]}
+      >
+        {result.basis.summary}
+        {result.basis.ssnLow !== null && result.basis.ssnHigh !== null
+          ? ` The table's own range for the month is ${result.basis.ssnLow} to ${result.basis.ssnHigh}.`
+          : ""}{" "}
+        It is not a reading of the ionosphere today.
+      </Notice>
+
+      <Section
+        title={`${result.request.tx.name} to ${result.request.rx.name}`}
+        description={`${result.path.distanceKm.toFixed(0)} km, bearing ${Math.round(result.path.bearingDeg)}° out and ${Math.round(result.path.backBearingDeg)}° back. ${result.path.txLocator} to ${result.path.rxLocator}.`}
+      >
+        <Reading result={result} hour={at} />
+      </Section>
+
+      <Section title="Frequency against time" description="Pick an hour on any chart and the figures below follow it.">
+        <ChartFrame
+          title={
+            required === null
+              ? "No reliability without a figure for the mode"
+              : `Share of days ${mode.label} gets through, at every frequency and hour`
+          }
+          reading={`Each cell is one whole megahertz at one hour UTC. The line is the MUF: above it the path is open on fewer than half the days. ${f} is the row in bold.`}
+        >
+          <HourGrid
+            name={`Reliability of ${mode.label} from 2 to 30 MHz by hour`}
+            rows={sweepRows}
+            hour={hour}
+            onHour={onHour}
+            rowHeight={11}
+            labelEvery={4}
+            line={{
+              label: "the MUF",
+              rowAt: result.hours.map((h) => (h.mufMhz > top + 0.5 ? null : Math.max(0, top + 0.5 - h.mufMhz))),
+              describe: (h) => `MUF ${mhz(result.hours[h - 1]!.mufMhz)}`,
+            }}
+          />
+        </ChartFrame>
+      </Section>
+
+      <Section title={`${f} at ${utcLabel(hour)} UTC`}>
+        <Rows className="border-y border-border">
+          <Fact
+            term="Reliability"
+            note="The share of the month's days on which the signal-to-noise ratio reaches what the mode needs. Not the chance of completing a contact."
+          >
+            {required === null ? "No figure: the mode has no requirement set" : `${percent(cell.reliability)} for ${mode.label}`}
+          </Fact>
+          <Fact
+            term="Signal-to-noise ratio"
+            note={`On the worst tenth of days ${db(cell.snrLowDb, 0)} lower, on the best tenth ${db(cell.snrUpDb, 0)} higher.${required === null ? "" : ` ${mode.label} is taken to need ${db(required, 1)} in 1 Hz.`}`}
+          >
+            {db(cell.snrDbHz)} in 1 Hz, which is {db(snrInBandwidth(cell.snrDbHz, 2500))} in 2500 Hz
+            {required === null ? "" : `: a margin of ${(cell.snrDbHz - required).toFixed(0)} dB on the median day`}
+          </Fact>
+          <Fact term="Signal at the receiver" note="The S-meter figure follows the convention that S9 is −73 dBm; real meters seldom do.">
+            {dbwToDbm(cell.signalDbw).toFixed(0)} dBm ({sMeter(cell.signalDbw)}), a field of {cell.fieldDbuV.toFixed(0)} dB above 1 µV/m
+          </Fact>
+          <Fact term="Noise at the receiver">{dbwToDbm(cell.noiseDbwHz).toFixed(0)} dBm in 1 Hz</Fact>
+          <Fact term="How it gets there" note="Hops and the layer that returns the signal, as the engine names it.">
+            {cell.path === null
+              ? "No path found"
+              : `${cell.path}, leaving at ${cell.takeoffDeg.toFixed(0)}° above the horizon, returned from a virtual height of ${cell.virtualHeightKm.toFixed(0)} km`}
+          </Fact>
+          <Fact
+            term="Usable frequencies"
+            note="MUF: open on half the days. FOT: on nine days in ten. HPF: on one day in ten. LUF: the lowest whole megahertz at which the mode reaches 90% reliability."
+          >
+            MUF {mhz(at.mufMhz)}, FOT {mhz(at.fotMhz)}, HPF {mhz(at.hpfMhz)}, LUF {at.lufMhz === null ? "none reaches 90%" : mhz(at.lufMhz)}
+          </Fact>
+          <Fact term="Antenna gain at that angle">
+            {cell.txGainDbi.toFixed(1)} dBi transmitting, {cell.rxGainDbi.toFixed(1)} dBi receiving
+          </Fact>
+        </Rows>
+        <div className="mt-6 grid gap-8 lg:grid-cols-2">
+          <ChartFrame
+            title={`Reliability of ${f} through the day`}
+            reading={at.reply ? "Both directions. A contact needs both." : undefined}
+          >
+            <HourLines
+              name={`Reliability of ${f} by hour`}
+              hour={hour}
+              onHour={onHour}
+              domain={[0, 100]}
+              format={(value) => `${Math.round(value)}%`}
+              series={[
+                {
+                  label: `${result.request.tx.name} to ${result.request.rx.name}`,
+                  color: "var(--chart-1)",
+                  values: result.hours.map((h) => (required === null ? null : h.asked.reliability * 100)),
+                },
+                ...(at.reply
+                  ? [
+                      {
+                        label: "The reply",
+                        color: "var(--chart-2)",
+                        values: result.hours.map((h) => (required === null ? null : h.reply!.reliability * 100)),
+                      },
+                    ]
+                  : []),
+              ]}
+            />
+          </ChartFrame>
+          <ChartFrame
+            title="Signal-to-noise ratio through the day"
+            reading="The line is the median day; the band runs from the worst tenth of days to the best."
+          >
+            <HourLines
+              name={`Signal-to-noise ratio of ${f} in 1 Hz by hour`}
+              hour={hour}
+              onHour={onHour}
+              format={(value) => `${Math.round(value)} dB`}
+              series={[{ label: "Median", color: "var(--chart-1)", values: result.hours.map((h) => h.asked.snrDbHz) }]}
+              band={{
+                label: "worst to best tenth of days",
+                low: result.hours.map((h) => h.asked.snrDbHz - h.asked.snrLowDb),
+                high: result.hours.map((h) => h.asked.snrDbHz + h.asked.snrUpDb),
+              }}
+              level={required === null ? undefined : { value: required, label: `${mode.label} needs ${required.toFixed(0)} dB` }}
+            />
+          </ChartFrame>
+          <ChartFrame
+            title="Signal and noise power"
+            reading="Median power at the receiver: the whole signal, and the noise in each hertz of bandwidth."
+          >
+            <HourLines
+              name={`Signal and noise power at the receiver on ${f} by hour`}
+              hour={hour}
+              onHour={onHour}
+              format={(value) => `${Math.round(value)} dBm`}
+              series={[
+                { label: "Signal", color: "var(--chart-1)", values: result.hours.map((h) => dbwToDbm(h.asked.signalDbw)) },
+                { label: "Noise in 1 Hz", color: "var(--chart-2)", values: result.hours.map((h) => dbwToDbm(h.asked.noiseDbwHz)) },
+              ]}
+            />
+          </ChartFrame>
+          <ChartFrame
+            title={`Modes on ${f}`}
+            reading="The same signal against what each mode is taken to need. The requirements are not measured on one basis; see the notes under Modes."
+          >
+            <HourLines
+              name={`Reliability of each mode on ${f} by hour`}
+              hour={hour}
+              onHour={onHour}
+              domain={[0, 100]}
+              format={(value) => `${Math.round(value)}%`}
+              series={withFigure.slice(0, 4).map(({ item, index }, order) => ({
+                label: item.label,
+                color: modeColors[order]!,
+                values: result.hours.map((h) => (h.modeReliability[index] ?? 0) * 100),
+              }))}
+            />
+          </ChartFrame>
+        </div>
+      </Section>
+
+      <Section
+        title="Bands"
+        description={
+          required === null
+            ? undefined
+            : `${mode.label} on one frequency near the middle of each amateur band. Your licence decides which you may use.`
+        }
+      >
+        {required === null ? (
+          <Notice>Give the signal-to-noise ratio your mode needs to compare the bands.</Notice>
+        ) : (
+          <div className="grid gap-8 lg:grid-cols-2">
+            <ChartFrame title={`Best bands at ${utcLabel(hour)} UTC`}>
+              <ShareBars
+                name={`Bands ranked by reliability at ${utcLabel(hour)} UTC`}
+                rows={rankBands(at).map(({ band, cell: c }) => ({
+                  label: band.label,
+                  share: c.reliability,
+                  detail: `${mhz(band.mhz)}, ${c.path ?? "no path"}, ${db(c.snrDbHz)}`,
+                  marked: band.mhz === result.request.frequencyMhz,
+                }))}
+              />
+            </ChartFrame>
+            <ChartFrame title="Bands through the day">
+              <HourGrid
+                name={`Reliability of ${mode.label} on each band by hour`}
+                hour={hour}
+                onHour={onHour}
+                rowHeight={18}
+                rows={HF_BANDS.map((band, index) => ({
+                  label: band.label,
+                  detail: mhz(band.mhz),
+                  values: result.hours.map((h) => h.bands[index]!.reliability),
+                  marked: band.mhz === result.request.frequencyMhz,
+                }))}
+              />
+            </ChartFrame>
+          </div>
+        )}
+      </Section>
+
+      <Section
+        title="The steep path (NVIS)"
+        description="Three different things, kept apart: whether the geometry allows it, how strong the signal is against the noise, and how often that is enough."
+      >
+        <Rows className="border-y border-border">
+          <Fact
+            term="1. Geometry (secant law)"
+            note="A check with a triangle and one number from the engine's map. It ignores the Earth's magnetic field, the layer's thickness and absorption, and is not the prediction."
+          >
+            foF2 over the middle of the path is {mhz(at.ionosphere.foF2)}. A single hop of {result.path.distanceKm.toFixed(0)} km off a
+            height of {(cell.virtualHeightKm > 0 ? cell.virtualHeightKm : at.ionosphere.virtualHeightF2Km).toFixed(0)} km leaves at{" "}
+            {geometry.elevationDeg.toFixed(0)}° and meets the layer {geometry.incidenceDeg.toFixed(0)}° from the vertical, so the layer
+            returns up to about {mhz(secant)}. {f} is {result.request.frequencyMhz <= secant ? "under" : "over"} that.
+          </Fact>
+          <Fact
+            term="2. Signal against noise"
+            note="From the engine: path loss (absorption is inside it and is not given separately), antenna gain at the take-off angle, and noise."
+          >
+            Median {db(cell.snrDbHz)} in 1 Hz, with a total loss of {db(cell.lossDb)} and {cell.txGainDbi.toFixed(1)} dBi from the
+            transmitting antenna at {cell.takeoffDeg.toFixed(0)}°.
+          </Fact>
+          <Fact term="3. Reliability" note="From the engine: how the ratio and the MUF vary from day to day within the month.">
+            {required === null
+              ? "No figure without a requirement for the mode."
+              : `${percent(cell.reliability)} of days for ${mode.label}; the path is open at ${f} on ${percent(cell.mufDays)} of days.`}
+          </Fact>
+        </Rows>
+        <div className="mt-6 grid gap-8 lg:grid-cols-2">
+          <ChartFrame
+            title="What the ionosphere overhead returns"
+            reading={`foF2 is the highest frequency returned straight down. The dashed level is ${f}.`}
+          >
+            <HourLines
+              name="MUF, FOT and foF2 by hour"
+              hour={hour}
+              onHour={onHour}
+              format={(value) => `${value.toFixed(1)} MHz`}
+              series={[
+                { label: "MUF", color: "var(--chart-1)", values: result.hours.map((h) => h.mufMhz) },
+                { label: "FOT", color: "var(--chart-2)", values: result.hours.map((h) => h.fotMhz) },
+                { label: "foF2", color: "var(--chart-3)", values: result.hours.map((h) => h.ionosphere.foF2) },
+              ]}
+              level={{ value: result.request.frequencyMhz, label: f }}
+            />
+          </ChartFrame>
+          <Compare result={result} hour={hour} onHour={onHour} />
+        </div>
+      </Section>
+
+      <Section
+        title="Modes"
+        description="What each mode is taken to need, and where the figure comes from. Change the figure for your own mode in the form."
+      >
+        <Rows className="border-y border-border">
+          {result.modes.map((item, index) => (
+            <Fact key={item.id} term={item.label} note={item.source}>
+              {item.requiredSnrDb === null
+                ? "No figure assumed"
+                : `${item.requiredSnrDb} dB in ${item.referenceBandwidthHz} Hz, which is ${item.requiredSnrDbHz} dB in 1 Hz. At ${utcLabel(hour)} UTC: ${percent(at.modeReliability[index] ?? null)} of days`}
+            </Fact>
+          ))}
+        </Rows>
+      </Section>
+
+      <Section title="Where these figures come from">
+        <Rows className="border-y border-border">
+          <Fact term="Engine" note={`Licence of the program: ${result.engine.licence}. Checksum ${result.engine.sha256.slice(0, 16)}…`}>
+            {result.engine.model}, run by {result.engine.implementation}
+          </Fact>
+          <Fact term="Data">{result.datasets.map((dataset) => `${dataset.id} ${dataset.version}`).join("; ")}</Fact>
+          <Fact term="Antennas" note={result.antennas.rx}>
+            {result.antennas.tx}
+          </Fact>
+          <Fact term="This answer" note={`Key ${result.key}`}>
+            {result.cached ? "Found already worked out" : "Worked out just now"},{" "}
+            {new Date(result.computedAt).toISOString().slice(0, 16).replace("T", " ")} UTC
+          </Fact>
+        </Rows>
+        <Listing result={result} />
+        <h3 className="mt-6 text-body font-semibold text-ink">Before relying on it</h3>
+        <ul className="mt-2 max-w-[75ch] list-disc space-y-1.5 pl-5 text-small text-ink-muted">
+          {result.limits.map((limit) => (
+            <li key={limit}>{limit}</li>
+          ))}
+        </ul>
+      </Section>
+    </div>
+  );
+}

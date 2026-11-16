@@ -76,7 +76,11 @@ export function engineProblem(error: unknown): never {
 export function normalise(request: PredictionRequest): PredictionRequest {
   const grid = (value: number, step: number) => Math.round(value / step) * step;
   const fix = (value: number, places: number) => Number(value.toFixed(places));
-  const site = (s: PredictionRequest["tx"]) => ({ name: s.name.trim().slice(0, 60), lat: fix(grid(s.lat, 0.01), 2), lon: fix(grid(s.lon, 0.01), 2) });
+  const site = (s: PredictionRequest["tx"]) => ({
+    name: s.name.trim().slice(0, 60),
+    lat: fix(grid(s.lat, 0.01), 2),
+    lon: fix(grid(s.lon, 0.01), 2),
+  });
   return {
     ...request,
     tx: site(request.tx),
@@ -116,7 +120,10 @@ export function createPropagationService(ctx: AppContext, host: EngineHost): Pro
   // ── Kept answers ──────────────────────────────────────────────────────────
 
   function keyOf(kind: string, body: unknown): string {
-    return createHash("sha256").update(JSON.stringify({ v: RESULT_VERSION, kind, body })).digest("hex").slice(0, 40);
+    return createHash("sha256")
+      .update(JSON.stringify({ v: RESULT_VERSION, kind, body }))
+      .digest("hex")
+      .slice(0, 40);
   }
 
   function kept<T>(key: string): T | undefined {
@@ -129,11 +136,21 @@ export function createPropagationService(ctx: AppContext, host: EngineHost): Pro
   function keep(key: string, kind: "point" | "compare", engine: EngineDescription, request: unknown, result: unknown): void {
     const now = Date.now();
     db.insert(propagationResults)
-      .values({ key, kind, engine: `${engine.id} ${engine.sha256.slice(0, 12)}`, request: request as Record<string, unknown>, result: result as Record<string, unknown>, createdAt: now, lastUsedAt: now })
+      .values({
+        key,
+        kind,
+        engine: `${engine.id} ${engine.sha256.slice(0, 12)}`,
+        request: request as Record<string, unknown>,
+        result: result as Record<string, unknown>,
+        createdAt: now,
+        lastUsedAt: now,
+      })
       .onConflictDoNothing()
       .run();
     // The least recently used go when there are too many.
-    db.run(sql`DELETE FROM propagation_results WHERE key NOT IN (SELECT key FROM propagation_results ORDER BY last_used_at DESC LIMIT ${MAX_KEPT_RESULTS})`);
+    db.run(
+      sql`DELETE FROM propagation_results WHERE key NOT IN (SELECT key FROM propagation_results ORDER BY last_used_at DESC LIMIT ${MAX_KEPT_RESULTS})`,
+    );
   }
 
   // ── The Sun ───────────────────────────────────────────────────────────────
@@ -169,7 +186,10 @@ export function createPropagationService(ctx: AppContext, host: EngineHost): Pro
     const { fof2Mhz, utcHour } = request.solar;
     const month = request.date.slice(0, 7);
     const at = async (ssn: number) => {
-      const hours = await host.ionosphere({ tx: request.tx, rx: request.rx, year: Number(month.slice(0, 4)), month: Number(month.slice(5, 7)), ssn }, signal);
+      const hours = await host.ionosphere(
+        { tx: request.tx, rx: request.rx, year: Number(month.slice(0, 4)), month: Number(month.slice(5, 7)), ssn },
+        signal,
+      );
       return hours[utcHour - 1]!.foF2;
     };
     let low = 0;
@@ -268,7 +288,10 @@ export function createPropagationService(ctx: AppContext, host: EngineHost): Pro
       const required = mode.requiredSnrDbHz ?? 0;
       const bandMhz = HF_BANDS.map((band) => band.mhz);
       const main = await host.circuit(circuitOf(request, basis.ssn, [request.frequencyMhz, ...bandMhz, ...SWEEP_MHZ], required), signal);
-      const ionosphere = await host.ionosphere({ tx: request.tx, rx: request.rx, year: Number(request.date.slice(0, 4)), month: Number(request.date.slice(5, 7)), ssn: basis.ssn }, signal);
+      const ionosphere = await host.ionosphere(
+        { tx: request.tx, rx: request.rx, year: Number(request.date.slice(0, 4)), month: Number(request.date.slice(5, 7)), ssn: basis.ssn },
+        signal,
+      );
 
       const modes = OPERATING_MODES.map((item) => (item.id === mode.id ? mode : modeLine(item.id)));
       const perMode: Array<number[] | null> = [];
@@ -301,7 +324,9 @@ export function createPropagationService(ctx: AppContext, host: EngineHost): Pro
           sweepReliability: cells.slice(sweepStart).map((cell) => cell.reliability),
           sweepSnrDbHz: sweep.map((cell) => cell.snrDbHz),
           modeReliability: perMode.map((list) => (list ? list[index]! : null)),
-          reply: reply ? { reliability: blank ? 0 : reply.hours[index]!.cells[0]!.reliability, snrDbHz: reply.hours[index]!.cells[0]!.snrDbHz } : null,
+          reply: reply
+            ? { reliability: blank ? 0 : reply.hours[index]!.cells[0]!.reliability, snrDbHz: reply.hours[index]!.cells[0]!.snrDbHz }
+            : null,
         };
       });
 
@@ -342,7 +367,8 @@ export function createPropagationService(ctx: AppContext, host: EngineHost): Pro
   async function compare(input: CompareRequest, signal?: AbortSignal): Promise<CompareResult> {
     const base = normalise(input.base);
     const mode = modeLine(base.mode, base.requiredSnrDb, base.referenceBandwidthHz);
-    if (mode.requiredSnrDbHz === null) throw badRequest("Give the signal-to-noise ratio your mode needs before comparing: without it there is no reliability to compare.");
+    if (mode.requiredSnrDbHz === null)
+      throw badRequest("Give the signal-to-noise ratio your mode needs before comparing: without it there is no reliability to compare.");
     try {
       const { description, datasets } = await host.describe();
       const { basis, tableSha } = await basisOf(base, signal);
@@ -351,11 +377,14 @@ export function createPropagationService(ctx: AppContext, host: EngineHost): Pro
       if (found) return { ...found, basis };
 
       const variants: Array<{ label: string; detail: string; request: PredictionRequest; ssn: number }> = [];
-      const add = (label: string, detail: string, patch: Partial<PredictionRequest>, ssn = basis.ssn) => variants.push({ label, detail, request: { ...base, ...patch }, ssn });
+      const add = (label: string, detail: string, patch: Partial<PredictionRequest>, ssn = basis.ssn) =>
+        variants.push({ label, detail, request: { ...base, ...patch }, ssn });
       switch (input.what) {
         case "seasons":
           for (let month = 1; month <= 12; month++) {
-            add(MONTHS[month - 1]!.slice(0, 3), `${MONTHS[month - 1]} at sunspot number ${basis.ssn}`, { date: `${base.date.slice(0, 4)}-${String(month).padStart(2, "0")}-15` });
+            add(MONTHS[month - 1]!.slice(0, 3), `${MONTHS[month - 1]} at sunspot number ${basis.ssn}`, {
+              date: `${base.date.slice(0, 4)}-${String(month).padStart(2, "0")}-15`,
+            });
           }
           break;
         case "sunspots":
@@ -380,7 +409,13 @@ export function createPropagationService(ctx: AppContext, host: EngineHost): Pro
       for (const variant of variants) {
         const run = await host.circuit(circuitOf(variant.request, variant.ssn, [base.frequencyMhz], mode.requiredSnrDbHz), signal);
         const iono = await host.ionosphere(
-          { tx: base.tx, rx: base.rx, year: Number(variant.request.date.slice(0, 4)), month: Number(variant.request.date.slice(5, 7)), ssn: variant.ssn },
+          {
+            tx: base.tx,
+            rx: base.rx,
+            year: Number(variant.request.date.slice(0, 4)),
+            month: Number(variant.request.date.slice(5, 7)),
+            ssn: variant.ssn,
+          },
           signal,
         );
         series.push({
@@ -410,7 +445,9 @@ export function createPropagationService(ctx: AppContext, host: EngineHost): Pro
       const mode = modeLine(request.mode, request.requiredSnrDb, request.referenceBandwidthHz);
       try {
         const { basis } = await basisOf(request);
-        return await host.listing(circuitOf(request, basis.ssn, [request.frequencyMhz, ...HF_BANDS.map((band) => band.mhz)], mode.requiredSnrDbHz ?? 0));
+        return await host.listing(
+          circuitOf(request, basis.ssn, [request.frequencyMhz, ...HF_BANDS.map((band) => band.mhz)], mode.requiredSnrDbHz ?? 0),
+        );
       } catch (error) {
         engineProblem(error);
       }

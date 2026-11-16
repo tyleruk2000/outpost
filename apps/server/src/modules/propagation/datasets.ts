@@ -13,7 +13,18 @@ import { AppError, conflict } from "../../core/errors.ts";
 import { PermanentJobError } from "../../core/jobs.ts";
 import type { DownloadRow, Installer } from "../downloads/types.ts";
 import { EngineUnavailable } from "./engine.ts";
-import { currentSolarTable, daysBetween, downloadedSolarTable, forgetDownloadedTable, includedManifest, includedSolarTable, keepDownloadedTable, MAX_TABLE_BYTES, parseSolarTable, SolarTableError } from "./solar.ts";
+import {
+  currentSolarTable,
+  daysBetween,
+  downloadedSolarTable,
+  forgetDownloadedTable,
+  includedManifest,
+  includedSolarTable,
+  keepDownloadedTable,
+  MAX_TABLE_BYTES,
+  parseSolarTable,
+  SolarTableError,
+} from "./solar.ts";
 import { datasetFingerprint, findDataset, loadDataset, type VoacapPaths } from "./voacap/files.ts";
 
 /** What marks a download or a collection as the solar table. */
@@ -32,7 +43,8 @@ const NOT_OFFERED: PropagationDatasets["notOffered"] = [
   },
   {
     title: "URSI-88 foF2 maps",
-    reason: "VOACAP can read these in place of the CCIR maps. The engine's project does not carry them because, unlike the CCIR maps, the ITU does not publish them itself. Outpost uses the CCIR maps only.",
+    reason:
+      "VOACAP can read these in place of the CCIR maps. The engine's project does not carry them because, unlike the CCIR maps, the ITU does not publish them itself. Outpost uses the CCIR maps only.",
   },
   {
     title: "Measured antenna patterns",
@@ -56,7 +68,7 @@ export function createDatasetsService(ctx: AppContext, paths: VoacapPaths): Data
       title: "Ionospheric and noise coefficients",
       kind: "required" as const,
       licence:
-        "Not under an open-source licence. Part is NTIA/ITS work (United States Government); the foF2, M(3000)F2 and noise maps are CCIR data that the ITU publishes for implementers \"free from any copyright assertions\". See engines/voacap/NOTICE.txt.",
+        'Not under an open-source licence. Part is NTIA/ITS work (United States Government); the foF2, M(3000)F2 and noise maps are CCIR data that the ITU publishes for implementers "free from any copyright assertions". See engines/voacap/NOTICE.txt.',
       downloadable: false,
       dataDate: null,
     };
@@ -67,9 +79,33 @@ export function createDatasetsService(ctx: AppContext, paths: VoacapPaths): Data
       const source = `${found.manifest.source.repository} at ${found.manifest.source.commit.slice(0, 12)}, ${found.manifest.source.path}`;
       try {
         const loaded = loadDataset(paths);
-        return { ...base, description, where, source, installed: true, version: found.manifest.version, bytes: loaded.bytes, files: loaded.files.length, verified: true, sha256: datasetFingerprint(found.dir), note: null };
+        return {
+          ...base,
+          description,
+          where,
+          source,
+          installed: true,
+          version: found.manifest.version,
+          bytes: loaded.bytes,
+          files: loaded.files.length,
+          verified: true,
+          sha256: datasetFingerprint(found.dir),
+          note: null,
+        };
       } catch (error) {
-        return { ...base, description, where, source, installed: true, version: found.manifest.version, bytes: null, files: null, verified: false, sha256: datasetFingerprint(found.dir), note: error instanceof Error ? error.message : String(error) };
+        return {
+          ...base,
+          description,
+          where,
+          source,
+          installed: true,
+          version: found.manifest.version,
+          bytes: null,
+          files: null,
+          verified: false,
+          sha256: datasetFingerprint(found.dir),
+          note: error instanceof Error ? error.message : String(error),
+        };
       }
     } catch (error) {
       return {
@@ -102,9 +138,14 @@ export function createDatasetsService(ctx: AppContext, paths: VoacapPaths): Data
     return {
       id: SOLAR,
       title: "Solar cycle prediction",
-      description: "NOAA's forecast of the smoothed sunspot number for each month. It gives a prediction its sunspot number unless you type one.",
+      description:
+        "NOAA's forecast of the smoothed sunspot number for each month. It gives a prediction its sunspot number unless you type one.",
       kind: "required",
-      where: !table ? "Not found" : table.origin === "included" ? "Included with Outpost" : "Downloaded; a working copy is kept in the data directory",
+      where: !table
+        ? "Not found"
+        : table.origin === "included"
+          ? "Included with Outpost"
+          : "Downloaded; a working copy is kept in the data directory",
       installed: table !== null,
       version: table ? `${table.dataDate}` : null,
       dataDate: table?.dataDate ?? null,
@@ -126,14 +167,17 @@ export function createDatasetsService(ctx: AppContext, paths: VoacapPaths): Data
   }
 
   const installer: Installer = async ({ download, filePath, sizeBytes, sha256 }) => {
-    if ((download.meta as Record<string, unknown> | null)?.dataset !== SOLAR) throw new PermanentJobError("Outpost does not know what kind of data this download is.");
+    if ((download.meta as Record<string, unknown> | null)?.dataset !== SOLAR)
+      throw new PermanentJobError("Outpost does not know what kind of data this download is.");
     if (sizeBytes > MAX_TABLE_BYTES) throw new PermanentJobError("The file is far larger than a solar cycle table, so it was not used.");
     const text = await fs.promises.readFile(filePath, "utf8");
     let months: ReturnType<typeof parseSolarTable>;
     try {
       months = parseSolarTable(text);
     } catch (error) {
-      throw new PermanentJobError(error instanceof SolarTableError ? `${error.message} It was not used; the table already installed still is.` : String(error));
+      throw new PermanentJobError(
+        error instanceof SolarTableError ? `${error.message} It was not used; the table already installed still is.` : String(error),
+      );
     }
     const dataDate = today();
     const collection = await ctx.services.collections.create({
@@ -176,7 +220,12 @@ export function createDatasetsService(ctx: AppContext, paths: VoacapPaths): Data
       return {
         datasets: [coefficients(), solar()],
         notOffered: NOT_OFFERED,
-        solar: { dataDate: table.dataDate, origin: table.origin, ageDays: Math.max(0, daysBetween(table.dataDate, today())), months: table.months },
+        solar: {
+          dataDate: table.dataDate,
+          origin: table.origin,
+          ageDays: Math.max(0, daysBetween(table.dataDate, today())),
+          months: table.months,
+        },
       };
     },
     async downloadSolar(locationId) {
@@ -195,7 +244,8 @@ export function createDatasetsService(ctx: AppContext, paths: VoacapPaths): Data
         ctx.events.publish({ type: "propagation.changed" });
         return download;
       } catch (error) {
-        if (error instanceof AppError && error.code === "conflict") throw conflict(`Today's solar cycle table is already downloaded or on its way. ${error.message}`);
+        if (error instanceof AppError && error.code === "conflict")
+          throw conflict(`Today's solar cycle table is already downloaded or on its way. ${error.message}`);
         throw error;
       }
     },

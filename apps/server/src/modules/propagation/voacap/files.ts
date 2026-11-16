@@ -31,7 +31,13 @@ export interface DatasetManifest {
   id: string;
   version: string;
   source: { repository: string; commit: string; path: string; committed: string };
-  groups: Array<{ id: string; title: string; description: string; bytes: number; files: Array<{ path: string; bytes: number; sha256: string }> }>;
+  groups: Array<{
+    id: string;
+    title: string;
+    description: string;
+    bytes: number;
+    files: Array<{ path: string; bytes: number; sha256: string }>;
+  }>;
 }
 
 export interface VoacapPaths {
@@ -78,10 +84,14 @@ export function loadEngineFile(paths: VoacapPaths): LoadedEngineFile {
   try {
     wasm = fs.readFileSync(file);
   } catch {
-    throw new EngineUnavailable(`The propagation engine is missing (${file}). The HF propagation engine was not installed with this copy of Outpost.`);
+    throw new EngineUnavailable(
+      `The propagation engine is missing (${file}). The HF propagation engine was not installed with this copy of Outpost.`,
+    );
   }
   if (sha256(wasm) !== manifest.wasm.sha256) {
-    throw new EngineUnavailable(`The propagation engine file is not the one this copy of Outpost was built with (${file}: its checksum does not match). Reinstall Outpost to put it back.`);
+    throw new EngineUnavailable(
+      `The propagation engine file is not the one this copy of Outpost was built with (${file}: its checksum does not match). Reinstall Outpost to put it back.`,
+    );
   }
   return { manifest, wasm };
 }
@@ -90,7 +100,11 @@ export function loadEngineFile(paths: VoacapPaths): LoadedEngineFile {
 export function findDataset(paths: VoacapPaths): { dir: string; manifest: DatasetManifest; included: boolean } {
   for (const [index, dir] of paths.dataDirs.entries()) {
     if (!fs.existsSync(path.join(dir, "dataset.json"))) continue;
-    return { dir, manifest: readJson<DatasetManifest>(path.join(dir, "dataset.json"), "The list of propagation data files"), included: index === paths.dataDirs.length - 1 };
+    return {
+      dir,
+      manifest: readJson<DatasetManifest>(path.join(dir, "dataset.json"), "The list of propagation data files"),
+      included: index === paths.dataDirs.length - 1,
+    };
   }
   throw new EngineUnavailable(
     `The ionospheric and noise coefficients the propagation engine needs are missing (looked in ${paths.dataDirs.join(" and ")}). Without them no prediction can be made.`,
@@ -113,16 +127,21 @@ export function loadDataset(paths: VoacapPaths): LoadedDataset {
   for (const group of manifest.groups) {
     for (const entry of group.files) {
       // The names come from a manifest, which may be a person's own copy: keep them inside the folder.
-      if (entry.path.split("/").some((part) => part === ".." || part === "")) throw new EngineUnavailable(`The list of propagation data files names a file outside its folder (${entry.path}).`);
+      if (entry.path.split("/").some((part) => part === ".." || part === ""))
+        throw new EngineUnavailable(`The list of propagation data files names a file outside its folder (${entry.path}).`);
       const file = path.join(dir, "itshfbc", entry.path);
       let content: Uint8Array;
       try {
         content = fs.readFileSync(file);
       } catch {
-        throw new EngineUnavailable(`A propagation data file is missing: ${entry.path} (${group.title.toLowerCase()}), expected at ${file}. Without it no prediction can be made.`);
+        throw new EngineUnavailable(
+          `A propagation data file is missing: ${entry.path} (${group.title.toLowerCase()}), expected at ${file}. Without it no prediction can be made.`,
+        );
       }
       if (sha256(content) !== entry.sha256) {
-        throw new EngineUnavailable(`A propagation data file is damaged: ${entry.path} (${group.title.toLowerCase()}) does not match its checksum. Predictions are refused rather than made from it; reinstall Outpost, or replace the file at ${file}.`);
+        throw new EngineUnavailable(
+          `A propagation data file is damaged: ${entry.path} (${group.title.toLowerCase()}) does not match its checksum. Predictions are refused rather than made from it; reinstall Outpost, or replace the file at ${file}.`,
+        );
       }
       files.push([entry.path, content]);
       bytes += content.length;

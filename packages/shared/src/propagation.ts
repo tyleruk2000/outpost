@@ -83,7 +83,7 @@ export const OPERATING_MODES: readonly OperatingMode[] = [
     requiredSnrDb: 45,
     referenceBandwidthHz: 1,
     meaning: "The planning figure VOACAP's guide gives for reasonable SSB reception, in a 1 Hz bandwidth.",
-    source: "Jari Perkiömäki OH6BG, \"Setting up input values for VOACAP\", voacap.com/2023/voacap-windows-input.html",
+    source: 'Jari Perkiömäki OH6BG, "Setting up input values for VOACAP", voacap.com/2023/voacap-windows-input.html',
   },
   {
     id: "cw",
@@ -91,7 +91,7 @@ export const OPERATING_MODES: readonly OperatingMode[] = [
     requiredSnrDb: 24,
     referenceBandwidthHz: 1,
     meaning: "The planning figure VOACAP's guide gives for reasonable CW reception, in a 1 Hz bandwidth (it also offers 27).",
-    source: "Jari Perkiömäki OH6BG, \"Setting up input values for VOACAP\", voacap.com/2023/voacap-windows-input.html",
+    source: 'Jari Perkiömäki OH6BG, "Setting up input values for VOACAP", voacap.com/2023/voacap-windows-input.html',
   },
   {
     id: "ft8",
@@ -100,7 +100,7 @@ export const OPERATING_MODES: readonly OperatingMode[] = [
     referenceBandwidthHz: 2500,
     meaning:
       "The signal-to-noise ratio at which half of FT8 transmissions decode on a simulated mid-latitude moderate HF channel with no prior information; on a channel with noise only it is −20.8 dB.",
-    source: "Franke, Somerville and Taylor, \"The FT4 and FT8 Communication Protocols\", QEX July/August 2020, Table 6",
+    source: 'Franke, Somerville and Taylor, "The FT4 and FT8 Communication Protocols", QEX July/August 2020, Table 6',
   },
   {
     id: "js8",
@@ -162,7 +162,8 @@ export const NOISE_ENVIRONMENTS: readonly NoiseSetting[] = [
   { id: "remote", label: "Remote, far from any building", dbwAt3Mhz: -164.1 },
 ];
 
-export const noiseSetting = (id: NoiseEnvironment): NoiseSetting => NOISE_ENVIRONMENTS.find((item) => item.id === id) ?? NOISE_ENVIRONMENTS[1]!;
+export const noiseSetting = (id: NoiseEnvironment): NoiseSetting =>
+  NOISE_ENVIRONMENTS.find((item) => item.id === id) ?? NOISE_ENVIRONMENTS[1]!;
 
 // ── Units ───────────────────────────────────────────────────────────────────
 
@@ -613,8 +614,17 @@ export const utcLabel = (hour: number): string => `${String(hour).padStart(2, "0
 export type CompareWhat = "seasons" | "sunspots" | "power" | "antennas" | "noise";
 
 export const COMPARISONS: ReadonlyArray<{ id: CompareWhat; label: string; reading: string }> = [
-  { id: "seasons", label: "Months of the year", reading: "The same path in each month, all at the sunspot number of the month asked about, so that only the season changes." },
-  { id: "sunspots", label: "Solar activity (foF2)", reading: "The same path at other sunspot numbers. More sunspots raise foF2, the highest frequency the ionosphere returns straight down." },
+  {
+    id: "seasons",
+    label: "Months of the year",
+    reading: "The same path in each month, all at the sunspot number of the month asked about, so that only the season changes.",
+  },
+  {
+    id: "sunspots",
+    label: "Solar activity (foF2)",
+    reading:
+      "The same path at other sunspot numbers. More sunspots raise foF2, the highest frequency the ionosphere returns straight down.",
+  },
   { id: "power", label: "Transmitter power", reading: "The same path at other powers." },
   { id: "antennas", label: "Transmitting antenna", reading: "The same path with each generic antenna at the transmitter." },
   { id: "noise", label: "Noise at the receiver", reading: "The same path with the receiver in each kind of place." },

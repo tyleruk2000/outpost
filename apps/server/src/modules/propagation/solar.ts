@@ -72,7 +72,8 @@ export function parseSolarTable(text: string): SolarMonth[] {
     if (typeof row !== "object" || row === null) throw new SolarTableError("The solar cycle table has a row that is not a month.");
     const record = row as Record<string, unknown>;
     const month = record["time-tag"];
-    if (typeof month !== "string" || !/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) throw new SolarTableError("The solar cycle table has a row with no month.");
+    if (typeof month !== "string" || !/^\d{4}-(0[1-9]|1[0-2])$/.test(month))
+      throw new SolarTableError("The solar cycle table has a row with no month.");
     const ssn = number(record.predicted_ssn, 0, 500);
     if (ssn === null) throw new SolarTableError(`The solar cycle table has no usable sunspot number for ${month}.`);
     if (seen.has(month)) throw new SolarTableError(`The solar cycle table lists ${month} twice.`);
@@ -94,7 +95,14 @@ export function includedSolarTable(): SolarTable {
   const bytes = fs.readFileSync(path.join(appRoot, "engines/solar", manifest.file));
   const sum = sha256(bytes);
   if (sum !== manifest.sha256) throw new SolarTableError("The solar cycle table that ships with Outpost does not match its checksum.");
-  return { months: parseSolarTable(bytes.toString("utf8")), dataDate: manifest.dataDate, origin: "included", sha256: sum, bytes: bytes.length, source: manifest.source };
+  return {
+    months: parseSolarTable(bytes.toString("utf8")),
+    dataDate: manifest.dataDate,
+    origin: "included",
+    sha256: sum,
+    bytes: bytes.length,
+    source: manifest.source,
+  };
 }
 
 /** Where the working copy of a downloaded table is kept. */
@@ -132,7 +140,15 @@ export function downloadedSolarTable(dataDir: string): (SolarTable & { collectio
   try {
     const bytes = fs.readFileSync(downloadedTablePath(dataDir));
     if (bytes.length > MAX_TABLE_BYTES) return null;
-    return { months: parseSolarTable(bytes.toString("utf8")), dataDate: info.dataDate, origin: "downloaded", sha256: sha256(bytes), bytes: bytes.length, source: info.source, collectionId: info.collectionId };
+    return {
+      months: parseSolarTable(bytes.toString("utf8")),
+      dataDate: info.dataDate,
+      origin: "downloaded",
+      sha256: sha256(bytes),
+      bytes: bytes.length,
+      source: info.source,
+      collectionId: info.collectionId,
+    };
   } catch {
     return null;
   }

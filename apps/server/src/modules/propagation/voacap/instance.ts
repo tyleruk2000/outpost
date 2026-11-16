@@ -5,8 +5,9 @@
  *
  * Runs in the propagation worker thread, never in the server's own.
  */
-import { type WasmMemory, wasm } from "./wasm-types.ts";
+
 import { createMemoryWasi, EngineExit, type MemoryWasi } from "./wasi.ts";
+import { type WasmMemory, wasm } from "./wasm-types.ts";
 
 /** Where the data files are put in the engine's view of the world. */
 export const ENGINE_ROOT = "/data";

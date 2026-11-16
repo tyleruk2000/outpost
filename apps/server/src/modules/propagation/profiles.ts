@@ -41,13 +41,18 @@ export function createProfilesService(ctx: AppContext): ProfilesService {
     createRadio(input) {
       const now = Date.now();
       const id = newId();
-      db.insert(radioProfiles).values({ id, ...input, createdAt: now, updatedAt: now }).run();
+      db.insert(radioProfiles)
+        .values({ id, ...input, createdAt: now, updatedAt: now })
+        .run();
       changed();
       return getRadio(id);
     },
     updateRadio(id, input) {
       getRadio(id);
-      db.update(radioProfiles).set({ ...input, updatedAt: Date.now() }).where(eq(radioProfiles.id, id)).run();
+      db.update(radioProfiles)
+        .set({ ...input, updatedAt: Date.now() })
+        .where(eq(radioProfiles.id, id))
+        .run();
       changed();
       return getRadio(id);
     },
@@ -60,13 +65,18 @@ export function createProfilesService(ctx: AppContext): ProfilesService {
     createAntenna(input) {
       const now = Date.now();
       const id = newId();
-      db.insert(antennaProfiles).values({ id, ...input, createdAt: now, updatedAt: now }).run();
+      db.insert(antennaProfiles)
+        .values({ id, ...input, createdAt: now, updatedAt: now })
+        .run();
       changed();
       return getAntenna(id);
     },
     updateAntenna(id, input) {
       getAntenna(id);
-      db.update(antennaProfiles).set({ ...input, updatedAt: Date.now() }).where(eq(antennaProfiles.id, id)).run();
+      db.update(antennaProfiles)
+        .set({ ...input, updatedAt: Date.now() })
+        .where(eq(antennaProfiles.id, id))
+        .run();
       changed();
       return getAntenna(id);
     },

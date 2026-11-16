@@ -7,7 +7,17 @@ import fs from "node:fs";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
 import path from "node:path";
-import { ANTENNA_PRESETS, type CompareResult, haversineMeters, HF_BANDS, initialBearingDeg, type PredictionRequest, type PredictionResult, type PropagationDatasets, steepPathGeometry } from "@outpost/shared";
+import {
+  ANTENNA_PRESETS,
+  type CompareResult,
+  HF_BANDS,
+  haversineMeters,
+  initialBearingDeg,
+  type PredictionRequest,
+  type PredictionResult,
+  type PropagationDatasets,
+  steepPathGeometry,
+} from "@outpost/shared";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { appRoot } from "../src/core/paths.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
@@ -40,7 +50,9 @@ beforeAll(async () => {
     response.end(served);
   });
   await new Promise<void>((resolve) => fixture.listen(0, "127.0.0.1", resolve));
-  app = await createTestApp({ OUTPOST_SOLAR_TABLE_URL: `http://127.0.0.1:${(fixture.address() as AddressInfo).port}/predicted-solar-cycle.json` });
+  app = await createTestApp({
+    OUTPOST_SOLAR_TABLE_URL: `http://127.0.0.1:${(fixture.address() as AddressInfo).port}/predicted-solar-cycle.json`,
+  });
 });
 
 afterAll(async () => {
@@ -48,7 +60,8 @@ afterAll(async () => {
   await new Promise((resolve) => fixture.close(resolve));
 });
 
-const predict = (patch: Partial<PredictionRequest> = {}) => app.api<PredictionResult>("POST", "/api/radio/propagation/predict", { ...acceptance, ...patch });
+const predict = (patch: Partial<PredictionRequest> = {}) =>
+  app.api<PredictionResult>("POST", "/api/radio/propagation/predict", { ...acceptance, ...patch });
 
 describe("the acceptance path", () => {
   it("is worked out by the engine, with where every figure came from", async () => {
@@ -107,7 +120,9 @@ describe("the acceptance path", () => {
 
   it("gives each mode its own answer", async () => {
     const { body } = await predict();
-    const byMode = Object.fromEntries(body.modes.map((mode, index) => [mode.id, { mode, reliability: body.hours[11]!.modeReliability[index] }]));
+    const byMode = Object.fromEntries(
+      body.modes.map((mode, index) => [mode.id, { mode, reliability: body.hours[11]!.modeReliability[index] }]),
+    );
     expect(byMode.ssb!.mode.requiredSnrDbHz).toBe(45);
     expect(byMode.cw!.mode.requiredSnrDbHz).toBe(24);
     expect(byMode.ft8!.mode.requiredSnrDbHz).toBe(15.2);
@@ -185,7 +200,9 @@ describe("where the sunspot number comes from", () => {
   it("says so when the table does not reach the month", async () => {
     const { status, body } = await predict({ date: "2035-06-01" });
     expect(status).toBe(400);
-    expect((body as unknown as { error: { message: string } }).error.message).toContain("has no sunspot number for June 2035: it runs from May 2026 to December 2030");
+    expect((body as unknown as { error: { message: string } }).error.message).toContain(
+      "has no sunspot number for June 2035: it runs from May 2026 to December 2030",
+    );
     expect((await predict({ date: "2035-06-01", solar: { source: "manual", ssn: 60 } })).status).toBe(200);
   });
 });
@@ -236,7 +253,10 @@ describe("answers already worked out", () => {
   });
 
   it("can be worked out as a background job", async () => {
-    const { body } = await app.api<{ job: { id: string; type: string } }>("POST", "/api/radio/propagation/predict?background=true", { ...acceptance, powerWatts: 9 });
+    const { body } = await app.api<{ job: { id: string; type: string } }>("POST", "/api/radio/propagation/predict?background=true", {
+      ...acceptance,
+      powerWatts: 9,
+    });
     expect(body.job.type).toBe("propagation.predict");
     await app.ctx.jobs.whenIdle();
     const job = app.ctx.jobs.get(body.job.id)!;
@@ -252,7 +272,20 @@ describe("the same path with one thing changed", () => {
   it("shows the seasons at one sunspot number", async () => {
     const { status, body } = await compare("seasons");
     expect(status).toBe(200);
-    expect(body.series.map((series) => series.label)).toEqual(["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]);
+    expect(body.series.map((series) => series.label)).toEqual([
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ]);
     expect(new Set(body.series.map((series) => series.ssn))).toEqual(new Set([83]));
     // Midday foF2 over England is higher in winter than in summer (the winter anomaly), in the engine's maps as in the textbooks.
     expect(body.series[11]!.foF2[11]!).toBeGreaterThan(body.series[5]!.foF2[11]!);
@@ -276,12 +309,23 @@ describe("the same path with one thing changed", () => {
 
 describe("equipment profiles", () => {
   it("keeps radios", async () => {
-    const radio = { name: "Xiegu G90", model: "G90", powerWatts: 20, minMhz: 1.8, maxMhz: 30, modes: ["ssb", "cw", "ft8"], receiver: "", notes: "Portable set" };
+    const radio = {
+      name: "Xiegu G90",
+      model: "G90",
+      powerWatts: 20,
+      minMhz: 1.8,
+      maxMhz: 30,
+      modes: ["ssb", "cw", "ft8"],
+      receiver: "",
+      notes: "Portable set",
+    };
     const made = await app.api("POST", "/api/radio/profiles/radios", radio);
     expect(made.status).toBe(200);
     const id = made.body.radio.id as string;
     expect((await app.api("PATCH", `/api/radio/profiles/radios/${id}`, { ...radio, powerWatts: 5 })).body.radio.powerWatts).toBe(5);
-    expect((await app.api("GET", "/api/radio/profiles")).body.radios).toMatchObject([{ id, name: "Xiegu G90", powerWatts: 5, modes: ["ssb", "cw", "ft8"], notes: "Portable set" }]);
+    expect((await app.api("GET", "/api/radio/profiles")).body.radios).toMatchObject([
+      { id, name: "Xiegu G90", powerWatts: 5, modes: ["ssb", "cw", "ft8"], notes: "Portable set" },
+    ]);
     expect((await app.api("POST", "/api/radio/profiles/radios", { ...radio, name: " " })).status).toBe(400);
     expect((await app.api("POST", "/api/radio/profiles/radios", { ...radio, minMhz: 30, maxMhz: 2 })).status).toBe(400);
     expect((await app.api("DELETE", `/api/radio/profiles/radios/${id}`)).status).toBe(200);
@@ -289,11 +333,27 @@ describe("equipment profiles", () => {
   });
 
   it("keeps antennas, and a prediction can be asked for with one", async () => {
-    const antenna = { name: "Garden dipole", ...dipole, heightM: 7, ground: "poor", feedlineLossDb: 1.2, minMhz: 7, maxMhz: 7.2, notes: "" };
+    const antenna = {
+      name: "Garden dipole",
+      ...dipole,
+      heightM: 7,
+      ground: "poor",
+      feedlineLossDb: 1.2,
+      minMhz: 7,
+      maxMhz: 7.2,
+      notes: "",
+    };
     const made = await app.api("POST", "/api/radio/profiles/antennas", antenna);
     expect(made.status).toBe(200);
     const stored = (await app.api("GET", "/api/radio/profiles")).body.antennas[0];
-    expect(stored).toMatchObject({ name: "Garden dipole", kind: "horizontal-dipole", heightM: 7, ground: "poor", feedlineLossDb: 1.2, broadsideDeg: null });
+    expect(stored).toMatchObject({
+      name: "Garden dipole",
+      kind: "horizontal-dipole",
+      heightM: 7,
+      ground: "poor",
+      feedlineLossDb: 1.2,
+      broadsideDeg: null,
+    });
     const { kind, heightM, ground, broadsideDeg, gainDb, feedlineLossDb } = stored;
     const { body } = await predict({ txAntenna: { kind, heightM, ground, broadsideDeg, gainDb, feedlineLossDb } });
     expect(body.antennas.tx).toContain("7 m above poor (dry, rocky, built-up) ground");
@@ -304,7 +364,11 @@ describe("equipment profiles", () => {
 
   it("keeps a prediction by name", async () => {
     const result = (await predict()).body;
-    const made = await app.api("POST", "/api/radio/propagation/saved", { name: "Home to Birmingham, 40 m", request: acceptance, key: result.key });
+    const made = await app.api("POST", "/api/radio/propagation/saved", {
+      name: "Home to Birmingham, 40 m",
+      request: acceptance,
+      key: result.key,
+    });
     expect(made.status).toBe(200);
     const list = (await app.api("GET", "/api/radio/propagation/saved")).body.saved;
     expect(list).toMatchObject([{ name: "Home to Birmingham, 40 m", key: result.key, request: { frequencyMhz: 7.1 } }]);
@@ -316,18 +380,34 @@ describe("the data it rests on", () => {
   it("is listed with versions, sizes, dates and checksums", async () => {
     const { body } = await app.api<PropagationDatasets>("GET", "/api/radio/propagation/datasets");
     const [coefficients, solar] = body.datasets;
-    expect(coefficients).toMatchObject({ id: "voacap-coefficients", installed: true, verified: true, files: 44, where: "Included with Outpost", downloadable: false });
+    expect(coefficients).toMatchObject({
+      id: "voacap-coefficients",
+      installed: true,
+      verified: true,
+      files: 44,
+      where: "Included with Outpost",
+      downloadable: false,
+    });
     expect(coefficients!.bytes).toBeGreaterThan(500_000);
     expect(coefficients!.sha256).toMatch(/^[0-9a-f]{64}$/);
     expect(coefficients!.licence).toContain("free from any copyright assertions");
-    expect(solar).toMatchObject({ id: "solar-cycle", installed: true, dataDate: "2026-11-16", bytes: 17508, downloadable: true, where: "Included with Outpost" });
+    expect(solar).toMatchObject({
+      id: "solar-cycle",
+      installed: true,
+      dataDate: "2026-11-16",
+      bytes: 17508,
+      downloadable: true,
+      where: "Included with Outpost",
+    });
     expect(body.solar.months).toHaveLength(56);
     expect(body.solar.months.find((month) => month.month === "2026-11")).toEqual({ month: "2026-11", ssn: 83.2, low: 61.3, high: 99.6 });
     expect(body.notOffered.map((item) => item.title).join(" ")).toContain("SILSO");
   });
 
   it("fetches a newer solar table when asked, checks it, and uses it", async () => {
-    const included = JSON.parse(fs.readFileSync(path.join(appRoot, "engines/solar/predicted-solar-cycle.json"), "utf8")) as Array<Record<string, unknown>>;
+    const included = JSON.parse(fs.readFileSync(path.join(appRoot, "engines/solar/predicted-solar-cycle.json"), "utf8")) as Array<
+      Record<string, unknown>
+    >;
     served = JSON.stringify(included.map((row) => (row["time-tag"] === "2026-11" ? { ...row, predicted_ssn: 120 } : row)));
     const before = hits;
     const started = await app.api("POST", "/api/radio/propagation/datasets/solar-cycle/download", {});
@@ -340,7 +420,10 @@ describe("the data it rests on", () => {
     expect(body.datasets[1]!.where).toContain("Downloaded");
     const collections = app.ctx.services.collections.list({ kind: "dataset" });
     expect(collections).toHaveLength(1);
-    expect(collections[0]).toMatchObject({ publisher: "NOAA Space Weather Prediction Center", license: "Public domain (US Government work)" });
+    expect(collections[0]).toMatchObject({
+      publisher: "NOAA Space Weather Prediction Center",
+      license: "Public domain (US Government work)",
+    });
     const result = (await predict()).body;
     expect(result.basis.ssn).toBe(120);
     expect(result.basis.kind).toBe("recent-solar");

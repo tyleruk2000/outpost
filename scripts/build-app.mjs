@@ -16,6 +16,8 @@
  *                               WebAssembly runtime that runs it, with their notices
  *     web/                      built web app, fonts and map assets included
  *     catalog/                  catalogue manifests
+ *     engines/                  the HF propagation engine (WebAssembly), its data and
+ *                               the solar cycle table, with their notices
  *
  * Usage: node scripts/build-app.mjs [--skip-web] [--out <dir>]
  */
@@ -187,6 +189,19 @@ if (modelFiles.every((file) => fs.existsSync(path.join(fetchedModels, embedModel
 
 // ── Everything else ────────────────────────────────────────────────────────
 copyDir(path.join(root, "catalog"), path.join(out, "catalog"));
+
+// HF propagation. The engine is WebAssembly that the propagation worker loads from a
+// file, with the coefficient files it reads and the solar cycle table, all committed
+// in engines/ (see scripts/build-hf-engine.mjs). The Rust sources of Outpost's bridge
+// and the engine's fetched source are not needed to run it and stay behind.
+const enginesOut = path.join(out, "engines");
+copyDir(path.join(root, "engines/voacap/engine"), path.join(enginesOut, "voacap/engine"));
+copyDir(path.join(root, "engines/voacap/data"), path.join(enginesOut, "voacap/data"));
+fs.copyFileSync(path.join(root, "engines/voacap/NOTICE.txt"), path.join(enginesOut, "voacap/NOTICE.txt"));
+copyDir(path.join(root, "engines/solar"), path.join(enginesOut, "solar"));
+if (!fs.existsSync(path.join(out, "server/workers/propagation.mjs"))) {
+  throw new Error("The propagation worker was not bundled (server/workers/propagation.mjs is missing).");
+}
 fs.copyFileSync(path.join(root, "LICENSE"), path.join(out, "LICENSE"));
 fs.writeFileSync(path.join(out, "VERSION"), `${version}\n`);
 
@@ -264,6 +279,7 @@ fs.writeFileSync(
     "Outpost itself is under the MIT licence in the file LICENSE beside this one.",
     "The OCR engine and its language data have their notices in server/ocr/.",
     "The search-by-meaning model and the runtime that runs it have theirs in server/embed/.",
+    "The HF propagation engine (VOACAP) and its data have theirs in engines/voacap/.",
     "Map fonts, icons and data, and the catalogue's content, are credited in the app and in docs/architecture.md.",
     "",
     ...sections,

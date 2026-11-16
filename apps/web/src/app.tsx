@@ -29,6 +29,8 @@ const ManagePage = lazy(() => import("./features/manage/manage-page"));
 const MergePage = lazy(() => import("./features/merge/merge-page"));
 const SettingsPage = lazy(() => import("./features/settings/settings-page"));
 const KeptPage = lazy(() => import("./features/kept/kept-page"));
+const RadioPage = lazy(() => import("./features/radio/radio-page"));
+const PropagationPage = lazy(() => import("./features/propagation/propagation-page"));
 
 function NotFound() {
   return (
@@ -94,6 +96,8 @@ export function App() {
           <Route path="storage/merge" element={<MergePage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="kept" element={<KeptPage />} />
+          <Route path="radio" element={<RadioPage />} />
+          <Route path="radio/propagation" element={<PropagationPage />} />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>

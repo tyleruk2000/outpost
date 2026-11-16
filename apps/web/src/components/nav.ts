@@ -9,6 +9,8 @@ import {
   type LucideIcon,
   Map as MapIcon,
   NotebookText,
+  RadioTower,
+  Waves,
   Search,
   Settings,
   Undo2,
@@ -33,6 +35,7 @@ export const knowledgeNav: NavItem[] = [
   { to: "/library", label: "Library", icon: BookOpen, key: "l" },
   { to: "/maps", label: "Maps", icon: MapIcon, key: "m" },
   { to: "/notes", label: "Notes", icon: NotebookText, key: "n" },
+  { to: "/radio", label: "Radio", icon: RadioTower, key: "r" },
 ];
 
 /** Where the library is looked after. */
@@ -56,4 +59,5 @@ export const tuckedAwayNav: Array<Omit<NavItem, "key">> = [
   { to: "/storage/merge", label: "Bring back from a drive", icon: Undo2 },
   { to: "/import", label: "Import files", icon: FolderInput },
   { to: "/search/how-it-works", label: "How search works", icon: Waypoints },
+  { to: "/radio/propagation", label: "HF propagation", icon: Waves },
 ];

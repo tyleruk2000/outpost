@@ -9,10 +9,10 @@
  */
 import { parentPort, workerData } from "node:worker_threads";
 import { EngineUnavailable, type PropagationEngine } from "./engine.ts";
-import { EngineError } from "./voacap/instance.ts";
+import type { WorkerReply, WorkerRequest } from "./host.ts";
 import { createVoacapEngine } from "./voacap/engine.ts";
 import type { VoacapPaths } from "./voacap/files.ts";
-import type { WorkerReply, WorkerRequest } from "./host.ts";
+import { EngineError } from "./voacap/instance.ts";
 
 const paths = workerData as VoacapPaths;
 let engine: PropagationEngine | undefined;

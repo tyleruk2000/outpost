@@ -91,7 +91,9 @@ function checked(body: unknown): PredictionRequest {
   const request = prediction.parse(body) as PredictionRequest;
   const line = modeLine(request.mode, request.requiredSnrDb, request.referenceBandwidthHz);
   if (line.requiredSnrDbHz !== null && (line.requiredSnrDbHz < -30 || line.requiredSnrDbHz > 99.9)) {
-    throw badRequest(`That requirement is ${line.requiredSnrDbHz} dB in a 1 Hz bandwidth, which is outside what the engine takes (-30 to 99.9). Check the signal-to-noise ratio and its bandwidth.`);
+    throw badRequest(
+      `That requirement is ${line.requiredSnrDbHz} dB in a 1 Hz bandwidth, which is outside what the engine takes (-30 to 99.9). Check the signal-to-noise ratio and its bandwidth.`,
+    );
   }
   return request;
 }
@@ -99,7 +101,15 @@ function checked(body: unknown): PredictionRequest {
 const range = { minMhz: z.number().min(0.1).max(1000), maxMhz: z.number().min(0.1).max(1000) };
 const ordered = (value: { minMhz: number; maxMhz: number }) => value.minMhz <= value.maxMhz;
 const radioProfile = z
-  .object({ name: z.string().trim().min(1, "Give the radio a name.").max(80), model: z.string().max(120).default(""), powerWatts: power, ...range, modes: z.array(modes).max(5), receiver: z.string().max(2000).default(""), notes: z.string().max(4000).default("") })
+  .object({
+    name: z.string().trim().min(1, "Give the radio a name.").max(80),
+    model: z.string().max(120).default(""),
+    powerWatts: power,
+    ...range,
+    modes: z.array(modes).max(5),
+    receiver: z.string().max(2000).default(""),
+    notes: z.string().max(4000).default(""),
+  })
   .refine(ordered, { message: "The lowest frequency is above the highest.", path: ["minMhz"] });
 const antennaProfile = z
   .object({ name: z.string().trim().min(1, "Give the antenna a name.").max(80), ...range, notes: z.string().max(4000).default("") })
@@ -148,10 +158,22 @@ export async function registerPropagation(app: FastifyInstance, ctx: AppContext)
       status = { ...description, ready: true, problem: null, selected: true };
     } catch (error) {
       // Say what is known about the engine even when it cannot run.
-      let known: { name: string; model: string; implementation: string; licence: string; sha256: string } = { name: "VOACAP", model: "", implementation: "", licence: "", sha256: "" };
+      let known: { name: string; model: string; implementation: string; licence: string; sha256: string } = {
+        name: "VOACAP",
+        model: "",
+        implementation: "",
+        licence: "",
+        sha256: "",
+      };
       try {
         const manifest = readEngineManifest(paths);
-        known = { name: manifest.name, model: manifest.model, implementation: `${manifest.implementation.name} ${manifest.implementation.version}`, licence: manifest.implementation.licence, sha256: manifest.wasm.sha256 };
+        known = {
+          name: manifest.name,
+          model: manifest.model,
+          implementation: `${manifest.implementation.name} ${manifest.implementation.version}`,
+          licence: manifest.implementation.licence,
+          sha256: manifest.wasm.sha256,
+        };
       } catch {
         // Not even its description is there.
       }
@@ -162,7 +184,10 @@ export async function registerPropagation(app: FastifyInstance, ctx: AppContext)
         minMhz: HF_MIN_MHZ,
         maxMhz: HF_MAX_MHZ,
         ready: false,
-        problem: error instanceof EngineUnavailable ? error.message : `The propagation engine could not be started: ${error instanceof Error ? error.message : String(error)}`,
+        problem:
+          error instanceof EngineUnavailable
+            ? error.message
+            : `The propagation engine could not be started: ${error instanceof Error ? error.message : String(error)}`,
         selected: true,
       };
     }
@@ -182,7 +207,15 @@ export async function registerPropagation(app: FastifyInstance, ctx: AppContext)
     const { background } = z.object({ background: z.enum(["true", "false"]).default("false") }).parse(request.query);
     const body = checked(request.body);
     if (background === "true") {
-      return { job: toJobDto(ctx.jobs.enqueue("propagation.predict", { kind: "point", request: body as unknown as Record<string, unknown> }, { title: `HF propagation: ${body.tx.name || "transmitter"} to ${body.rx.name || "receiver"}` })) };
+      return {
+        job: toJobDto(
+          ctx.jobs.enqueue(
+            "propagation.predict",
+            { kind: "point", request: body as unknown as Record<string, unknown> },
+            { title: `HF propagation: ${body.tx.name || "transmitter"} to ${body.rx.name || "receiver"}` },
+          ),
+        ),
+      };
     }
     return service.predict(body);
   });
@@ -216,15 +249,34 @@ export async function registerPropagation(app: FastifyInstance, ctx: AppContext)
   });
 
   app.get("/api/radio/propagation/saved", async () => ({
-    saved: ctx.db.select().from(propagationSaved).where(eq(propagationSaved.kind, "point")).orderBy(desc(propagationSaved.updatedAt)).all().map(saved),
+    saved: ctx.db
+      .select()
+      .from(propagationSaved)
+      .where(eq(propagationSaved.kind, "point"))
+      .orderBy(desc(propagationSaved.updatedAt))
+      .all()
+      .map(saved),
   }));
 
   app.post("/api/radio/propagation/saved", async (request) => {
-    const body = z.object({ name: z.string().trim().min(1, "Give the prediction a name.").max(120), key: z.string().max(64).optional() }).parse(request.body);
+    const body = z
+      .object({ name: z.string().trim().min(1, "Give the prediction a name.").max(120), key: z.string().max(64).optional() })
+      .parse(request.body);
     const kept = checked((request.body as { request?: unknown }).request);
     const now = Date.now();
     const id = newId();
-    ctx.db.insert(propagationSaved).values({ id, name: body.name, kind: "point", request: kept as unknown as Record<string, unknown>, resultKey: body.key ?? null, createdAt: now, updatedAt: now }).run();
+    ctx.db
+      .insert(propagationSaved)
+      .values({
+        id,
+        name: body.name,
+        kind: "point",
+        request: kept as unknown as Record<string, unknown>,
+        resultKey: body.key ?? null,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .run();
     ctx.events.publish({ type: "propagation.changed" });
     return { saved: saved(ctx.db.select().from(propagationSaved).where(eq(propagationSaved.id, id)).get()!) };
   });
@@ -241,13 +293,17 @@ export async function registerPropagation(app: FastifyInstance, ctx: AppContext)
 
   app.get("/api/radio/profiles", async () => ({ radios: profiles.radios(), antennas: profiles.antennas() }));
   app.post("/api/radio/profiles/radios", async (request) => ({ radio: profiles.createRadio(radioProfile.parse(request.body)) }));
-  app.patch<IdParams>("/api/radio/profiles/radios/:id", async (request) => ({ radio: profiles.updateRadio(request.params.id, radioProfile.parse(request.body)) }));
+  app.patch<IdParams>("/api/radio/profiles/radios/:id", async (request) => ({
+    radio: profiles.updateRadio(request.params.id, radioProfile.parse(request.body)),
+  }));
   app.delete<IdParams>("/api/radio/profiles/radios/:id", async (request) => {
     profiles.removeRadio(request.params.id);
     return { ok: true };
   });
   app.post("/api/radio/profiles/antennas", async (request) => ({ antenna: profiles.createAntenna(antennaProfile.parse(request.body)) }));
-  app.patch<IdParams>("/api/radio/profiles/antennas/:id", async (request) => ({ antenna: profiles.updateAntenna(request.params.id, antennaProfile.parse(request.body)) }));
+  app.patch<IdParams>("/api/radio/profiles/antennas/:id", async (request) => ({
+    antenna: profiles.updateAntenna(request.params.id, antennaProfile.parse(request.body)),
+  }));
   app.delete<IdParams>("/api/radio/profiles/antennas/:id", async (request) => {
     profiles.removeAntenna(request.params.id);
     return { ok: true };

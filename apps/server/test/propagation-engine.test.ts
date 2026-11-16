@@ -43,7 +43,12 @@ describe("reference circuits", () => {
     const listing = engine.listing(acceptance).split("\n");
     // Hour 12's block: the row after "12.0 ... FREQ" is MODE, then TANGLE; SNR is nine rows on, REL eleven.
     const start = listing.findIndex((line) => /^\s+12\.0 .* FREQ$/.test(line));
-    const row = (label: string) => listing.slice(start, start + 23).find((line) => line.trimEnd().endsWith(label))!.trim().split(/\s+/);
+    const row = (label: string) =>
+      listing
+        .slice(start, start + 23)
+        .find((line) => line.trimEnd().endsWith(label))!
+        .trim()
+        .split(/\s+/);
     const noon = result.hours[11]!;
     expect(noon.utc).toBe(12);
     expect(Number(listing[start]!.trim().split(/\s+/)[1])).toBeCloseTo(noon.mufMhz, 1);
@@ -186,7 +191,19 @@ describe("the engine's files", () => {
     const instance = new VoacapInstance(wasm, loadDataset(paths).files);
     // A file outside the data it was handed does not exist for it, even one that is really on the computer.
     const ask = (file: string) => () =>
-      instance.run({ task: "systems", tx: { lat: 51.5, lon: 0 }, rx: { lat: 52.5, lon: -2 }, month: 6, year: 2026, ssn: 50, powerWatts: 5, freqs: [7.1], requiredSnrDb: 24, noiseDbw: 145, txAntennas: [{ file }] });
+      instance.run({
+        task: "systems",
+        tx: { lat: 51.5, lon: 0 },
+        rx: { lat: 52.5, lon: -2 },
+        month: 6,
+        year: 2026,
+        ssn: 50,
+        powerWatts: 5,
+        freqs: [7.1],
+        requiredSnrDb: 24,
+        noiseDbw: 145,
+        txAntennas: [{ file }],
+      });
     expect(fs.existsSync("/etc/hosts")).toBe(true);
     expect(ask("../../../etc/hosts")).toThrow(/No such file/);
     expect(ask("/etc/hosts")).toThrow(/No such file/);
