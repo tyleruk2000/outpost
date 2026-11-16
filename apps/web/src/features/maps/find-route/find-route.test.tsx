@@ -11,10 +11,13 @@ import type {
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { toast } from "sonner";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { type FindRouteMap, FindRoutePanel } from "./find-route-panel";
 import { anyFoundRoute, FoundRouteFacts, foundRouteSource } from "./source-credit";
 import { continuity, continuityNote, isStale, PREVIEW_TRACK_ID, previewTrack, resultSummary, searchBlocker, whereFrom } from "./words";
+
+vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { error: vi.fn(), success: vi.fn() }) }));
 
 const credit: TrackSource = {
   provider: "openstreetmap",
@@ -384,6 +387,39 @@ describe("finding a route", () => {
     // Leaving the view takes the preview off the map.
     unmount();
     expect(onPreview).toHaveBeenLastCalledWith(null);
+  });
+
+  it("fetches the route again when the server no longer holds its preview, and says only that", async () => {
+    const track = { id: "t1", name: "Kestrel Ridge Path" } as TrackDto;
+    let previews = 0;
+    serve({
+      search: () => found([result()]),
+      preview: () => {
+        previews += 1;
+        return preview({ token: `token-${previews}` });
+      },
+      // The server may have let the preview go for more than one reason: time, room for newer ones, or a restart.
+      add: (body) => {
+        if ((body as { token: string }).token === "token-1") {
+          throw fail(409, "conflict", "That preview is no longer held. Choose the route again to fetch it afresh, then add it.");
+        }
+        return { track, elevation: "none" };
+      },
+    });
+    const { onAdded } = show();
+    await userEvent.type(await screen.findByLabelText("Name of the route"), "kestrel{Enter}");
+    await userEvent.click(await screen.findByRole("button", { name: /Kestrel Ridge Path/ }));
+    await userEvent.click(await screen.findByRole("button", { name: "Add to my routes" }));
+    await waitFor(() =>
+      expect(toast).toHaveBeenCalledWith(
+        "Outpost was no longer holding that preview, so the route is being fetched again. Add it once it is back.",
+      ),
+    );
+    await waitFor(() => expect(previews).toBe(2));
+    expect(onAdded).not.toHaveBeenCalled();
+    await userEvent.click(await screen.findByRole("button", { name: "Add to my routes" }));
+    await waitFor(() => expect(onAdded).toHaveBeenCalledWith(track));
+    expect(sent.at(-1)!.body).toEqual({ token: "token-2", includeAlternatives: false });
   });
 
   it("lists the routes in the view when no name is given, and will not search a view that is too wide", async () => {

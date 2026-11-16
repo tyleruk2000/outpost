@@ -33,7 +33,7 @@ import {
   relationQuery,
   searchQuery,
 } from "../src/modules/maps/route-finder/overpass.ts";
-import { createRouteFinder, MAX_ROUTE_POINTS } from "../src/modules/maps/route-finder/service.ts";
+import { createRouteFinder, MAX_HELD_POINTS, MAX_ROUTE_POINTS } from "../src/modules/maps/route-finder/service.ts";
 import { loadRouteSources, type RouteSource, routeSourcesSchema } from "../src/modules/maps/route-finder/sources.ts";
 import { buildArchive, type FixtureTile } from "./fixtures/maps/archive.ts";
 import {
@@ -47,6 +47,7 @@ import {
   F,
   G,
   H,
+  hugeAnswer,
   type OverpassStandIn,
   PATH_NAME,
   ROUTE_ID,
@@ -758,6 +759,20 @@ describe("finding a route and adding it", () => {
     expect((await app.api("GET", "/api/maps/tracks")).body.tracks).toEqual([]);
   });
 
+  it("still holds the first preview after a person has stepped through the sections of a long trail", async () => {
+    // The screen offers "Add" for every preview it fetched in the last quarter of an hour, so the server holds them all.
+    const tokens: string[] = [];
+    for (let section = 0; section < 6; section += 1) {
+      const preview = await app.api<RoutePreview>("POST", "/api/maps/route-search/preview", { ref: { type: "relation", id: ROUTE_ID } });
+      tokens.push(preview.body.token);
+    }
+    expect(new Set(tokens).size).toBe(6);
+    const added = await app.api<RouteSaveResponse>("POST", "/api/maps/route-search/add", { token: tokens[0] });
+    expect(added.status).toBe(200);
+    // The source was asked for each preview and not again for the add.
+    expect(standIn.requests).toHaveLength(6);
+  });
+
   it("writes the credit into the GPX export in the fields GPX has for it", async () => {
     const preview = await app.api<RoutePreview>("POST", "/api/maps/route-search/preview", { ref: { type: "relation", id: ROUTE_ID } });
     const added = await app.api<RouteSaveResponse>("POST", "/api/maps/route-search/add", {
@@ -1338,6 +1353,40 @@ describe("heights for a found route", () => {
     const stored = await app.api<{ track: TrackWithGeometryDto }>("GET", `/api/maps/tracks/${id}`);
     return (stored.body.track.geojson as unknown as TrackCollection).features.filter((feature) => feature.geometry.type === "LineString");
   };
+
+  it("holds previews up to three of the largest routes' worth of points, and lets the oldest go first", async () => {
+    expect(MAX_HELD_POINTS).toBe(3 * MAX_ROUTE_POINTS);
+    const made: TrackCollection[] = [];
+    const finder = createRouteFinder({
+      loaded: { sources: [source], defaultId: "stand-in", problems: [] },
+      // The largest route there can be: 200,000 points.
+      overpass: { ask: async () => hugeAnswer(MAX_ROUTE_POINTS) },
+      annotations: {
+        createFromCollection(input: { collection: TrackCollection; elevation: string }) {
+          made.push(input.collection);
+          return { track: { id: `t${made.length}` }, elevation: input.elevation };
+        },
+        listTracks: () => made.map((_collection, index) => ({ id: `t${index + 1}` })),
+      } as unknown as AnnotationsService,
+      elevation: { sample: async (positions) => positions.map(() => null), sampleWithCells: notAsked },
+      userAgent: "test",
+    });
+    const tokens: string[] = [];
+    for (let count = 0; count < 4; count += 1) {
+      const preview = await finder.preview({ ref: { type: "relation", id: 9500 } });
+      expect(preview.pointCount).toBe(MAX_ROUTE_POINTS);
+      tokens.push(preview.token);
+    }
+    // Four do not fit: the first was let go, and what is said about it is true whatever the reason.
+    await expect(finder.add({ token: tokens[0]! })).rejects.toThrow(
+      "That preview is no longer held. Choose the route again to fetch it afresh, then add it.",
+    );
+    // The other three are held. Once one is added its points are in the route, and it no longer takes up room.
+    expect((await finder.add({ token: tokens[1]! })).track.id).toBe("t1");
+    tokens.push((await finder.preview({ ref: { type: "relation", id: 9500 } })).token);
+    expect((await finder.add({ token: tokens[2]! })).track.id).toBe("t2");
+    expect((await finder.add({ token: tokens[1]! })).track.id).toBe("t1");
+  });
 
   it("makes one route when the same preview is added again while the first is still reading heights", async () => {
     const app = await createTestApp();

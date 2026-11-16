@@ -75,9 +75,19 @@ export const MAX_ROUTE_BYTES = 24 * 1024 * 1024;
 export const MAX_SECTIONS = 100;
 /** Ways with the same name whose ends are this near belong to one path; farther apart, they are two paths. */
 const PATH_CLUSTER_METERS = 300;
-/** Previews held so that "Add" need not ask the source again, and for how long. */
-const MAX_HELD_PREVIEWS = 3;
+/**
+ * Previews are held so that "Add" need not ask the source again, for this long. The
+ * screen offers "Add" for every preview it fetched in that time (stepping through the
+ * sections of a long trail and back again), so all of them are held, up to a bound on
+ * memory: a held point takes about 73 bytes (measured on Node 24, 16 November 2026: a
+ * route of 190,001 points held 13.9 MB), so the largest route allowed is some 15 MB
+ * and the most that is ever held, three of those, some 44 MB. Sections of a trail are
+ * a few thousand points each. The oldest are let go first when there is no more room.
+ */
 const PREVIEW_HOLD_MS = 15 * 60_000;
+export const MAX_HELD_POINTS = 3 * MAX_ROUTE_POINTS;
+/** More than a person can step through in the time, whatever their size: a route lists at most 100 sections. */
+const MAX_HELD_PREVIEWS = 200;
 /** Heights are read at about this spacing on a long route, so it never touches thousands of terrain tiles. */
 const HEIGHT_SAMPLES = 20_000;
 
@@ -233,6 +243,8 @@ interface HeldPreview {
   lines: Point[][];
   alternatives: Point[][];
   credit: TrackSource;
+  /** How many points it holds: what it counts for against `MAX_HELD_POINTS`. */
+  points: number;
   /**
    * Set when "Add" is first asked for with this preview's token, before anything is
    * waited for. A second request with the same token (a double click, a retry while a
@@ -328,7 +340,14 @@ export function createRouteFinder(deps: RouteFinderDeps): RouteFinderService {
 
   function hold(preview: HeldPreview): string {
     for (const [token, item] of held) if (item.expiresAt <= now()) held.delete(token);
-    while (held.size >= MAX_HELD_PREVIEWS) held.delete(held.keys().next().value!);
+    let points = preview.points;
+    for (const item of held.values()) points += item.points;
+    // Oldest first, until there is room for this one.
+    for (const [token, item] of held) {
+      if (held.size < MAX_HELD_PREVIEWS && points <= MAX_HELD_POINTS) break;
+      held.delete(token);
+      points -= item.points;
+    }
     const token = randomUUID();
     held.set(token, preview);
     return token;
@@ -520,7 +539,9 @@ export function createRouteFinder(deps: RouteFinderDeps): RouteFinderService {
       const credit = buildTrackSource({ ref, name, wayIds, server: source.host, dataAsOf: answer.dataAsOf, fetchedAt });
       const facts = describeLines(main);
       const expiresAt = now() + PREVIEW_HOLD_MS;
-      const token = main.length > 0 ? hold({ expiresAt, name, lines: main, alternatives: side, credit }) : "";
+      const count = (lines: Point[][]) => lines.reduce((total, line) => total + line.length, 0);
+      const token =
+        main.length > 0 ? hold({ expiresAt, name, lines: main, alternatives: side, credit, points: count(main) + count(side) }) : "";
       return {
         token,
         expiresAt,
@@ -530,7 +551,7 @@ export function createRouteFinder(deps: RouteFinderDeps): RouteFinderService {
         kind,
         lines: main as RouteLine[],
         lengthMeters: Math.round(lengthOf(main)),
-        pointCount: main.reduce((total, line) => total + line.length, 0),
+        pointCount: count(main),
         wayCount: wayIds.length,
         bounds:
           boundsOf(main) ?? union(sections.flatMap((section) => (section.bounds ? [section.bounds] : []))) ?? ([0, 0, 0, 0] satisfies Bbox),
@@ -565,6 +586,7 @@ export function createRouteFinder(deps: RouteFinderDeps): RouteFinderService {
         // The points are in the route now. The token is kept, so that asking again answers with that route.
         preview.lines = [];
         preview.alternatives = [];
+        preview.points = 0;
         return saved;
       } catch (error) {
         // Nothing was made, so the preview can be added again.

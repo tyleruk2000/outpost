@@ -143,7 +143,9 @@ export function FindRoutePanel({
   /**
    * Previews fetched while this view is open, by result. Going back from a section to
    * the route it belongs to shows what was fetched before instead of asking again.
-   * They live only as long as the view does.
+   * They live only as long as the view does. The server holds every one of them for
+   * the same quarter of an hour, up to a bound on memory far above what a person steps
+   * through; if it has let one go all the same, "Add" fetches it again and says so.
    */
   const [fetched, setFetched] = useState<Record<string, RoutePreview>>({});
 
@@ -314,11 +316,14 @@ export function FindRoutePanel({
                           { token: shown.token, includeAlternatives: withAlternatives },
                           {
                             onError: (error) => {
-                              // The server let go of the preview (it holds one for a quarter of an hour): fetch it again.
+                              // The server no longer holds the preview: a quarter of an hour passed, it made room for
+                              // newer ones, it was restarted, or the route made from it has been removed. Fetch it again.
                               if (!(error instanceof ApiError) || error.code !== "conflict") return;
                               setFetched(({ [opened.key]: _expired, ...rest }) => rest);
                               open(opened, trail.slice(0, -1), { afresh: true });
-                              toast("That preview had been held too long, so the route is being fetched again. Add it once it is back.");
+                              toast(
+                                "Outpost was no longer holding that preview, so the route is being fetched again. Add it once it is back.",
+                              );
                             },
                             onSuccess: ({ track, elevation }) => {
                               toast.success(

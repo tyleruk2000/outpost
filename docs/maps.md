@@ -1160,7 +1160,16 @@ with the route on it, the credit must be on it.**
   wrong, out of date, closed or dangerous. Check it against the ground and a proper map.
 - It does not keep results, refresh a route you added, or fetch anything in the
   background. A preview is held in the server's memory for up to fifteen minutes so
-  that adding it does not ask the source again, and is then forgotten.
+  that adding it does not ask the source again, and is then forgotten. Every preview
+  fetched in that time is held, so stepping through the sections of a long trail and
+  going back to add the first asks nobody again. The bound is on memory, shared by
+  everyone using this Outpost: 600,000 points in all (three of the largest routes
+  allowed) and 200 previews. A held point takes about 73 bytes (a route of 190,001
+  points held 13.9 MB, measured on Node 24 on 16 November 2026), so the largest route
+  allowed costs some 15 MB while it is held and the bound is some 44 MB; a section of
+  a few thousand points costs a few hundred kilobytes. When there is no more room the
+  oldest preview is let go, and adding it fetches it again and says that Outpost was
+  no longer holding it.
 - It does not add the same preview twice. If "Add" arrives twice for one preview (a
   double click, or a retry while a long route's heights are being read), one route is
   made and both are answered with it.
