@@ -79,6 +79,10 @@ describe("how repeaters are described", () => {
   it("says how to get in, and where to transmit", () => {
     expect(accessParts(repeater())).toEqual(["CTCSS 94.8 Hz"]);
     expect(accessParts(repeater({ ctcssHz: null, dcsCode: "023", dmrColourCode: 3 }))).toEqual(["DCS 023", "colour code 3"]);
+    expect(accessParts(repeater({ ctcssHz: null, accessNote: "1750 Hz tone burst." }))).toEqual(["1750 Hz tone burst"]);
+    expect(
+      accessParts(repeater({ accessNote: "Tone squelch: the same tone is sent back, and the keeper asks for a call first." })),
+    ).toEqual(["CTCSS 94.8 Hz", "more on its page"]);
     expect(shiftWords(repeater())).toBe("shift -0.6 MHz");
     expect(shiftWords(repeater({ inputHz: 145_662_500 }))).toBe("simplex");
     expect(shiftWords(repeater({ inputHz: null }))).toBe("input not listed");

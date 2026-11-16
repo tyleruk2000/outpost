@@ -5,7 +5,7 @@ shading and contour lines, printing part of the map as a one-page PDF, where the
 data comes from and how it must be credited, using your own map source, markers and
 moving them, sunrise and sunset for a place, drawing routes, recording a track as you
 walk, importing GPX tracks, coordinate formats, Maidenhead locators, checking line of
-sight between two points, and offline place search.
+sight between two points, repeaters on the map, and offline place search.
 
 Outpost draws a vector map in the browser from tiles it serves itself. Once a region
 is installed, viewing it needs no internet connection.
@@ -1053,7 +1053,9 @@ line between them, and by how much does it clear?
 1. Press **Line of sight between two points**, then click or tap the map at each end:
    point A, then point B. Pressing a saved place puts the point exactly on it. Without
    a pointer, move the map and use **Use the centre of the map**. Or measure a path
-   with the ruler and choose **Check line of sight**.
+   with the ruler and choose **Check line of sight**. Or open a repeater on the map and
+   choose **Check line of sight**: it becomes point B, and you choose point A (see
+   [Repeaters on the map](#repeaters-on-the-map)).
 2. Give the height of the antenna at each end, in metres above the ground it stands
    on, and choose a band (10 m to 13 cm, and PMR446) or type a frequency. The heights
    and the band are remembered in the browser.
@@ -1155,6 +1157,46 @@ from the first point) and `terrain` (the width of the cells that were read). The
 the curve, the Fresnel zone and the verdict are worked out from that by `analyseSight`
 in the same file; the web app runs it in the browser.
 
+## Repeaters on the map
+
+The repeaters you hold ([radio.md](radio.md#repeaters)) can be drawn over the map.
+Outpost holds none until you import a list or enter some; it downloads none.
+
+- **Repeaters**, among the radio buttons on the map, switches them on and off, and the
+  choice is remembered in the browser. With none to draw, a card says so and leads to
+  the Repeaters screen.
+- **Few enough to tell apart, each is a small dot** in the map's ink colour, under
+  saved places and routes. From about zoom 7.5 a dot has its callsign, and from 10.5
+  the frequency to listen on beneath it. Names are placed only where they fit and give
+  way to the map's own, so a town keeps its name. A repeater its list says is not
+  operational is drawn hollow.
+- **More than 400 in view are counted by patch.** The server counts them on a fixed
+  grid, about eight patches to the height of the view, and each patch is a disc with
+  its number at the middle of its repeaters. A patch holding one repeater is that
+  repeater. Pressing a disc goes in closer. A worldwide list of 50,000 entries is about
+  200 discs and 10 kB at the scale of the whole world.
+- **Pressing a repeater opens a card**: what to listen on and the shift, access and
+  modes, the town and locator, distance and bearing from where you are (or from the
+  middle of the map when the device's position is not being followed), what its list
+  said of its status, where the entry came from and the date of its data, and a
+  sentence when its position is approximate. **Details** opens its own screen. A saved
+  place or a route under the press is opened instead, and nothing opens while another
+  tool is in hand.
+- **Check line of sight** on the card takes up the [line-of-sight](#line-of-sight)
+  tool with the repeater as point B. Point A is where you are if the map is following
+  the device, and otherwise the next place you press. The repeater's end is named in
+  the panel with what its position is worth ("listed position", or "listed only to
+  about 5.56 km"), because the check is exact about a place the list may not be. The
+  listed aerial height is on the repeater's own screen, to type in as the height at B;
+  it is not filled in for you.
+
+Links of the form `/maps?repeater=<id>` open the map on a repeater, and with `&sight=1`
+(and optionally `&from=latitude,longitude`) go straight to the check; the repeater's
+own screen and the search across everything use them.
+
+Not drawn: repeaters with no position (a CHIRP file has none), repeaters on a printed
+map, and coverage of any kind.
+
 ## Offline place search
 
 Place search works from GeoNames data that you download once.
@@ -1208,6 +1250,9 @@ its limits and what browsers do with the kept data are in
 - **Radio propagation or coverage.** The line-of-sight check is geometry over terrain
   (see [Line of sight](#line-of-sight)). It does not predict signal strength, and it
   does not draw the area a station covers.
+- **Repeater coverage, and repeaters you have not put in.** The map draws the repeaters
+  you hold as points (see [Repeaters on the map](#repeaters-on-the-map)); it downloads
+  no list and draws no coverage.
 - **Satellite or aerial imagery.**
 - **The time zone of a place, moonrise and moonset.** Sun times are shown on the
   device's clock or in UTC (see [Time zones](#time-zones)).

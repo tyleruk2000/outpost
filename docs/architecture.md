@@ -324,7 +324,7 @@ e2e/                 Playwright tests against the packaged app
 ```
 
 Modules, in registration order: search, semantic, retrieval, answers, documents, notes, imports,
-collections, books, kiwix, downloads, links, webpages, catalog, maps, backup, portable, merge, manage, https. A module may use the
+collections, books, kiwix, downloads, links, webpages, catalog, maps, repeaters, backup, portable, merge, manage, https. A module may use the
 services of those before it. [development/server-modules.md](development/server-modules.md)
 is the contract a module works to.
 
@@ -343,6 +343,7 @@ These are deliberate, and stated so nobody has to discover them.
 | ZIM archives | Need kiwix-serve (the Compose sidecar, or a binary for non-Docker installs). | Reading the format in pure JavaScript would mean reimplementing libzim. |
 | Maps | Vector basemap only from the Protomaps schema; hill shading and contour lines need a separate terrain download; contour lines are only as fine as that terrain; routing is not offered; the line-of-sight check is geometry over that terrain, not a prediction of radio coverage. | Contour lines are traced in the browser from the installed terrain (see maps.md), so there is no contour tileset to download or host. |
 | Recording a track | Only while the screen is on and Outpost is the page in front: no browser gives a web page positions otherwise. Not tried on a real phone outdoors. | A limit of browsers, not of Outpost; lifting it needs an app that is not a web page. What is done within it is in maps.md. |
+| Repeaters | None ship with Outpost and none are downloaded: a list is a CSV file the person obtained, or entries typed in. Listed positions are often approximate and are marked so. Fifty thousand entries were measured on a laptop, not on a Raspberry Pi. The CHIRP export has not been loaded into CHIRP or a radio. Not kept on a phone out of reach, not on a printed map, not brought back from a portable drive. | No publisher whose terms were read allows an application to fetch its list and keep a copy (see sources.md). Written permission from one would let a list be offered through the download manager. See radio.md. |
 | Printed maps | One page (A4, A3, US Letter), the map as a picture at 300 or 150 dots to the inch. The scale is exact along the middle of the sheet only. Not put through a printer, and not tried on an iPhone or in Safari. | The map is drawn in Web Mercator, on screen and on paper alike, and a manual pass with a printer and a phone has not been made. See maps.md. |
 | Map source | Depends on the Protomaps build host staying available for new downloads. | The source address is a setting; any PMTiles archive with the same schema works, including one you host. |
 | Notes collaboration | Last writer wins, with conflict detection; no live co-editing. | The editor could take a CRDT later; the storage format would need to change. |

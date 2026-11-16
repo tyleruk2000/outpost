@@ -334,6 +334,28 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   is as much as a browser allows, and says so before it starts. Not tried on a real
   phone outdoors.
 
+#### Repeaters
+
+- A repeater database of your own, kept in Outpost's database and used with no
+  connection. Outpost ships with no repeaters and downloads none: no publisher whose
+  terms were read gives leave for that (docs/sources.md). A list is imported from a
+  CSV file you obtained (three layouts of the RSGB ETCC's lists, CHIRP's, Outpost's own
+  export, or any CSV with headings), shown before it is kept, and entries can be added
+  and changed by hand.
+- Bringing a list up to date from a newer file leaves alone the entries you changed or
+  removed unless you say otherwise, having been shown how many there are.
+- A list filtered by band, mode and distance from a saved place, the middle of the
+  map, where you are or a typed locator, with distance and bearing; repeaters on the
+  map, counted by patch when there are too many to tell apart; a repeater handed to the
+  line-of-sight check as one end; repeaters found by callsign, town or frequency in the
+  search across everything.
+- Export of the filtered set as CHIRP CSV, with a note to check it before
+  transmitting, and as Outpost's own CSV, which reads back without loss. The CHIRP file
+  has not been loaded into CHIRP or a radio.
+- Every screen says where an entry came from and the date of its data, marks a list by
+  its age, says that a status is what the list said then, and marks a position the
+  list wrote roughly as approximate.
+
 #### On a phone, out of reach of the server
 
 - The web app keeps itself in the browser with a service worker, so it opens when the

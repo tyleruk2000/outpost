@@ -14,12 +14,14 @@ import { formatDate } from "@/lib/utils";
 
 type Access = Pick<RepeaterDto, "ctcssHz" | "dcsCode" | "dmrColourCode" | "talkgroups" | "accessNote">;
 
-/** "CTCSS 94.8 Hz", "DCS 023", "colour code 3": what has to be set to get in, or nothing when the list gives none. */
+/** "CTCSS 94.8 Hz", "DCS 023", "colour code 3", "1750 Hz tone burst": what is needed to get in, or nothing when the list gives none. */
 export function accessParts(repeater: Access): string[] {
   return [
     repeater.ctcssHz !== null ? `CTCSS ${formatTone(repeater.ctcssHz)}` : "",
     repeater.dcsCode !== null ? `DCS ${repeater.dcsCode}` : "",
     repeater.dmrColourCode !== null ? `colour code ${repeater.dmrColourCode}` : "",
+    // A short note (a tone burst) is said outright; a long one is on the repeater's own screen.
+    repeater.accessNote ? (repeater.accessNote.length <= 40 ? repeater.accessNote.replace(/\.$/, "") : "more on its page") : "",
   ].filter(Boolean);
 }
 
