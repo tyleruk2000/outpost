@@ -20,6 +20,9 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 - Live updates to the browser over one server-sent-events stream.
 - A web app (React, Vite, Tailwind) with light and dark themes, a keyboard-driven
   command palette, and a layout that works from phone width up.
+- Times of day on the 24-hour or the 12-hour clock ("14:32" or "2:32 pm"), chosen under
+  Settings → Appearance → Clock and kept in the browser. It follows the device until
+  someone chooses, and applies to every time the app writes; UTC is always 24-hour.
 - Database migrations applied automatically at start.
 - The packaged app and the Docker image include `THIRD-PARTY-LICENSES.txt`, the licences
   of the projects bundled into them.
@@ -317,6 +320,15 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   times here") and where you are, for any date, worked out on the device. Times are on
   the device's clock or in UTC; the far north and south are said in words; checked
   against US Naval Observatory times.
+- A **Sun** tab in the map's panel, beside Places, Routes and Offline maps: sun times
+  for the centre of the map, with nothing saved, searched for or pressed and held. On a
+  phone its name is on the sheet whenever the map is on screen. Over plain HTTP it says
+  why the times where you are cannot be given, and links to Settings → HTTPS on your
+  network.
+- The Sun line of a saved place sits straight under the place's name, so it is on
+  screen on a phone as soon as the place is opened; opening it raises the sheet.
+- The menu of a point pressed and held with a finger stays open when the finger is
+  lifted, wherever on the map it was pressed.
 - A card for where you are while the map follows the device: its position to copy or
   save, and how closely the device claims to know it.
 - Maidenhead locators: a grid over the map (fields, squares, subsquares and extended

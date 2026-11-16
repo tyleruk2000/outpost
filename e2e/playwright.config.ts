@@ -112,6 +112,9 @@ export default defineConfig({
     // every test would first copy the app again. It is switched on only where it is the thing under test
     // (kept.mobile.spec.ts), which brings a server and a guard of its own.
     serviceWorkers: "block",
+    // Times of day are written as the device writes them (apps/web/src/lib/clock.ts). The tests run as a
+    // device that uses the 24-hour clock; a test of the 12-hour one asks for another locale itself.
+    locale: "en-GB",
   },
   projects: [
     { name: "desktop", use: { ...devices["Desktop Chrome"], viewport: { width: 1360, height: 860 } }, testIgnore: /mobile\.spec\.ts/ },
