@@ -249,6 +249,150 @@ the metadata ([issue 71](https://github.com/Element84/earth-search/issues/71), o
 16 November 2026, with no reply from the maintainers). Outpost uses Collection 1, whose
 values were checked against its metadata on a scene over Keswick.
 
+### Aerial photographs
+
+Read on 16 November 2026, from each publisher's own pages and, where a page could not
+be read, from its files and catalogues; where a fact comes only from search results it
+says so. What was built is described in [maps.md](maps.md#aerial-photographs). The test
+for each: an open licence that allows keeping a copy; no account, key or payment; and a
+form Outpost can read a small area of without downloading a large file
+(Cloud-Optimised GeoTIFF, or a modestly sized GeoTIFF, read by range request).
+
+| Source | Licence | Detail | Form | Verdict |
+| --- | --- | --- | --- | --- |
+| England: Environment Agency vertical aerial photography | Open Government Licence | 10 to 50 cm, project by project since 2006, patchy | ECW only, in 5 km zip files per survey year | **Cannot be built**: ECW needs a closed decoder; no open form is offered |
+| Scotland: Scottish Remote Sensing Portal | Open Government Licence v3 | (LiDAR only) | (LiDAR only) | **Nothing to build**: it holds no aerial photographs |
+| Wales: Welsh Government and Natural Resources Wales | APGB public sector licence, or internal use only | | | **Cannot**: not open |
+| Northern Ireland: DAERA coastal orthophotography (OpenDataNI) | Open Government Licence (search results) | 10 cm colour infra-red, a 200 m strip of the coast, 2021 | ArcGIS image service | **Not built**: a viewing service, not files; the coast only; not colour |
+| Great Britain: APGB | Licensed to the public sector | 12.5 to 50 cm | | **Out**: not open |
+| New Zealand: LINZ | CC BY 4.0, credited to each survey's licensor | 5 to 30 cm by survey | COG, WebP, NZTM, public S3 bucket | **Built** |
+| United States: USDA NAIP via Microsoft's Planetary Computer | Public domain | 30 cm, 60 cm, 1 m | COG, Deflate, NAD83 / UTM, Azure blob with an anonymous token | **Built** |
+| United States: NAIP on AWS | Public domain | | COG, but requester-pays | **Cannot**: requester-pays bills an AWS account |
+| Switzerland: swisstopo SWISSIMAGE 10 cm | Free geodata, use and distribution allowed, source must be named | 10 cm (25 cm over the Alps), 3-year cycle | COG, JPEG (YCbCr) 2017 to 2025, Deflate 2026; LV95 | **Could be built; not built**: needs a JPEG decoder and the Swiss projection |
+| Netherlands: Beeldmateriaal Nederland | CC BY 4.0 | 8 cm (and 25 cm) | 1 km tiled GeoTIFF, JPEG (YCbCr), no overviews, RD New | **Could be built; not built**: JPEG decoder, Dutch projection; no reduced copies, so a coarse zoom reads the full photograph |
+| France: IGN BD ORTHO | Licence Ouverte 2.0 | 20 cm | JPEG 2000 per département, in archives | **Cannot**: no small-area access in an open form Outpost reads |
+| Spain: PNOA | CC BY 4.0 | 25 cm (15 cm in places) | COG through the CNIG download centre | **Not verified**: whether files can be had without registration was not confirmed |
+| Finland: NLS orthophotos | CC BY 4.0 | 50 cm | TIFF with world file; interfaces need an API key | **Cannot without a key** |
+| Estonia: Land and Spatial Development Board | Open data licence | 10 to 40 cm | GeoTIFF, ECW | **Not verified**: whether COG, the projection and any key were not confirmed |
+| Norway: Norge i bilder | Licensed products | | WMTS | **Cannot**: copying needs the rights holders' permission |
+| Denmark: Dataforsyningen orthophotos | "Free data" | | Services need a free account and token (search results) | **Cannot without an account** |
+
+**England, in the Environment Agency's words.** Its record on the Defra Data Services
+Platform ([environment.data.gov.uk](https://environment.data.gov.uk/dataset/dae203a8-ba24-4c54-bab0-866b9faadb58),
+the same text on [data.gov.uk](https://www.data.gov.uk/dataset/4921f8a1-d47e-458b-873b-2a489b1c8165/vertical-aerial-photography)):
+"Images of the ground are captured at resolutions between 10cm and 50cm, and
+ortho-rectified using simultaneous LIDAR and GPS to a high spatial accuracy." "The
+Environment Agency has been capturing vertical aerial photography data regularly since
+2006 on a project by project basis each ranging in coverage from a few square
+kilometers to hundreds of square kilometers." "The data is available as a raster dataset
+in ECW (enhanced compressed wavelet) format as either a true colour (RGB), near
+infra-red (NIR) or a 4-band (RGBN) raster." "Data is available in 5km download zip files
+for each year of survey. Within each zip file are ECW files aligned to the Ordinance
+Survey grid." The record's data format: "Proprietary format | ER Mapper (ECW)". Its
+licence: "Open Government Licence", with the attribution "© Environment Agency
+copyright and/or database right 2022. All rights reserved." Its dates run from
+15 December 2005 to 1 August 2024. The only download offered is the Survey Data
+download page, a zip of ECW files per 5 km square and year; the record's WMS and WFS are
+of the index of surveys, not of the photographs. So the licence would allow an offline
+copy, and the obstacle is the form alone: ECW is read by Hexagon's ECW SDK, which is
+closed and not under a licence Outpost may use, and a small area cannot be had without
+the whole 5 km zip. What would change it: the Agency publishing the same photographs as
+GeoTIFF or COG. A person can convert the ECW
+files themselves with desktop software that includes the SDK, but Outpost
+does not yet import a GeoTIFF of one's own as imagery.
+
+**Scotland.** The [Scottish Remote Sensing Portal](https://remotesensingdata.gov.scot/about):
+"The portal currently contains Scottish Public Sector LiDAR data." and "All data is made
+available under the Open Government Licence v3". No aerial photographs.
+
+**Wales.** From search results of DataMapWales and Natural Resources Wales, not read on
+the pages themselves: "APGB dates flown (Wales)" is under the "APGB - Aerial Photography
+and Height Data Supply (APHDS) Public Sector End User Licence"; NRW's aerial imagery
+record says "the licencing conditions mean that NRW can only use this data for internal
+use". No open orthophoto download was found.
+
+**Northern Ireland.** OpenDataNI's pages refused automated reading (403); from search
+results only: the 2021 NI 3D Coastal Survey's colour infra-red orthophotography at 10 cm,
+covering the coastline about 200 m inland, offered as an ArcGIS service, under the Open
+Government Licence. Not built: a map service is for viewing, and it is the coast only.
+
+**New Zealand.** The [AWS Open Data registry](https://registry.opendata.aws/nz-imagery/):
+"Licensed for re-use under "CC-BY-4.0"."; LINZ "does not own the copyright for all of the
+imagery … licensors are listed in each survey's STAC Collection"; the suggested credit is
+"Licensed by (insert the licensor) for re-use under CC-BY-4.0."; access "No AWS account
+required"; "Cloud Optimised GeoTIFFs … using lossless WEBP compression for the main image
+and lossy WEBP compression for the overviews." The bucket's own
+[catalog.json](https://nz-imagery.s3.ap-southeast-2.amazonaws.com/catalog.json): "This
+public S3 bucket has been made available to enable bulk access and cloud-based data
+processing." Each survey's description gives its licensor (for example "Environment
+Canterbury", "Christchurch City Council"), extent, dates flown and ground sample
+distance; Outpost credits the licensor of the survey used, as the registry asks. Files
+were read anonymously over HTTPS with range requests (206).
+
+**United States.** The [Planetary Computer's NAIP collection](https://planetarycomputer.microsoft.com/api/stac/v1/collections/naip):
+"provides U.S.-wide, high-resolution aerial imagery, with four spectral bands (R, G, B,
+IR)", "Data are captured at least once every three years for each state." and "This
+dataset represents NAIP data from 2010-present, in cloud-optimized GeoTIFF format."; its
+providers name the USDA Farm Service Agency as "producer" and "licensor". The licence
+in USDA's own words, as written into every file (TIFF ImageDescription): "Imagery has
+been placed in the public domain and may be used and reproduced without permission or
+fee. Please credit 'NAIP imagery provided by USDA Farm Service Agency' on any use."
+USDA's NAIP page did not answer on the day (it timed out twice), so that wording was not
+read there. The Planetary Computer's documentation on tokens (from search results; its
+pages are drawn by JavaScript and could not be read directly): "Anyone can get a token
+from our Data Authentication API - you don't have to be a registered Planetary Computer
+user to get an access token." Outpost asks `planetarycomputer.microsoft.com/api/sas/v1/token/naip`
+for one when it first needs it, adds it to each file request, keeps it in memory until
+five minutes before it lapses, and never stores it. A file request without it also
+worked on the day, but the documentation says to use one. The
+[AWS registry](https://registry.opendata.aws/naip/) lists its NAIP buckets as "Requester
+Pays", so they are not used. No rate limit was published that could be read; Outpost
+sends at most four file requests at once and backs off on 429 and 503.
+
+**Switzerland.** [swisstopo's terms](https://www.swisstopo.admin.ch/en/terms-of-use-free-geodata-and-geoservices):
+"The free geodata and geoservices of swisstopo may be used, distributed and made
+accessible." "Furthermore, they may be enriched and processed and also used
+commercially." "A reference to the source is mandatory." The
+[product page](https://www.swisstopo.admin.ch/en/orthoimage-swissimage-10): for 2026
+"Format: Cloud Optimized Geotiff (COG), RGBN (4 x 8 bit), DEFLATE compression", for
+2017 to 2025 "Cloud Optimized Geotiff (COG), RGB (3 x 8 bit), JPEG95 compression";
+"Coordinate systems: CH1903+ / LV95 (EPSG:2056)". Files at `data.geo.admin.ch`, found
+through its STAC API, readable by range request with no key. The 2026 files would be
+read today, but they cover only the part flown that year; the rest needs JPEG, and every
+file needs the Swiss oblique Mercator on the Bessel ellipsoid with a datum shift. Not
+built in the time.
+
+**The Netherlands.** [Beeldmateriaal Nederland's dataroom](https://beeldmateriaal.nl/dataroom):
+"De downloads worden aangeboden in een 1×1km index … U kunt de luchtfoto downloaden in
+GeoTIFF-formaat." "De beelden worden beschikbaar gesteld met een CC BY 4.0 licentie."
+"De data is beschikbaar op basis van self-service." The 8 cm tiles (about 40 MB each)
+are JPEG in YCbCr with no reduced copies, in RD New (EPSG 28992), at
+`fsn1.your-objectstorage.com`, range-readable with no key. PDOK's map tile service of the
+same photographs is for viewing; no statement allowing it to be downloaded in bulk was
+found, so it is not used.
+
+**France, Spain, Finland, Estonia, Norway, Denmark.** IGN's
+[BD ORTHO](https://www.data.gouv.fr/datasets/bd-ortho-r) is "Licence Ouverte / Open
+Licence version 2.0", "à 20 cm de résolution", downloaded per département as JPEG 2000
+from `data.geopf.fr`. Spain's PNOA record in the
+[CODSI catalogue](https://www.idee.es/csw-codsi-idee/srv/api/records/spaignTrueOrto2025)
+gives "Cloud Optimized GeoTIFF, COG", the credit "PNOA 2025 CC-BY 4.0 scne.es" and
+"Descarga gratuita a través del centro de descargas del CNIG"; whether that centre's files
+can be had without registration was not confirmed. Finland's
+[NLS](https://www.maanmittauslaitos.fi/en/maps-and-spatial-data/datasets-and-interfaces/product-descriptions/orthophotos):
+"Attribution 4.0 International (CC BY 4.0)", "Pixel size 0.5 m", "Distribution format
+Tiff (tfw)"; its [interfaces](https://www.maanmittauslaitos.fi/en/node/11149): "The open
+interface works using an API key." Estonia's
+[geoportal](https://geoportaal.maaruum.ee/eng/Spatial-Data/Orthophotos-p309.html):
+"GeoTIFF, ECW", 10 to 40 cm, open data licence; form and access not confirmed. Norway's
+[Kartverket](https://www.kartverket.no/api-og-data/vilkar-for-bruk): "Alle flybilete på
+norgeskart.no og norgeibilder.no er lisensierte produkt." and "Det må imidlertid
+innhentast særskild løyve frå rettshavarane dersom dataa skal kopierast eller brukast på
+annan måte." Denmark's
+[Klimadatastyrelsen](https://www.klimadatastyrelsen.dk/kortlaegning/flyfotos-og-laserscanning):
+"Både kortprodukter og ortofotos udstilles via Datafordeleren og Dataforsyningen som frie
+data."; the need for an account and token comes from search results.
+
 ### Routes
 
 Added on 2026-11-16 with "Find a route" on the Maps screen ([maps.md](maps.md#finding-a-known-route)).

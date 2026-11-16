@@ -2099,6 +2099,11 @@ and need no account.
 | Kept on disk | 15.5 MB (2 km), measured; about 350 MB (500 m), estimated | Under 1 MB for 100 km² |
 | Cloud | None: it is a cloud-free composite of a month | Whatever there was that day; you choose the day |
 
+Where a government publishes its aerial photographs openly in a form Outpost reads,
+a third kind is offered for an area beside the satellite's days: see
+[Aerial photographs](#aerial-photographs). So far that is New Zealand and the lower 48
+United States; England's are not offered, for the reason given there.
+
 Several can be installed: the world and as many areas as you like. **The most detailed
 one that covers the screen is drawn on top**; outside an area, or beyond the edge of a
 scene, the coarser one beneath shows through, enlarged if need be, and where there is
@@ -2232,6 +2237,99 @@ Both are made from NASA's GeoTIFFs because they can be read a row at a time with
 compression Node already has, so the picture never has to be held in memory whole.
 NASA's JPEG files are eight to thirteen times smaller to fetch, but reading them a
 little at a time needs a JPEG decoder Outpost does not have.
+
+### Aerial photographs
+
+A national aerial photograph is taken from an aeroplane, not a satellite: 5 cm to 1 m a
+pixel where Sentinel-2 is 10 m, so single houses, cars, paths and garden walls can be
+made out. It is offered when **Find pictures** is pressed for an area a source covers,
+listed before the satellite's days as "Aerial photograph, 7.5 cm" with the survey's
+name and the season it was flown, and goes through the same confirmation.
+
+| | New Zealand | United States (lower 48) |
+| --- | --- | --- |
+| Publisher | Toitū Te Whenua Land Information New Zealand (LINZ), for the councils and agencies that commissioned each survey | USDA Farm Service Agency's National Agriculture Imagery Program (NAIP) |
+| Detail | 5 cm to 30 cm by survey (towns finer than farmland) | 30 cm, 60 cm or 1 m by state and year |
+| Age | Surveys of the last ten years are offered; each region is flown every few years | Each state at least every three years; 2010 onwards |
+| Terms | CC BY 4.0, credited to the survey's licensor: "Licensed by Environment Canterbury for re-use under CC-BY-4.0" | Public domain; "NAIP imagery provided by USDA Farm Service Agency" |
+| Fetched from | `nz-imagery.s3.ap-southeast-2.amazonaws.com` (public, not requester-pays) | `naipeuwest.blob.core.windows.net`, found through `planetarycomputer.microsoft.com`, with a token anyone can have without an account |
+| Form | Cloud-Optimised GeoTIFF, RGB with transparency, lossless WebP for the photograph and lossy WebP for its reduced copies, NZTM 2000 | Cloud-Optimised GeoTIFF (BigTIFF), red, green, blue and near infra-red, Deflate, NAD83 / UTM |
+
+**Finding a survey.** New Zealand has no search service, but LINZ publishes a static
+catalogue of every survey in the bucket. Outpost reads it (about 270 kB), keeps the
+colour surveys of urban or rural photographs of the last ten years in the regions the
+area touches (the regions' outlines are fixed in code, from every survey's extent on
+16 November 2026), and reads only the last 12 kB of each survey's description, where
+its extent, dates and licensor are; then each candidate's capture area, to say how much
+of the area it covers. A search over Christchurch on 16 November 2026 took 11 seconds
+and read about 1 MB. The files of a survey are sheets of LINZ's grid (the Topo50 map
+sheets, cut into 240 by 360 m tiles at scale 1:500 or 2.4 by 3.6 km at 1:5,000), named
+from that grid: Outpost works out which sheets the area touches and asks for the start
+of each. A sheet the survey never flew answers 403 and is left out. The United States
+has a search service (Microsoft's Planetary Computer, the STAC API it runs for NAIP):
+one search, grouped into one choice per state and year.
+
+**What is done to the photograph.** The publisher's colours are kept as they are: no
+stretch, no colour balancing, no sharpening, nothing invented. The fourth band of NAIP
+(near infra-red) is left out; the fourth band of LINZ's (transparency) marks where there
+is no photograph, as do the black corners of NAIP's quarter-sheets. The deepest zoom is
+the first whose map pixels are as fine as the photograph, **and no deeper than zoom 19**
+(about 22 cm a map pixel in Christchurch, 23 cm in Colorado): a 5 or 7.5 cm photograph is
+read from the publisher's own reduced copy that is as fine as zoom 19 (15 cm), which the
+confirmation says. The map enlarges zoom 19 if you zoom in further. Below zoom 10 the set
+has nothing: an area is a few pixels there, and the world or Sentinel-2 shows instead.
+Each map pixel is read by bilinear interpolation from the publisher's grid, each coarser
+zoom is the average of four pixels, and tiles are WebP at quality 78, as for Sentinel-2.
+
+**Positions.** NZGD2000 and NAD83 are taken as WGS 84, which the map uses. They differ
+by about a metre in New Zealand (the plates have moved since 2000) and by one to two
+metres in the United States, so a photograph may sit a few pixels off the map's roads at
+the deepest zoom. Outpost does not apply a datum shift.
+
+**How much.** The warnings go by bytes and tiles, not area, because 7.5 cm of a square
+kilometre is far more than 10 m of a hundred. Above 50 MB to fetch the figures are
+spelled out. Above 10,000 map tiles (about 20 km²) or 300 MB to fetch the warning says it
+is a lot for a photograph, meant for a town centre or a stretch of valley, not a county,
+and needs a tick. Above 40,000 tiles (about 80 km²) it is refused before anything is
+read, and above 1.5 GB to fetch it is refused once the size is known.
+
+Measured on 16 November 2026, on this project's Mac (Apple M2 Max) and a home
+connection, through the built app:
+
+| | Christchurch centre, 1 km², LINZ 7.5 cm (March 2025) | Christchurch, 0.1 km², the same | Boulder, Colorado, 0.3 km², NAIP 30 cm (25 September 2023) |
+| --- | --- | --- | --- |
+| Find pictures | 10.4 seconds (both sources and Sentinel-2) | 11.7 seconds | 1.5 seconds |
+| Working out the figures | 2.1 seconds, 20 of the survey's files | 1.5 seconds, 4 files | 0.9 seconds, 1 file |
+| Fetched | 11.75 MB in 275 requests (the estimate said 11.75 MB) | 1.78 MB in 44 requests | 19.8 MB in 26 requests |
+| Made | 512 tile positions, zoom 10 to 19 | 102 | 181 |
+| Start to installed | 60 seconds | 11.5 seconds | 6.5 seconds |
+| Kept | 4.63 MB | 565 kB | 1.39 MB |
+
+NAIP costs more to fetch because its full-resolution tiles are lossless and carry the
+near infra-red band, which is fetched with the rest and thrown away. Screenshots of the
+runs at phone width were looked at: the photographs line up with the map and the
+credit and season are under the map. Not measured on a Raspberry Pi; the time shown
+before fetching takes 120 ms a tile on the Mac, four times that for a small computer.
+
+### What it would take to add a country
+
+A source is an entry in `modules/maps/imagery/aerial-sources.ts`: where its surveys are
+found for an area, how its files are named, the projection of its grid, its credit and
+licence, and its ceiling of zoom. The reader takes Cloud-Optimised GeoTIFFs of 8-bit
+colour, uncompressed, Deflate or WebP, in WGS 84 UTM, NAD83 UTM or a Transverse Mercator
+grid such as New Zealand's. Countries researched on 16 November 2026 and not built are
+in [sources.md](sources.md#aerial-photographs), each with what is missing. In short:
+
+- **England**: the Environment Agency's photographs are published only as ECW, a
+  format whose decoder is closed (Hexagon's ECW SDK). If the Agency also offered
+  GeoTIFF or COG, adding it would be the British National Grid projection (Transverse
+  Mercator on the Airy ellipsoid, with the OSTN15 shift to WGS 84 for metre accuracy) and
+  a search of its 5 km tiles.
+- **Switzerland** (SWISSIMAGE 10 cm, open, COG, no key) and **the Netherlands** (8 cm,
+  CC BY 4.0, tiled GeoTIFF, no key): both store JPEG in the TIFF (YCbCr), which needs a
+  JPEG decoder, and use national projections (Swiss LV95, Dutch RD New) on other
+  ellipsoids with datum shifts. Both are possible, and are the most useful next
+  additions for a European user; neither was built.
 
 ### Where the pictures come from, and the terms
 
