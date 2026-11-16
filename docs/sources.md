@@ -632,6 +632,11 @@ The second sitting, for the sources by country.
   the checks to run are in [`catalog/README.md`](../catalog/README.md). You can also
   keep a manifest of your own in `<data directory>/catalog/` without sending it to
   anyone.
+- **Peak sun hours for a power plan.** Tools → Power and batteries links to the
+  European Commission's [PVGIS](https://re.jrc.ec.europa.eu/pvg_tools/en/) and asks
+  for the twelve monthly figures to be typed in. Outpost does not call PVGIS or its API:
+  nothing is fetched, and the link opens only when pressed. See
+  [tools-power.md](tools-power.md).
 - **Use the Kiwix archive.** Many websites that offer no downloadable file are
   packaged by Kiwix. Any book in the [Kiwix library](https://library.kiwix.org) can be
   listed by name in a manifest.

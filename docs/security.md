@@ -1237,7 +1237,7 @@ anything else. What they can and cannot touch:
 Removing downloaded content loses nothing that cannot be fetched again, so, like
 removing items one at a time, any device that can reach Outpost may do it. **Erase
 everything** destroys notes, contacts, chat conversations, repeaters, radio plans and
-logged contacts, and documents, and
+logged contacts, power plans, and documents, and
 Outpost has no accounts to ask "who is this?". It asks "where from?" instead:
 
 - The request must come from **the computer Outpost runs on**. It counts as local when

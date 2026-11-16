@@ -910,6 +910,17 @@ coverage map is `400` with `details.reason = "antenna-not-modelled"`. `415` with
 `details.reason = "engine-unavailable"` means the engine or its data is missing or
 damaged: the message names the file, and nothing is predicted.
 
+## Power plans
+
+Types: `packages/shared/src/power.ts`. The server keeps plans and works nothing out; see
+[tools-power.md](tools-power.md).
+
+| Route | What it does |
+| --- | --- |
+| `GET` / `POST /api/power/plans` | Power plans, by name. `POST` body: `name`, `notes`, `battery`, `loads` (up to 60, each a `device` or a `radio`), `inverter`, `solar` (with `sunHours`, twelve numbers or `null`), `charger`, `cableRatingA`. Returns `{ plan }`. `400` with the reason for figures out of range, or a radio's hours adding up to more than a day. |
+| `GET` / `PUT` / `DELETE /api/power/plans/:id` | One plan. `PUT` takes the whole plan, as `POST` does. |
+| `POST /api/power/plans/:id/copy` | A copy under the name "… (copy)". Returns `{ plan }`. |
+
 ## Backup
 
 Types: `packages/shared/src/backup.ts`.
