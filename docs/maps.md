@@ -116,6 +116,74 @@ nothing lies over anything else:
 This was measured, not looked at on a real phone: see
 [What was checked on a phone](#what-was-checked-on-a-phone).
 
+### What was checked on a phone
+
+**No real phone was used.** Everything here was measured in Chromium with a phone's
+screen size and touch input. It is not Safari, and it is not a hand.
+
+A script walked the Maps screen through each state a person can reach: the sheet
+lowered, half raised and at full height; each of the four tabs; a saved place opened
+and one being moved; measuring; line of sight; drawing a route; finding a route, with
+its preview; recording a track, alone and with another tool; the box of a page to
+print; a position that was found, with its sun times open; the locator grid; with no
+map regions installed and with one. It did the same for the maps set into the radio
+screens. It did this at 320 by 568, 375 by 667, 390 by 844 and 430 by 932 px; with the
+text at its usual size, at 125% and at 150% (a root font size of 16, 20 and 24 px);
+with and without the 34 px a home indicator takes; in light and dark: 48 set-ups, 40
+states in each. In every state it listed each pair of things lying over each other,
+each thing cut off or off the screen, each touch target under 44 px, each piece of text
+under the smallest size the design sets, and anything that scrolls sideways
+(`e2e/tests/layout-audit.ts`).
+
+| | Before | After |
+| --- | --- | --- |
+| States with nothing lying over anything, nothing cut off, nothing scrolling sideways, and nothing the script could not touch | 188 of 1,918 | 1,670 of 1,920 |
+| Pairs of things lying over each other | 30,812 | 180 |
+| Things cut off or off the screen | 3,664 | 52 |
+| Touch targets under 44 px | 3,470 | 64 |
+| Pieces of text under the smallest size | 11,102 | 0 |
+| Regions that scroll sideways | 148 | 104 |
+| Things the script could not touch because something lay over them | 417 | 46 |
+
+The counts are of occurrences: one overlap seen in 48 set-ups counts 48 times. They
+leave out the app's own bars (the top bar and the bar of screens at the bottom), which
+are not the Maps screen's, and the links in the line of credits, which are as tall as
+the line.
+
+**What remains** is nearly all on screens narrower than Outpost says it works on. It
+says from 320 px wide; text enlarged by half on a 320 px phone leaves the room of a
+screen 213 px wide. Taking a set-up to be within that when its width divided by the
+enlargement is 312 px or more (all four sizes at the usual text size, and 390 and 430
+px at 125%), 2 of the 180 overlaps are within it, and none of the things cut off, the
+sideways scrolls or the touches that were blocked.
+
+- At 320 by 568 px with a home indicator's 34 px and the usual text size, the card
+  that offers a first map reaches the cross at the centre (the 2 overlaps). No phone
+  is that size with a home indicator.
+- With the text at 125% on a 320 px phone, and at 150% on a 320 or a 375 px one, a
+  card has 6rem or all the room there is, whichever is less, and then reaches the
+  cross or the pin it is about (the other 178 overlaps). At 150% on 320 by 568 px a
+  card has about 100 px: its title and a line or two, the rest by scrolling. The tools
+  work there and are cramped. The 46 blocked touches are all in these set-ups: no
+  clear map left to touch, or a button of a card below the edge of the card.
+- Sideways scroll, all with enlarged text: the panel where a drawn route is named (at
+  125% on 320 px, and at 150% on every size); the Offline maps and Sun tabs at 150% on
+  320 px, by 7 and 11 px; and the radio screens' own pages and the dialog for a
+  station, at 150%. What is too wide in each was not looked into.
+- At 150% on 320 by 568 px the buttons at the foot of "Choose on the map" are below
+  the screen (the 52 things cut off, with the radio pages above): the dialog every
+  screen shares does not scroll as a whole. It was left as it is.
+- The close button of that shared dialog is 40 px, at every size (the 64 touch
+  targets). The app's small buttons are 40 px on a phone outside the Maps screen.
+
+Not covered: the menu on a long press, the card of a repeater, the card of where you
+are, a phone held on its side, the map kept on a phone out of reach of the server, and
+browsers older than those that have container queries (Safari before 16), where a card
+has no greatest height and behaves as it did before.
+
+`e2e/tests/phone-layout.mobile.spec.ts` runs a short version of the same walk at three
+sizes with the rest of the tests.
+
 "Show where I am" and "Record a track" need a secure address, which browsers require
 before they share a location. On a plain `http://` LAN address they say so and point to
 **Settings → HTTPS on your network** (see
