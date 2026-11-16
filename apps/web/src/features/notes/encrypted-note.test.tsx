@@ -363,6 +363,53 @@ describe("a long edit of a page opened with a key", () => {
   });
 });
 
+describe("a page opened with a passphrase", () => {
+  // The passphrase stays with the page, so there was no key to lose here. This keeps it that way.
+  it("is still saved after more than five minutes of typing", async () => {
+    await openWithPassphrase();
+    for (let words = 1; words <= 14; words += 1) {
+      type(`word ${words}`);
+      await pass(30_000);
+    }
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(stored().at(-1)).toBe("word 14");
+  });
+});
+
+describe("typing while a save is under way", () => {
+  it("is saved by the next save, and the page is not called saved before then", async () => {
+    await openWithPassphrase();
+    type("one");
+    await pass(SAVE_DELAY_MS + SLOW_MS / 2);
+    type("one two");
+    // The first save has finished; the second has not started.
+    await pass(2 * SLOW_MS - SLOW_MS / 2 + 250);
+    expect(stored()).toEqual(["one"]);
+    expect(screen.getByText("Not saved yet")).toBeInTheDocument();
+    await pass(SAVE_MS);
+    expect(stored()).toEqual(["one", "one two"]);
+    expect(screen.queryByText("Not saved yet")).not.toBeInTheDocument();
+  });
+
+  it("keeps “Done” on the editor until the newest text is the one that was saved", async () => {
+    await openWithPassphrase();
+    type("one");
+    await pass(SAVE_DELAY_MS + SLOW_MS / 2);
+    type("one two");
+    // “Done” waits for the save under way, as its spinner shows.
+    expect(screen.getByRole("button", { name: "Done" })).toBeDisabled();
+    await pass(2 * SLOW_MS - SLOW_MS / 2 + 250);
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    await pass(SLOW_MS);
+    // Still the editor, with what was typed in it, while the second save runs.
+    expect(screen.getByLabelText("Page content")).not.toHaveAttribute("readonly");
+    await pass(2 * SLOW_MS);
+    expect(stored()).toEqual(["one", "one two"]);
+    expect(screen.getByLabelText("Page content")).toHaveAttribute("readonly");
+    expect(screen.getByLabelText("Page content")).toHaveValue("one two");
+  });
+});
+
 describe("going idle", () => {
   it("locks the page and forgets the key after five minutes without a key or a pointer, with the text saved first", async () => {
     await openWithKey();
@@ -398,5 +445,58 @@ describe("going idle", () => {
     expect(isLocked()).toBe(false);
     expect(screen.getByLabelText("Page content")).toHaveValue("never saved");
     expect(screen.getByRole("alert")).toHaveTextContent("Your changes to the text have not been saved");
+  });
+});
+
+describe("leaving the page", () => {
+  it("saves what was typed while an earlier save was under way", async () => {
+    const view = await openWithPassphrase();
+    type("one");
+    await pass(SAVE_DELAY_MS + SLOW_MS / 2);
+    expect(screen.getByText("Encrypting and saving…")).toBeInTheDocument();
+    type("one two three");
+    view.unmount();
+    await pass(10 * SLOW_MS);
+
+    expect(stored()).toEqual(["one", "one two three"]);
+    expect(toast.error).not.toHaveBeenCalled();
+  });
+
+  it("lets a save that is under way finish before the key is forgotten", async () => {
+    const view = await openWithKey();
+    expect([...unlockedSnapshot().keys()]).toEqual([FINGERPRINT]);
+    type("one");
+    await pass(SAVE_DELAY_MS + SLOW_MS / 2);
+    view.unmount();
+    await pass(10 * SLOW_MS);
+
+    expect(stored()).toEqual(["one"]);
+    expect(toast.error).not.toHaveBeenCalled();
+    expect(unlockedSnapshot().size).toBe(0);
+  });
+
+  it("says so when the last changes could not be saved, rather than reporting nothing", async () => {
+    const view = await openWithPassphrase();
+    vi.mocked(saveNote).mockRejectedValue(new Error("Outpost could not be reached."));
+    type("one");
+    view.unmount();
+    await pass(10 * SLOW_MS);
+    expect(toast.error).toHaveBeenCalledWith("Your last changes to an encrypted page could not be saved before you left it.");
+  });
+
+  it("asks the browser to wait before closing the tab while something is unsaved or being saved, and not otherwise", async () => {
+    await openWithPassphrase();
+    const closing = () => {
+      const event = new Event("beforeunload", { cancelable: true });
+      window.dispatchEvent(event);
+      return event.defaultPrevented;
+    };
+    expect(closing()).toBe(false);
+    type("one");
+    expect(closing()).toBe(true);
+    await pass(SAVE_DELAY_MS + SLOW_MS / 2);
+    expect(closing()).toBe(true);
+    await pass(2 * SLOW_MS);
+    expect(closing()).toBe(false);
   });
 });

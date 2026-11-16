@@ -314,8 +314,13 @@ passphrase. Then:
   changes stay on screen and nothing is stored in their place.
 - **Done** saves and returns to reading. **Lock** saves, then forgets the text and the
   passphrase. So do **5 minutes** without a key or a pointer, leaving the page, and
-  closing the tab. Leaving with something unsaved saves it on the way out; closing the
-  tab asks first.
+  closing the tab.
+- Leaving the page for another screen with something unsaved saves it on the way out,
+  including anything typed while an earlier save was still under way, and a save that
+  is under way is allowed to finish before the key is forgotten. If that last save
+  fails, a message says the last changes were not saved; they are gone, because an
+  encrypted page keeps no draft. Closing or reloading the tab while something is
+  unsaved or being saved makes the browser ask first.
 - If something is still unsaved when the 5 minutes run out (a save failed and nobody
   pressed **Try again**), the page tries once more to save it, and locks only if that
   works. Otherwise it stays open with the changes on screen and tries again every 5

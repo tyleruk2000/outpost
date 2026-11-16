@@ -146,20 +146,24 @@ export default function EncryptedNote({ note }: { note: NoteDetail }) {
     setText({ kind: "saved" });
     setPassphrase("");
     editorRef.current = null;
+    typed.current = null;
   }, []);
 
   // ── Saving the text ──
   const saving = useRef<Promise<void> | null>(null);
   const dirty = useRef(false);
+  /**
+   * The text as last typed, taken at every change. The editor's document is a value that later typing does not
+   * alter, so keeping the latest one costs nothing, and it is still here after the editor has been destroyed:
+   * a save that starts once the page has been left has only this to go by.
+   */
+  const typed = useRef<{ toJSON(): unknown } | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const saveText = useCallback(async (): Promise<void> => {
-    if (saving.current) {
-      await saving.current;
-      if (!dirty.current) return;
-    }
+    // One save at a time. Whatever was typed while another was under way is saved after it, from what was typed.
+    while (saving.current) await saving.current;
     let current = openRef.current;
-    const editor = editorRef.current;
     if (!current || !dirty.current) return;
     if (current.lock.kind === "key") {
       // Saving is a use of the key. One that was forgotten cannot check what it encrypts, so nothing is tried with it:
@@ -176,7 +180,8 @@ export default function EncryptedNote({ note }: { note: NoteDetail }) {
       }
     }
     const { lock } = current;
-    const content = editor && !editor.isDestroyed ? (editor.getJSON() as NoteDoc) : current.content;
+    // Taken together, with nothing awaited in between: from here on, "not dirty" means exactly this text.
+    const content = typed.current ? (typed.current.toJSON() as NoteDoc) : current.content;
     dirty.current = false;
     setText({ kind: "saving" });
     const run = (async () => {
@@ -202,14 +207,17 @@ export default function EncryptedNote({ note }: { note: NoteDetail }) {
       } catch (failure) {
         dirty.current = true;
         setText({ kind: "error", message: errorMessage(failure) });
+      } finally {
+        saving.current = null;
       }
     })();
     saving.current = run;
     await run;
-    saving.current = null;
   }, [client, note.id, note.updatedAt, saver]);
 
   const onTextChange = useCallback(() => {
+    const editor = editorRef.current;
+    if (editor && !editor.isDestroyed) typed.current = editor.state.doc;
     dirty.current = true;
     setText((before) => (before.kind === "saving" || before.kind === "key-locked" ? before : { kind: "unsaved" }));
     clearTimeout(timer.current);
@@ -233,10 +241,12 @@ export default function EncryptedNote({ note }: { note: NoteDetail }) {
     return () => {
       window.removeEventListener("beforeunload", onBeforeUnload);
       clearTimeout(timer.current);
-      if (dirty.current) {
-        // The key is still needed to check what is saved; it is forgotten as soon as that is done.
+      if (dirty.current || saving.current) {
+        // The key is still needed to check what is saved, by a save under way as much as by one yet to start.
+        // It is forgotten as soon as that is done.
         void latestSave.current().then(() => {
           if (dirty.current) toast.error("Your last changes to an encrypted page could not be saved before you left it.");
+          typed.current = null;
           lockAll();
         });
       } else lockAll();
