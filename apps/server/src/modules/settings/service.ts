@@ -8,6 +8,7 @@ import type { AppContext } from "../../core/context.ts";
 import { AppError } from "../../core/errors.ts";
 import { settings as settingsTable } from "../../db/schema.ts";
 import { parseModelServerAddress } from "../answers/address.ts";
+import { parseName, splitNames } from "../https/names.ts";
 
 export const settingsSchema = z.object({
   /** How many downloads run at once. */
@@ -84,6 +85,25 @@ export const settingsSchema = z.object({
   "maps.tileSource": z.string().max(500).default(""),
   "maps.terrainSource": z.string().max(500).default("https://download.mapterhorn.com/planet.pmtiles"),
   "maps.defaultMaxZoom": z.number().int().min(0).max(15).default(14),
+  /**
+   * Serve Outpost over HTTPS as well, on a second port, with a certificate this server
+   * makes for itself. Off until a person turns it on; plain HTTP keeps working either way.
+   */
+  "https.enabled": z.boolean().default(false),
+  /**
+   * Other names and addresses this server is reached by, separated by commas, for the
+   * certificate to list. Needed where Outpost cannot see them itself, as in a container.
+   */
+  "https.names": z
+    .string()
+    .max(1000)
+    .superRefine((value, issue) => {
+      const entries = splitNames(value);
+      if (entries.length > 20) issue.addIssue({ code: "custom", message: "List at most 20 names or addresses." });
+      const bad = entries.find((entry) => !parseName(entry));
+      if (bad) issue.addIssue({ code: "custom", message: `"${bad}" is not a host name or an address. Leave out http:// and the port.` });
+    })
+    .default(""),
   /** Seconds between checks that storage locations are still connected. */
   "storage.checkIntervalSeconds": z.number().int().min(5).max(3600).default(30),
 });

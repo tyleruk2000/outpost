@@ -34,6 +34,8 @@ export interface Settings {
   "downloads.concurrency": number;
   "downloads.rateLimitKbps": number;
   "downloads.maxAttempts": number;
+  "https.enabled": boolean;
+  "https.names": string;
   "indexing.concurrency": number;
   "indexing.chunkSize": number;
   "indexing.chunkOverlap": number;

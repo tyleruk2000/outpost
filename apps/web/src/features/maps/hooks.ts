@@ -148,7 +148,7 @@ export function useGeolocation(onFix: (fix: PositionFix, first: boolean) => void
     if (!supported || watch.current !== undefined) return;
     if (!window.isSecureContext) {
       callbacks.current.onError(
-        "Browsers only share a device's location with pages opened over HTTPS or on the device itself. Open Outpost through an HTTPS address to use this.",
+        "Browsers only share a device's location with pages opened over HTTPS or on the device itself. Turn on Settings → HTTPS on your network, then open Outpost at its https address.",
       );
       return;
     }

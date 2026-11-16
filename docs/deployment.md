@@ -96,9 +96,252 @@ What else to know:
   this computer.
 - Both can only be changed where the server is started, never from the browser.
   **Settings → Who can use this library** shows which is in force.
-- Traffic on the LAN is plain HTTP unless you put a reverse proxy in front.
+- Traffic on the LAN is plain HTTP unless you turn on
+  [HTTPS on your network](#https-on-your-network) or put a reverse proxy in front.
 
 [security.md](security.md) explains what this does and does not protect.
+
+## HTTPS on your network
+
+Browsers let a page use a device's location, keep its screen awake, run a service
+worker or be added to the Home Screen only at a secure address: one that begins
+`https`, or the computer itself (`localhost`). A phone that opens
+`http://192.168.1.20:8080` gets none of those. Outpost can give your network an `https`
+address without a domain name and without the internet.
+
+It is off by default and optional. Plain HTTP on the usual port keeps working whether
+it is on or off, nothing is redirected, and no `Strict-Transport-Security` header is
+sent, so a device that does not trust the certificate can always use the `http` address.
+
+### Turning it on
+
+1. Share Outpost with your network first (see [above](#letting-other-devices-use-it-lan-access)).
+   Without LAN access only this computer can reach Outpost, and a browser on this
+   computer already treats `localhost` as secure.
+2. Open **Settings → HTTPS on your network** and turn on **Use HTTPS**.
+3. The section then lists the addresses to use, such as `https://192.168.1.20:8443` and
+   `https://kitchen-pi.local:8443`.
+4. On each phone and computer, download the certificate from that section and tell the
+   device to trust it (steps below). Until then the browser warns that the connection is
+   not private.
+
+What happens when you turn it on:
+
+- Outpost makes a **certificate authority** of its own: an RSA 3072-bit key and a
+  certificate valid for ten years, named `Outpost on <host name> (<date>)`. It is made
+  once and kept.
+- It signs a **server certificate** (ECDSA P-256, valid from the day before it is made
+  until 397 days after: 398 days in all) listing every way this
+  server is reached: its addresses on private networks, `<host name>.local`, the host
+  name, anything in `OUTPOST_ALLOWED_HOSTS` or in **Other names and addresses** that the
+  authority may sign for, and `localhost`.
+- A second listener answers on port 8443 (`OUTPOST_HTTPS_PORT`), on the same address as
+  the HTTP one, and serves the same app and API under the same rules.
+- Every 30 seconds Outpost looks at the computer's addresses and the certificate's age.
+  If an address has changed (a router handing out a new one, a different network) or
+  the certificate has under 30 days left, a new server certificate is issued and used at
+  once. Devices trust the authority, not the server certificate, so they have nothing to
+  do.
+
+Everything is in the `tls` folder of the data directory: `ca.crt`, `ca.key`,
+`server.crt`, `server.key`. The folder and the two keys are readable only by the account
+that runs Outpost.
+
+### What the certificate authority may sign
+
+The authority carries limits inside its own certificate (critical name constraints, a
+path length of 0, and server authentication as its only purpose):
+
+- addresses in `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `169.254.0.0/16`,
+  `100.64.0.0/10`, `127.0.0.0/8`, `fc00::/7`, `fe80::/10` and `::1`;
+- names ending in `.local`, `.lan`, `.home`, `.internal`, `.home.arpa` or `.localhost`;
+- the one-word host name this computer had when the authority was made, and any
+  one-word names listed at that moment.
+
+A public address or a name such as `outpost.example.net` cannot go on the certificate;
+Settings says so next to the name. For a public name, use a certificate from a public
+authority on a [reverse proxy](#behind-a-reverse-proxy) instead. A one-word name that
+appears later (a renamed computer) needs either its `.local` form or a new authority.
+
+Which devices hold the authority to those limits is in
+[security.md](security.md#https-on-the-home-network). In short: Apple devices and desktop
+browsers do, Android does not.
+
+### Trusting the certificate on a device
+
+The **Download certificate** button gives `outpost-authority.crt`, the authority's public
+certificate in DER form (`GET /api/https/outpost-authority.crt`). Settings shows its name and its
+SHA-256 fingerprint; compare the fingerprint with what the device shows where it shows
+one, because the download itself travels over plain HTTP.
+
+The steps below are also in Settings, which opens the ones for the device in hand. The
+menu names are the vendors' own, read in November 2026 from the sources listed.
+**None of them has been tried on a real iPhone, iPad, Android phone or Windows
+computer.** Only macOS was at hand (see [What was tested](#what-was-tested)).
+
+**iPhone and iPad**
+
+1. Open the Settings page in Safari, tap **Download certificate**, and allow the download.
+2. Open the Settings app and tap **Profile Downloaded**.
+3. Tap **Install** in the upper-right corner and follow the instructions.
+4. Go to **Settings › General › About › Certificate Trust Settings** and, under **Enable
+   full trust for root certificates**, turn on trust for the certificate.
+
+A downloaded profile that is not installed within 8 minutes is discarded. With Stolen
+Device Protection on, away from a familiar place, iOS will not install a profile until
+that protection is turned off. To remove the certificate: **Settings › General › VPN &
+Device Management**, select the profile, **Delete Profile**.
+Sources: Apple, [Install a configuration profile](https://support.apple.com/en-us/102400),
+[Trust manually installed certificate profiles](https://support.apple.com/en-us/102390),
+[Review and delete configuration profiles](https://support.apple.com/guide/personal-safety/review-and-delete-configuration-profiles-ips327569a75/web).
+Not confirmed from Apple's pages: the wording of Safari's download prompt, and whether a
+browser other than Safari offers the profile.
+
+**Android** (names as on a Pixel with Android 14 or later)
+
+1. Tap **Download certificate**. Opening the downloaded file does not install it: since
+   Android 11 a CA certificate can only be installed from Settings.
+2. Open Settings and tap **Security & privacy › More security settings › Encryption &
+   credentials**.
+3. Tap **Install a certificate**, then **CA certificate**, read the warning ("Your data
+   won't be private"), and tap **Install anyway**.
+4. Choose `outpost-authority.crt`.
+
+Chrome uses the certificate once it is installed. Firefox for Android uses it only when
+**Use third party CA certificates** is on in its hidden settings (Mozilla's help page
+says it is used by default; Firefox's source says the setting is off by default). Other
+apps do not use certificates a person installs. To remove it: on the same screen,
+**Trusted credentials › User**, select the certificate, **Uninstall**.
+Sources: Google, [Add & remove certificates](https://support.google.com/pixelphone/answer/2844832)
+(the path to the screen; it no longer describes the CA certificate option);
+[Android 11 for enterprise](https://developer.android.com/work/versions/android-11) (CA
+certificates only from Settings); the labels **CA certificate**, **Install anyway**,
+**Trusted credentials**, **User** and **Uninstall** are from the
+[Android Settings source](https://android.googlesource.com/platform/packages/apps/Settings/+/refs/heads/main/res/values/strings.xml),
+not from a help page. Other makers' phones name these screens differently.
+
+**Mac**
+
+1. Click **Download certificate**.
+2. Open Keychain Access (search for it in Spotlight). Select the **login** keychain, for
+   you alone, or **System**, for everyone on the Mac, and drag the file onto the window.
+3. Double-click the certificate, click the arrow next to **Trust**, and for **Secure
+   Sockets Layer (SSL)** choose **Always Trust**. macOS may ask for your password.
+
+Safari and Chrome use this setting; so does Firefox (120 and later) unless that has been
+turned off. To remove it: set the trust back to **Use System Defaults**, or delete the
+certificate in Keychain Access.
+Sources: Apple, Keychain Access User Guide:
+[Add certificates to a keychain](https://support.apple.com/guide/keychain-access/add-certificates-to-a-keychain-kyca2431/mac),
+[Change the trust settings of a certificate](https://support.apple.com/guide/keychain-access/change-the-trust-settings-of-a-certificate-kyca11871/mac).
+Apple's guide has no page on deleting a certificate, and does not mention the password
+prompt.
+
+**Windows 10 and 11**
+
+1. Download the certificate, open the file, and choose **Install Certificate…**
+2. Leave the store location as **Current User** and select **Next**.
+3. Choose **Place all certificates in the following store**, select **Trusted Root
+   Certification Authorities**, and finish the wizard.
+4. On the security warning, select **Yes**.
+
+Edge and Chrome use this store; so does Firefox unless that has been turned off. To
+remove it: run `certmgr.msc` and delete the certificate under **Certificates - Current
+User › Trusted Root Certification Authorities › Certificates**.
+Sources: Microsoft has no single page for this; the steps are pieced together from
+[Installing the trusted root certificate](https://learn.microsoft.com/en-us/skype-sdk/sdn/articles/installing-the-trusted-root-certificate),
+[Install client certificates](https://learn.microsoft.com/en-us/azure/vpn-gateway/point-to-site-how-to-vpn-client-install-azure-cert)
+(Current User, the security warning) and
+[View certificates with the MMC snap-in](https://learn.microsoft.com/en-us/dotnet/framework/wcf/feature-details/how-to-view-certificates-with-the-mmc-snap-in)
+(`certmgr.msc`).
+
+**Firefox on a computer**
+
+On Windows and macOS, Firefox 120 and later uses certificates trusted in the system, so
+the steps above are enough. On Linux, or where that has been turned off: **Settings ›
+Privacy and security › Certificates › Manage certificates › Authorities › Import…**,
+choose the file, and tick **Trust this CA to identify websites**. To remove it: the same
+tab, select the certificate, **Delete or Distrust…**
+Sources: Mozilla, [Automatically trust third-party certificates](https://support.mozilla.org/en-US/kb/automatically-trust-third-party-certificates)
+(read from an archived copy); the button names are from Firefox 160's own interface text,
+because Mozilla has no help page for importing by hand. Chrome on Linux keeps its own
+list (`chrome://certificate-manager`) and is not covered here.
+
+### Docker
+
+Inside a container Outpost cannot see the addresses of the computer it runs on, and its
+own host name is the container's. Two things are needed besides the switch:
+
+1. **Publish the port.** Uncomment the HTTPS line under `ports:` in `compose.yaml` and run
+   `docker compose up -d`. The port number is the same inside and outside the container
+   (`OUTPOST_HTTPS_PORT`, 8443), so the addresses in Settings are the ones to use.
+2. **Name the address.** Open Settings from another device at
+   `http://<address of this computer>:8080/settings#https`. The section says that address
+   is not on the certificate and offers a button to add it. Or type addresses and names
+   into **Other names and addresses** yourself.
+
+With LAN access on, no request looks local to a container, so **Make a new certificate
+authority** and **Turn HTTPS off and delete it** are not offered. Either start Outpost
+with `OUTPOST_ALLOW_REMOTE_ERASE=true` for the occasion, or stop it and delete the `tls`
+folder from the data volume by hand.
+
+### Backups, moving house, and starting again
+
+- **The `tls` folder is not in a backup download**, and a portable drive does not carry
+  it. A key that devices trust should exist in one place. The setting itself (on or off,
+  and the names you listed) is in the database, so it is in the backup.
+- Restoring a backup onto the same data directory leaves `tls` alone. Restoring onto a
+  new machine with HTTPS switched on in the backup makes a **new** authority there, which
+  every device must be told to trust. To keep the old one, copy the `tls` folder across
+  yourself, with Outpost stopped, and keep its permissions.
+- **Erase everything** resets settings, so HTTPS goes off; the authority is kept, and
+  turning HTTPS on again asks nothing of any device.
+- **Make a new certificate authority** deletes the old key and certificate and makes new
+  ones. Every device that trusted the old one must trust the new one. It and **Turn
+  HTTPS off and delete it** are offered only at the computer Outpost runs on, or
+  everywhere when Outpost was started with `OUTPOST_ALLOW_REMOTE_ERASE=true`.
+- HTTPS is not offered from a portable drive, which opens on `localhost`.
+
+### If it does not work
+
+- **"Port 8443 is already in use"**: set `OUTPOST_HTTPS_PORT` to a free port and restart.
+- **"This computer's clock reads …"**: certificates are dated, and a computer with no
+  clock battery that started without a network may believe it is years ago. Outpost
+  will not make or renew a certificate by such a clock; one it already has goes on
+  being served. Set the clock, and within half a minute Outpost carries on.
+- **The browser warns even after trusting the certificate**: check that the address in
+  the address bar is one of those listed in Settings; a certificate only covers the
+  names on it. On a phone, check the last step (full trust on iOS; **CA certificate**,
+  not **Wi-Fi certificate**, on Android).
+- **A server whose clock is wrong** issues certificates other devices see as not yet
+  valid or expired. Server certificates start a day early and last 397 days to allow for
+  a clock that is a little off, not for one that is far off.
+
+### What was tested
+
+On macOS 15.6 with Node 24 and OpenSSL 3.6, by the test suite
+(`apps/server/test/https.test.ts`, `e2e/tests/https.spec.ts`):
+
+- the chain verifies with Node, with `openssl verify -x509_strict`, with
+  `curl --cacert`, and with macOS's own trust evaluation (`security verify-cert`), for
+  DNS names and for IPv4 and IPv6 addresses;
+- Node, OpenSSL and macOS each refuse a certificate for a public name or address signed
+  with the authority's own key;
+- the app, the API, live events and the Kiwix proxy over HTTPS, the request guard, and
+  the absence of HSTS;
+- re-issue on a changed address, a changed list and nearing expiry; the keys'
+  permissions; that no address serves a key and no backup contains one.
+
+The packaged app was also run once by hand in the Linux Docker image, which has no
+`openssl` program, with the port published: the keys were made and `curl --cacert`
+accepted the address.
+
+Not tested: installing and trusting the certificate on any real iPhone, iPad, Android
+phone or Windows computer, or in Safari, Chrome, Edge or Firefox with the certificate
+actually trusted. Playwright cannot add a certificate authority to its browser, so the
+end-to-end test tells Chromium to accept the exact key the server presents, and leaves
+verifying the chain to Node. Whether iOS accepts the certificate when installed as a
+profile rests on Apple's documentation, not on a device.
 
 ## Updating
 
@@ -486,6 +729,7 @@ value the image sets when it differs from the default.
 | `NODE_ENV` | `development` | `production` | `development`, `production` or `test`. The packaged app needs `production`. |
 | `OUTPOST_HOST` | `127.0.0.1` | `0.0.0.0` | Address the server listens on. Outside a container, anything but a loopback address stops the server at start-up unless `OUTPOST_LAN_ACCESS=true`. In Docker, exposure is controlled by `OUTPOST_BIND` instead. |
 | `OUTPOST_PORT` | `8080` | `8080` | Port the server listens on. With Compose this sets the port on the host; the container always uses 8080. |
+| `OUTPOST_HTTPS_PORT` | `8443` | `8443` | Port of the HTTPS listener, which opens only once HTTPS is turned on in Settings. Unlike `OUTPOST_PORT`, with Compose the same number is used on the host and in the container. See [HTTPS on your network](#https-on-your-network). |
 | `OUTPOST_DATA_DIR` | `./data` | `/data` | Database, attachments and other state Outpost owns. |
 | `OUTPOST_STORAGE_ROOTS` | see [above](#from-source) | `/storage` | Comma-separated folders in which storage locations may be created. |
 | `OUTPOST_LAN_ACCESS` | `false` | | Share Outpost with every device on the network: accept requests addressed to LAN names and addresses, and allow the server to listen on (or be published on) an address other devices can reach. There are no accounts, so everyone who can reach it can change it. |
@@ -500,7 +744,7 @@ value the image sets when it differs from the default.
 | `OUTPOST_MAX_UPLOAD_MB` | `2048` | | Largest single uploaded file, in megabytes. |
 | `OUTPOST_DOWNLOAD_HOSTS` | empty | | Extra hosts a catalogue download may start from, comma separated. |
 | `OUTPOST_ALLOW_PRIVATE_DOWNLOADS` | `false` | | Let downloads, including files saved from links, connect to private addresses, for a mirror on your own network. |
-| `OUTPOST_ALLOW_REMOTE_ERASE` | `false` | | Let **Erase everything** (Storage → Manage and clean up) be started from any device that can reach Outpost, and likewise restoring a backup, deleting a stored backup and keeping fewer of them. Without it, only the computer Outpost runs on may. See [security.md](security.md#erasing-everything). |
+| `OUTPOST_ALLOW_REMOTE_ERASE` | `false` | | Let **Erase everything** (Storage → Manage and clean up) be started from any device that can reach Outpost, and likewise restoring a backup, deleting a stored backup, keeping fewer of them, and replacing or deleting the HTTPS certificate authority. Without it, only the computer Outpost runs on may. See [security.md](security.md#erasing-everything). |
 | `OUTPOST_ALLOW_REMOTE_MODEL_SERVER` | `false` | | Let **Answers from your library**, and a local embedding server for search by meaning, be on the public internet. Without it, such a server must be on this computer or a private network, so that nobody who can open Outpost can have passages from the library sent elsewhere. See [ai.md](ai.md). |
 | `OUTPOST_PORTABLE` | `false` | | Set by the launchers on a portable drive. Quieter logging, no removable-media roots, and the port moves up if 8080 is taken. |
 | `OUTPOST_APP_DIR` | the running packaged app, or `dist/app` from source | | Packaged app copied onto portable drives. |
@@ -527,7 +771,7 @@ Boolean variables accept `1`, `true`, `yes` or `on`.
 | `KIWIX_MEMORY_LIMIT` | `512m` | Memory ceiling for the `kiwix` container. |
 
 `compose.yaml` passes these server variables from `.env` into the container:
-`OUTPOST_LAN_ACCESS`, `OUTPOST_ALLOWED_HOSTS`, `OUTPOST_MAX_UPLOAD_MB`,
+`OUTPOST_LAN_ACCESS`, `OUTPOST_ALLOWED_HOSTS`, `OUTPOST_HTTPS_PORT`, `OUTPOST_MAX_UPLOAD_MB`,
 `OUTPOST_DOWNLOAD_HOSTS`, `OUTPOST_ALLOW_PRIVATE_DOWNLOADS` and
 `OUTPOST_ALLOW_REMOTE_ERASE`. It sets
 `OUTPOST_PUBLISHED_ADDRESS` from `OUTPOST_BIND` itself. Any other server variable has

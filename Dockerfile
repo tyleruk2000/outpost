@@ -46,7 +46,8 @@ COPY --from=trim /out/app /app
 RUN mkdir -p /data /storage/internal /kiwix && chown -R node:node /data /storage /kiwix
 USER node
 VOLUME ["/data", "/storage/internal", "/kiwix"]
-EXPOSE 8080
+# 8443 answers only after HTTPS is turned on in Settings; publish it if you use that.
+EXPOSE 8080 8443
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD ["node", "-e", "fetch('http://127.0.0.1:'+(process.env.OUTPOST_PORT||8080)+'/api/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]

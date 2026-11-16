@@ -66,6 +66,20 @@ You opened Outpost by a name or address the server does not recognise as its own
 
 Restart after changing either setting.
 
+### The browser says the HTTPS address is not private
+
+The device has not been told to trust Outpost's certificate, or the address in the
+address bar is not one the certificate lists. Open **Settings → HTTPS on your network**
+at the `http` address, which always works: it lists the addresses the certificate
+covers and gives the steps for each kind of device. After **Make a new certificate
+authority**, every device has to trust the new one. See
+[deployment.md](deployment.md#https-on-your-network).
+
+### "Port 8443 is already in use on this computer, so HTTPS could not start."
+
+Something else has the HTTPS port. Start Outpost with `OUTPOST_HTTPS_PORT` set to a
+free one. Plain HTTP is not affected.
+
 ### "This request did not come from the Outpost app."
 
 A script or tool called a state-changing API route without the required header. Add

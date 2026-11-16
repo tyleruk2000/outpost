@@ -55,8 +55,10 @@ There is one kind of exception. `POST /api/manage/cleanup/everything`, which era
 person's own notes and documents, is accepted only from the computer the server runs
 on, unless the server was started with `OUTPOST_ALLOW_REMOTE_ERASE=true`. The same
 holds for restoring a backup, deleting a stored one and lowering how many are kept (see
-[Backup](#backup)). That is a rule about where a request comes from, not who sent it;
-see [security.md](security.md#erasing-everything).
+[Backup](#backup)), and for `POST /api/https/authority/replace` and
+`DELETE /api/https/authority`, which would stop every device that trusted Outpost's
+HTTPS certificate from trusting it. That is a rule about where a request comes from,
+not who sent it; see [security.md](security.md#erasing-everything).
 
 ### Request and response bodies
 
@@ -111,6 +113,7 @@ a name and a JSON `data` of the form `{ "id": …, "data": … }`; both parts ar
 | `imports.changed` | An import changes state | import id |
 | `semantic.changed` | Vectors are built, loaded or removed | |
 | `portable.changed` | A portable drive or runtime download finishes | |
+| `https.changed` | The HTTPS listener starts or stops, its certificate is re-issued, or the certificate authority is replaced or deleted | |
 | `merge.changed` | A merge of a drive's changes moves to another state | merge id |
 
 An event says that something changed, not what it now is: fetch the resource again.
@@ -190,10 +193,27 @@ Settings and their defaults are defined in
 | `answers.model` | empty | The model's name as the server knows it |
 | `answers.temperature` | 0.2 | 0 to 2 |
 | `answers.contextChars` | 6000 | 1000 to 60000 characters of quoted passages per question |
+| `https.enabled` | false | Serve Outpost over HTTPS as well, on `OUTPOST_HTTPS_PORT`. See [HTTPS](#https) |
+| `https.names` | empty | Other names and addresses for the certificate to list, separated by commas or spaces; at most 20. Each must be a host name or an IP address, without `http://` or a port |
 | `maps.tileSource` | empty (newest daily build) | an address |
 | `maps.terrainSource` | `https://download.mapterhorn.com/planet.pmtiles` | an address |
 | `maps.defaultMaxZoom` | 14 | 0 to 15 |
 | `storage.checkIntervalSeconds` | 30 | 5 to 3600 |
+
+### HTTPS
+
+Types: `packages/shared/src/https.ts`. See
+[deployment.md](deployment.md#https-on-your-network) and
+[security.md](security.md#https-on-the-home-network). HTTPS is turned on and off with
+the `https.enabled` setting; these routes report on it and manage the certificate
+authority.
+
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/https` | `HttpsStatus`: `enabled` (the setting), `listening`, `port`, `httpPort`, `problem` (why it could not start, in words, or null), `addresses` (`{ url, name, kind }`, where `kind` is `address`, `name` or `this-computer`), `names` on the server certificate, `leftOut` (`{ name, reason }` for listed names the authority may not sign), `authority` (`name`, `fingerprint`, `createdAt`, `expiresAt`, `permittedNames`, `permittedBlocks`, or null before HTTPS has ever been on), `certificateExpiresAt`, `unavailable` (`portable` or null), `inContainer`, `lanAccess`, and `authorityRight` (`{ allowed, reason, option }`: whether this request may replace or delete the authority). Nothing secret is in it. |
+| `GET /api/https/outpost-authority.crt` | The certificate authority's public certificate, DER, as `application/x-x509-ca-cert` with no `Content-Disposition` (the form Apple's example of delivering a root certificate to an iPhone uses): what a device installs. `?format=pem` gives PEM (`outpost-authority.pem`), for `curl --cacert` and the like. `404` until HTTPS has been turned on once. No route serves a private key. |
+| `POST /api/https/authority/replace` | Deletes the authority and makes a new one, with a new server certificate. Answers `HttpsStatus`. Only from the computer Outpost runs on, or from anywhere when started with `OUTPOST_ALLOW_REMOTE_ERASE=true`; otherwise `403`. `409` on a portable drive. |
+| `DELETE /api/https/authority` | Turns HTTPS off and deletes the authority, the server certificate and their keys. Answers `HttpsStatus`. Same restriction. |
 
 ## Storage
 
