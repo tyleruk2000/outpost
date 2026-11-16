@@ -5,7 +5,7 @@ import { AppShell } from "./components/app-shell";
 import { Page } from "./components/page";
 import { ServerDown } from "./components/server-down";
 import { Skeleton } from "./components/ui/misc";
-import { OutOfReach, PROBE_TIMEOUT_MS, ReachGate } from "./features/kept/reach";
+import { giveUpAfter, OutOfReach, PROBE_TIMEOUT_MS, ReachGate } from "./features/kept/reach";
 import { canOpenOutOfReach } from "./features/kept/register";
 import { NotesTree } from "./features/notes/notes-tree";
 import { ApiError, api } from "./lib/api";
@@ -46,7 +46,7 @@ export function App() {
   const keptHere = canOpenOutOfReach();
   const server = useQuery({
     queryKey: ["health"],
-    queryFn: () => api.get<{ status: string }>("/api/health", undefined, keptHere ? AbortSignal.timeout(PROBE_TIMEOUT_MS) : undefined),
+    queryFn: () => api.get<{ status: string }>("/api/health", undefined, keptHere ? giveUpAfter(PROBE_TIMEOUT_MS) : undefined),
     staleTime: Number.POSITIVE_INFINITY,
     ...(keptHere ? { retry: false } : {}),
   });

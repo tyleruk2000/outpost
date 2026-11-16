@@ -99,6 +99,12 @@ export function areaPositions(area: Pick<KeptArea, "bbox" | "maxZoom" | "terrain
 
 export const countAreaPositions = (bbox: Bbox, minZoom: number, maxZoom: number) => countRectTiles(tileRects(bbox, minZoom, maxZoom));
 
+/**
+ * A tile kept gzipped has to be unpacked when it is drawn. A browser that cannot do that (Safari before 16.4)
+ * is given tiles the ordinary way and keeps them unpacked: two to three times the size the server measured.
+ */
+const CAN_UNPACK = typeof DecompressionStream !== "undefined";
+
 async function gunzip(bytes: ArrayBuffer): Promise<Uint8Array> {
   const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
   return new Uint8Array(await new Response(stream).arrayBuffer());
@@ -243,7 +249,11 @@ async function runArea(start: KeptArea, again: boolean): Promise<void> {
       }
       return;
     }
-    const response = await fetch(`${position.path}?raw=1`, { signal: abort.signal, credentials: "same-origin", cache: "no-store" });
+    const response = await fetch(`${position.path}${CAN_UNPACK ? "?raw=1" : ""}`, {
+      signal: abort.signal,
+      credentials: "same-origin",
+      cache: "no-store",
+    });
     if (response.status === 204) return;
     if (!response.ok) throw new Error(`The server could not give a map tile (${response.status}).`);
     const body = await response.arrayBuffer();

@@ -277,8 +277,8 @@ export default function KeptMapScreen() {
   );
 
   return (
-    // The line that says the server is out of reach sits above this screen and takes some of the height.
-    <div className="relative isolate flex h-[calc(100dvh-3.25rem)] overflow-hidden max-md:h-[calc(100dvh-10.5rem)]">
+    // Whatever height the line saying the server is out of reach leaves; on a phone, clear of the bottom bar.
+    <div className="relative isolate flex min-h-0 flex-1 overflow-hidden max-md:pb-14">
       {isDesktop ? (
         <aside aria-label={`Kept on this ${DEVICE}`} className="flex w-[22rem] shrink-0 flex-col border-r border-border bg-page">
           <div className="flex h-14 shrink-0 items-center px-4">

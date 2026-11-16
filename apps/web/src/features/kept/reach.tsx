@@ -25,10 +25,18 @@ const OutOfReachApp = lazy(() => import("./out-of-reach-app"));
 /** How long a question to the server may go unanswered before it counts as out of reach. */
 export const PROBE_TIMEOUT_MS = 4_000;
 
+/** A signal that gives up after a while. `AbortSignal.timeout` itself is missing from browsers before 2022. */
+export function giveUpAfter(ms: number): AbortSignal {
+  if (typeof AbortSignal.timeout === "function") return AbortSignal.timeout(ms);
+  const abort = new AbortController();
+  window.setTimeout(() => abort.abort(new DOMException("Timed out", "TimeoutError")), ms);
+  return abort.signal;
+}
+
 /** Asks the server whether it is there. Never throws. */
 export async function probeServer(): Promise<boolean> {
   try {
-    const response = await fetch("/api/health", { cache: "no-store", signal: AbortSignal.timeout(PROBE_TIMEOUT_MS) });
+    const response = await fetch("/api/health", { cache: "no-store", signal: giveUpAfter(PROBE_TIMEOUT_MS) });
     return response.ok;
   } catch {
     return false;

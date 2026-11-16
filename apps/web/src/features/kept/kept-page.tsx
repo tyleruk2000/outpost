@@ -177,7 +177,7 @@ function RoomSection({ keptBytes }: { keptBytes: number }) {
           <p className="tabular max-w-[62ch] text-body text-ink">
             What you have kept takes {formatBytes(keptBytes)}.{" "}
             {room.usage !== null && room.quota !== null
-              ? `This browser reports about ${formatBytes(room.usage)} in use by Outpost, the app itself included, out of about ${formatBytes(room.quota)} it would allow.`
+              ? `This browser reports about ${formatBytes(room.usage, 1)} in use by Outpost, the app itself included, out of about ${formatBytes(room.quota, 1)} it would allow.`
               : "This browser does not report how much room it allows."}
           </p>
           {room.usage !== null && room.quota !== null && room.quota > 0 ? (

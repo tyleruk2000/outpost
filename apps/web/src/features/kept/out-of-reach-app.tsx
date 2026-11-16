@@ -143,15 +143,15 @@ function Shell({ checking, onCheck }: { checking: boolean; onCheck: () => void }
         ))}
       </nav>
 
-      <main id="content" ref={main} tabIndex={-1} className="min-w-0 flex-1 focus:outline-none">
+      {/* A column, so that the map can take exactly the height the line above it leaves. */}
+      <main id="content" ref={main} tabIndex={-1} className="flex min-w-0 flex-1 flex-col focus:outline-none">
         <div
           role="status"
           className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border bg-surface px-4 py-2.5 text-small text-ink md:px-6"
         >
           <WifiOff aria-hidden className="size-4 shrink-0 text-ink-muted" strokeWidth={1.6} />
           <p className="min-w-0 flex-1 basis-56">
-            <span className="font-medium">The server is out of reach.</span> Showing what is kept on this {DEVICE}. Nothing can be changed
-            until the server is back.
+            <span className="font-medium">The server is out of reach.</span> Showing what is kept on this {DEVICE}, for reading only.
           </p>
           <Button size="sm" loading={checking} onClick={onCheck}>
             <RefreshCw /> Try again
