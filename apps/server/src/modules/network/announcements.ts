@@ -106,7 +106,12 @@ export function parseServiceTypes(output: string): string[] {
  * name is left out (the device is still found by its address; only what it announces is not asked about).
  */
 export function usableAsArgument(name: string): boolean {
-  return name.length > 0 && name.length <= 255 && !name.startsWith("-") && !/[\u0000-\u001f\u007f]/.test(name);
+  if (name.length === 0 || name.length > 255 || name.startsWith("-")) return false;
+  // No control characters either: a line break inside an argument has no business in a name.
+  return [...name].every((character) => {
+    const code = character.charCodeAt(0);
+    return code > 31 && code !== 127;
+  });
 }
 
 /** Instances of one kind from `dns-sd -B _smb._tcp local.`: "… Add 2 14 local. _smb._tcp. Workshop NAS". */
