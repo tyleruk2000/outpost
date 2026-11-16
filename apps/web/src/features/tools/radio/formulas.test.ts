@@ -115,7 +115,10 @@ describe("cable loss", () => {
 
 describe("battery life", () => {
   it("is usable capacity over the average current of the duty cycle", () => {
-    const average = averageCurrent({ transmit: 1500, receive: 150, standby: 50 }, { transmitPercent: 5, receivePercent: 5, standbyPercent: 90 });
+    const average = averageCurrent(
+      { transmit: 1500, receive: 150, standby: 50 },
+      { transmitPercent: 5, receivePercent: 5, standbyPercent: 90 },
+    );
     expect(average).toBeCloseTo(75 + 7.5 + 45, 9);
     expect(batteryHours(2000, 80, average)).toBeCloseTo(1600 / 127.5, 9);
   });

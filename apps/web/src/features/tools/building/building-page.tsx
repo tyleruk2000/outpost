@@ -277,11 +277,7 @@ function CuttingCalculator() {
             />
           )}
         </Field>
-        <Field
-          label="Stock lengths on sale"
-          hint="UK timber is usually sold in 300 mm steps; type what your merchant has."
-          error={stock.ok ? undefined : stock.error}
-        >
+        <Field label="Stock lengths on sale" hint="The lengths your merchant sells, one a line." error={stock.ok ? undefined : stock.error}>
           {(ids) => (
             <Textarea
               {...ids}

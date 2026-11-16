@@ -73,7 +73,7 @@ export function Calculator({
     <section
       id={id}
       aria-labelledby={`${id}-title`}
-      className={cn("scroll-mt-4 border-t border-border py-8 first:border-t-0 first:pt-2", className)}
+      className={cn("scroll-mt-16 border-t border-border py-8 first:border-t-0 first:pt-2", className)}
     >
       <h2 id={`${id}-title`} tabIndex={-1} className="font-title text-heading text-ink outline-none">
         {title}

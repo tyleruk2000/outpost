@@ -1,7 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { mixMaterials } from "./concrete";
 import { readLengths } from "./cutting-list";
-import { boardsByStock, cuttingPlan, fabricLossWatts, fixingsPerSheet, riseAtPitch, roofPitch, shapeArea, sheetsFor, uValue } from "./formulas";
+import {
+  boardsByStock,
+  cuttingPlan,
+  fabricLossWatts,
+  fixingsPerSheet,
+  riseAtPitch,
+  roofPitch,
+  shapeArea,
+  sheetsFor,
+  uValue,
+} from "./formulas";
 
 describe("areas", () => {
   it("are the textbook ones", () => {

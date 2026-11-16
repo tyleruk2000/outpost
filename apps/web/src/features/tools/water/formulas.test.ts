@@ -59,6 +59,11 @@ describe("the quoted guidance", () => {
     expect(method("filter").viruses).toBe("Not effective");
     expect(method("chlorine").cryptosporidium).toBe("Not effective");
     expect(method("iodine").cryptosporidium).toBe("Not effective");
-    expect(method("boil")).toMatchObject({ bacteria: "Effective", viruses: "Effective", giardia: "Effective", cryptosporidium: "Effective" });
+    expect(method("boil")).toMatchObject({
+      bacteria: "Effective",
+      viruses: "Effective",
+      giardia: "Effective",
+      cryptosporidium: "Effective",
+    });
   });
 });
