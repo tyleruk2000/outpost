@@ -91,6 +91,15 @@ describe("finding the article in a page", () => {
     expect(markdown).toContain('```js\n// a comment about the sidebar\nshare("menu");\n```');
   });
 
+  it("keeps the indent and the line ends of code, when a highlighter holds them in elements of their own", () => {
+    const markdown = markdownOf(
+      wrap(`<article>${paragraphs(3)}<pre><code class="language-python"><span class="k">def</span> f():
+<span class="w">    </span><span class="k">return</span> 1<span class="w">
+</span>f()</code></pre></article>`),
+    );
+    expect(markdown).toContain("```python\ndef f():\n    return 1\nf()\n```");
+  });
+
   it("writes a formula as the line its author gave for it", () => {
     const markdown = markdownOf(
       wrap(
