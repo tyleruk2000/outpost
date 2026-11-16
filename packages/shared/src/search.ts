@@ -32,6 +32,41 @@ export interface SearchResult {
 
 export type SearchMode = "keyword" | "semantic" | "hybrid";
 
+/**
+ * One line of `GET /api/search/reference`, which sends what reference collections hold
+ * a collection at a time. `start` comes first and `end` last; between them there is
+ * one `collection` for each collection that answered, in the order they answered.
+ */
+export type ReferenceSearchEvent =
+  | {
+      type: "start";
+      /** How many collections are being searched. 0 when there are none, or searching inside them is turned off. */
+      collections: number;
+    }
+  | {
+      type: "collection";
+      collectionId: string;
+      title: string;
+      /** Its best matches, best first. Empty when it has none. */
+      results: SearchResult[];
+    }
+  | {
+      type: "end";
+      /** How many collections answered. */
+      searched: number;
+      /** Collections whose articles are missing from the results: too slow to answer in time, or not searchable. */
+      missing: ReferenceSearchMissing[];
+      /** Why none could be searched at all (kiwix-serve is not running, say); null otherwise. */
+      message: string | null;
+      tookMs: number;
+    };
+
+export interface ReferenceSearchMissing {
+  collectionId: string;
+  title: string;
+  reason: "slow" | "failed";
+}
+
 export interface SearchResponse {
   query: string;
   mode: SearchMode;
@@ -40,5 +75,10 @@ export interface SearchResponse {
   results: SearchResult[];
   facets: Record<string, number>;
   warnings: Array<{ source: string; message: string }>;
+  /**
+   * Only in an answer asked for with `reference=later`: true when there are reference
+   * collections to search for this, which `GET /api/search/reference` does.
+   */
+  referenceToCome?: boolean;
   tookMs: number;
 }

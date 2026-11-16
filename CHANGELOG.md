@@ -169,6 +169,18 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 - Ranking that weights titles, tags and headings above body text, with highlighted
   passages and links that open a PDF at the matching page.
 - Articles from installed reference collections merged into results.
+- Search no longer waits for reference collections before it shows anything. Your own
+  documents, pages, places and the rest appear at once; each collection's articles are
+  added below as that collection answers, with a line saying collections are still
+  being searched, and nothing already on screen moves. On an installation with 29
+  archives on a network share a search had taken 7 to 20 seconds to show anything.
+  Archive searches now wait in Outpost, three at a time, instead of inside kiwix-serve
+  (which works on four at once and finishes a search nobody is waiting for), so typing
+  quickly no longer leaves dozens of them queued; each archive has 8 seconds and the
+  whole search 30, and a note names any collection left out. Every installed archive is
+  searched, not only the first 24. `GET /api/search` takes `reference=later`, and
+  `GET /api/search/reference` sends the articles a line at a time. See
+  [docs/search.md](docs/search.md#reference-collections-in-results).
 - Optional semantic search with a local OpenAI-compatible embedding server, a
   resumable index build, vectors stored per model, and export and import of vectors
   between installations.
