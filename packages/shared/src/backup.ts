@@ -52,6 +52,8 @@ export interface BackupWaiting {
   reason: "not_connected" | "location_removed" | "failed";
   /** Why, in words written for a person. */
   message: string;
+  /** For `failed`: when it will be tried again. Each failure in a row doubles the wait, from an hour up to a day. */
+  retryAt?: number;
 }
 
 export interface BackupSchedule {

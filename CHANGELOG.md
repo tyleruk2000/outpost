@@ -82,6 +82,8 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   own on a storage location, off until a location is chosen. Each is a job: a
   consistent copy of the database, written under a temporary name, renamed, then read
   back and checked. One that fails the check is kept, marked, not counted and reported.
+- Only the newest two backups that failed their check are kept, and a scheduled backup
+  that goes on failing is tried after one hour, then two, four, eight, up to a day.
 - A location that is not connected is skipped, never replaced by another place; the
   screen says so, and the backup is made when the location or the server comes back.
 - The newest seven scheduled and seven hand-started backups are kept by default. Only

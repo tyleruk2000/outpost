@@ -23,7 +23,7 @@ import { api, errorMessage } from "@/lib/api";
 import { useServerEvent } from "@/lib/events";
 import { useStorage } from "@/lib/queries";
 import { formatDateTime } from "@/lib/utils";
-import { backupSummary, checkText, kindText, scheduleText, waitingTitle } from "./backup-text";
+import { backupSummary, checkText, kindText, retryText, scheduleText, waitingTitle } from "./backup-text";
 import { NumberSetting, SettingRow, SettingsSection } from "./parts";
 
 const OFF = "off";
@@ -123,7 +123,7 @@ export function AutomaticBackups() {
               title={waitingTitle(data.waiting)}
             >
               {data.waiting.message}
-              {data.waiting.reason === "failed" ? " It will be tried again within the hour." : ""}
+              {data.waiting.reason === "failed" ? ` ${retryText(data.waiting)}` : ""}
             </Notice>
           ) : data.lastFailure && !data.active ? (
             <Notice tone="danger" icon={<CircleAlert aria-hidden />} title={`A backup failed on ${formatDateTime(data.lastFailure.at)}`}>

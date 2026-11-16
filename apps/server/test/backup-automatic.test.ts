@@ -443,6 +443,75 @@ describe("a backup that does not read back", () => {
     expect(await w.schedule()).toMatchObject({ lastBackupAt: at(3, 3), lastFailure: null, waiting: null });
   });
 
+  it("does not pile up archives or tries when the check goes on failing: the newest two that failed are kept, and less is tried each time", async () => {
+    const w = await world();
+    await choose(w);
+    await w.goTo(at(1, 3));
+    const [good] = await w.stored();
+    // A backup a person copied here without its record: not verified, but not from a run that failed.
+    const copied = backupFileName(at(-3, 3), "scheduled");
+    fs.copyFileSync(path.join(w.folder, good!.name), path.join(w.folder, copied));
+    fs.writeFileSync(path.join(w.folder, "notes.txt"), "mine");
+
+    // No room for the copy of the database the check makes, say: every check fails from now on.
+    w.app.ctx.services.backups.setBeforeCheck(async () => {
+      throw new Error("There is no room to check it.");
+    });
+    const HOUR = 60 * MINUTE;
+    for (let hour = 0; hour < 24; hour += 1) await w.goTo(at(2, 3) + hour * HOUR);
+
+    // Tried at the time it was due, then after 1, 2, 4 and 8 hours: five times in a day, not twenty-four.
+    const failed = backupJobs(w).filter((job) => job.state === "failed");
+    expect(failed).toHaveLength(5);
+    expect(failed.at(-1)!.error).toMatch(/shown as not verified, and is not counted as a backup/);
+    const listed = await w.stored();
+    expect(listed.map((backup) => [backup.createdAt, backup.check])).toEqual([
+      [at(2, 3) + 15 * HOUR, "unverified"],
+      [at(2, 3) + 7 * HOUR, "unverified"],
+      [at(1, 3), "verified"],
+      [at(-3, 3), "unverified"],
+    ]);
+    // Nothing of the three that were removed is left, and nothing that was not Outpost's failed run was touched.
+    expect(fs.readdirSync(w.folder).filter((name) => name.endsWith(".zip"))).toHaveLength(4);
+    expect(fs.readdirSync(w.folder).filter((name) => name.endsWith(".failed.json"))).toHaveLength(2);
+    expect(fs.readFileSync(path.join(w.folder, "notes.txt"), "utf8")).toBe("mine");
+    expect((await w.schedule()).waiting).toMatchObject({ reason: "failed", retryAt: at(2, 3) + 31 * HOUR });
+
+    // The next day's backup is tried when it is due, whatever the wait had come to.
+    await w.goTo(at(3, 3));
+    expect(backupJobs(w).filter((job) => job.state === "failed")).toHaveLength(6);
+    expect((await w.stored()).filter((backup) => backup.check === "unverified")).toHaveLength(3);
+
+    // When the fault clears, the next try is a backup, and the hour's wait starts again.
+    w.app.ctx.services.backups.setBeforeCheck(undefined);
+    await w.goTo(at(4, 3));
+    expect(backupJobs(w).at(-1)!.state).toBe("succeeded");
+    expect(await w.schedule()).toMatchObject({ lastBackupAt: at(4, 3), lastFailure: null, waiting: null });
+    expect(fs.existsSync(path.join(w.folder, copied))).toBe(true);
+    expect(fs.existsSync(path.join(w.folder, good!.name))).toBe(true);
+  });
+
+  it("removes the archive of a failed run only while it is the file that run wrote", async () => {
+    const w = await world();
+    await choose(w);
+    w.app.ctx.services.backups.setBeforeCheck(async () => {
+      throw new Error("There is no room to check it.");
+    });
+    await w.goTo(at(1, 3));
+    const [first] = await w.stored();
+    // Somebody puts a file of their own under that name: it is no longer the one Outpost wrote.
+    fs.writeFileSync(path.join(w.folder, first!.name), "a person's own file now");
+    await w.goTo(at(1, 4));
+    await w.goTo(at(1, 6));
+    await w.goTo(at(1, 10));
+    expect(backupJobs(w)).toHaveLength(4);
+    expect(fs.readFileSync(path.join(w.folder, first!.name), "utf8")).toBe("a person's own file now");
+    expect((await w.stored()).filter((backup) => backup.check === "unverified").map((backup) => backup.createdAt)).toEqual([
+      at(1, 10),
+      at(1, 6),
+    ]);
+  });
+
   it("shows a backup as not verified once its size no longer matches the record of its check", async () => {
     const w = await world();
     await choose(w);

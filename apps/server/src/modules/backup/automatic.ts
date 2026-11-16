@@ -12,7 +12,9 @@
  *    when the location is next seen, or when the server next starts and finds it.
  *  - A backup counts once it has been read back whole and its database has passed
  *    SQLite's integrity check. One that has not is kept, shown as not verified, and
- *    never counted towards the number to keep.
+ *    never counted towards the number to keep. Only the newest few of those are kept
+ *    (`setAsideFailed` in `stored.ts`), and a scheduled backup that goes on failing is
+ *    tried less and less often, so a fault that lasts cannot fill the location.
  *  - Only Outpost's own backups are ever deleted here (see `stored.ts`), and what
  *    removes a person's way back (restoring, deleting a stored backup, keeping fewer)
  *    is accepted only where "erase everything" is (see `right.ts`).
@@ -54,6 +56,7 @@ import {
   isBackupName,
   listStored,
   partName,
+  setAsideFailed,
   writeRecord,
 } from "./stored.ts";
 
@@ -70,8 +73,16 @@ const SETTING_KEY = "backup.schedule";
 /** What has happened so far. A fact about this library, not a setting, so it is kept with those. */
 const STATE_KEY = "backup.state";
 const TICK_MS = 60_000;
-/** After a scheduled backup fails, how long before it is tried again. */
+/** After a scheduled backup fails, how long before it is tried again. Doubled for each failure in a row. */
 export const RETRY_AFTER_FAILURE_MS = 60 * 60 * 1000;
+/** The longest wait between tries, however many have failed. */
+export const RETRY_LONGEST_MS = 24 * 60 * 60 * 1000;
+
+/** How long to wait after the `attempts`-th failure in a row: an hour, then two, four, eight, up to a day. */
+export function retryWaitMs(attempts: number): number {
+  const doublings = Math.min(Math.max(1, Math.floor(attempts)) - 1, 10);
+  return Math.min(RETRY_AFTER_FAILURE_MS * 2 ** doublings, RETRY_LONGEST_MS);
+}
 
 const settingsShape = {
   locationId: z.string().min(1).max(100).nullable(),
@@ -91,8 +102,11 @@ interface State {
   lastBackupAt: number | null;
   /** When the newest scheduled backup that passed its check was started. */
   lastScheduledAt: number | null;
-  /** The last run that failed, until one succeeds. `dueAt` is set for a scheduled run. */
-  failure: { at: number; message: string; dueAt: number | null } | null;
+  /**
+   * The last run that failed, until one succeeds. `dueAt` is set for a scheduled run.
+   * `attempts` counts the scheduled runs that have failed in a row since the last backup that was made.
+   */
+  failure: { at: number; message: string; dueAt: number | null; attempts?: number } | null;
 }
 
 interface RunPayload extends Record<string, unknown> {
@@ -206,7 +220,7 @@ export function registerAutomaticBackups(app: FastifyInstance, ctx: AppContext, 
       }
       return;
     }
-    if (state.failure?.dueAt === due && now - state.failure.at < RETRY_AFTER_FAILURE_MS) return;
+    if (state.failure?.dueAt === due && now - state.failure.at < retryWaitMs(state.failure.attempts ?? 1)) return;
     announced = "";
     ctx.jobs.enqueue<RunPayload>(BACKUP_JOB, { kind: "scheduled", dueAt: due }, { title: `Back up to ${location.name}`, subject: SUBJECT });
   }
@@ -313,9 +327,16 @@ export function registerAutomaticBackups(app: FastifyInstance, ctx: AppContext, 
       await beforeCheck?.(file);
       check = await verifyBackupFile(file, dataDir, run.signal);
     } catch (error) {
+      // Whether it failed its check or the check was cut short, this run's archive has not been shown to be good.
+      const aside = await setAsideFailed(folder, name, bytes, Date.now()).catch(() => ({ kept: true, removed: [] as string[] }));
+      if (aside.removed.length > 0) run.log.info({ removed: aside.removed }, "older backups that failed their check were removed");
       if (run.signal.aborted) throw error;
       throw new PermanentJobError(
-        `The backup was written to "${location.name}" but did not read back correctly. ${messageOf(error)} It is kept as ${name}, shown as not verified, and is not counted as a backup.`,
+        `The backup was written to "${location.name}" but did not read back correctly. ${messageOf(error)} ${
+          aside.kept
+            ? `It is kept as ${name}, shown as not verified, and is not counted as a backup.`
+            : "It could not be marked as having failed its check, so it was removed."
+        }`,
         "verification",
       );
     }
@@ -347,7 +368,13 @@ export function registerAutomaticBackups(app: FastifyInstance, ctx: AppContext, 
           const message = known ? messageOf(error) : `The backup could not be written: ${messageOf(error)}`;
           // A location that went away is not held to the hour's wait: the backup is made as soon as it is back.
           const away = error instanceof AppError && error.code === "storage_unavailable";
-          writeState({ ...readState(), failure: { at: clock(), message, dueAt: kind === "scheduled" && !away ? (dueAt ?? null) : null } });
+          const before = readState();
+          // Counted for scheduled runs only: pressing "Back up now" neither lengthens nor shortens the schedule's wait.
+          const attempts = (before.failure?.attempts ?? 0) + (kind === "scheduled" && !away ? 1 : 0);
+          writeState({
+            ...before,
+            failure: { at: clock(), message, dueAt: kind === "scheduled" && !away ? (dueAt ?? null) : null, attempts },
+          });
           changed();
           if (!known) throw new PermanentJobError(message);
         }
@@ -400,7 +427,14 @@ export function registerAutomaticBackups(app: FastifyInstance, ctx: AppContext, 
     if (due !== null && !active) {
       if (!location) waiting = { dueAt: due, reason: "location_removed", message: REMOVED };
       else if (location.status !== "available") waiting = { dueAt: due, reason: "not_connected", message: notConnected(location) };
-      else if (state.failure?.dueAt === due) waiting = { dueAt: due, reason: "failed", message: state.failure.message };
+      else if (state.failure?.dueAt === due) {
+        waiting = {
+          dueAt: due,
+          reason: "failed",
+          message: state.failure.message,
+          retryAt: state.failure.at + retryWaitMs(state.failure.attempts ?? 1),
+        };
+      }
     }
     return {
       settings,

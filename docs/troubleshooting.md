@@ -607,7 +607,10 @@ It was written, but there is no record that it read back correctly: the check fa
 (the job's message under Downloads says how), the server stopped before the check
 finished, or the file has changed size since. It is not counted towards the number to
 keep. The next backup does not depend on it. If it keeps happening on one location,
-the disk or the network connection to it is the first thing to suspect.
+the disk or the network connection to it is the first thing to suspect. Outpost keeps
+only the newest two that failed their check, and tries a failing scheduled backup less
+often each time (after one hour, then two, four, eight, up to a day), so a fault that
+lasts does not fill the location.
 
 ### A file in `outpost-backups` is not in the list, or is never removed
 

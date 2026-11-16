@@ -29,6 +29,13 @@ export function waitingTitle(waiting: NonNullable<BackupSchedule["waiting"]>): s
   return waiting.reason === "failed" ? `The backup due ${due} failed` : `The backup due ${due} has not been made`;
 }
 
+/** When a scheduled backup that failed will be tried again. The wait doubles with each failure in a row, so no hour is promised. */
+export function retryText(waiting: NonNullable<BackupSchedule["waiting"]>): string {
+  return waiting.retryAt
+    ? `It will be tried again ${formatDateTime(waiting.retryAt)}, and less often each time it fails.`
+    : "It will be tried again later.";
+}
+
 export const kindText: Record<StoredBackup["kind"], string> = { scheduled: "Scheduled", manual: "Started by hand" };
 
 export const checkText: Record<StoredBackup["check"], { label: string; tone: "success" | "warning" | "danger"; explain: string | null }> = {

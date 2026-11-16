@@ -675,7 +675,16 @@ storage location. It is off until you choose a location.
 - **If the check fails.** The job fails and says why, the screen reports it, and the
   file is kept, shown as **Not verified**. It is never counted towards the number to
   keep and never replaces a good backup. A scheduled backup that failed is tried again
-  after an hour.
+  after an hour, then after two, four and eight, the wait doubling up to a day until
+  one succeeds; the screen says when the next try is. The next scheduled time is always
+  tried when it comes.
+- **Backups that failed their check do not pile up.** Outpost keeps the newest two
+  archives whose check failed or was cut short (the fault may be in the checking, not
+  in the file) and removes older ones as each new one is written. It tells them by a
+  small file it writes beside each, `<name>.failed.json`, and removes one only while it
+  is still the size that run wrote. A verified backup, a backup with no such file
+  beside it (one you copied in by hand, say) and anything that is not Outpost's are
+  never removed this way.
 - **If the location is not connected.** The backup is skipped. Nothing is written
   anywhere else: not to another location, not to the data directory. The screen says
   when the last backup was, which one is owed, and that the location is not connected.
