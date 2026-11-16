@@ -1015,6 +1015,39 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 - Checks to run locally: lint, type checking, server and web tests, catalogue
   validation, and browser tests against the packaged app with the internet blocked.
 
+#### Tools: calculators
+
+- Five screens of calculators under Tools: Water, Outdoors, Radio calculators, Building
+  and Cooking (`docs/tools.md` lists every one with its formula, source, range and
+  limits). Each input has its unit beside it, remembered on the device with the last
+  figure typed; the answer appears as you type, in figures and in a sentence; a figure
+  that cannot be used is said to be, in words; and "How this is worked out" gives the
+  formula, its source with the date it was read, the range it holds for and what it
+  leaves out. Copy and Save as a note keep an answer.
+- Water: water to store by the UK Government's, the CDC's, FEMA's or the WHO's figure,
+  with every body's figure listed beside the answer; rain from a roof; filter life from
+  the filter's own label; and making water safe to drink, quoted from the CDC, the EPA,
+  the WHO and the Drinking Water Inspectorate, with the EPA's and the CDC's bleach tables
+  exactly as published and a sheet to print.
+- Outdoors: Naismith's rule with Langmuir's and Tranter's corrections, gradient,
+  distance and bearing between positions in any format the map reads, the sun's day, the
+  wind chill and heat index by the weather services' formulas (refused outside their
+  ranges), and water and food for a walk as ranges from the UK MoD and the Compendium of
+  Physical Activities.
+- Radio: antenna lengths with an adjustable factor, free-space path loss, the
+  smooth-earth radio horizon (linking to the map's line of sight over terrain), cable
+  loss from makers' published figures, watts, dBm and S-units on both S9 conventions, and
+  battery life on a duty cycle.
+- Building: concrete and mortar by Hanson's published mixes, area and volume, roof pitch,
+  a cutting list (first fit decreasing, said not to be optimal), U-values by BS EN ISO
+  6946's simple sum and heat loss, both said to be estimates, and sheets and fixings.
+- Cooking: the FSA's roasting times with the check that matters (75 °C in the thickest
+  part), the FSA's safe temperatures as a sheet to print, a timer that can be started
+  from a roasting time, boiling at altitude, weights and measures, gas marks and scaling
+  a recipe.
+- A small kit (`apps/web/src/features/tools/kit/`) that these calculators share and
+  others can use.
+
 ### Known limitations
 
 These are deliberate or known, and are explained in
