@@ -24,6 +24,7 @@ export * from "./merge.ts";
 export * from "./notes.ts";
 export * from "./portable.ts";
 export * from "./radio.ts";
+export * from "./repeaters.ts";
 export * from "./retrieval.ts";
 export * from "./search.ts";
 export * from "./semantic.ts";

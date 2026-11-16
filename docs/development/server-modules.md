@@ -86,6 +86,11 @@ ctx.services.search.upsert({
 });
 ```
 
+A module with tens of thousands of small things of one kind (repeaters) does not put
+them in the passage index. It registers a source of its own with
+`ctx.services.search.addSource({ layer: "local", kind, … })` and answers from its own
+table; see `modules/repeaters/index.ts`.
+
 ## Rules
 
 1. **Paths.** Store paths relative to a storage location (`locationId` + `relPath`) or

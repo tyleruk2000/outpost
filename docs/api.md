@@ -110,6 +110,7 @@ a name and a JSON `data` of the form `{ "id": …, "data": … }`; both parts ar
 | `collections.changed` | A collection is installed, changed or removed | collection id, when one |
 | `catalog.changed` | The catalogue is reloaded or refreshed, or a catalogue download starts | entry id, when one |
 | `maps.changed` | Regions, place names, markers or tracks change | |
+| `repeaters.changed` | A repeater list is imported, brought up to date or removed, or an entry is added, changed or removed | |
 | `imports.changed` | An import changes state | import id |
 | `semantic.changed` | Vectors are built, loaded or removed | |
 | `portable.changed` | A portable drive or runtime download finishes | |
@@ -256,6 +257,11 @@ Types: `packages/shared/src/search.ts`. See [search.md](search.md).
 | `GET /api/search` | Unified search (`SearchResponse`). Query: `q` (at most 500 characters), `kinds` (comma separated, for example `document,note`), `tag`, `mode` (`keyword`, `semantic`, `hybrid`), `limit` (1 to 100, default 20), `offset`, `reference` (`include`, the default, or `later`). With `reference=later` the answer leaves reference collections out and so never waits for them, and `referenceToCome` says whether `GET /api/search/reference` has any to search. |
 | `GET /api/search/reference` | What reference collections hold, for a search asked with `reference=later`. Query: `q`. The answer is `application/x-ndjson`: one JSON object to a line (`ReferenceSearchEvent`), sent as they happen. First `{"type":"start","collections":n}`; then one `{"type":"collection","collectionId","title","results"}` for each collection as it answers, with that collection's best matches (`SearchResult`, best first, possibly none); last `{"type":"end","searched","missing","message","tookMs"}`, where `missing` lists collections left out (`reason` is `slow` or `failed`) and `message` says why none could be searched at all, or is `null`. `collections` is 0, and nothing follows but `end`, when there are no collections, kiwix-serve is down, or searching inside collections is turned off. Close the connection to stop: collections not yet asked are then not asked. |
 | `GET /api/search/stats` | `{ entities, chunks }`: indexed items per kind and the number of passages. |
+
+Repeaters are found here too, as results of kind `repeater` whose `url` is
+`/radio/repeaters/<id>`. They are not in the passage index: the repeaters module
+answers for them itself, in keyword and hybrid modes, unless `kinds` leaves `repeater`
+out or `tag` is given.
 
 Response fields worth knowing: `relaxed` (the search fell back to "any word"),
 `facets` (results per kind), `warnings` (sources that could not answer, with a
@@ -674,6 +680,28 @@ is needed. See [contacts.md](contacts.md#keeping-a-copy-on-a-phone-carddav) and
 | `REPORT /dav/addressbooks/contacts/` | `addressbook-multiget` and `addressbook-query` (RFC 6352). `sync-collection` is answered `403` with `supported-report`. |
 | `GET`, `HEAD /dav/addressbooks/contacts/<id>.vcf` | One contact as vCard 3.0, with its `ETag`. |
 | Anything that writes | `403` with `need-privileges`. Nothing is changed. |
+## Repeaters
+
+Types: `packages/shared/src/repeaters.ts`. See [radio.md](radio.md#repeaters). Nothing
+here makes an outbound request. Frequencies are whole hertz; the **output** is what the
+repeater transmits on.
+
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/repeaters/overview` | What is held (`RepeatersOverview`): the imported lists with the date of each one's data, counts by band and mode, how many have a position. |
+| `GET /api/repeaters` | A page of entries (`RepeaterListResponse`). Query: `q` (callsign, town, keeper, channel, locator; a number is megahertz and matches every output or input that starts that way), `band`, `mode`, `hideOffAir=1`, `list` (a list's id, or `own` for entries made by hand), `near=latitude,longitude` (sorts by distance and adds `distanceMeters` and `bearingDegrees`), `withinKm` (with `near`), `limit` (1 to 200, default 50), `offset`. Without `near` the order is by callsign. Entries with no position follow those with one, and are left out when `withinKm` is given. |
+| `GET /api/repeaters/overlay?bbox=west,south,east,north` | What to draw in a box of the map (`RepeaterOverlayResponse`): every repeater when there are at most 400, otherwise counts by patch with each patch's middle, and as a point any repeater alone in its patch. Takes the same filters as the list. A box across the 180° meridian has its west edge east of its east edge. |
+| `GET /api/repeaters/export?format=chirp` (or `outpost`) | A CSV of the entries the same filters and `near` pick, as a download: CHIRP's columns (at most 2,000 rows) or Outpost's own, which reads back without loss. `limit` takes the first so many. `X-Outpost-Repeater-Count` gives the number of rows. `404` when nothing matches. |
+| `POST /api/repeaters/import/preview` | Multipart: one CSV file (16 MB, 100,000 rows) and optional fields `mapping` (JSON, field to column heading; see `RepeaterColumnMap`) and `listId`. Answers with how the file was read and what importing it would do (`RepeaterImportPreview`), including what an update of that list would change. Keeps nothing. |
+| `POST /api/repeaters/import` | The same file and fields, committed, with `name`, `source`, `sourceUrl` and `dataDate` (`YYYY-MM-DD`, not in the future) for the list, and for an update `edited` (`keep`, the default, or `replace`) and `gone` (`remove`, the default, or `keep`). Answers with `RepeaterImportResult`. One import at a time: a second is refused with `409`. |
+| `PATCH /api/repeaters/lists/:id` | Change a list's `name`, `source`, `sourceUrl` or `dataDate`. |
+| `DELETE /api/repeaters/lists/:id` | Remove a list and every entry in it, the person's changes to them included. |
+| `POST /api/repeaters/lists/:id/restore-removed` | Bring back the entries of a list that were removed one by one. |
+| `POST /api/repeaters` | Add an entry by hand. Body: `callsign`, `outputHz`, and optionally `inputHz`, `modes`, `ctcssHz`, `dcsCode`, `dmrColourCode`, `talkgroups`, `accessNote`, `channel`, `place`, `region`, `country`, `lat` and `lon`, `locator`, `antennaMeters`, `keeper`, `status`, `notes`. A `locator` with no coordinates places it at the middle of the square. |
+| `GET /api/repeaters/:id` | One entry, its list, and what the list says where the person has changed it (`RepeaterDetailResponse`). |
+| `PATCH /api/repeaters/:id` | Change an entry. One that came from a list is then marked as the person's, and an update of the list leaves it alone. |
+| `POST /api/repeaters/:id/revert` | Put a changed entry back to what its list says. |
+| `DELETE /api/repeaters/:id` | Remove an entry. One from a list is kept as a mark, so that an update does not bring it back. |
 
 ## Backup
 

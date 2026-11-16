@@ -1,7 +1,7 @@
-# Radio: reference sheets, a handbook, radio guides and tools on the map
+# Radio: reference sheets, a handbook, radio guides, repeaters and tools on the map
 
 Outpost ships with two kinds of radio material, both usable with no connection at all,
-and two radio tools on its map:
+two radio tools on its map, and a place to keep repeaters:
 
 - **Nine reference sheets** about amateur radio, licence-free radio and emergency
   frequencies, written for Outpost from the regulators' own documents. The tables are in
@@ -14,6 +14,10 @@ and two radio tools on its map:
   Outpost. See [The handbook and the radio guides](#the-handbook-and-the-radio-guides).
 - **On the map: Maidenhead locators and a line-of-sight check.** See
   [Radio tools on the map](#radio-tools-on-the-map).
+- **Repeaters: a database of your own.** Outpost ships with no repeaters and downloads
+  none. You bring in a list as a file, or enter repeaters by hand, and they are then
+  found, measured from a place, drawn on the map and written out for a radio with no
+  connection. See [Repeaters](#repeaters).
 
 ## Radio tools on the map
 
@@ -25,8 +29,8 @@ Both are on the **Maps** screen and work from what is installed, with no connect
   written beside its coordinates wherever the map shows them, and locators of four,
   six or eight characters understood by the map's search box. See
   [maps.md](maps.md#maidenhead-locators).
-- **Line of sight between two points.** Pick two points, give an antenna height at
-  each and a band. Outpost gives the distance, the bearing each way and the locator of
+- **Line of sight between two points.** Pick two points (or take a repeater you hold as
+  one of them), give an antenna height at each and a band. Outpost gives the distance, the bearing each way and the locator of
   each end, draws the ground between them with the ray and the first Fresnel zone, and
   says whether the path is clear, or blocked and by how much, and how much of the
   Fresnel zone is clear at its tightest. See [maps.md](maps.md#line-of-sight).
@@ -49,7 +53,158 @@ Read these before relying on the line-of-sight check:
   width of the Fresnel zone. Nothing here says who may transmit where: that is in the
   sheets below.
 
-## Where to find them
+## Repeaters
+
+**Repeaters** (in the command palette, in the phone's More sheet, and behind the
+**Repeaters** button on the map) is a database of amateur radio repeaters kept in
+Outpost's own database on your machine. It holds what you put in it and nothing else.
+
+Read these before relying on it:
+
+- **Outpost downloads no repeater list.** Each publisher's terms were read on
+  16 November 2026 and none gives an application leave to fetch its list and keep a
+  copy; the largest directory forbids it in so many words. The findings, source by
+  source, are in [sources.md](sources.md#repeater-lists). A list arrives as a file you
+  obtained yourself, on terms you are content with.
+- **A list is right for its date, and Outpost has no way to know what is on the air
+  now.** Every screen says where an entry came from and the date of its data. A list
+  over six months old is marked with its age, and one over a year old with a warning.
+  A repeater's status is what the list said on that date.
+- **Listed positions are often rough, on purpose.** Lists blur the positions of
+  private sites, to one decimal place of a degree or a four-character locator.
+  Outpost works out how far off a position may be from how it was written (half the
+  last decimal place, or half the width of the locator square), marks one that may be
+  a kilometre or more out as approximate, and says so again wherever an exact place
+  matters: on the map, beside a distance, and in the line-of-sight check.
+- **Who may use a repeater.** The screens carry one line: transmitting through a
+  repeater needs an amateur radio licence that covers the band, and its keeper may
+  restrict who uses it. That is from the United Kingdom licence conditions, under
+  which a repeater "may be operated (but not controlled) by other radio amateurs" and
+  its keeper "takes all reasonable steps to ensure that the Repeater is only used by an
+  Amateur", and from Ofcom's guidance for licensees, section 4.5.3, which lists
+  "restricting access to the station to certain licensees" among a keeper's remedies.
+  Both documents are in Explore under Radio communications. Other countries have their
+  own rules. This is not legal advice.
+
+### Getting a list in
+
+**Import a list** takes one CSV file, up to 16 MB and 100,000 rows. Nothing is kept
+until you have seen how it was read:
+
+- **What it was read as.** Three layouts the RSGB's ETCC offers on ukrepeater.net are
+  recognised by their headings (voice repeaters; voice repeaters and gateways with
+  status; all modes), as are CHIRP's CSV and Outpost's own export. Any other CSV with
+  a row of headings is read by matching its headings to what they usually mean
+  ("Freq", "Shift", "Grid", "Town").
+- **The first rows as they would be kept**, so that you can see the output and the
+  shift are the right way round. In every list Outpost keeps the **output** as the
+  frequency the repeater transmits on, which is the one you listen on.
+- **How the columns are read**, column by column, which you can change. A list read
+  by its headings is shown with this open.
+- **The rows that cannot be kept**, each with its line and the reason: no callsign,
+  a frequency that is not one, a position that is not on Earth.
+- **What is rough about it**: how many entries have no position, how many positions
+  are approximate.
+
+You then give the list a name, say who publishes it, and give **the date of its
+data**: the day the file was made or fetched from its publisher, not the day you
+import it. A date in the future is refused.
+
+What is read from a file: callsign, output and input (or a shift and its direction),
+band, modes (FM, DMR, D-STAR, Fusion, NXDN, P25, M17, TETRA), CTCSS tone, DCS code, DMR
+colour code, talkgroups, other access details (a 1750 Hz tone burst is recognised in a
+tone column), channel name, town, region, country, latitude and longitude, locator,
+aerial height, keeper, status and notes. A list with a locator and no coordinates is
+placed at the middle of each square. CHIRP files hold no positions at all: their
+entries are listed, and are not on the map until you give one a position.
+
+**Add by hand** makes an entry of your own, with frequencies in megahertz and a
+position as coordinates, a grid reference or a locator.
+
+### Bringing a list up to date
+
+**Bring up to date** on a list takes a newer copy of the same file. Before anything
+changes you are shown how many entries are new, how many changed, how many are the
+same, and how many are no longer in the file. Three things are promised:
+
+- **An entry you changed is left as you have it.** If the list now says something
+  different from what it said when you changed the entry, you are told how many such
+  entries there are and which, and they are replaced only if you tick the box. What
+  the list says now is kept beside your version: the repeater's own screen shows the
+  two side by side, with **Put back to what the list says**.
+- **An entry you removed stays removed.** It can be brought back from the list's
+  menu.
+- **An entry that has left the list is removed** unless you ask to keep those, and
+  never if you had changed it.
+
+Entries are matched from one copy to the next by the list's own number for them where
+it has one (the ETCC's list with status does), and otherwise by callsign and output
+frequency. Removing a list removes its entries, your changes to them included, after
+saying so; entries from other lists and your own are not touched. The file itself is
+never kept by Outpost.
+
+### Using it
+
+- **The list** filters by band, by mode, and by distance from a place: a saved
+  place, the middle of the map as you last left it, where the device is, or a position
+  or locator you type. With a place chosen, entries are in order of distance, each with
+  its distance and compass bearing; those with no position come last. Distances are
+  measured on the great circle from the listed position, and say "about" for a
+  position that is approximate.
+- **Finding.** The box finds by callsign, by any part of a town, keeper, channel or
+  locator, and by frequency: `145.7` finds every output or input from 145.700 to
+  145.799 MHz. Outpost's search across everything finds repeaters the same way, under
+  their own heading, **Repeaters**.
+- **On the map.** See [maps.md](maps.md#repeaters-on-the-map).
+- **One repeater** has a screen of its own: what to listen on and transmit on, access,
+  modes, status with the date it was said, position with its locator and how exact it
+  is, the listed aerial height, distance and bearing from a chosen place, **Show on
+  the map** and **Check line of sight**.
+
+### Taking a set out
+
+**Export these** writes the repeaters the list is showing: the filters choose the set,
+nearest first when a place is chosen, and you say how many at most.
+
+- **CHIRP (CSV)**, for programming a radio. `Frequency` is the repeater's output,
+  `Duplex` and `Offset` give the shift, `Tone` is `Tone` with the CTCSS tone or `DTCS`
+  with the code. CHIRP has no column for a tone burst, a DMR colour code or a
+  talkgroup, so those are written in each channel's comment with the town and the
+  source and date of the entry. A repeater with no input listed is written with
+  `Duplex` `off`, which tells a radio not to transmit on it. At most 2,000 channels.
+- **Outpost (CSV)** carries every field, and reads back with nothing lost.
+
+**Check the file before you transmit.** It is made from a list, a list goes out of
+date, and what CHIRP's columns cannot say is only in a comment. The export says this
+where the file is offered. The CHIRP layout was taken from CHIRP's own source on
+16 November 2026 and tested by reading Outpost's files back with Outpost's own reader;
+**it has not been loaded into CHIRP or into a radio.**
+
+### Limits
+
+- **No list comes with Outpost and none is fetched**, for the reasons above. There is
+  no "update" that reaches out: bringing a list up to date means importing a newer
+  file.
+- **Lists are CSV.** KML, GPX, ADIF, a radio's own memory image and the programming
+  files of particular radios other than CHIRP's CSV are not read.
+- **Tested with made-up stations**, in the layouts described. No real list is in the
+  repository, and none was run through the tests.
+- **Fifty thousand entries were measured on an Apple M2 Max, not on a Raspberry Pi**:
+  import 1.5 to 3 seconds for a 5.6 MB file; the first page of the list 3 ms; all of
+  them sorted by distance from a place 26 ms; finding by callsign or town 6 to 13 ms;
+  the map's request for the whole world 25 ms and for a country under 1 ms; the search
+  across everything 3 ms more. A Pi 4 is several times slower. To measure on your own
+  machine: `OUTPOST_SCALE=1 pnpm exec vitest run test/repeaters-scale.test.ts` in
+  `apps/server`.
+- **Out of reach of the server, a phone has no repeaters.** They are not among the
+  things a phone keeps ([offline.md](offline.md#a-phone-out-of-reach-of-the-server)).
+- **A printed map does not show them.**
+- **Repeaters do not come back from a portable drive.** A drive carries them, since it
+  carries the database, but bringing a drive's changes home covers pages, documents,
+  saved places and routes only.
+- **Backups hold them**, as part of the database.
+
+## Where to find the sheets
 
 In **Explore**, open the category **Radio communications**, or set **Show** to
 **Included**. Each sheet says "Included with Outpost". Press **Add to library** and it

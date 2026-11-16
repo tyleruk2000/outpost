@@ -80,6 +80,7 @@ test.describe("on a phone", () => {
       ["Chat", "/chat"],
       ["Contacts", "/contacts"],
       ["Import files", "/import"],
+      ["Repeaters", "/radio/repeaters"],
       ["Downloads", "/downloads"],
       ["Storage", "/storage"],
       ["Manage and clean up", "/storage/manage"],

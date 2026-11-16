@@ -15,6 +15,7 @@ import {
   type LucideIcon,
   Moon,
   Plus,
+  RadioReceiver,
   Search,
   Sun,
   Upload,
@@ -140,6 +141,7 @@ export function CommandPalette({
     { id: "how-search-works", label: "See how search works", icon: Waypoints, run: () => go("/search/how-it-works") },
     { id: "free-space", label: "Free up space and clean up", icon: Eraser, run: () => go("/storage/manage") },
     { id: "manage-downloaded", label: "Manage what is downloaded", icon: ListChecks, run: () => go("/storage/manage?view=installed") },
+    { id: "repeaters", label: "Repeaters", icon: RadioReceiver, run: () => go("/radio/repeaters") },
     {
       id: "theme",
       label: `Switch to ${resolved === "dark" ? "light" : "dark"} theme`,

@@ -33,6 +33,7 @@ const invalidations: Record<string, string[][]> = {
   "catalog.changed": [["catalog"]],
   "maps.changed": [["maps"], ["collections"]],
   "contacts.changed": [["contacts"], ["search"], ["manage"]],
+  "repeaters.changed": [["repeaters"], ["search"]],
   "imports.changed": [["imports"]],
   "semantic.changed": [["semantic"]],
   "portable.changed": [["portable"]],

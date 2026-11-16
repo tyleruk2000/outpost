@@ -70,8 +70,11 @@ export function useSight({
   active: boolean;
   /** Saved places: pressing one while choosing an end puts the end exactly on it. */
   markers: MarkerDto[];
-  /** Two points to begin with, when the tool is taken up from a measured path. */
-  start: [LatLon, LatLon] | null;
+  /**
+   * The ends to begin with, when the tool is taken up from a measured path or from a
+   * repeater. A first end of null is still to be chosen on the map.
+   */
+  start: [SightEnd | null, SightEnd] | null;
 }): Sight {
   const [ends, setEnds] = useState(EMPTY_ENDS);
   const [settings, setSettings] = useStoredState(SIGHT_SETTINGS_KEY, isSightSettings, DEFAULT_SIGHT_SETTINGS);
@@ -81,7 +84,7 @@ export function useSight({
   // Taken up: start from the measured path, or from nothing. Put down: forget.
   // biome-ignore lint/correctness/useExhaustiveDependencies: the starting points are read once, when the tool is taken up
   useEffect(() => {
-    setEnds(active && start ? { from: { position: start[0] }, to: { position: start[1] }, picking: null } : EMPTY_ENDS);
+    setEnds(active && start ? { from: start[0], to: start[1], picking: start[0] ? null : "from" } : EMPTY_ENDS);
     setScrub(null);
   }, [active]);
 

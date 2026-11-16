@@ -9,6 +9,7 @@ import {
   PenLine,
   Plus,
   Printer,
+  RadioReceiver,
   RadioTower,
   Redo2,
   Ruler,
@@ -88,6 +89,8 @@ export function MapControls({
   onContoursChange,
   locatorGrid,
   onLocatorGridChange,
+  repeaters,
+  onRepeatersChange,
   record,
   disabled,
   className,
@@ -112,6 +115,9 @@ export function MapControls({
   /** Whether the Maidenhead locator grid is drawn over the map. */
   locatorGrid: boolean;
   onLocatorGridChange: (on: boolean) => void;
+  /** Whether the repeaters held on this device are drawn over the map; see features/repeaters. Left out, there is no button. */
+  repeaters?: boolean;
+  onRepeatersChange?: (on: boolean) => void;
   /** The button that records a track as it is walked; see recording/record-ui.tsx. */
   record?: ReactNode;
   /** The map could not be drawn; the controls that move it have nothing to act on. */
@@ -211,6 +217,11 @@ export function MapControls({
         >
           <Grid3x3 />
         </ControlButton>
+        {onRepeatersChange ? (
+          <ControlButton label="Repeaters" pressed={repeaters ?? false} onClick={() => onRepeatersChange(!repeaters)} disabled={disabled}>
+            <RadioReceiver />
+          </ControlButton>
+        ) : null}
         <ControlButton
           label="Line of sight between two points"
           pressed={tool === "sight"}

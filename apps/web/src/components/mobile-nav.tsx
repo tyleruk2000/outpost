@@ -20,7 +20,11 @@ export function MobileNav({ onOpenSearch }: { onOpenSearch: () => void }) {
   const tucked = (to: string) => tuckedAwayNav.filter((item) => item.to.startsWith(`${to}/`));
   const withTucked = (items: typeof knowledgeNav) =>
     items.filter((item) => !tabbed.has(item.to)).flatMap((item) => [item, ...tucked(item.to)]);
-  const more = [...withTucked(knowledgeNav), ...tuckedAwayNav.filter((item) => item.to === "/import"), ...withTucked(upkeepNav)];
+  const more = [
+    ...withTucked(knowledgeNav),
+    ...tuckedAwayNav.filter((item) => item.to === "/import" || item.to.startsWith("/radio/")),
+    ...withTucked(upkeepNav),
+  ];
 
   return (
     <>
