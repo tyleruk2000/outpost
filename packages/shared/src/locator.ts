@@ -19,6 +19,9 @@ export const LOCATOR_CELLS: Record<LocatorLength, { lon: number; lat: number }> 
   8: { lon: 1 / 120, lat: 1 / 240 },
 };
 
+/** What the cell each length of locator names is called. */
+export const LOCATOR_CELL_NAMES: Record<LocatorLength, string> = { 2: "field", 4: "square", 6: "subsquare", 8: "extended square" };
+
 /** Extended squares to a degree of longitude, and to a degree of latitude: the units the sums are done in. */
 const LON_UNITS = 120;
 const LAT_UNITS = 240;

@@ -1,5 +1,5 @@
 /** The controls and cards that float over the map: tools, zoom, the measuring card, the drawing card, the pin card, the card for moving a place. */
-import { Compass, Crosshair, LocateFixed, Minus, Mountain, PenLine, Plus, Redo2, Ruler, Undo2, X } from "lucide-react";
+import { Compass, Crosshair, Grid3x3, LocateFixed, Minus, Mountain, PenLine, Plus, RadioTower, Redo2, Ruler, Undo2, X } from "lucide-react";
 import { type ReactNode, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -12,9 +12,10 @@ import { formatBearing, formatDistance, formatDistanceWithMiles, type LatLon } f
 import { measure } from "./lib/measure";
 import { canRedo, canUndo, isFull, type RouteEdit } from "./lib/route-edit";
 import { STRAIGHT_LINES } from "./panels/route-editor";
+import { Locator, PathLocators } from "./radio/locator";
 import { ControlButton, ControlGroup, mapSurface } from "./ui";
 
-export type Tool = "browse" | "measure" | "add-place" | "draw";
+export type Tool = "browse" | "measure" | "add-place" | "draw" | "sight";
 
 /** A map pin with a plus: the "add a place" tool. Drawn here because the icon set has no exact match at this weight. */
 function PinPlus() {
@@ -69,6 +70,8 @@ export function MapControls({
   contours,
   contourReach,
   onContoursChange,
+  locatorGrid,
+  onLocatorGridChange,
   disabled,
   className,
 }: {
@@ -89,12 +92,15 @@ export function MapControls({
   /** Whether they can be drawn in the view on screen, and if not, why. */
   contourReach: ContourReach;
   onContoursChange: (on: boolean) => void;
+  /** Whether the Maidenhead locator grid is drawn over the map. */
+  locatorGrid: boolean;
+  onLocatorGridChange: (on: boolean) => void;
   /** The map could not be drawn; the controls that move it have nothing to act on. */
   disabled: boolean;
   className?: string;
 }) {
   return (
-    <div className={cn("flex flex-col gap-2", className)}>
+    <div className={cn("relative flex flex-col gap-2", className)}>
       {/* Touch screens zoom by pinching; the buttons are for pointers and keyboards. */}
       <ControlGroup className="max-md:hidden">
         <ControlButton label="Zoom in" onClick={onZoomIn} disabled={disabled}>
@@ -165,6 +171,26 @@ export function MapControls({
           <ContourRings />
         </ControlButton>
       </ControlGroup>
+      {/* Radio: the locator grid, and whether two points can see each other. On a phone the column is
+          already as long as the map is tall once a card is up, so these two stand beside its top. */}
+      <ControlGroup className="max-md:absolute max-md:top-0 max-md:right-[calc(100%+0.5rem)]">
+        <ControlButton
+          label="Maidenhead locator grid"
+          pressed={locatorGrid}
+          onClick={() => onLocatorGridChange(!locatorGrid)}
+          disabled={disabled}
+        >
+          <Grid3x3 />
+        </ControlButton>
+        <ControlButton
+          label="Line of sight between two points"
+          pressed={tool === "sight"}
+          onClick={() => onToolChange(tool === "sight" ? "browse" : "sight")}
+          disabled={disabled}
+        >
+          <RadioTower />
+        </ControlButton>
+      </ControlGroup>
     </div>
   );
 }
@@ -204,6 +230,7 @@ export function MeasureCard({
   onClear,
   onDone,
   onSaveAsRoute,
+  onSight,
 }: {
   points: LatLon[];
   onUndo: () => void;
@@ -211,6 +238,8 @@ export function MeasureCard({
   onDone: () => void;
   /** Keeps the measured path: opens it in the drawing tool, to be named and saved as a route. */
   onSaveAsRoute: () => void;
+  /** Checks line of sight between the first point and the last. */
+  onSight?: () => void;
 }) {
   const result = measure(points);
   const list = useRef<HTMLOListElement>(null);
@@ -235,6 +264,7 @@ export function MeasureCard({
           <p className="tabular text-small text-ink-muted">
             {result.legs.length === 1 ? "One leg" : `${result.legs.length} legs`}, last leg heading {formatBearing(result.lastBearing ?? 0)}
           </p>
+          <PathLocators points={points} />
           {result.legs.length > 1 ? (
             <ol
               ref={list}
@@ -269,10 +299,15 @@ export function MeasureCard({
         </Button>
       </div>
       {points.length >= 2 ? (
-        <div className="mt-2 border-t border-border pt-2">
+        <div className="mt-2 flex flex-wrap gap-2 border-t border-border pt-2">
           <Button size="sm" onClick={onSaveAsRoute}>
             <PenLine /> Save as a route
           </Button>
+          {onSight ? (
+            <Button size="sm" onClick={onSight}>
+              <RadioTower /> Check line of sight
+            </Button>
+          ) : null}
         </div>
       ) : null}
     </MapCard>
@@ -417,6 +452,8 @@ export function PinCard({
       >
         {coordinates}
       </button>
+      {/* Already the locator when that is the format coordinates are shown in. */}
+      {format === "maidenhead" ? null : <Locator position={position} className="mt-1 block" />}
       <div className="mt-3">
         <Button size="sm" variant="primary" onClick={onSave}>
           Save this place
@@ -431,6 +468,7 @@ export function ContextMenu({
   point,
   bounds,
   coordinates,
+  locator,
   place,
   onSave,
   onMeasure,
@@ -441,6 +479,8 @@ export function ContextMenu({
   /** Size of the map area, to keep the menu inside it. */
   bounds: { width: number; height: number };
   coordinates: string;
+  /** The Maidenhead locator of the point, when the coordinates are not one already. */
+  locator?: string;
   /** The saved place under the point, when there is one: it can be moved from here. */
   place?: { name: string; onMove: () => void };
   onSave: () => void;
@@ -471,7 +511,7 @@ export function ContextMenu({
   }, [onClose]);
 
   const width = 232;
-  const height = place ? 218 : 182;
+  const height = (place ? 218 : 182) + (locator ? 18 : 0);
   const left = Math.max(8, Math.min(point.x, bounds.width - width - 8));
   const top = Math.max(8, Math.min(point.y, bounds.height - height - 8));
   const item =
@@ -479,7 +519,8 @@ export function ContextMenu({
 
   return (
     <div ref={ref} role="menu" aria-label="At this point" className={cn(mapSurface, "absolute z-30 p-1")} style={{ left, top, width }}>
-      <p className="tabular truncate px-2.5 pt-1.5 pb-1 font-mono text-micro text-ink-muted">{coordinates}</p>
+      <p className={cn("tabular truncate px-2.5 pt-1.5 font-mono text-micro text-ink-muted", locator ? "pb-0" : "pb-1")}>{coordinates}</p>
+      {locator ? <p className="tabular truncate px-2.5 pb-1 text-micro text-ink-muted">Locator {locator}</p> : null}
       {place ? (
         <button type="button" role="menuitem" className={item} onClick={place.onMove}>
           <span className="truncate">Move “{place.name}”</span>

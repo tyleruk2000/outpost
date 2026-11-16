@@ -3,12 +3,15 @@ import {
   formatDecimal,
   formatOsGridRef,
   haversineMeters,
+  LOCATOR_CELL_NAMES,
+  type LocatorLength,
   type MarkerDto,
   type ParsedCoordinate,
   type PlaceDto,
+  parseMaidenhead,
   type TrackDto,
 } from "@outpost/shared";
-import { bboxCenter, formatHeight, type LatLon } from "./geo";
+import { bboxCenter, formatDistance, formatHeight, type LatLon } from "./geo";
 import { trackSummary } from "./tracks";
 
 export type SearchResult = {
@@ -65,9 +68,24 @@ const COORDINATE_KINDS: Record<ParsedCoordinate["format"], string> = {
   dms: "Coordinates",
   geo: "Coordinates",
   osgb: "Grid reference",
+  maidenhead: "Maidenhead locator",
 };
 
+/** "Middle of a locator subsquare, 5.53 km × 4.63 km · 53.52083, -2.62500" */
+function locatorDetail(coordinate: ParsedCoordinate): string {
+  const square = parseMaidenhead(coordinate.locator ?? "");
+  const position = formatDecimal(coordinate.lat, coordinate.lon, 5);
+  if (!square) return `Maidenhead locator · ${position}`;
+  const width = haversineMeters(square.lat, square.west, square.lat, square.east);
+  const height = haversineMeters(square.south, square.lon, square.north, square.lon);
+  const name = LOCATOR_CELL_NAMES[square.locator.length as LocatorLength];
+  // A locator names a cell, and the cell is not small: say which kind, how big, and that this is its middle.
+  // The words that matter come first, because the list cuts a long line short.
+  return `Middle of a locator ${name}, ${formatDistance(width)} × ${formatDistance(height)} · ${position}`;
+}
+
 export function coordinateDetail(coordinate: ParsedCoordinate): string {
+  if (coordinate.format === "maidenhead") return locatorDetail(coordinate);
   if (coordinate.format !== "osgb") {
     const grid = formatOsGridRef(coordinate.lat, coordinate.lon, 8);
     return grid ? `Coordinates · grid reference ${grid}` : COORDINATE_KINDS[coordinate.format];
@@ -81,6 +99,8 @@ export function coordinateDetail(coordinate: ParsedCoordinate): string {
 export interface SearchInput {
   query: string;
   coordinate: ParsedCoordinate | null;
+  /** Other positions the same text can mean: a few four-character texts are both a grid reference and a locator. */
+  otherReadings?: ParsedCoordinate[];
   places: PlaceDto[];
   markers: MarkerDto[];
   tracks: TrackDto[];
@@ -102,18 +122,22 @@ export function buildSearchResults(input: SearchInput): SearchResult[] {
   const results: SearchResult[] = [];
   if (needle.length === 0) return results;
 
-  if (input.coordinate) {
-    const position = { lat: input.coordinate.lat, lon: input.coordinate.lon };
+  const readings = input.coordinate ? [input.coordinate, ...(input.otherReadings ?? [])] : [];
+  readings.forEach((coordinate, index) => {
+    const position = { lat: coordinate.lat, lon: coordinate.lon };
     results.push({
       kind: "coordinate",
-      key: "coordinate",
-      title: input.coordinate.format === "osgb" ? input.query.trim().toUpperCase() : formatDecimal(position.lat, position.lon, 5),
-      detail: coordinateDetail(input.coordinate),
+      key: index === 0 ? "coordinate" : `coordinate-${index}`,
+      title:
+        coordinate.format === "osgb"
+          ? input.query.trim().toUpperCase()
+          : (coordinate.locator ?? formatDecimal(position.lat, position.lon, 5)),
+      detail: coordinateDetail(coordinate),
       position,
       distance: distanceTo(position),
-      coordinate: input.coordinate,
+      coordinate,
     });
-  }
+  });
 
   const limit = input.ownLimit ?? 4;
   for (const marker of input.markers.filter((item) => fold(item.name).includes(needle)).slice(0, limit)) {
