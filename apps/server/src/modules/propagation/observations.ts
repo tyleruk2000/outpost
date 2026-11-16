@@ -283,18 +283,8 @@ export async function registerObservations(
         continue;
       }
       const submode = get("SUBMODE").toUpperCase();
-      const mine = statedPosition(
-        fields,
-        { lat: "MY_LAT", lon: "MY_LON", grid: "MY_GRIDSQUARE" },
-        notes,
-        "The logging station's",
-      );
-      const theirs = statedPosition(
-        fields,
-        { lat: "LAT", lon: "LON", grid: "GRIDSQUARE" },
-        notes,
-        "The contacted station's",
-      );
+      const mine = statedPosition(fields, { lat: "MY_LAT", lon: "MY_LON", grid: "MY_GRIDSQUARE" }, notes, "The logging station's");
+      const theirs = statedPosition(fields, { lat: "LAT", lon: "LON", grid: "GRIDSQUARE" }, notes, "The contacted station's");
       if (mine.lat === null) bump(notes, "No position was given for the logging station, so that end has none");
       if (theirs.lat === null) bump(notes, "No position was given for the contacted station, so that end has none");
       const myCall = (get("STATION_CALLSIGN") || get("OPERATOR")).toUpperCase();
