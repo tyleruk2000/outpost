@@ -25,6 +25,7 @@ import { Field, Input } from "@/components/ui/input";
 import { Select, Skeleton } from "@/components/ui/misc";
 import { formatDate, timeAgo } from "@/lib/utils";
 import { inputOf, usePlan, usePlanAction, useRemovePlan, useSavePlan } from "./data";
+import { TemplateLicences } from "./licences";
 import { CommsSection, NotesSection, PlacesSection, PowerSection, WhereSection } from "./more-sections";
 import { ContactsSection, PeopleSection } from "./people-section";
 import { StepsSection } from "./steps-section";
@@ -99,6 +100,7 @@ function Sources({ templateId }: { templateId: string | null }) {
   if (!template) return null;
   return (
     <Section title="Where the template's words come from" description={`This plan was started from the template “${template.name}”.`}>
+      <TemplateLicences sources={sources} />
       <ul className="divide-y divide-border border-y border-border text-small">
         {sources.map((source) => (
           <li key={source.id} className="py-2">

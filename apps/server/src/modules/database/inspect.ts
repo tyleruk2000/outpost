@@ -27,8 +27,10 @@ const GROUPS: Record<Exclude<DatabaseGroupId, "other">, string[]> = {
     "observation_imports",
     "radio_observations",
   ],
-  prepare: ["supply_items", "supply_products", "supply_household", "supply_members", "supply_shopping", "emergency_plans"],
+  prepare: ["supply_items", "supply_products", "supply_household", "supply_members", "supply_shopping"],
 };
+// Emergency plans (modules/emergency-plans), on a line of their own so that other additions merge cleanly.
+GROUPS.prepare.push("emergency_plans");
 export const GROUP_ORDER: DatabaseGroupId[] = ["search", "meaning", "library", "notes", "maps", "radio", "prepare", "other"];
 
 /** What each count is, as the services that own the tables count it. */

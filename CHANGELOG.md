@@ -812,11 +812,13 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 - **Preparedness → Emergency plans**: a household's own plans for a power cut,
   flooding, no phone or internet, a storm, snow and ice, a heatwave, sheltering at home
   and leaving at short notice, each started from a template whose every step quotes a
-  dated official source (Be Ready, GOV.UK, the Environment Agency, the Met Office, the
-  NHS, Ofcom, the British Red Cross, and Ready.gov for comparison), or from blank. The
-  screen tells the source's words from words changed and from the household's own, and
-  lists what was taken out. Where no official guidance was found, the template asks
-  instead of advising.
+  dated official source whose own terms allow its words to be copied (Be Ready, GOV.UK
+  and the Environment Agency, and the Met Office under the Open Government Licence;
+  Ofcom unchanged, by its permission), or from blank. Publishers whose terms do not
+  (the British Red Cross, Ready.gov) are pointed to, never quoted. The screen tells the
+  source's words from words changed and from the household's own, and lists what was
+  taken out; the licence statements go with the words on screen and on paper. Where no
+  official guidance was found, the template asks instead of advising.
 - Steps for before, during and after; the household and what each must remember;
   people to contact in order, linked from Contacts, with an out-of-area contact; places
   to meet, linked from saved places; how to communicate if the phones fail, with a

@@ -3,7 +3,16 @@
  * contacts and places are put in as they are now; one deleted since is kept and said to
  * be missing, never dropped. Nothing here touches the page or the network.
  */
-import { dialable, type EmergencyPlan, neededOf, PLACE_ROLES, type PlanPhase, type PlanResolved, planKindLabel } from "@outpost/shared";
+import {
+  attributionsFor,
+  dialable,
+  type EmergencyPlan,
+  neededOf,
+  PLACE_ROLES,
+  type PlanPhase,
+  type PlanResolved,
+  planKindLabel,
+} from "@outpost/shared";
 
 export interface ReadNumber {
   label: string;
@@ -51,6 +60,8 @@ export interface Readable {
   comms: string[];
   where: Array<{ what: string; where: string }>;
   supplies: Array<{ name: string; amount: string }>;
+  /** What must be printed with the official words the plan carries (licence statements), once each. */
+  attributions: string[];
 }
 
 const number = (label: string, value: string): ReadNumber => ({ label, value, dial: dialable(value) });
@@ -124,5 +135,6 @@ export function readableOf(plan: EmergencyPlan, resolved: PlanResolved, people?:
       name: supply.name,
       amount: amountText(neededOf(supply, household, body.days), supply.unit),
     })),
+    attributions: attributionsFor([...body.steps, ...body.supplies, ...body.where].map((line) => line.origin)),
   };
 }

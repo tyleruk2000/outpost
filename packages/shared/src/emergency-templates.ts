@@ -16,7 +16,7 @@
  */
 import type { EmergencyPlanInput, PlanKind, PlanPhase, PlanStep } from "./emergency-plans.ts";
 import { DEFAULT_REVIEW_DAYS, emptyPlanBody } from "./emergency-plans.ts";
-import { EMERGENCY_NUMBERS_DATA, PLAN_SOURCES_DATA, PLAN_TEMPLATES_DATA } from "./emergency-templates-data.ts";
+import { EMERGENCY_NUMBERS_DATA, PLAN_SOURCES_DATA, PLAN_TEMPLATES_DATA, SOURCE_TERMS_DATA } from "./emergency-templates-data.ts";
 import type { SupplyCategory } from "./supplies.ts";
 
 export interface PlanSource {
@@ -29,6 +29,32 @@ export interface PlanSource {
   /** The day it was read for this template. */
   checked: string;
   country: "UK" | "US" | "International";
+  /** The publisher's terms for reusing its words: an id of `SOURCE_TERMS`. */
+  terms: string;
+}
+
+/**
+ * A publisher's terms for reusing the words of its pages, as read on its own terms,
+ * copyright or reuse page. Only the words of a cleared publisher are shipped in a
+ * template; another publisher's page is pointed to, never quoted (a test holds this).
+ */
+export interface SourceTerms {
+  id: string;
+  /** Whose terms: "GOV.UK", "Met Office". */
+  publisher: string;
+  /** The terms page read. */
+  url: string;
+  /** Its own words that decide it, as read. */
+  quote: string;
+  read: string;
+  /** Its words may be shipped. */
+  cleared: boolean;
+  /** Its words may be changed (a licence that allows adaptation); otherwise only reproduced exactly. */
+  adapt: boolean;
+  /** The licence, in short: "Open Government Licence v3.0"; or why it is not cleared. */
+  licence: string;
+  /** What must be shown with its words; null when nothing is shipped. */
+  attribution: string | null;
 }
 
 export interface TemplateStep {
@@ -37,8 +63,17 @@ export interface TemplateStep {
   phase: PlanPhase;
   text: string;
   source: string;
-  /** The source's own words that `text` closely paraphrases. */
+  /**
+   * The source's own words that `text` closely paraphrases (or is, exactly, for a
+   * source whose terms allow no change). Empty for a pointer.
+   */
   quote: string;
+  /**
+   * A pointer: words of Outpost's that name a page for the household to read and decide
+   * from, quoting nothing and advising nothing. Used for a publisher whose words may
+   * not be shipped. The household replaces it with words of its own.
+   */
+  pointer?: true;
   /** Within severe weather: which kind. */
   subKind?: "storm" | "cold" | "heat";
 }
@@ -85,15 +120,20 @@ export interface EmergencyNumber {
   where: string;
   number: string;
   source: string;
+  /** The source's words, where its terms allow them to be shipped; empty otherwise (the number itself is a fact, cited). */
   quote: string;
 }
 
+export const SOURCE_TERMS: SourceTerms[] = SOURCE_TERMS_DATA;
 export const PLAN_SOURCES: PlanSource[] = PLAN_SOURCES_DATA;
 export const EMERGENCY_NUMBERS: EmergencyNumber[] = EMERGENCY_NUMBERS_DATA;
 export const PLAN_TEMPLATES: PlanTemplate[] = PLAN_TEMPLATES_DATA;
 
 export const sourceById = (id: string | null | undefined): PlanSource | undefined =>
   id ? PLAN_SOURCES.find((source) => source.id === id) : undefined;
+export const termsOf = (source: PlanSource | undefined): SourceTerms | undefined =>
+  source ? SOURCE_TERMS.find((terms) => terms.id === source.terms) : undefined;
+
 export const templateById = (id: string | null | undefined): PlanTemplate | undefined =>
   id ? PLAN_TEMPLATES.find((template) => template.id === id) : undefined;
 
@@ -114,12 +154,16 @@ export function templateStep(id: string | null | undefined): { template: PlanTem
 export type StepStanding =
   | { kind: "own" }
   | { kind: "official"; source: PlanSource | undefined; step: TemplateStep }
-  | { kind: "changed"; source: PlanSource | undefined; step: TemplateStep };
+  | { kind: "changed"; source: PlanSource | undefined; step: TemplateStep }
+  | { kind: "pointer"; source: PlanSource | undefined; step: TemplateStep };
 
 export function stepStanding(step: Pick<PlanStep, "text" | "origin">): StepStanding {
   const found = templateStep(step.origin);
   if (!found) return { kind: "own" };
   const source = sourceById(found.step.source);
+  // A pointer the household has rewritten is their own words.
+  if (found.step.pointer)
+    return step.text.trim() === found.step.text.trim() ? { kind: "pointer", source, step: found.step } : { kind: "own" };
   return step.text.trim() === found.step.text.trim()
     ? { kind: "official", source, step: found.step }
     : { kind: "changed", source, step: found.step };
@@ -144,6 +188,29 @@ export function sourcesOfPlan(templateId: string | null): PlanSource[] {
     ...(template.days ? [template.days.source] : []),
   ];
   return [...new Set(ids)].map((id) => sourceById(id)).filter((source): source is PlanSource => !!source);
+}
+
+/** A template line (step, supply or "where things are") by its id, from whichever template holds it. */
+function templateLine(id: string): { source: string; pointer?: true } | undefined {
+  for (const template of PLAN_TEMPLATES)
+    for (const line of [...template.steps, ...template.supplies, ...template.where]) if (line.id === id) return line;
+  return undefined;
+}
+
+/**
+ * The statements a document must carry for the words of official sources in it: one
+ * for each licence of a source whose words a line came from (official, or changed by
+ * the household), once each. Pointers quote nothing and need none.
+ */
+export function attributionsFor(origins: Array<string | null>): string[] {
+  const out = new Set<string>();
+  for (const origin of origins) {
+    const line = origin ? templateLine(origin) : undefined;
+    if (!line || line.pointer) continue;
+    const attribution = termsOf(sourceById(line.source))?.attribution;
+    if (attribution) out.add(attribution);
+  }
+  return [...out];
 }
 
 /** A new plan from a template: its steps, supplies and "where things are" lines, each keeping its origin. */

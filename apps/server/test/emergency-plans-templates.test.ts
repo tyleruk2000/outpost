@@ -7,6 +7,7 @@
  * supplies with the inventory is checked against cases worked by hand.
  */
 import {
+  attributionsFor,
   compareSupplies,
   EMERGENCY_NUMBERS,
   type HeldRow,
@@ -16,9 +17,12 @@ import {
   PLAN_TEMPLATES,
   type PlanSupply,
   planFromTemplate,
+  SOURCE_TERMS,
   sameThing,
+  sourceById,
   stepStanding,
   stepsTakenOut,
+  termsOf,
   thingOf,
 } from "@outpost/shared";
 import { describe, expect, it } from "vitest";
@@ -37,11 +41,53 @@ describe("the templates", () => {
       expect(template.steps.length, template.id).toBeGreaterThan(0);
       for (const line of [...template.steps, ...template.supplies, ...template.where]) {
         expect(sourceIds.has(line.source), `${line.id}: ${line.source}`).toBe(true);
+        if ("pointer" in line && line.pointer) continue;
         // A checklist on a page can be a single item ("a torch"), quoted as it stands.
         expect(line.quote.trim().length, line.id).toBeGreaterThan(3);
       }
       if (template.days) expect(sourceIds.has(template.days.source)).toBe(true);
     }
+  });
+
+  it("quote only publishers whose own terms allow their words to be shipped, as those terms allow", () => {
+    for (const source of PLAN_SOURCES) expect(termsOf(source), `${source.id}: terms ${source.terms}`).toBeDefined();
+    for (const template of PLAN_TEMPLATES) {
+      for (const line of [...template.steps, ...template.supplies, ...template.where]) {
+        const terms = termsOf(sourceById(line.source))!;
+        if ("pointer" in line && line.pointer) {
+          // A pointer names a page and quotes nothing.
+          expect(line.quote, line.id).toBe("");
+          continue;
+        }
+        expect(terms.cleared, `${line.id} quotes ${line.source}, whose terms (${terms.id}) are not cleared`).toBe(true);
+        expect(terms.attribution, `${line.id}: ${terms.id} has no attribution to show`).toBeTruthy();
+        // A publisher that allows only exact copies: the step is its words, unchanged.
+        if (!terms.adapt && "phase" in line) expect(line.text, line.id).toBe(line.quote);
+      }
+      if (template.days) expect(termsOf(sourceById(template.days.source))!.cleared, template.id).toBe(true);
+    }
+    // A number is a fact and is cited; a source's words go with it only where its terms allow.
+    for (const entry of EMERGENCY_NUMBERS)
+      if (entry.quote) expect(termsOf(sourceById(entry.source))!.cleared, `${entry.number}: ${entry.source}`).toBe(true);
+    // The publishers read and found not cleared are named, with the words that decided it.
+    const refused = SOURCE_TERMS.filter((terms) => !terms.cleared).map((terms) => terms.id);
+    expect(refused).toEqual(expect.arrayContaining(["british-red-cross", "ready-gov", "nz-police"]));
+    for (const terms of SOURCE_TERMS) {
+      expect(terms.url, terms.id).toMatch(/^https:\/\//);
+      expect(terms.quote.length, terms.id).toBeGreaterThan(40);
+    }
+  });
+
+  it("say which licences a plan's words come under, once each, and nothing for a pointer", () => {
+    const template = PLAN_TEMPLATES.find((each) => each.id === "comms-failure")!;
+    const all = attributionsFor([...template.steps, ...template.supplies].map((line) => line.id));
+    expect(all).toContain("Contains public sector information licensed under the Open Government Licence v3.0.");
+    expect(all.some((line) => line.startsWith("Ofcom copyright"))).toBe(true);
+    expect(new Set(all).size).toBe(all.length);
+    const pointers = PLAN_TEMPLATES.flatMap((each) => each.steps.filter((step) => step.pointer));
+    expect(pointers.length).toBeGreaterThan(0);
+    expect(attributionsFor(pointers.map((step) => step.id))).toEqual([]);
+    expect(attributionsFor([null, "no-such-line"])).toEqual([]);
   });
 
   it("give every line an id of its own, across all templates", () => {

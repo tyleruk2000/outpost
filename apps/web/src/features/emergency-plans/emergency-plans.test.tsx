@@ -163,6 +163,10 @@ describe("the cards", () => {
     expect(words).toContain("Old neighbour: no longer in Contacts");
     expect(words).toContain("Church (no longer on the map)");
     expect(words).toContain("In a real emergency, follow the emergency services and official warnings.");
+    // The official words carry their licence, once.
+    expect(words.match(/Contains public sector information licensed under the Open Government Licence v3\.0\./g)).toHaveLength(1);
+    // A pointer names the page and quotes nothing.
+    expect(words).toContain("The British Red Cross has advice on a power cut");
   });
 
   it("writes a PDF whose text has every number exactly, and names in other scripts found by search", async () => {
@@ -172,6 +176,7 @@ describe("the cards", () => {
     expect(text).toContain("+44 7700 900123");
     expect(text).toContain("+44 (0)1632 960 188");
     expect(text).toContain("王小明");
+    expect(text).toContain("Contains public sector information licensed under the Open Government Licence v3.0.");
 
     const wallet = await writeLettered(walletSheets(read, read.people, { made: MADE, paper: "a4" }).pages, "Wallet cards", MADE, draws);
     const cardText = await readPdf(wallet.bytes);
@@ -183,6 +188,7 @@ describe("the cards", () => {
     const words = texts(grabSheets(read, { made: MADE, paper: "a4" }));
     expect(words).toContain("Bottled water");
     expect(words).toContain("18 litre");
+    expect(words.join(" ")).toContain("Open Government Licence v3.0");
   });
 });
 
@@ -307,6 +313,11 @@ describe("a plan", () => {
     expect(screen.getByText(/Old neighbour: no longer in Contacts/)).toBeInTheDocument();
     expect(screen.getByText(/Church: no longer on the map/)).toBeInTheDocument();
     expect(screen.getAllByText(/In a real emergency, follow the emergency services/).length).toBeGreaterThan(0);
+    // Whose words are included and under what licence; whose pages are only pointed to.
+    const licences = screen.getByTestId("template-licences");
+    expect(licences).toHaveTextContent("under Open Government Licence v3.0");
+    expect(licences).toHaveTextContent("British Red Cross has not given permission for its words to be copied");
+    expect(screen.getByText(/A pointer, not advice/)).toBeInTheDocument();
     // Nothing in Supplies: each listed thing is missing, and can go on the shopping list.
     await waitFor(() => expect(screen.getAllByTestId("supply-standing")[0]).toHaveTextContent("Missing"));
     expect(screen.getByRole("button", { name: /Add 10 missing or low things to the shopping list/ })).toBeEnabled();

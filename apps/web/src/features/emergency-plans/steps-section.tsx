@@ -4,7 +4,16 @@
  * source's words a press away); or the household's own. Steps of the template that
  * were taken out are listed, and can be put back.
  */
-import { PLAN_PHASES, type PlanPhase, type PlanStep, sourceById, stepStanding, stepsTakenOut, type TemplateStep } from "@outpost/shared";
+import {
+  PLAN_PHASES,
+  type PlanPhase,
+  type PlanStep,
+  sourceById,
+  stepStanding,
+  stepsTakenOut,
+  type TemplateStep,
+  termsOf,
+} from "@outpost/shared";
 import { useState } from "react";
 import { Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
@@ -25,6 +34,13 @@ export function SourceLine({ source }: { source: string }) {
 function Standing({ step }: { step: PlanStep }) {
   const standing = stepStanding(step);
   if (standing.kind === "own") return <p className="mt-1 text-small text-ink-muted">Your own words.</p>;
+  if (standing.kind === "pointer")
+    return (
+      <p className="mt-1 text-small text-ink-muted">
+        A pointer, not advice: read the page and put what your household will do in its place, in your own words.
+      </p>
+    );
+  const attribution = termsOf(standing.source)?.attribution;
   return (
     <details className="mt-1 text-small text-ink-muted">
       <summary className="cursor-pointer select-none py-1">
@@ -39,6 +55,7 @@ function Standing({ step }: { step: PlanStep }) {
             {standing.source.url}, read {standing.source.checked}.
           </p>
         ) : null}
+        {attribution ? <p>{attribution}</p> : null}
       </div>
     </details>
   );

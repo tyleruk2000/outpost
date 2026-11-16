@@ -332,6 +332,7 @@ export function fridgeSheets(plan: Readable, options: { made: Date; paper: CardP
     }
     y += size * 0.6;
     para(planCaveat(plan.emergencyNumber), Math.max(8, size * 0.55), { color: MUTED });
+    for (const line of plan.attributions) para(line, 7, { color: MUTED });
     return { pages, overflow };
   };
   let chosen = build(11, true);
@@ -420,9 +421,10 @@ export function grabSheets(plan: Readable, options: { made: Date; paper: CardPap
   next(26);
   put({ kind: "text", x: MARGIN, y, text: "Emergency services", size: 11, color: INK });
   put(unbroken(plan.emergencyNumber, MARGIN + measure("Emergency services  ", 11), y, 16, inner / 2));
-  for (const line of wrapLine(planCaveat(plan.emergencyNumber), 8, inner)) {
-    next(11);
-    put({ kind: "text", x: MARGIN, y, text: line, size: 8, color: MUTED, fit: inner });
-  }
+  for (const words of [planCaveat(plan.emergencyNumber), ...plan.attributions])
+    for (const line of wrapLine(words, 8, inner)) {
+      next(11);
+      put({ kind: "text", x: MARGIN, y, text: line, size: 8, color: MUTED, fit: inner });
+    }
   return paged(pages, pageWidth, pageHeight, footer("Grab list", options.made));
 }

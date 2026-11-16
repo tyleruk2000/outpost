@@ -160,7 +160,7 @@ export function ContactsSection({
   return (
     <Section
       title="Who to contact, in this order"
-      description="Numbers from Contacts stay up to date here. The British Red Cross suggests choosing “someone outside your local area who’ll be a contact during emergencies”: mark them as the out-of-area contact."
+      description="Numbers from Contacts stay up to date here. If someone well away from home is to be the one everyone contacts, mark them as the out-of-area contact."
       actions={<Button onClick={() => setPicking(true)}>Add a contact</Button>}
     >
       {contacts.length === 0 ? (

@@ -15,6 +15,7 @@ import { Skeleton } from "@/components/ui/misc";
 import { errorMessage } from "@/lib/api";
 import { formatDate, localId, plural } from "@/lib/utils";
 import { useCreatePlan, usePlans } from "./data";
+import { TemplateLicences, templateSources } from "./licences";
 import { blankPlan, guessEmergencyNumber, planFrom } from "./words";
 
 function PlanRow({ plan }: { plan: EmergencyPlanSummary }) {
@@ -114,6 +115,9 @@ function NewPlanDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o
               })}
             </Rows>
           </fieldset>
+          <div className="mt-4">
+            <TemplateLicences sources={templateSources()} />
+          </div>
           <Field label="Name" className="mt-4" hint="You can change everything later.">
             {(ids) => <Input {...ids} value={name} onChange={(event) => setName(event.target.value)} maxLength={120} />}
           </Field>

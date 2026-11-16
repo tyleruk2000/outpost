@@ -38,7 +38,8 @@ test.describe("Emergency plans on a phone", () => {
     await choose.getByRole("button", { name: "Make the plan" }).tap();
     await expect(page.getByRole("heading", { level: 1, name: "Power cut" })).toBeVisible();
     // Each step says where its words come from.
-    await expect(page.locator("summary", { hasText: /^From British Red Cross/ }).first()).toBeVisible();
+    await expect(page.locator("summary", { hasText: /^From UK Government/ }).first()).toBeVisible();
+    await expect(page.getByTestId("template-licences")).toContainText("Open Government Licence v3.0");
     await expect(page.getByText(/In a real emergency, follow the emergency services and official warnings/).first()).toBeVisible();
 
     // A contact, linked from Contacts.

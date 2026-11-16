@@ -208,6 +208,11 @@ export default function UsePlanPage() {
       ) : null}
 
       <p className="mt-8 text-small text-ink-muted">{planCaveat(plan.emergencyNumber)}</p>
+      {readable.attributions.map((line) => (
+        <p key={line} className="mt-1 text-micro text-ink-muted">
+          {line}
+        </p>
+      ))}
       <div className="mt-4">
         <Button size="lg" onClick={() => setResetting(true)} disabled={plan.use.startedAt === null && done === 0}>
           <RotateCcw aria-hidden /> Reset for next time
