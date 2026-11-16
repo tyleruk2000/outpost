@@ -11,12 +11,21 @@
  * Nothing here makes an outbound request except fetching a newer solar cycle table,
  * when a person asks for it, through the download manager.
  */
-import { type EngineStatus, HF_MAX_MHZ, HF_MIN_MHZ, type PredictionRequest, type RadioKept, type SavedPrediction } from "@outpost/shared";
+import {
+  type EngineStatus,
+  HF_BANDS,
+  HF_MAX_MHZ,
+  HF_MIN_MHZ,
+  notModelledOn,
+  type PredictionRequest,
+  type RadioKept,
+  type SavedPrediction,
+} from "@outpost/shared";
 import { desc, eq } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
-import { notFound } from "../../core/errors.ts";
+import { badRequest, notFound } from "../../core/errors.ts";
 import { newId } from "../../core/ids.ts";
 import { toJobDto } from "../../core/jobs.ts";
 import { propagationSaved } from "../../db/schema.ts";
@@ -200,7 +209,16 @@ export async function registerPropagation(app: FastifyInstance, ctx: AppContext)
   });
 
   /** The page VOACAP itself would print for this question: what the engine is checked against. */
-  app.post("/api/radio/propagation/listing", async (request) => ({ listing: await service.listing(checked(request.body)) }));
+  app.post("/api/radio/propagation/listing", async (request) => {
+    const body = checked(request.body);
+    // A frequency on which an antenna is not modelled is left off the page; with none left there is no page.
+    if ([body.frequencyMhz, ...HF_BANDS.map((band) => band.mhz)].every((mhz) => notModelledOn(body.txAntenna, body.rxAntenna, mhz) !== null))
+      throw badRequest(
+        "There is no page to print: on the frequency asked about and on every band, one of the antennas is a wire the engine's model does not describe.",
+        { reason: "antenna-not-modelled" },
+      );
+    return { listing: await service.listing(body) };
+  });
 
   app.get<{ Params: { key: string } }>("/api/radio/propagation/results/:key", async (request) => {
     const { key } = z.object({ key: z.string().regex(/^[0-9a-f]{40}$/) }).parse(request.params);

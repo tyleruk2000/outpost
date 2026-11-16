@@ -2,7 +2,7 @@
  * Radio and antenna profiles: the equipment a person owns, saved once and picked in the
  * planner. Plain rows; nothing here is used unless a prediction is asked for with it.
  */
-import type { AntennaProfile, AntennaProfileInput, ModeId, RadioProfile, RadioProfileInput } from "@outpost/shared";
+import { type AntennaProfile, type AntennaProfileInput, hasStatedLength, type ModeId, type RadioProfile, type RadioProfileInput } from "@outpost/shared";
 import { asc, eq } from "drizzle-orm";
 import type { AppContext } from "../../core/context.ts";
 import { notFound } from "../../core/errors.ts";
@@ -30,10 +30,14 @@ export function createProfilesService(ctx: AppContext): ProfilesService {
     if (!row) throw notFound("The radio profile");
     return radio(row);
   };
+  /** A wire's length is part of an antenna only for the kinds that have one; every other profile is as it was before lengths were kept. */
+  const antenna = ({ lengthM, ...row }: typeof antennaProfiles.$inferSelect): AntennaProfile =>
+    hasStatedLength(row.kind) && lengthM !== null ? { ...row, lengthM } : row;
+  const lengthOf = (input: AntennaProfileInput) => (hasStatedLength(input.kind) ? (input.lengthM ?? null) : null);
   const getAntenna = (id: string): AntennaProfile => {
     const row = db.select().from(antennaProfiles).where(eq(antennaProfiles.id, id)).get();
     if (!row) throw notFound("The antenna profile");
-    return row;
+    return antenna(row);
   };
 
   return {
@@ -61,12 +65,12 @@ export function createProfilesService(ctx: AppContext): ProfilesService {
       db.delete(radioProfiles).where(eq(radioProfiles.id, id)).run();
       changed();
     },
-    antennas: () => db.select().from(antennaProfiles).orderBy(asc(antennaProfiles.name)).all(),
+    antennas: () => db.select().from(antennaProfiles).orderBy(asc(antennaProfiles.name)).all().map(antenna),
     createAntenna(input) {
       const now = Date.now();
       const id = newId();
       db.insert(antennaProfiles)
-        .values({ id, ...input, createdAt: now, updatedAt: now })
+        .values({ id, ...input, lengthM: lengthOf(input), createdAt: now, updatedAt: now })
         .run();
       changed();
       return getAntenna(id);
@@ -74,7 +78,8 @@ export function createProfilesService(ctx: AppContext): ProfilesService {
     updateAntenna(id, input) {
       getAntenna(id);
       db.update(antennaProfiles)
-        .set({ ...input, updatedAt: Date.now() })
+        // The length is set every time, to nothing for a kind that has none: left out, the old one would stay.
+        .set({ ...input, lengthM: lengthOf(input), updatedAt: Date.now() })
         .where(eq(antennaProfiles.id, id))
         .run();
       changed();
