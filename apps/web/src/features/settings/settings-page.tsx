@@ -9,6 +9,7 @@ import { useTheme } from "@/lib/theme";
 import { cn, plural } from "@/lib/utils";
 import { AnswersSection } from "./answers-section";
 import { BackupSection } from "./backup-section";
+import { HttpsSection } from "./https-section";
 import { NumberSetting, SettingRow, SettingsSection, TextSetting } from "./parts";
 import { SemanticSection } from "./semantic-section";
 
@@ -315,6 +316,8 @@ export default function SettingsPage({ extraSections }: { extraSections?: ReactN
           {extraSections}
 
           <BackupSection />
+
+          <HttpsSection settings={s} disabled={disabled} save={save} />
         </>
       )}
 

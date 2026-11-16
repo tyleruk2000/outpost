@@ -14,6 +14,7 @@ export function SettingsSection({
 }) {
   return (
     <section
+      id={id}
       aria-labelledby={`${id}-title`}
       className="grid gap-x-10 gap-y-4 border-t border-border py-8 first:border-t-0 first:pt-0 lg:grid-cols-[15rem_1fr]"
     >

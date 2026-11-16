@@ -34,6 +34,7 @@ const invalidations: Record<string, string[][]> = {
   "semantic.changed": [["semantic"]],
   "portable.changed": [["portable"]],
   "merge.changed": [["merge"]],
+  "https.changed": [["https"]],
   // The background count of what is on disk has finished.
   "manage.changed": [["manage"]],
 };
