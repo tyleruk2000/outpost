@@ -34,6 +34,8 @@ const TOOLS = [
   "Hill shading",
   "Contour lines",
   "Maidenhead locator grid",
+  // Offered before any imagery is installed, named for what it needs.
+  "Satellite: none downloaded yet",
 ];
 
 const SET_UPS = [

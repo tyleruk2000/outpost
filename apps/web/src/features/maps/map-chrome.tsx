@@ -14,6 +14,7 @@ import {
   RadioTower,
   Redo2,
   Ruler,
+  Satellite,
   SunMoon,
   Undo2,
   X,
@@ -122,6 +123,11 @@ export interface MapToolsInput {
   /** Whether day and night are drawn over the map; see grey-line/. Left out, there is no button. */
   greyLine?: boolean;
   onGreyLineChange?: (on: boolean) => void;
+  /** Whether satellite imagery is drawn under the map; see imagery/. Left out, there is no button. */
+  satellite?: boolean;
+  /** What the button is called: it says when there is no imagery to draw, as contour lines' does. */
+  satelliteLabel?: string;
+  onSatelliteChange?: (on: boolean) => void;
   /** Recording a track as it is walked; see recording/record-ui.tsx. Null where the browser cannot record at all. */
   record?: MapTool | null;
   /** The map could not be drawn; the controls that act on it have nothing to act on. */
@@ -151,6 +157,9 @@ export function mapTools({
   onRepeatersChange,
   greyLine,
   onGreyLineChange,
+  satellite,
+  satelliteLabel,
+  onSatelliteChange,
   record,
   disabled,
 }: MapToolsInput): MapTool[] {
@@ -239,6 +248,20 @@ export function mapTools({
       layer: true,
       pressed: repeaters ?? false,
       onPress: () => onRepeatersChange(!repeaters),
+      disabled,
+    });
+  }
+  // Pictures of the ground beneath the roads and names, with the other things drawn on the map. Offered with nothing
+  // installed too: pressed, it says what to get. After the grey line, so that on a phone it gives way to the menu first.
+  if (onSatelliteChange) {
+    tools.push({
+      id: "satellite",
+      label: satelliteLabel ?? "Satellite imagery",
+      icon: <Satellite />,
+      group: "radio",
+      layer: true,
+      pressed: satellite ?? false,
+      onPress: () => onSatelliteChange(!satellite),
       disabled,
     });
   }

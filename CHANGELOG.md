@@ -486,6 +486,13 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   icons.
 - A configurable map source, and importing an existing `.pmtiles` file.
 - Offline place search from GeoNames data.
+- Satellite imagery under the map's roads and names, from local files only: the world
+  from NASA's Blue Marble (July 2004, 2 km or 500 m a pixel), and small areas chosen on
+  the map from one Sentinel-2 pass (10 m a pixel), fetching only the parts of the
+  scene's files that cover the area. Before fetching, the day, cloud over the area,
+  exact bytes to fetch, size, time, licence and cost (free, no account) are shown, with
+  warnings for large areas. Each picture's credit and day are shown on the map and on
+  printed pages. No migration.
 - Markers, GPX import and export, and coordinate parsing including British National
   Grid references.
 - Exported GPX checked against the GPX 1.1 schema with a wider set of exports. Two

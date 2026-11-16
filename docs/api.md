@@ -693,6 +693,24 @@ The server only measures and serves; the browser fetches each tile and stores it
 arithmetic both sides share (which tiles a box touches, the limits) is in
 `packages/shared/src/kept.ts`.
 
+### Satellite imagery
+
+Types: `packages/shared/src/imagery.ts`. See [maps.md](maps.md#satellite-imagery). An
+installed set is a map collection (`kind: "map"`, `meta.map.tileType: "imagery"`):
+move, check and remove it through the collections API.
+
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/maps/imagery` | Installed sets with the day of each picture, cloud, size and bytes fetched; the world entries with their sizes; the sources with licence, credit and cost; the area limits (`ImageryOverview`). Contacts nobody. |
+| `POST /api/maps/imagery/scenes` | Body: `bbox`, `from?`, `to?` (`YYYY-MM-DD`; a year back by default). Asks the Sentinel-2 catalogue once and answers the passes over the area, those covering it first, then the least cloudy (`SceneSearchResponse`). Each has a `key`, valid for an hour. Needs a connection. |
+| `POST /api/maps/imagery/estimate` | Body: `bbox`, `sceneKey`, `locationId?`. Reads the scene's file headers and cloud map and answers the exact bytes to fetch, requests, size on disk, time, cloud over the area, the warning for its size, and free space (`ImageryEstimate`). `400` over 10,000 km²; `404` for an expired key. Needs a connection. |
+| `POST /api/maps/imagery/areas` | Body: `bbox`, `sceneKey`, `name`, `locationId?`, `acceptLarge?`. Starts the download that fetches and builds the area. Over 2,500 km² it needs `acceptLarge: true`, else `400` with `details.needsConfirmation`. `{ download }`. |
+| `POST /api/maps/imagery/world` | Body: `entryId` (`blue-marble-2km` or `blue-marble-500m`), `locationId?`. Starts the world download. `{ download }`. |
+| `GET /api/maps/imagery/:id/:z/:x/:y.webp` | A tile of set `:id`. `204` where the set has none; `404` for a set that is not installed or a malformed address. `?raw=1` as for map tiles. |
+
+`GET /api/maps/sources` lists installed sets for the map's style under `imagery`,
+coarsest first.
+
 ### Places
 
 | Method and path | Purpose |

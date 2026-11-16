@@ -157,6 +157,24 @@ export interface MapSources {
   /** All attributions joined, ready for the attribution control. */
   attribution: string;
   attributions: MapAttribution[];
+  /**
+   * Installed satellite imagery, one raster source per set, coarsest first: the map
+   * draws them in this order, so the most detailed lies on top (see imagery.ts). Not
+   * credited in `attributions`; each carries its own credit and date, shown while it
+   * is on screen.
+   */
+  imagery?: ImageryStyleSource[];
+}
+
+export interface ImageryStyleSource {
+  id: string;
+  tiles: string[];
+  minzoom: number;
+  maxzoom: number;
+  bounds: Bbox;
+  attribution: string;
+  /** "12 July 2026": the day the picture was taken, said wherever it is shown. */
+  imageDateText: string;
 }
 
 export interface MapEstimate {

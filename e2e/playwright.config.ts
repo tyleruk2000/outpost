@@ -13,6 +13,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { defineConfig, devices } from "@playwright/test";
+import { standInWorld } from "../apps/server/test/fixtures/maps/imagery-stand-in.ts";
 import { p533StandInManifest } from "../apps/server/test/fixtures/propagation/p533-maps-stand-in.ts";
 
 const root = path.resolve(import.meta.dirname, "..");
@@ -282,6 +283,11 @@ export default defineConfig({
       OUTPOST_KIWIX_URL: `http://127.0.0.1:${kiwixPort}`,
       OUTPOST_P533_MAPS_MANIFEST: p533Maps,
       OUTPOST_VOACAP_DATA_MANIFEST: voacapData,
+      // Satellite imagery's publishers, stood in for by the file server above.
+      OUTPOST_IMAGERY_STAC_URL: `http://127.0.0.1:${filesPort}/imagery/v1/search`,
+      OUTPOST_IMAGERY_SENTINEL_HOST: "127.0.0.1",
+      OUTPOST_IMAGERY_WORLD_URL: `http://127.0.0.1:${filesPort}/imagery/world.tif`,
+      OUTPOST_IMAGERY_WORLD_BYTES: String(standInWorld().length),
     }),
   ],
 });

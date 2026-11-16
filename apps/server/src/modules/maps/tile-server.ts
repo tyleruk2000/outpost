@@ -6,7 +6,7 @@
  * is answered from the most detailed archive that covers it and actually has the tile,
  * falling back through the others, so the map is seamless wherever regions overlap.
  */
-import type { Bbox, InstalledRegion, MapSources, MapTileType } from "@outpost/shared";
+import type { Bbox, ImageryStyleSource, InstalledRegion, MapSources, MapTileType } from "@outpost/shared";
 import type { AppContext } from "../../core/context.ts";
 import type { CollectionRow } from "../collections/service.ts";
 import { contentEncodingOf, contentTypeOf } from "./pmtiles/header.ts";
@@ -43,10 +43,15 @@ export interface TileServer {
   release(collectionId: string): Promise<void>;
   /** Forget what is installed; the next request looks again. */
   invalidate(): void;
+  /** Where `sources()` learns of installed satellite imagery (imagery/index.ts). */
+  setImagery(list: () => ImageryStyleSource[]): void;
   close(): Promise<void>;
 }
 
 const kindOf = (tileType: MapTileType) => (tileType === "vector" ? "map" : "terrain") as "map" | "terrain";
+
+/** Satellite imagery is a map collection too, but it is served by imagery/index.ts, never as a region. */
+const isImageryRow = (row: CollectionRow) => (row.meta.map as { tileType?: string } | undefined)?.tileType === "imagery";
 
 function overlaps(a: Bbox, b: Bbox): boolean {
   return a[0] < b[2] && a[2] > b[0] && a[1] < b[3] && a[3] > b[1];
@@ -67,6 +72,7 @@ export function createTileServer(ctx: AppContext): TileServer {
   /** Open archives, least recently used first. A failed open is remembered as null for a while. */
   const open = new Map<string, Promise<LocalArchive | null>>();
   const candidates = new Map<MapTileType, { at: number; list: Candidate[] }>();
+  let imagery: () => ImageryStyleSource[] = () => [];
 
   function listCandidates(tileType: MapTileType): Candidate[] {
     const cached = candidates.get(tileType);
@@ -75,7 +81,7 @@ export function createTileServer(ctx: AppContext): TileServer {
     for (const row of collections.list({ kind: kindOf(tileType) })) {
       const map = row.meta.map;
       // A file that is mid-move is still in place and in use; missing or damaged ones are not served.
-      if (map?.format !== "pmtiles" || (row.status !== "installed" && row.status !== "moving")) continue;
+      if (map?.format !== "pmtiles" || isImageryRow(row) || (row.status !== "installed" && row.status !== "moving")) continue;
       if (!storage.isAvailable(row.locationId)) continue;
       const [west, south, east, north] = map.bounds;
       list.push({
@@ -129,7 +135,7 @@ export function createTileServer(ctx: AppContext): TileServer {
 
   function toRegion(row: CollectionRow, tileType: MapTileType): InstalledRegion | undefined {
     const map = row.meta.map;
-    if (!map) return undefined;
+    if (!map || isImageryRow(row)) return undefined;
     const location = storage.list().find((entry) => entry.id === row.locationId);
     return {
       id: row.id,
@@ -270,7 +276,12 @@ export function createTileServer(ctx: AppContext): TileServer {
         maxZoom: sources.basemap?.maxzoom ?? 0,
         attribution: attributions.map((entry) => entry.html).join(" | "),
         attributions,
+        imagery: imagery(),
       };
+    },
+
+    setImagery(list) {
+      imagery = list;
     },
 
     release,

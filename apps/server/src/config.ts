@@ -58,6 +58,11 @@ const envSchema = z.object({
   OUTPOST_APP_DIR: z.string().optional(),
   OUTPOST_NODE_DIST_URL: z.string().optional(),
   OUTPOST_KIWIX_DIST_URL: z.string().optional(),
+  // Satellite imagery's publishers, replaced by a local stand-in in tests (docs/maps.md).
+  OUTPOST_IMAGERY_STAC_URL: z.string().url().optional(),
+  OUTPOST_IMAGERY_SENTINEL_HOST: z.string().optional(),
+  OUTPOST_IMAGERY_WORLD_URL: z.string().url().optional(),
+  OUTPOST_IMAGERY_WORLD_BYTES: z.coerce.number().int().positive().optional(),
   OUTPOST_LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).optional(),
 });
 
@@ -117,6 +122,19 @@ export interface Config {
   nodeDistUrl?: string;
   /** Where kiwix-serve for portable drives is fetched from. Defaults to download.kiwix.org. */
   kiwixDistUrl?: string;
+  /** Stand-ins for satellite imagery's publishers, for tests; unset in use. */
+  imagery?: {
+    endpoints?: { stacSearchUrl?: string; sentinelHost?: string; nasaHost?: string };
+    worldEntries?: Array<{
+      id: string;
+      name: string;
+      description: string;
+      resolutionMeters: number;
+      maxZoom: number;
+      files: Array<{ url: string; bytes: number; bounds: [number, number, number, number] }>;
+      bytesPerTile: number;
+    }>;
+  };
 }
 
 /**
@@ -191,5 +209,37 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     appBundleDir: parsed.OUTPOST_APP_DIR ? path.resolve(parsed.OUTPOST_APP_DIR) : isBundled ? appRoot : path.join(appRoot, "dist/app"),
     nodeDistUrl: parsed.OUTPOST_NODE_DIST_URL,
     kiwixDistUrl: parsed.OUTPOST_KIWIX_DIST_URL,
+    imagery: imageryStandIns(parsed),
+  };
+}
+
+/** The test stand-ins for satellite imagery's publishers, when any is set. */
+function imageryStandIns(parsed: {
+  OUTPOST_IMAGERY_STAC_URL?: string;
+  OUTPOST_IMAGERY_SENTINEL_HOST?: string;
+  OUTPOST_IMAGERY_WORLD_URL?: string;
+  OUTPOST_IMAGERY_WORLD_BYTES?: number;
+}): Config["imagery"] {
+  const world = parsed.OUTPOST_IMAGERY_WORLD_URL;
+  if (!parsed.OUTPOST_IMAGERY_STAC_URL && !parsed.OUTPOST_IMAGERY_SENTINEL_HOST && !world) return undefined;
+  return {
+    endpoints: {
+      stacSearchUrl: parsed.OUTPOST_IMAGERY_STAC_URL,
+      sentinelHost: parsed.OUTPOST_IMAGERY_SENTINEL_HOST?.toLowerCase(),
+      nasaHost: world ? new URL(world).hostname.toLowerCase() : undefined,
+    },
+    worldEntries: world
+      ? [
+          {
+            id: "blue-marble-2km",
+            name: "The world, 2 km a pixel",
+            description: "A small stand-in for NASA's picture, for tests.",
+            resolutionMeters: 2000,
+            maxZoom: 2,
+            files: [{ url: world, bytes: parsed.OUTPOST_IMAGERY_WORLD_BYTES ?? 0, bounds: [-180, -90, 180, 90] }],
+            bytesPerTile: 3000,
+          },
+        ]
+      : undefined,
   };
 }

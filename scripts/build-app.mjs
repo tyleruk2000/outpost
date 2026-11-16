@@ -161,6 +161,19 @@ if (!fs.existsSync(path.join(out, "server/workers/ocr.mjs"))) {
   throw new Error("The OCR worker was not bundled (server/workers/ocr.mjs is missing).");
 }
 
+// Satellite imagery is encoded as WebP by libwebp compiled to WebAssembly, from
+// @jsquash/webp (Apache-2.0; libwebp BSD-3-Clause). modules/maps/imagery/webp.ts loads the
+// codec by path from server/imagery/, the same on every platform.
+{
+  const webp = path.join(fs.realpathSync(path.join(root, "apps/server/node_modules/@jsquash/webp")));
+  const imageryOut = path.join(out, "server/imagery");
+  fs.mkdirSync(imageryOut, { recursive: true });
+  for (const name of ["webp_enc_simd.js", "webp_enc_simd.wasm", "webp_enc.js", "webp_enc.wasm"]) {
+    fs.copyFileSync(path.join(webp, "codec/enc", name), path.join(imageryOut, name));
+  }
+  fs.copyFileSync(path.join(webp, "LICENSE"), path.join(imageryOut, "LICENSE-jsquash-webp.txt"));
+}
+
 // Search by meaning. The code that drives the model is in workers/embed.mjs. The
 // runtime (ONNX Runtime compiled to WebAssembly) is two files that it loads by path, the
 // same on every platform, and the model is three more, fetched beforehand by

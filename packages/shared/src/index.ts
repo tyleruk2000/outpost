@@ -15,6 +15,7 @@ export * from "./documents.ts";
 export * from "./downloads.ts";
 export * from "./encryption.ts";
 export * from "./https.ts";
+export * from "./imagery.ts";
 export * from "./imports.ts";
 export * from "./kept.ts";
 export * from "./kiwix.ts";

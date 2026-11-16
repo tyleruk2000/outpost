@@ -26,6 +26,7 @@ import {
 import { createElevationSampler } from "./elevation.ts";
 import { createExtractFetcher, createTilesInstaller, EXTRACT_FETCHER } from "./extract-download.ts";
 import { MAX_GPX_BYTES } from "./gpx.ts";
+import { createImageryInstaller, type ImageryService, isImageryDownload, registerImagery } from "./imagery/index.ts";
 import { areaSizeQuery, createAreaMeter } from "./kept-area.ts";
 import { createPlacesService, datasetSchema, type PlacesService } from "./places.ts";
 import { createPlanner } from "./planner.ts";
@@ -41,6 +42,7 @@ export interface MapsService {
   tiles: TileServer;
   places: PlacesService;
   annotations: AnnotationsService;
+  imagery: ImageryService;
   overview(): MapOverview;
 }
 
@@ -93,12 +95,15 @@ export async function registerMaps(app: FastifyInstance, ctx: AppContext): Promi
   const annotations = createAnnotationsService(ctx, { elevation });
   const terrainProfile = createTerrainProfiler(elevation, tiles);
   const regions = createRegionsService(ctx, { planner, sources });
+  const imagery = registerImagery(app, ctx, { client, ...ctx.config.imagery });
+  tiles.setImagery(() => imagery.styleSources());
 
   const service: MapsService = {
     regions,
     tiles,
     places,
     annotations,
+    imagery,
     overview() {
       return {
         regions: tiles.regions(),
@@ -111,7 +116,10 @@ export async function registerMaps(app: FastifyInstance, ctx: AppContext): Promi
 
   // ── Downloads ──
   downloads.registerFetcher(EXTRACT_FETCHER, createExtractFetcher({ client, planner, sources }));
-  downloads.registerInstaller("map", createTilesInstaller(ctx, "map"));
+  // A satellite imagery set is a map collection too; its downloads say so in their meta.
+  const installMap = createTilesInstaller(ctx, "map");
+  const installImagery = createImageryInstaller(ctx, ctx.config.imagery?.worldEntries);
+  downloads.registerInstaller("map", (context) => (isImageryDownload(context.download) ? installImagery(context) : installMap(context)));
   downloads.registerInstaller("terrain", createTilesInstaller(ctx, "terrain"));
   downloads.registerInstaller("places", places.installer);
 
