@@ -40,6 +40,21 @@ Both are on the **Maps** screen and work from what is installed, with no connect
   each end, draws the ground between them with the ray and the first Fresnel zone, and
   says whether the path is clear, or blocked and by how much, and how much of the
   Fresnel zone is clear at its tightest. See [maps.md](maps.md#line-of-sight).
+- **The grey line.** Day and night over the map, for now or a chosen date and time: the
+  line where the Sun rises or sets, and night shaded in steps at the ends of civil,
+  nautical and astronomical twilight (6°, 12° and 18° below the horizon), so the
+  twilight band along the line reads as a band. A button beside the grid's, off until
+  pressed; the time it is drawn for is always written over the map, in UTC or this
+  device's time, and the Sun tab shows the same day. See
+  [maps.md](maps.md#the-grey-line-day-and-night).
+- **The grey line on a coverage map.** Under the hour control of an HF coverage map,
+  **Grey line (day and night)** (off until ticked, remembered apart from the Maps
+  screen's) draws the same line for the hour shown on the 15th of the month asked for.
+  VOACAP answers for a month, not a day, so the line is said to be for "about the
+  15th": on other days of the month it lies a little east or west, most of all near the
+  equinoxes and far from the equator. Night is shaded under the coverage cells, so
+  their colours still match the legend, and the line is drawn over them. It is not
+  offered on the "Choose on the map" dialog, which has no time to draw it for.
 
 Read these before relying on the line-of-sight check:
 

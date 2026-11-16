@@ -250,7 +250,11 @@ export function buildStyle(input: StyleInput): StyleSpecification {
 
   if (input.overlays) {
     Object.assign(sources, input.overlays.sources);
-    layers.push(...input.overlays.layers);
+    // A layer that tints the map (the night of the grey line) goes under the map's own names, so they keep their contrast.
+    const under = input.overlays.layers.filter(isUnderLabels);
+    const firstLabel = layers.findIndex((layer) => layer.type === "symbol");
+    layers.splice(firstLabel === -1 ? layers.length : firstLabel, 0, ...under);
+    layers.push(...input.overlays.layers.filter((layer) => !isUnderLabels(layer)));
   }
 
   return {
@@ -262,6 +266,11 @@ export function buildStyle(input: StyleInput): StyleSpecification {
     layers,
   };
 }
+
+/** Marks an overlay's layer to be drawn under the map's own names rather than over everything. */
+export const UNDER_LABELS = { "outpost:under-labels": true } as const;
+const isUnderLabels = (layer: LayerSpecification) =>
+  (layer.metadata as Record<string, unknown> | undefined)?.["outpost:under-labels"] === true;
 
 /** Any layer but the background: one that draws data from a source. */
 type DrawnLayer = Exclude<LayerSpecification, { type: "background" }>;

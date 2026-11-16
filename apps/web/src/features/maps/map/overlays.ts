@@ -7,6 +7,7 @@
 import { type Bbox, haversineMeters, type InstalledRegion, type MarkerDto, type TrackWithGeometryDto } from "@outpost/shared";
 import { propagationLayers } from "@/features/propagation/map/layers";
 import { repeaterLayers } from "@/features/repeaters/map/layers";
+import { greyLineLineLayers, greyLineShadeLayers } from "../grey-line/layers";
 import { bboxRing, circleRing, formatDistance, type LatLon, metersPerPixel } from "../lib/geo";
 import { measure } from "../lib/measure";
 import { MARKER_HEX } from "../lib/palette";
@@ -19,6 +20,7 @@ import { gridLayers, sightLayers } from "../radio/layers";
 import { recordingLayers } from "../recording/overlay";
 
 export const OVERLAY_SOURCES = [
+  "o-grey-line",
   "o-propagation",
   "o-grid",
   "o-coverage",
@@ -99,8 +101,11 @@ export function overlayLayers(theme: MapTheme): LayerSpecification[] {
     "text-max-width": 9,
   } as const;
   return [
+    // Day and night, when the grey line is switched on: its shading under everything, its lines over the coverage cells.
+    ...greyLineShadeLayers(theme),
     // The cells of an HF coverage map and the place being chosen for the planner, on the maps of that feature.
     ...propagationLayers(theme),
+    ...greyLineLineLayers(theme),
     // The Maidenhead locator grid, when it is switched on.
     ...gridLayers(theme),
     // Installed coverage, shown while the downloads panel is open.

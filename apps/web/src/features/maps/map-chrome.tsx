@@ -13,6 +13,7 @@ import {
   RadioTower,
   Redo2,
   Ruler,
+  SunMoon,
   Undo2,
   X,
 } from "lucide-react";
@@ -91,6 +92,8 @@ export function MapControls({
   onLocatorGridChange,
   repeaters,
   onRepeatersChange,
+  greyLine,
+  onGreyLineChange,
   record,
   disabled,
   className,
@@ -118,6 +121,9 @@ export function MapControls({
   /** Whether the repeaters held on this device are drawn over the map; see features/repeaters. Left out, there is no button. */
   repeaters?: boolean;
   onRepeatersChange?: (on: boolean) => void;
+  /** Whether day and night are drawn over the map; see grey-line/. Left out, there is no button. */
+  greyLine?: boolean;
+  onGreyLineChange?: (on: boolean) => void;
   /** The button that records a track as it is walked; see recording/record-ui.tsx. */
   record?: ReactNode;
   /** The map could not be drawn; the controls that move it have nothing to act on. */
@@ -217,6 +223,16 @@ export function MapControls({
         >
           <Grid3x3 />
         </ControlButton>
+        {onGreyLineChange ? (
+          <ControlButton
+            label="Grey line (day and night)"
+            pressed={greyLine ?? false}
+            onClick={() => onGreyLineChange(!greyLine)}
+            disabled={disabled}
+          >
+            <SunMoon />
+          </ControlButton>
+        ) : null}
         {onRepeatersChange ? (
           <ControlButton label="Repeaters" pressed={repeaters ?? false} onClick={() => onRepeatersChange(!repeaters)} disabled={disabled}>
             <RadioReceiver />

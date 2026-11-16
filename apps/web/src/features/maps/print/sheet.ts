@@ -77,6 +77,8 @@ export interface SheetInput {
   date: string;
   /** One line of credits for everything drawn, written out in full (see credits.ts). */
   credits: string;
+  /** Sentences about what is drawn, said after the scale and before the credits (the time the grey line is for). */
+  notes?: string[];
   graticule: Graticule;
   /** The pictures the map is made of, placed in the map's own pixels from its top-left corner. */
   pictures: Array<{ id: string; x: number; y: number; width: number; height: number }>;
@@ -211,7 +213,7 @@ export function layoutSheet(input: SheetInput): Sheet {
 
   // What the scale means here, then the credits. The credits are a licence condition: never cut, never dropped.
   let baseline = strip.y + 38;
-  for (const note of sheetNotes(input.bbox, input.scale, metric)) {
+  for (const note of [...sheetNotes(input.bbox, input.scale, metric), ...(input.notes ?? [])]) {
     for (const line of wrapText(note, SMALL, strip.width)) {
       items.push({ kind: "text", x: strip.x, y: baseline, text: line, size: SMALL, color: MUTED });
       baseline += LEADING;

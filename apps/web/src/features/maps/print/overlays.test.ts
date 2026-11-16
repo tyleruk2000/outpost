@@ -1,5 +1,6 @@
 import type { Bbox, InstalledRegion, MapSources, MarkerDto, TrackDto, TrackWithGeometryDto } from "@outpost/shared";
 import { describe, expect, it } from "vitest";
+import { setMapMoment } from "../grey-line/time";
 import { FALLBACK_THEME } from "../lib/palette";
 import { BASE_LAYER_IDS, SOURCE_IDS } from "../lib/style";
 import { creditsFor } from "../map-footer";
@@ -284,6 +285,34 @@ describe("the Maidenhead grid on a printed page", () => {
     expect(layerIds(on.style)).toContain("o-grid-label");
     // It is drawn from arithmetic, not from terrain, so it adds no credit of its own.
     expect(on.usesTerrain).toBe(off.usesTerrain);
+  });
+});
+
+describe("the grey line on a printed page", () => {
+  it("starts as the map on screen has it, is drawn for the moment shown there, and says which on the page", () => {
+    const greyLine = overlay("grey-line");
+    expect(greyLine.label).toBe("Grey line (day and night)");
+    localStorage.removeItem("outpost.maps.greyLine");
+    expect(greyLine.initially(context())).toBe(false);
+    localStorage.setItem("outpost.maps.greyLine", "true");
+    expect(greyLine.initially(context())).toBe(true);
+    localStorage.removeItem("outpost.maps.greyLine");
+
+    setMapMoment(Date.UTC(2026, 5, 21, 3, 30, 40));
+    try {
+      const off = printStyle(context(), nothing, PRINT_OVERLAYS, base);
+      const on = printStyle(context(), { overlays: { "grey-line": true }, parts: {} }, PRINT_OVERLAYS, base);
+      expect(data(off.style, "o-grey-line")).toHaveLength(0);
+      expect(off.notes).toEqual([]);
+      expect(data(on.style, "o-grey-line").filter((feature) => feature.properties.kind === "shade")).toHaveLength(4);
+      expect(layerIds(on.style)).toContain("o-grey-line-line");
+      expect(on.notes).toEqual([
+        "Day and night are drawn for 03:30 UTC on Sunday 21 June 2026. The line is where the Sun rises or sets; the shading deepens at 6°, 12° and 18° below the horizon.",
+      ]);
+      expect(greyLine.hint?.(context())).toContain("03:30 UTC on Sunday 21 June 2026");
+    } finally {
+      setMapMoment(null);
+    }
   });
 });
 

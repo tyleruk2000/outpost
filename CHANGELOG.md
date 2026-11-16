@@ -549,6 +549,14 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 - Maidenhead locators: a grid over the map (fields, squares, subsquares and extended
   squares as the zoom allows), the locator of a position beside its coordinates, and
   locators of four, six or eight characters read by the map's search.
+- The grey line: day and night over the map, worked out on the device for now (kept
+  to the minute) or a chosen date and time. The line where the Sun rises or sets, night
+  shaded in steps at the ends of civil, nautical and astronomical twilight, and the
+  point where the Sun is overhead; right across the date line and round the poles. A
+  button beside the Maidenhead grid's, remembered on the device; a legend that says the
+  time it is drawn for; the Sun tab on the same day. Printed with a line saying the
+  time when it is on, and offered on HF coverage maps for the hour shown, about the
+  15th of the month.
 - A line-of-sight check between two points, from installed terrain: distance, bearing
   each way, the path drawn from the side with the ray, the Earth's curve (4/3 radius)
   and the first Fresnel zone, and the answer in words. It is geometry over terrain,

@@ -42,6 +42,7 @@ import {
 import { FindRoutePanel } from "./find-route/find-route-panel";
 import { anyFoundRoute, ROUTE_CREDIT } from "./find-route/source-credit";
 import { PREVIEW_TRACK_ID } from "./find-route/words";
+import { useGreyLine } from "./grey-line/grey-line";
 import { useGeolocation, useIsDesktop, useMapTheme, useStoredState } from "./hooks";
 import { type ContourReach, contourReach, contoursSupported } from "./lib/contours";
 import { formatPosition, isReadoutFormat, type ReadoutFormat } from "./lib/coords";
@@ -233,6 +234,7 @@ export default function MapsPage() {
   const container = useRef<HTMLDivElement>(null);
   const [engine, setEngine] = useState<MapEngine | null>(null);
   const [locatorGrid, setLocatorGrid] = useLocatorGrid(engine);
+  const greyLine = useGreyLine(engine);
   const sight = useSight({ engine, active: tool === "sight", markers: markers.data ?? [], start: sightStart });
   const [mapStatus, setMapStatus] = useState<MapStatus>("loading");
   const [mapError, setMapError] = useState<string>();
@@ -1338,12 +1340,16 @@ export default function MapsPage() {
             onContoursChange={changeContours}
             locatorGrid={locatorGrid}
             onLocatorGridChange={setLocatorGrid}
+            greyLine={greyLine.on}
+            onGreyLineChange={greyLine.setOn}
             repeaters={repeaters.on}
             onRepeatersChange={repeaters.setOn}
             record={<RecordButton />}
             disabled={!engine}
           />
         </div>
+
+        {greyLine.legend}
 
         {loadError || sources.isError ? (
           <div className="absolute inset-x-3 top-[4.25rem] z-10 flex justify-center max-md:top-[7.5rem] max-md:justify-start max-md:pr-14">

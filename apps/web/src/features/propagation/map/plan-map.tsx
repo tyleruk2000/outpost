@@ -12,6 +12,8 @@ import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/misc";
 import { useMapOverview, useMapSources } from "@/features/maps/data";
+import { greyLineData } from "@/features/maps/grey-line/geometry";
+import { GREY_LINE_SOURCE } from "@/features/maps/grey-line/layers";
 import { useMapTheme, useStoredState } from "@/features/maps/hooks";
 import { isReadoutFormat, type ReadoutFormat } from "@/features/maps/lib/coords";
 import type { LatLon } from "@/features/maps/lib/geo";
@@ -46,6 +48,8 @@ export interface PlanMapProps {
   fit?: Bbox | null;
   /** Says what the map is for, to a screen reader. */
   label: string;
+  /** Draws day and night for this moment (see features/maps/grey-line); left out or null, they are not drawn. */
+  greyLineAt?: number | null;
   className?: string;
 }
 
@@ -54,7 +58,7 @@ export interface PlanMapHandle {
   bounds(): Bbox;
 }
 
-export function PlanMap({ data, places, onPress, onReady, onMoved, fit, label, className }: PlanMapProps) {
+export function PlanMap({ data, places, onPress, onReady, onMoved, fit, label, greyLineAt, className }: PlanMapProps) {
   const { flavour, theme } = useMapTheme();
   const sources = useMapSources();
   const overview = useMapOverview();
@@ -123,6 +127,7 @@ export function PlanMap({ data, places, onPress, onReady, onMoved, fit, label, c
   }, [engine, style]);
   useEffect(() => engine?.setOverlay(PROPAGATION_SOURCE, data ?? EMPTY), [engine, data]);
   useEffect(() => engine?.setOverlay("o-markers", places ? markersData(places, null) : EMPTY), [engine, places]);
+  useEffect(() => engine?.setOverlay(GREY_LINE_SOURCE, greyLineAt ? greyLineData(greyLineAt) : EMPTY), [engine, greyLineAt]);
   const fitKey = fit ? fit.join(",") : "";
   const fitted = useRef(fitKey);
   // biome-ignore lint/correctness/useExhaustiveDependencies: the area is compared by its numbers, not by the array that holds them
