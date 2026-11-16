@@ -34,3 +34,6 @@ apps/web/public/map-assets/
 
 # The search-by-meaning model is fetched at build time (scripts/fetch-embedding-model.mjs)
 apps/server/models/
+
+# Temporary files the tracker writes while exporting
+.beads/.~*
