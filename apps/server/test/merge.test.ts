@@ -541,6 +541,49 @@ describe("a drive that has been travelling", () => {
     expect(fingerprintOf(world.drive)).toEqual(before);
   });
 
+  it("documents: a conflict of details keeps home's unless told otherwise, and only a ticked removal deletes a file", async () => {
+    const world = await makeWorld();
+    const { home, ids } = world;
+    await world.travel(async (_away, api) => {
+      await api("DELETE", `/api/documents/${ids.charts}`);
+      await api("PATCH", `/api/documents/${ids.tides}`, { title: "The drive's tides" });
+    });
+    await home.api("PATCH", `/api/documents/${ids.tides}`, { title: "Home's tides" });
+    const before = fingerprintOf(world.drive);
+    const { documents } = home.ctx.services;
+    const chartsFile = documents.absolutePath(ids.charts!);
+
+    // By the defaults nothing changes at home: home's details stay, and the removed document stays.
+    const first = await preview(world);
+    expect(find(first, "document", "conflict")).toMatchObject({ defaultChoice: "home", choices: ["home", "drive"] });
+    expect(find(first, "document", "deleted")).toMatchObject({ defaultChoice: "skip", title: "Charts" });
+    const kept = await commit(world, first);
+    expect(documents.get(ids.tides!).title).toBe("Home's tides");
+    expect(fs.existsSync(chartsFile)).toBe(true);
+    expect(itemsOf(await preview(world))).toEqual([]);
+    await home.api("POST", `/api/merge/${kept.id}/undo`, {});
+
+    // Told otherwise.
+    const second = await preview(world);
+    const merged = await commit(
+      world,
+      second,
+      { [find(second, "document", "conflict").key]: "drive", [find(second, "document", "deleted").key]: "apply" },
+      true,
+    );
+    expect(documents.get(ids.tides!).title).toBe("The drive's tides");
+    expect(fs.existsSync(chartsFile)).toBe(false);
+    expect(() => documents.get(ids.charts!)).toThrow();
+    expect(merged.report!.actions.find((action) => action.outcome === "removed")).toMatchObject({ kind: "document", undo: "cannot" });
+    expect(merged.report!.cannotUndo).toBe(1);
+
+    // Undo puts the details back; the removed file is the one thing it cannot bring back, and it says so.
+    const undone = (await home.api("POST", `/api/merge/${merged.id}/undo`, {})).body.merge as MergeDto;
+    expect(documents.get(ids.tides!).title).toBe("Home's tides");
+    expect(undone.report!.actions.find((action) => action.outcome === "removed")!.undoMessage).toMatch(/cannot be brought back/);
+    expect(fingerprintOf(world.drive)).toEqual(before);
+  });
+
   it("undo never overwrites what was written since: the earlier version comes back as its own page", async () => {
     const world = await makeWorld();
     const { home, ids } = world;
