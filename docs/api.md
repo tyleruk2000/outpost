@@ -768,7 +768,6 @@ The live event `layers.changed` is published when a pack is installed, updated o
 | `GET /api/maps/tracks/:id/export.gpx` | One track as GPX. |
 | `GET /api/maps/export.gpx` | A selection as one GPX file. Query: `markers=1`, `tracks=<id>,<id>`. A marker with an icon is written with the Garmin symbol name for it as `<sym>`, where there is one; see [maps.md](maps.md#icons-and-gpx). |
 
-## Contacts
 ### Finding a route
 
 Types: `packages/shared/src/route-finder.ts`. See
