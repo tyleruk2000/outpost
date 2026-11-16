@@ -1,0 +1,81 @@
+The second HF propagation model: the ITU's P.533 software
+=========================================================
+
+Outpost can set a second model beside VOACAP: ITURHFProp, the implementation of
+Recommendation ITU-R P.533 (with P.372 for noise) that ITU-R Study Group 3 publishes at
+https://github.com/ITU-R-Study-Group-3/ITU-R-HF.
+
+NOTHING OF THE ITU'S IS IN OUTPOST'S REPOSITORY OR ITS PACKAGED APP. This folder holds
+only Outpost's own work: the container recipe and compile script that build the ITU's
+source to WebAssembly (build/), and a stand-in for <dlfcn.h> that lets the three parts
+be linked into one program (glue/). The ITU's source is fetched from the ITU's own
+repository, at the commit pinned in
+apps/server/src/modules/propagation/p533/manifest.json, on the computer that runs
+Outpost (scripts/build-p533-engine.mjs). Its maps are downloaded from the same
+repository when a person asks for them. Zero lines of the ITU's source are edited or
+reproduced in Outpost.
+
+The terms are not MIT, nor any open-source licence
+--------------------------------------------------
+
+The repository has no licence file, and GitHub detects none. These two texts are in it.
+They are quoted word for word from commit 82017594a1c6cacfaa7e86954c4ae7b3a5825a3d
+(15 May 2025).
+
+1. README.md (lines 1098 to 1109), and in nearly the same words in the headers of
+   P533/Src/P533/P533.c, P372/Src/P372/Noise.c and ITURHFProp/Src/ITURHFProp/ITURHFProp.c:
+
+   "The ITURHFProp, P533 and P372 software has been developed collaboratively by
+   participants in ITU-R Study Group 3. It may be used by implementers in their
+   implementation of the Recommendation as well as in revisions of the specific
+   original Recommendation and in other ITU Recommendations, free from any copyright
+   assertions.
+
+   The software is provided “as is” WITH NO WARRANTIES, EXPRESS OR IMPLIED, INCLUDING
+   BUT NOT LIMITED TO, THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+   PURPOSE AND NON-INFRINGEMENT OF INTELLECTUAL PROPERTY RIGHTS.
+
+   The ITU shall not be held liable in any event for any damages whatsoever (including,
+   without limitation, damages for loss of profits, business interruption, loss of
+   information, or any other pecuniary loss) arising out of or related to use of the
+   Software."
+
+   (The README then says "#2022 ITU-R Study Group 3". The source headers say "This
+   software" and end "use of the software.")
+
+2. P533/Src/P533/Common.h (lines 37 to 40), and the same in P372/Src/P372/Common.h,
+   P372/Src/ITURNoise/Common.h and ITURHFProp/Src/ITURHFProp/Common.h:
+
+   "Copyright  International Telecommunication Union (ITU) 2018
+                    All rights reserved.
+    No part of this publication may be reproduced, by any means whatsoever,
+                without written permission of ITU"
+
+The two do not sit easily together. The first allows use "by implementers in their
+implementation of the Recommendation", which a P.533 engine is; the second reserves all
+rights and forbids reproduction without the ITU's written permission. Outpost does not
+read the first as overriding the second for redistribution, so it redistributes
+nothing of the ITU's: each person fetches and builds it for their own use. Whether the
+built engine or the maps may be shipped with Outpost is for the project owner to settle,
+ideally with the ITU's written permission.
+
+The ITU's web page for Study Group 3's software
+(https://www.itu.int/en/ITU-R/study-groups/rsg3/Pages/iono-tropo-spheric.aspx, read
+16 November 2026) offers the same software as a Windows download (ITU-R-HF_14.3.zip)
+and states that supplemental software is provided "as is" without warranty, and without
+any warranty that its results conform to the Recommendation.
+
+If shipping is ever allowed
+---------------------------
+
+One step: remove the four engines/p533 lines from .gitignore, commit
+engines/p533/engine/iturhfprop.wasm (and, if wanted, the maps), and add
+engines/p533/engine to what scripts/build-app.mjs copies. Outpost already checks the
+file against the checksum in manifest.json wherever it finds it.
+
+The toolchain
+-------------
+
+wasi-sdk 34.0 (Apache-2.0 WITH LLVM-exception, with wasi-libc under its MIT, Apache and
+other permissive terms) on debian:12-slim, both pinned in build/Dockerfile. Nothing of
+either is in the built file except wasi-libc and its maths library, which are linked in.
