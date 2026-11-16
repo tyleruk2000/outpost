@@ -103,7 +103,7 @@ export function PlanningPanel({
   const from = places.find((place) => place.id === fromId) ?? places.find((place) => place.icon === "home") ?? places[0] ?? null;
 
   return (
-    <div className="grid gap-8">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-8">
       <Notice tone="info" title="Made in advance, from published guidance">
         These plans are your household's own, made ahead from official guidance. In a real emergency, follow the emergency services and
         official warnings: what they say comes first.
@@ -122,7 +122,7 @@ export function PlanningPanel({
             title="No plan of this kind yet"
             compact
             action={
-              <Button size="sm" variant="primary" onClick={make} loading={create.isPending}>
+              <Button variant="primary" onClick={make} loading={create.isPending}>
                 <Plus aria-hidden /> Make a plan from the template
               </Button>
             }
@@ -152,7 +152,7 @@ export function PlanningPanel({
               {ours.map((plan) => {
                 const attached = chosen ? plan.scenarios.includes(chosen.id) : false;
                 return (
-                  <li key={plan.id} className="grid gap-2 py-3">
+                  <li key={plan.id} className="grid grid-cols-[minmax(0,1fr)] gap-2 py-3">
                     <Link to={`/prepare/plans/${plan.id}`} className="text-body text-primary underline underline-offset-2">
                       {plan.name}
                     </Link>
@@ -164,17 +164,16 @@ export function PlanningPanel({
                       .
                     </p>
                     <div className="flex flex-wrap gap-2">
-                      <Button asChild size="sm">
+                      <Button asChild>
                         <Link to={`/prepare/plans/${plan.id}/use`}>
                           <ListChecks aria-hidden /> Use now
                         </Link>
                       </Button>
-                      <Button asChild size="sm" variant="ghost">
+                      <Button asChild variant="ghost">
                         <Link to={`/prepare/plans/${plan.id}/cards`}>Cards to print</Link>
                       </Button>
                       {chosen ? (
                         <Button
-                          size="sm"
                           variant="ghost"
                           disabled={attached}
                           loading={attaching === plan.id}
@@ -190,10 +189,10 @@ export function PlanningPanel({
               })}
             </Rows>
             <div className="mt-3 flex flex-wrap gap-2">
-              <Button size="sm" onClick={make} loading={create.isPending}>
+              <Button onClick={make} loading={create.isPending}>
                 <Plus aria-hidden /> Another plan from the template
               </Button>
-              <Button asChild size="sm" variant="ghost">
+              <Button asChild variant="ghost">
                 <Link to="/prepare/plans">Every emergency plan</Link>
               </Button>
             </div>
@@ -218,7 +217,7 @@ export function PlanningPanel({
         ) : places.length === 1 || !from ? (
           <p className="text-small text-ink-muted">One saved place, {places[0]!.name}. Save another to see how far apart they are.</p>
         ) : (
-          <div className="grid gap-2">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-2">
             <Select
               aria-label="Distances from"
               value={from.id}
@@ -248,7 +247,7 @@ export function PlanningPanel({
         title="If the phones fail"
         description="How the household keeps in touch: each plan's own part on this, and a radio communication plan."
       >
-        <ul className="grid gap-1.5 text-small">
+        <ul className="grid grid-cols-[minmax(0,1fr)] gap-1.5 text-small">
           {ours.map((plan) => (
             <li key={plan.id}>
               <Link to={`/prepare/plans/${plan.id}`} className="text-primary underline underline-offset-2">
@@ -268,7 +267,7 @@ export function PlanningPanel({
         title="Notes, documents and attachments"
         description="Saved guidance and your own notes, linked from a plan's “Notes and links”."
       >
-        <ul className="grid gap-1.5 text-small">
+        <ul className="grid grid-cols-[minmax(0,1fr)] gap-1.5 text-small">
           <li>
             <Link to="/library" className="text-primary underline underline-offset-2">
               The library

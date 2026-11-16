@@ -35,7 +35,7 @@ export function ScenarioPicture({ result, className }: { result: EffectsResult; 
     ? contours.map((contour) => plumePolygon(CENTRE, contour, result.fallout.drawn ? result.fallout.fromDegrees : 0, 48).map(local))
     : [];
   return (
-    <figure className={cn("grid gap-2", className)}>
+    <figure className={cn("grid grid-cols-[minmax(0,1fr)] gap-2", className)}>
       <svg
         viewBox={`0 0 ${SIZE} ${SIZE}`}
         role="img"

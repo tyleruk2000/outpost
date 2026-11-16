@@ -94,6 +94,26 @@ test.describe("Nuclear preparedness at 320 px with the text at 150%", () => {
       expect(box.x + box.width, name).toBeLessThanOrEqual(320);
     }
     await expect(page.getByTestId("fallout-state")).toBeVisible();
+    // What reaches past the right of the screen, named in the message if anything does.
+    const wide = await page.evaluate(() =>
+      [...document.querySelectorAll("body *")]
+        .filter(
+          (element) =>
+            (!element.closest("svg") || element.tagName.toLowerCase() === "svg") &&
+            !element.closest("nav") &&
+            !element.closest("[role=tablist]"),
+        )
+        .map((element) => ({ element, box: element.getBoundingClientRect() }))
+        .filter(({ box }) => box.width > 0 && box.right > document.documentElement.clientWidth + 1)
+        // The outermost that reaches past: its parent does not.
+        .filter(({ element }) => (element.parentElement?.getBoundingClientRect().right ?? 0) <= document.documentElement.clientWidth + 1)
+        .slice(0, 8)
+        .map(
+          ({ element, box }) =>
+            `${element.tagName.toLowerCase()} "${(element.textContent ?? "").trim().slice(0, 40)}" to ${Math.round(box.right)}`,
+        ),
+    );
+    expect(wide).toEqual([]);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
   });
 });

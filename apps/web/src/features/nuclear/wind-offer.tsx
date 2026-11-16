@@ -13,7 +13,7 @@ export function WindOffer({ at, onUse }: { at: { lat: number; lon: number } | nu
   const offer = windOffer(weather.data, at, weather.data.now);
   if (!offer) return null;
   return (
-    <div className="grid gap-2 rounded-control border border-border bg-surface p-3" data-testid="wind-offer">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-2 rounded-control border border-border bg-surface p-3" data-testid="wind-offer">
       <p className="flex items-start gap-2 text-small text-ink">
         <CloudSun aria-hidden className="mt-0.5 size-4 shrink-0 text-ink-muted" />
         <span>
@@ -24,9 +24,7 @@ export function WindOffer({ at, onUse }: { at: { lat: number; lon: number } | nu
       </p>
       <p className="text-small text-ink-muted">{WINDS_ALOFT}</p>
       <div>
-        <Button size="sm" onClick={() => onUse(offer.fromDegrees, offer.kmh)}>
-          Use this wind
-        </Button>
+        <Button onClick={() => onUse(offer.fromDegrees, offer.kmh)}>Use this wind</Button>
       </div>
     </div>
   );

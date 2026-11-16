@@ -31,22 +31,18 @@ export function PlanIllustrations({
       title="Scenarios attached as illustrations"
       description="Pictures from the nuclear preparedness workspace's effects simulator, kept beside this plan to show what a published model says about one hypothetical case. They are not forecasts, and none of this plan's steps changes with them."
     >
-      <ul className="grid gap-6">
+      <ul className="grid grid-cols-[minmax(0,1fr)] gap-6">
         {attached.map((link) => {
           const title = resolved.links.find((each) => each.kind === "scenario" && each.id === link.id)?.title ?? null;
           const scenario = scenarios.data?.find((each) => each.id === link.id);
           const answer = scenario ? computeEffects(scenario.effects) : null;
           const remove = (
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => onChange(links.filter((each) => !(each.kind === "scenario" && each.id === link.id)))}
-            >
+            <Button variant="ghost" onClick={() => onChange(links.filter((each) => !(each.kind === "scenario" && each.id === link.id)))}>
               Take it off this plan
             </Button>
           );
           return (
-            <li key={link.id} className="grid gap-2 border-t border-border pt-3">
+            <li key={link.id} className="grid grid-cols-[minmax(0,1fr)] gap-2 border-t border-border pt-3">
               {title === null ? (
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="text-small text-warning">A scenario that is no longer in Outpost</span>

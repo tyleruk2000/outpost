@@ -49,7 +49,7 @@ export function RecordsBrowser({
   const [limit, setLimit] = useState(PAGE);
   const records = useHistoricalRecords(recordType, limit);
   return (
-    <section aria-label="Historical records" className="grid gap-3">
+    <section aria-label="Historical records" className="grid grid-cols-[minmax(0,1fr)] gap-3">
       <p className="text-small text-ink-muted">
         What declassified and archived documents recorded, for the periods they cover. A record describes the past and says nothing about
         any place today. Listed by period, then by name.
@@ -67,7 +67,7 @@ export function RecordsBrowser({
         ]}
       />
       {records.isPending ? (
-        <div className="grid gap-2">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-2">
           <Skeleton className="h-16 w-full" />
           <Skeleton className="h-16 w-full" />
         </div>
@@ -76,11 +76,7 @@ export function RecordsBrowser({
       ) : records.data.total === 0 ? (
         <EmptyState
           title={recordType ? "No records of this kind" : "No historical records installed"}
-          action={
-            <Button size="sm" onClick={onImport}>
-              Import historical records
-            </Button>
-          }
+          action={<Button onClick={onImport}>Import historical records</Button>}
           compact
         >
           No dataset of historical records is cleared for Outpost to ship. Records you transcribe or obtain can be imported as a historical
@@ -95,7 +91,7 @@ export function RecordsBrowser({
             {records.data.records.map((record) => {
               const at = record.lat !== null && record.lon !== null ? { lat: record.lat, lon: record.lon } : null;
               return (
-                <li key={record.id} className="grid gap-1 py-3">
+                <li key={record.id} className="grid grid-cols-[minmax(0,1fr)] gap-1 py-3">
                   <div className="flex items-start gap-2">
                     <ProvenanceMark provenance={record.provenance} />
                     <div className="min-w-0 flex-1">
@@ -141,7 +137,7 @@ export function RecordsBrowser({
           </Rows>
           {records.data.records.length < records.data.total ? (
             <div>
-              <Button size="sm" onClick={() => setLimit((current) => Math.min(current + PAGE, 200))} disabled={limit >= 200}>
+              <Button onClick={() => setLimit((current) => Math.min(current + PAGE, 200))} disabled={limit >= 200}>
                 Show more
               </Button>
               {limit >= 200 ? (

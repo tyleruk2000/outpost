@@ -74,14 +74,14 @@ export function RingPeople({ at, result, onGetData }: { at: { lat: number; lon: 
     body = <p className="text-small text-danger">The population grids could not be read. {errorMessage(summary.error)}</p>;
   else if (near.length === 0)
     body = (
-      <div className="grid gap-2">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-2">
         <p className="text-small text-ink-muted">
           {sets.length === 0
             ? "No population grid is installed. To see how many people live inside each ring, get WorldPop's population grid for the country (1 km cells, CC BY 4.0) from Reference data in the Layers tab."
             : `No installed population grid reaches these rings (installed: ${sets.map((set) => set.country).join(", ")}). To count the people inside them, get WorldPop's grid for this country from Reference data in the Layers tab.`}
         </p>
         <div>
-          <Button size="sm" onClick={onGetData}>
+          <Button onClick={onGetData}>
             <Layers aria-hidden /> Get reference data
           </Button>
         </div>
@@ -99,7 +99,7 @@ export function RingPeople({ at, result, onGetData }: { at: { lat: number; lon: 
               const query = index >= 0 ? answers[index] : undefined;
               const metres = index >= 0 ? asked.rings[index]!.metres : roundDistance(ring.metres!);
               return (
-                <li key={ring.id} className="grid gap-0.5 py-2.5" data-testid="ring-people">
+                <li key={ring.id} className="grid grid-cols-[minmax(0,1fr)] gap-0.5 py-2.5" data-testid="ring-people">
                   <span className="text-small font-medium text-ink">
                     {FAMILY[ring.family]}: {ring.label}, {distanceText(metres)}
                   </span>
@@ -114,7 +114,7 @@ export function RingPeople({ at, result, onGetData }: { at: { lat: number; lon: 
               );
             })}
           {result.fallout.drawn ? (
-            <li className="grid gap-0.5 py-2.5">
+            <li className="grid grid-cols-[minmax(0,1fr)] gap-0.5 py-2.5">
               <span className="text-small font-medium text-ink">Fallout (idealised)</span>
               <span className="text-small text-ink-muted">{FALLOUT_NO_COUNT}</span>
             </li>
@@ -138,7 +138,7 @@ export function RingPeople({ at, result, onGetData }: { at: { lat: number; lon: 
     );
   }
   return (
-    <section aria-label="People inside each ring" className="grid gap-2">
+    <section aria-label="People inside each ring" className="grid grid-cols-[minmax(0,1fr)] gap-2">
       <h3 className="text-body font-semibold text-ink">People inside each ring</h3>
       {body}
     </section>

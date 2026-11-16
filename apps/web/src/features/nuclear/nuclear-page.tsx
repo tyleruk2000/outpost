@@ -392,8 +392,13 @@ export default function NuclearPage() {
       />
       <OfflineLine regions={installedRegions} loading={overview.isPending} />
 
-      <div className={cn("grid grid-cols-[minmax(0,1fr)] gap-x-8 gap-y-6", panel ? "lg:grid-cols-[minmax(0,1fr)_25rem]" : "lg:grid-cols-[minmax(0,1fr)]")}>
-        <div className="grid content-start gap-2 lg:sticky lg:top-4 lg:self-start">
+      <div
+        className={cn(
+          "grid grid-cols-[minmax(0,1fr)] gap-x-8 gap-y-6",
+          panel ? "lg:grid-cols-[minmax(0,1fr)_25rem]" : "lg:grid-cols-[minmax(0,1fr)]",
+        )}
+      >
+        <div className="grid grid-cols-[minmax(0,1fr)] content-start gap-2 lg:sticky lg:top-4 lg:self-start">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-small text-ink-muted">
               {tab === "scenario"
@@ -444,7 +449,10 @@ export default function NuclearPage() {
           {drawn.length > 0 ? <MapKey drawn={drawn} slots={slots} /> : null}
         </div>
 
-        <aside className={cn("grid min-w-0 grid-cols-[minmax(0,1fr)] content-start gap-4", !panel && "lg:hidden")} aria-label="Scenarios, layers, records and plans">
+        <aside
+          className={cn("grid min-w-0 grid-cols-[minmax(0,1fr)] content-start gap-4", !panel && "lg:hidden")}
+          aria-label="Scenarios, layers, records and plans"
+        >
           <Tabs value={tab} onValueChange={setTab}>
             <TabsList>
               <TabsTrigger value="scenario">Scenario</TabsTrigger>
@@ -462,9 +470,9 @@ export default function NuclearPage() {
                 onHide={(key, hidden) => patch(key, (each) => ({ ...each, hidden }))}
                 onRemove={removeSlot}
               />
-              <div className="grid gap-1.5">
+              <div className="grid grid-cols-[minmax(0,1fr)] gap-1.5">
                 <div>
-                  <Button size="sm" onClick={addAnother} disabled={atLimit}>
+                  <Button onClick={addAnother} disabled={atLimit}>
                     <Plus aria-hidden /> Add another scenario
                   </Button>
                 </div>
@@ -659,7 +667,7 @@ function OnTheMap({
   onRemove: (key: string) => void;
 }) {
   return (
-    <section aria-label="Scenarios on the map" className="grid gap-1.5">
+    <section aria-label="Scenarios on the map" className="grid grid-cols-[minmax(0,1fr)] gap-1.5">
       <h2 className="text-body font-semibold text-ink">On the map</h2>
       <ul className="divide-y divide-border border-y border-border" aria-label="Scenarios on the map">
         {worked.map(({ slot, checked, result }) => {
@@ -743,7 +751,7 @@ function ScenarioFields({
         error={fieldError("where")}
       >
         {(ids) => (
-          <div className="grid gap-2">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-2">
             <Input
               {...ids}
               value={form.where}
@@ -790,7 +798,7 @@ function ScenarioFields({
           </div>
         )}
       </Field>
-      <div className="grid gap-2">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-2">
         <span className="text-small font-medium text-ink" id="burst-label">
           Burst
         </span>
@@ -865,7 +873,7 @@ function ScenarioFields({
           options={COMPASS_POINTS.map((each) => ({ value: each.label, label: <span title={`from the ${each.name}`}>{each.label}</span> }))}
         />
         <div className="flex flex-wrap items-end gap-3">
-          <div className="grid gap-1">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-1">
             <span aria-hidden className="text-small text-ink">
               From, in degrees
             </span>
@@ -878,7 +886,7 @@ function ScenarioFields({
               className="tabular w-28"
             />
           </div>
-          <div className="grid gap-1">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-1">
             <span aria-hidden className="text-small text-ink">
               Speed
             </span>
@@ -978,7 +986,7 @@ function MapKey({ drawn, slots }: { drawn: Drawn[]; slots: Slot[] }) {
     if (item.result.fallout.drawn) families.add("fallout");
   }
   return (
-    <section className="grid gap-1.5" aria-label="Key to the map">
+    <section className="grid grid-cols-[minmax(0,1fr)] gap-1.5" aria-label="Key to the map">
       <ul className="flex flex-wrap gap-x-5 gap-y-1.5 text-small text-ink-muted" aria-label="How the map draws each kind of effect">
         {LEGEND_FAMILIES.filter(([family]) => families.has(family)).map(([family, label]) => (
           <li key={family} className="flex items-center gap-2">
@@ -1013,7 +1021,7 @@ const FAMILY_TITLES: Record<EffectRing["family"], string> = {
 function Results({ result, letter, onFit }: { result: EffectsResult; letter: ScenarioLetter; onFit: () => void }) {
   const families = [...new Set(result.rings.map((ring) => ring.family))];
   return (
-    <section aria-label="What the model gives" className="grid gap-4 border-t border-border pt-4">
+    <section aria-label="What the model gives" className="grid grid-cols-[minmax(0,1fr)] gap-4 border-t border-border pt-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-lead font-semibold text-ink">What the model gives for {letter}</h2>
         <Button size="sm" variant="ghost" onClick={onFit}>
@@ -1024,8 +1032,8 @@ function Results({ result, letter, onFit }: { result: EffectsResult; letter: Sce
         {EFFECTS_CAVEAT}
       </Notice>
       {families.map((family) => (
-        <div key={family} className="grid gap-1.5">
-          <h3 className="flex items-center gap-2 text-body font-semibold text-ink">
+        <div key={family} className="grid grid-cols-[minmax(0,1fr)] gap-1.5">
+          <h3 className="flex flex-wrap items-center gap-2 text-body font-semibold text-ink">
             <LineSample family={family} />
             {FAMILY_TITLES[family]}
             <ProvenanceBadge kind="model" className="ml-auto" />
@@ -1034,7 +1042,7 @@ function Results({ result, letter, onFit }: { result: EffectsResult; letter: Sce
             {result.rings
               .filter((ring) => ring.family === family)
               .map((ring) => (
-                <li key={ring.id} className="grid gap-1 py-2.5">
+                <li key={ring.id} className="grid grid-cols-[minmax(0,1fr)] gap-1 py-2.5">
                   <div className="flex flex-wrap items-baseline justify-between gap-x-3">
                     <span className="text-body text-ink">{ring.label}</span>
                     <span className="tabular text-body text-ink">
@@ -1052,8 +1060,8 @@ function Results({ result, letter, onFit }: { result: EffectsResult; letter: Sce
           </Rows>
         </div>
       ))}
-      <div className="grid gap-1.5">
-        <h3 className="flex items-center gap-2 text-body font-semibold text-ink">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-1.5">
+        <h3 className="flex flex-wrap items-center gap-2 text-body font-semibold text-ink">
           <LineSample family="fallout" />
           Fallout
           <ProvenanceBadge kind="model" className="ml-auto" />
@@ -1091,7 +1099,7 @@ function Results({ result, letter, onFit }: { result: EffectsResult; letter: Sce
         )}
       </div>
       {result.notes.length > 0 ? (
-        <ul className="grid list-disc gap-1 pl-5 text-small text-ink-muted">
+        <ul className="grid grid-cols-[minmax(0,1fr)] list-disc gap-1 pl-5 text-small text-ink-muted">
           {result.notes.map((note) => (
             <li key={note}>{note}</li>
           ))}
@@ -1152,7 +1160,7 @@ function PlacesAgainst({
             .map((place) => ({ place, against: placeAgainst(at, place, result) }))
             .sort((a, b) => a.against.distance - b.against.distance)
             .map(({ place, against }) => (
-              <li key={place.id} className="grid gap-0.5 py-2.5">
+              <li key={place.id} className="grid grid-cols-[minmax(0,1fr)] gap-0.5 py-2.5">
                 <span className="flex items-center gap-2 text-body text-ink">
                   {place.name}
                   <ProvenanceBadge kind="own" className="ml-auto" />
@@ -1181,7 +1189,7 @@ function Export({ written, dated }: { written: Written[]; dated: number }) {
     }
   }, [written, dated]);
   return (
-    <section aria-label="On paper" className="grid gap-3 border-y border-border py-4">
+    <section aria-label="On paper" className="grid grid-cols-[minmax(0,1fr)] gap-3 border-y border-border py-4">
       <div>
         <h2 className="text-body font-semibold text-ink">
           {written.length > 1 ? `The ${written.length} scenarios shown, on paper` : "This scenario on paper"}
@@ -1231,7 +1239,7 @@ function SavedList({
   let body: ReactNode;
   if (query.isPending)
     body = (
-      <div className="grid gap-2">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-2">
         <Skeleton className="h-14 w-full" />
         <Skeleton className="h-14 w-full" />
       </div>
@@ -1249,7 +1257,7 @@ function SavedList({
         {query.data.map((scenario) => {
           const shown = onMap.has(scenario.id);
           return (
-            <li key={scenario.id} className="grid gap-2 py-3">
+            <li key={scenario.id} className="grid grid-cols-[minmax(0,1fr)] gap-2 py-3">
               <div className="flex items-start gap-2">
                 <div className="min-w-0 flex-1">
                   <p className="text-body text-ink">
@@ -1263,10 +1271,10 @@ function SavedList({
                 <ProvenanceBadge kind="own" />
               </div>
               <div className="flex flex-wrap gap-2">
-                <Button size="sm" onClick={() => onPut(scenario)} disabled={!shown && atLimit}>
+                <Button onClick={() => onPut(scenario)} disabled={!shown && atLimit}>
                   {shown ? "Edit it on the map" : "Put it on the map"}
                 </Button>
-                <Button size="sm" variant="danger-ghost" onClick={() => onDelete(scenario)} aria-label={`Delete ${scenario.name}`}>
+                <Button variant="danger-ghost" onClick={() => onDelete(scenario)} aria-label={`Delete ${scenario.name}`}>
                   <Trash2 aria-hidden />
                   Delete
                 </Button>
@@ -1307,18 +1315,18 @@ function SetsSection({
       title="Sets of scenarios"
       description="The scenarios on the map kept together, to open again as they were. Each stays a separate illustration: nothing is added up across them."
     >
-      <div className="grid gap-2">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-2">
         <Field label="Name of the set">
           {(ids) => (
             <Input {...ids} value={name} onChange={(event) => setName(event.target.value)} placeholder="Three yields at the lake" />
           )}
         </Field>
         <div className="flex flex-wrap gap-2">
-          <Button variant="primary" size="sm" loading={saving} disabled={!name.trim()} onClick={() => onSave(name.trim(), !openSet)}>
+          <Button variant="primary" loading={saving} disabled={!name.trim()} onClick={() => onSave(name.trim(), !openSet)}>
             {openSet ? "Save changes to the set" : `Save the ${plural(count, "scenario")} on the map as a set`}
           </Button>
           {openSet ? (
-            <Button size="sm" disabled={!name.trim()} onClick={() => onSave(name.trim(), true)}>
+            <Button disabled={!name.trim()} onClick={() => onSave(name.trim(), true)}>
               Save as a new set
             </Button>
           ) : null}
@@ -1334,7 +1342,7 @@ function SetsSection({
         ) : (
           <Rows className="border-y border-border">
             {query.data.map((saved) => (
-              <li key={saved.id} className="grid gap-2 py-3">
+              <li key={saved.id} className="grid grid-cols-[minmax(0,1fr)] gap-2 py-3">
                 <div>
                   <p className="text-body text-ink">
                     {saved.name}
@@ -1346,10 +1354,8 @@ function SetsSection({
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <Button size="sm" onClick={() => onOpen(saved)}>
-                    Open the set
-                  </Button>
-                  <Button size="sm" variant="danger-ghost" onClick={() => onDelete(saved)} aria-label={`Delete the set ${saved.name}`}>
+                  <Button onClick={() => onOpen(saved)}>Open the set</Button>
+                  <Button variant="danger-ghost" onClick={() => onDelete(saved)} aria-label={`Delete the set ${saved.name}`}>
                     <Trash2 aria-hidden />
                     Delete
                   </Button>
