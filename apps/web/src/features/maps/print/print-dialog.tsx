@@ -24,6 +24,7 @@ import { PdfButtons, PdfStatus, useMadePdf } from "@/features/library/made/pdf-a
 import { api, errorMessage } from "@/lib/api";
 import { usePrinting } from "@/lib/printing";
 import { mapsKeys, useMapOverview, useMarkers, useTracks } from "../data";
+import { imageryCredits } from "../imagery/use-satellite";
 import type { ReadoutFormat } from "../lib/coords";
 import { formatBboxSize } from "../lib/geo";
 import { FALLBACK_THEME } from "../lib/palette";
@@ -183,7 +184,7 @@ export function PrintDialog({
       tracks: tracks.data,
       geometries: lines.geometries,
       graticule: ticks,
-      live: { hillshade: style.hillshade, contours: style.contours ?? false, hiddenTracks },
+      live: { hillshade: style.hillshade, contours: style.contours ?? false, hiddenTracks, satellite: style.satellite ?? false },
     };
   }, [overview.data, markers.data, tracks.data, lines, bbox, frame.zoom, style, ticks, hiddenTracks]);
 
@@ -200,8 +201,12 @@ export function PrintDialog({
   const hasTiles = style.sources?.hasTiles ?? false;
   const credits = useMemo(() => {
     const attributions = style.sources?.attributions ?? [];
-    return printedCredits(creditsFor(attributions, { hasTiles, terrain: printed?.usesTerrain ?? false }), attributions);
-  }, [style.sources, hasTiles, printed?.usesTerrain]);
+    const drawn = [
+      ...creditsFor(attributions, { hasTiles, terrain: printed?.usesTerrain ?? false }),
+      ...imageryCredits(printed?.imagery ?? []),
+    ];
+    return printedCredits(drawn, attributions);
+  }, [style.sources, hasTiles, printed?.usesTerrain, printed?.imagery]);
 
   // ── The preview ──
 

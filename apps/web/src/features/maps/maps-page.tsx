@@ -44,6 +44,7 @@ import { anyFoundRoute, ROUTE_CREDIT } from "./find-route/source-credit";
 import { PREVIEW_TRACK_ID } from "./find-route/words";
 import { useGreyLine } from "./grey-line/grey-line";
 import { useGeolocation, useIsDesktop, useMapTheme, useStoredState } from "./hooks";
+import { useSatellite } from "./imagery/use-satellite";
 import { type ContourReach, contourReach, contoursSupported } from "./lib/contours";
 import { formatPosition, isReadoutFormat, type ReadoutFormat } from "./lib/coords";
 import { formatDistance, type LatLon } from "./lib/geo";
@@ -235,6 +236,7 @@ export default function MapsPage() {
   const [engine, setEngine] = useState<MapEngine | null>(null);
   const [locatorGrid, setLocatorGrid] = useLocatorGrid(engine);
   const greyLine = useGreyLine(engine);
+  const satellite = useSatellite({ engine, imagery: sources.data?.imagery, onGetImagery: () => openOffline({ type: "imagery" }) });
   const sight = useSight({ engine, active: tool === "sight", markers: markers.data ?? [], start: sightStart });
   const [mapStatus, setMapStatus] = useState<MapStatus>("loading");
   const [mapError, setMapError] = useState<string>();
@@ -243,8 +245,17 @@ export default function MapsPage() {
 
   const cacheKey = useMemo(() => regionsCacheKey(overview.data?.regions ?? []), [overview.data]);
   const styleInput = useMemo<Omit<StyleInput, "overlays">>(
-    () => ({ sources: sources.data, flavour, theme, hillshade, contours, origin: window.location.origin, cacheKey }),
-    [sources.data, flavour, theme, hillshade, contours, cacheKey],
+    () => ({
+      sources: sources.data,
+      flavour,
+      theme,
+      hillshade,
+      contours,
+      satellite: satellite.on,
+      origin: window.location.origin,
+      cacheKey,
+    }),
+    [sources.data, flavour, theme, hillshade, contours, satellite.on, cacheKey],
   );
   const latestStyle = useRef(styleInput);
   latestStyle.current = styleInput;
@@ -953,8 +964,9 @@ export default function MapsPage() {
       terrain: (hillshade || contours) && (sources.data?.hasTerrain ?? false),
     });
     // A route found in OpenStreetMap is credited while it is on the map, whatever the map beneath it is.
-    return routePreview || anyFoundRoute(geometries) ? [...base, ROUTE_CREDIT] : base;
-  }, [sources.data, hasTiles, hillshade, contours, geometries, routePreview]);
+    const withImagery = [...satellite.credits, ...base];
+    return routePreview || anyFoundRoute(geometries) ? [...withImagery, ROUTE_CREDIT] : withImagery;
+  }, [sources.data, hasTiles, hillshade, contours, geometries, routePreview, satellite.credits]);
   const firstUse = sources.isSuccess && !hasTiles && !mapDownloading && !firstUseDismissed && !offlineVisible;
   const openOffline = (intent: OfflineIntent) => {
     setOfflineIntent(intent);
@@ -1342,6 +1354,9 @@ export default function MapsPage() {
             onLocatorGridChange={setLocatorGrid}
             greyLine={greyLine.on}
             onGreyLineChange={greyLine.setOn}
+            satellite={satellite.on}
+            satelliteLabel={satellite.label}
+            onSatelliteChange={satellite.setOn}
             repeaters={repeaters.on}
             onRepeatersChange={repeaters.setOn}
             record={<RecordButton />}

@@ -24,11 +24,12 @@
  * the installed terrain, which the page then credits). Nothing else needs to change:
  * the dialog, the preview and the PDF all work from this list.
  */
-import type { Bbox, InstalledRegion, MapSources, MarkerDto, TrackDto, TrackWithGeometryDto } from "@outpost/shared";
+import type { Bbox, ImageryStyleSource, InstalledRegion, MapSources, MarkerDto, TrackDto, TrackWithGeometryDto } from "@outpost/shared";
 import { plural } from "@/lib/utils";
 import { greyLineData } from "../grey-line/geometry";
 import { greyLineShown, momentText } from "../grey-line/grey-line";
 import { mapMoment } from "../grey-line/time";
+import { imageryOnPage, SATELLITE_OVERLAY } from "../imagery/print";
 import { CONTOUR_MIN_ZOOM, contourInterval, contourReach } from "../lib/contours";
 import { buildStyle, MAP_FONTS, type MapTheme, SOURCE_IDS } from "../lib/style";
 import type { LayerSpecification, SourceSpecification, StyleSpecification } from "../lib/style-types";
@@ -57,13 +58,15 @@ export interface PrintContext {
   /** The graticule's ticks, as the page's edge prints them. */
   graticule: Graticule;
   /** How the map on screen is set: where the page starts from. */
-  live: { hillshade: boolean; contours: boolean; hiddenTracks: readonly string[] };
+  live: { hillshade: boolean; contours: boolean; hiddenTracks: readonly string[]; satellite?: boolean };
 }
 
 /** The style of the off-screen map before it is built: overlays add to it. */
 export interface PrintDraft {
   hillshade: boolean;
   contours: boolean;
+  /** Satellite imagery, beneath the roads and names (imagery/print.ts). */
+  satellite?: boolean;
   /** Names of places, roads and water on the basemap. */
   names: boolean;
   /** Data for the map's own overlay sources: saved places, routes. */
@@ -157,6 +160,7 @@ export const PRINT_OVERLAYS: PrintOverlay[] = [
       draft.hillshade = true;
     },
   },
+  SATELLITE_OVERLAY,
   {
     id: "routes",
     label: "Routes and tracks",
@@ -320,6 +324,8 @@ export interface PrintStyle {
   notes: string[];
   /** Whether anything on the page is drawn from the installed terrain. */
   usesTerrain: boolean;
+  /** The satellite imagery drawn on the page, to be credited. */
+  imagery: ImageryStyleSource[];
 }
 
 /**
@@ -345,6 +351,7 @@ export function printStyle(
     theme: context.theme,
     hillshade: draft.hillshade,
     contours: draft.contours,
+    satellite: draft.satellite,
     origin: base.origin,
     cacheKey: base.cacheKey,
     overlays: {
@@ -361,5 +368,10 @@ export function printStyle(
   const edge = edgeGuard(context.bbox, context.zoom);
   style.sources[EDGE_SOURCE] = edge.source;
   style.layers.push(edge.layer);
-  return { style, notes: draft.notes, usesTerrain: usesTerrain && Boolean(context.sources?.hasTerrain) };
+  return {
+    style,
+    notes: draft.notes,
+    usesTerrain: usesTerrain && Boolean(context.sources?.hasTerrain),
+    imagery: draft.satellite ? imageryOnPage(context) : [],
+  };
 }

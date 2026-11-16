@@ -11,6 +11,7 @@
  */
 import type { MapSources } from "@outpost/shared";
 import { type Flavor, namedFlavor, layers as protomapsLayers } from "@protomaps/basemaps";
+import { hasImagery, imageryStyle, withImagery } from "../imagery/style";
 import {
   CONTOUR_ELEVATION_KEY,
   CONTOUR_LEVEL_KEY,
@@ -51,6 +52,8 @@ export interface StyleInput {
   hillshade: boolean;
   /** Draw contour lines, traced on this device from the same terrain, if any is installed. */
   contours?: boolean;
+  /** Draw installed satellite imagery beneath the roads and names (see imagery/style.ts). */
+  satellite?: boolean;
   /** `location.origin`: MapLibre wants absolute addresses for glyphs, sprites and data files. */
   origin: string;
   /** Changes when the installed regions change; see `tileTemplate`. */
@@ -246,6 +249,12 @@ export function buildStyle(input: StyleInput): StyleSpecification {
       },
       paint: { "text-color": theme.inkMuted, "text-halo-color": theme.land, "text-halo-width": 1.4 },
     });
+  }
+
+  if (input.satellite && hasImagery(installed)) {
+    const imagery = imageryStyle(installed, input.cacheKey);
+    Object.assign(sources, imagery.sources);
+    layers.splice(0, layers.length, ...withImagery(layers, imagery.layers, theme));
   }
 
   if (input.overlays) {

@@ -13,6 +13,7 @@ import {
   RadioTower,
   Redo2,
   Ruler,
+  Satellite,
   SunMoon,
   Undo2,
   X,
@@ -94,6 +95,9 @@ export function MapControls({
   onRepeatersChange,
   greyLine,
   onGreyLineChange,
+  satellite,
+  satelliteLabel,
+  onSatelliteChange,
   record,
   disabled,
   className,
@@ -124,6 +128,11 @@ export function MapControls({
   /** Whether day and night are drawn over the map; see grey-line/. Left out, there is no button. */
   greyLine?: boolean;
   onGreyLineChange?: (on: boolean) => void;
+  /** Whether satellite imagery is drawn under the map; see imagery/. Left out, there is no button. */
+  satellite?: boolean;
+  /** What the button is called: says when there is no imagery to draw, as contour lines' does. */
+  satelliteLabel?: string;
+  onSatelliteChange?: (on: boolean) => void;
   /** The button that records a track as it is walked; see recording/record-ui.tsx. */
   record?: ReactNode;
   /** The map could not be drawn; the controls that move it have nothing to act on. */
@@ -215,6 +224,16 @@ export function MapControls({
       {/* Radio: the locator grid, and whether two points can see each other. On a phone the column is
           already as long as the map is tall once a card is up, so these two stand beside its top. */}
       <ControlGroup className="max-md:absolute max-md:top-0 max-md:right-[calc(100%+0.5rem)]">
+        {onSatelliteChange ? (
+          <ControlButton
+            label={satelliteLabel ?? "Satellite imagery"}
+            pressed={satellite ?? false}
+            onClick={() => onSatelliteChange(!satellite)}
+            disabled={disabled}
+          >
+            <Satellite />
+          </ControlButton>
+        ) : null}
         <ControlButton
           label="Maidenhead locator grid"
           pressed={locatorGrid}

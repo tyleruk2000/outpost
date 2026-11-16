@@ -27,6 +27,7 @@ import { useDownloads } from "@/features/downloads/use-downloads";
 import { KeepAreaSection } from "@/features/kept/keep-controls";
 import { formatNumber, plural } from "@/lib/utils";
 import { type PlacesDatasetRequest, useRemovePlaces, useRemoveRegion, useStartPlaces } from "../data";
+import { ImageryArea, SatelliteSection } from "../imagery/panel";
 import { formatBboxSize } from "../lib/geo";
 import { formatBuild } from "../lib/tracks";
 import type { MapEngine } from "../map/engine";
@@ -35,7 +36,7 @@ import { AddRegion, detailLabel } from "./add-region";
 import { DestinationPicker, useDestination } from "./destination";
 
 /** What the panel was opened to do, when it was opened from elsewhere on the screen. */
-export type OfflineIntent = { type: "add"; presetId?: string } | { type: "places" } | null;
+export type OfflineIntent = { type: "add"; presetId?: string } | { type: "places" } | { type: "imagery" } | null;
 
 function ActiveDownloads({ downloads }: { downloads: DownloadDto[] }) {
   if (downloads.length === 0) return null;
@@ -351,10 +352,16 @@ export function OfflinePanel({
   const downloads = useDownloads();
   const [adding, setAdding] = useState<{ presetId?: string } | null>(null);
   const placesRef = useRef<HTMLElement>(null);
+  const imageryRef = useRef<HTMLElement>(null);
+  const [choosingImagery, setChoosingImagery] = useState(false);
 
   useEffect(() => {
     if (!intent) return;
     if (intent.type === "add") setAdding({ presetId: intent.presetId });
+    if (intent.type === "imagery") {
+      setAdding(null);
+      window.setTimeout(() => imageryRef.current?.scrollIntoView({ block: "start" }), 0);
+    }
     if (intent.type === "places") {
       setAdding(null);
       // After the list has rendered: the section may not exist on the first pass.
@@ -373,6 +380,10 @@ export function OfflinePanel({
         onNeedRoom={onNeedRoom}
       />
     );
+  }
+
+  if (choosingImagery) {
+    return <ImageryArea engine={engine} onClose={() => setChoosingImagery(false)} onNeedMap={onNeedMap} onNeedRoom={onNeedRoom} />;
   }
 
   if (overview.isPending) {
@@ -464,6 +475,7 @@ export function OfflinePanel({
         )}
       </section>
 
+      <SatelliteSection engine={engine} onChooseArea={() => setChoosingImagery(true)} sectionRef={imageryRef} />
       <PlaceNames datasets={places} downloads={placeDownloads} sectionRef={placesRef} />
       <KeepAreaSection engine={engine} />
     </div>

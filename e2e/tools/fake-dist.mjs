@@ -9,6 +9,7 @@
 import { createHash } from "node:crypto";
 import http from "node:http";
 import { gzipSync } from "node:zlib";
+import { createImageryStandIn } from "../../apps/server/test/fixtures/maps/imagery-stand-in.ts";
 import { createOverpassStandIn } from "../../apps/server/test/fixtures/maps/overpass-answers.ts";
 import { serveP533StandIn } from "../../apps/server/test/fixtures/propagation/p533-maps-stand-in.ts";
 import { createRepeaterSourceStandIn } from "../../apps/server/test/fixtures/repeaters/source-stand-in.ts";
@@ -47,6 +48,8 @@ export const FIELD_MANUAL = Buffer.alloc(300_000, "A field manual for end-to-end
 
 const routeSource = createOverpassStandIn();
 const repeaterSource = createRepeaterSourceStandIn();
+// Satellite imagery's publishers: NASA's world picture, the Sentinel-2 search and one scene.
+const imagery = createImageryStandIn(() => `http://127.0.0.1:${port}`);
 
 http
   .createServer((request, response) => {
@@ -54,6 +57,7 @@ http
     if (request.url?.startsWith("/overpass/")) return routeSource.handle(request, response);
     if (request.url?.startsWith("/repeater-lists/")) return repeaterSource.handle(request, response);
     if (request.url?.startsWith("/p533/")) return serveP533StandIn(request, response);
+    if (request.url?.startsWith("/imagery/")) return imagery.handle(request, response);
     if (request.url === "/files/field-manual.bin") {
       response.setHeader("Content-Length", FIELD_MANUAL.length);
       return response.end(FIELD_MANUAL);
