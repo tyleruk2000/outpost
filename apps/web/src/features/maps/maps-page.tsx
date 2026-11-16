@@ -8,7 +8,7 @@
  * lists in the panel still work.
  */
 import "./maps.css";
-import { ACTIVE_DOWNLOAD_STATES, haversineMeters, type MarkerDto, type TrackDto } from "@outpost/shared";
+import { ACTIVE_DOWNLOAD_STATES, formatDecimal, haversineMeters, type MarkerDto, type TrackDto } from "@outpost/shared";
 import { CircleAlert, FileUp, PanelLeftOpen } from "lucide-react";
 import { type DragEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router";
@@ -95,6 +95,8 @@ interface Pin {
   title: string;
   detail?: string;
   position: LatLon;
+  /** Dropped to see its sun times, so they start unfolded. */
+  sun?: boolean;
 }
 
 type MapStatus = "loading" | "ready" | "unsupported" | "failed";
@@ -192,6 +194,7 @@ export default function MapsPage() {
   const [dropping, setDropping] = useState(false);
   const [offlineIntent, setOfflineIntent] = useState<OfflineIntent>(null);
   const [firstUseDismissed, setFirstUseDismissed] = useState(false);
+  const [hereDismissed, setHereDismissed] = useState(false);
   const [rotated, setRotated] = useState(false);
   const [loadError, setLoadError] = useState<string>();
 
@@ -1060,12 +1063,26 @@ export default function MapsPage() {
       />
     ) : pin ? (
       <PinCard
+        // A pin dropped for its sun times opens them, even when the pin before it had them folded.
+        key={pin.sun ? "sun" : "pin"}
         title={pin.title}
         detail={pin.detail}
         position={pin.position}
         format={format}
+        sunOpen={pin.sun}
         onSave={() => startPlace(pin.position, /^[-\d.,\s]+$/.test(pin.title) ? "" : pin.title)}
         onClose={() => setPin(null)}
+      />
+    ) : locate.fix && !hereDismissed ? (
+      // Where the device is, while it is being followed: its position to copy or save, and its sun times.
+      <PinCard
+        title="Where you are"
+        detail={`To within about ${formatDistance(locate.fix.accuracy)}`}
+        position={locate.fix}
+        format={format}
+        closeLabel="Hide this card"
+        onSave={() => locate.fix && startPlace({ lat: locate.fix.lat, lon: locate.fix.lon })}
+        onClose={() => setHereDismissed(true)}
       />
     ) : firstUse ? (
       <MapCard title="No detailed maps on this device yet" onClose={() => setFirstUseDismissed(true)} closeLabel="Dismiss">
@@ -1176,7 +1193,11 @@ export default function MapsPage() {
             rotated={rotated}
             onResetNorth={() => engine?.resetNorth()}
             locate={locate.supported ? locate.state : undefined}
-            onLocate={() => (locate.state === "off" ? locate.start() : locate.stop())}
+            onLocate={() => {
+              setHereDismissed(false);
+              if (locate.state === "off") locate.start();
+              else locate.stop();
+            }}
             hillshade={sources.data?.hasTerrain ? hillshade : undefined}
             onHillshadeChange={setHillshade}
             contours={contours}
@@ -1238,6 +1259,14 @@ export default function MapsPage() {
               setDetent("peek");
             }}
             onDraw={() => startDrawing([contextMenu.position])}
+            onSun={() => {
+              const { lat, lon } = contextMenu.position;
+              setContextMenu(null);
+              setDraft(null);
+              setMoving(null);
+              setPin({ title: formatDecimal(lat, lon, 5), detail: "A point chosen on the map", position: { lat, lon }, sun: true });
+              setDetent("peek");
+            }}
             onClose={() => setContextMenu(null)}
           />
         ) : null}

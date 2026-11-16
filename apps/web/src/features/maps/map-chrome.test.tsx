@@ -127,6 +127,7 @@ describe("the menu at a point on the map", () => {
         onSave={() => {}}
         onMeasure={() => {}}
         onDraw={() => {}}
+        onSun={() => {}}
         onClose={() => {}}
       />,
     );
@@ -140,6 +141,7 @@ describe("the menu at a point on the map", () => {
       "Save a place here",
       "Measure from here",
       "Draw a route from here",
+      "Sun times here",
       "Copy coordinates",
     ]);
     fireEvent.click(screen.getByRole("menuitem", { name: "Move “Esk Hause shelter”" }));
@@ -152,6 +154,7 @@ describe("the menu at a point on the map", () => {
       "Save a place here",
       "Measure from here",
       "Draw a route from here",
+      "Sun times here",
       "Copy coordinates",
     ]);
   });

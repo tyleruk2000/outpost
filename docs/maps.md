@@ -2,8 +2,8 @@
 
 This page covers downloading map regions and choosing where they are kept, hill
 shading and contour lines, where the map data comes from and how it must be credited,
-using your own map source, markers and moving them, drawing routes and importing GPX
-tracks, coordinate formats, and offline place search.
+using your own map source, markers and moving them, sunrise and sunset for a place,
+drawing routes and importing GPX tracks, coordinate formats, and offline place search.
 
 Outpost draws a vector map in the browser from tiles it serves itself. Once a region
 is installed, viewing it needs no internet connection.
@@ -44,7 +44,10 @@ On the map itself:
 - The readout at the bottom shows the centre of the map; choose decimal degrees,
   degrees-minutes-seconds or British National Grid, and copy it.
 - Right-click (or press and hold) for "Save a place here", "Measure from here", "Draw
-  a route from here" and "Copy coordinates".
+  a route from here", "Sun times here" and "Copy coordinates".
+- A place, a found position and where you are each have a **Sun** line: sunrise,
+  sunset, twilight and the moon's phase for any date (see
+  [Sunrise and sunset](#sunrise-and-sunset)).
 - The address bar always holds the current view, so a link to it can be saved in a
   note.
 
@@ -309,6 +312,117 @@ undone from the message that confirms it.
 - Opening a place still works as before, and its pin can be dragged or moved with the
   arrow keys in the same way; **Save changes** keeps the new position.
 
+## Sunrise and sunset
+
+**Sun times are worked out on your device from the position and the date.** Nothing is
+looked up and nothing needs a connection.
+
+A **Sun** line is part of:
+
+- a saved place when it is opened, and a new one while it is being saved;
+- the card of a position that was found: a search result, typed coordinates, a grid
+  reference;
+- any point on the map: right-click it (or press and hold) and choose **Sun times
+  here**, which drops a pin there with its sun times open;
+- where you are: while **Show where I am** is following the device (which needs
+  HTTPS, as above), a card gives its position, how closely the device claims to know
+  it, and its sun times. The card can be put away; it comes back the next time the
+  position is asked for.
+
+Folded, it is one line with the day's sunrise and sunset. Opened, it shows:
+
+| Row | What it is |
+| --- | --- |
+| First light, last light | The start and end of civil twilight: the centre of the sun 6° below the horizon. In clear weather there is enough light to see by between them. |
+| Sunrise, sunset | The upper edge of the sun on the horizon, each with the true bearing of the point on the horizon where it happens, written as the ruler writes bearings ("49° NE"). The bearing is from true north, not magnetic north. |
+| Solar noon | The sun at its highest, due south or due north, and how high its centre is then. |
+| Day length | Sunrise to sunset, and how much longer or shorter that is than the day before. |
+| Nautical twilight | The sun less than 12° below the horizon. |
+| Moon | The phase by name and the percentage of the face that is lit, at the place's solar noon. |
+
+It opens on today's date as this device has it. The date can be typed or picked, the
+arrows beside it step a day either way, and **Today** comes back. Dates from 1900 to
+2100 are taken. Whether the section was left open, and which clock was chosen, are
+remembered in the browser.
+
+### The far north and south
+
+Days without a sunrise or a sunset are said in words, never left blank:
+
+- "Does not set on this date (midnight sun)" and "Does not rise on this date (polar
+  night)". In the polar night the twilight around midday is still given where there
+  is any, and the height of the sun at noon is given as degrees below the horizon.
+- "Twilight lasts all night" where the sun sets but never gets 6° below the horizon,
+  and "None: the sun stays more than 6° below the horizon" where it never gets that
+  close.
+- On the day or two at each edge of the midnight sun one end of the day is missing:
+  "Already up: it did not set the night before" or "Does not set tonight".
+
+### Time zones
+
+**Offline, Outpost does not know the time zone of a point on the map**, and it does
+not guess. Time zone boundaries are a large dataset that changes, and none is bundled.
+
+- Times are shown on **this device's clock**, and the section names the zone and its
+  offset on that date ("Europe/London (UTC+1)"). Summer time is handled by the
+  browser.
+- **UTC** shows the same times in UTC, for a radio log or to agree a time with someone
+  elsewhere.
+- The clock is always a 24-hour one.
+- **The date is the date at the place**: the day whose midday is nearest to the sun
+  crossing the place's own meridian. For a place far to the east or west a time can
+  fall on the day before or after on the clock being shown; the day is then written
+  beside it ("18:10 on 19 Mar").
+- When the sun's time at the place is two hours or more from the standard time of the
+  device's zone, a line above the times says so: "By the sun, this place runs about
+  12 hours ahead of this device's time zone, so clocks there probably read
+  differently." **A place one zone over gets no such line.** Zones are drawn too
+  generously for longitude to tell them apart (Spain keeps Berlin's time), so nearer
+  than two hours nothing is said. Read the zone that is named.
+
+### How accurate it is
+
+The sun's position is the low-accuracy series from Jean Meeus, *Astronomical
+Algorithms*, as used by [NOAA's solar calculator](https://gml.noaa.gov/grad/solcalc/calcdetails.html),
+written out in Outpost (`apps/web/src/features/maps/lib/sun.ts`, no library). The moon's
+phase is from the same book (`lib/moon.ts`).
+
+- **The horizon is taken as flat and at sea level**, with standard refraction: sunrise
+  and sunset are when the centre of the sun is 0.833° below it (0.567° of refraction
+  and 0.267° for the sun's radius). **Hills and mountains make the real sunrise later
+  and the real sunset earlier**, by many minutes in a valley. A summit sees the sun a
+  few minutes longer at each end of the day than this says.
+- NOAA gives the method as accurate to about a minute between 72° north and south, and
+  to about ten minutes beyond. The state of the air moves the real times by a minute
+  or more, and by more at high latitudes.
+- **Checked against the US Naval Observatory** (aa.usno.navy.mil, read on 16 November
+  2026). For Greenwich at the March equinox and the June solstice of 2026, Quito at
+  the September equinox, Sydney and Reykjavik at the December solstice, Suva and Adak
+  either side of the date line, and New York on 29 February 2024, every sunrise,
+  sunset, solar noon and civil twilight came out within 32 seconds of the published
+  minute, so a time shown is the published minute or the one beside it. Nautical
+  twilight at Greenwich on four dates did the same. Bearings at sunrise and sunset
+  were within a quarter of a degree at Greenwich and Sydney.
+- **Near the edges of the midnight sun it is rougher.** The sun meets the horizon at a
+  shallow angle there, and the same small error in height is a longer error in time.
+  For Tromsø on 17 and 18 May and 25 and 26 July 2026 the times came out within two
+  minutes of the published ones (1 minute 54 seconds at worst). Which day is the first
+  without a sunset can differ by one from another source. The days themselves were
+  right for Tromsø, Longyearbyen, Trondheim and McMurdo at the solstices.
+- **The moon.** The lit fraction matched the Observatory's table for ten dates in 2026
+  to within 0.01, and eleven published new moons, quarters and full moons fell within
+  an hour of where this puts them. A phase is called "Full moon", "First quarter" and
+  so on when it falls within about half a day of the place's solar noon; otherwise it
+  is waxing or waning, crescent or gibbous. (The Observatory's one-day data keeps
+  "Waxing Crescent" up to the moment of the quarter, so on the day of a quarter the two
+  can differ in name while agreeing on the percentage.)
+- These were not compared with NOAA's own calculator, which works its answers out in
+  the browser and publishes no table to read them from.
+
+Not included: moonrise and moonset (the moon's distance and the place both matter, and
+it is a longer sum), astronomical twilight, bearings from magnetic north, and any
+allowance for the height of the place or the hills around it.
+
 ## Drawing a route
 
 **A drawn route is straight lines between the points you place. It does not follow
@@ -529,6 +643,8 @@ matches, by population, and by distance from a point when one is given
 - **Routes across the 180° meridian.** A drawn leg that crosses it is drawn the long
   way round the world.
 - **Satellite or aerial imagery.**
+- **The time zone of a place, moonrise and moonset.** Sun times are shown on the
+  device's clock or in UTC (see [Time zones](#time-zones)).
 - **Other map schemas.** The bundled styles draw the Protomaps basemap schema only.
 
 These match the limits listed in

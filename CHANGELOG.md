@@ -284,6 +284,13 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   pointer or the arrow keys.
 - Moving a saved place straight from the map (press and hold, the map's menu, or the
   list), by pointer or keyboard, with the new position confirmed before it is kept.
+- Sunrise, sunset, first and last light, solar noon, day length, nautical twilight and
+  the moon's phase for a saved place, a found position, any point on the map ("Sun
+  times here") and where you are, for any date, worked out on the device. Times are on
+  the device's clock or in UTC; the far north and south are said in words; checked
+  against US Naval Observatory times.
+- A card for where you are while the map follows the device: its position to copy or
+  save, and how closely the device claims to know it.
 
 #### Portable drives
 

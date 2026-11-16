@@ -61,6 +61,7 @@ picture, not a surveyed path.
 - **Offline maps.** Download a country, a mountain range, or any box you draw, with
   the exact size shown first. Save places, import and export GPX routes, measure
   distances, search place names, and enter coordinates or British grid references.
+  Sunrise, sunset and twilight for any place and date, worked out on the device.
 - **One search.** Full-text search across documents, notes, collections and saved
   places, with ranked results, highlighted passages and filters. Optional semantic
   search finds passages by meaning with a small model that is built in (nothing to
