@@ -729,6 +729,19 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   modelled. Answers kept for questions this changes are worked out again; no other key
   changes. The comparison's PDF and Markdown no longer print a series that is not
   modelled as noughts. See docs/hf-propagation.md.
+- **More antennas a portable operator carries**, by name, in the HF planner: a 20 m
+  end-fed wire (a half-wave on 40 m) sloping 25° from 1.5 m to a 10 m pole, and level
+  6 m up; and the SPOOLTENNA (PARKS or ULTRA), 65 ft of wire sloping as its owner's
+  manuals show it. A **sloping wire** is a new way an end-fed wire is put up, with the
+  height of its low end, its slope and the bearing of its high end: run as VOACAP's
+  sloping long wire (type 41) at its slope where it is a half-wave or longer, every
+  figure labelled approximate, and not modelled where it is shorter. With no bearing, its
+  low end is turned towards the other station. The antenna lists are grouped by wire
+  length and then how it is put up, the person's own first, with a box to find one by
+  typing. Inverted-L and inverted-V wires, short loaded whips, small loops, delta loops
+  and random wires were looked at and are not offered as presets; see
+  docs/hf-propagation.md, "A sloping wire" and "Other antennas looked at". Migration
+  0018 adds the two columns. Answers kept with the antennas there were before keep their keys.
 - **HF coverage** under Radio: the engine asked about every cell of a grid laid over
   the area the map shows, drawn as a layer over the offline map by reliability,
   signal-to-noise ratio or signal strength for any hour of the day. Every cell is one

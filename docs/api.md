@@ -859,7 +859,7 @@ Predictions are worked out by VOACAP on the server, with no connection. See
 | `POST /api/radio/observations/compare` | The log set beside the engine. Body: `myAntenna`, `theirAntenna`, `noise`, `defaultPowerWatts` (or `null`), `ssnByMonth` (`{ "2014-03": 115 }`, for months the solar table does not reach). Returns `{ comparison }`: how many entries were compared, how many fell at a low, middling or high predicted reliability by outcome, every entry left out by reason, the months still without a sunspot number, each compared entry with the engine's figures, and what the comparison cannot show. At most 500 different paths are put to the engine. |
 | `GET /api/radio/profiles` | `{ radios, antennas }`. |
 | `POST /api/radio/profiles/radios`, `PATCH` / `DELETE …/radios/:id` | A radio: `name`, `model`, `powerWatts`, `minMhz`, `maxMhz`, `modes`, `receiver`, `notes`. |
-| `POST /api/radio/profiles/antennas`, `PATCH` / `DELETE …/antennas/:id` | An antenna: `name`, `kind`, `heightM`, `ground`, `broadsideDeg`, `gainDb`, `feedlineLossDb`, `minMhz`, `maxMhz`, `notes`, and `lengthM` (4.5 to 82) when `kind` is `end-fed-horizontal` or `end-fed-vertical`: required for those two, refused for any other kind, and left out of what is returned for any other kind. |
+| `POST /api/radio/profiles/antennas`, `PATCH` / `DELETE …/antennas/:id` | An antenna: `name`, `kind`, `heightM`, `ground`, `broadsideDeg`, `gainDb`, `feedlineLossDb`, `minMhz`, `maxMhz`, `notes`, and `lengthM` (4.5 to 82) when `kind` is `end-fed-horizontal`, `end-fed-vertical` or `end-fed-sloping`: required for those three, refused for any other kind, and left out of what is returned for any other kind. An `end-fed-sloping` wire also has `slopeDeg` (10 to 60, required) and `highEndDeg` (0 to 360, or `null` to turn its low end towards the other station); `heightM` is then the height of its low end (0 to 50). Both are refused for, and left out of, every other kind. |
 
 A coverage request is a prediction's body without `rx` and `reply`, with the antenna
 and noise assumed at every cell in `rxAntenna` and `noise`, `solar` as `table` or
@@ -897,9 +897,16 @@ A prediction's body:
 Limits checked before the engine sees a request: latitude -90 to 90, longitude -180 to
 180, a real date from 1950 to 2100, power 0.1 W to 500 kW, frequency 2 to 30 MHz,
 sunspot number 0 to 300, a horizontal antenna at least 0.5 m up, an end-fed wire of a
-stated length (`kind` `end-fed-horizontal` or `end-fed-vertical`) with its `lengthM`
-from 4.5 to 82 and no other kind with one, and a requirement between -30 and 99.9 dB
+stated length (`kind` `end-fed-horizontal`, `end-fed-vertical` or `end-fed-sloping`) with
+its `lengthM` from 4.5 to 82 and no other kind with one, a sloping wire with its
+`slopeDeg` from 10 to 60 (and `highEndDeg` 0 to 360 or `null`) and no other kind with
+either, and a requirement between -30 and 99.9 dB
 once restated in 1 Hz. `400` says which.
+
+An `end-fed-sloping` wire is approximate on every frequency where it is a half-wave or
+longer (run as VOACAP's sloping long wire at its slope) and not modelled where it is
+shorter, marked in every answer exactly as below; a sloping wire sent without
+`highEndDeg` is the same question as one sent with `null`.
 
 An `end-fed-horizontal` wire is in one of three states on each frequency
 (docs/hf-propagation.md, "End-fed wires of a stated length"): about a half-wave (run as
