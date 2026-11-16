@@ -261,6 +261,7 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
         radio: ctx.services.propagation.kept.count(),
         powerPlans: ctx.services.power.kept.count(),
         supplies: ctx.services.supplies.count(),
+        emergencyPlans: ctx.services.emergencyPlans.kept.count(),
         settings: count("SELECT count(*) AS n FROM settings"),
         vectors: count("SELECT count(*) AS n FROM embeddings"),
         previous: previousData(),
@@ -517,6 +518,7 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
       radio: { plans: 0, observations: 0, equipment: 0, saved: 0 },
       powerPlans: 0,
       supplies: { items: 0, members: 0, shopping: 0, barcodes: 0 },
+      emergencyPlans: 0,
       settings: 0,
     };
     personal.attachments = (sqlite.prepare("SELECT count(*) AS n FROM attachments").get() as { n: number }).n;
@@ -560,6 +562,8 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
     personal.powerPlans = ctx.services.power.kept.eraseAll();
     // Stored supplies, the household they are for, the shopping list and the barcodes remembered.
     personal.supplies = ctx.services.supplies.eraseAll();
+    // Emergency plans: the household's steps, people, places and supplies for each.
+    personal.emergencyPlans = ctx.services.emergencyPlans.kept.eraseAll();
 
     // Whatever is left belongs to records that no longer exist: attachments no page
     // used, import reports, history, vectors, and the settings.
@@ -625,7 +629,7 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
         // From here on nothing can be stopped half-way in a state worth keeping.
         run.progress({
           message:
-            "Erasing notes, places, routes, contacts, conversations, repeaters, radio plans and logs, power plans, supplies, and settings",
+            "Erasing notes, places, routes, contacts, conversations, repeaters, radio plans and logs, power plans, supplies, emergency plans, and settings",
         });
         await erasePersonal(result);
         await eraseDataFolders(result);
@@ -647,6 +651,7 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
           "repeaters.changed",
           "propagation.changed",
           "supplies.changed",
+          "emergency-plans.changed",
           "documents.changed",
           "collections.changed",
           "semantic.changed",

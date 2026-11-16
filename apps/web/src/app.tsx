@@ -42,6 +42,10 @@ const PowerPage = lazy(() => import("./features/power/power-page"));
 const PowerPlanPage = lazy(() => import("./features/power/plan-page"));
 const SuppliesPage = lazy(() => import("./features/supplies/supplies-page"));
 const SupplyItemPage = lazy(() => import("./features/supplies/item-page"));
+const EmergencyPlansPage = lazy(() => import("./features/emergency-plans/plans-page"));
+const EmergencyPlanPage = lazy(() => import("./features/emergency-plans/plan-page"));
+const UseEmergencyPlanPage = lazy(() => import("./features/emergency-plans/use-page"));
+const EmergencyCardsPage = lazy(() => import("./features/emergency-plans/cards-page"));
 const WaterToolsPage = lazy(() => import("./features/tools/water/water-page"));
 const OutdoorsToolsPage = lazy(() => import("./features/tools/outdoors/outdoors-page"));
 const RadioToolsPage = lazy(() => import("./features/tools/radio/radio-tools-page"));
@@ -136,6 +140,10 @@ export function App() {
           <Route path="tools/power/plans/:id" element={<PowerPlanPage />} />
           <Route path="prepare/supplies" element={<SuppliesPage />} />
           <Route path="prepare/supplies/items/:id" element={<SupplyItemPage />} />
+          <Route path="prepare/plans" element={<EmergencyPlansPage />} />
+          <Route path="prepare/plans/:id" element={<EmergencyPlanPage />} />
+          <Route path="prepare/plans/:id/use" element={<UseEmergencyPlanPage />} />
+          <Route path="prepare/plans/:id/cards" element={<EmergencyCardsPage />} />
           <Route path="radio/propagation" element={<PropagationPage />} />
           <Route path="radio/coverage" element={<CoveragePage />} />
           <Route path="radio/log" element={<LogPage />} />
