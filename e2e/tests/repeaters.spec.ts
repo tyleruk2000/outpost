@@ -211,9 +211,13 @@ test.describe("repeaters", () => {
     sealed,
   }) => {
     const errors = watchForErrors(page);
+    // As the Maps screen leaves it in this browser when it was last looking at the made-up hillside.
+    await page.addInitScript(() =>
+      localStorage.setItem("outpost.maps.view", JSON.stringify({ lat: 54.52, lon: -3.05, zoom: 9.5, bearing: 0, pitch: 0 })),
+    );
     await page.goto("/radio/repeaters");
     const sources = page.locator("section").filter({ has: page.getByRole("heading", { name: "Get a list" }) });
-    // The map was last left over the made-up hillside, so its sources come first.
+    // So the sources for there come first, and nobody was asked where the device is.
     await expect(sources.getByText("The sources for where your map was last looking come first.")).toBeVisible();
     const source = sources.getByRole("listitem").filter({ hasText: "Stand-in list" }).first();
     await expect(source).toContainText("Outpost can get this list. Not held yet.");
@@ -255,29 +259,31 @@ test.describe("repeaters", () => {
     await expect(find.getByRole("heading", { name: "6 repeaters held more than once" })).toBeVisible();
     const group = find.getByRole("table", { name: "QZ3AB, 145.6625 MHz: the entries side by side" });
     await expect(group.getByRole("row", { name: /CTCSS tone/ })).toContainText("77.0 Hz");
-    // The list fetched just now has the later data, so its entry is the one that would be kept.
-    await expect(group.getByRole("radio", { name: /Stand-in list/ })).toBeChecked();
+    // The first list was brought up to date today, so its data is the later, and its entry is the one that would be kept.
+    await expect(group.getByRole("radio", { name: /North list/ })).toBeChecked();
+    await expect(group.getByRole("radio", { name: /Stand-in list, data of 1 Oct 2026/ })).not.toBeChecked();
     await find.getByRole("button", { name: "Merge all 6" }).click();
     await expect(find.getByText("No duplicates are left")).toBeVisible();
     await expect(find.getByText("6 entries set aside. Each repeater is listed once.")).toBeVisible();
     await find.getByRole("button", { name: "Done" }).click();
 
-    // Once each, in the list and in the count; and the person's tone came through the merge.
+    // Once each, in the list and in the count; and the person's tone is still there after the merge.
     await expect(rows).toHaveCount(6);
     await expect(page.getByText("6 repeaters held on this device, from 2 lists.")).toBeVisible();
     await expect(rows.first()).toContainText("QZ3AB");
     await expect(rows.first()).toContainText("CTCSS 77.0 Hz");
-    await expect(rows.first()).toContainText("End-to-end stand-in, data of 1 Oct 2026");
+    await expect(rows.first()).toContainText("Changed by you");
+    await expect(rows.first()).toContainText("A made-up society, data of");
     expect((await api(page, "GET", "/api/repeaters/overlay?bbox=-10,49,5,61")).total).toBe(6);
 
     // The repeater's own screen says what was set aside for it, and can separate them again.
     await rows.first().getByRole("link").click();
     const merged = page.getByRole("region", { name: "Merged entries" });
-    await expect(merged).toContainText("QZ3AB, 145.6625 MHz: from “North list”, data of 1 Oct 2026");
+    await expect(merged).toContainText("QZ3AB, 145.6625 MHz: from “Stand-in list”, data of 1 Oct 2026");
     await merged.getByRole("button", { name: "Separate them" }).click();
     await expect(merged).toHaveCount(0);
     expect((await api(page, "GET", "/api/repeaters/overview")).total).toBe(7);
-    // Put back as it was for the tests that follow: the fetched list goes, and what it stood for is shown from the first list again.
+    // Put back as it was for the tests that follow: the fetched list goes, with the entries of it that were set aside.
     const overview = await api<{ lists: Array<{ id: string; name: string }> }>(page, "GET", "/api/repeaters/overview");
     await api(page, "DELETE", `/api/repeaters/lists/${overview.lists.find((list) => list.name === "Stand-in list")!.id}`);
     expect((await api(page, "GET", "/api/repeaters/overview")).total).toBe(6);
