@@ -409,6 +409,16 @@ describe("the words for how an add turned out", () => {
     );
     expect(full.title).toBe("Stopped after 5 of 8 documents: no room left");
     expect(full.lines.at(-1)).toBe('"Main" does not have room for "north.pdf". 3 documents were not reached.');
+    expect(
+      addOutcome(
+        finished(result({ added: 2, wanted: 8, notReached: 6, stopped: "storage", stoppedReason: '"Main" is not connected.' })),
+        "document",
+      ),
+    ).toMatchObject({ tone: "warning", title: "Stopped after 2 of 8 documents: the storage location could not be written to" });
+    expect(
+      addOutcome(finished(result({ added: 2, wanted: 8, notReached: 6, stopped: "unreadable", stoppedReason: "It went away." })), "file")
+        .title,
+    ).toBe("Stopped after 2 of 8 files: the collection could not be read");
     expect(addOutcome(finished(result({ added: 0, addedBytes: 0, already: 2, wanted: 2 })), "document")).toMatchObject({
       tone: "success",
       title: "Nothing new was added",

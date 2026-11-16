@@ -400,6 +400,8 @@ What it says when it cannot go on:
   space on that location, or make another location the default under **Storage**.
 - "Stopped after N of M: no room left." The location filled up part of the way
   through. What was added stays.
+- "Stopped after N of M: the storage location could not be written to." The default
+  location was disconnected part of the way through. Reconnect it and ask again.
 - "This collection cannot be read right now…" or "Stopped after N of M: the collection
   could not be read." Its drive was disconnected, or kiwix-serve stopped. Reconnect
   and ask again.

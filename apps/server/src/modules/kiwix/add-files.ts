@@ -271,7 +271,7 @@ export function registerArchiveAdding(app: FastifyInstance, ctx: AppContext, opt
             const code = error instanceof AppError ? error.code : "internal";
             // No room, or nowhere to write: the files after this one would fare no better.
             if (code === "insufficient_space" || code === "storage_unavailable") {
-              result.stopped = "space";
+              result.stopped = code === "insufficient_space" ? "space" : "storage";
               result.stoppedReason = reason;
               break;
             }

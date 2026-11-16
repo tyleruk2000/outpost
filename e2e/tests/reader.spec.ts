@@ -270,16 +270,16 @@ test.describe("a collection that is a list of documents", () => {
       const { documents } = await api(page, "GET", "/api/documents?limit=200");
       const added = documents.filter((document: { source: string | null }) => document.source?.startsWith("Field library: "));
       expect(added).toHaveLength(8);
-      // Their text is read, so that search finds them to the page.
+      // Their text is read, so that search finds them to the page. (Other tests' documents share this library.)
       await expect
         .poll(
           async () =>
-            (await api(page, "GET", "/api/documents?limit=200")).documents.every((d: { extraction: string }) => d.extraction === "done"),
-          {
-            timeout: 30_000,
-          },
+            (await api(page, "GET", "/api/documents?limit=200")).documents
+              .filter((d: { source: string | null }) => d.source?.startsWith("Field library: "))
+              .map((d: { extraction: string }) => d.extraction),
+          { timeout: 30_000 },
         )
-        .toBe(true);
+        .toEqual(Array(8).fill("done"));
       expect(errors).toEqual([]);
     });
 

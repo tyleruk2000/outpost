@@ -216,24 +216,18 @@ export function addOutcome(job: JobDto, noun: string): { tone: "success" | "warn
       `${plural(result.already, noun)} ${result.already === 1 ? "was" : "were"} in your library already and ${result.already === 1 ? "was" : "were"} not copied again.`,
     );
   }
-  if (result.stopped === "space" || result.stopped === "unreadable") {
-    lines.push(
-      `${result.stoppedReason ?? "It could not go on."} ${plural(result.notReached, noun)} ${result.notReached === 1 ? "was" : "were"} not reached.`,
-    );
-  } else if (result.stopped === "cancelled") {
-    lines.push(`${plural(result.notReached, noun)} ${result.notReached === 1 ? "was" : "were"} not reached.`);
-  }
+  const notReached = `${plural(result.notReached, noun)} ${result.notReached === 1 ? "was" : "were"} not reached.`;
+  if (result.stopped === "cancelled") lines.push(notReached);
+  else if (result.stopped) lines.push(`${result.stoppedReason ?? "It could not go on."} ${notReached}`);
   const added = `Added ${plural(result.added, noun)} to your library`;
-  if (result.stopped === "cancelled")
-    return { tone: "warning", title: `Stopped after ${formatNumber(result.added)} of ${plural(result.wanted, noun)}`, lines };
-  if (result.stopped === "space")
-    return { tone: "warning", title: `Stopped after ${formatNumber(result.added)} of ${plural(result.wanted, noun)}: no room left`, lines };
-  if (result.stopped === "unreadable") {
-    return {
-      tone: "warning",
-      title: `Stopped after ${formatNumber(result.added)} of ${plural(result.wanted, noun)}: the collection could not be read`,
-      lines,
-    };
+  if (result.stopped) {
+    const why = {
+      cancelled: "",
+      space: ": no room left",
+      storage: ": the storage location could not be written to",
+      unreadable: ": the collection could not be read",
+    }[result.stopped];
+    return { tone: "warning", title: `Stopped after ${formatNumber(result.added)} of ${plural(result.wanted, noun)}${why}`, lines };
   }
   if (failed > 0) {
     return {

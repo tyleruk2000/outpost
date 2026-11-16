@@ -159,9 +159,9 @@ export interface ArchiveAddResult {
   failedMore: number;
   /** Files it had not come to when it stopped. */
   notReached: number;
-  /** Why it stopped before the end: cancelled by a person, no room left, or the archive went away. */
-  stopped: "cancelled" | "space" | "unreadable" | null;
-  /** The reason in words, when it stopped for lack of room or because the archive could not be read. */
+  /** Why it stopped before the end: cancelled by a person, no room left, the storage location went away, or the archive did. */
+  stopped: "cancelled" | "space" | "storage" | "unreadable" | null;
+  /** The reason in words, when it stopped for anything but being cancelled. */
   stoppedReason: string | null;
   locationName: string;
 }
