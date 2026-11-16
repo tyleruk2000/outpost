@@ -20,12 +20,15 @@ test("a drop-down in a dialog can be opened and chosen from", async ({ page }) =
     .first()
     .click();
   const dialog = page.getByRole("dialog", { name: "Add a station" });
-  const antenna = dialog.getByRole("combobox").filter({ hasText: "Low horizontal dipole, 5 m" });
+  const antenna = dialog.getByRole("button", { name: "Antenna", exact: true });
+  await expect(antenna).toHaveText("Low horizontal dipole, 5 m");
   await antenna.click();
 
   // The option is the thing under the pointer at its own middle: nothing lies over it.
   const option = page.getByRole("option", { name: /Quarter-wave vertical/ });
   await expect(option).toBeVisible();
+  // It is far down a list that scrolls; brought into its view first.
+  await option.scrollIntoViewIfNeeded();
   const onTop = await option.evaluate((element) => {
     const box = element.getBoundingClientRect();
     const top = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
@@ -33,7 +36,7 @@ test("a drop-down in a dialog can be opened and chosen from", async ({ page }) =
   });
   expect(onTop).toBe(true);
   await option.click();
-  await expect(dialog.getByRole("combobox").filter({ hasText: "Quarter-wave vertical" })).toBeVisible();
+  await expect(antenna).toHaveText("Quarter-wave vertical");
 
   // And the second one, to show it is the layer and not this one control.
   await dialog.getByRole("combobox").filter({ hasText: "Residential" }).click();

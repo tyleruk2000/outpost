@@ -22,6 +22,7 @@ import {
   HF_BANDS,
   HF_MAX_MHZ,
   HF_MIN_MHZ,
+  isSlopingAntenna,
   type ModeLine,
   modeById,
   NOISE_ENVIRONMENTS,
@@ -138,8 +139,14 @@ export function normalise(request: PredictionRequest): PredictionRequest {
     powerWatts: fix(grid(request.powerWatts, 0.1), 1),
     frequencyMhz: fix(grid(request.frequencyMhz, 0.01), 2),
     reply: request.reply ? { powerWatts: fix(grid(request.reply.powerWatts, 0.1), 1), noise: request.reply.noise } : undefined,
+    txAntenna: slopingBearing(request.txAntenna),
+    rxAntenna: slopingBearing(request.rxAntenna),
   };
 }
+
+/** A sloping wire sent without the bearing of its high end is turned as one sent with none (null), so that both are one question. Every other antenna is left exactly as it came. */
+const slopingBearing = (spec: AntennaSpec): AntennaSpec =>
+  isSlopingAntenna(spec.kind) && spec.highEndDeg === undefined ? { ...spec, highEndDeg: null } : spec;
 
 export function modeLine(id: PredictionRequest["mode"], requiredSnrDb?: number, referenceBandwidthHz?: number): ModeLine {
   const mode = modeById(id);

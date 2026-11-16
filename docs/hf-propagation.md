@@ -888,7 +888,17 @@ is what is done here.
   receiver, notes. Only the power is used in a prediction.
 - **An antenna**: name, kind, the length of the wire for an end-fed wire, height of the
   wire, the bearing its broadside faces (empty turns it towards the other station), the
-  ground under it, gain added, feedline loss, the range it is used over, notes.
+  ground under it, gain added, feedline loss, the range it is used over, notes. A sloping
+  wire has, in place of the height and broadside, the height of its low end (the feed),
+  its slope (10° to 60°) and the bearing its high end points towards (empty turns its
+  low end towards the other station), set apart under "How it slopes".
+
+Wherever an antenna is chosen (the planner, a plan's station, a coverage map, the
+contact log's comparison) the list gives the person's own antennas first, then the
+generic ones under headings: dipoles; end-fed wire 20 m, 10 m and 5 m, each with the ways
+it is put up; verticals and others. Above the list is a box to find one by typing ("20 m
+sloping", "spooltenna"). It opens above a dialog, and each choice is a thumb's height on a
+phone.
 
 An antenna is always run as one of VOACAP's own antenna models:
 
@@ -898,6 +908,7 @@ An antenna is always run as one of VOACAP's own antenna models:
 | Inverted-V | The same dipole at the *mean* height of the wire | VOACAP has no inverted-V. A real one radiates a little less upwards and more off its ends. Labelled an approximation wherever shown |
 | End-fed half-wave wire, horizontal (a stated length) | Three states, by the wire's length in wavelengths at the frequency. **Half-wave** (0.45 to 0.55): VOACAP type 23 with the wire's length in metres. **Longer** (above 0.55): **approximate**, VOACAP type 41, the ITS-78 sloping long wire, laid level at the wire's height, its length and height in wavelengths at that frequency; labelled approximate wherever shown. **Shorter** (below 0.45): **not modelled, no figure** | A sloping wire and the matching unit's loss. On the approximate bands, a model whose level was never checked against the engine's checked models and reads 0.7 to 1.6 dB below the dipole where both can be compared; a wire whose current is a pure standing wave with no loss along it. Nothing on the bands where it is shorter |
 | End-fed half-wave wire, vertical (a stated length) | VOACAP type 22, the vertical monopole, with the wire's length in metres as its height, on every frequency. The result says how long the wire is in wavelengths on each band | The matching unit's loss. Off the half-wave band the model is a wire fed against the ground at its base, which an end-fed half-wave is not: see below |
+| End-fed half-wave wire, sloping (a stated length) | Two states. **A half-wave or longer** (from 0.45 wavelengths): **approximate**, VOACAP type 41, the ITS-78 sloping long wire, at the wire's slope, fed at its low end, its length and the low end's height in wavelengths at that frequency. **Shorter**: **not modelled, no figure** | The matching unit's loss. A model whose level is unchecked: over a perfect ground it sends out between about 9 dB less and 2 dB more than it is fed (below). A wire that sags or bends, the mast, the feedline's own radiation |
 | End-fed half-wave recut for every band | The half-wave dipole of the first row at the wire's height: a wire whose length follows the frequency | Not one wire. VOACAP has no end-fed model. A sloping wire and the matching unit's loss. Labelled an approximation |
 | Quarter-wave vertical | VOACAP type 22 | A short or loaded vertical, or few radials: take the difference off as gain |
 | Isotropic | The same gain in every direction | Not a real antenna; for comparing with other tools |
@@ -913,9 +924,11 @@ that kind, not a measurement of yours.
 
 ### End-fed wires of a stated length
 
-Four are offered as generic antennas: **End-fed half-wave, 10 m wire** and **5 m wire**,
-each **horizontal** (the wire level, 6 m up) and **vertical** (the wire upright with its
-bottom end at the ground). Ten metres of wire is a half-wave on the 20 m band and five
+Seven are offered as generic antennas: **End-fed half-wave, 20 m wire** sloping 25°
+from 1.5 m to 10 m, and horizontal (level, 6 m up); the **SPOOLTENNA** as its maker puts it
+up (below); and **10 m wire** and **5 m wire**, each **horizontal** (the wire level, 6 m
+up) and **vertical** (the wire upright with its bottom end at the ground). Twenty metres
+of wire is a half-wave on the 40 m band. Ten metres of wire is a half-wave on the 20 m band and five
 metres on the 10 m band. A profile can be a wire of any length from 4.5 to 82 m: the
 lengths that are a half-wave somewhere between 2 and 30 MHz. A profile also sets the
 height of a level wire, the ground and the bearing.
@@ -1163,10 +1176,10 @@ asked at noon with the antenna turned.
    bearing of their wire, and is a change to `wireOn` alone.
 
 4. **Other models looked at.**
-   - *Type 28, the inverted L, type 44, the arbitrary tilted dipole, and type 35, the
-     vertical dipole*: each is fed at its centre or against ground, and none is a wire
-     fed at one end. *Type 47, the vertical with a ground screen*: an end-fed half-wave
-     has no radials. Not run.
+   - *Type 28 and 38, the inverted L, and type 44, the arbitrary tilted dipole*: run
+     since, and not used; see "Other antennas looked at" below. *Type 35, the vertical
+     dipole*: fed at its centre. *Type 47, the vertical with a ground screen*: an end-fed
+     half-wave has no radials. Neither run.
    - *Type 23 on an odd harmonic* (three half-waves) would describe the same standing
      wave as the long wire, and was used above as a check; it is not used for figures,
      so that a level wire is run one way on every band longer than a half-wave.
@@ -1176,6 +1189,211 @@ now **End-fed half-wave recut for every band, horizontal at 6 m**: it was always
 whose length follows the frequency, and beside wires of one length that needed saying.
 Nothing about it changed but its name. A prediction saved with it, and a profile of that
 kind, are the same antenna they were and give the same answers.
+
+### A sloping wire
+
+Twenty metres of wire is seldom level and never upright in the field: it is fed near the
+ground and run up a pole or a tree. Outpost runs such a wire as **VOACAP's sloping long
+wire (type 41) at its slope**: the same model as a level wire longer than a half-wave
+(above), given the wire's slope, its length and the height of its low end, where it is
+fed, the last two in wavelengths at each frequency in a file of its own. The engine's
+reference direction runs from the feed up the wire, so it is given the bearing of the
+high end.
+
+| Where | Run as | Shown as |
+| --- | --- | --- |
+| A half-wave or longer (from 0.45 wavelengths) | Type 41 at the wire's slope | Figures, marked **approximate** everywhere, exactly as a level wire's approximate bands are: "Approximate: VOACAP's sloping long wire, at the wire's slope; its level is unchecked, a few decibels either way" |
+| Shorter than a half-wave | Nothing | **Not modelled**, no figure, for the reason a level wire is not |
+
+There is no "modelled" band: the half-wave band is approximate too, because no model in
+the engine checked against another describes a sloping wire (below). One model on every
+band with figures, so there is no step between two models to speak of.
+
+The slope may be 10° to 60°, the slopes run here; the low end 0 to 50 m up. The 20 m
+preset is fed 1.5 m up and rises at 25° to about 10 m, a 10 m fishing pole or a tree.
+
+**What the engine does with a sloping wire.** Run on 16 November 2026 (hfcast 2.14.0,
+VOACAP 16.1207W); the runs are kept as tests in
+`apps/server/test/propagation-sloping.test.ts`. Gains are means at take-off angles from
+5° to 30°, sampled as in the section above, over average ground. "Up" is towards the high
+end, "down" the other way, "broadside" across the wire.
+
+- *It is weak towards its high end.* The 20 m preset: 7.1 MHz (0.47 wavelengths) up
+  -14.3 dBi, broadside -4.1, down -4.5; 10.12 MHz (0.68) up -10.4, broadside +0.9, down
+  0.0; 14.18 MHz (0.95) up -12.3, broadside -6.6, down -1.0; 18.12 (1.21) up -7.5, down
+  +3.0, 45° off down +3.7; 21.22 (1.42) up -9.6, down +0.5; 24.94 (1.66) up -6.2, down
+  +3.8; 28.85 (1.92) up -8.8, down +0.4. On its half-wave band broadside and down are
+  about equal; from a whole wavelength up, broadside falls away (a null there, as for a
+  level wire) and the strongest directions move towards the line of the wire, down the
+  slope and 45° either side of it.
+- *With the slope.* 20 m of wire fed 1 m up: at 10° to 30° the high end's side is 5 to
+  14 dB the weaker on every band from 40 m to 10 m. At 45° and 60° it is still the weaker
+  on 40 m, but on 17 m to 10 m it turns over: at 24.94 MHz, 20° up -8.3 and down +3.9 dBi;
+  45° up +3.0, down -2.1; 60° up +4.0, down -3.1. So for a steep wire on the high bands,
+  "low end towards the other station" is the wrong way round; give the bearing.
+- *The difference comes from the ground.* Over a ground that reflects everything the
+  half-wave sloping wire is the same towards either end, to 0.05 dB (20° and 45°): its
+  current is the same about its middle. Over real ground the reflection of the upright
+  part of the field is weak at low angles, and what is left is the wire's own field,
+  which is not the same both ways along a sloping wire.
+
+**"Turned towards the other station".** With no bearing given, a sloping wire is turned
+with its **low end towards the other station and its high end away** (the engine is
+given the back bearing). That is the side the engine shows the stronger at low angles on
+the wire's half-wave band at every slope tried, and on every band at slopes up to 30°.
+The answer says which way it was turned ("its high end towards 131° (away from the other
+station)"); a coverage map with no bearing turns the low end to each cell in turn and
+says so. The form says it under the field, and the field is set apart, because which way
+a sloping wire rises decides more of its figures than anything else about it.
+
+**Its level, and what can check it.** Type 41 divides by the resistance of a monopole of
+the wire's length over perfect ground, whatever the slope and height. At an odd number of
+half-waves a *level* wire can be held against VOACAP's dipole (above); a *sloping* wire
+has nothing in the engine with the same current to be held against. VOACAP's tilted
+dipole (type 44) is the only other sloping model, and it is unchecked too and disagrees
+in shape (below). So a different check was made, which needs no second model: **the power
+in the whole pattern.** Over a ground that reflects everything (the engine takes a
+conductivity of 10 000 S/m), a lossless antenna sends out exactly what it is fed, so its
+gain summed over the sky above it is 0 dB. The sky was sampled with paths from 8 to
+6500 km (take-off angles from about 1° to 89°) and the antenna turned in steps of 10°;
+each whole degree of elevation is weighted by its share of the sky. The check was checked
+first: VOACAP's vertical monopole a half-wave high reads -0.12 dB; a quarter-wave -0.65,
+which is its own "antenna efficiency" of -0.57 dB and 0.08 dB of sampling; steps of 5°
+in place of 10° move a result by 0.06 dB at most. Seen:
+
+| | 7.1 | 10.12 | 14.18 | 18.12 | 21.22 | 24.94 | 28.85 MHz |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 20 m preset, 25° from 1.5 m | -3.23 | +1.84 | -2.53 | +1.18 | -2.50 | +1.22 | -2.38 dB |
+| SPOOLTENNA preset, 17° from 1.8 m | -5.03 | +0.76 | -2.67 | +1.47 | -2.56 | +0.57 | -2.27 dB |
+| 20 m level, 6 m up (type 41, as a level wire is run) | -4.21 | +0.51 | -1.22 | +2.17 | -0.86 | +1.73 | -1.48 dB |
+
+and for 20 m of wire fed 1 m up on 7.1 MHz: 10° -9.10 dB, 20° -4.85, 30° -2.62, 45°
+-1.06, 60° -0.55, upright -0.46. The model is low near whole numbers of half-waves and
+high between them, and furthest off for a shallow wire near the ground on its half-wave
+band. More out than in is impossible over any ground, so where it reads high it
+overstates. Where it reads low, part of that may be real: over real ground some power is
+lost in the ground near the antenna, which no model here works out. So its figures are
+read as "a few decibels either way", and the screens say so. Outpost does not correct
+them by these figures: they are a check of the model, not a measurement of the antenna.
+
+The same check, as a by-product, on the antennas there before (not changed): VOACAP's
+dipole a half-wave long 6 m up reads -1.25 dB on 7.1 MHz and +0.52 on 14.18 (it refers its
+gain to a dipole in free space and fades its gain towards the zenith value at high
+angles); the level long wire, 10 m of wire 6 m up, +1.40 on 18.12, +1.73 on 21.22, -0.99
+on 24.94 and -2.02 on 28.85. The level long wire was already labelled approximate; these
+say its level is unchecked by more than the 1.3 to 1.6 dB measured against the dipole at
+odd half-waves.
+
+**What cannot be checked here.** Nothing above was compared with NEC or with a real
+antenna. The check of power assumes the current the model assumes (a standing wave with
+no loss along the wire, nought at the far end); whether a real sloping wire carries that
+current, with its feedline and transformer at the low end and no counterpoise, the engine
+cannot say.
+
+### The SPOOLTENNA
+
+SPOOLTENNA is a trade mark of Panther Creek Solutions LLC, used here only to say which
+antenna is meant. What it is, from the maker's own documents, read on 16 November 2026
+from spooltenna.com ("Documentation"):
+
+- *SPOOLTENNA PARKS Owner's Manual*, model PARKS-EFHW4010 v1.3, dated 8/19/2026
+  (`SPOOLTENNA_v1.3_Owner_s_Manual_081926.pdf`), and *SPOOLTENNA ULTRA Owner's Manual*,
+  model ULTRA-EFHW4010 v1.6, dated 8/19/2026 (`ULTRA_v1.6_Owner_s_Manual_081926.pdf`);
+  and the *Comparison Chart* (created 8 March 2026).
+- Both are a "40-10M End Fed Half Wave Antenna": "This circuit consists of a 49:1
+  impedance ratio transformer achieved through a 7:1 turns ratio. A 100pF, 1kV
+  capacitor is also included across the feed point" (3 kV in the ULTRA).
+- "The radiating element is approximately ½ wavelength for 40M (approximately 65 feet)";
+  "Length: 65 ft 20AWG tinned copper wire (antenna wire is factory tuned, with additional
+  length available for end-user final tuning)" (PARKS); 65 ft of 26 AWG copper-clad steel
+  (ULTRA). No loading coil and no link is mentioned in either.
+- Bands: 7.0 to 7.3, 14.1 to 14.35, 21.0 to 21.45 and 28.0 to 29.7 MHz. "Power: 100W
+  SSB, 50W CW & digital". SWR "≤1.5:1 within the 40, 20, 15, and 10M bands".
+- "A counterpoise may be added ... but it is not necessary. Without the counterpose the
+  outside braid of the coax feed line serves as the return path."
+- Put up as a sloper: Figure 3 ("Option A"), the spool about 25 ft up a mast or tree and
+  the far end about 6 ft up a post, about 60 ft of wire over about 57 ft of ground; Figure
+  4 ("Option B"), "the sloping direction can be reversed": the spool about 6 ft up near
+  the operator and the far end about 25 ft up.
+
+Offered as **SPOOLTENNA (PARKS or ULTRA), 65 ft wire, sloping as its manual shows**: 19.8 m
+of wire, its low end 1.8 m up, rising at 17° (which with 19.8 m of wire puts the far end at
+7.6 m, the manual's 25 ft), as Figure 4. That is all the engine is given. On the four bands
+it is sold for the wire is 0.47, 0.94, 1.40 and 1.91 wavelengths long, and every figure is
+approximate; on 80 m and 60 m it is not modelled. Not modelled: the transformer's loss and
+the capacitor, the coax braid the maker says carries the return current, the wire's
+gauge, and every claim of the maker's. Figure 3 (the spool at the top) is not offered,
+because Outpost's sloping wire is fed at its low end: run in the engine with the feed at
+the top (a slope of -17° from 7.6 m), it read within 0.6 dB of Figure 4 along the wire on
+40, 20, 15 and 10 m, but 1.5 dB lower broadside on 20 m on average, and up to 4 dB apart
+near the nulls on 10 m, so it is not the same antenna to the engine. Someone with a
+SPOOLTENNA put up another way can make a profile of a 19.8 m sloping wire.
+
+The 20 m preset and the SPOOLTENNA differ only in how they are put up: 20 m and 19.8 m of
+wire, 25° from 1.5 m and 17° from 1.8 m.
+
+### Other antennas looked at
+
+Each was decided on one rule: a named, published model in the engine, checked by running
+it, or it is left out with the reason. VOACAP's antenna types are those of `iongain.for`
+(ITSA-1, types 21 to 30) and `mufesgan.for` (ITS-78, types 31 to 47, KOP 1 to 17) in
+voacapl commit `c12a98b`; their lists are at the head of each.
+
+- **Inverted L** (types 28 and 38): *not used.* Both are a vertical of height H fed against
+  the ground with a level top of length L, and the current they assume is a standing wave
+  nought at the far end, which is an end-fed half-wave's. But both divide by the
+  resistance of the upright part alone. Run with 20 m of wire, 9 m up and 11 m along, the
+  check of power gave, for type 28 over a perfect ground, +2.64 dB on 7.1 MHz, +2.14 on
+  10.12, +3.54 on 14.18, +1.08 on 18.12, +8.37 on 21.22, +7.88 on 24.94, +4.50 on 28.85;
+  type 38 over sea water from -1.22 to +4.80, above nought on six bands of seven. More out than in. Type 38 also takes off a loss
+  for the ground of its own (`FMULT` in `mufesgan.for`): with no top at all it read 4.3 dB
+  (7.1 MHz) and 5.5 dB (14.18 MHz) below VOACAP's vertical of the same height over
+  average ground, where type 28 read +1.19 and 0.00.
+- **Inverted V, end-fed** (the middle up a pole, both ends low): *not offered.* VOACAP has
+  no model of two legs; no model of an end-fed wire bent in the middle. On its half-wave
+  band the current is the same as a centre-fed inverted-V's, and that is the existing
+  **Inverted-V** (VOACAP's dipole at the mean height, an approximation); on its harmonics
+  there is nothing, so an end-fed inverted-V preset would have figures on one band only.
+- **Tilted dipole** (type 44) for the sloping wire's half-wave band: *not used.* It is the
+  only other sloping model. Over a perfect ground it allows for the ground under a level
+  dipole (-0.04 dB at no tilt), but tilted it read -2.14 dB at 10°, -2.73 at 20°, -2.35 at
+  30°, -0.97 at 45° and +1.25 at 60°. Over average ground it gave the same gain towards
+  either end to 0.2 dB (20 m of wire, 20° from 1 m, 7.1 MHz: -4.1 dBi both ways), where
+  type 41 with much the same current gave -17.3 up and -5.6 down, and where over a
+  perfect ground the two agree in being the same both ways. One sloping model on every
+  band, with its own unchecked level, was preferred to two that disagree in shape at the
+  join. The program also stops (`TIP > X`) if the low end of a tilted dipole is below
+  ground.
+- **Random wire with a 9:1 transformer** (8.8, 12.5, 16, 21.6, 25.6, 32.6 m and so on,
+  lengths chosen to be no half-wave on any band): *no preset; make a profile.* It is a
+  wire of a stated length, and the three states apply as they are: where it is longer
+  than a half-wave, type 41 is a model of the current on the wire, whose level the check
+  above puts within about 2 dB either way; where it happens to be about a half-wave, the
+  dipole; where it is shorter, it is fed against a counterpoise or the feedline, which no
+  model here has, and no figure is given. "Approximate" is the right label wherever there
+  is a figure but the half-wave band, which a random wire avoids by design. The
+  counterpoise's own radiation is not in any of it.
+- **Linked or resonant dipole**: the dipoles already offered (horizontal 5 m and 10 m,
+  inverted-V); found by "linked" or "resonant".
+- **Off-centre-fed dipole**: *no preset of its own.* On its fundamental and wherever it is
+  a whole number of half-waves its current is that of a level end-fed wire of the same
+  length (nought at both ends, the same standing wave), so the level wire of its length
+  is its model, and the 20 m level wire is found by "OCFD". Between those lengths the
+  two differ, and the end-fed model's approximate label covers that.
+- **Quarter-wave vertical with raised radials**: already offered (type 22).
+- **Short loaded whips and telescopic verticals**: *no preset.* Type 22 takes a height
+  shorter than a quarter-wave and takes off its own "antenna efficiency" below 0.35
+  wavelengths (about 4 dB at 0.12 wavelengths, 12 dB at 0.05), which neither its manual
+  nor its source attributes to any ground system; and the loss that matters most in such
+  an antenna, its coil's and its counterpoise's, is not in the engine at all. Any figure
+  in a preset would be one Outpost made up. A whip can be made as a profile: the
+  quarter-wave vertical with the loss from the maker's data or a measurement typed as a
+  negative gain ("Negative for a short or loaded antenna"), and the pattern of a short
+  monopole is close to a quarter-wave's.
+- **Small transmitting loop** and **delta loop**: *not offered.* VOACAP has no loop of any
+  kind among types 21 to 47 (rhombics, monopoles, dipoles, Yagis, log-periodics,
+  curtains, vees, inverted L, long wire, tilted dipole, rhomboid, vertical with radials,
+  and tables of gain).
 
 ## The engine
 

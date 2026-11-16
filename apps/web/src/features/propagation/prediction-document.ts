@@ -254,7 +254,9 @@ export function predictionDocument(result: PredictionResult): Block[] {
 
   // ── How a wire of a stated length was run on each band, where the answer says ──
   const runs = Array.isArray(result.runs) ? result.runs : [];
-  const levelWire = [request.txAntenna, request.rxAntenna].some((spec) => spec.kind === "end-fed-horizontal");
+  const levelWire = [request.txAntenna, request.rxAntenna].some(
+    (spec) => spec.kind === "end-fed-horizontal" || spec.kind === "end-fed-sloping",
+  );
   if (levelWire && runs.length === HF_BANDS.length + 1) {
     const states = new Set(runs.slice(1).map((line) => line.state));
     blocks.push(

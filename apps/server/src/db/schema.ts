@@ -886,6 +886,7 @@ export const antennaProfiles = sqliteTable("antenna_profiles", {
       "end-fed-horizontal",
       "end-fed-vertical",
       "vertical-monopole",
+      "end-fed-sloping",
     ],
   }).notNull(),
   heightM: real("height_m").notNull().default(0),
@@ -896,6 +897,10 @@ export const antennaProfiles = sqliteTable("antenna_profiles", {
     .default("average"),
   /** Compass bearing the broadside faces; null turns it towards the other station. */
   broadsideDeg: real("broadside_deg"),
+  /** A sloping wire's angle above the horizontal, in degrees; null for every other kind. */
+  slopeDeg: real("slope_deg"),
+  /** A sloping wire's bearing from its low end towards its high end; null turns its low end towards the other station. */
+  highEndDeg: real("high_end_deg"),
   gainDb: real("gain_db").notNull().default(0),
   feedlineLossDb: real("feedline_loss_db").notNull().default(0),
   minMhz: real("min_mhz").notNull(),

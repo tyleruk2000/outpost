@@ -739,3 +739,169 @@ describe("a communication plan written out", () => {
     expect(text).toContain("Alternate: none.");
   });
 });
+
+// ── A sloping wire, and choosing among the antennas ──────────────────────────
+
+const sloper = preset("efhw-20m-sloping").spec;
+
+describe("choosing an antenna", () => {
+  it("lists the person's own first, then the generic ones under headings, and finds one by typing", async () => {
+    localStorage.setItem("outpost.propagation.form.v1", JSON.stringify({ ...exampleForm(), date: "2026-11-16" }));
+    server({ antennas: [profile(dipole, { name: "Garden dipole", id: "g1" })] });
+    shown(<Planner />);
+    const trigger = await screen.findByRole("button", { name: "Transmitting antenna" });
+    await userEvent.click(trigger);
+    const list = await screen.findByRole("listbox", { name: "Antennas" });
+    const headings = within(list)
+      .getAllByRole("group")
+      .map((group) => group.firstElementChild!.textContent);
+    expect(headings).toEqual([
+      "Your antennas",
+      "Dipoles",
+      "End-fed wire, 20 m (a half-wave on 40 m)",
+      "End-fed wire, 10 m (a half-wave on 20 m)",
+      "End-fed wire, 5 m (a half-wave on 10 m)",
+      "Verticals and others",
+    ]);
+    const twenty = within(list).getByRole("group", { name: "End-fed wire, 20 m (a half-wave on 40 m)" });
+    expect(
+      within(twenty)
+        .getAllByRole("option")
+        .map((option) => option.textContent),
+    ).toEqual(["Sloping 25°, from 1.5 m up to 10 m", "Horizontal, level 6 m up", "SPOOLTENNA, 19.8 m, sloping 17° from 1.8 m to 7.6 m"]);
+    // Typing narrows the list, heading and all.
+    await userEvent.type(screen.getByRole("searchbox", { name: "Find an antenna" }), "20 m slop");
+    expect(
+      within(list)
+        .getAllByRole("option")
+        .map((option) => option.textContent),
+    ).toEqual(["Sloping 25°, from 1.5 m up to 10 m", "SPOOLTENNA, 19.8 m, sloping 17° from 1.8 m to 7.6 m"]);
+    // Down from the box and Enter chooses it.
+    await userEvent.keyboard("{ArrowDown}{Enter}");
+    await waitFor(() => expect(screen.queryByRole("listbox", { name: "Antennas" })).toBeNull());
+    expect(trigger.textContent).toBe("End-fed half-wave, 20 m wire, sloping 25° from 1.5 m to 10 m");
+    // Under it, what the wire is on the frequency in the form: approximate on 40 m.
+    expect(await screen.findByText(/^Approximate: 20 m of wire is 0\.47 wavelengths at 7\.1 MHz, about a half-wave\./)).toBeTruthy();
+  });
+
+  it("finds the SPOOLTENNA by its name in any case, and nothing for words no antenna has", async () => {
+    localStorage.setItem("outpost.propagation.form.v1", JSON.stringify({ ...exampleForm(), date: "2026-11-16" }));
+    server();
+    shown(<Planner />);
+    await userEvent.click(await screen.findByRole("button", { name: "Receiving antenna" }));
+    const search = await screen.findByRole("searchbox", { name: "Find an antenna" });
+    await userEvent.type(search, "spooltenna");
+    expect(within(screen.getByRole("listbox")).getAllByRole("option")).toHaveLength(1);
+    await userEvent.clear(search);
+    await userEvent.type(search, "magnetic loop");
+    expect(screen.getByText("No antenna has those words.")).toBeTruthy();
+  });
+});
+
+describe("a sloping wire", () => {
+  const pick = async (label: string, option: string | RegExp) => {
+    await userEvent.click(screen.getByRole("combobox", { name: label }));
+    await userEvent.click(await screen.findByRole("option", { name: option }));
+  };
+
+  it("is made in the equipment form with its low end, slope and the way it rises, said in words", async () => {
+    const sent = server({ answer: () => ({ antenna: {} }) });
+    shown(<Equipment />);
+    await userEvent.click((await screen.findAllByRole("button", { name: "Add an antenna" }))[0]!);
+    const dialog = await screen.findByRole("dialog", { name: "Add an antenna" });
+    await userEvent.type(within(dialog).getByLabelText("Name"), "Pole sloper");
+    await pick("Kind", "End-fed half-wave wire, sloping");
+    const length = within(dialog).getByLabelText("Length of the wire, m");
+    await userEvent.clear(length);
+    await userEvent.type(length, "20");
+    expect(dialog.textContent).toContain("Approximate figures from 6.7 MHz up. No figure below 6.7 MHz.");
+    const slope = within(dialog).getByRole("group", { name: "How it slopes" });
+    const low = within(slope).getByLabelText("Low end (the feed), m up");
+    await userEvent.clear(low);
+    await userEvent.type(low, "1.5");
+    expect(slope.textContent).toContain("Its high end is about 10.0 m up.");
+    expect(slope.textContent).toContain("Empty: the low end faces the other station and the wire rises away from it.");
+    // A slope the model was not run at is refused, in words, and nothing is sent.
+    const angle = within(slope).getByLabelText("Slope, ° above level");
+    await userEvent.clear(angle);
+    await userEvent.type(angle, "75");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Add antenna" }));
+    expect(within(dialog).getByRole("alert").textContent).toContain("10 to 60");
+    expect(sent).toHaveLength(0);
+    await userEvent.clear(angle);
+    await userEvent.type(angle, "30");
+    await userEvent.type(within(slope).getByLabelText("Its high end points towards, °"), "45");
+    expect(slope.textContent).toContain("weakest towards 45°");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Add antenna" }));
+    await waitFor(() => expect(sent).toHaveLength(1));
+    expect(sent[0]!.body).toMatchObject({
+      kind: "end-fed-sloping",
+      lengthM: 20,
+      heightM: 1.5,
+      slopeDeg: 30,
+      highEndDeg: 45,
+      broadsideDeg: null,
+    });
+  });
+
+  it("is listed among the generic antennas under its wire's length", async () => {
+    server();
+    shown(<Equipment />);
+    const row = (await screen.findByText("End-fed half-wave, 20 m wire, sloping 25° from 1.5 m to 10 m")).closest("li")!;
+    expect(row.closest("div")!.querySelector("h3")!.textContent).toBe("End-fed wire, 20 m (a half-wave on 40 m)");
+    expect(row.textContent).toContain("every figure is approximate");
+    const maker = screen.getByText("SPOOLTENNA (PARKS or ULTRA), 65 ft wire, sloping as its manual shows").closest("li")!;
+    expect(maker.textContent).toContain("trade mark");
+    expect(maker.textContent).toContain("49:1 transformer");
+    expect(maker.textContent).toContain("The transformer's loss");
+  });
+
+  it("goes into a request with its slope and no bearing of its high end, and is summed up in words", () => {
+    const built = requestOf({ ...exampleForm(), txAntennaId: "preset:efhw-20m-sloping" }, []);
+    if (!("request" in built)) throw new Error("expected a request");
+    expect(built.request.txAntenna).toEqual(sloper);
+    expect(antennaSummary(sloper)).toContain("sloping 25° from 1.5 m to 10 m, high end away from the other station");
+    expect(wireBandsNote(sloper)).toBe(
+      "20 m of sloping wire is about a half-wave on 40 m. On 40 m, 30 m, 20 m, 17 m, 15 m, 12 m, 10 m its figures are approximate: VOACAP's sloping long wire at its slope, whose level is unchecked. On 80 m, 60 m it is shorter than a half-wave, and not modelled: no figure.",
+    );
+  });
+
+  it("shows its states in the band table: approximate from 40 m up, not modelled below, and no join between two models", () => {
+    server();
+    const request = requestWith({ txAntenna: sloper, frequencyMhz: 14.18 });
+    shown(<Results result={resultOf(request)} hour={12} onHour={() => {}} />);
+    const ranked = screen.getByRole("list", { name: "Bands ranked by reliability at 12:00 UTC" });
+    const rows = [...ranked.querySelectorAll("li")];
+    expect(rows.filter((row) => row.querySelector("[data-approximate]")).length).toBe(7);
+    expect(rows.filter((row) => row.querySelector("[data-not-modelled]")).map((row) => row.textContent!.slice(0, 4))).toEqual([
+      "80 m",
+      "60 m",
+    ]);
+    const lengths = screen.getByRole("list", { name: "The wire on each band" });
+    expect(within(lengths).getByText("40 m").closest("li")!.textContent).toBe(
+      "40 m0.47 wavelengths, about a half-wave. Approximate: VOACAP's sloping long wire, at the wire's slope; its level is unchecked, a few decibels either way",
+    );
+    expect(within(lengths).getByText("10 m").closest("li")!.textContent).toContain("longer than a half-wave. Approximate");
+    expect(within(lengths).getByText("80 m").closest("li")!.textContent).toBe(
+      "80 m0.24 wavelengths, shorter than a half-wave. Not modelled: no figure",
+    );
+    // One model on every band with figures: no step between two models to speak of.
+    expect(screen.queryByText("Two of VOACAP's models side by side")).toBeNull();
+    // The first line of the answer says approximate, and how the wire was run.
+    const headline = screen.getByText(/^Approximate figures for 14\.2 MHz\.$/).closest("p")!;
+    expect(headline.textContent).toContain("sloping long wire (at the wire's slope)");
+  });
+
+  it("is turned by its high end on a coverage map, when a bearing is given", () => {
+    const form = {
+      ...emptyCoverageForm(),
+      tx: { text: "51.5, -0.12", name: "Park" },
+      txAntennaId: "preset:efhw-20m-sloping",
+      frequencyMhz: "14.18",
+      txBearing: "200",
+    };
+    const built = coverageRequestOf(form, [], { west: -8, south: 49, east: 4, north: 59 });
+    if (!("request" in built)) throw new Error(`expected a request: ${JSON.stringify(built)}`);
+    expect(built.request.txAntenna).toMatchObject({ kind: "end-fed-sloping", highEndDeg: 200, broadsideDeg: null });
+  });
+});

@@ -14,6 +14,7 @@ import {
   type CoverageResolution,
   type CoverageResponse,
   type CoverageResult,
+  isSlopingAntenna,
   type JobDto,
   type ModeId,
   type NoiseEnvironment,
@@ -195,16 +196,19 @@ export function coverageRequestOf(
       return { field, problem: `No map can be made on ${frequencyMhz} MHz with this antenna. ${wire.note}` };
   }
   let broadsideDeg = txAntenna.spec.broadsideDeg;
+  let txSpec = txAntenna.spec;
   if (form.txBearing.trim() !== "") {
     const bearing = number(form.txBearing);
     if (!(bearing >= 0 && bearing <= 360)) return { field: "txBearing", problem: "Give the bearing as degrees from north, 0 to 360." };
-    broadsideDeg = bearing;
+    // For a sloping wire the bearing is its high end's; for a level antenna, its broadside's.
+    if (isSlopingAntenna(txSpec.kind)) txSpec = { ...txSpec, highEndDeg: bearing };
+    else broadsideDeg = bearing;
   }
   const request: CoverageRequest = {
     tx: { name: form.tx.name || "Transmitter", lat: found.lat, lon: found.lon },
     date: form.date,
     powerWatts,
-    txAntenna: { ...txAntenna.spec, broadsideDeg },
+    txAntenna: { ...txSpec, broadsideDeg },
     rxAntenna: rxAntenna.spec,
     noise: form.noise,
     frequencyMhz,

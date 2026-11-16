@@ -68,6 +68,9 @@ describe("the four wires offered", () => {
         item.spec.heightM,
       ]),
     ).toEqual([
+      ["End-fed half-wave, 20 m wire, sloping 25° from 1.5 m to 10 m", "end-fed-sloping", 20, 1.5],
+      ["End-fed half-wave, 20 m wire, horizontal", "end-fed-horizontal", 20, 6],
+      ["SPOOLTENNA (PARKS or ULTRA), 65 ft wire, sloping as its manual shows", "end-fed-sloping", 19.8, 1.8],
       ["End-fed half-wave, 10 m wire, horizontal", "end-fed-horizontal", 10, 6],
       ["End-fed half-wave, 10 m wire, vertical", "end-fed-vertical", 10, 0],
       ["End-fed half-wave, 5 m wire, horizontal", "end-fed-horizontal", 5, 6],
@@ -86,7 +89,7 @@ describe("the four wires offered", () => {
     });
     expect(new Set(ANTENNA_PRESETS.map((item) => item.name)).size).toBe(ANTENNA_PRESETS.length);
     for (const item of ANTENNA_PRESETS.filter((one) => one.spec.lengthM !== undefined))
-      expect(item.modelledAs).toContain("matching unit's loss is not modelled");
+      expect(item.modelledAs).toMatch(/matching unit's loss is not modelled|transformer's loss.* not modelled/);
   });
 
   it("are a half-wave where a person expects: 10 m of wire on 20 m, 5 m on 10 m", () => {
@@ -327,6 +330,9 @@ describeWithVoacapData("the same path with one thing changed", () => {
   it("marks the level 10 m wire approximate on a band where it is longer, with figures", async () => {
     const { body } = await compare({ ...base, txAntenna: dipole, frequencyMhz: 28.85 }, "antennas");
     expect(body.series.filter((series) => series.approximate).map((series) => series.label)).toEqual([
+      "End-fed half-wave, 20 m wire, sloping 25° from 1.5 m to 10 m",
+      "End-fed half-wave, 20 m wire, horizontal",
+      "SPOOLTENNA (PARKS or ULTRA), 65 ft wire, sloping as its manual shows",
       "End-fed half-wave, 10 m wire, horizontal",
     ]);
     expect(body.series.filter((series) => series.notModelled)).toEqual([]);

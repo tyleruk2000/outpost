@@ -15,11 +15,16 @@ import {
   halfWaveRangeMhz,
   hasStatedLength,
   isHorizontalAntenna,
+  isSlopingAntenna,
   longWireRangeMhz,
   type ModeId,
   OPERATING_MODES,
+  PRESET_GROUPS,
   type RadioProfile,
   type RadioProfileInput,
+  SLOPE_MAX_DEG,
+  SLOPE_MIN_DEG,
+  slopeWords,
   WIRE_MAX_M,
   WIRE_MIN_M,
 } from "@outpost/shared";
@@ -35,6 +40,7 @@ const KINDS: AntennaKind[] = [
   "horizontal-dipole",
   "inverted-v",
   "end-fed-horizontal",
+  "end-fed-sloping",
   "end-fed-vertical",
   "end-fed-half-wave",
   "vertical-monopole",
@@ -45,6 +51,7 @@ const KIND_NAMES: Record<AntennaKind, string> = {
   "inverted-v": "Inverted-V",
   "end-fed-horizontal": "End-fed half-wave wire, horizontal",
   "end-fed-vertical": "End-fed half-wave wire, vertical",
+  "end-fed-sloping": "End-fed half-wave wire, sloping",
   "end-fed-half-wave": "End-fed half-wave recut for every band",
   "vertical-monopole": "Quarter-wave vertical",
   isotropic: "Isotropic (a gain figure only)",
@@ -52,6 +59,8 @@ const KIND_NAMES: Record<AntennaKind, string> = {
 const WIRE_NOTES: Partial<Record<AntennaKind, string>> = {
   "end-fed-horizontal":
     "One wire of the length you give, hung level and fed at an end. Where it is about a half-wave it is run as VOACAP's horizontal dipole (type 23) of that length. Where it is longer its figures are approximate: it is run as VOACAP's sloping long wire (type 41) laid level, whose level is unchecked. Where it is shorter no figure is given. The bearing is the one its broadside faces on every band; on a band where the wire is longer than a half-wave, broadside is not where it is strongest.",
+  "end-fed-sloping":
+    "One wire of the length you give, fed at its low end and rising at a slope to its high end on a pole or a tree. Where it is a half-wave or longer it is run as VOACAP's sloping long wire (type 41) at that slope, and every figure is approximate: the model's level is unchecked, a few decibels either way. Where it is shorter no figure is given. Which way it rises matters: the engine shows it much weaker towards its high end at low angles.",
   "end-fed-vertical":
     "One wire of the length you give, upright with its bottom end at the ground and fed there. Run as VOACAP's vertical monopole (type 22) of that height on every frequency. Off its half-wave band the figure is for a wire that is not a half-wave, fed against the ground.",
 };
@@ -64,11 +73,77 @@ function lengthHint(kind: AntennaKind, text: string): string {
   const { fromMhz, toMhz } = halfWaveRangeMhz(lengthM);
   const bands = HF_BANDS.filter((band) => band.mhz >= fromMhz && band.mhz <= toMhz).map((band) => band.label);
   const where = `${fromMhz.toFixed(1)} to ${toMhz.toFixed(1)} MHz${bands.length > 0 ? ` (${bands.join(", ")})` : ", which is none of the amateur bands"}`;
+  if (kind === "end-fed-sloping")
+    return `About a half-wave from ${where}. Approximate figures from ${fromMhz.toFixed(1)} MHz up.${fromMhz > HF_MIN_MHZ ? ` No figure below ${fromMhz.toFixed(1)} MHz.` : ""}`;
   if (kind !== "end-fed-horizontal") return `About a half-wave from ${where}.`;
   const long = longWireRangeMhz(lengthM);
   return `About a half-wave from ${where}.${long ? ` Approximate above ${long.fromMhz.toFixed(1)} MHz.` : ""}${fromMhz > HF_MIN_MHZ ? ` No figure below ${fromMhz.toFixed(1)} MHz.` : ""}`;
 }
 const number = (text: string, fallback = Number.NaN) => (text.trim() === "" ? fallback : Number(text));
+const highEndWords = (bearing: number | null | undefined) =>
+  bearing === null || bearing === undefined ? "high end away from the other station" : `high end towards ${bearing}°`;
+
+/**
+ * How a sloping wire is put up: the height of its low end, its slope, and which way it
+ * rises. The last decides most of what it does, so it is set apart and said in words.
+ */
+function SlopeFields({ value, set }: { value: AntennaDraft; set: <K extends keyof AntennaDraft>(key: K, next: AntennaDraft[K]) => void }) {
+  const lengthM = number(value.lengthM);
+  const heightM = number(value.heightM);
+  const slopeDeg = number(value.slopeDeg);
+  const top = lengthM > 0 && heightM >= 0 && slopeDeg > 0 ? heightM + lengthM * Math.sin((slopeDeg * Math.PI) / 180) : null;
+  return (
+    <fieldset className="grid gap-3 rounded-panel border border-border-strong p-3">
+      <legend className="px-1 text-small font-medium text-ink">How it slopes</legend>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Low end (the feed), m up" hint="Where the matching unit is.">
+          {(ids) => (
+            <Input
+              {...ids}
+              value={value.heightM}
+              onChange={(event) => set("heightM", event.target.value)}
+              inputMode="decimal"
+              className="tabular"
+            />
+          )}
+        </Field>
+        <Field
+          label="Slope, ° above level"
+          hint={top === null ? `${SLOPE_MIN_DEG} to ${SLOPE_MAX_DEG}.` : `Its high end is about ${top.toFixed(1)} m up.`}
+        >
+          {(ids) => (
+            <Input
+              {...ids}
+              value={value.slopeDeg}
+              onChange={(event) => set("slopeDeg", event.target.value)}
+              inputMode="decimal"
+              className="tabular"
+            />
+          )}
+        </Field>
+      </div>
+      <Field
+        label="Its high end points towards, °"
+        hint={
+          value.highEnd.trim() === ""
+            ? "Empty: the low end faces the other station and the wire rises away from it. The engine shows a sloping wire much weaker towards its high end at low angles, so this is its better way round."
+            : `The compass bearing from the low end to the high end. At low angles the engine shows the wire weakest towards ${value.highEnd.trim()}° on most bands.`
+        }
+      >
+        {(ids) => (
+          <Input
+            {...ids}
+            value={value.highEnd}
+            onChange={(event) => set("highEnd", event.target.value)}
+            inputMode="decimal"
+            placeholder="Away from the other station"
+            className="tabular"
+          />
+        )}
+      </Field>
+    </fieldset>
+  );
+}
 
 type RadioDraft = {
   id?: string;
@@ -90,6 +165,9 @@ type AntennaDraft = {
   heightM: string;
   ground: GroundKind;
   broadside: string;
+  /** A sloping wire's slope, and the bearing of its high end ("" turns its low end towards the other station). */
+  slopeDeg: string;
+  highEnd: string;
   gainDb: string;
   feedlineLossDb: string;
   minMhz: string;
@@ -119,9 +197,11 @@ const antennaDraft = (antenna?: AntennaProfile): AntennaDraft =>
         kind: antenna.kind,
         lengthM: antenna.lengthM === undefined ? "10" : String(antenna.lengthM),
         // An upright wire is kept with no height; if it is laid level it needs one to start from.
-        heightM: String(isHorizontalAntenna(antenna.kind) ? antenna.heightM : antenna.heightM || 6),
+        heightM: String(isHorizontalAntenna(antenna.kind) || isSlopingAntenna(antenna.kind) ? antenna.heightM : antenna.heightM || 6),
         ground: antenna.ground,
         broadside: antenna.broadsideDeg === null ? "" : String(antenna.broadsideDeg),
+        slopeDeg: antenna.slopeDeg === undefined ? "25" : String(antenna.slopeDeg),
+        highEnd: antenna.highEndDeg === null || antenna.highEndDeg === undefined ? "" : String(antenna.highEndDeg),
         gainDb: String(antenna.gainDb),
         feedlineLossDb: String(antenna.feedlineLossDb),
         minMhz: String(antenna.minMhz),
@@ -135,6 +215,8 @@ const antennaDraft = (antenna?: AntennaProfile): AntennaDraft =>
         heightM: "5",
         ground: "average",
         broadside: "",
+        slopeDeg: "25",
+        highEnd: "",
         gainDb: "0",
         feedlineLossDb: "0",
         minMhz: "3.5",
@@ -257,13 +339,15 @@ function AntennaDialog({ draft, onClose }: { draft: AntennaDraft; onClose: () =>
   const save = useSaveAntenna();
   const set = <K extends keyof AntennaDraft>(key: K, next: AntennaDraft[K]) => setValue((current) => ({ ...current, [key]: next }));
   const horizontal = isHorizontalAntenna(value.kind);
+  const slopes = isSlopingAntenna(value.kind);
   const wire = hasStatedLength(value.kind);
   const submit = () => {
     const input: AntennaProfileInput = {
       name: value.name.trim(),
       kind: value.kind,
       ...(wire ? { lengthM: number(value.lengthM) } : {}),
-      heightM: horizontal ? number(value.heightM) : 0,
+      ...(slopes ? { slopeDeg: number(value.slopeDeg), highEndDeg: value.highEnd.trim() === "" ? null : number(value.highEnd) } : {}),
+      heightM: horizontal || slopes ? number(value.heightM) : 0,
       ground: value.ground,
       broadsideDeg: horizontal && value.broadside.trim() !== "" ? number(value.broadside) : null,
       gainDb: number(value.gainDb, 0),
@@ -278,6 +362,14 @@ function AntennaDialog({ draft, onClose }: { draft: AntennaDraft; onClose: () =>
         `Give the length of the wire in metres, between ${WIRE_MIN_M} and ${WIRE_MAX_M}: the lengths that are a half-wave somewhere between 2 and 30 MHz.`,
       );
     if (horizontal && !(input.heightM >= 0.5)) return setProblem("Give the height of the wire above the ground in metres, at least 0.5.");
+    if (slopes && !(input.heightM >= 0 && input.heightM <= 50))
+      return setProblem("Give the height of the wire's low end above the ground in metres, 0 to 50.");
+    if (slopes && !(input.slopeDeg! >= SLOPE_MIN_DEG && input.slopeDeg! <= SLOPE_MAX_DEG))
+      return setProblem(
+        `Give the wire's slope above the horizontal in degrees, ${SLOPE_MIN_DEG} to ${SLOPE_MAX_DEG}: the slopes the engine's model was run at.`,
+      );
+    if (slopes && input.highEndDeg !== null && !(input.highEndDeg! >= 0 && input.highEndDeg! <= 360))
+      return setProblem("Give the bearing its high end points towards, 0 to 360, or leave it empty.");
     if (input.broadsideDeg !== null && !(input.broadsideDeg >= 0 && input.broadsideDeg <= 360))
       return setProblem("Give the bearing its broadside faces, 0 to 360, or leave it empty.");
     if (!Number.isFinite(input.gainDb) || !(input.feedlineLossDb >= 0))
@@ -341,6 +433,7 @@ function AntennaDialog({ draft, onClose }: { draft: AntennaDraft; onClose: () =>
               </Field>
             </div>
           ) : null}
+          {slopes ? <SlopeFields value={value} set={set} /> : null}
           {value.kind !== "isotropic" ? (
             <Field label="Ground under it" hint="An assumption about the ground, handed to the antenna model.">
               {(ids) => (
@@ -519,6 +612,7 @@ export function Equipment() {
                     {[
                       antennaModelLabel(item.kind, item.lengthM),
                       isHorizontalAntenna(item.kind) ? `${item.heightM} m up` : null,
+                      isSlopingAntenna(item.kind) ? `${slopeWords(item)}, ${highEndWords(item.highEndDeg)}` : null,
                       item.gainDb - item.feedlineLossDb === 0 ? null : `${(item.gainDb - item.feedlineLossDb).toFixed(1)} dB net`,
                       `${item.minMhz} to ${item.maxMhz} MHz`,
                     ]
@@ -537,14 +631,19 @@ export function Equipment() {
       </Section>
 
       <Section title="Generic antennas" description="Always offered in the planner. Each says how it is modelled and what that leaves out.">
-        <Rows className="border-y border-border">
-          {ANTENNA_PRESETS.map((preset) => (
-            <li key={preset.id} className="py-2.5">
-              <span className="block text-ink">{preset.name}</span>
-              <span className="block max-w-[75ch] text-small text-ink-muted">{preset.modelledAs}</span>
-            </li>
-          ))}
-        </Rows>
+        {PRESET_GROUPS.map((group) => (
+          <div key={group} className="mb-5 last:mb-0">
+            <h3 className="mb-1 text-small font-medium text-ink-muted">{group}</h3>
+            <Rows className="border-y border-border">
+              {ANTENNA_PRESETS.filter((preset) => preset.group === group).map((preset) => (
+                <li key={preset.id} className="py-2.5">
+                  <span className="block text-ink">{preset.name}</span>
+                  <span className="block max-w-[75ch] text-small text-ink-muted">{preset.modelledAs}</span>
+                </li>
+              ))}
+            </Rows>
+          </div>
+        ))}
       </Section>
 
       {radio ? <RadioDialog draft={radio} onClose={() => setRadio(null)} /> : null}

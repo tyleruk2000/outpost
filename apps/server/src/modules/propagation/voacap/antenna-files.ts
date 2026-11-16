@@ -43,6 +43,14 @@
  *     and signal by the same figure, which the engine shows gives what that line gives.
  * - A level wire shorter than a half-wave is given no figure (`wireOn`); type 23 is
  *   written for it, and `engine.ts` throws the answer away.
+ * - A sloping wire is type 41 at its slope wherever it is a half-wave or longer, its
+ *   length and the height of its low end (the feed) in wavelengths at the one frequency
+ *   the file is for, as for the level long wire. The engine's reference direction runs
+ *   from the feed up the wire, so it is given the bearing of the high end. Where the wire
+ *   is shorter than a half-wave no figure is given, and the file written is the same
+ *   model in metres, whose answer `engine.ts` throws away. The other models that might
+ *   stand for a sloping, bent or inverted-L wire (types 28, 38 and 44) were run and are
+ *   not used; see docs/hf-propagation.md, "A sloping wire".
  *
  * See docs/hf-propagation.md, "Equipment".
  */
@@ -55,7 +63,10 @@ import {
   halfWaveRangeMhz,
   hfWavelengthMeters,
   isHorizontalAntenna,
+  isSlopingAntenna,
   longWireRangeMhz,
+  SLOPING_LEVEL_NOTE,
+  slopeWords,
 } from "@outpost/shared";
 
 /** A number in a column of the given width, as the sample files write them. */
@@ -88,6 +99,23 @@ export const runsAsLongWire = (spec: AntennaSpec, mhz: number): boolean => anten
  */
 export function antennaFile(spec: AntennaSpec, mhz?: number): string {
   const gain = netGainDb(spec);
+  if (spec.kind === "end-fed-sloping") {
+    // In wavelengths at the file's frequency where it is run; in metres where it is not (its answer is not used).
+    const per = mhz !== undefined && runsAsLongWire(spec, mhz) ? hfWavelengthMeters(mhz) : null;
+    const size = (value: number) => (per === null ? field(value, 6, 2) : field(-value / per, 6, 3));
+    return [
+      "End-fed wire, sloping (Outpost)",
+      " 8     8 parameters",
+      "  0.00  [ 1] Max Gain dBi..:",
+      "  41    [ 2] Antenna Type..:",
+      ...groundLines(spec),
+      "10.000  [ 5] Operating Freq:",
+      `${field(spec.slopeDeg ?? 0, 6, 2)}  [ 6] Slope from Hor:`,
+      `${size(wireLength(spec))}  [ 7] Wire Length   :`,
+      `${size(spec.heightM)}  [ 8] Feed Height   :`,
+      "",
+    ].join("\n");
+  }
   if (mhz !== undefined && runsAsLongWire(spec, mhz)) {
     const wavelength = hfWavelengthMeters(mhz);
     return [
@@ -176,7 +204,11 @@ export function antennaFile(spec: AntennaSpec, mhz?: number): string {
 }
 
 /** Whether the antenna's gain depends on compass direction, so that where it points matters. */
-export const hasAzimuthPattern = (spec: AntennaSpec): boolean => isHorizontalAntenna(spec.kind);
+export const hasAzimuthPattern = (spec: AntennaSpec): boolean => isHorizontalAntenna(spec.kind) || isSlopingAntenna(spec.kind);
+
+/** Whether the antenna has no bearing of its own and is turned by the other station's: broadside to it, or a sloping wire's low end towards it. */
+export const turnedToOtherStation = (spec: AntennaSpec): boolean =>
+  isSlopingAntenna(spec.kind) ? (spec.highEndDeg ?? null) === null : hasAzimuthPattern(spec) && spec.broadsideDeg === null;
 
 const MATCHING_UNIT = "The matching unit's loss is not modelled.";
 
@@ -193,6 +225,16 @@ export function describeAntenna(spec: AntennaSpec, beamDeg: number): string {
       return `${antennaModelLabel(spec.kind)} over ${ground.label.toLowerCase()} ground${adjust}`;
     case "end-fed-vertical":
       return `End-fed wire ${wireLength(spec)} m long, vertical with its bottom end at the ground, over ${ground.label.toLowerCase()} ground${adjust}. Run as VOACAP's vertical monopole (type 22) ${wireLength(spec)} m high on every frequency; off its half-wave frequencies the figures are for a wire that is not a half-wave. ${MATCHING_UNIT}`;
+    case "end-fed-sloping": {
+      const length = wireLength(spec);
+      const { fromMhz } = halfWaveRangeMhz(length);
+      const rising = `its high end towards ${Math.round(beamDeg)}°${(spec.highEndDeg ?? null) === null ? " (away from the other station)" : ""}`;
+      const shorter =
+        fromMhz > HF_MIN_MHZ
+          ? ` Below ${fromMhz.toFixed(1)} MHz, where it is shorter than a half-wave, not modelled: no figure is given.`
+          : "";
+      return `End-fed wire ${length} m long, ${slopeWords(spec)} over ${ground.label.toLowerCase()} ground, fed at its low end, ${rising}${adjust}. Approximate from ${fromMhz.toFixed(1)} MHz up, where it is a half-wave or longer: run as VOACAP's sloping long wire (type 41) at its slope, whose level is unchecked. ${SLOPING_LEVEL_NOTE}${shorter} ${MATCHING_UNIT}`;
+    }
     case "end-fed-horizontal": {
       const length = wireLength(spec);
       const { fromMhz, toMhz } = halfWaveRangeMhz(length);

@@ -9,10 +9,13 @@ import {
   HF_MIN_MHZ,
   hasStatedLength,
   isHorizontalAntenna,
+  isSlopingAntenna,
   type ModeId,
   type ModeLine,
   notModelledOn,
   type PredictionRequest,
+  SLOPE_MAX_DEG,
+  SLOPE_MIN_DEG,
   WIRE_MAX_M,
   WIRE_MIN_M,
 } from "@outpost/shared";
@@ -29,6 +32,8 @@ export const noise = z.enum(["city", "residential", "rural", "remote"]);
 export const modes = z.enum(["ssb", "cw", "ft8", "js8", "digital"]);
 export const power = z.number().min(0.1, "The engine works in tenths of a watt: give at least 0.1 W.").max(500_000);
 
+const SLOPE = `Give the wire's slope in degrees above the horizontal, between ${SLOPE_MIN_DEG} and ${SLOPE_MAX_DEG}: the slopes the engine's model was run at.`;
+
 const WIRE_LENGTH = `Give the length of the wire in metres, between ${WIRE_MIN_M} and ${WIRE_MAX_M}: the lengths that are a half-wave somewhere between ${HF_MIN_MHZ} and ${HF_MAX_MHZ} MHz.`;
 
 export const antenna = z
@@ -40,12 +45,28 @@ export const antenna = z
     gainDb: z.number().min(-40).max(30),
     feedlineLossDb: z.number().min(0).max(40),
     lengthM: z.number().min(WIRE_MIN_M, WIRE_LENGTH).max(WIRE_MAX_M, WIRE_LENGTH).optional(),
+    slopeDeg: z.number().min(SLOPE_MIN_DEG, SLOPE).max(SLOPE_MAX_DEG, SLOPE).optional(),
+    highEndDeg: z.number().min(0).max(360).nullable().optional(),
   })
   .superRefine((value, issue) => {
     if (isHorizontalAntenna(value.kind) && value.heightM < 0.5)
       issue.addIssue({
         code: "custom",
         message: "Give the height of a horizontal antenna above the ground: at least 0.5 m.",
+        path: ["heightM"],
+      });
+    if (isSlopingAntenna(value.kind) && value.slopeDeg === undefined)
+      issue.addIssue({ code: "custom", message: SLOPE, path: ["slopeDeg"] });
+    if (!isSlopingAntenna(value.kind) && (value.slopeDeg !== undefined || (value.highEndDeg !== undefined && value.highEndDeg !== null)))
+      issue.addIssue({
+        code: "custom",
+        message: "Only a sloping wire has a slope and a direction it rises in. Leave them out for this kind of antenna.",
+        path: ["slopeDeg"],
+      });
+    if (isSlopingAntenna(value.kind) && value.heightM > 50)
+      issue.addIssue({
+        code: "custom",
+        message: "Give the height of the wire's low end above the ground: 50 m at most.",
         path: ["heightM"],
       });
     if (hasStatedLength(value.kind) && value.lengthM === undefined)

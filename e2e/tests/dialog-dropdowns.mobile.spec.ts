@@ -71,7 +71,21 @@ test.describe("Drop-downs inside dialogs on the HF screens, on a phone", () => {
     const dialog = page.getByRole("dialog", { name: "Add a station" });
     await expect(dialog).toBeVisible();
     const names = await pickFromEach(page, dialog);
-    expect(names).toEqual(expect.arrayContaining(["Radio", "Antenna", "Noise where this station listens"]));
+    expect(names).toEqual(expect.arrayContaining(["Radio", "Noise where this station listens"]));
+    // The antenna has a chooser of its own (grouped, with a box to type in): the same check, by touch.
+    const antenna = dialog.getByRole("button", { name: "Antenna", exact: true });
+    await antenna.scrollIntoViewIfNeeded();
+    await antenna.tap();
+    const last = page.getByRole("listbox", { name: "Antennas" }).getByRole("option").last();
+    await last.scrollIntoViewIfNeeded();
+    const onTop = await last.evaluate((element) => {
+      const box = element.getBoundingClientRect();
+      return element.contains(document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2));
+    });
+    expect(onTop, "the antenna list is drawn over the dialog").toBe(true);
+    await last.tap();
+    await expect(page.getByRole("listbox", { name: "Antennas" })).toHaveCount(0);
+    await expect(antenna).toHaveText("Isotropic (no pattern), 0 dBi");
     // The radio chosen filled in its power: the choice reached the form.
     await expect(dialog.getByLabel("Transmitter power, watts")).toHaveValue("10");
     await dialog.getByRole("button", { name: "Cancel" }).tap();

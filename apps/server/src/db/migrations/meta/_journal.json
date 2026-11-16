@@ -162,6 +162,13 @@
       "when": 1794850554754,
       "tag": "0022_emergency_plans",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "6",
+      "when": 1794851806271,
+      "tag": "0023_sloping_wire",
+      "breakpoints": true
     }
   ]
 }

@@ -23,6 +23,7 @@ import { ConfirmDialog, Dialog, DialogBody, DialogContent, DialogFooter } from "
 import { Field, Input } from "@/components/ui/input";
 import { Checkbox, Select, Skeleton } from "@/components/ui/misc";
 import { errorMessage } from "@/lib/api";
+import { AntennaPicker, antennaChoices } from "./antenna-picker";
 import {
   AS_SAVED,
   antennaOf,
@@ -96,15 +97,13 @@ export function Planner() {
     });
   };
 
-  const antennaOptions = (saved: PlannerForm["txAntennaSaved"]) => [
-    ...(saved ? [{ value: AS_SAVED, label: "As saved", description: antennaSummary(saved) }] : []),
-    ...antennas.map((antenna) => ({
-      value: antenna.id,
-      label: antenna.name,
-      description: antennaModelLabel(antenna.kind, antenna.lengthM),
-    })),
-    ...ANTENNA_PRESETS.map((preset) => ({ value: `preset:${preset.id}`, label: preset.name, description: "Generic" })),
-  ];
+  const antennaOptions = (saved: PlannerForm["txAntennaSaved"]) =>
+    antennaChoices(
+      antennas,
+      saved
+        ? [{ value: AS_SAVED, label: "As saved", name: "As saved", description: antennaSummary(saved), group: "Kept with this prediction" }]
+        : [],
+    );
   const antennaNote = (id: string, saved: PlannerForm["txAntennaSaved"]) => {
     const chosen = antennaOf(id, antennas, saved);
     // A wire of a stated length: what it is on the frequency in the form, said before anything is asked.
@@ -221,21 +220,21 @@ export function Planner() {
           </Field>
           <Field label="Transmitting antenna" hint={antennaNote(form.txAntennaId, form.txAntennaSaved)} error={fieldError("txAntennaId")}>
             {(ids) => (
-              <Select
+              <AntennaPicker
                 {...ids}
                 value={form.txAntennaId}
                 onChange={(value) => set("txAntennaId", value)}
-                options={antennaOptions(form.txAntennaSaved)}
+                choices={antennaOptions(form.txAntennaSaved)}
               />
             )}
           </Field>
           <Field label="Receiving antenna" hint={antennaNote(form.rxAntennaId, form.rxAntennaSaved)} error={fieldError("rxAntennaId")}>
             {(ids) => (
-              <Select
+              <AntennaPicker
                 {...ids}
                 value={form.rxAntennaId}
                 onChange={(value) => set("rxAntennaId", value)}
-                options={antennaOptions(form.rxAntennaSaved)}
+                choices={antennaOptions(form.rxAntennaSaved)}
               />
             )}
           </Field>
