@@ -24,7 +24,8 @@ test.describe("managing and cleaning up", () => {
 
     // The way in from Storage.
     await page.goto("/storage");
-    await page.getByRole("link", { name: "Manage and clean up" }).click();
+    // In the screen itself: the sidebar lists it under Storage too.
+    await page.locator("#content").getByRole("link", { name: "Manage and clean up" }).click();
     await expect(page).toHaveURL(/\/storage\/manage$/);
     await expect(page.getByRole("heading", { name: "Manage and clean up", level: 1 })).toBeVisible();
     // What is taking the space, measured from disk once the count has finished.

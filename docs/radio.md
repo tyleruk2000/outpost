@@ -76,8 +76,8 @@ Read these before relying on the line-of-sight check:
 
 ## Repeaters
 
-**Repeaters** (in the command palette, in the phone's More sheet, and behind the
-**Repeaters** button on the map) is a database of amateur radio repeaters kept in
+**Repeaters** (under Radio in the sidebar and in the phone's More sheet, on the
+Radio screen, in the quick search, and behind the **Repeaters** button on the map) is a database of amateur radio repeaters kept in
 Outpost's own database on your machine. It holds what you put in it and nothing else.
 
 Read these before relying on it:

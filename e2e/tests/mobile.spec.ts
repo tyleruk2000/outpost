@@ -86,6 +86,8 @@ test.describe("on a phone", () => {
       ["Communication plans", "/radio/plans"],
       ["Contact log", "/radio/log"],
       ["Repeaters", "/radio/repeaters"],
+      // A tab, listed again as the heading of the screen under it.
+      ["Notes", "/notes"],
       ["Import files", "/import"],
       ["Downloads", "/downloads"],
       ["Storage", "/storage"],
@@ -93,10 +95,11 @@ test.describe("on a phone", () => {
       ["Bring back from a drive", "/storage/merge"],
       ["On this phone", "/kept"],
       ["Settings", "/settings"],
+      ["Set-up guide", "/help/search-and-answers"],
     ];
     await bar.getByRole("button", { name: "More" }).click();
     const sheet = page.getByRole("dialog", { name: "More" });
-    await expect(sheet.getByRole("list").getByRole("link")).toHaveText(others.map(([name]) => name));
+    await expect(sheet.getByRole("list").first().getByRole("link")).toHaveText(others.map(([name]) => name));
     // The sheet fits the screen, or scrolls inside itself.
     const box = await sheet.boundingBox();
     expect(box!.y).toBeGreaterThanOrEqual(0);

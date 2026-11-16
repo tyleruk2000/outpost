@@ -98,6 +98,41 @@ not taste:
    available to screen readers (a visually hidden `<table>` is fine).
 7. **Look at it** in light, dark and at phone width before calling it done.
 
+## Every screen has a place in the navigation
+
+`components/nav.ts` is the one description of every screen and where it belongs. The
+desktop sidebar, the phone's bottom bar and More sheet, the quick search's "Go to" list
+and the "g then a letter" shortcuts are all drawn from it, so a new screen is added
+there and nowhere else:
+
+- **A screen people go to directly** (Maps, Settings) is an entry of `knowledgeNav`
+  (reading, writing and finding) or `upkeepNav` (looking after the library), with an
+  icon and a free letter for its shortcut.
+- **A screen reached from inside another** (How search works, from Search; a radio
+  tool, from Radio) is one of that entry's `children`, in the order the parent screen
+  lists it. The sidebar shows it indented under its parent behind a button ("Show the
+  screens under Radio"), the More sheet the same, and the quick search as
+  "Radio: Repeaters". Give the parent screen a link to it near its top: `PageHeader`
+  takes `under="/radio"` and draws `ScreensUnder`, which reads the same description.
+- **A screen with an address of its own and nothing else** (a document, a plan) needs no
+  entry: it is reached from the list it belongs to.
+
+`components/nav.test.tsx` reads the routes from `app.tsx` and fails if a route with no
+parameters is in neither list (the not-found page is the one exception, listed there),
+or if an entry points at no route. `e2e/tests/every-screen.spec.ts` and
+`every-screen.mobile.spec.ts` then press their way from Home to every screen in the
+navigation, at desktop and phone width, and once more at an address browsers do not
+treat as secure (as a phone on the home network reaches Outpost), failing on any page
+error. There, `window.isSecureContext` is false: `crypto.randomUUID`, the clipboard,
+sharing, location and the service worker's caches are missing or refused, so check for
+them before use.
+
+The sidebar has to fit a 13-inch laptop (a window about 700 to 800 px high) with a page
+tree in it. Groups start closed unless every one fits open with room for about eight
+pages of the tree; the group of the screen in view opens by itself; below 880 px of
+height the upkeep list scrolls with the screens and the tree instead of staying at the
+foot. Look at it at those heights when you add a screen.
+
 ## Every screen has all of its states
 
 - **Loading:** skeletons shaped like the content (`Skeleton`), not a centred spinner.

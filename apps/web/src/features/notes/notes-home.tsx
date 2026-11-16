@@ -143,6 +143,7 @@ export function NotesHome() {
     <Page>
       <PageHeader
         title="Notes"
+        under="/notes"
         description="Pages you write and keep here: plans, lists, things learned. They link to each other and to your library, and they are searched with everything else."
         actions={
           <>

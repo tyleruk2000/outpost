@@ -129,7 +129,10 @@ All three are bundled and served locally. Fixed rem scale, ratio about 1.2:
 ```
 
 - Desktop: a 16rem spine, collapsible to icons. Knowledge at the top, the page tree in
-  the middle, upkeep at the bottom, and the lamp (one line of status) at the foot.
+  the middle, upkeep at the bottom, and the lamp (one line of status) at the foot. A
+  screen reached from inside another is listed indented under it, by name only, behind
+  a chevron that shows or hides the group. On a short window everything between the
+  search field and the lamp scrolls as one.
 - Mobile: a spine-coloured top bar and a bottom bar with Home, Library, Maps, Notes
   and More.
 - Lists before cards. A card appears only when an item is an object picked from a set

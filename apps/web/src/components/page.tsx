@@ -1,6 +1,7 @@
 import type { ComponentProps, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { Contour } from "./contour";
+import { ScreensUnder } from "./screens-under";
 
 /** Standard screen frame: a width, consistent gutters, and room for the mobile bar. */
 export function Page({ width = "wide", className, ...props }: ComponentProps<"div"> & { width?: "reading" | "wide" | "full" }) {
@@ -12,11 +13,14 @@ export function PageHeader({
   title,
   description,
   actions,
+  under,
   className,
 }: {
   title: ReactNode;
   description?: ReactNode;
   actions?: ReactNode;
+  /** The path of this screen in the navigation: the screens under it are linked beneath the title. */
+  under?: string;
   className?: string;
 }) {
   return (
@@ -24,6 +28,7 @@ export function PageHeader({
       <div className="min-w-0 max-w-[60ch]">
         <h1 className="font-title text-title text-ink">{title}</h1>
         {description ? <p className="mt-2 text-body text-ink-muted">{description}</p> : null}
+        {under ? <ScreensUnder parent={under} className="mt-2" /> : null}
       </div>
       {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
     </header>

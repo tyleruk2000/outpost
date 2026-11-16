@@ -4,6 +4,7 @@ import { LoaderCircle, Search as SearchIcon, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { EmptyState, ErrorState, Notice, Page } from "@/components/page";
+import { ScreensUnder } from "@/components/screens-under";
 import { Highlighted, kindMeta, kindOf, resultHref } from "@/components/search-hit";
 import { Button } from "@/components/ui/button";
 import { Segmented, Skeleton } from "@/components/ui/misc";
@@ -210,33 +211,37 @@ export default function SearchPage() {
   return (
     <Page>
       <h1 className="sr-only">Search</h1>
-      <div className="relative max-w-[46rem]">
-        <SearchIcon aria-hidden className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-ink-muted" />
-        <input
-          ref={inputRef}
-          type="search"
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          placeholder="Search documents, pages, collections and maps"
-          aria-label="Search your library"
-          // biome-ignore lint/a11y/noAutofocus: the search screen exists to be typed into
-          autoFocus
-          className="h-13 w-full rounded-panel border border-border-strong bg-page pr-12 pl-12 text-lead text-ink placeholder:text-ink-faint hover:border-ink-faint focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus/30 [&::-webkit-search-cancel-button]:hidden"
-        />
-        {draft ? (
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label="Clear search"
-            className="absolute top-1/2 right-3 -translate-y-1/2"
-            onClick={() => {
-              setDraft("");
-              inputRef.current?.focus();
-            }}
-          >
-            <X />
-          </Button>
-        ) : null}
+      {/* The box, and beside it (under it on a phone) the screens under Search: How search works. */}
+      <div className="flex flex-wrap items-center gap-x-8 gap-y-2">
+        <div className="relative w-full max-w-[46rem] min-w-0 flex-[1_1_30rem]">
+          <SearchIcon aria-hidden className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-ink-muted" />
+          <input
+            ref={inputRef}
+            type="search"
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            placeholder="Search documents, pages, collections and maps"
+            aria-label="Search your library"
+            // biome-ignore lint/a11y/noAutofocus: the search screen exists to be typed into
+            autoFocus
+            className="h-13 w-full rounded-panel border border-border-strong bg-page pr-12 pl-12 text-lead text-ink placeholder:text-ink-faint hover:border-ink-faint focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus/30 [&::-webkit-search-cancel-button]:hidden"
+          />
+          {draft ? (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Clear search"
+              className="absolute top-1/2 right-3 -translate-y-1/2"
+              onClick={() => {
+                setDraft("");
+                inputRef.current?.focus();
+              }}
+            >
+              <X />
+            </Button>
+          ) : null}
+        </div>
+        <ScreensUnder parent="/search" />
       </div>
 
       <AnswerArea q={q} mode={mode} referenceResults={q.trim() ? reference.results.length : 0} />
@@ -259,11 +264,6 @@ export default function SearchPage() {
               <span className="font-mono text-[0.8125rem] text-ink">NY 215 072</span> opens the map there
             </li>
           </ul>
-          <p className="mt-5 text-small">
-            <Link to="/search/how-it-works" className="text-primary underline underline-offset-2">
-              See how search works, step by step
-            </Link>
-          </p>
           <AnswerHint />
         </EmptyState>
       ) : (

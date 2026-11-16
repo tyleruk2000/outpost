@@ -6,28 +6,14 @@
 import type { SearchResponse, SearchResult } from "@outpost/shared";
 import { useQuery } from "@tanstack/react-query";
 import { Command } from "cmdk";
-import {
-  CornerDownLeft,
-  Eraser,
-  FolderInput,
-  Globe,
-  ListChecks,
-  type LucideIcon,
-  Moon,
-  Plus,
-  RadioReceiver,
-  Search,
-  Sun,
-  Upload,
-  Waypoints,
-} from "lucide-react";
+import { CornerDownLeft, Eraser, FolderInput, Globe, ListChecks, type LucideIcon, Moon, Plus, Search, Sun, Upload } from "lucide-react";
 import { Dialog } from "radix-ui";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { api } from "@/lib/api";
 import { referenceProgress, useReferenceSearch } from "@/lib/reference-search";
 import { useTheme } from "@/lib/theme";
-import { allNav } from "./nav";
+import { everyScreen } from "./nav";
 import { Highlighted, kindOf, resultHref } from "./search-hit";
 import { Kbd, Spinner } from "./ui/misc";
 
@@ -138,10 +124,8 @@ export function CommandPalette({
     { id: "add-documents", label: "Add documents", icon: Upload, run: () => go("/library?upload=1") },
     { id: "save-web-page", label: "Save a web page", icon: Globe, run: () => go("/library?save=page") },
     { id: "import", label: "Import pages from Markdown or Notion", icon: FolderInput, run: () => go("/import") },
-    { id: "how-search-works", label: "See how search works", icon: Waypoints, run: () => go("/search/how-it-works") },
     { id: "free-space", label: "Free up space and clean up", icon: Eraser, run: () => go("/storage/manage") },
     { id: "manage-downloaded", label: "Manage what is downloaded", icon: ListChecks, run: () => go("/storage/manage?view=installed") },
-    { id: "repeaters", label: "Repeaters", icon: RadioReceiver, run: () => go("/radio/repeaters") },
     {
       id: "theme",
       label: `Switch to ${resolved === "dark" ? "light" : "dark"} theme`,
@@ -149,7 +133,8 @@ export function CommandPalette({
       run: () => run(() => setTheme(resolved === "dark" ? "light" : "dark")),
     },
   ];
-  const places = allNav.filter((item) => matchesWords(item.label, typed));
+  // Every screen, those under another with its name first ("Radio: Repeaters"), matched on both names.
+  const places = everyScreen.filter((item) => matchesWords(item.parent ? `${item.parent.label} ${item.label}` : item.label, typed));
   const actions = everyAction.filter((action) => matchesWords(action.label, typed));
 
   return (
@@ -180,11 +165,17 @@ export function CommandPalette({
                   {places.map((item) => (
                     <Command.Item key={item.to} value={`go ${item.to}`} onSelect={() => go(item.to)} className={itemClass}>
                       <item.icon aria-hidden />
-                      <span className="flex-1">{item.label}</span>
-                      <span className="flex gap-1">
-                        <Kbd>g</Kbd>
-                        <Kbd>{item.key}</Kbd>
+                      <span className="min-w-0 flex-1 truncate">
+                        {item.parent ? <span className="text-ink-muted">{item.parent.label}:</span> : null}
+                        {item.parent ? " " : null}
+                        {item.label}
                       </span>
+                      {item.key ? (
+                        <span className="flex gap-1">
+                          <Kbd>g</Kbd>
+                          <Kbd>{item.key}</Kbd>
+                        </span>
+                      ) : null}
                     </Command.Item>
                   ))}
                 </Command.Group>

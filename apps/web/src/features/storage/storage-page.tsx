@@ -256,12 +256,10 @@ export default function StoragePage() {
     <Page>
       <PageHeader
         title="Storage"
+        under="/storage"
         description="Choose where your library lives. Large collections and maps can sit on an external drive or a network share; Outpost keeps its own database on this device."
         actions={
           <>
-            <Button asChild>
-              <Link to={manageLink()}>Manage and clean up</Link>
-            </Button>
             <Button onClick={() => refresh.mutate()} loading={refresh.isPending}>
               {refresh.isPending ? null : <RefreshCw />} Check drives
             </Button>

@@ -17,7 +17,9 @@ export const test = base.extend<{ sealed: OfflineGuard }>({
       const guard: OfflineGuard = { external: [] };
       await page.route("**/*", (route, request: Request) => {
         const url = new URL(request.url());
-        const local = ["localhost", "127.0.0.1"].includes(url.hostname) || ["data:", "blob:", "about:"].includes(url.protocol);
+        // outpost-lan.test is the test server under a name browsers do not treat as secure (playwright.config.ts).
+        const local =
+          ["localhost", "127.0.0.1", "outpost-lan.test"].includes(url.hostname) || ["data:", "blob:", "about:"].includes(url.protocol);
         if (local) return route.continue();
         guard.external.push(request.url());
         return route.abort("internetdisconnected");
