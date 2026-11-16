@@ -412,7 +412,7 @@ export function OfflinePanel({
   const unreachable = regions.filter((region) => !region.available);
 
   return (
-    <div className="scroll-quiet grid min-h-0 flex-1 content-start gap-6 overflow-y-auto px-4 py-4">
+    <div className="scroll-quiet grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] content-start gap-6 overflow-y-auto px-4 py-4">
       <section aria-label="Maps on this device">
         <PanelHeading
           actions={

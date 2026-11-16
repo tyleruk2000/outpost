@@ -209,7 +209,8 @@ export function IconPicker({
 /** A quiet heading inside the side panel. */
 export function PanelHeading({ children, actions, className }: { children: ReactNode; actions?: ReactNode; className?: string }) {
   return (
-    <div className={cn("flex min-h-9 items-center justify-between gap-3", className)}>
+    // Wraps: on a narrow phone with large text the heading and its button do not fit on one line.
+    <div className={cn("flex min-h-9 flex-wrap items-center justify-between gap-x-3 gap-y-1", className)}>
       <h3 className="text-body font-semibold text-ink">{children}</h3>
       {actions}
     </div>
