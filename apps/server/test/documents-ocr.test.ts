@@ -10,7 +10,6 @@
  * A picture of three lines takes about a tenth of a second, so these run with the rest.
  */
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import type { DocumentDto, OcrStatus } from "@outpost/shared";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -20,6 +19,7 @@ import { exifOrientation } from "../src/modules/ocr/tesseract.ts";
 import { installedLanguages, parseLanguages } from "../src/modules/ocr/tesseract-assets.ts";
 import { buildGreyPng, buildPdf, buildScannedPdf, multipart, type UploadFile } from "./fixtures/documents/builders.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
+import { tempDir } from "./temp.ts";
 
 const fixture = (name: string) => fs.readFileSync(path.join(import.meta.dirname, "fixtures/ocr", name));
 const firstPng = fixture("scan-first.png");
@@ -382,7 +382,7 @@ describe("reading a scanned PDF", () => {
 
 describe("a restart in the middle of a long document", () => {
   it("carries on from the pages already read", { timeout: LONG_SCAN_MS }, async () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "outpost-test-ocr-"));
+    const dir = tempDir("outpost-test-ocr-");
     try {
       app = await createTestApp({}, dir);
       const pages = Array.from({ length: 24 }, (_, index) => (index % 2 === 0 ? firstPng : secondPng));

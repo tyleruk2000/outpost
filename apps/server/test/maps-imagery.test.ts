@@ -7,7 +7,6 @@
 import fs from "node:fs";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
-import os from "node:os";
 import path from "node:path";
 import type { ImageryEstimate, ImageryOverview, MapSources, SceneSearchResponse } from "@outpost/shared";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -28,6 +27,7 @@ import { TileType } from "../src/modules/maps/pmtiles/header.ts";
 import { LocalArchive } from "../src/modules/maps/pmtiles/reader.ts";
 import { buildGeoTiff } from "./fixtures/maps/geotiff.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
+import { tempDir } from "./temp.ts";
 
 // ── The stand-in publishers ──
 
@@ -274,7 +274,7 @@ describe("reading a Cloud-Optimised GeoTIFF", () => {
 
 describe("the image archive writer", () => {
   it("writes tiles in any order into an archive the map's reader serves", async () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "outpost-imagery-"));
+    const dir = tempDir("outpost-imagery-");
     try {
       const file = path.join(dir, "t.pmtiles");
       const writer = await ImageArchiveWriter.create(file);

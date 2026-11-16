@@ -1,5 +1,4 @@
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { pictureIndex, pictureLines, pictureTypeOf, readPicture, withoutPictureData } from "../src/modules/documents/embedded-pictures.ts";
@@ -8,6 +7,7 @@ import { markdownBlocks, readMarkdownDocument } from "../src/modules/documents/m
 import { savedFromOf, savedPageFrontMatter } from "../src/modules/documents/saved-page.ts";
 import { png } from "./fixtures/webpages/pages.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
+import { tempDir } from "./temp.ts";
 
 const dirs: string[] = [];
 let app: TestApp | undefined;
@@ -18,7 +18,7 @@ afterEach(async () => {
 });
 
 function fileWith(content: string | Buffer): string {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "outpost-pictures-"));
+  const dir = tempDir("outpost-pictures-");
   dirs.push(dir);
   const file = path.join(dir, "page.md");
   fs.writeFileSync(file, content);

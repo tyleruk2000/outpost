@@ -1,11 +1,11 @@
 import { createHash } from "node:crypto";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import Database from "better-sqlite3";
 import { afterEach, describe, expect, it } from "vitest";
 import { migrationsDir } from "../src/core/paths.ts";
 import { openDatabase } from "../src/db/client.ts";
+import { tempDir } from "./temp.ts";
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -13,7 +13,7 @@ afterEach(() => {
 });
 
 function tempDb(): string {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "outpost-migrate-"));
+  const dir = tempDir("outpost-migrate-");
   dirs.push(dir);
   return path.join(dir, "outpost.db");
 }

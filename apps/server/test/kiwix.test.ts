@@ -1,12 +1,12 @@
 import fs from "node:fs";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
-import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { bookNameOf, decodeEntities, readZimUuid, renderLibrary } from "../src/modules/kiwix/library.ts";
 import { buildPdf } from "./fixtures/documents/builders.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
+import { tempDir } from "./temp.ts";
 
 const UUID = "b37270fd-f267-39ba-fc4f-9f3c720e5d8f";
 const BOOK = "wikipedia_en_knots_maxi_2026-10";
@@ -148,7 +148,7 @@ async function waitFor(check: () => boolean, ms = 4000): Promise<void> {
 
 describe("library file", () => {
   it("reads a ZIM archive's UUID and rejects other files", async () => {
-    const dir = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "outpost-zim-"));
+    const dir = fs.realpathSync(tempDir("outpost-zim-"));
     cleanups.push(() => fs.rmSync(dir, { recursive: true, force: true }));
     fs.writeFileSync(path.join(dir, "a.zim"), zimHeader());
     fs.writeFileSync(path.join(dir, "b.zim"), "PK\u0003\u0004 definitely a zip, not a zim");

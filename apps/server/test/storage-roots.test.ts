@@ -3,10 +3,10 @@
  * between starts. A location recorded outside them must not go on being used there.
  */
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createTestApp, type TestApp } from "./helpers.ts";
+import { tempDir } from "./temp.ts";
 
 const MARKER = ".outpost-location.json";
 
@@ -14,7 +14,7 @@ let dir: string;
 let app: TestApp | undefined;
 
 beforeEach(() => {
-  dir = fs.mkdtempSync(path.join(os.tmpdir(), "outpost-roots-"));
+  dir = tempDir("outpost-roots-");
 });
 afterEach(async () => {
   await app?.close();

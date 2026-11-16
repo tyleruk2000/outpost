@@ -1,7 +1,6 @@
 import fs from "node:fs";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
-import os from "node:os";
 import path from "node:path";
 import type { MapRegionsResponse, MapSources } from "@outpost/shared";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -27,6 +26,7 @@ import {
   worldTiles,
 } from "./fixtures/maps/archive.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
+import { tempDir } from "./temp.ts";
 
 const REGION_BBOX: [number, number, number, number] = [-20, 20, 60, 70];
 const WORLD: [number, number, number, number] = [-180, -85.0511, 180, 85.0511];
@@ -539,7 +539,7 @@ describe("the extract fetcher on its own", () => {
     gone.failWith = 404;
     extraServers.push(gone);
     const client = createHttpClient({ allowPrivate: true });
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "outpost-fetcher-"));
+    const dir = tempDir("outpost-fetcher-");
     const newestUrl = server.url.replace("planet.pmtiles", "20261116.pmtiles");
     const fetcher = createExtractFetcher({
       client,

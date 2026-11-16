@@ -22,6 +22,7 @@ import {
 } from "../src/modules/https/certificates.ts";
 import { inBlock, PRIVATE_BLOCKS, PRIVATE_SUFFIXES, parseName, reachableNames, type ServerName } from "../src/modules/https/names.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
+import { tempDir } from "./temp.ts";
 
 const DAY = 24 * 60 * 60 * 1000;
 const HOME: Permits = { names: [...PRIVATE_SUFFIXES, "kitchen-pi"], blocks: PRIVATE_BLOCKS };
@@ -53,7 +54,7 @@ afterEach(async () => {
 });
 
 function scratch(): string {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "outpost-https-"));
+  const dir = tempDir("outpost-https-");
   cleanups.push(() => fs.rmSync(dir, { recursive: true, force: true }));
   return dir;
 }

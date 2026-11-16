@@ -1,6 +1,5 @@
 import { createHash } from "node:crypto";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { PMTiles, tileIdToZxy as referenceIdToZxy, zxyToTileId as referenceZxyToId } from "pmtiles";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -38,6 +37,7 @@ import {
   tileInBbox,
   worldTiles,
 } from "./fixtures/maps/archive.ts";
+import { tempDir } from "./temp.ts";
 
 /** Deterministic pseudo-random numbers, so a failure can be reproduced. */
 function randomSource(seed: number): () => number {
@@ -226,7 +226,7 @@ describe("directories", () => {
     // The official reader decodes what our writer wrote: the strongest check there is.
     const fixture = buildArchive({ tiles: worldTiles(4), rootBudget: 120, minLeafSize: 16 });
     expect(fixture.leafCount).toBeGreaterThan(2);
-    const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "outpost-pmtiles-")), "fixture.pmtiles");
+    const file = path.join(tempDir("outpost-pmtiles-"), "fixture.pmtiles");
     fs.writeFileSync(file, fixture.bytes);
     const reference = new PMTiles(new NodeFileSource(file));
     for (const key of fixture.tiles.keys()) {
@@ -325,7 +325,7 @@ describe("extracting a region", () => {
 
   beforeEach(async () => {
     server = await serveBytes(fixture.bytes);
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), "outpost-extract-"));
+    dir = tempDir("outpost-extract-");
     part = path.join(dir, "region.pmtiles.part");
   });
   afterEach(async () => {
@@ -693,7 +693,7 @@ describe("extracting a region", () => {
 describe("reading a local archive", () => {
   it("returns stored tiles through leaf directories and nothing outside the archive", async () => {
     const fixture = buildArchive({ tiles: worldTiles(5), rootBudget: 200, minLeafSize: 32 });
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "outpost-reader-"));
+    const dir = tempDir("outpost-reader-");
     const file = path.join(dir, "world.pmtiles");
     fs.writeFileSync(file, fixture.bytes);
     const archive = await LocalArchive.open(file);

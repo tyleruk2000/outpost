@@ -4,7 +4,6 @@
  */
 import { execFile } from "node:child_process";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { ZipArchive } from "archiver";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
@@ -12,6 +11,7 @@ import { scanConstructs } from "../src/modules/imports/convert.ts";
 import { markdownToDoc } from "../src/modules/notes/content/index.ts";
 import { LARGE_GPX, LONG_TRACK } from "./fixtures/maps/gpx-large.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
+import { tempDir } from "./temp.ts";
 
 let app: TestApp | undefined;
 afterEach(async () => {
@@ -97,7 +97,7 @@ describe("restoring a backup someone else made", () => {
     await theirs.close();
 
     // It is restored here.
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "outpost-restore-sec-"));
+    const dir = tempDir("outpost-restore-sec-");
     let mine = await createTestApp({}, dir);
     const staged = await mine.app.inject({
       method: "POST",
@@ -119,7 +119,7 @@ describe("restoring a backup someone else made", () => {
 
   it("refuses an archive that expands far beyond its size", async () => {
     app = await createTestApp();
-    const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "outpost-bomb-")), "bomb.zip");
+    const file = path.join(tempDir("outpost-bomb-"), "bomb.zip");
     const archive = new ZipArchive({ zlib: { level: 9 } });
     const done = new Promise<void>((resolve, reject) => {
       const out = fs.createWriteStream(file);

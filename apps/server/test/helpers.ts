@@ -1,9 +1,9 @@
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import type { InjectOptions } from "fastify";
 import { type BuiltApp, buildApp } from "../src/app.ts";
 import { loadConfig } from "../src/config.ts";
+import { tempDir } from "./temp.ts";
 import { seedVoacapData } from "./voacap-data.ts";
 
 export interface TestApp extends BuiltApp {
@@ -30,7 +30,7 @@ export async function createTestApp(
   existingDir?: string,
   options: { voacapData?: boolean } = {},
 ): Promise<TestApp> {
-  const dir = existingDir ?? fs.mkdtempSync(path.join(os.tmpdir(), "outpost-test-"));
+  const dir = existingDir ?? tempDir("outpost-test-");
   const config = loadConfig({
     NODE_ENV: "test",
     OUTPOST_DATA_DIR: path.join(dir, "data"),

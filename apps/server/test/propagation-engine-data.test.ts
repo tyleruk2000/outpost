@@ -12,7 +12,6 @@ import { createHash } from "node:crypto";
 import fs from "node:fs";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
-import os from "node:os";
 import path from "node:path";
 import {
   ANTENNA_PRESETS,
@@ -25,6 +24,7 @@ import {
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type CoefficientsManifest, coefficientsManifest, workingCopyDir } from "../src/modules/propagation/voacap/coefficients.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
+import { tempDir } from "./temp.ts";
 import { describeWithVoacapData, VOACAP_CACHE } from "./voacap-data.ts";
 
 const dipole = ANTENNA_PRESETS.find((preset) => preset.id === "low-dipole")!.spec;
@@ -140,7 +140,7 @@ describe("downloading VOACAP's data, from the suite's own file server", () => {
   let server: http.Server;
   const asked: string[] = [];
   const served = new Map(standIn.map((file) => [`embedded/${file.path}`, () => file.bytes]));
-  const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "outpost-voacap-data-"));
+  const scratch = tempDir("outpost-voacap-data-");
 
   beforeAll(async () => {
     server = fileServer(served, asked);
@@ -268,7 +268,7 @@ describe("downloading VOACAP's data, from the suite's own file server", () => {
 
 describe("a data directory without its copy, beside a downloaded bundle", () => {
   it("is put back from the bundle on start, with no request (a portable drive's, say)", async () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "outpost-voacap-restore-"));
+    const dir = tempDir("outpost-voacap-restore-");
     const asked: string[] = [];
     const server = fileServer(new Map(standIn.map((file) => [`embedded/${file.path}`, () => file.bytes])), asked);
     try {
@@ -295,7 +295,7 @@ describe("a data directory without its copy, beside a downloaded bundle", () => 
 });
 
 describe("an installation from before the data left the repository", () => {
-  const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "outpost-voacap-adopt-"));
+  const scratch = tempDir("outpost-voacap-adopt-");
   afterAll(() => fs.rmSync(scratch, { recursive: true, force: true }));
 
   const withOldCopy = (name: string, alter?: (dir: string) => void) => {
@@ -341,7 +341,7 @@ describe("an installation from before the data left the repository", () => {
 describeWithVoacapData("downloading the real files, then predicting", () => {
   let app: TestApp;
   let server: http.Server;
-  const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "outpost-voacap-real-"));
+  const scratch = tempDir("outpost-voacap-real-");
 
   beforeAll(async () => {
     const real = coefficientsManifest();

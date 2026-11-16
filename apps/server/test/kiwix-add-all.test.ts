@@ -1,10 +1,10 @@
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import type { ArchiveAddPlan, ArchiveAddResult, JobDto } from "@outpost/shared";
 import { afterEach, describe, expect, it } from "vitest";
 import { createTestApp, type TestApp } from "./helpers.ts";
 import { NAUTILUS_BOOK, type NautilusArchive, startNautilusArchive, zimHeader } from "./nautilus-archive.ts";
+import { tempDir } from "./temp.ts";
 
 /**
  * "Add all": every document of a collection that lists documents, copied into the
@@ -40,7 +40,7 @@ async function setup(prepare?: (archive: NautilusArchive) => void, more: Record<
   cleanups.push(() => archive.close());
   prepare?.(archive);
   // A folder of the test's own, so that a second server can be started on what the first one left.
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "outpost-test-"));
+  const dir = tempDir("outpost-test-");
   cleanups.push(() => fs.rmSync(dir, { recursive: true, force: true }));
   const env = { OUTPOST_KIWIX_URL: archive.url, ...more };
   const app: TestApp = await createTestApp(env, dir);

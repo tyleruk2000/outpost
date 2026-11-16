@@ -4,10 +4,10 @@
  */
 import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { loadCatalog } from "../src/modules/catalog/manifest.ts";
+import { tempDir } from "./temp.ts";
 
 const script = path.resolve(import.meta.dirname, "../src/cli/import-logbook73.ts");
 let work: string;
@@ -72,7 +72,7 @@ export const GUIDES = [
 `;
 
 beforeAll(() => {
-  work = fs.mkdtempSync(path.join(os.tmpdir(), "outpost-import-"));
+  work = tempDir("outpost-import-");
   checkout = path.join(work, "LogBook73");
   catalog = path.join(work, "catalog");
   fs.mkdirSync(checkout);

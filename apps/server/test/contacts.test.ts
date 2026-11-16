@@ -4,7 +4,6 @@
  * portable drive and "erase everything" do with them. Every person here is made up.
  */
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import type {
   CleanupPlan,
@@ -19,6 +18,7 @@ import Database from "better-sqlite3";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { prepareDriveDatabase } from "../src/modules/portable/database.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
+import { tempDir } from "./temp.ts";
 
 let app: TestApp;
 beforeEach(async () => {
@@ -431,7 +431,7 @@ describe("backups, drives and erasing", () => {
     const made = await create({ ...named("Maya", "Okafor"), phones: [{ value: "07700 900123" }], tags: ["Family"], isEmergency: true });
     const backup = (await app.app.inject({ method: "GET", url: "/api/backup/download", headers: { host: "localhost" } })).rawPayload;
 
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "outpost-restore-"));
+    const dir = tempDir("outpost-restore-");
     let target = await createTestApp({}, dir);
     try {
       const staged = await target.app.inject({

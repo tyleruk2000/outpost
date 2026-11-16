@@ -1,5 +1,4 @@
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { gunzipSync } from "node:zlib";
 import { afterEach, describe, expect, it } from "vitest";
@@ -17,6 +16,7 @@ import { type EmbeddingProvider, normalise } from "../src/modules/semantic/provi
 import { stretchesOf } from "../src/modules/semantic/stretches.ts";
 import reference from "./fixtures/embedding-reference.json" with { type: "json" };
 import { createTestApp, type TestApp } from "./helpers.ts";
+import { tempDir } from "./temp.ts";
 
 /**
  * The model's files are fetched by a script and are not in the repository. Tests that
@@ -44,7 +44,7 @@ function embedder(options: Parameters<typeof createBuiltInEmbedder>[0] = {}): Bu
 }
 
 function emptyFolder(): string {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "outpost-embed-test-"));
+  const dir = tempDir("outpost-embed-test-");
   cleanups.push(() => fs.rmSync(dir, { recursive: true, force: true }));
   return dir;
 }

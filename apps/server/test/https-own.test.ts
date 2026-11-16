@@ -3,7 +3,7 @@ import { createPrivateKey, type KeyObject, X509Certificate } from "node:crypto";
 import fs from "node:fs";
 import http from "node:http";
 import https from "node:https";
-import os from "node:os";
+import type os from "node:os";
 import path from "node:path";
 import type { TLSSocket } from "node:tls";
 import { type HttpsStatus, PLAIN_HTTP_ACCEPTED_FIELD } from "@outpost/shared";
@@ -15,6 +15,7 @@ import { expiryOf, inspectOwn, REMOVE_PASSPHRASE, Refused, type Surroundings } f
 import { looksLikePkcs12, Pkcs12Error, readPkcs12 } from "../src/modules/https/pkcs12.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
 import { type Made, make, makeAuthority } from "./https-certs.ts";
+import { tempDir } from "./temp.ts";
 
 const DAY = 24 * 60 * 60 * 1000;
 const OPENSSL = spawnSync("openssl", ["version"], { stdio: "ignore" }).error === undefined;
@@ -30,7 +31,7 @@ afterEach(async () => {
 });
 
 function scratch(): string {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "outpost-own-"));
+  const dir = tempDir("outpost-own-");
   cleanups.push(() => fs.rmSync(dir, { recursive: true, force: true }));
   return dir;
 }

@@ -12,6 +12,7 @@ import {
 } from "../src/modules/imports/extract.ts";
 import { analyse, buildZip, commit, rawZip, titleTree, uploadImport } from "./fixtures/imports/builders.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
+import { tempDir } from "./temp.ts";
 
 let app: TestApp;
 beforeEach(async () => {
@@ -245,7 +246,7 @@ describe("the extractor on its own", () => {
   let dir: string;
   const limits: ExtractLimits = { ...DEFAULT_EXTRACT_LIMITS, maxFileBytes: 1024 * 1024 };
   beforeEach(() => {
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), "outpost-extract-"));
+    dir = tempDir("outpost-extract-");
   });
   afterEach(() => fs.rmSync(dir, { recursive: true, force: true }));
 

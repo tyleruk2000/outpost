@@ -1,7 +1,6 @@
 import fs from "node:fs";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
-import os from "node:os";
 import path from "node:path";
 import zlib from "node:zlib";
 import {
@@ -57,6 +56,7 @@ import {
   X,
 } from "./fixtures/maps/overpass-answers.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
+import { tempDir } from "./temp.ts";
 
 const p = (point: { lat: number; lon: number }): Point => [point.lon, point.lat];
 const limits = { maxRelations: 10, maxWays: 10, maxMembers: 100, maxPoints: 1000 };
@@ -410,7 +410,7 @@ describe("route sources", () => {
   const repoCatalog = path.resolve(import.meta.dirname, "../../../catalog");
   let dir: string;
   beforeEach(() => {
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), "outpost-route-sources-"));
+    dir = tempDir("outpost-route-sources-");
   });
   afterEach(() => fs.rmSync(dir, { recursive: true, force: true }));
 
@@ -515,7 +515,7 @@ async function appWithSource(
   endpoint = `http://127.0.0.1:${port}/overpass/api/interpreter`,
   env: Record<string, string> = {},
 ): Promise<TestApp> {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "outpost-test-"));
+  const dir = tempDir("outpost-test-");
   fs.mkdirSync(path.join(dir, "data", "catalog", "routes"), { recursive: true });
   fs.writeFileSync(
     path.join(dir, "data", "catalog", "routes", "route-sources.json"),

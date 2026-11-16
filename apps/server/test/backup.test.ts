@@ -1,9 +1,9 @@
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { ZipArchive } from "archiver";
 import { afterEach, describe, expect, it } from "vitest";
 import { createTestApp, type TestApp } from "./helpers.ts";
+import { tempDir } from "./temp.ts";
 
 const apps: TestApp[] = [];
 afterEach(async () => {
@@ -26,7 +26,7 @@ function restore(app: TestApp, payload: Buffer) {
 }
 
 async function zipOf(entries: Record<string, string | Buffer>): Promise<Buffer> {
-  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "outpost-zip-")), "x.zip");
+  const file = path.join(tempDir("outpost-zip-"), "x.zip");
   const archive = new ZipArchive();
   const done = new Promise<void>((resolve, reject) => {
     const out = fs.createWriteStream(file);
@@ -57,7 +57,7 @@ describe("backup and restore", () => {
     fs.writeFileSync(attachment, "a picture, honest");
     const backup = await download(source);
 
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "outpost-restore-"));
+    const dir = tempDir("outpost-restore-");
     let target = await createTestApp({}, dir);
     await target.api("PATCH", "/api/settings", { "downloads.concurrency": 1 });
     const staged = await restore(target, backup);
@@ -115,7 +115,7 @@ describe("backup and restore", () => {
     apps.push(app);
     const real = await download(app);
     // A hostile archive: a valid backup plus entries aimed elsewhere.
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "outpost-evil-"));
+    const tmp = tempDir("outpost-evil-");
     fs.writeFileSync(path.join(tmp, "real.zip"), real);
     const hostile = await zipOf({
       "manifest.json": JSON.stringify({
