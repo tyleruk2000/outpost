@@ -1,5 +1,4 @@
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { expandSelfClosing } from "../src/modules/documents/extract-epub.ts";
@@ -18,6 +17,7 @@ import {
 import { contentDisposition, matchesEtag, parseRange } from "../src/modules/documents/http.ts";
 import { cleanTags } from "../src/modules/documents/service.ts";
 import { buildEpub, buildPdf, tinyPng } from "./fixtures/documents/builders.ts";
+import { tempDir } from "./temp.ts";
 
 describe("file types", () => {
   it("recognises a type only when name and content agree", () => {
@@ -217,7 +217,7 @@ describe("text from markup", () => {
 });
 
 describe("the extraction worker", () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "outpost-extract-"));
+  const dir = tempDir("outpost-extract-");
   const pdf = path.join(dir, "many.pdf");
   fs.writeFileSync(pdf, buildPdf(Array.from({ length: 40 }, (_, index) => [`Page number ${index + 1}`])));
   const request = { filePath: pdf, kind: "pdf" as const, maxPdfPages: 0 };

@@ -407,9 +407,11 @@ export default function CoveragePage() {
         Outpost does not estimate coverage any other way.
       </EngineNotReady>
 
-      <div className="grid gap-x-10 gap-y-8 lg:grid-cols-[21rem_minmax(0,1fr)]">
+      {/* One column that may be narrower than what is in it: the two fields side by side would otherwise hold the
+          form at their own widths, which on a phone with large text is wider than the screen. */}
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-x-10 gap-y-8 lg:grid-cols-[21rem_minmax(0,1fr)]">
         <form
-          className="grid content-start gap-4"
+          className="grid grid-cols-[minmax(0,1fr)] content-start gap-4"
           noValidate
           onSubmit={(event) => {
             event.preventDefault();
@@ -788,6 +790,8 @@ export default function CoveragePage() {
               action={
                 <Button
                   variant="primary"
+                  // Its words wrap on a narrow phone with large text, where on one line they were wider than the screen.
+                  className="h-auto min-h-9 max-w-full py-2 whitespace-normal max-md:h-auto max-md:min-h-11"
                   disabled={engine ? !engine.ready : false}
                   onClick={() => {
                     const example = exampleCoverageForm();

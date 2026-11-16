@@ -30,7 +30,8 @@ test.describe("automatic backups", () => {
     await section.getByRole("button", { name: "Back up now" }).click();
     const row = section.getByRole("listitem");
     await expect(row).toHaveCount(1, { timeout: 30_000 });
-    await expect(row.getByText("Verified")).toBeVisible({ timeout: 30_000 });
+    // Exactly: "Not verified" holds the word too, and Playwright matches part of a text, whatever its case.
+    await expect(row.getByText("Verified", { exact: true })).toBeVisible({ timeout: 30_000 });
     await expect(row.getByText(/Started by hand · .+ · made by Outpost \d/)).toBeVisible();
     await expect(section.getByText(/^Last backup just now\./)).toBeVisible();
 
@@ -116,7 +117,8 @@ test.describe("backups protected by a passphrase", () => {
     await section.getByRole("button", { name: "Back up now" }).click();
     const row = section.getByRole("listitem");
     await expect(row).toHaveCount(1, { timeout: 30_000 });
-    await expect(row.getByText("Verified")).toBeVisible({ timeout: 30_000 });
+    // Exactly: "Not verified" holds the word too, and Playwright matches part of a text, whatever its case.
+    await expect(row.getByText("Verified", { exact: true })).toBeVisible({ timeout: 30_000 });
     await expect(row.getByText("Protected", { exact: true })).toBeVisible();
     const { backups } = await api(page, "GET", "/api/backup/stored");
     expect(backups).toHaveLength(1);

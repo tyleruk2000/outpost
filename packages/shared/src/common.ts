@@ -47,11 +47,13 @@ export function formatBytes(bytes: number | null | undefined, fractionDigits?: n
   return `${value.toFixed(digits)} ${units[unit]}`;
 }
 
-/** "3 minutes", "2 hours 5 minutes" — for remaining-time estimates. */
+/** "1 second", "3 minutes", "2 hours 5 minutes" — for remaining-time estimates. Never less than a second. */
 export function formatDuration(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return "";
-  if (seconds < 60) return `${Math.max(1, Math.round(seconds))} seconds`;
-  const minutes = Math.round(seconds / 60);
+  // Rounded first, so that 59.6 seconds is "1 minute" and not "60 seconds".
+  const whole = Math.max(1, Math.round(seconds));
+  if (whole < 60) return `${whole} second${whole === 1 ? "" : "s"}`;
+  const minutes = Math.round(whole / 60);
   if (minutes < 60) return `${minutes} minute${minutes === 1 ? "" : "s"}`;
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;

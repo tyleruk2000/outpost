@@ -11,7 +11,6 @@
  * tolerances are stated with each.
  */
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { ANTENNA_PRESETS, type AntennaSpec, HF_BANDS, initialBearingDeg, type PredictionCell } from "@outpost/shared";
 import { afterAll, expect, it } from "vitest";
@@ -21,9 +20,10 @@ import { createVoacapEngine, type WireCell, withOutsideGain } from "../src/modul
 import { loadDataset, loadEngineFile, voacapPaths } from "../src/modules/propagation/voacap/files.ts";
 import { VoacapInstance } from "../src/modules/propagation/voacap/instance.ts";
 import { REFERENCE_CASES } from "./fixtures/propagation/cases.ts";
+import { tempDir } from "./temp.ts";
 import { describeWithVoacapData, seedVoacapData, voacapDataAbsent } from "./voacap-data.ts";
 
-const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "outpost-hf-wire-"));
+const scratch = tempDir("outpost-hf-wire-");
 afterAll(() => fs.rmSync(scratch, { recursive: true, force: true }));
 
 // The real engine and its data (voacap-data.ts): without the coefficients every test here is reported as skipped.

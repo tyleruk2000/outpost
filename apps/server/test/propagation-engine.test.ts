@@ -8,7 +8,6 @@
  * to run still run.
  */
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { ANTENNA_PRESETS, type AntennaSpec } from "@outpost/shared";
 import { afterAll, describe, expect, it } from "vitest";
@@ -24,9 +23,10 @@ import { createVoacapEngine, FREQUENCIES_PER_RUN } from "../src/modules/propagat
 import { loadDataset, loadEngineFile, voacapPaths } from "../src/modules/propagation/voacap/files.ts";
 import { VoacapInstance } from "../src/modules/propagation/voacap/instance.ts";
 import { REFERENCE_CASES } from "./fixtures/propagation/cases.ts";
+import { tempDir } from "./temp.ts";
 import { describeWithVoacapData, seedVoacapData, VOACAP_CACHE, voacapDataAbsent } from "./voacap-data.ts";
 
-const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "outpost-hf-"));
+const scratch = tempDir("outpost-hf-");
 afterAll(() => fs.rmSync(scratch, { recursive: true, force: true }));
 
 seedVoacapData(path.join(scratch, "data"));

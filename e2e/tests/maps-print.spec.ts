@@ -97,7 +97,14 @@ test.describe("printing the map", () => {
     page.on("request", (request) => asked.push({ method: request.method(), url: request.url() }));
     const file = await makeAndSave(page, dialog);
     expect(asked.filter((request) => request.method !== "GET")).toEqual([]);
-    const paths = asked.filter((request) => !request.url.startsWith("blob:")).map((request) => new URL(request.url).pathname);
+    // Two reads the app makes whatever is on screen are not the making's: the server's state every 15 seconds,
+    // and the storage locations once 30 seconds old. On a busy machine the making takes long enough for them to
+    // fall inside it (seen: /api/storage/locations), so they are left out here, and only they are.
+    const ownReads = new Set(["/api/system", "/api/storage/locations"]);
+    const paths = asked
+      .filter((request) => !request.url.startsWith("blob:"))
+      .map((request) => new URL(request.url).pathname)
+      .filter((path) => !ownReads.has(path));
     expect(paths.length).toBeGreaterThan(0);
     for (const path of paths) expect(path).toMatch(/^\/(api\/maps\/(tiles|terrain)\/|map-assets\/|world\/)/);
 
@@ -201,6 +208,18 @@ test.describe("printing the map", () => {
     const added = status.getByRole("link", { name: /^Map, Round the lake, 1:25,000, \d+ \w+ \d{4}$/ });
     const documentId = (await added.getAttribute("href"))!.split("/").pop()!;
     made.push(`document:${documentId}`);
+
+    // The same page made again the same day is the same file (it carries the day printed on it, not the moment
+    // it was made), so the library says it already has it instead of filing a second copy.
+    const title = dialog.getByRole("textbox", { name: "Title" });
+    await title.fill("Round the lake again");
+    await title.fill("Round the lake");
+    await expect(dialog.getByText("Drawing the preview")).toBeHidden({ timeout: 30_000 });
+    await dialog.getByRole("button", { name: "Make the PDF" }).click();
+    await expect(add).toBeVisible({ timeout: 120_000 });
+    await add.click();
+    await expect(status).toContainText(/Already in the library as Map, Round the lake, 1:25,000/, { timeout: 30_000 });
+    expect(posted).toEqual(["/api/documents", "/api/documents"]);
 
     await expect
       .poll(async () => (await api(page, "GET", `/api/documents/${documentId}`)).document.extraction, { timeout: 30_000 })

@@ -8,13 +8,13 @@ import { createHash } from "node:crypto";
 import fs from "node:fs";
 import http from "node:http";
 import net, { type AddressInfo } from "node:net";
-import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { DRAIN_LIMIT_MS } from "../src/app.ts";
 import { EXIT_LIMIT_MS } from "../src/core/stop.ts";
 import { type FileServer, startFileServer, testBytes, unusedPort, waitFor } from "./fixtures/downloads/file-server.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
+import { tempDir } from "./temp.ts";
 
 const serverDir = path.resolve(import.meta.dirname, "..");
 const HEADERS = { "x-outpost-request": "1", "content-type": "application/json" };
@@ -125,7 +125,7 @@ function partFiles(dir: string): string[] {
 
 describe("stopping the server process", () => {
   it("exits promptly on SIGTERM with a live-events stream open, and a download cut off by it resumes on the next start", async () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "outpost-stop-"));
+    const dir = tempDir("outpost-stop-");
     dirs.push(dir);
     const files = await startFileServer();
     servers.push(files);

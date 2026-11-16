@@ -121,7 +121,9 @@ installed, for example), say so in the pull request.
 
 - Tests must not reach the internet. Use a local `http.createServer` fixture.
 - Use `createTestApp()` from `apps/server/test/helpers.ts` for a server on a temporary
-  directory.
+  directory, and `tempDir()` from `apps/server/test/temp.ts` for any other folder a test
+  needs: both are removed when the file's tests end, and a run of the server's tests fails
+  if anything is left in its temporary directory.
 - Please add a test with any change in behaviour.
 
 ## Lint and format

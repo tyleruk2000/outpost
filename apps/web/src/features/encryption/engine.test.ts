@@ -490,7 +490,12 @@ function gpgHome(): string | null {
 const gpgVersion = findGpg();
 const home = gpgVersion ? gpgHome() : null;
 
-describe.skipIf(!home)(`a live exchange with ${gpgVersion ?? "gpg (not installed here)"}`, () => {
+// Each test runs gpg several times and does the same work in Outpost's engine, passphrases included: two or
+// three seconds of real work alone, which a busy machine (a full run of the suites beside other work) made
+// longer than the usual five. It does not race, so it has a limit sized to that work.
+const LIVE_MS = 60_000;
+
+describe.skipIf(!home)(`a live exchange with ${gpgVersion ?? "gpg (not installed here)"}`, { timeout: LIVE_MS }, () => {
   const work = home ? path.join(home, "work") : "";
   const gpg = (args: string[], input?: string | Buffer): Buffer =>
     execFileSync("gpg", ["--homedir", home!, "--batch", "--yes", "--pinentry-mode", "loopback", ...args], {
@@ -521,7 +526,7 @@ describe.skipIf(!home)(`a live exchange with ${gpgVersion ?? "gpg (not installed
     theirs = { publicKey: gpg(["-a", "--export", fingerprint]).toString(), fingerprint: fingerprint.toLowerCase() };
     fs.writeFileSync(path.join(work, "alice-public.asc"), alice.publicKey);
     fs.writeFileSync(path.join(work, "alice-private.asc"), alice.privateKey);
-  }, 60_000);
+  }, LIVE_MS);
 
   afterAll(() => {
     try {
@@ -529,8 +534,9 @@ describe.skipIf(!home)(`a live exchange with ${gpgVersion ?? "gpg (not installed
     } catch {
       // The agent ends on its own when its home goes.
     }
-    fs.rmSync(home!, { recursive: true, force: true });
-  });
+    // An agent that is still ending removes its sockets while the folder is being removed: try again then.
+    fs.rmSync(home!, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+  }, LIVE_MS);
 
   it("a key made in Outpost imports into gpg, public and private, under the same fingerprint", () => {
     gpg(["--import", path.join(work, "alice-public.asc")]);

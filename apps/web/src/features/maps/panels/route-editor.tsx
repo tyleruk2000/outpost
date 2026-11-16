@@ -146,7 +146,7 @@ export function RouteEditor({
           <ArrowLeft /> Routes
         </Button>
       </div>
-      <div ref={body} className="scroll-quiet grid min-h-0 flex-1 content-start gap-4 overflow-y-auto px-4 py-4">
+      <div ref={body} className="scroll-quiet grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] content-start gap-4 overflow-y-auto px-4 py-4">
         <div>
           <h3 className="font-title text-lead text-ink">{reshaping ? draft.name : "Draw a route"}</h3>
           {reshaping ? <p className="text-small text-ink-muted">Editing its shape</p> : null}
@@ -188,7 +188,12 @@ export function RouteEditor({
         </div>
 
         <div className="grid gap-1.5">
-          <Button onClick={onAddAtCentre} disabled={!mapReady || isFull(edit)} className="justify-self-start">
+          <Button
+            onClick={onAddAtCentre}
+            disabled={!mapReady || isFull(edit)}
+            // Its words wrap on a narrow phone with large text, where on one line they ran past the panel.
+            className="h-auto min-h-9 max-w-full justify-self-start py-2 text-left whitespace-normal max-md:h-auto max-md:min-h-11"
+          >
             <Crosshair /> Add a point at the centre of the map
           </Button>
           <p className="text-small text-ink-muted max-md:hidden">

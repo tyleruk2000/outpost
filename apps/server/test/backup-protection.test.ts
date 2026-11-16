@@ -11,7 +11,6 @@ import {
 import fs from "node:fs";
 import http from "node:http";
 import https from "node:https";
-import os from "node:os";
 import path from "node:path";
 import { pipeline } from "node:stream/promises";
 import type { BackupStatus, StoredBackup } from "@outpost/shared";
@@ -36,6 +35,7 @@ import {
 import { BACKUP_FOLDER, recordName } from "../src/modules/backup/stored.ts";
 import { prepareDriveDatabase } from "../src/modules/portable/database.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
+import { tempDir } from "./temp.ts";
 
 const apps: TestApp[] = [];
 const scratch: string[] = [];
@@ -45,7 +45,7 @@ afterEach(async () => {
 });
 
 const tmp = (): string => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "outpost-sealed-"));
+  const dir = tempDir("outpost-sealed-");
   scratch.push(dir);
   return dir;
 };

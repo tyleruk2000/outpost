@@ -20,6 +20,7 @@ import {
 } from "../src/modules/portable/runtimes.ts";
 import { extractOneFromTarGz } from "../src/modules/portable/tar.ts";
 import { createTestApp, queueWaitingJobs, type TestApp } from "./helpers.ts";
+import { tempDir as sharedTempDir } from "./temp.ts";
 
 const cleanups: Array<() => Promise<void> | void> = [];
 afterEach(async () => {
@@ -51,7 +52,7 @@ function tar(files: Record<string, Buffer>): Buffer {
 }
 
 function tempDir(): string {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "outpost-portable-"));
+  const dir = sharedTempDir("outpost-portable-");
   cleanups.push(() => fs.rmSync(dir, { recursive: true, force: true }));
   return dir;
 }

@@ -2,7 +2,7 @@
  * Search in two parts: what Outpost holds at once, and what reference collections hold
  * as each of them answers. kiwix-serve is stood in for by one whose archives are slow.
  */
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { referenceTimings, resultsFromEach } from "../src/modules/kiwix/index.ts";
 import { createSearchQueue } from "../src/modules/kiwix/search-queue.ts";
 import { inTurn, missingMessage, referenceBudgets } from "../src/modules/search/service.ts";
@@ -355,40 +355,42 @@ describe("search in two parts", () => {
 });
 
 describe("a search that is dropped", () => {
-  const TWENTY_FOUR = () => Array.from({ length: 24 }, (_, index) => book(index + 1, 120));
+  // Long enough that none of the first three can finish, and let a fourth begin, between the third
+  // beginning and the person going: the test waits for the one and then does the other, not for a time.
+  const TWENTY_FOUR = (delayMs = 400) => Array.from({ length: 24 }, (_, index) => book(index + 1, delayMs));
+  /** Waits for something the server does in its own time, however busy the machine. */
+  const soon = (check: () => void) => vi.waitFor(check, { timeout: 15_000, interval: 5 });
 
   it("asks kiwix-serve for nothing more once the person has gone", async () => {
     const { app, base, kiwix } = await world(TWENTY_FOUR());
     const gone = new AbortController();
     const reading = readReference(base, "water", gone.signal).catch((error: Error) => error.name);
-    await sleep(60);
+    await soon(() => expect(kiwix.started).toHaveLength(3));
     gone.abort();
     expect(await reading).toBe("AbortError");
-    await sleep(40);
     // Only the three that had begun are at kiwix-serve; the other twenty-one were never sent.
-    expect(app.ctx.services.kiwix.searchLoad()).toEqual({ running: 3, waiting: 0 });
+    await soon(() => expect(app.ctx.services.kiwix.searchLoad()).toEqual({ running: 3, waiting: 0 }));
     await kiwix.idle();
     expect(kiwix.started).toHaveLength(3);
     expect(kiwix.wasted()).toBe(0);
-    await sleep(30);
-    expect(app.ctx.services.kiwix.searchLoad()).toEqual({ running: 0, waiting: 0 });
+    await soon(() => expect(app.ctx.services.kiwix.searchLoad()).toEqual({ running: 0, waiting: 0 }));
   });
 
   it("does the same for a search asked for in one part", async () => {
     const { app, base, kiwix } = await world(TWENTY_FOUR());
     const gone = new AbortController();
     const asking = fetch(`${base}/api/search?q=water`, { signal: gone.signal }).catch((error: Error) => error.name);
-    await sleep(60);
+    await soon(() => expect(kiwix.started).toHaveLength(3));
     gone.abort();
     expect(await asking).toBe("AbortError");
-    await sleep(40);
-    expect(app.ctx.services.kiwix.searchLoad().waiting).toBe(0);
+    await soon(() => expect(app.ctx.services.kiwix.searchLoad().waiting).toBe(0));
     await kiwix.idle();
     expect(kiwix.started).toHaveLength(3);
   });
 
   it("leaves nothing piled up inside kiwix-serve when three letters are typed quickly", async () => {
-    const { app, base, kiwix } = await world(TWENTY_FOUR());
+    // What is counted here is bounded, not exact, so the books may be quicker.
+    const { app, base, kiwix } = await world(TWENTY_FOUR(120));
     for (const q of ["w", "wa"]) {
       const gone = new AbortController();
       const reading = readReference(base, q, gone.signal).catch(() => undefined);
@@ -403,7 +405,6 @@ describe("a search that is dropped", () => {
     expect(kiwix.peak()).toBeLessThanOrEqual(3);
     expect(kiwix.started.length).toBeLessThanOrEqual(24 + 6);
     expect(kiwix.started.filter((entry) => entry.endsWith(": wat"))).toHaveLength(24);
-    await sleep(30);
-    expect(app.ctx.services.kiwix.searchLoad()).toEqual({ running: 0, waiting: 0 });
+    await soon(() => expect(app.ctx.services.kiwix.searchLoad()).toEqual({ running: 0, waiting: 0 }));
   });
 });

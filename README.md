@@ -309,9 +309,10 @@ Stated here so nobody has to find them out:
 - **No language model is included.** Answers in prose and Chat need a model server you
   run yourself (Ollama, llama.cpp, LM Studio) and a model you download with it. The
   library is read from documents, notes and book chapters only: reference collections
-  such as Wikipedia are not read. Both have been tested against a stand-in server that
-  speaks the same protocol, **not yet against a real model**. See
-  [Answers and language models](docs/ai.md).
+  such as Wikipedia are not read. Both are tested automatically against a stand-in
+  server that speaks the same protocol, and have been run with two small models
+  (`llama3.2:3b` and `llama3.2:1b`) on Ollama on a Mac; llama.cpp and LM Studio have
+  not been run. See [Answers and language models](docs/ai.md).
 - **Semantic search is off until you switch it on**, and its built-in model is small
   and was trained on English: other languages are matched poorly. A local embedding
   server such as Ollama can be used for a larger or multilingual model. See

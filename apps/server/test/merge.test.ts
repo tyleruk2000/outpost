@@ -20,6 +20,7 @@ import { fileInside } from "../src/modules/merge/drive.ts";
 import type { PageState, Snapshot } from "../src/modules/merge/fingerprint.ts";
 import { cachePath } from "../src/modules/portable/runtimes.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
+import { tempDir } from "./temp.ts";
 
 const cleanups: Array<() => Promise<void> | void> = [];
 afterEach(async () => {
@@ -82,7 +83,7 @@ async function addFile(
 }
 
 async function makeWorld(): Promise<World> {
-  const bundle = fs.mkdtempSync(path.join(process.env.TMPDIR ?? "/tmp", "outpost-bundle-"));
+  const bundle = tempDir("outpost-bundle-");
   cleanups.push(() => fs.rmSync(bundle, { recursive: true, force: true }));
   fs.mkdirSync(path.join(bundle, "server"), { recursive: true });
   fs.writeFileSync(path.join(bundle, "server", "outpost.mjs"), "console.log('outpost')\n");

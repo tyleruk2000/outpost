@@ -110,13 +110,14 @@ export function Segmented<T extends string>({
       value={value}
       onValueChange={(next) => next && onChange(next as T)}
       aria-label={label}
-      className={cn("inline-flex rounded-control border border-border-strong bg-surface p-0.5", className)}
+      // Its choices go on to a second line rather than past the screen, on a narrow phone with large text.
+      className={cn("inline-flex max-w-full flex-wrap rounded-control border border-border-strong bg-surface p-0.5", className)}
     >
       {options.map((option) => (
         <TogglePrimitive.Item
           key={option.value}
           value={option.value}
-          className="flex h-8 items-center gap-1.5 rounded-[3px] px-3 text-small font-medium text-ink-muted transition-colors hover:text-ink data-[state=on]:bg-page data-[state=on]:text-ink data-[state=on]:shadow-[0_0_0_1px_var(--border-strong)] max-md:h-10 [&_svg]:size-4"
+          className="flex h-8 items-center gap-1.5 rounded-[3px] px-3 text-small font-medium text-ink-muted transition-colors hover:text-ink data-[state=on]:bg-page data-[state=on]:text-ink data-[state=on]:shadow-[0_0_0_1px_var(--border-strong)] max-md:h-11 [&_svg]:size-4"
         >
           {option.icon}
           {option.label}

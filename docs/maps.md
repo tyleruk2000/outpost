@@ -521,8 +521,10 @@ A page is a few megabytes at 300 dots to the inch. It is sent with a progress ba
 keeps the file to save or to try again with. Nothing is sent until **Add to library**
 is pressed: making the page still asks the server only for map data.
 
-The page is a picture drawn afresh each time it is made, so a page made twice is two
-documents; the same file added twice is one.
+The file carries the day printed on the page, not the moment it was made, so the same
+page made twice in a day (the same ground, scale, paper, title and layers, from the same
+installed maps) is the same file, and adding it again says it is already in the library.
+Made on another day it carries another date and is another document.
 
 ### The browser's own Print
 

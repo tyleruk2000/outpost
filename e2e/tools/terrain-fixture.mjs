@@ -12,7 +12,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { Compression, TileType } from "../../apps/server/src/modules/maps/pmtiles/header.ts";
-import { buildArchive, tileInBbox } from "../../apps/server/test/fixtures/maps/archive.ts";
+import { buildArchive } from "../../apps/server/test/fixtures/maps/archive.ts";
 import { groundTiles, positionOf } from "../../apps/server/test/fixtures/maps/terrain.ts";
 
 export const BOX = [-3.8, 56.9, -3.1, 57.1];
@@ -25,7 +25,7 @@ const ground = (worldX, worldY) => {
 
 const [file, size] = process.argv.slice(2);
 if (file) {
-  const tiles = groundTiles(ground, { minZoom: 12, maxZoom: 12, size: Number(size) || 64, keep: (z, x, y) => tileInBbox(BOX, z, x, y) });
+  const tiles = groundTiles(ground, { minZoom: 12, maxZoom: 12, size: Number(size) || 64, bbox: BOX });
   const archive = buildArchive({ tiles, bounds: BOX, tileType: TileType.Png, tileCompression: Compression.None });
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, archive.bytes);

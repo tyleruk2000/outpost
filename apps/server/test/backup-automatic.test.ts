@@ -1,5 +1,4 @@
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { type BackupSchedule, nextBackupSlot, previousBackupSlot, type StoredBackup } from "@outpost/shared";
 import Database from "better-sqlite3";
@@ -10,6 +9,7 @@ import { RETRY_AFTER_FAILURE_MS } from "../src/modules/backup/automatic.ts";
 import { BACKUP_FOLDER, backupFileName, parseBackupName, recordName, retentionPlan } from "../src/modules/backup/stored.ts";
 import { prepareDriveDatabase } from "../src/modules/portable/database.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
+import { tempDir } from "./temp.ts";
 
 const apps: TestApp[] = [];
 afterEach(async () => {
@@ -140,7 +140,7 @@ describe("when a backup is due", () => {
   });
 
   it("makes one backup, not one for each time missed, when the server was off for days", async () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "outpost-backup-off-"));
+    const dir = tempDir("outpost-backup-off-");
     let w = await world({}, dir);
     // Chosen three days ago by the real clock, so that the restart below finds one owed.
     w.clock.now = Date.now() - 3 * DAY;
@@ -388,7 +388,7 @@ describe("a backup that does not read back", () => {
     await backUpNow(w);
     const [good] = await w.stored();
     const file = path.join(w.folder, good!.name);
-    const work = fs.mkdtempSync(path.join(os.tmpdir(), "outpost-verify-"));
+    const work = tempDir("outpost-verify-");
     expect((await verifyBackupFile(file, work)).manifest).toMatchObject({ format: "outpost-backup", appVersion: "0.1.0" });
 
     const damaged = path.join(work, "damaged.zip");
@@ -402,6 +402,28 @@ describe("a backup that does not read back", () => {
     // The copies of the database made for checking are not left behind.
     expect(fs.readdirSync(work).sort()).toEqual(["cut.zip", "damaged.zip"]);
     fs.rmSync(work, { recursive: true, force: true });
+  });
+
+  it("is not listed while it is being checked, and is listed as verified once it has been", async () => {
+    const w = await world();
+    await choose(w);
+    let checked = () => {};
+    let checking = (_file: string) => {};
+    const reached = new Promise<string>((resolve) => (checking = resolve));
+    w.app.ctx.services.backups.setBeforeCheck(async (file) => {
+      checking(file);
+      await new Promise<void>((resolve) => (checked = resolve));
+    });
+    const started = await w.app.api("POST", "/api/backup/run");
+    expect(started.status).toBe(200);
+    // Part of the way through its check: whole on the disk, but not yet a backup anyone should be shown.
+    expect(path.basename(await reached)).toMatch(/\.zip\.part$/);
+    expect(await w.stored()).toEqual([]);
+    checked();
+    w.app.ctx.services.backups.setBeforeCheck(undefined);
+    await w.app.ctx.jobs.whenIdle();
+    expect((await w.stored()).map((backup) => backup.check)).toEqual(["verified"]);
+    expect(fs.readdirSync(w.folder).filter((name) => name.endsWith(".part"))).toEqual([]);
   });
 
   it("is not counted, is reported, and stays out of the way of the next good one", async () => {
@@ -526,7 +548,7 @@ describe("a backup that does not read back", () => {
 
 describe("restoring from the list", () => {
   it("stages the chosen backup, and after a restart the data is back", async () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "outpost-backup-restore-"));
+    const dir = tempDir("outpost-backup-restore-");
     let w = await world({}, dir);
     await w.app.api("PATCH", "/api/settings", { "downloads.concurrency": 5 });
     w.app.ctx.services.search.upsert({

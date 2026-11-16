@@ -502,7 +502,7 @@ describe("the sums behind the screen", () => {
   it("costs an index from the measured figures", () => {
     expect(indexCost(1000, 384)).toEqual({ disk: "2.16 MB", time: "45 seconds" });
     expect(indexCost(100_000, 384)).toEqual({ disk: "216 MB", time: "1 hour 15 minutes" });
-    expect(indexCost(0, 384).time).toBe("1 seconds");
+    expect(indexCost(0, 384).time).toBe("1 second");
   });
 
   it("judges the time left from how fast the build is really going", () => {

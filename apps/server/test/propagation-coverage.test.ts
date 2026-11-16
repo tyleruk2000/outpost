@@ -246,8 +246,9 @@ describeWithVoacapData("what a coverage request may ask for", () => {
     for (const job of paused) app.ctx.jobs.cancel(job.id);
     await app.ctx.jobs.whenIdle();
 
-    // The same map asked for twice while it is being worked out is one job.
-    const fine = { ...britain, resolution: "fine" as const, frequencyMhz: 14.18 };
+    // The same map asked for twice while it is being worked out is one job. A strip of sixteen cells does: the
+    // whole of Britain at the finest grid (1,872 cells) took most of the time allowed on a busy machine.
+    const fine = { ...strip(56), resolution: "fine" as const, frequencyMhz: 14.18 };
     const [first, second] = await Promise.all([
       app.api("POST", "/api/radio/propagation/coverage", fine),
       app.api("POST", "/api/radio/propagation/coverage", fine),

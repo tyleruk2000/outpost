@@ -26,7 +26,8 @@ export function PageHeader({
   return (
     <header className={cn("mb-8 flex flex-wrap items-end justify-between gap-x-6 gap-y-4", className)}>
       <div className="min-w-0 max-w-[60ch]">
-        <h1 className="font-title text-title text-ink">{title}</h1>
+        {/* A long word ("Communication") in the title's size is wider than a narrow phone with large text: it is broken. */}
+        <h1 className="font-title text-title text-ink hyphens-auto break-words">{title}</h1>
         {description ? <p className="mt-2 text-body text-ink-muted">{description}</p> : null}
         {under ? <ScreensUnder parent={under} className="mt-2" /> : null}
       </div>

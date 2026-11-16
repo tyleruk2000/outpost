@@ -34,7 +34,9 @@ export function Field({
   const hintId = hint ? `${id}-hint` : undefined;
   const errorId = error ? `${id}-error` : undefined;
   return (
-    <div className={cn("grid gap-1.5", className)}>
+    // One column that may be narrower than the control's words: a select whose choice is long cuts it short instead
+    // of holding the field, and the form round it, wider than a phone's screen when the text is large.
+    <div className={cn("grid grid-cols-[minmax(0,1fr)] gap-1.5", className)}>
       <label htmlFor={id} className="text-small font-medium text-ink">
         {label}
       </label>

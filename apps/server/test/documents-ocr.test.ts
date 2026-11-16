@@ -10,7 +10,6 @@
  * A picture of three lines takes about a tenth of a second, so these run with the rest.
  */
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import type { DocumentDto, OcrStatus } from "@outpost/shared";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -20,6 +19,7 @@ import { exifOrientation } from "../src/modules/ocr/tesseract.ts";
 import { installedLanguages, parseLanguages } from "../src/modules/ocr/tesseract-assets.ts";
 import { buildGreyPng, buildPdf, buildScannedPdf, multipart, type UploadFile } from "./fixtures/documents/builders.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
+import { tempDir } from "./temp.ts";
 
 const fixture = (name: string) => fs.readFileSync(path.join(import.meta.dirname, "fixtures/ocr", name));
 const firstPng = fixture("scan-first.png");
@@ -66,12 +66,20 @@ async function read(id: string, body: Record<string, unknown> = {}): Promise<Doc
 }
 
 async function until(check: () => boolean, what: string): Promise<void> {
-  const deadline = Date.now() + 15_000;
+  const deadline = Date.now() + 45_000;
   while (!check()) {
     if (Date.now() > deadline) throw new Error(`Timed out waiting for ${what}`);
     await new Promise((resolve) => setTimeout(resolve, 10));
   }
 }
+
+/**
+ * The two tests of a long scan read 24 pages with the real engine, which is work and not waiting: 3 to 5
+ * seconds on an idle machine, and more than the usual 20 when a busy one gives the engine a quarter of a core.
+ * Nothing in them races; they need fewer pages than that only if the job writes down what it has read more
+ * often than every ten, which is what the restart test is of.
+ */
+const LONG_SCAN_MS = 90_000;
 
 const ocrJobs = (id: string) => app.ctx.jobs.findBySubject(`document:${id}`).filter((job) => job.type === OCR_JOB);
 const progressFile = (id: string) => path.join(app.dir, "data/extracted", `${id}.ocr.json`);
@@ -326,7 +334,7 @@ describe("reading a scanned PDF", () => {
     expect(ocrJobs(done.id)).toHaveLength(1);
   });
 
-  it("keeps the pages read so far when it is cancelled, and carries on from them", async () => {
+  it("keeps the pages read so far when it is cancelled, and carries on from them", { timeout: LONG_SCAN_MS }, async () => {
     const pages = Array.from({ length: 24 }, (_, index) => (index % 2 === 0 ? firstPng : secondPng));
     const scan = await add({ name: "long scan.pdf", content: buildScannedPdf(pages) });
     const started = await app.api("POST", `/api/documents/${scan.id}/ocr`, {});
@@ -373,8 +381,8 @@ describe("reading a scanned PDF", () => {
 });
 
 describe("a restart in the middle of a long document", () => {
-  it("carries on from the pages already read", async () => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "outpost-test-ocr-"));
+  it("carries on from the pages already read", { timeout: LONG_SCAN_MS }, async () => {
+    const dir = tempDir("outpost-test-ocr-");
     try {
       app = await createTestApp({}, dir);
       const pages = Array.from({ length: 24 }, (_, index) => (index % 2 === 0 ? firstPng : secondPng));

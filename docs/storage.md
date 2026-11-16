@@ -918,11 +918,11 @@ storage location. It is off until you choose a location.
 - **How it is made.** Each backup is a job (it shows under Downloads with the other
   background work). The database is copied with SQLite's online backup, which gives one
   consistent state even while notes are being saved. The file is written as
-  `<name>.zip.part`, flushed to the disk, and renamed when complete. Then it is read
-  back from the location from start to finish: every file in it must match the checksum
-  the archive recorded, and the database inside must pass SQLite's integrity check.
-  Only then is it recorded as verified, in a small file beside it,
-  `<name>.verified.json`.
+  `<name>.zip.part` and flushed to the disk. Then it is read back from the location
+  from start to finish: every file in it must match the checksum the archive recorded,
+  and the database inside must pass SQLite's integrity check. Only then is it recorded
+  as verified, in a small file beside it, `<name>.verified.json`, and given its own
+  name; so a backup is not listed while it is being checked.
 - **If the check fails.** The job fails and says why, the screen reports it, and the
   file is kept, shown as **Not verified**. It is never counted towards the number to
   keep and never replaces a good backup. A scheduled backup that failed is tried again

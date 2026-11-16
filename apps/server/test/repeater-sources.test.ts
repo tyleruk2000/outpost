@@ -1,7 +1,6 @@
 import fs from "node:fs";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
-import os from "node:os";
 import path from "node:path";
 import {
   DUPLICATE_HZ,
@@ -28,6 +27,7 @@ import { loadRepeaterSources, type RepeaterSource, repeaterSourcesSchema } from 
 import { multipart } from "./fixtures/documents/builders.ts";
 import { createRepeaterSourceStandIn } from "./fixtures/repeaters/source-stand-in.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
+import { tempDir } from "./temp.ts";
 
 const fixture = (name: string) => fs.readFileSync(path.join(import.meta.dirname, "fixtures/repeaters", name), "utf8");
 
@@ -301,7 +301,7 @@ describe("repeater sources", () => {
   const repoCatalog = path.resolve(import.meta.dirname, "../../../catalog");
   let dir: string;
   beforeEach(() => {
-    dir = fs.mkdtempSync(path.join(os.tmpdir(), "outpost-repeater-sources-"));
+    dir = tempDir("outpost-repeater-sources-");
   });
   afterEach(() => fs.rmSync(dir, { recursive: true, force: true }));
   const writeOwn = (content: unknown) => {
@@ -606,7 +606,7 @@ describe("fetching a list from a source", () => {
 
 /** A server whose repeater sources are the stand-in's, in place of those shipped. */
 async function appWithSources(): Promise<TestApp> {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "outpost-test-"));
+  const dir = tempDir("outpost-test-");
   fs.mkdirSync(path.join(dir, "data", "catalog", "repeaters"), { recursive: true });
   const base = {
     pageUrl: "https://example.org/lists",

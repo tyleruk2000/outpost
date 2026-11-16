@@ -14,7 +14,6 @@ import { createHash } from "node:crypto";
 import fs from "node:fs";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
-import os from "node:os";
 import path from "node:path";
 import {
   ANTENNA_PRESETS,
@@ -34,6 +33,7 @@ import { MapsBundle, type MapsManifest, P533_MANIFEST } from "../src/modules/pro
 import { checkQuestion, figure, inputFile, NOISE_NAMES, parseReport, wattsToDbKw } from "../src/modules/propagation/p533/input.ts";
 import { createP533Wasi, normalisePath, ProgramExit } from "../src/modules/propagation/p533/wasi.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
+import { tempDir } from "./temp.ts";
 
 const iso = ANTENNA_PRESETS.find((preset) => preset.id === "isotropic")!.spec;
 const dipole = ANTENNA_PRESETS.find((preset) => preset.id === "low-dipole")!.spec;
@@ -354,7 +354,7 @@ function standInManifest(baseUrl: string, files: Array<{ name: string; bytes: Bu
 describe("on a real server, without the engine or the maps", () => {
   let app: TestApp;
   let server: http.Server;
-  const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "outpost-p533-"));
+  const scratch = tempDir("outpost-p533-");
   // Stand-in files, a few bytes each, under the ITU's names.
   const standIn = ["ionos11.bin", "COEFF11W.txt", "P1239-3 Decile Factors.txt"].map((name, i) => ({
     name,
@@ -436,7 +436,7 @@ if (realAbsent) console.warn(`[p533 with real data] skipped: ${realAbsent}`);
 describe.skipIf(realAbsent !== null)("on a real server, with the ITU's engine and maps", () => {
   let app: TestApp;
   let server: http.Server;
-  const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "outpost-p533-real-"));
+  const scratch = tempDir("outpost-p533-real-");
 
   beforeAll(async () => {
     server = fileServer(new Map(P533_MANIFEST.maps.files.map((file) => [file.path, () => fs.readFileSync(path.join(mapsDir, file.name))])));

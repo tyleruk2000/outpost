@@ -4,6 +4,7 @@
  * second decoder.
  */
 import zlib from "node:zlib";
+import { bboxToTileRect } from "../../../src/modules/maps/pmtiles/tiles.ts";
 import type { FixtureTile } from "./archive.ts";
 
 /** A PNG writer for tests: 8-bit RGB or RGBA, each row stored with the filter asked for. */
@@ -90,18 +91,27 @@ export const positionOf = (worldX: number, worldY: number): { lat: number; lon: 
 
 /**
  * Terrain tiles (PNG, Terrarium) of a ground, for every tile from `minZoom` to
- * `maxZoom` that `keep` accepts. Each pixel holds the height at its centre.
+ * `maxZoom` that `keep` accepts and, given a `bbox`, that the box touches. Each pixel
+ * holds the height at its centre. A box is far quicker than a `keep` that tests it: at
+ * zoom 12 there are 16.8 million tiles to ask about, which took seconds a call.
  */
 export function groundTiles(
   ground: Ground,
-  options: { maxZoom: number; minZoom?: number; keep?: (z: number, x: number, y: number) => boolean; size?: number },
+  options: {
+    maxZoom: number;
+    minZoom?: number;
+    bbox?: [number, number, number, number];
+    keep?: (z: number, x: number, y: number) => boolean;
+    size?: number;
+  },
 ): FixtureTile[] {
   const size = options.size ?? 64;
   const keep = options.keep ?? (() => true);
   const tiles: FixtureTile[] = [];
   for (let z = options.minZoom ?? 0; z <= options.maxZoom; z += 1) {
-    for (let x = 0; x < 2 ** z; x += 1) {
-      for (let y = 0; y < 2 ** z; y += 1) {
+    const rect = options.bbox ? bboxToTileRect(options.bbox, z) : { minX: 0, minY: 0, maxX: 2 ** z - 1, maxY: 2 ** z - 1 };
+    for (let x = rect.minX; x <= rect.maxX; x += 1) {
+      for (let y = rect.minY; y <= rect.maxY; y += 1) {
         if (!keep(z, x, y)) continue;
         const data = encodePng(
           size,

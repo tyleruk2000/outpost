@@ -7,7 +7,7 @@ import { type Bbox, formatBytes, type MapAreaSize, type NoteRef, type TrackDto }
 import { useMutation } from "@tanstack/react-query";
 import { CircleCheck } from "lucide-react";
 import { useEffect, useId, useState } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { toast } from "sonner";
 import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
@@ -22,22 +22,26 @@ import { Fact, PanelHeading } from "@/features/maps/ui";
 import { errorMessage } from "@/lib/api";
 import { formatNumber, plural } from "@/lib/utils";
 import { areaRefusal, dismissAreaWork, measureArea, roomLeft, startArea, stopArea, useAreaWork } from "./area";
-import { DEVICE, DeviceIcon, KEEP_ON_THIS_DEVICE, ON_THIS_DEVICE } from "./device";
+import { DEVICE, DeviceIcon, KEEP_ON_THIS_DEVICE } from "./device";
 import { keepNote, keepPlaces, keepTrack, PLACES_ID } from "./keep";
 import { keepingSupported, outOfRoomMessage, removeKept, useKept } from "./store";
 
 const KEPT_PATH = "/kept";
+const HTTPS_SETTINGS = "/settings#https";
 const failed = (error: unknown) => toast.error(outOfRoomMessage(error) ?? errorMessage(error));
 
-/** What the action says when this browser cannot keep anything. The screen it names says why, and what to do. */
-const explain = () =>
-  toast(
-    `This browser can only keep things on this ${DEVICE} when Outpost is opened over HTTPS. “${ON_THIS_DEVICE}” says why, and what to do.`,
-  );
+/** What a keeping action says where this browser cannot keep anything (a plain http address): why, and where to put it right. */
+export const KEEPING_NEEDS_HTTPS = `Keeping things on this ${DEVICE} needs Outpost opened at an HTTPS address, which this one is not. Settings, “HTTPS on your network”, says how to give it one.`;
+
+function useExplain(): () => void {
+  const navigate = useNavigate();
+  return () => toast(KEEPING_NEEDS_HTTPS, { action: { label: "Open Settings", onClick: () => navigate(HTTPS_SETTINGS) } });
+}
 
 /** Runs one keeping action and says whether it is still running. Plain state: these controls sit in panels of other screens. */
 function useKeeping<T>(action: () => Promise<T>, done: (result: T) => void): { busy: boolean; run: () => void } {
   const [busy, setBusy] = useState(false);
+  const explain = useExplain();
   return {
     busy,
     run: () => {
@@ -53,6 +57,7 @@ function useKeeping<T>(action: () => Promise<T>, done: (result: T) => void): { b
 /** In a page's menu: keep the page and the pages inside it, or take the copy off again. */
 export function KeepNoteMenuItem({ note }: { note: NoteRef }) {
   const kept = useKept();
+  const explain = useExplain();
   if (!keepingSupported()) {
     return (
       <MenuItem onSelect={explain}>
@@ -273,10 +278,11 @@ export function KeepAreaSection({ engine }: { engine: MapEngine | null }) {
 
       {!keepingSupported() ? (
         <Notice tone="info" className="mt-3">
-          This browser can only keep things when Outpost is opened over HTTPS.{" "}
-          <Link to={KEPT_PATH} className="font-medium underline underline-offset-2">
-            Why, and what to do
-          </Link>
+          Keeping a map area on this {DEVICE} needs Outpost opened at an HTTPS address, which this one is not.{" "}
+          <Link to={HTTPS_SETTINGS} className="font-medium underline underline-offset-2">
+            Settings, HTTPS on your network
+          </Link>{" "}
+          says how to give it one.
         </Notice>
       ) : !basemap ? (
         <p className="mt-3 text-small text-ink-muted">Download a map region first; an area is kept from what is installed.</p>

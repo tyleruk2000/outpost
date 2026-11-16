@@ -33,6 +33,7 @@ describe("the list of saved places", () => {
     const onOpen = vi.fn();
     render(
       <PlacesList markers={loaded(places)} onOpen={onOpen} onToggleFavourite={() => {}} onMove={onMove} onAdd={() => {}} canAddOnMap />,
+      { wrapper: MemoryRouter },
     );
     await userEvent.click(screen.getByRole("button", { name: "Move Esk Hause shelter on the map" }));
     expect(onMove).toHaveBeenCalledWith(places[0]);
@@ -51,6 +52,7 @@ describe("the list of saved places", () => {
         onAdd={() => {}}
         canAddOnMap
       />,
+      { wrapper: MemoryRouter },
     );
     screen.getByRole("button", { name: /^Esk Hause shelter/ }).focus();
     await userEvent.tab();
@@ -65,6 +67,7 @@ describe("the list of saved places", () => {
     const onShowSun = vi.fn();
     render(
       <PlacesList markers={loaded([])} onOpen={() => {}} onToggleFavourite={() => {}} onAdd={() => {}} canAddOnMap onShowSun={onShowSun} />,
+      { wrapper: MemoryRouter },
     );
     expect(screen.getByRole("heading", { name: "No saved places yet" })).toBeInTheDocument();
     expect(
@@ -80,7 +83,9 @@ describe("the list of saved places", () => {
       marker("m2", "Styhead Tarn", { icon: "water", color: "blue" }),
       marker("m3", "Just a pin", { color: "red" }),
     ];
-    render(<PlacesList markers={loaded(list)} onOpen={() => {}} onToggleFavourite={() => {}} onAdd={() => {}} canAddOnMap />);
+    render(<PlacesList markers={loaded(list)} onOpen={() => {}} onToggleFavourite={() => {}} onAdd={() => {}} canAddOnMap />, {
+      wrapper: MemoryRouter,
+    });
     const row = (name: RegExp) => screen.getByRole("button", { name });
     const mark = (name: RegExp) => row(name).querySelector("[data-place-icon]") as HTMLElement;
     expect(mark(/^Esk Hause shelter/)).toHaveAttribute("data-place-icon", "shelter");
@@ -101,12 +106,17 @@ describe("the list of saved places", () => {
   it("shows a place kept before there were icons as the plain pin it was", () => {
     const old = { ...marker("m1", "Old cairn") } as Partial<MarkerDto>;
     delete old.icon;
-    render(<PlacesList markers={loaded([old as MarkerDto])} onOpen={() => {}} onToggleFavourite={() => {}} onAdd={() => {}} canAddOnMap />);
+    render(
+      <PlacesList markers={loaded([old as MarkerDto])} onOpen={() => {}} onToggleFavourite={() => {}} onAdd={() => {}} canAddOnMap />,
+      { wrapper: MemoryRouter },
+    );
     expect(screen.getByRole("button", { name: "Old cairn" }).querySelector("[data-place-icon]")).toHaveAttribute("data-place-icon", "pin");
   });
 
   it("has no move button when there is no map to move it on", () => {
-    render(<PlacesList markers={loaded(places)} onOpen={() => {}} onToggleFavourite={() => {}} onAdd={() => {}} canAddOnMap={false} />);
+    render(<PlacesList markers={loaded(places)} onOpen={() => {}} onToggleFavourite={() => {}} onAdd={() => {}} canAddOnMap={false} />, {
+      wrapper: MemoryRouter,
+    });
     expect(screen.queryByRole("button", { name: /^Move / })).not.toBeInTheDocument();
   });
 });

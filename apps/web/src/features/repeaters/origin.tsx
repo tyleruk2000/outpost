@@ -54,7 +54,9 @@ export function useOrigin(initial?: LatLon | null): Origin {
   useEffect(() => {
     if (choice !== "here" || given || here) return;
     if (!("geolocation" in navigator) || !window.isSecureContext) {
-      toast.error("This browser will not share the device's location with a page that is not opened over HTTPS or on the device itself.");
+      toast.error(
+        "Browsers only share a device's location with pages opened over HTTPS or on the device itself. Turn on Settings → HTTPS on your network, then open Outpost at its https address.",
+      );
       setChoice("none");
       return;
     }
