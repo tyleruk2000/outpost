@@ -55,7 +55,15 @@ function Words({ text, sources }: { text: string; sources: Sources | null }): Re
 }
 
 const plain = (runs: readonly MarkdownInline[]): string =>
-  runs.map((run) => (run.t === "break" ? " " : run.t === "image" ? run.alt : "v" in run ? run.v : plain(run.c))).join("");
+  runs
+    .map((run) => {
+      if (run.t === "break") return " ";
+      if (run.t === "image" || run.t === "picture") return run.alt;
+      // A place a link can land on: it shows nothing. A model's reply never has one; a book's chapter may.
+      if (run.t === "anchor") return "";
+      return "v" in run ? run.v : plain(run.c);
+    })
+    .join("");
 
 function Inline({ runs, sources }: { runs: readonly MarkdownInline[]; sources: Sources | null }): ReactNode {
   return runs.map((run, index) => {
