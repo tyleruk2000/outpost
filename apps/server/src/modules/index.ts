@@ -15,6 +15,7 @@ import { registerContacts } from "./contacts/index.ts";
 import { registerDatabase } from "./database/index.ts";
 import { registerDocuments } from "./documents/index.ts";
 import { registerDownloads } from "./downloads/index.ts";
+import { registerEmergencyPlans } from "./emergency-plans/index.ts";
 import { registerEncryption } from "./encryption/index.ts";
 import { registerHttps } from "./https/index.ts";
 import { registerImports } from "./imports/index.ts";
@@ -73,4 +74,5 @@ export const modules: ModuleRegister[] = [
   registerNetwork,
   registerLayers,
   registerWeather,
+  registerEmergencyPlans,
 ];

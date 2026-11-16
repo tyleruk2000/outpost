@@ -61,6 +61,8 @@ const GROUPS: Record<Exclude<DatabaseGroupId, "other">, string[]> = {
     "weather_readings",
   ],
 };
+// Emergency plans (modules/emergency-plans), on a line of their own so that other additions merge cleanly.
+GROUPS.prepare.push("emergency_plans");
 export const GROUP_ORDER: DatabaseGroupId[] = ["search", "meaning", "library", "notes", "maps", "radio", "prepare", "other"];
 
 /** What each count is, as the services that own the tables count it. */
@@ -89,6 +91,7 @@ const COUNTS: Array<{ id: DatabaseCountId; table: string; sql: string }> = [
   { id: "scenarios", table: "nuclear_scenarios", sql: "SELECT count(*) AS n FROM nuclear_scenarios" },
   { id: "networkDevices", table: "network_devices", sql: "SELECT count(*) AS n FROM network_devices" },
   { id: "pressureReadings", table: "weather_readings", sql: "SELECT count(*) AS n FROM weather_readings" },
+  { id: "emergencyPlans", table: "emergency_plans", sql: "SELECT count(*) AS n FROM emergency_plans" },
 ];
 
 function groupOf(table: string): DatabaseGroupId {

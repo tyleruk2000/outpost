@@ -794,6 +794,27 @@ readings. What it sends, and to whom:
   refused. Nothing is run, fetched or used as a path. The preview changes nothing, and
   applying is one transaction.
 
+### Emergency plans
+
+Preparedness → Emergency plans ([emergency-plans.md](emergency-plans.md)) keeps the
+household's plans: names, what each person must remember, anything medical a person
+chose for their wallet card, and where they will meet. As everywhere, anyone who can
+reach Outpost can read and change all of it. What it adds:
+
+- **Links, not copies.** Contacts and saved places are kept by id; the server reads
+  their current name, numbers and position when a plan is asked for. Nothing is copied
+  but the name a linked thing had, to name it if it is deleted.
+- **Medical words** go only on that person's own wallet card, not on the fridge sheet,
+  the grab list or the "use now" view.
+- **The cards hold other people's details.** "Add to library" asks first, saying that
+  everyone on the network can then read and search them, and that they go into every
+  backup and do not change when the plan does.
+- **No lookups.** No route of the module makes an outbound request. Adding missing
+  supplies to the shopping list is the web app calling `POST /api/supplies/shopping`.
+- **Limits.** 200 plans, 120 steps, 30 people and 30 contacts, 12 places, 120
+  supplies and 40 links to a plan, field lengths as in `PLAN_LIMITS`. A GET changes
+  nothing: opening a plan is recorded by a POST the screen sends.
+
 ### Paths
 
 Content is recorded as *(storage location, relative path)*, and storage locations can

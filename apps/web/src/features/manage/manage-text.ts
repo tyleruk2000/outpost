@@ -286,6 +286,7 @@ export function personalWords(personal: NonNullable<CleanupPlan["personal"]>): s
   if (personal.networkDevices) parts.push(plural(personal.networkDevices, "device found on the network", "devices found on the network"));
   const weather = weatherWords(personal.weather);
   if (weather) parts.push(weather);
+  if ((personal.emergencyPlans ?? 0) > 0) parts.push(plural(personal.emergencyPlans ?? 0, "emergency plan"));
   if (personal.settings > 0) parts.push(plural(personal.settings, "changed setting"));
   if (personal.vectors > 0) parts.push(plural(personal.vectors, "semantic vector"));
   parts.push("the history of downloads and other work");
@@ -331,6 +332,7 @@ export function resultSentences(result: CleanupResult): string[] {
       suppliesWords(supplies),
       (nuclearScenarios ?? 0) > 0 ? plural(nuclearScenarios!, "saved nuclear effects scenario") : null,
       weatherWords(weather),
+      (result.personal.emergencyPlans ?? 0) > 0 ? plural(result.personal.emergencyPlans ?? 0, "emergency plan") : null,
       settings > 0 ? plural(settings, "changed setting") : null,
       "the history",
     ].filter((part): part is string => part !== null);

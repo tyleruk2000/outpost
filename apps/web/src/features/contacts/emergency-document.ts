@@ -83,7 +83,7 @@ export const entriesWithUnwritable = (contacts: ContactDto[]): number =>
  * pictures in the device's type; a Chinese or Japanese character there is a full em
  * wide, so they are counted as that, and anything else the typeface lacks as an average letter.
  */
-function measure(text: string, size: number, bold = false): number {
+export function measure(text: string, size: number, bold = false): number {
   let width = 0;
   for (const character of text) {
     if (writable(character)) width += textWidth(character, size, bold);

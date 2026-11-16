@@ -866,6 +866,33 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   home place when they were last fetched.
 - The fetched copies are listed and cleared under Manage and clean up; places, copies
   and readings go with "erase everything". Migration `0021_weather`.
+#### Emergency plans (Preparedness)
+
+- **Preparedness → Emergency plans**: a household's own plans for a power cut,
+  flooding, no phone or internet, a storm, snow and ice, a heatwave, sheltering at home
+  and leaving at short notice, each started from a template whose every step quotes a
+  dated official source whose own terms allow its words to be copied (Be Ready, GOV.UK
+  and the Environment Agency, and the Met Office under the Open Government Licence;
+  Ofcom unchanged, by its permission), or from blank. Publishers whose terms do not
+  (the British Red Cross, Ready.gov) are pointed to, never quoted. The screen tells the
+  source's words from words changed and from the household's own, and lists what was
+  taken out; the licence statements go with the words on screen and on paper. Where no
+  official guidance was found, the template asks instead of advising.
+- Steps for before, during and after; the household and what each must remember;
+  people to contact in order, linked from Contacts, with an out-of-area contact; places
+  to meet, linked from saved places; how to communicate if the phones fail, with a
+  communication plan; supplies set beside the inventory (days of food and water held
+  against days wanted, each thing in stock, low or missing, and one press to put what
+  is missing on the shopping list); a power plan's headline figure; where things are;
+  notes and links. A contact or place deleted since is shown as missing, not dropped.
+- "Use now": only the steps to tick (each tick kept with its time), the numbers to call
+  and the places to meet, in large type. Reset for next time. A review is asked for
+  after a period the household sets.
+- Cards to print: wallet cards that fold to bank-card size, four to a sheet with cut and
+  fold marks; a fridge sheet on one page; a grab list. Names in other scripts are drawn
+  as pictures with the words kept for search. Migration 0018. See
+  [docs/emergency-plans.md](docs/emergency-plans.md).
+
 #### On a phone, out of reach of the server
 
 - The web app keeps itself in the browser with a service worker, so it opens when the

@@ -1322,6 +1322,30 @@ export const weatherReadings = sqliteTable(
   (table) => [index("weather_readings_taken_idx").on(table.takenAt)],
 );
 
+// ── Emergency plans (Preparedness) ──────────────────────────────────────────
+
+/**
+ * A household's emergency plan. What the person writes is `body` (steps, people,
+ * contacts, places, supplies, where things are, links), as `PlanBody`; the plan in use
+ * (when it was started and when each step was ticked) is `use`, kept apart so that a
+ * tick never overwrites an edit made on another device, nor an edit a tick.
+ */
+export const emergencyPlans = sqliteTable("emergency_plans", {
+  id: id(),
+  name: text("name").notNull(),
+  kind: text("kind").notNull(),
+  kindText: text("kind_text").notNull().default(""),
+  templateId: text("template_id"),
+  emergencyNumber: text("emergency_number").notNull().default("999"),
+  reviewEveryDays: integer("review_every_days"),
+  body: json<Record<string, unknown>>("body").notNull(),
+  use: json<Record<string, unknown>>("use").notNull(),
+  reviewedAt: integer("reviewed_at").notNull(),
+  openedAt: integer("opened_at"),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+});
+
 export const nowMs = sql`(unixepoch('subsec') * 1000)`;
 
 /**

@@ -129,6 +129,8 @@ export interface CleanupPlan {
     networkDevices?: number;
     /** Weather places, barometer readings and the copies fetched for them; see `WeatherKept`. Absent from a plan made before it was counted. */
     weather?: WeatherKept;
+    /** Emergency plans (Preparedness). Absent from a plan made before they were counted. */
+    emergencyPlans?: number;
     settings: number;
     vectors: number;
     /** Copies of the database and attachments that a restore set aside. */
@@ -201,6 +203,7 @@ export interface CleanupResult extends Record<string, unknown> {
     nuclearScenarios?: number;
     networkDevices?: number;
     weather?: WeatherKept;
+    emergencyPlans?: number;
     settings: number;
   };
 }

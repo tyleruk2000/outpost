@@ -4,10 +4,17 @@
  * screen, add an entry here and a route in app.tsx. Keep one entry to one line group, so
  * that two people adding screens at once meet only here.
  */
-import { CloudSun, Package, Radius } from "lucide-react";
+import { ClipboardList, CloudSun, Package, Radius } from "lucide-react";
 import type { SectionScreen } from "@/components/section";
 
 export const prepareScreens: SectionScreen[] = [
+  {
+    to: "/prepare/plans",
+    label: "Emergency plans",
+    icon: ClipboardList,
+    about:
+      "What your household will do in a power cut, a flood, severe weather or with no phone: steps from official guidance, contacts, places to meet, supplies, and cards to print.",
+  },
   {
     to: "/prepare/supplies",
     label: "Supplies",
