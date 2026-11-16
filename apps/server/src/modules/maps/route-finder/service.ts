@@ -75,12 +75,23 @@ export const MAX_ROUTE_BYTES = 24 * 1024 * 1024;
 export const MAX_SECTIONS = 100;
 /** Ways with the same name whose ends are this near belong to one path; farther apart, they are two paths. */
 const PATH_CLUSTER_METERS = 300;
-/** Previews held so that "Add" need not ask the source again, and for how long. */
-const MAX_HELD_PREVIEWS = 3;
+/**
+ * Previews are held so that "Add" need not ask the source again, for this long. The
+ * screen offers "Add" for every preview it fetched in that time (stepping through the
+ * sections of a long trail and back again), so all of them are held, up to a bound on
+ * memory: a held point takes about 73 bytes (measured on Node 24, 16 November 2026: a
+ * route of 190,001 points held 13.9 MB), so the largest route allowed is some 15 MB
+ * and the most that is ever held, three of those, some 44 MB. Sections of a trail are
+ * a few thousand points each. The oldest are let go first when there is no more room.
+ */
 const PREVIEW_HOLD_MS = 15 * 60_000;
+export const MAX_HELD_POINTS = 3 * MAX_ROUTE_POINTS;
+/** More than a person can step through in the time, whatever their size: a route lists at most 100 sections. */
+const MAX_HELD_PREVIEWS = 200;
 /** Heights are read at about this spacing on a long route, so it never touches thousands of terrain tiles. */
 const HEIGHT_SAMPLES = 20_000;
 
+const NOT_HELD = "That preview is no longer held. Choose the route again to fetch it afresh, then add it.";
 const TOO_LARGE_SEARCH =
   "That search matched more than Outpost will read in one go. Add more of the name, or zoom in and search the map view.";
 const tooLargeRoute = (name: string) =>
@@ -232,6 +243,14 @@ interface HeldPreview {
   lines: Point[][];
   alternatives: Point[][];
   credit: TrackSource;
+  /** How many points it holds: what it counts for against `MAX_HELD_POINTS`. */
+  points: number;
+  /**
+   * Set when "Add" is first asked for with this preview's token, before anything is
+   * waited for. A second request with the same token (a double click, a retry while a
+   * long route's heights are read) is given the route this one makes, not another.
+   */
+  adding?: Promise<RouteSaveResponse>;
 }
 
 export interface RouteFinderService {
@@ -253,6 +272,8 @@ export interface RouteFinderDeps {
 }
 
 const round6 = (value: number) => Math.round(value * 1e6) / 1e6;
+/** How far apart heights are read along lines of this length. */
+const heightSpacing = (lines: Point[][]) => Math.max(25, lengthOf(lines) / HEIGHT_SAMPLES);
 
 /** Lines as they are stored: six decimal places, no point repeated, a height where terrain knows one. */
 async function withHeights(lines: Point[][], sampler: ElevationSampler): Promise<{ lines: Position[][]; elevation: RouteElevation }> {
@@ -269,8 +290,7 @@ async function withHeights(lines: Point[][], sampler: ElevationSampler): Promise
     })
     .filter((line) => line.length >= 2);
   const positions = stored.flat();
-  const spacing = Math.max(25, lengthOf(stored) / HEIGHT_SAMPLES);
-  const heights = await sampler.sample(positions, spacing);
+  const heights = await sampler.sample(positions, heightSpacing(stored));
   const known = heights.filter((height) => height !== null).length;
   const elevation: RouteElevation = known === 0 ? "none" : known === heights.length ? "terrain" : "partial";
   let index = 0;
@@ -320,10 +340,51 @@ export function createRouteFinder(deps: RouteFinderDeps): RouteFinderService {
 
   function hold(preview: HeldPreview): string {
     for (const [token, item] of held) if (item.expiresAt <= now()) held.delete(token);
-    while (held.size >= MAX_HELD_PREVIEWS) held.delete(held.keys().next().value!);
+    let points = preview.points;
+    for (const item of held.values()) points += item.points;
+    // Oldest first, until there is room for this one.
+    for (const [token, item] of held) {
+      if (held.size < MAX_HELD_PREVIEWS && points <= MAX_HELD_POINTS) break;
+      held.delete(token);
+      points -= item.points;
+    }
     const token = randomUUID();
     held.set(token, preview);
     return token;
+  }
+
+  async function save(preview: HeldPreview, input: z.infer<typeof routeAddSchema>): Promise<RouteSaveResponse> {
+    const main = await withHeights(preview.lines, deps.elevation);
+    const side = input.includeAlternatives
+      ? await withHeights(preview.alternatives, deps.elevation)
+      : { lines: [], elevation: "none" as const };
+    const elevation: RouteElevation =
+      side.lines.length === 0 || side.elevation === main.elevation
+        ? main.elevation
+        : main.elevation === "none" && side.elevation === "none"
+          ? "none"
+          : "partial";
+    const feature = (coordinates: Position[], name?: string): TrackFeature => ({
+      type: "Feature",
+      properties: { _gpxType: "trk", ...(name ? { name } : {}) },
+      geometry: { type: "LineString", coordinates },
+    });
+    const collection: TrackCollection = {
+      type: "FeatureCollection",
+      features: [
+        ...main.lines.map((line) => feature(line)),
+        ...side.lines.map((line, index) => feature(line, side.lines.length > 1 ? `Alternative leg ${index + 1}` : "Alternative leg")),
+      ],
+      source: preview.credit,
+    };
+    return deps.annotations.createFromCollection({
+      name: (input.name ?? preview.name).slice(0, 200),
+      // Every program that reads GPX keeps a description, so the credit is written there too.
+      description: creditLine(preview.credit),
+      color: input.color,
+      collection,
+      elevation,
+    });
   }
 
   return {
@@ -478,7 +539,9 @@ export function createRouteFinder(deps: RouteFinderDeps): RouteFinderService {
       const credit = buildTrackSource({ ref, name, wayIds, server: source.host, dataAsOf: answer.dataAsOf, fetchedAt });
       const facts = describeLines(main);
       const expiresAt = now() + PREVIEW_HOLD_MS;
-      const token = main.length > 0 ? hold({ expiresAt, name, lines: main, alternatives: side, credit }) : "";
+      const count = (lines: Point[][]) => lines.reduce((total, line) => total + line.length, 0);
+      const token =
+        main.length > 0 ? hold({ expiresAt, name, lines: main, alternatives: side, credit, points: count(main) + count(side) }) : "";
       return {
         token,
         expiresAt,
@@ -488,7 +551,7 @@ export function createRouteFinder(deps: RouteFinderDeps): RouteFinderService {
         kind,
         lines: main as RouteLine[],
         lengthMeters: Math.round(lengthOf(main)),
-        pointCount: main.reduce((total, line) => total + line.length, 0),
+        pointCount: count(main),
         wayCount: wayIds.length,
         bounds:
           boundsOf(main) ?? union(sections.flatMap((section) => (section.bounds ? [section.bounds] : []))) ?? ([0, 0, 0, 0] satisfies Bbox),
@@ -504,74 +567,92 @@ export function createRouteFinder(deps: RouteFinderDeps): RouteFinderService {
 
     async add(input) {
       const preview = held.get(input.token);
-      if (!preview || preview.expiresAt <= now()) {
+      const notHeld = () => {
         held.delete(input.token);
-        throw new AppError("conflict", "That preview is no longer held. Choose the route again to fetch it afresh, then add it.");
-      }
-      const main = await withHeights(preview.lines, deps.elevation);
-      const side = input.includeAlternatives
-        ? await withHeights(preview.alternatives, deps.elevation)
-        : { lines: [], elevation: "none" as const };
-      const elevation: RouteElevation =
-        side.lines.length === 0 || side.elevation === main.elevation
-          ? main.elevation
-          : main.elevation === "none" && side.elevation === "none"
-            ? "none"
-            : "partial";
-      const feature = (coordinates: Position[], name?: string): TrackFeature => ({
-        type: "Feature",
-        properties: { _gpxType: "trk", ...(name ? { name } : {}) },
-        geometry: { type: "LineString", coordinates },
-      });
-      const collection: TrackCollection = {
-        type: "FeatureCollection",
-        features: [
-          ...main.lines.map((line) => feature(line)),
-          ...side.lines.map((line, index) => feature(line, side.lines.length > 1 ? `Alternative leg ${index + 1}` : "Alternative leg")),
-        ],
-        source: preview.credit,
+        return new AppError("conflict", NOT_HELD);
       };
-      const saved = deps.annotations.createFromCollection({
-        name: (input.name ?? preview.name).slice(0, 200),
-        // Every program that reads GPX keeps a description, so the credit is written there too.
-        description: creditLine(preview.credit),
-        color: input.color,
-        collection,
-        elevation,
-      });
-      held.delete(input.token);
-      return saved;
+      if (!preview || preview.expiresAt <= now()) throw notHeld();
+      if (preview.adding) {
+        const made = await preview.adding;
+        // The route as it is now: it may have been renamed since. If it has been removed, there is nothing to give.
+        const track = deps.annotations.listTracks().find((candidate) => candidate.id === made.track.id);
+        if (!track) throw notHeld();
+        return { track, elevation: made.elevation };
+      }
+      // Claimed here, before the first wait: heights for a long route take seconds, and a second request may arrive in them.
+      preview.adding = save(preview, input);
+      try {
+        const saved = await preview.adding;
+        // The points are in the route now. The token is kept, so that asking again answers with that route.
+        preview.lines = [];
+        preview.alternatives = [];
+        preview.points = 0;
+        return saved;
+      } catch (error) {
+        // Nothing was made, so the preview can be added again.
+        preview.adding = undefined;
+        throw error;
+      }
     },
 
     async fillHeights(trackId) {
-      const track = deps.annotations.getTrack(trackId);
-      const source = readTrackSource(track.geojson);
-      if (!source) {
-        throw badRequest(
-          "Heights are only filled in this way for a route found in a route source. A recording keeps the heights it was recorded with.",
+      const read = () => {
+        const track = deps.annotations.getTrack(trackId);
+        const source = readTrackSource(track.geojson);
+        if (!source) {
+          throw badRequest(
+            "Heights are only filled in this way for a route found in a route source. A recording keeps the heights it was recorded with.",
+          );
+        }
+        const features = (track.geojson as unknown as TrackCollection).features ?? [];
+        const lines = features.filter((feature) => feature.geometry?.type === "LineString");
+        if (lines.length === 0 || lines.some((feature) => feature.properties?._drawn)) {
+          throw badRequest("This route's shape has been redrawn by hand. Use “Fill in heights from terrain” on the route itself.");
+        }
+        return { source, features, lines: lines.map((feature) => feature.geometry.coordinates as Position[]) };
+      };
+      const before = read();
+      const positions = before.lines.flat().map(([lon, lat]) => [lon!, lat!] as Point);
+      const heights = await deps.elevation.sample(positions, heightSpacing(before.lines as Point[][]));
+      // Read again: the terrain took a moment (seconds, for a long route), and the route may have been redrawn,
+      // filled in or removed meanwhile. What is written is what is there now with heights added, or nothing.
+      const current = read();
+      const unchanged =
+        current.lines.length === before.lines.length &&
+        current.lines.every(
+          (line, at) =>
+            line.length === before.lines[at]!.length &&
+            line.every((position, i) => {
+              const was = before.lines[at]![i]!;
+              return position[0] === was[0] && position[1] === was[1] && position[2] === was[2];
+            }),
         );
+      if (!unchanged) {
+        throw new AppError("conflict", "This route was changed while its heights were being read, so nothing was written. Try again.");
       }
-      const features = (track.geojson as unknown as TrackCollection).features ?? [];
-      const lines = features.filter((feature) => feature.geometry?.type === "LineString");
-      if (lines.length === 0 || lines.some((feature) => feature.properties?._drawn)) {
-        throw badRequest("This route's shape has been redrawn by hand. Use “Fill in heights from terrain” on the route itself.");
-      }
-      const sampled = await withHeights(
-        lines.map((feature) => (feature.geometry.coordinates as Position[]).map(([lon, lat]) => [lon!, lat!] as Point)),
-        deps.elevation,
-      );
-      // Lines are kept one for one; `withHeights` only drops a line that had fewer than two points, and none stored has.
+      // A point keeps the height it has where terrain has none to give now: terrain may have been removed since.
       let index = 0;
+      let known = 0;
+      const filled = current.lines.map((line) =>
+        line.map((position): Position => {
+          const height = heights[index++] ?? (typeof position[2] === "number" ? position[2] : null);
+          if (height === null) return [position[0]!, position[1]!];
+          known += 1;
+          return [position[0]!, position[1]!, height];
+        }),
+      );
+      const elevation: RouteElevation = known === 0 ? "none" : known === positions.length ? "terrain" : "partial";
+      let line = 0;
       const collection: TrackCollection = {
         type: "FeatureCollection",
-        features: features.map((feature) =>
+        features: current.features.map((feature) =>
           feature.geometry?.type === "LineString"
-            ? { ...feature, geometry: { type: "LineString", coordinates: sampled.lines[index++] ?? feature.geometry.coordinates } }
+            ? { ...feature, geometry: { type: "LineString", coordinates: filled[line++]! } }
             : feature,
         ),
-        source,
+        source: current.source,
       };
-      return deps.annotations.replaceCollection(trackId, collection, sampled.elevation);
+      return deps.annotations.replaceCollection(trackId, collection, elevation);
     },
   };
 }

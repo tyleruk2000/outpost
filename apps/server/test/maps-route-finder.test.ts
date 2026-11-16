@@ -17,7 +17,7 @@ import {
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { AppError } from "../src/core/errors.ts";
 import { createHttpClient } from "../src/core/http.ts";
-import type { AnnotationsService } from "../src/modules/maps/annotations.ts";
+import { type AnnotationsService, createAnnotationsService } from "../src/modules/maps/annotations.ts";
 import type { TrackCollection } from "../src/modules/maps/gpx.ts";
 import { Compression, TileType } from "../src/modules/maps/pmtiles/header.ts";
 import { arrangeLines, clusterLines, describeLines, joinWays, lengthOf, type Point } from "../src/modules/maps/route-finder/assemble.ts";
@@ -27,12 +27,13 @@ import {
   BUSY_PAUSE_MS,
   cleanText,
   createOverpassClient,
+  HANDOVER_WAIT_MS,
   namePattern,
   readAnswer,
   relationQuery,
   searchQuery,
 } from "../src/modules/maps/route-finder/overpass.ts";
-import { createRouteFinder, MAX_ROUTE_POINTS } from "../src/modules/maps/route-finder/service.ts";
+import { createRouteFinder, MAX_HELD_POINTS, MAX_ROUTE_POINTS } from "../src/modules/maps/route-finder/service.ts";
 import { loadRouteSources, type RouteSource, routeSourcesSchema } from "../src/modules/maps/route-finder/sources.ts";
 import { buildArchive, type FixtureTile } from "./fixtures/maps/archive.ts";
 import {
@@ -46,6 +47,7 @@ import {
   F,
   G,
   H,
+  hugeAnswer,
   type OverpassStandIn,
   PATH_NAME,
   ROUTE_ID,
@@ -721,10 +723,54 @@ describe("finding a route and adding it", () => {
     const found = await app.api("GET", "/api/search?q=Kestrel");
     expect(JSON.stringify(found.body)).toContain(added.body.track.id);
 
-    // The same preview cannot be added twice.
-    const again = await app.api("POST", "/api/maps/route-search/add", { token: preview.body.token });
-    expect(again.status).toBe(409);
-    expect(again.body.error.message).toBe("That preview is no longer held. Choose the route again to fetch it afresh, then add it.");
+    // The same preview cannot be added twice: asking again gives the route that was made, not a second one.
+    const again = await app.api<RouteSaveResponse>("POST", "/api/maps/route-search/add", { token: preview.body.token });
+    expect(again.status).toBe(200);
+    expect(again.body.track.id).toBe(added.body.track.id);
+    expect((await app.api("GET", "/api/maps/tracks")).body.tracks).toHaveLength(1);
+  });
+
+  it("makes one route when the same preview is added twice at once, and gives both the same route", async () => {
+    const preview = await app.api<RoutePreview>("POST", "/api/maps/route-search/preview", { ref: { type: "relation", id: ROUTE_ID } });
+    // A double click, or a retry while a long route's heights are still being read.
+    const [first, second] = await Promise.all([
+      app.api<RouteSaveResponse>("POST", "/api/maps/route-search/add", { token: preview.body.token, includeAlternatives: true }),
+      app.api<RouteSaveResponse>("POST", "/api/maps/route-search/add", { token: preview.body.token, includeAlternatives: true }),
+    ]);
+    expect([first.status, second.status]).toEqual([200, 200]);
+    expect(second.body.track.id).toBe(first.body.track.id);
+    const list = await app.api<{ tracks: Array<{ id: string }> }>("GET", "/api/maps/tracks");
+    expect(list.body.tracks.map((track) => track.id)).toEqual([first.body.track.id]);
+
+    // Asked again after it is done (the first answer was lost on the way), it is the same route still, as it is now.
+    await app.api("PATCH", `/api/maps/tracks/${first.body.track.id}`, { name: "Renamed since" });
+    const later = await app.api<RouteSaveResponse>("POST", "/api/maps/route-search/add", { token: preview.body.token });
+    expect(later.status).toBe(200);
+    expect(later.body.track).toMatchObject({ id: first.body.track.id, name: "Renamed since" });
+    expect(later.body.elevation).toBe(first.body.elevation);
+    expect((await app.api("GET", "/api/maps/tracks")).body.tracks).toHaveLength(1);
+    expect(standIn.requests).toHaveLength(1);
+
+    // Once that route has been removed there is nothing to give, and nothing is made in its place.
+    expect((await app.api("DELETE", `/api/maps/tracks/${first.body.track.id}`)).status).toBeLessThan(300);
+    const gone = await app.api("POST", "/api/maps/route-search/add", { token: preview.body.token });
+    expect(gone.status).toBe(409);
+    expect(gone.body.error.message).toBe("That preview is no longer held. Choose the route again to fetch it afresh, then add it.");
+    expect((await app.api("GET", "/api/maps/tracks")).body.tracks).toEqual([]);
+  });
+
+  it("still holds the first preview after a person has stepped through the sections of a long trail", async () => {
+    // The screen offers "Add" for every preview it fetched in the last quarter of an hour, so the server holds them all.
+    const tokens: string[] = [];
+    for (let section = 0; section < 6; section += 1) {
+      const preview = await app.api<RoutePreview>("POST", "/api/maps/route-search/preview", { ref: { type: "relation", id: ROUTE_ID } });
+      tokens.push(preview.body.token);
+    }
+    expect(new Set(tokens).size).toBe(6);
+    const added = await app.api<RouteSaveResponse>("POST", "/api/maps/route-search/add", { token: tokens[0] });
+    expect(added.status).toBe(200);
+    // The source was asked for each preview and not again for the add.
+    expect(standIn.requests).toHaveLength(6);
   });
 
   it("writes the credit into the GPX export in the fields GPX has for it", async () => {
@@ -881,15 +927,72 @@ describe("finding a route and adding it", () => {
     expect((await app.api("POST", "/api/maps/route-search/add", { token: "nothing-held" })).status).toBe(409);
   });
 
-  it("runs one search at a time", async () => {
+  it("runs one search at a time: a second one waits a moment for its turn and is never asked alongside the first", async () => {
     const slow = app.api("POST", "/api/maps/route-search", { text: "slow" });
     await new Promise((resolve) => setTimeout(resolve, 100));
-    const second = await app.api("POST", "/api/maps/route-search", { text: "kestrel" });
-    const first = await slow;
-    expect(first.status).toBe(200);
-    expect(second.status).toBe(409);
-    expect(second.body.error.message).toBe("Another route search is still running. Wait for it to finish, then try again.");
+    let firstDone = false;
+    void slow.then(() => {
+      firstDone = true;
+    });
+    const waiting = app.api("POST", "/api/maps/route-search", { text: "kestrel" });
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    // The source has been asked one question, and the second is still waiting for it to be over.
     expect(standIn.requests).toHaveLength(1);
+    expect(firstDone).toBe(false);
+    const second = await waiting;
+    expect(firstDone).toBe(true);
+    expect((await slow).status).toBe(200);
+    expect(second.status).toBe(200);
+    expect(standIn.requests).toHaveLength(2);
+    // What is said when the wait runs out is in "gives up on a source that does not answer in time", below.
+    expect(HANDOVER_WAIT_MS).toBe(2000);
+  });
+
+  it("lets a new search follow one that was just cancelled, as the screen does when a person changes their mind", async () => {
+    await app.app.listen({ port: 0, host: "127.0.0.1" });
+    const appPort = (app.app.server.address() as AddressInfo).port;
+    const send = (agent: http.Agent, method: string, url: string, body?: unknown) => {
+      const request = http.request({
+        host: "127.0.0.1",
+        port: appPort,
+        agent,
+        method,
+        path: url,
+        headers: { "content-type": "application/json", "x-outpost-request": "1" },
+      });
+      const answer = new Promise<{ status: number; body: string }>((resolve, reject) => {
+        request.on("error", reject);
+        request.on("response", (response) => {
+          let text = "";
+          response.on("data", (chunk) => {
+            text += chunk;
+          });
+          response.on("end", () => resolve({ status: response.statusCode ?? 0, body: text }));
+        });
+      });
+      request.end(body === undefined ? undefined : JSON.stringify(body));
+      return { request, answer };
+    };
+    // A browser keeps several connections open: the new question needs no new one, so it is not behind the old one's closing.
+    const one = new http.Agent({ keepAlive: true, maxSockets: 1 });
+    const other = new http.Agent({ keepAlive: true, maxSockets: 1 });
+    try {
+      expect((await send(other, "GET", "/api/maps/route-sources").answer).status).toBe(200);
+      const statuses: number[] = [];
+      for (let round = 0; round < 8; round += 1) {
+        const old = send(one, "POST", "/api/maps/route-search", { text: "slow" });
+        old.answer.catch(() => undefined);
+        await new Promise((resolve) => setTimeout(resolve, 60));
+        // The old question is dropped and the new one sent in the same moment.
+        old.request.destroy();
+        const next = await send(other, "POST", "/api/maps/route-search", { text: "kestrel" }).answer;
+        statuses.push(next.status);
+      }
+      expect(statuses).toEqual(statuses.map(() => 200));
+    } finally {
+      one.destroy();
+      other.destroy();
+    }
   });
 
   it("backs off for thirty seconds when the source says it is busy, without asking it again", async () => {
@@ -991,6 +1094,43 @@ describe("when the source cannot be reached or may not be asked", () => {
       await expect(
         overpass.ask(source, searchQuery({ pattern: "kestrel", maxRoutes: 5, maxWays: 5 }), { ...ask, maxBytes: 500 }),
       ).rejects.toThrow("too large");
+      // A question that follows one just cancelled waits for the cancelling to land: it is not turned away.
+      const first = new AbortController();
+      const dropped = overpass.ask(source, searchQuery({ pattern: "slow", maxRoutes: 5, maxWays: 5 }), { ...ask, signal: first.signal });
+      dropped.catch(() => undefined);
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      const asked = standIn.requests.length;
+      first.abort();
+      await expect(overpass.ask(source, searchQuery({ pattern: "kestrel", maxRoutes: 5, maxWays: 5 }), ask)).resolves.toBeDefined();
+      await expect(dropped).rejects.toThrow("The search was cancelled.");
+      expect(standIn.requests).toHaveLength(asked + 1);
+      // A question that is still wanted is not pushed aside: the newer one waits a moment, then is told to wait.
+      const wanted = overpass.ask(source, searchQuery({ pattern: "slow", maxRoutes: 5, maxWays: 5 }), ask);
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      const began = Date.now();
+      await expect(
+        overpass.ask(source, searchQuery({ pattern: "kestrel", maxRoutes: 5, maxWays: 5 }), { ...ask, handoverMs: 200 }),
+      ).rejects.toThrow("Another route search is still running. Wait for it to finish, then try again.");
+      expect(Date.now() - began).toBeGreaterThanOrEqual(190);
+      // And one that waits while the older one finishes is asked next, never alongside it.
+      const queued = overpass.ask(source, searchQuery({ pattern: "kestrel", maxRoutes: 5, maxWays: 5 }), { ...ask, handoverMs: 5000 });
+      await expect(wanted).resolves.toBeDefined();
+      await expect(queued).resolves.toBeDefined();
+      // A person who gives up while waiting their turn is not asked for at all.
+      const second = overpass.ask(source, searchQuery({ pattern: "slow", maxRoutes: 5, maxWays: 5 }), ask);
+      const leaving = new AbortController();
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      const before = standIn.requests.length;
+      setTimeout(() => leaving.abort(), 50);
+      await expect(
+        overpass.ask(source, searchQuery({ pattern: "kestrel", maxRoutes: 5, maxWays: 5 }), {
+          ...ask,
+          signal: leaving.signal,
+          handoverMs: 5000,
+        }),
+      ).rejects.toThrow("The search was cancelled.");
+      await second;
+      expect(standIn.requests).toHaveLength(before);
       // And a person who goes away takes their question with them.
       const controller = new AbortController();
       setTimeout(() => controller.abort(), 100);
@@ -1198,5 +1338,188 @@ describe("heights for a found route", () => {
     expect(refilled.features).toHaveLength(3);
     expect((refilled.features[0]!.geometry.coordinates as number[][]).every((position) => position[2] === 321)).toBe(true);
     expect(readTrackSource(refilled)).toEqual(preview.credit);
+  });
+
+  /** A route finder over a real server's routes, with terrain that answers as the test says. */
+  const finderOver = (app: TestApp, sample: (positions: ReadonlyArray<readonly [number, number]>) => Promise<Array<number | null>>) =>
+    createRouteFinder({
+      loaded: { sources: [source], defaultId: "stand-in", problems: [] },
+      overpass: { ask: async () => relationAnswer },
+      annotations: createAnnotationsService(app.ctx, { elevation: { sample, sampleWithCells: notAsked } }),
+      elevation: { sample, sampleWithCells: notAsked },
+      userAgent: "test",
+    });
+  const storedLines = async (app: TestApp, id: string) => {
+    const stored = await app.api<{ track: TrackWithGeometryDto }>("GET", `/api/maps/tracks/${id}`);
+    return (stored.body.track.geojson as unknown as TrackCollection).features.filter((feature) => feature.geometry.type === "LineString");
+  };
+
+  it("holds previews up to three of the largest routes' worth of points, and lets the oldest go first", async () => {
+    expect(MAX_HELD_POINTS).toBe(3 * MAX_ROUTE_POINTS);
+    const made: TrackCollection[] = [];
+    const finder = createRouteFinder({
+      loaded: { sources: [source], defaultId: "stand-in", problems: [] },
+      // The largest route there can be: 200,000 points.
+      overpass: { ask: async () => hugeAnswer(MAX_ROUTE_POINTS) },
+      annotations: {
+        createFromCollection(input: { collection: TrackCollection; elevation: string }) {
+          made.push(input.collection);
+          return { track: { id: `t${made.length}` }, elevation: input.elevation };
+        },
+        listTracks: () => made.map((_collection, index) => ({ id: `t${index + 1}` })),
+      } as unknown as AnnotationsService,
+      elevation: { sample: async (positions) => positions.map(() => null), sampleWithCells: notAsked },
+      userAgent: "test",
+    });
+    const tokens: string[] = [];
+    for (let count = 0; count < 4; count += 1) {
+      const preview = await finder.preview({ ref: { type: "relation", id: 9500 } });
+      expect(preview.pointCount).toBe(MAX_ROUTE_POINTS);
+      tokens.push(preview.token);
+    }
+    // Four do not fit: the first was let go, and what is said about it is true whatever the reason.
+    await expect(finder.add({ token: tokens[0]! })).rejects.toThrow(
+      "That preview is no longer held. Choose the route again to fetch it afresh, then add it.",
+    );
+    // The other three are held. Once one is added its points are in the route, and it no longer takes up room.
+    expect((await finder.add({ token: tokens[1]! })).track.id).toBe("t1");
+    tokens.push((await finder.preview({ ref: { type: "relation", id: 9500 } })).token);
+    expect((await finder.add({ token: tokens[2]! })).track.id).toBe("t2");
+    expect((await finder.add({ token: tokens[1]! })).track.id).toBe("t1");
+  });
+
+  it("makes one route when the same preview is added again while the first is still reading heights", async () => {
+    const app = await createTestApp();
+    try {
+      let release = () => {};
+      const terrainRead = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let reads = 0;
+      const finder = finderOver(app, async (positions) => {
+        reads += 1;
+        await terrainRead;
+        return positions.map(() => 321);
+      });
+      const preview = await finder.preview({ ref: { type: "relation", id: ROUTE_ID } });
+      // A double click, a second tab, or a retry on a long route: both arrive before the first has finished.
+      const first = finder.add({ token: preview.token, includeAlternatives: true });
+      const second = finder.add({ token: preview.token, includeAlternatives: true });
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      release();
+      const [one, two] = await Promise.all([first, second]);
+      expect(two.track.id).toBe(one.track.id);
+      expect((await app.api("GET", "/api/maps/tracks")).body.tracks).toHaveLength(1);
+      // Terrain was read for one of them only: the main line, then the alternative leg.
+      expect(reads).toBe(2);
+    } finally {
+      await app.close();
+    }
+  });
+
+  it("does not write over a route that was redrawn while its heights were being read", async () => {
+    const app = await createTestApp();
+    try {
+      let release = () => {};
+      const terrainRead = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let reading = () => {};
+      const started = new Promise<void>((resolve) => {
+        reading = resolve;
+      });
+      const adder = finderOver(app, async (positions) => positions.map(() => null));
+      const added = await adder.add({ token: (await adder.preview({ ref: { type: "relation", id: ROUTE_ID } })).token });
+      const id = added.track.id;
+
+      // Terrain takes its time, as it does for a long route.
+      const slow = finderOver(app, async (positions) => {
+        reading();
+        await terrainRead;
+        return positions.map(() => 321);
+      });
+      const filling = slow.fillHeights(id);
+      filling.catch(() => undefined);
+      await started;
+      // Meanwhile the shape is redrawn and saved, from another tab or another device.
+      const redrawn = await app.api("PUT", `/api/maps/tracks/${id}/points`, {
+        points: [
+          { lat: 54.4, lon: -3.2 },
+          { lat: 54.41, lon: -3.2 },
+        ],
+      });
+      expect(redrawn.status).toBe(200);
+      release();
+
+      await expect(filling).rejects.toThrow("This route's shape has been redrawn by hand.");
+      const lines = await storedLines(app, id);
+      expect(lines).toHaveLength(1);
+      expect(lines[0]!.properties._drawn).toBe(true);
+      expect((lines[0]!.geometry.coordinates as number[][]).map(([lon, lat]) => [lon, lat])).toEqual([
+        [-3.2, 54.4],
+        [-3.2, 54.41],
+      ]);
+    } finally {
+      await app.close();
+    }
+  });
+
+  it("gives up when the route's heights were filled in by someone else meanwhile, and says so", async () => {
+    const app = await createTestApp();
+    try {
+      let release = () => {};
+      const terrainRead = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let reading = () => {};
+      const started = new Promise<void>((resolve) => {
+        reading = resolve;
+      });
+      const adder = finderOver(app, async (positions) => positions.map(() => null));
+      const added = await adder.add({ token: (await adder.preview({ ref: { type: "relation", id: ROUTE_ID } })).token });
+      const slow = finderOver(app, async (positions) => {
+        reading();
+        await terrainRead;
+        return positions.map(() => 321);
+      });
+      const filling = slow.fillHeights(added.track.id);
+      filling.catch(() => undefined);
+      await started;
+      await finderOver(app, async (positions) => positions.map(() => 999)).fillHeights(added.track.id);
+      release();
+      await expect(filling).rejects.toThrow("This route was changed while its heights were being read, so nothing was written. Try again.");
+      const lines = await storedLines(app, added.track.id);
+      expect(lines.flatMap((line) => line.geometry.coordinates as number[][]).every((position) => position[2] === 999)).toBe(true);
+    } finally {
+      await app.close();
+    }
+  });
+
+  it("keeps the heights a route already has where terrain has none to give now", async () => {
+    const app = await createTestApp();
+    try {
+      // Added when terrain covered the south of the route only.
+      const south = finderOver(app, async (positions) => positions.map(([, lat]) => (lat < 54.51 ? 100 : null)));
+      const added = await south.add({ token: (await south.preview({ ref: { type: "relation", id: ROUTE_ID } })).token });
+      expect(added.elevation).toBe("partial");
+      const before = (await storedLines(app, added.track.id)).flatMap((line) => line.geometry.coordinates as number[][]);
+      expect(before.some((position) => position.length === 3)).toBe(true);
+      expect(before.some((position) => position.length === 2)).toBe(true);
+
+      // Since then the southern terrain was removed and the northern installed.
+      const north = finderOver(app, async (positions) => positions.map(([, lat]) => (lat < 54.51 ? null : 700)));
+      const filled = await north.fillHeights(added.track.id);
+      expect(filled.elevation).toBe("terrain");
+      const after = (await storedLines(app, added.track.id)).flatMap((line) => line.geometry.coordinates as number[][]);
+      expect(after.map(([lon, lat]) => [lon, lat])).toEqual(before.map(([lon, lat]) => [lon, lat]));
+      expect(after.map((position) => position[2])).toEqual(before.map((position) => (position.length === 3 ? 100 : 700)));
+
+      // With no terrain at all, nothing is taken away either.
+      const nowhere = finderOver(app, async (positions) => positions.map(() => null));
+      expect((await nowhere.fillHeights(added.track.id)).elevation).toBe("terrain");
+      expect((await storedLines(app, added.track.id)).flatMap((line) => line.geometry.coordinates as number[][])).toEqual(after);
+    } finally {
+      await app.close();
+    }
   });
 });

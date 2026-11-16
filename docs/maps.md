@@ -1113,6 +1113,12 @@ no terrain where it runs, it has no ascent and no elevation profile, and its pan
 says so. If terrain is installed later, open the route and choose **Fill in heights
 from terrain**: the route is not fetched again.
 
+Filling in heights only adds. A point keeps the height it has where the terrain
+installed now has none to give (terrain may have been removed since), and takes the
+terrain's height where there is one. Reading terrain for a long route takes some
+seconds; if the route is redrawn, filled in or removed in that time, from another tab
+or another device, nothing is written and the answer says so.
+
 ### Credit and licence
 
 A found route's line is OpenStreetMap's data, © OpenStreetMap contributors, under the
@@ -1154,10 +1160,26 @@ with the route on it, the credit must be on it.**
   wrong, out of date, closed or dangerous. Check it against the ground and a proper map.
 - It does not keep results, refresh a route you added, or fetch anything in the
   background. A preview is held in the server's memory for up to fifteen minutes so
-  that adding it does not ask the source again, and is then forgotten.
-- One search runs at a time. A second one started meanwhile, from this or another
-  device, is asked to wait. After a server says it is busy, Outpost does not ask it
-  again for 30 seconds.
+  that adding it does not ask the source again, and is then forgotten. Every preview
+  fetched in that time is held, so stepping through the sections of a long trail and
+  going back to add the first asks nobody again. The bound is on memory, shared by
+  everyone using this Outpost: 600,000 points in all (three of the largest routes
+  allowed) and 200 previews. A held point takes about 73 bytes (a route of 190,001
+  points held 13.9 MB, measured on Node 24 on 16 November 2026), so the largest route
+  allowed costs some 15 MB while it is held and the bound is some 44 MB; a section of
+  a few thousand points costs a few hundred kilobytes. When there is no more room the
+  oldest preview is let go, and adding it fetches it again and says that Outpost was
+  no longer holding it.
+- It does not add the same preview twice. If "Add" arrives twice for one preview (a
+  double click, or a retry while a long route's heights are being read), one route is
+  made and both are answered with it.
+- One search runs at a time: a source is never asked two questions at once. A second
+  one started meanwhile waits up to two seconds for its turn. That is long enough for
+  a search that was just cancelled (choosing one result and then another, or Cancel
+  and then Search) to be dropped, so the next one follows it without a refusal. If
+  the first is still running after that, from this or another device, the second is
+  asked to wait. After a server says it is busy, Outpost does not ask it again for 30
+  seconds.
 - Names in scripts where capital letters differ in ways the server does not know may
   need to be typed with the capitals the map uses.
 
