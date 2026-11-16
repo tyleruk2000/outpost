@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { haversineMeters, type MarkerDto, type TrackDto, type TrackImportResponse, type TrackWithGeometryDto } from "@outpost/shared";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { buildGpx, escapeXml, parseGpx, splitCollection, trackStats } from "../src/modules/maps/gpx.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
 
@@ -356,23 +356,91 @@ describe("tracks", () => {
     expect((await app.api<{ tracks: TrackDto[] }>("GET", "/api/maps/tracks")).body.tracks).toEqual([]);
   });
 
-  it("turns at most five thousand waypoints into markers from one file, and says what to do with more", async () => {
-    const many = `<gpx>${Array.from({ length: 5001 }, (_, i) => `<wpt lat="${(50 + i / 10000).toFixed(4)}" lon="-3"><name>P${i}</name></wpt>`).join("")}</gpx>`;
-    const refused = await importGpx(many, "points.gpx", { importWaypointsAsMarkers: "true" });
-    expect(refused.status).toBe(400);
-    expect(refused.body.error).toMatchObject({
-      code: "bad_request",
-      message: expect.stringMatching(/^That file has 5,001 waypoints, and Outpost saves at most 5,000 as places from one file\./),
-    });
-    // Nothing of it was kept.
-    expect((await app.api<{ markers: MarkerDto[] }>("GET", "/api/maps/markers")).body.markers).toEqual([]);
-    expect((await app.api<{ tracks: TrackDto[] }>("GET", "/api/maps/tracks")).body.tracks).toEqual([]);
-    // Kept with their route, the same waypoints are no trouble.
+  const waypointsFile = (count: number, extra = "") =>
+    `<gpx>${Array.from({ length: count }, (_, i) => `<wpt lat="${(50 + i / 10000).toFixed(4)}" lon="-3"><name>P${i}</name></wpt>`).join("")}${extra}</gpx>`;
+
+  it("turns thousands of waypoints into markers a batch at a time, without holding the server up", async () => {
+    // One file used to be held to 5,000, because all of them were written in one go: about
+    // 1.2 seconds on this thread for 5,000 and 4.4 for 20,000. A batch is about a fortieth of a second.
+    const many = waypointsFile(6000);
+    let longest = 0;
+    let last = performance.now();
+    const tick = setInterval(() => {
+      const now = performance.now();
+      longest = Math.max(longest, now - last);
+      last = now;
+    }, 5);
+    const imported = await importGpx(many, "points.gpx", { importWaypointsAsMarkers: "true" });
+    // Timers that were held up fire now, so that a hold would be seen.
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    clearInterval(tick);
+    expect(imported.status).toBe(200);
+    expect(imported.body.track).toBeNull();
+    expect(imported.body.markers).toHaveLength(6000);
+    expect(imported.body.markers.at(-1)).toMatchObject({ name: "P5999", lon: -3 });
+    // About 60 ms here, most of it receiving the file from the reader; 1,400 ms when written in one go.
+    expect(longest).toBeLessThan(700);
+    expect((await app.api("GET", "/api/maps/overview")).body.counts).toMatchObject({ markers: 6000, tracks: 0 });
+    // Each is findable, as a marker made by hand is.
+    const found = await app.api("GET", "/api/search?q=P5999");
+    expect(found.body.results.map((result: { title: string }) => result.title)).toContain("P5999");
+
+    // Kept with their route, the same waypoints are one track.
     const kept = await importGpx(many, "points.gpx");
     expect(kept.status).toBe(200);
     expect(kept.body.markers).toEqual([]);
     const full = await app.api<{ track: TrackWithGeometryDto }>("GET", `/api/maps/tracks/${kept.body.track!.id}`);
-    expect(full.body.track.geojson.features).toHaveLength(5001);
+    expect(full.body.track.geojson.features).toHaveLength(6000);
+  }, 60_000);
+
+  it("leaves nothing behind when an import of waypoints as markers fails part of the way", async () => {
+    const search = app.ctx.services.search;
+    const upsert = search.upsert.bind(search);
+    const markerCount = async () => (await app.api<{ markers: MarkerDto[] }>("GET", "/api/maps/markers")).body.markers.length;
+    const findable = async (q: string) => (await app.api("GET", `/api/search?q=${q}`)).body.results.length;
+
+    // A marker made by hand beforehand is not part of the import and stays.
+    await app.api("POST", "/api/maps/markers", { name: "Bothy", lat: 57, lon: -5 });
+
+    // The 251st marker cannot be written: two batches are already in, and come out again.
+    const later = vi.spyOn(search, "upsert").mockImplementation((entry) => {
+      if (entry.kind === "marker" && entry.title === "P250") throw new Error("the disk is full");
+      return upsert(entry);
+    });
+    const first = await importGpx(waypointsFile(600), "points.gpx", { importWaypointsAsMarkers: "true" });
+    later.mockRestore();
+    expect(first.status).toBe(500);
+    expect(await markerCount()).toBe(1);
+    expect(await findable("P0")).toBe(0);
+    expect(await findable("P249")).toBe(0);
+
+    // Every marker is written, and then the track cannot be stored.
+    const last = vi.spyOn(search, "upsert").mockImplementation((entry) => {
+      if (entry.kind === "track") throw new Error("the disk is full");
+      return upsert(entry);
+    });
+    const line = '<trk><name>Ridge</name><trkseg><trkpt lat="50" lon="-3"/><trkpt lat="50.1" lon="-3"/></trkseg></trk>';
+    const second = await importGpx(waypointsFile(300, line), "ridge.gpx", { importWaypointsAsMarkers: "true" });
+    last.mockRestore();
+    expect(second.status).toBe(500);
+    expect(await markerCount()).toBe(1);
+    expect(await findable("P299")).toBe(0);
+    expect((await app.api<{ tracks: TrackDto[] }>("GET", "/api/maps/tracks")).body.tracks).toEqual([]);
+    expect(await findable("Bothy")).toBe(1);
+
+    // And the same file goes in whole once the trouble is over.
+    const third = await importGpx(waypointsFile(300, line), "ridge.gpx", { importWaypointsAsMarkers: "true" });
+    expect(third.status).toBe(200);
+    expect(third.body.markers).toHaveLength(300);
+    expect(third.body.track).toMatchObject({ name: "Ridge" });
+    expect(await markerCount()).toBe(301);
+  });
+
+  it("is refused by the reader, not half imported, when a file has more waypoints than a file may", async () => {
+    const refused = await importGpx(waypointsFile(20_001), "points.gpx", { importWaypointsAsMarkers: "true" });
+    expect(refused.status).toBe(400);
+    expect(refused.body.error?.message).toMatch(/^That GPX file has more than 20,000 waypoints\./);
+    expect((await app.api<{ markers: MarkerDto[] }>("GET", "/api/maps/markers")).body.markers).toEqual([]);
   });
 
   it("can turn the file's waypoints into markers instead", async () => {

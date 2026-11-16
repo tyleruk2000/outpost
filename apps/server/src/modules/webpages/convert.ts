@@ -18,6 +18,7 @@ import remarkStringify from "remark-stringify";
 import { unified } from "unified";
 import { pictureLabel } from "../documents/embedded-pictures.ts";
 import { markdownText } from "../documents/extract-text.ts";
+import { prepareForConversion } from "../notes/content/html-prepare.ts";
 
 const schema: typeof defaultSchema = {
   ...defaultSchema,
@@ -131,10 +132,8 @@ const CELL_BLOCKS = new Set([
 
 /**
  * Inline elements that Markdown has no mark for. The converter passes their words
- * through, one piece of text per element, and then joins neighbouring pieces one pair at
- * a time, looking through the joined text again after each: with thousands of them in a
- * row its time grows with the square of their number. They are opened here instead, and
- * their words joined once.
+ * through, one piece of text per element, which is one of the two shapes it is slow at
+ * (see `notes/content/html-prepare.ts`). They are opened instead, and their words joined once.
  */
 const NO_MARK = new Set([
   "span",
@@ -167,57 +166,40 @@ const NO_MARK = new Set([
  * Gets the cleaned article ready for the converter. Two things Markdown would
  * otherwise lose are kept: "H₂O" and "x²" keep their small figures where the
  * characters exist, and paragraphs inside one table cell stay apart. And the shapes the
- * converter is slow at are taken away: elements with nothing in them, and long runs of
- * separate pieces of text.
+ * converter is slow at are taken away, by the walk imported HTML is given too:
+ * elements with nothing in them, and long runs of separate pieces of text.
  */
-function prepare(node: Element, depth = 0): void {
-  if (depth > 400) return;
-  const inCell = node.tagName === "td" || node.tagName === "th";
-  const children: ElementContent[] = [];
-  const add = (child: ElementContent) => {
-    const last = children.at(-1);
-    if (child.type === "text" && last?.type === "text") last.value += child.value;
-    else children.push(child);
-  };
-  for (const child of node.children) {
-    if (child.type !== "element") {
-      if (child.type === "text") add({ type: "text", value: child.value });
-      continue;
-    }
-    if (child.tagName === "wbr") continue;
-    prepare(child, depth + 1);
-    // An element with nothing in it says nothing.
-    if (!MEANS_SOMETHING_EMPTY.has(child.tagName) && child.children.every((inner) => inner.type === "text" && !inner.value.trim())) {
-      if (child.children.length > 0) add({ type: "text", value: " " });
-      continue;
-    }
-    if ((child.tagName === "sup" || child.tagName === "sub") && child.children.length === 1 && child.children[0]!.type === "text") {
-      const table = child.tagName === "sup" ? SUPERSCRIPT : SUBSCRIPT;
-      const written = child.children[0]!.value.trim();
-      if (written && written.length <= 6 && [...written].every((letter) => table[letter])) {
-        add({ type: "text", value: [...written].map((letter) => table[letter]).join("") });
-        continue;
+function prepare(article: Element): void {
+  prepareForConversion(article, {
+    open: NO_MARK,
+    keepEmpty: (tagName) => MEANS_SOMETHING_EMPTY.has(tagName),
+    replace(child, { parent, preceded }) {
+      if ((child.tagName === "sup" || child.tagName === "sub") && child.children.length === 1 && child.children[0]!.type === "text") {
+        const table = child.tagName === "sup" ? SUPERSCRIPT : SUBSCRIPT;
+        const written = child.children[0]!.value.trim();
+        if (written && written.length <= 6 && [...written].every((letter) => table[letter])) {
+          return [{ type: "text", value: [...written].map((letter) => table[letter]).join("") }];
+        }
       }
-    }
-    // The line that opens a folded part reads as its heading.
-    if (child.tagName === "summary") {
-      add({
-        type: "element",
-        tagName: "p",
-        properties: {},
-        children: [{ type: "element", tagName: "strong", properties: {}, children: child.children }],
-      });
-      continue;
-    }
-    if (NO_MARK.has(child.tagName) || (inCell && CELL_BLOCKS.has(child.tagName))) {
-      if (inCell && CELL_BLOCKS.has(child.tagName) && children.length > 0)
-        add({ type: "element", tagName: "br", properties: {}, children: [] });
-      for (const inner of child.children) add(inner);
-      continue;
-    }
-    add(child);
-  }
-  node.children = children;
+      // The line that opens a folded part reads as its heading.
+      if (child.tagName === "summary") {
+        return [
+          {
+            type: "element",
+            tagName: "p",
+            properties: {},
+            children: [{ type: "element", tagName: "strong", properties: {}, children: child.children }],
+          },
+        ];
+      }
+      const inCell = parent.type === "element" && (parent.tagName === "td" || parent.tagName === "th");
+      if (inCell && CELL_BLOCKS.has(child.tagName)) {
+        const parted: ElementContent[] = preceded ? [{ type: "element", tagName: "br", properties: {}, children: [] }] : [];
+        return [...parted, ...child.children];
+      }
+      return undefined;
+    },
+  });
 }
 
 const isWeb = (address: string | null | undefined) => /^https?:\/\//i.test(address ?? "");

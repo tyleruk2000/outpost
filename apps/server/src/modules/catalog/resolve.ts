@@ -155,9 +155,11 @@ async function resolveHttp(http: HttpClient, entry: HttpEntry, options: ResolveO
   const request = { allowedHosts: options.allowedHosts, signal: options.signal };
   let { response } = await http.fetch(source.url, { ...request, method: "HEAD" });
   await response.body?.cancel();
-  if (!response.ok && response.status !== 404 && response.status !== 410) {
+  if (!response.ok) {
     // Some servers refuse HEAD, or answer it with an error, while serving the file
-    // normally. Asking for the first byte settles it without fetching the file.
+    // normally. That includes "not found": two publishers in the catalogue answer HEAD
+    // with 404 for files they serve. Asking for the first byte settles it without
+    // fetching the file, and only that answer is taken as the file being gone.
     ({ response } = await http.fetch(source.url, { ...request, method: "GET", headers: { range: "bytes=0-0" } }));
     await response.body?.cancel();
   }

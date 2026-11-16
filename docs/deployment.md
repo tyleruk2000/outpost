@@ -846,6 +846,16 @@ docker compose down        # remove the containers, keep the volumes
 `docker compose down -v` also deletes the named volumes, which means the database and
 the default library. Do not run it unless that is what you want.
 
+Stopping takes a moment, not Docker's ten-second wait. Asked to stop (`docker stop`,
+Ctrl-C, or SIGTERM to the process), the server stops accepting connections, ends the
+live-update stream of every open browser tab, gives requests still being answered three
+seconds to finish, stops background jobs where they can be picked up again (a download
+keeps its partial file and continues on the next start), closes the database and exits
+with status 0. If that has not finished after eight seconds it exits with status 1 and
+says so in the log. A second signal while it is stopping ends it at once. An upload or a
+backup download still running after the three seconds is cut off, as it would be by the
+kill that followed.
+
 ## Platform notes
 
 The image can be built for 64-bit x86 (`linux/amd64`) and 64-bit ARM (`linux/arm64`);

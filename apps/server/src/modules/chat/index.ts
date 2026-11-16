@@ -69,6 +69,9 @@ export async function registerChat(app: FastifyInstance, ctx: AppContext): Promi
       ollamaAddresses = addresses;
     },
   };
+  // On the way down the model is stopped at once, so that the reply is stored as it stands and
+  // every browser watching it is told; by the time the close hooks run it has usually finished.
+  ctx.stopping.addEventListener("abort", () => void runner.close(), { once: true });
   ctx.onClose.push(() => runner.close());
 
   const changed = (id: string) => ctx.events.publish({ type: "chat.changed", id });

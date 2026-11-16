@@ -558,11 +558,14 @@ export function createHttpsService(app: FastifyInstance, ctx: AppContext): Https
     // Not waited for: making keys the first time must not hold up plain HTTP.
     void check();
   });
-  ctx.onClose.push(async () => {
+  // The HTTPS listener stops accepting when the plain one does, not after it has drained.
+  const stop = async () => {
     started = false;
     watch(false);
     await enqueue(stopListener);
-  });
+  };
+  ctx.stopping.addEventListener("abort", () => void stop(), { once: true });
+  ctx.onClose.push(stop);
 
   return {
     status() {

@@ -99,6 +99,8 @@ depends on the error. The codes, from `apps/server/src/core/errors.ts`:
 `GET /api/events` is a server-sent-events stream (`text/event-stream`). It stays open,
 and the server writes a comment line every 25 seconds to keep it alive. Each event has
 a name and a JSON `data` of the form `{ "id": …, "data": … }`; both parts are optional.
+When the server is stopping it sends `server.stopping` and ends the stream; a browser's
+`EventSource` connects again by itself once the server is back.
 
 | Event | Sent when | `id` / `data` |
 | --- | --- | --- |
@@ -151,7 +153,7 @@ Types: `packages/shared/src/system.ts`, `common.ts`.
 | `GET /api/health` | `{ status: "ok", version }`. Used by health checks. |
 | `GET /api/system` | Version, platform, memory and load, database size, whether LAN access is on (`lanAccess`), and counts per job queue (`SystemInfo`). |
 | `GET /api/events` | The live event stream described above. |
-| `POST /api/system/restart` | Stops the server so that its supervisor starts it again. Answers `409 conflict` unless the server was started with `OUTPOST_SUPERVISED=true`. |
+| `POST /api/system/restart` | Stops the server so that its supervisor starts it again, which is how a staged restore is applied. Accepted only from the computer Outpost runs on, or from anywhere with `OUTPOST_ALLOW_REMOTE_ERASE=true`; otherwise `403 forbidden`. Answers `409 conflict` unless the server was started with `OUTPOST_SUPERVISED=true`. |
 
 ### Jobs
 

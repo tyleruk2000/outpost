@@ -158,11 +158,16 @@ export interface AnnotationsService {
 }
 
 /**
- * Waypoints one import may turn into markers. Each marker is a row and a search entry
- * written on the server's own thread, about 0.2 ms apiece, so this many hold everything
- * else up for about a second. Waypoints kept with their track cost nothing of the kind.
+ * Waypoints one import may turn into markers: as many as the reader allows in a file.
+ * Each marker is a row and a search entry written on the server's own thread, about
+ * 0.2 ms apiece, so they are written `MARKER_WRITE_BATCH` at a time with a pause between
+ * for requests to be answered. Waypoints kept with their track cost nothing of the kind.
  */
-export const MAX_WAYPOINTS_AS_MARKERS = 5000;
+export const MAX_WAYPOINTS_AS_MARKERS = 20_000;
+/** Markers written before the server looks up from the work: about a fortieth of a second's worth. */
+const MARKER_WRITE_BATCH = 100;
+
+const yieldToEventLoop = () => new Promise<void>((resolve) => setImmediate(resolve));
 
 const asColor = (value: string): MarkerColor => ((MARKER_COLORS as readonly string[]).includes(value) ? (value as MarkerColor) : "teal");
 
@@ -392,23 +397,32 @@ export function createAnnotationsService(ctx: AppContext, deps: { elevation: Ele
         );
       }
 
-      const result = sqlite.transaction((): { track: TrackRow | null; created: MarkerRow[] } => {
-        const created: MarkerRow[] = [];
-        if (asMarkers) {
-          for (const waypoint of waypoints) {
-            const [lon, lat] = waypoint.geometry.coordinates as [number, number];
-            created.push(
-              insertMarker({
-                name: waypoint.properties.name ?? "Waypoint",
-                note: waypoint.properties.desc ?? "",
-                lat,
-                lon,
-                color: input.color,
-              }),
-            );
-          }
+      // Markers go in a batch at a time, each batch a transaction, so that twenty thousand of
+      // them do not hold the server for four seconds. The import is still all or nothing:
+      // if anything fails, in a later batch or in storing the track, what was written is
+      // taken out again. (Only the process dying part of the way through leaves markers
+      // without the rest.)
+      const created: MarkerRow[] = [];
+      const writeMarkers = sqlite.transaction((batch: typeof waypoints): MarkerRow[] =>
+        batch.map((waypoint) => {
+          const [lon, lat] = waypoint.geometry.coordinates as [number, number];
+          return insertMarker({
+            name: waypoint.properties.name ?? "Waypoint",
+            note: waypoint.properties.desc ?? "",
+            lat,
+            lon,
+            color: input.color,
+          });
+        }),
+      );
+      const takeOut = sqlite.transaction((batch: MarkerRow[]) => {
+        for (const row of batch) {
+          db.delete(markers).where(eq(markers.id, row.id)).run();
+          search.remove("marker", row.id);
         }
-        if (features.length === 0) return { track: null, created };
+      });
+      const storeTrack = sqlite.transaction((): TrackRow | null => {
+        if (features.length === 0) return null;
         const collection: TrackCollection = { type: "FeatureCollection", features };
         const stats = trackStats(collection);
         const now = Date.now();
@@ -431,8 +445,27 @@ export function createAnnotationsService(ctx: AppContext, deps: { elevation: Ele
           .run();
         const row = trackRow(id);
         indexTrack(row);
-        return { track: row, created };
-      })();
+        return row;
+      });
+
+      let track: TrackRow | null;
+      try {
+        if (asMarkers) {
+          for (let start = 0; start < waypoints.length; start += MARKER_WRITE_BATCH) {
+            if (start > 0) await yieldToEventLoop();
+            created.push(...writeMarkers(waypoints.slice(start, start + MARKER_WRITE_BATCH)));
+          }
+        }
+        track = storeTrack();
+      } catch (error) {
+        for (let start = 0; start < created.length; start += MARKER_WRITE_BATCH) {
+          takeOut(created.slice(start, start + MARKER_WRITE_BATCH));
+          await yieldToEventLoop();
+        }
+        if (created.length > 0) changed();
+        throw error;
+      }
+      const result = { track, created };
 
       changed();
       return { track: result.track ? toTrackDto(result.track) : null, markers: result.created.map(toMarkerDto) };

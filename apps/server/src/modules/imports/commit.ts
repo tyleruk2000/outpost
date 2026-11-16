@@ -312,7 +312,13 @@ export async function runCommit(analysis: ImportAnalysis, options: ImportOptions
       return note ? { type: "note", noteId: note } : null;
     };
 
-    const renderOptions: RenderOptions = { resolve };
+    // The page is converted on another thread, which cannot ask; it is handed the answers.
+    const placed: Record<string, InAppTarget> = {};
+    for (const href of Object.keys(links)) {
+      const target = resolve(href);
+      if (target) placed[href] = target;
+    }
+    const renderOptions: RenderOptions = { links: placed };
     if (item.format === "csv") {
       // The pages of a database's rows are its sub-pages; the first column links to them by name.
       const rows = pages.filter((page) => page.parentPath === item.path && noteOf.has(page.path));

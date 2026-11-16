@@ -6,5 +6,9 @@ export default defineConfig({
     testTimeout: 20_000,
     hookTimeout: 20_000,
     pool: "forks",
+    // The server under test runs in these processes and starts worker threads from TypeScript
+    // files. See src/core/v8-flags.ts for the engine fault this steers round; index.ts sets the
+    // same thing for a real server, and the tests do not start from index.ts.
+    execArgv: ["--wasm-wrapper-tiering-budget=1000000000"],
   },
 });

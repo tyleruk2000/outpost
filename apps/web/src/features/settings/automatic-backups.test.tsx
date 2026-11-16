@@ -278,4 +278,27 @@ describe("automatic backups in Settings", () => {
     expect(within(section).getByText(/Keeping fewer can only be set at the computer Outpost runs on\./)).toBeVisible();
     expect(within(section).getByRole("button", { name: "Back up now" })).toBeEnabled();
   });
+
+  it("offers the restart that applies a restore at the computer Outpost runs on, and nowhere else", async () => {
+    serve({ schedule: schedule(), status: { restorePending: true, supervised: true } });
+    await show()();
+    const here = screen.getByRole("region", { name: "Backup" });
+    expect(await within(here).findByText("The backup has been checked. Restart Outpost to switch to it.")).toBeVisible();
+    await userEvent.click(within(here).getByRole("button", { name: "Restart now" }));
+    expect(requests.map((request) => request.call)).toContain("POST /api/system/restart");
+  });
+
+  it("on another device says where to restart instead of offering it", async () => {
+    serve({ schedule: schedule({ right: remote }), status: { restorePending: true, supervised: true } });
+    await show()();
+    const there = screen.getByRole("region", { name: "Backup" });
+    expect(
+      await within(there).findByText(
+        /Restarting stops Outpost for everyone using it, so it can only be done at the computer Outpost runs on\./,
+      ),
+    ).toBeVisible();
+    expect(within(there).queryByRole("button", { name: "Restart now" })).not.toBeInTheDocument();
+    // Cancelling keeps what is here, so it is offered everywhere.
+    expect(within(there).getByRole("button", { name: "Cancel restore" })).toBeVisible();
+  });
 });

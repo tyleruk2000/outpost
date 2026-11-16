@@ -17,6 +17,7 @@ import rehypeRemark from "rehype-remark";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import { unified } from "unified";
 import type { MdNode } from "./from-mdast.ts";
+import { type PrepareOptions, prepareForConversion } from "./html-prepare.ts";
 
 /** The part of the converter's state the handlers below use. */
 interface State {
@@ -87,9 +88,59 @@ const handlers: Record<string, Handle> = {
   },
 };
 
+/**
+ * Of the elements the allow-list lets through, the ones the converter's look-ahead does
+ * not stop at: everything that sits inside a line of text, and `<details>`. These are
+ * what it is slow at when they are empty and in a row. An empty block (a paragraph, a
+ * list item, a table cell) ends the look-ahead, and is left for the converter to treat
+ * as it always has.
+ */
+const DROPPED_WHEN_EMPTY = new Set([
+  "a",
+  "b",
+  "code",
+  "del",
+  "details",
+  "em",
+  "i",
+  "ins",
+  "kbd",
+  "mark",
+  "picture",
+  "q",
+  "rp",
+  "rt",
+  "ruby",
+  "s",
+  "samp",
+  "source",
+  "span",
+  "strike",
+  "strong",
+  "sub",
+  "sup",
+  "tt",
+  "u",
+  "var",
+]);
+
+/**
+ * What the walk before conversion does here (see `html-prepare.ts`). The elements opened
+ * are the inline ones the converter passes on as their words alone; `<u>`, `<ins>` and
+ * `<mark>` are not among them because they become marks above. A `<q>` is written out
+ * as the converter would write it, its words between quotation marks, so that a row of
+ * them is one piece of text and not three pieces each.
+ */
+const PREPARE: PrepareOptions = {
+  open: new Set(["span", "sup", "sub", "ruby", "rt", "rp"]),
+  keepEmpty: (tagName) => !DROPPED_WHEN_EMPTY.has(tagName),
+  replace: (child) => (child.tagName === "q" ? [{ type: "text", value: '"' }, ...child.children, { type: "text", value: '"' }] : undefined),
+};
+
 const processor = unified()
   .use(rehypeParse)
   .use(rehypeSanitize, schema)
+  .use(() => (tree: HastRoot) => prepareForConversion(tree, PREPARE))
   .use(rehypeRemark, { handlers: handlers as never })
   .freeze();
 

@@ -25,6 +25,13 @@ export interface AppContext {
   jobs: JobQueue;
   log: FastifyBaseLogger;
   services: Services;
-  /** Callbacks run in reverse order when the server shuts down. */
+  /**
+   * Aborted the moment the server is asked to stop, while requests in flight are still
+   * being answered. Anything that holds a connection open for as long as the other end
+   * likes (the live-events stream, a reply being written) ends it on this; otherwise the
+   * server waits for it and then cuts it (see `DRAIN_LIMIT_MS` in app.ts).
+   */
+  stopping: AbortSignal;
+  /** Callbacks run in reverse order when the server shuts down, once no request is in flight. */
   onClose: Array<() => void | Promise<void>>;
 }

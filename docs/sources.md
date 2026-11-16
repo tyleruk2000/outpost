@@ -10,7 +10,7 @@ The catalogue itself lives in [`catalog/manifests/`](../catalog/manifests):
 | --- | --- | --- |
 | `kiwix-essentials.json` | A starter selection of archives from the Kiwix library | 61 |
 | `kiwix-more.json` | Further Kiwix archives: programming documentation, more Project Gutenberg shelves, medical and science references, courses, talks, preparedness, and more question-and-answer sites | 89 |
-| `official-publications.json` | Individual PDF handbooks, guides, leaflets and textbooks, each fetched from its publisher's own website | 93 |
+| `official-publications.json` | Individual PDF handbooks, guides, leaflets and textbooks, each fetched from its publisher's own website | 92 |
 | `radio.json` | Radio rules, frequency tables, field guides, broadcast guides and band plans as PDFs from their publishers (38), and five more Kiwix archives | 43 |
 | `outpost-reference.json` | Reference sheets written for Outpost and shipped with it; see [radio.md](radio.md) | 9 |
 | `logbook73.json` | The Radio Engineering Handbook and fifteen radio companion guides, written by this project's author for LogBook73 (MIT) and shipped as books; generated, see [radio.md](radio.md#the-handbook-and-the-radio-guides) | 16 |
@@ -92,7 +92,7 @@ from it stored in the catalogue.
 | R3 | eCFR (ecfr.gov) | The daily-updated electronic Code of Federal Regulations | **Not contacted for content.** Its `robots.txt` disallows the interfaces that serve whole parts, so the same text was taken from govinfo.gov's bulk data instead. | Works of the US Government. |
 | R4 | FCC (fcc.gov) | The US communications regulator | **Not integrated directly.** www.fcc.gov answered the catalogue check with HTTP 403 and was left alone. Its rules are covered by source R2. | Could not be read. |
 | R5 | NTIA (ntia.gov) | The US agency that manages federal spectrum use | **Direct: 1 entry** in `radio` (United States Frequency Allocation Chart, September 2025). The "Redbook" manual is now published as a web application at redbook.ntia.gov, with no single file to list, so it is **not integrated**. | Works of the US Government; the [chart page](https://www.ntia.gov/page/united-states-frequency-allocation-chart) carries no separate reuse statement. |
-| R6 | NIST (nist.gov) | The US national standards laboratory, which runs WWV, WWVH and WWVB | **Direct: 2 entries** in `radio` (Special Publication 432, NIST Time and Frequency Services, 2012; Special Publication 250-67, NIST Time and Frequency Radio Stations, 2005). **Read for the sheets**: the three station pages. **Not listed:** Special Publications 330 (The International System of Units) and 811 (Guide for the Use of the SI). Both were downloaded and checked on 2026-11-16, but nvlpubs.nist.gov answers a `HEAD` request with "404 Not Found" while serving the file to an ordinary request, and the online check reads that as a file that has gone; see [what the check cannot express](#what-the-online-check-cannot-express). | Works of the US Government. |
+| R6 | NIST (nist.gov) | The US national standards laboratory, which runs WWV, WWVH and WWVB | **Direct: 2 entries** in `radio` (Special Publication 432, NIST Time and Frequency Services, 2012; Special Publication 250-67, NIST Time and Frequency Radio Stations, 2005). **Read for the sheets**: the three station pages. **Direct: 1 entry** in `official-publications`, added later on 2026-11-16 once the online check could confirm it: Special Publication 811 (Guide for the Use of the SI, 2008). **Not listed:** Special Publication 330 (The International System of Units, 2019). It was fetched again and read: it is the United States version of the English text of the SI Brochure of the International Bureau of Weights and Measures, and carries a note from that body that all its works are protected by copyright and that the document was drafted with its permission. NIST's statement covers works its own employees wrote and says works by third parties may be in copyright, so no licence that lets the text be reused was read; see [the check and these three files](#what-the-online-check-could-not-express-and-now-can). | Works of the US Government, for what NIST's employees wrote: its [statement](https://www.nist.gov/open/copyright-fair-use-and-licensing-statements-srd-data-software-and-technical-series-publications), read on 2026-11-16, says such works are not subject to copyright protection within the United States and grants a worldwide right to reprint them, and that some works NIST publishes were written by third parties and may be in copyright. |
 | R7 | Maritime and Coastguard Agency (gov.uk) | The UK agency responsible for maritime safety information | **Direct: 3 entries.** In `radio`: Maritime Safety Information Leaflet, Advice Note 1033, January 2026; and, added on 2026-11-16, GMDSS: The Benefits of Digital Selective Calling. In `official-publications`: Life Saving Signals (added 2026-11-16). **Read for the sheets**: the leaflet, the GOV.UK page on 406 MHz beacons, and (2026-11-16) MGN 324 (M+F) Amendment 2 on the use of VHF. | [GOV.UK](https://www.gov.uk/government/publications/advice-note-1033-maritime-safety-information-msi-leaflet) says its content is under the Open Government Licence v3.0 "except where otherwise stated"; the leaflet's maps and one diagram are marked "All rights reserved", and the entry says so. |
 | R8 | IARU (iaru.org, iaru-r1.org, iaru-r2.org) | The International Amateur Radio Union and its regional organisations | **Direct: 7 entries** in `radio` (Ethics and Operating Procedures for the Radio Amateur, 4th edition; Region 1 HF and VHF band plans; Region 2 band plan; Region 3 band plan; Emergency Telecommunications Guide; Amateur and Amateur-satellite Service Spectrum). **Read for the sheets**: the same documents and the emergency frequencies page. | The operating guide states CC BY-SA 4.0 inside the file. The band plans, the emergency guide and the spectrum summary state no licence, and the website says its materials "may be subject to copyright", so those six entries say "See source". |
 | R9 | ITU (itu.int) | The UN agency for telecommunications | **Not in the catalogue.** Recommendations M.1677-1 (Morse code) and M.1172 (Q code) were **read for the sheets**; both are marked "All rights reserved. No part of this publication may be reproduced ... without written permission of ITU". The Radio Regulations themselves were not read. | All rights reserved. |
@@ -119,7 +119,7 @@ means the source looks worth having and something stopped it, which the row name
 
 | # | Source | What it is | How Outpost uses it | Licence and terms |
 | --- | --- | --- | --- | --- |
-| N1 | Met Office (metoffice.gov.uk) | The UK's national weather service | **Listed: 8 entries** in `official-publications`, factsheets of its National Meteorological Library and Archive (1 Clouds, 4 Climate of the British Isles, 6 The Beaufort Scale, 8 The Shipping Forecast, 10 Air masses and weather fronts, 11 Interpreting weather charts, 14 Microclimates, 15 Weather radar). **Left out:** factsheet 3 (Water in the atmosphere), whose text cannot be extracted from the file, so it could not be read or searched; and factsheet 2 (Thunderstorms), which was checked but whose address answers `HEAD` with "404" until an ordinary request has warmed the publisher's cache ([see below](#what-the-online-check-cannot-express)). | The [factsheets page](https://www.metoffice.gov.uk/research/library-and-archive/publications/factsheets) says all information originating from the Met Office is Crown copyright and available under the Open Government Licence. Photographs credited to named people or other bodies are not covered; the entries say so. |
+| N1 | Met Office (metoffice.gov.uk) | The UK's national weather service | **Listed: 9 entries** in `official-publications`, factsheets of its National Meteorological Library and Archive (1 Clouds, 2 Thunderstorms, 4 Climate of the British Isles, 6 The Beaufort Scale, 8 The Shipping Forecast, 10 Air masses and weather fronts, 11 Interpreting weather charts, 14 Microclimates, 15 Weather radar). **Left out:** factsheet 3 (Water in the atmosphere), whose text cannot be extracted from the file, so it could not be read or searched. Factsheet 2 was first left out because its address answers `HEAD` with "404" until an ordinary request has warmed the publisher's cache, and was added later the same day ([see below](#what-the-online-check-could-not-express-and-now-can)). | The [factsheets page](https://www.metoffice.gov.uk/research/library-and-archive/publications/factsheets) says all information originating from the Met Office is Crown copyright and available under the Open Government Licence. Photographs credited to named people or other bodies are not covered; the entries say so. |
 | N2 | Health and Safety Executive (hse.gov.uk) | The UK regulator for health and safety at work | **Listed: 5 entries** in `official-publications` (Basic advice on first aid at work, INDG347; Electrical safety and you, INDG231; Electricity at work: safe working practices, HSG85; Chainsaws at work, INDG317; Working at height, INDG401). Addresses were taken from each publication's own page. *First aid at work: guidance on regulations* (L74) was downloaded and left out: it is guidance for employers on the regulations and not a first aid reference. | The [copyright page](https://www.hse.gov.uk/help/copyright.htm) allows re-use of Crown material free of charge under the Open Government Licence, with the acknowledgement the entries carry; images the Crown does not own are excepted. |
 | N3 | GOV.UK publications (gov.uk) | Guides published by UK departments and agencies | **Listed: 6 entries.** In `official-publications`: Life Saving Signals (Maritime and Coastguard Agency), The Countryside Code summary (Natural England and Natural Resources Wales), Personal Flood Plan (Environment Agency), National Risk Register 2025 (Cabinet Office), Know Your Traffic Signs (Department for Transport). In `radio`: GMDSS: The Benefits of Digital Selective Calling (MCA). Each address was taken from GOV.UK's content service for the publication's own page. **Left out:** *SOLAS V for pleasure craft*, which GOV.UK marks as withdrawn; and the collision regulations (MSN 1781), whose current amendment is a web page. | Open Government Licence v3.0 "except where otherwise stated", read in the footer of a [publication page](https://www.gov.uk/government/publications/live-saving-signals). The Risk Register and the traffic signs book state the licence inside the file as well. |
 | N4 | Ordnance Survey (ordnancesurvey.co.uk) | Great Britain's national mapping agency | **Not listed.** Three guides were entered on 16 November 2026 and taken out again the same day, on the owner's decision: Map Reading: from the beginner to the advanced map reader; Map Reading Made Easy; Using the National Grid. They are not openly licensed (see the next column), and nothing in Outpost stops a portable drive from making a second copy. They can be had from its [teaching resources page](https://www.ordnancesurvey.co.uk/education/teacher-resources/primary). **Left out:** the legends for OS Explorer and OS Landranger maps, which print "Reproduction in whole or in part by any means is prohibited without the prior written permission of Ordnance Survey Limited"; and the map abbreviations sheet, whose address answered "not found". | **Not an open licence.** The guides are © Crown copyright, offered among OS's "free" teaching resources. The website's [general terms](https://www.ordnancesurvey.co.uk/legal/general-terms) say "You may access, view, download and print off one copy of any pages of our Website for your own personal use" and forbid commercial use without a licence. The entries say the file is for the person's own use and is not to be passed on. |
@@ -452,8 +452,9 @@ was checked should not arrive silently.
 - **Kiwix.** The library's English feed was fetched once (1,309 books). Names, editions
   and sizes come from that copy. For each publisher that is not Stack Exchange or
   Wikimedia, the licence was read on the publisher's site or in its repository.
-- **Dropped after checking.** Three files that passed every check by hand are not
-  listed because the online check cannot confirm them (next section). One Met Office
+- **Dropped after checking.** Three files that passed every check by hand were not
+  listed because the online check could not confirm them; two have since been added
+  (next section). One Met Office
   factsheet has no readable text. One Weather Service sheet may not be its own work.
 - **The validator.** `pnpm catalog:validate` passes, and with `--online` all 311 (308 since the three Ordnance Survey guides were taken out)
   entries resolve at their source.
@@ -467,25 +468,51 @@ was checked should not arrive silently.
   time, before the ten factsheets were fetched properly. Project Gutenberg was asked
   for `robots.txt` and its policy page only, and for nothing after the policy was read.
 
-### What the online check cannot express
+### What the online check could not express, and now can
 
-The online check asks each address with `HEAD`, and falls back to asking for the first
-byte only when the answer is an error other than "not found". Two publishers answer
-`HEAD` with "404 Not Found" for a file they serve normally:
+The online check asks each address with `HEAD`. It used to fall back to asking for the
+first byte only when the answer was an error other than "not found", and two publishers
+answer `HEAD` with "404 Not Found" for a file they serve normally: nvlpubs.nist.gov
+(NIST's publications server), and the Met Office's file service until an ordinary
+request has put the file in its cache. Three files that had been checked by hand were
+left out for that reason alone.
 
-- **nvlpubs.nist.gov** (NIST's publications server) did so both times it was asked. NIST Special
-  Publications 330 and 811 were downloaded, hashed and their terms read
-  ([NIST's statement](https://www.nist.gov/open/copyright-fair-use-and-licensing-statements-srd-data-software-and-technical-series-publications)
-  says works by its employees are not subject to copyright in the United States and
-  grants a worldwide right to reprint them), and they are not listed.
-- **The Met Office's file service** does so for the Thunderstorms factsheet until an
-  ordinary request has put the file in its cache, then answers "200" for some
-  minutes. The other eight factsheets answered `HEAD` correctly from cold.
+The check now asks for the first byte whenever `HEAD` is refused, "not found" included,
+and takes only that second answer as the file being gone
+(`apps/server/src/modules/catalog/resolve.ts`). The three were then looked at again,
+later on 2026-11-16. `robots.txt` was read for each host first (nvlpubs.nist.gov has
+none), the address of each file was taken from the publisher's own page (the NIST pages
+give a DOI, which was followed to the file), requests were made one at a time with a
+generic client name, and each file was read with Outpost's own PDF reader:
 
-An ordinary request for each of the three succeeds. They were left out rather than
-listed with a check that fails. Treating "not found" on `HEAD` as
-a reason to ask for the first byte would admit them; that is a change to the server's
-code and was not made here.
+- **Met Office factsheet 2, Thunderstorms** (2026 edition, 24 pages, 5,113,428 bytes):
+  **listed.** `HEAD` answered 404 and the request for the first byte answered 200. The
+  licence statement on the factsheets page was read again. The file service does not
+  honour a request for one byte and sent the whole file in answer to it, so this file
+  was fetched twice, not once; the second copy is the one that was hashed.
+- **NIST Special Publication 811** (2008 edition, 90 pages, 2,027,518 bytes): **listed.**
+  This time `HEAD` answered 200; the first byte answered 206. Written by two NIST
+  employees; NIST's statement was read again. The entry notes that the guide's appendix
+  of conversion factors descends from one reprinted from an IEEE standard with
+  permission.
+- **NIST Special Publication 330** (2019 edition, 138 pages, 1,098,279 bytes): **still
+  not listed**, for a different reason. `HEAD` answered 404 and the first byte 206, so
+  the check would now pass. But page vi of the file carries a note from the
+  International Bureau of Weights and Measures: "All BIPM's works are internationally
+  protected by copyright. This document has been drafted with permission obtained from
+  the BIPM." The text is that body's, in a United States version edited at NIST. NIST's
+  statement gives the right to reprint works its employees wrote and says works by
+  third parties may be in copyright. The Bureau's own terms were not read, so nothing
+  that was read says this text may be reused, and the entry was left out as the 2013 WHO
+  pocket book was. NIST offers the file free of charge at
+  <https://doi.org/10.6028/NIST.SP.330-2019>; a person can download it there and add it
+  under Library.
+
+The whole catalogue was not run through the online check again after this change: that
+is some three hundred requests to other people's servers, made once already that day.
+The two new entries were checked as above, by hand, and `pnpm catalog:validate` passes
+with 310 entries.
+
 ## What was read on 2026-11-16 for repeaters, and how
 
 - **Terms first.** For each publisher its `robots.txt` was read before anything else,

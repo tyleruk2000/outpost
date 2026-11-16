@@ -204,7 +204,8 @@ export async function registerAnswers(app: FastifyInstance, ctx: AppContext): Pr
       retrieval.models.clear();
     }
   });
-  ctx.onClose.push(() => writing?.abort());
+  // The answer being written is the request the server would otherwise wait for.
+  ctx.stopping.addEventListener("abort", () => writing?.abort(), { once: true });
 
   /** Whether answers are set up. Read from settings alone: the model server is not contacted. */
   app.get("/api/answers/status", async () => status());

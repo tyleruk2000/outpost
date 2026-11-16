@@ -119,7 +119,7 @@ export function BackupSection() {
                 <Button size="sm" variant="ghost" onClick={() => cancel.mutate()} loading={cancel.isPending}>
                   Cancel restore
                 </Button>
-                {status.data.supervised ? (
+                {status.data.supervised && mayRestore ? (
                   <Button size="sm" variant="primary" onClick={() => restart.mutate()} loading={restart.isPending}>
                     Restart now
                   </Button>
@@ -127,9 +127,11 @@ export function BackupSection() {
               </span>
             }
           >
-            {status.data.supervised
-              ? "The backup has been checked. Restart Outpost to switch to it."
-              : "The backup has been checked. Stop Outpost and start it again to switch to it."}
+            {!status.data.supervised
+              ? "The backup has been checked. Stop Outpost and start it again to switch to it."
+              : mayRestore
+                ? "The backup has been checked. Restart Outpost to switch to it."
+                : "The backup has been checked. Restarting stops Outpost for everyone using it, so it can only be done at the computer Outpost runs on. Open Outpost there and restart it to switch to the backup."}
           </Notice>
         ) : null}
         {status.data && status.data.previousData.length > 0 ? (

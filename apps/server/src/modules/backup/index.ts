@@ -22,6 +22,7 @@ import type { BackupStatus } from "@outpost/shared";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import type { AppContext } from "../../core/context.ts";
 import { AppError, badRequest } from "../../core/errors.ts";
+import { closeThenExit } from "../../core/stop.ts";
 import { startBackup } from "./archive.ts";
 import { registerAutomaticBackups } from "./automatic.ts";
 import { createRestoreStager, MAX_TOTAL_BYTES } from "./restore.ts";
@@ -90,15 +91,21 @@ export async function registerBackup(app: FastifyInstance, ctx: AppContext): Pro
   /**
    * Stops the server so that whatever supervises it (Docker's restart policy, the
    * portable launcher) starts it again. Refused when nothing would restart it.
+   *
+   * Its one use is applying a staged restore, which only the computer Outpost runs on
+   * can stage, so it is held to the same rule: a restart cuts off whatever everyone else
+   * is doing (an upload, a reply being written), and with no accounts any device on the
+   * network could otherwise do that as often as it liked.
    */
-  app.post("/api/system/restart", async (_request, reply) => {
+  app.post("/api/system/restart", async (request, reply) => {
+    assertBackupRight(request, ctx, "Restarting Outpost");
     if (process.env.OUTPOST_SUPERVISED !== "true") {
       throw new AppError("conflict", "Outpost cannot restart itself here. Stop it and start it again to finish.");
     }
     await reply.send({ restarting: true });
-    setTimeout(() => {
-      void app.close().finally(() => process.exit(75));
-    }, 250).unref();
+    // The same stop as a signal, so the browser that asked (which holds the live-events
+    // stream open) cannot keep the server from going.
+    setTimeout(() => closeThenExit(app, 75), 250).unref();
   });
 
   registerAutomaticBackups(app, ctx, stager);

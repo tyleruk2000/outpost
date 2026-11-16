@@ -1,6 +1,6 @@
 /**
  * Where a request must come from before it may restore a backup, delete a stored one,
- * or lower how many are kept.
+ * lower how many are kept, or restart the server to apply a restore.
  *
  * Outpost has no accounts. Restoring replaces every note, saved place and library
  * record at once, and deleting backups removes the way back from that, so both follow

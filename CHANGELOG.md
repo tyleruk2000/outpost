@@ -18,6 +18,10 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 - A background job queue stored in the database: named queues with their own limits,
   pause, resume, cancel, retries with growing pauses, and jobs that survive a restart.
 - Live updates to the browser over one server-sent-events stream.
+- Stopping is prompt and in order: on SIGTERM or SIGINT the server stops accepting,
+  ends the live-event streams (a browser tab left open no longer keeps the process up),
+  gives requests in flight three seconds, stops jobs so that they resume, closes the
+  database and exits. It exits anyway after eight seconds, inside Docker's ten.
 - A web app (React, Vite, Tailwind) with light and dark themes, a keyboard-driven
   command palette, and a layout that works from phone width up.
 - Times of day on the 24-hour or the 12-hour clock ("14:32" or "2:32 pm"), chosen under
@@ -187,6 +191,12 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 - Hierarchy, links between pages, pictures, tags and Notion databases reconstructed.
 - Skip, copy or replace for pages that already exist; hand-written pages are never
   overwritten.
+- Imported files are converted to pages in a process of their own, with a minute and
+  1 GB for each, so a file built to be slow or to need a great deal of memory (or simply
+  a very large one) no longer stops the server answering or grows its memory: 4,000
+  empty `<i>` in a 28 kB HTML file held it for 16 seconds, and a 4 MB file could take
+  2 GB. The HTML converter is also no longer slow at that file, or at text in many
+  small pieces.
 - Imports that can be stopped and continued without creating anything twice, and a
   report of what was created, updated, skipped and failed.
 
@@ -302,7 +312,7 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 
 #### Reference collections
 
-- A catalogue of 308 items in JSON manifests, with a validator: 155 Kiwix archives; 128
+- A catalogue of 310 items in JSON manifests, with a validator: 155 Kiwix archives; 130
   official handbooks, rules, guides and textbooks fetched as PDFs from their publishers
   (FAA, NASA, USGS, the US National Weather Service, FAO, WHO, Ready.gov, USDA, OpenStax,
   UIAA, Ofcom, IARU, CEPT, NIST, NTIA, CISA, the Met Office, the Health and Safety
@@ -336,6 +346,10 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   (`docs/sources.md`).
 - A catalogue refresh that does not contact a publisher about a pinned file, and a
   maintainers' online check that paces itself to publishers' crawl delays.
+- The check no longer takes "not found" in answer to `HEAD` as a file being gone until
+  a request for its first byte is refused too: two publishers answer `HEAD` with 404 for
+  files they serve. NIST Special Publication 811 and the Met Office's Thunderstorms
+  factsheet, left out for that reason, are listed.
 - A download manager: pause, resume, retry, resumable transfers across mirrors,
   checksum verification against the publisher's value, a shared speed limit applied
   smoothly, a queue forecast and per-download history.
@@ -594,6 +608,9 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 
 - Backup of the database, attachments and extracted text as one file, and a staged
   restore that is checked before it is applied and keeps the data it replaces.
+- The restart that applies a staged restore is accepted only from the computer Outpost
+  runs on, like the restore itself (or from anywhere with
+  `OUTPOST_ALLOW_REMOTE_ERASE=true`). On another device the notice says where to do it.
 
 #### Security
 
@@ -613,7 +630,14 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   the file and never reads a DOCTYPE, so that neither a hostile file nor a long
   recording can exhaust the server's memory. Reading happens in a worker thread; its
   heap limit is a last line and no longer what the server's safety rests on. Two files
-  are read at a time, and a file may turn at most 5,000 waypoints into saved places.
+  are read at a time. Waypoints turned into saved places are written a hundred at a
+  time with a pause between, so a file may turn all 20,000 it can hold into places
+  without the server stopping to do it (it was held to 5,000, written in one go).
+- Run from source, the server turns off one optimisation of the JavaScript engine
+  (compiled calls from WebAssembly into JavaScript), after a fault in V8 13.6 was traced
+  in crash reports from the tests: two worker threads starting at once could end the
+  process with "Check failed: end > addr". The packaged app's GPX worker runs no
+  WebAssembly and is not affected. See security.md.
 - A saved web page is fetched through the guarded download client, pictures included,
   with a plain client name and no cookie or referrer; read in a worker thread under
   limits of size, elements and time; cleaned with an allow-list; and kept and shown as
