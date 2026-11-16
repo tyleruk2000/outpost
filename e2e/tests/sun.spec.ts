@@ -78,7 +78,7 @@ test.describe("sun times for a place", () => {
     await page.getByRole("button", { name: "The day after" }).click();
     await page.getByRole("button", { name: "The day after" }).click();
     await expect(date).toHaveValue("2026-03-21");
-    await page.getByRole("button", { name: "Today" }).click();
+    await page.getByRole("button", { name: "Today", exact: true }).click();
     await expect(date).toHaveValue("2026-06-21");
 
     // UTC, for the radio log.

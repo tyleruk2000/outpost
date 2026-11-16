@@ -110,7 +110,7 @@ test.describe("sun times on a phone, with no saved places", () => {
     await expect(page.getByText(/^22 Jun: Sunrise 04:4\d, sunset 21:2\d$/)).toBeAttached();
     // The day is said over the times, so they are never read as today's.
     await expectInReach(page, page.getByText("Monday 22 June 2026", { exact: true }));
-    await page.getByRole("button", { name: "Today" }).tap();
+    await page.getByRole("button", { name: "Today", exact: true }).tap();
     await expect(summary).toBeAttached();
     await expect(time(page, "Sunrise")).toHaveText("04:43");
 

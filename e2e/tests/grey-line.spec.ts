@@ -124,7 +124,7 @@ test.describe("the grey line", () => {
     await page.getByRole("tab", { name: /Sun/ }).click();
     await page.getByRole("button", { name: "The day after" }).click();
     await expect(legend.locator("[data-grey-line-time]")).toHaveText(/^Not now: drawn for \d\d:00( UTC)? on Monday 22 June 2026$/);
-    await page.getByRole("button", { name: "Today" }).click();
+    await page.getByRole("button", { name: "Today", exact: true }).click();
     await expect(legend.locator("[data-grey-line-time]")).toHaveText(/^Now, /);
   });
 });
