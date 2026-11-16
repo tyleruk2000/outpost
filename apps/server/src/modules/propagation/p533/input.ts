@@ -116,7 +116,7 @@ export type ReportRow = Record<string, string>;
 
 /**
  * Reads the CSV report written with RPT_ALL and the "-c" option: one header line naming
- * the columns, then one line per hour and frequency. Columns are found by name. Two are
+ * the columns, then one line per hour and frequency. Columns are found by name. One is
  * named twice (Grw); the first is kept. The program writes −307 for "not computed".
  */
 export function parseReport(text: string): ReportRow[] {
@@ -139,6 +139,7 @@ export function parseReport(text: string): ReportRow[] {
 /** A figure from the report, or null where the program wrote its "not computed" value. */
 export function figure(row: ReportRow, column: string): number | null {
   const value = Number(row[column]);
-  if (!Number.isFinite(value) || value <= -306.5) return null;
+  // Exactly −307.00, its marker; figures below it are real (a very weak signal on a long path).
+  if (!Number.isFinite(value) || Math.abs(value + 307) < 0.005) return null;
   return value;
 }

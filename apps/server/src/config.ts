@@ -48,6 +48,7 @@ const envSchema = z.object({
   OUTPOST_MAX_UPLOAD_MB: z.coerce.number().int().min(1).default(2048),
   OUTPOST_ALLOW_PRIVATE_DOWNLOADS: bool(false),
   OUTPOST_SOLAR_TABLE_URL: z.string().url().default("https://services.swpc.noaa.gov/json/solar-cycle/predicted-solar-cycle.json"),
+  OUTPOST_P533_MAPS_MANIFEST: z.string().optional(),
   OUTPOST_ALLOW_REMOTE_ERASE: bool(false),
   OUTPOST_ALLOW_REMOTE_MODEL_SERVER: bool(false),
   OUTPOST_DOWNLOAD_HOSTS: list,
@@ -87,6 +88,8 @@ export interface Config {
   allowPrivateDownloads: boolean;
   /** Where a newer solar cycle table for HF propagation is fetched from, when a person asks for one. */
   solarTableUrl: string;
+  /** For testing only: a list of P.533 map files to use in place of the ITU's (docs/hf-propagation.md). */
+  p533MapsManifest: string | null;
   extraDownloadHosts: string[];
   /**
    * Lets "erase everything" be started from any device that can reach Outpost. Without
@@ -166,6 +169,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     maxUploadBytes: parsed.OUTPOST_MAX_UPLOAD_MB * 1024 * 1024,
     allowPrivateDownloads: parsed.OUTPOST_ALLOW_PRIVATE_DOWNLOADS,
     solarTableUrl: parsed.OUTPOST_SOLAR_TABLE_URL,
+    p533MapsManifest: parsed.OUTPOST_P533_MAPS_MANIFEST ? path.resolve(parsed.OUTPOST_P533_MAPS_MANIFEST) : null,
     extraDownloadHosts: parsed.OUTPOST_DOWNLOAD_HOSTS.map((host) => host.toLowerCase()),
     allowRemoteErase: parsed.OUTPOST_ALLOW_REMOTE_ERASE,
     allowRemoteModelServer: parsed.OUTPOST_ALLOW_REMOTE_MODEL_SERVER,
