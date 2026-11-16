@@ -1199,11 +1199,12 @@ In the API: `GET /api/maps/route-sources`, `POST /api/maps/route-search`,
   points that can be written, or about 200,000 with a height and a time each (a
   recording of one point a second for more than two days). A name, description, comment
   or symbol longer than 2,000 characters is cut there; the file is not refused for it.
-  Waypoints turned into saved places have a smaller limit of their own, 5,000 from one
-  file, because each place is written on the server's own thread at about 0.2 ms
-  apiece and that many hold everything else up for about a second. A file with more is
-  refused with a message saying so; imported with its waypoints kept on the route, the
-  same file is no trouble.
+  Waypoints turned into saved places have no smaller limit of their own: every waypoint
+  a file may hold, 20,000, can become a place. Each place is written on the server's
+  own thread at about 0.2 ms apiece, so they are written a hundred at a time with a
+  pause between, and the server goes on answering while they are (20,000 take about
+  five seconds in all). If the import fails part of the way, the places already made
+  are removed again.
 - **Several files at once.** Two files are read at a time and up to six more wait
   their turn; one more than that is turned away with a message asking to try again.
   A read holds the text of the file and what is kept of it, so a burst of uploads takes

@@ -585,7 +585,9 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   the file and never reads a DOCTYPE, so that neither a hostile file nor a long
   recording can exhaust the server's memory. Reading happens in a worker thread; its
   heap limit is a last line and no longer what the server's safety rests on. Two files
-  are read at a time, and a file may turn at most 5,000 waypoints into saved places.
+  are read at a time. Waypoints turned into saved places are written a hundred at a
+  time with a pause between, so a file may turn all 20,000 it can hold into places
+  without the server stopping to do it (it was held to 5,000, written in one go).
 - A saved web page is fetched through the guarded download client, pictures included,
   with a plain client name and no cookie or referrer; read in a worker thread under
   limits of size, elements and time; cleaned with an allow-list; and kept and shown as
