@@ -174,7 +174,12 @@ function convertNow(format: PageFormat, raw: string, options: ConvertOptions): P
     const onAbort = () => fail(stoppedBy());
     const timer = setTimeout(() => fail(new AppError("unsupported", TOO_SLOW)), options.timeoutMs ?? CONVERT_TIMEOUT_MS);
     signal?.addEventListener("abort", onAbort, { once: true });
-    converter.send({ id, format, raw, links: options.links, scan: options.scan === true } satisfies ConvertRequest);
+    try {
+      converter.send({ id, format, raw, links: options.links, scan: options.scan === true } satisfies ConvertRequest);
+    } catch {
+      // It died between files, and its exit has not been told yet.
+      fail(new AppError("unsupported", STOPPED));
+    }
   });
 }
 

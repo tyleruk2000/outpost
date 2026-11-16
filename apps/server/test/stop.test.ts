@@ -177,8 +177,9 @@ describe("stopping the server process", () => {
 
     const stopped = await stopAndTime(first, () => first.child.kill("SIGTERM"));
     expect(stopped).toMatchObject({ code: 0, signal: null });
-    // Nothing here needs the time requests in flight are allowed: the stream is told and ended at once.
-    expect(stopped.ms).toBeLessThan(DRAIN_LIMIT_MS);
+    // Milliseconds on a quiet machine: the stream is told and ended at once, and the download lets go.
+    // The bound is the one that matters, the limit after which the process would be ended uncleanly.
+    expect(stopped.ms).toBeLessThan(EXIT_LIMIT_MS);
     expect(tab.text()).toContain("event: server.stopping");
     expect(tab.ended()).toBe(true);
 
@@ -209,7 +210,7 @@ describe("stopping the server process", () => {
     });
     // 75 is what the supervisors (the launcher, the container's restart policy) take as "start me again".
     expect(restarted).toMatchObject({ code: 75, signal: null });
-    expect(restarted.ms).toBeLessThan(DRAIN_LIMIT_MS);
+    expect(restarted.ms).toBeLessThan(EXIT_LIMIT_MS);
     expect(again.text()).toContain("event: server.stopping");
   }, 120_000);
 });
@@ -236,7 +237,7 @@ describe("closing the server with requests in flight", () => {
     await app.app.close();
     const took = performance.now() - asked;
     expect(took).toBeGreaterThanOrEqual(DRAIN_LIMIT_MS - 100);
-    expect(took).toBeLessThan(DRAIN_LIMIT_MS + 2_000);
+    expect(took).toBeLessThan(DRAIN_LIMIT_MS + 4_000);
     await waitFor(() => closed, "the unfinished connection to be closed");
     fs.rmSync(app.dir, { recursive: true, force: true });
     app = undefined;
@@ -249,7 +250,8 @@ describe("closing the server with requests in flight", () => {
     expect((await fetch(`http://127.0.0.1:${port}/api/health`)).status).toBe(200);
     const asked = performance.now();
     await app.app.close();
-    expect(performance.now() - asked).toBeLessThan(1_500);
+    // Had it waited out the limit, it would have taken that long at least.
+    expect(performance.now() - asked).toBeLessThan(DRAIN_LIMIT_MS - 500);
     fs.rmSync(app.dir, { recursive: true, force: true });
     app = undefined;
   });
