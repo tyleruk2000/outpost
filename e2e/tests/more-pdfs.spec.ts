@@ -36,7 +36,9 @@ const EMERGENCY_CONTACTS = [
       { value: "01632 960745", label: "out of hours, ask for the duty doctor" },
     ],
     emails: [{ value: "ngozi.eze@fellside-surgery.example", label: "work" }],
-    addresses: [{ label: "surgery", street: "4 Kästner Lane", locality: "Ambleside", region: "Cumbria", postcode: "LA22 9ZZ", country: "" }],
+    addresses: [
+      { label: "surgery", street: "4 Kästner Lane", locality: "Ambleside", region: "Cumbria", postcode: "LA22 9ZZ", country: "" },
+    ],
     isEmergency: true,
     emergencyNote: "Two doors up. Has a spare key and a generator in the woodshed.",
     callsign: "M0ZOE",
@@ -165,7 +167,11 @@ test.describe("more PDFs made in Outpost, in the library", () => {
     await expect(page.locator("canvas").first()).toBeVisible({ timeout: 15_000 });
     await page.getByRole("tab", { name: "Sun" }).click();
     await expect(page.getByRole("heading", { name: "Sun at the centre of the map" })).toBeVisible();
-    const time = (label: string) => page.locator("dl > div").filter({ has: page.getByText(label, { exact: true }) }).locator("dd");
+    const time = (label: string) =>
+      page
+        .locator("dl > div")
+        .filter({ has: page.getByText(label, { exact: true }) })
+        .locator("dd");
     await expect(time("Sunrise")).toHaveText("04:43");
     await expect(time("Sunset")).toHaveText("21:21");
 
@@ -206,7 +212,9 @@ test.describe("more PDFs made in Outpost, in the library", () => {
     });
     // The first day's row: the times the Sun tab shows, to the minute.
     expect(text).toMatch(/Sun 21 Jun +03:55 +04:43 +13:02 +21:21 +22:09 +16 h 38 min/);
-    expect(prose).toContain("Times are on the clock of the device that made this sheet: time zone Europe/London, UTC+1, on the 24-hour clock.");
+    expect(prose).toContain(
+      "Times are on the clock of the device that made this sheet: time zone Europe/London, UTC+1, on the 24-hour clock.",
+    );
     expect(prose).toContain("hills make sunrise later and sunset earlier");
 
     await page.goto(`/search?q=${encodeURIComponent('"Sun times: 51.4800, 0.0000"')}`);

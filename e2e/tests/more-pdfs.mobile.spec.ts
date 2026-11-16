@@ -37,7 +37,9 @@ async function readAndOpen(page: Page, documentId: string, search: string, title
 }
 
 test.describe("more PDFs made in Outpost, on a phone", () => {
-  test("the emergency sheet goes to the library after the question, is found by search and opens in the reader", async ({ page }, testInfo) => {
+  test("the emergency sheet goes to the library after the question, is found by search and opens in the reader", async ({
+    page,
+  }, testInfo) => {
     test.setTimeout(90_000);
     const errors = watchForErrors(page);
     const ids: string[] = [];
@@ -49,7 +51,11 @@ test.describe("more PDFs made in Outpost, on a phone", () => {
         isEmergency: true,
         emergencyNote: "Keeps the village defibrillator and the key to the hall.",
       },
-      { name: { prefix: "", given: "Σοφία", additional: "", family: "Νικολάου", suffix: "" }, phones: [{ value: "+30 21 0765 4321", label: "" }], isEmergency: true },
+      {
+        name: { prefix: "", given: "Σοφία", additional: "", family: "Νικολάου", suffix: "" },
+        phones: [{ value: "+30 21 0765 4321", label: "" }],
+        isEmergency: true,
+      },
     ])
       ids.push((await api(page, "POST", "/api/contacts", body)).contact.id as string);
     let documentId: string | undefined;
