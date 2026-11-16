@@ -100,6 +100,12 @@ is not empty. A stray CDN font or analytics call anywhere a test goes fails the 
 font loaded from the bundle, and that the page raises no errors. The suite runs
 against the packaged app, the same bundle that ships.
 
+The app's service worker (see [below](#a-phone-out-of-reach-of-the-server)) is
+switched off for these tests, because a worker answers some requests itself and would
+hide them from the guard. The one spec that tests the worker, `kept.mobile.spec.ts`,
+puts the same guard on the whole browser context, which sees the worker's own requests
+too, and fails the same way.
+
 The guard covers the screens the tests visit (see the spec files in `e2e/tests/`), not
 every screen of the app. The server-side tests use local fixtures and never reach the
 internet either.

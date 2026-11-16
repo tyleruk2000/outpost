@@ -66,32 +66,37 @@ export function App() {
 
   return (
     <EventsProvider enabled>
-      <ReachGate>
-        <Routes>
-          <Route element={<AppShell notesTree={<NotesTree />} onNewPage={() => navigate("/notes?new=1")} />}>
-            <Route index element={<HomePage />} />
-            <Route path="search" element={<SearchPage />} />
-            <Route path="explore" element={<ExplorePage />} />
-            <Route path="library" element={<LibraryPage />} />
-            <Route path="library/documents/:id" element={<DocumentPage />} />
-            <Route path="library/collections/:id" element={<CollectionPage />} />
-            <Route path="library/read/:collectionId/*" element={<ReaderPage />} />
-            <Route path="maps" element={<MapsPage />} />
-            <Route path="notes" element={<NotesPage />} />
-            <Route path="notes/:id" element={<NotesPage />} />
-            <Route path="import" element={<ImportPage />} />
-            <Route path="downloads" element={<DownloadsPage />} />
-            <Route path="downloads/:id" element={<DownloadPage />} />
-            <Route path="search/how-it-works" element={<UnderstandPage />} />
-            <Route path="storage" element={<StoragePage />} />
-            <Route path="storage/manage" element={<ManagePage />} />
-            <Route path="storage/merge" element={<MergePage />} />
-            <Route path="settings" element={<SettingsPage />} />
-            <Route path="kept" element={<KeptPage />} />
-            <Route path="*" element={<NotFound />} />
-          </Route>
-        </Routes>
-      </ReachGate>
+      <Routes>
+        <Route
+          element={
+            // The gate swaps the whole shell for the kept copies when the server goes out of reach.
+            <ReachGate>
+              <AppShell notesTree={<NotesTree />} onNewPage={() => navigate("/notes?new=1")} />
+            </ReachGate>
+          }
+        >
+          <Route index element={<HomePage />} />
+          <Route path="search" element={<SearchPage />} />
+          <Route path="explore" element={<ExplorePage />} />
+          <Route path="library" element={<LibraryPage />} />
+          <Route path="library/documents/:id" element={<DocumentPage />} />
+          <Route path="library/collections/:id" element={<CollectionPage />} />
+          <Route path="library/read/:collectionId/*" element={<ReaderPage />} />
+          <Route path="maps" element={<MapsPage />} />
+          <Route path="notes" element={<NotesPage />} />
+          <Route path="notes/:id" element={<NotesPage />} />
+          <Route path="import" element={<ImportPage />} />
+          <Route path="downloads" element={<DownloadsPage />} />
+          <Route path="downloads/:id" element={<DownloadPage />} />
+          <Route path="search/how-it-works" element={<UnderstandPage />} />
+          <Route path="storage" element={<StoragePage />} />
+          <Route path="storage/manage" element={<ManagePage />} />
+          <Route path="storage/merge" element={<MergePage />} />
+          <Route path="settings" element={<SettingsPage />} />
+          <Route path="kept" element={<KeptPage />} />
+          <Route path="*" element={<NotFound />} />
+        </Route>
+      </Routes>
     </EventsProvider>
   );
 }

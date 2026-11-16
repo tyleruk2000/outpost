@@ -22,6 +22,9 @@ import { useKept } from "./store";
 
 const KeptMapScreen = lazy(() => import("./kept-map-screen"));
 
+/** On the server's own computer "out of reach" can only mean the server is not running, and the line says what to do about that. */
+const ON_THE_SERVER_ITSELF = typeof window !== "undefined" && ["localhost", "127.0.0.1", "[::1]"].includes(window.location.hostname);
+
 const NAV = [
   { to: "/kept", label: ON_THIS_DEVICE, icon: DeviceIcon },
   { to: "/maps", label: "Maps", icon: MapIcon },
@@ -152,6 +155,9 @@ function Shell({ checking, onCheck }: { checking: boolean; onCheck: () => void }
           <WifiOff aria-hidden className="size-4 shrink-0 text-ink-muted" strokeWidth={1.6} />
           <p className="min-w-0 flex-1 basis-56">
             <span className="font-medium">The server is out of reach.</span> Showing what is kept on this {DEVICE}, for reading only.
+            {ON_THE_SERVER_ITSELF
+              ? " This is the computer Outpost runs on, so the server is stopped or still starting: give it a few seconds, or check that the Outpost service or container is running."
+              : null}
           </p>
           <Button size="sm" loading={checking} onClick={onCheck}>
             <RefreshCw /> Try again

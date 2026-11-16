@@ -210,6 +210,26 @@ function RoomSection({ keptBytes }: { keptBytes: number }) {
   );
 }
 
+/** How to put Outpost on the Home Screen. The browser does it; Outpost can only say where the button is. */
+function HomeScreen() {
+  return (
+    <Section title="On the Home Screen">
+      <p className="max-w-[62ch] text-body text-ink">
+        Outpost can be opened from the Home Screen like any app, without the browser's bars. On an iPhone or iPad it also matters for what
+        is kept; see below.
+      </p>
+      <ul className="mt-2 grid max-w-[62ch] list-disc gap-1 pl-5 text-body text-ink marker:text-ink-faint">
+        <li>iPhone and iPad, in Safari: the Share button, then “Add to Home Screen”.</li>
+        <li>Android, in Chrome: the menu (three dots), then “Add to Home screen” or “Install app”.</li>
+      </ul>
+      <p className="mt-2 max-w-[62ch] text-small text-ink-muted">
+        Then open Outpost from its icon and keep things from there. What the icon opens has storage of its own on an iPhone or iPad: things
+        kept in a Safari tab are not in it.
+      </p>
+    </Section>
+  );
+}
+
 /** The limits that apply, said once where the person decides what to rely on. Sources and dates are in docs/offline.md. */
 function GoodToKnow() {
   const installed = runsInstalled();
@@ -318,6 +338,7 @@ export default function KeptPage({ outOfReach = false }: { outOfReach?: boolean 
       )}
 
       {supported ? <RoomSection keptBytes={total} /> : null}
+      {supported && DEVICE !== "computer" && !runsInstalled() ? <HomeScreen /> : null}
       <GoodToKnow />
 
       <ConfirmDialog

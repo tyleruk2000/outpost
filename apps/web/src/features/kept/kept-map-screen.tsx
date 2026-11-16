@@ -116,7 +116,10 @@ export default function KeptMapScreen() {
   latestStyle.current = styleInput;
   const applied = useRef<typeof styleInput | undefined>(undefined);
   const startBox = useRef<Bbox | null>(null);
-  startBox.current = bboxUnion([...areas.map((area) => area.bbox), ...keptTracks.flatMap((track) => (track.bounds ? [track.bounds] : []))]);
+  // A link to one kept route opens on that route; otherwise on everything that is kept.
+  startBox.current =
+    keptTracks.find((track) => track.id === selected?.id)?.bounds ??
+    bboxUnion([...areas.map((area) => area.bbox), ...keptTracks.flatMap((track) => (track.bounds ? [track.bounds] : []))]);
 
   const ready = kept !== undefined;
   useEffect(() => {

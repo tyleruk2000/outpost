@@ -71,18 +71,29 @@ self.addEventListener("message", (event) => {
   if (message?.type === "reach") downSince = message.reachable ? 0 : Date.now();
 });
 
+/**
+ * Notes that a request to the server failed, unless the page itself gave the request up: a map
+ * drops the tiles it no longer needs as it is moved, and that says nothing about the server.
+ */
+function noteFailure(request: Request): void {
+  if (!request.signal.aborted) downSince = Date.now();
+}
+
 async function fromServer(request: Request, timeoutMs: number): Promise<Response> {
   const abort = new AbortController();
   const timer = setTimeout(() => abort.abort(), timeoutMs);
+  const givenUp = () => abort.abort();
+  request.signal.addEventListener("abort", givenUp);
   try {
     const response = await fetch(request, { signal: abort.signal });
     downSince = 0;
     return response;
   } catch (error) {
-    downSince = Date.now();
+    noteFailure(request);
     throw error;
   } finally {
     clearTimeout(timer);
+    request.signal.removeEventListener("abort", givenUp);
   }
 }
 
@@ -143,6 +154,7 @@ async function keptThing(request: Request): Promise<Response> {
       downSince = 0;
       return response;
     } catch (error) {
+      if (request.signal.aborted) throw error;
       downSince = Date.now();
       const empty = await noTile();
       if (empty) return empty;
@@ -152,7 +164,8 @@ async function keptThing(request: Request): Promise<Response> {
   if (believedDown()) return serveKept(copy);
   try {
     return await fromServer(request, NETWORK_TIMEOUT_MS);
-  } catch {
+  } catch (error) {
+    if (request.signal.aborted) throw error;
     return serveKept(copy);
   }
 }

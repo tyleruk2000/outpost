@@ -284,8 +284,18 @@ test("keeps a page, a route and a map area on a phone, and opens them with the s
   // What was kept on purpose is untouched by the change of build.
   expect((await cacheNames(page)).filter((name) => name.startsWith("outpost-kept:")).length).toBe(4);
 
-  // Out of reach again: it is the new app that opens.
+  // The server goes while the app is open: the screen that is open stays, and says what will happen next.
   await stopServer();
+  await expect(page.getByRole("status").filter({ hasText: "This screen stays as it is" })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole("heading", { name: "On this phone", level: 1 })).toBeVisible();
+  // The next screen comes from what is kept, without a reload.
+  await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Maps" }).click();
+  await expect(banner(page)).toBeVisible();
+  await expect(page.locator('.outpost-map[data-map-idle="true"]')).toBeVisible({ timeout: 20_000 });
+  await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "On this phone" }).click();
+  await expect(page.getByRole("link", { name: "Field plan", exact: true })).toBeVisible();
+
+  // Opened afresh with the server still gone, it is the new app that opens.
   await page.reload();
   await expect(banner(page)).toBeVisible({ timeout: 20_000 });
   expect(await page.evaluate(() => (globalThis as { __outpostNextBuild?: boolean }).__outpostNextBuild)).toBe(true);

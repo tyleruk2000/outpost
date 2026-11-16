@@ -61,6 +61,10 @@ picture, not a surveyed path.
 - **Offline maps.** Download a country, a mountain range, or any box you draw, with
   the exact size shown first. Save places, import and export GPX routes, measure
   distances, search place names, and enter coordinates or British grid references.
+- **On a phone, away from the server.** Over HTTPS the app keeps itself on the phone,
+  and you can keep chosen pages of notes, routes, saved places and areas of the map
+  there, to read where the phone cannot reach the server. See
+  [docs/offline.md](docs/offline.md#a-phone-out-of-reach-of-the-server).
 - **One search.** Full-text search across documents, notes, collections and saved
   places, with ranked results, highlighted passages and filters. Optional semantic
   search finds passages by meaning with a small model that is built in (nothing to
@@ -279,6 +283,10 @@ Stated here so nobody has to find them out:
   build, so collections cannot be opened from a drive on Windows.
 - **Maps** have no routing. Hill shading and contour lines need a separate terrain
   download, and contour lines are only as fine as that terrain.
+- **Away from the server a phone can only read,** and only what was kept on it on
+  purpose. This has been tested in Chromium, not on a phone, and how long a browser
+  keeps the data is the browser's decision (Safari on an iPhone deletes it after seven
+  days of use without a visit unless Outpost is on the Home Screen).
 - **One server, one library.** There is no clustering and no PostgreSQL back end.
 - **No accounts or permissions.** Everyone who can reach Outpost can read and change
   everything in it.

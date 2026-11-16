@@ -270,7 +270,8 @@ let refreshing: Promise<number> | undefined;
 
 /**
  * Brings every kept page, route and set of places up to date with the server. Only
- * what has changed is fetched again. Map areas are not fetched again from here: they
+ * what has changed is fetched again; what has not is marked as checked, so the date
+ * on a copy is the last time it was known to match the server. Map areas are not fetched again from here: they
  * are large, so that is a button a person presses (see `area.ts`). Resolves with the
  * number of things that were replaced.
  */
@@ -281,7 +282,16 @@ export function refreshKept(): Promise<number> {
     const notes = items.filter((item) => item.kind === "note");
     if (notes.length > 0) {
       const tree = (await api.get<NoteTreeResponse>("/api/notes/tree")).notes;
-      for (const item of notes) if (await refreshNote(item, tree)) replaced += 1;
+      for (const item of notes) {
+        try {
+          if (await refreshNote(item, tree)) replaced += 1;
+          else if (!item.gone) await putKept({ ...item, refreshedAt: Date.now() });
+        } catch (error) {
+          // The server going away ends the round. Anything else (a page that has outgrown what can be
+          // kept as one, say) is this page's trouble alone: its copy stays as it was, with its old date.
+          if (error instanceof ApiError && error.isUnreachable) throw error;
+        }
+      }
     }
     const tracks = items.filter((item) => item.kind === "track");
     if (tracks.length > 0) {
@@ -296,6 +306,8 @@ export function refreshKept(): Promise<number> {
         } else if (item.gone || now.updatedAt !== item.updatedAt) {
           await keepTrack(item.id);
           replaced += 1;
+        } else {
+          await putKept({ ...item, refreshedAt: Date.now() });
         }
       }
     }
