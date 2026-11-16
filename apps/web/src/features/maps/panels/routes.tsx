@@ -13,6 +13,7 @@ import { ConfirmDialog, Dialog, DialogBody, DialogContent, DialogFooter } from "
 import { Field, Input } from "@/components/ui/input";
 import { Menu, MenuContent, MenuItem, MenuTrigger } from "@/components/ui/menu";
 import { Checkbox, Skeleton, Spinner } from "@/components/ui/misc";
+import { KeepTrackButton } from "@/features/kept/keep-controls";
 import { errorMessage } from "@/lib/api";
 import { formatDate, formatNumber, plural } from "@/lib/utils";
 import { importGpx, useDeleteTrack, useSaveRoute, useTrack, useUpdateTrack } from "../data";
@@ -171,6 +172,7 @@ export function RouteDetail({
               <Download /> Export as GPX
             </a>
           </Button>
+          <KeepTrackButton track={track} />
         </div>
 
         <div className="flex items-center gap-3">

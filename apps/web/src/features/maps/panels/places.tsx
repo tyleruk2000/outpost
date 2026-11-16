@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Field, Input, Textarea } from "@/components/ui/input";
 import { Skeleton, Switch } from "@/components/ui/misc";
+import { KeepPlacesRow } from "@/features/kept/keep-controls";
 import { cn, plural } from "@/lib/utils";
 import { copyText } from "../hooks";
 import { formatPosition, type ReadoutFormat } from "../lib/coords";
@@ -316,6 +317,7 @@ export function PlacesList({
           ))}
         </ul>
       )}
+      <KeepPlacesRow count={all.length} />
     </div>
   );
 }

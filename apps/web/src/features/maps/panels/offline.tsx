@@ -24,6 +24,7 @@ import { Badge, Select, Skeleton } from "@/components/ui/misc";
 import { ChoiceList } from "@/features/downloads/choice-list";
 import { DownloadControls, DownloadProgress } from "@/features/downloads/download-progress";
 import { useDownloads } from "@/features/downloads/use-downloads";
+import { KeepAreaSection } from "@/features/kept/keep-controls";
 import { formatNumber, plural } from "@/lib/utils";
 import { type PlacesDatasetRequest, useRemovePlaces, useRemoveRegion, useStartPlaces } from "../data";
 import { formatBboxSize } from "../lib/geo";
@@ -464,6 +465,7 @@ export function OfflinePanel({
       </section>
 
       <PlaceNames datasets={places} downloads={placeDownloads} sectionRef={placesRef} />
+      <KeepAreaSection engine={engine} />
     </div>
   );
 }

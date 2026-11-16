@@ -4,6 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import type { Plugin } from "vite";
 import { defineConfig } from "vitest/config";
+import { serviceWorker } from "./sw-plugin";
 
 const server = process.env.OUTPOST_DEV_SERVER ?? "http://127.0.0.1:8080";
 
@@ -39,7 +40,7 @@ function pdfjsAssets(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [react(), tailwindcss(), pdfjsAssets()],
+  plugins: [react(), tailwindcss(), pdfjsAssets(), serviceWorker()],
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "src"),

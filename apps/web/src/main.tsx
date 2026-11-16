@@ -5,6 +5,7 @@ import { BrowserRouter } from "react-router";
 import { Toaster } from "sonner";
 import { App } from "./app";
 import { TooltipProvider } from "./components/ui/misc";
+import { registerServiceWorker } from "./features/kept/register";
 import { ApiError } from "./lib/api";
 import { ThemeProvider, useTheme } from "./lib/theme";
 import "./styles/base.css";
@@ -42,6 +43,9 @@ function ThemedToaster() {
     />
   );
 }
+
+// Keeps the app itself on this device, so it opens when the server is out of reach (HTTPS and the packaged app only).
+registerServiceWorker();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
