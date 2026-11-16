@@ -4,9 +4,92 @@
  * Sentinel-2 scene of 10 km by 10 km over the tests' made-up map (e2e/tests/map-fixture.ts),
  * also of one colour, so that a test can tell from a pixel which picture it is seeing.
  * Files are served by range, as the real ones are. Nothing in it is a real picture.
+ *
+ * Also New Zealand's aerial photographs (LINZ's bucket, under /imagery/linz/): its
+ * catalogue, one survey of Christchurch and one sheet of it, BW23_5000_1010, a single
+ * strong green, at 2 m a pixel.
  */
 import type http from "node:http";
+import { buildAerialTiff } from "./aerial-tiff.ts";
 import { buildGeoTiff } from "./geotiff.ts";
+
+/** The stand-in sheet's outline in longitude and latitude, a little inside its corners. */
+export const STAND_IN_SHEET_BOUNDS: [number, number, number, number] = [172.527, -43.4415, 172.554, -43.41];
+/** The photograph's colour: a strong green. */
+export const STAND_IN_PHOTO_RGB: [number, number, number] = [40, 200, 60];
+const LINZ_SURVEY = "/imagery/linz/canterbury/christchurch_2023_2m/rgb/2193/";
+
+function linzFiles(): Record<string, Buffer> {
+  const [w, s, e, n] = STAND_IN_SHEET_BOUNDS;
+  const collection = Buffer.from(
+    JSON.stringify(
+      {
+        type: "Collection",
+        title: "Christchurch 2m Urban Aerial Photos (2023)",
+        license: "CC-BY-4.0",
+        links: [
+          { rel: "self", href: "./collection.json" },
+          { href: "./BW23_5000_1010.json", rel: "item" },
+        ],
+        providers: [{ name: "Stand-in City Council", roles: ["licensor"] }],
+        extent: { spatial: { bbox: [[w, s, e, n]] }, temporal: { interval: [["2023-01-15T11:00:00Z", "2023-04-04T12:00:00Z"]] } },
+        gsd: 2,
+        assets: { capture_area: { href: "./capture-area.geojson", "file:size": 300 } },
+      },
+      null,
+      2,
+    ),
+  );
+  return {
+    "/imagery/linz/catalog.json": Buffer.from(
+      JSON.stringify({
+        type: "Catalog",
+        links: [
+          {
+            rel: "child",
+            href: `.${LINZ_SURVEY.slice("/imagery/linz".length)}collection.json`,
+            title: "Christchurch 2m Urban Aerial Photos (2023)",
+            "file:size": collection.length,
+          },
+        ],
+      }),
+    ),
+    [`${LINZ_SURVEY}collection.json`]: collection,
+    [`${LINZ_SURVEY}capture-area.geojson`]: Buffer.from(
+      JSON.stringify({
+        type: "Polygon",
+        coordinates: [
+          [
+            [w, s],
+            [e, s],
+            [e, n],
+            [w, n],
+            [w, s],
+          ],
+        ],
+      }),
+    ),
+  };
+}
+
+/** The sheet, made when first asked for (it takes a moment to compress). */
+let sheet: Promise<Buffer> | undefined;
+const linzSheet = () =>
+  (sheet ??= buildAerialTiff({
+    width: 1200,
+    height: 1800,
+    samples: 4,
+    alpha: true,
+    tile: 256,
+    compression: "deflate",
+    overviews: 2,
+    epsg: 2193,
+    // Sheet BW23_5000_1010 of LINZ's grid: 2,400 m by 3,600 m from here.
+    originX: 1_561_600,
+    originY: 5_193_600,
+    pixelSize: 2,
+    values: (_x, _y, sample) => (sample === 3 ? 255 : STAND_IN_PHOTO_RGB[sample]!),
+  }));
 
 /** The scene: UTM zone 30N, 10 m pixels, top-left corner here. */
 const ORIGIN = { x: 422_000, y: 5_886_000 };
@@ -50,6 +133,7 @@ export function standInWorld(): Buffer {
 
 export function createImageryStandIn(base: () => string) {
   const files: Record<string, Buffer> = {
+    ...linzFiles(),
     "/imagery/world.tif": standInWorld(),
     "/imagery/scene/B04.tif": band(REFLECTANCE.red),
     "/imagery/scene/B03.tif": band(REFLECTANCE.green),
@@ -108,23 +192,31 @@ export function createImageryStandIn(base: () => string) {
         });
         return;
       }
+      if (request.url === `${LINZ_SURVEY}BW23_5000_1010.tiff`) {
+        void linzSheet().then((built) => serve(request, response, built));
+        return;
+      }
       const bytes = files[request.url ?? ""];
-      if (!bytes) {
-        response.statusCode = 404;
-        response.end();
-        return;
-      }
-      const match = /^bytes=(\d+)-(\d+)$/.exec(request.headers.range ?? "");
-      if (!match) {
-        response.setHeader("content-length", bytes.length);
-        response.end(bytes);
-        return;
-      }
-      const start = Number(match[1]);
-      const end = Math.min(bytes.length - 1, Number(match[2]));
-      response.statusCode = 206;
-      response.setHeader("content-range", `bytes ${start}-${end}/${bytes.length}`);
-      response.end(bytes.subarray(start, end + 1));
+      serve(request, response, bytes);
     },
   };
+}
+
+function serve(request: http.IncomingMessage, response: http.ServerResponse, bytes: Buffer | undefined): void {
+  if (!bytes) {
+    response.statusCode = 404;
+    response.end();
+    return;
+  }
+  const match = /^bytes=(\d+)-(\d+)$/.exec(request.headers.range ?? "");
+  if (!match) {
+    response.setHeader("content-length", bytes.length);
+    response.end(bytes);
+    return;
+  }
+  const start = Number(match[1]);
+  const end = Math.min(bytes.length - 1, Number(match[2]));
+  response.statusCode = 206;
+  response.setHeader("content-range", `bytes ${start}-${end}/${bytes.length}`);
+  response.end(bytes.subarray(start, end + 1));
 }
