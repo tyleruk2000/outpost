@@ -32,6 +32,8 @@ const envSchema = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   OUTPOST_HOST: z.string().default("127.0.0.1"),
   OUTPOST_PORT: z.coerce.number().int().min(1).max(65535).default(8080),
+  // 0 asks the system for any free port, which is what tests do.
+  OUTPOST_HTTPS_PORT: z.coerce.number().int().min(0).max(65535).default(8443),
   OUTPOST_DATA_DIR: z.string().default("./data"),
   OUTPOST_STORAGE_ROOTS: list,
   OUTPOST_LAN_ACCESS: bool(false),
@@ -59,6 +61,8 @@ export interface Config {
   env: "development" | "production" | "test";
   host: string;
   port: number;
+  /** Port of the HTTPS listener, which only exists once a person turns HTTPS on in Settings. */
+  httpsPort: number;
   /** Database, attachments, staging and other state Outpost owns. */
   dataDir: string;
   /**
@@ -142,6 +146,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     env: parsed.NODE_ENV,
     host: parsed.OUTPOST_HOST,
     port: parsed.OUTPOST_PORT,
+    httpsPort: parsed.OUTPOST_HTTPS_PORT,
     dataDir,
     storageRoots,
     lanAccess: parsed.OUTPOST_LAN_ACCESS,
