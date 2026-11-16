@@ -135,7 +135,7 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
   }
 
   const countChunks = () => (sqlite.prepare("SELECT count(*) AS n FROM chunks WHERE text <> ''").get() as { n: number }).n;
-  const buildsUnderWay = () => jobs.list({ states: ["queued", "running"] }).filter((job) => job.type === "semantic.index");
+  const buildsUnderWay = () => jobs.list({ states: ["queued", "running"], types: ["semantic.index"] });
   const isIndexing = () => buildsUnderWay().length > 0;
   /** Where the running build stood when it last started, to judge its speed by. */
   let pace: { modelId: string; first: { at: number; done: number }; done: number; total: number } | undefined;
