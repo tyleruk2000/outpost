@@ -4,7 +4,7 @@ import { monoWidth } from "./courier";
 import { graticule } from "./graticule";
 import { encodeWinAnsi, fitText, textWidth, wrapText } from "./helvetica";
 import { pageGeometry } from "./paper";
-import { pdfFileName, writePdf, writePdfPages } from "./pdf";
+import { pdfFileName, visualOrder, writePdf, writePdfPages } from "./pdf";
 import { boxAtScale } from "./scale";
 import { layoutSheet, sheetBottom, sheetWords } from "./sheet";
 
@@ -290,6 +290,72 @@ describe("the PDF", () => {
     expect(words[2]).toBe("Third page");
     await reading.destroy();
     expect(() => writePdfPages({ pages: [], title: "", created: new Date(0) })).toThrow(/at least one page/);
+  });
+
+  it("writes hidden words in any script so that a reader extracts them exactly, and draws nothing with them", async () => {
+    const black = [0, 0, 0] as const;
+    // More than one font's worth of characters: 300 CJK ideographs, then Greek, Arabic, an emoji outside the BMP, and plain letters.
+    const many = Array.from({ length: 300 }, (_, index) => String.fromCodePoint(0x4e00 + index)).join("");
+    const words = [
+      "Ελένη Παπαδοπούλου",
+      "محمد",
+      "محمد بن علي",
+      "שרה כהן",
+      "Ahmed محمد علي Khan",
+      "شارع 12",
+      "Zoë Łukasiewicz",
+      "📻 radio",
+      many,
+    ];
+    const made = writePdfPages({
+      pages: [
+        {
+          width: 595.28,
+          height: 841.89,
+          items: [
+            { kind: "text", x: 72, y: 72, text: "Seen", size: 12, color: black },
+            ...words.map((text, index) => ({
+              kind: "text" as const,
+              x: 72,
+              y: 100 + index * 20,
+              text,
+              size: 12,
+              color: black,
+              hidden: true,
+            })),
+          ],
+        },
+      ],
+      title: "Hidden",
+      created: new Date(0),
+    });
+    const written = latin1(made);
+    expect(written).toContain("/Subtype /Type3");
+    // After the seven fixed objects: two fonts, each with its map, and the blank glyph they share.
+    expect(written).toContain("/Font << /F1 5 0 R /F2 6 0 R /U1 8 0 R /U2 10 0 R >>");
+    expect(written).toContain("12 0 obj\n<< /Length 8 >>\nstream\n500 0 d0\nendstream");
+    expect(written).not.toContain("?");
+    expect(written).toMatch(/BT 3 Tr 1 0 0 1 72 \d+(\.\d+)? Tm \/U1 12 Tf <[0-9A-F]+> Tj 0 Tr ET/);
+    const start = Number(/startxref\n(\d+)\n%%EOF\n$/.exec(written)![1]);
+    const entries = [...written.slice(start).matchAll(/^(\d{10}) 00000 n $/gm)].map((match) => Number(match[1]));
+    for (const [index, offset] of entries.entries())
+      expect(written.slice(offset, offset + `${index + 1} 0 obj`.length)).toBe(`${index + 1} 0 obj`);
+
+    const reading = getDocument({
+      data: made.slice(),
+      useSystemFonts: false,
+      disableFontFace: true,
+      standardFontDataUrl: `${process.cwd()}/node_modules/pdfjs-dist/standard_fonts/`,
+    });
+    const document = await reading.promise;
+    const read = ((await (await document.getPage(1)).getTextContent()).items as Array<{ str: string }>).map((item) => item.str);
+    expect(read.join("\n")).toContain("Seen");
+    // Each line is one piece of text, in reading order; the long one is split where it passes from one font to the next.
+    for (const text of words.slice(0, -1)) expect(read).toContain(text);
+    expect(read.join("")).toContain(many);
+    expect(visualOrder("abc")).toBe("abc");
+    expect(visualOrder("محمد")).toBe("دمحم");
+    await reading.destroy();
   });
 
   it("refuses a page that refers to a picture it was not given", () => {

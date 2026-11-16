@@ -21,10 +21,11 @@ from the screen that made it.**
 | The same screen, under "with one thing changed" | The comparison on screen: every row's figures by hour. | "HF comparison, …, months of the year, for …", tag `HF comparison` |
 | Radio → HF coverage, under the legend | The coverage map as shown: its picture, legend, the grid in figures, the caveats. See [hf-propagation.md](hf-propagation.md#a-coverage-map-on-paper). | "HF coverage, London, 40 m, reliability at 12:00 UTC, for …", tag `HF coverage map` |
 | Radio → Communication plans → a plan | The plan written out. See [hf-propagation.md](hf-propagation.md#exports). | "Communication plan, *name*, for 16 Nov 2026", tag `Communication plan` |
-| Encryption → By hand → paper aids | One-time pads and the cipher square. **Not offered to the library**; see below. | — |
+| Encryption → By hand → paper aids | One-time pads and the cipher square. A pad asks first; see below. | "One-time pads, …", tag `One-time pads`; `Cipher aid` |
+| Contacts → Emergency sheet | The marked contacts, as on the sheet, with the date and time it was made. **Asks first**; see below. See [contacts.md](contacts.md#using-them). | "Emergency sheet, 3 contacts, made 16 Nov 2026", tag `Emergency sheet` |
+| Maps → Sun tab, or a place's Sun section | Sun times day by day for two weeks, a month or a year. See [maps.md](maps.md#sun-times-on-paper). | "Sun times, Helvellyn, November 2026", tag `Sun times` |
 
-Every one of them except the paper aids offers the same three things, in the same
-words:
+Every one of them offers the same three things, in the same words:
 
 - **Save as PDF.** A link to the file, which the browser saves. It is a plain link and
   not a button that starts a download, because a plain link is the only kind a phone's
@@ -92,6 +93,11 @@ The duplicate check is by checksum, so "the same PDF" means the same bytes.
   until the engine or its data changes or the kept answer is cleared.
 - **A communication plan** says the day it was written out, and the file's own date is
   that day. Written out twice in a day it is the same file; the next day it is another.
+- **Sun times** say the day they were made, and the file's date is that day: the same
+  sheet made twice in a day is the same file.
+- **The emergency sheet** says the minute it was made, so it is made afresh each time
+  the screen is opened, and each is another document. That is deliberate: a copy should
+  say how old it is. Delete older ones in the Library.
 - **A map page** is a picture drawn again each time it is made, and carries the time it
   was made. The file made once and added twice is one document; the same page made
   again is another document. Delete the older one in the Library if it is not wanted.
@@ -136,18 +142,70 @@ has decided a copy need not be secret. The warning beside the saved file says th
 
 The cipher square is not a secret and is added with no question.
 
+## The emergency sheet asks first
+
+The emergency sheet is other people's names, numbers and addresses. They are already
+readable by everyone on the Contacts screen; adding the sheet to the library adds a
+second copy that search reaches, that goes into every backup and onto portable drives,
+and that does not change when a contact is corrected or removed. So **Add to library**
+asks first, saying exactly that (`confirm` on `PdfButtons`), and nothing is sent unless
+the answer is yes. The sheet carries the date and time it was made, so a copy found
+later says how old it is. Saving the PDF to the device asks nothing.
+
+## Letters the typefaces cannot write
+
+The writer's typefaces (Helvetica and Courier, which every reader supplies) can write
+Western European letters and nothing else. Where a sheet has to show a person's name or
+an address in any other script, a "?" is not acceptable, so:
+
+- **The line is drawn as a picture** by the browser, at 300 to the inch, in the
+  device's own type, where its letters would have stood, and made smaller if it would
+  be wider than its column (`apps/web/src/features/maps/print/lettering.ts`). The
+  browser joins and orders every script the device can show (Arabic, Hebrew, Indic
+  scripts), which a font carried in the file could not do without a shaping engine.
+- **The words are kept in the file, unseen**, over the picture, so that the library's
+  search and a screen reader find them. The writer gives such words a Type 3 font whose
+  every glyph draws nothing, with a ToUnicode map saying which character each code is
+  (256 to a font; a file that needs more has more fonts). Right-to-left words are put in
+  the order they stand on a page, so that pdf.js reads them back in reading order.
+  `pdf.test.ts` reads Greek, Arabic, Hebrew, Polish, an emoji and 300 Chinese
+  characters back exactly; `more-pdfs.spec.ts` searches the library for a Greek name
+  only a picture shows.
+- **If the device will not draw**, each run of such letters is printed "[?]" and the
+  sheet and the screen say how many entries were affected.
+
+Carrying a font instead was looked at. The fonts Outpost ships (Atkinson Hyperlegible
+Next, Atkinson Hyperlegible Mono and Literata, all under the SIL Open Font License,
+which allows embedding a subset) are WOFF2 files of Latin, Latin Extended and, for
+Literata, Greek, Cyrillic and Vietnamese: no Arabic, Hebrew, Indic or Chinese. Using
+them would need a Brotli decompressor and a TrueType subsetter written here (variable
+fonts at that), and would still print "?" for most of the world's scripts. Pictures
+cover whatever the device can show. The cost: the picture is not sharp at any size (it
+is 300 to the inch), and its letters cannot be selected as they look; the unseen words
+can.
+
+Used by the emergency sheet and sun times (a saved place's name). The other PDFs still
+print "?" for such letters and say which (the prediction, comparison and plan; the map
+page draws only its title as a picture, without the unseen words).
+
 ## Not done
 
-- **The contacts emergency sheet as a PDF.** It prints from the browser and has no PDF.
-  It needs a table laid out by the PDF writer, and names outside Western European
-  letters drawn as pictures or written in a font carried in the file (the writer has
-  neither a carried font nor a table with wrapped cells). When it is built, adding it to
-  the library will put other people's names and numbers into search and backups; they
-  are already readable by everyone on the Contacts screen, and the shared buttons can
-  ask before adding (`confirm` on `PdfButtons`), which nothing uses yet.
-- **Sun times for a place as a PDF.** Needs a page design (a year's table, or a month's)
-  and the map's sun code run for each day; nothing of it is started.
+What else in Outpost prints or makes a file, and why it has no PDF (checked by reading
+the web app for `window.print`, `usePrinting`, print stylesheets, `download` links,
+blobs and exports, November 2026):
+
+- **A route's details and elevation profile**, **a saved place list**, **the repeater
+  list**: each exports a file for another program (GPX, or CHIRP and other radio
+  formats), nothing prints. A PDF of each would be a new document (a route card with
+  its profile drawn, a repeater table) to design; not asked for, not built.
+- **Notes** export as Markdown and are already in search. **A recording** exports GPX.
+  **Contacts** export as vCard. **Backups**, the semantic index and the HTTPS
+  authority's certificate are files for a machine, not for reading.
+- **Keys and encrypted files** on the Encryption screen are saved as files on purpose
+  and must not go to the library.
 - **The radio reference sheets.** They are Markdown documents already in the library.
+- **The set-up guide and the trust-store steps** (Settings → HTTPS) are screens with
+  nothing to print.
 - **A PDF of the contact log's comparison with predictions.**
 - **A link back to one saved prediction or one saved coverage map.** Neither has an
   address of its own; the link goes to the screen that lists them.
@@ -165,6 +223,10 @@ The cipher square is not a secret and is added with no question.
 | What a made PDF is, its source, its category, the upload | `apps/web/src/features/library/made/made-pdf.ts` |
 | The buttons, the status, the hook that holds both | `apps/web/src/features/library/made/pdf-actions.tsx` |
 | The line under a document's Source that leads back | `apps/web/src/features/library/made/made-in-outpost.tsx` |
+| The emergency sheet as pages | `apps/web/src/features/contacts/emergency-document.ts`, `emergency-sheet.tsx` |
+| Sun times as pages, and the buttons in the Sun tab | `apps/web/src/features/maps/lib/sun-document.ts`, `panels/sun-pdf.tsx` |
+| Lines drawn as pictures; words in any script, unseen | `apps/web/src/features/maps/print/lettering.ts`, `pdf.ts` |
+| The guard that nothing prints or makes a PDF without the actions | `apps/web/src/lib/made-pdf-rule.test.ts` |
 | A prediction and a comparison as pages | `apps/web/src/features/propagation/prediction-document.ts`, `comparison-document.ts`, `prediction-export.tsx` |
 | A coverage map as pages, and its picture | `apps/web/src/features/propagation/coverage-map/coverage-document.ts`, `coverage-picture.ts`, `coverage-export.tsx` |
 | A plan's PDF | `apps/web/src/features/propagation/plans/plan-export.tsx`, `document.ts` |

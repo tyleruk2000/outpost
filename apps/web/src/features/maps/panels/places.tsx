@@ -112,7 +112,12 @@ export function PlaceEditor({
             <PlaceMark color={draft.color} icon={draft.icon} className="mt-0.5" />
             <span className="min-w-0">{saved ? saved.name : "New place"}</span>
           </h3>
-          <SunSection position={{ lat: draft.lat, lon: draft.lon }} onOpen={onNeedRoom} className="border-b border-border pb-1" />
+          <SunSection
+            position={{ lat: draft.lat, lon: draft.lon }}
+            name={saved?.name}
+            onOpen={onNeedRoom}
+            className="border-b border-border pb-1"
+          />
         </div>
         <Field label="Name">
           {(ids) => (

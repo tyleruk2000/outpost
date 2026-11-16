@@ -301,7 +301,8 @@ in the browser. The reasons and the behaviour are in
 ### PDFs made in Outpost and added to the library
 
 The web app makes PDFs itself (a map page, an HF prediction, a comparison, a coverage
-map, a communication plan) and can add one to the library. See
+map, a communication plan, the paper aids, the contacts emergency sheet, sun times) and
+can add one to the library. See
 [library.md](library.md).
 
 - **It is an upload like any other.** The file goes through `POST /api/documents`, the
@@ -320,11 +321,18 @@ map, a communication plan) and can add one to the library. See
   the positions of the stations or the ground it shows: adding it to the library puts
   those where the rest of the household can find them by search, which is the point of
   it, and which the screen says ("where search and backups reach it").
-- **One-time pads are never offered to the library**, and nor is the cipher square that
-  is printed from the same view. A pad is a secret meant for paper; the reasons are on
-  the screen and in [library.md](library.md#paper-aids-are-not-offered-to-the-library).
-  Nothing stops a person saving the pads' PDF and uploading it by hand, as nothing stops
-  them photographing the paper; the screen warns that a saved file is another copy.
+- **A one-time pad asks before it is added.** A pad is a secret meant for paper; the
+  question and the reasons are in [library.md](library.md#paper-aids-a-pad-asks-first).
+- **The contacts emergency sheet asks before it is added**, because it is other
+  people's details. Adding it makes a second copy of their names, numbers and addresses
+  that everyone on the network can read and find by search (as they can the Contacts
+  screen), that goes into every backup and onto portable drives, and that does not
+  change or go when a contact is corrected or removed: it stays until it is deleted
+  from the library. The question says all of that, and nothing is sent unless it is
+  answered yes. The PDF carries the date and time it was made. A person who removes a
+  contact should also delete any emergency sheet in the library that holds it; Outpost
+  does not do this for them, because the library's copy is a document like any other.
+  ([contacts.md](contacts.md), [library.md](library.md#the-emergency-sheet-asks-first))
 - **The link back is an address inside Outpost or nothing.** A document's `source` is a
   field anyone can type in. When it begins "Made in Outpost from", the document's page
   offers a link to the address it ends with, and only if that address is a path inside
@@ -340,6 +348,11 @@ map, a communication plan) and can add one to the library. See
   written into the PDF as text strings with their brackets and backslashes escaped,
   holds only characters of the one encoding the writer uses, and is read back by the
   library as text like any other.
+- **Words in other scripts are written as codes, not as strings.** Unseen words in a
+  script the typefaces lack (a name on the emergency sheet) are written as hexadecimal
+  one-byte codes into a font whose glyphs draw nothing, with a map from code to
+  character in UTF-16 hex. Nothing from a contact reaches the file as anything but those
+  hex digits, so no bracket or backslash in a name can end a string.
 - **Where the PDFs go is remembered in the browser** (`outpost.library.madeCategory`
   in `localStorage`): a category name, nothing else.
 

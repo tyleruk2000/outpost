@@ -2,18 +2,32 @@
  * The emergency sheet: the marked contacts on one clean page, to print and keep where
  * a phone is not needed to read it. What is on the screen is what is printed; the
  * browser's own Print prints the sheet and nothing around it (see contacts.css).
+ *
+ * The same sheet is made as a PDF (emergency-document.ts), with the three things every
+ * PDF made in Outpost offers: save it, add it to the library, share it. Adding it to
+ * the library asks first, because the sheet is other people's details.
  */
 import { addressLines, type ContactDto } from "@outpost/shared";
 import { ArrowLeft, Download, Printer } from "lucide-react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router";
-import { EmptyState, ErrorState, Page, PageHeader } from "@/components/page";
+import { EmptyState, ErrorState, Notice, Page, PageHeader } from "@/components/page";
 import { PrintNotice } from "@/components/print-notice";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/misc";
-import { usePrinting } from "@/lib/printing";
+import { Segmented, Skeleton } from "@/components/ui/misc";
+import { AID_PAPER_KEY, isAidPaper, likelyPaper } from "@/features/encryption/paper-aids";
+import { type MadePdf, madePdf } from "@/features/library/made/made-pdf";
+import { PdfActions } from "@/features/library/made/pdf-actions";
+import { readStored, writeStored } from "@/features/maps/lib/view";
+import { cannotDraw, type DrawLine, writeLettered } from "@/features/maps/print/lettering";
+import { PAPERS } from "@/features/maps/print/paper";
+import { errorMessage } from "@/lib/api";
+import { useClockStyle } from "@/lib/clock";
+import { type Printing, usePrinting } from "@/lib/printing";
 import { formatDate, plural } from "@/lib/utils";
 import { exportHref, labelOr, useEmergencyContacts } from "./contacts-data";
+import { emergencySheets, emergencyTitle, entriesWithUnwritable, madeWords, type SheetPaper } from "./emergency-document";
 
 /** The sheet itself. Black on white whatever the theme, and sized in points, because it is paper. */
 export function EmergencySheet({ contacts, printedOn }: { contacts: ContactDto[]; printedOn: number }) {
@@ -104,6 +118,109 @@ export function EmergencySheet({ contacts, printedOn }: { contacts: ContactDto[]
   );
 }
 
+type Made = { pdf: MadePdf; pages: number; drawn: number; marked: number; at: Date } | { error: string };
+
+/** What "Add to library" asks before it sends anything. */
+export function libraryQuestion(count: number) {
+  return {
+    title: "Put other people’s details in the library?",
+    description: (
+      <>
+        <span className="block">
+          This sheet holds the names, numbers and addresses of {plural(count, "person", "people")}. In the library everyone who can reach
+          Outpost on your network can read it and find it by search, as they can on the Contacts screen. It also goes into every backup.
+        </span>
+        <span className="mt-2 block">
+          It is a copy. It will not change when a contact is corrected or removed, and it stays in the library and its backups until you
+          delete it there.
+        </span>
+      </>
+    ),
+  };
+}
+
+/** The sheet as a PDF: made on this device when the screen opens, and again when the contacts or the paper change. */
+export function SheetPdf({ contacts, printing, draw }: { contacts: ContactDto[]; printing: Printing; draw?: DrawLine }) {
+  const style = useClockStyle();
+  const [paper, setPaper] = useState<SheetPaper>(() => readStored(AID_PAPER_KEY, isAidPaper, likelyPaper(navigator.language)));
+  const [made, setMade] = useState<Made | null>(null);
+
+  useEffect(() => {
+    let live = true;
+    setMade(null);
+    const at = new Date();
+    const title = emergencyTitle(contacts, at);
+    const make = async (): Promise<Made> => {
+      let written = await writeLettered(emergencySheets(contacts, { made: at, style, paper }), title, at, draw);
+      if (written.marked > 0) {
+        // This device would not draw some names: the sheet says so at the top, and says how many entries.
+        const marked = entriesWithUnwritable(contacts);
+        written = await writeLettered(emergencySheets(contacts, { made: at, style, paper, marked }), title, at, cannotDraw);
+        written = { ...written, marked };
+      }
+      const pdf = madePdf(written.bytes, title, "Emergency sheet", {
+        what: "the emergency sheet of contacts",
+        path: "/contacts/emergency",
+      });
+      return { pdf, pages: written.pages, drawn: written.drawn, marked: written.marked, at };
+    };
+    make()
+      .catch((error: unknown) => ({ error: errorMessage(error) }))
+      .then((result) => {
+        if (live) setMade(result);
+      });
+    return () => {
+      live = false;
+    };
+  }, [contacts, style, paper, draw]);
+
+  return (
+    <section aria-label="The sheet as a PDF" className="mb-5 grid max-w-[65ch] gap-3 border-y border-border py-4" data-testid="sheet-pdf">
+      <div>
+        <h2 className="text-body font-semibold text-ink">The sheet as a PDF</h2>
+        <p className="mt-0.5 text-small text-ink-muted">
+          {made && "pdf" in made
+            ? `${plural(made.pages, "page")} of ${PAPERS[paper].label}, made on this device on ${madeWords(made.at, style)}.`
+            : `Being made on this device, on ${PAPERS[paper].label}.`}{" "}
+          The file carries the date it was made. Save it to keep it on this device, or add it to the library to print it from anywhere.
+        </p>
+      </div>
+      {made && "error" in made ? (
+        <Notice tone="danger" title="The PDF could not be made">
+          {made.error} The sheet below can still be printed from the browser.
+        </Notice>
+      ) : (
+        <PdfActions
+          pdf={made && "pdf" in made ? made.pdf : null}
+          lead={printing.lead === "print" ? "none" : undefined}
+          confirm={libraryQuestion(contacts.length)}
+        />
+      )}
+      {made && "pdf" in made && made.marked > 0 ? (
+        <p className="text-small text-ink">
+          This device could not put the letters of {plural(made.marked, "entry", "entries")} on the page, so each place they belong is
+          marked [?] in the PDF, and the PDF says so. The sheet below, printed from the browser, has them in full.
+        </p>
+      ) : made && "pdf" in made && made.drawn > 0 ? (
+        <p className="text-small text-ink-muted">
+          Names and words in letters the PDF’s own typefaces do not have are drawn in the PDF as they are here, as pictures, with the words
+          kept in the file so that search finds them.
+        </p>
+      ) : null}
+      <Segmented<SheetPaper>
+        label="Paper for the PDF"
+        value={paper}
+        onChange={(next) => {
+          setPaper(next);
+          writeStored(AID_PAPER_KEY, next);
+        }}
+        options={(["a4", "letter"] as const).map((id) => ({ value: id, label: PAPERS[id].label }))}
+        className="justify-self-start"
+      />
+    </section>
+  );
+}
+
 export default function EmergencySheetPage() {
   const contacts = useEmergencyContacts();
   const printedOn = Date.now();
@@ -160,6 +277,7 @@ export default function EmergencySheetPage() {
             instead="Use the browser’s own Share menu, then Print, or take a screenshot of the sheet below."
             className="mb-4 max-w-[65ch]"
           />
+          <SheetPdf contacts={marked} printing={printing} />
           <p className="mb-3 max-w-[65ch] text-small text-ink-muted">
             This is the page as it prints. A printed sheet can be read by whoever finds it, and does not change when a contact does: print
             it again after changing a number.
