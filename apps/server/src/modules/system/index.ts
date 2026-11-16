@@ -98,12 +98,15 @@ export async function registerSystem(app: FastifyInstance, ctx: AppContext): Pro
       if (!reply.raw.writableEnded) reply.raw.end();
     };
     request.raw.on("close", close);
+    // The server is stopping: say so and end the stream, or the stop would wait on this
+    // tab for as long as it stays open. A browser tries again by itself in a moment.
+    const stopping = () => {
+      if (!reply.raw.writableEnded) reply.raw.write("event: server.stopping\ndata: {}\n\n");
+      close();
+    };
+    ctx.stopping.addEventListener("abort", stopping, { once: true });
     // Removed again when the browser goes away, so reconnecting tabs do not pile up.
-    ctx.onClose.push(close);
-    request.raw.on("close", () => {
-      const index = ctx.onClose.indexOf(close);
-      if (index !== -1) ctx.onClose.splice(index, 1);
-    });
+    request.raw.on("close", () => ctx.stopping.removeEventListener("abort", stopping));
   });
 
   app.get<{ Querystring: { active?: string; limit?: string } }>("/api/jobs", async (request) => {

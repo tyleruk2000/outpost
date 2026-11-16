@@ -66,6 +66,14 @@ queued again and its handler resumes from what is on disk. Progress reaches the
 browser over one server-sent-events stream. A separate job server (Redis and a worker
 fleet) would be the wrong weight for a single-node tool that must run on a Pi.
 
+Stopping is one path for a signal and for the server restarting itself (`core/stop.ts`,
+and the close hooks in `app.ts`): stop accepting; abort `ctx.stopping`, on which the
+responses that never end by themselves (live events, a reply being written) end; give
+requests in flight `DRAIN_LIMIT_MS` and then close their connections; stop jobs with
+the reason "shutdown", which leaves their rows running for the next start to queue
+again; run the modules' close callbacks; close the database; exit. The process exits
+after `EXIT_LIMIT_MS` whether or not that finished.
+
 CPU-heavy parsing (PDF text) runs in a worker thread so that one large document cannot
 stall the HTTP server. OCR does the same, on a queue of its own that runs one document
 at a time. So does the built-in embedding model, in a worker that stays loaded while it

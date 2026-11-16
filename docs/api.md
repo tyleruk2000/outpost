@@ -97,6 +97,8 @@ depends on the error. The codes, from `apps/server/src/core/errors.ts`:
 `GET /api/events` is a server-sent-events stream (`text/event-stream`). It stays open,
 and the server writes a comment line every 25 seconds to keep it alive. Each event has
 a name and a JSON `data` of the form `{ "id": …, "data": … }`; both parts are optional.
+When the server is stopping it sends `server.stopping` and ends the stream; a browser's
+`EventSource` connects again by itself once the server is back.
 
 | Event | Sent when | `id` / `data` |
 | --- | --- | --- |

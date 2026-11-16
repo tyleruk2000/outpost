@@ -22,6 +22,7 @@ import type { BackupStatus } from "@outpost/shared";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import type { AppContext } from "../../core/context.ts";
 import { AppError, badRequest } from "../../core/errors.ts";
+import { closeThenExit } from "../../core/stop.ts";
 import { startBackup } from "./archive.ts";
 import { registerAutomaticBackups } from "./automatic.ts";
 import { createRestoreStager, MAX_TOTAL_BYTES } from "./restore.ts";
@@ -96,9 +97,9 @@ export async function registerBackup(app: FastifyInstance, ctx: AppContext): Pro
       throw new AppError("conflict", "Outpost cannot restart itself here. Stop it and start it again to finish.");
     }
     await reply.send({ restarting: true });
-    setTimeout(() => {
-      void app.close().finally(() => process.exit(75));
-    }, 250).unref();
+    // The same stop as a signal, so the browser that asked (which holds the live-events
+    // stream open) cannot keep the server from going.
+    setTimeout(() => closeThenExit(app, 75), 250).unref();
   });
 
   registerAutomaticBackups(app, ctx, stager);

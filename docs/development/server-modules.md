@@ -55,6 +55,7 @@ before it. Use `ctx.onClose.push(fn)` for cleanup.
 | Search | `ctx.services.search.upsert({...})` and `.remove(kind, entityId)` |
 | Network transfers | `ctx.services.downloads.start({...})`; see `modules/downloads/types.ts` |
 | Whether a request comes from this computer | `isLocalRequest(request, ctx.config)` from `core/local.ts` |
+| Ending a long-lived response when the server stops | `ctx.stopping` (an `AbortSignal`); see the live-events route in `modules/system` |
 
 ### Jobs
 

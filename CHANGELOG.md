@@ -18,6 +18,10 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 - A background job queue stored in the database: named queues with their own limits,
   pause, resume, cancel, retries with growing pauses, and jobs that survive a restart.
 - Live updates to the browser over one server-sent-events stream.
+- Stopping is prompt and in order: on SIGTERM or SIGINT the server stops accepting,
+  ends the live-event streams (a browser tab left open no longer keeps the process up),
+  gives requests in flight three seconds, stops jobs so that they resume, closes the
+  database and exits. It exits anyway after eight seconds, inside Docker's ten.
 - A web app (React, Vite, Tailwind) with light and dark themes, a keyboard-driven
   command palette, and a layout that works from phone width up.
 - Times of day on the 24-hour or the 12-hour clock ("14:32" or "2:32 pm"), chosen under

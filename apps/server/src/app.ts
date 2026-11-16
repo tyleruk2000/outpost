@@ -2,6 +2,7 @@
  * Builds the HTTP application. `buildApp` is used by the real entry point and by tests,
  * which pass a temporary data directory and get a fully working server back.
  */
+import { setMaxListeners } from "node:events";
 import fs from "node:fs";
 import path from "node:path";
 import fastifyStatic from "@fastify/static";
@@ -40,6 +41,13 @@ const APP_CSP = [
   "frame-ancestors 'self'",
 ].join("; ");
 
+/**
+ * How long requests in flight get to finish once the server has been asked to stop.
+ * Whatever is still open after that is cut: a stop must not wait on a browser tab, and
+ * `docker stop` kills the process ten seconds after asking.
+ */
+export const DRAIN_LIMIT_MS = 3_000;
+
 export interface BuiltApp {
   app: FastifyInstance;
   ctx: AppContext;
@@ -69,6 +77,9 @@ export async function buildApp(config: Config): Promise<BuiltApp> {
   applyPendingRestore(config.dataDir, (message) => app.log.warn(message));
   const { sqlite, db } = openDatabase(path.join(config.dataDir, "outpost.db"));
   const events = new EventBus();
+  const stopping = new AbortController();
+  // One listener for each open live-events stream; a house full of open tabs is not a leak.
+  setMaxListeners(0, stopping.signal);
   const ctx: AppContext = {
     config,
     db,
@@ -77,6 +88,7 @@ export async function buildApp(config: Config): Promise<BuiltApp> {
     jobs: new JobQueue(db, events, app.log),
     log: app.log,
     services: {} as Services,
+    stopping: stopping.signal,
     onClose: [],
   };
 
@@ -155,8 +167,24 @@ export async function buildApp(config: Config): Promise<BuiltApp> {
   ctx.jobs.setConcurrency("index", ctx.services.settings.get("indexing.concurrency"));
 
   app.addHook("onReady", async () => ctx.jobs.start());
+  // Stopping, in order. Fastify stops accepting connections and answers anything new with
+  // 503; then this hook runs, before it waits for the requests in flight. Streams that
+  // would never end by themselves are told to (`ctx.stopping`), jobs are stopped the way
+  // they expect (a download keeps its partial file and resumes on the next start), and
+  // what is still open after the limit is cut. `onClose` below runs once no request is left.
+  let jobsStopped: Promise<void> | undefined;
+  let cut: NodeJS.Timeout | undefined;
+  app.addHook("preClose", async () => {
+    stopping.abort();
+    jobsStopped = ctx.jobs.close();
+    cut = setTimeout(() => {
+      app.log.warn("requests were still in flight when the time to stop ran out; their connections are being closed");
+      app.server.closeAllConnections();
+    }, DRAIN_LIMIT_MS);
+  });
   app.addHook("onClose", async () => {
-    await ctx.jobs.close();
+    clearTimeout(cut);
+    await (jobsStopped ?? ctx.jobs.close());
     for (const close of ctx.onClose.reverse()) await close();
     sqlite.close();
   });
