@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 /**
  * A table from a document. It keeps its own width and scrolls inside its box, so a
- * phone never scrolls the page sideways.
+ * phone never scrolls the page sideways. An empty `header` is a table without a header row.
  */
 export function DataTable({ label, header, body }: { label: string; header: ReactNode[]; body: ReactNode[][] }) {
   return (
@@ -13,16 +13,18 @@ export function DataTable({ label, header, body }: { label: string; header: Reac
       aria-label={`Table: ${label}`}
     >
       <table>
-        <thead>
-          <tr>
-            {header.map((cell, index) => (
-              // biome-ignore lint/suspicious/noArrayIndexKey: columns have no identity beyond their order
-              <th key={index} scope="col">
-                {cell}
-              </th>
-            ))}
-          </tr>
-        </thead>
+        {header.length > 0 ? (
+          <thead>
+            <tr>
+              {header.map((cell, index) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: columns have no identity beyond their order
+                <th key={index} scope="col">
+                  {cell}
+                </th>
+              ))}
+            </tr>
+          </thead>
+        ) : null}
         <tbody>
           {body.map((row, rowIndex) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: rows have no identity beyond their order

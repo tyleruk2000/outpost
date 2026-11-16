@@ -165,7 +165,7 @@
 .prose.prose-doc {
   max-width: none;
 }
-.prose.prose-doc > section > :not(.doc-table, .doc-figure) {
+.prose.prose-doc > section > :not(.doc-table, .doc-figure, .doc-book-figure) {
   max-width: 70ch;
 }
 .prose .doc-table {
@@ -352,6 +352,69 @@
   display: block;
   margin-top: 0.4em;
   color: var(--ink);
+}
+
+/*
+ * A book read in the app (an EPUB). Its words are set like any other document; these
+ * are the few things only a book brings.
+ */
+/* A place a link can land on. It shows nothing and takes no room. */
+.prose .doc-anchor {
+  scroll-margin-top: 1rem;
+}
+.prose .doc-anchors {
+  position: absolute;
+}
+/* Small raised and lowered figures (a note's number, the 2 in H2O) must not push the lines apart. */
+.prose sup,
+.prose sub {
+  font-size: 0.75em;
+  line-height: 0;
+}
+/* A footnote or a sidebar: under a short rule, a size smaller, as in print. It is the author's own, so not in italics. */
+.prose .doc-note {
+  position: relative;
+  padding-top: 0.8em;
+  font-size: 0.9em;
+  line-height: 1.62;
+}
+.prose .doc-note::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4.5rem;
+  height: 1px;
+  background: var(--border-strong);
+}
+/* A picture standing on its own: never wider than the column, never taller than the window. */
+.prose .doc-book-figure {
+  margin-inline: 0;
+}
+.prose .doc-book-picture {
+  display: block;
+  width: auto;
+  max-height: min(82dvh, 46rem);
+  object-fit: contain;
+}
+/* A picture in a line of words (a symbol, a small device) sits on the line and keeps its square corners. */
+.prose .doc-book-picture-inline {
+  display: inline-block;
+  vertical-align: middle;
+  max-height: 60dvh;
+  border-radius: 0;
+}
+/* Line drawings are black on nothing. On a dark page they are given the paper they were drawn for. */
+:root[data-theme="dark"] .prose .doc-book-picture {
+  background: var(--ink);
+}
+.prose .doc-book-figure figcaption {
+  margin-top: 0.6em;
+  max-width: 70ch;
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--ink-muted);
 }
 
 /*

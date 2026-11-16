@@ -77,6 +77,15 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   unmodified.
 - Text extraction for search from PDF (page by page), EPUB, Markdown, HTML and text,
   in a worker thread.
+- EPUB books read in the app: a contents page with the cover, title and author, the
+  table of contents from the navigation document or the NCX, chapters in reading order
+  with previous, next and a way back to the contents, pictures from inside the book,
+  footnotes, tables, and links between chapters. A chapter is drawn from a tree of plain
+  values, like a Markdown document; the book's own HTML, styles and scripts are never
+  put in the page. The place reached in each book is remembered on the device, and a
+  search result opens the chapter its passage is in. Copy-protected (DRM) books are
+  refused in words and never opened; fixed layouts, audio, video, MathML and scripted
+  content are not supported, and the page says so. See `docs/epub.md`.
 - Markdown documents shown with their formatting: headings, bold, italic, links, lists,
   task lists, quotations, code and tables. The file is drawn from a tree of plain values
   and is never turned into HTML, so nothing written in it can run or load from the internet.

@@ -340,6 +340,23 @@ text from the scanned pages** on the document; see
 [Scanned pages and images](search.md#scanned-pages-and-images-ocr) for what that can
 and cannot read. PDFs larger than 512 MB are stored but their text is not read.
 
+### An EPUB book will not open, or looks different from the printed book
+
+- "This book is copy-protected": the book is locked by a rights scheme (DRM). Outpost
+  stores it and can hand it back, but does not read it and does not remove the lock.
+- "This book could not be opened": the message says what is missing. The file is
+  usually damaged or was cut short when it was copied; add a fresh copy. If its text
+  was read before, **Show its plain text** still shows that.
+- "This chapter cannot be shown": that one chapter is over 2 MB, or too tangled to read
+  safely. The rest of the book reads normally. **Download original** to read it in
+  another program.
+- The book looks plainer than in another reader: Outpost shows a book's words and
+  pictures in its own type and leaves the book's styling out, on purpose. Fixed-layout
+  books, audio, video, mathematics and interactive pages are not supported. See
+  [Reading EPUB books](epub.md).
+- A search result opens the start of the book instead of the chapter: the book was
+  added before chapters were recorded. Choose **Read text again** in its details.
+
 ### OCR found no text, or the wrong words
 
 - "OCR found no text…": the page may be blank, sideways, handwritten, or in a language

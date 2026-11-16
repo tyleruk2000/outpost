@@ -54,7 +54,8 @@ picture, not a surveyed path.
   page links to out on the internet can be fetched into the library while you have one.
 - **Your documents.** Add PDFs, EPUBs, Markdown, HTML, text and images. Text is
   extracted and indexed down to the page; originals are kept untouched. A built-in
-  PDF viewer opens at the page a search result points to.
+  PDF viewer opens at the page a search result points to. An EPUB book is read in the
+  app, chapter by chapter, with its contents page and pictures.
 - **Notes.** A page tree and a block editor: headings, lists, to-dos, tables, code,
   callouts, images, links between pages, backlinks, templates, favourites, trash, and
   export to Markdown. Import from Markdown, HTML, and Notion exports.
@@ -248,6 +249,7 @@ The reasoning behind each choice, the security model and the known trade-offs ar
 | [Search](docs/search.md) | Query syntax, semantic and hybrid search, answers from your library |
 | [Sources](docs/sources.md) | Every content source considered, its licence, and how it is used |
 | [Maps](docs/maps.md) | Regions, data sources, GPX, coordinates |
+| [Reading EPUB books](docs/epub.md) | What the reader shows, what it leaves out, and what it refuses |
 | [Notes and imports](docs/notes-and-imports.md) | The editor, Markdown and Notion imports |
 | [Portable drives](docs/portable.md) | Making and using a USB drive |
 | [Security](docs/security.md) | Threat model and controls |
@@ -265,6 +267,10 @@ Stated here so nobody has to find them out:
   English is built in; other languages need a data file you add yourself. Text drawn
   as shapes is not read. See
   [Search](docs/search.md#scanned-pages-and-images-ocr).
+- **EPUB books are shown in Outpost's own type, not the book's.** Fixed layouts, the
+  book's fonts and styling, audio, video, MathML and anything scripted are left out,
+  and a copy-protected (DRM) book cannot be read at all. See
+  [Reading EPUB books](docs/epub.md).
 - **No language model is included.** Answers in prose need a model server you run
   yourself (Ollama, llama.cpp, LM Studio) and a model you download with it. It is one
   question and one answer, from documents, notes and book chapters only: reference

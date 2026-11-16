@@ -20,6 +20,8 @@ export interface ExtractedSection {
   page?: number;
   /** Set when the text was read from a picture of the page by OCR, not from the file itself. */
   ocr?: true;
+  /** For an EPUB: which document of the reading order the text came from, counted from 1. */
+  chapter?: number;
 }
 
 export interface Extracted {
