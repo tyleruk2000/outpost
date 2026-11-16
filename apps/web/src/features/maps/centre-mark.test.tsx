@@ -48,12 +48,12 @@ describe("the cross at the centre of the map", () => {
     expect([mark().style.left, mark().style.top]).toEqual(["195px", "179px"]);
   });
 
-  it("is hidden while the readout gives the pointer's position instead, and back when the pointer leaves", () => {
+  it("stays where it is while a pointer is over the map: the readout says which point it gives, the cross is always the centre", () => {
     const map = fakeEngine({ x: 100, y: 100 });
     render(<CentreMark engine={map.engine} always={false} />);
     expect(mark()).not.toHaveClass("hidden");
     act(() => map.pointer({ lat: 51, lon: 0 }));
-    expect(mark()).toHaveClass("hidden");
+    expect(mark()).not.toHaveClass("hidden");
     act(() => map.pointer(null));
     expect(mark()).not.toHaveClass("hidden");
   });

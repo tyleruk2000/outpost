@@ -68,8 +68,10 @@ On the map itself:
 - The readout at the bottom shows the centre of the map; choose decimal degrees,
   degrees-minutes-seconds, British National Grid or Maidenhead locator, and copy it.
   With a mouse over the map it gives the pointer's position instead, and says which.
-- **A cross marks the centre of the map** whenever something is reading it: the readout
-  while it says "Centre", the Sun tab, and a route drawn from the keyboard. See
+- **A cross always marks the centre of the map**: the point the readout gives while it
+  says "Centre", the Sun tab works its times out for, and a route drawn from the
+  keyboard puts its next point. With a mouse over the map the readout gives the
+  pointer's position and says "Pointer"; the cross stays on the centre. See
   [The centre of the map](#the-centre-of-the-map).
 - On a phone, **today's sunrise and sunset** for the centre are written under the
   readout while the sheet is lowered; touch the line for the rest of the day.

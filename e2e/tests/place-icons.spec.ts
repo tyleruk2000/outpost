@@ -135,8 +135,10 @@ test.describe("icons for saved places", () => {
     await mapReady(page);
     if (await dismiss.isVisible()) await dismiss.click();
     const centre = await centreOf(page);
-    // The pointer over the map, away from the place: the cross gives way, and the place is seen as drawn.
+    // The place is at the centre of the map, where the cross always is. The cross is taken off for this look only,
+    // so that the pixels read are the place's own.
     await page.mouse.move(centre.x + 150, centre.y + 120);
+    await page.addStyleTag({ content: "[data-centre-mark] { visibility: hidden !important; }" });
     await expect(page.locator("[data-centre-mark]")).toBeHidden();
     await expect
       .poll(async () => (await drawnAt(page, centre)).ringInColour, {

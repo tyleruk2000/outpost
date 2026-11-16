@@ -59,11 +59,12 @@ test.describe("the centre of the map", () => {
     await page.keyboard.press("Escape");
     await expect(menu).toBeHidden();
 
-    // A pointer over the map: the readout gives the pointer's position instead, and the cross is put away,
-    // so it is never taken for the point the readout is giving.
+    // A pointer over the map: the readout gives the pointer's position instead and says so. The cross stays,
+    // where it was: on a laptop the pointer is nearly always over the map, and a mark that hid was a mark gone.
     await page.mouse.move(at.x + 180, at.y + 140);
     await expect(readout(page)).toContainText("Pointer");
-    await expect(mark(page)).toBeHidden();
+    await expect(mark(page)).toBeVisible();
+    expect(await markAt(page)).toEqual(at);
     await page.mouse.move(40, 400);
     await expect(mark(page)).toBeVisible();
 
