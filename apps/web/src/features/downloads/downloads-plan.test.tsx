@@ -72,8 +72,9 @@ describe("The download plan", () => {
     const table = within(section.getByRole("table", { name: "The download schedule, in the order downloads will run" }));
     const row = within(table.getByRole("row", { name: /^Wikibooks/ }));
     expect(row.getByText("Waiting for its turn")).toBeInTheDocument();
-    expect(row.getByText(/^In about 20 minutes, at \d\d:\d\d$/)).toBeInTheDocument();
-    expect(row.getByText(/^About .*\d\d:\d\d, in 45 minutes$/)).toBeInTheDocument();
+    // Just before midnight both moments fall on the next day, and are worded so.
+    expect(row.getByText(/^In about 20 minutes, (at|tomorrow at) \d\d:\d\d$/)).toBeInTheDocument();
+    expect(row.getByText(/^About (tomorrow at )?\d\d:\d\d, in 45 minutes$/)).toBeInTheDocument();
     expect(within(table.getByRole("row", { name: /^Best of Wikipedia/ })).getByText("Now")).toBeInTheDocument();
   });
 

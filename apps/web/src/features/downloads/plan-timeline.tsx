@@ -4,7 +4,7 @@ import { Link } from "react-router";
 import { cn } from "@/lib/utils";
 import { ChartTooltip } from "./charts/chart-tooltip";
 import { linearScale } from "./charts/scale";
-import { aheadLabel, clockAt, clockTime, durationTicks } from "./charts/time-axis";
+import { aheadLabel, atClock, clockAt, clockTime, durationTicks } from "./charts/time-axis";
 import { useWidth } from "./charts/use-width";
 import { finishWords, startWords, unscheduledReason } from "./plan-text";
 
@@ -294,7 +294,7 @@ export const PlanTimeline = memo(function PlanTimeline({
                     {!timed
                       ? "Not known"
                       : item.startsInSeconds
-                        ? `In about ${formatDuration(item.startsInSeconds)}, at ${clockAt(now + item.startsInSeconds * 1000, now)}`
+                        ? `In about ${formatDuration(item.startsInSeconds)}, ${atClock(now + item.startsInSeconds * 1000, now)}`
                         : "Now"}
                   </td>
                   <td>

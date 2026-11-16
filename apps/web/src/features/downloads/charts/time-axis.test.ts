@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { agoLabel, aheadLabel, clockAt, clockTicks, clockTime, clockTimeWithSeconds, durationStep, durationTicks } from "./time-axis";
+import {
+  agoLabel,
+  aheadLabel,
+  atClock,
+  clockAt,
+  clockTicks,
+  clockTime,
+  clockTimeWithSeconds,
+  durationStep,
+  durationTicks,
+} from "./time-axis";
 
 describe("ticks on an axis that counts from now", () => {
   it("uses steps a person reads at a glance", () => {
@@ -56,6 +66,10 @@ describe("clock times", () => {
     expect(clockAt(at(16, 2, 10), now)).toBe("tomorrow at 02:10");
     expect(clockAt(at(14, 23, 50), now)).toBe("yesterday at 23:50");
     expect(clockAt(at(17, 2, 10), now)).toBe("Tue 17 Nov at 02:10");
+    // As the end of a sentence it never doubles the "at".
+    expect(atClock(at(15, 15, 10), now)).toBe("at 15:10");
+    expect(atClock(at(16, 2, 10), now)).toBe("tomorrow at 02:10");
+    expect(atClock(at(17, 2, 10), now)).toBe("on Tue 17 Nov at 02:10");
   });
 
   it("puts ticks on round clock times", () => {

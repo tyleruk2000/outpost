@@ -108,6 +108,16 @@ export function clockAt(at: number | Date, now: number | Date = Date.now()): str
 }
 
 /**
+ * The same moment as the end of a sentence: "at 14:32" today, "tomorrow at 02:10",
+ * "on Tue 17 Nov at 02:10". Never "at tomorrow at".
+ */
+export function atClock(at: number | Date, now: number | Date = Date.now()): string {
+  const said = clockAt(at, now);
+  if (said === clockTime(at)) return `at ${said}`;
+  return /^(tomorrow|yesterday) /.test(said) ? said : `on ${said}`;
+}
+
+/**
  * Ticks for an axis of clock time between two moments: on round times ("18:40",
  * "18:45"), with seconds only when the whole axis is a couple of minutes long.
  */

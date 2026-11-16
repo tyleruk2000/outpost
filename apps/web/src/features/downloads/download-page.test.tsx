@@ -48,7 +48,7 @@ describe("Download details", () => {
     expect(now.getByText("2.10 MB/s, 4 minutes left")).toBeInTheDocument();
     expect(now.getByRole("progressbar", { name: "Progress of Wikipedia 100" })).toBeInTheDocument();
     expect(await now.findByText("in 20 minutes")).toBeInTheDocument();
-    expect(now.getByText("Finishes").nextElementSibling).toHaveTextContent(/^about \d\d:\d\din 20 minutes$/);
+    expect(now.getByText("Finishes").nextElementSibling).toHaveTextContent(/^about (tomorrow at )?\d\d:\d\din 20 minutes$/);
     expect(now.getByText("17 Mbit/s")).toBeInTheDocument();
     await userEvent.click(now.getByRole("button", { name: "Pause Wikipedia 100" }));
     await waitFor(() => expect(server.calls).toContain("POST /api/downloads/d1/pause"));
