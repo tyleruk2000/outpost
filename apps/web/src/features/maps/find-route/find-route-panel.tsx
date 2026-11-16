@@ -45,7 +45,7 @@ export type FindRouteMap = Pick<MapEngine, "getBounds" | "getCenter" | "fitBound
 const link = "text-primary underline decoration-1 underline-offset-2 hover:decoration-2";
 
 /** A failed question: no connection is a normal state and is said as one; anything else is a failure with its reason. */
-function Failure({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
+function Failure({ error, onRetry, onChangeServer }: { error: unknown; onRetry?: () => void; onChangeServer?: () => void }) {
   const offline = error instanceof ApiError && (error.code === "offline" || error.isUnreachable);
   return (
     <Notice
@@ -54,10 +54,19 @@ function Failure({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
       title={offline ? "No connection" : "The search did not work"}
     >
       {errorMessage(error)}
-      {onRetry ? (
-        <Button size="sm" className="mt-2 flex" onClick={onRetry}>
-          Try again
-        </Button>
+      {onRetry || onChangeServer ? (
+        <span className="mt-2 flex flex-wrap gap-2">
+          {onRetry ? (
+            <Button size="sm" onClick={onRetry}>
+              Try again
+            </Button>
+          ) : null}
+          {onChangeServer ? (
+            <Button size="sm" onClick={onChangeServer}>
+              Ask another server
+            </Button>
+          ) : null}
+        </span>
       ) : null}
     </Notice>
   );
@@ -494,7 +503,11 @@ export function FindRoutePanel({
           </div>
         ) : search.isError ? (
           <div className="border-t border-border px-4 py-4">
-            <Failure error={search.error} onRetry={blocker ? undefined : () => runSearch()} />
+            <Failure
+              error={search.error}
+              onRetry={blocker ? undefined : () => runSearch()}
+              onChangeServer={declared.length > 1 && !choosing ? () => setChoosing(true) : undefined}
+            />
           </div>
         ) : search.data && asked ? (
           results.length === 0 ? (

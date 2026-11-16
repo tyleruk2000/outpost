@@ -15,9 +15,13 @@ import { BlockedAddressError, type HttpClient } from "../../../core/http.ts";
 import type { Point } from "./assemble.ts";
 import type { RouteSource } from "./sources.ts";
 
-/** How long the source is given to work on a question, and how long Outpost waits for the whole answer. */
+/**
+ * How long the source is given to work on a question, and how long Outpost waits for
+ * the whole answer. The second is just under the 30 seconds the guarded HTTP client
+ * waits for any server to start answering, so that this limit is the one that speaks.
+ */
 export const OVERPASS_TIMEOUT_SECONDS = 25;
-export const ANSWER_TIMEOUT_MS = 45_000;
+export const ANSWER_TIMEOUT_MS = 29_000;
 /** After a source says it is busy, it is not asked again for this long. Its operators ask for the pause. */
 export const BUSY_PAUSE_MS = 30_000;
 
@@ -364,13 +368,14 @@ export function createOverpassClient(http: HttpClient, options: { now?: () => nu
         if (error instanceof AppError) throw error;
         // The person who asked has gone: there is nobody to tell, and nothing went wrong.
         if (ask.signal?.aborted) throw new AppError("bad_request", "The search was cancelled.");
-        if (timeout.aborted) {
+        const kind = classifyNetworkError(error);
+        const code = (error as { cause?: { code?: string } } | null)?.cause?.code;
+        if (timeout.aborted || code === "UND_ERR_HEADERS_TIMEOUT" || code === "UND_ERR_BODY_TIMEOUT") {
           throw new AppError(
             "upstream",
-            `${source.host} did not answer within ${Math.round(timeoutMs / 1000)} seconds. It may be busy: try again in a minute.`,
+            `${source.host} did not answer within ${Math.round(timeoutMs / 1000)} seconds. It may be busy: try again in a minute, or ask another server.`,
           );
         }
-        const kind = classifyNetworkError(error);
         if (kind === "offline") {
           throw new AppError(
             "offline",

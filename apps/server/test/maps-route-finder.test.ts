@@ -975,7 +975,7 @@ describe("when the source cannot be reached or may not be asked", () => {
       const started = Date.now();
       await expect(
         overpass.ask(source, searchQuery({ pattern: "slow", maxRoutes: 5, maxWays: 5 }), { ...ask, timeoutMs: 200 }),
-      ).rejects.toThrow(`127.0.0.1:${port} did not answer within 0 seconds. It may be busy: try again in a minute.`);
+      ).rejects.toThrow(`127.0.0.1:${port} did not answer within 0 seconds. It may be busy: try again in a minute, or ask another server.`);
       expect(Date.now() - started).toBeLessThan(1200);
       // An answer larger than will be read is stopped part of the way, not swallowed whole.
       await expect(
