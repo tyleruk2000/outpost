@@ -3,11 +3,14 @@
  * search works without any of this. When a provider is configured, semantic and hybrid
  * search become available.
  *
- * A provider is identified by a model id such as "transformers:Xenova/all-MiniLM-L6-v2".
+ * A provider is identified by a model id such as "openai-compatible:nomic-embed-text".
  * Vectors are stored per model id, so switching models never mixes incompatible
  * vectors, and an index can be rebuilt for a new model while the old one still serves.
+ *
+ * Three providers exist: the model that ships with Outpost (`built-in.ts`), any local
+ * server that speaks the OpenAI embeddings format, and word-count vectors for
+ * demonstration.
  */
-import path from "node:path";
 import { AppError } from "../../core/errors.ts";
 import type { Settings } from "../settings/service.ts";
 
@@ -79,73 +82,6 @@ export function openAiCompatibleProvider(endpoint: string, model: string): Embed
   };
 }
 
-/**
- * A model run inside the Outpost process with ONNX Runtime, through the optional
- * `@huggingface/transformers` package. Model files are read only from the models
- * folder in the data directory; the library is told never to fetch anything.
- */
-export function transformersProvider(modelsDir: string, model: string): EmbeddingProvider {
-  type Extractor = (texts: string[], options: { pooling: "mean"; normalize: boolean }) => Promise<{ dims: number[]; data: Float32Array }>;
-  let extractor: Promise<Extractor> | undefined;
-
-  async function load(): Promise<Extractor> {
-    // The package is optional and may be absent, so it is neither a typed nor a static import.
-    let library: {
-      env: { allowRemoteModels: boolean; allowLocalModels: boolean; localModelPath: string };
-      pipeline(task: string, model: string, options: Record<string, unknown>): Promise<unknown>;
-    };
-    try {
-      const packageName = "@huggingface/transformers";
-      library = await import(packageName);
-    } catch {
-      throw new AppError(
-        "unsupported",
-        "Running a model inside Outpost needs the optional @huggingface/transformers package, which is not part of this installation. Use a local embedding server instead, or install the package (see docs/search.md).",
-      );
-    }
-    library.env.allowRemoteModels = false;
-    library.env.allowLocalModels = true;
-    library.env.localModelPath = modelsDir.endsWith(path.sep) ? modelsDir : `${modelsDir}${path.sep}`;
-    try {
-      return (await library.pipeline("feature-extraction", model, { dtype: "q8" })) as unknown as Extractor;
-    } catch (error) {
-      throw new AppError(
-        "not_found",
-        `The model "${model}" is not in the models folder (${modelsDir}). Copy the model's files there (see docs/search.md). (${error instanceof Error ? error.message : error})`,
-      );
-    }
-  }
-
-  async function run(texts: string[]): Promise<Float32Array[]> {
-    extractor ??= load();
-    let instance: Extractor;
-    try {
-      instance = await extractor;
-    } catch (error) {
-      extractor = undefined;
-      throw error;
-    }
-    const output = await instance(texts, { pooling: "mean", normalize: true });
-    const dimensions = output.dims.at(-1)!;
-    return texts.map((_, index) => output.data.slice(index * dimensions, (index + 1) * dimensions));
-  }
-
-  return {
-    modelId: `transformers:${model}`,
-    provider: "transformers",
-    model,
-    embed: (texts) => run(texts),
-    async check() {
-      try {
-        const [vector] = await run(["outpost"]);
-        return { ok: true, dimensions: vector!.length };
-      } catch (error) {
-        return { ok: false, reason: error instanceof Error ? error.message : String(error) };
-      }
-    },
-  };
-}
-
 const stopwords = new Set(
   "a an and are as at be but by for from has have he her his i if in into is it its of on or she that the their them they this to was were which will with you your not no do does did so than then there these those what when where who how why can could should would may might must about over under up down out off again more most some any each other such only own same too very just also".split(
     " ",
@@ -208,15 +144,20 @@ export function demoProvider(): EmbeddingProvider {
   };
 }
 
-export function providerFromSettings(settings: Settings, modelsDir: string): EmbeddingProvider | undefined {
-  const model = settings["search.semantic.model"].trim();
-  if (settings["search.semantic.provider"] === "demo") return demoProvider();
-  if (!model) return undefined;
+/**
+ * The provider the settings ask for. `builtIn` is the one built-in embedder of this
+ * server: it owns a worker thread, so it is made once and handed in.
+ */
+export function providerFromSettings(settings: Settings, builtIn: EmbeddingProvider): EmbeddingProvider | undefined {
   switch (settings["search.semantic.provider"]) {
-    case "transformers":
-      return transformersProvider(modelsDir, model);
-    case "openai-compatible":
-      return openAiCompatibleProvider(settings["search.semantic.endpoint"], model);
+    case "built-in":
+      return builtIn;
+    case "demo":
+      return demoProvider();
+    case "openai-compatible": {
+      const model = settings["search.semantic.model"].trim();
+      return model ? openAiCompatibleProvider(settings["search.semantic.endpoint"], model) : undefined;
+    }
     default:
       return undefined;
   }

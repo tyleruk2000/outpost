@@ -63,7 +63,8 @@ picture, not a surveyed path.
   distances, search place names, and enter coordinates or British grid references.
 - **One search.** Full-text search across documents, notes, collections and saved
   places, with ranked results, highlighted passages and filters. Optional semantic
-  search finds passages by meaning, and hybrid ranking combines the two.
+  search finds passages by meaning with a small model that is built in (nothing to
+  install, nothing downloaded), and hybrid ranking combines the two.
 - **Search you can see into.** *How search works* follows one question of yours
   through every step (cutting documents into passages, matching words, matching
   meaning, combining the two, building the context a language model is given) with
@@ -227,8 +228,9 @@ proxy.
 
 - **Server:** TypeScript on Node 24, Fastify, Drizzle ORM, SQLite with FTS5.
 - **Web:** React, Vite, Tailwind CSS, TanStack Query, Tiptap, MapLibre GL JS.
-- **Search:** FTS5 keyword search; optional vectors with a pluggable embedding
-  provider; reciprocal rank fusion for hybrid ranking.
+- **Search:** FTS5 keyword search; optional vectors from a built-in embedding model
+  (ONNX Runtime as WebAssembly, no native code) or a local embedding server; reciprocal
+  rank fusion for hybrid ranking.
 - **Maps:** regional extracts of the Protomaps planet build (OpenStreetMap data) as
   PMTiles, served and styled locally.
 
@@ -268,8 +270,11 @@ Stated here so nobody has to find them out:
   collections such as Wikipedia are not read. This has been tested against a stand-in
   server that speaks the same protocol, **not yet against a real model**. See
   [Answers and language models](docs/ai.md).
-- **Semantic search needs a model you provide**: a local embedding server such as
-  Ollama, or an optional package that is not part of the packaged app.
+- **Semantic search is off until you switch it on**, and its built-in model is small
+  and was trained on English: other languages are matched poorly, and only about the
+  first thousand characters of a passage are read. A local embedding server such as
+  Ollama can be used for a larger or multilingual model. See
+  [Search](docs/search.md#semantic-search).
 - **Reference collections need kiwix-serve.** It is in the Compose stack. On portable
   drives it is included for macOS and Linux; the Kiwix project publishes no Windows
   build, so collections cannot be opened from a drive on Windows.
@@ -286,7 +291,7 @@ Stated here so nobody has to find them out:
 
 ## Roadmap
 
-In rough order: downloading OCR languages from inside Outpost; a bundled local embedding option;
+In rough order: downloading OCR languages from inside Outpost;
 answers that can also draw on reference collections; richer
 topographic layers;
 storage pools; an optional PostgreSQL and pgvector back end. Work is tracked in the

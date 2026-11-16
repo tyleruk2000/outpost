@@ -13,8 +13,9 @@ Everything you have already installed or written:
 - reading and searching documents, notes and installed reference collections;
 - opening a PDF that is inside a reference collection, and adding PDFs and e-books
   from a collection to your documents (they are copied from the archive on your disk);
-- keyword search, and semantic search if its index is built and your embedding
-  provider runs locally (see [search.md](search.md));
+- keyword search, and semantic search if its index is built: the built-in model needs
+  no connection, and neither does a local embedding server on your own machine (see
+  [search.md](search.md));
 - answers written from your library, if you have set up a language model and its
   server runs on your own machine or network (see [ai.md](ai.md));
 - writing and organising notes, uploading documents, importing files;
@@ -54,7 +55,8 @@ address in the `answers.endpoint` setting, and to no other. The default is also
 with your model server's own tool, which does need a connection, once.
 
 Building Outpost from source, or building the Docker image, also needs a connection
-(to install dependencies and fetch map fonts). Running it does not.
+(to install dependencies and fetch map fonts and the small model for search by
+meaning). Running it does not.
 
 ## How Outpost guarantees it
 
@@ -64,7 +66,9 @@ Building Outpost from source, or building the Docker image, also needs a connect
   image from another origin, and refuses to send a request to one.
 - **Fonts are bundled.** The interface fonts are npm packages compiled into the app
   (`apps/web/src/styles/base.css`). Map label fonts and icons are fetched once at build
-  time by `scripts/fetch-map-assets.mjs` and served from `/map-assets/`. PDF viewer
+  time by `scripts/fetch-map-assets.mjs` and served from `/map-assets/`. The model for
+  search by meaning is fetched the same way by `scripts/fetch-embedding-model.mjs`, and
+  nothing in it or in the program that runs it can reach the network. PDF viewer
   resources are copied into the build and served from `/pdfjs/`
   (`apps/web/vite.config.ts`).
 - **Reference content is sealed in.** Pages from ZIM archives are served with a policy
@@ -128,8 +132,9 @@ not responding", and notes you are editing wait and retry saving.
    zoom level you will use, a place search.
 5. **Test with the cable out.** Disconnect the server from the internet and try the
    things you rely on.
-6. **If you use semantic search,** make sure the index is built and the embedding
-   server starts without a connection.
+6. **If you use semantic search,** make sure the index is built. With the built-in
+   model there is nothing else to check; with a local embedding server, make sure it
+   starts without a connection.
 7. **If you will make portable drives while away,** make one now for each kind of
    computer, so the programs are cached.
 8. **Save a backup** (Settings → Backup) and keep it somewhere other than this device.

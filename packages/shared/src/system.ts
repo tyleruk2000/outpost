@@ -41,7 +41,7 @@ export interface Settings {
   "ocr.auto": boolean;
   "ocr.languages": string;
   "search.semantic.enabled": boolean;
-  "search.semantic.provider": "none" | "transformers" | "openai-compatible" | "demo";
+  "search.semantic.provider": "none" | "built-in" | "openai-compatible" | "demo";
   "search.semantic.model": string;
   "search.semantic.endpoint": string;
   "search.semantic.batchSize": number;

@@ -31,3 +31,6 @@ apps/web/public/map-assets/
 
 # Editor and agent tooling written per machine (absolute paths inside)
 .cursor/
+
+# The search-by-meaning model is fetched at build time (scripts/fetch-embedding-model.mjs)
+apps/server/models/

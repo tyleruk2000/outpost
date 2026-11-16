@@ -27,7 +27,8 @@ drive formats and security.
 What travels:
 
 - **Always:** all your notes with their attachments, tags, map markers and tracks,
-  settings, and the search index.
+  settings, and the search index, with its vectors for search by meaning if you built
+  them.
 - **Your choice:** all documents or none; and any installed collections and maps you
   tick.
 - The database on the drive is a copy narrowed to match: it lists only the documents
@@ -375,6 +376,12 @@ After an undo, the drive's changes are offered again the next time you look at i
 - **A drive that comes home is not trusted.** It has been in other computers. Bringing
   its changes back reads it defensively and never writes to it; see
   [security.md](security.md#bringing-a-drive-back).
+- **Search by meaning.** The built-in model is part of the app on the drive, and the
+  vectors travel in the database, so semantic search works from the drive on every
+  platform the drive starts on, with no connection: the model runs as WebAssembly, with
+  no program of its own per platform. This has been tried from a copy of the app on an
+  Apple Silicon Mac, and in Linux containers on ARM64 and AMD64, where the vectors came
+  out identical; not on Windows or an Intel Mac.
 - **Embedding servers.** Settings travel with the drive. If semantic search was set to
   a local embedding server, the drive will look for one at the same address on the new
   computer. If none answers, searches return keyword results with a note saying so.

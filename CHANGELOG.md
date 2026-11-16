@@ -122,6 +122,17 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 - Optional semantic search with a local OpenAI-compatible embedding server, a
   resumable index build, vectors stored per model, and export and import of vectors
   between installations.
+- A built-in embedding model for semantic search, so that it works with nothing to
+  install: all-MiniLM-L6-v2 (Apache-2.0, 8-bit ONNX, 23.7 MB) run by ONNX Runtime
+  compiled to WebAssembly in a worker thread, with no native code. It is part of the
+  packaged app, the Docker image and portable drives (39 MB in all), is fetched at build
+  time at a pinned revision and checked against checksums, and never downloads anything
+  when Outpost runs. Off by default; Settings states the cost before it is switched on,
+  and shows the build with its time left, pause, stop, continue and any failure.
+  Measured on an Apple M2 Max: 38 to 42 seconds per thousand passages, 2.2 kB of disk
+  per passage. It replaces the in-process option that needed a package nobody had.
+- Keeping the semantic index up to date by itself now waits for a person to have built
+  it once, and no longer restarts a build they paused or stopped.
 - Hybrid ranking by reciprocal rank fusion.
 - Retrieval endpoints that return passages with full provenance and numbered, cited
   context for use with a language model, with a flag for safety-critical sources.
@@ -291,9 +302,10 @@ These are deliberate or known, and are explained in
 
 - **Scale.** One node and one writer (SQLite). Suited to a household or a classroom.
 - **Semantic search** uses a flat index, comfortable to roughly 100,000 passages.
-- **The in-process embedding model** needs an optional package that is not in the
-  Docker image, the packaged app or portable drives. A local embedding server works
-  everywhere.
+- **The built-in embedding model** is small and English: other languages are matched
+  poorly, only the first 256 word pieces of a passage (about a thousand characters) are
+  read, and it has not been run on a Raspberry Pi or on Windows. A local embedding
+  server can be used instead.
 - **OCR** is slow and makes mistakes, reads only pictures of pages (not text drawn as
   shapes), and has English only unless a language file is added by hand.
 - **No language model is included.** Answers need a model server you run yourself.

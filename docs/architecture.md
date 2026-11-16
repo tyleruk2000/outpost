@@ -68,7 +68,8 @@ fleet) would be the wrong weight for a single-node tool that must run on a Pi.
 
 CPU-heavy parsing (PDF text) runs in a worker thread so that one large document cannot
 stall the HTTP server. OCR does the same, on a queue of its own that runs one document
-at a time.
+at a time. So does the built-in embedding model, in a worker that stays loaded while it
+is in use and is ended after five idle minutes.
 
 ### Search in three layers behind one entry point
 
@@ -81,6 +82,8 @@ and never see how search works.
 2. **Semantic** (optional): vectors per passage, keyed by *(passage, model id)* so
    models of different dimensions coexist and an index can be rebuilt for a new model
    without disturbing the old one. The built-in index is flat (exact, no native code).
+   A small embedding model ships with Outpost and runs as WebAssembly; a local
+   embedding server can be used instead.
 3. **Hybrid**: reciprocal rank fusion of every source's ranked list. Because it uses
    ranks, not scores, the same fusion also folds in articles from Kiwix archives, whose
    scores are not comparable to anything.
@@ -259,7 +262,7 @@ apps/web/src/
 packages/shared/     API types and pure helpers used by both sides
 catalog/             catalogue manifests, their schema, packs, map region presets, and the
                      sheets and books that ship with Outpost (bundled/)
-scripts/             packaged-app build, map asset fetch
+scripts/             packaged-app build, map asset fetch, embedding model fetch
 e2e/                 Playwright tests against the packaged app
 ```
 
@@ -276,7 +279,7 @@ These are deliberate, and stated so nobody has to discover them.
 | --- | --- | --- |
 | Scale | One node, one writer. | SQLite. Fine for a household or a classroom; a larger deployment needs the PostgreSQL seam filled in. |
 | Vector search | Flat index: every query compares against every stored vector. | Exact and dependency-free; comfortable to roughly 100,000 passages. `VectorIndex` is the seam for sqlite-vec or pgvector. |
-| Local embedding model | Needs the optional `@huggingface/transformers` package, which is not in the packaged app. | Its native runtime is large and has no musl or Intel-macOS builds. A local embedding server (Ollama, llama.cpp) works everywhere today. |
+| Built-in embedding model | Small and English (all-MiniLM-L6-v2): other languages are matched poorly, and only the first 256 word pieces of a passage are read. Run by ONNX Runtime as WebAssembly, about four times slower than its native build: 38 to 42 seconds per thousand passages on an Apple M2 Max, about 300 MB of memory while loaded. Not run on a Raspberry Pi, an Intel Mac, Windows or musl Linux. | WebAssembly needs no binary per platform, so it runs wherever Node does (the native runtime has no musl or Intel-macOS builds). A small multilingual model is five times the size and half the speed; a local embedding server (Ollama, llama.cpp) is the way to use one today. Other models could be offered as downloads; that is not built. |
 | OCR | Optional and off by default; slow, and it makes mistakes. Tesseract compiled to WebAssembly, English built in, other languages from a data file a person adds. Only pictures on a page are read: text drawn as shapes is not. A page scanned the wrong way up is found by trying the other ways, not by detecting its orientation. | No native code, so it runs everywhere Node does. Reading drawn text needs a PDF renderer with a canvas (`@napi-rs/canvas`), a native dependency. Languages could be fetched through the download manager; that is not built. `modules/ocr/types.ts` is the seam for another engine. |
 | Language model answers | Need a model server the person runs (Ollama, llama.cpp, LM Studio); no model is bundled. One question and one answer, one at a time, from documents, notes and book chapters only. Tested against a stand-in server, not a real model. | Bundling a model would add gigabytes and a native runtime. Reference articles would need Outpost to split ZIM content into passages. See ai.md. |
 | ZIM archives | Need kiwix-serve (the Compose sidecar, or a binary for non-Docker installs). | Reading the format in pure JavaScript would mean reimplementing libzim. |
@@ -302,6 +305,8 @@ written by `scripts/build-app.mjs` from the installed packages.
 | kiwix-serve, libzim | GPL-3.0 / GPL-2.0+ | Separate process, reached over HTTP. Not linked, not bundled in the Outpost image. |
 | `mupdf` (npm), PyMuPDF | AGPL-3.0 | Not used. PDF text comes from unpdf (PDF.js, Apache-2.0). |
 | Tesseract (`tesseract.js-core`) and its English model | Apache-2.0 | Bundled, for OCR. The model is Tesseract's English `tessdata_best` in integer form, as packaged in `@tesseract.js-data/eng` (whose own packaging is MIT). |
+| all-MiniLM-L6-v2 (embedding model) | Apache-2.0 | Bundled, for semantic search; fetched at build time from Hugging Face at a pinned revision and checked against checksums, never committed. Trained by the Sentence Transformers project; the files are the 8-bit ONNX conversion published as `Xenova/all-MiniLM-L6-v2`. Its model card lists training data with terms of their own (MS MARCO, Reddit comments and others); the weights are released under Apache-2.0. Hugging Face's terms of service, read on 2026-11-15, say that content in a public repository stays under the licence its owner gave it. Notice and licence text: `server/embed/all-MiniLM-L6-v2/`. |
+| ONNX Runtime (`onnxruntime-web`), `@huggingface/tokenizers` | MIT, Apache-2.0 | Bundled; they run the embedding model. The runtime is the project's own WebAssembly build. The npm package carries no licence file, so the build takes the licence and third-party notices from the project's repository at the release's commit: `server/embed/LICENSE-onnxruntime.txt`, `ThirdPartyNotices-onnxruntime.txt`. |
 | BlockNote | MPL-2.0, with GPL add-ons | Not used. The editor is Tiptap (MIT) with Outpost's own blocks. |
 | Atkinson Hyperlegible, Literata, Noto Sans | OFL-1.1 | Bundled fonts. |
 | Protomaps basemap styles | BSD-3-Clause (design CC0) | Bundled. |

@@ -13,8 +13,9 @@ COPY packages/shared/package.json packages/shared/
 COPY e2e/package.json e2e/
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile
 COPY . .
-# Map fonts and sprites are fetched at a pinned commit so the image works offline.
-RUN node scripts/fetch-map-assets.mjs && node scripts/build-app.mjs --out /out/app
+# Map fonts and sprites are fetched at a pinned commit so the image works offline; so is
+# the small model behind "search by meaning", each file checked against its checksum.
+RUN node scripts/fetch-map-assets.mjs && node scripts/fetch-embedding-model.mjs && node scripts/build-app.mjs --out /out/app
 
 # Keep only the SQLite binaries this image can use.
 FROM build AS trim

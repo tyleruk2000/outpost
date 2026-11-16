@@ -12,6 +12,8 @@
  *     THIRD-PARTY-LICENSES.txt  the licences of the projects bundled into the app
  *     server/ocr/               English language data for OCR (the engine itself is
  *                               WebAssembly inside workers/ocr.mjs)
+ *     server/embed/             the model behind "search by meaning" and the
+ *                               WebAssembly runtime that runs it, with their notices
  *     web/                      built web app, fonts and map assets included
  *     catalog/                  catalogue manifests
  *
@@ -79,7 +81,7 @@ const common = {
   format: "esm",
   target: "node24",
   // Native code cannot be bundled; it is copied next to the bundle below.
-  external: ["better-sqlite3", "pino-pretty", "onnxruntime-node", "@huggingface/transformers", "sharp"],
+  external: ["better-sqlite3", "pino-pretty", "sharp"],
   banner,
   legalComments: "none",
   logLevel: "warning",
@@ -146,6 +148,41 @@ fs.writeFileSync(
 );
 if (!fs.existsSync(path.join(out, "server/workers/ocr.mjs"))) {
   throw new Error("The OCR worker was not bundled (server/workers/ocr.mjs is missing).");
+}
+
+// Search by meaning. The code that drives the model is in workers/embed.mjs. The
+// runtime (ONNX Runtime compiled to WebAssembly) is two files that it loads by path, the
+// same on every platform, and the model is three more, fetched beforehand by
+// scripts/fetch-embedding-model.mjs. See modules/semantic/built-in-model.ts for where
+// each is looked for.
+const embedOut = path.join(out, "server/embed");
+const embedModel = JSON.parse(fs.readFileSync(path.join(serverSrc, "modules/semantic/built-in-model.json"), "utf8"));
+const fetchedModels = path.join(root, "apps/server/models");
+fs.mkdirSync(embedOut, { recursive: true });
+for (const name of ["ort-wasm-simd-threaded.mjs", "ort-wasm-simd-threaded.wasm"]) {
+  fs.copyFileSync(path.join(ocrPackage("onnxruntime-web"), "dist", name), path.join(embedOut, name));
+}
+if (!fs.existsSync(path.join(out, "server/workers/embed.mjs"))) {
+  throw new Error("The embedding worker was not bundled (server/workers/embed.mjs is missing).");
+}
+const modelFiles = Object.values(embedModel.files);
+if (modelFiles.every((file) => fs.existsSync(path.join(fetchedModels, embedModel.name, file.path)))) {
+  for (const file of [...modelFiles.map((item) => item.path), "NOTICE.txt"]) {
+    const target = path.join(embedOut, embedModel.name, file);
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.copyFileSync(path.join(fetchedModels, embedModel.name, file), target);
+  }
+  // The model's licence (Apache-2.0) and the runtime's (MIT, with the notices of what it is built from).
+  fs.copyFileSync(
+    path.join(ocrPackage("@huggingface/tokenizers"), "LICENSE"),
+    path.join(embedOut, embedModel.name, "LICENSE-apache-2.0.txt"),
+  );
+  fs.copyFileSync(path.join(fetchedModels, "onnxruntime/LICENSE.txt"), path.join(embedOut, "LICENSE-onnxruntime.txt"));
+  fs.copyFileSync(path.join(fetchedModels, "onnxruntime/ThirdPartyNotices.txt"), path.join(embedOut, "ThirdPartyNotices-onnxruntime.txt"));
+} else {
+  log(
+    "WARNING: the search-by-meaning model is missing; the built-in option will say it is not installed. Run `node scripts/fetch-embedding-model.mjs` first.",
+  );
 }
 
 // ── Everything else ────────────────────────────────────────────────────────
@@ -226,6 +263,7 @@ fs.writeFileSync(
     "Outpost includes or depends on the following projects. Each is listed with its licence.",
     "Outpost itself is under the MIT licence in the file LICENSE beside this one.",
     "The OCR engine and its language data have their notices in server/ocr/.",
+    "The search-by-meaning model and the runtime that runs it have theirs in server/embed/.",
     "Map fonts, icons and data, and the catalogue's content, are credited in the app and in docs/architecture.md.",
     "",
     ...sections,

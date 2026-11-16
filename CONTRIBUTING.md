@@ -34,6 +34,8 @@ Two optional extras:
 
 ```bash
 node scripts/fetch-map-assets.mjs     # map fonts and icons; without them maps have no labels
+node scripts/fetch-embedding-model.mjs  # the built-in model for search by meaning (24 MB); without
+                                      # it that option says so, and the tests that run it are skipped
 ```
 
 and, for reference collections, a `kiwix-serve` program with `OUTPOST_KIWIX_BIN` set
@@ -86,6 +88,7 @@ blocked: any request to another host fails the test.
 
 ```bash
 node scripts/fetch-map-assets.mjs
+node scripts/fetch-embedding-model.mjs
 node scripts/build-app.mjs                                   # writes dist/app
 pnpm --filter @outpost/e2e exec playwright install chromium  # once
 pnpm e2e

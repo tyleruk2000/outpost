@@ -176,8 +176,8 @@ Settings and their defaults are defined in
 | `ocr.auto` | false | Read new scanned documents and images by OCR as they are added |
 | `ocr.languages` | `eng` | Tesseract language codes joined by `+`, such as `deu+eng`. A language is used only if its data is installed; see `GET /api/ocr` |
 | `search.semantic.enabled` | false | |
-| `search.semantic.provider` | `none` | `none`, `transformers`, `openai-compatible`, `demo` |
-| `search.semantic.model` | `Xenova/all-MiniLM-L6-v2` | |
+| `search.semantic.provider` | `built-in` | `built-in` (the model that ships with Outpost), `openai-compatible` (a local server), `demo`, `none`. The value `transformers` from earlier builds is read as `built-in` |
+| `search.semantic.model` | `Xenova/all-MiniLM-L6-v2` | The name a local server knows its model by. Not used by the built-in model |
 | `search.semantic.endpoint` | `http://127.0.0.1:11434/v1` | |
 | `search.semantic.batchSize` | 16 | 1 to 256 |
 | `search.hybrid.rrfK` | 60 | 1 to 1000 |
@@ -243,7 +243,8 @@ Types: `SemanticStatus` in `packages/shared/src/semantic.ts`.
 
 | Method and path | Purpose |
 | --- | --- |
-| `GET /api/semantic/status` | Whether it is enabled and ready, the model, counts of passages and vectors, other models with stored vectors, and whether a build is running. |
+| `GET /api/semantic/status` | Whether it is enabled and ready, the model, counts of passages and vectors, other models with stored vectors, whether a build is running, `build` (the latest index build for the current model as a job, in whatever state, or null) and `builtIn` (the model that ships with Outpost: whether it is installed, its name, licence, size, dimensions and threads). `?fresh=1` asks the model again now rather than trusting an answer from the last minute. |
+| `POST /api/jobs/:id/pause`, `/cancel` | Pause or stop the build named in `build`. `POST /api/semantic/index` continues a paused one. |
 | `POST /api/semantic/index` | Starts (or continues) building vectors for the current model. `409` if no provider is configured or it does not answer. Answers the status. |
 | `POST /api/semantic/test` | Body: `text`. Embeds it once and answers `{ modelId, dimensions, tookMs }`. |
 | `DELETE /api/semantic/models/:modelId` | Deletes every vector of one model. `{ removed }`. |

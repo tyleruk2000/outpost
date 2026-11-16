@@ -27,6 +27,9 @@ is several gigabytes, and which one to run is your decision.
 - **Passages with provenance**, **`POST /api/retrieval/passages`** and
   **`POST /api/retrieval/context`**, for building something of your own on the same
   passages. See [Building on the same passages](#building-on-the-same-passages).
+- **Optional semantic search**, so retrieval can work by meaning as well as by words.
+  A small embedding model is built in, so this needs no server; a local embedding
+  server can be used instead. See [search.md](search.md#semantic-search).
 - **A page that shows all of it working**: *How search works*
   (`/search/how-it-works`) follows one question through cutting, both searches, fusion,
   the context and the exact prompt that is sent.
@@ -545,7 +548,9 @@ that:
 
 - Vectors are stored per passage **and per model id** (`<provider>:<model>`). Vectors
   from different models, even with different dimensions, sit side by side and are
-  never compared with each other.
+  never compared with each other. The built-in model's id carries a fingerprint of its
+  files and settings (`built-in:all-MiniLM-L6-v2-q8-84769597`), so a release of Outpost
+  that ships another model, or changes how text is fed to it, starts a new set.
 - Switching the model in Settings does not delete anything. Searches use the new
   model's vectors as soon as some exist; until then they are keyword searches. Start
   **Build index** for the new model.

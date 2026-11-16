@@ -8,15 +8,16 @@
  * the index for a Raspberry Pi holding the same library.
  */
 
-import path from "node:path";
 import { Readable } from "node:stream";
 import { createGunzip, createGzip } from "node:zlib";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
 import { AppError, badRequest } from "../../core/errors.ts";
-import { PermanentJobError } from "../../core/jobs.ts";
+import { type JobDto, PermanentJobError, toJobDto } from "../../core/jobs.ts";
 import type { SearchResult, SearchSource } from "../search/service.ts";
+import { type BuiltInEmbedder, type BuiltInOptions, createBuiltInEmbedder } from "./built-in.ts";
+import { BUILT_IN_MODEL } from "./built-in-model.ts";
 import { type EmbeddingProvider, providerFromSettings } from "./providers.ts";
 import { blobToVector, createFlatVectorIndex, type VectorIndex } from "./vector-index.ts";
 
@@ -34,17 +35,37 @@ export interface SemanticStatus {
   /** Other models that still have vectors stored. */
   otherModels: Array<{ modelId: string; dimensions: number; vectors: number }>;
   indexing: boolean;
+  /** The latest index build for the current model, in whatever state it is. */
+  build: JobDto | null;
+  /** The model that ships with Outpost, whether or not it is the one in use. */
+  builtIn: {
+    installed: boolean;
+    reason: string | null;
+    name: string;
+    licence: string;
+    madeBy: string;
+    languages: string;
+    dimensions: number;
+    bytes: number;
+    threads: number;
+  };
 }
 
 export interface SemanticService {
-  status(): Promise<SemanticStatus>;
-  /** Queues an index build for the current model unless one is already waiting or running. */
-  requestIndexing(): void;
+  status(fresh?: boolean): Promise<SemanticStatus>;
+  /**
+   * Starts or continues the index build for the current model, unless one is already
+   * waiting or running. Pass false when nobody asked: then nothing happens before the
+   * first build, or after a person paused or stopped one.
+   */
+  requestIndexing(byPerson?: boolean): void;
   index: VectorIndex;
   /** The provider semantic search is using now, if one is configured. */
   provider(): EmbeddingProvider | undefined;
   /** Test seam: replace the provider that settings would select. */
   overrideProvider(provider: EmbeddingProvider | undefined): void;
+  /** Test seam: make the built-in provider afresh, for example looking for its model somewhere else. */
+  replaceBuiltIn(options: BuiltInOptions): Promise<void>;
 }
 
 declare module "../../core/context.ts" {
@@ -59,7 +80,9 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
   const { sqlite, jobs } = ctx;
   const { settings, search } = ctx.services;
   const index = createFlatVectorIndex(sqlite);
-  const modelsDir = path.join(ctx.config.dataDir, "models");
+  // One built-in embedder for the server: it owns the worker thread the model runs in.
+  let builtIn: BuiltInEmbedder = createBuiltInEmbedder();
+  ctx.onClose.push(() => builtIn.close());
 
   let override: EmbeddingProvider | undefined | null = null;
   let cached: { key: string; provider: EmbeddingProvider | undefined } | undefined;
@@ -70,7 +93,7 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
     const all = settings.all();
     if (!all["search.semantic.enabled"]) return undefined;
     const key = `${all["search.semantic.provider"]}|${all["search.semantic.model"]}|${all["search.semantic.endpoint"]}`;
-    if (cached?.key !== key) cached = { key, provider: providerFromSettings(all, modelsDir) };
+    if (cached?.key !== key) cached = { key, provider: providerFromSettings(all, builtIn) };
     return cached.provider;
   }
 
@@ -150,14 +173,23 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
     },
   });
 
-  function requestIndexing(): void {
+  /**
+   * Starts or continues the build for the current model. `byPerson` is false when the
+   * library changed and Outpost is keeping the index up to date by itself: that only
+   * happens once a person has built the index, and never undoes their pausing or
+   * stopping a build.
+   */
+  function requestIndexing(byPerson = true): void {
     const provider = currentProvider();
     if (!provider || isIndexing()) return;
-    jobs.enqueue(
-      "semantic.index",
-      { modelId: provider.modelId },
-      { title: "Build semantic search index", subject: `semantic:${provider.modelId}`, maxAttempts: 3 },
-    );
+    const subject = `semantic:${provider.modelId}`;
+    const last = jobs.findBySubject(subject).at(-1);
+    if (!byPerson && (index.count(provider.modelId) === 0 || last?.state === "paused" || last?.state === "cancelled")) return;
+    if (last?.state === "paused") {
+      jobs.resume(last.id);
+      return;
+    }
+    jobs.enqueue("semantic.index", { modelId: provider.modelId }, { title: "Build semantic search index", subject, maxAttempts: 3 });
   }
 
   // New or changed passages get vectors without anyone asking, a little after the
@@ -166,7 +198,7 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
   search.onChunksChanged(() => {
     if (!currentProvider()) return;
     if (debounce) clearTimeout(debounce);
-    debounce = setTimeout(requestIndexing, 5_000);
+    debounce = setTimeout(() => requestIndexing(false), 5_000);
     debounce.unref();
   });
   ctx.onClose.push(() => debounce && clearTimeout(debounce));
@@ -225,10 +257,11 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
   };
   search.addSource(source);
 
-  async function status(): Promise<SemanticStatus> {
+  /** `fresh` asks the provider again now, instead of trusting an answer from the last minute. */
+  async function status(fresh = false): Promise<SemanticStatus> {
     const all = settings.all();
     const provider = currentProvider();
-    const check = provider ? await checkProvider(provider) : undefined;
+    const check = provider ? await checkProvider(provider, fresh ? 0 : undefined) : undefined;
     const models = sqlite
       .prepare(
         `SELECT em.id AS modelId, em.dimensions AS dimensions, count(m.chunk_id) AS vectors
@@ -244,7 +277,9 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
       reason: !all["search.semantic.enabled"]
         ? "Semantic search is turned off."
         : !provider
-          ? "Choose how passages are turned into vectors: a local model or a local embedding server."
+          ? all["search.semantic.provider"] === "openai-compatible"
+            ? "Give the name of the model your embedding server offers."
+            : "Choose where the model runs: built in, or a local embedding server."
           : check && !check.ok
             ? check.reason
             : null,
@@ -253,6 +288,29 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
       embeddedChunks: provider ? index.count(provider.modelId) : 0,
       otherModels: models.filter((model) => model.modelId !== provider?.modelId && model.vectors > 0),
       indexing: isIndexing(),
+      build: provider ? latestBuild(provider.modelId) : null,
+      builtIn: describeBuiltIn(),
+    };
+  }
+
+  /** The newest index build for a model. Builds are found by their subject, which names the model. */
+  function latestBuild(modelId: string): JobDto | null {
+    const build = jobs.findBySubject(`semantic:${modelId}`).at(-1);
+    return build ? toJobDto(build) : null;
+  }
+
+  function describeBuiltIn(): SemanticStatus["builtIn"] {
+    const found = builtIn.installation();
+    return {
+      installed: found.installed,
+      reason: found.installed ? null : found.reason,
+      name: BUILT_IN_MODEL.name,
+      licence: BUILT_IN_MODEL.licence,
+      madeBy: BUILT_IN_MODEL.madeBy,
+      languages: BUILT_IN_MODEL.languages,
+      dimensions: BUILT_IN_MODEL.dimensions,
+      bytes: Object.values(BUILT_IN_MODEL.files).reduce((sum, file) => sum + file.bytes, 0),
+      threads: builtIn.threads,
     };
   }
 
@@ -265,6 +323,12 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
       override = provider === undefined ? undefined : provider;
       health = undefined;
     },
+    async replaceBuiltIn(options) {
+      await builtIn.close();
+      builtIn = createBuiltInEmbedder(options);
+      cached = undefined;
+      health = undefined;
+    },
   };
 
   // The health check result depends on settings; forget it when they change.
@@ -273,7 +337,10 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
   });
 
   // ── Routes ──
-  app.get("/api/semantic/status", async () => status());
+  app.get("/api/semantic/status", async (request) => {
+    const query = z.object({ fresh: z.enum(["1"]).optional() }).parse(request.query);
+    return status(query.fresh === "1");
+  });
 
   app.post("/api/semantic/index", async () => {
     const provider = currentProvider();

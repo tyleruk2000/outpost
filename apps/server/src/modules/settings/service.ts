@@ -38,8 +38,13 @@ export const settingsSchema = z.object({
     .regex(/^[a-z]{3,4}(_[a-z]{3,8})?(\+[a-z]{3,4}(_[a-z]{3,8})?)*$/, 'Use language codes joined by "+", such as "eng" or "eng+deu".')
     .default("eng"),
   "search.semantic.enabled": z.boolean().default(false),
-  /** Embedding provider: none, a local model run in-process, or a local HTTP endpoint. */
-  "search.semantic.provider": z.enum(["none", "transformers", "openai-compatible", "demo"]).default("none"),
+  /**
+   * Where vectors come from: the model that ships with Outpost, a local server that speaks
+   * the OpenAI embeddings format, or word counts for demonstration. Nothing is used until
+   * semantic search is switched on.
+   */
+  "search.semantic.provider": z.enum(["none", "built-in", "openai-compatible", "demo"]).default("built-in"),
+  /** The name a local embedding server knows its model by. The built-in model does not use it. */
   "search.semantic.model": z.string().max(200).default("Xenova/all-MiniLM-L6-v2"),
   "search.semantic.endpoint": z.string().max(500).default("http://127.0.0.1:11434/v1"),
   "search.semantic.batchSize": z.number().int().min(1).max(256).default(16),
