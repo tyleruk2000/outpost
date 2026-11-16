@@ -14,7 +14,7 @@
  */
 import { Download, Printer, Share2, TriangleAlert, X } from "lucide-react";
 import { Dialog as DialogPrimitive } from "radix-ui";
-import { type CSSProperties, type ReactNode, useEffect, useMemo, useState } from "react";
+import { type CSSProperties, type ReactNode, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Notice } from "@/components/page";
 import { PrintNotice } from "@/components/print-notice";
@@ -101,10 +101,10 @@ export function PrintView({
     }
   };
 
-  // The paper is fitted to the width of the screen.
+  // The paper is fitted to the width of the screen, before it is first shown.
   const [room, setRoom] = useState<HTMLDivElement | null>(null);
   const [zoom, setZoom] = useState(1);
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!room) return;
     const measure = () => {
       if (room.clientWidth > 0) setZoom(Math.min(1, room.clientWidth / PAPER_WIDTH_PX));
