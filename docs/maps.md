@@ -340,9 +340,10 @@ Folded, it is one line with the day's sunrise and sunset. Opened, it shows:
 | Nautical twilight | The sun less than 12° below the horizon. |
 | Moon | The phase by name and the percentage of the face that is lit, at the place's solar noon. |
 
-It opens on today. The date can be typed or picked, the arrows beside it step a day
-either way, and **Today** comes back. Dates from 1900 to 2100 are taken. Whether the
-section was left open, and which clock was chosen, are remembered in the browser.
+It opens on today's date as this device has it. The date can be typed or picked, the
+arrows beside it step a day either way, and **Today** comes back. Dates from 1900 to
+2100 are taken. Whether the section was left open, and which clock was chosen, are
+remembered in the browser.
 
 ### The far north and south
 
@@ -412,7 +413,9 @@ phase is from the same book (`lib/moon.ts`).
   to within 0.01, and eleven published new moons, quarters and full moons fell within
   an hour of where this puts them. A phase is called "Full moon", "First quarter" and
   so on when it falls within about half a day of the place's solar noon; otherwise it
-  is waxing or waning, crescent or gibbous.
+  is waxing or waning, crescent or gibbous. (The Observatory's one-day data keeps
+  "Waxing Crescent" up to the moment of the quarter, so on the day of a quarter the two
+  can differ in name while agreeing on the percentage.)
 - These were not compared with NOAA's own calculator, which works its answers out in
   the browser and publishes no table to read them from.
 
