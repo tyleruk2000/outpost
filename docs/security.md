@@ -972,6 +972,7 @@ may do what cannot be taken back.
 | `PATCH /api/backup/schedule` otherwise, `POST /api/backup/run`, downloads | Allowed, as reading and adding are everywhere in Outpost. |
 | `PUT /api/backup/protection`, `DELETE /api/backup/protection` | Refused: see [Backups protected by a passphrase](#backups-protected-by-a-passphrase). |
 | `DELETE /api/backup/restore` (cancel a staged restore) | Allowed: it keeps what is here. |
+| `POST /api/database/reclaim` | Refused. Reclaiming unused space in the database changes nothing a person keeps, but nobody can save anything while it runs; left open, any device could do that to everyone as often as it liked, as with a restart. Checking the database only reads, and is open to every device. Code: `apps/server/src/modules/database/index.ts`. |
 | `POST /api/system/restart` | Refused. Its one use is applying a staged restore, which only the computer itself can stage; left open, any device could stop the server for everyone as often as it liked, cutting off uploads and replies being written. |
 
 The screen says why on a device that is refused, and what to do: open Outpost on the

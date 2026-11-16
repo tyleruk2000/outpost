@@ -119,6 +119,8 @@ interface RunPayload extends Record<string, unknown> {
 export interface BackupsService {
   /** Starts a scheduled backup if one is due and can be made. Run every minute, at start, and when storage changes. */
   tick(): void;
+  /** The newest backup that passed its check, how it was started, and whether backups are scheduled. For the Storage screen. */
+  last(): { lastAt: number | null; kind: StoredBackupKind | null; scheduled: boolean };
   /** Tests move time: everything the schedule decides is decided by this clock. */
   setClock(now: () => number): void;
   /** Tests damage a backup between its being written and its being read back. */
@@ -211,7 +213,9 @@ export function registerAutomaticBackups(
   // ── The schedule ──
 
   function tick(): void {
-    if (closed) return;
+    // Space is being reclaimed in the database, which nothing can write to meanwhile. The
+    // backup is made at the next tick after that has finished.
+    if (closed || ctx.jobs.holding) return;
     const settings = readSettings();
     const state = readState();
     const now = clock();
@@ -414,6 +418,14 @@ export function registerAutomaticBackups(
 
   ctx.services.backups = {
     tick,
+    last() {
+      const state = readState();
+      return {
+        lastAt: state.lastBackupAt,
+        kind: state.lastBackupAt === null ? null : state.lastScheduledAt === state.lastBackupAt ? "scheduled" : "manual",
+        scheduled: readSettings().locationId !== null,
+      };
+    },
     setClock(now) {
       clock = now;
     },

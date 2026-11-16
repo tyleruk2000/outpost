@@ -340,7 +340,8 @@ export async function startBackup(
   const snapshot = path.join(dataDir, `backup-snapshot-${Date.now()}.db`);
   const cleanup = () => void removeDatabase(snapshot);
   try {
-    await ctx.sqlite.backup(snapshot);
+    // Refused while space is being reclaimed in the database, and reclaiming is refused while this runs.
+    await ctx.services.database.whileCopying(() => ctx.sqlite.backup(snapshot));
     const manifest: BackupManifest = {
       format: FORMAT,
       version: 1,

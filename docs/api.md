@@ -56,6 +56,7 @@ person's own notes and documents, is accepted only from the computer the server 
 on, unless the server was started with `OUTPOST_ALLOW_REMOTE_ERASE=true`. The same
 holds for restoring a backup, deleting a stored one, lowering how many are kept and
 setting or removing the passphrase backups are protected with (see [Backup](#backup)),
+for `POST /api/database/reclaim`, which stops everyone saving anything while it runs,
 and for `POST /api/https/authority/replace`,
 `DELETE /api/https/authority` and `DELETE /api/https/own`, which would stop every device
 that trusted Outpost's HTTPS certificate from trusting it, or leave HTTPS impossible to
@@ -247,6 +248,17 @@ Types: `packages/shared/src/storage.ts`. See [storage.md](storage.md).
 | `POST /api/storage/locations` | Adds a location. Body: `name`, `path`, `kind` (`internal`, `external`, `network`, `volume`), `makeDefault?`. |
 | `PATCH /api/storage/locations/:id` | Body: `name?`, `kind?`, `isDefault?: true`. |
 | `DELETE /api/storage/locations/:id` | Forgets a location. Refused (`409`) while it holds content or is the last one. Nothing on disk is deleted. |
+
+### The database
+
+Types: `packages/shared/src/database.ts`. See [storage.md](storage.md#the-database).
+
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/database` | `DatabaseStatus`: the file's path and size, the write-ahead log, free space on its drive, SQLite version and journal mode, how many layout changes are made of how many known, the last backup, the last check and reclaim, a check or reclaim under way, and what reclaiming would need. `contents` (counts and sizes by group, with `workedOutAt`) is null until worked out; the first request after a start begins working it out in a worker, and `measuring` is true until it is done. Answers without reading the whole file. |
+| `POST /api/database/contents` | Works the contents out again. Answers `DatabaseStatus` with `measuring: true`; `database.changed` is published when it is done. |
+| `POST /api/database/check` | Body: `{ kind: "quick" \| "full" }`. Starts a `database.check` job (`quick_check` or `integrity_check`). Its result is a `DatabaseCheck`. `409` while a check or reclaim is queued or running. |
+| `POST /api/database/reclaim` | Starts a `database.vacuum` job. Local only (see above). `409` when nothing is unused, while a check or reclaim is under way, or while any job is running (`details.waitingFor` names them); `507 insufficient_space` without the room. While it runs, every request under `/api/` that is not a `GET`, `HEAD` or `OPTIONS` is answered `409 conflict` saying why, jobs on other queues wait, and `GET /api/backup/download` is refused. |
 
 ### Network shares
 

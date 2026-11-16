@@ -466,6 +466,96 @@ go past that is refused before it starts, with the space needed and the space fr
 For everything else that takes space (the database, extracted text, caches, part files
 and files nobody recorded), and for removing things, see the next section.
 
+## The database
+
+The Storage screen has a **Database** section for the one SQLite file
+(`outpost.db` in the data directory) that holds everything Outpost keeps that is not a
+file: notes, library records, the search index, vectors for search by meaning, saved
+places and routes, contacts, chat, repeaters, the radio log, settings and the history
+of work. It shows:
+
+- **Where:** the file's path, as the screen shows the folders of storage locations, and
+  the free space on the drive it is on. Below 256 MB free (the reserve Outpost keeps
+  on every location) it says the drive is nearly full.
+- **Size:** the file, and the write-ahead log beside it (recent changes not yet folded
+  into the file).
+- **What is in it:** counts named as the rest of the app names them (documents,
+  passages in the search index, passages read for search by meaning, pages of notes,
+  saved places, routes, place names, contacts, chat conversations, repeaters,
+  communication plans, logged contacts, profiles, saved predictions), and where the
+  bytes go in seven groups: search index, search by meaning, library records, notes,
+  maps, radio, everything else, plus the unused pages.
+- **State:** how many of the layout changes (migrations) this version of Outpost knows
+  have been made, the SQLite version, the journal mode, and the last backup written to
+  a storage location, scheduled or with **Back up now**. A backup downloaded from
+  Settings is not recorded anywhere, so it is not shown.
+
+### How the figures are measured, and what it costs to look
+
+Opening the screen reads the file's size, a few numbers from its header (page count,
+unused pages, journal mode) and two small tables. On a 306 MB test database with
+80,000 passages and vectors, `GET /api/database` answered in 5 to 13 ms.
+
+The counts and the sizes need every page read. That is done by SQLite's `dbstat`
+table, on a separate read-only connection in a worker thread, so the server goes on
+answering; it took 0.1 to 0.5 seconds on that database with the file in the system's
+cache, and will take longer from a cold disk or an SD card. It is worked out the first
+time anyone looks after the server starts, kept with the time it was worked out, and
+worked out again only when someone presses **Work out again** or space has been
+reclaimed. Every page of the file belongs to one table or index or is unused, so the
+groups and the unused space add up to the size of the file exactly. A build of SQLite
+without `dbstat` shows the counts only and says so; nothing is estimated.
+
+### Checking the database
+
+**Check the database** runs SQLite's `quick_check`, which reads every page and checks
+that each is well formed. **Run the full check** runs `integrity_check`, which also
+checks that every index holds exactly the rows of its table. Both are jobs on a queue
+of their own (`database`), run in a worker on a read-only connection; Outpost carries
+on as usual meanwhile. On the test database the quick check took 0.4 seconds and the
+full one 0.4 to 1.8 seconds (the higher figures with other work on the machine). A
+check that finds problems shows SQLite's own first ten lines, and points to restoring
+the newest backup that passed its check. Anyone who can open Outpost may start a
+check: it only reads.
+
+Neither check looks inside the full-text index's own structures (FTS5 has a separate
+`integrity-check` command, which needs a writable connection); that is not checked.
+
+### Reclaiming unused space
+
+When things are removed, SQLite keeps their pages in the file for reuse rather than
+giving them back to the drive. **Reclaim unused space** runs `VACUUM`, which rewrites
+the whole file without them. It is offered when at least 1 MB is unused, and its costs
+are stated beside it:
+
+- **Room.** SQLite builds the rewritten database in its temporary folder, then copies
+  it back through the write-ahead log, so the drive needs room for two copies of what
+  is in use, plus the 256 MB reserve (one copy on each drive when the temporary folder
+  is on another). On the test database (306 MB, 266 MB in use) the files peaked at
+  533 MB beside the temporary copy. Without the room it is refused, and the screen
+  says how much is needed.
+- **Nothing can be saved while it runs.** It holds the database's write lock from
+  start to finish. Reading goes on: on the test database, pages kept answering in 1 to
+  11 ms throughout. Every request that would change something is refused with a
+  message saying why, and work that would write waits: no job starts on any other
+  queue (a scheduled backup is made at the next minute after), and a backup cannot
+  take its copy of the database. It took 1.4 seconds on an idle machine and 3.9
+  seconds under load for the 306 MB file; expect a few times as long as the full check.
+- **It waits for nothing.** It is refused while any job is running (a backup, an
+  import, an index build, a download, a move), naming what is running; pause it or
+  wait for it to finish.
+- **It cannot be stopped part way,** because stopping would undo it. If the server
+  stops while it runs, the rewrite is rolled back when the database is next opened:
+  nothing is lost but the time.
+
+Reclaiming is accepted only from the computer Outpost runs on, or from anywhere when
+Outpost was started with `OUTPOST_ALLOW_REMOTE_ERASE=true`, the rule that restarting
+Outpost follows. It changes nothing a person keeps, but while it runs nobody on the
+network can save anything, and with no accounts any device could otherwise do that
+as often as it liked.
+
+Code: `apps/server/src/modules/database/`, `apps/web/src/features/storage/database-section.tsx`.
+
 ## Managing and cleaning up
 
 **Storage → Manage and clean up** (`/storage/manage`) is one place to see everything

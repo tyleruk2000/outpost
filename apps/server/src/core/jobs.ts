@@ -94,6 +94,8 @@ export class JobQueue {
   private timer: NodeJS.Timeout | undefined;
   private started = false;
   private closing = false;
+  /** While set, only this queue starts work; what is queued on the others waits (see `holdFor`). */
+  private held: { queue: string; reason: string } | null = null;
   private readonly idleWaiters: Array<() => void> = [];
   private readonly db: Db;
   private readonly events: EventBus;
@@ -114,6 +116,26 @@ export class JobQueue {
   setConcurrency(queue: string, limit: number): void {
     this.limits.set(queue, Math.max(1, Math.floor(limit)));
     this.pump();
+  }
+
+  /**
+   * Lets only `queue` start work until `release()`: jobs queued on every other queue wait
+   * their turn, and start when it is released. Jobs already running are not stopped.
+   * Reclaiming space in the database uses it, because nothing can be written while that
+   * runs. `reason` says why, in words for a person.
+   */
+  holdFor(queue: string, reason: string): void {
+    this.held = { queue, reason };
+  }
+
+  release(): void {
+    this.held = null;
+    queueMicrotask(() => this.pump());
+  }
+
+  /** Why other work is waiting, or null when nothing is held. */
+  get holding(): string | null {
+    return this.held?.reason ?? null;
   }
 
   /** Requeues anything left running by a previous process, then starts scheduling. */
@@ -277,6 +299,7 @@ export class JobQueue {
     if (!this.started || this.closing) return;
     const now = Date.now();
     for (const [queue, limit] of this.limits) {
+      if (this.held && queue !== this.held.queue) continue;
       let active = 0;
       for (const run of this.running.values()) if (run.queue === queue) active += 1;
       const free = limit - active;

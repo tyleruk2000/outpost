@@ -38,7 +38,9 @@ const invalidations: Record<string, string[][]> = {
   "semantic.changed": [["semantic"]],
   "portable.changed": [["portable"]],
   "merge.changed": [["merge"]],
-  "backup.changed": [["backup"]],
+  "backup.changed": [["backup"], ["database"]],
+  // A check or a reclaim of the database finished, or its contents were worked out.
+  "database.changed": [["database"]],
   "https.changed": [["https"]],
   "encryption.changed": [["encryption"]],
   "propagation.changed": [["propagation"]],

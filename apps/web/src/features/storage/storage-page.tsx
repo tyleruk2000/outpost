@@ -16,6 +16,7 @@ import { useStorage } from "@/lib/queries";
 import { plural, timeAgo } from "@/lib/utils";
 import { manageLink } from "../manage/manage-data";
 import { AddLocationDialog } from "./add-location-dialog";
+import { DatabaseSection } from "./database-section";
 import { NetworkSharesSection, useShares } from "./network-shares";
 import { PortableDriveSection } from "./portable-drive";
 
@@ -348,6 +349,8 @@ export default function StoragePage() {
               </table>
             )}
           </Section>
+
+          <DatabaseSection />
 
           <PortableDriveSection />
 
