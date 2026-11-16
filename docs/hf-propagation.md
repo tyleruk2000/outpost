@@ -662,9 +662,10 @@ degree. Average ground throughout.
    at 14.18, 18.12 and 28.85 MHz. So an upright wire is run as type 22 on every band.
 
    *The ground system.* Below 0.35 wavelengths type 22 takes off an "antenna efficiency":
-   0.6 dB at a quarter-wave (the manual's own Figure 46, page 115, prints -0.6), about
-   4 dB at 0.12 wavelengths, 12 dB at 0.05. With it, 10 m of wire at 3.65 MHz is strongest
-   at -6.8 dBi and 5 m at -18.5 dBi. Neither the manual nor the source says what ground
+   0.6 dB at a quarter-wave (the manual's own Figure 46, page 115, prints -0.6) and, by
+   the expression in the source, about 4 dB at 0.12 wavelengths and 12 dB at 0.05. With
+   it, 10 m of wire at 3.65 MHz was seen strongest at -6.8 dBi and 5 m at -18.5 dBi, and
+   at 7.1 MHz type 22 read 0.8 dB below type 41 stood upright, which has no such term. Neither the manual nor the source says what ground
    system that figure stands for. What is certain is that the model is a wire fed
    *against the ground*. A half-wave fed at its end draws almost no current at the feed,
    which is why it needs no radials. A shorter wire does draw current there; an end-fed

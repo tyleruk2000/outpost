@@ -21,6 +21,7 @@ import {
   wireOn,
 } from "@outpost/shared";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { normalise } from "../src/modules/propagation/service.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
 
 const preset = (id: string): AntennaSpec => ANTENNA_PRESETS.find((item) => item.id === id)!.spec;
@@ -233,6 +234,35 @@ describe("the same path with one thing changed", () => {
     expect(twenty.series.filter((series) => series.notModelled).map((series) => series.label)).toEqual([
       "End-fed half-wave, 5 m wire, horizontal",
     ]);
+  });
+
+  it("is not answered from a comparison kept when the list of generic antennas was another list", async () => {
+    // As the comparison was kept before the wires were added: under a key that does not say which antennas were compared.
+    const { internals } = app.ctx.services.propagation;
+    const asked = normalise({ ...base, txAntenna: dipole, frequencyMhz: 10.12 });
+    const { basis, tableSha, description, datasets } = await internals.basis(asked.date, { source: "table" });
+    const before = internals.keyOf("compare", {
+      base: asked,
+      what: "antennas",
+      ssn: basis.ssn,
+      tableSha,
+      engine: description.sha256,
+      datasets,
+    });
+    internals.keep(before, "compare", description, {}, { what: "antennas", series: [], kept: "before" });
+    const { body } = await compare(asked, "antennas");
+    expect(body.series.map((series) => series.label)).toEqual(ANTENNA_PRESETS.map((item) => item.name));
+    // A comparison of anything else is kept under the key it always was.
+    const power = internals.keyOf("compare", {
+      base: asked,
+      what: "power",
+      ssn: basis.ssn,
+      tableSha,
+      engine: description.sha256,
+      datasets,
+    });
+    internals.keep(power, "compare", description, {}, { what: "power", series: [], kept: "before" });
+    expect((await compare(asked, "power")).body.series).toEqual([]);
   });
 
   it("marks every series when it is the antenna of the question itself", async () => {

@@ -453,7 +453,16 @@ export function createPropagationService(ctx: AppContext, host: EngineHost): Pro
       const described = await host.describe();
       const { description, datasets } = described;
       const { basis, tableSha } = await basisOf(base, engineOf(described), signal);
-      const key = keyOf("compare", { base, what: input.what, ssn: basis.ssn, tableSha, engine: description.sha256, datasets });
+      const key = keyOf("compare", {
+        base,
+        what: input.what,
+        ssn: basis.ssn,
+        tableSha,
+        engine: description.sha256,
+        datasets,
+        // The generic antennas are part of the question when they are what is compared: an answer kept for another list is not this one's.
+        ...(input.what === "antennas" ? { antennas: ANTENNA_PRESETS.map((preset) => [preset.name, preset.spec]) } : {}),
+      });
       const found = kept<CompareResult>(key);
       if (found) return { ...found, basis };
 
