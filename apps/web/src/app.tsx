@@ -38,6 +38,11 @@ const KeptPage = lazy(() => import("./features/kept/kept-page"));
 const RadioPage = lazy(() => import("./features/radio/radio-page"));
 const ToolsPage = lazy(() => import("./features/tools/tools-page"));
 const PreparePage = lazy(() => import("./features/prepare/prepare-page"));
+const WaterToolsPage = lazy(() => import("./features/tools/water/water-page"));
+const OutdoorsToolsPage = lazy(() => import("./features/tools/outdoors/outdoors-page"));
+const RadioToolsPage = lazy(() => import("./features/tools/radio/radio-tools-page"));
+const BuildingToolsPage = lazy(() => import("./features/tools/building/building-page"));
+const CookingToolsPage = lazy(() => import("./features/tools/cooking/cooking-page"));
 const PropagationPage = lazy(() => import("./features/propagation/propagation-page"));
 const PlansPage = lazy(() => import("./features/propagation/plans/plans-page"));
 const PlanPage = lazy(() => import("./features/propagation/plans/plan-page"));
@@ -117,6 +122,11 @@ export function App() {
           <Route path="kept" element={<KeptPage />} />
           <Route path="radio" element={<RadioPage />} />
           <Route path="tools" element={<ToolsPage />} />
+          <Route path="tools/water" element={<WaterToolsPage />} />
+          <Route path="tools/outdoors" element={<OutdoorsToolsPage />} />
+          <Route path="tools/radio" element={<RadioToolsPage />} />
+          <Route path="tools/building" element={<BuildingToolsPage />} />
+          <Route path="tools/cooking" element={<CookingToolsPage />} />
           <Route path="prepare" element={<PreparePage />} />
           <Route path="radio/propagation" element={<PropagationPage />} />
           <Route path="radio/coverage" element={<CoveragePage />} />
