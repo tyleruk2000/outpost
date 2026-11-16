@@ -590,9 +590,11 @@ supplied by `-passin`.) A PKCS#12 file is different: its password is used once, 
 the file, and is not kept; what Outpost keeps is the key itself.
 
 **PKCS#12, exactly.** Node can load such a file into a listener but will not hand the
-key back, so Outpost reads the container itself (`modules/https/pkcs12.ts`) and leaves
-the decrypting of the key to Node. It reads files as OpenSSL 3 writes them by default
-(AES with PBKDF2) and the older triple-DES form. It does not read files whose
+key back, so Outpost reads the container itself (`modules/https/pkcs12.ts`), decrypting
+with Node's own PBKDF2, AES and triple DES. It reads files as OpenSSL 3 writes them by
+default (AES with PBKDF2) and the older triple-DES form. The file's integrity code is
+not checked; a wrong password shows as contents that do not decrypt, and the key is
+checked against the certificate afterwards. It does not read files whose
 certificates are encrypted with RC2 (the default of old tools) or files written in BER
 rather than DER; it says so and gives the command that converts them
 (`openssl pkcs12 -in file.pfx -nodes -out pair.pem`, with `-legacy` for the old kind).

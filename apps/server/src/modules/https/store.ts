@@ -15,6 +15,7 @@
 import { randomBytes } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { MOST_FILE_BYTES } from "./own.ts";
 
 export const TLS_FOLDER = "tls";
 
@@ -102,8 +103,11 @@ export function createTlsStore(dataDir: string): TlsStore {
 
   function readOwn(file: keyof typeof OWN_FILES): { bytes: Buffer | null; stat: fs.Stats | null } {
     try {
-      const bytes = fs.readFileSync(ownFile(file));
-      return { bytes, stat: fs.statSync(ownFile(file)) };
+      // Looked at before it is read: the folder is the person's to fill, and what is put there may not be a small file.
+      const stat = fs.statSync(ownFile(file));
+      if (!stat.isFile()) throw new Error(`${ownFile(file)} is not a file.`);
+      if (stat.size > MOST_FILE_BYTES) throw new Error(`${ownFile(file)} is too large to be a certificate or a key.`);
+      return { bytes: fs.readFileSync(ownFile(file)), stat };
     } catch (error) {
       const code = (error as NodeJS.ErrnoException).code;
       if (code === "ENOENT" || code === "ENOTDIR") return { bytes: null, stat: null };
@@ -112,6 +116,7 @@ export function createTlsStore(dataDir: string): TlsStore {
           `Outpost is not allowed to read ${ownFile(file)}. Make it readable by the account Outpost runs as, and by no other.`,
         );
       }
+      if (!code && error instanceof Error) throw error;
       throw new Error(`${ownFile(file)} could not be read (${code ?? "unknown error"}).`);
     }
   }

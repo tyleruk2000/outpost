@@ -162,10 +162,13 @@ matters is yours:
 - **"Public" is Outpost's reading, not a guarantee.** It compares the chain with the
   list of public authorities inside Node and makes no request to check revocation or
   anything else. A device may trust more, or less.
-- **Reading PKCS#12** is done by Outpost's own reader (`modules/https/pkcs12.ts`,
-  bounded: files over 256 KB and key derivations over ten million rounds are refused)
-  on a file that only someone already allowed to hand over a key can send. The key
-  inside is decrypted by Node; the certificates by Node's PBKDF2, AES and triple DES.
+- **Reading PKCS#12** is done by Outpost's own reader (`modules/https/pkcs12.ts`) on a
+  file that only someone already allowed to hand over a key can send. It is bounded: a
+  file over 256 KB is refused, and so is one that names more rounds of key derivation
+  than any real file does (five million for PBKDF2, 250,000 for the older derivation),
+  before any of that work is done. For that reason the file is never handed to OpenSSL
+  whole, and its integrity code is not checked; the key is checked against the
+  certificate instead. Decryption is Node's PBKDF2, AES and triple DES.
 - **The Host check is unchanged.** A certificate for a public name does not make
   Outpost answer to that name; `OUTPOST_ALLOWED_HOSTS` still decides, where Outpost is
   started.

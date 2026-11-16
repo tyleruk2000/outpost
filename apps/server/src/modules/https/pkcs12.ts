@@ -7,14 +7,17 @@
  * not store passwords). So this file walks the container (RFC 7292) with the DER reader
  * and takes the pieces out:
  *
- *  - the key, which sits in the file as an encrypted PKCS#8 structure, is decrypted by
- *    Node itself (`createPrivateKey`);
- *  - the certificates are decrypted here, with Node's PBKDF2, AES and triple-DES. The
- *    only arithmetic of this file's own is the PKCS#12 key derivation that the older
- *    triple-DES form uses (RFC 7292, appendix B).
+ *  - the key and the certificates are decrypted with Node's PBKDF2, AES and triple DES,
+ *    and the key is then read by Node (`createPrivateKey`). The only arithmetic of this
+ *    file's own is the PKCS#12 key derivation that the older triple-DES form uses
+ *    (RFC 7292, appendix B).
  *
- * Before anything is taken out, Node (OpenSSL) is asked to load the file whole, which
- * checks the password against the file's integrity code.
+ * A file says how much work opening it takes (how many rounds of key derivation), so
+ * every derivation is done here, where the count is looked at first and a file asking
+ * for more than any real one does is refused. That is also why the file is not handed
+ * to OpenSSL whole to check its integrity code: OpenSSL would do whatever count the
+ * file names. A wrong password shows instead as contents that do not decrypt, and the
+ * key is checked against the certificate afterwards in any case.
  *
  * What it does not read: files whose certificates are encrypted with RC2 (the default
  * of old tools; OpenSSL 3 as Node ships it has no RC2), and files written with
@@ -22,7 +25,6 @@
  * converts them.
  */
 import { createDecipheriv, createHash, createPrivateKey, type KeyObject, pbkdf2Sync } from "node:crypto";
-import tls from "node:tls";
 import { type DerValue, readChildren, readOid, readValue } from "./der.ts";
 
 const OID = {
@@ -55,8 +57,14 @@ const CIPHER: Record<string, { name: string; keyLength: number }> = {
   "1.2.840.113549.3.7": { name: "des-ede3-cbc", keyLength: 24 },
 };
 
-/** More rounds than this is not a real file; deriving the key would hold the server up. */
-const MOST_ROUNDS = 10_000_000;
+/**
+ * More rounds than this is not a real file, and deriving the key would hold the server
+ * up. Tools write 2,000 to 600,000 for PBKDF2, which Node does natively; the older
+ * derivation is done here in JavaScript, where tools write 2,000 to 100,000.
+ */
+const MOST_ROUNDS = 5_000_000;
+const MOST_OLD_ROUNDS = 250_000;
+const TOO_MUCH_WORK = "This file asks for more work to open than any real one does, so it was not read.";
 
 const CONVERT =
   "Convert it with OpenSSL: openssl pkcs12 -in file.pfx -nodes -out pair.pem (add -legacy for a very old file), then give Outpost pair.pem.";
@@ -139,8 +147,14 @@ function decipher(name: string, key: Buffer, iv: Buffer, data: Buffer): Buffer {
   return Buffer.concat([cipher.update(data), cipher.final()]);
 }
 
-/** Decrypts the contents of an encrypted part of the file. Throws when the password, or the method, is not one that works. */
-function decrypt(method: { id: string; parameters: DerValue | undefined }, data: Buffer, password: string): Buffer {
+const UNREADABLE = `This file is encrypted in a way Outpost does not read. ${CONVERT}`;
+
+/**
+ * Works out, from how a sealed part says it is encrypted, the function that opens it
+ * with this password. Throws here for a method that is not read or a file that is not
+ * laid out as it should be; the function it returns throws when the password is wrong.
+ */
+function opener(method: { id: string; parameters: DerValue | undefined }, password: string): (data: Buffer) => Buffer {
   if (method.id === OID.pbeSha1Rc2With40 || method.id === OID.pbeSha1Rc2With128) {
     throw new Pkcs12Error(`This file's certificates are encrypted with RC2, an old method this server cannot read. ${CONVERT}`);
   }
@@ -149,23 +163,25 @@ function decrypt(method: { id: string; parameters: DerValue | undefined }, data:
     const [salt, rounds] = readChildren(method.parameters.content);
     if (salt?.tag !== 0x04) throw new Error("no salt");
     const count = wholeNumber(rounds);
-    if (count > MOST_ROUNDS) throw new Pkcs12Error("This file asks for more work to open than any real one does, so it was not read.");
+    if (count > MOST_OLD_ROUNDS) throw new Pkcs12Error(TOO_MUCH_WORK);
     // No password at all is written two ways by different tools: as an empty string, and as nothing.
     const forms = password === "" ? [asBmp(""), Buffer.alloc(0)] : [asBmp(password)];
-    let failure: unknown;
-    for (const form of forms) {
-      try {
-        return decipher(
-          "des-ede3-cbc",
-          pkcs12Derive(form, salt.content, 1, count, 24),
-          pkcs12Derive(form, salt.content, 2, count, 8),
-          data,
-        );
-      } catch (error) {
-        failure = error;
+    return (data) => {
+      let failure: unknown;
+      for (const form of forms) {
+        try {
+          return decipher(
+            "des-ede3-cbc",
+            pkcs12Derive(form, salt.content, 1, count, 24),
+            pkcs12Derive(form, salt.content, 2, count, 8),
+            data,
+          );
+        } catch (error) {
+          failure = error;
+        }
       }
-    }
-    throw failure;
+      throw failure;
+    };
   }
   if (method.id === OID.pbes2) {
     const [derivation, scheme] = readChildren(method.parameters.content);
@@ -173,21 +189,39 @@ function decrypt(method: { id: string; parameters: DerValue | undefined }, data:
     const kdf = algorithm(derivation);
     const cipher = algorithm(scheme);
     const known = CIPHER[cipher.id];
-    if (kdf.id !== OID.pbkdf2 || !kdf.parameters || !known || cipher.parameters?.tag !== 0x04) {
-      throw new Pkcs12Error(`This file is encrypted in a way Outpost does not read. ${CONVERT}`);
-    }
+    const iv = cipher.parameters;
+    if (kdf.id !== OID.pbkdf2 || !kdf.parameters || !known || iv?.tag !== 0x04) throw new Pkcs12Error(UNREADABLE);
     const fields = readChildren(kdf.parameters.content);
     const salt = fields[0];
     if (salt?.tag !== 0x04) throw new Error("no salt");
     const count = wholeNumber(fields[1]);
-    if (count > MOST_ROUNDS) throw new Pkcs12Error("This file asks for more work to open than any real one does, so it was not read.");
+    if (count > MOST_ROUNDS) throw new Pkcs12Error(TOO_MUCH_WORK);
     const named = fields.find((field, index) => index > 1 && field.tag === 0x30);
     const digest = named ? PRF[algorithm(named).id] : "sha1";
-    if (!digest) throw new Pkcs12Error(`This file is encrypted in a way Outpost does not read. ${CONVERT}`);
-    const key = pbkdf2Sync(Buffer.from(password, "utf8"), salt.content, count, known.keyLength, digest);
-    return decipher(known.name, key, cipher.parameters.content, data);
+    if (!digest) throw new Pkcs12Error(UNREADABLE);
+    return (data) =>
+      decipher(known.name, pbkdf2Sync(Buffer.from(password, "utf8"), salt.content, count, known.keyLength, digest), iv.content, data);
   }
-  throw new Pkcs12Error(`This file is encrypted in a way Outpost does not read. ${CONVERT}`);
+  throw new Pkcs12Error(UNREADABLE);
+}
+
+/**
+ * Opens one sealed part and reads what is inside. The file's integrity code is not
+ * consulted (see the top of this file), so a wrong password is known by its effect:
+ * the part does not decrypt, or decrypts to something that is not what was sealed.
+ */
+function unseal<T>(method: DerValue, data: Buffer, password: string, read: (plain: Buffer) => T): T {
+  const open = opener(algorithm(method), password);
+  try {
+    return read(open(data));
+  } catch (error) {
+    if (error instanceof Pkcs12Error) throw error;
+    throw new Pkcs12Error(
+      password === ""
+        ? "This file is protected by a password. Type the password it was exported with."
+        : "That is not the password this file was exported with.",
+    );
+  }
 }
 
 /** Takes the certificates and the key out of the bags of one part of the file. */
@@ -205,7 +239,10 @@ function readBags(contents: Buffer, password: string, into: { certificates: Buff
     } else if (kind === OID.keyBag) {
       into.keys.push(createPrivateKey({ key: Buffer.from(value.raw), format: "der", type: "pkcs8" }));
     } else if (kind === OID.shroudedKeyBag) {
-      into.keys.push(createPrivateKey({ key: Buffer.from(value.raw), format: "der", type: "pkcs8", passphrase: password }));
+      // An encrypted PKCS#8 structure: how it is encrypted, then the encrypted key.
+      const [method, sealed] = readChildren(value.content);
+      if (!method || sealed?.tag !== 0x04) throw new Error("no key");
+      into.keys.push(unseal(method, sealed.content, password, (plain) => createPrivateKey({ key: plain, format: "der", type: "pkcs8" })));
     }
   }
 }
@@ -222,24 +259,6 @@ function octets(value: DerValue): Buffer {
  * `Pkcs12Error`, worded for a person, for a wrong password or a file it cannot read.
  */
 export function readPkcs12(file: Buffer, password: string): Pkcs12Contents {
-  // OpenSSL's verdict first: it checks the password against the file's integrity code.
-  try {
-    tls.createSecureContext({ pfx: file, passphrase: password });
-  } catch (error) {
-    const said = error instanceof Error ? error.message : "";
-    if (/mac verify failure/i.test(said)) {
-      throw new Pkcs12Error(
-        password === ""
-          ? "This file is protected by a password. Type the password it was exported with."
-          : "That is not the password this file was exported with.",
-      );
-    }
-    if (/unsupported/i.test(said)) {
-      throw new Pkcs12Error(`This file is encrypted with an old method this server cannot read. ${CONVERT}`);
-    }
-    // Anything else (no key inside, say) is found again below, with better words.
-  }
-
   const found = { certificates: [] as Buffer[], keys: [] as KeyObject[] };
   try {
     const [, authSafe] = readChildren(readValue(file).content);
@@ -260,15 +279,11 @@ export function readPkcs12(file: Buffer, password: string): Pkcs12Contents {
         const [, method, sealed] = info ? readChildren(info.content) : [];
         if (!method || !sealed) throw new Error("no content");
         const bytes = sealed.tag === 0x80 ? sealed.content : Buffer.concat(readChildren(sealed.content).map(octets));
-        readBags(decrypt(algorithm(method), bytes, password), password, found);
+        unseal(method, bytes, password, (plain) => readBags(plain, password, found));
       }
     }
   } catch (error) {
     if (error instanceof Pkcs12Error) throw error;
-    const said = error instanceof Error ? error.message : "";
-    if (/bad decrypt|wrong final block|interrupted or cancelled|bad password/i.test(said)) {
-      throw new Pkcs12Error("That is not the password this file was exported with.");
-    }
     throw new Pkcs12Error(`This file could not be read as PKCS#12 (.pfx, .p12). ${CONVERT}`);
   }
   if (found.keys.length > 1) {

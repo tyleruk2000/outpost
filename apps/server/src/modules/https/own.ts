@@ -100,11 +100,19 @@ interface PemBlock {
   encrypted: boolean;
 }
 
+/** The PEM blocks of a file, in order. One pass: a block that never ends stops the reading there. */
 function pemBlocks(text: string): PemBlock[] {
   const blocks: PemBlock[] = [];
-  for (const match of text.matchAll(/-----BEGIN ([A-Z0-9 ]+)-----[\s\S]*?-----END \1-----/g)) {
-    const label = match[1] ?? "";
-    blocks.push({ label, text: match[0], encrypted: label === "ENCRYPTED PRIVATE KEY" || /Proc-Type:\s*4,\s*ENCRYPTED/.test(match[0]) });
+  for (let at = text.indexOf("-----BEGIN "); at !== -1; ) {
+    const labelEnd = text.indexOf("-----", at + 11);
+    if (labelEnd === -1) break;
+    const label = text.slice(at + 11, labelEnd);
+    const closing = `-----END ${label}-----`;
+    const end = /^[A-Z0-9 ]+$/.test(label) ? text.indexOf(closing, labelEnd) : -1;
+    if (end === -1) break;
+    const whole = text.slice(at, end + closing.length);
+    blocks.push({ label, text: whole, encrypted: label === "ENCRYPTED PRIVATE KEY" || /Proc-Type:\s*4,\s*ENCRYPTED/.test(whole) });
+    at = text.indexOf("-----BEGIN ", end + closing.length);
   }
   return blocks;
 }

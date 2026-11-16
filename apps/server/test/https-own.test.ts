@@ -9,6 +9,7 @@ import type { TLSSocket } from "node:tls";
 import type { HttpsStatus } from "@outpost/shared";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import yauzl from "yauzl";
+import { contextual, integer, octetString, oid, sequence } from "../src/modules/https/der.ts";
 import { type ReachableName, reachableNames } from "../src/modules/https/names.ts";
 import { expiryOf, inspectOwn, REMOVE_PASSPHRASE, Refused, type Surroundings } from "../src/modules/https/own.ts";
 import { looksLikePkcs12, Pkcs12Error, readPkcs12 } from "../src/modules/https/pkcs12.ts";
@@ -404,6 +405,49 @@ describe("PKCS#12 files", () => {
     expect(wrong(() => readPkcs12(Buffer.concat([fixture("aes.p12").subarray(0, 200), Buffer.alloc(40)]), FIXTURE_PASSWORD))).toMatch(
       /could not be read as PKCS#12/,
     );
+  });
+
+  it("refuses a file that asks for an absurd amount of work to open, without doing the work", () => {
+    // A container whose one sealed part names a billion rounds of key derivation.
+    const sealed = (method: Buffer) =>
+      sequence(
+        integer(3),
+        sequence(
+          oid("1.2.840.113549.1.7.1"),
+          contextual(
+            0,
+            true,
+            octetString(
+              sequence(
+                sequence(
+                  oid("1.2.840.113549.1.7.6"),
+                  contextual(
+                    0,
+                    true,
+                    sequence(integer(0), sequence(oid("1.2.840.113549.1.7.1"), method, contextual(0, false, Buffer.alloc(32)))),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    const salt = octetString(Buffer.alloc(8, 1));
+    const pbes2 = sequence(
+      oid("1.2.840.113549.1.5.13"),
+      sequence(
+        sequence(oid("1.2.840.113549.1.5.12"), sequence(salt, integer(1_000_000_000))),
+        sequence(oid("2.16.840.1.101.3.4.1.42"), octetString(Buffer.alloc(16))),
+      ),
+    );
+    const tripleDes = sequence(oid("1.2.840.113549.1.12.1.3"), sequence(salt, integer(1_000_000_000)));
+    for (const method of [pbes2, tripleDes]) {
+      const file = sealed(method);
+      expect(looksLikePkcs12(file)).toBe(true);
+      const started = Date.now();
+      expect(() => readPkcs12(file, "x")).toThrow(/asks for more work to open than any real one does/);
+      expect(Date.now() - started).toBeLessThan(500);
+    }
   });
 
   it.skipIf(!OPENSSL)("reads what openssl exports today, with a chain inside and an RSA key", () => {
@@ -1125,6 +1169,22 @@ describe("HTTPS with a certificate of your own", () => {
     expect(given.body.error.message).toMatch(/is a link to somewhere else, and Outpost does not write through links/);
     expect(fs.readFileSync(path.join(elsewhere, "privkey.pem"), "utf8")).toBe(mine.keyPem);
     expect(fs.lstatSync(own(w.dir, "privkey.pem")).isSymbolicLink()).toBe(true);
+  });
+
+  it("reads nothing from the folder that is not a small file", async () => {
+    const w = await start();
+    const mine = forThisComputer();
+    fs.mkdirSync(own(w.dir, "privkey.pem"), { recursive: true });
+    fs.writeFileSync(own(w.dir, "fullchain.pem"), chainOf(mine));
+    const folder = await w.app.api("POST", "/api/https/own/use");
+    expect(folder.status).toBe(409);
+    expect(folder.body.error.message).toMatch(/privkey\.pem is not a file/);
+    fs.rmdirSync(own(w.dir, "privkey.pem"));
+    fs.writeFileSync(own(w.dir, "privkey.pem"), Buffer.alloc(300 * 1024, 65));
+    const large = await w.app.api("POST", "/api/https/own/use");
+    expect(large.status).toBe(409);
+    expect(large.body.error.message).toMatch(/privkey\.pem is too large to be a certificate or a key/);
+    expect(await w.status()).toMatchObject({ enabled: false, source: "outpost" });
   });
 
   it("is not offered from a portable drive, and waits for a clock that is right", async () => {
