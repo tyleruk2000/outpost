@@ -201,7 +201,7 @@ test.describe("recording a track", () => {
     await expect(page.getByRole("region", { name: "Recording", exact: true })).toBeVisible();
     // The time the page was away is written down as not recorded.
     await expect(card(page)).toContainText(
-      /Not recorded: \d+ seconds, from \d\d:\d\d to \d\d:\d\d, while this page was closed or out of sight\./,
+      /Not recorded: \d+ seconds?, from \d\d:\d\d to \d\d:\d\d, while this page was closed or out of sight\./,
     );
     // The next position is the first of the new stretch: kept, with nothing counted from the old stretch to it.
     await context.setGeolocation(north(3));
