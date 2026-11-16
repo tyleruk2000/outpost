@@ -13,6 +13,7 @@ import { BlockMenuItems } from "./block-menu";
 import { selectedTopBlock, type TopBlock } from "./blocks";
 import { markButtons, useFormatState } from "./format-state";
 import { LINK_HELP, LinkField } from "./link-field";
+import { type ListItemTarget, selectedListItem } from "./list-items";
 import { useKeyboardInset } from "./use-touch";
 
 const barButton =
@@ -25,7 +26,7 @@ export function TouchBar({ editor }: { editor: Editor }) {
   const format = useFormatState(editor);
   const inset = useKeyboardInset();
   const [focused, setFocused] = useState(editor.isFocused);
-  const [menu, setMenu] = useState<TopBlock | null>(null);
+  const [menu, setMenu] = useState<{ block: TopBlock; item: ListItemTarget | null } | null>(null);
   const [linking, setLinking] = useState(false);
   const active = new Set(format.marks.split(" "));
 
@@ -79,7 +80,14 @@ export function TouchBar({ editor }: { editor: Editor }) {
         >
           <Plus aria-hidden />
         </button>
-        <Menu open={menu !== null} onOpenChange={(open) => setMenu(open ? selectedTopBlock(editor) : null)}>
+        <Menu
+          open={menu !== null}
+          onOpenChange={(open) => {
+            const block = open ? selectedTopBlock(editor) : null;
+            // In a list the menu starts on the item the cursor is in.
+            setMenu(block ? { block, item: selectedListItem(editor.state) } : null);
+          }}
+        >
           <MenuTrigger asChild>
             <button type="button" aria-label="Block actions" className={barButton}>
               <EllipsisVertical aria-hidden />
@@ -91,9 +99,9 @@ export function TouchBar({ editor }: { editor: Editor }) {
               align="start"
               data-editor-popup
               onCloseAutoFocus={(event) => event.preventDefault()}
-              className="scroll-quiet max-h-[min(70dvh,var(--radix-dropdown-menu-content-available-height))] overflow-y-auto"
+              className="scroll-quiet max-h-[min(70dvh,var(--radix-dropdown-menu-content-available-height))] overflow-y-auto max-md:[&_[role=menuitem]]:min-h-11"
             >
-              <BlockMenuItems editor={editor} block={menu} activeKind={format.kind} flat />
+              <BlockMenuItems editor={editor} block={menu.block} item={menu.item} activeKind={format.kind} flat />
             </MenuContent>
           ) : null}
         </Menu>
