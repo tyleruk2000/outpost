@@ -314,6 +314,7 @@ describe("resuming", () => {
     try {
       const started = await downloads(first).start(request(server, "/slow", "collections/files/slow.bin", { sha256: sha256(body) }));
       await midway(first, started.id);
+      await onDisk(first, started.id);
       const partPath = `${finalPath(first, downloads(first).get(started.id)!)}.part`;
       // Stop the server process mid-download, without removing its directory.
       await first.app.close();
