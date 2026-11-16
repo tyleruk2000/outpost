@@ -1,3 +1,5 @@
+// First, before any other module is loaded: see the file for why.
+import "./core/v8-flags.ts";
 import { buildApp } from "./app.ts";
 import { loadConfig } from "./config.ts";
 import { closeThenExit } from "./core/stop.ts";

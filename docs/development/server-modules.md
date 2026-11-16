@@ -71,6 +71,19 @@ that retrying cannot fix. A handler that is cancelled part of the way through wo
 that cannot be undone throws `StoppedWithResult` with an account of what it had done;
 the job is still cancelled, and keeps that account as its result.
 
+### Worker threads
+
+A worker is a file named `<name>.worker.ts` beside the module that owns it, found with
+`workerUrl` (`core/paths.ts`) and bundled to `workers/<name>.mjs` in the packaged app.
+Two things about them were learned the hard way and are in
+[security.md](../security.md#files-people-upload). A worker's heap limit
+(`resourceLimits`) is a last line and not a guarantee: a worker that runs out of heap
+during one large allocation ends the whole process, so what a worker reads must be
+bounded by counting, as the GPX reader does, or the work belongs in a child process, as
+converting imported files does (`imports/convert-host.ts`). And run from source, a
+worker runs WebAssembly as it starts (Node's type stripping), which is what
+`core/v8-flags.ts` is about.
+
 ### Search
 
 Describe an entity with its natural sections; the index chunks them:

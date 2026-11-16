@@ -590,6 +590,11 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   are read at a time. Waypoints turned into saved places are written a hundred at a
   time with a pause between, so a file may turn all 20,000 it can hold into places
   without the server stopping to do it (it was held to 5,000, written in one go).
+- Run from source, the server turns off one optimisation of the JavaScript engine
+  (compiled calls from WebAssembly into JavaScript), after a fault in V8 13.6 was traced
+  in crash reports from the tests: two worker threads starting at once could end the
+  process with "Check failed: end > addr". The packaged app's GPX worker runs no
+  WebAssembly and is not affected. See security.md.
 - A saved web page is fetched through the guarded download client, pictures included,
   with a plain client name and no cookie or referrer; read in a worker thread under
   limits of size, elements and time; cleaned with an allow-list; and kept and shown as
