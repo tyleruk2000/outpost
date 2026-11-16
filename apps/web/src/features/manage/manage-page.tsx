@@ -49,6 +49,14 @@ export default function ManagePage() {
         title="Manage and clean up"
         description="Everything Outpost is storing, in one place. See what takes the space, remove or move what is installed, and clear what is left over. Nothing here is removed until you choose it and confirm."
       />
+      <p className="-mt-2 mb-4 text-small text-ink-muted">
+        Reference data for the map (boundaries, mapped infrastructure, population, historical records) is listed here with the rest, and can
+        also be updated where it was downloaded:{" "}
+        <Link to="/maps?reference=manage" className="text-primary underline underline-offset-2">
+          Maps, Offline maps
+        </Link>
+        .
+      </p>
 
       {cleanup.isError ? <ErrorState error={cleanup.error} onRetry={() => cleanup.refetch()} /> : null}
       {cleanup.data ? <JobAccount status={cleanup.data} /> : null}

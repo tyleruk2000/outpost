@@ -23,13 +23,13 @@ describe("the tab names", () => {
   it("take a second line when they do not fit, instead of sliding off the edge of a row that scrolls", () => {
     render(
       <PanelTabs tab="places" onTabChange={() => {}} counts={{ places: 128, routes: 14 }}>
-        {{ places: <p>places</p>, routes: <p>routes</p>, offline: <p>offline</p>, sun: <p>sun</p> }}
+        {{ places: <p>places</p>, routes: <p>routes</p>, layers: <p>layers</p>, offline: <p>offline</p>, sun: <p>sun</p> }}
       </PanelTabs>,
     );
     const list = screen.getByRole("tablist");
     expect(list).toHaveClass("flex-wrap", "overflow-x-visible");
     expect(list).not.toHaveClass("overflow-x-auto");
-    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Places128", "Routes14", "Offline maps", "Sun"]);
+    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Places128", "Routes14", "Layers", "Offline maps", "Sun"]);
     // Each is tall enough to touch on a phone.
     for (const tab of screen.getAllByRole("tab")) expect(tab).toHaveClass("max-md:min-h-[44px]", "max-md:min-w-[44px]");
   });

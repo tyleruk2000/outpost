@@ -37,29 +37,29 @@ export type FeatureProvenance = Exclude<ProvenanceClass, "modelled">;
 export const PROVENANCE_INFO: Record<ProvenanceClass, { label: string; shape: string; about: string }> = {
   "public-infrastructure": {
     label: "Published public record",
-    shape: "round mark",
+    shape: "a filled dot",
     about:
       "Taken from a published dataset (OpenStreetMap, OurAirports, Wikidata, Natural Earth, or an official register). Outpost has not checked it on the ground; it is as its publisher gives it.",
   },
   historical: {
     label: "Historical document",
-    shape: "square mark",
+    shape: "a ring marked H",
     about:
       "What a historical document records, with the document and its date. It describes the past, not the present, and says nothing about any place today.",
   },
   modelled: {
     label: "Modelled estimate",
-    shape: "dashed outline",
+    shape: "a dashed outline",
     about: "Worked out by a model from assumptions. An educational estimate, not a forecast.",
   },
   user: {
     label: "Your own",
-    shape: "pin",
+    shape: "a pin",
     about: "Places and routes saved by people using this Outpost.",
   },
   unverified: {
     label: "Unverified or speculative",
-    shape: "hollow diamond",
+    shape: "a ring marked ?",
     about: "Not from a published record: an author's speculation, or data whose source could not be stated. Shown as such.",
   },
 };

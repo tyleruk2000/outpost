@@ -25,6 +25,7 @@ import { ChoiceList } from "@/features/downloads/choice-list";
 import { DownloadControls, DownloadProgress } from "@/features/downloads/download-progress";
 import { useDownloads } from "@/features/downloads/use-downloads";
 import { KeepAreaSection } from "@/features/kept/keep-controls";
+import { ReferenceDataSection } from "@/features/layers/dataset-manager";
 import { formatNumber, plural } from "@/lib/utils";
 import { type PlacesDatasetRequest, useRemovePlaces, useRemoveRegion, useStartPlaces } from "../data";
 import { ImageryArea, SatelliteSection } from "../imagery/panel";
@@ -477,6 +478,7 @@ export function OfflinePanel({
 
       <SatelliteSection engine={engine} onChooseArea={() => setChoosingImagery(true)} sectionRef={imageryRef} />
       <PlaceNames datasets={places} downloads={placeDownloads} sectionRef={placesRef} />
+      <ReferenceDataSection engine={engine} />
       <KeepAreaSection engine={engine} />
     </div>
   );

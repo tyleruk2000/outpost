@@ -23,10 +23,18 @@ export async function headSize(
 ): Promise<{ bytes: number | null; finalUrl: string; lastModified: string | null }> {
   const host = new URL(url).hostname;
   try {
-    const { response, url: finalUrl } = await client.fetch(url, { method: "HEAD", allowedHosts: [host], everyHop: true, signal });
+    // Asked for as it is stored: a server that would compress the transfer gives the compressed length otherwise.
+    const { response, url: finalUrl } = await client.fetch(url, {
+      method: "HEAD",
+      allowedHosts: [host],
+      everyHop: true,
+      signal,
+      headers: { "accept-encoding": "identity" },
+    });
     await response.body?.cancel().catch(() => undefined);
     if (!response.ok) throw new AppError("upstream", `${host} answered HTTP ${response.status} for ${new URL(url).pathname}.`);
-    const length = Number(response.headers.get("content-length"));
+    const encoding = response.headers.get("content-encoding");
+    const length = encoding && encoding !== "identity" ? Number.NaN : Number(response.headers.get("content-length"));
     return { bytes: Number.isFinite(length) && length > 0 ? length : null, finalUrl, lastModified: response.headers.get("last-modified") };
   } catch (error) {
     throw unreachable(host, error);

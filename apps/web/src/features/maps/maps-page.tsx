@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Skeleton, Tooltip } from "@/components/ui/misc";
 import { useDownloads } from "@/features/downloads/use-downloads";
+import { useReferenceLayers } from "@/features/layers/use-reference-layers";
 import { type SightStart, useRepeatersOnMap } from "@/features/repeaters/map/use-repeaters-on-map";
 import { errorMessage } from "@/lib/api";
 import { plural } from "@/lib/utils";
@@ -943,6 +944,16 @@ export default function MapsPage() {
     }, []),
   });
 
+  // Reference layers (features/layers): published data drawn when switched on in the Layers tab, opened by a press.
+  const reference = useReferenceLayers({
+    engine,
+    browsing: tool === "browse" && !moving && !draft,
+    onManage: useCallback(() => {
+      showPanel("offline");
+      window.setTimeout(() => document.getElementById("reference-data")?.scrollIntoView({ block: "start" }), 50);
+    }, [showPanel]),
+  });
+
   const chooseResult = (result: SearchResult) => {
     setContextMenu(null);
     if (result.kind === "marker") return openMarker(result.marker);
@@ -1007,9 +1018,9 @@ export default function MapsPage() {
       terrain: (hillshade || contours) && (sources.data?.hasTerrain ?? false),
     });
     // A route found in OpenStreetMap is credited while it is on the map, whatever the map beneath it is.
-    const withImagery = [...satellite.credits, ...base];
+    const withImagery = [...satellite.credits, ...reference.credits, ...base];
     return routePreview || anyFoundRoute(geometries) ? [...withImagery, ROUTE_CREDIT] : withImagery;
-  }, [sources.data, hasTiles, hillshade, contours, geometries, routePreview, satellite.credits]);
+  }, [sources.data, hasTiles, hillshade, contours, geometries, routePreview, satellite.credits, reference.credits]);
   const firstUse = sources.isSuccess && !hasTiles && !mapDownloading && !firstUseDismissed && !offlineVisible;
   const openOffline = (intent: OfflineIntent) => {
     setOfflineIntent(intent);
@@ -1173,6 +1184,7 @@ export default function MapsPage() {
             canDraw={Boolean(engine)}
           />
         ),
+        layers: reference.panel,
         offline: (
           <OfflinePanel
             overview={overview}
@@ -1213,6 +1225,7 @@ export default function MapsPage() {
 
   const card =
     repeaters.card ??
+    reference.card ??
     (tool === "measure" ? (
       <MeasureCard
         points={measurePoints}

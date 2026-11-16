@@ -518,6 +518,12 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
             text: `${row.publisher ?? "Imported"}${row.license ? `, ${row.license}` : ""}`,
             url: meta.sourceUrl,
           });
+        } else if (meta.provider === "babs") {
+          credits.set("babs", {
+            provider: "babs",
+            text: "Emergency meeting points: BABS (Switzerland)",
+            url: "https://www.babs.admin.ch/de/ntp",
+          });
         } else if (provider) {
           credits.set(provider.id, {
             provider: provider.id,
