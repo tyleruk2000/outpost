@@ -68,7 +68,8 @@ export function falloutState(form: ScenarioForm, result: EffectsResult | null, r
  * The area that shows a scenario: its rings, and its fallout pattern out to the contour
  * of `upToRate` rads per hour (the whole drawn pattern for 1; the 100 contour when it is
  * first drawn, so that the rings are not shrunk to nothing by a pattern tens of
- * kilometres long). A tenth again is left round it.
+ * kilometres long). A tenth again is left round it. Across the antimeridian its west or
+ * east edge runs past ±180°, as the rings' own longitudes do.
  */
 export function fitArea(result: EffectsResult, at: { lat: number; lon: number }, upToRate: number): Bbox {
   const points: Array<[number, number]> = [];
@@ -86,7 +87,11 @@ export function fitArea(result: EffectsResult, at: { lat: number; lon: number },
     if (widest) points.push(...plumePolygon(at, widest, result.fallout.fromDegrees, 48));
   }
   let [west, south, east, north] = [Infinity, Infinity, -Infinity, -Infinity];
-  for (const [lon, lat] of points) {
+  for (const [rawLon, lat] of points) {
+    // Kept within half a world of ground zero, so that an area across the antimeridian is the small box round it, not the world.
+    let lon = rawLon;
+    while (lon - at.lon > 180) lon -= 360;
+    while (at.lon - lon > 180) lon += 360;
     west = Math.min(west, lon);
     east = Math.max(east, lon);
     south = Math.min(south, lat);

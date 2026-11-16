@@ -40,7 +40,7 @@ import {
   SCENARIO_LETTERS,
   type ScenarioLetter,
 } from "@outpost/shared";
-import { CloudOff, Eye, EyeOff, FileDown, PanelRightClose, PanelRightOpen, Plus, Trash2, X } from "lucide-react";
+import { CloudOff, Eye, EyeOff, PanelRightClose, PanelRightOpen, Plus, Trash2, X } from "lucide-react";
 import { lazy, type ReactNode, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router";
 import { toast } from "sonner";
@@ -52,21 +52,18 @@ import { Segmented, Select, Skeleton, Switch, Tabs, TabsContent, TabsList, TabsT
 import { useLayersSummary } from "@/features/layers/data";
 import { ReferenceDataSection } from "@/features/layers/dataset-manager";
 import { useReferenceLayers } from "@/features/layers/use-reference-layers";
-import { madePdf } from "@/features/library/made/made-pdf";
-import { PdfActions } from "@/features/library/made/pdf-actions";
 import { useMapOverview, useMapSources, useMarkers } from "@/features/maps/data";
 import { hasImagery } from "@/features/maps/imagery/style";
 import type { MapEngine } from "@/features/maps/map/engine";
-import { pdfFileName } from "@/features/maps/print/pdf";
-import { saveFile } from "@/features/propagation/plans/document";
 import { errorMessage } from "@/lib/api";
 import { cn, formatDateTime, localId, plural } from "@/lib/utils";
 import { useDeleteScenario, useDeleteSet, useSaveScenario, useSaveSet, useScenarios, useSets } from "./data";
-import { scenarioMarkdown, scenarioPdf, scenarioTitle, type Written } from "./document";
+import type { Written } from "./document";
 import { COMPASS_POINTS, falloutState, fitArea, fromTowards, pointOf } from "./fallout";
 import { type Checked, checkForm, EMPTY_FORM, type FormField, formOf, type ScenarioForm } from "./form";
 import { placeAgainst } from "./geometry";
 import { ALL_VISIBLE, type Drawn, FAMILY_LINES, familyColour, nuclearData, type Visible } from "./layers";
+import { ScenarioExport } from "./pdf-export";
 import { PlanningPanel } from "./planning";
 import { PROVENANCE, ProvenanceBadge, ProvenanceKey } from "./provenance";
 import { RecordsBrowser } from "./records";
@@ -77,7 +74,7 @@ import { burstText, distanceText, placeSentence, windText, yieldText } from "./w
 // The map library is large; it is fetched when the map is first drawn.
 const PlanMap = lazy(() => import("@/features/propagation/map/plan-map").then((module) => ({ default: module.PlanMap })));
 
-const PATH = "/prepare/nuclear";
+const _PATH = "/prepare/nuclear";
 
 /** One scenario on the map. */
 export interface Slot {
@@ -517,7 +514,9 @@ export default function NuclearPage() {
                   {checked.at ? "" : "Put ground zero on the map to see the rings. "}The results appear here as you type.
                 </p>
               )}
-              {written.length > 0 ? <Export written={written} dated={dated} /> : null}
+              {written.length > 0 ? (
+                <ScenarioExport written={written} dated={dated} places={places} sources={sources.data} regions={overview.data?.regions} />
+              ) : null}
             </TabsContent>
 
             <TabsContent value="saved" className="mt-4 grid gap-8">
@@ -1171,55 +1170,6 @@ function PlacesAgainst({
         </Rows>
       )}
     </Section>
-  );
-}
-
-function Export({ written, dated }: { written: Written[]; dated: number }) {
-  const made = useMemo(() => {
-    try {
-      const title = scenarioTitle(written);
-      return {
-        pdf: madePdf(scenarioPdf(written, dated), title, "Nuclear effects scenario", {
-          what: "the nuclear preparedness workspace",
-          path: PATH,
-        }),
-      };
-    } catch (error) {
-      return { error: errorMessage(error) };
-    }
-  }, [written, dated]);
-  return (
-    <section aria-label="On paper" className="grid grid-cols-[minmax(0,1fr)] gap-3 border-y border-border py-4">
-      <div>
-        <h2 className="text-body font-semibold text-ink">
-          {written.length > 1 ? `The ${written.length} scenarios shown, on paper` : "This scenario on paper"}
-        </h2>
-        <p className="mt-0.5 text-small text-ink-muted">
-          A PDF made on this device with every figure, what each level means, the key to the colours, the assumptions, the limits and the
-          source{written.length > 1 ? ", each scenario under its own letter with its own caveat" : ""}.
-        </p>
-      </div>
-      {"error" in made ? (
-        <Notice tone="danger" title="The PDF could not be made">
-          {made.error}
-        </Notice>
-      ) : (
-        <PdfActions pdf={made.pdf}>
-          <Button
-            onClick={() =>
-              saveFile(
-                pdfFileName(scenarioTitle(written)).replace(/\.pdf$/, ".md"),
-                "text/markdown;charset=utf-8",
-                scenarioMarkdown(written),
-              )
-            }
-          >
-            <FileDown aria-hidden />
-            Export as Markdown
-          </Button>
-        </PdfActions>
-      )}
-    </section>
   );
 }
 

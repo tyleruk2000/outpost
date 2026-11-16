@@ -408,8 +408,74 @@ and contours they are inside. In the Plans tab they are measured against each ot
 
 A PDF (Save as PDF, Add to library, Share) and Markdown with every figure, what each
 level means, a colour key, the notes, the assumptions, limitations and source, for every
-scenario shown, each under its letter with its caveat. The people counts are not
-written out: they belong to the installed grid of the day.
+scenario shown (hidden ones are left out), each under its letter with its caveat. The
+people counts are not written out: they belong to the installed grid of the day.
+
+**Maps in the PDF.** Unless "Maps in the PDF" is switched off, the PDF has pictures of
+the offline map, drawn on this device by the same off-screen map as a printed map page
+and the HF coverage PDF (`features/maps/print/export.ts`), at 150 dots to the inch and
+JPEG quality 0.92:
+
+- **Each scenario's rings**, framed as the screen frames them (`fitArea`, rings only), so
+  that the rings fill the picture: the light basemap, since paper is light, with the
+  rings, the fallout pattern where one is drawn, ground zero and its letter, in the light
+  theme's effect hues with their casings, dashes and the labels along each line, so that
+  a grey copy reads the same.
+- **Its fallout pattern**, where one is drawn, on a second map framed to reach the 100
+  rads per hour contour, as the screen first frames a pattern; the page says that the 10
+  and 1 contours run on past its edge, and the table gives how far. Where the 100
+  contour reaches less than 1.6 times as far across as the rings, the second map takes
+  in the whole drawn pattern instead, and says so; where even that does not, one map
+  shows both (`print-frames.ts`).
+- **An overview** first when several scenarios are shown: every one at full strength
+  with its letter, none filled (so that where two overlap nothing is shaded as one), at
+  a scale that takes them all in, the narrower way round the world. Under it, that each
+  is worked out on its own and nothing is added up across them. No figure of any kind
+  goes with it.
+
+Under every map: a scale bar in kilometres and miles, the scale, north, the caveat line
+the screen carries, for a pattern that it is an idealised shape for a steady wind, the
+part of the area with no offline map if any, and the credits the print code works out
+(`creditsFor`, `printedCredits`: OpenStreetMap with its copyright address, Protomaps,
+Natural Earth) with the date of the map data where the installed region gives one.
+
+**Saved places** are drawn only if "Show my saved places on the maps" is ticked. It is
+off every time, because the PDF may be shared and a place called Home is not something
+to put on a shared page by default. Ticked, the page says so, and "Add to library" asks
+first, as for other documents that hold personal details.
+
+**The reference layers are never drawn on these maps.** They are not joined to
+scenarios anywhere in the module, and a page of rings over named facilities is exactly
+the picture the module's rules exist to prevent. The style of these maps is built from
+the scenario's layers and the places' alone (`printMapStyle` in `print-maps.ts`), and
+`print-maps.test.ts` fails if anything else is in it. Satellite imagery is not used
+either.
+
+**When there is no map.** With no offline region covering the area, or on a device that
+cannot draw it (the print code says why), the PDF is still made: the rings to scale with
+no map under them (the same drawing as an emergency plan's, as lines on the page) in the
+map's place, and one line saying why there is no map and how to get one (Maps, Offline
+maps). The overview has the line only.
+
+**Making it.** Nothing is drawn until "Make the PDF" is pressed. The page stays usable
+meanwhile, says in words which map it is drawing ("Drawing the map for A (2 of 4)"), and
+can be stopped. Switched off (remembered on the device), the words-only PDF is made at
+once, as before. Paper is A4 or US Letter. The Markdown is words only and says that the
+PDF has the maps.
+
+**Across the antimeridian and near the poles.** A scenario's frame keeps its longitudes
+within half a world of ground zero, so a scenario at 179.95° E is framed as the small
+box round it (`fitArea` now does the same for the screen's "Fit the map to it"), and an
+overview joins scenarios the narrower way round. Web Mercator stops at 85.05°; a ring
+reaching past it is cut at the map's edge.
+
+**What was measured** (the end-to-end suite's small test map; desktop Chromium on an
+Apple M2 Max, and Chromium as a Pixel 7): one scenario with a pattern, 4 pages, 2 maps,
+189 KB, about 4 s; three scenarios, one with a pattern, 7 pages, 5 maps, 399 KB, about
+8 s; with no region, 3 pages, 126 KB. Each map is one picture of at most about 1,065 ×
+625 pixels, inside what a phone draws at once, so a phone draws it in one piece. A real
+region is denser than the test map, so its pictures will be larger: not measured. The
+same PDF made twice on the same day came out byte for byte the same.
 
 ## Personal planning
 
@@ -494,14 +560,22 @@ anything the household would do differently.
   the PDF; stronger levels more opaque; the selected scenario full, the others quiet);
   `nuclear-page.test.tsx` (up to six scenarios and the limit; select, hide, remove;
   people per ring of the selected scenario only, and no total; the layers, records and
-  plans tabs); `geometry.test.ts`, `form.test.ts`.
+  plans tabs); `geometry.test.ts`, `form.test.ts`; `print-frames.test.ts` (the PDF's
+  map frames: rings only, rings and pattern, far-apart scenarios, 70° N, across the
+  antimeridian); `print-maps.test.ts` (a picture for each scenario, an overview only for
+  several, places only when chosen, no reference layer in the style, no region, a device
+  that cannot draw); `pdf-export.test.tsx` (nothing drawn before the press, progress,
+  Stop, "Add to library" asks with places).
 - End to end, internet blocked: `nuclear-acceptance.spec.ts` and
   `nuclear-acceptance.mobile.spec.ts` (the acceptance sentence: a country pack from
   fixtures, a public record and its source, a historical record and its document, a
   scenario with people inside its rings, a plan from the template with the scenario
   attached, found again; three scenarios at phone width saved as a set and opened again;
   the key and wind field at 320 px with the text at 150 per cent); `nuclear.spec.ts`,
-  `nuclear.mobile.spec.ts`.
+  `nuclear.mobile.spec.ts`; `nuclear-pdf.spec.ts` and `nuclear-pdf.mobile.spec.ts` (the
+  PDF with maps over the test map: one scenario with a pattern and three, pages and
+  pictures, the same bytes twice, places and the question, no region, the controls at
+  320 px).
 
 ## What is not built, and why
 
@@ -509,8 +583,8 @@ anything the household would do differently.
 - **Counting or listing reference-layer features inside a ring**: ruled out (above).
 - **Wind aloft**: no offline source of upper winds; the surface forecast is offered with
   why it is not the same.
-- **The PDF does not carry the people counts**, nor a map picture of the rings; the
-  plan's picture is drawn without a base map.
+- **The PDF does not carry the people counts**, nor the reference layers on its maps;
+  the plan's picture is drawn without a base map.
 - **A plan holds single saved scenarios**, not sets, as illustrations.
 - **Not run on a Raspberry Pi**, and not tried on a real phone (Chromium at 390 and
   320 px). The palette over imagery was measured against three sample tones, not

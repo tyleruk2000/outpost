@@ -18,7 +18,7 @@ import {
   type ScenarioLetter,
 } from "@outpost/shared";
 import { FALLBACK_THEME } from "@/features/maps/lib/palette";
-import { writePdfPages } from "@/features/maps/print/pdf";
+import { type PdfPicture, writePdfPages } from "@/features/maps/print/pdf";
 import type { Rgb, SheetItem } from "@/features/maps/print/sheet";
 import { type Block, toMarkdown, toSheets } from "@/features/propagation/plans/document";
 import { FAMILY_HUE, FAMILY_LINES } from "./layers";
@@ -101,13 +101,24 @@ function colourKey(result: EffectsResult): Block {
   };
 }
 
-function scenarioBlocks({ letter, scenario, result }: Written, labelled: boolean): Block[] {
+/**
+ * The maps for the PDF, as blocks made elsewhere (print-maps.ts): the overview of several
+ * scenarios, first after the title, and each scenario's own, after its opening line.
+ * Without them the document is words only, as it was before there were maps.
+ */
+export interface ScenarioFigures {
+  overview: Block[];
+  maps: Partial<Record<ScenarioLetter, Block[]>>;
+}
+
+function scenarioBlocks({ letter, scenario, result }: Written, labelled: boolean, maps: Block[] = []): Block[] {
   const blocks: Block[] = [
     { kind: "heading", text: `${labelled ? `${letter}: ` : ""}${scenario.name}` },
     {
       kind: "para",
       text: `${yieldText(result.yieldKt)}, ${burstText(scenario.effects, result.heightM)}, at ${coordinates(scenario.lat, scenario.lon)}; ${windText(scenario.effects)}.`,
     },
+    ...maps,
     { kind: "para", text: EFFECTS_CAVEAT },
     colourKey(result),
   ];
@@ -144,7 +155,7 @@ function scenarioBlocks({ letter, scenario, result }: Written, labelled: boolean
   return blocks;
 }
 
-export function scenarioDocument(written: Written[]): Block[] {
+export function scenarioDocument(written: Written[], figures?: ScenarioFigures): Block[] {
   return [
     { kind: "title", text: scenarioTitle(written) },
     ...(written.length > 1
@@ -155,7 +166,8 @@ export function scenarioDocument(written: Written[]): Block[] {
           },
         ]
       : []),
-    ...written.flatMap((item) => scenarioBlocks(item, written.length > 1)),
+    ...(figures?.overview ?? []),
+    ...written.flatMap((item) => scenarioBlocks(item, written.length > 1, figures?.maps[item.letter])),
     { kind: "heading", text: "Assumptions" },
     { kind: "list", items: [...EFFECTS_ASSUMPTIONS] },
     { kind: "heading", text: "Limitations" },
@@ -172,10 +184,27 @@ export function scenarioDocument(written: Written[]): Block[] {
   ];
 }
 
-export const scenarioMarkdown = (written: Written[]) => toMarkdown(scenarioDocument(written));
+/** Said at the top of the Markdown, which has words only. */
+export const MARKDOWN_HAS_NO_MAPS =
+  "This file has the words only. The PDF made from the same screen, with maps switched on, also has a map of each scenario.";
 
-/** `dated` is the scenarios' own last change (or, for one not saved, when it was last edited), so the same scenario makes the same file. */
-export function scenarioPdf(written: Written[], dated: number, paper: "a4" | "letter" = "a4"): Uint8Array {
+export function scenarioMarkdown(written: Written[]): string {
+  const [title, ...rest] = scenarioDocument(written);
+  return toMarkdown([title!, { kind: "para", text: MARKDOWN_HAS_NO_MAPS }, ...rest]);
+}
+
+/**
+ * `dated` is the scenarios' own last change (or, for one not saved, when it was last edited), so the same scenario makes the same file.
+ * With `figures` and their `pictures`, the PDF has the maps (print-maps.ts); without, words only.
+ */
+export function scenarioPdf(
+  written: Written[],
+  dated: number,
+  paper: "a4" | "letter" = "a4",
+  figures?: ScenarioFigures,
+  pictures?: ReadonlyMap<string, PdfPicture>,
+): { bytes: Uint8Array; pages: number } {
   const title = scenarioTitle(written);
-  return writePdfPages({ pages: toSheets(scenarioDocument(written), title, paper), title, created: new Date(dated) });
+  const pages = toSheets(scenarioDocument(written, figures), title, paper);
+  return { bytes: writePdfPages({ pages, pictures, title, created: new Date(dated) }), pages: pages.length };
 }

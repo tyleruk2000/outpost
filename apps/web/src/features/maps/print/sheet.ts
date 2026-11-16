@@ -90,7 +90,8 @@ const SMALL = 6.5;
 const LEADING = 8;
 const TICK = 4;
 
-function bar(items: SheetItem[], metric: ScaleBar, miles: ScaleBar, left: number, top: number): void {
+/** A bar in kilometres over one in miles, from `left`, about 28 points tall from `top`. Used by other pages that carry a map (features/nuclear). */
+export function bar(items: SheetItem[], metric: ScaleBar, miles: ScaleBar, left: number, top: number): void {
   const label = (text: string, x: number, y: number): SheetItem => ({ kind: "text", x, y, text, size: 6, color: INK, anchor: "middle" });
   const last = <T>(list: T[]) => list[list.length - 1]!;
 

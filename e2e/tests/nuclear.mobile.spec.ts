@@ -64,7 +64,9 @@ test.describe("Nuclear preparedness on a phone", () => {
     await page.getByRole("tab", { name: "Scenario" }).click();
     await expect(page.getByRole("list", { name: "Scenarios on the map" }).getByRole("listitem")).toHaveCount(2);
 
-    // Both scenarios on paper.
+    // Both scenarios on paper. With maps, nothing is drawn until "Make the PDF" is pressed; without, the words-only PDF is there at once.
+    await expect(page.getByRole("button", { name: "Make the PDF" })).toBeVisible();
+    await page.getByRole("switch", { name: "Maps in the PDF" }).tap();
     await expect(page.getByRole("link", { name: "Save as PDF" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Add to library" })).toBeVisible();
     expect(errors).toEqual([]);

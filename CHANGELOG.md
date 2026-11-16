@@ -912,6 +912,14 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   forecast's wind from the weather kept on this device.
 - **Reference layers**: a WorldPop grid can be imported from a file; historical records
   are listed by `GET /api/reference/historical`.
+- **Maps in the scenarios' PDF**: each scenario's section has a map of its rings over
+  the offline basemap and, where a fallout pattern is drawn, a second map out to the
+  100 rads per hour contour; several scenarios get an overview map first, with nothing
+  added up across them. Drawn only when "Make the PDF" is pressed, with progress in
+  words and Stop; "Maps in the PDF" off gives the words-only PDF at once. Saved places
+  only when ticked, and then "Add to library" asks first. Reference layers are never
+  drawn. With no map region for the area, or a device that cannot draw it, the rings
+  to scale and a line saying why. The Markdown stays words only and says so.
 
 #### Emergency plans (Preparedness)
 
