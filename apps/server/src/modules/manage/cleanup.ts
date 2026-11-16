@@ -619,7 +619,9 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
         checkStop(run, result, 0);
 
         // From here on nothing can be stopped half-way in a state worth keeping.
-        run.progress({ message: "Erasing notes, places, routes, contacts, conversations, repeaters, radio plans and logs, power plans, and settings" });
+        run.progress({
+          message: "Erasing notes, places, routes, contacts, conversations, repeaters, radio plans and logs, power plans, and settings",
+        });
         await erasePersonal(result);
         await eraseDataFolders(result);
         db.delete(jobsTable).where(ne(jobsTable.id, run.job.id)).run();

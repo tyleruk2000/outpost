@@ -176,14 +176,16 @@ export const RADIO_MODES: readonly RadioModePreset[] = [
     label: "SSB voice",
     transmitShare: 0.5,
     modeFactor: 0.2,
-    basis: "20% while transmitting, SSB with no speech processing (ARRL), and transmitting half the time on the air (Outpost's assumption).",
+    basis:
+      "20% while transmitting, SSB with no speech processing (ARRL), and transmitting half the time on the air (Outpost's assumption).",
   },
   {
     id: "ssb-processed",
     label: "SSB voice, heavy speech processing",
     transmitShare: 0.5,
     modeFactor: 0.4,
-    basis: "40% while transmitting, SSB with heavy speech processing (ARRL), and transmitting half the time on the air (Outpost's assumption).",
+    basis:
+      "40% while transmitting, SSB with heavy speech processing (ARRL), and transmitting half the time on the air (Outpost's assumption).",
   },
   {
     id: "cw",
@@ -317,7 +319,20 @@ export interface PowerPlan extends PowerPlanInput {
 export const POWER_PLAN_MAX_LOADS = 60;
 
 /** Months, for labels. */
-export const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+export const MONTHS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
 
 /** A new plan: one 100 Ah LiFePO4 battery, no loads, no solar figures yet. */
 export function newPowerPlan(name: string): PowerPlanInput {

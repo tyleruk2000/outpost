@@ -21,7 +21,7 @@ afterAll(async () => {
 const shack = (): PowerPlanInput => ({
   ...newPowerPlan("Shack"),
   loads: [
-    { id: "pi", kind: "device", name: "Raspberry Pi", supply: "dc", quantity: 1, startHour: 0, watts: 15.3, hoursPerDay: 24 },
+    { id: "pi", kind: "device", name: "Raspberry Pi", supply: "dc", quantity: 1, startHour: 0, watts: 15, hoursPerDay: 24 },
     {
       id: "hf",
       kind: "radio",

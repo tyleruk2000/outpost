@@ -271,7 +271,8 @@ export function resultSentences(result: CleanupResult): string[] {
   const lines: string[] = [];
   if (result.scope === "derived") return (result.steps ?? []).map((step) => step.message);
   if (result.scope === "everything" && result.personal) {
-    const { pages, places, routes, contacts, conversations, repeaters, repeaterLists, radio, powerPlans, attachments, settings } = result.personal;
+    const { pages, places, routes, contacts, conversations, repeaters, repeaterLists, radio, powerPlans, attachments, settings } =
+      result.personal;
     const erased = [
       pages > 0 ? `${plural(pages, "page")} of notes${attachments > 0 ? ` with ${plural(attachments, "attachment")}` : ""}` : null,
       places > 0 ? plural(places, "saved place") : null,
