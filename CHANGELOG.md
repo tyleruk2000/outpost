@@ -52,6 +52,24 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 - A selection of documents can be moved to another location (`ids` on
   `POST /api/documents/move`).
 
+#### Automatic backups
+
+- Backups on a schedule (daily or weekly, at a chosen time) to a folder of Outpost's
+  own on a storage location, off until a location is chosen. Each is a job: a
+  consistent copy of the database, written under a temporary name, renamed, then read
+  back and checked. One that fails the check is kept, marked, not counted and reported.
+- A location that is not connected is skipped, never replaced by another place; the
+  screen says so, and the backup is made when the location or the server comes back.
+- The newest seven scheduled and seven hand-started backups are kept by default. Only
+  files Outpost named and can read as its own backups are ever removed.
+- The stored backups are listed with date, size, version and whether they verified,
+  with **Back up now**, download, **Restore this one** and delete.
+- Restoring a backup (an uploaded file included), deleting a stored backup and keeping
+  fewer can only be done on the computer Outpost runs on, unless the server is started
+  with `OUTPOST_ALLOW_REMOTE_ERASE=true`. Restoring from another device was allowed
+  before.
+- Restoring checks every file against the checksum in the archive.
+
 #### Document library
 
 - Uploading PDF, EPUB, Markdown, plain text, CSV, JSON, HTML and image files, with the

@@ -3,8 +3,9 @@
  *
  * Outpost has no accounts, so "who is asking" cannot be answered. "Where from" can, and
  * it is the one distinction the few irreversible actions lean on: erasing a person's own
- * notes and documents is only offered at the computer Outpost runs on, unless whoever
- * starts Outpost says otherwise.
+ * notes and documents, restoring a backup over them, and deleting stored backups are
+ * only offered at the computer Outpost runs on, unless whoever starts Outpost says
+ * otherwise.
  *
  * A request counts as local when:
  *

@@ -1,6 +1,6 @@
 import type { BackupStatus } from "@outpost/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Download, RotateCcw, Upload } from "lucide-react";
+import { Download, MonitorSmartphone, RotateCcw, Upload } from "lucide-react";
 import { useRef, useState } from "react";
 import { Link } from "react-router";
 import { toast } from "sonner";
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { ApiError, api, errorMessage } from "@/lib/api";
 import { manageLink } from "../manage/manage-data";
+import { AutomaticBackups } from "./automatic-backups";
 import { SettingRow, SettingsSection } from "./parts";
 
 export function BackupSection() {
@@ -49,103 +50,124 @@ export function BackupSection() {
     onError: (error) => toast.error(errorMessage(error)),
   });
 
+  // Restoring replaces everything at once, so it is offered where "erase everything" is.
+  const right = status.data?.right;
+  const mayRestore = right?.allowed !== false;
+
   return (
-    <SettingsSection
-      id="backup"
-      title="Backup"
-      description="Notes, tags, saved places, settings and the library index. Collections, maps and original documents stay where they are stored and are not copied."
-    >
-      <SettingRow
-        label="Save a backup"
-        hint="One .zip file. Keep it somewhere other than this device."
-        control={
-          <Button asChild>
-            <a href="/api/backup/download" download>
-              <Download /> Download backup
-            </a>
-          </Button>
-        }
-      />
-      <SettingRow
-        label="Restore from a backup"
-        hint="Replaces what this Outpost holds with the backup. What is here now is kept in a dated folder in the data directory."
-        control={
-          <>
-            <Button onClick={() => fileRef.current?.click()} loading={restore.isPending}>
-              <Upload /> Choose backup
+    <>
+      <SettingsSection
+        id="backup"
+        title="Backup"
+        description="Notes, tags, saved places, settings and the library index. Collections, maps and original documents stay where they are stored and are not copied."
+      >
+        <SettingRow
+          label="Save a backup"
+          hint="One .zip file. Keep it somewhere other than this device."
+          control={
+            <Button asChild>
+              <a href="/api/backup/download" download>
+                <Download /> Download backup
+              </a>
             </Button>
-            <input
-              ref={fileRef}
-              type="file"
-              accept=".zip,application/zip"
-              className="sr-only"
-              tabIndex={-1}
-              aria-label="Backup file"
-              onChange={(event) => {
-                setChosen(event.target.files?.[0]);
-                event.target.value = "";
-              }}
-            />
-          </>
-        }
-      />
-      {status.data?.restorePending ? (
-        <Notice
-          tone="warning"
-          icon={<RotateCcw />}
-          title="A restore is waiting for a restart"
-          action={
-            <span className="flex shrink-0 gap-2">
-              <Button size="sm" variant="ghost" onClick={() => cancel.mutate()} loading={cancel.isPending}>
-                Cancel restore
-              </Button>
-              {status.data.supervised ? (
-                <Button size="sm" variant="primary" onClick={() => restart.mutate()} loading={restart.isPending}>
-                  Restart now
-                </Button>
-              ) : null}
-            </span>
           }
-        >
-          {status.data.supervised
-            ? "The backup has been checked. Restart Outpost to switch to it."
-            : "The backup has been checked. Stop Outpost and start it again to switch to it."}
-        </Notice>
-      ) : null}
-      {status.data && status.data.previousData.length > 0 ? (
-        <p className="text-small text-ink-muted">
-          Data from before earlier restores is kept in the data directory:{" "}
-          <span className="font-mono text-[0.8125rem] text-ink">{status.data.previousData.join(", ")}</span>. Delete them from{" "}
-          <Link to={manageLink("leftovers")} className="text-primary underline underline-offset-2">
-            Leftovers
-          </Link>{" "}
-          when you no longer need them.
-        </p>
-      ) : null}
-      <SettingRow
-        label="Clean up or start again"
-        hint="See what is taking the space, remove what was downloaded, clear leftovers, or erase everything."
-        control={
-          <Button asChild size="sm">
-            <Link to={manageLink("clean-up")}>Manage and clean up</Link>
-          </Button>
-        }
-      />
-      <ConfirmDialog
-        open={Boolean(chosen)}
-        onOpenChange={(open) => !open && setChosen(undefined)}
-        title="Restore from this backup?"
-        description={
-          <>
-            <span className="font-medium text-ink">{chosen?.name}</span> will replace the notes, settings and library index on this Outpost
-            after a restart. The current data is kept in a dated folder, not deleted.
-          </>
-        }
-        confirmLabel="Check and stage restore"
-        confirmVariant="primary"
-        loading={restore.isPending}
-        onConfirm={() => chosen && restore.mutate(chosen)}
-      />
-    </SettingsSection>
+        />
+        <SettingRow
+          label="Restore from a backup"
+          hint="Replaces what this Outpost holds with the backup. What is here now is kept in a dated folder in the data directory."
+          control={
+            mayRestore ? (
+              <>
+                <Button onClick={() => fileRef.current?.click()} loading={restore.isPending}>
+                  <Upload /> Choose backup
+                </Button>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept=".zip,application/zip"
+                  className="sr-only"
+                  tabIndex={-1}
+                  aria-label="Backup file"
+                  onChange={(event) => {
+                    setChosen(event.target.files?.[0]);
+                    event.target.value = "";
+                  }}
+                />
+              </>
+            ) : null
+          }
+        />
+        {right && !right.allowed ? (
+          <Notice tone="info" icon={<MonitorSmartphone />} title="Restoring is not offered on this device">
+            <p>
+              Outpost has no accounts, so it cannot tell who is asking. Restoring a backup, deleting a stored one and keeping fewer of them
+              can only be done at the computer Outpost runs on. Open Outpost there to do it.
+            </p>
+            <p className="mt-1 text-ink-muted">
+              Whoever starts Outpost can allow it from every device by starting it with{" "}
+              <span className="font-mono text-[0.8125rem]">{right.option}=true</span>.
+            </p>
+          </Notice>
+        ) : null}
+        {status.data?.restorePending ? (
+          <Notice
+            tone="warning"
+            icon={<RotateCcw />}
+            title="A restore is waiting for a restart"
+            action={
+              <span className="flex shrink-0 gap-2">
+                <Button size="sm" variant="ghost" onClick={() => cancel.mutate()} loading={cancel.isPending}>
+                  Cancel restore
+                </Button>
+                {status.data.supervised ? (
+                  <Button size="sm" variant="primary" onClick={() => restart.mutate()} loading={restart.isPending}>
+                    Restart now
+                  </Button>
+                ) : null}
+              </span>
+            }
+          >
+            {status.data.supervised
+              ? "The backup has been checked. Restart Outpost to switch to it."
+              : "The backup has been checked. Stop Outpost and start it again to switch to it."}
+          </Notice>
+        ) : null}
+        {status.data && status.data.previousData.length > 0 ? (
+          <p className="text-small text-ink-muted">
+            Data from before earlier restores is kept in the data directory:{" "}
+            <span className="font-mono text-[0.8125rem] text-ink">{status.data.previousData.join(", ")}</span>. Delete them from{" "}
+            <Link to={manageLink("leftovers")} className="text-primary underline underline-offset-2">
+              Leftovers
+            </Link>{" "}
+            when you no longer need them.
+          </p>
+        ) : null}
+        <SettingRow
+          label="Clean up or start again"
+          hint="See what is taking the space, remove what was downloaded, clear leftovers, or erase everything."
+          control={
+            <Button asChild size="sm">
+              <Link to={manageLink("clean-up")}>Manage and clean up</Link>
+            </Button>
+          }
+        />
+        <ConfirmDialog
+          open={Boolean(chosen)}
+          onOpenChange={(open) => !open && setChosen(undefined)}
+          title="Restore from this backup?"
+          description={
+            <>
+              <span className="font-medium text-ink">{chosen?.name}</span> will replace the notes, settings and library index on this
+              Outpost after a restart. The current data is kept in a dated folder, not deleted.
+            </>
+          }
+          confirmLabel="Check and stage restore"
+          confirmVariant="primary"
+          loading={restore.isPending}
+          onConfirm={() => chosen && restore.mutate(chosen)}
+        />
+      </SettingsSection>
+      <AutomaticBackups />
+    </>
   );
 }

@@ -42,10 +42,12 @@ public internet and must not be exposed to it.
 
 - **Anyone on a network you have shared it with.** With LAN access on, every person
   and device on that network can read and change everything, connect and disconnect
-  network shares, start downloads, restore a different database, and remove anything
-  from the library, one item at a time or everything that was downloaded at once. The
-  one thing they cannot do from another device is erase your own notes and documents
-  in one step (see [Erasing everything](#erasing-everything)).
+  network shares, start downloads, download a backup of your notes, and remove anything
+  from the library, one item at a time or everything that was downloaded at once. What
+  they cannot do from another device is erase your own notes and documents in one step
+  (see [Erasing everything](#erasing-everything)), replace them all by restoring a
+  backup, or delete the backups kept on a storage location (see
+  [Backup and restore](#backup-and-restore)).
   There are no permissions, no per-person views and no audit log. Share it only with a
   network where you trust everyone.
 - **Other programs or people on the same computer.** Anything that can connect to
@@ -312,8 +314,61 @@ was interrupted is discarded, never applied. A restore puts back the database,
 attachments and extracted text only. Catalogue manifests in the file are ignored,
 because they name the hosts downloads may start from; unfinished jobs and remembered
 network shares in the restored database are deleted, so a backup from another machine
-cannot make this one start work or connect to a file server.
-Code: `apps/server/src/modules/backup/index.ts`.
+cannot make this one start work or connect to a file server. Each file unpacked must
+match the checksum the archive recorded for it, so a backup damaged where it was kept
+is refused whole.
+Code: `apps/server/src/modules/backup/restore.ts`.
+
+#### Who may restore and who may delete backups
+
+Restoring replaces every note, saved place and library record at once. That is at least
+as serious as erasing them, so it follows the same rule as
+[Erasing everything](#erasing-everything): the request must come from the computer
+Outpost runs on, unless Outpost was started with `OUTPOST_ALLOW_REMOTE_ERASE=true`. The
+one option covers both, because it is one decision: whether every device on the network
+may do what cannot be taken back.
+
+| Request | From another device |
+| --- | --- |
+| `POST /api/backup/restore` (an uploaded file) | Refused with `403` before any of the file is read. |
+| `POST /api/backup/stored/:name/restore` | Refused. |
+| `DELETE /api/backup/stored/:name` | Refused. |
+| `PATCH /api/backup/schedule` with a lower `keep` | Refused: fewer kept means older backups deleted at the next run. |
+| `PATCH /api/backup/schedule` otherwise, `POST /api/backup/run`, downloads | Allowed, as reading and adding are everywhere in Outpost. |
+| `DELETE /api/backup/restore` (cancel a staged restore) | Allowed: it keeps what is here. |
+| `POST /api/system/restart` | Allowed, as before. It applies a restore only if one was staged, which only the computer itself can do. |
+
+The screen says why on a device that is refused, and what to do: open Outpost on the
+computer it runs on, or start it with the option. The limits of the rule are the same
+as for erasing: it is not authentication, in Docker with LAN access on nothing looks
+local, and a reverse proxy must send a forwarding header.
+
+Backups started by hand and scheduled ones are counted separately when old ones are
+removed, so a device that may only press **Back up now** cannot rotate the scheduled
+backups away. It can still change the schedule from weekly to daily, which makes old
+backups leave sooner; and it can switch automatic backups off. Neither deletes anything
+at once. Code: `apps/server/src/modules/backup/right.ts`, `automatic.ts`.
+
+#### Backups kept on a storage location
+
+| Control | Detail |
+| --- | --- |
+| One place only | A backup is written to `outpost-backups` in the chosen location and nowhere else. The location is checked for its marker file immediately before writing and again before the file takes its final name, so a share that has gone, leaving an empty folder where it was mounted, is not written into. If `outpost-backups` is a link or a file, the backup fails instead of following it. |
+| Skipped, not redirected | A location that is not connected means no backup. There is no fallback folder. |
+| Checked after writing | The file is read back whole from where it was written: every entry against its checksum, and the database through SQLite's integrity check. A backup that fails is kept, marked not verified, never counted, and reported. |
+| What may be deleted | Only a file directly in `outpost-backups` that has Outpost's backup name, is an ordinary file reached through no link, and reads as an Outpost backup when opened again at that moment; and the record file beside it. Never the newest verified backup. Nothing else in the folder is listed, counted or touched. |
+| Names, not paths | A request names a stored backup by its file name, which must match the pattern Outpost uses; anything else is `404`. The path is built with `resolveInside`. |
+| No share credentials | This feature reads and stores nothing about a network share's sign-in. It writes into the mounted folder like any other location. |
+
+**A backup is not encrypted.** It is a zip of the database and attachments: the notes
+are in the clear, and so is everything else in the database. Anyone who can read the
+`outpost-backups` folder, on the NAS or wherever it is, can read them, and anyone who
+can reach Outpost can download one. The screen says so where the location is chosen.
+Encryption is not built in this version; put the backups on storage you trust, or on an
+encrypted volume. The record of a check (`.verified.json`) is a plain file on the same
+storage, so it tells you a backup was sound when written, not that nobody has replaced
+it since: restoring checks the file again from scratch and does not rely on it.
+Code: `apps/server/src/modules/backup/automatic.ts`, `stored.ts`, `archive.ts`.
 
 ### Bringing a drive back
 
@@ -458,8 +513,9 @@ readable only by you. See [storage.md](storage.md#connecting-a-network-share).
    outside, use a VPN into your network. A reverse proxy is only safe if the proxy
    itself requires sign-in; see
    [deployment.md](deployment.md#behind-a-reverse-proxy).
-3. **Back up** from Settings, and keep the backup somewhere other than the device.
-   Back up storage locations as ordinary folders.
+3. **Back up** from Settings, and keep the backup somewhere other than the device, or
+   turn on automatic backups to a storage location on another disk. Backups are not
+   encrypted. Back up storage locations as ordinary folders.
 4. **Encrypt drives that leave the house**: laptops, external disks and portable
    drives (BitLocker, FileVault, LUKS, VeraCrypt). Outpost does not encrypt anything
    at rest.

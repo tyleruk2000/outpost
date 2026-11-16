@@ -403,6 +403,7 @@ export default function CleanupView({ status, loading }: { status: CleanupStatus
           "Storage locations, their marker files, network shares and remembered passwords",
           "Any file outside the folders Outpost made, and everything on a location that is not connected (it says where they are)",
           "Catalogue manifests of your own, and programs fetched for portable drives",
+          "Backups already made on a storage location by automatic backups; they hold the notes being erased, so delete them in Settings first if you want them gone",
         ]}
       >
         {status.erase.allowed ? (
