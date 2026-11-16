@@ -20,6 +20,7 @@ import {
   coverageGrid,
   coverageValue,
   HF_BANDS,
+  isHorizontalAntenna,
   type ModeId,
   modeById,
   NOISE_ENVIRONMENTS,
@@ -40,7 +41,7 @@ import { Field, Input } from "@/components/ui/input";
 import { Progress, Segmented, Select, Skeleton } from "@/components/ui/misc";
 import { errorMessage } from "@/lib/api";
 import { formatDateTime, formatNumber } from "@/lib/utils";
-import { antennaOf, formOf, rememberForm, useEngines, usePlaces, useProfiles } from "../data";
+import { antennaOf, formOf, rememberForm, useEngines, usePlaces, useProfiles, wireHint } from "../data";
 import { CELL_OPACITY, coverageFeatures } from "../map/layers";
 import type { PlanMapHandle } from "../map/plan-map";
 import { PlaceInput } from "../place-field";
@@ -339,11 +340,24 @@ export default function CoveragePage() {
   const progress = job.data?.progress;
   const quantities = result?.mode.requiredSnrDbHz === null ? QUANTITIES.filter((item) => item.value === "signal") : QUANTITIES;
   const antennaOptions = [
-    ...antennas.map((antenna) => ({ value: antenna.id, label: antenna.name, description: antennaModelLabel(antenna.kind) })),
+    ...antennas.map((antenna) => ({
+      value: antenna.id,
+      label: antenna.name,
+      description: antennaModelLabel(antenna.kind, antenna.lengthM),
+    })),
     ...ANTENNA_PRESETS.map((preset) => ({ value: `preset:${preset.id}`, label: preset.name, description: "Generic" })),
   ];
   const txAntenna = antennaOf(form.txAntennaId, antennas);
-  const turns = txAntenna ? txAntenna.spec.kind !== "isotropic" && txAntenna.spec.kind !== "vertical-monopole" : false;
+  const turns = txAntenna ? isHorizontalAntenna(txAntenna.spec.kind) : false;
+  /** An antenna refused for the frequency is no longer refused once the frequency changes. */
+  const clearWireProblem = () => {
+    if (problem?.field === "txAntennaId" || problem?.field === "rxAntennaId") setProblem(null);
+  };
+  // A wire of a stated length: what it is on the frequency in the form, said before a map is asked for.
+  const wireNote = (id: string) => {
+    const chosen = antennaOf(id, antennas);
+    return chosen ? wireHint(chosen.spec, form.frequencyMhz)?.note : undefined;
+  };
 
   const toPlanner = (position: { lat: number; lon: number }) => {
     if (!result) return;
@@ -426,6 +440,7 @@ export default function CoveragePage() {
                   onChange={(id) => {
                     const band = HF_BANDS.find((item) => item.id === id);
                     setForm((current) => ({ ...current, band: id, frequencyMhz: band ? String(band.mhz) : current.frequencyMhz }));
+                    clearWireProblem();
                   }}
                   options={[
                     ...HF_BANDS.map((band) => ({ value: band.id, label: band.label, description: `${band.mhz} MHz` })),
@@ -443,6 +458,7 @@ export default function CoveragePage() {
                     const text = event.target.value;
                     setForm((current) => ({ ...current, frequencyMhz: text, band: bandOf(Number(text))?.id ?? "other" }));
                     if (problem?.field === "frequencyMhz") setProblem(null);
+                    clearWireProblem();
                   }}
                   inputMode="decimal"
                   className="tabular"
@@ -471,7 +487,7 @@ export default function CoveragePage() {
               />
             )}
           </Field>
-          <Field label="Transmitting antenna" error={fieldError("txAntennaId")}>
+          <Field label="Transmitting antenna" hint={wireNote(form.txAntennaId)} error={fieldError("txAntennaId")}>
             {(ids) => <Select {...ids} value={form.txAntennaId} onChange={(value) => set("txAntennaId", value)} options={antennaOptions} />}
           </Field>
           {turns ? (
@@ -494,7 +510,7 @@ export default function CoveragePage() {
           ) : null}
           <Field
             label="Antenna assumed at every receiver"
-            hint="The same antenna in every cell, turned towards the transmitter."
+            hint={`The same antenna in every cell, turned towards the transmitter.${wireNote(form.rxAntennaId) ? ` ${wireNote(form.rxAntennaId)}` : ""}`}
             error={fieldError("rxAntennaId")}
           >
             {(ids) => <Select {...ids} value={form.rxAntennaId} onChange={(value) => set("rxAntennaId", value)} options={antennaOptions} />}

@@ -212,7 +212,9 @@ export async function registerPropagation(app: FastifyInstance, ctx: AppContext)
   app.post("/api/radio/propagation/listing", async (request) => {
     const body = checked(request.body);
     // A frequency on which an antenna is not modelled is left off the page; with none left there is no page.
-    if ([body.frequencyMhz, ...HF_BANDS.map((band) => band.mhz)].every((mhz) => notModelledOn(body.txAntenna, body.rxAntenna, mhz) !== null))
+    if (
+      [body.frequencyMhz, ...HF_BANDS.map((band) => band.mhz)].every((mhz) => notModelledOn(body.txAntenna, body.rxAntenna, mhz) !== null)
+    )
       throw badRequest(
         "There is no page to print: on the frequency asked about and on every band, one of the antennas is a wire the engine's model does not describe.",
         { reason: "antenna-not-modelled" },

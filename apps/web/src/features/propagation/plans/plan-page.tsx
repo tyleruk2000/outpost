@@ -40,7 +40,7 @@ import { HourGrid } from "../charts";
 import { useEngines, usePlaces, useProfiles } from "../data";
 import { BasisNotice } from "../results";
 import { inputOf, useKeptMatrix, useLinkSearch, usePlan, useRemovePlan, useSavePlan, useWorkOut } from "./data";
-import { choiceWords, planDocument, planFigure, planMarkdown, planPdf, saveFile, unwritable } from "./document";
+import { choiceWords, pairNotModelled, planDocument, planFigure, planMarkdown, planPdf, saveFile, unwritable } from "./document";
 import { StationDialog } from "./station-dialog";
 
 const HOURS = Array.from({ length: 24 }, (_, index) => ({ value: String(index + 1), label: `${utcLabel(index + 1)} UTC` }));
@@ -61,8 +61,12 @@ function Pair({ pair, plan, result }: { pair: PlanPair; plan: CommunicationPlan;
       </li>
     );
   }
-  const share = (value: number | null) => (value === null ? "no path" : `${Math.round(value * 100)}%`);
-  const ratio = (value: number | null) => (value === null ? "no path" : `${value.toFixed(1)} dB`);
+  // A band on which a station's wire is not modelled has blanks for figures. They are said to be that, never "no path".
+  const without = new Map(pair.bands.map((band) => [band.bandId, pairNotModelled(plan, pair, band.mhz)]));
+  const blank = (bandId: string) => (without.get(bandId) ? "not modelled" : "no path");
+  const share = (value: number | null, bandId: string) => (value === null ? blank(bandId) : `${Math.round(value * 100)}%`);
+  const ratio = (value: number | null, bandId: string) => (value === null ? blank(bandId) : `${value.toFixed(1)} dB`);
+  const notModelledBands = pair.bands.filter((band) => without.get(band.bandId));
   return (
     <li className="py-5">
       <h3 className="text-lead text-ink">{title}</h3>
@@ -78,6 +82,14 @@ function Pair({ pair, plan, result }: { pair: PlanPair; plan: CommunicationPlan;
           {pick.alternate ? choiceWords(pick.alternate, byRatio) : "None. No second band of the plan qualifies."}
         </dd>
       </dl>
+      {notModelledBands.length > 0 ? (
+        <p className="mt-2 max-w-[75ch] text-small text-ink-muted">
+          No figure on {notModelledBands.map((band) => planBandLabel(band.bandId)).join(", ")}, so{" "}
+          {notModelledBands.length > 1 ? "they are" : "it is"} not recommended:{" "}
+          {notModelledBands.map((band) => `${planBandLabel(band.bandId)}, ${without.get(band.bandId)}`).join("; ")}. That is not the same as
+          a band that does badly.
+        </p>
+      ) : null}
       {byRatio ? (
         <div className="scroll-quiet mt-4 overflow-x-auto">
           <table className="tabular w-full min-w-max text-small">
@@ -102,14 +114,20 @@ function Pair({ pair, plan, result }: { pair: PlanPair; plan: CommunicationPlan;
                   <th scope="row" className="whitespace-nowrap py-1 pr-3 text-left font-medium text-ink">
                     {planBandLabel(band.bandId)}
                   </th>
-                  {hours.map((item) => {
-                    const value = planTwoWay(band, item, true);
-                    return (
-                      <td key={item} className="px-1.5 py-1 text-right text-ink">
-                        {value === null ? "–" : Math.round(value)}
-                      </td>
-                    );
-                  })}
+                  {without.get(band.bandId) ? (
+                    <td colSpan={hours.length} className="px-1.5 py-1 text-left text-ink-muted">
+                      Not modelled
+                    </td>
+                  ) : (
+                    hours.map((item) => {
+                      const value = planTwoWay(band, item, true);
+                      return (
+                        <td key={item} className="px-1.5 py-1 text-right text-ink">
+                          {value === null ? "–" : Math.round(value)}
+                        </td>
+                      );
+                    })
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -127,6 +145,7 @@ function Pair({ pair, plan, result }: { pair: PlanPair; plan: CommunicationPlan;
               label: planBandLabel(band.bandId),
               values: Array.from({ length: 24 }, (_, index) => planTwoWay(band, index + 1, false)),
               marked: band.bandId === pick.primary?.bandId,
+              notModelled: Boolean(without.get(band.bandId)),
             }))}
           />
           <p className="mt-1 text-small text-ink-muted">
@@ -157,9 +176,9 @@ function Pair({ pair, plan, result }: { pair: PlanPair; plan: CommunicationPlan;
                   <th scope="row" className="whitespace-nowrap py-1 pr-3 text-left font-medium text-ink">
                     {planBandLabel(band.bandId)}
                   </th>
-                  <td className="px-2 py-1 text-right text-ink">{share(band.forward.reliability[hour - 1] ?? null)}</td>
-                  <td className="px-2 py-1 text-right text-ink">{share(band.back.reliability[hour - 1] ?? null)}</td>
-                  <td className="py-1 pl-2 text-right text-ink">{share(planTwoWay(band, hour, false))}</td>
+                  <td className="px-2 py-1 text-right text-ink">{share(band.forward.reliability[hour - 1] ?? null, band.bandId)}</td>
+                  <td className="px-2 py-1 text-right text-ink">{share(band.back.reliability[hour - 1] ?? null, band.bandId)}</td>
+                  <td className="py-1 pl-2 text-right text-ink">{share(planTwoWay(band, hour, false), band.bandId)}</td>
                 </tr>
               ))}
             </tbody>
@@ -169,9 +188,10 @@ function Pair({ pair, plan, result }: { pair: PlanPair; plan: CommunicationPlan;
       {byRatio ? (
         <p className="tabular mt-2 text-small text-ink-muted">
           {pair.bands
-            .map(
-              (band) =>
-                `${planBandLabel(band.bandId)} at ${utcLabel(hour)}: ${ratio(band.forward.snrDbHz[hour - 1] ?? null)} out, ${ratio(band.back.snrDbHz[hour - 1] ?? null)} back`,
+            .map((band) =>
+              without.get(band.bandId)
+                ? `${planBandLabel(band.bandId)}: not modelled`
+                : `${planBandLabel(band.bandId)} at ${utcLabel(hour)}: ${ratio(band.forward.snrDbHz[hour - 1] ?? null, band.bandId)} out, ${ratio(band.back.snrDbHz[hour - 1] ?? null, band.bandId)} back`,
             )
             .join("; ")}
           .

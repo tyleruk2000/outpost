@@ -56,7 +56,14 @@ const predict = (patch: Partial<PredictionRequest> = {}) =>
 
 describe("the four wires offered", () => {
   it("are a 10 m and a 5 m wire, each level and upright, and the antenna that was there before is still itself", () => {
-    expect(ANTENNA_PRESETS.filter((item) => item.spec.lengthM !== undefined).map((item) => [item.name, item.spec.kind, item.spec.lengthM, item.spec.heightM])).toEqual([
+    expect(
+      ANTENNA_PRESETS.filter((item) => item.spec.lengthM !== undefined).map((item) => [
+        item.name,
+        item.spec.kind,
+        item.spec.lengthM,
+        item.spec.heightM,
+      ]),
+    ).toEqual([
       ["End-fed half-wave, 10 m wire, horizontal", "end-fed-horizontal", 10, 6],
       ["End-fed half-wave, 10 m wire, vertical", "end-fed-vertical", 10, 0],
       ["End-fed half-wave, 5 m wire, horizontal", "end-fed-horizontal", 5, 6],
@@ -65,14 +72,22 @@ describe("the four wires offered", () => {
     // Renamed so that it does not read as one of the wires; the same id, the same antenna, no length.
     const before = ANTENNA_PRESETS.find((item) => item.id === "efhw")!;
     expect(before.name).toBe("End-fed half-wave recut for every band, horizontal at 6 m");
-    expect(before.spec).toEqual({ kind: "end-fed-half-wave", heightM: 6, ground: "average", broadsideDeg: null, gainDb: 0, feedlineLossDb: 0 });
+    expect(before.spec).toEqual({
+      kind: "end-fed-half-wave",
+      heightM: 6,
+      ground: "average",
+      broadsideDeg: null,
+      gainDb: 0,
+      feedlineLossDb: 0,
+    });
     expect(new Set(ANTENNA_PRESETS.map((item) => item.name)).size).toBe(ANTENNA_PRESETS.length);
     for (const item of ANTENNA_PRESETS.filter((one) => one.spec.lengthM !== undefined))
       expect(item.modelledAs).toContain("matching unit's loss is not modelled");
   });
 
   it("are a half-wave where a person expects: 10 m of wire on 20 m, 5 m on 10 m", () => {
-    const halfWaveOn = (spec: AntennaSpec) => HF_BANDS.filter((item) => wireOn(spec, item.mhz)?.state === "half-wave").map((item) => item.id);
+    const halfWaveOn = (spec: AntennaSpec) =>
+      HF_BANDS.filter((item) => wireOn(spec, item.mhz)?.state === "half-wave").map((item) => item.id);
     expect(halfWaveOn(flat10)).toEqual(["20m"]);
     expect(halfWaveOn(upright10)).toEqual(["20m"]);
     expect(halfWaveOn(preset("efhw-5m-horizontal"))).toEqual(["10m"]);
@@ -177,7 +192,11 @@ describe("a prediction with a level wire", () => {
         .filter((column) => column !== "0.0"),
     ).toEqual(["14.2", "14.2"]);
     // 12 m of wire is a half-wave from 11.2 to 13.7 MHz, where no amateur band lies.
-    const none = await app.api("POST", "/api/radio/propagation/listing", { ...base, frequencyMhz: 7.1, txAntenna: { ...flat10, lengthM: 12 } });
+    const none = await app.api("POST", "/api/radio/propagation/listing", {
+      ...base,
+      frequencyMhz: 7.1,
+      txAntenna: { ...flat10, lengthM: 12 },
+    });
     expect(none.status).toBe(400);
     expect(none.body.error.message).toContain("There is no page to print");
   });
@@ -240,7 +259,9 @@ describe("a coverage map", () => {
   it("is refused on a frequency the wire is not modelled on, with the reason, and worked out on one it is", async () => {
     const refused = await app.api("POST", "/api/radio/propagation/coverage", map);
     expect(refused.status).toBe(400);
-    expect(refused.body.error.message).toContain("No figure can be given on 7.1 MHz. The transmitting antenna: 10 m of wire is 0.24 wavelengths");
+    expect(refused.body.error.message).toContain(
+      "No figure can be given on 7.1 MHz. The transmitting antenna: 10 m of wire is 0.24 wavelengths",
+    );
     expect(refused.body.error.details).toMatchObject({ reason: "antenna-not-modelled" });
     const assumed = await app.api("POST", "/api/radio/propagation/coverage", { ...map, txAntenna: dipole, rxAntenna: flat10 });
     expect(assumed.body.error.message).toContain("The receiving antenna:");
@@ -252,7 +273,9 @@ describe("a coverage map", () => {
     const job = (await app.api("GET", `/api/jobs/${asked.body.job.id}`)).body.job;
     expect(job.state).toBe("succeeded");
     const coverage = (await app.api("GET", `/api/radio/propagation/coverage/${job.result.key}`)).body.coverage;
-    expect(coverage.antennas.tx).toContain("End-fed wire 10 m long, horizontal, 6 m above average ground, broadside turned towards each cell");
+    expect(coverage.antennas.tx).toContain(
+      "End-fed wire 10 m long, horizontal, 6 m above average ground, broadside turned towards each cell",
+    );
     expect(coverage.cells.filter((cell: unknown) => cell !== null).length).toBeGreaterThan(10);
   });
 
@@ -357,7 +380,10 @@ describe("equipment profiles", () => {
     const stored = (await profiles()).find((item) => item.name === "Kite wire")!;
     expect(stored.lengthM).toBe(20.5);
     const { kind, heightM, ground, broadsideDeg, gainDb, feedlineLossDb, lengthM } = stored;
-    const { status, body } = await predict({ txAntenna: { kind, heightM, ground, broadsideDeg, gainDb, feedlineLossDb, lengthM }, frequencyMhz: 7.1 });
+    const { status, body } = await predict({
+      txAntenna: { kind, heightM, ground, broadsideDeg, gainDb, feedlineLossDb, lengthM },
+      frequencyMhz: 7.1,
+    });
     expect(status).toBe(200);
     expect(body.antennas.tx).toContain("End-fed wire 20.5 m long, vertical");
     expect(body.antennas.tx).toContain("less 1.0 dB");
@@ -396,7 +422,10 @@ describe("equipment profiles", () => {
     expect("lengthM" in old).toBe(false);
     expect(sameAntennaSpec(old, preset("efhw"))).toBe(true);
     const { kind, heightM, ground, broadsideDeg, gainDb, feedlineLossDb } = old;
-    const { status, body } = await predict({ txAntenna: { kind, heightM, ground, broadsideDeg, gainDb, feedlineLossDb }, frequencyMhz: 7.1 });
+    const { status, body } = await predict({
+      txAntenna: { kind, heightM, ground, broadsideDeg, gainDb, feedlineLossDb },
+      frequencyMhz: 7.1,
+    });
     expect(status).toBe(200);
     // Its length still follows the frequency: figures on every band, as before.
     expect(body.hours[11]!.bands.every((cell) => cell.notModelled === undefined)).toBe(true);
@@ -424,7 +453,14 @@ describe("saved predictions", () => {
     const made = await app.api("POST", "/api/radio/propagation/saved", { name: "From before", request: before });
     expect(made.status).toBe(200);
     const kept = (await saved()).find((item) => item.name === "From before")!;
-    expect(kept.request.txAntenna).toEqual({ kind: "end-fed-half-wave", heightM: 6, ground: "average", broadsideDeg: null, gainDb: 0, feedlineLossDb: 0 });
+    expect(kept.request.txAntenna).toEqual({
+      kind: "end-fed-half-wave",
+      heightM: 6,
+      ground: "average",
+      broadsideDeg: null,
+      gainDb: 0,
+      feedlineLossDb: 0,
+    });
     expect("lengthM" in kept.request.txAntenna).toBe(false);
     const answer = (await app.api<PredictionResult>("POST", "/api/radio/propagation/predict", kept.request)).body;
     // The half-wave dipole at 6 m, on every band.

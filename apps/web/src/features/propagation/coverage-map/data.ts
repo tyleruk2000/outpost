@@ -5,6 +5,7 @@
  */
 import {
   type AntennaProfile,
+  wireOn,
   type Bbox,
   COVERAGE_MAX_LAT,
   COVERAGE_MIN_SPAN_DEG,
@@ -184,6 +185,15 @@ export function coverageRequestOf(
   const rxAntenna = antennaOf(form.rxAntennaId, profiles);
   if (!txAntenna) return { field: "txAntennaId", problem: "Choose the transmitting antenna." };
   if (!rxAntenna) return { field: "rxAntennaId", problem: "Choose the antenna assumed at the receiving end." };
+  // A map is of one frequency. Where a wire is not modelled on it there is nothing to draw, and nothing is asked.
+  for (const [field, chosen] of [
+    ["txAntennaId", txAntenna],
+    ["rxAntennaId", rxAntenna],
+  ] as const) {
+    const wire = wireOn(chosen.spec, frequencyMhz);
+    if (wire?.state === "not-modelled")
+      return { field, problem: `No map can be made on ${frequencyMhz} MHz with this antenna. ${wire.note}` };
+  }
   let broadsideDeg = txAntenna.spec.broadsideDeg;
   if (form.txBearing.trim() !== "") {
     const bearing = number(form.txBearing);

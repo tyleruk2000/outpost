@@ -9,9 +9,11 @@
  */
 import {
   type CommunicationPlan,
+  halfWaveRangeMhz,
   hourRanges,
   NOISE_ENVIRONMENTS,
   type PlanChoice,
+  type PlanPair,
   type PlanResult,
   planBandLabel,
   planHours,
@@ -20,6 +22,7 @@ import {
   planTwoWay,
   toMaidenhead,
   utcLabel,
+  wireOn,
 } from "@outpost/shared";
 import { monoWidth } from "@/features/maps/print/courier";
 import { encodeWinAnsi, wrapText } from "@/features/maps/print/helvetica";
@@ -40,6 +43,23 @@ const dateOf = (iso: string) => new Date(`${iso}T00:00:00Z`);
 
 /** A two-way figure as it is written: a share of days, or decibels when bands are compared by ratio. */
 export const planFigure = (value: number, byRatio: boolean): string => (byRatio ? `${value.toFixed(1)} dB` : `${Math.round(value * 100)}%`);
+
+/**
+ * Why a pair has no figures on a band: one of its stations has a wire of a stated length
+ * that the engine's model does not describe there (`wireOn`). Null when both antennas
+ * are modelled on it. The engine's answer for such a band is blank, which must not be
+ * read as "no path".
+ */
+export function pairNotModelled(plan: Pick<CommunicationPlan, "stations">, pair: Pick<PlanPair, "a" | "b">, mhz: number): string | null {
+  const wires = [pair.a, pair.b]
+    .map((id) => plan.stations.find((station) => station.id === id))
+    .filter((station) => station !== undefined && wireOn(station.antenna, mhz)?.state === "not-modelled")
+    .map((station) => {
+      const { fromMhz, toMhz } = halfWaveRangeMhz(station!.antenna.lengthM!);
+      return `${station!.name}'s ${station!.antenna.lengthM} m level wire (about a half-wave from ${fromMhz.toFixed(1)} to ${toMhz.toFixed(1)} MHz)`;
+    });
+  return wires.length === 0 ? null : `${wires.join(" and ")} ${wires.length > 1 ? "are" : "is"} not modelled on this band`;
+}
 
 /** One recommendation in a sentence. */
 export function choiceWords(choice: PlanChoice, byRatio: boolean): string {
@@ -121,6 +141,7 @@ export function planDocument(plan: CommunicationPlan, result: PlanResult, writte
       rows: pair.bands.map((band) => [
         planBandLabel(band.bandId),
         ...hours.map((hour) => {
+          if (pairNotModelled(plan, pair, band.mhz)) return "n/m";
           const value = planTwoWay(band, hour, byRatio);
           return value === null ? "-" : byRatio ? String(Math.round(value)) : String(Math.round(value * 100));
         }),
@@ -132,6 +153,16 @@ export function planDocument(plan: CommunicationPlan, result: PlanResult, writte
         ? "Each figure is the lower of the two directions' median signal-to-noise ratios in 1 Hz, in dB, at that hour (24 is midnight at the end of the day). A dash is an hour at which the engine found no path."
         : "Each figure is the two-way reliability in per cent of days, at that hour (24 is midnight at the end of the day). A dash is an hour at which the engine found no path.",
     });
+    // A band with no figures because an antenna is not modelled on it is said to be that, band by band: it is not a band that does badly.
+    const without = pair.bands.flatMap((band) => {
+      const why = pairNotModelled(plan, pair, band.mhz);
+      return why ? [`${planBandLabel(band.bandId)}: ${why}.`] : [];
+    });
+    if (without.length > 0)
+      blocks.push({
+        kind: "para",
+        text: `n/m is not modelled: the engine has no model of that antenna on that band, so there is no figure and the band cannot be recommended. ${without.join(" ")}`,
+      });
   }
 
   blocks.push({ kind: "heading", text: "How the bands were chosen" }, { kind: "list", items: planRule(byRatio) });

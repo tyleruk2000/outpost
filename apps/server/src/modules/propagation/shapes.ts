@@ -48,7 +48,8 @@ export const antenna = z
         message: "Give the height of a horizontal antenna above the ground: at least 0.5 m.",
         path: ["heightM"],
       });
-    if (hasStatedLength(value.kind) && value.lengthM === undefined) issue.addIssue({ code: "custom", message: WIRE_LENGTH, path: ["lengthM"] });
+    if (hasStatedLength(value.kind) && value.lengthM === undefined)
+      issue.addIssue({ code: "custom", message: WIRE_LENGTH, path: ["lengthM"] });
     // An antenna of any other kind has no length of its own (it follows the frequency), and one sent with it is a mistake, not a hint.
     if (!hasStatedLength(value.kind) && value.lengthM !== undefined)
       issue.addIssue({

@@ -2,7 +2,14 @@
  * Radio and antenna profiles: the equipment a person owns, saved once and picked in the
  * planner. Plain rows; nothing here is used unless a prediction is asked for with it.
  */
-import { type AntennaProfile, type AntennaProfileInput, hasStatedLength, type ModeId, type RadioProfile, type RadioProfileInput } from "@outpost/shared";
+import {
+  type AntennaProfile,
+  type AntennaProfileInput,
+  hasStatedLength,
+  type ModeId,
+  type RadioProfile,
+  type RadioProfileInput,
+} from "@outpost/shared";
 import { asc, eq } from "drizzle-orm";
 import type { AppContext } from "../../core/context.ts";
 import { notFound } from "../../core/errors.ts";

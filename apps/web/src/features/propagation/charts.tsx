@@ -70,7 +70,20 @@ export const shareFill = (share: number | null): string =>
   share === null ? "transparent" : (STEPS.find((step) => share >= step.from)?.fill ?? EMPTY_FILL);
 export const percent = (share: number | null): string => (share === null ? "no figure" : `${Math.round(share * 100)}%`);
 
-export function ShareLegend({ what = "of days" }: { what?: string }) {
+/** What stands in a chart for "the antenna is not modelled here": said in words wherever it is drawn. */
+export const NOT_MODELLED = "not modelled for this antenna";
+
+/** A swatch of the hatching that marks a cell with no figure because the antenna is not modelled there. */
+function HatchSwatch() {
+  return (
+    <svg aria-hidden width={12} height={12} className="shrink-0 rounded-[2px]">
+      <rect width={12} height={12} className="fill-page stroke-border-strong" />
+      <path d="M-2 8 L8 -2 M2 14 L14 2 M-2 14 L14 -2" className="stroke-ink-muted" strokeWidth={1} />
+    </svg>
+  );
+}
+
+export function ShareLegend({ what = "of days", notModelled = false }: { what?: string; notModelled?: boolean }) {
   return (
     <ul className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-small text-ink-muted" aria-label="What the shades mean">
       {[...STEPS].reverse().map((step) => (
@@ -83,6 +96,12 @@ export function ShareLegend({ what = "of days" }: { what?: string }) {
         <span aria-hidden className="size-3 rounded-[2px]" style={{ background: EMPTY_FILL }} />
         under 10% {what}
       </li>
+      {notModelled ? (
+        <li className="flex items-center gap-1.5">
+          <HatchSwatch />
+          {NOT_MODELLED}: no figure
+        </li>
+      ) : null}
     </ul>
   );
 }
@@ -95,6 +114,11 @@ export interface GridRow {
   detail?: string;
   /** Drawn bolder: the row the person asked about. */
   marked?: boolean;
+  /**
+   * The antenna is a wire the engine's model does not describe on this row's frequency.
+   * The row is hatched and read out as not modelled; its values are not looked at.
+   */
+  notModelled?: boolean;
 }
 
 /**
@@ -128,6 +152,8 @@ export function HourGrid({
   const [ref, width] = useWidth();
   const [at, setAt] = useState<{ row: number; hour: number } | null>(null);
   const tableId = useId();
+  const hatchId = useId();
+  const anyNotModelled = rows.some((row) => row.notModelled);
   const left = 46;
   const right = 6;
   const top = 6;
@@ -165,7 +191,7 @@ export function HourGrid({
   const read = at ? rows[at.row] : undefined;
   const readout =
     at && read
-      ? `${utcLabel(at.hour)} UTC, ${read.label}${read.detail ? ` (${read.detail})` : ""}: ${percent(read.values[at.hour - 1] ?? null)} ${what}${line ? `. ${line.describe(at.hour)}` : ""}`
+      ? `${utcLabel(at.hour)} UTC, ${read.label}${read.detail ? ` (${read.detail})` : ""}: ${read.notModelled ? NOT_MODELLED : `${percent(read.values[at.hour - 1] ?? null)} ${what}`}${line ? `. ${line.describe(at.hour)}` : ""}`
       : null;
   const points = line
     ? line.rowAt
@@ -198,6 +224,14 @@ export function HourGrid({
             if (found) onHour(found.hour);
           }}
         >
+          {anyNotModelled ? (
+            <defs>
+              <pattern id={hatchId} width={6} height={6} patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                <rect width={6} height={6} className="fill-page" />
+                <line x1={0} y1={0} x2={0} y2={6} className="stroke-ink-muted" strokeWidth={1.25} />
+              </pattern>
+            </defs>
+          ) : null}
           {rows.map((row, rowIndex) => (
             <g key={row.label}>
               {row.marked ||
@@ -211,17 +245,30 @@ export function HourGrid({
                   {row.label}
                 </text>
               ) : null}
-              {HOURS.map((h) => (
+              {row.notModelled ? (
+                // One hatched bar for the whole day: there is no figure at any hour to shade a cell by.
                 <rect
-                  key={h}
-                  x={x(h) + 0.5}
+                  data-not-modelled
+                  x={x(1) + 0.5}
                   y={y(rowIndex) + 0.5}
-                  width={Math.max(1, cellWidth - 1)}
+                  width={Math.max(1, cellWidth * 24 - 1)}
                   height={rowHeight - 1}
                   rx={1.5}
-                  style={{ fill: shareFill(row.values[h - 1] ?? null) }}
+                  fill={`url(#${hatchId})`}
                 />
-              ))}
+              ) : (
+                HOURS.map((h) => (
+                  <rect
+                    key={h}
+                    x={x(h) + 0.5}
+                    y={y(rowIndex) + 0.5}
+                    width={Math.max(1, cellWidth - 1)}
+                    height={rowHeight - 1}
+                    rx={1.5}
+                    style={{ fill: shareFill(row.values[h - 1] ?? null) }}
+                  />
+                ))
+              )}
             </g>
           ))}
           {line && points ? (
@@ -266,7 +313,7 @@ export function HourGrid({
           {readout ?? `Hours are UTC. ${utcLabel(hour)} is chosen${line ? `; the line is ${line.label}` : ""}.`}
         </p>
       </section>
-      <ShareLegend what={what} />
+      <ShareLegend what={what} notModelled={anyNotModelled} />
       <div id={tableId} className="sr-only">
         <table>
           <caption>{name}</caption>
@@ -285,7 +332,7 @@ export function HourGrid({
               <tr key={h}>
                 <th scope="row">{utcLabel(h)}</th>
                 {rows.map((row) => (
-                  <td key={row.label}>{percent(row.values[h - 1] ?? null)}</td>
+                  <td key={row.label}>{row.notModelled ? NOT_MODELLED : percent(row.values[h - 1] ?? null)}</td>
                 ))}
               </tr>
             ))}
@@ -566,6 +613,8 @@ export interface BarRow {
   /** Said after the share: the ratio, the mode. */
   detail: string;
   marked?: boolean;
+  /** The antenna is not modelled on this row: no bar and no figure, and the detail says why. */
+  notModelled?: boolean;
 }
 
 /** Rows ranked by a share of days, as bars from a common left edge with the figure written beside each. */
@@ -578,15 +627,23 @@ export function ShareBars({ rows, name }: { rows: BarRow[]; name: string }) {
           className="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-x-3 text-small sm:grid-cols-[4.5rem_minmax(0,1fr)_minmax(0,14rem)]"
         >
           <span className={cn("tabular text-ink-muted", row.marked && "font-semibold text-ink")}>{row.label}</span>
-          <span className="flex items-center gap-2">
-            <span className="h-3 flex-1 rounded-[2px] bg-surface-strong" aria-hidden>
-              <span
-                className="block h-3 rounded-r-[4px] rounded-l-[1px]"
-                style={{ width: `${Math.round((row.share ?? 0) * 100)}%`, background: "var(--chart-1)" }}
-              />
+          {row.notModelled ? (
+            // No track and no percentage: a band with no figure must not look like a band at nought.
+            <span data-not-modelled className="flex items-center gap-2 text-ink-muted">
+              <span className="h-3 flex-1 rounded-[2px] border border-dashed border-border-strong" aria-hidden />
+              <span className="shrink-0">Not modelled</span>
             </span>
-            <span className="tabular w-10 shrink-0 text-right text-ink">{row.share === null ? "–" : percent(row.share)}</span>
-          </span>
+          ) : (
+            <span className="flex items-center gap-2">
+              <span className="h-3 flex-1 rounded-[2px] bg-surface-strong" aria-hidden>
+                <span
+                  className="block h-3 rounded-r-[4px] rounded-l-[1px]"
+                  style={{ width: `${Math.round((row.share ?? 0) * 100)}%`, background: "var(--chart-1)" }}
+                />
+              </span>
+              <span className="tabular w-10 shrink-0 text-right text-ink">{row.share === null ? "–" : percent(row.share)}</span>
+            </span>
+          )}
           <span className="tabular col-span-2 truncate text-ink-muted sm:col-span-1">{row.detail}</span>
         </li>
       ))}

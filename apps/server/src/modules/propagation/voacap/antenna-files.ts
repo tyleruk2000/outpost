@@ -47,7 +47,8 @@ function groundLines(spec: AntennaSpec): string[] {
 
 /** The length of a wire of a stated length, in metres. The routes check that it is there; this guards the file. */
 function wireLength(spec: AntennaSpec): number {
-  if (spec.lengthM === undefined || !(spec.lengthM > 0)) throw new Error("An end-fed wire of a stated length was asked for without its length.");
+  if (spec.lengthM === undefined || !(spec.lengthM > 0))
+    throw new Error("An end-fed wire of a stated length was asked for without its length.");
   return spec.lengthM;
 }
 

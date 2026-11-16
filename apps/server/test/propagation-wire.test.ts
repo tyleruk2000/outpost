@@ -260,7 +260,9 @@ describe("an end-fed wire of a stated length, as Outpost runs it", () => {
     expect(wire.takeoffDeg).toBeGreaterThan(50);
     expect(wire.txGainDbi).toBeLessThan(quarter.txGainDbi - 2);
     // And on 80 m, where 10 m of wire is an eighth of a wavelength, it is weaker again.
-    expect(cells[index("80m")]!.txGainDbi).toBeLessThan(noon({ ...acceptance, txAntenna: preset("vertical") })[index("80m")]!.txGainDbi - 3);
+    expect(cells[index("80m")]!.txGainDbi).toBeLessThan(
+      noon({ ...acceptance, txAntenna: preset("vertical") })[index("80m")]!.txGainDbi - 3,
+    );
   });
 
   it("adds a person's gain and takes off feedline loss on both wires, decibel for decibel", () => {

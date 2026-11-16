@@ -9,25 +9,18 @@ import {
   type PlanStation,
   parseCoordinates,
   type RadioProfile,
+  sameAntennaSpec,
 } from "@outpost/shared";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/misc";
-import { antennaOf, antennaSummary, type PlaceField } from "../data";
+import { antennaOf, antennaSummary, type PlaceField, wireBandsNote } from "../data";
 import { PlaceInput } from "../place-field";
 
 /** The antenna a station was saved with, when no profile or generic antenna is exactly it any more. */
 const KEPT = "kept";
-
-const sameSpec = (a: PlanStation["antenna"], b: PlanStation["antenna"]) =>
-  a.kind === b.kind &&
-  a.heightM === b.heightM &&
-  a.ground === b.ground &&
-  a.broadsideDeg === b.broadsideDeg &&
-  a.gainDb === b.gainDb &&
-  a.feedlineLossDb === b.feedlineLossDb;
 
 export function StationDialog({
   station,
@@ -49,9 +42,9 @@ export function StationDialog({
 }) {
   const startAntenna = () => {
     if (!station) return "preset:low-dipole";
-    const preset = ANTENNA_PRESETS.find((item) => sameSpec(item.spec, station.antenna));
+    const preset = ANTENNA_PRESETS.find((item) => sameAntennaSpec(item.spec, station.antenna));
     if (preset) return `preset:${preset.id}`;
-    return antennas.find((item) => sameSpec(item, station.antenna))?.id ?? KEPT;
+    return antennas.find((item) => sameAntennaSpec(item, station.antenna))?.id ?? KEPT;
   };
   const [name, setName] = useState(station?.name ?? "");
   const [place, setPlace] = useState<PlaceField>(station ? { text: `${station.lat}, ${station.lon}`, name: "" } : { text: "", name: "" });
@@ -60,6 +53,9 @@ export function StationDialog({
   const [noise, setNoise] = useState<NoiseEnvironment>(station?.noise ?? "residential");
   const [problem, setProblem] = useState<{ field: "name" | "place" | "power" | "antenna"; text: string } | null>(null);
   const error = (field: NonNullable<typeof problem>["field"]) => (problem?.field === field ? problem.text : undefined);
+
+  const picked = antennaId === KEPT && station ? station.antenna : antennaOf(antennaId, antennas)?.spec;
+  const wireNote = picked ? wireBandsNote(picked) : null;
 
   const submit = () => {
     const found = parseCoordinates(place.text);
@@ -133,7 +129,7 @@ export function StationDialog({
           </Field>
           <Field
             label="Antenna"
-            hint="With no bearing of its own, the antenna is turned towards each other station in turn."
+            hint={`With no bearing of its own, the antenna is turned towards each other station in turn.${wireNote ? ` ${wireNote}` : ""}`}
             error={error("antenna")}
           >
             {(ids) => (
@@ -145,7 +141,11 @@ export function StationDialog({
                   ...(antennaId === KEPT && station
                     ? [{ value: KEPT, label: station.antennaName || "As saved", description: antennaSummary(station.antenna) }]
                     : []),
-                  ...antennas.map((antenna) => ({ value: antenna.id, label: antenna.name, description: antennaModelLabel(antenna.kind) })),
+                  ...antennas.map((antenna) => ({
+                    value: antenna.id,
+                    label: antenna.name,
+                    description: antennaModelLabel(antenna.kind, antenna.lengthM),
+                  })),
                   ...ANTENNA_PRESETS.map((preset) => ({ value: `preset:${preset.id}`, label: preset.name, description: "Generic" })),
                 ]}
               />
