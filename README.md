@@ -62,6 +62,10 @@ picture, not a surveyed path.
 - **Notes.** A page tree and a block editor: headings, lists, to-dos, tables, code,
   callouts, images, links between pages, backlinks, templates, favourites, trash, and
   export to Markdown. Import from Markdown, HTML, and Notion exports.
+- **Contacts.** The people and places to reach when the phone network is down, with
+  an emergency list that prints on one sheet, radio callsigns and frequencies, and
+  one-touch call, text and email. Bring contacts in from a phone as a vCard file, and
+  let a phone keep a read-only copy over CardDAV. See [docs/contacts.md](docs/contacts.md).
 - **Offline maps.** Download a country, a mountain range, or any box you draw, with
   the exact size shown first. Save places, import and export GPX routes, measure
   distances, search place names, and enter coordinates or British grid references.
@@ -266,6 +270,7 @@ The reasoning behind each choice, the security model and the known trade-offs ar
 | [Maps](docs/maps.md) | Regions, data sources, GPX, coordinates |
 | [Reading EPUB books](docs/epub.md) | What the reader shows, what it leaves out, and what it refuses |
 | [Notes and imports](docs/notes-and-imports.md) | The editor, Markdown and Notion imports |
+| [Contacts](docs/contacts.md) | What a contact holds, bringing contacts from a phone, and a copy on a phone |
 | [Portable drives](docs/portable.md) | Making and using a USB drive |
 | [Security](docs/security.md) | Threat model and controls |
 | [API](docs/api.md) | HTTP API reference |

@@ -297,9 +297,9 @@ function EraseSteps({ onClose }: { onClose: () => void }) {
             <div className="rounded-panel border border-border px-4 py-3 text-small">
               <p className="font-semibold text-ink">Make a backup first</p>
               <p className="mt-0.5 text-ink-muted">
-                A backup holds your notes, their attachments, saved places, routes and settings, and can be restored afterwards. It does not
-                hold the files of documents you added: copy those yourself from the documents folder of each storage location if you want to
-                keep them.
+                A backup holds your notes, their attachments, saved places, routes, contacts and settings, and can be restored afterwards.
+                It does not hold the files of documents you added: copy those yourself from the documents folder of each storage location if
+                you want to keep them.
               </p>
               <Button asChild size="sm" className="mt-2.5">
                 <a href="/api/backup/download" download>
@@ -368,7 +368,7 @@ export default function CleanupView({ status, loading }: { status: CleanupStatus
           "Downloads still under way or left unfinished, with their partial files",
         ]}
         keeps={[
-          "Documents you added, your notes, saved places and routes",
+          "Documents you added, your notes, saved places, routes and contacts",
           "Archives and maps of your own that you pointed Outpost at",
           "Settings, storage locations and network shares",
         ]}
@@ -385,7 +385,7 @@ export default function CleanupView({ status, loading }: { status: CleanupStatus
         title="Clear and rebuild search data"
         summary="What Outpost works out from your library. Nothing you keep is lost; rebuilding costs time."
         removes={["Only what you tick below: semantic vectors, extracted text (read again straight away), or empty space in the database"]}
-        keeps={["Every document, collection, note, place and setting", "The originals the text is read from"]}
+        keeps={["Every document, collection, note, place, contact and setting", "The originals the text is read from"]}
       >
         <DerivedRung status={status} busy={busy} />
       </Rung>
@@ -396,7 +396,7 @@ export default function CleanupView({ status, loading }: { status: CleanupStatus
         removes={[
           "Everything the first clean-up removes",
           "Documents you added, files and all",
-          "Your notes and their attachments, saved places, routes and settings",
+          "Your notes and their attachments, saved places, routes, contacts and settings",
           "History, search data, and copies of earlier data set aside by a restore",
         ]}
         keeps={[

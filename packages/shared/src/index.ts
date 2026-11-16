@@ -9,6 +9,7 @@ export * from "./catalog.ts";
 export * from "./chat.ts";
 export * from "./collections.ts";
 export * from "./common.ts";
+export * from "./contacts.ts";
 export * from "./documents.ts";
 export * from "./downloads.ts";
 export * from "./https.ts";

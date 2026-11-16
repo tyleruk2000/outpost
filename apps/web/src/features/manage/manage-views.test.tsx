@@ -221,6 +221,7 @@ describe("the clean-ups", () => {
       attachments: { count: 0, bytes: 0 },
       places: 1,
       routes: 0,
+      contacts: 0,
       settings: 2,
       vectors: 0,
       previous: { count: 0, bytes: 0 },

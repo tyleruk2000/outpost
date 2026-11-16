@@ -88,12 +88,13 @@ describe("what a removal says before it happens", () => {
       attachments: { count: 2, bytes: 1_500_000 },
       places: 1,
       routes: 0,
+      contacts: 2,
       settings: 0,
       vectors: 0,
       previous: { count: 1, bytes: 6_400_000 },
     });
     expect(words).toBe(
-      "Also erased: 3 pages of notes with 2 attachments (1.50 MB), 1 saved place, the history of downloads and other work and 1 copy of earlier data set aside by a restore (6.40 MB).",
+      "Also erased: 3 pages of notes with 2 attachments (1.50 MB), 1 saved place, 2 contacts, the history of downloads and other work and 1 copy of earlier data set aside by a restore (6.40 MB).",
     );
     expect(words).not.toMatch(/\b0 (routes|changed|semantic)/);
     expect(
@@ -102,6 +103,7 @@ describe("what a removal says before it happens", () => {
         attachments: { count: 0, bytes: 0 },
         places: 0,
         routes: 0,
+        contacts: 0,
         settings: 0,
         vectors: 0,
         previous: { count: 0, bytes: 0 },

@@ -18,6 +18,8 @@ export interface PortableRequest {
   platforms: PortablePlatform[];
   collectionIds: string[];
   documents: "all" | "none";
+  /** Contacts travel with the notes unless "none" is asked for. */
+  contacts?: "all" | "none";
   /** Also put the reader for reference collections (kiwix-serve) on the drive. */
   reader?: boolean;
   /** Must be true to update a folder that is already an Outpost drive. */

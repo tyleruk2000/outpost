@@ -562,7 +562,7 @@ download and can be fetched again.
 - Removes: reference archives, maps, terrain, place names, catalogue sheets and books
   (with the documents they are in your library), and downloads still under way or left
   unfinished, with their partial files.
-- Keeps: documents you added, notes, saved places and routes, archives and maps of your
+- Keeps: documents you added, notes, contacts, saved places and routes, archives and maps of your
   own that you pointed Outpost at, settings, storage locations and network shares.
 - Content on a location that is not connected is left behind and stays in your
   library. The summary lists it; tick **Forget them as well** to remove Outpost's
@@ -588,7 +588,7 @@ it is rebuilt from the extracted text, which the second option does.
 cannot be downloaded again.
 
 - Removes: everything the first clean-up removes; documents you added, files and all;
-  notes and their attachments; saved places and routes; settings; search data; the
+  notes and their attachments; saved places and routes; contacts; settings; search data; the
   history of downloads and other work; and the copies of earlier data that a restore
   set aside (they hold the same notes).
 - Keeps: storage locations and their marker files; network shares and any password
@@ -603,7 +603,7 @@ cannot be downloaded again.
   the notes that are being erased; delete them from **Settings → Automatic backups**
   first, or by hand from the `outpost-backups` folder, if you want them gone.
 - Needs the words "erase everything" typed, and offers a backup first. A backup holds
-  notes, attachments, saved places, routes and settings. It does **not** hold the files
+  notes, attachments, saved places, routes, contacts and settings. It does **not** hold the files
   of documents you added: copy those from the `documents` folder of each storage
   location if you want to keep them.
 - Can only be started on the computer Outpost runs on, unless Outpost was started with
@@ -631,7 +631,7 @@ implements them.
 text and your own catalogue manifests. It does not include documents, collections or
 maps: those stay on their storage locations, and the backup records where.
 
-A backup is not encrypted. It holds your notes, saved places and settings as they are,
+A backup is not encrypted. It holds your notes, contacts, saved places and settings as they are,
 and anyone who can open the file can read them. Keep it on storage you trust, and on an
 encrypted disk if it leaves the house.
 

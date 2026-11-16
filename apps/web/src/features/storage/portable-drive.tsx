@@ -5,6 +5,7 @@
  */
 import {
   type CollectionsResponse,
+  type ContactListResponse,
   type DocumentFacets,
   formatBytes,
   type JobDto,
@@ -142,12 +143,17 @@ function Wizard({ status, onClose, startAt }: { status: PortableStatus; onClose:
   const [folder, setFolder] = useState<PickedFolder>({ path: undefined, writable: false });
   const [platforms, setPlatforms] = useState<PortablePlatform[]>(() => (status.thisComputer ? [status.thisComputer] : ["win-x64"]));
   const [allDocuments, setAllDocuments] = useState(true);
+  const [takeContacts, setTakeContacts] = useState(true);
   const [collectionIds, setCollectionIds] = useState<string[]>([]);
   const [replaceExisting, setReplaceExisting] = useState(false);
   const [jobId, setJobId] = useState<string>();
 
   const collections = useQuery({ queryKey: ["collections", "all"], queryFn: () => api.get<CollectionsResponse>("/api/collections") });
   const facets = useQuery({ queryKey: ["documents", "facets"], queryFn: () => api.get<DocumentFacets>("/api/documents/facets") });
+  const contacts = useQuery({
+    queryKey: ["contacts", "count"],
+    queryFn: () => api.get<ContactListResponse>("/api/contacts", { limit: 1 }),
+  });
 
   const installed = collections.data?.collections ?? [];
   // Reference collections are only readable with kiwix-serve beside them.
@@ -158,10 +164,11 @@ function Wizard({ status, onClose, startAt }: { status: PortableStatus; onClose:
       platforms,
       collectionIds,
       documents: allDocuments ? "all" : "none",
+      contacts: takeContacts ? "all" : "none",
       reader: takesReference,
       replaceExisting,
     }),
-    [folder.path, platforms, collectionIds, allDocuments, takesReference, replaceExisting],
+    [folder.path, platforms, collectionIds, allDocuments, takeContacts, takesReference, replaceExisting],
   );
 
   const plan = useQuery({
@@ -304,6 +311,14 @@ function Wizard({ status, onClose, startAt }: { status: PortableStatus; onClose:
                   checked={allDocuments}
                   onCheckedChange={setAllDocuments}
                 />
+                {contacts.data && contacts.data.all > 0 ? (
+                  <SwitchRow
+                    label="Contacts"
+                    description={`${plural(contacts.data.all, "contact")}. They are other people's details: leave them off a drive you will hand to someone else.`}
+                    checked={takeContacts}
+                    onCheckedChange={setTakeContacts}
+                  />
+                ) : null}
               </div>
 
               {collections.isPending ? (

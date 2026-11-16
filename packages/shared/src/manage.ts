@@ -108,6 +108,7 @@ export interface CleanupPlan {
     attachments: Tally;
     places: number;
     routes: number;
+    contacts: number;
     settings: number;
     vectors: number;
     /** Copies of the database and attachments that a restore set aside. */
@@ -141,7 +142,7 @@ export interface CleanupResult extends Record<string, unknown> {
   /** For "derived": what each step did. */
   steps?: Array<{ step: DerivedStep; message: string }>;
   /** For "everything": the rest of what went. */
-  personal?: { pages: number; attachments: number; places: number; routes: number; settings: number };
+  personal?: { pages: number; attachments: number; places: number; routes: number; contacts: number; settings: number };
 }
 
 export interface ManageMoveResponse {

@@ -1,6 +1,7 @@
 import {
   BookOpen,
   Compass,
+  Contact,
   Download,
   FolderInput,
   HardDrive,
@@ -34,6 +35,9 @@ export const knowledgeNav: NavItem[] = [
   { to: "/library", label: "Library", icon: BookOpen, key: "l" },
   { to: "/maps", label: "Maps", icon: MapIcon, key: "m" },
   { to: "/chat", label: "Chat", icon: MessagesSquare, key: "c" },
+  // "a" for address book: "c" is Chat's.
+  { to: "/contacts", label: "Contacts", icon: Contact, key: "a" },
+  // Last, so that the tree of pages sits under it in the sidebar.
   { to: "/notes", label: "Notes", icon: NotebookText, key: "n" },
 ];
 

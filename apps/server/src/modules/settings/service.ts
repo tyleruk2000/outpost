@@ -104,6 +104,11 @@ export const settingsSchema = z.object({
       if (bad) issue.addIssue({ code: "custom", message: `"${bad}" is not a host name or an address. Leave out http:// and the port.` });
     })
     .default(""),
+  /**
+   * Let phones and computers on the network subscribe to the contacts (CardDAV). They can
+   * read the address book and cannot change it. Off until a person turns it on.
+   */
+  "contacts.carddav": z.boolean().default(false),
   /** Seconds between checks that storage locations are still connected. */
   "storage.checkIntervalSeconds": z.number().int().min(5).max(3600).default(30),
 });
