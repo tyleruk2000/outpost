@@ -22,7 +22,9 @@
     "opds.library.kiwix.org",
     "library.kiwix.org",
     "download.kiwix.org",
-    "lb.download.kiwix.org"
+    "lb.download.kiwix.org",
+    "wndw.net",
+    "www.spaceweather.gov"
   ],
   "entries": [
     {
@@ -859,6 +861,124 @@
         "type": "kiwix",
         "name": "iot.stackexchange.com_en_all",
         "flavour": ""
+      }
+    },
+    {
+      "id": "ofcom.emf-compliance-and-enforcement-guidance",
+      "name": "Guidance on EMF Compliance and Enforcement (UK)",
+      "description": "Ofcom's full guidance on the licence condition that limits public exposure to electromagnetic fields: who must comply, the limits, how to assess a station by calculation or measurement, the records to keep, and how Ofcom enforces it. Version 1.1, 36 pages.",
+      "category": "radio",
+      "publisher": "Ofcom",
+      "language": "en",
+      "format": "pdf",
+      "license": "Ofcom copyright; free reproduction permitted with acknowledgement",
+      "licenseNote": "Ofcom's copyright page says material on its website may be reproduced free of charge in any format or medium, provided it is reproduced accurately and not used in a misleading context, and is acknowledged as Ofcom copyright with the title of the document. It is not published under the Open Government Licence.",
+      "attribution": "© Ofcom. Guidance on EMF Compliance and Enforcement.",
+      "homepage": "https://www.ofcom.org.uk/spectrum/emf/compliance-and-enforcement-guidance",
+      "lastVerified": "2026-11-16",
+      "tags": ["EMF", "licence conditions", "exposure limits", "UK", "Ofcom"],
+      "sizeBytes": 431192,
+      "source": {
+        "type": "http",
+        "url": "https://www.ofcom.org.uk/siteassets/resources/documents/spectrum/emf/guidance-emf-compliance-enforcement.pdf",
+        "sha256": "e7b058716974641143958f6242b2f7e688c0e348368da91419b1ed3277a95d14",
+        "sizeBytes": 431192,
+        "version": "V1.1, 2026-02",
+        "published": "2026-02-09"
+      }
+    },
+    {
+      "id": "ofcom.emf-what-you-need-to-know-amateur-radio",
+      "name": "EMF Licence Condition: What You Need to Know as an Amateur Radio User (UK)",
+      "description": "Ofcom's eight-page guide for radio amateurs to the electromagnetic field condition in the licence: whether it applies to your station, how to assess it with Ofcom's calculator, and what to record.",
+      "category": "radio",
+      "publisher": "Ofcom",
+      "language": "en",
+      "format": "pdf",
+      "license": "Ofcom copyright; free reproduction permitted with acknowledgement",
+      "licenseNote": "Ofcom's copyright page says material on its website may be reproduced free of charge in any format or medium, provided it is reproduced accurately and not used in a misleading context, and is acknowledged as Ofcom copyright with the title of the document. It is not published under the Open Government Licence.",
+      "attribution": "© Ofcom. Ofcom's EMF licence condition: What you need to know as an Amateur Radio user.",
+      "homepage": "https://www.ofcom.org.uk/spectrum/emf/compliance-and-enforcement-guidance",
+      "lastVerified": "2026-11-16",
+      "tags": ["EMF", "amateur radio", "licence conditions", "UK", "Ofcom"],
+      "sizeBytes": 261313,
+      "source": {
+        "type": "http",
+        "url": "https://www.ofcom.org.uk/siteassets/resources/documents/spectrum/emf/emf-licence-condition-what-you-need-to-know-amateur-radio.pdf",
+        "sha256": "a79295126a10fe4234c10eb0d011f757909ffba0a0334f1e0e24d8e369697965",
+        "sizeBytes": 261313,
+        "version": "V2.1"
+      }
+    },
+    {
+      "id": "mca.gmdss-benefits-of-digital-selective-calling",
+      "name": "GMDSS: The Benefits of Digital Selective Calling (UK)",
+      "description": "A two-page Maritime and Coastguard Agency leaflet for small-boat owners on VHF radios with digital selective calling: what DSC does and why the Coastguard encourages fitting it, with common questions answered. MCA/103, revised August 2017.",
+      "category": "radio",
+      "publisher": "Maritime and Coastguard Agency",
+      "language": "en",
+      "format": "pdf",
+      "license": "Open Government Licence v3.0",
+      "licenseNote": "GOV.UK says all its content is available under the Open Government Licence v3.0 except where otherwise stated. The leaflet carries no statement of its own.",
+      "attribution": "Maritime and Coastguard Agency. © Crown copyright. Contains public sector information licensed under the Open Government Licence v3.0.",
+      "homepage": "https://www.gov.uk/government/publications/gmdss-benefits-of-digital-selective-calling-dsc",
+      "lastVerified": "2026-11-16",
+      "tags": ["marine VHF", "DSC", "GMDSS", "Coastguard", "UK"],
+      "sizeBytes": 1555187,
+      "source": {
+        "type": "http",
+        "url": "https://assets.publishing.service.gov.uk/media/5e5911f4d3bf7f06fae32914/GMDSS_-_The_Benefigts_of_Digital_Selective_Calling_as_published.pdf",
+        "sha256": "bd4b17b6bc014a3fdc105ee255d1af8ed60c8cfa59e315f6717ba90b828998dc",
+        "sizeBytes": 1555187,
+        "version": "MCA/103, 2017-08",
+        "published": "2017-09-28"
+      }
+    },
+    {
+      "id": "noaa.space-weather-scales",
+      "name": "NOAA Space Weather Scales",
+      "description": "The one-page table that explains the G, S and R numbers in space weather reports: geomagnetic storms, solar radiation storms and radio blackouts from 1 to 5, with what each does to HF radio, satellite navigation and power systems and how often it happens.",
+      "category": "radio",
+      "publisher": "NOAA Space Weather Prediction Center",
+      "language": "en",
+      "format": "pdf",
+      "license": "Public domain (US Government work)",
+      "licenseNote": "The Space Weather Prediction Center is part of the US National Weather Service, and its pages point to the Weather Service's disclaimer, which says its information is in the public domain unless noted otherwise and may be used freely, provided it is not claimed as your own or altered and then presented as official.",
+      "attribution": "NOAA, National Weather Service, Space Weather Prediction Center.",
+      "homepage": "https://www.spaceweather.gov/noaa-scales-explanation",
+      "lastVerified": "2026-11-16",
+      "tags": ["space weather", "propagation", "HF", "solar flares", "geomagnetic storms"],
+      "sizeBytes": 396080,
+      "source": {
+        "type": "http",
+        "url": "https://www.spaceweather.gov/sites/default/files/images/NOAAscales.pdf",
+        "sha256": "7dc3efc75a8bd26af490c70e38bcaf41a616748a60530c520a4bda81d93a4800",
+        "sizeBytes": 396080,
+        "version": "2023-12"
+      }
+    },
+    {
+      "id": "wndw.wireless-networking-in-the-developing-world",
+      "name": "Wireless Networking in the Developing World",
+      "description": "A free book about designing, building and maintaining low-cost wireless networks, written as a practical guide for communities with no existing infrastructure by people who have deployed such networks. Third edition, 524 pages; a large download.",
+      "category": "radio",
+      "publisher": "The WNDW Project",
+      "language": "en",
+      "format": "pdf",
+      "license": "CC BY-SA 3.0",
+      "licenseNote": "The licence is stated inside the book and on the project's licence page, which asks that any copy or derivative work includes a prominent link to wndw.net. Adaptations must carry the same licence.",
+      "attribution": "The WNDW Authors. Wireless Networking in the Developing World, third edition, 2013. wndw.net.",
+      "homepage": "https://wndw.net/",
+      "lastVerified": "2026-11-16",
+      "tags": ["wireless", "Wi-Fi", "community networks", "networking"],
+      "sizeBytes": 201399459,
+      "source": {
+        "type": "http",
+        "url": "https://wndw.net/download/WNDW_Standard.pdf",
+        "sha256": "59cdf89c1248a72899fc2665467ca6f5b7a134bf6e9ee3e9bc0b03bcdb04c73b",
+        "sizeBytes": 201399459,
+        "version": "Third edition",
+        "published": "2013-02-01"
       }
     }
   ]
