@@ -102,12 +102,19 @@ export async function runScan(
     if (signal.aborted) throw signal.reason instanceof Error ? signal.reason : new Error("Stopped");
   };
 
+  // This computer, as seen on the interfaces being looked at. Other interfaces are left out: macOS gives its
+  // loopback and tunnels link-local addresses (fe80::1 on lo0) that a router on the network may use too.
+  const planned = new Set(subnets.map((subnet) => subnet.interface));
   const own = new Set<string>();
-  for (const entries of Object.values(system.interfaces()))
-    for (const entry of entries ?? []) own.add(entry.address.split("%")[0]!.toLowerCase());
   const selfMacs = new Set<string>();
-  for (const entries of Object.values(system.interfaces()))
-    for (const entry of entries ?? []) if (entry.mac && entry.mac !== "00:00:00:00:00:00") selfMacs.add(entry.mac.toLowerCase());
+  for (const [name, entries] of Object.entries(system.interfaces())) {
+    if (!planned.has(name)) continue;
+    for (const entry of entries ?? []) {
+      if (entry.internal) continue;
+      own.add(entry.address.split("%")[0]!.toLowerCase());
+      if (entry.mac && entry.mac !== "00:00:00:00:00:00") selfMacs.add(entry.mac.toLowerCase());
+    }
+  }
 
   const listening = system.announcements(limits.listenMs, signal).catch(() => [] as Announcement[]);
 
@@ -189,7 +196,8 @@ export async function runScan(
     return device;
   };
 
-  for (const entry of table) add(entry.address, entry.mac);
+  // Neighbours on the interfaces looked at only: a link-local address means nothing on another link.
+  for (const entry of table) if (!entry.interface || planned.has(entry.interface)) add(entry.address, entry.mac);
   for (const [address, ports] of answered) {
     const device = add(address, null);
     if (device) device.openPorts = [...new Set([...device.openPorts, ...ports])];

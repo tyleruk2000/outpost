@@ -227,6 +227,7 @@ export function standInSystem(
 ): NetworkSystem & { sent: Array<{ kind: "ping" | "connect"; address: string; port?: number; at: number }> } {
   const table = new Map<string, Neighbour>();
   for (const entry of world.neighbours ?? []) table.set(entry.address, entry);
+  const link = Object.entries(world.interfaces).find(([, entries]) => entries?.some((entry) => !entry.internal))?.[0] ?? "eth0";
   const sent: Array<{ kind: "ping" | "connect"; address: string; port?: number; at: number }> = [];
   const pause = () => new Promise((resolve) => setTimeout(resolve, world.delayMs ?? 0));
   const abilities: NetworkAbilities = {
@@ -239,7 +240,7 @@ export function standInSystem(
   // A device that is there answers the link-level question that precedes any probe, so it lands in the table.
   const touched = (address: string) => {
     const responder = world.responders?.[address];
-    if (responder?.mac) table.set(address, { address, mac: responder.mac, interface: "stand-in0" });
+    if (responder?.mac) table.set(address, { address, mac: responder.mac, interface: link });
   };
   return {
     sent,

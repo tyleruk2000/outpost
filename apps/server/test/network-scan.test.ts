@@ -23,7 +23,16 @@ describe("a scan", () => {
     const outcome = await runScan(system, subnets, { limits: FAST, signal: new AbortController().signal });
 
     const byAddress = (address: string) => outcome.devices.find((device) => device.addresses.includes(address));
-    expect(byAddress("192.168.77.1")).toMatchObject({ isRouter: true, mac: "00:1b:2c:00:00:01", name: "router.home", openPorts: [] });
+    expect(byAddress("192.168.77.1")).toMatchObject({
+      isRouter: true,
+      isSelf: false,
+      mac: "00:1b:2c:00:00:01",
+      addresses: ["192.168.77.1", "fe80::1"],
+      name: "router.home",
+      openPorts: [],
+    });
+    expect(byAddress("fe80::77")).toBeUndefined();
+    expect(outcome.devices.filter((device) => device.isSelf)).toHaveLength(1);
     // Answered a connection attempt (refused counts: something is there), announced itself, and has an IPv6 neighbour entry.
     expect(byAddress("192.168.77.12")).toMatchObject({
       key: "mac:00:1b:2c:00:00:12",

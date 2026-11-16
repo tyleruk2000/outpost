@@ -161,7 +161,9 @@ Discovery only, in this order (`scan.ts`):
 3. **At most 20 probes a second and 8 waiting at once**, each waiting 1 second for an
    answer. One scan at a time (a second is refused with `409`); a scan is a job, shown
    with its progress, and can be stopped. A scan stopped part of the way keeps nothing.
-   A /24 is 253 pings and up to 506 connection attempts: up to about 38 seconds.
+   A /24 is 253 pings and up to 506 connection attempts. Each probe that gets no answer
+   waits its second, eight at a time, so on a home /24 that is mostly empty a scan takes
+   one to two minutes.
 4. The computer's **neighbour table** is read (ARP for IPv4, NDP for IPv6). Every probe
    above first made the computer ask "who has this address?" on the local network, so
    a device that ignored the probe itself is still there, with its hardware address.
@@ -258,9 +260,19 @@ uses the internet.
 
 ### The real scan, once
 
-On 16 November 2026 the scan was run once by hand on the Mac it was built on, against
-its own home network. The result is given as counts only, in the report of that work;
-no device's name, address or hardware address from it is in this repository.
+On 16 November 2026 the scan was run once by hand on the Mac it was built on (macOS,
+with ping, the neighbour tables, `dns-sd` and the router all available), against its
+own home network: one /24 swept, and the IPv6 link-local and unique-local networks
+listened on. It found 24 devices, 11 of them with a name, 4 with a made-up hardware
+address and 3 seen only over IPv6; it sent 725 probes and took 122 seconds. No device's
+name, address or hardware address from it is in this repository.
+
+That run showed one fault, since fixed: three devices were marked "this computer",
+because macOS gives its loopback and tunnel interfaces link-local addresses (`fe80::1`)
+that the router uses too, and neighbours on those other links were counted. Now only
+the interfaces being looked at count, for this computer's own addresses and for the
+neighbour table (tested with a made-up computer that has such a tunnel). The real scan
+was not run again after the fix.
 
 ### Starting a scan from another device
 
