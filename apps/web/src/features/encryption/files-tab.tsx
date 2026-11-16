@@ -2,8 +2,8 @@
  * Files: encrypt one chosen from this device, or decrypt one, and save the result.
  *
  * The file is read a piece at a time and never sent anywhere. The result is held by the
- * browser until it is saved, so the size that can be handled is bounded by the device's
- * memory; `MAX_FILE_BYTES` is the largest size this was tested with.
+ * browser until it is saved, so the size that can be handled is bounded by what the
+ * browser will hold; `MAX_FILE_BYTES` is the largest size this was tested with.
  */
 import { formatBytes } from "@outpost/shared";
 import { CircleAlert, Download, FileLock, FileUp, LockKeyholeOpen } from "lucide-react";
@@ -29,13 +29,19 @@ import {
 import { unlockedKey } from "./session";
 import { OptionalPassphrase, SignerPicker } from "./text-tab";
 
-/** The largest file taken. Encrypting and decrypting a file of this size was measured in Chromium; see docs/encryption.md. */
-export const MAX_FILE_BYTES = 1024 * 1024 * 1024;
+/**
+ * The largest file taken for encrypting. A file of this size was encrypted and decrypted
+ * through this screen in Chromium and came back identical; see docs/encryption.md for the
+ * times and what limits it.
+ */
+export const MAX_FILE_BYTES = 512 * 1024 * 1024;
+/** An encrypted file is a little larger than what is in it, and one written as text is larger by a third. */
+export const MAX_ENCRYPTED_FILE_BYTES = Math.ceil(MAX_FILE_BYTES * 1.4);
 const NO_SIGNER = "none";
 
 type Mode = "encrypt" | "decrypt";
 
-function FileChooser({ file, onFile, label }: { file: File | null; onFile(file: File | null): void; label: string }) {
+function FileChooser({ file, onFile, label, limit }: { file: File | null; onFile(file: File | null): void; label: string; limit: number }) {
   const input = useRef<HTMLInputElement>(null);
   const id = useId();
   const [tooLarge, setTooLarge] = useState<File | null>(null);
@@ -54,7 +60,7 @@ function FileChooser({ file, onFile, label }: { file: File | null; onFile(file: 
             <span className="tabular text-ink-muted">{formatBytes(file.size)}</span>
           </p>
         ) : (
-          <p className="text-small text-ink-muted">Up to {formatBytes(MAX_FILE_BYTES)}. It is read on this device and not uploaded.</p>
+          <p className="text-small text-ink-muted">Up to {formatBytes(limit)}. It is read on this device and not uploaded.</p>
         )}
       </div>
       <input
@@ -66,7 +72,7 @@ function FileChooser({ file, onFile, label }: { file: File | null; onFile(file: 
         onChange={(event) => {
           const chosen = event.target.files?.[0] ?? null;
           event.target.value = "";
-          if (chosen && chosen.size > MAX_FILE_BYTES) {
+          if (chosen && chosen.size > limit) {
             setTooLarge(chosen);
             onFile(null);
             return;
@@ -77,9 +83,9 @@ function FileChooser({ file, onFile, label }: { file: File | null; onFile(file: 
       />
       {tooLarge ? (
         <p role="alert" className="text-small text-danger">
-          “{tooLarge.name}” is {formatBytes(tooLarge.size)}. The most this screen has been tested with is {formatBytes(MAX_FILE_BYTES)},
-          because the result is held in the browser’s memory until it is saved. For a larger file use GnuPG on the computer itself (gpg
-          --encrypt, gpg --decrypt), which works with files of any size.
+          “{tooLarge.name}” is {formatBytes(tooLarge.size)}, and this screen takes up to {formatBytes(limit)}: the result is held by the
+          browser until it is saved, and that is the largest size it has been tested with. For a larger file use GnuPG on the computer
+          itself (gpg --encrypt, gpg --decrypt), which works with files of any size.
         </p>
       ) : null}
     </div>
@@ -178,6 +184,7 @@ function EncryptFile({ shelf }: { shelf: Shelf }) {
     <div className="grid gap-5">
       <FileChooser
         file={file}
+        limit={MAX_FILE_BYTES}
         label="File to encrypt"
         onFile={(next) => {
           setFile(next);
@@ -291,7 +298,7 @@ function DecryptFile({ shelf }: { shelf: Shelf }) {
 
   return (
     <div className="grid gap-5">
-      <FileChooser file={file} label="File to decrypt (.gpg, .pgp or .asc)" onFile={setFile} />
+      <FileChooser file={file} limit={MAX_ENCRYPTED_FILE_BYTES} label="File to decrypt (.gpg, .pgp or .asc)" onFile={setFile} />
       {needs?.encrypted ? (
         <div className="grid gap-4">
           {needs.keyIds.length > 0 ? (

@@ -227,7 +227,7 @@ export function ArmorOutput({
           <div className="flex flex-wrap gap-2">
             <CopyButton text={value} />
             <Button size="sm" onClick={() => download(value, filename, "text/plain")}>
-              <Download /> Save as {filename}
+              <Download /> Save as a file
             </Button>
           </div>
         </div>

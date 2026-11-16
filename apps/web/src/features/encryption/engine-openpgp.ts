@@ -88,16 +88,29 @@ function firstPacketTag(armored: string): number | null {
   }
 }
 
-/** Passes a stream through unchanged, reporting how many bytes have gone by. */
+/** How often a long piece of work steps aside, in bytes read, so that the screen can redraw and a progress bar can move. */
+const YIELD_BYTES = 4 * 1024 * 1024;
+
+/**
+ * Passes a stream through unchanged, reporting how many bytes have gone by. Every few
+ * megabytes it also waits for a turn of the event loop: the library's own pipeline runs
+ * from one promise to the next without pause, which would otherwise freeze the page
+ * until a large file was done.
+ */
 function counted(stream: ReadableStream<Uint8Array>, onProgress?: Progress): ReadableStream<Uint8Array> {
-  if (!onProgress) return stream;
   let seen = 0;
+  let sinceYield = 0;
   return stream.pipeThrough(
     new TransformStream<Uint8Array, Uint8Array>({
-      transform(chunk, controller) {
+      async transform(chunk, controller) {
         seen += chunk.byteLength;
-        onProgress(seen);
+        sinceYield += chunk.byteLength;
+        onProgress?.(seen);
         controller.enqueue(chunk);
+        if (sinceYield >= YIELD_BYTES) {
+          sinceYield = 0;
+          await new Promise<void>((resolve) => setTimeout(resolve, 0));
+        }
       },
     }),
   );
@@ -198,7 +211,7 @@ export async function createOpenpgpEngine(library?: OpenPGP): Promise<PgpEngine>
     if (/-----BEGIN PGP PRIVATE KEY BLOCK-----/.test(text)) {
       throw new PgpError(
         "not-a-key",
-        "That is a private key. Paste the public key here; a private key is only ever imported on its owner's device.",
+        "That is a private key. Paste the public key here; a private key is only ever imported on its owner’s device.",
       );
     }
     if (!/^-----BEGIN PGP PUBLIC KEY BLOCK-----/.test(text)) {
@@ -439,7 +452,7 @@ export async function createOpenpgpEngine(library?: OpenPGP): Promise<PgpEngine>
       } catch (error) {
         const detail = messageOf(error);
         if (/incorrect key passphrase|passphrase/i.test(detail))
-          throw new PgpError("wrong-passphrase", "That is not this key's passphrase.");
+          throw new PgpError("wrong-passphrase", "That is not this key’s passphrase.");
         if (/already decrypted/i.test(detail))
           throw new PgpError("failed", "This private key has no passphrase. Outpost only uses private keys that are protected by one.");
         throw new PgpError("failed", `The key could not be unlocked (${detail}).`);

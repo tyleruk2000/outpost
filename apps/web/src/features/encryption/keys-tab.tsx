@@ -5,7 +5,7 @@
  */
 import { useQueryClient } from "@tanstack/react-query";
 import { CircleAlert, Download, Ellipsis, FileUp, KeyRound, LockKeyholeOpen, Plus, Trash2 } from "lucide-react";
-import { type FormEvent, type ReactNode, useId, useRef, useState } from "react";
+import { type FormEvent, type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { toast } from "sonner";
 import { EmptyState, Notice, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
@@ -465,6 +465,9 @@ function KeyRow({ entry }: { entry: ShelfKey }) {
   const usable = canUsePrivate(entry);
   const isUnlocked = unlocked.has(entry.fingerprint);
   const checkId = useId();
+  // The tick answers at once; the list catches up when it has read the keys again.
+  const [checkedAt, setCheckedAt] = useState(entry.checkedAt);
+  useEffect(() => setCheckedAt(entry.checkedAt), [entry.checkedAt]);
 
   const run = async (work: () => Promise<void>, done?: string) => {
     setBusy(true);
@@ -510,14 +513,15 @@ function KeyRow({ entry }: { entry: ShelfKey }) {
             <div className="mt-2 flex min-h-11 items-center gap-2.5 md:min-h-0">
               <Checkbox
                 id={checkId}
-                checked={entry.checkedAt !== null}
+                checked={checkedAt !== null}
                 onCheckedChange={(next) => {
+                  setCheckedAt(next === true ? Date.now() : null);
                   setKeyChecked(entry.fingerprint, next === true);
                 }}
               />
               <label htmlFor={checkId} className="cursor-pointer text-small text-ink">
-                {entry.checkedAt !== null
-                  ? `Fingerprint checked with ${label} on ${formatDate(entry.checkedAt)} (remembered on this device)`
+                {checkedAt !== null
+                  ? `Fingerprint checked with ${label} on ${formatDate(checkedAt)} (remembered on this device)`
                   : `I have compared this fingerprint with ${label}, in person or by a call`}
               </label>
             </div>
