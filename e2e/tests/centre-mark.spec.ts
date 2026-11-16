@@ -8,7 +8,7 @@
  * independently (a pin flown to, a right-click) and holds the cross to it.
  */
 import type { Page } from "@playwright/test";
-import { expect, test, watchForErrors } from "./fixtures";
+import { api, expect, test, watchForErrors } from "./fixtures";
 
 test.use({ timezoneId: "Europe/London" });
 
@@ -91,5 +91,86 @@ test.describe("the centre of the map", () => {
     // The times are for that point now.
     await expect(page.getByRole("tabpanel", { name: "Sun" }).getByText(/^Sunrise 04:\d\d, sunset 21:\d\d$/)).toBeAttached();
     expect(errors).toEqual([]);
+  });
+
+  test("after a fly, a place that is opened and a route that is fitted land in the middle of the clear part of the map", async ({
+    page,
+  }) => {
+    // The camera keeps room for the column of controls from its first fly onwards. A fit used to keep that room a
+    // second time on top, and landed 28 px to the left of where everything else does.
+    const errors = watchForErrors(page);
+    const centre = { lat: 51.52, lon: -0.12 };
+    const { marker } = await api(page, "POST", "/api/maps/markers", {
+      name: "Fit check place",
+      lat: centre.lat + 0.05,
+      lon: centre.lon - 0.09,
+    });
+    const { track } = await api(page, "POST", "/api/maps/tracks", {
+      name: "Fit check route",
+      color: "teal",
+      // A box about `centre`, so the middle of the route's bounds is known.
+      points: [
+        { lat: centre.lat - 0.02, lon: centre.lon - 0.03 },
+        { lat: centre.lat + 0.02, lon: centre.lon - 0.03 },
+        { lat: centre.lat + 0.02, lon: centre.lon + 0.03 },
+        { lat: centre.lat - 0.02, lon: centre.lon + 0.03 },
+      ],
+    });
+    try {
+      await page.goto("/maps?lat=51.48&lon=0&z=9");
+      await expect(page.locator('.outpost-map[data-map-idle="true"]')).toBeVisible({ timeout: 15_000 });
+      const dismiss = page.getByRole("button", { name: "Dismiss" });
+      if (await dismiss.isVisible()) await dismiss.click();
+      const map = (await page.locator("canvas").first().boundingBox())!;
+      // What lies over the map on a wide screen: 16 px at the top, and the column of controls, 56 px, at the right.
+      const clear = { x: map.x + (map.width - 56) / 2, y: map.y + (16 + map.height) / 2 };
+      const atRest = async () => {
+        await page.mouse.move(40, 400);
+        await expect(page.locator('.outpost-map[data-map-idle="true"]')).toBeVisible({ timeout: 15_000 });
+      };
+
+      // A fly, to anywhere.
+      await page.getByLabel("Search the map").fill("51.6, 0.2");
+      await page.getByRole("option").first().click();
+      await expect(page.getByRole("button", { name: /^Copy coordinates 51\.6000?0?, 0\.2000?0?$/ })).toBeVisible({ timeout: 15_000 });
+      await atRest();
+
+      // A place opened after it: its pin is in the middle of the clear part.
+      await page.getByRole("tab", { name: /^Places/ }).click();
+      await page
+        .getByRole("button", { name: /^Fit check place/ })
+        .first()
+        .click();
+      await expect(page.getByRole("heading", { name: "Fit check place" })).toBeVisible();
+      await expect
+        .poll(async () => {
+          const pin = await page.locator(".outpost-pin").boundingBox();
+          return pin ? Math.hypot(pin.x + pin.width / 2 - clear.x, pin.y + pin.height - clear.y) : 999;
+        })
+        .toBeLessThanOrEqual(2);
+
+      // A route fitted after it: the middle of its bounds is the centre of the map, and that is in the middle of the clear part.
+      await page.getByRole("tab", { name: /^Routes/ }).click();
+      await page
+        .getByRole("button", { name: /^Fit check route/ })
+        .first()
+        .click();
+      await expect(page.getByRole("heading", { name: "Fit check route" })).toBeVisible();
+      await atRest();
+      await expect(readout(page)).toContainText("Centre");
+      await expect
+        .poll(async () => {
+          const [lat, lon] = (((await readout(page).textContent()) ?? "").match(/(-?\d+\.\d+), (-?\d+\.\d+)/) ?? []).slice(1).map(Number);
+          return Math.max(Math.abs((lat ?? 0) - centre.lat), Math.abs((lon ?? 0) - centre.lon));
+        }, "the centre of the map is the middle of the route's bounds")
+        .toBeLessThan(0.0006);
+      const cross = await markAt(page);
+      expect(Math.abs(cross.x - clear.x), "the centre, across").toBeLessThanOrEqual(2);
+      expect(Math.abs(cross.y - clear.y), "the centre, down").toBeLessThanOrEqual(2);
+      expect(errors).toEqual([]);
+    } finally {
+      await api(page, "DELETE", `/api/maps/markers/${marker.id}`);
+      await api(page, "DELETE", `/api/maps/tracks/${track.id}`);
+    }
   });
 });

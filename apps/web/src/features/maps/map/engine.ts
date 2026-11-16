@@ -545,10 +545,15 @@ export class MapEngine {
    * always the middle of the part that is clear. A phone asks for this, because its sheet covers the lower part
    * of the map and the centre would otherwise be behind it. When the space changes (the sheet is raised) the
    * same point stays the centre and the map slides to keep it in view.
+   *
+   * `spare` is the part of the bottom space that is kept free for a card to come up into (a phone keeps a fifth of
+   * the clear map for it): a card's height, given to `flyTo` or `fitBounds` as `clearBottom`, is counted from the
+   * foot of the clear map, so only what it takes beyond the spare room is added.
    */
-  setPadding(padding: { top: number; right: number; bottom: number; left: number }, hold = false): void {
+  setPadding(padding: { top: number; right: number; bottom: number; left: number }, hold = false, spare = 0): void {
     this.padding = padding;
     this.holdPadding = hold;
+    this.spare = spare;
     if (!hold) return;
     const first = !this.paddingHeld;
     const apply = () => {
@@ -564,6 +569,8 @@ export class MapEngine {
     else apply();
   }
   private padding = { top: 0, right: 0, bottom: 0, left: 0 };
+  /** How much of the bottom padding nothing lies over yet: room kept for a card, which a card's own height is not added to. */
+  private spare = 0;
   private holdPadding = false;
   private paddingHeld = false;
 
@@ -580,7 +587,7 @@ export class MapEngine {
   }
 
   private paddingWith(clearBottom: number) {
-    return { ...this.padding, bottom: this.padding.bottom + Math.max(0, clearBottom) };
+    return { ...this.padding, bottom: this.padding.bottom + Math.max(0, clearBottom - this.spare) };
   }
 
   jumpTo(view: CameraView): void {
@@ -589,19 +596,27 @@ export class MapEngine {
 
   /** `clearBottom` keeps that many more pixels at the foot of the map free, for a card that lies over it. */
   fitBounds(bbox: Bbox, options: { maxZoom?: number; animate?: boolean; clearBottom?: number } = {}): void {
-    const pad = 48;
     const { top, right, left } = this.padding;
-    const bottom = this.padding.bottom + (options.clearBottom ?? 0);
+    const canvas = this.map.getCanvas();
+    // The space to keep at the foot gives way before the fit does: at least 72 px of map stay to fit into.
+    const bottom = Math.max(0, Math.min(this.paddingWith(options.clearBottom ?? 0).bottom, canvas.clientHeight - top - 72));
+    // A margin round what is fitted: 48 px where there is room, less on a small phone, where 48 px each side
+    // of little room left nothing to fit into and the map did not move at all.
+    const margin = (across: number) => Math.max(8, Math.min(48, across / 8));
+    const padX = margin(canvas.clientWidth - left - right);
+    const padY = margin(canvas.clientHeight - top - bottom);
     this.map.fitBounds(
       [
         [bbox[0], bbox[1]],
         [bbox[2], bbox[3]],
       ],
       {
-        padding: { top: top + pad, right: right + pad, bottom: bottom + pad, left: left + pad },
-        // Where the camera already keeps that space, this is in place of it, not on top of it: counted twice, a
+        padding: { top: top + padY, right: right + padX, bottom: bottom + padY, left: left + padX },
+        // This is all of the space to keep, not more of it on top of what the camera keeps already. A phone's camera
+        // keeps its space all the time, and a wide screen's keeps it from the first fly onwards (`flyTo` leaves its
+        // padding on the camera): counted twice, the fit lands off the middle of the clear part of the map, and a
         // phone has no room left to fit anything in.
-        absolutePadding: this.holdPadding,
+        absolutePadding: true,
         maxZoom: options.maxZoom ?? 15,
         animate: options.animate ?? true,
       },

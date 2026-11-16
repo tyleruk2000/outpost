@@ -55,11 +55,14 @@ On the map itself:
 - **Hill shading** appears as a button once terrain is installed.
 - **Contour lines** is the button below it (see [Contour lines](#contour-lines)). It
   is always there: pressed where there is nothing to draw them from, it says so.
-- **Maidenhead locator grid** and **Line of sight between two points** are the two
-  buttons below those (beside the top of the column on a phone). See
-  [Maidenhead locators](#maidenhead-locators) and [Line of sight](#line-of-sight).
-- **Print or save as PDF** is the last button in that column (see
+- **Print or save as PDF** is the button below that (see
   [Printing a map](#printing-a-map)).
+- **Maidenhead locator grid** and **Line of sight between two points** are the last
+  buttons in the column. See [Maidenhead locators](#maidenhead-locators) and
+  [Line of sight](#line-of-sight).
+- **On a phone, every one of these is also in a menu by name**: the button with three
+  dots at the end of the search box. The column of icons under it shows as many as
+  there is room for (see [On a phone](#on-a-phone)).
 - The readout at the bottom shows the centre of the map; choose decimal degrees,
   degrees-minutes-seconds, British National Grid or Maidenhead locator, and copy it.
   With a mouse over the map it gives the pointer's position instead, and says which.
@@ -77,6 +80,41 @@ On the map itself:
 
 Before any region is installed the map shows a plain outline of the world, which
 ships with Outpost, and offers the world overview as a first download.
+
+### On a phone
+
+A phone's map is small, and the tools above were each built on a large one. So on a
+phone each kind of thing has one place over the map and gives way in a set order, and
+nothing lies over anything else:
+
+- **The search box is always across the top.** At its end is a button with three dots,
+  **All map tools**: every tool and every layer by name, with a tick beside the ones
+  that are on or in hand. An icon cannot say what it is to a finger; the menu can.
+- **The tools are also icons in a column under the end of the search box**, in the
+  same order as on a wide screen. The column holds as many as fit above whatever is
+  below it and stops there, so on a small phone, or with a card up, the last ones are
+  in the menu only. There are no zoom buttons: pinch.
+- **A card** (the tool in hand, a place that was found, a recording) comes up from just
+  above the sheet and takes at most the lower three fifths of the clear part of the
+  map. A card with more in it than that scrolls inside itself; its title and its close
+  button stay where they are. The map does not move when a card comes up.
+- **The centre of the map is two fifths of the way down the clear part of the map**,
+  not half way, so that a card never covers it or the cross that marks it, and the map
+  does not have to move when a card comes up (see
+  [The centre of the map](#the-centre-of-the-map)).
+- **The readout and the credits are just above the sheet.** The credits are always
+  there. Where there is not room for everything (larger text, a small screen, the sheet
+  raised), the coordinates of the centre and the scale bar step aside first, and then
+  the line of sun times under them; the coordinates and the sun times are still in the
+  Sun tab, and the coordinates of any point under a long press. Where neither fits,
+  the cross at the centre is put away with them.
+- **A recording's card folds to its one line** when another card comes up, and unfolds
+  again from its arrow.
+- **With the sheet at its full height** only the search box is left over the map.
+- Everything that is pressed is at least 44 px each way.
+
+This was measured, not looked at on a real phone: see
+[What was checked on a phone](#what-was-checked-on-a-phone).
 
 "Show where I am" and "Record a track" need a secure address, which browsers require
 before they share a location. On a plain `http://` LAN address they say so and point to
@@ -684,14 +722,22 @@ two times side by side they go one under the other; nothing is cut off.
 
 ### The centre of the map
 
-**On a phone, the centre of the map is the middle of the part of the map you can
-see**, not the middle of the map's rectangle. The camera keeps clear of what lies over
-the map: the search box, and the sheet with the readout above it. So the centre is
-never behind the sheet. When the sheet is raised or lowered, the same point on the
-ground stays the centre and the map slides to keep it in view. On a wide screen nothing
-lies over the middle of the map, and the centre is the middle of it until the map
-flies to a place or a search result, which lands a little to the left to keep clear of
-the column of controls; the centre is there from then on.
+**On a phone, the centre of the map is in the part of the map you can see**, not the
+middle of the map's rectangle. The camera keeps clear of what lies over the map: the
+search box, and the sheet with the readout and the credits above it. What is left is
+the clear part of the map, and the centre is two fifths of the way down it: a little
+above its middle, so that a card coming up from the foot of the map (which may take the
+lower three fifths) never covers the centre, and the map does not move when one does.
+The space the search box and the readout take is measured, so this holds with larger
+text too. When the sheet is raised or lowered, the same point on the ground stays the
+centre and the map slides to keep it in view. On a wide screen nothing lies over the
+middle of the map, and the centre is the middle of it until the map flies to a place or
+a search result, or is fitted to a route, which lands a little to the left to keep
+clear of the column of controls; the centre is there from then on.
+
+A fit (opening a route, the box of a page to print) used to count that room for the
+controls twice on a wide screen once the map had flown anywhere, and landed 28 px left
+of where a fly lands. It counts it once now.
 
 **A cross marks it**, on any size of screen, whenever something on screen is reading
 the centre:
@@ -757,12 +803,17 @@ under the readout and the two large times were checked in Chromium at 320, 375 a
 px wide; with the text enlarged (the root font size at 20 and 24 px, where the names
 take a second line rather than run off the edge); and with the 34 px inset at the
 bottom of the screen that a phone with a home indicator reports, which the Maps screen
-now leaves room for. **None of this was tried on a real iPhone**, in Safari or opened
-from the Home Screen.
+now leaves room for. Where the text is so large that the coordinates and the line of
+sun times do not both fit over the map, the line stays and the coordinates step aside.
+**None of this was
+tried on a real iPhone**, in Safari or opened from the Home Screen. The whole screen
+was measured later: see [What was checked on a phone](#what-was-checked-on-a-phone).
 
-On a phone, "Sun times here" and a found position put their card over the map, and the
-opened section scrolls inside the card. The card covers the search box and the map's
-controls while it is up; the Sun tab does not.
+On a phone, "Sun times here" and a found position put their card over the map. Like
+every card there it takes at most the lower three fifths of the clear map (see
+[On a phone](#on-a-phone)), so with the section opened the card scrolls inside itself;
+opening the section brings the two large times to the top of what shows. The Sun tab
+has room for all of it.
 
 ### The far north and south
 
@@ -971,7 +1022,7 @@ first time).
 | **Stop** | Ends the recording and asks for a name and a colour. **Carry on** undoes a stop that was not meant. |
 
 The card folds to one line (the arrow at its corner, or the Record button), to leave
-the map clear. Leaving the Maps screen for another part of Outpost does not stop a
+the map clear. On a phone it folds by itself when the card of another tool comes up. Leaving the Maps screen for another part of Outpost does not stop a
 recording: every other screen says that one is running, with a way back to the map.
 
 Saved, a recording is a route like any other: listed under Routes, drawn on the map,
@@ -1622,6 +1673,11 @@ line between them, and by how much does it clear?
    and the band are remembered in the browser.
 3. Read the answer in the panel beside the map (on a phone, **Show the path and the
    details** raises it). Changing a height or the band answers again at once.
+
+On a phone the tool takes over the sheet, and the lowered sheet shows its name and the
+button that puts it down. The card over the map says only what to do next, or the
+answer in a line: the tool is named once. Choosing an end again from the raised sheet
+lowers it, so the map can be touched.
 
 **Move** beside A or B chooses that end again; **Swap A and B** turns the path round;
 Escape puts the tool down.

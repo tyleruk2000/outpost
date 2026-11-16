@@ -145,7 +145,7 @@ export function PlanMap({ data, places, onPress, onReady, onMoved, fit, label, c
     );
   }
   return (
-    <div className={cn("relative isolate overflow-hidden rounded-panel border border-border bg-surface", className)}>
+    <div className={cn("outpost-touch relative isolate overflow-hidden rounded-panel border border-border bg-surface", className)}>
       {/* The map takes the keyboard itself: arrow keys pan it, plus and minus zoom. */}
       {/* MapLibre makes its container `position: relative`, so the one that fills the frame is a wrapper. */}
       <div className="absolute inset-0">
@@ -153,8 +153,11 @@ export function PlanMap({ data, places, onPress, onReady, onMoved, fit, label, c
       </div>
       {status === "loading" ? <Skeleton className="absolute inset-0 rounded-none" /> : null}
       {engine ? (
-        <>
-          <div className="absolute right-2 top-2 grid gap-1">
+        // One column from the top of the frame to its foot, as on the Maps screen (map-furniture.tsx), so the zoom
+        // buttons and the readout cannot lie over each other however short the frame or large the text: where the
+        // frame is short the two buttons go side by side, and the readout steps aside before the credits do.
+        <div className="outpost-furniture pointer-events-none absolute inset-2 flex flex-col justify-between gap-2">
+          <div className="outpost-furniture-zoom pointer-events-auto flex shrink-0 flex-col gap-1 self-end">
             <Button size="icon" aria-label="Zoom in" onClick={() => engine.zoomIn()}>
               <Plus />
             </Button>
@@ -162,8 +165,8 @@ export function PlanMap({ data, places, onPress, onReady, onMoved, fit, label, c
               <Minus />
             </Button>
           </div>
-          <MapFooter engine={engine} format={format} onFormatChange={setFormat} credits={credits} className="absolute inset-x-2 bottom-2" />
-        </>
+          <MapFooter engine={engine} format={format} onFormatChange={setFormat} credits={credits} className="shrink-0" />
+        </div>
       ) : null}
     </div>
   );

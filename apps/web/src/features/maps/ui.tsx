@@ -14,6 +14,24 @@ import { BADGE, type DrawnIcon, GLYPH_ON, isDrawn, PLACE_GLYPHS, PLACE_ICON_NAME
 /** The project's floating surface, for things that sit over the map. */
 export const mapSurface = cn(floating, "z-auto min-w-0 p-0");
 
+/**
+ * A card over the map: the one shell every such card uses, whichever tool it belongs to.
+ *
+ * On a phone the card's greatest height is not its own to choose. The place it is put in
+ * (`MapFurniture`) gives the cards the lower three fifths of the clear map and no more; a card
+ * with more to say than fits scrolls inside itself, under a title and a close button that
+ * stay where they are.
+ */
+export const mapCard = cn(
+  mapSurface,
+  "outpost-map-card scroll-quiet pointer-events-auto w-full max-w-[26rem] p-3.5",
+  "max-md:min-h-[52px] max-md:shrink max-md:overflow-y-auto max-md:overscroll-contain",
+);
+
+/** The first row of such a card: its title, and what closes or folds it. It stays in view while the rest scrolls. */
+export const mapCardHeader =
+  "sticky top-0 z-[1] -mx-3.5 -mt-3.5 flex items-start justify-between gap-3 rounded-t-panel bg-raised px-3.5 pt-3.5 max-md:-top-3.5";
+
 /** A group of icon buttons on one floating surface, stacked with hairlines between them. */
 export function ControlGroup({ className, ...props }: ComponentProps<"div">) {
   return <div className={cn(mapSurface, "flex flex-col divide-y divide-border overflow-hidden", className)} {...props} />;
@@ -36,7 +54,8 @@ export function ControlButton({
         aria-label={label}
         aria-pressed={pressed}
         className={cn(
-          "rounded-none text-ink focus-visible:-outline-offset-2",
+          // 44 px on a phone whatever the size of the text: an icon is not words.
+          "rounded-none text-ink focus-visible:-outline-offset-2 max-md:size-[44px]",
           pressed && "bg-primary-soft text-primary-soft-ink hover:bg-primary-soft",
           className,
         )}

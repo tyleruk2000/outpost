@@ -499,6 +499,20 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   is sent again. It runs only while the screen is on and Outpost is in front, which
   is as much as a browser allows, and says so before it starts. Not tried on a real
   phone outdoors.
+- On a phone, one rule for where things sit over the map, in place of each tool
+  choosing for itself: the search box across the top with a menu of every tool by
+  name at its end, the tools as icons under it for as many as fit, a card for what is
+  in hand that takes at most the lower three fifths of the clear map and scrolls
+  inside itself beyond that, and the readout and credits above the sheet. Nothing lies
+  over anything else; with larger text or a small screen things step aside in a set
+  order, and each is still reachable. The centre of the map is kept clear of any card.
+  Line of sight is named once, not on the card and the sheet both. Everything pressed
+  is 44 px. The maps set into the radio screens follow the same rule. Measured in
+  Chromium at four phone sizes, three text sizes, with and without a home indicator,
+  light and dark; not looked at on a real phone. See `docs/maps.md` and
+  `docs/development/web-screens.md`.
+- On a wide screen, opening a route after the map has flown somewhere fits it in the
+  middle of the clear part of the map; it used to land 28 px to the left.
 
 #### Repeaters
 

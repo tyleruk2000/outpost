@@ -146,6 +146,68 @@ goes through `ConfirmDialog`, which names what will be removed.
 - Body text contrast is at least 4.5:1. `text-ink-faint` is for placeholders and
   disabled text only.
 
+## Things over a map
+
+The Maps screen has many tools, added one at a time, and each puts something over the
+map. On a phone they share a small map with the sheet. So where a thing sits over the
+map is not for each tool to choose: one component decides it for all of them
+(`features/maps/map-furniture.tsx`), and a new tool follows the rule by using the
+shared pieces. On a wide screen little lies over the map and the rule is short: search
+top left, the column of controls top right, the card of what is in hand at the foot
+with the readout, the scale and the credits under it.
+
+**On a phone, everything over the map is one column from the top of the map to the top
+of the sheet**, so nothing can lie over anything else. Each kind of thing owns one
+place in it:
+
+| Place | What is there | Gives way? |
+| --- | --- | --- |
+| The top edge | The search box, with the menu of every tool at its end (`MapMenu`) | Never |
+| Under the end of the search box | The tools as icons (`MapToolColumn`) | Shows as many as fit; the rest are in the menu, where all of them always are |
+| The clear map | Nothing. The centre of the map is two fifths of the way down it | |
+| Above the readout | The cards: one for the tool or thing in hand (`MapCard`), and the recording's | At most the lower three fifths of the clear map, less a margin |
+| Just above the sheet | The readout with the scale beside it, and the credits | The credits never; the rest in the order below |
+| The foot | The sheet | Lowered, it shows its handle and tab names, or the name of a tool that has taken it over |
+
+What follows from that:
+
+- **A tool is one entry in one list** (`mapTools` in `map-chrome.tsx`). The column on a
+  wide screen, the column on a phone and the phone's menu are all drawn from it. Do not
+  add a button to the map anywhere else.
+- **A card is a `MapCard`** (or uses the same shell, `mapCard` in `ui.tsx`). It does not
+  set its own height. On a phone the cards together get the lower three fifths of the
+  clear map, less a margin; a card with more to say scrolls inside itself, and its
+  title and close button stay put. Because the camera keeps the centre of the map two
+  fifths of the way down, a card never covers the centre or the cross that marks it,
+  and the map does not move when a card appears or grows.
+- **One title.** A tool that has taken over the sheet (line of sight) is named by the
+  sheet's first line, which also holds what puts the tool down. Its card over the map
+  then has no title of its own (`titleHidden`) and no close button.
+- **What yields when a tool is in hand.** The line of sun times goes while a tool is
+  in hand or a point has been found. The column of icons shortens to what fits above
+  the cards. A recording's open card folds to its one line when another card comes up.
+  The map itself does not move: while something is in hand the camera keeps the room
+  it had. With the sheet at full height only the search box is left.
+- **As the room gets shorter** (larger text, a small phone, the sheet raised) things
+  step aside in this order: the icons, which show only what fits; then the coordinates
+  of the centre, with the scale bar; then the line of sun times. `MapFurniture`
+  measures what each needs and what there is, keeps 56 px of clear map for the cross,
+  and says the answer in `data-room` (`all`, `sun`, `none`), which `maps.css` acts on;
+  with `none` the cross goes too. It is measured rather than set by breakpoints
+  because the credits can be one line or four. Each thing is still reachable: the tools
+  in the menu, the coordinates of the centre and the sun times in the Sun tab, the
+  coordinates of any point under a long press.
+- **Touch targets are 44 px, in pixels**, on a screen with a map (`outpost-touch`, one
+  rule in `maps.css`). A control with no words in it (an icon, the sheet's handle) does
+  not grow with the text: a finger is the same size, and the room is the map's.
+- **A map set into another screen** (`features/propagation/map/plan-map.tsx`) uses the
+  same column, with its zoom buttons where the tools would be.
+
+`e2e/tests/layout-audit.ts` measures a screen for things lying over each other, things
+cut off, touch targets under 44 px, text under the smallest size in DESIGN.md and
+sideways scroll. `e2e/tests/phone-layout.mobile.spec.ts` holds the Maps screen to it at
+three phone sizes; add a state there when you add a tool.
+
 ## Out of reach of the server
 
 Where the app is kept on the device (HTTPS, packaged build), it goes on without the
