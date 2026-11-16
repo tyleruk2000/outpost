@@ -265,11 +265,11 @@ export function antennaOf(
  * antenna before anything is asked: a half-wave, a wire of another length, or not
  * modelled there. Nothing for an antenna that is not such a wire, or with no frequency.
  */
-export function wireHint(spec: AntennaSpec, frequencyText: string): { note: string; notModelled: boolean } | null {
+export function wireHint(spec: AntennaSpec, frequencyText: string): { note: string; notModelled: boolean; approximate: boolean } | null {
   const mhz = frequencyText.trim() === "" ? Number.NaN : Number(frequencyText);
   if (!(mhz >= 2 && mhz <= 30)) return null;
   const wire = wireOn(spec, mhz);
-  return wire ? { note: wire.note, notModelled: wire.state === "not-modelled" } : null;
+  return wire ? { note: wire.note, notModelled: wire.state === "not-modelled", approximate: wire.state === "approximate" } : null;
 }
 
 /** The amateur bands a wire of a stated length is about a half-wave on, as "20 m"; empty for a wire that is one on none of them. */
@@ -288,9 +288,19 @@ export function wireBandsNote(spec: AntennaSpec): string | null {
     bands.length > 0
       ? `on ${bands.join(" and ")}`
       : `from ${fromMhz.toFixed(1)} to ${toMhz.toFixed(1)} MHz, which is none of the amateur bands`;
-  return spec.kind === "end-fed-horizontal"
-    ? `${spec.lengthM} m of level wire is about a half-wave ${where}. It is given figures there and nowhere else: the engine's dipole is fed at its centre and does not describe an end-fed wire of another length.`
-    : `${spec.lengthM} m of upright wire is about a half-wave ${where}. On other bands it is run as a wire of that length, which an end-fed half-wave's matching unit is not made for.`;
+  if (spec.kind === "end-fed-vertical")
+    return `${spec.lengthM} m of upright wire is about a half-wave ${where}. On other bands it is run as a wire of that length, which an end-fed half-wave's matching unit is not made for.`;
+  const longer = HF_BANDS.filter((band) => wireOn(spec, band.mhz)?.state === "approximate").map((band) => band.label);
+  const shorter = HF_BANDS.filter((band) => wireOn(spec, band.mhz)?.state === "not-modelled").map((band) => band.label);
+  return [
+    `${spec.lengthM} m of level wire is about a half-wave ${where}, and given VOACAP's dipole there.`,
+    longer.length > 0
+      ? `On ${longer.join(", ")} it is longer, and its figures are approximate: VOACAP's sloping long wire, laid level, whose level is unchecked.`
+      : "",
+    shorter.length > 0 ? `On ${shorter.join(", ")} it is shorter, and not modelled: no figure.` : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 }
 
 /** The request a form stands for, or the first thing wrong with it, in words for the person. */

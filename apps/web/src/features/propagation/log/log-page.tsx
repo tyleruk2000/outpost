@@ -298,58 +298,87 @@ function EntryDialog({ onClose }: { onClose: () => void }) {
   );
 }
 
-function Comparison({ result }: { result: ComparisonResult }) {
-  const shares = result.compared >= COMPARISON_MIN_FOR_SHARES;
-  const made = result.levels.reduce((sum, level) => sum + level.contact + level.heard, 0);
+type Levels = ComparisonResult["levels"];
+
+/** Where the entries fell, by the engine's reliability: one table, for the entries with modelled figures or for the approximate ones. */
+function LevelsTable({ levels, caption, shares }: { levels: Levels; caption: string; shares: boolean }) {
+  const made = levels.reduce((sum, level) => sum + level.contact + level.heard, 0);
+  const failed = levels.reduce((sum, level) => sum + level.failed, 0);
   const cell = (count: number, of: number) =>
     shares && of > 0 ? `${formatNumber(count)} (${Math.round((count / of) * 100)}%)` : formatNumber(count);
-  const failed = result.levels.reduce((sum, level) => sum + level.failed, 0);
+  return (
+    <table className="tabular mt-3 w-full max-w-2xl text-small">
+      <caption className="mb-1 text-left text-ink-muted">{caption}</caption>
+      <thead>
+        <tr className="border-b border-border-strong text-left text-ink-muted">
+          <th scope="col" className="py-1.5 pr-3 font-medium">
+            The engine's reliability
+          </th>
+          <th scope="col" className="px-3 py-1.5 text-right font-medium">
+            Contacts made or stations heard
+          </th>
+          <th scope="col" className="py-1.5 pl-3 text-right font-medium">
+            Calls not heard
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {COMPARISON_LEVELS.map((level) => {
+          const counts = levels.find((item) => item.id === level.id) ?? { contact: 0, heard: 0, failed: 0 };
+          return (
+            <tr key={level.id} className="border-b border-border">
+              <th scope="row" className="py-1.5 pr-3 text-left font-medium text-ink">
+                {level.label}
+              </th>
+              <td className="px-3 py-1.5 text-right text-ink">{cell(counts.contact + counts.heard, made)}</td>
+              <td className="py-1.5 pl-3 text-right text-ink">{cell(counts.failed, failed)}</td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+}
+
+function Comparison({ result }: { result: ComparisonResult }) {
+  // Entries on bands where an antenna is run as an approximation are counted apart (older answers have none).
+  const rough = result.comparedApproximate ?? 0;
+  const modelled = result.compared - rough;
   return (
     <div className="mt-5">
       <p className="tabular text-small text-ink">
-        {formatNumber(result.compared)} of {plural(result.total, "entry", "entries")} could be compared with a prediction.
+        {formatNumber(result.compared)} of {plural(result.total, "entry", "entries")} could be compared with a prediction
+        {rough > 0 ? `, ${formatNumber(rough)} of them against approximate figures` : ""}.
         {result.compared === 0 ? " There is nothing to count." : ""}
       </p>
-      {result.compared > 0 ? (
+      {modelled > 0 ? (
         <>
-          <table className="tabular mt-3 w-full max-w-2xl text-small">
-            <caption className="mb-1 text-left text-ink-muted">
-              Where the entries fell, by the reliability the engine gave that path at that hour
-            </caption>
-            <thead>
-              <tr className="border-b border-border-strong text-left text-ink-muted">
-                <th scope="col" className="py-1.5 pr-3 font-medium">
-                  The engine's reliability
-                </th>
-                <th scope="col" className="px-3 py-1.5 text-right font-medium">
-                  Contacts made or stations heard
-                </th>
-                <th scope="col" className="py-1.5 pl-3 text-right font-medium">
-                  Calls not heard
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {COMPARISON_LEVELS.map((level) => {
-                const counts = result.levels.find((item) => item.id === level.id) ?? { contact: 0, heard: 0, failed: 0 };
-                return (
-                  <tr key={level.id} className="border-b border-border">
-                    <th scope="row" className="py-1.5 pr-3 text-left font-medium text-ink">
-                      {level.label}
-                    </th>
-                    <td className="px-3 py-1.5 text-right text-ink">{cell(counts.contact + counts.heard, made)}</td>
-                    <td className="py-1.5 pl-3 text-right text-ink">{cell(counts.failed, failed)}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <LevelsTable
+            levels={result.levels}
+            shares={modelled >= COMPARISON_MIN_FOR_SHARES}
+            caption={`Where the entries fell, by the reliability the engine gave that path at that hour${rough > 0 ? " (the approximate ones are below)" : ""}`}
+          />
           <p className="mt-2 max-w-[75ch] text-small text-ink-muted">
-            {shares
+            {modelled >= COMPARISON_MIN_FOR_SHARES
               ? "Each percentage is a share of its own column, and the count beside it is what it rests on."
               : `With fewer than ${COMPARISON_MIN_FOR_SHARES} compared, no percentages are given: a share of a handful says nothing either way.`}
           </p>
         </>
+      ) : null}
+      {rough > 0 ? (
+        <div data-approximate className="mt-5">
+          <h3 className="text-body font-semibold text-ink">≈ Compared with approximate figures</h3>
+          <p className="mt-0.5 max-w-[75ch] text-small text-ink-muted">
+            On these entries' frequencies an antenna you chose is a level wire longer than a half-wave, which the engine runs as its sloping
+            long wire, whose level is unchecked. Comparing what happened with an approximate model says less, so they are counted apart and
+            not mixed into the table above.
+          </p>
+          <LevelsTable
+            levels={result.approximateLevels ?? []}
+            shares={rough >= COMPARISON_MIN_FOR_SHARES}
+            caption="Where the approximate entries fell, by the engine's approximate reliability"
+          />
+        </div>
       ) : null}
       {result.excluded.length > 0 ? (
         <div className="mt-5">
@@ -414,6 +443,12 @@ function Comparison({ result }: { result: ComparisonResult }) {
                   <td className="px-3 py-1.5 text-ink">{modeById(row.mode).label}</td>
                   <td className="px-3 py-1.5 text-right text-ink">{Math.round(row.distanceKm)}</td>
                   <td className="px-3 py-1.5 text-right text-ink">
+                    {row.approximate ? (
+                      <>
+                        <span className="sr-only">approximately </span>
+                        <span aria-hidden>≈</span>
+                      </>
+                    ) : null}
                     {Math.round(row.reliability * 100)}% at {String(row.utcHour).padStart(2, "0")}:00, SSN {row.ssn}
                   </td>
                   <td className="py-1.5 pl-3 text-ink">{OUTCOME_WORDS[row.outcome]}</td>

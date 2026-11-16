@@ -1,14 +1,17 @@
 /**
  * End-fed wires of a stated length on the screens: the four that are offered, the
- * equipment form, a saved prediction opened again, and a band the wire is not modelled
- * on, which must never look like a band that does badly.
+ * equipment form, a saved prediction opened again, and the three states of a level wire
+ * on a band: a half-wave (VOACAP's dipole), longer (approximate figures, marked so) and
+ * shorter (not modelled, which must never look like a band that does badly).
  */
 import {
   ANTENNA_PRESETS,
   type AntennaProfile,
+  type AntennaRunState,
   type AntennaSpec,
   type CommunicationPlan,
   HF_BANDS,
+  pathRunOn,
   type PlanResult,
   type PredictionCell,
   type PredictionHour,
@@ -114,8 +117,14 @@ describe("the four wires", () => {
     server();
     shown(<Equipment />);
     const row = (await screen.findByText("End-fed half-wave, 10 m wire, horizontal")).closest("li")!;
-    expect(row.textContent).toContain("From 13.5 to 16.5 MHz it is run as VOACAP's horizontal dipole (type 23)");
-    expect(row.textContent).toContain("On other frequencies no figure is given");
+    expect(row.textContent).toContain(
+      "From 13.5 to 16.5 MHz, where it is about a half-wave, it is run as VOACAP's horizontal dipole (type 23)",
+    );
+    expect(row.textContent).toContain("Above 16.5 MHz, where it is longer, the figures are approximate");
+    expect(row.textContent).toContain("Below 13.5 MHz, where it is shorter, no figure is given");
+    // The 5 m wire is never longer than a half-wave below 30 MHz, and does not say it is.
+    const five = screen.getByText("End-fed half-wave, 5 m wire, horizontal").closest("li")!;
+    expect(five.textContent).not.toContain("approximate");
     expect(row.textContent).toContain("matching unit's loss is not modelled");
     const upright = screen.getByText("End-fed half-wave, 5 m wire, vertical").closest("li")!;
     expect(upright.textContent).toContain("a half-wave on the 10 m band");
@@ -149,8 +158,9 @@ describe("the four wires", () => {
     server();
     shown(<Planner />);
     // 40 m: the level wire has no model, the upright one is run as a wire a quarter-wave long.
-    const flat = (await screen.findByText(/^Not modelled: 10 m of wire is 0\.24 wavelengths at 7\.1 MHz, not a half-wave\./)).textContent!;
-    expect(flat).toContain("about a half-wave from 13.5 to 16.5 MHz");
+    const flat = (await screen.findByText(/^Not modelled: 10 m of wire is 0\.24 wavelengths at 7\.1 MHz, shorter than a half-wave\./))
+      .textContent!;
+    expect(flat).toContain("about a half-wave from 13.5 to 16.5 MHz, and run as an approximation above 16.5 MHz");
     expect(flat).toContain("matching unit's loss is not modelled");
     expect(screen.getByText(/shorter than a half-wave\. The figure is VOACAP's vertical monopole \(type 22\)/)).toBeTruthy();
     // On 20 m both are a half-wave and say so.
@@ -160,18 +170,27 @@ describe("the four wires", () => {
     ).toBeTruthy();
     expect(screen.getByText(/about a half-wave: run as VOACAP's vertical monopole \(type 22\) of that height/)).toBeTruthy();
     expect(screen.queryByText(/Not modelled/)).toBeNull();
+    // On 15 m the level wire is longer than a half-wave: approximate, and said so before anything is asked.
+    fireEvent.change(screen.getByLabelText("Frequency, MHz"), { target: { value: "21.22" } });
+    const longer = (await screen.findByText(/^Approximate: 10 m of wire is 0\.71 wavelengths at 21\.22 MHz, longer than a half-wave\./))
+      .textContent!;
+    expect(longer).toContain("VOACAP's sloping long wire (type 41) laid level");
+    expect(longer).toContain("reads about 1.3 dB below the dipole model at a half-wave");
   });
 
   it("are summed up in words wherever an antenna has no name", () => {
     expect(antennaSummary(flat10)).toBe(
-      "End-fed wire 10 m long, horizontal (VOACAP type 23 where it is a half-wave, no figure elsewhere), 6 m up, average ground",
+      "End-fed wire 10 m long, horizontal (VOACAP type 23 where it is a half-wave, approximate where longer, no figure where shorter), 6 m up, average ground",
     );
     expect(antennaSummary(upright10)).toBe("End-fed wire 10 m long, vertical (VOACAP type 22 of that height), average ground");
     expect(wireHint(flat10, "7.1")).toMatchObject({ notModelled: true });
-    expect(wireHint(flat10, "14.2")).toMatchObject({ notModelled: false });
+    expect(wireHint(flat10, "14.2")).toMatchObject({ notModelled: false, approximate: false });
+    expect(wireHint(flat10, "21.2")).toMatchObject({ notModelled: false, approximate: true });
     expect(wireHint(flat10, "")).toBeNull();
     expect(wireHint(dipole, "7.1")).toBeNull();
-    expect(wireBandsNote(flat10)).toContain("10 m of level wire is about a half-wave on 20 m. It is given figures there and nowhere else");
+    expect(wireBandsNote(flat10)).toBe(
+      "10 m of level wire is about a half-wave on 20 m, and given VOACAP's dipole there. On 17 m, 15 m, 12 m, 10 m it is longer, and its figures are approximate: VOACAP's sloping long wire, laid level, whose level is unchecked. On 80 m, 60 m, 40 m, 30 m it is shorter, and not modelled: no figure.",
+    );
     expect(wireBandsNote({ ...upright10, lengthM: 12 })).toContain("from 11.2 to 13.7 MHz, which is none of the amateur bands");
     expect(wireBandsNote(dipole)).toBeNull();
   });
@@ -193,7 +212,9 @@ describe("the equipment form", () => {
     await userEvent.type(within(dialog).getByLabelText("Name"), "Garden wire");
     await pick("Kind", "End-fed half-wave wire, horizontal");
     const length = within(dialog).getByLabelText("Length of the wire, m");
-    expect(dialog.textContent).toContain("About a half-wave from 13.5 to 16.5 MHz (20 m): figures are given there only.");
+    expect(dialog.textContent).toContain(
+      "About a half-wave from 13.5 to 16.5 MHz (20 m). Approximate above 16.5 MHz. No figure below 13.5 MHz.",
+    );
     expect(dialog.textContent).toContain("The matching unit's loss is not modelled: add it here.");
     await userEvent.clear(length);
     await userEvent.type(length, "20.2");
@@ -337,10 +358,23 @@ const blank = (mhz: number): PredictionCell => ({
   notModelled: true,
 });
 
-/** A result as the server gives one: figures where the antennas are modelled, blanks marked not modelled elsewhere. */
-function resultOf(request: PredictionRequest, modelled: (mhz: number) => boolean): PredictionResult {
+/**
+ * A result as the server gives one: figures where the antennas are modelled, figures
+ * marked approximate where they are run as an approximation, blanks marked not modelled
+ * elsewhere. By default each frequency is in the state the shared rule gives it.
+ */
+function resultOf(
+  request: PredictionRequest,
+  stateOf: (mhz: number) => AntennaRunState = (mhz) => pathRunOn(request.txAntenna, request.rxAntenna, mhz),
+): PredictionResult {
   const sweepMhz = Array.from({ length: 29 }, (_, index) => index + 2);
-  const at = (mhz: number, reliability: number) => (modelled(mhz) ? cell(mhz, reliability) : blank(mhz));
+  const modelled = (mhz: number) => stateOf(mhz) !== "not-modelled";
+  const at = (mhz: number, reliability: number): PredictionCell =>
+    stateOf(mhz) === "not-modelled"
+      ? blank(mhz)
+      : stateOf(mhz) === "approximate"
+        ? { ...cell(mhz, reliability), approximate: true }
+        : cell(mhz, reliability);
   const hours: PredictionHour[] = Array.from({ length: 24 }, (_, index) => ({
     utc: index + 1,
     localTime: index + 1,
@@ -408,19 +442,23 @@ function resultOf(request: PredictionRequest, modelled: (mhz: number) => boolean
   };
 }
 
-const half = (mhz: number) => mhz >= 13.5 && mhz <= 16.5;
+const halfOnly = (mhz: number): AntennaRunState => (mhz >= 13.5 && mhz <= 16.5 ? "modelled" : "not-modelled");
 
 describe("a prediction on a frequency the wire is not modelled on", () => {
   const request = requestWith({ txAntenna: flat10 });
-  const result = resultOf(request, half);
+  const result = resultOf(request);
 
   it("says there is no figure and why, and shows none of the figures a blank would otherwise fill", () => {
     server();
     shown(<Results result={result} hour={12} onHour={() => {}} />);
     const notice = screen.getByText("No figure for 7.10 MHz: an antenna is not modelled there").closest('[role="status"], [role="alert"]')!;
-    expect(notice.textContent).toContain("The transmitting antenna: 10 m of wire is 0.24 wavelengths at 7.1 MHz, not a half-wave.");
-    expect(notice.textContent).toContain("This wire is about a half-wave from 13.5 to 16.5 MHz.");
-    expect(notice.textContent).toContain("The bands below that have figures are 20 m.");
+    expect(notice.textContent).toContain(
+      "The transmitting antenna: 10 m of wire is 0.24 wavelengths at 7.1 MHz, shorter than a half-wave.",
+    );
+    expect(notice.textContent).toContain(
+      "This wire is about a half-wave from 13.5 to 16.5 MHz, and run as an approximation above 16.5 MHz.",
+    );
+    expect(notice.textContent).toContain("The bands below that have figures are 20 m, 17 m, 15 m, 12 m, 10 m.");
     // No reliability, ratio, signal or hop count for 7.1 MHz: a blank is not 0% and not "no path".
     expect(screen.queryByText("7.10 MHz at 12:00 UTC")).toBeNull();
     expect(screen.queryByText(/0% for SSB voice/)).toBeNull();
@@ -432,50 +470,78 @@ describe("a prediction on a frequency the wire is not modelled on", () => {
     expect(screen.getByText(/the path's MUF is 9\.50 MHz\. Nothing is said here about 7\.10 MHz/)).toBeTruthy();
   });
 
-  it("marks the bands with no figure in words, apart from the ones with a poor figure", () => {
+  it("shows the three states in the band table, each in words and marks as well as shade", () => {
     server();
     shown(<Results result={result} hour={12} onHour={() => {}} />);
     const ranked = screen.getByRole("list", { name: "Bands ranked by reliability at 12:00 UTC" });
     const rows = [...ranked.querySelectorAll("li")];
-    // The band with figures first; every band without one after it, saying so and showing no percentage.
+    // The half-wave band first, then the approximate ones, then every band without a figure, saying so with no percentage.
+    expect(rows).toHaveLength(9);
     expect(rows[0]!.textContent).toContain("20 m");
     expect(rows[0]!.textContent).toContain("60%");
     expect(rows[0]!.textContent).toContain("wire 0.47 λ");
-    expect(rows[0]!.querySelector("[data-not-modelled]")).toBeNull();
-    expect(rows).toHaveLength(9);
-    for (const row of rows.slice(1)) {
+    expect(rows[0]!.querySelector("[data-not-modelled], [data-approximate]")).toBeNull();
+    for (const row of rows.slice(1, 5)) {
+      expect(row.querySelector("[data-approximate]")).not.toBeNull();
+      expect(row.textContent).toContain("approximately ≈20%");
+      expect(row.textContent).toContain("Approximate.");
+    }
+    expect(rows.slice(1, 5).map((row) => row.textContent!.slice(0, 4))).toEqual(["17 m", "15 m", "12 m", "10 m"]);
+    for (const row of rows.slice(5)) {
       expect(row.querySelector("[data-not-modelled]")!.textContent).toBe("Not modelled");
       expect(row.textContent).not.toContain("%");
       expect(row.textContent).toMatch(/MHz, wire 0\.\d\d λ$/);
     }
-    // The day on each band: read out and tabled as not modelled, never as 0%.
+    // The day on each band: read out and tabled as approximate or not modelled, never a blank as 0%.
     const table = screen.getByRole("table", { name: "Reliability of SSB voice on each band by hour" });
     expect(table.querySelector("tbody tr")!.textContent).toBe(
-      `01:00${HF_BANDS.map((band) => (band.id === "20m" ? "60%" : "not modelled for this antenna")).join("")}`,
+      `01:00${HF_BANDS.map((band) => (band.id === "20m" ? "60%" : band.mhz > 16.5 ? "20% (approximate)" : "not modelled for this antenna")).join("")}`,
     );
     const grid = screen.getByRole("region", { name: /Reliability of SSB voice on each band by hour/ });
-    expect(grid.querySelectorAll("rect[data-not-modelled]")).toHaveLength(8);
-    // The arrow keys start from the band asked about, 40 m, and the row below it is 30 m.
+    expect(grid.querySelectorAll("rect[data-not-modelled]")).toHaveLength(4);
+    expect(grid.querySelectorAll("rect[data-approximate]")).toHaveLength(4);
+    expect(within(grid).getByText("15 m ≈")).toBeTruthy();
+    // The legend names all three: the shades, the approximate frame and the hatching.
+    const legends = screen.getAllByRole("list", { name: "What the shades mean" }).map((item) => item.textContent);
+    expect(
+      legends.some((text) => text!.includes("≈ in a dashed frame: approximate figures") && text!.includes("not modelled for this antenna")),
+    ).toBe(true);
+    // The arrow keys start from the band asked about, 40 m, and the row below it is 30 m; up from there is 17 m.
     fireEvent.keyDown(grid, { key: "ArrowDown" });
     expect(within(grid).getByText("12:00 UTC, 30 m (10.1 MHz): not modelled for this antenna")).toBeTruthy();
-    // And the wire's length on every band, in wavelengths.
+    fireEvent.keyDown(grid, { key: "ArrowDown" });
+    fireEvent.keyDown(grid, { key: "ArrowDown" });
+    expect(within(grid).getByText("12:00 UTC, 17 m (18.1 MHz): approximate, 20% of days")).toBeTruthy();
+    // And the wire's length on every band, in wavelengths, with how it was run.
     const lengths = screen.getByRole("list", { name: "The wire on each band" });
     expect(lengths.querySelectorAll("li")).toHaveLength(9);
-    expect(within(lengths).getByText("20 m").closest("li")!.textContent).toBe("20 m0.47 wavelengths, about a half-wave");
-    expect(within(lengths).getByText("40 m").closest("li")!.textContent).toBe(
-      "40 m0.24 wavelengths, not a half-wave; not modelled, no figure",
+    expect(within(lengths).getByText("20 m").closest("li")!.textContent).toBe(
+      "20 m0.47 wavelengths, about a half-wave. Half-wave: VOACAP's dipole",
     );
-    expect(screen.getByText(/No figure is given on 80 m, 60 m, 40 m, 30 m, 17 m, 15 m, 12 m, 10 m/)).toBeTruthy();
+    expect(within(lengths).getByText("15 m").closest("li")!.textContent).toBe(
+      "15 m0.71 wavelengths, longer than a half-wave. Approximate: VOACAP's sloping long wire, laid level; its level is unchecked and reads about 1.3 dB below the dipole model at a half-wave",
+    );
+    expect(within(lengths).getByText("40 m").closest("li")!.textContent).toBe(
+      "40 m0.24 wavelengths, shorter than a half-wave. Not modelled: no figure",
+    );
+    expect(screen.getByText(/No figure is given on 80 m, 60 m, 40 m, 30 m:/)).toBeTruthy();
+    expect(screen.getByText(/The figures on 17 m, 15 m, 12 m, 10 m are approximate\./)).toBeTruthy();
+    // Where the two models stand side by side, the step between them is said beside the bands, not in a footnote.
+    const join = screen.getByText("Two of VOACAP's models side by side").closest('[role="status"], [role="alert"]')!;
+    expect(join.textContent).toContain("The level wire is VOACAP's dipole on 20 m and an approximation on 17 m, 15 m, 12 m, 10 m.");
+    expect(join.textContent).toContain("0.7 to 1.0 dB below the dipole there and about 1.3 dB below it at a half-wave");
+    expect(within(lengths.parentElement!).getAllByText(/Neither is adjusted to meet the other/).length).toBeGreaterThan(0);
   });
 
   it("hatches the frequencies with no figure on the heat map and gives no LUF from part of a range", () => {
     server();
     // On 20 m, where the question itself has figures.
-    const twenty = resultOf({ ...request, frequencyMhz: 14.18 }, half);
+    const twenty = resultOf({ ...request, frequencyMhz: 14.18 }, halfOnly);
     shown(<Results result={twenty} hour={12} onHour={() => {}} />);
     const sweep = screen.getByRole("region", { name: /Reliability of SSB voice from 2 to 30 MHz by hour/ });
-    // 14, 15 and 16 MHz have figures; the other 26 whole megahertz do not.
-    expect(sweep.querySelectorAll("rect[data-not-modelled]")).toHaveLength(26);
+    // 14, 15 and 16 MHz have the dipole's figures; 17 to 30 approximate ones, framed; 2 to 13 none.
+    expect(sweep.querySelectorAll("rect[data-not-modelled]")).toHaveLength(12);
+    expect(sweep.querySelectorAll("rect[data-approximate]")).toHaveLength(14);
     expect(screen.getByText(/A hatched row is a frequency an antenna is not modelled on/)).toBeTruthy();
     expect(screen.getAllByText("not modelled for this antenna: no figure").length).toBeGreaterThan(0);
     expect(screen.getByText(/LUF not given: an antenna is modelled on only part of the range/)).toBeTruthy();
@@ -496,7 +562,7 @@ describe("a prediction on a frequency the wire is not modelled on", () => {
 describe("a prediction with an upright wire off its half-wave band", () => {
   it("has figures on every band and says how long the wire is on each", () => {
     server();
-    const result = resultOf(requestWith({ txAntenna: upright10 }), () => true);
+    const result = resultOf(requestWith({ txAntenna: upright10 }), () => "modelled");
     shown(<Results result={result} hour={12} onHour={() => {}} />);
     expect(screen.queryByText(/No figure for/)).toBeNull();
     expect(screen.getByText("The transmitting antenna on 7.10 MHz").closest("li")!.textContent).toContain(
@@ -512,7 +578,7 @@ describe("a prediction with an upright wire off its half-wave band", () => {
 
   it("shows nothing about wires for antennas that are not wires of a stated length", () => {
     server();
-    shown(<Results result={resultOf(requestWith(), () => true)} hour={12} onHour={() => {}} />);
+    shown(<Results result={resultOf(requestWith(), () => "modelled")} hour={12} onHour={() => {}} />);
     expect(screen.queryByRole("list", { name: "The wire on each band" })).toBeNull();
     expect(screen.queryByText(/wavelengths/)).toBeNull();
     expect(screen.getByText(/LUF 4\.00 MHz/)).toBeTruthy();

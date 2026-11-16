@@ -549,6 +549,9 @@ export const RUN_LABELS = {
  * standard PDF fonts, which have no "≈".
  */
 export const APPROXIMATE_MARK = "~";
+/** The key to the mark, said once under every printed or exported table that holds an approximate figure. */
+export const APPROXIMATE_KEY =
+  "~ before a figure is approximate: an antenna is a level wire longer than a half-wave on that band, run as VOACAP's sloping long wire laid level, whose level is unchecked and reads about 1.3 dB below the dipole model at a half-wave.";
 
 /**
  * Said wherever a level wire's figures stand side by side across bands: where the model

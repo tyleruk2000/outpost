@@ -108,6 +108,12 @@ function Legend({ result, quantity, utcHour }: { result: CoverageResult; quantit
   const cells = (count: number) => `${formatNumber(count)} ${count === 1 ? "cell" : "cells"}`;
   return (
     <div className="mt-3 text-small text-ink-muted">
+      {result.approximate ? (
+        // The map's every figure is approximate: said first in the legend, where the shades are read.
+        <p data-approximate className="mb-2 max-w-[75ch] rounded-control border border-dashed border-ink px-3 py-2 text-ink">
+          <strong className="font-semibold">≈ Approximate map.</strong> {result.approximate}
+        </p>
+      ) : null}
       <ul className="grid gap-x-6 gap-y-1 sm:grid-cols-2" aria-label="What the shades mean, and how many cells are in each at this hour">
         {[...classes.entries()].reverse().map(([index, item]) => (
           <li key={item.label} className="flex items-center gap-2">

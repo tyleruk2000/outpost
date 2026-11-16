@@ -72,6 +72,9 @@ export const percent = (share: number | null): string => (share === null ? "no f
 
 /** What stands in a chart for "the antenna is not modelled here": said in words wherever it is drawn. */
 export const NOT_MODELLED = "not modelled for this antenna";
+/** What stands in a chart for "the figure is approximate here": a sign beside the label, and these words wherever it is read out. */
+export const APPROXIMATE = "approximate";
+export const APPROXIMATE_SIGN = "≈";
 
 /** A swatch of the hatching that marks a cell with no figure because the antenna is not modelled there. */
 function HatchSwatch() {
@@ -83,7 +86,27 @@ function HatchSwatch() {
   );
 }
 
-export function ShareLegend({ what = "of days", notModelled = false }: { what?: string; notModelled?: boolean }) {
+/** A swatch of the dashed frame and sign that mark a row whose figures are approximate. */
+function ApproximateSwatch() {
+  return (
+    <span
+      aria-hidden
+      className="flex size-3 shrink-0 items-center justify-center rounded-[2px] border border-dashed border-ink text-[10px] leading-none text-ink"
+    >
+      {APPROXIMATE_SIGN}
+    </span>
+  );
+}
+
+export function ShareLegend({
+  what = "of days",
+  notModelled = false,
+  approximate = false,
+}: {
+  what?: string;
+  notModelled?: boolean;
+  approximate?: boolean;
+}) {
   return (
     <ul className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-small text-ink-muted" aria-label="What the shades mean">
       {[...STEPS].reverse().map((step) => (
@@ -96,6 +119,12 @@ export function ShareLegend({ what = "of days", notModelled = false }: { what?: 
         <span aria-hidden className="size-3 rounded-[2px]" style={{ background: EMPTY_FILL }} />
         under 10% {what}
       </li>
+      {approximate ? (
+        <li className="flex items-center gap-1.5">
+          <ApproximateSwatch />
+          {APPROXIMATE_SIGN} in a dashed frame: approximate figures (VOACAP's sloping long wire)
+        </li>
+      ) : null}
       {notModelled ? (
         <li className="flex items-center gap-1.5">
           <HatchSwatch />
@@ -119,6 +148,12 @@ export interface GridRow {
    * The row is hatched and read out as not modelled; its values are not looked at.
    */
   notModelled?: boolean;
+  /**
+   * The row's figures are approximate: an antenna is a level wire longer than a half-wave
+   * there. The row is shaded as any other, framed with a dashed line, its label carries
+   * "≈", and it is read out as approximate.
+   */
+  approximate?: boolean;
 }
 
 /**
@@ -154,6 +189,7 @@ export function HourGrid({
   const tableId = useId();
   const hatchId = useId();
   const anyNotModelled = rows.some((row) => row.notModelled);
+  const anyApproximate = rows.some((row) => row.approximate && !row.notModelled);
   const left = 46;
   const right = 6;
   const top = 6;
@@ -191,7 +227,7 @@ export function HourGrid({
   const read = at ? rows[at.row] : undefined;
   const readout =
     at && read
-      ? `${utcLabel(at.hour)} UTC, ${read.label}${read.detail ? ` (${read.detail})` : ""}: ${read.notModelled ? NOT_MODELLED : `${percent(read.values[at.hour - 1] ?? null)} ${what}`}${line ? `. ${line.describe(at.hour)}` : ""}`
+      ? `${utcLabel(at.hour)} UTC, ${read.label}${read.detail ? ` (${read.detail})` : ""}: ${read.notModelled ? NOT_MODELLED : `${read.approximate ? `${APPROXIMATE}, ` : ""}${percent(read.values[at.hour - 1] ?? null)} ${what}`}${line ? `. ${line.describe(at.hour)}` : ""}`
       : null;
   const points = line
     ? line.rowAt
@@ -242,7 +278,7 @@ export function HourGrid({
                   textAnchor="end"
                   className={cn(AXIS_TEXT, row.marked && "fill-ink font-semibold")}
                 >
-                  {row.label}
+                  {row.approximate && !row.notModelled ? `${row.label} ${APPROXIMATE_SIGN}` : row.label}
                 </text>
               ) : null}
               {row.notModelled ? (
@@ -257,17 +293,34 @@ export function HourGrid({
                   fill={`url(#${hatchId})`}
                 />
               ) : (
-                HOURS.map((h) => (
-                  <rect
-                    key={h}
-                    x={x(h) + 0.5}
-                    y={y(rowIndex) + 0.5}
-                    width={Math.max(1, cellWidth - 1)}
-                    height={rowHeight - 1}
-                    rx={1.5}
-                    style={{ fill: shareFill(row.values[h - 1] ?? null) }}
-                  />
-                ))
+                <>
+                  {HOURS.map((h) => (
+                    <rect
+                      key={h}
+                      x={x(h) + 0.5}
+                      y={y(rowIndex) + 0.5}
+                      width={Math.max(1, cellWidth - 1)}
+                      height={rowHeight - 1}
+                      rx={1.5}
+                      style={{ fill: shareFill(row.values[h - 1] ?? null) }}
+                    />
+                  ))}
+                  {row.approximate ? (
+                    // A dashed frame round the whole day: the shades are figures, and approximate ones.
+                    <rect
+                      data-approximate
+                      x={x(1) + 0.5}
+                      y={y(rowIndex) + 0.5}
+                      width={Math.max(1, cellWidth * 24 - 1)}
+                      height={rowHeight - 1}
+                      rx={1.5}
+                      fill="none"
+                      className="stroke-ink"
+                      strokeWidth={1.25}
+                      strokeDasharray="4 3"
+                    />
+                  ) : null}
+                </>
               )}
             </g>
           ))}
@@ -313,7 +366,7 @@ export function HourGrid({
           {readout ?? `Hours are UTC. ${utcLabel(hour)} is chosen${line ? `; the line is ${line.label}` : ""}.`}
         </p>
       </section>
-      <ShareLegend what={what} notModelled={anyNotModelled} />
+      <ShareLegend what={what} notModelled={anyNotModelled} approximate={anyApproximate} />
       <div id={tableId} className="sr-only">
         <table>
           <caption>{name}</caption>
@@ -332,7 +385,9 @@ export function HourGrid({
               <tr key={h}>
                 <th scope="row">{utcLabel(h)}</th>
                 {rows.map((row) => (
-                  <td key={row.label}>{row.notModelled ? NOT_MODELLED : percent(row.values[h - 1] ?? null)}</td>
+                  <td key={row.label}>
+                    {row.notModelled ? NOT_MODELLED : `${percent(row.values[h - 1] ?? null)}${row.approximate ? ` (${APPROXIMATE})` : ""}`}
+                  </td>
                 ))}
               </tr>
             ))}
@@ -615,6 +670,8 @@ export interface BarRow {
   marked?: boolean;
   /** The antenna is not modelled on this row: no bar and no figure, and the detail says why. */
   notModelled?: boolean;
+  /** The row's figure is approximate: the bar is striped and framed with a dashed line, and the figure carries "≈". */
+  approximate?: boolean;
 }
 
 /** Rows ranked by a share of days, as bars from a common left edge with the figure written beside each. */
@@ -633,6 +690,23 @@ export function ShareBars({ rows, name }: { rows: BarRow[]; name: string }) {
               <span className="h-3 flex-1 rounded-[2px] border border-dashed border-border-strong" aria-hidden />
               <span className="shrink-0">Not modelled</span>
             </span>
+          ) : row.approximate ? (
+            <span data-approximate className="flex items-center gap-2">
+              <span className="h-3 flex-1 rounded-[2px] border border-dashed border-ink bg-surface-strong" aria-hidden>
+                <span
+                  className="block h-full rounded-r-[3px] rounded-l-[1px]"
+                  style={{
+                    width: `${Math.round((row.share ?? 0) * 100)}%`,
+                    background: "repeating-linear-gradient(135deg, var(--chart-1) 0 3px, transparent 3px 5px)",
+                  }}
+                />
+              </span>
+              <span className="tabular w-12 shrink-0 text-right text-ink">
+                <span className="sr-only">approximately </span>
+                <span aria-hidden>{APPROXIMATE_SIGN}</span>
+                {row.share === null ? "–" : percent(row.share)}
+              </span>
+            </span>
           ) : (
             <span className="flex items-center gap-2">
               <span className="h-3 flex-1 rounded-[2px] bg-surface-strong" aria-hidden>
@@ -641,7 +715,7 @@ export function ShareBars({ rows, name }: { rows: BarRow[]; name: string }) {
                   style={{ width: `${Math.round((row.share ?? 0) * 100)}%`, background: "var(--chart-1)" }}
                 />
               </span>
-              <span className="tabular w-10 shrink-0 text-right text-ink">{row.share === null ? "–" : percent(row.share)}</span>
+              <span className="tabular w-12 shrink-0 text-right text-ink">{row.share === null ? "–" : percent(row.share)}</span>
             </span>
           )}
           <span className="tabular col-span-2 truncate text-ink-muted sm:col-span-1">{row.detail}</span>

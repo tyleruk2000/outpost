@@ -162,7 +162,7 @@ export function coverageDocument(
   ];
 
   const blocks: Block[] = [
-    { kind: "title", text: `HF coverage: ${request.tx.name}, ${f}` },
+    { kind: "title", text: `HF coverage: ${request.tx.name}, ${f}${result.approximate ? ", approximate" : ""}` },
     {
       kind: "para",
       text: `${QUANTITY_LABEL[quantity]} at ${utcLabel(utcHour)} UTC, for ${longDate.format(dateOf(request.date))}. The model works by month, so this is a map for any day of ${monthYear.format(dateOf(request.date))}. Transmitter: ${request.tx.name} (${request.tx.lat}, ${request.tx.lon}), ${request.powerWatts} W, ${mode.label}${
@@ -190,6 +190,8 @@ export function coverageDocument(
     });
   }
 
+  // An approximate map says so with its legend, where the shades are read.
+  if (result.approximate) blocks.push({ kind: "para", text: `Approximate map: every figure on it is. ${result.approximate}` });
   blocks.push({
     kind: "drawing",
     height: legend.length * 12 + 2,

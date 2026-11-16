@@ -6,6 +6,7 @@
 import {
   type CommunicationPlan,
   HF_BANDS,
+  MODEL_JOIN_NOTE,
   hourRanges,
   type ModeId,
   modeById,
@@ -23,6 +24,7 @@ import {
   planTwoWay,
   toMaidenhead,
   utcLabel,
+  wireOn,
 } from "@outpost/shared";
 import { FileDown, Unlink } from "lucide-react";
 import { useEffect, useId, useMemo, useState } from "react";
@@ -37,19 +39,19 @@ import { PdfButtons } from "@/features/library/made/pdf-actions";
 import { pdfFileName } from "@/features/maps/print/pdf";
 import { errorMessage } from "@/lib/api";
 import { formatDateTime } from "@/lib/utils";
-import { HourGrid } from "../charts";
+import { APPROXIMATE_SIGN, HourGrid } from "../charts";
 import { useEngines, usePlaces, useProfiles } from "../data";
 import { EngineNotReady } from "../engine-data";
 import { BasisNotice } from "../results";
 import { inputOf, useKeptMatrix, useLinkSearch, usePlan, useRemovePlan, useSavePlan, useWorkOut } from "./data";
-import { choiceWords, pairNotModelled, planFigure, planMarkdown, saveFile } from "./document";
+import { bandApproximate, choiceWords, pairApproximate, pairNotModelled, planFigure, planMarkdown, saveFile } from "./document";
 import { PlanPdfStatus, usePlanPdf } from "./plan-export";
 import { StationDialog } from "./station-dialog";
 
 const HOURS = Array.from({ length: 24 }, (_, index) => ({ value: String(index + 1), label: `${utcLabel(index + 1)} UTC` }));
 
 /** One pair: what the rule recommends, the day on every band of the plan, and one hour read out each way. */
-function Pair({ pair, plan, result }: { pair: PlanPair; plan: CommunicationPlan; result: PlanResult }) {
+export function Pair({ pair, plan, result }: { pair: PlanPair; plan: CommunicationPlan; result: PlanResult }) {
   const hours = planHours(plan.fromUtc, plan.toUtc);
   const byRatio = result.mode.requiredSnrDbHz === null;
   const pick = useMemo(() => planRecommendation(pair, hours, byRatio), [pair, hours, byRatio]);
@@ -70,6 +72,21 @@ function Pair({ pair, plan, result }: { pair: PlanPair; plan: CommunicationPlan;
   const share = (value: number | null, bandId: string) => (value === null ? blank(bandId) : `${Math.round(value * 100)}%`);
   const ratio = (value: number | null, bandId: string) => (value === null ? blank(bandId) : `${value.toFixed(1)} dB`);
   const notModelledBands = pair.bands.filter((band) => without.get(band.bandId));
+  // A band whose figures are approximate: shown with the others, marked, and said to be that.
+  const rough = new Map(pair.bands.map((band) => [band.bandId, bandApproximate(plan, pair, band)]));
+  const roughBands = pair.bands.filter((band) => rough.get(band.bandId));
+  const mixed =
+    roughBands.length > 0 &&
+    pair.bands.some(
+      (band) =>
+        !rough.get(band.bandId) &&
+        [pair.a, pair.b].some((id) => {
+          const station = plan.stations.find((item) => item.id === id);
+          return station ? wireOn(station.antenna, band.mhz)?.state === "half-wave" : false;
+        }),
+    );
+  const mark = (bandId: string, text: string) =>
+    rough.get(bandId) && !text.startsWith("no ") && !text.startsWith("not ") ? `${APPROXIMATE_SIGN}${text}` : text;
   return (
     <li className="py-5">
       <h3 className="text-lead text-ink">{title}</h3>
@@ -85,6 +102,19 @@ function Pair({ pair, plan, result }: { pair: PlanPair; plan: CommunicationPlan;
           {pick.alternate ? choiceWords(pick.alternate, byRatio) : "None. No second band of the plan qualifies."}
         </dd>
       </dl>
+      {roughBands.length > 0 ? (
+        <p data-approximate className="mt-2 max-w-[75ch] text-small text-ink">
+          <strong className="font-semibold">Approximate on {roughBands.map((band) => planBandLabel(band.bandId)).join(", ")}.</strong>{" "}
+          {roughBands
+            .map(
+              (band) =>
+                `${planBandLabel(band.bandId)}: ${pairApproximate(plan, pair, band.mhz) ?? "an antenna is run as an approximation"}`,
+            )
+            .join("; ")}
+          . These figures are VOACAP's sloping long wire, whose level is unchecked; they may be recommended, and say so.
+          {mixed ? ` ${MODEL_JOIN_NOTE}` : ""}
+        </p>
+      ) : null}
       {notModelledBands.length > 0 ? (
         <p className="mt-2 max-w-[75ch] text-small text-ink-muted">
           No figure on {notModelledBands.map((band) => planBandLabel(band.bandId)).join(", ")}, so{" "}
@@ -116,6 +146,7 @@ function Pair({ pair, plan, result }: { pair: PlanPair; plan: CommunicationPlan;
                 <tr key={band.bandId} className="border-b border-border">
                   <th scope="row" className="whitespace-nowrap py-1 pr-3 text-left font-medium text-ink">
                     {planBandLabel(band.bandId)}
+                    {rough.get(band.bandId) ? ` ${APPROXIMATE_SIGN}` : ""}
                   </th>
                   {without.get(band.bandId) ? (
                     <td colSpan={hours.length} className="px-1.5 py-1 text-left text-ink-muted">
@@ -126,7 +157,7 @@ function Pair({ pair, plan, result }: { pair: PlanPair; plan: CommunicationPlan;
                       const value = planTwoWay(band, item, true);
                       return (
                         <td key={item} className="px-1.5 py-1 text-right text-ink">
-                          {value === null ? "–" : Math.round(value)}
+                          {value === null ? "–" : mark(band.bandId, String(Math.round(value)))}
                         </td>
                       );
                     })
@@ -149,6 +180,7 @@ function Pair({ pair, plan, result }: { pair: PlanPair; plan: CommunicationPlan;
               values: Array.from({ length: 24 }, (_, index) => planTwoWay(band, index + 1, false)),
               marked: band.bandId === pick.primary?.bandId,
               notModelled: Boolean(without.get(band.bandId)),
+              approximate: rough.get(band.bandId),
             }))}
           />
           <p className="mt-1 text-small text-ink-muted">
@@ -178,10 +210,15 @@ function Pair({ pair, plan, result }: { pair: PlanPair; plan: CommunicationPlan;
                 <tr key={band.bandId} className="border-b border-border">
                   <th scope="row" className="whitespace-nowrap py-1 pr-3 text-left font-medium text-ink">
                     {planBandLabel(band.bandId)}
+                    {rough.get(band.bandId) ? ` ${APPROXIMATE_SIGN}` : ""}
                   </th>
-                  <td className="px-2 py-1 text-right text-ink">{share(band.forward.reliability[hour - 1] ?? null, band.bandId)}</td>
-                  <td className="px-2 py-1 text-right text-ink">{share(band.back.reliability[hour - 1] ?? null, band.bandId)}</td>
-                  <td className="py-1 pl-2 text-right text-ink">{share(planTwoWay(band, hour, false), band.bandId)}</td>
+                  <td className="px-2 py-1 text-right text-ink">
+                    {mark(band.bandId, share(band.forward.reliability[hour - 1] ?? null, band.bandId))}
+                  </td>
+                  <td className="px-2 py-1 text-right text-ink">
+                    {mark(band.bandId, share(band.back.reliability[hour - 1] ?? null, band.bandId))}
+                  </td>
+                  <td className="py-1 pl-2 text-right text-ink">{mark(band.bandId, share(planTwoWay(band, hour, false), band.bandId))}</td>
                 </tr>
               ))}
             </tbody>
@@ -194,7 +231,7 @@ function Pair({ pair, plan, result }: { pair: PlanPair; plan: CommunicationPlan;
             .map((band) =>
               without.get(band.bandId)
                 ? `${planBandLabel(band.bandId)}: not modelled`
-                : `${planBandLabel(band.bandId)} at ${utcLabel(hour)}: ${ratio(band.forward.snrDbHz[hour - 1] ?? null, band.bandId)} out, ${ratio(band.back.snrDbHz[hour - 1] ?? null, band.bandId)} back`,
+                : `${planBandLabel(band.bandId)}${rough.get(band.bandId) ? " (approximate)" : ""} at ${utcLabel(hour)}: ${ratio(band.forward.snrDbHz[hour - 1] ?? null, band.bandId)} out, ${ratio(band.back.snrDbHz[hour - 1] ?? null, band.bandId)} back`,
             )
             .join("; ")}
           .

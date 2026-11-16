@@ -8,8 +8,11 @@
  * `@outpost/shared` applied to the engine's figures, and the rule is printed with them.
  */
 import {
+  APPROXIMATE_KEY,
+  APPROXIMATE_MARK,
   type CommunicationPlan,
   halfWaveRangeMhz,
+  MODEL_JOIN_NOTE,
   hourRanges,
   NOISE_ENVIRONMENTS,
   type PlanChoice,
@@ -68,11 +71,39 @@ export function pairNotModelled(plan: Pick<CommunicationPlan, "stations">, pair:
   return wires.length === 0 ? null : `${wires.join(" and ")} ${wires.length > 1 ? "are" : "is"} not modelled on this band`;
 }
 
+/**
+ * Why a pair's figures on a band are approximate: one of its stations has a level wire
+ * longer than a half-wave there, run as VOACAP's sloping long wire. Null when neither is.
+ */
+export function pairApproximate(plan: Pick<CommunicationPlan, "stations">, pair: Pick<PlanPair, "a" | "b">, mhz: number): string | null {
+  const wires = [pair.a, pair.b]
+    .map((id) => plan.stations.find((station) => station.id === id))
+    .filter((station) => station !== undefined && wireOn(station.antenna, mhz)?.state === "approximate")
+    .map((station) => `${station!.name}'s ${station!.antenna.lengthM} m level wire`);
+  return wires.length === 0
+    ? null
+    : `${wires.join(" and ")} ${wires.length > 1 ? "are" : "is"} longer than a half-wave here, run as VOACAP's sloping long wire laid level`;
+}
+
+/** Whether a pair's figures on a band are approximate: as the matrix marks them, or, for a matrix kept before it did, as the stations' wires say. */
+export const bandApproximate = (plan: Pick<CommunicationPlan, "stations">, pair: PlanPair, band: PlanPair["bands"][number]): boolean =>
+  band.approximate === true || pairApproximate(plan, pair, band.mhz) !== null;
+
+/** A two-way figure as the matrix prints it: "~62" where it is approximate. */
+const matrixFigure = (text: string, approximate: boolean) => (approximate && text !== "-" ? `${APPROXIMATE_MARK}${text}` : text);
+
 /** One recommendation in a sentence. */
 export function choiceWords(choice: PlanChoice, byRatio: boolean): string {
   const what = byRatio ? "two-way signal-to-noise ratio" : "two-way reliability";
-  return `${planBandLabel(choice.bandId)} (${choice.mhz} MHz), ${hourRanges(choice.hours)} UTC. Its ${what} reaches ${planFigure(choice.best, byRatio)}${byRatio ? " in 1 Hz" : " of days"} at ${utcLabel(choice.bestHour)} and averages ${planFigure(choice.mean, byRatio)} over the window.${choice.belowHalf ? " It is below half the days at every hour of the window." : ""}`;
+  const approximate = choice.approximate === true;
+  return `${planBandLabel(choice.bandId)} (${choice.mhz} MHz)${approximate ? ", approximate" : ""}, ${hourRanges(choice.hours)} UTC. Its ${what} reaches ${planFigure(choice.best, byRatio)}${byRatio ? " in 1 Hz" : " of days"} at ${utcLabel(choice.bestHour)} and averages ${planFigure(choice.mean, byRatio)} over the window.${choice.belowHalf ? " It is below half the days at every hour of the window." : ""}${approximate ? " These figures are approximate: a station's level wire is longer than a half-wave on this band, run as VOACAP's sloping long wire, whose level is unchecked." : ""}`;
 }
+
+/** A recommendation in the summary table: "15 m, approximate, up to ~62%". */
+const choiceCell = (choice: PlanChoice, byRatio: boolean) =>
+  choice.approximate
+    ? `${planBandLabel(choice.bandId)}, approximate, up to ${APPROXIMATE_MARK}${planFigure(choice.best, byRatio)}`
+    : `${planBandLabel(choice.bandId)}, up to ${planFigure(choice.best, byRatio)}`;
 
 /** The plan as blocks of text, in reading order. */
 export function planDocument(plan: CommunicationPlan, result: PlanResult, written: Date): Block[] {
@@ -113,15 +144,18 @@ export function planDocument(plan: CommunicationPlan, result: PlanResult, writte
     rows: chosen.map(({ pair, pick }) => [
       `${name(pair.a)} and ${name(pair.b)}`,
       pair.problem ? "" : String(Math.round(pair.distanceKm)),
-      pick.primary ? `${planBandLabel(pick.primary.bandId)}, up to ${planFigure(pick.primary.best, byRatio)}` : "None",
-      pick.alternate ? `${planBandLabel(pick.alternate.bandId)}, up to ${planFigure(pick.alternate.best, byRatio)}` : "None",
+      pick.primary ? choiceCell(pick.primary, byRatio) : "None",
+      pick.alternate ? choiceCell(pick.alternate, byRatio) : "None",
     ]),
   });
+  const anyApproximate = chosen.some(({ pick }) => pick.primary?.approximate || pick.alternate?.approximate);
   blocks.push({
     kind: "para",
-    text: byRatio
-      ? "The figure is the lower of the two directions' median signal-to-noise ratios in a 1 Hz bandwidth, at the band's best hour in the window."
-      : "The figure is the two-way reliability at the band's best hour in the window: the share of days on which the weaker of the two directions is predicted to reach what the mode needs.",
+    text: `${
+      byRatio
+        ? "The figure is the lower of the two directions' median signal-to-noise ratios in a 1 Hz bandwidth, at the band's best hour in the window."
+        : "The figure is the two-way reliability at the band's best hour in the window: the share of days on which the weaker of the two directions is predicted to reach what the mode needs."
+    }${anyApproximate ? ` A recommendation marked approximate may be followed, knowing that. ${APPROXIMATE_KEY}` : ""}`,
   });
 
   for (const { pair, pick } of chosen) {
@@ -150,7 +184,10 @@ export function planDocument(plan: CommunicationPlan, result: PlanResult, writte
         ...hours.map((hour) => {
           if (pairNotModelled(plan, pair, band.mhz)) return "n/m";
           const value = planTwoWay(band, hour, byRatio);
-          return value === null ? "-" : byRatio ? String(Math.round(value)) : String(Math.round(value * 100));
+          return matrixFigure(
+            value === null ? "-" : byRatio ? String(Math.round(value)) : String(Math.round(value * 100)),
+            bandApproximate(plan, pair, band),
+          );
         }),
       ]),
     });
@@ -170,6 +207,22 @@ export function planDocument(plan: CommunicationPlan, result: PlanResult, writte
         kind: "para",
         text: `n/m is not modelled: the engine has no model of that antenna on that band, so there is no figure and the band cannot be recommended. ${without.join(" ")}`,
       });
+    // A band whose figures are approximate is said to be that, band by band, beside the bands that are not modelled.
+    const rough = pair.bands.flatMap((band) => {
+      if (!bandApproximate(plan, pair, band)) return [];
+      return [`${planBandLabel(band.bandId)}: ${pairApproximate(plan, pair, band.mhz) ?? "an antenna is run as an approximation"}.`];
+    });
+    if (rough.length > 0) {
+      // Where a level wire is the dipole on one band of the pair and the long wire on another, the step between them is said here.
+      const mixed = pair.bands.some(
+        (band) =>
+          !bandApproximate(plan, pair, band) &&
+          [pair.a, pair.b].some(
+            (id) => wireOn(plan.stations.find((station) => station.id === id)!.antenna, band.mhz)?.state === "half-wave",
+          ),
+      );
+      blocks.push({ kind: "para", text: `${APPROXIMATE_KEY} ${rough.join(" ")}${mixed ? ` ${MODEL_JOIN_NOTE}` : ""}` });
+    }
   }
 
   blocks.push({ kind: "heading", text: "How the bands were chosen" }, { kind: "list", items: planRule(byRatio) });

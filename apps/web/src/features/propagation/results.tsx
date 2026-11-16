@@ -6,15 +6,18 @@
  */
 import {
   type AntennaSpec,
-  antennaModelledOn,
+  approximateOn,
   COMPARISONS,
   type CompareWhat,
   dbwToDbm,
   HF_BANDS,
+  MODEL_JOIN_NOTE,
   notModelledOn,
+  pathRunOn,
   type PredictionBasis,
   type PredictionHour,
   type PredictionResult,
+  RUN_LABELS,
   rankBands,
   secantLawMhz,
   sMeter,
@@ -30,7 +33,7 @@ import { Notice, Rows, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Select, Skeleton } from "@/components/ui/misc";
 import { errorMessage } from "@/lib/api";
-import { ChartFrame, HourGrid, HourLines, NOT_MODELLED, percent, ShareBars } from "./charts";
+import { APPROXIMATE_SIGN, ChartFrame, HourGrid, HourLines, NOT_MODELLED, percent, ShareBars } from "./charts";
 import { useCompare, useListing } from "./data";
 import { ComparisonExport } from "./prediction-export";
 
@@ -101,11 +104,27 @@ export function wiresOn(
   });
 }
 
-const WIRE_STATE = {
-  "half-wave": "about a half-wave",
-  "other-length": "not a half-wave; run as a wire of this length",
-  "not-modelled": "not a half-wave; not modelled, no figure",
-} as const;
+/** What a wire is on a band, in the list of bands: the length, and how it was run. */
+function wireState(spec: AntennaSpec, wire: WireOnFrequency): string {
+  if (spec.kind === "end-fed-horizontal") {
+    if (wire.state === "half-wave") return `about a half-wave. ${RUN_LABELS.halfWave}`;
+    if (wire.state === "approximate") return `longer than a half-wave. ${RUN_LABELS.approximate}`;
+    return `shorter than a half-wave. ${RUN_LABELS.notModelled}: no figure`;
+  }
+  return wire.state === "half-wave" ? "about a half-wave" : "not a half-wave; run as a wire of this length";
+}
+
+/**
+ * Whether a level wire's bands, side by side, mix the two models: some run as VOACAP's
+ * dipole and some as its sloping long wire. Where they do, the step between them is said
+ * beside the bands, not in a footnote.
+ */
+export function mixesModels(request: PredictionResult["request"]): boolean {
+  const states = HF_BANDS.flatMap((band) =>
+    [request.txAntenna, request.rxAntenna].map((spec) => (spec.kind === "end-fed-horizontal" ? wireOn(spec, band.mhz)?.state : undefined)),
+  );
+  return states.includes("half-wave") && states.includes("approximate");
+}
 
 /** Runs of consecutive hours in which the share is at or above a level, as "08:00 to 16:00". */
 export function windows(hours: PredictionHour[], level: number): string[] {
@@ -132,6 +151,12 @@ function Reading({ result, hour }: { result: PredictionResult; hour: PredictionH
   const good = windows(result.hours, 0.5);
   return (
     <div className="max-w-[70ch] space-y-2 text-body text-ink">
+      {cell.approximate ? (
+        <p data-approximate>
+          <strong className="font-semibold">Approximate figures for {f}.</strong> An antenna is a level wire longer than a half-wave here,
+          run as VOACAP's sloping long wire laid level, whose level is unchecked: read every figure below as approximate.
+        </p>
+      ) : null}
       {cell.path === null ? (
         <p>
           At {utcLabel(hour.utc)} UTC the engine finds no way for {f} to reach the receiver.
@@ -161,7 +186,8 @@ function Reading({ result, hour }: { result: PredictionResult; hour: PredictionH
       ) : null}
       {!noMode && better ? (
         <p>
-          At this hour {better.band.label} ({mhz(better.band.mhz)}) does better: {percent(better.cell.reliability)}.
+          At this hour {better.band.label} ({mhz(better.band.mhz)}) does better: {percent(better.cell.reliability)}
+          {better.cell.approximate ? ", an approximate figure" : ""}.
         </p>
       ) : null}
       {!noMode ? (
@@ -209,8 +235,9 @@ function Compare({ result, hour, onHour }: { result: PredictionResult; hour: num
             values: series.reliability,
             detail: series.notModelled
               ? `no figure on ${mhz(result.request.frequencyMhz)}`
-              : `midday foF2 ${series.foF2[11]!.toFixed(1)} MHz`,
+              : `${series.approximate ? "approximate, " : ""}midday foF2 ${series.foF2[11]!.toFixed(1)} MHz`,
             notModelled: series.notModelled,
+            approximate: series.approximate,
           }))}
         />
       ) : null}
@@ -225,12 +252,21 @@ function Listing({ result }: { result: PredictionResult }) {
   const leftOff = [request.frequencyMhz, ...HF_BANDS.map((band) => band.mhz)].some(
     (value) => notModelledOn(request.txAntenna, request.rxAntenna, value) !== null,
   );
+  const ownPages = [request.frequencyMhz, ...HF_BANDS.map((band) => band.mhz)].some(
+    (value) => pathRunOn(request.txAntenna, request.rxAntenna, value) === "approximate",
+  );
   return (
     <div className="mt-3">
       {listing.data && leftOff ? (
         <p className="mb-2 max-w-[75ch] text-small text-ink-muted">
           The frequencies an antenna is not modelled on are left off this page: the page has no way to say that a column is not this
           antenna.
+        </p>
+      ) : null}
+      {listing.data && ownPages ? (
+        <p className="mb-2 max-w-[75ch] text-small text-ink-muted">
+          Each frequency on which a level wire is run as the sloping long wire has a file of its own, so it is a page of its own, headed by
+          Outpost as approximate.
         </p>
       ) : null}
       {listing.data ? (
@@ -263,6 +299,8 @@ export function Results({ result, hour, onHour }: { result: PredictionResult; ho
   const wires = wiresOn(request, request.frequencyMhz);
   const hasWire = wires.length > 0;
   const askedNotModelled = cell.notModelled === true;
+  const askedApproximate = cell.approximate === true;
+  const approx = (text: string) => (askedApproximate ? `${text} (approximate)` : text);
   const bandsWithout = HF_BANDS.filter((_band, index) => at.bands[index]?.notModelled);
   const bandsWith = HF_BANDS.filter((_band, index) => !at.bands[index]?.notModelled);
   /** "0.47 wavelengths": the wire's length on a band, or both wires' when each end has one. */
@@ -280,11 +318,14 @@ export function Results({ result, hour, onHour }: { result: PredictionResult; ho
         values: result.hours.map((h) => (required === null ? null : h.sweepReliability[index]!)),
         marked: value === asked,
         mhz: value,
-        notModelled: !(antennaModelledOn(txAntenna, value) && antennaModelledOn(rxAntenna, value)),
+        notModelled: pathRunOn(txAntenna, rxAntenna, value) === "not-modelled",
+        approximate: pathRunOn(txAntenna, rxAntenna, value) === "approximate",
       }))
       .reverse();
   }, [result, required]);
   const sweepPartly = sweepRows.some((row) => row.notModelled);
+  const sweepApproximate = sweepRows.some((row) => row.approximate);
+  const bandsApproximate = HF_BANDS.filter((_band, index) => at.bands[index]?.approximate);
   const top = result.sweepMhz[result.sweepMhz.length - 1]!;
   const geometry = steepPathGeometry(
     result.path.distanceKm,
@@ -303,6 +344,12 @@ export function Results({ result, hour, onHour }: { result: PredictionResult; ho
           {bandsWith.length > 0
             ? `The bands below that have figures are ${bandsWith.map((band) => band.label).join(", ")}. Choose one of them, or another antenna, to see a day on this path.`
             : "None of the amateur bands has figures with this antenna. Choose another antenna, or ask about a frequency the wire is a half-wave on."}
+        </Notice>
+      ) : null}
+      {askedApproximate ? (
+        <Notice tone="warning" icon={<TriangleAlert />} title={`Approximate figures for ${f}`} className="mt-4">
+          {approximateOn(request.txAntenna, request.rxAntenna, request.frequencyMhz)} Neither this model nor the dipole has been checked
+          against a real antenna here; the figures are the engine's, labelled approximate wherever they are shown.
         </Notice>
       ) : null}
 
@@ -327,7 +374,7 @@ export function Results({ result, hour, onHour }: { result: PredictionResult; ho
               ? "No reliability without a figure for the mode"
               : `Share of days ${mode.label} gets through, at every frequency and hour`
           }
-          reading={`Each cell is one whole megahertz at one hour UTC. The line is the MUF: above it the path is open on fewer than half the days. ${f} is the row in bold.${sweepPartly ? " A hatched row is a frequency an antenna is not modelled on: it has no figure, which is not the same as a poor one." : ""}`}
+          reading={`Each cell is one whole megahertz at one hour UTC. The line is the MUF: above it the path is open on fewer than half the days. ${f} is the row in bold.${sweepApproximate ? ` A row marked ${APPROXIMATE_SIGN} in a dashed frame has approximate figures: an antenna is a level wire longer than a half-wave there.` : ""}${sweepPartly ? " A hatched row is a frequency an antenna is not modelled on: it has no figure, which is not the same as a poor one." : ""}`}
         >
           <HourGrid
             name={`Reliability of ${mode.label} from 2 to 30 MHz by hour`}
@@ -352,7 +399,7 @@ export function Results({ result, hour, onHour }: { result: PredictionResult; ho
               term="Reliability"
               note="The share of the month's days on which the signal-to-noise ratio reaches what the mode needs. Not the chance of completing a contact."
             >
-              {required === null ? "No figure: the mode has no requirement set" : `${percent(cell.reliability)} for ${mode.label}`}
+              {required === null ? "No figure: the mode has no requirement set" : approx(`${percent(cell.reliability)} for ${mode.label}`)}
             </Fact>
             <Fact
               term="Signal-to-noise ratio"
@@ -360,6 +407,7 @@ export function Results({ result, hour, onHour }: { result: PredictionResult; ho
             >
               {db(cell.snrDbHz)} in 1 Hz, which is {db(snrInBandwidth(cell.snrDbHz, 2500))} in 2500 Hz
               {required === null ? "" : `: a margin of ${(cell.snrDbHz - required).toFixed(0)} dB on the median day`}
+              {askedApproximate ? " (approximate)" : ""}
             </Fact>
             <Fact term="Signal at the receiver" note="The S-meter figure follows the convention that S9 is −73 dBm; real meters seldom do.">
               {dbwToDbm(cell.signalDbw).toFixed(0)} dBm ({sMeter(cell.signalDbw)}), a field of {cell.fieldDbuV.toFixed(0)} dB above 1 µV/m
@@ -382,7 +430,7 @@ export function Results({ result, hour, onHour }: { result: PredictionResult; ho
                   : mhz(at.lufMhz)}
             </Fact>
             <Fact term="Antenna gain at that angle">
-              {cell.txGainDbi.toFixed(1)} dBi transmitting, {cell.rxGainDbi.toFixed(1)} dBi receiving
+              {approx(`${cell.txGainDbi.toFixed(1)} dBi transmitting, ${cell.rxGainDbi.toFixed(1)} dBi receiving`)}
             </Fact>
             {wires.map(({ whose, wire }) => (
               <Fact
@@ -485,6 +533,15 @@ export function Results({ result, hour, onHour }: { result: PredictionResult; ho
             : `${mode.label} on one frequency near the middle of each amateur band. Your licence decides which you may use.`
         }
       >
+        {mixesModels(request) && required !== null ? (
+          <Notice tone="info" icon={<Info />} title="Two of VOACAP's models side by side" className="mb-4">
+            {`The level wire is VOACAP's dipole on ${HF_BANDS.filter(
+              (_band, index) => !at.bands[index]?.approximate && !at.bands[index]?.notModelled,
+            )
+              .map((band) => band.label)
+              .join(", ")} and an approximation on ${bandsApproximate.map((band) => band.label).join(", ")}. ${MODEL_JOIN_NOTE}`}
+          </Notice>
+        ) : null}
         {required === null ? (
           <Notice>Give the signal-to-noise ratio your mode needs to compare the bands.</Notice>
         ) : (
@@ -497,9 +554,10 @@ export function Results({ result, hour, onHour }: { result: PredictionResult; ho
                   share: c.reliability,
                   detail: c.notModelled
                     ? `${mhz(band.mhz)}, wire ${wireLengths(band.mhz)} λ`
-                    : `${mhz(band.mhz)}, ${c.path ?? "no path"}, ${db(c.snrDbHz)}${hasWire ? `, wire ${wireLengths(band.mhz)} λ` : ""}`,
+                    : `${c.approximate ? "Approximate. " : ""}${mhz(band.mhz)}, ${c.path ?? "no path"}, ${db(c.snrDbHz)}${hasWire ? `, wire ${wireLengths(band.mhz)} λ` : ""}`,
                   marked: band.mhz === result.request.frequencyMhz,
                   notModelled: c.notModelled,
+                  approximate: c.approximate,
                 }))}
               />
             </ChartFrame>
@@ -515,6 +573,7 @@ export function Results({ result, hour, onHour }: { result: PredictionResult; ho
                   values: result.hours.map((h) => h.bands[index]!.reliability),
                   marked: band.mhz === result.request.frequencyMhz,
                   notModelled: at.bands[index]!.notModelled,
+                  approximate: at.bands[index]!.approximate,
                 }))}
               />
             </ChartFrame>
@@ -524,10 +583,14 @@ export function Results({ result, hour, onHour }: { result: PredictionResult; ho
           <div className="mt-6">
             <h3 className="text-body font-semibold text-ink">The wire on each band</h3>
             <p className="mt-0.5 max-w-[75ch] text-small text-ink-muted">
+              {bandsApproximate.length > 0
+                ? `The figures on ${bandsApproximate.map((band) => band.label).join(", ")} are approximate. `
+                : ""}
               {bandsWithout.length > 0
                 ? `No figure is given on ${bandsWithout.map((band) => band.label).join(", ")}: a band that is ${NOT_MODELLED} is not a band that does badly. `
                 : ""}
               The length is in wavelengths at the frequency that stands for the band.
+              {mixesModels(request) ? ` ${MODEL_JOIN_NOTE}` : ""}
             </p>
             <Rows className="mt-2 border-y border-border" aria-label="The wire on each band">
               {HF_BANDS.map((band) => (
@@ -538,7 +601,7 @@ export function Results({ result, hour, onHour }: { result: PredictionResult; ho
                   <span className="min-w-0 text-ink">
                     {wiresOn(request, band.mhz).map(({ whose, spec, wire }) => (
                       <span key={whose} className="block">
-                        <span className="tabular">{wire.wavelengths.toFixed(2)}</span> wavelengths, {WIRE_STATE[wire.state]}
+                        <span className="tabular">{wire.wavelengths.toFixed(2)}</span> wavelengths, {wireState(spec, wire)}
                         {wires.length > 1 ? ` (${whose.toLowerCase()}, ${spec.lengthM} m)` : ""}
                       </span>
                     ))}
@@ -573,7 +636,7 @@ export function Results({ result, hour, onHour }: { result: PredictionResult; ho
             ) : (
               <>
                 Median {db(cell.snrDbHz)} in 1 Hz, with a total loss of {db(cell.lossDb)} and {cell.txGainDbi.toFixed(1)} dBi from the
-                transmitting antenna at {cell.takeoffDeg.toFixed(0)}°.
+                transmitting antenna at {cell.takeoffDeg.toFixed(0)}°{askedApproximate ? ", all approximate" : ""}.
               </>
             )}
           </Fact>
@@ -582,7 +645,7 @@ export function Results({ result, hour, onHour }: { result: PredictionResult; ho
               ? `No figure: an antenna is not modelled on ${f}.`
               : required === null
                 ? "No figure without a requirement for the mode."
-                : `${percent(cell.reliability)} of days for ${mode.label}; the path is open at ${f} on ${percent(cell.mufDays)} of days.`}
+                : `${approx(`${percent(cell.reliability)} of days for ${mode.label}`)}; the path is open at ${f} on ${percent(cell.mufDays)} of days.`}
           </Fact>
         </Rows>
         <div className="mt-6 grid gap-8 lg:grid-cols-2">
