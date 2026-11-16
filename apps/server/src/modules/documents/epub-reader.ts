@@ -29,7 +29,7 @@ import {
   readPackage,
   resolveHref,
 } from "./epub-package.ts";
-import { anchorId, type ChapterLookups, chapterBlocks, type LeftOut } from "./epub-view.ts";
+import { anchorId, type ChapterLookups, type ChapterView, chapterBlocks, type LeftOut } from "./epub-view.ts";
 import { ExtractionError } from "./extract-types.ts";
 import { createExtractedStore } from "./extracted-store.ts";
 import { formatForExt, looksLikeUtf8Text } from "./file-types.ts";
@@ -148,14 +148,6 @@ export interface EpubReader {
 export function createEpubReader(ctx: AppContext, documents: DocumentsService): EpubReader {
   const extracted = createExtractedStore(ctx);
   const remembered = new Map<string, OpenBook>();
-
-  /** Chapters are read one at a time, so several requests cannot add their memory up. */
-  let line: Promise<unknown> = Promise.resolve();
-  function inTurn<T>(work: () => T): Promise<T> {
-    const next = line.then(work);
-    line = next.catch(() => undefined);
-    return next;
-  }
 
   async function describe(document: DocumentDto, zip: ZipReader): Promise<OpenBook> {
     if (await isProtected(zip, MAX_DESCRIPTION_BYTES)) throw refusal("unsupported", PROTECTED_MESSAGE, "protected");
@@ -317,15 +309,15 @@ export function createEpubReader(ctx: AppContext, documents: DocumentsService): 
         for (let at = source.indexOf("<"); at !== -1; at = source.indexOf("<", at + 1)) tags += 1;
         if (tags > MAX_CHAPTER_TAGS) throw tooLarge("This chapter is made of more pieces of markup than Outpost will read into memory.");
 
-        const view = await inTurn(() => {
-          try {
-            return chapterBlocks(source, lookupsFor(open, zip, item.path));
-          } catch (error) {
-            // Nesting thousands deep is not writing; it is a page built to exhaust the reader.
-            if (error instanceof RangeError) throw refusal("unsupported", "This chapter is nested too deeply to be read.", "damaged");
-            throw error;
-          }
-        });
+        // Parsing does not yield, so chapters are read one at a time however many are asked for at once.
+        let view: ChapterView;
+        try {
+          view = chapterBlocks(source, lookupsFor(open, zip, item.path));
+        } catch (error) {
+          // Nesting thousands deep is not writing; it is a page built to exhaust the reader.
+          if (error instanceof RangeError) throw refusal("unsupported", "This chapter is nested too deeply to be read.", "damaged");
+          throw error;
+        }
         return {
           documentId: document.id,
           position,
