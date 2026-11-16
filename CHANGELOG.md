@@ -251,6 +251,12 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 - Offline place search from GeoNames data.
 - Markers, GPX import and export, and coordinate parsing including British National
   Grid references.
+- GPX 1.0 and 1.1 files read in one pass that keeps only what is stored, with stated
+  limits on what a file may hold (1,000,000 points, 20,000 waypoints, 10,000 tracks
+  and routes, 100,000 segments, in 20 MB). A day's recording of 150,000 points is
+  read in a fraction of a second; a file over a limit is refused with a message
+  saying which. Files that start with a byte-order mark or prefix every element are
+  read, and extensions are passed over however many there are.
 - A Maps screen: saved places, routes with elevation profiles, distance measuring,
   hill shading, drawing a box to download with its exact size shown first, and a
   three-position sheet on phones.
@@ -301,6 +307,10 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   downloads to the hosts their manifests list.
 - Limits on archive extraction; sanitising of imported Markdown and HTML into a fixed
   content model.
+- GPX files read by a strict XML reader of Outpost's own that never builds a tree of
+  the file and never reads a DOCTYPE, so that neither a hostile file nor a long
+  recording can exhaust the server's memory. Reading happens in a worker thread; its
+  heap limit is a last line and no longer what the server's safety rests on.
 - No telemetry, and no outbound request unless a person asks for one.
 - Answers from a language model: the question and passages go only to the model
   server a person configured (redirects refused, no credentials in the address),
