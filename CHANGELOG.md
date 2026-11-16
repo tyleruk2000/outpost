@@ -555,6 +555,9 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 
 - Backup of the database, attachments and extracted text as one file, and a staged
   restore that is checked before it is applied and keeps the data it replaces.
+- The restart that applies a staged restore is accepted only from the computer Outpost
+  runs on, like the restore itself (or from anywhere with
+  `OUTPOST_ALLOW_REMOTE_ERASE=true`). On another device the notice says where to do it.
 
 #### Security
 

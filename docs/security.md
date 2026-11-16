@@ -874,7 +874,7 @@ may do what cannot be taken back.
 | `PATCH /api/backup/schedule` with a lower `keep` | Refused: fewer kept means older backups deleted at the next run. |
 | `PATCH /api/backup/schedule` otherwise, `POST /api/backup/run`, downloads | Allowed, as reading and adding are everywhere in Outpost. |
 | `DELETE /api/backup/restore` (cancel a staged restore) | Allowed: it keeps what is here. |
-| `POST /api/system/restart` | Allowed, as before. It applies a restore only if one was staged, which only the computer itself can do. |
+| `POST /api/system/restart` | Refused. Its one use is applying a staged restore, which only the computer itself can stage; left open, any device could stop the server for everyone as often as it liked, cutting off uploads and replies being written. |
 
 The screen says why on a device that is refused, and what to do: open Outpost on the
 computer it runs on, or start it with the option. The limits of the rule are the same

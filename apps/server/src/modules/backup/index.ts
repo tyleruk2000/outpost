@@ -91,8 +91,14 @@ export async function registerBackup(app: FastifyInstance, ctx: AppContext): Pro
   /**
    * Stops the server so that whatever supervises it (Docker's restart policy, the
    * portable launcher) starts it again. Refused when nothing would restart it.
+   *
+   * Its one use is applying a staged restore, which only the computer Outpost runs on
+   * can stage, so it is held to the same rule: a restart cuts off whatever everyone else
+   * is doing (an upload, a reply being written), and with no accounts any device on the
+   * network could otherwise do that as often as it liked.
    */
-  app.post("/api/system/restart", async (_request, reply) => {
+  app.post("/api/system/restart", async (request, reply) => {
+    assertBackupRight(request, ctx, "Restarting Outpost");
     if (process.env.OUTPOST_SUPERVISED !== "true") {
       throw new AppError("conflict", "Outpost cannot restart itself here. Stop it and start it again to finish.");
     }

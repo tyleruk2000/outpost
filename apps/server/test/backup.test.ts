@@ -140,4 +140,28 @@ describe("backup and restore", () => {
     apps.push(app);
     expect((await app.api("POST", "/api/system/restart")).status).toBe(409);
   });
+
+  it("restarts only when asked from the computer it runs on, and tells another device why and what to do", async () => {
+    const lan = { OUTPOST_LAN_ACCESS: "true", OUTPOST_HOST: "0.0.0.0" };
+    const phone = { remoteAddress: "192.168.1.20" };
+    const app = await createTestApp(lan);
+    apps.push(app);
+
+    const refused = await app.api("POST", "/api/system/restart", undefined, phone);
+    expect(refused.status).toBe(403);
+    expect(refused.body.error.message).toBe(
+      "Restarting Outpost can only be done on the computer Outpost runs on. Open Outpost there, or start it with OUTPOST_ALLOW_REMOTE_ERASE=true to allow it from other devices.",
+    );
+    // A proxy on this computer makes every request look local; a forwarded request is not trusted.
+    const proxied = await app.api("POST", "/api/system/restart", undefined, { headers: { "x-forwarded-for": "192.168.1.20" } });
+    expect(proxied.status).toBe(403);
+
+    // At the computer itself the request gets as far as the question of whether anything would start it again.
+    expect((await app.api("POST", "/api/system/restart")).status).toBe(409);
+
+    // Whoever starts Outpost can allow it from every device, with the option that allows restoring from them.
+    const open = await createTestApp({ ...lan, OUTPOST_ALLOW_REMOTE_ERASE: "true" });
+    apps.push(open);
+    expect((await open.api("POST", "/api/system/restart", undefined, phone)).status).toBe(409);
+  });
 });

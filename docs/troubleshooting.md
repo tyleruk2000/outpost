@@ -192,6 +192,14 @@ with `OUTPOST_ALLOW_REMOTE_ERASE=true`. In Docker with `OUTPOST_LAN_ACCESS=true`
 behind a reverse proxy, no request looks local, so the option is the only way. See
 [security.md](security.md#erasing-everything).
 
+### "Restarting Outpost can only be done on the computer Outpost runs on."
+
+A restart stops Outpost for everyone using it, and its one use from the browser is
+switching to a restored backup, which is itself only offered at that computer. Open
+Outpost there and press **Restart now**, restart it by hand (`docker compose restart`,
+or stop and start the program), or start it with `OUTPOST_ALLOW_REMOTE_ERASE=true` to
+allow restoring and restarting from every device.
+
 ### The database file did not get smaller after removing things
 
 SQLite keeps the freed space inside the file for reuse. **Storage → Manage and clean
