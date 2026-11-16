@@ -702,9 +702,35 @@ lasts does not fill the location.
 ### A file in `outpost-backups` is not in the list, or is never removed
 
 Outpost lists and removes only files it named itself
-(`outpost-backup-<time>-scheduled.zip` or `-manual.zip`) that read as its backups.
+(`outpost-backup-<time>-scheduled.zip` or `-manual.zip`, or the same ending `.zip.enc`
+for a protected one) that read as its backups.
 A backup you downloaded from Settings and copied there has a different name, so it is
 left alone; restore it with **Choose backup** instead.
+
+### "That passphrase does not open this backup."
+
+A protected backup opens with the passphrase that was set **when it was made**. If the
+passphrase has been changed since, older backups still need the older one; the list in
+**Settings → Automatic backups** marks those. Check for a trailing space and for the
+keyboard layout: the passphrase is used exactly as typed. Outpost keeps no copy of any
+passphrase and cannot recover one. If it is lost, the backups made under it cannot be
+opened by anyone; set a new passphrase and make a new backup while the library is still
+here.
+
+### "That backup cannot be restored. … damaged, altered or cut short."
+
+The passphrase was right or was never tried: the file itself does not read. A protected
+backup is refused whole if any part of it has changed or is missing, which is what a
+copy that was interrupted looks like. Copy it again from where it is kept, or use
+another backup.
+
+### "A passphrase sent from this device would cross your network unencrypted"
+
+Setting the passphrase for backups, and restoring a protected backup, send a
+passphrase to Outpost. From another device that is only accepted over HTTPS. Do it at
+the computer Outpost runs on, or turn HTTPS on (**Settings → HTTPS**) and open Outpost
+at its `https` address. `OUTPOST_ALLOW_REMOTE_ERASE=true` is needed as well, as for
+any restore from another device.
 
 ### "That backup was made by a newer Outpost (…). Update Outpost, then restore it."
 

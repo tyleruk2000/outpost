@@ -14,6 +14,10 @@
  * opened. The database it replaces is kept beside it (`restore.ts`). Restoring replaces
  * everything at once, so it is accepted only from where "erase everything" is
  * (`right.ts`).
+ *
+ * Backups can be protected with a passphrase (`protection.ts`, `sealed.ts`). Off by
+ * default; when it is on, both ways of making a backup make an encrypted file, and a
+ * restore asks for the passphrase.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -24,14 +28,18 @@ import type { AppContext } from "../../core/context.ts";
 import { AppError, badRequest } from "../../core/errors.ts";
 import { startBackup } from "./archive.ts";
 import { registerAutomaticBackups } from "./automatic.ts";
+import { assertPassphraseRight, PROTECTED_TYPE, passphraseFromHeader, registerProtection } from "./protection.ts";
 import { createRestoreStager, MAX_TOTAL_BYTES } from "./restore.ts";
 import { assertBackupRight, backupRight } from "./right.ts";
 
 export { applyPendingRestore } from "./restore.ts";
 
+const BACKUP_TYPES = /^application\/(zip|vnd\.outpost\.backup)\b/i;
+
 export async function registerBackup(app: FastifyInstance, ctx: AppContext): Promise<void> {
   const { dataDir } = ctx.config;
   const stager = createRestoreStager(ctx);
+  const protection = registerProtection(app, ctx);
 
   app.get("/api/backup/status", async (request): Promise<BackupStatus> => {
     const kept = (await fs.promises.readdir(dataDir)).filter((name) => name.startsWith("before-restore-")).sort();
@@ -40,44 +48,57 @@ export async function registerBackup(app: FastifyInstance, ctx: AppContext): Pro
       previousData: kept,
       supervised: process.env.OUTPOST_SUPERVISED === "true",
       right: backupRight(request, ctx),
+      protection: protection.status(request),
     };
   });
 
-  /** Streams a backup as a zip. Nothing is written to the data directory except a temporary database snapshot. */
+  /**
+   * Streams a backup as a zip, or as an encrypted file when backups are protected.
+   * Nothing is written to the data directory except a temporary database snapshot.
+   */
   app.get("/api/backup/download", async (request, reply) => {
     // Making a backup takes a database snapshot, which is work. A page on another site
     // must not be able to set it off by pointing an image or a link here.
     const site = request.headers["sec-fetch-site"];
     if (site && site !== "same-origin" && site !== "none") throw new AppError("forbidden", "Start the backup from the Outpost app.");
-    const { archive, manifest, cleanup } = await startBackup(ctx, (error) => request.log.error({ err: error }, "backup failed"));
+    const { output, fileKey, manifest, cleanup } = await startBackup(ctx, (error) => request.log.error({ err: error }, "backup failed"));
+    // A download is not read back here, so this copy of the file's key is not needed.
+    fileKey?.fill(0);
     reply.raw.on("close", cleanup);
     const stamp = manifest.createdAt.slice(0, 16).replace(/[:T]/g, "-");
-    reply.header("Content-Type", "application/zip").header("Content-Disposition", `attachment; filename="outpost-backup-${stamp}.zip"`);
-    return reply.send(archive);
+    reply
+      .header("Content-Type", fileKey ? PROTECTED_TYPE : "application/zip")
+      .header("Content-Disposition", `attachment; filename="outpost-backup-${stamp}.zip${fileKey ? ".enc" : ""}"`);
+    return reply.send(output);
   });
 
   // The backup is sent as the raw request body and streamed straight to disk.
-  app.addContentTypeParser("application/zip", (_request, payload, done) => done(null, payload));
+  app.addContentTypeParser(["application/zip", PROTECTED_TYPE], (_request, payload, done) => done(null, payload));
   /**
    * Runs before the body is read, so that a request that will be refused never makes
-   * the server receive a file: one from a device that may not restore, or one that is
-   * not a zip.
+   * the server receive a file: one from a device that may not restore, one that is not
+   * a backup, or one whose passphrase would have crossed the network in the clear.
    */
   const beforeBody = async (request: FastifyRequest) => {
     assertBackupRight(request, ctx, "Restoring a backup");
-    if (!/^application\/zip\b/i.test(request.headers["content-type"] ?? "")) {
-      throw new AppError("unsupported", "Send the backup .zip with Content-Type application/zip.");
+    if (!BACKUP_TYPES.test(request.headers["content-type"] ?? "")) {
+      throw new AppError(
+        "unsupported",
+        `Send the backup file with Content-Type application/zip, or ${PROTECTED_TYPE} for a protected one.`,
+      );
     }
+    if (passphraseFromHeader(request) !== undefined) assertPassphraseRight(request, ctx, "Restoring a backup");
   };
   app.post("/api/backup/restore", { bodyLimit: MAX_TOTAL_BYTES, onRequest: beforeBody }, async (request) => {
     const body = request.body as NodeJS.ReadableStream | undefined;
     if (!body || typeof body.pipe !== "function")
-      throw badRequest("Send the backup .zip as the request body with Content-Type application/zip.");
+      throw badRequest("Send the backup file as the request body with Content-Type application/zip.");
+    // Written as it arrived. A protected backup stays encrypted on disk and is opened in memory from there.
     return stager.stage(async (pending) => {
       const upload = path.join(pending, "upload.zip");
       await pipeline(body, fs.createWriteStream(upload));
       return upload;
-    });
+    }, passphraseFromHeader(request));
   });
 
   // Not held to where the request comes from: dropping a staged restore changes nothing
@@ -101,5 +122,5 @@ export async function registerBackup(app: FastifyInstance, ctx: AppContext): Pro
     }, 250).unref();
   });
 
-  registerAutomaticBackups(app, ctx, stager);
+  registerAutomaticBackups(app, ctx, stager, protection);
 }

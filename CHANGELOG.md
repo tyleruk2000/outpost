@@ -594,6 +594,14 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 
 - Backup of the database, attachments and extracted text as one file, and a staged
   restore that is checked before it is applied and keeps the data it replaces.
+- Backups can be protected with a passphrase (Settings → Backup), off by default. Every
+  backup made afterwards, scheduled ones included, is encrypted to a public key; Outpost
+  keeps no passphrase and nothing that opens a backup, so it cannot recover a lost one.
+  A file that was altered or cut short is refused and told apart from a wrong
+  passphrase. Changing the passphrase applies to later backups; older ones open with
+  the passphrase they were made under, and the list shows which. Set, changed and
+  removed only where restoring is allowed, and never from another device over plain
+  http. The file format is written out in `docs/storage.md`.
 
 #### Security
 

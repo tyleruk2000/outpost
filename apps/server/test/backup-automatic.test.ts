@@ -355,6 +355,8 @@ describe("keeping only so many", () => {
       appVersion: check === "unreadable" ? null : "0.1.0",
       check,
       checkedAt: null,
+      protected: false,
+      currentPassphrase: null,
     });
     const names = (days: number[]) => days.map((day) => backupFileName(at(day, 3), "scheduled"));
     // Fewer verified than the number to keep: nothing goes, however many there are.

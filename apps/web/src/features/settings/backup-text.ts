@@ -36,6 +36,15 @@ export function retryText(waiting: NonNullable<BackupSchedule["waiting"]>): stri
     : "It will be tried again later.";
 }
 
+/**
+ * For a protected backup that today's passphrase does not open: which one does. Nothing
+ * is said of the others, whose badge says it all.
+ */
+export function protectionText(backup: Pick<StoredBackup, "protected" | "currentPassphrase">): string | null {
+  if (!backup.protected || backup.currentPassphrase !== false) return null;
+  return "Opens with the passphrase that was in use when it was made, not the one in use now.";
+}
+
 export const kindText: Record<StoredBackup["kind"], string> = { scheduled: "Scheduled", manual: "Started by hand" };
 
 export const checkText: Record<StoredBackup["check"], { label: string; tone: "success" | "warning" | "danger"; explain: string | null }> = {
