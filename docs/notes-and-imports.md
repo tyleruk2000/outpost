@@ -459,6 +459,10 @@ gives you that file; other Markdown programs can read it, pictures included.
 | Pictures | 30 to a page, 5 MB each, 20 MB in all; 20 seconds each and 3 minutes together |
 | Redirects | 8 |
 
+An article whose own text comes to more than 2 MB is still saved and searched, but is
+shown as plain text, without its formatting or pictures, as any Markdown file that
+large is.
+
 A picture over a limit is left out and the page is saved without it; the report after
 saving lists each picture left out and why. Pictures narrower or shorter than 8 pixels
 (spacers and counters) are dropped altogether. Drawings in SVG are not fetched: SVG can
