@@ -20,6 +20,9 @@ import {
 } from "@outpost/shared";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { appRoot } from "../src/core/paths.ts";
+import { createEngineHost, type EngineHost } from "../src/modules/propagation/host.ts";
+import { createPropagationService, normalise, type PropagationService } from "../src/modules/propagation/service.ts";
+import { voacapPaths } from "../src/modules/propagation/voacap/files.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
 
 const dipole = ANTENNA_PRESETS.find((preset) => preset.id === "low-dipole")!.spec;
@@ -236,6 +239,155 @@ describe("where the sunspot number comes from", () => {
       "has no sunspot number for June 2035: it runs from May 2026 to December 2030",
     );
     expect((await predict({ date: "2035-06-01", solar: { source: "manual", ssn: 60 } })).status).toBe(200);
+  });
+});
+
+describe("the search for the sunspot number that gives a measured foF2", () => {
+  // The service on an engine host of its own, with every question put to the engine counted.
+  let host: EngineHost;
+  let service: PropagationService;
+  const asked = { ionosphere: 0, circuit: 0, listing: 0 };
+  const since = () => {
+    const counted = { ...asked };
+    Object.assign(asked, { ionosphere: 0, circuit: 0, listing: 0 });
+    return counted;
+  };
+  const counting = (inner: EngineHost): EngineHost => ({
+    describe: () => inner.describe(),
+    circuit: (request, signal) => {
+      asked.circuit += 1;
+      return inner.circuit(request, signal);
+    },
+    ionosphere: (request, signal) => {
+      asked.ionosphere += 1;
+      return inner.ionosphere(request, signal);
+    },
+    listing: (request) => {
+      asked.listing += 1;
+      return inner.listing(request);
+    },
+    get loaded() {
+      return inner.loaded;
+    },
+    close: () => inner.close(),
+  });
+
+  beforeAll(() => {
+    host = createEngineHost(voacapPaths(app.ctx.config.dataDir));
+    service = createPropagationService(app.ctx, counting(host));
+  });
+  afterAll(() => host.close());
+
+  /**
+   * The search as it was first written, kept here to compare against: every sunspot
+   * number tried is put to the engine, and the two it ends on are put to it again.
+   */
+  async function searchedAfresh(request: PredictionRequest): Promise<{ ssn: number; questions: number }> {
+    if (request.solar.source !== "fof2") throw new Error("not a foF2 request");
+    const { fof2Mhz, utcHour } = request.solar;
+    let questions = 0;
+    const at = async (ssn: number) => {
+      questions += 1;
+      const hours = await host.ionosphere({
+        tx: request.tx,
+        rx: request.rx,
+        year: Number(request.date.slice(0, 4)),
+        month: Number(request.date.slice(5, 7)),
+        ssn,
+      });
+      return hours[utcHour - 1]!.foF2;
+    };
+    let low = 0;
+    let high = 300;
+    await at(low);
+    await at(high);
+    while (high - low > 1) {
+      const middle = Math.round((low + high) / 2);
+      if ((await at(middle)) < fof2Mhz) low = middle;
+      else high = middle;
+    }
+    const ssn = Math.abs((await at(low)) - fof2Mhz) <= Math.abs((await at(high)) - fof2Mhz) ? low : high;
+    return { ssn, questions };
+  }
+
+  /** A value as it is once written down and read back: a kept answer has been, and -0 comes back as 0. */
+  const written = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
+
+  const measured = (fof2Mhz: number, utcHour: number) =>
+    normalise({ ...acceptance, powerWatts: 11, solar: { source: "fof2", fof2Mhz, utcHour } });
+
+  it("finds the number it found before, puts no sunspot number to the engine twice, and searches once for one question", async () => {
+    const costs: Array<{ first: number; again: number; afresh: number }> = [];
+    for (const [fof2Mhz, utcHour] of [
+      [9.5, 12],
+      [6.2, 12],
+      [3.4, 4],
+      [8.1, 15],
+    ] as const) {
+      const request = measured(fof2Mhz, utcHour);
+      const before = await searchedAfresh(request);
+      // The answer the first search's number gives, asked for outright.
+      const outright = await service.predict({ ...request, solar: { source: "manual", ssn: before.ssn } });
+      since();
+
+      const first = await service.predict(request);
+      const firstCost = since();
+      expect(first.cached).toBe(false);
+      expect(first.basis.ssn).toBe(before.ssn);
+      expect(first.hours).toEqual(outright.hours);
+
+      const again = await service.predict(request);
+      const againCost = since();
+      expect(again.cached).toBe(true);
+      expect(again.key).toBe(first.key);
+      expect(again.basis).toEqual(first.basis);
+      expect(again.hours).toEqual(written(first.hours));
+
+      costs.push({ first: firstCost.ionosphere - 1, again: againCost.ionosphere + againCost.circuit, afresh: before.questions });
+    }
+    // Measured on 16 November 2026: 13, 12, 12 and 12 questions as first written, for a new answer and again for a
+    // kept one; now 11, 10, 10 and 10 for a new answer and none for a kept one.
+    for (const { first, again, afresh } of costs) {
+      // The two sunspot numbers the search ends on were asked on the way and are not asked again.
+      expect(first).toBe(afresh - 2);
+      // A kept answer is returned without a question to the engine.
+      expect(again).toBe(0);
+    }
+  });
+
+  it("is not repeated for a comparison or the printed page of the same question", async () => {
+    const request = measured(9.5, 12);
+    const { basis } = await service.predict(request);
+    since();
+    const compared = await service.compare({ base: request, what: "power" });
+    // Five powers (1, 5, 11, 25 and 100 W), each one run of the circuit and one of the ionosphere, and no search.
+    expect(since()).toEqual({ ionosphere: 5, circuit: 5, listing: 0 });
+    expect(compared.basis).toEqual(basis);
+    expect(new Set(compared.series.map((series) => series.ssn))).toEqual(new Set([basis.ssn]));
+    expect((await service.compare({ base: request, what: "power" })).series).toEqual(written(compared.series));
+    expect(since()).toEqual({ ionosphere: 0, circuit: 0, listing: 0 });
+    const listing = await service.listing(request);
+    expect(since()).toEqual({ ionosphere: 0, circuit: 0, listing: 1 });
+    expect(listing).toContain(`SSN = ${String(basis.ssn).padStart(3)}.`);
+  });
+
+  it("is made again for another measurement, hour, month or path, and an foF2 the map cannot give is still refused", async () => {
+    await service.predict(measured(9.5, 12));
+    const others = [
+      measured(9.4, 12),
+      measured(9.5, 13),
+      { ...measured(9.5, 12), date: "2026-12-16" },
+      { ...measured(9.5, 12), rx: { name: "Edinburgh", lat: 55.95, lon: -3.19 } },
+    ];
+    for (const other of others) {
+      const expected = await searchedAfresh(other);
+      since();
+      const result = await service.predict(other);
+      expect(result.basis.ssn).toBe(expected.ssn);
+      expect(since().ionosphere).toBe(expected.questions - 2 + 1);
+    }
+    await expect(service.predict(measured(24, 3))).rejects.toMatchObject({ message: expect.stringContaining("is outside that") });
+    await expect(service.predict(measured(24, 3))).rejects.toMatchObject({ message: expect.stringContaining("is outside that") });
   });
 });
 

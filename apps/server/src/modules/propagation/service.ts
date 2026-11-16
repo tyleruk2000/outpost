@@ -50,6 +50,8 @@ const LUF_RELIABILITY = 0.9;
 export const RECENT_TABLE_DAYS = 45;
 /** How many worked-out answers are kept. Each is about 60 kB. */
 const MAX_KEPT_RESULTS = 300;
+/** How many sunspot numbers found from a measured foF2 are remembered while the server runs. */
+const MAX_FOUND_SSN = 500;
 /** Bump when the shape of a stored result changes, so that old rows are not read as new ones. */
 const RESULT_VERSION = 1;
 
@@ -185,17 +187,38 @@ export function createPropagationService(ctx: AppContext, host: EngineHost): Pro
     };
   }
 
-  /** The sunspot number at which the engine's map gives the measured foF2 over the middle of the path, by bisection over the engine's own answers. */
-  async function ssnForFoF2(request: PredictionRequest, signal?: AbortSignal): Promise<PredictionBasis> {
+  /**
+   * Sunspot numbers already found from a measured foF2, by everything the search depends
+   * on. The number is part of the key an answer is kept under, so without this the
+   * search would be made again before a kept answer could even be looked up.
+   */
+  const foundSsn = new Map<string, number>();
+
+  /**
+   * The sunspot number at which the engine's map gives the measured foF2 over the middle
+   * of the path, by bisection over the engine's own answers. `engine` says which engine
+   * and data are answering.
+   */
+  async function searchForSsn(request: PredictionRequest, engine: string, signal?: AbortSignal): Promise<number> {
     if (request.solar.source !== "fof2") throw new Error("not a foF2 request");
     const { fof2Mhz, utcHour } = request.solar;
     const month = request.date.slice(0, 7);
+    const question = JSON.stringify([engine, request.tx.lat, request.tx.lon, request.rx.lat, request.rx.lon, month, fof2Mhz, utcHour]);
+    const found = foundSsn.get(question);
+    if (found !== undefined) return found;
+    // Each sunspot number is put to the engine once: the two the search ends between were asked on the way.
+    const answers = new Map<number, number>();
     const at = async (ssn: number) => {
-      const hours = await host.ionosphere(
-        { tx: request.tx, rx: request.rx, year: Number(month.slice(0, 4)), month: Number(month.slice(5, 7)), ssn },
-        signal,
-      );
-      return hours[utcHour - 1]!.foF2;
+      let foF2 = answers.get(ssn);
+      if (foF2 === undefined) {
+        const hours = await host.ionosphere(
+          { tx: request.tx, rx: request.rx, year: Number(month.slice(0, 4)), month: Number(month.slice(5, 7)), ssn },
+          signal,
+        );
+        foF2 = hours[utcHour - 1]!.foF2;
+        answers.set(ssn, foF2);
+      }
+      return foF2;
     };
     let low = 0;
     let high = 300;
@@ -212,6 +235,15 @@ export function createPropagationService(ctx: AppContext, host: EngineHost): Pro
       else high = middle;
     }
     const ssn = Math.abs((await at(low)) - fof2Mhz) <= Math.abs((await at(high)) - fof2Mhz) ? low : high;
+    if (foundSsn.size >= MAX_FOUND_SSN) foundSsn.delete(foundSsn.keys().next().value!);
+    foundSsn.set(question, ssn);
+    return ssn;
+  }
+
+  async function ssnForFoF2(request: PredictionRequest, engine: string, signal?: AbortSignal): Promise<PredictionBasis> {
+    if (request.solar.source !== "fof2") throw new Error("not a foF2 request");
+    const { fof2Mhz, utcHour } = request.solar;
+    const ssn = await searchForSsn(request, engine, signal);
     return {
       kind: "own-measurement",
       ssn,
@@ -223,7 +255,15 @@ export function createPropagationService(ctx: AppContext, host: EngineHost): Pro
     };
   }
 
-  async function basisOf(request: PredictionRequest, signal?: AbortSignal): Promise<{ basis: PredictionBasis; tableSha: string | null }> {
+  /** Which engine and data are answering, for anything remembered about their answers. */
+  const engineOf = (described: Awaited<ReturnType<EngineHost["describe"]>>) =>
+    JSON.stringify([described.description.sha256, described.datasets]);
+
+  async function basisOf(
+    request: PredictionRequest,
+    engine: string,
+    signal?: AbortSignal,
+  ): Promise<{ basis: PredictionBasis; tableSha: string | null }> {
     const month = request.date.slice(0, 7);
     if (request.solar.source === "manual") {
       return {
@@ -239,7 +279,7 @@ export function createPropagationService(ctx: AppContext, host: EngineHost): Pro
         tableSha: null,
       };
     }
-    if (request.solar.source === "fof2") return { basis: await ssnForFoF2(request, signal), tableSha: null };
+    if (request.solar.source === "fof2") return { basis: await ssnForFoF2(request, engine, signal), tableSha: null };
     const table = currentSolarTable(ctx.config.dataDir);
     return { basis: tableBasis(table, month), tableSha: table.sha256 };
   }
@@ -282,8 +322,9 @@ export function createPropagationService(ctx: AppContext, host: EngineHost): Pro
     }
     const mode = modeLine(request.mode, request.requiredSnrDb, request.referenceBandwidthHz);
     try {
-      const { description, datasets } = await host.describe();
-      const { basis, tableSha } = await basisOf(request, signal);
+      const described = await host.describe();
+      const { description, datasets } = described;
+      const { basis, tableSha } = await basisOf(request, engineOf(described), signal);
       const key = keyOf("point", { request, ssn: basis.ssn, tableSha, engine: description.sha256, datasets });
       const found = kept<PredictionResult>(key);
       if (found) return { ...found, basis, cached: true };
@@ -375,8 +416,9 @@ export function createPropagationService(ctx: AppContext, host: EngineHost): Pro
     if (mode.requiredSnrDbHz === null)
       throw badRequest("Give the signal-to-noise ratio your mode needs before comparing: without it there is no reliability to compare.");
     try {
-      const { description, datasets } = await host.describe();
-      const { basis, tableSha } = await basisOf(base, signal);
+      const described = await host.describe();
+      const { description, datasets } = described;
+      const { basis, tableSha } = await basisOf(base, engineOf(described), signal);
       const key = keyOf("compare", { base, what: input.what, ssn: basis.ssn, tableSha, engine: description.sha256, datasets });
       const found = kept<CompareResult>(key);
       if (found) return { ...found, basis };
@@ -449,7 +491,7 @@ export function createPropagationService(ctx: AppContext, host: EngineHost): Pro
       const request = normalise(asked);
       const mode = modeLine(request.mode, request.requiredSnrDb, request.referenceBandwidthHz);
       try {
-        const { basis } = await basisOf(request);
+        const { basis } = await basisOf(request, engineOf(await host.describe()));
         return await host.listing(
           circuitOf(request, basis.ssn, [request.frequencyMhz, ...HF_BANDS.map((band) => band.mhz)], mode.requiredSnrDbHz ?? 0),
         );

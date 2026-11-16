@@ -337,6 +337,12 @@ the data's version. The same key is always the same answer. The 300 most recentl
 are kept. `POST /api/radio/propagation/predict?background=true` runs the same work as a
 job, for anything long.
 
+The sunspot number found from a measured foF2 is part of that key, and finding it is a
+search: ten or eleven questions to the engine. The number is remembered, while the
+server runs, by the path, the month, the foF2, the hour, the engine and the data, so
+that a kept answer, a comparison or the printed page of the same question does not
+search again. After a restart the first of them searches once.
+
 ### Rebuilding the engine
 
 Running or packaging Outpost needs none of this; the built file and the data are
