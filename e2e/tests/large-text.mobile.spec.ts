@@ -7,6 +7,12 @@ import type { Page } from "@playwright/test";
 import { expect, test, watchForErrors } from "./fixtures";
 import { CENTRE, type InstalledTestMaps, installTestMaps, removeTestMaps } from "./map-fixture";
 
+/** What reaches past the right of the screen, if the page scrolls sideways at all; nothing when it does not. */
+async function tooWide(page: Page): Promise<string[]> {
+  const { over, what } = await sideways(page);
+  return over > 0 ? [`${over} px too wide`, ...what] : [];
+}
+
 /** How far the page reaches past the right of the screen, and what reaches furthest, for the message. */
 async function sideways(page: Page): Promise<{ over: number; what: string[] }> {
   return page.evaluate(() => {
@@ -67,11 +73,11 @@ for (const size of [
       const errors = watchForErrors(page);
       await page.goto("/radio/coverage");
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-      await expect.poll(() => sideways(page)).toMatchObject({ over: 0 });
+      await expect.poll(() => tooWide(page)).toEqual([]);
 
       await page.goto("/radio/plans");
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-      expect(await sideways(page)).toMatchObject({ over: 0 });
+      expect(await tooWide(page)).toEqual([]);
       await page.getByRole("button", { name: "New plan" }).first().click();
       const dialog = page.getByRole("dialog", { name: "New plan" });
       // The shared dialog: its Close is a full touch target, and the whole of it can be scrolled to its buttons.
@@ -84,7 +90,7 @@ for (const size of [
       expect(button.y + button.height).toBeLessThanOrEqual(size.height);
       await create.click();
       await expect(page.getByRole("heading", { level: 1, name: "Large text" })).toBeVisible();
-      await expect.poll(() => sideways(page)).toMatchObject({ over: 0 });
+      await expect.poll(() => tooWide(page)).toEqual([]);
       // The shared segmented control is a full touch target too.
       const segment = page.getByRole("radio").first();
       if ((await segment.count()) > 0) expect((await segment.boundingBox())!.height).toBeGreaterThanOrEqual(44);
@@ -124,7 +130,7 @@ for (const size of [
       await page.locator(sheet).getByRole("button", { name: "Draw a route" }).click();
       await expect(page.locator(sheet).getByRole("button", { name: /Add a point at the centre of the map/ })).toBeVisible();
       await expect.poll(() => pastEdge(page, sheet)).toEqual([]);
-      expect(await sideways(page)).toMatchObject({ over: 0 });
+      expect(await tooWide(page)).toEqual([]);
     });
   });
 }
