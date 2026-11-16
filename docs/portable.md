@@ -40,7 +40,8 @@ What travels:
 - The database on the drive is a copy narrowed to match: it lists only the documents
   and collections that were copied, and one storage location, "This drive", which is
   the drive's `library` folder. Download history, background jobs, the records of
-  past imports and of past merges, and the addresses of network shares are not copied.
+  past imports and of past merges, the addresses of network shares, and conversations
+  from [Chat](ai.md#chat) are not copied.
 - The database also carries a record of what every page, document, saved place and
   track was when the drive was written, and which library wrote it. That record is
   what lets changes be [brought back](#bringing-changes-back-from-a-drive) exactly.

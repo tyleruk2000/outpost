@@ -59,7 +59,7 @@ export function MobileNav({ onOpenSearch }: { onOpenSearch: () => void }) {
             <Sheet.Content className="scroll-quiet fixed inset-x-0 bottom-0 z-(--z-dialog) max-h-[88dvh] overflow-y-auto overscroll-contain rounded-t-[14px] bg-spine px-3 pt-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] text-spine-ink shadow-dialog data-[state=open]:animate-sheet focus:outline-none">
               <Sheet.Title className="sr-only">More</Sheet.Title>
               <Sheet.Description className="sr-only">
-                Every other screen: search, explore, downloads, storage, importing and settings
+                Every other screen: search, explore, chat, downloads, storage, importing and settings
               </Sheet.Description>
               <div aria-hidden className="mx-auto mb-2 h-1 w-9 rounded-full bg-spine-border" />
               <ul className="grid gap-0.5">

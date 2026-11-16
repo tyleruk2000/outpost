@@ -5,7 +5,8 @@
  * then narrowed to what actually travels on the drive: one storage location (the
  * drive's own library folder) and only the collections and documents that were chosen.
  * Machine-specific state (job and download history, the schedule of automatic backups)
- * is cleared.
+ * is cleared, and so are conversations with a language model: a drive is made to be
+ * handed on, and they are not part of the library.
  *
  * Last, the copy records what everything in it is at this moment (see
  * modules/merge/fingerprint.ts). When the drive comes home, that record is how Outpost
@@ -56,6 +57,7 @@ export function prepareDriveDatabase(file: string, contents: DriveContents): { c
         DELETE FROM drive_merges;
         DELETE FROM settings WHERE key = 'backup.schedule';
         DELETE FROM library_meta WHERE key = 'backup.state';
+        DELETE FROM chat_conversations;
       `);
 
       // Everything that remains lives in the drive's one location, at the same relative paths.

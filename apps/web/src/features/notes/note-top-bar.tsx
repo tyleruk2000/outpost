@@ -6,6 +6,7 @@ import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
 import { Tooltip } from "@/components/ui/misc";
+import { AskAboutMenuItem } from "@/features/chat/ask-about";
 import { KeepNoteMenuItem } from "@/features/kept/keep-controls";
 import { cn } from "@/lib/utils";
 import type { AutosaveStatus } from "./autosave";
@@ -156,6 +157,7 @@ export function NoteTopBar({
                   favourite={false}
                 >
                   <KeepNoteMenuItem note={note} />
+                  <AskAboutMenuItem kind="note" id={note.id} title={displayTitle(note.title)} />
                   <MenuItem onSelect={() => onTemplate(true)}>
                     <LayoutTemplate /> Use as template
                   </MenuItem>

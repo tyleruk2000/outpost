@@ -83,6 +83,9 @@ picture, not a surveyed path.
   short answer from passages of your documents and notes, with a citation after each
   statement that opens the passage. Outpost includes no model and downloads none, and
   nothing is sent anywhere but the model server you set up.
+- **Chat with that model.** Conversations with the same model server, kept on your
+  Outpost and so on every device, with or without passages of your library. There
+  are no accounts: everyone who can open your Outpost can read them.
 - **Storage you control.** Internal disks, USB drives, SSDs and NAS shares. See what
   uses the space, move collections between locations with verification, and unplug a
   drive without losing your library's records. One screen lists everything installed,
@@ -283,11 +286,11 @@ Stated here so nobody has to find them out:
   book's fonts and styling, audio, video, MathML and anything scripted are left out,
   and a copy-protected (DRM) book cannot be read at all. See
   [Reading EPUB books](docs/epub.md).
-- **No language model is included.** Answers in prose need a model server you run
-  yourself (Ollama, llama.cpp, LM Studio) and a model you download with it. It is one
-  question and one answer, from documents, notes and book chapters only: reference
-  collections such as Wikipedia are not read. This has been tested against a stand-in
-  server that speaks the same protocol, **not yet against a real model**. See
+- **No language model is included.** Answers in prose and Chat need a model server you
+  run yourself (Ollama, llama.cpp, LM Studio) and a model you download with it. The
+  library is read from documents, notes and book chapters only: reference collections
+  such as Wikipedia are not read. Both have been tested against a stand-in server that
+  speaks the same protocol, **not yet against a real model**. See
   [Answers and language models](docs/ai.md).
 - **Semantic search is off until you switch it on**, and its built-in model is small
   and was trained on English: other languages are matched poorly. A local embedding

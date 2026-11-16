@@ -232,6 +232,31 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   internet is refused, by spelling and by looking the name up before each request,
   unless Outpost is started with `OUTPOST_ALLOW_REMOTE_MODEL_SERVER=true`.
 
+#### Chat
+
+- **Chat**, a screen for conversations with a language model you run yourself, on the
+  same model server and under the same own-network rule as answers. Tested against a
+  stand-in server; no real model has yet held a conversation through Outpost.
+- Conversations are kept on the server, so they are on every device: start one by
+  typing, rename, find by name, delete after asking. There are no accounts, so
+  everyone who can open Outpost can read them, and the screen says so.
+- Replies arrive as they are written and go on being written if the tab is closed.
+  Stop closes the connection to the model server. Regenerate, edit and resend the last
+  message, copy a reply, copy a code block, save a reply as a new note.
+- A reply's headings, lists, tables and code are drawn from a tree of plain values,
+  never as HTML; a link in a reply is shown as words and a picture is never fetched.
+- A model picker fed by the model server's own list, remembered per conversation, with
+  each model's size, parameter count and quantisation when the server is Ollama.
+- **Use my library**, off by default: each message is answered from passages found in
+  documents, notes and book chapters, with citation markers and links to the sources.
+  **Ask about this** on a document or a page starts a conversation about that item.
+- Long conversations send the newest exchanges that fit twice the context budget and
+  leave out whole older ones; a line in the conversation shows where what is sent
+  begins.
+- Plain words for each way it can go wrong: no model server set up (with "Look for
+  Ollama on this computer"), a server that is not answering, a model that is not
+  installed, a model still loading, a reply cut off, a reply stopped.
+
 #### Reference collections
 
 - A catalogue of 236 items in JSON manifests, with a validator: 128 Kiwix archives; 83

@@ -9,6 +9,7 @@ import { registerAnswers } from "./answers/index.ts";
 import { registerBackup } from "./backup/index.ts";
 import { registerBooks } from "./books/index.ts";
 import { registerCatalog } from "./catalog/index.ts";
+import { registerChat } from "./chat/index.ts";
 import { registerCollections } from "./collections/index.ts";
 import { registerDocuments } from "./documents/index.ts";
 import { registerDownloads } from "./downloads/index.ts";
@@ -35,6 +36,7 @@ export const modules: ModuleRegister[] = [
   registerAnswers,
   registerDocuments,
   registerNotes,
+  registerChat,
   registerImports,
   registerCollections,
   registerBooks,

@@ -616,4 +616,61 @@ export const driveMergeActions = sqliteTable(
   (table) => [primaryKey({ columns: [table.mergeId, table.seq] }), index("drive_merge_actions_item_idx").on(table.kind, table.driveItemId)],
 );
 
+// ── Chat ────────────────────────────────────────────────────────────────────
+
+/**
+ * Conversations with a language model the person runs themselves. Kept here so that a
+ * conversation is on every device; with no accounts, that also means everyone who can
+ * open this Outpost can read them.
+ */
+export const chatConversations = sqliteTable(
+  "chat_conversations",
+  {
+    id: id(),
+    title: text("title").notNull().default(""),
+    /** A person named it, so it is no longer named after its first message. */
+    titleSet: integer("title_set", { mode: "boolean" }).notNull().default(false),
+    /** The model's name as the model server knows it. Empty: the one chosen in Settings. */
+    model: text("model").notNull().default(""),
+    useLibrary: integer("use_library", { mode: "boolean" }).notNull().default(false),
+    /** The one document or note this conversation is about, when it was started from one. */
+    scopeKind: text("scope_kind", { enum: ["document", "note"] }),
+    scopeEntityId: text("scope_entity_id"),
+    scopeTitle: text("scope_title"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [index("chat_conversations_updated_idx").on(table.updatedAt)],
+);
+
+export const chatMessages = sqliteTable(
+  "chat_messages",
+  {
+    id: id(),
+    conversationId: text("conversation_id")
+      .notNull()
+      .references(() => chatConversations.id, { onDelete: "cascade" }),
+    /** Position in the conversation, from 1. */
+    seq: integer("seq").notNull(),
+    role: text("role", { enum: ["user", "assistant"] }).notNull(),
+    /** The words as typed, or as the model wrote them. Never markup that is shown as such. */
+    text: text("text").notNull().default(""),
+    state: text("state", { enum: ["writing", "complete", "cut-short", "stopped", "failed", "nothing-found"] })
+      .notNull()
+      .default("complete"),
+    failure: text("failure"),
+    notice: text("notice"),
+    model: text("model"),
+    grounded: integer("grounded", { mode: "boolean" }).notNull().default(false),
+    /** The passages the model was given for this reply, as they were sent. */
+    sources: json<unknown[]>("sources"),
+    searchedFor: text("searched_for"),
+    /** Earlier messages that were not sent to the model for this reply. */
+    omitted: integer("omitted").notNull().default(0),
+    tookMs: integer("took_ms"),
+    createdAt: createdAt(),
+  },
+  (table) => [uniqueIndex("chat_messages_order_idx").on(table.conversationId, table.seq)],
+);
+
 export const nowMs = sql`(unixepoch('subsec') * 1000)`;

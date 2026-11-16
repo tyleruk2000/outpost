@@ -8,6 +8,7 @@ import {
   ListChecks,
   type LucideIcon,
   Map as MapIcon,
+  MessagesSquare,
   NotebookText,
   Search,
   Settings,
@@ -32,6 +33,7 @@ export const knowledgeNav: NavItem[] = [
   { to: "/explore", label: "Explore", icon: Compass, key: "e" },
   { to: "/library", label: "Library", icon: BookOpen, key: "l" },
   { to: "/maps", label: "Maps", icon: MapIcon, key: "m" },
+  { to: "/chat", label: "Chat", icon: MessagesSquare, key: "c" },
   { to: "/notes", label: "Notes", icon: NotebookText, key: "n" },
 ];
 

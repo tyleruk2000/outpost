@@ -24,7 +24,9 @@ const invalidations: Record<string, string[][]> = {
   "download.updated": [],
   "download.removed": [["downloads"], ["catalog"], ["manage"]],
   "storage.changed": [["storage"], ["collections"], ["documents"], ["manage"]],
-  "settings.changed": [["settings"], ["answers"]],
+  "settings.changed": [["settings"], ["answers"], ["chat"]],
+  // A conversation was added to, renamed or removed, here or on another device.
+  "chat.changed": [["chat"]],
   "documents.changed": [["documents"], ["search"], ["storage"], ["manage"]],
   "notes.changed": [["notes"], ["search"]],
   "collections.changed": [["collections"], ["catalog"], ["storage"], ["kiwix"], ["maps"], ["manage"]],

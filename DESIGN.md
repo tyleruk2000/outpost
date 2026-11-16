@@ -56,7 +56,7 @@ Rules:
 - Primary is the seed colour, a deep mineral teal. It marks the main action, the
   current selection and links. Never decoration.
 - The amber `lamp` is the single warm note. It means a download is running, an index
-  is building, or something is a favourite. If more than a few amber things are on
+  is building, a reply is being written, or something is a favourite. If more than a few amber things are on
   screen, something is wrong.
 - Surfaces carry no warmth. Neutrals lean very slightly toward the brand's own hue.
 - Text on a tinted background uses a darker shade of that hue, never grey.
@@ -89,6 +89,10 @@ All three are bundled and served locally. Fixed rem scale, ratio about 1.2:
   set in the functional face, under a heading that says they were generated and by
   what. Passages quoted from the library beside them are set in Literata. The two
   faces keep the model's wording and the source's wording apart.
+- A conversation with a model is set like a logbook, not a messenger: who is speaking
+  is written in the margin (above the text on a phone), the person's words are a
+  little heavier than the model's, and a hairline separates one exchange from the
+  next. No speech bubbles, no avatars, no tinted turns.
 - Numbers people compare use tabular figures.
 
 ## Shape and depth
@@ -110,6 +114,7 @@ All three are bundled and served locally. Fixed rem scale, ratio about 1.2:
 │ Explore    │   browsing: max 70rem                    │
 │ Library    │   map and readers: full bleed            │
 │ Maps       │                                          │
+│ Chat       │                                          │
 │ Notes      │                                          │
 │  ▸ pages   │                                          │
 │ ─────────  │                                          │

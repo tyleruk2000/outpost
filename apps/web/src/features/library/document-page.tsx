@@ -6,6 +6,7 @@ import { Link, useLocation, useNavigate, useParams, useSearchParams } from "reac
 import { ErrorState } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Skeleton, Tooltip } from "@/components/ui/misc";
+import { AskAboutButton } from "@/features/chat/ask-about";
 import { ApiError, api } from "@/lib/api";
 import { useStorage } from "@/lib/queries";
 import { cn } from "@/lib/utils";
@@ -349,6 +350,7 @@ export default function DocumentPage() {
         </h1>
         {desktop && viewer ? <ViewerToolbar state={viewer} controls={controls} className="shrink-0" /> : null}
         {desktop && viewer ? <span aria-hidden className="h-5 w-px shrink-0 bg-border" /> : null}
+        <AskAboutButton kind="document" id={document.id} title={document.title} />
         <Tooltip
           label={document.locationAvailable ? "Download original" : "The original cannot be downloaded while its storage is disconnected"}
         >
