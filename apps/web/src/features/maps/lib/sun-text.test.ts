@@ -33,6 +33,36 @@ describe("clock times", () => {
     expect(formatClock(Date.UTC(2026, 2, 19, 18, 10), "Pacific/Fiji", "2026-03-20")).toBe("06:10");
   });
 
+  it("are written on the 12-hour clock when that is asked for, midnight and noon the right way round", () => {
+    const twelve = { style: "12" } as const;
+    const instant = Date.UTC(2026, 5, 21, 20, 20, 55);
+    expect(formatClock(instant, "UTC", "2026-06-21", twelve)).toBe("8:21 pm");
+    expect(formatClock(instant, "Europe/London", "2026-06-21", twelve)).toBe("9:21 pm");
+    expect(formatClock(Date.UTC(2026, 5, 21, 6, 42), "UTC", "2026-06-21", twelve)).toBe("6:42 am");
+    // Seven minutes past midnight is 12:07 am; seven past noon is 12:07 pm.
+    expect(formatClock(Date.UTC(2026, 5, 21, 0, 7), "UTC", "2026-06-21", twelve)).toBe("12:07 am");
+    expect(formatClock(Date.UTC(2026, 5, 21, 12, 7), "UTC", "2026-06-21", twelve)).toBe("12:07 pm");
+    // Rounded to the minute first: 23:59:40 is midnight of the next day, said as such.
+    expect(formatClock(Date.UTC(2026, 5, 21, 23, 59, 40), "UTC", "2026-06-21", twelve)).toBe("12:00 am on 22 Jun");
+    expect(formatClock(Date.UTC(2026, 5, 21, 11, 59, 40), "UTC", "2026-06-21", twelve)).toBe("12:00 pm");
+  });
+
+  it("say the day across the date line on the 12-hour clock too", () => {
+    const twelve = { style: "12" } as const;
+    expect(formatClock(Date.UTC(2026, 2, 19, 18, 10), "Europe/London", "2026-03-20", twelve)).toBe("6:10 pm on 19 Mar");
+    expect(formatClock(Date.UTC(2026, 2, 19, 18, 10), "Pacific/Fiji", "2026-03-20", twelve)).toBe("6:10 am");
+    // Adak, the other side of the line: its afternoon is already tomorrow in Fiji.
+    expect(formatClock(Date.UTC(2026, 2, 21, 0, 30), "America/Adak", "2026-03-20", twelve)).toBe("3:30 pm");
+    expect(formatClock(Date.UTC(2026, 2, 21, 0, 30), "Pacific/Fiji", "2026-03-20", twelve)).toBe("12:30 pm on 21 Mar");
+  });
+
+  it("are marked when they are UTC, as a radio log writes them", () => {
+    const utc = { style: "24", mark: "UTC" } as const;
+    expect(formatClock(Date.UTC(2026, 5, 21, 3, 43), "UTC", "2026-06-21", utc)).toBe("03:43 UTC");
+    expect(formatClock(Date.UTC(2026, 5, 21, 0, 7), "UTC", "2026-06-21", utc)).toBe("00:07 UTC");
+    expect(formatClock(Date.UTC(2026, 4, 17, 22, 53), "UTC", "2026-05-18", utc)).toBe("22:53 UTC on 17 May");
+  });
+
   it("know a zone's offset on a date, daylight saving and half hours included", () => {
     expect(zoneOffsetMinutes("Europe/London", Date.UTC(2026, 0, 15))).toBe(0);
     expect(zoneOffsetMinutes("Europe/London", Date.UTC(2026, 6, 15))).toBe(60);
@@ -153,6 +183,85 @@ describe("the rows of the Sun section", () => {
     expect(last.sunrise?.value).toBe("Already up: it did not set the night before");
     expect(last.sunset?.value).toMatch(/^23:3\d$/);
     expect(sunSummary(sunDay(69.65, 18.96, "2026-07-25"), "Etc/GMT-1")).toMatch(/^Sunset 23:3\d$/);
+  });
+
+  it("give the same day on the 12-hour clock, and in UTC as a radio log writes it", () => {
+    const day = sunDay(51.48, 0, "2026-06-21");
+    const change = dayLengthChange(51.48, 0, "2026-06-21");
+    const twelve = Object.fromEntries(
+      sunRows(day, change, moonPhase(day.noon), "Europe/London", { style: "12" }).map((row) => [row.key, row]),
+    );
+    expect(twelve["first-light"]?.value).toBe("3:55 am");
+    expect(twelve.sunrise).toMatchObject({ value: "4:43 am", detail: "49° NE" });
+    expect(twelve.noon).toMatchObject({ value: "1:02 pm", detail: "sun 62° up" });
+    expect(twelve.sunset).toMatchObject({ value: "9:21 pm", detail: "311° NW" });
+    expect(twelve["last-light"]?.value).toBe("10:09 pm");
+    expect(twelve.nautical?.value).toBe("2:41 am to 11:23 pm");
+    // Lengths of time are not clock times.
+    expect(twelve["day-length"]?.value).toBe("16 h 38 min");
+    expect(sunSummary(day, "Europe/London", { style: "12" })).toBe("Sunrise 4:43 am, sunset 9:21 pm");
+
+    const utc = Object.fromEntries(
+      sunRows(day, change, moonPhase(day.noon), "UTC", { style: "24", mark: "UTC" }).map((row) => [row.key, row]),
+    );
+    expect(utc.sunrise).toMatchObject({ value: "03:43 UTC", detail: "49° NE" });
+    expect(utc.noon?.value).toBe("12:02 UTC");
+    expect(utc.nautical?.value).toBe("01:41 UTC to 22:23 UTC");
+    // One mark is enough in the line that is read at a glance.
+    expect(sunSummary(day, "UTC", { style: "24", mark: "UTC" })).toBe("Sunrise 03:43, sunset 20:21 UTC");
+    expect(sunSummary(sunDay(69.65, 18.96, "2026-06-21"), "UTC", { style: "24", mark: "UTC" })).toBe("The sun does not set");
+  });
+
+  it("keep the polar wording on the 12-hour clock", () => {
+    const rows = (lat: number, lon: number, date: string, zone: string) => {
+      const day = sunDay(lat, lon, date);
+      return Object.fromEntries(
+        sunRows(day, dayLengthChange(lat, lon, date), moonPhase(day.noon), zone, { style: "12" }).map((row) => [row.key, row]),
+      );
+    };
+    // Midnight sun and polar night are words either way; the times that remain change style.
+    const midsummer = rows(69.65, 18.96, "2026-06-21", "UTC");
+    expect(midsummer.sun?.value).toBe("Does not set on this date (midnight sun)");
+    expect(midsummer.noon?.value).toBe("10:46 am");
+    const midwinter = rows(69.65, 18.96, "2026-12-21", "UTC");
+    expect(midwinter.sun?.value).toBe("Does not rise on this date (polar night)");
+    expect(midwinter["first-light"]?.value).toBe("8:31 am");
+    expect(midwinter["last-light"]?.value).toBe("12:53 pm");
+    // Longyearbyen in the polar night: a couple of hours of nautical twilight before solar noon by the UTC clock.
+    expect(rows(78.22, 15.63, "2026-12-21", "UTC").nautical?.value).toMatch(/^\d{1,2}:\d\d am to \d{1,2}:\d\d [ap]m$/);
+    // The edge of the midnight sun, where a sunrise falls just before midnight on the day before.
+    const first = rows(69.65, 18.96, "2026-05-18", "Etc/GMT-1");
+    expect(first.sunrise?.value).toMatch(/^11:5\d pm on 17 May$/);
+    expect(first.sunset?.value).toBe("Does not set tonight");
+    const last = rows(69.65, 18.96, "2026-07-25", "Etc/GMT-1");
+    expect(last.sunrise?.value).toBe("Already up: it did not set the night before");
+    expect(last.sunset?.value).toMatch(/^11:3\d pm$/);
+    expect(sunSummary(sunDay(69.65, 18.96, "2026-07-25"), "Etc/GMT-1", { style: "12" })).toMatch(/^Sunset 11:3\d pm$/);
+    // Trondheim at midsummer: the sun rises a little after one in the morning, and twilight never ends.
+    const trondheim = rows(63.43, 10.39, "2026-06-21", "UTC");
+    expect(trondheim.light?.value).toBe("Twilight lasts all night");
+    expect(trondheim.sunrise?.value).toBe("1:02 am");
+    expect(trondheim.sunset?.value).toBe("9:38 pm");
+  });
+
+  it("never print a blank or an invalid time on the 12-hour clock either, and never an hour nought or thirteen", () => {
+    for (const lat of [-90, -66.6, 0, 66.6, 70, 90]) {
+      for (const lon of [-180, 0, 180]) {
+        for (let day = 0; day < 366; day += 13) {
+          const date = new Date(Date.UTC(2028, 0, 1 + day)).toISOString().slice(0, 10);
+          const sun = sunDay(lat, lon, date);
+          const text = [
+            sunSummary(sun, "Pacific/Fiji", { style: "12" }),
+            ...sunRows(sun, dayLengthChange(lat, lon, date), moonPhase(sun.noon), "Pacific/Fiji", { style: "12" }).map((row) => row.value),
+          ].join(" | ");
+          expect(text, `${lat}, ${lon} on ${date}`).not.toMatch(/NaN|Invalid|undefined|null|Infinity/);
+          // Every clock time in it is 1 to 12, two-digit minutes, then am or pm.
+          for (const time of text.match(/\d{1,2}:\d\d(?: [ap]m)?/g) ?? []) {
+            expect(time, `${text}`).toMatch(/^(1[0-2]|[1-9]):[0-5]\d [ap]m$/);
+          }
+        }
+      }
+    }
   });
 
   it("never print a blank or an invalid time, anywhere on Earth, on any day of the year", () => {

@@ -3,9 +3,10 @@
  *
  * Offline, Outpost cannot know the time zone of an arbitrary point on the map, so a
  * time is shown on a clock the caller names (the device's zone, or UTC) and never on a
- * guess at the place's own. Every function takes the zone, so nothing here depends on
- * where the tests run. Pure.
+ * guess at the place's own. Every function takes the zone, and the style of clock to
+ * write on, so nothing here depends on where the tests run. Pure.
  */
+import { type ClockStyle, clockText } from "@/lib/clock";
 import { formatBearing } from "./geo";
 import type { MoonPhase } from "./moon";
 import { type Band, type IsoDate, type SunDay, utcToDate } from "./sun";
@@ -24,7 +25,7 @@ export function deviceZone(): string {
 const partFormats = new Map<string, Intl.DateTimeFormat>();
 
 /** The clock and calendar reading in a zone at an instant, to the minute. */
-function readingIn(zone: string, ms: number): { date: IsoDate; time: string; asUtc: number } {
+function readingIn(zone: string, ms: number): { date: IsoDate; hour: number; minute: number; asUtc: number } {
   let format = partFormats.get(zone);
   if (!format) {
     format = new Intl.DateTimeFormat("en-GB", {
@@ -48,7 +49,7 @@ function readingIn(zone: string, ms: number): { date: IsoDate; time: string; asU
     number,
   ];
   const asUtc = Date.UTC(year, month - 1, day, hour, minute);
-  return { date: utcToDate(asUtc), time: `${parts.hour}:${parts.minute}`, asUtc };
+  return { date: utcToDate(asUtc), hour, minute, asUtc };
 }
 
 /** The calendar date in a zone at an instant. */
@@ -75,12 +76,24 @@ const dayFormat = new Intl.DateTimeFormat("en-GB", { timeZone: "UTC", day: "nume
 export const formatShortDate = (date: IsoDate) => dayFormat.format(new Date(`${date}T00:00:00Z`));
 
 /**
- * An instant on a zone's 24-hour clock, to the nearest minute: "07:42". When that falls
- * on another calendar day there than the date asked about, the day is said: "23:53 on 17 May".
+ * How clock times are written: on the 24-hour clock ("07:42") unless the 12-hour one is
+ * asked for ("7:42 am"), and marked when they are UTC ("06:42 UTC"), as a radio log
+ * writes them. UTC is always on the 24-hour clock; the caller sees to that.
  */
-export function formatClock(ms: number, zone: string, date: IsoDate): string {
+export interface ClockWriting {
+  style?: ClockStyle;
+  mark?: "UTC";
+}
+
+/**
+ * An instant on a zone's clock, to the nearest minute: "07:42", or "7:42 am". When that
+ * falls on another calendar day there than the date asked about, the day is said:
+ * "23:53 on 17 May".
+ */
+export function formatClock(ms: number, zone: string, date: IsoDate, writing: ClockWriting = {}): string {
   const reading = readingIn(zone, Math.round(ms / MINUTE) * MINUTE);
-  return reading.date === date ? reading.time : `${reading.time} on ${formatShortDate(reading.date)}`;
+  const time = `${clockText(reading.hour, reading.minute, writing.style ?? "24")}${writing.mark ? ` ${writing.mark}` : ""}`;
+  return reading.date === date ? time : `${time} on ${formatShortDate(reading.date)}`;
 }
 
 /** "8 h 29 min" */
@@ -121,15 +134,16 @@ export interface SunRow {
   detailBelow?: boolean;
 }
 
-/** One line for the day, for when the section is folded away. */
-export function sunSummary(day: SunDay, zone: string): string {
+/** One line for the day, for when the section is folded away. UTC is marked once, at the end. */
+export function sunSummary(day: SunDay, zone: string, writing: ClockWriting = {}): string {
   const { sun } = day;
   if (sun.kind === "below") return "The sun does not rise";
   if (sun.kind === "above") return "The sun does not set";
-  const rise = sun.begin === null ? null : `sunrise ${formatClock(sun.begin, zone, day.date)}`;
-  const set = sun.end === null ? null : `sunset ${formatClock(sun.end, zone, day.date)}`;
+  const clock = (ms: number) => formatClock(ms, zone, day.date, { style: writing.style });
+  const rise = sun.begin === null ? null : `sunrise ${clock(sun.begin)}`;
+  const set = sun.end === null ? null : `sunset ${clock(sun.end)}`;
   const text = [rise, set].filter(Boolean).join(", ");
-  return text.charAt(0).toUpperCase() + text.slice(1);
+  return `${text.charAt(0).toUpperCase()}${text.slice(1)}${writing.mark ? ` ${writing.mark}` : ""}`;
 }
 
 function noonHeight(altitude: number): string {
@@ -138,21 +152,21 @@ function noonHeight(altitude: number): string {
   return degrees > 0 ? `sun ${degrees}° up` : `sun ${-degrees}° below the horizon`;
 }
 
-function nauticalText(band: Band, zone: string, date: IsoDate): string {
+function nauticalText(band: Band, clock: (ms: number) => string): string {
   if (band.kind === "below") return "None on this date";
   if (band.kind === "above") return "Lasts all night";
-  if (band.begin === null) return `From the night before to ${formatClock(band.end as number, zone, date)}`;
-  if (band.end === null) return `From ${formatClock(band.begin, zone, date)} through the night`;
-  return `${formatClock(band.begin, zone, date)} to ${formatClock(band.end, zone, date)}`;
+  if (band.begin === null) return `From the night before to ${clock(band.end as number)}`;
+  if (band.end === null) return `From ${clock(band.begin)} through the night`;
+  return `${clock(band.begin)} to ${clock(band.end)}`;
 }
 
 /**
  * The rows of the Sun section, in the order of the day. Days without a sunrise or a
  * sunset, and nights that never get darker than twilight, are said in words.
  */
-export function sunRows(day: SunDay, change: number, moon: MoonPhase, zone: string): SunRow[] {
+export function sunRows(day: SunDay, change: number, moon: MoonPhase, zone: string, writing: ClockWriting = {}): SunRow[] {
   const { sun, civil, nautical, date } = day;
-  const clock = (ms: number) => formatClock(ms, zone, date);
+  const clock = (ms: number) => formatClock(ms, zone, date, writing);
   const rows: SunRow[] = [];
   const noon: SunRow = { key: "noon", label: "Solar noon", value: clock(day.noon), detail: noonHeight(day.noonAltitude) };
 
@@ -210,7 +224,7 @@ export function sunRows(day: SunDay, change: number, moon: MoonPhase, zone: stri
   });
   // Said already when civil twilight lasts all night, and beside the point under the midnight sun.
   if (sun.kind !== "above" && civil.kind !== "above") {
-    rows.push({ key: "nautical", label: "Nautical twilight", value: nauticalText(nautical, zone, date) });
+    rows.push({ key: "nautical", label: "Nautical twilight", value: nauticalText(nautical, clock) });
   }
   rows.push({
     key: "moon",

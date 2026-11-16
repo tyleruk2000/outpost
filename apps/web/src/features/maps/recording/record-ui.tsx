@@ -18,6 +18,7 @@ import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog, Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
+import { formatTimeOfDay } from "@/lib/clock";
 import { cn, formatDate, formatNumber, plural } from "@/lib/utils";
 import { formatDistance, formatDistanceWithMiles, formatHeight } from "../lib/geo";
 import type { MapEngine } from "../map/engine";
@@ -45,8 +46,7 @@ const subscribeView = (listener: () => void) => {
 };
 const useCardView = () => useSyncExternalStore(subscribeView, () => cardView);
 
-const clock = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit" });
-const timeOfDay = (time: number) => clock.format(time);
+const timeOfDay = (time: number) => formatTimeOfDay(time);
 
 /** The time, ticking once a second while something on screen is counting. */
 function useNow(ticking: boolean): number {
