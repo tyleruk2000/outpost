@@ -89,7 +89,14 @@ function guardedAgent(allowPrivate: boolean): Agent {
 }
 
 export interface SafeFetchOptions {
-  method?: "GET" | "HEAD";
+  /**
+   * `POST` is for asking a question of a server (a search), never for sending a file.
+   * It needs a `body`, and a redirect is refused rather than followed: what was asked
+   * goes to the host that was named and to no other.
+   */
+  method?: "GET" | "HEAD" | "POST";
+  /** The body of a `POST`. */
+  body?: string;
   headers?: Record<string, string>;
   signal?: AbortSignal;
   /** Hosts the first request may go to. Omit to allow any public host. */
@@ -147,6 +154,7 @@ export function createHttpClient(config: { allowPrivate: boolean }): HttpClient 
           redirect: "manual",
           signal: options.signal,
           dispatcher: agent,
+          ...(options.method === "POST" ? { body: options.body ?? "" } : {}),
         };
         const response = await undiciFetch(url, init).catch((error: unknown) => {
           // undici reports a refused connection as a generic "fetch failed" with the real
@@ -160,6 +168,9 @@ export function createHttpClient(config: { allowPrivate: boolean }): HttpClient 
         });
         if (response.status >= 300 && response.status < 400 && response.headers.has("location")) {
           await response.body?.cancel();
+          if (options.method === "POST") {
+            throw new AppError("upstream", `${url.hostname} answered with a redirect, which Outpost does not follow for a search.`);
+          }
           if (hop >= maxRedirects) throw new AppError("upstream", "The download redirected too many times.");
           url = new URL(response.headers.get("location")!, url);
           continue;

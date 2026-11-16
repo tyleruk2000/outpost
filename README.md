@@ -67,9 +67,11 @@ picture, not a surveyed path.
   one-touch call, text and email. Bring contacts in from a phone as a vCard file, and
   let a phone keep a read-only copy over CardDAV. See [docs/contacts.md](docs/contacts.md).
 - **Offline maps.** Download a country, a mountain range, or any box you draw, with
-  the exact size shown first. Save places, import and export GPX routes, measure
-  distances, search place names, and enter coordinates or British grid references.
-  Sunrise, sunset and twilight for any place and date, worked out on the device.
+  the exact size shown first. Save places, draw routes, find a known route by name
+  in OpenStreetMap (the one map feature that needs a connection when you use it),
+  import and export GPX, measure distances, search place names, and enter coordinates
+  or British grid references. Sunrise, sunset and twilight for any place and date,
+  worked out on the device.
 - **On a phone, away from the server.** Over HTTPS the app keeps itself on the phone,
   and you can keep chosen pages of notes, routes, saved places and areas of the map
   there, to read where the phone cannot reach the server. See

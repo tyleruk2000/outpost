@@ -4,7 +4,20 @@
  */
 import { type Bbox, formatBytes, type MarkerDto, type TrackDto, type TrackImportResponse } from "@outpost/shared";
 import type { UseQueryResult } from "@tanstack/react-query";
-import { ArrowLeft, CircleAlert, CircleCheck, Download, Ellipsis, FileUp, Mountain, PenLine, Scan, Spline, Trash2 } from "lucide-react";
+import {
+  ArrowLeft,
+  CircleAlert,
+  CircleCheck,
+  Download,
+  Ellipsis,
+  FileUp,
+  Mountain,
+  PenLine,
+  Scan,
+  Search,
+  Spline,
+  Trash2,
+} from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ErrorState, Notice } from "@/components/page";
@@ -17,6 +30,7 @@ import { KeepTrackButton } from "@/features/kept/keep-controls";
 import { errorMessage } from "@/lib/api";
 import { formatDate, formatNumber, plural } from "@/lib/utils";
 import { importGpx, useDeleteTrack, useSaveRoute, useTrack, useUpdateTrack } from "../data";
+import { FoundRouteFacts, FoundRouteHeights, FoundRouteNote, foundRouteSource } from "../find-route/source-credit";
 import type { LatLon } from "../lib/geo";
 import { MARKER_HEX } from "../lib/palette";
 import { buildProfile, routeOrigin } from "../lib/profile";
@@ -69,6 +83,8 @@ export function RouteDetail({
   const [confirming, setConfirming] = useState(false);
   const [reshaping, setReshaping] = useState(false);
   const origin = useMemo(() => (geometry.data ? routeOrigin(geometry.data.geojson) : null), [geometry.data]);
+  // A route found in a route source carries where it came from; one drawn or imported does not.
+  const found = useMemo(() => foundRouteSource(geometry.data?.geojson), [geometry.data]);
   const editable = useMemo(() => (geometry.data ? editablePoints(geometry.data.geojson) : null), [geometry.data]);
   // A drawn route saved before terrain was installed can be given its heights now.
   const canFillHeights = Boolean(
@@ -97,7 +113,7 @@ export function RouteDetail({
           <div className="grid gap-2">
             {profile ? (
               <ElevationProfile profile={profile} color={MARKER_HEX[track.color]} onScrub={onScrub} />
-            ) : (
+            ) : found && !origin?.drawn ? null : (
               <p className="text-small text-ink-muted">
                 {origin?.drawn
                   ? "No terrain is installed where this route runs, so there are no heights to draw an elevation profile from. Nothing is downloaded to find them."
@@ -106,6 +122,15 @@ export function RouteDetail({
                     : "This file has no heights, so there is no elevation profile to draw."}
               </p>
             )}
+            {found ? (
+              <FoundRouteHeights
+                track={track}
+                geojson={geometry.data.geojson}
+                terrain={terrain}
+                hasProfile={Boolean(profile)}
+                reshaped={Boolean(origin?.drawn)}
+              />
+            ) : null}
             {origin?.drawn && profile ? (
               <p className="text-small text-ink-muted">
                 {origin.elevation === "partial"
@@ -140,19 +165,25 @@ export function RouteDetail({
         )}
 
         <dl>
-          {trackFacts(track, { drawn: origin?.drawn, recorded: origin?.recorded }).map((fact) => (
+          {trackFacts(track, { drawn: origin?.drawn || Boolean(found), recorded: origin?.recorded }).map((fact) => (
             <Fact key={fact.label} label={fact.label}>
               {fact.value}
             </Fact>
           ))}
-          <Fact label={origin?.recorded ? "Recorded" : track.sourceFilename || origin?.drawn === false ? "Imported" : "Drawn"}>
+          <Fact
+            label={found ? "Added" : origin?.recorded ? "Recorded" : track.sourceFilename || origin?.drawn === false ? "Imported" : "Drawn"}
+          >
             {formatDate(track.createdAt)}
             {track.sourceFilename ? (
               <span className="block font-mono text-[0.8125rem] break-all text-ink-muted">{track.sourceFilename}</span>
             ) : null}
-            {track.sourceFilename && origin?.drawn ? <span className="block text-ink-muted">Shape redrawn by hand since</span> : null}
+            {(track.sourceFilename || found) && origin?.drawn ? (
+              <span className="block text-ink-muted">Shape redrawn by hand since</span>
+            ) : null}
           </Fact>
+          {found ? <FoundRouteFacts source={found} /> : null}
         </dl>
+        {found ? <FoundRouteNote source={found} /> : null}
 
         <div className="flex flex-wrap gap-2">
           <Button onClick={onFit} disabled={!mapReady || !track.bounds}>
@@ -233,6 +264,7 @@ export function RouteDetail({
           open={reshaping}
           onOpenChange={setReshaping}
           track={track}
+          found={Boolean(found)}
           recorded={editable.recorded}
           editablePoints={editable.points.length}
           parts={editable.parts}
@@ -258,6 +290,7 @@ function ReshapeRecordingDialog({
   open,
   onOpenChange,
   track,
+  found,
   recorded,
   editablePoints: editableCount,
   parts,
@@ -269,6 +302,8 @@ function ReshapeRecordingDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   track: TrackDto;
+  /** The route was found in a route source, not recorded. */
+  found?: boolean;
   /** Points in the recording. */
   recorded: number;
   /** Points of the line that will be edited. */
@@ -285,9 +320,11 @@ function ReshapeRecordingDialog({
       <DialogContent
         title={`Edit the shape of “${track.name}”?`}
         description={
-          track.sourceFilename
-            ? `This route is a recording imported from ${track.sourceFilename}. Saving a new shape replaces what was recorded.`
-            : "This route is a recording. Saving a new shape replaces what was recorded."
+          found
+            ? "This route's line came from OpenStreetMap. Saving a new shape replaces that line with yours; its credit is kept."
+            : track.sourceFilename
+              ? `This route is a recording imported from ${track.sourceFilename}. Saving a new shape replaces what was recorded.`
+              : "This route is a recording. Saving a new shape replaces what was recorded."
         }
         size="md"
       >
@@ -343,6 +380,7 @@ export function RoutesList({
   onOpen,
   onImport,
   onDraw,
+  onFind,
   canDraw,
 }: {
   tracks: UseQueryResult<TrackDto[]>;
@@ -354,6 +392,8 @@ export function RoutesList({
   onImport: (files: File[]) => void;
   /** Starts drawing a new route on the map. */
   onDraw: () => void;
+  /** Opens "Find a route": looking a known route up in a route source. */
+  onFind: () => void;
   /** False when the map could not be drawn, so there is nothing to draw on. */
   canDraw: boolean;
 }) {
@@ -400,12 +440,16 @@ export function RoutesList({
         {chooser}
         <h3 className="font-title text-lead text-ink">No routes yet</h3>
         <p className="mt-1.5 text-small text-ink-muted">
-          Draw a route on the map point by point, or import a GPX file from a GPS, a phone app or a route-planning site. Either way it is
-          shown on the map with its distance, and can be exported as GPX. You can also drop a file onto the map.
+          Draw a route on the map point by point, find a known one by name (a waymarked walk, a cycle route), or import a GPX file from a
+          GPS, a phone app or a route-planning site. Whichever way, it is shown on the map with its distance, and can be exported as GPX.
+          You can also drop a file onto the map.
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
           <Button variant="primary" onClick={onDraw} disabled={!canDraw}>
             <PenLine /> Draw a route
+          </Button>
+          <Button onClick={onFind}>
+            <Search /> Find a route
           </Button>
           <Button onClick={() => input.current?.click()}>
             <FileUp /> Import GPX
@@ -444,6 +488,17 @@ export function RoutesList({
             </MenuItem>
           </MenuContent>
         </Menu>
+      </div>
+      <div className="px-4 pt-2">
+        {/* A way in, not a field: the search itself, and the words about where it is sent, are one step on. */}
+        <button
+          type="button"
+          onClick={onFind}
+          className="flex h-9 w-full items-center gap-2 rounded-control border border-border-strong bg-page px-3 text-left text-small text-ink-muted transition-colors hover:border-ink-faint hover:text-ink max-md:h-11"
+        >
+          <Search aria-hidden className="size-4 shrink-0" />
+          Find a route by name or in this view
+        </button>
       </div>
       <p className="tabular px-4 pt-2 pb-2 text-micro text-ink-muted">
         {plural(all.length, "route")}

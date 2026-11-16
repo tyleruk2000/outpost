@@ -476,6 +476,13 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   places and names can each be left on or off. The map is drawn at 300 or 150 dots to
   the inch, in pieces where a canvas could not hold it, and the page states how the
   scale varies across the sheet. Nothing is sent to the server.
+- "Find a route" in the Routes tab: look a waymarked walk, a cycle route or a named
+  path up in OpenStreetMap by name or by the map view, see it on the map, and add it
+  to your routes with heights from installed terrain. It needs the internet at the
+  moment of searching and says so, names the server before anything is sent, and asks
+  one question per press. The servers are declared in `catalog/route-sources.json`. A
+  found route keeps its credit: in its panel, in the map's credits and in its GPX
+  export. Gaps in a route are left open, never drawn across.
 
 #### Portable drives
 

@@ -32,6 +32,9 @@ public internet and must not be exposed to it.
   scripts included. Its pages cannot change your library or reach the internet.
 - **Misuse of the download feature.** Outpost cannot be made to fetch from addresses
   inside your network, and a tampered or corrupted download is not installed.
+- **A hostile route source.** A server that answers a route search with something
+  enormous, malformed or mischievous cannot fill the memory, draw a line that is not
+  there, or put markup into a page or a file.
 - **Misuse of the share feature.** Outpost cannot be made to connect to a file server
   on the internet, and repeated wrong passwords are held back.
 - **Text that gives orders.** A document can contain a sentence written to look like
@@ -374,6 +377,25 @@ site showing Outpost something other than what it shows a browser; and the site,
 anyone on the path to it over plain `http`, seeing that the page was asked for. Like
 every route, these are open to anyone who can reach Outpost, so on a shared network
 anyone can make it fetch a public page, as they can already start a download.
+**Route sources.** "Find a route" on the Maps screen asks a server on the internet
+about OpenStreetMap, and reads what comes back.
+
+| Control | Detail | Code |
+| --- | --- | --- |
+| Where a search may go | Only to the host of a source declared in `catalog/route-sources.json` or in the administrator's own `<data directory>/catalog/routes/route-sources.json`. Shipped sources must be `https`. The request goes through the guarded client, so rule 2 applies: a source on this computer or a private network is refused unless the server was started with `OUTPOST_ALLOW_PRIVATE_DOWNLOADS=true`. | `modules/maps/route-finder/sources.ts`, `overpass.ts` |
+| No redirects | The question is a `POST`. A redirect is refused, not followed, so what a person typed goes to the host that was named and to no other. | `core/http.ts` |
+| Who may cause a search | Searching and previewing are `POST` routes, so they are held to the cross-site rules above: a page on another site cannot make Outpost question a route source. Only listing the declared sources is a `GET`, and it contacts nobody. | `modules/maps/route-finder/index.ts` |
+| What is sent | The name typed, the edges of the map view to five decimal places, and a client name: "Outpost", its version and the project's address, as the servers' operators ask. No cookie, no referrer, nothing about the person, the library or the installation. | `ROUTE_FINDER_USER_AGENT` in `route-finder/index.ts` |
+| What is typed cannot change the question | The name becomes a pattern in which letters, digits, spaces, apostrophes and hyphens stand for themselves and every other character becomes "any one character". Nothing typed can close the quoted string or add a statement to the query. Route and way numbers must be positive whole numbers. | `namePattern` in `route-finder/overpass.ts` |
+| The answer is untrusted | It is read through a counter that stops at 6 MB for a search and 24 MB for a route, before it is parsed. Then every element is checked: an id must be a positive whole number; a position must be a finite latitude and longitude on Earth, and a way with a bad point in it is split there, never bridged; only a handful of tag keys are read, each cut to 200 characters and stripped of control characters and of the characters that reverse the direction of text; anything that is not a route, a way or a length is passed over. One route may hold 10,000 ways and 200,000 points; a search 41 routes and 400 ways. Over a limit, the whole answer is refused. | `readAnswer` in `route-finder/overpass.ts`, limits in `service.ts` |
+| Names are text | A route's name reaches the page through React, which writes it as text, and a GPX file through the same escaping as every other name. The links shown with a found route are built from a relation number by Outpost, or are fixed addresses. A stored credit is checked again when it is read back, because a route can arrive on a drive that has been elsewhere: its links can only be OpenStreetMap's copyright page, the licence's own page and a relation's page on openstreetmap.org, and a credit with anything else in their place is not shown as a credit. | `readTrackSource` in `packages/shared/src/route-finder.ts` |
+| A source cannot hold the server up | One question at a time; a second is refused. The source is given 25 seconds and Outpost waits 29. After a source answers "busy" (HTTP 429, 502, 503, 504, or Overpass's own "timed out"), it is not asked again for 30 seconds. A person who leaves takes their question with them. Reading and joining a route at the limit (10,000 ways listed in a shuffled order, 200,000 points, 15 MB of JSON) held the server's thread for about a third of a second: 0.07 s to parse, 0.04 s to check, 0.22 s to join (16 November 2026, Node 24.15 on a Mac). | `createOverpassClient` in `route-finder/overpass.ts` |
+| Nothing is kept unasked | Results are not stored. A previewed route is held in memory (three at most, fifteen minutes each) so that adding it does not ask the source again; it is written to the database only when a person adds it. | `route-finder/service.ts` |
+
+What this does not defend against: the operator of a route source sees the names
+people search for and the areas they look at, with the address the request came from,
+as any web server does. And a route is only as right as OpenStreetMap is: Outpost
+checks that a line is made of places on Earth, not that it is safe to walk.
 
 Three outbound paths do not use this client, because their address is a setting: the
 embedding server for semantic search, the model server for answers (see

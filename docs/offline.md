@@ -27,8 +27,9 @@ Everything you have already installed or written:
 - answers written from your library, if you have set up a language model and its
   server runs on your own machine or network (see [ai.md](ai.md));
 - writing and organising notes, uploading documents, importing files;
-- viewing installed map regions, searching installed place names, markers, GPX import
-  and export;
+- viewing installed map regions, searching installed place names, markers, drawing
+  routes, GPX import and export, and every route already on the map, however it got
+  there;
 - moving and checking collections, backup and restore;
 - writing a portable drive, once the programs it needs are cached (see below).
 
@@ -45,6 +46,7 @@ Only actions that fetch something new. Each happens because a person pressed a b
 | Starting a catalogue download | The hosts listed in the manifests' `downloadHosts`; mirrors they redirect to |
 | Estimating or downloading a map region | `build-metadata.protomaps.dev` and `build.protomaps.com`, or the archive in the `maps.tileSource` setting; for terrain, the `maps.terrainSource` archive |
 | Downloading place names | `download.geonames.org` |
+| **Search** in "Find a route" on the Maps screen, and choosing one of its results | The route source named beside the search: one of the hosts in `catalog/route-sources.json` (as shipped, `ovp.dresel.systems` or `overpass.private.coffee`) or in your own `<data directory>/catalog/routes/route-sources.json`. It is sent the name you typed and, when you search the map view, the edges of the view. A redirect to another host is refused. See [maps.md](maps.md#finding-a-known-route). |
 | **Save to library** on a link in a reference page, or adding a page's linked files that are only on the internet | The host named in the link, and whatever it redirects to. This is the one place Outpost fetches from a host that no catalogue manifest lists. The address must be `http` or `https`, must end in a kind of file the library keeps, and must not be on this computer or a private network (unless the server was started with `OUTPOST_ALLOW_PRIVATE_DOWNLOADS=true`). |
 | **Look at the page** and **Save page** under "Save a web page" | The host in the address you pasted, and whatever it redirects to: one request for the page. If you asked for its pictures, one request for each, to the hosts the preview names. Nothing a page links to is followed. The address must be `http` or `https` and must not be on this computer or a private network (unless the server was started with `OUTPOST_ALLOW_PRIVATE_DOWNLOADS=true`). See [notes-and-imports.md](notes-and-imports.md#saving-a-web-page). |
 | Making a portable drive for a kind of computer for the first time | `nodejs.org` for the Node runtime; `download.kiwix.org` for the reference-collection reader |
@@ -85,12 +87,13 @@ meaning). Running it does not.
   from the live web (`apps/server/src/modules/kiwix/index.ts`). A link that leaves the
   archive is not followed: the reader shows where it goes, and fetching the file it
   points at is a button you press.
-- **The server calls out only on request.** Outbound requests for downloads and
-  catalogue look-ups go through one guarded client (`apps/server/src/core/http.ts`),
-  used by the catalogue, downloads, maps and portable modules. A file saved from a
-  link is an ordinary download through the same client, and a saved web page and its
-  pictures are fetched through it too. Nothing is scheduled: there is no update check,
-  no background refresh and no telemetry. A saved page is never fetched again.
+- **The server calls out only on request.** Outbound requests for downloads,
+  catalogue look-ups and route searches go through one guarded client
+  (`apps/server/src/core/http.ts`), used by the catalogue, downloads, maps and
+  portable modules. A file saved from a link is an ordinary download through the same
+  client, and a saved web page and its pictures are fetched through it too. Nothing is
+  scheduled: there is no update check, no background refresh and no telemetry. A saved
+  page is never fetched again.
 - **Imports never download.** A picture at a web address in an imported page is kept
   as a link, not fetched.
 - **A saved page is sealed too.** What is kept of a web page is its words and, if you
@@ -133,6 +136,10 @@ internet either.
   back; the part already downloaded is kept."
 - **Map regions:** "Outpost could not reach the map source. Downloading a map region
   needs an internet connection."
+- **Find a route:** "No connection. Outpost could not reach ovp.dresel.systems.
+  Finding a route needs an internet connection; the routes already on your map do
+  not." The view says before any search that searching needs the internet. Routes
+  already added are drawn, opened, exported and printed with no connection.
 - **Search:** if reference collections cannot be searched, results still appear and a
   note says which source is missing and why.
 

@@ -11,7 +11,9 @@ import {
   type MarkerColor,
   type MarkerDto,
   type RecordingSaveResponse,
+  type RouteElevation,
   type RouteSaveResponse,
+  readTrackSource,
   type TrackDto,
   type TrackImportResponse,
   type TrackWithGeometryDto,
@@ -24,7 +26,8 @@ import { newId } from "../../core/ids.ts";
 import { markers, tracks } from "../../db/schema.ts";
 import { buildDrawnLine, type DrawnLine, routePointsSchema } from "./drawn-route.ts";
 import type { ElevationSampler } from "./elevation.ts";
-import { buildGpx, type GpxWaypoint, parseGpxSafely, splitCollection, type TrackCollection, trackStats } from "./gpx.ts";
+import { buildGpx, type GpxDocument, type GpxWaypoint, parseGpxSafely, splitCollection, type TrackCollection, trackStats } from "./gpx.ts";
+import { gpxCredit } from "./route-finder/credit.ts";
 
 type MarkerRow = typeof markers.$inferSelect;
 type TrackRow = typeof tracks.$inferSelect;
@@ -134,6 +137,19 @@ export interface AnnotationsService {
   createRoute(input: z.infer<typeof routeCreateSchema>): Promise<RouteSaveResponse>;
   /** Replaces a track's lines with one drawn through the points given. Its waypoints are kept. */
   replaceRoutePoints(id: string, input: z.infer<typeof routePointsReplaceSchema>): Promise<RouteSaveResponse>;
+  /**
+   * Saves lines that are already made (a route found in a route source), with the
+   * credit they carry as the collection's `source`. Nothing is read or sampled here.
+   */
+  createFromCollection(input: {
+    name: string;
+    description: string;
+    color?: MarkerColor;
+    collection: TrackCollection;
+    elevation: RouteElevation;
+  }): RouteSaveResponse;
+  /** Replaces a track's stored lines as they are, keeping its name, colour and description. */
+  replaceCollection(id: string, collection: TrackCollection, elevation: RouteElevation): RouteSaveResponse;
   updateTrack(id: string, patch: z.infer<typeof trackPatchSchema>): TrackDto;
   removeTrack(id: string): void;
   exportTrack(id: string): { filename: string; gpx: string };
@@ -284,6 +300,21 @@ export function createAnnotationsService(ctx: AppContext, deps: { elevation: Ele
         }).ascentMeters
       : null;
     return { ...stats, ascentMeters };
+  }
+
+  /** A stored track's lines and waypoints, each line saying where it came from if the track was found in a route source. */
+  function credited(row: TrackRow): Pick<GpxDocument, "lines" | "waypoints"> {
+    const { lines, waypoints } = splitCollection(row.geojson as unknown as TrackCollection);
+    const source = readTrackSource(row.geojson);
+    if (!source) return { lines, waypoints };
+    const credit = gpxCredit(source);
+    return {
+      lines: lines.map((line) => ({
+        ...line,
+        properties: { ...line.properties, src: credit.src, ...(credit.trackLink ? { link: credit.trackLink } : {}) },
+      })),
+      waypoints,
+    };
   }
 
   const markerWaypoints = (): GpxWaypoint[] =>
@@ -479,10 +510,15 @@ export function createAnnotationsService(ctx: AppContext, deps: { elevation: Ele
       const drawn = await buildDrawnLine(input.points, deps.elevation);
       // Read again: the heights took a moment, and the track may have been renamed or removed meanwhile.
       const current = trackRow(id);
-      const waypoints = ((current.geojson as unknown as TrackCollection).features ?? []).filter(
-        (feature) => feature.geometry?.type === "Point",
-      );
-      const collection: TrackCollection = { type: "FeatureCollection", features: [drawn.feature, ...waypoints] };
+      const previous = current.geojson as unknown as TrackCollection;
+      const waypoints = (previous.features ?? []).filter((feature) => feature.geometry?.type === "Point");
+      // A route found in a route source is still that source's data after its shape is edited: the credit stays.
+      const source = readTrackSource(previous);
+      const collection: TrackCollection = {
+        type: "FeatureCollection",
+        features: [drawn.feature, ...waypoints],
+        ...(source ? { source } : {}),
+      };
       const stats = drawnStats(collection, drawn);
       db.update(tracks)
         .set({
@@ -499,6 +535,52 @@ export function createAnnotationsService(ctx: AppContext, deps: { elevation: Ele
       indexTrack(row);
       changed();
       return { track: toTrackDto(row), elevation: drawn.elevation };
+    },
+
+    createFromCollection(input) {
+      const stats = trackStats(input.collection);
+      const now = Date.now();
+      const id = newId();
+      db.insert(tracks)
+        .values({
+          id,
+          name: input.name,
+          description: input.description,
+          color: input.color ?? "teal",
+          geojson: input.collection as unknown as Record<string, unknown>,
+          sourceFilename: null,
+          distanceMeters: stats.distanceMeters,
+          ascentMeters: stats.ascentMeters,
+          pointCount: stats.pointCount,
+          bounds: stats.bounds,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run();
+      const row = trackRow(id);
+      indexTrack(row);
+      changed();
+      return { track: toTrackDto(row), elevation: input.elevation };
+    },
+
+    replaceCollection(id, collection, elevation) {
+      trackRow(id);
+      const stats = trackStats(collection);
+      db.update(tracks)
+        .set({
+          geojson: collection as unknown as Record<string, unknown>,
+          distanceMeters: stats.distanceMeters,
+          ascentMeters: stats.ascentMeters,
+          pointCount: stats.pointCount,
+          bounds: stats.bounds,
+          updatedAt: Date.now(),
+        })
+        .where(eq(tracks.id, id))
+        .run();
+      const row = trackRow(id);
+      indexTrack(row);
+      changed();
+      return { track: toTrackDto(row), elevation };
     },
 
     updateTrack(id, patch) {
@@ -523,13 +605,21 @@ export function createAnnotationsService(ctx: AppContext, deps: { elevation: Ele
 
     exportTrack(id) {
       const row = trackRow(id);
-      const { lines, waypoints } = splitCollection(row.geojson as unknown as TrackCollection);
+      const { lines, waypoints } = credited(row);
       // A single unnamed line takes the track's name, so it is not anonymous in other apps.
       if (lines.length === 1 && !lines[0]!.properties.name)
         lines[0] = { ...lines[0]!, properties: { ...lines[0]!.properties, name: row.name } };
+      const source = readTrackSource(row.geojson);
+      const credit = source ? gpxCredit(source) : null;
       return {
         filename: fileNameOf(row.name),
-        gpx: buildGpx({ name: row.name, description: row.description || undefined, lines, waypoints }),
+        gpx: buildGpx({
+          name: row.name,
+          description: row.description || undefined,
+          ...(credit ? { copyright: credit.copyright, link: credit.link } : {}),
+          lines,
+          waypoints,
+        }),
       };
     },
 
@@ -540,13 +630,25 @@ export function createAnnotationsService(ctx: AppContext, deps: { elevation: Ele
       const rows = selection.trackIds.length > 0 ? db.select().from(tracks).where(inArray(tracks.id, selection.trackIds)).all() : [];
       const missing = selection.trackIds.find((id) => !rows.some((row) => row.id === id));
       if (missing) throw notFound("One of those tracks");
-      const document = {
+      const document: GpxDocument = {
         name: "Outpost export",
-        lines: [] as ReturnType<typeof splitCollection>["lines"],
+        lines: [],
         waypoints: selection.markers ? markerWaypoints() : [],
       };
+      // Each found route says where it came from on its own track. The file as a whole is
+      // marked as one party's only when all of it is; otherwise a sentence says some of it is.
+      const sources = rows.map((row) => readTrackSource(row.geojson));
+      const first = sources[0];
+      if (first && !selection.markers && sources.every((source) => source !== null)) {
+        const credit = gpxCredit(first);
+        document.copyright = credit.copyright;
+        document.link = credit.link;
+      } else if (sources.some((source) => source !== null)) {
+        const any = sources.find((source) => source !== null)!;
+        document.description = `Some of the routes in this file contain information from OpenStreetMap, which is made available under the ${any.license}: ${any.creditUrl}. Each says so in its own source.`;
+      }
       for (const row of rows) {
-        const { lines, waypoints } = splitCollection(row.geojson as unknown as TrackCollection);
+        const { lines, waypoints } = credited(row);
         document.lines.push(
           ...lines.map((line) => (line.properties.name ? line : { ...line, properties: { ...line.properties, name: row.name } })),
         );

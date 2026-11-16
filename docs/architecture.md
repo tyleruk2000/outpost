@@ -297,7 +297,8 @@ The limits a browser puts on stored data, and what was not tested, are in
   values. One page per action; nothing is crawled, scheduled or fetched again.
 - No telemetry. The server makes an outbound request only as the direct result of a
   person's action: refreshing the catalogue, starting a download, saving a file from
-  a link, saving a web page, estimating or downloading a map region or place names, fetching the runtimes
+  a link, saving a web page, estimating or downloading a map region or place names, searching for a route
+  in a route source or choosing one of the results, fetching the runtimes
   for a portable drive, or, if they configured one, calling their own embedding server
   or asking their own model server for an answer.
 

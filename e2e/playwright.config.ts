@@ -92,6 +92,29 @@ fs.writeFileSync(
   }),
 );
 
+// A route source of the tests' own, in place of the ones shipped: the stand-in file
+// server answers "Find a route" with made-up routes, and no test can reach a real one.
+fs.mkdirSync(path.join(ownCatalog, "routes"), { recursive: true });
+fs.writeFileSync(
+  path.join(ownCatalog, "routes", "route-sources.json"),
+  JSON.stringify({
+    schemaVersion: 1,
+    replaceShipped: true,
+    sources: [
+      {
+        id: "e2e-local",
+        name: "End-to-end stand-in",
+        type: "overpass",
+        endpoint: `http://127.0.0.1:${filesPort}/overpass/api/interpreter`,
+        operator: "the Outpost test suite",
+        coverage: "A made-up hillside",
+        termsUrl: "https://example.org/terms",
+        lastVerified: "2026-11-16",
+      },
+    ],
+  }),
+);
+
 export const OPEN_URL = `http://localhost:${port}`;
 
 export default defineConfig({

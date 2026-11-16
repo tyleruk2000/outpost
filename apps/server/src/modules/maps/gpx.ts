@@ -9,7 +9,7 @@
  * piece of text escaped.
  */
 import { Worker } from "node:worker_threads";
-import type { Bbox, RouteElevation } from "@outpost/shared";
+import type { Bbox, RouteElevation, TrackSource } from "@outpost/shared";
 import { ASCENT_THRESHOLD_METERS, haversineMeters } from "@outpost/shared";
 import type { Feature, FeatureCollection, LineString, MultiLineString, Point, Position } from "geojson";
 import { AppError, badRequest, conflict } from "../../core/errors.ts";
@@ -19,7 +19,11 @@ import { readGpx } from "./gpx-reader.ts";
 export const MAX_GPX_BYTES = 20 * 1024 * 1024;
 
 export type TrackFeature = Feature<LineString | MultiLineString | Point, TrackProperties>;
-export type TrackCollection = FeatureCollection<LineString | MultiLineString | Point, TrackProperties>;
+/**
+ * A stored track. `source` is there for a route found in a route source (see
+ * `route-finder/`): where it came from and the credit it must keep.
+ */
+export type TrackCollection = FeatureCollection<LineString | MultiLineString | Point, TrackProperties> & { source?: TrackSource };
 
 export interface TrackProperties {
   name?: string;
@@ -39,6 +43,14 @@ export interface TrackProperties {
   _elevation?: RouteElevation;
   /** For a drawn line: the line sampled between its points, with heights. Never exported. */
   _profile?: Position[];
+  /** Set only while a file is written: where the line's points came from (`<src>`) and a page about it (`<link>`). */
+  src?: string;
+  link?: GpxLink;
+}
+
+export interface GpxLink {
+  href: string;
+  text: string;
 }
 
 export interface TrackStats {
@@ -164,6 +176,10 @@ export interface GpxWaypoint {
 export interface GpxDocument {
   name: string;
   description?: string;
+  /** Whose the contents are and under what licence, when all of the file is one party's data. */
+  copyright?: { author: string; year: string; license: string };
+  /** Where the credit is explained. */
+  link?: GpxLink;
   waypoints: GpxWaypoint[];
   /** Line features; `_gpxType: "rte"` ones are written as routes, the rest as tracks. */
   lines: Array<Feature<LineString | MultiLineString, TrackProperties>>;
@@ -171,6 +187,9 @@ export interface GpxDocument {
 
 const element = (tag: string, value: string | undefined, indent: string) =>
   value ? `${indent}<${tag}>${escapeXml(value)}</${tag}>\n` : "";
+
+const linkXml = (link: GpxLink | undefined, indent: string) =>
+  link ? `${indent}<link href="${escapeXml(link.href)}">\n${element("text", link.text, `${indent}  `)}${indent}</link>\n` : "";
 
 /**
  * A number as GPX wants it: plain decimal digits. JavaScript writes very small numbers
@@ -194,7 +213,11 @@ function pointXml(tag: string, position: Position, time: string | null | undefin
 export function buildGpx(document: GpxDocument): string {
   let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
   xml += '<gpx version="1.1" creator="Outpost" xmlns="http://www.topografix.com/GPX/1/1">\n';
-  xml += `  <metadata>\n${element("name", document.name, "    ")}${element("desc", document.description, "    ")}  </metadata>\n`;
+  // The schema fixes the order: name, desc, author, copyright, link.
+  const copyright = document.copyright
+    ? `    <copyright author="${escapeXml(document.copyright.author)}">\n${element("year", document.copyright.year, "      ")}${element("license", document.copyright.license, "      ")}    </copyright>\n`
+    : "";
+  xml += `  <metadata>\n${element("name", document.name, "    ")}${element("desc", document.description, "    ")}${copyright}${linkXml(document.link, "    ")}  </metadata>\n`;
 
   for (const waypoint of document.waypoints) {
     const extra =
@@ -220,7 +243,7 @@ export function buildGpx(document: GpxDocument): string {
   };
 
   for (const route of routes) {
-    xml += `  <rte>\n${element("name", route.properties.name, "    ")}${element("desc", route.properties.desc, "    ")}`;
+    xml += `  <rte>\n${element("name", route.properties.name, "    ")}${element("desc", route.properties.desc, "    ")}${element("src", route.properties.src, "    ")}${linkXml(route.properties.link, "    ")}`;
     for (const segment of segmentsAndTimes(route)) {
       segment.coordinates.forEach((position, index) => {
         xml += pointXml("rtept", position, segment.times?.[index], "    ");
@@ -229,7 +252,7 @@ export function buildGpx(document: GpxDocument): string {
     xml += "  </rte>\n";
   }
   for (const track of tracks) {
-    xml += `  <trk>\n${element("name", track.properties.name, "    ")}${element("desc", track.properties.desc, "    ")}`;
+    xml += `  <trk>\n${element("name", track.properties.name, "    ")}${element("desc", track.properties.desc, "    ")}${element("src", track.properties.src, "    ")}${linkXml(track.properties.link, "    ")}`;
     for (const segment of segmentsAndTimes(track)) {
       xml += "    <trkseg>\n";
       segment.coordinates.forEach((position, index) => {

@@ -25,6 +25,7 @@ import { KIWIX_CATALOG_URL } from "../modules/catalog/kiwix.ts";
 import { bundledDirFor, type LoadedCatalog, loadCatalog, manifestJsonSchema } from "../modules/catalog/manifest.ts";
 import { loadPacks } from "../modules/catalog/packs.ts";
 import { type EntryResolution, resolveEntries } from "../modules/catalog/resolve.ts";
+import { loadRouteSources } from "../modules/maps/route-finder/sources.ts";
 
 export interface CatalogValidation {
   manifests: number;
@@ -148,6 +149,10 @@ export function validateCatalog(catalogDir: string = defaultCatalogDir, options:
     if (names.has(pack.name)) problems.push(`packs.json: two packs are called "${pack.name}".`);
     names.add(pack.name);
   }
+
+  // Route sources are declared beside the manifests; a file that cannot be read would leave the Maps screen with nowhere to search.
+  const routeSources = loadRouteSources({ catalogDir, dataDir: path.join(catalogDir, ".no-data-directory") });
+  for (const problem of routeSources.problems) problems.push(`route-sources.json: ${problem}`);
 
   if (options.checkSchemaFile ?? true) {
     const file = schemaPath(catalogDir);

@@ -3,9 +3,10 @@
 This page covers downloading map regions and choosing where they are kept, hill
 shading and contour lines, printing part of the map as a one-page PDF, where the map
 data comes from and how it must be credited, using your own map source, markers and
-moving them, sunrise and sunset for a place, drawing routes, recording a track as you
-walk, importing GPX tracks, coordinate formats, Maidenhead locators, checking line of
-sight between two points, repeaters on the map, and offline place search.
+moving them, sunrise and sunset for a place, drawing routes, finding a known route by
+name, recording a track as you walk, importing GPX tracks, coordinate formats,
+Maidenhead locators, checking line of sight between two points, repeaters on the map,
+and offline place search.
 
 Outpost draws a vector map in the browser from tiles it serves itself. Once a region
 is installed, viewing it needs no internet connection.
@@ -26,8 +27,10 @@ that has four tabs.
 - **Routes** lists routes you have drawn and GPX tracks you have imported. Open one
   for its distance, ascent and an elevation profile; move along the profile and the
   matching point is shown on the map. **Draw a route** places one point by point (see
-  [Drawing a route](#drawing-a-route)). Drop a `.gpx` file anywhere on the map to
-  import it.
+  [Drawing a route](#drawing-a-route)). **Find a route** looks a known one up by name
+  and adds it (see [Finding a known route](#finding-a-known-route)); it is the one
+  thing here that needs the internet. Drop a `.gpx` file anywhere on the map to import
+  it.
 - **Offline maps** lists installed regions and is where you download more: pick a
   ready-made region, or draw a box on the map (or use the current view), choose how
   much detail and which storage location it goes to, and see the exact size before
@@ -416,8 +419,10 @@ contract.
 | Map style | Protomaps basemap styles | BSD-3-Clause | |
 | Map label fonts | Noto Sans | SIL Open Font License 1.1 | |
 | Contour lines | Traced on your device from the terrain above, by maplibre-contour (code, BSD-3-Clause) | As the terrain | "© Mapterhorn" |
+| Routes found with **Find a route** | [OpenStreetMap](https://www.openstreetmap.org/copyright), asked through an Overpass API server | ODbL 1.0 | "Routes: © OpenStreetMap contributors" |
 
-The first three are downloaded by you, on request. The outline, style, fonts, map
+The first three are downloaded by you, on request, and a found route is fetched when
+you choose it. The outline, style, fonts, map
 icons and the code that traces contour lines are bundled with Outpost. The terrain
 credit is shown while hill shading or contour lines are on.
 
@@ -952,6 +957,213 @@ second answers with the track already there (`alreadySaved: true`) and changes
 nothing. The file is read by the same reader, under the same limits, as an imported
 GPX file, and must then be a recording: tracks only, a time at every point, at most
 150,000 points. Anything else is refused with a message saying which.
+## Finding a known route
+
+**Find a route** in the Routes tab looks a route up by name (a waymarked walk, a cycle
+route, a named path such as the Llanberis Path) and adds it to your own routes, so you
+do not have to go looking for a GPX file. The routes come from
+[OpenStreetMap](https://www.openstreetmap.org/copyright), through a server that
+answers questions about it.
+
+**This is the one part of the map that needs the internet at the moment you use it.**
+The search is sent when you press **Search** and at no other time; a route you add is
+kept on your device and works offline from then on, like any other.
+
+1. Type part of the name, or leave it empty to list the routes in the map view.
+2. Choose where to look: **This map view** or **Anywhere**.
+3. Press **Search**. The list shows each route's name, what kind it is (walking,
+   cycling, mountain biking, riding, running, or a named path), its length, and how
+   far it lies from the middle of the map.
+4. Choose one to see it drawn on the map, with its length and how whole its line is.
+5. **Add to my routes** saves it. It is then listed, drawn, found by search, given an
+   elevation profile, exported as GPX and printed exactly as a route you drew or
+   imported is.
+
+### What is sent, and to whom
+
+Before you search, the view names the server the search goes to. What is sent is the
+name you typed, the edges of the map view (to five decimal places) when you search the
+view, and a client name that says "Outpost" with its version and the project's
+address. Nothing about you, your library or this installation is sent, and nothing is
+sent while you type.
+
+The servers are declared in one file, `catalog/route-sources.json`; a search goes to
+the host of one of them and to no other, and a redirect is refused rather than
+followed. Three are shipped, each an [Overpass API](https://wiki.openstreetmap.org/wiki/Overpass_API)
+server run by someone other than this project, on terms read on 16 November 2026
+([sources.md](sources.md#routes)):
+
+| Server | Knows | Asked first when the middle of the map is in | Run by |
+| --- | --- | --- | --- |
+| `ovp.dresel.systems` | Europe | 11° W to 32° E, 36° N to 71.5° N | A private person in Germany |
+| `ovp.dresel.systems` (a second database) | North America | 168° W to 52° W, 25° N to 72° N | The same |
+| `overpass.private.coffee` | The whole world | Anywhere else | Private.coffee, a non-profit association in Austria |
+
+A server that knows one region is asked about that region before the one that serves
+the whole world. The boxes are drawn inside what each regional server holds, so some
+of what it knows (Iceland, Crete, most of Mexico) goes to the world server unless you
+choose otherwise, and a strip of north Africa lies inside the European box although
+that server does not hold it. **Change server**, under the search, chooses another;
+the choice is remembered in the browser and is then used wherever the map is. A
+search that fails, or finds nothing, offers **Ask another server**. These are volunteers'
+servers with no promise of being there. On 16 November 2026 `overpass.private.coffee`
+answered one search in 95 seconds, from a copy of the map dated 28 July 2026, and
+gave no answer to four more requests within 29 to 60 seconds; `ovp.dresel.systems` answered a
+search of a view in about a second and a search by name across Europe in three to
+five, from the previous day's map. That is one day's measurement, not a judgement of either.
+When a server's copy of the map is more than a month old the results say so.
+
+To use a server of your own, or to stop Outpost using the shipped ones, write
+`<data directory>/catalog/routes/route-sources.json` and restart:
+
+```json
+{
+  "schemaVersion": 1,
+  "defaultSource": "ours",
+  "replaceShipped": false,
+  "sources": [
+    {
+      "id": "ours",
+      "name": "Our Overpass",
+      "type": "overpass",
+      "endpoint": "https://overpass.example.net/api/interpreter",
+      "operator": "the walking club",
+      "coverage": "Britain and Ireland",
+      "bbox": [-11, 49, 2, 61],
+      "termsUrl": "https://overpass.example.net/",
+      "lastVerified": "2026-11-16"
+    }
+  ]
+}
+```
+
+- `endpoint` is the server's "interpreter" address. Shipped sources must be `https`;
+  your own may be `http`. A server on your own network also needs Outpost started with
+  `OUTPOST_ALLOW_PRIVATE_DOWNLOADS=true`.
+- `defaultSource` names the server to ask wherever the map is. Leave it out and the
+  server is chosen as above: the first whose `bbox` holds the middle of the map, else
+  the first that has no `bbox`.
+- `bbox` (`[west, south, east, north]`) is optional, and only decides which server is
+  asked first. Nothing stops a person choosing a server for a view outside its box.
+- `"replaceShipped": true` leaves the shipped servers out altogether. With an empty
+  `sources` list as well, "Find a route" has nowhere to search and says so.
+- A file that cannot be used is reported in the server's log and by
+  `GET /api/maps/route-sources` (`problems`), and none of it is used.
+
+### What is searched
+
+- **Routes**: OpenStreetMap "route relations" for walking (`hiking`, `foot`,
+  `walking`), running, cycling (`bicycle`), mountain biking (`mtb`) and riding
+  (`horse`). A name matches if what you typed appears anywhere in the route's name, in
+  any language it is named in, or in its alternative name, whatever the capitals. A
+  route found by a name other than its main one shows both: on 16 November 2026 a
+  search for "pyg track" around Snowdon listed "Llwybr Bwlch Moch", with "Also Pyg
+  Track" beneath it.
+- **Named paths**: many well-known paths are not routes in OpenStreetMap at all, only
+  stretches of path that share a name (a search of that view on the same day turned up
+  eight separate ways named Miners' Track). When you search **the map view by name**,
+  paths,
+  footways, bridleways, cycleways, tracks and steps with that name are found too. Ways
+  whose ends lie within 300 m of each other are offered as one path; the same name on
+  another hill is offered separately. Searching **Anywhere** finds routes only: asking
+  a volunteer's server to read every path in the world for a name is not a reasonable
+  thing to ask.
+- A view may be at most 2° wide and 2° tall (about 220 km north to south). A name
+  needs at least three letters. A search lists at most 40 routes and 20 named paths
+  and says when there were more.
+- A long route kept as sections (a "super-route": many national and international
+  trails) is shown as its list of sections, each of which is looked at and added by
+  itself.
+
+### How a route's line is made
+
+OpenStreetMap keeps a route as a list of ways, each a short line. The list is meant to
+be in walking order, but ways are drawn in either direction, are sometimes listed out
+of order, sometimes do not meet, and sometimes fork. Outpost joins what really joins:
+
+| In OpenStreetMap | What Outpost does |
+| --- | --- |
+| A way drawn the other way round | Turns it to fit |
+| Ways listed out of order | Joins them wherever an end of one is exactly an end of another |
+| Two parts that do not meet (a gap) | **Leaves the gap open.** The route becomes two lines. Nothing is ever drawn across, and the length counts only what is mapped. The preview says how many gaps there are and how wide the widest is |
+| A fork, a loop, or two carriageways | Keeps each branch as a line of its own, touching the line it leaves. The length counts them all |
+| Legs marked as an alternative, an excursion, an approach or a connection | Left out unless you tick **Also add its alternative legs**; then added as separate lines named "Alternative leg" |
+| Guideposts and other points in the route | Passed over |
+| A point that is not a place on Earth, or a way with no points | Dropped, and the preview says how many |
+
+Lines are put in the order they would be walked as far as that can be told: the first
+line first, then always the line whose end is nearest to where the last one stopped. A
+route of several lines is stored, and exported, as several lines, like a GPX file with
+several track segments.
+
+### How large a route may be
+
+One route may have up to 10,000 ways and 200,000 points (about 2,000 km of path), in an
+answer of up to 24 MB. A larger one is refused whole with a message that says so and
+suggests a section of it. A search answer may be up to 6 MB. The limits were chosen so
+that a national trail of some hundreds of kilometres fits; that is an estimate from
+how densely paths are mapped, and no trail of that length was fetched to try it. A
+trail across a continent does not fit, and is in any case kept as sections.
+
+### Heights
+
+When a found route is added, each of its points is given a height from the **terrain
+installed on this device**, as a drawn route is; nothing is downloaded for this. With
+no terrain where it runs, it has no ascent and no elevation profile, and its panel
+says so. If terrain is installed later, open the route and choose **Fill in heights
+from terrain**: the route is not fetched again.
+
+### Credit and licence
+
+A found route's line is OpenStreetMap's data, © OpenStreetMap contributors, under the
+[Open Database Licence](https://opendatacommons.org/licenses/odbl/1-0/). What the
+licence asks was read on 16 November 2026 and is set out in
+[sources.md](sources.md#what-the-open-database-licence-asks-of-a-found-route). In
+short: the points, as data, stay under that licence wherever they go, and a map with
+the route on it must say where the route came from when it is shown to other people.
+Outpost therefore keeps the credit with the route:
+
+- the route's panel shows which element of OpenStreetMap it is (for a route, with a
+  link to its page there), the day it was fetched, the server it came from, how fresh
+  that server's copy of the map was, and the credit and licence with their links;
+- the map's credits read "Routes: © OpenStreetMap contributors" while a found route is
+  drawn, whatever map is beneath it;
+- the GPX export carries the credit in `<metadata><copyright>` (author, year, licence
+  address), a `<link>` to OpenStreetMap's copyright page, and on each track a `<src>`
+  saying where its points came from and, for a route, a `<link>` to its page. Four
+  exports (a found route with an alternative leg and a name full of awkward
+  characters, a named path, the two together, and a mixture with a drawn route and a
+  saved place) were checked against the GPX 1.1 schema with `xmllint` on 16 November
+  2026; all four validated. Opening them in other map programs has not been tried;
+- the same sentence is the route's description, so a program that reads nothing else
+  from the file still keeps it. That is also how the credit survives when the file is
+  imported into Outpost again: the importer keeps descriptions, not copyright elements;
+- an export of several routes marks the whole file as OpenStreetMap's only when all of
+  it is; otherwise each found route says so on its own track and a sentence at the top
+  says some do;
+- editing the route's shape by hand keeps the credit.
+
+**If you pass the GPX file on, leave the credit in it. If you print or publish a map
+with the route on it, the credit must be on it.**
+
+### What it does not do
+
+- It does not find routes from walking websites or apps. Those are other people's
+  collections, and their terms do not allow it ([sources.md](sources.md#routes)).
+- It does not check a route. OpenStreetMap is made by volunteers: a route can be
+  wrong, out of date, closed or dangerous. Check it against the ground and a proper map.
+- It does not keep results, refresh a route you added, or fetch anything in the
+  background. A preview is held in the server's memory for up to fifteen minutes so
+  that adding it does not ask the source again, and is then forgotten.
+- One search runs at a time. A second one started meanwhile, from this or another
+  device, is asked to wait. After a server says it is busy, Outpost does not ask it
+  again for 30 seconds.
+- Names in scripts where capital letters differ in ways the server does not know may
+  need to be typed with the capitals the map uses.
+
+In the API: `GET /api/maps/route-sources`, `POST /api/maps/route-search`,
+`POST /api/maps/route-search/preview`, `POST /api/maps/route-search/add` and
+`POST /api/maps/tracks/:id/heights`; see [api.md](api.md#finding-a-route).
 
 ## GPX tracks
 
@@ -1303,9 +1515,9 @@ its limits and what browsers do with the kept data are in
   it is. Crags, scree, spot heights and the like are not drawn.
 - **Recording in the background.** A track is recorded only while the screen is on
   and Outpost is in front; see [Recording a track](#recording-a-track).
-- **Routing.** Outpost does not calculate routes or directions. A route is either
-  imported from a GPX file or drawn by hand as straight lines between points; it never
-  snaps to paths or roads.
+- **Routing.** Outpost does not calculate routes or directions. A route is imported
+  from a GPX file, drawn by hand as straight lines between points, or found ready-made
+  in OpenStreetMap; a drawn one never snaps to paths or roads.
 - **Routes across the 180° meridian.** A drawn leg that crosses it is drawn the long
   way round the world.
 - **Radio propagation or coverage.** The line-of-sight check is geometry over terrain

@@ -26,6 +26,7 @@ export * from "./portable.ts";
 export * from "./radio.ts";
 export * from "./repeaters.ts";
 export * from "./retrieval.ts";
+export * from "./route-finder.ts";
 export * from "./search.ts";
 export * from "./semantic.ts";
 export * from "./shares.ts";
