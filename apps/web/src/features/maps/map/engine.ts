@@ -1,7 +1,8 @@
 /**
- * The only module that talks to MapLibre. The rest of the maps screen describes what
- * should be on the map (a style, overlay data, a camera) and listens for what the
- * person did; this turns that into MapLibre calls and back.
+ * The only module that talks to MapLibre for the map on screen. The rest of the maps
+ * screen describes what should be on the map (a style, overlay data, a camera) and
+ * listens for what the person did; this turns that into MapLibre calls and back.
+ * (`print-map.ts`, beside it, draws the off-screen map a printed page is made from.)
  *
  * It is loaded on demand, so the rest of the app never pays for the map library.
  */
@@ -187,6 +188,7 @@ export class MapEngine {
   private pinState: PinState | undefined;
   private readonly boxHandles = new Map<BoxHandle, Marker>();
   private box: Bbox | null = null;
+  private boxShape: ((bbox: Bbox, handle: BoxHandle) => Bbox) | null = null;
   private placesMovable = false;
   private placeHold: PlaceHold | undefined;
   private carry: PlaceCarry | undefined;
@@ -516,9 +518,11 @@ export class MapEngine {
     this.map.jumpTo({ center: [view.lon, view.lat], zoom: view.zoom });
   }
 
-  fitBounds(bbox: Bbox, options: { maxZoom?: number; animate?: boolean } = {}): void {
+  /** `clearBottom` keeps that many more pixels at the foot of the map free, for a card that lies over it. */
+  fitBounds(bbox: Bbox, options: { maxZoom?: number; animate?: boolean; clearBottom?: number } = {}): void {
     const pad = 48;
-    const { top, right, bottom, left } = this.padding;
+    const { top, right, left } = this.padding;
+    const bottom = this.padding.bottom + (options.clearBottom ?? 0);
     this.map.fitBounds(
       [
         [bbox[0], bbox[1]],
@@ -875,6 +879,19 @@ export class MapEngine {
   }
 
   /**
+   * Holds the box to a shape while its handles are moved: each box a drag or an arrow key
+   * asks for is passed through `shape` first, with the handle that asked. The page being
+   * laid out for printing uses this to keep the box the shape of the paper.
+   */
+  setBoxShape(shape: ((bbox: Bbox, handle: BoxHandle) => Bbox) | null): void {
+    this.boxShape = shape;
+  }
+
+  private shaped(result: BoxResult, handle: BoxHandle): BoxResult {
+    return result.ok && this.boxShape ? { ok: true, bbox: this.boxShape(result.bbox, handle) } : result;
+  }
+
+  /**
    * Shows a box. With `handles` it can be adjusted: a handle on each corner and in the
    * middle of each edge, moved by dragging or, once focused, with the arrow keys.
    */
@@ -912,7 +929,7 @@ export class MapEngine {
 
     /** The box as it was when the drag began: the other edges are measured from it, not from handles that follow along. */
     let from: Bbox | null = null;
-    const dragged = () => moveBoxHandle(from ?? this.box ?? bbox, id, lngLatOf(handle.getLngLat()));
+    const dragged = () => this.shaped(moveBoxHandle(from ?? this.box ?? bbox, id, lngLatOf(handle.getLngLat())), id);
     handle.on("dragstart", () => {
       from = this.box;
     });
@@ -920,7 +937,8 @@ export class MapEngine {
       const result = dragged();
       if (!result.ok) return;
       this.setOverlay("o-box", boxData(result.bbox));
-      this.placeBoxHandles(result.bbox, id);
+      // A box held to a shape does not follow the pointer freely, so its handle is put back on it.
+      this.placeBoxHandles(result.bbox, this.boxShape ? undefined : id);
     });
     handle.on("dragend", () => {
       const result = dragged();
@@ -992,7 +1010,7 @@ export class MapEngine {
     const at = boxHandlePosition(this.box, id);
     const point = this.map.project([at.lon, at.lat]);
     const target = this.map.unproject([point.x + step.x, point.y + step.y]);
-    const result = moveBoxHandle(this.box, id, lngLatOf(target));
+    const result = this.shaped(moveBoxHandle(this.box, id, lngLatOf(target)), id);
     if (result.ok) {
       this.box = result.bbox;
       this.setOverlay("o-box", boxData(result.bbox));
