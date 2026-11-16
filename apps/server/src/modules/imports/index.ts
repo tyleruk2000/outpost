@@ -14,7 +14,6 @@
 import fs from "node:fs";
 import path from "node:path";
 import { pipeline } from "node:stream/promises";
-import fastifyMultipart from "@fastify/multipart";
 import { formatBytes, IMPORT_EXTENSIONS, type ImportListResponse, type ImportResponse } from "@outpost/shared";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
@@ -22,6 +21,7 @@ import type { AppContext } from "../../core/context.ts";
 import { AppError, badRequest } from "../../core/errors.ts";
 import { safeFileName } from "../../core/fs-safe.ts";
 import { newId } from "../../core/ids.ts";
+import { registerMultipart } from "../../core/multipart.ts";
 import { SPACE_RESERVE_BYTES } from "../storage/service.ts";
 import { extensionOf, stemOf } from "./names.ts";
 import { createImportsService, type ImportsService, type ReceivedUpload } from "./service.ts";
@@ -118,10 +118,8 @@ export async function registerImports(app: FastifyInstance, ctx: AppContext): Pr
   const service = await createImportsService(ctx);
   ctx.services.imports = service;
 
-  // Whichever module registers first provides the parser; limits are given per request.
-  if (!app.hasContentTypeParser("multipart/form-data")) {
-    await app.register(fastifyMultipart, { limits: { fileSize: ctx.config.maxUploadBytes } });
-  }
+  // The limits are the routes' own, given with each request (see core/multipart.ts).
+  await registerMultipart(app);
 
   app.post("/api/imports", async (request): Promise<ImportResponse> => {
     const upload = await receive(request, ctx, service);

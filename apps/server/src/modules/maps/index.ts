@@ -7,13 +7,13 @@
  * GPX tracks. The browser draws the map with MapLibre against the endpoints here and
  * never needs the network.
  */
-import fastifyMultipart from "@fastify/multipart";
 import { MARKER_COLORS, type MapOverview, type MarkerColor, RECORDING_ID_PATTERN } from "@outpost/shared";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
 import { AppError, badRequest } from "../../core/errors.ts";
 import { createHttpClient } from "../../core/http.ts";
+import { registerMultipart } from "../../core/multipart.ts";
 import {
   type AnnotationsService,
   createAnnotationsService,
@@ -278,10 +278,8 @@ export async function registerMaps(app: FastifyInstance, ctx: AppContext): Promi
 
   // ── Tracks ──
 
-  // Another module may have registered the multipart parser already; twice is an error.
-  if (!app.hasContentTypeParser("multipart/form-data")) {
-    await app.register(fastifyMultipart, { limits: { fileSize: ctx.config.maxUploadBytes } });
-  }
+  // The limits are the routes' own, given with each request (see core/multipart.ts).
+  await registerMultipart(app);
 
   /** Reads one GPX file and the optional form fields that may come with it. */
   async function receiveGpx(

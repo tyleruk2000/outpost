@@ -18,6 +18,7 @@
  *   A  countries and their first two levels of division, so "Scotland" finds Scotland
  *   V  forests
  */
+
 import type { PlaceDto, PlaceSearchResponse, PlacesDataset } from "@outpost/shared";
 import { haversineMeters, ownValue, parseCoordinateReadings } from "@outpost/shared";
 import { sql } from "drizzle-orm";
@@ -25,6 +26,7 @@ import yauzl from "yauzl";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
 import { AppError, conflict } from "../../core/errors.ts";
+import { yieldToEventLoop } from "../../core/event-loop.ts";
 import { PermanentJobError } from "../../core/jobs.ts";
 import { places } from "../../db/schema.ts";
 import type { DownloadRow, Installer } from "../downloads/types.ts";
@@ -282,8 +284,6 @@ export interface PlacesService {
   /** Deletes the rows of one dataset; the full-text index follows through its triggers. */
   removeRows(collectionId: string): Promise<number>;
 }
-
-const yieldToEventLoop = () => new Promise<void>((resolve) => setImmediate(resolve));
 
 /** Lower case, without accents: how names are compared when ranking. */
 function fold(text: string): string {

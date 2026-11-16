@@ -24,6 +24,7 @@
  *   carried onto that entry first. It comes back when the entries are separated, and
  *   by itself if the entry shown in its place goes with its list.
  */
+
 import { createHash } from "node:crypto";
 import {
   APPROXIMATE_POSITION_METERS,
@@ -73,6 +74,7 @@ import {
 } from "@outpost/shared";
 import type { AppContext } from "../../core/context.ts";
 import { AppError, badRequest, conflict, notFound } from "../../core/errors.ts";
+import { yieldToEventLoop } from "../../core/event-loop.ts";
 import { newId } from "../../core/ids.ts";
 import type { SearchResult } from "../search/service.ts";
 import {
@@ -117,8 +119,6 @@ const MAX_MERGE = 20;
 /** How long a fetched file waits, unsaved, for the person to decide; and how many wait at once. */
 const FETCHED_KEPT_MS = 30 * 60_000;
 const FETCHED_HELD = 3;
-
-const yieldToEventLoop = () => new Promise<void>((resolve) => setImmediate(resolve));
 
 interface Row {
   id: string;

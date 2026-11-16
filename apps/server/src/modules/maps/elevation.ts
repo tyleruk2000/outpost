@@ -6,8 +6,10 @@
  * reads the same tiles on the server to give a drawn route its heights. Nothing is ever
  * downloaded for this: where no terrain is installed, the answer is "not known".
  */
+
 import zlib from "node:zlib";
 import type { AppContext } from "../../core/context.ts";
+import { yieldToEventLoop } from "../../core/event-loop.ts";
 import { decodePng } from "./terrain/png.ts";
 import { type DecodedImage, decodeLosslessWebp } from "./terrain/webp-lossless.ts";
 import type { ServedTile, TileServer } from "./tile-server.ts";
@@ -141,7 +143,7 @@ export function createElevationSampler(ctx: AppContext, tiles: TileServer): Elev
           decoded += 1;
           // Decoding a tile is tens of milliseconds of arithmetic. A long line reads many, so
           // other requests get a turn between one tile and the next.
-          await new Promise<void>((resolve) => setImmediate(resolve));
+          await yieldToEventLoop();
         }
         for (const [oldest, value] of cache) {
           if (decoded <= MAX_DECODED_TILES) break;

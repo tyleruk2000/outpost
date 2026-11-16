@@ -28,13 +28,13 @@
  * certificate chains to when they gave it.
  */
 import type { TLSSocket } from "node:tls";
-import fastifyMultipart from "@fastify/multipart";
 import type { HttpsAuthorityRight, HttpsKeyRight, HttpsStatus } from "@outpost/shared";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
 import { AppError, badRequest, forbidden, notFound } from "../../core/errors.ts";
 import { isLocalRequest } from "../../core/local.ts";
+import { registerMultipart } from "../../core/multipart.ts";
 import { MOST_FILE_BYTES } from "./own.ts";
 import { createHttpsService } from "./service.ts";
 
@@ -139,10 +139,8 @@ export async function registerHttps(app: FastifyInstance, ctx: AppContext): Prom
 
   // ── A certificate of the person's own ──
 
-  // Another module may have registered the multipart parser already; twice is an error.
-  if (!app.hasContentTypeParser("multipart/form-data")) {
-    await app.register(fastifyMultipart, { limits: { fileSize: ctx.config.maxUploadBytes } });
-  }
+  // The limits are the routes' own, given with each request (see core/multipart.ts).
+  await registerMultipart(app);
 
   /**
    * A certificate and its key, given in Settings: one to three files (the certificate,

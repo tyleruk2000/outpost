@@ -11,7 +11,9 @@
  * a country has millions of entries, and at 24 bytes each instead of a hundred or more
  * that is the difference between fitting in a small computer's memory and not.
  */
+
 import zlib from "node:zlib";
+import { yieldToEventLoop } from "../../../core/event-loop.ts";
 import { Compression, FIRST_READ_BYTES, HEADER_BYTES, PmtilesError } from "./header.ts";
 
 export interface Directory {
@@ -321,6 +323,6 @@ export async function buildDirectoriesGently(entries: Directory, options: BuildO
   for (let leaves = 1; ; leaves += 1) {
     const step = steps.next();
     if (step.done) return step.value;
-    if (leaves % 8 === 0) await new Promise<void>((resolve) => setImmediate(resolve));
+    if (leaves % 8 === 0) await yieldToEventLoop();
   }
 }

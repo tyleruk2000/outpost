@@ -31,7 +31,7 @@ import { newId } from "../../core/ids.ts";
 import { toJobDto } from "../../core/jobs.ts";
 import { propagationSaved } from "../../db/schema.ts";
 import { EngineRefused } from "./host.ts";
-import { engineProblem, type PropagationService } from "./service.ts";
+import { engineProblem, fix, type PropagationService } from "./service.ts";
 import { antenna, checkedMode, date, frequency, modes, noise, power, site } from "./shapes.ts";
 import { hasAzimuthPattern } from "./voacap/antenna-files.ts";
 
@@ -71,8 +71,6 @@ const coverage = z.object({
   area,
   resolution: z.enum(["coarse", "medium", "fine"]),
 });
-
-const fix = (value: number, places: number) => Number(value.toFixed(places));
 
 /** The request as the engine will read it, so that the same question always has the same key. */
 export function normaliseCoverage(request: CoverageRequest): CoverageRequest {

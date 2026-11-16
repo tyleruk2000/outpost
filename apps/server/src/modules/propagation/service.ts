@@ -104,10 +104,12 @@ export function engineProblem(error: unknown): never {
   throw error;
 }
 
+/** A number to so many decimal places, as a number: what the engine is given, and so what an answer is kept under. */
+export const fix = (value: number, places: number): number => Number(value.toFixed(places));
+
 /** Inputs as the engine will read them: positions to a hundredth of a degree, frequency to 10 kHz, power to a tenth of a watt. */
 export function normalise(request: PredictionRequest): PredictionRequest {
   const grid = (value: number, step: number) => Math.round(value / step) * step;
-  const fix = (value: number, places: number) => Number(value.toFixed(places));
   const site = (s: PredictionRequest["tx"]) => ({
     name: s.name.trim().slice(0, 60),
     lat: fix(grid(s.lat, 0.01), 2),

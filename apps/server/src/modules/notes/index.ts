@@ -4,12 +4,12 @@
  * and shapes the answer.
  */
 import fs from "node:fs";
-import fastifyMultipart from "@fastify/multipart";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
 import { badRequest, notFound } from "../../core/errors.ts";
 import { pathExists } from "../../core/fs-safe.ts";
+import { registerMultipart } from "../../core/multipart.ts";
 import { type AttachmentRow, contentDisposition, createAttachmentStore, MAX_ATTACHMENT_BYTES } from "./attachments.ts";
 import { createNotesExporter } from "./export.ts";
 import { createNotesService } from "./service.ts";
@@ -58,11 +58,8 @@ export async function registerNotes(app: FastifyInstance, ctx: AppContext): Prom
   const exporter = createNotesExporter(ctx, notes, attachments);
   ctx.services.notes = notes;
 
-  // The documents module uploads files too; whichever registers first provides the
-  // parser. Limits are given with each request, so it does not matter whose it is.
-  if (!app.hasContentTypeParser("multipart/form-data")) {
-    await app.register(fastifyMultipart, { limits: { fileSize: MAX_ATTACHMENT_BYTES } });
-  }
+  // The limits are the routes' own, given with each request (see core/multipart.ts).
+  await registerMultipart(app);
 
   // ── The tree and lists ──
 

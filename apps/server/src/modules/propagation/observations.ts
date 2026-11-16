@@ -10,8 +10,8 @@
  * and counts how many contacts fell where the engine gave a low, middling or high
  * reliability. It adjusts nothing in the engine, and it says what a log cannot show.
  */
+
 import { createHash } from "node:crypto";
-import fastifyMultipart from "@fastify/multipart";
 import {
   ADIF_READ,
   bandOf,
@@ -38,8 +38,10 @@ import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
 import { AppError, badRequest, conflict, notFound } from "../../core/errors.ts";
+import { yieldToEventLoop } from "../../core/event-loop.ts";
 import { newId } from "../../core/ids.ts";
 import { PermanentJobError, toJobDto } from "../../core/jobs.ts";
+import { registerMultipart } from "../../core/multipart.ts";
 import { observationImports, radioObservations } from "../../db/schema.ts";
 import { adifInstant, adifLocation, adifReader, looksLikeAdif, MAX_ADIF_RECORDS } from "./adif.ts";
 import { EngineRefused } from "./host.ts";
@@ -61,8 +63,6 @@ export const ADIF_IMPORT_JOB = "propagation.adif-import";
 const IMPORT_BATCH = 200;
 /** Rows taken out at a time when an import is undone. */
 const UNDO_BATCH = 1000;
-
-const yieldToEventLoop = () => new Promise<void>((resolve) => setImmediate(resolve));
 
 type Row = typeof radioObservations.$inferSelect;
 type NewRow = typeof radioObservations.$inferInsert;
@@ -807,10 +807,8 @@ export async function registerObservations(
 
   // ── Routes ────────────────────────────────────────────────────────────────
 
-  // Another module may have registered the multipart parser already; twice is an error.
-  if (!app.hasContentTypeParser("multipart/form-data")) {
-    await app.register(fastifyMultipart, { limits: { fileSize: ctx.config.maxUploadBytes } });
-  }
+  // The limits are the routes' own, given with each request (see core/multipart.ts).
+  await registerMultipart(app);
 
   async function receive(request: FastifyRequest): Promise<{ fileName: string; bytes: Buffer }> {
     if (!request.isMultipart()) throw badRequest("Send the file as a multipart/form-data upload.");

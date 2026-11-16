@@ -11,10 +11,12 @@
  * The walk only ever looks: inside the data directory, and inside the two folders
  * Outpost itself makes in each storage location. It never follows a symbolic link.
  */
+
 import fs from "node:fs";
 import path from "node:path";
 import { inArray } from "drizzle-orm";
 import type { AppContext } from "../../core/context.ts";
+import { yieldToEventLoop } from "../../core/event-loop.ts";
 import { isInside } from "../../core/fs-safe.ts";
 import { documents as documentsTable, downloads as downloadsTable, jobs as jobsTable } from "../../db/schema.ts";
 import { OUTPOST_FOLDERS } from "./inventory.ts";
@@ -90,8 +92,6 @@ export interface Claims {
   downloadOf(locationId: string, relPath: string): string | undefined;
 }
 
-const yieldNow = () => new Promise<void>((resolve) => setImmediate(resolve));
-
 /** Total size of everything under `target`, not following links. */
 async function measure(target: string, signal: AbortSignal): Promise<number> {
   let total = 0;
@@ -108,7 +108,7 @@ async function measure(target: string, signal: AbortSignal): Promise<number> {
       total += stat.size;
     }
     seen += 1;
-    if (seen % 200 === 0) await yieldNow();
+    if (seen % 200 === 0) await yieldToEventLoop();
   }
   return total;
 }
@@ -194,7 +194,7 @@ export function createSurveyor(ctx: AppContext): Surveyor {
       const absolute = path.join(location.path, relPath);
       const stat = await fs.promises.lstat(absolute).catch(() => undefined);
       seen += 1;
-      if (seen % 200 === 0) await yieldNow();
+      if (seen % 200 === 0) await yieldToEventLoop();
       if (!stat) continue;
       if (stat.isDirectory()) {
         for (const name of await fs.promises.readdir(absolute).catch(() => [] as string[])) pending.push(`${relPath}/${name}`);
@@ -268,7 +268,7 @@ export function createSurveyor(ctx: AppContext): Surveyor {
         orphanText.files.push(name);
         orphanText.bytes += stat.size;
         seen += 1;
-        if (seen % 200 === 0) await yieldNow();
+        if (seen % 200 === 0) await yieldToEventLoop();
       }
     }
     return { data, orphanText };
@@ -285,7 +285,7 @@ export function createSurveyor(ctx: AppContext): Surveyor {
     for (let from = range.low; from <= range.high; from += 5000) {
       signal.throwIfAborted();
       total += (slice.get(from, from + 4999) as { bytes: number }).bytes;
-      await yieldNow();
+      await yieldToEventLoop();
     }
     return total;
   }

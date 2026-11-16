@@ -13,7 +13,6 @@
  * so only Outpost's own pages can cause it (`core/guard.ts`). Nothing else in this
  * module contacts anybody. See `sources.ts` and `fetch.ts`.
  */
-import fastifyMultipart from "@fastify/multipart";
 import {
   MAX_REPEATER_FILE_BYTES,
   REPEATER_BAND_IDS,
@@ -29,6 +28,7 @@ import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
 import { AppError, badRequest } from "../../core/errors.ts";
 import { createHttpClient } from "../../core/http.ts";
+import { registerMultipart } from "../../core/multipart.ts";
 import { VERSION } from "../system/index.ts";
 import { createRepeaterFetchClient } from "./fetch.ts";
 import { createRepeatersService, type ImportOptions, type RepeatersService, type RepeaterUpload } from "./service.ts";
@@ -229,10 +229,8 @@ export async function registerRepeaters(app: FastifyInstance, ctx: AppContext): 
     search: async ({ q, limit }) => service.search(q, Math.min(limit, 50)),
   });
 
-  // Another module may have registered the multipart parser already; twice is an error.
-  if (!app.hasContentTypeParser("multipart/form-data")) {
-    await app.register(fastifyMultipart, { limits: { fileSize: ctx.config.maxUploadBytes } });
-  }
+  // The limits are the routes' own, given with each request (see core/multipart.ts).
+  await registerMultipart(app);
 
   /** Reads the one file of an import, and the choices sent with it. */
   async function receive(request: FastifyRequest): Promise<{ upload: RepeaterUpload; options: ImportOptions }> {
