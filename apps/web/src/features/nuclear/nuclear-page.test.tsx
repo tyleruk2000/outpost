@@ -26,7 +26,25 @@ vi.mock("@/features/propagation/map/plan-map", () => ({
   ),
 }));
 
+// Drawing the PDF's maps needs WebGL too: what stands in keeps which scenarios it was asked to draw.
+const printed = vi.hoisted(() => [] as Array<{ letters: string[]; places: unknown }>);
+vi.mock("./print-maps", () => ({
+  makeScenarioPdf: async (input: { written: Array<{ letter: string }>; places: unknown }) => {
+    printed.push({ letters: input.written.map((item) => item.letter), places: input.places });
+    return {
+      bytes: new Uint8Array([37, 80, 68, 70]),
+      pages: 2,
+      maps: 1,
+      pieces: 1,
+      reduced: false,
+      missing: [],
+      figures: { overview: [], maps: {} },
+    };
+  },
+}));
+
 afterEach(() => {
+  printed.length = 0;
   vi.unstubAllGlobals();
   localStorage.clear();
 });
@@ -291,6 +309,20 @@ describe("Nuclear preparedness", () => {
     fireEvent.click(screen.getByRole("button", { name: "Remove D from the map" }));
     await waitFor(() => expect(screen.getByTestId("drawn").textContent).not.toContain("D · 5 psi"));
     expect(screen.getByRole("button", { name: "Add another scenario" })).not.toBeDisabled();
+  });
+
+  it("makes the PDF of the scenarios shown only: a hidden one has no map and no section, and saved places only when ticked", async () => {
+    serve({ markers: [home], regions: 1 });
+    fireEvent.click(await screen.findByRole("button", { name: "press the map" }));
+    for (let n = 0; n < 2; n++) {
+      fireEvent.click(screen.getByRole("button", { name: "Add another scenario" }));
+      fireEvent.click(screen.getByRole("button", { name: "press the map" }));
+    }
+    fireEvent.click(screen.getByRole("button", { name: "Hide B on the map" }));
+    expect(await screen.findByRole("heading", { name: "The 2 scenarios shown, on paper" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Make the PDF" }));
+    await waitFor(() => expect(printed).toEqual([{ letters: ["A", "C"], places: null }]));
+    expect(await screen.findByRole("button", { name: "Add to library" })).toBeInTheDocument();
   });
 
   it("counts people per ring of the selected scenario only, and never a total across rings or scenarios", async () => {

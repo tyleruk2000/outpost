@@ -120,6 +120,8 @@ describe("whatever Outpost prints or makes a PDF of", () => {
       "features/propagation/comparison-document.ts",
       "features/propagation/coverage-map/coverage-picture.ts",
       "features/propagation/plans/document.ts",
+      // The nuclear workspace's scenarios, with or without their maps (print-maps.ts hands its pages to this one).
+      "features/nuclear/document.ts",
     ])
       expect(makers).toContain(known);
   });
