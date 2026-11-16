@@ -1162,6 +1162,26 @@ describe("sources and duplicates through the API", () => {
     expect((await overview()).total).toBe(7);
   });
 
+  it("offers two repeaters that may be one even when each of them is also held twice", async () => {
+    // QZ1AA twice and QZ1BB twice, all four on one frequency at one place: two groups, and four pairs between them.
+    const ids: Record<string, string[]> = { QZ1AA: [], QZ1BB: [] };
+    for (const callsign of ["QZ1AA", "QZ1BB", "QZ1AA", "QZ1BB"]) {
+      const made = await app.api("POST", "/api/repeaters", { callsign, outputHz: 145_750_000, lat: 54.5, lon: -3.1 });
+      expect(made.status).toBe(200);
+      ids[callsign]!.push(made.body.repeater.id);
+    }
+    const { body } = await app.api<RepeaterDuplicatesResponse>("GET", "/api/repeaters/duplicates");
+    expect(body.sameTotal).toBe(2);
+    expect(body.possibleTotal).toBe(4);
+    expect(body.possible.map((pair) => pair.entries.map((item) => item.callsign).sort())).toEqual(Array(4).fill(["QZ1AA", "QZ1BB"]));
+    // No pair is of two entries of one group: those are the same, not possibly the same.
+    for (const pair of body.possible) {
+      const [a, b] = pair.entries.map((item) => item.id);
+      expect(ids.QZ1AA!.includes(a!) && ids.QZ1AA!.includes(b!)).toBe(false);
+      expect(ids.QZ1BB!.includes(a!) && ids.QZ1BB!.includes(b!)).toBe(false);
+    }
+  });
+
   it("leaves every other list exactly as it was when an update that prefers newer data cannot be finished", async () => {
     await importNorth();
     const first = await importFile("world.json", JSON.stringify(JSON.parse(world).slice(4, 5)), {

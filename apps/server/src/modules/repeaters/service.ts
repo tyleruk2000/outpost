@@ -1524,9 +1524,10 @@ export function createRepeatersService(ctx: AppContext, deps: RepeaterServiceDep
     duplicates() {
       const held = heldEntries(null);
       const groups = groupSame(held);
-      const grouped = new Set(groups.flat().map((item) => item.id));
-      // A pair is offered as possibly one only when neither is already known to be the same as something.
-      const pairs = pairsPossiblySame(held).filter(([a, b]) => !(grouped.has(a.id) && grouped.has(b.id)));
+      const groupOf = new Map(groups.flatMap((group, index) => group.map((item) => [item.id, index] as const)));
+      // A pair is not offered as possibly one when the two are already in one group: they are the same,
+      // and are listed as that. Two entries of different groups may still be one repeater under two callsigns.
+      const pairs = pairsPossiblySame(held).filter(([a, b]) => groupOf.get(a.id) === undefined || groupOf.get(a.id) !== groupOf.get(b.id));
       const lists = listDates();
       const order = (a: Held[], b: Held[]) => a[0]!.callsign.localeCompare(b[0]!.callsign) || a[0]!.outputHz - b[0]!.outputHz;
       const build = (sets: Held[][], strength: RepeaterDuplicateGroup["strength"]): RepeaterDuplicateGroup[] => {
