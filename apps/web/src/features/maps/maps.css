@@ -120,3 +120,25 @@
   outline-offset: 3px;
   background: var(--primary);
 }
+
+/* The sheet laid out by "Print or save as PDF", for the browser's own Print: out of
+   sight on screen, and the only thing on the paper. */
+.outpost-print-sheet {
+  display: none;
+}
+@media print {
+  body:has(.outpost-print-sheet) {
+    margin: 0;
+    background: #fff;
+  }
+  body:has(.outpost-print-sheet) > :not(.outpost-print-sheet) {
+    display: none;
+  }
+  .outpost-print-sheet {
+    display: block;
+  }
+  .outpost-print-sheet > svg {
+    display: block;
+    break-inside: avoid;
+  }
+}

@@ -1,5 +1,5 @@
 /** The controls and cards that float over the map: tools, zoom, the measuring card, the drawing card, the pin card, the card for moving a place. */
-import { Compass, Crosshair, LocateFixed, Minus, Mountain, PenLine, Plus, Redo2, Ruler, Undo2, X } from "lucide-react";
+import { Compass, Crosshair, LocateFixed, Minus, Mountain, PenLine, Plus, Printer, Redo2, Ruler, Undo2, X } from "lucide-react";
 import { type ReactNode, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import { canRedo, canUndo, isFull, type RouteEdit } from "./lib/route-edit";
 import { STRAIGHT_LINES } from "./panels/route-editor";
 import { ControlButton, ControlGroup, mapSurface } from "./ui";
 
-export type Tool = "browse" | "measure" | "add-place" | "draw";
+export type Tool = "browse" | "measure" | "add-place" | "draw" | "print";
 
 /** A map pin with a plus: the "add a place" tool. Drawn here because the icon set has no exact match at this weight. */
 function PinPlus() {
@@ -163,6 +163,15 @@ export function MapControls({
           disabled={disabled}
         >
           <ContourRings />
+        </ControlButton>
+        {/* A paper map of part of this one; the tool itself is in print/. */}
+        <ControlButton
+          label="Print or save as PDF"
+          pressed={tool === "print"}
+          onClick={() => onToolChange(tool === "print" ? "browse" : "print")}
+          disabled={disabled}
+        >
+          <Printer />
         </ControlButton>
       </ControlGroup>
     </div>

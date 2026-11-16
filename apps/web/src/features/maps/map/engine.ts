@@ -187,6 +187,7 @@ export class MapEngine {
   private pinState: PinState | undefined;
   private readonly boxHandles = new Map<BoxHandle, Marker>();
   private box: Bbox | null = null;
+  private boxShape: ((bbox: Bbox, handle: BoxHandle) => Bbox) | null = null;
   private placesMovable = false;
   private placeHold: PlaceHold | undefined;
   private carry: PlaceCarry | undefined;
@@ -857,6 +858,19 @@ export class MapEngine {
   }
 
   /**
+   * Holds the box to a shape while its handles are moved: each box a drag or an arrow key
+   * asks for is passed through `shape` first, with the handle that asked. The page being
+   * laid out for printing uses this to keep the box the shape of the paper.
+   */
+  setBoxShape(shape: ((bbox: Bbox, handle: BoxHandle) => Bbox) | null): void {
+    this.boxShape = shape;
+  }
+
+  private shaped(result: BoxResult, handle: BoxHandle): BoxResult {
+    return result.ok && this.boxShape ? { ok: true, bbox: this.boxShape(result.bbox, handle) } : result;
+  }
+
+  /**
    * Shows a box. With `handles` it can be adjusted: a handle on each corner and in the
    * middle of each edge, moved by dragging or, once focused, with the arrow keys.
    */
@@ -894,7 +908,7 @@ export class MapEngine {
 
     /** The box as it was when the drag began: the other edges are measured from it, not from handles that follow along. */
     let from: Bbox | null = null;
-    const dragged = () => moveBoxHandle(from ?? this.box ?? bbox, id, lngLatOf(handle.getLngLat()));
+    const dragged = () => this.shaped(moveBoxHandle(from ?? this.box ?? bbox, id, lngLatOf(handle.getLngLat())), id);
     handle.on("dragstart", () => {
       from = this.box;
     });
@@ -902,7 +916,8 @@ export class MapEngine {
       const result = dragged();
       if (!result.ok) return;
       this.setOverlay("o-box", boxData(result.bbox));
-      this.placeBoxHandles(result.bbox, id);
+      // A box held to a shape does not follow the pointer freely, so its handle is put back on it.
+      this.placeBoxHandles(result.bbox, this.boxShape ? undefined : id);
     });
     handle.on("dragend", () => {
       const result = dragged();
@@ -974,7 +989,7 @@ export class MapEngine {
     const at = boxHandlePosition(this.box, id);
     const point = this.map.project([at.lon, at.lat]);
     const target = this.map.unproject([point.x + step.x, point.y + step.y]);
-    const result = moveBoxHandle(this.box, id, lngLatOf(target));
+    const result = this.shaped(moveBoxHandle(this.box, id, lngLatOf(target)), id);
     if (result.ok) {
       this.box = result.bbox;
       this.setOverlay("o-box", boxData(result.bbox));

@@ -10,7 +10,7 @@
 import "./maps.css";
 import { ACTIVE_DOWNLOAD_STATES, haversineMeters, type MarkerDto, type TrackDto } from "@outpost/shared";
 import { CircleAlert, FileUp, PanelLeftOpen } from "lucide-react";
-import { type DragEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type DragEvent, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router";
 import { toast } from "sonner";
 import { Notice } from "@/components/page";
@@ -70,6 +70,9 @@ import { hasUnsavedWork, type RouteDraft, RouteEditor } from "./panels/route-edi
 import { ImportGpxDialog, RouteDetail, RoutesList } from "./panels/routes";
 import { SearchBox } from "./search-box";
 import { DesktopPanel, type Detent, detentHeight, MobileSheet, PANEL_TABS, type PanelTab, PanelTabs } from "./side-panel";
+
+/** "Print or save as PDF", fetched when it is first asked for. */
+const PrintTool = lazy(() => import("./print/print-tool"));
 
 interface PanelState {
   open: boolean;
@@ -641,7 +644,7 @@ export default function MapsPage() {
   }, [engine, placesMovable]);
 
   useEffect(() => {
-    engine?.setCursor(tool === "browse" ? "" : "crosshair");
+    engine?.setCursor(tool === "browse" || tool === "print" ? "" : "crosshair");
   }, [engine, tool]);
 
   // "Fit" and "fly" should land in the part of the map that is not under the chrome.
@@ -690,6 +693,8 @@ export default function MapsPage() {
         now.startPlace(position);
         return;
       }
+      // While a page is being laid out the map is only moved about; a press opens nothing.
+      if (now.tool === "print") return;
       // While drawing, a press on a saved place or another route is still a press on the map.
       if (now.tool === "draw") {
         now.addRoutePoint(position);
@@ -766,6 +771,8 @@ export default function MapsPage() {
     setMeasurePoints([]);
     setMoving(null);
     setTool(next);
+    // The page's box and the box of a region being downloaded are the same box on the map: one at a time.
+    if (next === "print" && panel.tab === "offline") setPanel((current) => ({ ...current, tab: "places" }));
     // On a phone the sheet would cover the map being clicked on.
     setDetent("peek");
     if (next === "add-place") toast("Click or tap the map where the place is.");
@@ -934,7 +941,10 @@ export default function MapsPage() {
   const tabs = (
     <PanelTabs
       tab={panel.tab}
-      onTabChange={(tab) => setPanel({ open: true, tab })}
+      onTabChange={(tab) => {
+        setPanel({ open: true, tab });
+        if (tab === "offline" && tool === "print") leaveTool();
+      }}
       onTabPress={() => setDetent((current) => (current === "peek" ? "half" : current))}
       counts={{ places: markers.data?.length, routes: tracks.data?.length }}
     >
@@ -1035,6 +1045,10 @@ export default function MapsPage() {
         onDone={leaveTool}
         onSaveAsRoute={() => startDrawing(measurePoints)}
       />
+    ) : tool === "print" && engine ? (
+      <Suspense fallback={null}>
+        <PrintTool engine={engine} style={styleInput} format={format} onClose={leaveTool} />
+      </Suspense>
     ) : moving && movingMarker ? (
       <MoveCard
         name={movingMarker.name}
