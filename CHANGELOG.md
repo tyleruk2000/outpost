@@ -417,9 +417,10 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 - Icons for saved places: sixteen, beside the colour, chosen in the place editor by
   touch or keyboard and shown on the map, in the lists, on the pin while a place is
   edited, in the map's search and on a printed map. Existing places stay plain pins.
-  Where places crowd together an icon is drawn only where it has room, which keeps a
-  map of thousands of places as light as before. A database migration adds the
-  columns (`0012_place_icons`).
+  Where places crowd together an icon is drawn only where it has room; in a test with
+  5,000 places in view, all with icons, the map was about one frame slower between
+  frames than with plain pins. A database migration adds the columns
+  (`0012_place_icons`).
 - Saved places are exported to GPX with the Garmin symbol name for their icon, and a
   waypoint's symbol is read as an icon when it is a known one; the file's own symbol
   is kept, so a round trip loses nothing. An icon given on a portable drive comes home
