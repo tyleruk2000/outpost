@@ -423,8 +423,8 @@ The work was stopped part-way. These were seen and are not fixed:
   provided sources. [1][2]" in two or three of the 13 questions it declines. Outpost
   reports those markers as passages the answer used. Code that recognises a reply
   which declines, takes its markers out and says "your library does not seem to cover
-  this" was written and unit-tested but not wired in or measured
-  (`apps/server/src/modules/answers/tidy.ts` on the branch `feat/real-model-unfinished`).
+  this" was written and unit-tested but not wired in or measured, and is not part of
+  Outpost.
 - **A marker to a number that was never given** is still struck through, with a
   notice; it is not pointed at the passage that holds the sentence's words, nor
   removed. The same unfinished code does both.
