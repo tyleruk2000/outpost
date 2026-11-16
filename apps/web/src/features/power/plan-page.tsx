@@ -53,23 +53,25 @@ function useDraft(plan: PowerPlan | undefined) {
       setDraft(inputOf(plan));
     }
   }, [plan]);
-  const flush = useCallback(() => {
+  /** Saves what is waiting now; resolves once it is saved (or at once when nothing is waiting). */
+  const flush = useCallback(async () => {
     if (timer.current) clearTimeout(timer.current);
     timer.current = null;
     // A plan always has a name: one emptied while typing waits for the next.
     if (pending.current?.name.trim()) {
-      save.mutate({ ...pending.current, name: pending.current.name.trim() });
+      const input = { ...pending.current, name: pending.current.name.trim() };
       pending.current = null;
+      await save.mutateAsync(input).catch(() => undefined);
     }
   }, [save]);
   const flushRef = useRef(flush);
   flushRef.current = flush;
-  useEffect(() => () => flushRef.current(), []);
+  useEffect(() => () => void flushRef.current(), []);
   const change = (next: PowerPlanInput) => {
     setDraft(next);
     pending.current = next;
     if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => flushRef.current(), SAVE_AFTER_MS);
+    timer.current = setTimeout(() => void flushRef.current(), SAVE_AFTER_MS);
   };
   const state = draft && !draft.name.trim() ? "unnamed" : pending.current || save.isPending ? "saving" : save.isError ? "failed" : "saved";
   return { draft, change, state, flush };
@@ -164,8 +166,9 @@ export default function PowerPlanPage() {
             <PdfButtons made={made} lead="none" />
             <Button
               loading={copy.isPending}
-              onClick={() => {
-                flush();
+              onClick={async () => {
+                // The copy is made of the plan as saved, so what is waiting is saved first.
+                await flush();
                 copy.mutate(saved.id, { onSuccess: (plan) => navigate(`/tools/power/plans/${plan.id}`) });
               }}
             >

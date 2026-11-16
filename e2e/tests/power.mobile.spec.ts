@@ -8,11 +8,12 @@ test.describe("Power and batteries on a phone", () => {
     await page.goto("/tools/power");
     await expect(page.getByRole("heading", { level: 1, name: "Power and batteries" })).toBeVisible();
     await page.getByText("Cable size and voltage drop").click();
+    const cable = page.locator("#calc-cable");
     // 3 m each way of 4 mm² at 20 °C carrying 10 A from 12 V: 0.017241 × 6 / 4 × 10 = 0.259 V, 2.16%.
-    await expect(page.getByText("0.259 V, 2.16%")).toBeVisible();
-    await page.getByLabel("Current", { exact: true }).fill("40");
-    await expect(page.getByText("1.034 V, 8.62%")).toBeVisible();
-    await expect(page.getByText(/not BS 7671/)).toBeVisible();
+    await expect(cable.getByText("0.259 V, 2.16%")).toBeVisible();
+    await cable.getByLabel("Current", { exact: true }).fill("40");
+    await expect(cable.getByText("1.034 V, 8.62%")).toBeVisible();
+    await expect(cable.getByText(/not BS 7671/)).toBeVisible();
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(overflow).toBeLessThanOrEqual(0);
     expect(errors).toEqual([]);
@@ -22,8 +23,9 @@ test.describe("Power and batteries on a phone", () => {
     const errors = watchForErrors(page);
     await page.goto("/tools/power");
     await page.getByRole("button", { name: "New power plan" }).click();
-    await page.getByLabel("Name").fill("Shack in a power cut");
-    await page.getByRole("button", { name: "Create plan" }).click();
+    const naming = page.getByRole("dialog", { name: "New power plan" });
+    await naming.getByLabel("Name").fill("Shack in a power cut");
+    await naming.getByRole("button", { name: "Create plan" }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Shack in a power cut" })).toBeVisible();
 
     await page.getByRole("button", { name: "Add a load" }).click();
@@ -44,7 +46,7 @@ test.describe("Power and batteries on a phone", () => {
 
     // Kept on the server: there after a reload.
     await page.reload();
-    await expect(page.getByText(/25 W transmitting, 5 W receiving/)).toBeVisible();
+    await expect(page.getByRole("listitem").filter({ hasText: /25 W transmitting, 5 W receiving/ })).toBeVisible();
     await expect(page.getByRole("region", { name: /State of charge, hour by hour over three days/ })).toBeVisible();
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(overflow).toBeLessThanOrEqual(0);

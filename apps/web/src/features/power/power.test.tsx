@@ -55,7 +55,8 @@ function show(path: string, options: { plans?: PowerPlan[] | "fails" | "never"; 
     "fetch",
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const { pathname } = new URL(String(input), "http://outpost.test");
-      const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+      const json = (body: unknown, status = 200) =>
+        new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
       if (pathname === "/api/power/plans" && init?.method === "POST") {
         server.posted.push(JSON.parse(String(init.body)));
         return json({ plan: { ...planOf(), id: "p2", name: "New one" } });
