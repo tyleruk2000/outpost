@@ -96,7 +96,10 @@ export interface ContextAssembler {
 
 export interface GenerationRequest {
   system: string;
+  /** The newest message from the person. */
   prompt: string;
+  /** Earlier turns of a conversation, oldest first, sent between the instructions and `prompt`. */
+  history?: Array<{ role: "user" | "assistant"; content: string }>;
   maxTokens?: number;
   temperature?: number;
   signal?: AbortSignal;

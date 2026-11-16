@@ -34,8 +34,17 @@
  *   stand-in-drops       starts, then the connection is cut
  *   stand-in-fails       starts, then fails the way each server reports a failure in mid-stream
  *   stand-in-endless     never stops writing, whatever limit it was given
+ *   stand-in-markdown    a reply with a heading, a list, a table, a code block, a link, a picture and a script tag
  *   embed-only           an embedding model: refuses to chat
  *   anything else        Ollama: 404, no such model. llama-server: answered by the loaded model.
+ *
+ * A request with no fenced sources in its newest message is a plain conversation. The
+ * stand-in then repeats what it was told and says how many messages from the person it
+ * was sent, so a test can see what of a conversation reached it.
+ *
+ * The Ollama flavour also answers Ollama's own list of models, `GET /api/tags`, in the
+ * shape Ollama's API documentation gives (read on 2026-11-16): sizes, parameter counts
+ * and quantisation. The other flavours have no such list, as the real servers do not.
  *
  * To be strict where a real server is lenient, a chat request carrying any field
  * outside the ones all three servers document is refused, so a test fails if Outpost
@@ -99,8 +108,35 @@ const MODELS = [
   "stand-in-drops",
   "stand-in-fails",
   "stand-in-endless",
+  "stand-in-markdown",
   "embed-only",
 ];
+
+/** A reply that uses everything a model's Markdown can hold, including what must never act in a browser. */
+export const MARKDOWN_REPLY = [
+  "## Lighting the stove",
+  "",
+  "Do it in this order:",
+  "",
+  "1. Fill the tank **two thirds** full.",
+  "2. Prime the burner.",
+  "",
+  "| Fuel | Burn time |",
+  "| --- | --- |",
+  "| Paraffin | 2 hours |",
+  "| Meths | 40 minutes |",
+  "",
+  "```sh",
+  "stove --prime --wait 30",
+  'echo "<b>lit</b>"',
+  "```",
+  "",
+  "More at [the maker's site](https://stoves.example/manual?from=outpost) ![a stove](https://tracker.example/pixel.png).",
+  "",
+  "<script>window.__standInRan = true</script>",
+  "",
+  '<img src="https://tracker.example/second.png" onerror="window.__standInRan = true">',
+].join("\n");
 
 /** The fields Ollama, llama-server and LM Studio all document for chat completions. */
 const DOCUMENTED_FIELDS = new Set(["model", "messages", "stream", "temperature", "max_tokens", "stop", "seed", "top_p"]);
@@ -132,7 +168,28 @@ function readSources(prompt: string): Source[] {
 
 const firstSentence = (text: string) => (/^.*?[.!?](\s|$)/.exec(text.trim())?.[0] ?? text).trim().replace(/[.!?]$/, "");
 
-function answerFor(model: string, prompt: string): string {
+/** What the stand-in says in a plain conversation: no sources were given, so it has nothing to cite. */
+function chatReply(model: string, prompt: string, fromPerson: number): string {
+  const said = prompt.replace(/\s+/g, " ").trim().slice(0, 200);
+  switch (model) {
+    case "stand-in-markdown":
+      return MARKDOWN_REPLY;
+    case "stand-in-long":
+    case "stand-in-length":
+      return Array.from(
+        { length: 24 },
+        (_, index) =>
+          `Paragraph ${index + 1}. You said “${said}”. This sentence pads the reply out so that it takes a while to write and fills more than one screen on a phone.`,
+      ).join("\n\n");
+    case "stand-in-think-tags":
+      return `<think>\nThe person wants a short reply.\n</think>\n\nYou said “${said}”.`;
+    default:
+      return `You said “${said}”. That is message ${fromPerson} from you that I was sent.`;
+  }
+}
+
+function answerFor(model: string, prompt: string, fromPerson = 1): string {
+  if (!prompt.includes("===== SOURCES")) return chatReply(model, prompt, fromPerson);
   const sources = readSources(prompt);
   if (sources.length === 0) return "The sources do not answer this.";
   const cited = sources.slice(0, 3).map((source) => `${firstSentence(source.text)} [${source.marker}].`);
@@ -250,6 +307,27 @@ export async function startModelServer(options: StandInOptions = {}): Promise<St
       });
     }
 
+    // Ollama's own list, beside its OpenAI-compatible one. The other servers have nothing at this path.
+    if (path === "/api/tags" && request.method === "GET") {
+      return json(response, 200, {
+        models: MODELS.map((name, index) => ({
+          name: `${name}:latest`,
+          model: `${name}:latest`,
+          modified_at: "2026-11-01T10:00:00.000000000Z",
+          size: name === "embed-only" ? 274302450 : 2019393189 + index * 1000,
+          digest: "a80c4f17acd55265feec403c7aef86be0c25983ab279d83f3bcd3abbcb5b8b72",
+          details: {
+            parent_model: "",
+            format: "gguf",
+            family: name === "embed-only" ? "nomic-bert" : "llama",
+            families: [name === "embed-only" ? "nomic-bert" : "llama"],
+            parameter_size: name === "embed-only" ? "137M" : "3.2B",
+            quantization_level: name === "embed-only" ? "F16" : "Q4_K_M",
+          },
+        })),
+      });
+    }
+
     if (local === "/v1/chat/completions" && request.method === "POST" && flavour !== "embeddings-only") {
       return chat(flavour, request, response, body);
     }
@@ -326,11 +404,13 @@ export async function startModelServer(options: StandInOptions = {}): Promise<St
     // (Ollama does not refuse a prompt that is too long: it drops what does not fit and answers anyway.)
 
     const user = [...list].reverse().find((message) => message.role === "user")?.content ?? "";
+    const fromPerson = list.filter((message) => message.role === "user").length;
     const id = `chatcmpl-${requests.length}`;
     const created = Math.floor(Date.now() / 1000);
 
     if (input.stream !== true) {
-      const content = model === "stand-in-silent" ? "" : user.includes("Reply with the one word") ? "ready" : answerFor(model, user);
+      const content =
+        model === "stand-in-silent" ? "" : user.includes("Reply with the one word") ? "ready" : answerFor(model, user, fromPerson);
       return json(response, 200, {
         id,
         object: "chat.completion",
@@ -386,7 +466,7 @@ export async function startModelServer(options: StandInOptions = {}): Promise<St
       return;
     }
 
-    const all = pieces(answerFor(model, user));
+    const all = pieces(answerFor(model, user, fromPerson));
     const delay = model === "stand-in-long" ? longChunkDelayMs : chunkDelayMs;
     for (const [index, piece] of all.entries()) {
       if (gone()) return;

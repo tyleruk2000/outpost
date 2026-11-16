@@ -5,6 +5,7 @@
  */
 export * from "./answers.ts";
 export * from "./catalog.ts";
+export * from "./chat.ts";
 export * from "./collections.ts";
 export * from "./common.ts";
 export * from "./documents.ts";

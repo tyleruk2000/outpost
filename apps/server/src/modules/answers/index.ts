@@ -77,6 +77,22 @@ export interface AnswersService {
   status(): AnswersStatus;
   /** The model answers would be written by, when one is set up. */
   provider(): ChatModelProvider | undefined;
+  /**
+   * The model server as chat uses it: the same address under the same rule, whether or
+   * not a model has been chosen in Settings. `reason` says why it may not be used.
+   */
+  server(): { address?: ModelServerAddress; defaultModel: string; reason: string | null };
+  /** Another model on the same server, behind the same guard. Undefined when the server may not be used. */
+  providerFor(model: string): ChatModelProvider | undefined;
+  /** Checks an address the way every request to the model server is checked. Throws when it may not be contacted. */
+  guard(address: ModelServerAddress): Promise<void>;
+  timeouts(): ModelTimeouts;
+  /**
+   * Takes the model's one turn: a model on a home machine writes one thing at a time,
+   * whether that is an answer or a reply in a conversation. Returns how to give the turn
+   * back, or undefined when something is being written already.
+   */
+  takeTurn(controller: AbortController): (() => void) | undefined;
   /** Test seam: shorter waits than a real model needs. */
   setTimeouts(timeouts: Partial<ModelTimeouts>): void;
 }
@@ -96,19 +112,24 @@ export async function registerAnswers(app: FastifyInstance, ctx: AppContext): Pr
 
   const guardFor = (address: ModelServerAddress) => () => assertOwnNetwork(address, ctx.config.allowRemoteModelServer);
 
-  function configured(): { address?: ModelServerAddress; model: string; reason: string | null } {
+  /** The server alone: switched on, with an address that may be used. */
+  function server(): { address?: ModelServerAddress; defaultModel: string; reason: string | null } {
     const all = settings.all();
-    const model = all["answers.model"].trim();
+    const defaultModel = all["answers.model"].trim();
     if (!all["answers.enabled"])
-      return { model, reason: "Answers are turned off. Turn them on in Settings and say where your model runs." };
+      return { defaultModel, reason: "Answers are turned off. Turn them on in Settings and say where your model runs." };
     let address: ModelServerAddress;
     try {
       address = parseModelServerAddress(all["answers.endpoint"]);
     } catch (error) {
-      return { model, reason: messageOf(error) };
+      return { defaultModel, reason: messageOf(error) };
     }
-    const refusal = placeRefusal(address, ctx.config.allowRemoteModelServer);
-    if (refusal) return { address, model, reason: refusal };
+    return { address, defaultModel, reason: placeRefusal(address, ctx.config.allowRemoteModelServer) };
+  }
+
+  function configured(): { address?: ModelServerAddress; model: string; reason: string | null } {
+    const { address, defaultModel: model, reason } = server();
+    if (reason || !address) return { address, model, reason };
     if (!model) return { address, model, reason: "Choose which model writes the answers, in Settings." };
     return { address, model, reason: null };
   }
@@ -143,6 +164,20 @@ export async function registerAnswers(app: FastifyInstance, ctx: AppContext): Pr
   ctx.services.answers = {
     status,
     provider: currentProvider,
+    server,
+    providerFor(model) {
+      const { address, reason } = server();
+      return address && !reason ? openAiChatProvider(address, model, timeouts, guardFor(address)) : undefined;
+    },
+    guard: (address) => guardFor(address)(),
+    timeouts: () => timeouts,
+    takeTurn(controller) {
+      if (writing) return undefined;
+      writing = controller;
+      return () => {
+        if (writing === controller) writing = undefined;
+      };
+    },
     setTimeouts(next) {
       timeouts = { ...timeouts, ...next };
       cached = undefined;

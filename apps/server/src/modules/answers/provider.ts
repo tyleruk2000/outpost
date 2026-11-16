@@ -220,8 +220,10 @@ export function openAiChatProvider(
           headers: { "content-type": "application/json", accept: "text/event-stream" },
           body: JSON.stringify({
             model,
+            // One question, or a conversation: the turns that came before go between the instructions and the newest message.
             messages: [
               { role: "system", content: request.system },
+              ...(request.history ?? []).map(({ role, content }) => ({ role, content })),
               { role: "user", content: request.prompt },
             ],
             stream: true,
