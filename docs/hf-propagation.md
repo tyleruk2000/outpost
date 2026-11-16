@@ -333,7 +333,8 @@ rebuild on the same machine gave the committed file byte for byte.
 
 To run the reference circuits through the Fortran again:
 `node apps/server/test/fixtures/propagation/make-decks.ts <folder>` writes the decks and
-antenna files, and its header says how to run them.
+antenna files, and `apps/server/test/fixtures/propagation/voacapl.Dockerfile` builds the
+Fortran at the commit used here and says how to run them.
 
 ## Data
 
@@ -390,6 +391,9 @@ their data directory. Predictions then need that one step before they work.
 
 ## Limits
 
+- Radio and antenna profiles and saved predictions travel to a portable drive with the
+  rest of the database, but changes made to them on the drive are not brought home by a
+  merge. A solar table you downloaded does not travel; a drive uses the included one.
 - 2 to 30 MHz. 160 m is outside the engine's stated range and is not offered.
 - Short path only. The long way round the Earth is not predicted.
 - Sporadic E is switched off, which is VOACAP's standard practice.

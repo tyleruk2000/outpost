@@ -4,9 +4,9 @@
  *
  *   node apps/server/test/fixtures/propagation/make-decks.ts <folder>
  *
- * gives <folder>/<id>.dat, <id>.tx and <id>.rx. Copy the antenna files to
- * itshfbc/antennas/outpost/tx and rx, the deck to itshfbc/run/, run
- * `voacapl itshfbc <id>.dat <id>.out`, and keep the output here as <id>.voacapl.out.
+ * gives <folder>/<id>.dat, <id>.tx and <id>.rx (and <id>.outpost.out, what Outpost's own
+ * engine prints). `voacapl.Dockerfile` beside this file builds the Fortran and says how to
+ * run the decks through it; keep its output here as <id>.voacapl.out.
  */
 import fs from "node:fs";
 import path from "node:path";
