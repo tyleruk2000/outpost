@@ -1,5 +1,6 @@
 import {
   BookOpen,
+  ClipboardList,
   Compass,
   Contact,
   Download,
@@ -74,5 +75,6 @@ export const tuckedAwayNav: Array<Omit<NavItem, "key">> = [
   { to: "/radio/propagation", label: "HF propagation", icon: Waves },
   { to: "/radio/coverage", label: "HF coverage", icon: Grid3x3 },
   { to: "/radio/plans", label: "Communication plans", icon: ListTree },
+  { to: "/radio/log", label: "Contact log", icon: ClipboardList },
   { to: "/radio/repeaters", label: "Repeaters", icon: RadioReceiver },
 ];

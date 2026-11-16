@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "3178ebe3-9b65-4a76-9786-7a0e5410aceb",
+  "id": "81509fbe-a805-4ef8-88cc-f37281497266",
   "prevId": "eb7079b5-1527-41c4-a2f1-c1c0ddabc0eb",
   "tables": {
     "antenna_profiles": {
@@ -3430,6 +3430,14 @@
         },
         "notes": {
           "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "''"
+        },
+        "prop_mode": {
+          "name": "prop_mode",
           "type": "text",
           "primaryKey": false,
           "notNull": true,

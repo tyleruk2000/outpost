@@ -28,6 +28,7 @@ export * from "./propagation.ts";
 export * from "./propagation-coverage.ts";
 export * from "./propagation-plans.ts";
 export * from "./radio.ts";
+export * from "./radio-observations.ts";
 export * from "./repeaters.ts";
 export * from "./retrieval.ts";
 export * from "./route-finder.ts";

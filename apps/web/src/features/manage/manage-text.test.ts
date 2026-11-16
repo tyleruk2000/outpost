@@ -116,6 +116,28 @@ describe("what a removal says before it happens", () => {
       }),
     ).toBe("Also erased: the history of downloads and other work.");
   });
+
+  it("counts what the HF planner keeps among the person's own things", () => {
+    const none = {
+      pages: 0,
+      attachments: { count: 0, bytes: 0 },
+      places: 0,
+      routes: 0,
+      contacts: 0,
+      conversations: 0,
+      repeaters: 0,
+      repeaterLists: 0,
+      settings: 0,
+      vectors: 0,
+      previous: { count: 0, bytes: 0 },
+    };
+    expect(personalWords({ ...none, radio: { plans: 2, observations: 340, equipment: 1, saved: 3 } })).toBe(
+      "Also erased: 2 communication plans, 340 logged contacts, 1 radio or antenna profile, 3 saved predictions and coverage maps and the history of downloads and other work.",
+    );
+    expect(personalWords({ ...none, radio: { plans: 0, observations: 0, equipment: 0, saved: 0 } })).toBe(
+      "Also erased: the history of downloads and other work.",
+    );
+  });
 });
 
 describe("the account of a clean-up", () => {

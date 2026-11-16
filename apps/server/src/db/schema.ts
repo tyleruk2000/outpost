@@ -963,8 +963,8 @@ export const observationImports = sqliteTable("observation_imports", {
   records: integer("records").notNull(),
   imported: integer("imported").notNull(),
   duplicates: integer("duplicates").notNull(),
-  /** Records not brought in, by reason, as `{ reason, count }[]`. */
-  skipped: json<Array<Record<string, unknown>>>("skipped").notNull(),
+  /** Records not brought in by reason, and things read with a loss, as `{ skipped, notes }` of `{ reason, count }[]`. */
+  skipped: json<Record<string, unknown>>("skipped").notNull(),
   createdAt: createdAt(),
 });
 
@@ -998,6 +998,8 @@ export const radioObservations = sqliteTable(
     reportSent: text("report_sent").notNull().default(""),
     reportReceived: text("report_received").notNull().default(""),
     notes: text("notes").notNull().default(""),
+    /** How the signal travelled, when the log says (ADIF's PROP_MODE: "F2", "SAT", "RPT"…); "" when it does not. */
+    propMode: text("prop_mode").notNull().default(""),
     source: text("source", { enum: ["manual", "adif"] }).notNull(),
     importId: text("import_id").references(() => observationImports.id, { onDelete: "cascade" }),
     /** The same contact brought in twice has the same value here; see `observations.ts`. */

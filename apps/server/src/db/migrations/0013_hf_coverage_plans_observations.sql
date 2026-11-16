@@ -49,6 +49,7 @@ CREATE TABLE `radio_observations` (
 	`report_sent` text DEFAULT '' NOT NULL,
 	`report_received` text DEFAULT '' NOT NULL,
 	`notes` text DEFAULT '' NOT NULL,
+	`prop_mode` text DEFAULT '' NOT NULL,
 	`source` text NOT NULL,
 	`import_id` text,
 	`same_as` text NOT NULL,

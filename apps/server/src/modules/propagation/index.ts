@@ -11,7 +11,7 @@
  * Nothing here makes an outbound request except fetching a newer solar cycle table,
  * when a person asks for it, through the download manager.
  */
-import { type EngineStatus, HF_MAX_MHZ, HF_MIN_MHZ, type PredictionRequest, type SavedPrediction } from "@outpost/shared";
+import { type EngineStatus, HF_MAX_MHZ, HF_MIN_MHZ, type PredictionRequest, type RadioKept, type SavedPrediction } from "@outpost/shared";
 import { desc, eq } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
@@ -24,6 +24,7 @@ import { type CoverageService, registerCoverage } from "./coverage.ts";
 import { createDatasetsService, type DatasetsService } from "./datasets.ts";
 import { EngineUnavailable } from "./engine.ts";
 import { createEngineHost } from "./host.ts";
+import { type ObservationsService, registerObservations } from "./observations.ts";
 import { type PlansService, registerPlans } from "./plans.ts";
 import { createProfilesService, type ProfilesService } from "./profiles.ts";
 import { createPropagationService, type PropagationService } from "./service.ts";
@@ -37,6 +38,9 @@ declare module "../../core/context.ts" {
       datasets: DatasetsService;
       coverage: CoverageService;
       plans: PlansService;
+      observations: ObservationsService;
+      /** Everything here that is the person's own: counted for "what is stored", and erased with everything else. */
+      kept: { count(): RadioKept; eraseAll(): RadioKept };
     };
   }
 }
@@ -71,7 +75,31 @@ export async function registerPropagation(app: FastifyInstance, ctx: AppContext)
   const service = createPropagationService(ctx, host);
   const coverage = registerCoverage(app, ctx, service);
   const plans = registerPlans(app, ctx, service);
-  ctx.services.propagation = { ...service, profiles, datasets, coverage, plans };
+  const observations = await registerObservations(app, ctx, service);
+  const kept = {
+    count(): RadioKept {
+      const n = (table: string) => (ctx.sqlite.prepare(`SELECT count(*) AS n FROM ${table}`).get() as { n: number }).n;
+      return {
+        plans: plans.count(),
+        observations: observations.count(),
+        equipment: n("radio_profiles") + n("antenna_profiles"),
+        saved: n("propagation_saved"),
+      };
+    },
+    /** Plans, the log, profiles, saved predictions and maps, and every answer worked out (an answer holds the places it was asked about). */
+    eraseAll(): RadioKept {
+      const had = kept.count();
+      plans.eraseAll();
+      observations.eraseAll();
+      ctx.sqlite.transaction(() => {
+        for (const table of ["propagation_saved", "propagation_results", "radio_profiles", "antenna_profiles"])
+          ctx.sqlite.prepare(`DELETE FROM ${table}`).run();
+      })();
+      ctx.events.publish({ type: "propagation.changed" });
+      return had;
+    },
+  };
+  ctx.services.propagation = { ...service, profiles, datasets, coverage, plans, observations, kept };
   ctx.services.downloads.registerInstaller("dataset", datasets.installer);
 
   // A day on one path is a twentieth of a second and is answered directly. Anything

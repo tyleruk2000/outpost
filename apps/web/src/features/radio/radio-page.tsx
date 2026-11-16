@@ -23,6 +23,12 @@ const TOOLS = [
       "Several stations, and for each pair of them which band is predicted to serve at which hour, with a primary and an alternate. Written out as a PDF or as Markdown to print and carry.",
   },
   {
+    to: "/radio/log",
+    name: "Contact log",
+    about:
+      "What actually happened on the air, typed in or imported from an ADIF file, and set beside what the engine predicted for the same paths.",
+  },
+  {
     to: "/radio/repeaters",
     name: "Repeaters",
     about:
