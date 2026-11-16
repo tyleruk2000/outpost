@@ -16,10 +16,13 @@ import {
   type CompareWhat,
   type EngineStatus,
   groundSetting,
+  HALF_WAVE_FROM,
+  HALF_WAVE_TO,
   HF_BANDS,
   halfWaveRangeMhz,
   hasStatedLength,
   isHorizontalAntenna,
+  isSlopingAntenna,
   type MarkerDto,
   type ModeId,
   type NoiseEnvironment,
@@ -31,6 +34,7 @@ import {
   type RadioProfileInput,
   type SavedPrediction,
   sameAntennaSpec,
+  slopeWords,
   wireOn,
 } from "@outpost/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -237,6 +241,13 @@ export function antennaSummary(spec: AntennaSpec): string {
   const parts = [antennaModelLabel(spec.kind, spec.lengthM)];
   if (spec.kind !== "isotropic") {
     if (isHorizontalAntenna(spec.kind)) parts.push(`${spec.heightM} m up`);
+    if (isSlopingAntenna(spec.kind))
+      parts.push(
+        slopeWords(spec),
+        spec.highEndDeg === null || spec.highEndDeg === undefined
+          ? "high end away from the other station"
+          : `high end towards ${spec.highEndDeg}°`,
+      );
     parts.push(`${groundSetting(spec.ground).label.toLowerCase()} ground`);
   }
   if (spec.broadsideDeg !== null) parts.push(`broadside to ${spec.broadsideDeg}°`);
@@ -274,7 +285,10 @@ export function wireHint(spec: AntennaSpec, frequencyText: string): { note: stri
 
 /** The amateur bands a wire of a stated length is about a half-wave on, as "20 m"; empty for a wire that is one on none of them. */
 export const halfWaveBands = (spec: AntennaSpec): string[] =>
-  HF_BANDS.filter((band) => wireOn(spec, band.mhz)?.state === "half-wave").map((band) => band.label);
+  HF_BANDS.filter((band) => {
+    const wavelengths = wireOn(spec, band.mhz)?.wavelengths ?? 0;
+    return wavelengths >= HALF_WAVE_FROM && wavelengths <= HALF_WAVE_TO;
+  }).map((band) => band.label);
 
 /**
  * Which bands a wire of a stated length has figures on, where the question is about
@@ -288,6 +302,19 @@ export function wireBandsNote(spec: AntennaSpec): string | null {
     bands.length > 0
       ? `on ${bands.join(" and ")}`
       : `from ${fromMhz.toFixed(1)} to ${toMhz.toFixed(1)} MHz, which is none of the amateur bands`;
+  if (spec.kind === "end-fed-sloping") {
+    const run = HF_BANDS.filter((band) => wireOn(spec, band.mhz)?.state === "approximate").map((band) => band.label);
+    const none = HF_BANDS.filter((band) => wireOn(spec, band.mhz)?.state === "not-modelled").map((band) => band.label);
+    return [
+      `${spec.lengthM} m of sloping wire is about a half-wave ${where}.`,
+      run.length > 0
+        ? `On ${run.join(", ")} its figures are approximate: VOACAP's sloping long wire at its slope, whose level is unchecked.`
+        : "",
+      none.length > 0 ? `On ${none.join(", ")} it is shorter than a half-wave, and not modelled: no figure.` : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+  }
   if (spec.kind === "end-fed-vertical")
     return `${spec.lengthM} m of upright wire is about a half-wave ${where}. On other bands it is run as a wire of that length, which an end-fed half-wave's matching unit is not made for.`;
   const longer = HF_BANDS.filter((band) => wireOn(spec, band.mhz)?.state === "approximate").map((band) => band.label);

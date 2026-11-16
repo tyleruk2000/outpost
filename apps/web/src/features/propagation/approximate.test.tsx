@@ -8,6 +8,7 @@
  */
 import {
   ANTENNA_PRESETS,
+  type AntennaSpec,
   APPROXIMATE_KEY,
   type CommunicationPlan,
   type CompareResult,
@@ -48,11 +49,11 @@ const blank = (mhz: number): PredictionCell => ({
 });
 
 /** The fixture's day with the 10 m level wire transmitting: each band in the state the shared rule gives it. */
-function wireResult(frequencyMhz: number): PredictionResult {
+function wireResult(frequencyMhz: number, wire: AntennaSpec = flat10): PredictionResult {
   const base = prediction();
-  const request = { ...base.request, txAntenna: flat10, rxAntenna: dipole, frequencyMhz };
+  const request = { ...base.request, txAntenna: wire, rxAntenna: dipole, frequencyMhz };
   const shaped = (target: PredictionCell, mhz: number): PredictionCell => {
-    const state = pathRunOn(flat10, dipole, mhz);
+    const state = pathRunOn(wire, dipole, mhz);
     if (state === "not-modelled") return blank(mhz);
     return state === "approximate" ? { ...target, mhz, approximate: true } : { ...target, mhz };
   };
@@ -68,7 +69,7 @@ function wireResult(frequencyMhz: number): PredictionResult {
       asked: shaped(hour.bands[HF_BANDS.findIndex((band) => band.mhz === frequencyMhz)] ?? hour.asked, frequencyMhz),
       bands: hour.bands.map((item, index) => shaped(item, HF_BANDS[index]!.mhz)),
     })),
-    runs: [frequencyMhz, ...HF_BANDS.map((band) => band.mhz)].map((mhz) => runLine(flat10, dipole, mhz)),
+    runs: [frequencyMhz, ...HF_BANDS.map((band) => band.mhz)].map((mhz) => runLine(wire, dipole, mhz)),
   };
 }
 
@@ -162,6 +163,22 @@ describe("the prediction written out", () => {
     expect(words).toContain("40 m (7.1 MHz), n/m. Transmitting: Not modelled.");
     // The Markdown is the same words.
     expect(predictionMarkdown(result)).toContain("~37");
+  });
+
+  it("prints a sloping wire's bands as ~figures from 40 m up and n/m below, with no join between two models", () => {
+    const sloper = ANTENNA_PRESETS.find((item) => item.id === "efhw-20m-sloping")!.spec;
+    const blocks = predictionDocument(wireResult(14.18, sloper));
+    const table = blocks.find((block) => block.kind === "table" && block.head[0] === "UTC" && block.head.length === 25);
+    if (table?.kind !== "table") throw new Error("no band table");
+    const row = (label: string) => table.rows.find((item) => item[0] === label)!;
+    expect(row("40 m")[13]).toMatch(/^~/);
+    expect(row("20 m")[13]).toMatch(/^~/);
+    expect(row("80 m")[13]).toBe("n/m");
+    const words = wordsOf(blocks);
+    expect(words).toContain(`7.1 MHz), approximate. Transmitting: ${RUN_LABELS.sloping}.`);
+    expect(words).toContain("or a sloping wire, at its slope");
+    expect(words).not.toContain(MODEL_JOIN_NOTE);
+    expect(blocks[0]).toMatchObject({ kind: "title", text: expect.stringMatching(/, approximate$/) });
   });
 
   it("says approximate in the title and first finding when the frequency asked about is", () => {

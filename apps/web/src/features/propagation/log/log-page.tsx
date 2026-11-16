@@ -4,8 +4,6 @@
  * comparison counts; it does not grade the engine.
  */
 import {
-  ANTENNA_PRESETS,
-  antennaModelLabel,
   COMPARISON_LEVELS,
   COMPARISON_MAX_PATHS,
   COMPARISON_MIN_FOR_SHARES,
@@ -32,6 +30,7 @@ import { Field, Input, Textarea } from "@/components/ui/input";
 import { Progress, Select, Skeleton } from "@/components/ui/misc";
 import { errorMessage } from "@/lib/api";
 import { formatNumber, plural } from "@/lib/utils";
+import { AntennaPicker, antennaChoices } from "../antenna-picker";
 import { antennaOf, type PlaceField, useEngines, usePlaces, useProfiles } from "../data";
 import { EngineNotReady } from "../engine-data";
 import { PlaceInput } from "../place-field";
@@ -369,9 +368,9 @@ function Comparison({ result }: { result: ComparisonResult }) {
         <div data-approximate className="mt-5">
           <h3 className="text-body font-semibold text-ink">≈ Compared with approximate figures</h3>
           <p className="mt-0.5 max-w-[75ch] text-small text-ink-muted">
-            On these entries' frequencies an antenna you chose is a level wire longer than a half-wave, which the engine runs as its sloping
-            long wire, whose level is unchecked. Comparing what happened with an approximate model says less, so they are counted apart and
-            not mixed into the table above.
+            On these entries' frequencies an antenna you chose is an end-fed wire the engine runs as its sloping long wire, whose level is
+            unchecked. Comparing what happened with an approximate model says less, so they are counted apart and not mixed into the table
+            above.
           </p>
           <LevelsTable
             levels={result.approximateLevels ?? []}
@@ -524,10 +523,7 @@ export default function LogPage() {
 
   const antennas = profiles.data?.antennas ?? [];
   const engine = engines.data?.[0];
-  const antennaOptions = [
-    ...antennas.map((antenna) => ({ value: antenna.id, label: antenna.name, description: antennaModelLabel(antenna.kind) })),
-    ...ANTENNA_PRESETS.map((preset) => ({ value: `preset:${preset.id}`, label: preset.name, description: "Generic" })),
-  ];
+  const antennaOptions = antennaChoices(antennas);
 
   const runCompare = () => {
     const mine = antennaOf(myAntenna, antennas);
@@ -696,10 +692,10 @@ export default function LogPage() {
             <EngineNotReady engine={engine} title="The propagation engine cannot run, so nothing can be compared" className="mb-4" />
             <div className="grid gap-x-8 gap-y-4 md:grid-cols-2">
               <Field label="Your antenna">
-                {(ids) => <Select {...ids} value={myAntenna} onChange={setMyAntenna} options={antennaOptions} />}
+                {(ids) => <AntennaPicker {...ids} value={myAntenna} onChange={setMyAntenna} choices={antennaOptions} />}
               </Field>
               <Field label="Antenna assumed at every other station">
-                {(ids) => <Select {...ids} value={theirAntenna} onChange={setTheirAntenna} options={antennaOptions} />}
+                {(ids) => <AntennaPicker {...ids} value={theirAntenna} onChange={setTheirAntenna} choices={antennaOptions} />}
               </Field>
               <Field label="Noise assumed at every receiver">
                 {(ids) => (

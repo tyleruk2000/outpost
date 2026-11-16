@@ -2,7 +2,6 @@
 import {
   ANTENNA_PRESETS,
   type AntennaProfile,
-  antennaModelLabel,
   type MarkerDto,
   NOISE_ENVIRONMENTS,
   type NoiseEnvironment,
@@ -17,6 +16,7 @@ import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui
 import { Field, Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/misc";
 import { localId } from "@/lib/utils";
+import { AntennaPicker, antennaChoices } from "../antenna-picker";
 import { antennaOf, antennaSummary, type PlaceField, wireBandsNote } from "../data";
 import { PlaceInput } from "../place-field";
 
@@ -134,21 +134,24 @@ export function StationDialog({
             error={error("antenna")}
           >
             {(ids) => (
-              <Select
+              <AntennaPicker
                 {...ids}
                 value={antennaId}
                 onChange={setAntennaId}
-                options={[
-                  ...(antennaId === KEPT && station
-                    ? [{ value: KEPT, label: station.antennaName || "As saved", description: antennaSummary(station.antenna) }]
-                    : []),
-                  ...antennas.map((antenna) => ({
-                    value: antenna.id,
-                    label: antenna.name,
-                    description: antennaModelLabel(antenna.kind, antenna.lengthM),
-                  })),
-                  ...ANTENNA_PRESETS.map((preset) => ({ value: `preset:${preset.id}`, label: preset.name, description: "Generic" })),
-                ]}
+                choices={antennaChoices(
+                  antennas,
+                  antennaId === KEPT && station
+                    ? [
+                        {
+                          value: KEPT,
+                          label: station.antennaName || "As saved",
+                          name: station.antennaName || "As saved",
+                          description: antennaSummary(station.antenna),
+                          group: "Kept with this station",
+                        },
+                      ]
+                    : [],
+                )}
               />
             )}
           </Field>

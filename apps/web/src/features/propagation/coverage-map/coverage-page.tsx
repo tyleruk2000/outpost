@@ -4,8 +4,6 @@
  * shades each cell by what came back and reads any one of them out in full.
  */
 import {
-  ANTENNA_PRESETS,
-  antennaModelLabel,
   type Bbox,
   bandOf,
   COVERAGE_RESOLUTIONS,
@@ -21,6 +19,7 @@ import {
   coverageValue,
   HF_BANDS,
   isHorizontalAntenna,
+  isSlopingAntenna,
   type ModeId,
   modeById,
   NOISE_ENVIRONMENTS,
@@ -42,6 +41,7 @@ import { Progress, Segmented, Select, Skeleton } from "@/components/ui/misc";
 import { CoverageGreyLine, coverageMoment, useCoverageGreyLine } from "@/features/maps/grey-line/coverage";
 import { errorMessage } from "@/lib/api";
 import { formatDateTime, formatNumber } from "@/lib/utils";
+import { AntennaPicker, antennaChoices } from "../antenna-picker";
 import { antennaOf, formOf, rememberForm, useEngines, usePlaces, useProfiles, wireHint } from "../data";
 import { EngineNotReady } from "../engine-data";
 import { CELL_OPACITY, coverageFeatures } from "../map/layers";
@@ -339,16 +339,10 @@ export default function CoveragePage() {
   const working = ask.isPending || jobId !== null;
   const progress = job.data?.progress;
   const quantities = result?.mode.requiredSnrDbHz === null ? QUANTITIES.filter((item) => item.value === "signal") : QUANTITIES;
-  const antennaOptions = [
-    ...antennas.map((antenna) => ({
-      value: antenna.id,
-      label: antenna.name,
-      description: antennaModelLabel(antenna.kind, antenna.lengthM),
-    })),
-    ...ANTENNA_PRESETS.map((preset) => ({ value: `preset:${preset.id}`, label: preset.name, description: "Generic" })),
-  ];
+  const antennaOptions = antennaChoices(antennas);
   const txAntenna = antennaOf(form.txAntennaId, antennas);
-  const turns = txAntenna ? isHorizontalAntenna(txAntenna.spec.kind) : false;
+  const turns = txAntenna ? isHorizontalAntenna(txAntenna.spec.kind) || isSlopingAntenna(txAntenna.spec.kind) : false;
+  const slopes = txAntenna ? isSlopingAntenna(txAntenna.spec.kind) : false;
   /** An antenna refused for the frequency is no longer refused once the frequency changes. */
   const clearWireProblem = () => {
     if (problem?.field === "txAntennaId" || problem?.field === "rxAntennaId") setProblem(null);
@@ -486,12 +480,18 @@ export default function CoveragePage() {
             )}
           </Field>
           <Field label="Transmitting antenna" hint={wireNote(form.txAntennaId)} error={fieldError("txAntennaId")}>
-            {(ids) => <Select {...ids} value={form.txAntennaId} onChange={(value) => set("txAntennaId", value)} options={antennaOptions} />}
+            {(ids) => (
+              <AntennaPicker {...ids} value={form.txAntennaId} onChange={(value) => set("txAntennaId", value)} choices={antennaOptions} />
+            )}
           </Field>
           {turns ? (
             <Field
-              label="Its broadside faces, degrees"
-              hint="Empty turns the antenna towards each cell in turn, which shows the best it can do in every direction and not the pattern of one fixed wire."
+              label={slopes ? "Its high end points towards, degrees" : "Its broadside faces, degrees"}
+              hint={
+                slopes
+                  ? "Empty turns the wire with its low end towards each cell in turn, which shows the best it can do in every direction and not the pattern of one fixed wire. The engine shows a sloping wire much weaker towards its high end."
+                  : "Empty turns the antenna towards each cell in turn, which shows the best it can do in every direction and not the pattern of one fixed wire."
+              }
               error={fieldError("txBearing")}
             >
               {(ids) => (
@@ -500,7 +500,13 @@ export default function CoveragePage() {
                   value={form.txBearing}
                   onChange={(event) => set("txBearing", event.target.value)}
                   inputMode="decimal"
-                  placeholder={txAntenna?.spec.broadsideDeg === null ? "" : String(txAntenna?.spec.broadsideDeg ?? "")}
+                  placeholder={
+                    slopes
+                      ? String(txAntenna?.spec.highEndDeg ?? "")
+                      : txAntenna?.spec.broadsideDeg === null
+                        ? ""
+                        : String(txAntenna?.spec.broadsideDeg ?? "")
+                  }
                   className="tabular max-w-32"
                 />
               )}
@@ -511,7 +517,9 @@ export default function CoveragePage() {
             hint={`The same antenna in every cell, turned towards the transmitter.${wireNote(form.rxAntennaId) ? ` ${wireNote(form.rxAntennaId)}` : ""}`}
             error={fieldError("rxAntennaId")}
           >
-            {(ids) => <Select {...ids} value={form.rxAntennaId} onChange={(value) => set("rxAntennaId", value)} options={antennaOptions} />}
+            {(ids) => (
+              <AntennaPicker {...ids} value={form.rxAntennaId} onChange={(value) => set("rxAntennaId", value)} choices={antennaOptions} />
+            )}
           </Field>
           <Field label="Noise assumed at every receiver" hint="Man-made noise. Atmospheric and galactic noise come from the engine's maps.">
             {(ids) => (

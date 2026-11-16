@@ -10,6 +10,7 @@ import {
   COMPARISONS,
   type CompareWhat,
   dbwToDbm,
+  HALF_WAVE_TO,
   HF_BANDS,
   MODEL_JOIN_NOTE,
   notModelledOn,
@@ -104,12 +105,25 @@ export function wiresOn(
   });
 }
 
+/** How the approximate wires of a request are run at a frequency, in a few words: laid level, or at a slope. */
+export function approximateHow(request: PredictionResult["request"], atMhz: number): string {
+  const kinds = new Set(
+    [request.txAntenna, request.rxAntenna].filter((spec) => wireOn(spec, atMhz)?.state === "approximate").map((spec) => spec.kind),
+  );
+  if (kinds.has("end-fed-sloping") && kinds.has("end-fed-horizontal")) return "the level wire laid level, the sloping one at its slope";
+  return kinds.has("end-fed-sloping") ? "at the wire's slope" : "a level wire longer than a half-wave, laid level";
+}
+
 /** What a wire is on a band, in the list of bands: the length, and how it was run. */
 function wireState(spec: AntennaSpec, wire: WireOnFrequency): string {
   if (spec.kind === "end-fed-horizontal") {
     if (wire.state === "half-wave") return `about a half-wave. ${RUN_LABELS.halfWave}`;
     if (wire.state === "approximate") return `longer than a half-wave. ${RUN_LABELS.approximate}`;
     return `shorter than a half-wave. ${RUN_LABELS.notModelled}: no figure`;
+  }
+  if (spec.kind === "end-fed-sloping") {
+    if (wire.state === "not-modelled") return `shorter than a half-wave. ${RUN_LABELS.notModelled}: no figure`;
+    return `${wire.wavelengths <= HALF_WAVE_TO ? "about a half-wave" : "longer than a half-wave"}. ${RUN_LABELS.sloping}`;
   }
   return wire.state === "half-wave" ? "about a half-wave" : "not a half-wave; run as a wire of this length";
 }
@@ -153,8 +167,8 @@ function Reading({ result, hour }: { result: PredictionResult; hour: PredictionH
     <div className="max-w-[70ch] space-y-2 text-body text-ink">
       {cell.approximate ? (
         <p data-approximate>
-          <strong className="font-semibold">Approximate figures for {f}.</strong> An antenna is a level wire longer than a half-wave here,
-          run as VOACAP's sloping long wire laid level, whose level is unchecked: read every figure below as approximate.
+          <strong className="font-semibold">Approximate figures for {f}.</strong> An antenna is an end-fed wire run here as VOACAP's sloping
+          long wire ({approximateHow(result.request, cell.mhz)}), whose level is unchecked: read every figure below as approximate.
         </p>
       ) : null}
       {cell.path === null ? (
@@ -348,7 +362,7 @@ export function Results({ result, hour, onHour }: { result: PredictionResult; ho
       ) : null}
       {askedApproximate ? (
         <Notice tone="warning" icon={<TriangleAlert />} title={`Approximate figures for ${f}`} className="mt-4">
-          {approximateOn(request.txAntenna, request.rxAntenna, request.frequencyMhz)} Neither this model nor the dipole has been checked
+          {approximateOn(request.txAntenna, request.rxAntenna, request.frequencyMhz)} None of the engine's antenna models has been checked
           against a real antenna here; the figures are the engine's, labelled approximate wherever they are shown.
         </Notice>
       ) : null}
@@ -374,7 +388,7 @@ export function Results({ result, hour, onHour }: { result: PredictionResult; ho
               ? "No reliability without a figure for the mode"
               : `Share of days ${mode.label} gets through, at every frequency and hour`
           }
-          reading={`Each cell is one whole megahertz at one hour UTC. The line is the MUF: above it the path is open on fewer than half the days. ${f} is the row in bold.${sweepApproximate ? ` A row marked ${APPROXIMATE_SIGN} in a dashed frame has approximate figures: an antenna is a level wire longer than a half-wave there.` : ""}${sweepPartly ? " A hatched row is a frequency an antenna is not modelled on: it has no figure, which is not the same as a poor one." : ""}`}
+          reading={`Each cell is one whole megahertz at one hour UTC. The line is the MUF: above it the path is open on fewer than half the days. ${f} is the row in bold.${sweepApproximate ? ` A row marked ${APPROXIMATE_SIGN} in a dashed frame has approximate figures: an antenna is an end-fed wire run as VOACAP's sloping long wire there.` : ""}${sweepPartly ? " A hatched row is a frequency an antenna is not modelled on: it has no figure, which is not the same as a poor one." : ""}`}
         >
           <HourGrid
             name={`Reliability of ${mode.label} from 2 to 30 MHz by hour`}

@@ -66,6 +66,8 @@ export function pairNotModelled(plan: Pick<CommunicationPlan, "stations">, pair:
     .filter((station) => station !== undefined && wireOn(station.antenna, mhz)?.state === "not-modelled")
     .map((station) => {
       const { fromMhz, toMhz } = halfWaveRangeMhz(station!.antenna.lengthM!);
+      if (station!.antenna.kind === "end-fed-sloping")
+        return `${station!.name}'s ${station!.antenna.lengthM} m sloping wire (a half-wave or longer from ${fromMhz.toFixed(1)} MHz)`;
       return `${station!.name}'s ${station!.antenna.lengthM} m level wire (about a half-wave from ${fromMhz.toFixed(1)} to ${toMhz.toFixed(1)} MHz)`;
     });
   return wires.length === 0 ? null : `${wires.join(" and ")} ${wires.length > 1 ? "are" : "is"} not modelled on this band`;
@@ -79,10 +81,18 @@ export function pairApproximate(plan: Pick<CommunicationPlan, "stations">, pair:
   const wires = [pair.a, pair.b]
     .map((id) => plan.stations.find((station) => station.id === id))
     .filter((station) => station !== undefined && wireOn(station.antenna, mhz)?.state === "approximate")
-    .map((station) => `${station!.name}'s ${station!.antenna.lengthM} m level wire`);
-  return wires.length === 0
-    ? null
-    : `${wires.join(" and ")} ${wires.length > 1 ? "are" : "is"} longer than a half-wave here, run as VOACAP's sloping long wire laid level`;
+    .map((station) => ({ name: `${station!.name}'s ${station!.antenna.lengthM} m`, sloping: station!.antenna.kind === "end-fed-sloping" }));
+  const level = wires.filter((wire) => !wire.sloping).map((wire) => `${wire.name} level wire`);
+  const sloping = wires.filter((wire) => wire.sloping).map((wire) => `${wire.name} sloping wire`);
+  const words = [
+    level.length > 0
+      ? `${level.join(" and ")} ${level.length > 1 ? "are" : "is"} longer than a half-wave here, run as VOACAP's sloping long wire laid level`
+      : "",
+    sloping.length > 0
+      ? `${sloping.join(" and ")} ${sloping.length > 1 ? "are" : "is"} run here as VOACAP's sloping long wire at its slope`
+      : "",
+  ].filter(Boolean);
+  return words.length === 0 ? null : words.join("; ");
 }
 
 /** Whether a pair's figures on a band are approximate: as the matrix marks them, or, for a matrix kept before it did, as the stations' wires say. */
@@ -96,7 +106,7 @@ const matrixFigure = (text: string, approximate: boolean) => (approximate && tex
 export function choiceWords(choice: PlanChoice, byRatio: boolean): string {
   const what = byRatio ? "two-way signal-to-noise ratio" : "two-way reliability";
   const approximate = choice.approximate === true;
-  return `${planBandLabel(choice.bandId)} (${choice.mhz} MHz)${approximate ? ", approximate" : ""}, ${hourRanges(choice.hours)} UTC. Its ${what} reaches ${planFigure(choice.best, byRatio)}${byRatio ? " in 1 Hz" : " of days"} at ${utcLabel(choice.bestHour)} and averages ${planFigure(choice.mean, byRatio)} over the window.${choice.belowHalf ? " It is below half the days at every hour of the window." : ""}${approximate ? " These figures are approximate: a station's level wire is longer than a half-wave on this band, run as VOACAP's sloping long wire, whose level is unchecked." : ""}`;
+  return `${planBandLabel(choice.bandId)} (${choice.mhz} MHz)${approximate ? ", approximate" : ""}, ${hourRanges(choice.hours)} UTC. Its ${what} reaches ${planFigure(choice.best, byRatio)}${byRatio ? " in 1 Hz" : " of days"} at ${utcLabel(choice.bestHour)} and averages ${planFigure(choice.mean, byRatio)} over the window.${choice.belowHalf ? " It is below half the days at every hour of the window." : ""}${approximate ? " These figures are approximate: a station's end-fed wire is run on this band as VOACAP's sloping long wire, whose level is unchecked." : ""}`;
 }
 
 /** A recommendation in the summary table: "15 m, approximate, up to ~62%". */

@@ -50,7 +50,7 @@ export function comparisonDocument(result: PredictionResult, comparison: Compare
   const keys = [
     ...(anyApproximate ? [APPROXIMATE_KEY] : []),
     ...(anyNotModelled
-      ? [`${NOT_MODELLED} is not modelled: the antenna of that row is a level wire shorter than a half-wave here, so there is no figure.`]
+      ? [`${NOT_MODELLED} is not modelled: the antenna of that row is a wire shorter than a half-wave here, so there is no figure.`]
       : []),
   ].join(" ");
   const withKeys = (text: string) => (keys ? `${text} ${keys}` : text);
