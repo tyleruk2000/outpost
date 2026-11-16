@@ -783,7 +783,13 @@ describe("HTTPS with a certificate of your own", () => {
     // TEST-NET-1: never this computer's own address.
     const phone = "192.0.2.50";
     // Only the exact field and value count: no default, no near miss.
-    for (const fields of [{}, { [PLAIN_HTTP_ACCEPTED_FIELD]: "true" }, { [PLAIN_HTTP_ACCEPTED_FIELD]: "" }, { acceptKey: "yes" }]) {
+    const nearMisses: Array<Record<string, string>> = [
+      {},
+      { [PLAIN_HTTP_ACCEPTED_FIELD]: "true" },
+      { [PLAIN_HTTP_ACCEPTED_FIELD]: "" },
+      { acceptKey: "yes" },
+    ];
+    for (const fields of nearMisses) {
       const refused = await w.give([chainOf(mine), mine.keyPem], { from: phone, fields });
       expect(refused.status, JSON.stringify(fields)).toBe(403);
       expect(refused.body.error.message).toContain(PLAIN_HTTP_ACCEPTED_FIELD);

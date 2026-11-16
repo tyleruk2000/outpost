@@ -257,7 +257,10 @@ test.describe("HTTPS on your network", () => {
     expect(errors.filter((error) => !/Failed to load resource/.test(error))).toEqual([]);
   });
 
-  test("from another device over plain http, takes the key only once the person ticks that they accept it", async ({ browser, baseURL }) => {
+  test("from another device over plain http, takes the key only once the person ticks that they accept it", async ({
+    browser,
+    baseURL,
+  }) => {
     const house = makeAuthority("Hill House Root");
     const mine = make({ name: "localhost", issuer: house.intermediate, names: ["localhost", "127.0.0.1"], until: 90 });
     const pick = (name: string, text: string) => ({ name, mimeType: "application/x-pem-file", buffer: Buffer.from(text) });
