@@ -4,8 +4,7 @@
  * typed here is sent or stored.
  */
 import { CircleAlert, Printer, RadioTower, RefreshCw } from "lucide-react";
-import { type ReactNode, useState } from "react";
-import { createPortal, flushSync } from "react-dom";
+import { type ReactNode, useCallback, useState } from "react";
 import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Textarea } from "@/components/ui/input";
@@ -26,14 +25,27 @@ import {
   type RailFenceWorking,
   type Reduced,
   railFence,
-  randomLetters,
   reduce,
   type VigenereWorking,
   vigenere,
   vigenereSquare,
 } from "./ciphers";
-import "./encryption.css";
+import {
+  type AidPaper,
+  lineNumber,
+  makePads,
+  PAD_RULE,
+  type Pad,
+  padHeading,
+  padHolder,
+  padLines,
+  padPages,
+  SQUARE_HOW,
+  SQUARE_TITLE,
+  squarePages,
+} from "./paper-aids";
 import { CopyButton, Panel } from "./parts";
+import { PrintView } from "./print-view";
 
 type CipherId = "caesar" | "vigenere" | "playfair" | "rail" | "columnar" | "otp";
 
@@ -111,17 +123,13 @@ function leftOut(dropped: Reduced | undefined, keepsDigits: boolean): string | n
 }
 
 // ── Paper aids ──────────────────────────────────────────────────────────────
-
-/** Puts its children straight under <body>, where the print rules in encryption.css show them and nothing else. */
-function PrintSheet({ children }: { children: ReactNode }) {
-  return createPortal(<div className="print-sheet">{children}</div>, document.body);
-}
+// The sheets as the browser prints them. Their words and the lines of a pad come from paper-aids.ts, which lays the same out for the PDF.
 
 function VigenereSquareSheet() {
   const rows = vigenereSquare();
   return (
     <div className="sheet-part" data-sheet="vigenere-square">
-      <p className="mb-2 font-sans text-[11pt] font-semibold">Vigenère square</p>
+      <p className="mb-2 font-sans text-[11pt] font-semibold">{SQUARE_TITLE}</p>
       <table className="border-collapse text-center font-mono text-[9pt] leading-none">
         <thead>
           <tr>
@@ -147,44 +155,28 @@ function VigenereSquareSheet() {
           ))}
         </tbody>
       </table>
-      <p className="mt-3 max-w-[165mm] font-sans text-[9pt]">
-        To encipher: find the key letter down the left side and the message letter along the top; the cipher letter is where that row and
-        column meet. To decipher: go along the key letter’s row to the cipher letter; the message letter is at the top of that column.
-      </p>
+      <p className="mt-3 max-w-[165mm] font-sans text-[9pt]">{SQUARE_HOW}</p>
     </div>
   );
 }
 
-interface Pad {
-  serial: string;
-  letters: string;
-}
-
-const PAD_LINE = 50;
-
 function PadCopy({ pad, copy }: { pad: Pad; copy: 1 | 2 }) {
-  const lines = pad.letters.match(new RegExp(`.{1,${PAD_LINE}}`, "g")) ?? [];
   return (
     <div className="sheet-part border border-dashed border-border-strong px-4 py-3" data-pad={pad.serial} data-copy={copy}>
       <div className="flex flex-wrap items-baseline justify-between gap-x-6 font-sans text-[9pt]">
-        <p className="font-semibold">
-          One-time pad {pad.serial}, copy {copy} of 2
-        </p>
-        <p>{copy === 1 ? "For the sender" : "For the receiver"}</p>
+        <p className="font-semibold">{padHeading(pad, copy)}</p>
+        <p>{padHolder(copy)}</p>
       </div>
       <div className="mt-2 grid gap-1 font-mono text-[11pt] leading-tight">
-        {lines.map((line, index) => (
+        {padLines(pad.letters).map((line, index) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: lines of a pad are positional
           <p key={index} className="flex gap-3 whitespace-nowrap">
-            <span className="w-6 text-right text-[8pt]">{String(index + 1).padStart(2, "0")}</span>
-            <span className="tracking-[0.08em]">{inGroups(line)}</span>
+            <span className="w-6 text-right text-[8pt]">{lineNumber(index)}</span>
+            <span className="tracking-[0.08em]">{line}</span>
           </p>
         ))}
       </div>
-      <p className="mt-2 font-sans text-[8pt]">
-        Use each letter once, from the top. Cross out what you have used. Never use any part of this pad for a second message. Burn or shred
-        it when it is finished, and let nobody else see it.
-      </p>
+      <p className="mt-2 font-sans text-[8pt]">{PAD_RULE}</p>
     </div>
   );
 }
@@ -202,8 +194,31 @@ function PadSheets({ pads }: { pads: readonly Pad[] }) {
   );
 }
 
-function makePads(count: number, letters: number): Pad[] {
-  return Array.from({ length: count }, () => ({ serial: `${randomLetters(3)}-${randomLetters(3)}`, letters: randomLetters(letters) }));
+type Aid = { kind: "square" } | { kind: "pads"; pads: Pad[] };
+
+/** A paper aid opened to print: the sheet filling the screen, with Print and Save as PDF. */
+function AidView({ aid, onClose }: { aid: Aid; onClose(): void }) {
+  // Kept the same from one render to the next: the PDF is made again only when the paper or the aid changes.
+  const pages = useCallback((paper: AidPaper) => (aid.kind === "square" ? squarePages(paper) : padPages(aid.pads, paper)), [aid]);
+  if (aid.kind === "square") {
+    return (
+      <PrintView title={SQUARE_TITLE} summary="One sheet, to keep beside you." pages={pages} onClose={onClose}>
+        <VigenereSquareSheet />
+      </PrintView>
+    );
+  }
+  const letters = aid.pads[0]?.letters.length ?? 0;
+  return (
+    <PrintView
+      title="One-time pads"
+      summary={`${aid.pads.length === 1 ? "1 pad" : `${aid.pads.length} pads`} of ${letters} letters, two copies of each.`}
+      secret
+      pages={pages}
+      onClose={onClose}
+    >
+      <PadSheets pads={aid.pads} />
+    </PrintView>
+  );
 }
 
 function PadMaker({ onPrint }: { onPrint(pads: Pad[]): void }) {
@@ -215,8 +230,9 @@ function PadMaker({ onPrint }: { onPrint(pads: Pad[]): void }) {
       <div className="grid gap-4">
         <p className="max-w-[70ch] text-small text-ink-muted">
           Each pad is printed twice: one copy for each of you, and no third. The letters come from this browser’s cryptographic random
-          source, are never stored or sent, and are gone when you leave this screen. They are only as secret as this device, its printer and
-          the route the paper takes to the other person. The strict way is dice and a pencil.
+          source, are never stored or sent, and are gone when you leave this screen. “Print pads” shows the sheets as they will print, to
+          print from the browser or save as a PDF file; a saved file is a third copy until you delete it. The pads are only as secret as
+          this device, its printer and the route the paper takes to the other person. The strict way is dice and a pencil.
         </p>
         <div className="flex flex-wrap items-end gap-3">
           <Field label="Pads">
@@ -492,13 +508,8 @@ export function HandTab() {
   const [key, setKey] = useState("");
   const [rails, setRails] = useState("3");
   const [pad, setPad] = useState("");
-  const [sheet, setSheet] = useState<{ kind: "square" } | { kind: "pads"; pads: Pad[] } | null>(null);
-
-  const print = (next: NonNullable<typeof sheet>) => {
-    // The sheet has to be in the page before the browser lays out what it will print.
-    flushSync(() => setSheet(next));
-    window.print();
-  };
+  // The paper aid that is open to print, if one is.
+  const [aid, setAid] = useState<Aid | null>(null);
 
   // Worked afresh at each keystroke: the longest of these is a few passes over a short text.
   const result = (() => {
@@ -519,7 +530,7 @@ export function HandTab() {
             output: worked.output,
             grouped: false,
             dropped: undefined,
-            view: <VigenereSteps worked={worked} direction={direction} onPrint={() => print({ kind: "square" })} />,
+            view: <VigenereSteps worked={worked} direction={direction} onPrint={() => setAid({ kind: "square" })} />,
           };
         }
         case "playfair": {
@@ -708,11 +719,11 @@ export function HandTab() {
 
       {cipher === "otp" ? (
         <div className="mt-10 max-w-[46rem]">
-          <PadMaker onPrint={(pads) => print({ kind: "pads", pads })} />
+          <PadMaker onPrint={(pads) => setAid({ kind: "pads", pads })} />
         </div>
       ) : null}
 
-      {sheet ? <PrintSheet>{sheet.kind === "square" ? <VigenereSquareSheet /> : <PadSheets pads={sheet.pads} />}</PrintSheet> : null}
+      {aid ? <AidView aid={aid} onClose={() => setAid(null)} /> : null}
     </div>
   );
 }

@@ -525,6 +525,17 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   each protects.
 - Keys, text, files and encrypted pages need a page opened over HTTPS or on the computer
   Outpost runs on; elsewhere the screen says why. See docs/encryption.md.
+- "Print pads" and "Print a Vigenère square" open the sheet over the whole screen as it
+  will print, with **Print** and **Save as PDF**. The PDF (A4 or US Letter, letters in
+  Courier as real text) is made in the page and sent nowhere; the screen says a saved
+  file is another copy of the pads to destroy. Before, the button called the browser's
+  print and showed nothing, so on a phone whose browser does not print from a button it
+  did nothing at all.
+- A Print button no longer fails in silence, here, on the emergency sheet in Contacts or
+  on the map's page: it is left out where the browser has no print, stands second where
+  Outpost was opened from the Home Screen, and says what to do instead when a press is
+  followed by no sign of printing. docs/encryption.md, "Printing from a phone", has what
+  is known about each browser and its sources.
 
 #### Portable drives
 

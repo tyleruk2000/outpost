@@ -182,6 +182,8 @@ describe("the sheet on screen", () => {
             },
             { kind: "text", x: 10, y: 80, text: "1:25,000", size: 11, bold: true, color: [0, 0, 0], anchor: "end" },
             { kind: "text", x: 5, y: 30, text: "53°04'N", size: 6, color: [0, 0, 0], anchor: "middle", upward: true },
+            { kind: "text", x: 10, y: 95, text: "ABCDE FGHIJ", size: 8, mono: true, color: [0, 0, 0] },
+            { kind: "rect", x: 100, y: 60, width: 60, height: 30, stroke: [0, 0, 0], dash: [3, 2] },
           ],
         }}
       />,
@@ -194,5 +196,10 @@ describe("the sheet on screen", () => {
     const side = [...container.querySelectorAll("text")].find((text) => text.textContent === "53°04'N")!;
     expect(side).toHaveAttribute("transform", "rotate(-90 5 30)");
     expect(container.querySelector("polygon")).toHaveAttribute("points", "190,60 194,70 186,70");
+    // Letters that stand in columns are in the fixed-width face, and a line to cut along is broken.
+    const letters = [...container.querySelectorAll("text")].find((text) => text.textContent === "ABCDE FGHIJ")!;
+    expect(letters.getAttribute("font-family")).toMatch(/^Courier, /);
+    expect(side).not.toHaveAttribute("font-family");
+    expect(container.querySelector('rect[stroke-dasharray="3 2"]')).toHaveAttribute("x", "100");
   });
 });

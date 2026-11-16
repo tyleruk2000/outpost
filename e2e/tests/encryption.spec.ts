@@ -486,24 +486,57 @@ test.describe("encryption", () => {
     expect(copies[0]).toBe(copies[1]);
     expect(copies[0]!.replace(/\s/g, "")).toMatch(/^[A-Z]{250}$/);
 
-    // Printing: the sheet is all there is on the paper.
+    // "Print pads" opens the sheets over the whole screen. Nothing is printed until Print is pressed.
     await page.evaluate(() => {
       (window as unknown as { printed: number }).printed = 0;
       window.print = () => {
         (window as unknown as { printed: number }).printed += 1;
+        // What a browser that prints does first.
+        window.dispatchEvent(new Event("beforeprint"));
       };
     });
+    const printed = () => page.evaluate(() => (window as unknown as { printed: number }).printed);
     await page.getByRole("button", { name: "Print pads" }).click();
-    expect(await page.evaluate(() => (window as unknown as { printed: number }).printed)).toBe(1);
+    const view = page.getByRole("dialog", { name: "One-time pads" });
+    await expect(view).toBeVisible();
+    expect(await printed()).toBe(0);
     const sheet = page.locator("body > .print-sheet");
-    await expect(sheet).toBeHidden();
+    await expect(sheet.getByText(`One-time pad ${serials[0]}, copy 1 of 2`)).toBeVisible();
+    await expect(view.getByText("A saved PDF is another copy of the pads")).toBeVisible();
+    await expect(view.getByRole("link", { name: "Save as PDF" })).toHaveAttribute("download", "one-time-pads.pdf");
+    await view.getByRole("button", { name: "Print", exact: true }).click();
+    expect(await printed()).toBe(1);
+
+    // On paper the sheet is all there is: not the bar above it, not the notes, not the app behind.
     await page.emulateMedia({ media: "print" });
-    await expect(sheet).toBeVisible();
     await expect(sheet.getByText(`One-time pad ${serials[0]}, copy 1 of 2`)).toBeVisible();
     await expect(sheet.getByText(/Never use any part of this pad for a second message/).first()).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Encryption", level: 1 })).toBeHidden();
-    await expect(page.getByRole("complementary", { name: "Main" })).toBeHidden();
+    await expect(sheet.locator(".print-chrome").first()).toBeHidden();
+    await expect(sheet.getByText("A saved PDF is another copy of the pads")).toBeHidden();
+    await expect(sheet.getByText("Save as PDF")).toBeHidden();
+    await expect(page.locator("#root")).toBeHidden();
     await page.emulateMedia({ media: "screen" });
+    await expect(page.locator("#root")).toBeVisible();
+    await view.getByRole("button", { name: "Close" }).click();
+    await expect(view).toBeHidden();
+
+    // The browser's own print of a long set runs on from page to page: the view that fills the screen does not
+    // cut it off at the foot of the first. Chromium lays the print out as a PDF only when it has no window.
+    await page.getByRole("combobox", { name: "Pads" }).click();
+    await page.getByRole("option", { name: "8" }).click();
+    await page.getByRole("combobox", { name: "Letters in each" }).click();
+    await page.getByRole("option", { name: "500" }).click();
+    await page.getByRole("button", { name: "Make new pads" }).click();
+    await expect(preview.locator("[data-pad]")).toHaveCount(16);
+    await page.getByRole("button", { name: "Print pads" }).click();
+    await expect(view).toBeVisible();
+    if (test.info().project.use.headless !== false) {
+      const paper = (await page.pdf({ format: "A4" })).toString("latin1");
+      // Sixteen copies of ten lines: three or four to a page of A4.
+      expect((paper.match(/\/Type\s*\/Page\b/g) ?? []).length).toBeGreaterThanOrEqual(4);
+    }
+    await page.keyboard.press("Escape");
+    await expect(view).toBeHidden();
 
     expect(sent).toEqual([]);
     expect(errors).toEqual([]);

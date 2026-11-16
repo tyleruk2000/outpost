@@ -381,6 +381,11 @@ the PDF is made) prints the sheet alone, at the size of the paper chosen. Before
 PDF is made the map in it is the preview's, at 120 dots to the inch; after, it is the
 full-resolution one. The PDF is the dependable way: a browser adds its own margins and
 headers unless told not to, and not every browser honours a page size set by a page.
+A phone's browser does not always print from a button at all. The **Print** button is
+left out where the browser has no print, and says to save the PDF and print that when a
+press is followed by no sign of printing
+([encryption.md](encryption.md#printing-from-a-phone) has what is known about each
+browser).
 
 ### Limits, and what has not been tried
 

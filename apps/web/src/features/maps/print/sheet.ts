@@ -23,7 +23,18 @@ export const PAPER: Rgb = [1, 1, 1];
 
 export type SheetItem =
   | { kind: "image"; id: string; x: number; y: number; width: number; height: number }
-  | { kind: "rect"; x: number; y: number; width: number; height: number; fill?: Rgb; stroke?: Rgb; lineWidth?: number }
+  | {
+      kind: "rect";
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      fill?: Rgb;
+      stroke?: Rgb;
+      lineWidth?: number;
+      /** A broken outline, as for a line to cut along: the lengths of a dash and of the gap after it. */
+      dash?: readonly [number, number];
+    }
   | { kind: "line"; x1: number; y1: number; x2: number; y2: number; color: Rgb; width: number }
   | { kind: "polygon"; points: Array<readonly [number, number]>; fill: Rgb }
   | {
@@ -34,6 +45,8 @@ export type SheetItem =
       text: string;
       size: number;
       bold?: boolean;
+      /** Set in Courier, where every character is as wide as every other (see courier.ts), so that letters stand in columns. Helvetica otherwise. */
+      mono?: boolean;
       color: Rgb;
       anchor?: "start" | "middle" | "end";
       /** Turned a quarter-turn to read from the bottom of the page upwards, as figures down the side of a map do. */

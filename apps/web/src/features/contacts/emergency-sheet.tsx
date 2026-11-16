@@ -8,8 +8,10 @@ import { ArrowLeft, Download, Printer } from "lucide-react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router";
 import { EmptyState, ErrorState, Page, PageHeader } from "@/components/page";
+import { PrintNotice } from "@/components/print-notice";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/misc";
+import { usePrinting } from "@/lib/printing";
 import { formatDate, plural } from "@/lib/utils";
 import { exportHref, labelOr, useEmergencyContacts } from "./contacts-data";
 
@@ -106,6 +108,7 @@ export default function EmergencySheetPage() {
   const contacts = useEmergencyContacts();
   const printedOn = Date.now();
   const marked = contacts.data ?? [];
+  const printing = usePrinting();
   return (
     <Page width="reading">
       <Link to="/contacts" className="mb-2 inline-flex min-h-11 items-center gap-1.5 text-small text-primary">
@@ -122,9 +125,11 @@ export default function EmergencySheetPage() {
                   <Download /> Save these as a vCard file
                 </a>
               </Button>
-              <Button variant="primary" onClick={() => window.print()}>
-                <Printer /> Print
-              </Button>
+              {printing.canPrint ? (
+                <Button variant="primary" onClick={printing.print}>
+                  <Printer /> Print
+                </Button>
+              ) : null}
             </>
           ) : undefined
         }
@@ -149,6 +154,12 @@ export default function EmergencySheetPage() {
         </EmptyState>
       ) : (
         <>
+          {/* Where the button cannot start a print, the sheet below is still the page: the browser's own Print prints it alone. */}
+          <PrintNotice
+            printing={printing}
+            instead="The sheet below is the page as it prints. Use the browser’s own Share menu, then Print, or take a screenshot of it."
+            className="mb-4 max-w-[65ch]"
+          />
           <p className="mb-3 max-w-[65ch] text-small text-ink-muted">
             This is the page as it prints. A printed sheet can be read by whoever finds it, and does not change when a contact does: print
             it again after changing a number.

@@ -15,11 +15,13 @@ import { useEffect, useId, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { ErrorState, Notice } from "@/components/page";
+import { PrintNotice } from "@/components/print-notice";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
 import { Checkbox, Progress, Segmented, Skeleton } from "@/components/ui/misc";
 import { api, errorMessage } from "@/lib/api";
+import { usePrinting } from "@/lib/printing";
 import { mapsKeys, useMapOverview, useMarkers, useTracks } from "../data";
 import type { ReadoutFormat } from "../lib/coords";
 import { formatBboxSize } from "../lib/geo";
@@ -321,6 +323,8 @@ export function PrintDialog({
   }, [printed?.usesTerrain, bbox, overview.data]);
 
   const titleId = useId();
+  // The browser's own print is offered beside the file, and said to have failed where it does nothing (lib/printing.ts).
+  const printing = usePrinting();
   const summary = `${paperName(geometry.paper, geometry.orientation)}, ${formatScale(scale)}, ${formatBboxSize(bbox)}`;
   const busy = made.status === "making";
 
@@ -512,6 +516,7 @@ export function PrintDialog({
                   The title has letters the PDF’s built-in typeface lacks, so it is in the file as a picture, not as text.
                 </p>
               ) : null}
+              {printing.unanswered ? <PrintNotice printing={printing} instead="Save the PDF and print that." className="mt-2" /> : null}
             </div>
           ) : made.status === "error" ? (
             <Notice tone="danger" icon={<CircleAlert />} title="The page was not made" className="min-w-0 flex-1">
@@ -534,9 +539,11 @@ export function PrintDialog({
               </Button>
             ) : made.status === "ready" ? (
               <>
-                <Button onClick={() => window.print()}>
-                  <Printer /> Print
-                </Button>
+                {printing.canPrint ? (
+                  <Button onClick={printing.print}>
+                    <Printer /> Print
+                  </Button>
+                ) : null}
                 {canShare ? (
                   <Button onClick={share}>
                     <Share2 /> Share
