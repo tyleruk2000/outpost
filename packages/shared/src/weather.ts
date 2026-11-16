@@ -90,7 +90,7 @@ export interface WeatherPlace {
   lon: number;
   /** The saved place it was chosen from, while that still exists. */
   markerId: string | null;
-  /** The saved place it came from carries the "home" icon. */
+  /** The saved place it came from is home: it carries the home icon, and is the first saved that does (`homePlaceOf`). */
   isHome: boolean;
   region: MetOfficeRegionId | null;
   createdAt: number;
@@ -292,6 +292,8 @@ export interface UpdateResponse {
 /** What the scenario planner asks: the warnings in force for the home place when they were last fetched. */
 export interface HomeWarningsResponse {
   place: { id: string; name: string; region: string | null } | null;
+  /** The saved place with the home icon (`homePlaceOf`), in the weather list or not; null when none has it. */
+  homeMarker: { id: string; name: string } | null;
   /** When the warnings were fetched; null when they never were. */
   fetchedAt: number | null;
   /** Met Office warnings for the home place's region whose stated period had not ended at `now`. */

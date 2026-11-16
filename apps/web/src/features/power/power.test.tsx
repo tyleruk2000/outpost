@@ -48,7 +48,7 @@ interface Server {
   posted: unknown[];
 }
 
-function show(path: string, options: { plans?: PowerPlan[] | "fails" | "never"; plan?: PowerPlan } = {}): Server {
+function show(path: string, options: { plans?: PowerPlan[] | "fails" | "never"; plan?: PowerPlan; weather?: unknown } = {}): Server {
   const server: Server = { put: [], posted: [] };
   let plan = options.plan ?? planOf();
   vi.stubGlobal(
@@ -74,6 +74,8 @@ function show(path: string, options: { plans?: PowerPlan[] | "fails" | "never"; 
       }
       if (pathname === "/api/power/plans/p1") return json({ plan });
       if (pathname === "/api/radio/profiles") return json({ radios: [], antennas: [] });
+      if (pathname === "/api/weather")
+        return json(options.weather ?? { places: [], kept: [], sources: [], updateOnOpen: false, now: Date.now() });
       return json({ error: { code: "not_found", message: "Not here." } }, 404);
     }),
   );
@@ -170,6 +172,74 @@ describe("a power plan", () => {
   });
 });
 
+const SOLAR_PLACE = { id: "w1", name: "Home", lat: 52.13, lon: -0.46, markerId: "m1", isHome: true, region: null, createdAt: 1 };
+const solarWeather = (fetchedAt: number) => ({
+  places: [SOLAR_PLACE],
+  kept: [
+    {
+      id: "c1",
+      kind: "solar",
+      source: "pvgis",
+      placeId: "w1",
+      fetchedAt,
+      validFrom: null,
+      validUntil: null,
+      bytes: 3000,
+      sent: "",
+      data: {
+        service: "PVGIS 5.3",
+        databases: "PVGIS-SARAH3",
+        firstYear: 2005,
+        lastYear: 2023,
+        optimalSlope: 38,
+        level: [0.6, 1.2, 2.3, 3.5, 4.4, 4.8, 4.6, 3.9, 2.8, 1.6, 0.8, 0.5],
+        optimal: [1.234, 1.9, 2.9, 3.9, 4.4, 4.5, 4.4, 4.1, 3.4, 2.3, 1.4, 1.0],
+      },
+    },
+  ],
+  sources: [],
+  updateOnOpen: false,
+  now: Date.now(),
+});
+
+describe("peak sun hours from Weather and hazards", () => {
+  it("says they can be fetched there when none have been, and fetches nothing itself", async () => {
+    show("/tools/power/plans/p1");
+    expect(await screen.findByText(/None have been fetched yet/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open Weather and hazards" })).toHaveAttribute("href", "/prepare/weather?view=climate");
+    const asked = vi.mocked(fetch).mock.calls.map(([input]) => new URL(String(input), "http://outpost.test").pathname);
+    expect(asked.every((path) => path.startsWith("/api/") && !path.includes("update"))).toBe(true);
+  });
+
+  it("fills the months on a press, says whose they are, and records it in the plan", async () => {
+    const server = show("/tools/power/plans/p1", { weather: solarWeather(Date.now() - 3 * 86_400_000) });
+    expect(
+      await screen.findByText(/PVGIS's figures \(European Commission Joint Research Centre\) for Home, 52.13, -0.46/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/fetched by Weather and hazards 3 days ago/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Fill in from Weather and hazards" }));
+    await waitFor(() => expect(server.put).toHaveLength(1), { timeout: 3000 });
+    expect(server.put[0]!.solar.sunHours[0]).toBe(1.23);
+    expect(server.put[0]!.solar.sunHoursSource).toMatchObject({ kind: "pvgis", place: "Home", tilt: "optimal", slope: 38, edited: false });
+    expect(screen.getByText(/^Peak sun hours from PVGIS .* for Home \(52.13, -0.46\), on a panel facing south at 38°/)).toBeInTheDocument();
+    // Typed over afterwards: the record says so.
+    fireEvent.change(screen.getByLabelText("March"), { target: { value: "3" } });
+    await waitFor(() => expect(server.put.at(-1)!.solar.sunHoursSource?.edited).toBe(true), { timeout: 3000 });
+  });
+
+  it("asks before replacing figures the person typed", async () => {
+    const typed = planOf();
+    typed.solar = { ...typed.solar, sunHours: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1] };
+    const server = show("/tools/power/plans/p1", { plan: typed, weather: solarWeather(Date.now()) });
+    fireEvent.click(await screen.findByRole("button", { name: "Fill in from Weather and hazards" }));
+    const dialog = await screen.findByRole("alertdialog", { name: "Replace the figures typed in?" });
+    expect(server.put).toHaveLength(0);
+    fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    await new Promise((resolve) => setTimeout(resolve, 900));
+    expect(server.put).toHaveLength(0);
+  });
+});
+
 describe("the plan written out", () => {
   it("has the answers, every assumption and the estimate warning, and makes a PDF", () => {
     const plan = planOf({ notes: "Check the fuses." });
@@ -179,6 +249,7 @@ describe("the plan written out", () => {
     expect(text).toContain("## Assumptions");
     expect(text).toContain("HF radio: 20 W transmitting");
     expect(text).toContain("## Notes\n\nCheck the fuses.");
+    expect(text).toContain("Peak sun hours typed in.");
     const bytes = planPdf(plan, workOut(plan), new Date(Date.UTC(2026, 10, 16)));
     expect(new TextDecoder().decode(bytes.slice(0, 5))).toBe("%PDF-");
   });

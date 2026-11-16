@@ -34,7 +34,13 @@ and why.
 ## Places
 
 Forecasts are for places the person chooses from their saved places on the map. The
-saved place with the **home** icon is the home place. A place in the list is a copy of
+saved place with the **home** icon is the home place; if several have the icon, the one
+saved first is home (editing or starring a place does not change which). This is the
+one meaning of home across Outpost (`homePlaceOf` in `packages/shared/src/home-place.ts`):
+the warnings on Emergency plans use it too, and there is no separate setting. With no
+saved place carrying the icon there is no home place, and the Places view says in one
+line how to mark one, with a link to the Maps screen; with a home that is not in the
+weather list, it says that no warnings are matched to it until it is added. A place in the list is a copy of
 the saved place's name and position, so the cache still makes sense if the saved place
 is moved or removed.
 
@@ -115,14 +121,11 @@ house than that.
 ### The power planner
 
 Tools → Power and batteries wants peak sun hours "on the panels' plane" for January to
-December (`PowerSolar.sunHours`), and today asks the person to type them. The figures
-are now kept here, for each place, as the `solar` copy in `GET /api/weather`
-(`kept[].data.optimal`: twelve numbers, kWh/m² a day, null for a month PVGIS gave no
-figure). The power screen could offer "Fill in from Weather and hazards" for a chosen
-place. That would read the copy, put `optimal` into `sunHours`, and say that the
-figures are for a south-facing panel at PVGIS's best tilt. It has not been built here:
-the power screen belongs to another feature, and the person's own figures should not
-be replaced without them choosing to.
+December (`PowerSolar.sunHours`). A power plan reads the `solar` copy kept here
+(`kept[].data.optimal` or `.level`) and offers "Fill in from Weather and hazards" for a
+chosen place, on a press, asking before it replaces figures typed in, and records with
+the plan whose figures they are. It fetches nothing itself. See
+[tools-power.md](tools-power.md#peak-sun-hours-from-weather-and-hazards).
 
 ## Not used, and why
 
@@ -292,19 +295,10 @@ was last fetched. It fetches nothing. See [api.md](api.md#weather-and-hazards).
 
 ## Not done
 
-- **Flood-risk zones on the map.** The Environment Agency's Flood Map for Planning
-  (Flood Zones 2 and 3) is open data with an OGC API Features endpoint that answers by
-  bounding box (sources.md). The intended design follows the satellite imagery's.
-  Download the zones for a box round each place, through the download manager onto a
-  storage location, with the size stated first. Then draw them as an overlay with a
-  toggle in `mapTools` (`apps/web/src/features/maps/map-chrome.tsx`), as the satellite
-  and grey-line toggles are, until the Maps screen's "Layers" panel (being built on
-  another branch) takes it as one of its layers. The legend would quote the Agency:
-  Flood Zone 3 is "Areas shown to be at a 1% (1 in 100) or greater annual probability
-  of flooding from rivers or, 0.5% (1 in 200) or greater annual probability of flooding
-  from the sea", "ignoring the benefits of defences", and the zones "are not suitable
-  for showing whether an individual property is at risk of flooding". None of this is
-  built.
+- **Flood-risk zones on the map** are now a reference layer on the Maps screen's
+  Layers tab, not part of this screen: see
+  [reference-layers.md](reference-layers.md#flood-zones-england). The Agency's "Risk
+  of Flooding from Rivers and Sea" is not, as it has no feature service.
 - **Wildfire risk** is linked, not fetched (above).
 - **Scotland, Wales and Northern Ireland** have no flood data here (above).
 

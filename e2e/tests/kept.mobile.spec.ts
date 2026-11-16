@@ -110,6 +110,23 @@ test("keeps a page, a route and a map area on a phone, and opens them with the s
     ],
   });
   await api(page, "POST", "/api/maps/markers", { name: "Styhead Tarn", lat: 54.476, lon: -3.2, note: "Water here." });
+  const emergency = (
+    await api(page, "POST", "/api/emergency-plans", {
+      name: "Storm",
+      kind: "other",
+      kindText: "",
+      templateId: null,
+      emergencyNumber: "999",
+      reviewEveryDays: 180,
+      body: {
+        steps: [
+          { id: "e1", phase: "during", text: "Bring the bikes into the shed." },
+          { id: "e2", phase: "during", text: "Fill the bath." },
+        ],
+        contacts: [{ id: "c1", name: "Ana Silva", phone: "+44 7700 900123" }],
+      },
+    })
+  ).plan;
   const { locations } = await api(page, "GET", "/api/storage/locations");
   execFileSync("node", [path.join(root, "e2e/tools/small-map.mjs"), path.join(locations[0].path, "imports/small.pmtiles")]);
   await api(page, "POST", "/api/maps/import", { locationId: locations[0].id, relPath: "imports/small.pmtiles", name: "Small map" });
@@ -146,6 +163,12 @@ test("keeps a page, a route and a map area on a phone, and opens them with the s
   await page.getByRole("button", { name: "Keep on this phone" }).click();
   await expect(page.getByText("1 saved place kept on this phone")).toBeVisible();
 
+  // ── Keeping an emergency plan, from its Use now ──
+  await page.goto(`/prepare/plans/${emergency.id}/use`);
+  await expect(page.getByText(/A copy of the people's names and numbers will be on this phone/)).toBeVisible();
+  await page.getByRole("button", { name: "Keep on this phone" }).click();
+  await expect(page.getByText("“Storm” is kept on this phone.")).toBeVisible();
+
   // ── Keeping the part of the map in view: measured first, then fetched ──
   await page.goto("/maps?lat=54.5&lon=-3.1&z=8");
   await expect(page.locator('.outpost-map[data-map-idle="true"]')).toBeVisible({ timeout: 20_000 });
@@ -161,7 +184,7 @@ test("keeps a page, a route and a map area on a phone, and opens them with the s
   // ── "On this phone" lists all four, with sizes ──
   await page.goto("/kept");
   await expect(page.getByRole("heading", { name: "On this phone", level: 1 })).toBeVisible();
-  for (const name of ["Field plan", "Seathwaite round", "Saved places", "Borrowdale"]) {
+  for (const name of ["Field plan", "Seathwaite round", "Saved places", "Borrowdale", "Storm"]) {
     await expect(page.getByRole("link", { name, exact: true })).toBeVisible();
   }
   await expect(page.getByText("With the 1 page inside it")).toBeVisible();
@@ -242,6 +265,14 @@ test("keeps a page, a route and a map area on a phone, and opens them with the s
   // And the worker has not started answering for the API.
   expect(tiles.api).toBe("failed");
 
+  // The kept plan opens, its numbers still call, and a step ticked here waits on the phone.
+  await page.goto(`/prepare/plans/${emergency.id}/use`);
+  await expect(page.getByRole("heading", { level: 1, name: "Storm" })).toBeVisible();
+  await expect(page.getByText(/The copy kept on this phone, from/)).toBeVisible();
+  await expect(page.getByRole("link", { name: "Call Ana Silva: +44 7700 900123" })).toHaveAttribute("href", "tel:+447700900123");
+  await page.getByText("Fill the bath.").click();
+  await expect(page.getByText(/1 change waiting/)).toBeVisible();
+
   // ── Back in reach: a page changed at home replaces the kept copy ──
   await startServer();
   await api(page, "PATCH", `/api/notes/${plan.id}`, { content: doc("Leave the car at Seatoller instead: the road is closed.") });
@@ -258,6 +289,13 @@ test("keeps a page, a route and a map area on a phone, and opens them with the s
       { timeout: 20_000, message: "the kept copy should be replaced by the server's version" },
     )
     .toContain("Seatoller");
+  // And the tick made out of reach has reached the server.
+  await expect
+    .poll(async () => Object.keys((await api(page, "GET", `/api/emergency-plans/${emergency.id}`)).plan.use.ticks), {
+      timeout: 20_000,
+      message: "the tick made out of reach should be sent when the server is back",
+    })
+    .toEqual(["e2"]);
   await stopServer();
   await page.reload();
   await expect(banner(page)).toBeVisible({ timeout: 20_000 });
@@ -284,7 +322,7 @@ test("keeps a page, a route and a map area on a phone, and opens them with the s
     })
     .toEqual([expect.stringContaining(nextEntry)]);
   // What was kept on purpose is untouched by the change of build.
-  expect((await cacheNames(page)).filter((name) => name.startsWith("outpost-kept:")).length).toBe(4);
+  expect((await cacheNames(page)).filter((name) => name.startsWith("outpost-kept:")).length).toBe(5);
 
   // The server goes while the app is open: the screen that is open stays, and says what will happen next.
   await stopServer();

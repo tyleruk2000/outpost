@@ -14,6 +14,8 @@ import type { GeoJsonGeometry } from "../types.ts";
 export const MAX_GEOJSON_BYTES = 160 * 1024 * 1024;
 
 export interface ReadFeature {
+  /** The feature's own `id`, where the file gives one. */
+  id: string | null;
   properties: Record<string, unknown>;
   /** Null for a point: the point is `lat`/`lon`. */
   geometry: GeoJsonGeometry | null;
@@ -94,7 +96,7 @@ export async function readGeoJsonFile(
   let outOfRange = 0;
   for (const raw of features) {
     index += 1;
-    const feature = raw as { properties?: unknown; geometry?: { type?: unknown; coordinates?: unknown } | null };
+    const feature = raw as { id?: unknown; properties?: unknown; geometry?: { type?: unknown; coordinates?: unknown } | null };
     const properties =
       typeof feature?.properties === "object" && feature.properties !== null ? (feature.properties as Record<string, unknown>) : {};
     const type = feature?.geometry?.type;
@@ -125,7 +127,8 @@ export async function readGeoJsonFile(
       continue;
     }
     const [lon, lat] = representativePoint(geometry, bbox);
-    await options.onFeature({ properties, geometry: type === "Point" ? null : geometry, lat, lon, bbox });
+    const id = typeof feature.id === "string" || typeof feature.id === "number" ? String(feature.id) : null;
+    await options.onFeature({ id, properties, geometry: type === "Point" ? null : geometry, lat, lon, bbox });
   }
   return { crs, total: index };
 }

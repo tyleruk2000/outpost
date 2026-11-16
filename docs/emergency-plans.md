@@ -290,9 +290,31 @@ From the Preparedness page a plan in use is two presses away: **Emergency plans*
 then **Use now** beside it. On a phone, the "use now" page can be added to the Home
 Screen from the browser's Share menu for one press.
 
-It needs Outpost's server and nothing beyond it. Reading a plan with the server out of
-reach is the job of **Keep on this phone** ([offline.md](offline.md)), which needs a
-secure page; this screen keeps nothing in the browser.
+It needs Outpost's server and nothing beyond it, unless the plan is kept on the phone:
+**Keep on this phone**, at the foot of "Use now", keeps it through the same store as
+pages and map areas, so that "Use now" opens with the server out of reach, and ticks
+made there are sent when the server is back, added to those made elsewhere (the union,
+earliest time; a reset on the server wins). It needs a secure page. The whole rule,
+and what is kept, is in [offline.md](offline.md#an-emergency-plan).
+
+### Warnings held for the home place
+
+The list of plans and **Use now** show one line when Outpost holds a warning for the
+home place (the saved place with the home icon; see [weather.md](weather.md#places)):
+
+> “Yellow warning of wind affecting London & South East England” was in force for your
+> area when Outpost last checked, 3 hours ago: open Weather and hazards
+
+The quoted words are the publisher's own (the Met Office's title; for a flood warning,
+the Environment Agency's severity and the area it names), the age is from when the copy
+was fetched, and the link opens Weather and hazards. With several, the most severe is
+named and the rest counted. It reads `GET /api/weather/home-warnings`, which fetches
+nothing; it says nothing when no warning is held, when there is no home place, when the
+server cannot be reached, or when the copy is too old to be worth a line: Met Office
+warnings fetched more than 24 hours ago, flood warnings more than 12 hours ago (both
+Outpost's choices; a Met Office warning whose own stated period has ended is never
+shown). It reports what was held, in the past tense, and never says what to do: the
+plan's own steps and the emergency services do that. (`warning-line.tsx`.)
 
 ## Cards to print
 

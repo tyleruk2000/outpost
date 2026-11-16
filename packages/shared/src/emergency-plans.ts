@@ -181,6 +181,33 @@ export interface PlanUse {
   ticks: Record<string, number>;
 }
 
+/**
+ * Ticks made on a phone while the server was out of reach, sent when it is back
+ * (`POST /api/emergency-plans/:id/ticks/merge`). The rule, `mergeTicks` on the server:
+ *
+ * - a tick is added with the time it was made; where the step is ticked on the server
+ *   already, the earlier of the two times is kept (the union, earliest time);
+ * - an untick takes a tick away only if the server still has that very tick (the time
+ *   the phone saw), so a step ticked again elsewhere meanwhile stays ticked;
+ * - if the plan was reset on the server since the phone's copy (`knownStartedAt` is not
+ *   its start time now), what the phone did before the new start is dropped;
+ * - anything for a step no longer in the plan is dropped.
+ */
+export interface PlanTickMerge {
+  /** The start time the phone's copy had. */
+  knownStartedAt: number | null;
+  /** Step id to when it was ticked on the phone. */
+  ticks: Record<string, number>;
+  /** Step id to the time of the server's tick that was unticked on the phone. */
+  unticks: Record<string, number>;
+}
+
+export interface PlanTickMergeResponse extends EmergencyPlanResponse {
+  /** How many of the phone's changes were applied, and how many were dropped by the rule. */
+  applied: number;
+  dropped: number;
+}
+
 export interface EmergencyPlan extends EmergencyPlanInput {
   id: string;
   use: PlanUse;

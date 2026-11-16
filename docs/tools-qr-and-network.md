@@ -278,12 +278,16 @@ was not run again after the fix.
 
 Anyone who can open Outpost can start a scan, as with every other action: it is not
 limited to the computer itself (`isLocalRequest`). See
-[security.md](security.md#devices-on-this-network) for why.
+[security.md](security.md#devices-on-this-network) for why. An administrator who would
+rather it were starts Outpost with `OUTPOST_NETWORK_SCAN_LOCAL_ONLY=true`; other
+devices then see the list and a line saying that a scan is started on the computer
+itself.
 
 ### Settings
 
 | Variable | Default | What it does |
 | --- | --- | --- |
 | `OUTPOST_HOST_NETWORK` | off | Tells Outpost, in a container, that the container shares the computer's network (host networking), so that a scan is offered. |
+| `OUTPOST_NETWORK_SCAN_LOCAL_ONLY` | off | Only the computer Outpost runs on may start a scan. |
 | `OUTPOST_IEEE_OUI_URL` | the IEEE's address | Where the registry is fetched from, for a mirror or for tests. |
 | `OUTPOST_NETWORK_STAND_IN` | unset | For tests only: a JSON file describing a made-up computer and network (`apps/server/test/fixtures/network/stand-in.ts`), used in place of this one. Nothing is sent anywhere. The end-to-end suite sets it. |

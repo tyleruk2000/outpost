@@ -85,6 +85,7 @@ with the rest of Outpost's sources.
 | IAEA PRIS | Power reactor list | Not read: every iaea.org terms page answered 402 or 403. | **Linked**; nothing taken until its terms are read. |
 | GeoNuclearData (GitHub), WRI Global Power Plant Database, Global Energy Monitor | Lists of power plants | GeoNuclearData is ODbL but "taken from WNA/IAEA", whose terms were not read; WRI's (CC BY 4.0) is "not currently maintained" since 2022; Global Energy Monitor's tracker page says "All Rights Reserved". | **Not used.** OpenStreetMap and Wikidata cover the same facilities with clear licences. |
 | Historical archives | Declassified targeting and civil-defence planning | See [below](#historical-records). | **Linked; manual import.** |
+| Environment Agency (England) | Flood Zones 2 and 3 (Flood Map for Planning, Rivers and Sea) | [data.gov.uk](https://www.data.gov.uk/dataset/flood-map-for-planning-flood-zones1), updated 22 October 2026: "Open Government Licence"; "Attribution statement: © Environment Agency copyright and/or database right 2025. All rights reserved." No limit on requests was found on the publisher's pages. See [below](#flood-zones-england) and [sources.md](sources.md). | **Fetched on a press**, for the area on screen up to about 20 km across, after a count. |
 | Emergency planning zones and shelter registers | Official zones and registers | See [below](#emergency-planning-zones-and-shelters). | **Swiss meeting points fetched; the rest linked or imported.** |
 
 ### Historical records
@@ -159,6 +160,53 @@ and `nuclear` (with `military=bunker` or `building=bunker`), and
 `emergency=assembly_point`. The wiki has no tag that says "civil defence". A mark from
 these is what a mapper recorded; the layer says so, and that a mark does not mean a
 shelter is open, kept up or meant for you.
+
+### Flood zones (England)
+
+The Environment Agency's Flood Map for Planning, Flood Zones 2 and 3 from rivers and the
+sea, under the Open Government Licence. Its provenance class is **published public
+record**. England only: the service's extent is England, a box outside it is refused
+before anything is asked, and Scotland (SEPA), Wales (NRW) and Northern Ireland (DfI)
+publish their own maps, which Outpost does not fetch.
+
+- **Getting it.** Maps → Offline maps → Reference data for the map, source "Flood zones,
+  England (Environment Agency)", **The area on screen**, **Show the size**. The area may
+  be at most 0.2° north to south and 0.3° east to west (about 22 by 20 km in the
+  Midlands); a larger one is refused with that reason, so zoom in first. Show the size
+  asks the service for one area and its count (`numberMatched`), and gives the size as
+  "about" (the count times 19 kB, the average measured round Bedford), because every
+  area that touches the box comes whole and some are large. An area of more than 5,000
+  is refused. Download then fetches all of them in one answer through the download
+  manager onto a storage location. The same box fetched again replaces its pack; boxes
+  side by side are separate packs, and an area in both is listed once, the other as a
+  duplicate.
+- **Why these limits.** On 16 November 2026 a box 7 km across held 248 areas, 4.6 MB,
+  answered in under half a second; a box twice as wide each way was not answered within
+  90 seconds. The limits are Outpost's, not the Agency's; no limit is published.
+- **On the map.** Areas, filled, under the map's names (they are drawn below the labels,
+  as the grey line is). The two zones are told apart without relying on colour: Flood
+  Zone 3 in the deeper tone with a solid edge, Flood Zone 2 in a lighter tone of the
+  same colour with a broken edge; zone 3 is drawn over zone 2. They are drawn from zoom
+  11 in (about a town's width across a phone's screen), at most 3,000 to a view; further
+  out, or with more, the legend says "Zoom in". They are never drawn as points or counted
+  into patches. A press inside an area opens its card, with the zone, its source
+  (`river`, `sea`), its `origin` as the Agency gives it, and the definition and caveat.
+- **The legend** gives each zone in the Agency's words ("Flood Zone 3 – Areas shown to be
+  at a 1% (1 in 100) or greater annual probability of flooding from rivers or, 0.5% (1 in
+  200) or greater annual probability of flooding from the sea."; Flood Zone 2 likewise),
+  that the map "shows the extent of land at present day risk of flooding from rivers and
+  the sea, ignoring the benefits of defences", the Agency's caveat ("The Flood Zones are
+  designed to only give an indication of flood risk to an area of land and are not
+  suitable for showing whether an individual property is at risk of flooding. This is
+  because we cannot know all the details about each property."), that it covers England
+  only, and, in Outpost's words, that a planning zone is not a forecast that a place will
+  flood nor a warning. The attribution is in the legend and the map's credits.
+- **Not done.** The Agency's "Risk of Flooding from Rivers and Sea" (which takes defences
+  into account) has no feature service, only a WMS of pictures and a national bulk file,
+  so it is not offered. The download was tried by hand against the real service only as
+  described above (a count and one box); the full flow through Outpost was tested against
+  a local stand-in, not the live service (`OUTPOST_FLOOD_ZONES_URL` puts one in the
+  Agency's place for tests), and there is no end-to-end test of it in a browser.
 
 ## OpenStreetMap: which tags, and what the licence asks
 

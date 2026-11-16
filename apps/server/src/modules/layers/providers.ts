@@ -149,6 +149,26 @@ export const PROVIDERS: ReferenceProviderDto[] = [
     incremental: "No: the file is fetched again whole.",
   },
   {
+    id: "ea-flood-zones",
+    name: "Flood zones, England (Environment Agency)",
+    publisher: "Environment Agency",
+    url: "https://www.data.gov.uk/dataset/flood-map-for-planning-flood-zones1",
+    license: "Open Government Licence v3.0",
+    licenseUrl: "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+    termsUrl: "https://www.data.gov.uk/dataset/flood-map-for-planning-flood-zones1",
+    termsQuote:
+      "data.gov.uk, “Flood Map for Planning (Rivers and Sea) - Flood Zones”, updated 22 October 2026: licence “Open Government Licence”; “Attribution statement: © Environment Agency copyright and/or database right 2025. All rights reserved.” “The Flood Zones are designed to only give an indication of flood risk to an area of land and are not suitable for showing whether an individual property is at risk of flooding.” “if downloading data for an area of interest, all polygons that intersect this area will be provided. Some polygons may be quite large and extend beyond the drawn area of interest.” No limit on requests to the service was found on the publisher's pages.",
+    termsRead: READ,
+    verdict: "fetch",
+    why: "Open Government Licence, with an OGC API Features service that answers by box. Fetched on a press for the area on screen, at most about 20 km across, one request, after the size is shown. England only.",
+    layers: ["flood-zones"],
+    scopes: ["bbox"],
+    importFormats: [],
+    caution:
+      "England only. A flood zone says how likely flooding is in a typical year, for planning, ignoring flood defences; it is not a forecast that a place will flood, and the Agency says the zones are “not suitable for showing whether an individual property is at risk of flooding”.",
+    incremental: "No: the area is fetched again whole.",
+  },
+  {
     id: "import",
     name: "A file you import",
     publisher: "As stated by the person importing",

@@ -3,7 +3,7 @@
  * hour by hour, and every assumption. Set with the same blocks and pages as a
  * communication plan (features/propagation/plans/document.ts).
  */
-import { chemistryById, MONTHS, type PowerPlanInput } from "@outpost/shared";
+import { chemistryById, MONTHS, type PowerPlanInput, sunSourceText } from "@outpost/shared";
 import { writePdfPages } from "@/features/maps/print/pdf";
 import { INK, MUTED, type SheetItem } from "@/features/maps/print/sheet";
 import { type Block, toSheets } from "@/features/propagation/plans/document";
@@ -84,6 +84,7 @@ export function planBlocks(plan: PowerPlanInput, answers: PlanAnswers, written: 
       item.emptyOnDay === null ? "Keeps up" : `Day ${item.emptyOnDay}`,
     ]),
   });
+  blocks.push({ kind: "para", text: sunSourceText(plan.solar.sunHoursSource) });
   blocks.push({
     kind: "para",
     text: `"Lowest" is the lowest state of charge in 30 days of that month's sun, starting full; "runs down" is the day it first reaches the usable limit (${Math.round(floor * 100)}%).`,

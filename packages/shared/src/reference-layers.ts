@@ -22,6 +22,7 @@ export const REFERENCE_LAYERS = [
   "regions",
   "towns",
   "historical",
+  "flood-zones",
 ] as const;
 export type ReferenceLayerId = (typeof REFERENCE_LAYERS)[number];
 
@@ -147,7 +148,33 @@ export const REFERENCE_LAYER_INFO: Record<ReferenceLayerId, ReferenceLayerInfo> 
       "Places named in declassified historical documents, each with its document, its date and which kind of record it is. History, not a statement about any place today.",
     areas: false,
   },
+  "flood-zones": {
+    id: "flood-zones",
+    label: "Flood zones (England)",
+    about:
+      "The Environment Agency's Flood Map for Planning: Flood Zones 2 and 3, from rivers and the sea, ignoring the benefits of defences. England only. A planning zone is not a forecast that a place will flood.",
+    areas: true,
+  },
 };
+
+/**
+ * The Environment Agency's own words for its flood zones, read on data.gov.uk on
+ * 16 November 2026 ("Flood Map for Planning (Rivers and Sea) - Flood Zones"), for the
+ * legend and the record card.
+ */
+export const FLOOD_ZONE_WORDS = {
+  zone3:
+    "Flood Zone 3 – Areas shown to be at a 1% (1 in 100) or greater annual probability of flooding from rivers or, 0.5% (1 in 200) or greater annual probability of flooding from the sea.",
+  zone2:
+    "Flood Zone 2 – Land having between 0.1% - 1% (1 in 100 to 1 in 1000) annual probability of flooding from rivers or between 0.1% - 0.5% (1 in 200 to 1 in 1000) annual probability of flooding from the sea, and accepted recorded flood outlines.",
+  defences: "shows the extent of land at present day risk of flooding from rivers and the sea, ignoring the benefits of defences",
+  caveat:
+    "The Flood Zones are designed to only give an indication of flood risk to an area of land and are not suitable for showing whether an individual property is at risk of flooding. This is because we cannot know all the details about each property.",
+  attribution: "© Environment Agency copyright and/or database right 2025. All rights reserved.",
+  /** Outpost's own words, not the Agency's. */
+  notForecast:
+    "A planning zone says how likely flooding is in a typical year, as modelled for planning. It is not a forecast that a place will flood, and it is not a warning: for those, see Weather and hazards.",
+} as const;
 
 /** A provider of reference data, and what Outpost may do with it. */
 export interface ReferenceProviderDto {
@@ -313,6 +340,8 @@ export interface ReferenceShape {
   layer: ReferenceLayerId;
   provenance: FeatureProvenance;
   name: string;
+  /** The source's own code (a flood zone's is `ea:flood-zone-3` or `ea:flood-zone-2`), for layers drawn by kind. */
+  kind: string;
   geometry: { type: string; coordinates: unknown };
 }
 
@@ -321,6 +350,8 @@ export interface ReferenceOverlayResponse {
   points: ReferencePoint[];
   cells: ReferenceCell[];
   shapes: ReferenceShape[];
+  /** Flood zones are many detailed areas: drawn only close in, and not at all where a view holds too many. Why, when not drawn. */
+  floodZones?: "zoom-in" | "too-many" | null;
 }
 
 export interface ReferenceSourceInfo {

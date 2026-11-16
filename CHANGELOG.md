@@ -666,6 +666,13 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   duplicates across sources found and kept with both sources, packs replaced only when
   their successor is in, and records kept on the map while the drive holding a pack is
   away. The GeoTIFF reader learns LZW and 32-bit floating point.
+- Flood zones for England as a reference layer: the Environment Agency's Flood Map for
+  Planning (Flood Zones 2 and 3, Open Government Licence), fetched on a press for the
+  area on screen up to about 20 km across, after a count and a stated size; drawn filled
+  under the map's names, zone 3 in a deeper tone with a solid edge and zone 2 lighter
+  with a broken one; the legend quotes the Agency's definitions and its caveat that the
+  zones are "not suitable for showing whether an individual property is at risk of
+  flooding", and says a planning zone is not a forecast.
 
 #### Repeaters
 
@@ -879,6 +886,10 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   home place when they were last fetched.
 - The fetched copies are listed and cleared under Manage and clean up; places, copies
   and readings go with "erase everything". Migration `0021_weather`.
+- One meaning of "home" everywhere: the saved place with the home icon, the first saved
+  if several (it no longer depends on which was edited or starred last). With none,
+  Weather and hazards says in one line how to mark one, with a link to Maps, and says
+  when the home is not in its list of places.
 #### Emergency plans (Preparedness)
 
 - **Preparedness → Emergency plans**: a household's own plans for a power cut,
@@ -905,6 +916,10 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   fold marks; a fridge sheet on one page; a grab list. Names in other scripts are drawn
   as pictures with the words kept for search. Migration 0018. See
   [docs/emergency-plans.md](docs/emergency-plans.md).
+- The list of plans and "Use now" show one line when Outpost holds a Met Office or
+  Environment Agency warning for the home place, in the publisher's words, with its
+  age and a link to Weather and hazards; nothing when there is none or the copy is more
+  than a day (flood: twelve hours) old.
 
 #### On a phone, out of reach of the server
 
@@ -917,6 +932,12 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   view, which is measured by the server before anything is fetched.
 - "On this phone": what is kept, with sizes and dates, removing copies, the room the
   browser reports, and asking the browser to keep the data.
+- "Keep on this phone" for an emergency plan, at the foot of its "Use now": the plan's
+  steps, numbers, people and places, so that "Use now" opens out of reach. Its steps can
+  be ticked there; the ticks are kept on the phone and sent when the server is back,
+  added to those made elsewhere meanwhile (the union, earliest time; an untick only
+  removes the very tick it saw; a reset on the server wins).
+  `POST /api/emergency-plans/:id/ticks/merge`.
 - Out of reach the app is read-only and says so in one line; a page or screen that was
   not kept says so instead of loading. Back in reach, kept copies are replaced by the
   server's versions. A new build replaces the kept app.
@@ -1029,6 +1050,10 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   assumption listed. Plans are kept on the server (migration `0016_power_plans`),
   copied, compared, written out as a PDF (Save as PDF, Add to library, Share), counted
   on the Storage screen and erased with everything else.
+- A power plan can fill its peak sun hours from what Weather and hazards has fetched
+  from PVGIS for one of its places (best tilt or level ground), on a press, asking
+  before replacing figures typed in. The plan records whose figures they are, and the
+  PDF says so. Where none have been fetched, the screen says where to fetch them.
 #### Nuclear preparedness
 
 - Preparedness → Nuclear preparedness: a workspace over the offline map (and satellite
@@ -1140,6 +1165,9 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   One ping per address and two fixed ports for those that ignore it, 20 probes a
   second; no port scanning or probing of services. Names and notes of your own;
   migration 0016.
+- Devices on this network: `OUTPOST_NETWORK_SCAN_LOCAL_ONLY=true` lets only the
+  computer Outpost runs on start a scan. Off by default, so nothing changes unless an
+  administrator sets it.
 
 #### Deployment
 

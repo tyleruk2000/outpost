@@ -70,11 +70,15 @@ const envSchema = z.object({
   // Devices on this network: a made-up machine in place of this one, and a stand-in for the IEEE's registry (docs/tools-qr-and-network.md).
   OUTPOST_NETWORK_STAND_IN: z.string().optional(),
   OUTPOST_IEEE_OUI_URL: z.string().url().optional(),
+  // Devices on this network: only the computer Outpost runs on may start a scan (docs/security.md). Off by default.
+  OUTPOST_NETWORK_SCAN_LOCAL_ONLY: bool(false),
   // Set in a container run with host networking, which then sees the computer's own network.
   OUTPOST_HOST_NETWORK: z.string().optional(),
   OUTPOST_LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).optional(),
   // For tests: one local server that stands in for every weather publisher (modules/weather/sources.ts).
   OUTPOST_WEATHER_STAND_IN: z.string().url().optional(),
+  // For tests: a local server in place of the Environment Agency's flood zones service (modules/layers/adapters/flood-zones.ts).
+  OUTPOST_FLOOD_ZONES_URL: z.string().url().optional(),
 });
 
 export interface Config {
@@ -141,9 +145,13 @@ export interface Config {
     makersUrl: string;
     /** A container told that it shares the computer's own network (host networking). */
     hostNetwork: boolean;
+    /** Only a request from the computer Outpost runs on may start a scan (the rule `assertBackupRight` uses, without its override). */
+    scanLocalOnly: boolean;
   };
   /** For tests: a local server answering for every weather publisher, at /<source id>/<path>; unset in use. */
   weatherStandIn?: string;
+  /** For tests: the flood zones collection's address in place of the Environment Agency's; unset in use. */
+  floodZonesUrl?: string;
   /** Stand-ins for satellite imagery's publishers, for tests; unset in use. */
   imagery?: {
     endpoints?: {
@@ -240,9 +248,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       standIn: parsed.OUTPOST_NETWORK_STAND_IN ? path.resolve(parsed.OUTPOST_NETWORK_STAND_IN) : null,
       makersUrl: parsed.OUTPOST_IEEE_OUI_URL ?? "https://standards-oui.ieee.org/oui/oui.csv",
       hostNetwork: ["1", "true", "yes", "on"].includes((parsed.OUTPOST_HOST_NETWORK ?? "").toLowerCase()),
+      scanLocalOnly: parsed.OUTPOST_NETWORK_SCAN_LOCAL_ONLY,
     },
     imagery: imageryStandIns(parsed),
     weatherStandIn: parsed.OUTPOST_WEATHER_STAND_IN,
+    floodZonesUrl: parsed.OUTPOST_FLOOD_ZONES_URL,
   };
 }
 

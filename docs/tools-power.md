@@ -10,7 +10,9 @@ Tools → Power and batteries (`/tools/power`) has two parts:
   server under a name, worked out into how long it runs and how much solar it needs.
 
 Everything here is arithmetic on what was typed in. It works with no connection; the
-only link out is to PVGIS, for peak sun hours, and it is opened only when pressed.
+only link out is to PVGIS, for peak sun hours, and it is opened only when pressed. A
+plan can also take its peak sun hours from what Weather and hazards has already fetched
+from PVGIS (below); this screen itself fetches nothing.
 
 **Electricity can hurt people and start fires.** Every answer is an estimate and
 general information. The figures that bear on safety (how much current a cable, a
@@ -84,7 +86,8 @@ is a starting figure, not a source: use the data sheet's); PWM, battery volts ÷
 Vmp (13.6 V and 18 V are starting figures to be replaced from the labels). Time to
 charge = energy to put back ÷ √(round trip) ÷ (day's output − day's use meanwhile).
 Peak sun hours are typed in: there is no figure for them without a place's weather
-records, which Outpost does not hold, so the screen links to PVGIS. Left out: shade
+records, so the screen links to PVGIS. (A power plan can take them from Weather and
+hazards; the quick calculator does not keep anything, and does not.) Left out: shade
 through the day, cloud from day to day, and the battery accepting charge more slowly as
 it fills.
 
@@ -148,6 +151,39 @@ side by side on the Power and batteries screen, and written out as a PDF with Sa
 PDF, Add to library and Share (the PDF is made from the plan as last saved, dated by its
 last change, and linked back to `/tools/power/plans/:id`). To link one from a note, put
 that address in the note's link field; the plan's page shows it.
+
+### Peak sun hours from Weather and hazards
+
+Weather and hazards fetches PVGIS's monthly figures for one of its places when a person
+presses "Fetch the averages for this place" there ([weather.md](weather.md)): twelve
+numbers in kWh/m² a day, one series for a panel facing south at the tilt PVGIS found
+best over the year and one for level ground. A plan's solar section reads what is kept
+(`kept[kind="solar"]` of `GET /api/weather`) and:
+
+- where none has been fetched, says that they can be fetched on Weather and hazards,
+  with a link;
+- where some have, offers **Fill in from Weather and hazards**, with a choice of place
+  when there are several (home first) and of the two series, and says whose figures
+  they are, for which place and position, over which years and from which database,
+  and how long ago they were fetched. Panels at another angle or facing another way get
+  a different figure, and shading is not counted: the screen says so.
+
+Nothing is filled in until that press. When the months hold figures the person typed
+(or changed after a fill), the press asks first and replaces them only on "Replace
+them". The figures are rounded to two decimal places.
+
+The plan records where its figures came from (`solar.sunHoursSource`: the place, its
+position, the series and best tilt, the years, the database, when fetched and when
+filled, and PVGIS's credit). Typing over a month afterwards keeps the record and marks
+it `edited`. The screen shows the record under the months, and the PDF (and the copy
+added to the library) carries the same sentence under the month-by-month table, for example (made-up figures):
+"Peak sun hours from PVGIS (European Commission Joint Research Centre) for Home (52.13,
+-0.46), on a panel facing south at 38°, the best tilt, averaged over 2005 to 2023 from
+PVGIS-SARAH3; fetched by Weather and hazards on 16 November 2026. PVGIS © European
+Communities, 2001-2026.", with "Some months were changed by hand since." when they
+were, or "Peak sun hours typed in." when there is no record. Plans saved before this
+have none and read as typed in; no migration was needed, since a plan's system is kept
+as one JSON value.
 
 ### The model
 

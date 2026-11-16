@@ -39,7 +39,7 @@ export default function NetworkPage() {
   const status = network.data;
   const scanning = jobs.scan;
   // With nothing listed yet, the empty state holds the one button.
-  const canScan = status && !status.unavailable && status.subnets.length > 0 && status.devices.length > 0;
+  const canScan = status && mayScan(status) && status.devices.length > 0;
   const action = scanning ? null : canScan ? (
     <Button variant="primary" onClick={() => start.mutate()} loading={start.isPending}>
       <Radar /> {status.lastScan ? "Look again" : "Look for devices"}
@@ -87,7 +87,7 @@ function Loaded({
   onScan: () => void;
   starting: boolean;
 }) {
-  const canScan = !status.unavailable && status.subnets.length > 0;
+  const canScan = mayScan(status);
   return (
     <>
       <Unavailable status={status} />
@@ -114,6 +114,11 @@ function Loaded({
   );
 }
 
+/** Whether a scan can be offered here: the computer can look, and this device may ask it to. */
+function mayScan(status: NetworkStatus): boolean {
+  return !status.unavailable && status.subnets.length > 0 && status.scanRight.allowed;
+}
+
 function Unavailable({ status }: { status: NetworkStatus }) {
   if (status.unavailable === "container")
     return (
@@ -134,6 +139,13 @@ function Unavailable({ status }: { status: NetworkStatus }) {
     return (
       <Notice tone="info" title="Not on this kind of computer" className="mb-6">
         Looking for devices works where Outpost runs on macOS or Linux (a Raspberry Pi included).
+      </Notice>
+    );
+  if (status.subnets.length > 0 && !status.scanRight.allowed)
+    return (
+      <Notice tone="info" title="Started on the computer Outpost runs on" className="mb-6">
+        Whoever set up Outpost has said that only the computer it runs on may look for devices. Open Outpost there to start a scan; what it
+        found is listed here for every device.
       </Notice>
     );
   if (status.subnets.length === 0)

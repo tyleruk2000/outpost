@@ -153,6 +153,14 @@ export interface NetworkStatus {
   makers: NetworkMakers;
   /** The registry being fetched, if it is. */
   makersJob: JobDto | null;
+  /** Whether the device asking may start a scan: "open" to every device (the default), or set to the computer Outpost runs on. */
+  scanRight: NetworkScanRight;
+}
+
+/** OUTPOST_NETWORK_SCAN_LOCAL_ONLY limits starting a scan to the computer Outpost runs on (docs/security.md). */
+export interface NetworkScanRight {
+  allowed: boolean;
+  reason: "open" | "local" | "remote";
 }
 
 export interface NetworkDevicePatch {

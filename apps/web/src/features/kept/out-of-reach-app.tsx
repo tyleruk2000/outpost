@@ -22,6 +22,7 @@ import { tellWorkerReach } from "./register";
 import { useKept } from "./store";
 
 const KeptMapScreen = lazy(() => import("./kept-map-screen"));
+const KeptPlanScreen = lazy(() => import("./kept-plan-screen"));
 
 /** On the server's own computer "out of reach" can only mean the server is not running, and the line says what to do about that. */
 const ON_THE_SERVER_ITSELF = typeof window !== "undefined" && ["localhost", "127.0.0.1", "[::1]"].includes(window.location.hostname);
@@ -46,6 +47,8 @@ const SCREENS: Record<string, string> = {
   downloads: "Downloads",
   storage: "Storage",
   settings: "Settings",
+  prepare: "Preparedness",
+  tools: "Tools",
 };
 
 function NeedsServer() {
@@ -219,6 +222,7 @@ export default function OutOfReachApp({ onReachable }: { onReachable: () => void
           <Route path="kept" element={<KeptPage outOfReach />} />
           <Route path="notes/:id" element={<KeptNoteScreen />} />
           <Route path="maps" element={<KeptMapScreen />} />
+          <Route path="prepare/plans/:id/use" element={<KeptPlanScreen />} />
           <Route path="*" element={<NeedsServer />} />
         </Route>
       </Routes>

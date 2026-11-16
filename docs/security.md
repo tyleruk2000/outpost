@@ -259,14 +259,22 @@ in the browser. The reasons and the behaviour are in
 - **The worker never writes to a cache after it is installed.** Kept copies are written
   by the page, from answers the server gave to ordinary same-origin `GET` requests, and
   only when a person pressed "Keep" or a kept copy is being brought up to date.
-- **A kept copy is never sent back.** Out of reach the app is read-only. There is no
-  queue of changes and no sync, so a stale copy on a phone cannot overwrite anything.
+- **A kept copy is never sent back.** Out of reach the app is read-only, with one
+  exception: the steps of a kept emergency plan can be ticked. Those ticks are not a
+  copy: they are a list of what was ticked and unticked and when, sent when the server
+  is back to `POST /api/emergency-plans/:id/ticks/merge`, which applies them by a rule
+  that cannot take away anything done elsewhere meanwhile (the union of ticks with the
+  earliest time; an untick only removes the very tick it saw; a reset wins). It
+  touches only that plan's ticks, never its steps or anything else, so a stale copy on
+  a phone still cannot overwrite anything ([offline.md](offline.md#an-emergency-plan)).
 - **The worker script is served with its own policy,** `default-src 'self';
   connect-src 'self'`, and `Cache-Control: no-cache` (`apps/server/src/app.ts`). It can
   reach nothing but this server, and a browser always sees a new one.
 - **Kept copies are as private as the phone.** They are stored unencrypted in the
   browser's profile. They hold what the person chose: the text and pictures of the
-  pages, the lines of the routes, the saved places with their notes. There are no
+  pages, the lines of the routes, the saved places with their notes, and a kept
+  emergency plan's people with their names and numbers (the keep action says so before
+  it is pressed). There are no
   accounts, so nothing on the phone is any more private than it is on the server; it
   has simply left the house. "On this phone" says this where things are listed, and
   removes copies.
@@ -540,6 +548,7 @@ manager, and only from these hosts, each named in code:
 | `query.wikidata.org` | One count and one query | CC0; within the service's limits, with a contact address |
 | `data.worldpop.org` | One country's population GeoTIFF | CC BY 4.0 |
 | `data.geo.admin.ch` | The Swiss emergency meeting points | Open use with the source given |
+| `environment.data.gov.uk` | The Environment Agency's flood zones for a box at most about 20 km across: a count (`limit=1`), then the areas in one answer | Open Government Licence; one box per press |
 
 Every request names Outpost and its project address, carries nothing about the person,
 and must land on a public address (rule 2 above). A redirect off the named host is
@@ -735,8 +744,15 @@ that reasoning is weaker:
   sees that computer scanning. On a home network this is rarely noticed; on a managed
   network (a workplace, a campsite's Wi-Fi) it may be against the rules there.
 
-If either matters, `assertBackupRight` (`modules/backup/right.ts`) is the one line that
-would limit starting a scan to the computer itself.
+If either matters, start Outpost with `OUTPOST_NETWORK_SCAN_LOCAL_ONLY=true`. Then a
+scan may be started only from the computer Outpost runs on, by the test of where a
+request comes from that restoring a backup uses (`isLocalRequest`: loopback or the
+computer's own address, never through a forwarding proxy). `OUTPOST_ALLOW_REMOTE_ERASE`
+does not lift it, because whoever set this option asked for it in particular. Other
+devices still see the list and may name or forget devices; the screen says that a scan
+is started on the computer itself and offers no button. Off by default, which is the
+behaviour described above. (`scanRight` in `modules/network/index.ts`; tested in
+`apps/server/test/network-scan.test.ts`.)
 
 **What is kept.** Device names can be people's names ("Anna's iPhone"). The list is
 in the database (and so in backups), shown only on its own screen, never put in search,
