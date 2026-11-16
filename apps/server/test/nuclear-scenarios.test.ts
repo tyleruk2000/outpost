@@ -6,9 +6,9 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { CleanupPlan, CleanupResult, NuclearScenario } from "@outpost/shared";
-import { measureContents } from "../src/modules/database/inspect.ts";
 import Database from "better-sqlite3";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { measureContents } from "../src/modules/database/inspect.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
 
 let app: TestApp;

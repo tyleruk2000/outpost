@@ -130,7 +130,7 @@ function interp(table: ReadonlyArray<readonly [number, number]>, x: number, logX
 
 /** A row of a yield table at any yield, interpolating every column against log yield; the end rows extend the line through the last two (the figures' edges are a fraction of a decade beyond the first and last rows read). */
 function rowAt(rows: ReadonlyArray<readonly [number, readonly number[]]>, yieldKt: number, logY = true): number[] {
-  let i = rows.findIndex(([w], index) => index < rows.length - 1 && yieldKt <= rows[index + 1]![0]);
+  let i = rows.findIndex((_row, index) => index < rows.length - 1 && yieldKt <= rows[index + 1]![0]);
   if (i < 0) i = rows.length - 2;
   const [w0, a] = rows[i]!;
   const [w1, b] = rows[i + 1]!;

@@ -15,6 +15,7 @@ import { useMapOverview, useMapSources } from "@/features/maps/data";
 import { greyLineData } from "@/features/maps/grey-line/geometry";
 import { GREY_LINE_SOURCE } from "@/features/maps/grey-line/layers";
 import { useMapTheme, useStoredState } from "@/features/maps/hooks";
+import { imageryCredits } from "@/features/maps/imagery/use-satellite";
 import { isReadoutFormat, type ReadoutFormat } from "@/features/maps/lib/coords";
 import type { LatLon } from "@/features/maps/lib/geo";
 import type { StyleInput } from "@/features/maps/lib/style";
@@ -50,6 +51,10 @@ export interface PlanMapProps {
   label: string;
   /** Draws day and night for this moment (see features/maps/grey-line); left out or null, they are not drawn. */
   greyLineAt?: number | null;
+  /** What the nuclear preparedness workspace draws: see `features/nuclear/layers.ts`. */
+  nuclear?: FeatureCollection;
+  /** Draws installed satellite imagery beneath the roads and names, where there is any. */
+  satellite?: boolean;
   className?: string;
 }
 
@@ -58,7 +63,7 @@ export interface PlanMapHandle {
   bounds(): Bbox;
 }
 
-export function PlanMap({ data, places, onPress, onReady, onMoved, fit, label, greyLineAt, className }: PlanMapProps) {
+export function PlanMap({ data, places, onPress, onReady, onMoved, fit, label, greyLineAt, nuclear, satellite, className }: PlanMapProps) {
   const { flavour, theme } = useMapTheme();
   const sources = useMapSources();
   const overview = useMapOverview();
@@ -71,8 +76,17 @@ export function PlanMap({ data, places, onPress, onReady, onMoved, fit, label, g
 
   const cacheKey = useMemo(() => regionsCacheKey(overview.data?.regions ?? []), [overview.data]);
   const style = useMemo<Omit<StyleInput, "overlays">>(
-    () => ({ sources: sources.data, flavour, theme, hillshade: false, contours: false, origin: window.location.origin, cacheKey }),
-    [sources.data, flavour, theme, cacheKey],
+    () => ({
+      sources: sources.data,
+      flavour,
+      theme,
+      hillshade: false,
+      contours: false,
+      satellite: satellite ?? false,
+      origin: window.location.origin,
+      cacheKey,
+    }),
+    [sources.data, flavour, theme, cacheKey, satellite],
   );
   const latest = useRef({ style, fit, onPress, onReady, onMoved, places });
   latest.current = { style, fit, onPress, onReady, onMoved, places };
@@ -127,6 +141,7 @@ export function PlanMap({ data, places, onPress, onReady, onMoved, fit, label, g
   }, [engine, style]);
   useEffect(() => engine?.setOverlay(PROPAGATION_SOURCE, data ?? EMPTY), [engine, data]);
   useEffect(() => engine?.setOverlay("o-markers", places ? markersData(places, null) : EMPTY), [engine, places]);
+  useEffect(() => engine?.setOverlay("o-nuclear", nuclear ?? EMPTY), [engine, nuclear]);
   useEffect(() => engine?.setOverlay(GREY_LINE_SOURCE, greyLineAt ? greyLineData(greyLineAt) : EMPTY), [engine, greyLineAt]);
   const fitKey = fit ? fit.join(",") : "";
   const fitted = useRef(fitKey);
@@ -138,8 +153,12 @@ export function PlanMap({ data, places, onPress, onReady, onMoved, fit, label, g
   }, [engine, fitKey]);
 
   const credits = useMemo(
-    () => creditsFor(sources.data?.attributions ?? [], { hasTiles: sources.data?.hasTiles ?? false, terrain: false }),
-    [sources.data],
+    () => [
+      // Imagery is credited for every installed set while it is drawn: the frame does not follow which are in view.
+      ...(satellite ? imageryCredits(sources.data?.imagery ?? []) : []),
+      ...creditsFor(sources.data?.attributions ?? [], { hasTiles: sources.data?.hasTiles ?? false, terrain: false }),
+    ],
+    [sources.data, satellite],
   );
 
   if (status === "failed") {

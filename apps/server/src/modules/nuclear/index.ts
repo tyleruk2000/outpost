@@ -9,7 +9,7 @@
  * Later sittings add the data-source adapters, layers and dataset manager described in
  * docs/nuclear-preparedness.md beside this.
  */
-import { effectsProblems, type EffectsInput, type NuclearScenario, SCENARIO_NAME_MAX, SCENARIO_NOTES_MAX } from "@outpost/shared";
+import { type EffectsInput, effectsProblems, type NuclearScenario, SCENARIO_NAME_MAX, SCENARIO_NOTES_MAX } from "@outpost/shared";
 import { desc, eq } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
