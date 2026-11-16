@@ -863,7 +863,7 @@ export interface PredictionBasis {
   kind: BasisKind;
   /** The smoothed sunspot number the engine ran with. */
   ssn: number;
-  /** One sentence saying where the number came from, with dates. */
+  /** One sentence saying where the number came from, with dates. Never "today" or "3 days ago": it is kept and printed, and read later. */
   summary: string;
   /** The date of the solar table used, when one was, as YYYY-MM-DD. */
   tableDate: string | null;

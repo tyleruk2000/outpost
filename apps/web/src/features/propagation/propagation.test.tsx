@@ -15,7 +15,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { HourGrid, HourLines, percent, ShareBars, shareFill } from "./charts";
 import { AS_SAVED, emptyForm, exampleForm, formOf, openSaved, rememberedForm, rememberForm, requestOf } from "./data";
 import { Planner } from "./planner";
-import { bestHour, windows } from "./results";
+import { BasisNotice, bestHour, tableAge, windows } from "./results";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -253,6 +253,29 @@ describe("the form remembered in this browser", () => {
     rememberForm({ ...exampleForm(), date: "2026-12-24" });
     on("2026-11-16T21:00:00Z");
     expect(rememberedForm().date).toBe("2026-12-24");
+  });
+});
+
+describe("how old the solar table is", () => {
+  it("is said on the screen, by this device's clock, after the dated sentence that is kept and printed", () => {
+    expect(tableAge("2026-11-16", new Date("2026-11-16T23:30:00Z"))).toBe("That is today.");
+    expect(tableAge("2026-11-15", new Date("2026-11-16T08:00:00Z"))).toBe("That is 1 day ago.");
+    expect(tableAge("2026-11-01", new Date("2026-11-16T08:00:00Z"))).toBe("That is 15 days ago.");
+    render(
+      <BasisNotice
+        basis={{
+          kind: "recent-solar",
+          ssn: 83,
+          summary:
+            "Monthly median for November 2026 at smoothed sunspot number 83, which is NOAA's forecast for the month in the table that came with Outpost, dated 2026-11-16.",
+          tableDate: "2026-11-16",
+          tableAgeDays: 0,
+          ssnLow: null,
+          ssnHigh: null,
+        }}
+      />,
+    );
+    expect(screen.getByText(/dated 2026-11-16\. That is (today|\d+ days? ago)\. It is not a reading/)).toBeInTheDocument();
   });
 });
 

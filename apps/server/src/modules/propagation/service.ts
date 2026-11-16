@@ -242,7 +242,9 @@ export function createPropagationService(ctx: AppContext, host: EngineHost): Pro
     return {
       kind: age <= RECENT_TABLE_DAYS ? "recent-solar" : "climatology",
       ssn: Math.round(row.ssn),
-      summary: `Monthly median for ${monthName(month)} at smoothed sunspot number ${Math.round(row.ssn)}, which is NOAA's forecast for the month in ${where}, dated ${table.dataDate} (${age === 0 ? "today" : `${age} day${age === 1 ? "" : "s"} ago`}).`,
+      // Dated, not aged: this sentence is kept with the answer and printed in its PDF, read on other days. The
+      // screen says how old the table is now (BasisNotice in the web app), from `tableDate`.
+      summary: `Monthly median for ${monthName(month)} at smoothed sunspot number ${Math.round(row.ssn)}, which is NOAA's forecast for the month in ${where}, dated ${table.dataDate}.`,
       tableDate: table.dataDate,
       tableAgeDays: age,
       ssnLow: row.low === null ? null : Math.round(row.low),

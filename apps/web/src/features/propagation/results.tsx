@@ -43,6 +43,15 @@ const BASIS_TITLE = {
   "own-measurement": "A monthly median, run at your own figure",
 } as const;
 
+/**
+ * How long ago a table was dated, said on the screen only, by the clock of the device that shows it: the
+ * sentence that names the date is kept with the answer and printed, and read on other days.
+ */
+export function tableAge(tableDate: string, now = new Date()): string {
+  const days = Math.max(0, Math.round((Date.parse(now.toISOString().slice(0, 10)) - Date.parse(tableDate)) / 86_400_000));
+  return Number.isFinite(days) ? (days === 0 ? "That is today." : `That is ${days} day${days === 1 ? "" : "s"} ago.`) : "";
+}
+
 /** What kind of knowledge an answer rests on and how old it is, said before any figure. */
 export function BasisNotice({ basis, className }: { basis: PredictionBasis; className?: string }) {
   return (
@@ -53,6 +62,7 @@ export function BasisNotice({ basis, className }: { basis: PredictionBasis; clas
       className={className}
     >
       {basis.summary}
+      {basis.tableDate ? ` ${tableAge(basis.tableDate)}` : ""}
       {basis.ssnLow !== null && basis.ssnHigh !== null
         ? ` The table's own range for the month is ${basis.ssnLow} to ${basis.ssnHigh}.`
         : ""}{" "}
