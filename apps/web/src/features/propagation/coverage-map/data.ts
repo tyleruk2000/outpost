@@ -5,7 +5,6 @@
  */
 import {
   type AntennaProfile,
-  wireOn,
   type Bbox,
   COVERAGE_MAX_LAT,
   COVERAGE_MIN_SPAN_DEG,
@@ -19,6 +18,7 @@ import {
   type ModeId,
   type NoiseEnvironment,
   parseCoordinates,
+  wireOn,
 } from "@outpost/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";

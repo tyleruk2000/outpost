@@ -446,7 +446,7 @@ describe("a prediction on a frequency the wire is not modelled on", () => {
     for (const row of rows.slice(1)) {
       expect(row.querySelector("[data-not-modelled]")!.textContent).toBe("Not modelled");
       expect(row.textContent).not.toContain("%");
-      expect(row.textContent).toMatch(/the wire is 0\.\d\d wavelengths/);
+      expect(row.textContent).toMatch(/MHz, wire 0\.\d\d λ$/);
     }
     // The day on each band: read out and tabled as not modelled, never as 0%.
     const table = screen.getByRole("table", { name: "Reliability of SSB voice on each band by hour" });

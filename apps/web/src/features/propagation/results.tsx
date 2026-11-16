@@ -261,9 +261,8 @@ export function Results({ result, hour, onHour }: { result: PredictionResult; ho
   const wires = wiresOn(request, request.frequencyMhz);
   const hasWire = wires.length > 0;
   const askedNotModelled = cell.notModelled === true;
-  const modelledOn = (value: number) => antennaModelledOn(request.txAntenna, value) && antennaModelledOn(request.rxAntenna, value);
-  const bandsWithout = HF_BANDS.filter((band, index) => at.bands[index]?.notModelled);
-  const bandsWith = HF_BANDS.filter((band, index) => !at.bands[index]?.notModelled);
+  const bandsWithout = HF_BANDS.filter((_band, index) => at.bands[index]?.notModelled);
+  const bandsWith = HF_BANDS.filter((_band, index) => !at.bands[index]?.notModelled);
   /** "0.47 wavelengths": the wire's length on a band, or both wires' when each end has one. */
   const wireLengths = (atMhz: number) =>
     wiresOn(request, atMhz)
@@ -495,7 +494,7 @@ export function Results({ result, hour, onHour }: { result: PredictionResult; ho
                   label: band.label,
                   share: c.reliability,
                   detail: c.notModelled
-                    ? `${mhz(band.mhz)}, the wire is ${wireLengths(band.mhz)} wavelengths`
+                    ? `${mhz(band.mhz)}, wire ${wireLengths(band.mhz)} λ`
                     : `${mhz(band.mhz)}, ${c.path ?? "no path"}, ${db(c.snrDbHz)}${hasWire ? `, wire ${wireLengths(band.mhz)} λ` : ""}`,
                   marked: band.mhz === result.request.frequencyMhz,
                   notModelled: c.notModelled,

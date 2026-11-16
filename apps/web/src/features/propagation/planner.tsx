@@ -38,10 +38,10 @@ import {
   usePlaces,
   usePredict,
   useProfiles,
-  wireHint,
   useRemoveSaved,
   useSaved,
   useSavePrediction,
+  wireHint,
 } from "./data";
 import { PlaceInput } from "./place-field";
 import { bestHour, Results } from "./results";

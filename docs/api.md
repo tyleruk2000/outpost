@@ -819,7 +819,7 @@ Predictions are worked out by VOACAP on the server, with no connection. See
 | `POST /api/radio/observations/compare` | The log set beside the engine. Body: `myAntenna`, `theirAntenna`, `noise`, `defaultPowerWatts` (or `null`), `ssnByMonth` (`{ "2014-03": 115 }`, for months the solar table does not reach). Returns `{ comparison }`: how many entries were compared, how many fell at a low, middling or high predicted reliability by outcome, every entry left out by reason, the months still without a sunspot number, each compared entry with the engine's figures, and what the comparison cannot show. At most 500 different paths are put to the engine. |
 | `GET /api/radio/profiles` | `{ radios, antennas }`. |
 | `POST /api/radio/profiles/radios`, `PATCH` / `DELETE …/radios/:id` | A radio: `name`, `model`, `powerWatts`, `minMhz`, `maxMhz`, `modes`, `receiver`, `notes`. |
-| `POST /api/radio/profiles/antennas`, `PATCH` / `DELETE …/antennas/:id` | An antenna: `name`, `kind`, `heightM`, `ground`, `broadsideDeg`, `gainDb`, `feedlineLossDb`, `minMhz`, `maxMhz`, `notes`. |
+| `POST /api/radio/profiles/antennas`, `PATCH` / `DELETE …/antennas/:id` | An antenna: `name`, `kind`, `heightM`, `ground`, `broadsideDeg`, `gainDb`, `feedlineLossDb`, `minMhz`, `maxMhz`, `notes`, and `lengthM` (4.5 to 82) when `kind` is `end-fed-horizontal` or `end-fed-vertical`: required for those two, refused for any other kind, and left out of what is returned for any other kind. |
 
 A coverage request is a prediction's body without `rx` and `reply`, with the antenna
 and noise assumed at every cell in `rxAntenna` and `noise`, `solar` as `table` or
@@ -856,8 +856,18 @@ A prediction's body:
 
 Limits checked before the engine sees a request: latitude -90 to 90, longitude -180 to
 180, a real date from 1950 to 2100, power 0.1 W to 500 kW, frequency 2 to 30 MHz,
-sunspot number 0 to 300, a horizontal antenna at least 0.5 m up, and a requirement
-between -30 and 99.9 dB once restated in 1 Hz. `400` says which. `415` with
+sunspot number 0 to 300, a horizontal antenna at least 0.5 m up, an end-fed wire of a
+stated length (`kind` `end-fed-horizontal` or `end-fed-vertical`) with its `lengthM`
+from 4.5 to 82 and no other kind with one, and a requirement between -30 and 99.9 dB
+once restated in 1 Hz. `400` says which.
+
+An `end-fed-horizontal` wire is modelled only on the frequencies where it is about a
+half-wave (docs/hf-propagation.md, "End-fed wires of a stated length"). Elsewhere a
+prediction's cell (`asked`, each of `bands`) has `notModelled: true`, `path: null` and
+noughts for its figures, which are not predictions; a comparison's series has
+`notModelled: true`; a communication plan's matrix has `null` at every hour of that
+band; the listing leaves the frequency off, or is `400` when none is left; and a
+coverage map is `400` with `details.reason = "antenna-not-modelled"`. `415` with
 `details.reason = "engine-unavailable"` means the engine or its data is missing or
 damaged: the message names the file, and nothing is predicted.
 
