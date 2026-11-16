@@ -656,9 +656,41 @@ note, with its sources. (Conversations in Chat are another matter: they are kept
   named with the passage's heading.
 - **The passages the model was given are always listed beneath**, each with its link
   and its exact text on demand, and marked "Cited in the answer" or "Not cited".
-- A marker that matches no passage is struck through, and a notice says the statement
-  it is attached to is unsupported.
+- While the answer is being written, a marker that matches no passage is struck
+  through. **Once it is finished**, Outpost settles it (`modules/answers/tidy.ts`), and
+  a notice says what was done:
+  - a marker to a number no passage carried (a small model numbers its own sentences,
+    or copies the passages out and keeps counting) is **pointed at a passage only when
+    the words it stands on are, word for word, one or more whole sentences of exactly
+    one passage**. Then the marker claims nothing that passage does not say, by
+    construction. Anything less is refused, however close: a sentence that shares most
+    of its words with a passage can still have dropped a "not" or changed a figure, and
+    a sentence that two passages both hold says nothing about which was meant. A
+    marker that cannot be pointed that way is **taken out**, and the sentence stands
+    without a source;
+  - a reply whose **first sentence says the passages do not hold the answer** ("There is
+    no information about … in the provided sources. [1][2]") is shown as **"Your
+    library does not seem to cover this"**, with every marker taken out and the
+    passages listed as what the model read, not as the sources of an answer. A first
+    sentence that goes on with "but" or "however" is a caveat in front of an answer
+    and is left alone. When all the model wrote was the sentence it is told to use,
+    nothing of its own is shown.
+- An answer that cites every passage it was given (three or more) says that its
+  markers do not show which passage each statement rests on.
 - An answer with no markers at all is called out: nothing in it can be checked.
+- **While the model loads.** When the model server is Ollama, Outpost asks it
+  (`GET /api/ps`) before sending the question whether the model is in memory at the
+  context size it will ask for. When it is not, the screen says the model server is
+  loading the model into memory, and says no time, because none is known. llama.cpp
+  and LM Studio have no such question, so with them nothing is said either way: the
+  screen says the model is reading the passages, as before.
+- **Too long for the model.** When the model server refuses the passages and question
+  as more than the model can read at once, before it has written a word, Outpost asks
+  once more with fewer: the best passages, as many as the server's own figures say
+  will fit beside a reply of 1,024 tokens (the characters to a token are taken from
+  the refused prompt itself, so a table of figures is counted as the model counts
+  it). The answer then says how many passages were left out. If not even the best one
+  would fit, or the second try is refused too, the refusal is shown as before.
 - When a source is safety-critical, a warning sits above the answer and those
   passages are open without being asked for.
 - **Stop** ends the answer; what was written stays, marked unfinished. Closing the
@@ -696,8 +728,10 @@ rule about which addresses may be contacted, with the same one-at-a-time turn.
   typing over its name. Enter sends, Shift+Enter makes a new line; on a touch keyboard
   Enter makes a new line and the button sends.
 - **The reply arrives as it is written.** Before the first word the screen says it is
-  waiting and counts the seconds; after eight it explains that a model is loaded into
-  memory on first use, which on a small computer takes a minute or more. **Stop**
+  waiting and counts the seconds. When the model server is Ollama and says the model is
+  not in memory, the screen says it is loading the model instead (and gives no time);
+  otherwise, after eight seconds, it says that a model on a small computer can take a
+  minute or more before its first word, and that Outpost waits up to 3 minutes. **Stop**
   closes Outpost's connection to the model server, so the model stops working; what
   it had written is kept and marked unfinished.
 - **A reply belongs to the server, not the tab.** If the phone sleeps or the tab is
@@ -726,7 +760,7 @@ box that says which you are getting.
 | --- | --- | --- |
 | What the model is given | The conversation so far. Nothing from your library. | The conversation so far, and passages found in your documents, notes and book chapters for the newest message. |
 | What it is told | That it is a model on your own computer having a plain conversation, that it cannot look anything up, and to say so when it does not know. | The same rules as an answer: [the prompt](#the-prompt), with the passages fenced as data. |
-| What the reply shows | The model's name, and nothing else: there is nothing to cite. | "from your library", each `[n]` as a button that shows the passage, and the list of passages given, each a link to the page, the note or the document at its page. |
+| What the reply shows | The model's name, and nothing else: there is nothing to cite. | "from your library", each `[n]` as a button that shows the passage, and the list of passages given, each a link to the page, the note or the document at its page. A finished reply is settled as an answer is ([The answer on screen](#the-answer-on-screen)): one that says the passages hold no answer is shown as not covered, citing nothing, and a marker to a number no passage carried is taken out or pointed at the passage whose own sentences it stood on. The stored text stays as the model wrote it, and **Copy** copies that; **Save as a note** saves the reply as shown. |
 
 It is off by default because a plain conversation is what "chat" means to most
 people, and because the library's rules ("answer only from the sources") make a poor
@@ -760,6 +794,13 @@ saying so. So Outpost decides what is sent, by one rule:
 > default, about 3,000 tokens): your newest message whole, the passages when the
 > library is used, and then the most recent earlier exchanges that still fit. Older
 > exchanges are left out, whole, oldest first.
+
+If the model server refuses a turn anyway as more than the model can read at once
+(the rule above counts characters, and a turn of figures or code comes to more tokens
+than prose; tried with Ollama, see below), Outpost sends it once more without as many
+of the earliest messages as the server's own figures say must go, and the reply says
+so under it. The newest message is never cut: if it alone is too long, the refusal is
+shown, with what to do.
 
 Nothing is summarised. A summary would be a second, unasked-for request to the model,
 and a small model's summary of a conversation is not the conversation. Everything
@@ -826,7 +867,10 @@ as links, and its pictures are never fetched.
 | The model reached its length limit | The reply was cut off at 1,024 tokens. | **Ask it to continue**. |
 | Stopped. This reply is unfinished. | You pressed Stop. | **Try again**, or carry on. |
 | The model server stopped part-way through | The connection dropped while it was writing. What was written is kept. | **Try again**. |
-| This turn was too long for the model | The model server refused the prompt as larger than its context: llama-server does, and Ollama does because Outpost asks it to. | Shorten the message or start a new conversation. With Ollama, raising the context budget in Settings asks for a larger context; with llama-server, start it with one. |
+| This turn was too long for the model | The model server refused the prompt as larger than its context (llama-server does, and Ollama does because Outpost asks it to), and sending it again without earlier messages could not help: the newest message, with any passages, is too long by itself. | Shorten the message or start a new conversation. With Ollama, raising the context budget in Settings asks for a larger context; with llama-server, start it with one. |
+| The model server said this turn was more than the model can read at once, so it was sent again without … | The first try was refused; the reply was written without the earliest messages named. | Nothing, unless the reply needed them: then say again what it needs to know. |
+| The model server is loading the model into memory | Ollama said the model was not in memory. | Wait; or **Stop**. |
+| Your library does not seem to cover this | The model said the passages it was given do not hold the answer. Its markers are taken out. | Read the passages listed; a small model sometimes says this when one does hold it. |
 | The model is writing a reply in another conversation | One thing is written at a time, across Outpost. | Wait, or open that conversation and stop it. Your message stays in the box. |
 | Outpost was restarted while this reply was being written | The server stopped mid-reply. What had been saved (every two seconds) is kept. | **Try again**. |
 

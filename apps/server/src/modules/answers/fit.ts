@@ -38,10 +38,16 @@ const QUESTION_CHARS = 1000;
 const tokensFor = (chars: number) => Math.ceil(chars / CHARS_PER_TOKEN);
 
 /**
- * The context to ask for, given the context budget in Settings and the longest reply
- * asked for. It depends on the settings alone, not on the question, so that every
- * request asks for the same size and the model is not loaded afresh between them.
+ * The model server refused a prompt of `sentChars` characters as more than the model can
+ * read at once, and gave its figures. How many characters should fit beside a reply of
+ * `replyTokens`, at the characters to a token this very prompt came to with the model's
+ * own tokeniser (which is what a table of figures needs), with a tenth kept in hand.
  */
+export function charsThatFit(sizes: { promptTokens: number; contextTokens: number }, sentChars: number, replyTokens: number): number {
+  const charsPerToken = sentChars / Math.max(1, sizes.promptTokens);
+  return Math.max(0, Math.floor((sizes.contextTokens - replyTokens - SPARE_TOKENS) * charsPerToken * 0.9));
+}
+
 /**
  * The model server refused a prompt as more than the model can read at once. How many
  * characters of passages to send when it is asked again, so that the prompt and a reply
@@ -64,6 +70,11 @@ export function passageCharsAfterRefusal(input: {
   return Math.max(0, Math.floor((room - (promptChars - passageChars)) * 0.9));
 }
 
+/**
+ * The context to ask for, given the context budget in Settings and the longest reply
+ * asked for. It depends on the settings alone, not on the question, so that every
+ * request asks for the same size and the model is not loaded afresh between them.
+ */
 export function contextTokensFor(contextChars: number, replyTokens: number): number {
   const needed = tokensFor(contextChars + INSTRUCTIONS_CHARS + QUESTION_CHARS) + replyTokens + SPARE_TOKENS;
   return CONTEXT_SIZES.find((size) => size >= needed) ?? CONTEXT_SIZES[CONTEXT_SIZES.length - 1]!;

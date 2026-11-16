@@ -532,6 +532,27 @@ describe("a conversation longer than the model can read", () => {
     );
   });
 
+  it("is sent again without its earliest messages when the server refuses it, and the reply says so", async () => {
+    const { app, model, open, exchange, detail } = await station("stand-in", { contextTokens: 700 }, "/llamacpp/v1");
+    await app.api("PATCH", "/api/settings", { "answers.contextChars": 1000 });
+    const id = await open();
+    const filler = "kettle ".repeat(128).trim();
+    // Each fits by itself: the server reads 700 tokens, and the stand-in counts four characters to one.
+    expect((await exchange(id, `One. ${filler}`)).state).toBe("complete");
+    expect((await exchange(id, `Two. ${filler}`)).state).toBe("complete");
+    const third = await exchange(id, `Three. ${"kettle ".repeat(57).trim()}`);
+    // Outpost planned to send both earlier exchanges; the server refused; the turn was sent again without them.
+    expect(third).toMatchObject({ state: "complete", omitted: 4 });
+    expect(third.notice).toMatch(
+      /^The model server said this turn was more than the model can read at once, so it was sent again without the 4 earliest messages/,
+    );
+    const bodies = chatBodies(model);
+    expect(bodies).toHaveLength(4);
+    expect(bodies[2].messages.length).toBeGreaterThan(bodies[3].messages.length);
+    expect(bodies[3].messages.map((message: { role: string }) => message.role)).toEqual(["system", "user"]);
+    expect((await detail(id)).messages.at(-1)).toMatchObject({ omitted: 4 });
+  });
+
   it("is refused by Ollama too, which is asked for a context size and told not to cut the turn down", async () => {
     const { app, model, open, exchange } = await station();
     // More than the 4,096 tokens that are asked for with the settings a new Outpost has (the stand-in counts four characters to a token).

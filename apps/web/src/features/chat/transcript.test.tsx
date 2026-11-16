@@ -284,6 +284,15 @@ describe("a conversation as it reads", () => {
     expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
   });
 
+  it("says when a reply was written without earlier messages the model server would not take", () => {
+    const notice =
+      "The model server said this turn was more than the model can read at once, so it was sent again without the 2 earliest messages it had been given. This reply was written without the first 2 messages of the conversation.";
+    show([said("u1", "One"), reply("a1", "First."), said("u2", "Two"), reply("a2", "Second.", { notice, omitted: 2 })]);
+    expect(screen.getByTestId("reply-shortened")).toHaveTextContent(notice);
+    // An ordinary finished reply says nothing of the kind.
+    expect(screen.getAllByTestId("reply-shortened")).toHaveLength(1);
+  });
+
   it("says the model is being loaded when the model server said so", () => {
     const live: LiveReply = {
       messageId: "a1",

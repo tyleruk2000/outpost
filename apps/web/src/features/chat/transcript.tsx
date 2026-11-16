@@ -395,6 +395,12 @@ function ReplyTurn({
         ) : null}
 
         {message.state === "stopped" ? <p className="mt-2 text-small text-ink-muted">{message.notice}</p> : null}
+        {/* A finished reply has a notice only when it was written from less than was planned. */}
+        {message.state === "complete" && message.notice ? (
+          <p className="mt-2 max-w-[60ch] text-small text-ink-muted" data-testid="reply-shortened">
+            {message.notice}
+          </p>
+        ) : null}
 
         {message.state === "cut-short" ? (
           <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-small text-ink-muted">

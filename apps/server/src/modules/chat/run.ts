@@ -18,7 +18,7 @@
 import type { AnswerFailure, AnswerSource, ChatMessage, ChatPhase, ChatStreamEvent, MarkdownBlock } from "@outpost/shared";
 import type { AppContext } from "../../core/context.ts";
 import { AppError } from "../../core/errors.ts";
-import { contextTokensFor } from "../answers/fit.ts";
+import { charsThatFit, contextTokensFor } from "../answers/fit.ts";
 import { ANSWER_PASSAGES, namesNoSubject, subjectOf } from "../answers/index.ts";
 import { type ChatModelProvider, ModelServerError, withoutThinking } from "../answers/provider.ts";
 import { isSafetyCritical } from "../retrieval/index.ts";
@@ -265,12 +265,12 @@ export function createRunner(ctx: AppContext, store: ChatStore) {
 
     /** Asks the model and stores what it wrote. Throws when the reply did not finish. */
     async function write(): Promise<ChatMessage> {
-      // What the person said since the model last replied, with the newest message at the end.
-      const asked = planned.unanswered ? `${planned.unanswered}\n\n${request.question}` : request.question;
-      let system = PLAIN_SYSTEM;
-      let prompt = asked;
+      let plan = planned;
+      let context: AssembledContext | null = null;
       if (grounded) {
-        const { context, searchedFor } = await findPassages(request, controller.signal);
+        const found = await findPassages(request, controller.signal);
+        context = found.context;
+        const { searchedFor } = found;
         controller.signal.throwIfAborted();
         run.searchedFor = searchedFor;
         run.sources = context.citations.map(({ marker, kind, entityId, title, collection, url, page, heading, quote }) => ({
@@ -295,40 +295,63 @@ export function createRunner(ctx: AppContext, store: ChatStore) {
               : "Nothing in your documents, notes or books matches this, so the model was not asked. A reply written from no passages would be the model’s guess, not your library’s.",
           });
         }
-        ({ system, user: prompt } = buildAnswerPrompt({ ...context, query: asked }));
       }
       run.phase = "waiting";
       tell({ type: "phase", phase: "waiting", sources: run.sources, searchedFor: run.searchedFor });
 
       let finishReason: string | null = null;
-      const pieces = provider.generate({
-        system,
-        prompt,
-        history: planned.sent.map(({ role, text: content }) => ({ role, content })),
-        temperature: settings.get("answers.temperature"),
-        maxTokens: CHAT_MAX_TOKENS,
-        // The same size an answer asks for, so that Ollama does not load the model afresh between the two.
-        contextTokens: contextTokensFor(settings.get("answers.contextChars"), CHAT_MAX_TOKENS),
-        signal: controller.signal,
-        onLoading: () => {
-          run.phase = "loading";
-          tell({ type: "phase", phase: "loading" });
-        },
-        onFinish: (info) => {
-          finishReason = info.finishReason;
-        },
-      });
-      for await (const piece of withoutThinking(pieces)) {
-        if (!text) {
-          run.phase = "writing";
-          tell({ type: "phase", phase: "writing" });
-        }
-        text += piece;
-        schedule();
-        if (text.length > CHAT_MAX_CHARS) {
-          // Leaving the loop closes the connection to the model, which stops it.
-          finishReason = "length";
+      /** Said with the reply when it was written from less than was planned, because the model server refused the first try. */
+      let shortened: string | null = null;
+      for (let attempt = 1; ; attempt += 1) {
+        // What the person said since the model last replied, with the newest message at the end.
+        const asked = plan.unanswered ? `${plan.unanswered}\n\n${request.question}` : request.question;
+        const { system, user: prompt } = context ? buildAnswerPrompt({ ...context, query: asked }) : { system: PLAIN_SYSTEM, user: asked };
+        const history = plan.sent.map(({ role, text: content }) => ({ role, content }));
+        try {
+          const pieces = provider.generate({
+            system,
+            prompt,
+            history,
+            temperature: settings.get("answers.temperature"),
+            maxTokens: CHAT_MAX_TOKENS,
+            // The same size an answer asks for, so that Ollama does not load the model afresh between the two.
+            contextTokens: contextTokensFor(settings.get("answers.contextChars"), CHAT_MAX_TOKENS),
+            signal: controller.signal,
+            onLoading: () => {
+              run.phase = "loading";
+              tell({ type: "phase", phase: "loading" });
+            },
+            onFinish: (info) => {
+              finishReason = info.finishReason;
+            },
+          });
+          for await (const piece of withoutThinking(pieces)) {
+            if (!text) {
+              run.phase = "writing";
+              tell({ type: "phase", phase: "writing" });
+            }
+            text += piece;
+            schedule();
+            if (text.length > CHAT_MAX_CHARS) {
+              // Leaving the loop closes the connection to the model, which stops it.
+              finishReason = "length";
+              break;
+            }
+          }
           break;
+        } catch (error) {
+          // Refused as more than the model can read at once, before it wrote a word: once, send less of what came before.
+          if (!(attempt === 1 && !text && error instanceof ModelServerError && error.failure === "context-too-long" && error.sizes))
+            throw error;
+          const sentChars = system.length + prompt.length + history.reduce((sum, turn) => sum + turn.content.length, 0);
+          const room = charsThatFit(error.sizes, sentChars, CHAT_MAX_TOKENS);
+          const fewer = planHistory(request.earlier, Math.max(0, room - system.length - prompt.length));
+          if (fewer.omitted <= plan.omitted) throw error;
+          const more = fewer.omitted - plan.omitted;
+          shortened = `The model server said this turn was more than the model can read at once, so it was sent again without ${more === 1 ? "the earliest message" : `the ${more} earliest messages`} it had been given. This reply was written without the first ${fewer.omitted === 1 ? "message" : `${fewer.omitted} messages`} of the conversation.`;
+          plan = fewer;
+          run.omitted = plan.omitted;
+          store.patchReply(row.id, { omitted: plan.omitted });
         }
       }
       if (!text.trim()) {
@@ -341,8 +364,11 @@ export function createRunner(ctx: AppContext, store: ChatStore) {
       }
       return settle(
         finishReason === "length"
-          ? { state: "cut-short", notice: "The model reached its length limit, so this reply stops before its end." }
-          : { state: "complete" },
+          ? {
+              state: "cut-short",
+              notice: `The model reached its length limit, so this reply stops before its end.${shortened ? ` ${shortened}` : ""}`,
+            }
+          : { state: "complete", notice: shortened },
       );
     }
 
