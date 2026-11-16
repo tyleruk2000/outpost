@@ -1,0 +1,59 @@
+{
+  "collection": {
+    "type": "FeatureCollection",
+    "features": [
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "Ben Macdui",
+          "desc": "Summit cairn and trig point",
+          "time": "2026-07-02T10:45:00Z",
+          "sym": "Summit"
+        },
+        "geometry": {
+          "type": "Point",
+          "coordinates": [-3.669, 57.0704, 1309]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "Corrour Bothy",
+          "desc": "Comment stands in for the description"
+        },
+        "geometry": {
+          "type": "Point",
+          "coordinates": [-3.6803, 57.0415]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {},
+        "geometry": {
+          "type": "Point",
+          "coordinates": [-3.6, 57.1]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "Padded name"
+        },
+        "geometry": {
+          "type": "Point",
+          "coordinates": [-3.7, 57.2]
+        }
+      }
+    ]
+  },
+  "name": null,
+  "description": null,
+  "lines": 0,
+  "waypoints": 4,
+  "stats": {
+    "distanceMeters": 0,
+    "ascentMeters": null,
+    "pointCount": 0,
+    "bounds": [-3.7, 57.0415, -3.6, 57.2]
+  }
+}

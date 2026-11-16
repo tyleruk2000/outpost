@@ -389,6 +389,55 @@ stored to six decimal places, and a point repeated straight after itself is drop
 - **Import.** Upload one `.gpx` file at a time, up to 20 MB. Tracks and routes become
   a track on the map. Waypoints in the file either stay with the track or, if you ask,
   become markers; never both.
+- **What is read.** GPX 1.0 and 1.1. From a track or a route: its name, its description
+  (or its comment, when it has no description) and its points with their heights; from
+  a track, the time of each point too, when every point of a segment has one. From a
+  waypoint: name, description, time, symbol and height. The file's own name is the one
+  in its `<metadata>`, or the `<name>` directly under `<gpx>` where GPX 1.0 keeps it,
+  or failing both the name of its first track. Each of these is read only from where
+  GPX puts it. Everything else is passed over, extensions above all (heart rate,
+  cadence, a device's own settings), however much of it there is. A file may start with
+  a byte-order mark, write its elements with a prefix (`<gpx:trk>`), and put text in
+  CDATA. A position that is nowhere on Earth is dropped, and a line needs two points.
+- **What a file may hold.** A file over any of these is refused whole, with a message
+  that says which, and nothing of it is imported:
+
+  | | At most |
+  | --- | --- |
+  | Size | 20 MB |
+  | Track points and route points, together | 1,000,000 |
+  | Waypoints | 20,000 |
+  | Tracks and routes, together | 10,000 |
+  | Track segments | 100,000 |
+  | Elements inside one another | 64 |
+  | Attributes on one element | 64 |
+  | Namespace declarations in force at one place | 64 |
+  | One unbroken piece of text, CDATA section, comment or attribute value | 1,000,000 characters |
+
+  The size is reached long before the points: 20 MB holds about 870,000 of the shortest
+  points that can be written, or about 200,000 with a height and a time each (a
+  recording of one point a second for more than two days). A name, description, comment
+  or symbol longer than 2,000 characters is cut there; the file is not refused for it.
+  Waypoints turned into saved places have a smaller limit of their own, 5,000 from one
+  file, because each place is written on the server's own thread at about 0.2 ms
+  apiece and that many hold everything else up for about a second. A file with more is
+  refused with a message saying so; imported with its waypoints kept on the route, the
+  same file is no trouble.
+- **Several files at once.** Two files are read at a time and up to six more wait
+  their turn; one more than that is turned away with a message asking to try again.
+  A read holds the text of the file and what is kept of it, so a burst of uploads takes
+  turns instead of adding up.
+- **What is refused.** A file that is not well-formed XML (a tag left open, an
+  attribute without quotes, an entity XML does not define such as `&nbsp;`): it is not
+  repaired. A file with a DOCTYPE or entity declarations. A file saved as UTF-16; save
+  it as UTF-8. XML that is not GPX, and a GPX file with no track, route or waypoint in
+  it. Each gets its own message.
+- **The one thing let through.** An ampersand that starts no reference, as in a place
+  called `Fish & chips` or a link ending `?a=1&b=2`, is not XML, but programs write it
+  and it can only mean the ampersand. It is read as one.
+- **How long it takes.** A recording of 150,000 points with heights and times (13 MB)
+  is read in about 0.15 seconds and imported in about 0.4, away from the server's own
+  thread, which goes on answering (16 November 2026, Node 24.15 on a Mac).
 - **What is recorded.** Name, description, colour, distance, total ascent (when the
   file has elevations; rises of less than 3 m are ignored as GPS noise), number of
   points and bounds.
@@ -408,7 +457,10 @@ stored to six decimal places, and a point repeated straight after itself is drop
 - **Numbers.** Latitudes, longitudes and heights are always written as plain decimals
   (never in a form such as `5e-8`, which GPX does not allow).
 - **Safety.** A GPX file is checked before it is read: files with a DOCTYPE or entity
-  declarations are refused. Positions are stored to six decimal places.
+  declarations are refused. It is then read in one pass that keeps only what is stored,
+  so the memory a file costs depends on the points in it and not on how its XML is
+  shaped; see [security.md](security.md#files-people-upload). Positions are stored to
+  six decimal places.
 
 ## Coordinate formats
 

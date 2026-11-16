@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx:gpx version="1.1" creator="A program that prefixes everything" xmlns:gpx="http://www.topografix.com/GPX/1/1">
+  <gpx:metadata><gpx:name>Prefixed throughout</gpx:name></gpx:metadata>
+  <gpx:wpt lat="48.1" lon="11.5"><gpx:name>Marienplatz</gpx:name></gpx:wpt>
+  <gpx:trk>
+    <gpx:name>A prefixed track</gpx:name>
+    <gpx:trkseg>
+      <gpx:trkpt lat="48.1" lon="11.5"><gpx:ele>519</gpx:ele><gpx:time>2026-02-02T12:00:00Z</gpx:time></gpx:trkpt>
+      <gpx:trkpt lat="48.2" lon="11.6"><gpx:ele>515</gpx:ele><gpx:time>2026-02-02T13:00:00Z</gpx:time></gpx:trkpt>
+    </gpx:trkseg>
+  </gpx:trk>
+</gpx:gpx>

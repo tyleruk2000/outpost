@@ -1,0 +1,81 @@
+{
+  "collection": {
+    "type": "FeatureCollection",
+    "features": [
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "Track first",
+          "_gpxType": "trk"
+        },
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [[1, 1], [1.1, 1.1]]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "Track fourth",
+          "_gpxType": "trk"
+        },
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [[4, 4], [4.1, 4.1]]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "Route third",
+          "_gpxType": "rte"
+        },
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [[3, 3], [3.1, 3.1]]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "Route fifth",
+          "_gpxType": "rte"
+        },
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [[5, 5], [5.1, 5.1]]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "Waypoint in the middle"
+        },
+        "geometry": {
+          "type": "Point",
+          "coordinates": [2, 2]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "Waypoint sixth"
+        },
+        "geometry": {
+          "type": "Point",
+          "coordinates": [6, 6]
+        }
+      }
+    ]
+  },
+  "name": "The name comes last",
+  "description": "And still counts",
+  "lines": 4,
+  "waypoints": 2,
+  "stats": {
+    "distanceMeters": 62838.9,
+    "ascentMeters": null,
+    "pointCount": 8,
+    "bounds": [1, 1, 6, 6]
+  }
+}

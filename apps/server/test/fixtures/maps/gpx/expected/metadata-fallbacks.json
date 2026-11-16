@@ -1,0 +1,41 @@
+{
+  "collection": {
+    "type": "FeatureCollection",
+    "features": [
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "The first track gives the file its name",
+          "desc": "Track description",
+          "_gpxType": "trk"
+        },
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [[3, 3], [4, 4]]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "The first route",
+          "desc": "Route description",
+          "_gpxType": "rte"
+        },
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [[1, 1], [2, 2]]
+        }
+      }
+    ]
+  },
+  "name": "The first track gives the file its name",
+  "description": "Described, but not named",
+  "lines": 2,
+  "waypoints": 0,
+  "stats": {
+    "distanceMeters": 314331.6,
+    "ascentMeters": null,
+    "pointCount": 4,
+    "bounds": [1, 1, 4, 4]
+  }
+}

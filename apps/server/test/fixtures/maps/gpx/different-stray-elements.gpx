@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Outpost corpus" xmlns="http://www.topografix.com/GPX/1/1">
+  <extensions>
+    <trk><name>A track inside extensions is not a track of this file</name><trkseg><trkpt lat="1" lon="1"/><trkpt lat="2" lon="2"/></trkseg></trk>
+    <wpt lat="3" lon="3"><name>Nor is this a waypoint of it</name></wpt>
+  </extensions>
+  <trk>
+    <name>The real track</name>
+    <trkseg>
+      <trkpt lat="54.5" lon="-3.4"><extensions><ele>5000</ele><time>2001-01-01T00:00:00Z</time></extensions></trkpt>
+      <trkpt lat="54.6" lon="-3.3"><extensions><trkpt lat="9" lon="9"/></extensions></trkpt>
+    </trkseg>
+  </trk>
+</gpx>

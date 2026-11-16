@@ -1,0 +1,56 @@
+{
+  "collection": {
+    "type": "FeatureCollection",
+    "features": [
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "ACTIVE LOG 001",
+          "time": "2004-06-01T08:00:00Z",
+          "_gpxType": "trk",
+          "coordinateProperties": {
+            "times": ["2004-06-01T08:00:00Z", "2004-06-01T08:12:00Z", "2004-06-01T08:25:00Z"]
+          }
+        },
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [[-4.318, 55.941, 50.2], [-4.32, 55.95, 61], [-4.33, 55.96, 75.9]]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "WHW-PLAN",
+          "_gpxType": "rte"
+        },
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [[-4.318, 55.941, 50], [-4.37, 56.07, 40]]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "MILNGAVIE",
+          "desc": "The obelisk",
+          "time": "2004-06-01T08:00:00Z",
+          "sym": "Trail Head"
+        },
+        "geometry": {
+          "type": "Point",
+          "coordinates": [-4.318, 55.941, 50]
+        }
+      }
+    ]
+  },
+  "name": "West Highland Way",
+  "description": "Recorded in 2004",
+  "lines": 2,
+  "waypoints": 1,
+  "stats": {
+    "distanceMeters": 16986.8,
+    "ascentMeters": 25.7,
+    "pointCount": 5,
+    "bounds": [-4.37, 55.941, -4.318, 56.07]
+  }
+}

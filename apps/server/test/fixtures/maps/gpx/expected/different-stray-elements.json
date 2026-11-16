@@ -1,0 +1,28 @@
+{
+  "collection": {
+    "type": "FeatureCollection",
+    "features": [
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "The real track",
+          "_gpxType": "trk"
+        },
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [[-3.4, 54.5], [-3.3, 54.6]]
+        }
+      }
+    ]
+  },
+  "name": "The real track",
+  "description": null,
+  "lines": 1,
+  "waypoints": 0,
+  "stats": {
+    "distanceMeters": 12854.4,
+    "ascentMeters": null,
+    "pointCount": 2,
+    "bounds": [-3.4, 54.5, -3.3, 54.6]
+  }
+}

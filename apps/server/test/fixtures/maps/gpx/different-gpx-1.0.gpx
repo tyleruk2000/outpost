@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<gpx version="1.0" creator="An old receiver" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.topografix.com/GPX/1/0" xsi:schemaLocation="http://www.topografix.com/GPX/1/0 http://www.topografix.com/GPX/1/0/gpx.xsd">
+  <name>West Highland Way</name>
+  <desc>Recorded in 2004</desc>
+  <author>A walker</author>
+  <email>walker@example.org</email>
+  <url>https://example.org/whw</url>
+  <urlname>The walk</urlname>
+  <time>2004-06-01T08:00:00Z</time>
+  <keywords>scotland, long distance</keywords>
+  <bounds minlat="55.94" minlon="-5.11" maxlat="56.82" maxlon="-4.31"/>
+  <wpt lat="55.9410" lon="-4.3180">
+    <ele>50.0</ele>
+    <time>2004-06-01T08:00:00Z</time>
+    <name>MILNGAVIE</name>
+    <cmt>START</cmt>
+    <desc>The obelisk</desc>
+    <sym>Trail Head</sym>
+    <type>Waypoint</type>
+    <fix>3d</fix>
+    <sat>7</sat>
+  </wpt>
+  <rte>
+    <name>WHW-PLAN</name>
+    <number>1</number>
+    <rtept lat="55.9410" lon="-4.3180"><ele>50</ele><name>MILNGAVIE</name></rtept>
+    <rtept lat="56.0700" lon="-4.3700"><ele>40</ele><name>DRYMEN</name></rtept>
+  </rte>
+  <trk>
+    <name>ACTIVE LOG 001</name>
+    <number>1</number>
+    <trkseg>
+      <trkpt lat="55.941000" lon="-4.318000"><ele>50.2</ele><time>2004-06-01T08:00:00Z</time><course>12.5</course><speed>1.4</speed><fix>3d</fix><sat>7</sat><hdop>1.2</hdop></trkpt>
+      <trkpt lat="55.950000" lon="-4.320000"><ele>61.0</ele><time>2004-06-01T08:12:00Z</time><course>11.0</course><speed>1.5</speed></trkpt>
+      <trkpt lat="55.960000" lon="-4.330000"><ele>75.9</ele><time>2004-06-01T08:25:00Z</time></trkpt>
+    </trkseg>
+  </trk>
+</gpx>

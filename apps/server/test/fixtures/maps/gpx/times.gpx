@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Outpost corpus" xmlns="http://www.topografix.com/GPX/1/1">
+  <trk>
+    <name>Every point timed, in several styles</name>
+    <trkseg>
+      <trkpt lat="60.1" lon="24.9"><time>2026-03-01T10:00:00Z</time></trkpt>
+      <trkpt lat="60.2" lon="24.8"><time>2026-03-01T10:00:01.250Z</time></trkpt>
+      <trkpt lat="60.3" lon="24.7"><time>2026-03-01T12:00:02+02:00</time></trkpt>
+      <trkpt lat="60.4" lon="24.6"><time>2026-03-01</time></trkpt>
+      <trkpt lat="60.5" lon="24.5"><time>yesterday afternoon</time></trkpt>
+      <trkpt lat="60.6" lon="24.4"><time>1 March 2026 10:00</time></trkpt>
+      <trkpt lat="95.0" lon="24.3"><time>2026-03-01T10:00:06Z</time></trkpt>
+      <trkpt lat="60.7" lon="24.2"><time>2026-03-01T10:00:07Z</time><time>2027-01-01T00:00:00Z</time></trkpt>
+    </trkseg>
+  </trk>
+  <trk>
+    <name>One point without a time, so none are kept</name>
+    <trkseg>
+      <trkpt lat="61.1" lon="24.9"><time>2026-03-02T10:00:00Z</time></trkpt>
+      <trkpt lat="61.2" lon="24.8"/>
+      <trkpt lat="61.3" lon="24.7"><time>2026-03-02T10:00:02Z</time></trkpt>
+    </trkseg>
+  </trk>
+  <trk>
+    <name>An empty time element counts as no time</name>
+    <trkseg>
+      <trkpt lat="62.1" lon="24.9"><time>2026-03-03T10:00:00Z</time></trkpt>
+      <trkpt lat="62.2" lon="24.8"><time></time></trkpt>
+    </trkseg>
+  </trk>
+  <trk>
+    <name>Times that are all unreadable</name>
+    <trkseg>
+      <trkpt lat="63.1" lon="24.9"><time>soon</time></trkpt>
+      <trkpt lat="63.2" lon="24.8"><time>later</time></trkpt>
+    </trkseg>
+  </trk>
+  <trk>
+    <name>The first time in the track is not on the first point</name>
+    <trkseg>
+      <trkpt lat="64.1" lon="24.9"/>
+      <trkpt lat="64.2" lon="24.8"><time>2026-03-05T10:00:00Z</time></trkpt>
+    </trkseg>
+  </trk>
+  <trk>
+    <name>Two segments, both timed</name>
+    <trkseg>
+      <trkpt lat="65.1" lon="24.9"><time>2026-03-06T10:00:00Z</time></trkpt>
+      <trkpt lat="65.2" lon="24.8"><time>2026-03-06T10:01:00Z</time></trkpt>
+    </trkseg>
+    <trkseg>
+      <trkpt lat="65.3" lon="24.7"><time>2026-03-06T11:00:00Z</time></trkpt>
+      <trkpt lat="65.4" lon="24.6"><time>2026-03-06T11:01:00Z</time></trkpt>
+      <trkpt lat="65.5" lon="24.5"><time>2026-03-06T11:02:00Z</time></trkpt>
+    </trkseg>
+  </trk>
+  <trk>
+    <name>Two segments, the second with a gap in its times</name>
+    <trkseg>
+      <trkpt lat="66.1" lon="24.9"><time>2026-03-07T10:00:00Z</time></trkpt>
+      <trkpt lat="66.2" lon="24.8"><time>2026-03-07T10:01:00Z</time></trkpt>
+    </trkseg>
+    <trkseg>
+      <trkpt lat="66.3" lon="24.7"><time>2026-03-07T11:00:00Z</time></trkpt>
+      <trkpt lat="66.4" lon="24.6"/>
+    </trkseg>
+  </trk>
+  <rte>
+    <name>Routes keep no times for their points</name>
+    <rtept lat="67.1" lon="24.9"><time>2026-03-08T10:00:00Z</time></rtept>
+    <rtept lat="67.2" lon="24.8"><time>2026-03-08T10:01:00Z</time></rtept>
+  </rte>
+  <wpt lat="68.1" lon="24.9"><time>2026-03-09T10:00:00Z</time><name>Timed</name></wpt>
+  <wpt lat="68.2" lon="24.8"><time>2026-03-09 10:00</time><name>Timed loosely</name></wpt>
+  <wpt lat="68.3" lon="24.7"><time>never</time><name>Not timed</name></wpt>
+</gpx>

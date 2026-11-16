@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Outpost corpus" xmlns="http://www.topografix.com/GPX/1/1">
+  <trk>
+    <name>Numbers written oddly</name>
+    <trkseg>
+      <trkpt lat="+54.5" lon="-3.10"><ele>+100</ele></trkpt>
+      <trkpt lat="5.45e1" lon="-31E-1"><ele>1.005e2</ele></trkpt>
+      <trkpt lat=" 54.5001 " lon="
+        -3.1002	"><ele> 100.96 </ele></trkpt>
+      <trkpt lat="54.5002N" lon="-3.1003 W"><ele>101.04m</ele></trkpt>
+      <trkpt lat="54,5003" lon="-3,1004"><ele>101,9</ele></trkpt>
+      <trkpt lat=".5" lon="-.25"><ele>.5</ele></trkpt>
+      <trkpt lat="54." lon="-3."><ele>102.</ele></trkpt>
+      <trkpt lat="54.50045678901234" lon="-3.10055555555"><ele>102.25</ele></trkpt>
+      <trkpt lat="54.5005" lon="-3.1006"><ele>abc</ele></trkpt>
+      <trkpt lat="54.5006" lon="-3.1007"><ele></ele></trkpt>
+      <trkpt lat="54.5007" lon="-3.1008"><ele>Infinity</ele></trkpt>
+      <trkpt lat="54.5008" lon="-3.1009"><ele>-12.34</ele></trkpt>
+      <trkpt lat="54.5009" lon="-3.1010"><ele>NaN</ele></trkpt>
+      <trkpt lat="0x10" lon="0b11"><ele>0x10</ele></trkpt>
+      <trkpt lat="-0" lon="-0.0000001"><ele>-0.04</ele></trkpt>
+      <trkpt lat="90" lon="180"><ele>0</ele></trkpt>
+      <trkpt lat="-90" lon="-180"><ele>8848.86</ele></trkpt>
+      <trkpt lat="90.0000001" lon="0"/>
+      <trkpt lat="0" lon="180.0000001"/>
+      <trkpt lat="Infinity" lon="0"/>
+      <trkpt lat="NaN" lon="0"/>
+      <trkpt lat="1e400" lon="0"/>
+      <trkpt lat="12" lon="34"><ele>1</ele><ele>2</ele></trkpt>
+      <trkpt lon="34.5" lat="12.5" extra="ignored"><ele unit="m">3</ele></trkpt>
+    </trkseg>
+  </trk>
+</gpx>

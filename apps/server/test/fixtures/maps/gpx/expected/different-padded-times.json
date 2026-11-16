@@ -1,0 +1,32 @@
+{
+  "collection": {
+    "type": "FeatureCollection",
+    "features": [
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "Times with space around them",
+          "time": "2026-03-01T10:00:00Z",
+          "_gpxType": "trk",
+          "coordinateProperties": {
+            "times": ["2026-03-01T10:00:00Z", "2026-03-01T10:00:01Z"]
+          }
+        },
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [[24.9, 60.1], [24.8, 60.2]]
+        }
+      }
+    ]
+  },
+  "name": "Times with space around them",
+  "description": null,
+  "lines": 1,
+  "waypoints": 0,
+  "stats": {
+    "distanceMeters": 12420.7,
+    "ascentMeters": null,
+    "pointCount": 2,
+    "bounds": [24.8, 60.1, 24.9, 60.2]
+  }
+}

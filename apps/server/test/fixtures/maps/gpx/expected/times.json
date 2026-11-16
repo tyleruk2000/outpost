@@ -1,0 +1,164 @@
+{
+  "collection": {
+    "type": "FeatureCollection",
+    "features": [
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "Every point timed, in several styles",
+          "time": "2026-03-01T10:00:00Z",
+          "_gpxType": "trk",
+          "coordinateProperties": {
+            "times": [
+              "2026-03-01T10:00:00Z",
+              "2026-03-01T10:00:01.250Z",
+              "2026-03-01T12:00:02+02:00",
+              "2026-03-01",
+              null,
+              "1 March 2026 10:00",
+              "2026-03-01T10:00:07Z"
+            ]
+          }
+        },
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [[24.9, 60.1], [24.8, 60.2], [24.7, 60.3], [24.6, 60.4], [24.5, 60.5], [24.4, 60.6], [24.2, 60.7]]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "One point without a time, so none are kept",
+          "time": "2026-03-02T10:00:00Z",
+          "_gpxType": "trk"
+        },
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [[24.9, 61.1], [24.8, 61.2], [24.7, 61.3]]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "An empty time element counts as no time",
+          "time": "2026-03-03T10:00:00Z",
+          "_gpxType": "trk"
+        },
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [[24.9, 62.1], [24.8, 62.2]]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "Times that are all unreadable",
+          "_gpxType": "trk"
+        },
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [[24.9, 63.1], [24.8, 63.2]]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "The first time in the track is not on the first point",
+          "time": "2026-03-05T10:00:00Z",
+          "_gpxType": "trk"
+        },
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [[24.9, 64.1], [24.8, 64.2]]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "Two segments, both timed",
+          "time": "2026-03-06T10:00:00Z",
+          "_gpxType": "trk",
+          "coordinateProperties": {
+            "times": [
+              ["2026-03-06T10:00:00Z", "2026-03-06T10:01:00Z"],
+              ["2026-03-06T11:00:00Z", "2026-03-06T11:01:00Z", "2026-03-06T11:02:00Z"]
+            ]
+          }
+        },
+        "geometry": {
+          "type": "MultiLineString",
+          "coordinates": [[[24.9, 65.1], [24.8, 65.2]], [[24.7, 65.3], [24.6, 65.4], [24.5, 65.5]]]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "Two segments, the second with a gap in its times",
+          "time": "2026-03-07T10:00:00Z",
+          "_gpxType": "trk",
+          "coordinateProperties": {
+            "times": [["2026-03-07T10:00:00Z", "2026-03-07T10:01:00Z"], [null, null]]
+          }
+        },
+        "geometry": {
+          "type": "MultiLineString",
+          "coordinates": [[[24.9, 66.1], [24.8, 66.2]], [[24.7, 66.3], [24.6, 66.4]]]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "Routes keep no times for their points",
+          "time": "2026-03-08T10:00:00Z",
+          "_gpxType": "rte"
+        },
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [[24.9, 67.1], [24.8, 67.2]]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "Timed",
+          "time": "2026-03-09T10:00:00Z"
+        },
+        "geometry": {
+          "type": "Point",
+          "coordinates": [24.9, 68.1]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "Timed loosely",
+          "time": "2026-03-09 10:00"
+        },
+        "geometry": {
+          "type": "Point",
+          "coordinates": [24.8, 68.2]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "Not timed"
+        },
+        "geometry": {
+          "type": "Point",
+          "coordinates": [24.7, 68.3]
+        }
+      }
+    ]
+  },
+  "name": "Every point timed, in several styles",
+  "description": null,
+  "lines": 8,
+  "waypoints": 3,
+  "stats": {
+    "distanceMeters": 210943.5,
+    "ascentMeters": null,
+    "pointCount": 27,
+    "bounds": [24.2, 60.1, 24.9, 68.3]
+  }
+}

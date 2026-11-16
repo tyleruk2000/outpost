@@ -1,19 +1,20 @@
 /**
  * GPX in and out.
  *
- * Reading: a GPX file is XML from who knows where, so it is checked before it is
- * parsed (no DOCTYPE, no entity declarations, a `<gpx>` root) and then converted to
- * GeoJSON, which is what the map draws and what is stored. Writing: GPX 1.1 built by
- * hand from that GeoJSON, with every piece of text escaped.
+ * Reading: a GPX file is XML from who knows where, so it is checked before it is read
+ * (its size, no DOCTYPE, no entity declarations) and then read in one pass into
+ * GeoJSON, which is what the map draws and what is stored. The reading itself is in
+ * `gpx-reader.ts`, on top of the small XML reader in `gpx-xml.ts`; nothing here builds
+ * a tree of the file. Writing: GPX 1.1 built by hand from that GeoJSON, with every
+ * piece of text escaped.
  */
 import { Worker } from "node:worker_threads";
 import type { Bbox, RouteElevation } from "@outpost/shared";
 import { haversineMeters } from "@outpost/shared";
-import { gpx as gpxToGeoJson } from "@tmcw/togeojson";
-import { DOMParser } from "@xmldom/xmldom";
 import type { Feature, FeatureCollection, LineString, MultiLineString, Point, Position } from "geojson";
-import { AppError, badRequest } from "../../core/errors.ts";
+import { AppError, badRequest, conflict } from "../../core/errors.ts";
 import { workerUrl } from "../../core/paths.ts";
+import { readGpx } from "./gpx-reader.ts";
 
 export const MAX_GPX_BYTES = 20 * 1024 * 1024;
 /** Elevation has to change by this much before it counts as climbing, to ignore GPS jitter. */
@@ -58,79 +59,13 @@ export interface ParsedGpx {
 
 const round = (value: number, digits: number) => Math.round(value * 10 ** digits) / 10 ** digits;
 
-function cleanPosition(position: Position): Position | undefined {
-  const [lon, lat, ele] = position;
-  if (typeof lon !== "number" || typeof lat !== "number" || !Number.isFinite(lon) || !Number.isFinite(lat)) return undefined;
-  if (Math.abs(lat) > 90 || Math.abs(lon) > 180) return undefined;
-  // Six decimals is about ten centimetres: finer than any receiver, and much smaller to store.
-  const cleaned: Position = [round(lon, 6), round(lat, 6)];
-  if (typeof ele === "number" && Number.isFinite(ele)) cleaned.push(round(ele, 1));
-  return cleaned;
-}
-
-const text = (value: unknown): string | undefined => (typeof value === "string" && value.trim() ? value.trim().slice(0, 2000) : undefined);
-
-/** Keeps the positions that are valid, and the timestamps that belong to them. */
-function cleanLine(positions: Position[], times: unknown): { coordinates: Position[]; times: Array<string | null> | undefined } {
-  const coordinates: Position[] = [];
-  const kept: Array<string | null> = [];
-  const source = Array.isArray(times) && times.length === positions.length ? times : undefined;
-  positions.forEach((position, index) => {
-    const cleaned = cleanPosition(position);
-    if (!cleaned) return;
-    coordinates.push(cleaned);
-    const time = source?.[index];
-    kept.push(typeof time === "string" && !Number.isNaN(Date.parse(time)) ? time : null);
-  });
-  return { coordinates, times: source && kept.some((time) => time !== null) ? kept : undefined };
-}
-
-function cleanFeature(feature: Feature): TrackFeature | undefined {
-  const geometry = feature.geometry;
-  const source = (feature.properties ?? {}) as Record<string, unknown>;
-  const properties: TrackProperties = {};
-  const name = text(source.name);
-  const desc = text(source.desc) ?? text(source.cmt);
-  if (name) properties.name = name;
-  if (desc) properties.desc = desc;
-  const time = text(source.time);
-  if (time && !Number.isNaN(Date.parse(time))) properties.time = time;
-  const times = (source.coordinateProperties as { times?: unknown } | undefined)?.times;
-
-  if (geometry?.type === "Point") {
-    const coordinates = cleanPosition(geometry.coordinates);
-    if (!coordinates) return undefined;
-    const sym = text(source.sym);
-    if (sym) properties.sym = sym;
-    return { type: "Feature", properties, geometry: { type: "Point", coordinates } };
-  }
-  properties._gpxType = source._gpxType === "rte" ? "rte" : "trk";
-  if (geometry?.type === "LineString") {
-    const line = cleanLine(geometry.coordinates, times);
-    if (line.coordinates.length < 2) return undefined;
-    if (line.times) properties.coordinateProperties = { times: line.times };
-    return { type: "Feature", properties, geometry: { type: "LineString", coordinates: line.coordinates } };
-  }
-  if (geometry?.type === "MultiLineString") {
-    const segments = geometry.coordinates
-      .map((segment, index) => cleanLine(segment, Array.isArray(times) ? times[index] : undefined))
-      .filter((segment) => segment.coordinates.length >= 2);
-    if (segments.length === 0) return undefined;
-    if (segments.some((segment) => segment.times)) {
-      properties.coordinateProperties = { times: segments.map((segment) => segment.times ?? segment.coordinates.map(() => null)) };
-    }
-    return {
-      type: "Feature",
-      properties,
-      geometry: { type: "MultiLineString", coordinates: segments.map((segment) => segment.coordinates) },
-    };
-  }
-  return undefined;
-}
-
 /**
  * Parses GPX text into GeoJSON. Throws a `bad_request` with a plain explanation for
- * anything that is not a GPX file Outpost is willing to read.
+ * anything that is not a GPX file Outpost is willing to read, including a file that
+ * holds more than `GPX_LIMITS` allows.
+ *
+ * This runs on the thread that calls it. Anything that arrives from outside goes
+ * through `parseGpxSafely` instead.
  */
 export function parseGpx(source: string): ParsedGpx {
   if (Buffer.byteLength(source) > MAX_GPX_BYTES) throw badRequest("That GPX file is larger than 20 MB. Split it into smaller files.");
@@ -139,48 +74,14 @@ export function parseGpx(source: string): ParsedGpx {
   if (/<!DOCTYPE|<!ENTITY/i.test(source)) {
     throw badRequest("That file declares a DOCTYPE or entities, which GPX files do not need and Outpost does not accept.");
   }
-  let document: ReturnType<DOMParser["parseFromString"]>;
-  try {
-    document = new DOMParser({
-      onError(level, message) {
-        if (level !== "warning") throw new Error(message);
-      },
-    }).parseFromString(source, "text/xml");
-  } catch {
-    throw badRequest("That file is not well-formed XML, so it cannot be read as GPX.");
+  // Uploads are read as UTF-8. A file saved as UTF-16 arrives with a NUL beside every
+  // character, after two unreadable ones if it began with a byte-order mark.
+  const first = source.charCodeAt(0) === 0xfffd && source.charCodeAt(1) === 0xfffd ? 2 : 0;
+  const pair = [source.charCodeAt(first), source.charCodeAt(first + 1)];
+  if ((pair[0] === 0x3c && pair[1] === 0) || (pair[0] === 0 && pair[1] === 0x3c)) {
+    throw badRequest("That file is saved as UTF-16 text, which Outpost cannot read. Save or export it as UTF-8 and try again.");
   }
-  const root = document.documentElement;
-  if (root?.localName !== "gpx") throw badRequest("That file is XML but not GPX. Export the route as GPX and try again.");
-
-  let converted: FeatureCollection;
-  try {
-    // The two packages each ship their own copy of the DOM typings; the objects are the same.
-    converted = gpxToGeoJson(document as unknown as Parameters<typeof gpxToGeoJson>[0]);
-  } catch {
-    throw badRequest("That GPX file could not be understood.");
-  }
-  const features = converted.features.map(cleanFeature).filter((feature): feature is TrackFeature => feature !== undefined);
-  const lines = features.filter((feature) => feature.geometry.type !== "Point").length;
-  const waypoints = features.length - lines;
-  if (features.length === 0) throw badRequest("That GPX file has no tracks, routes or waypoints in it.");
-
-  const childText = (
-    parent: { getElementsByTagName(name: string): ArrayLike<{ textContent: string | null; parentNode: unknown }> } | null | undefined,
-    tag: string,
-  ) => {
-    const nodes = parent?.getElementsByTagName(tag);
-    for (let i = 0; nodes && i < nodes.length; i += 1) if (nodes[i]!.parentNode === parent) return text(nodes[i]!.textContent);
-    return undefined;
-  };
-  const metadata = root.getElementsByTagName("metadata")[0];
-  const firstLine = features.find((feature) => feature.geometry.type !== "Point");
-  return {
-    collection: { type: "FeatureCollection", features },
-    name: childText(metadata, "name") ?? firstLine?.properties.name ?? null,
-    description: childText(metadata, "desc") ?? firstLine?.properties.desc ?? null,
-    lines,
-    waypoints,
-  };
+  return readGpx(source);
 }
 
 /** Every line of a collection as plain arrays of positions, one per segment. */
@@ -188,7 +89,7 @@ function segmentsOf(collection: TrackCollection): Position[][] {
   const segments: Position[][] = [];
   for (const feature of collection.features) {
     if (feature.geometry.type === "LineString") segments.push(feature.geometry.coordinates);
-    else if (feature.geometry.type === "MultiLineString") segments.push(...feature.geometry.coordinates);
+    else if (feature.geometry.type === "MultiLineString") for (const segment of feature.geometry.coordinates) segments.push(segment);
   }
   return segments;
 }
@@ -366,20 +267,78 @@ export function splitCollection(collection: TrackCollection): Pick<GpxDocument, 
 
 // ── Parsing off the main thread ─────────────────────────────────────────────
 
-/** Heap a GPX parse may use, and how long it may take. Real tracks need a fraction of either. */
+/**
+ * Heap a GPX parse may use, and how long it may take. The reader's own limits
+ * (`GPX_LIMITS`) are what keep a file within these: the largest file it accepts needs
+ * well under half this heap. The two numbers here are the last line, for a mistake in
+ * the reader, and nothing is meant to reach them.
+ */
 const GPX_WORKER_HEAP_MB = 384;
 const GPX_WORKER_TIMEOUT_MS = 30_000;
 const TOO_COMPLEX = "That GPX file is too complex to read. If it holds many routes, export them one at a time and import them separately.";
+/**
+ * Files read at once, and files that may wait behind them. A read holds the text of
+ * the file and what is kept of it, a few hundred megabytes for the largest file there
+ * can be, so a burst of uploads takes turns instead of adding up.
+ */
+export const GPX_READS_AT_ONCE = 2;
+export const GPX_READS_WAITING = 6;
+const BUSY = "Outpost is already reading several GPX files. Wait for those to finish, then import this one again.";
+
+let reading = 0;
+const waiting: Array<() => void> = [];
+
+/** How many files are being read and how many are waiting, for tests and for anyone looking into a slow import. */
+export const gpxReads = () => ({ reading, waiting: waiting.length });
+
+/** Runs `work` when a place is free. Refuses at once, with a `conflict`, when the line is already full. */
+async function inTurn<T>(work: () => Promise<T>): Promise<T> {
+  if (reading < GPX_READS_AT_ONCE) reading += 1;
+  else if (waiting.length >= GPX_READS_WAITING) throw conflict(BUSY);
+  // Whoever finishes hands its place straight to the first in line, so `reading` stays as it is.
+  else await new Promise<void>((resolve) => waiting.push(resolve));
+  try {
+    return await work();
+  } finally {
+    const next = waiting.shift();
+    if (next) next();
+    else reading -= 1;
+  }
+}
+
+/** What one parse cost its worker. */
+export interface GpxWorkerUsage {
+  /** Heap the worker had claimed when it finished: the text of the file, what was kept of it, and working room. */
+  heapBytes: number;
+  /** Time spent reading, not counting starting the worker. */
+  milliseconds: number;
+}
+
+export interface GpxWorkerOptions {
+  /** A tighter heap than usual, for tests that prove how little a file needs. */
+  heapMb?: number;
+  timeoutMs?: number;
+  /** Told what the parse cost, whether it ended in a result or a refusal. */
+  onUsage?: (usage: GpxWorkerUsage) => void;
+}
+
+type GpxWorkerMessage = ({ ok: true; parsed: ParsedGpx } | { ok: false; code: string; message: string }) & { usage: GpxWorkerUsage };
 
 /**
  * `parseGpx` in a worker thread with limits of its own. Use this for anything that
- * arrives from outside; a hostile or freakish file then costs one worker, not the server.
+ * arrives from outside: the server's own thread stays free to answer while a large
+ * file is read, and a file that somehow got past the reader's limits costs one worker.
+ * Only `GPX_READS_AT_ONCE` files are read at a time; the rest wait their turn.
  */
-export function parseGpxSafely(source: string): Promise<ParsedGpx> {
+export function parseGpxSafely(source: string, options: GpxWorkerOptions = {}): Promise<ParsedGpx> {
+  return inTurn(() => readInWorker(source, options));
+}
+
+function readInWorker(source: string, options: GpxWorkerOptions): Promise<ParsedGpx> {
   return new Promise((resolve, reject) => {
     const worker = new Worker(workerUrl(new URL("./gpx.worker.ts", import.meta.url), "gpx"), {
       workerData: { source },
-      resourceLimits: { maxOldGenerationSizeMb: GPX_WORKER_HEAP_MB },
+      resourceLimits: { maxOldGenerationSizeMb: options.heapMb ?? GPX_WORKER_HEAP_MB },
     });
     let settled = false;
     const settle = (finish: () => void) => {
@@ -389,8 +348,9 @@ export function parseGpxSafely(source: string): Promise<ParsedGpx> {
       void worker.terminate();
       finish();
     };
-    const timer = setTimeout(() => settle(() => reject(badRequest(TOO_COMPLEX))), GPX_WORKER_TIMEOUT_MS);
-    worker.once("message", (message: { ok: true; parsed: ParsedGpx } | { ok: false; code: string; message: string }) => {
+    const timer = setTimeout(() => settle(() => reject(badRequest(TOO_COMPLEX))), options.timeoutMs ?? GPX_WORKER_TIMEOUT_MS);
+    worker.once("message", (message: GpxWorkerMessage) => {
+      options.onUsage?.(message.usage);
       settle(() => (message.ok ? resolve(message.parsed) : reject(new AppError(message.code as never, message.message))));
     });
     // Running out of its memory allowance ends the worker with an error or a non-zero exit.

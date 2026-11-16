@@ -1,0 +1,41 @@
+{
+  "collection": {
+    "type": "FeatureCollection",
+    "features": [
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "Coast to coast, stage 1",
+          "desc": "St Bees to Ennerdale Bridge",
+          "time": "2026-09-20T16:00:00Z",
+          "_gpxType": "rte"
+        },
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [[-3.613, 54.492, 10], [-3.63, 54.523, 95], [-3.44, 54.514]]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "desc": "Only a comment",
+          "_gpxType": "rte"
+        },
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [[-3.44, 54.514], [-3.148, 54.511]]
+        }
+      }
+    ]
+  },
+  "name": "Plans for the autumn",
+  "description": "St Bees to Ennerdale Bridge",
+  "lines": 2,
+  "waypoints": 0,
+  "stats": {
+    "distanceMeters": 34773.3,
+    "ascentMeters": 85,
+    "pointCount": 5,
+    "bounds": [-3.63, 54.492, -3.148, 54.523]
+  }
+}

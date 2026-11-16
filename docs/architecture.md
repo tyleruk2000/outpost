@@ -69,7 +69,9 @@ fleet) would be the wrong weight for a single-node tool that must run on a Pi.
 CPU-heavy parsing (PDF text) runs in a worker thread so that one large document cannot
 stall the HTTP server. OCR does the same, on a queue of its own that runs one document
 at a time. So does the built-in embedding model, in a worker that stays loaded while it
-is in use and is ended after five idle minutes.
+is in use and is ended after five idle minutes. A GPX file is read in a worker too, by
+a reader that keeps only what is stored and never builds a tree of the file, so what it
+costs in memory is bounded by the points in it (see [security.md](security.md#files-people-upload)).
 
 ### Search in three layers behind one entry point
 
@@ -308,6 +310,7 @@ written by `scripts/build-app.mjs` from the installed packages.
 | all-MiniLM-L6-v2 (embedding model) | Apache-2.0 | Bundled, for semantic search; fetched at build time from Hugging Face at a pinned revision and checked against checksums, never committed. Trained by the Sentence Transformers project; the files are the 8-bit ONNX conversion published as `Xenova/all-MiniLM-L6-v2`. Its model card lists training data with terms of their own (MS MARCO, Reddit comments and others); the weights are released under Apache-2.0. Hugging Face's terms of service, read on 2026-11-15, say that content in a public repository stays under the licence its owner gave it. Notice and licence text: `server/embed/all-MiniLM-L6-v2/`. |
 | ONNX Runtime (`onnxruntime-web`), `@huggingface/tokenizers` | MIT, Apache-2.0 | Bundled; they run the embedding model. The runtime is the project's own WebAssembly build. The npm package carries no licence file, so the build takes the licence and third-party notices from the project's repository at the release's commit: `server/embed/LICENSE-onnxruntime.txt`, `ThirdPartyNotices-onnxruntime.txt`. |
 | BlockNote | MPL-2.0, with GPL add-ons | Not used. The editor is Tiptap (MIT) with Outpost's own blocks. |
+| `saxes`, `sax` (streaming XML parsers) | ISC; BlueOak-1.0.0 | Not used. GPX is read by Outpost's own small XML reader (`apps/server/src/modules/maps/gpx-xml.ts`). Looked at on 16 November 2026: `saxes` is strict but its repository is archived; `sax` is maintained but accepts XML that is not well-formed, and its licence is not one of the four above. `@tmcw/togeojson` and `@xmldom/xmldom`, which read GPX before, are no longer shipped; `@xmldom/xmldom` (MIT) remains for one test. |
 | Atkinson Hyperlegible, Literata, Noto Sans | OFL-1.1 | Bundled fonts. |
 | Protomaps basemap styles | BSD-3-Clause (design CC0) | Bundled. |
 | maplibre-contour | BSD-3-Clause (includes code adapted from d3-contour, ISC, and vt-pbf, MIT) | Bundled in the web app. Traces contour lines in the browser from installed terrain. |

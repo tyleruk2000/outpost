@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Outpost corpus" xmlns="http://www.topografix.com/GPX/1/1">
+  <trk>
+    <name>Paused twice</name>
+    <trkseg>
+      <trkpt lat="46.5000" lon="8.0000"><ele>1500</ele><time>2026-08-10T06:00:00Z</time></trkpt>
+      <trkpt lat="46.5010" lon="8.0010"><ele>1510</ele><time>2026-08-10T06:05:00Z</time></trkpt>
+    </trkseg>
+    <trkseg>
+      <trkpt lat="46.5020" lon="8.0020"><ele>1520</ele><time>2026-08-10T07:00:00Z</time></trkpt>
+    </trkseg>
+    <trkseg/>
+    <trkseg>
+      <trkpt lat="46.5030" lon="8.0030"><ele>1530</ele><time>2026-08-10T08:00:00Z</time></trkpt>
+      <trkpt lat="91.0000" lon="8.0031"><ele>1531</ele><time>2026-08-10T08:01:00Z</time></trkpt>
+      <trkpt lat="46.5040" lon="8.0040"><ele>1540</ele><time>2026-08-10T08:05:00Z</time></trkpt>
+      <trkpt lat="46.5050" lon="8.0050"><ele>1550</ele><time>2026-08-10T08:10:00Z</time></trkpt>
+    </trkseg>
+  </trk>
+  <trk>
+    <name>Two segments, one of them nowhere on Earth</name>
+    <trkseg>
+      <trkpt lat="46.6" lon="8.1"/>
+      <trkpt lat="46.7" lon="8.2"/>
+    </trkseg>
+    <trkseg>
+      <trkpt lat="146.6" lon="8.1"/>
+      <trkpt lat="146.7" lon="8.2"/>
+    </trkseg>
+  </trk>
+  <trk>
+    <name>One real segment and one with a single point</name>
+    <trkseg>
+      <trkpt lat="46.8" lon="8.3"/>
+    </trkseg>
+    <trkseg>
+      <trkpt lat="46.9" lon="8.4"><time>2026-08-11T06:00:00Z</time></trkpt>
+      <trkpt lat="47.0" lon="8.5"><time>2026-08-11T06:30:00Z</time></trkpt>
+    </trkseg>
+  </trk>
+</gpx>

@@ -1,0 +1,45 @@
+{
+  "collection": {
+    "type": "FeatureCollection",
+    "features": [
+      {
+        "type": "Feature",
+        "properties": {
+          "_gpxType": "trk"
+        },
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [[-3.4, 54.5], [-3.3, 54.6]]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "_gpxType": "rte"
+        },
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [[-3.613, 54.492], [-3.44, 54.514]]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {},
+        "geometry": {
+          "type": "Point",
+          "coordinates": [-3.2, 54.7]
+        }
+      }
+    ]
+  },
+  "name": null,
+  "description": null,
+  "lines": 2,
+  "waypoints": 1,
+  "stats": {
+    "distanceMeters": 24289.2,
+    "ascentMeters": null,
+    "pointCount": 4,
+    "bounds": [-3.613, 54.492, -3.2, 54.7]
+  }
+}

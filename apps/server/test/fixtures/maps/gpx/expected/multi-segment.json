@@ -1,0 +1,61 @@
+{
+  "collection": {
+    "type": "FeatureCollection",
+    "features": [
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "Paused twice",
+          "time": "2026-08-10T06:00:00Z",
+          "_gpxType": "trk",
+          "coordinateProperties": {
+            "times": [
+              ["2026-08-10T06:00:00Z", "2026-08-10T06:05:00Z"],
+              ["2026-08-10T08:00:00Z", "2026-08-10T08:05:00Z", "2026-08-10T08:10:00Z"]
+            ]
+          }
+        },
+        "geometry": {
+          "type": "MultiLineString",
+          "coordinates": [[[8, 46.5, 1500], [8.001, 46.501, 1510]], [[8.003, 46.503, 1530], [8.004, 46.504, 1540], [8.005, 46.505, 1550]]]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "Two segments, one of them nowhere on Earth",
+          "_gpxType": "trk"
+        },
+        "geometry": {
+          "type": "MultiLineString",
+          "coordinates": [[[8.1, 46.6], [8.2, 46.7]]]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "One real segment and one with a single point",
+          "time": "2026-08-11T06:00:00Z",
+          "_gpxType": "trk",
+          "coordinateProperties": {
+            "times": ["2026-08-11T06:00:00Z", "2026-08-11T06:30:00Z"]
+          }
+        },
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [[8.4, 46.9], [8.5, 47]]
+        }
+      }
+    ]
+  },
+  "name": "Paused twice",
+  "description": null,
+  "lines": 3,
+  "waypoints": 0,
+  "stats": {
+    "distanceMeters": 27355.5,
+    "ascentMeters": 30,
+    "pointCount": 9,
+    "bounds": [8, 46.5, 8.5, 47]
+  }
+}
