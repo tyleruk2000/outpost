@@ -2,6 +2,7 @@ import type { MarkerDto } from "@outpost/shared";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import { PlaceEditor, PlacesList } from "./places";
 
@@ -83,10 +84,11 @@ describe("an opened place", () => {
     expect(screen.getByText(/From the keyboard, Tab to the pin and use the arrow keys; Shift moves it further\./)).toBeInTheDocument();
   });
 
-  it("has its sun times folded away below its own details, and looking at them does not save the place", async () => {
+  it("has its sun times in one line straight under its name, and looking at them does not save the place", async () => {
     localStorage.clear();
     const saved = marker("m1", "Esk Hause shelter");
     const onSave = vi.fn();
+    const onNeedRoom = vi.fn();
     render(
       <PlaceEditor
         draft={{ id: saved.id, name: "Esk Hause", note: "", color: saved.color, isFavorite: false, lat: saved.lat, lon: saved.lon }}
@@ -99,13 +101,21 @@ describe("an opened place", () => {
         onSave={onSave}
         onClose={() => {}}
         onDelete={() => {}}
+        onNeedRoom={onNeedRoom}
       />,
+      { wrapper: MemoryRouter },
     );
     const sun = screen.getByRole("button", { name: /^Sun/ });
     expect(sun).toHaveAttribute("aria-expanded", "false");
-    // After the position, which is the last of the place's own details.
-    expect(screen.getByText("Position").compareDocumentPosition(sun) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // Between the place's name and its fields: on a phone the sheet shows little more than that before it is scrolled.
+    const follows = (earlier: Element, later: Element) =>
+      Boolean(earlier.compareDocumentPosition(later) & Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(follows(screen.getByRole("heading", { name: "Esk Hause shelter" }), sun)).toBe(true);
+    expect(follows(sun, screen.getByLabelText("Name"))).toBe(true);
+    // Opening it asks for room (the sheet is raised on a phone); folding it again does not.
+    expect(onNeedRoom).not.toHaveBeenCalled();
     await userEvent.click(sun);
+    expect(onNeedRoom).toHaveBeenCalledTimes(1);
     await userEvent.click(screen.getByRole("button", { name: "The day after" }));
     await userEvent.type(screen.getByLabelText("Date"), "{Enter}");
     await userEvent.click(screen.getByRole("radio", { name: "UTC" }));
