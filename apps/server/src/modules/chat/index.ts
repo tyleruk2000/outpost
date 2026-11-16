@@ -35,7 +35,7 @@ import { chatModels, lookForOllama, OLLAMA_DEFAULT_ADDRESSES } from "./models.ts
 import { replyAsNote } from "./note.ts";
 import { type ChatRunner, createRunner, historyBudget } from "./run.ts";
 import { lookForModelServer, placesToLook, tryModel } from "./setup.ts";
-import { type ChatStore, createChatStore, toConversation, toMessage } from "./store.ts";
+import { type ChatStore, createChatStore, shownReply, toConversation, toMessage } from "./store.ts";
 
 /** The longest message a person can send, in characters. */
 export const CHAT_MESSAGE_MAX = 16_000;
@@ -398,7 +398,8 @@ export async function registerChat(app: FastifyInstance, ctx: AppContext): Promi
     const note = notes.create({
       title: (conversation.title || titleFrom(question?.text ?? "")).slice(0, 200),
       content: replyAsNote({
-        reply: message.text,
+        // As shown: a marker to a number no passage carried does not go into a note.
+        reply: shownReply(message).text,
         question: question?.text ?? "",
         model: message.model,
         writtenAt: message.createdAt,

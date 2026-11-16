@@ -22,10 +22,11 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
 import { AppError, messageOf } from "../../core/errors.ts";
-import { checkCitations, isSafetyCritical } from "../retrieval/index.ts";
+import { contextAssembler, isSafetyCritical } from "../retrieval/index.ts";
 import { buildAnswerPrompt } from "../retrieval/prompt.ts";
+import type { AssembledContext, RetrievedPassage } from "../retrieval/types.ts";
 import { assertOwnNetwork, type ModelServerAddress, parseModelServerAddress, placeRefusal } from "./address.ts";
-import { contextTokensFor } from "./fit.ts";
+import { contextTokensFor, passageCharsAfterRefusal } from "./fit.ts";
 import {
   type ChatModelProvider,
   DEFAULT_TIMEOUTS,
@@ -34,6 +35,7 @@ import {
   openAiChatProvider,
   withoutThinking,
 } from "./provider.ts";
+import { tidyReply } from "./tidy.ts";
 
 /**
  * Most passages handed to the model for one question. Eight were handed over at first;
@@ -96,6 +98,55 @@ export function namesNoSubject(question: string): boolean {
 const FOLLOW_UP_WORDS = new Set(
   "again also else more now ok okay really say said sure then too yes no not go on continue it's that's mean".split(" "),
 );
+
+/** The passages of a context as the browser is sent them. */
+export function sourcesOf(context: AssembledContext): AnswerSource[] {
+  return context.citations.map(({ marker, kind, entityId, title, collection, url, page, heading, quote }) => ({
+    marker,
+    kind,
+    entityId,
+    title,
+    collection,
+    url,
+    page,
+    heading,
+    quote,
+    safetyCritical: isSafetyCritical({ title, collection }),
+  }));
+}
+
+/**
+ * The model server refused a prompt as more than the model can read at once. The same
+ * passages, best first, cut down to what should fit by the server's own figures and at
+ * least one fewer; or null when there is nothing to leave out (one passage was sent, or
+ * not even the best one would fit), and the refusal stands.
+ */
+export function fewerPassages(
+  context: AssembledContext,
+  passages: RetrievedPassage[],
+  prompt: { system: string; user: string },
+  refusal: ModelServerError,
+): AssembledContext | null {
+  const sent = context.citations.length;
+  if (sent <= 1) return null;
+  const passageChars = context.citations.reduce((sum, citation) => sum + citation.quote.length, 0);
+  const budget = passageCharsAfterRefusal({
+    promptChars: prompt.system.length + prompt.user.length,
+    passageChars,
+    sizes: refusal.sizes,
+    replyTokens: ANSWER_MAX_TOKENS,
+  });
+  const best = passages.find((passage) => context.citations.some((citation) => citation.chunkId === passage.chunkId));
+  if (!best || budget < best.text.length) return null;
+  // Only passages that were sent are considered: one that did not fit the budget the first time is not brought in now.
+  const wasSent = new Set(context.citations.map((citation) => citation.chunkId));
+  const fewer = contextAssembler.assemble(
+    context.query,
+    passages.filter((passage) => wasSent.has(passage.chunkId)),
+    { maxChars: budget, maxPassages: sent - 1 },
+  );
+  return fewer.citations.length > 0 && fewer.citations.length < sent ? fewer : null;
+}
 
 export interface AnswersService {
   status(): AnswersStatus;
@@ -351,7 +402,7 @@ export async function registerAnswers(app: FastifyInstance, ctx: AppContext): Pr
         mode: input.mode,
         signal: controller.signal,
       });
-      const context = retrieval.assembler.assemble(input.question, passages, {
+      let context = retrieval.assembler.assemble(input.question, passages, {
         maxChars: all["answers.contextChars"],
         maxPassages: ANSWER_PASSAGES,
       });
@@ -366,36 +417,31 @@ export async function registerAnswers(app: FastifyInstance, ctx: AppContext): Pr
         "X-Accel-Buffering": "no",
       });
       sentHeaders = true;
-      const sources: AnswerSource[] = context.citations.map(({ marker, kind, entityId, title, collection, url, page, heading, quote }) => ({
-        marker,
-        kind,
-        entityId,
-        title,
-        collection,
-        url,
-        page,
-        heading,
-        quote,
-        safetyCritical: isSafetyCritical({ title, collection }),
-      }));
-      send({
-        type: "sources",
-        question: input.question,
-        searchedFor,
-        model: provider.model,
-        server: provider.address.host,
-        sources,
-        omitted: context.omitted,
-        safetyCritical: context.safetyCritical,
-      });
+      const omitted = context.omitted;
+      let leftOut = 0;
+      const sendSources = () =>
+        send({
+          type: "sources",
+          question: input.question,
+          searchedFor,
+          model: provider.model,
+          server: provider.address.host,
+          sources: sourcesOf(context),
+          omitted,
+          leftOut,
+          safetyCritical: context.safetyCritical,
+        });
+      sendSources();
 
       // Nothing was found, so there is nothing to answer from. The model is not asked.
-      if (sources.length === 0) {
+      if (context.citations.length === 0) {
         send({
           type: "done",
           outcome: "nothing-found",
           used: [],
           unsupported: [],
+          repointed: [],
+          citesAll: false,
           cutShort: false,
           tookMs: Math.round(performance.now() - started),
         });
@@ -408,27 +454,43 @@ export async function registerAnswers(app: FastifyInstance, ctx: AppContext): Pr
       }, 15_000);
       heartbeat.unref();
 
-      const prompt = buildAnswerPrompt(context);
       let text = "";
       let finishReason: string | null = null;
-      const pieces = provider.generate({
-        system: prompt.system,
-        prompt: prompt.user,
-        temperature: all["answers.temperature"],
-        maxTokens: ANSWER_MAX_TOKENS,
-        contextTokens: contextTokensFor(all["answers.contextChars"], ANSWER_MAX_TOKENS),
-        signal: controller.signal,
-        onFinish: (info) => {
-          finishReason = info.finishReason;
-        },
-      });
-      for await (const piece of withoutThinking(pieces)) {
-        text += piece;
-        send({ type: "delta", text: piece });
-        if (text.length > ANSWER_MAX_CHARS) {
-          // Leaving the loop closes the connection to the model, which stops it.
-          finishReason = "length";
+      for (let attempt = 1; ; attempt += 1) {
+        const prompt = buildAnswerPrompt(context);
+        try {
+          const pieces = provider.generate({
+            system: prompt.system,
+            prompt: prompt.user,
+            temperature: all["answers.temperature"],
+            maxTokens: ANSWER_MAX_TOKENS,
+            contextTokens: contextTokensFor(all["answers.contextChars"], ANSWER_MAX_TOKENS),
+            signal: controller.signal,
+            onLoading: () => send({ type: "loading" }),
+            onFinish: (info) => {
+              finishReason = info.finishReason;
+            },
+          });
+          for await (const piece of withoutThinking(pieces)) {
+            text += piece;
+            send({ type: "delta", text: piece });
+            if (text.length > ANSWER_MAX_CHARS) {
+              // Leaving the loop closes the connection to the model, which stops it.
+              finishReason = "length";
+              break;
+            }
+          }
           break;
+        } catch (error) {
+          // Refused as more than the model can read at once, before it wrote a word: ask once more with fewer passages.
+          const fewer =
+            attempt === 1 && !text && error instanceof ModelServerError && error.failure === "context-too-long"
+              ? fewerPassages(context, passages, prompt, error)
+              : null;
+          if (!fewer) throw error;
+          leftOut = context.citations.length - fewer.citations.length;
+          context = fewer;
+          sendSources();
         }
       }
       if (!text.trim()) {
@@ -439,12 +501,16 @@ export async function registerAnswers(app: FastifyInstance, ctx: AppContext): Pr
             : "The model sent back no words. Try asking again, or try another model.",
         );
       }
-      const marks = checkCitations(text, context.citations);
+      // A reply that says the passages hold no answer, and markers to numbers no passage carried, are settled here.
+      const tidied = tidyReply(text, context.citations);
       send({
         type: "done",
-        outcome: "answered",
-        used: marks.used,
-        unsupported: marks.unsupported,
+        outcome: tidied.outcome,
+        ...(tidied.text !== text ? { text: tidied.text } : {}),
+        used: tidied.used,
+        unsupported: tidied.unsupported,
+        repointed: tidied.repointed,
+        citesAll: tidied.citesAll,
         cutShort: finishReason === "length",
         tookMs: Math.round(performance.now() - started),
       });

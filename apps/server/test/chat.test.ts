@@ -617,10 +617,53 @@ describe("a conversation that uses the library", () => {
     expect(chatBodies(model)).toHaveLength(0);
   });
 
-  it("marks a citation that matches no passage the model was given", async () => {
-    const { open, exchange } = await station("stand-in-invents");
+  it("takes out a citation that matches no passage the model was given, and keeps the words as written", async () => {
+    const { open, exchange, detail } = await station("stand-in-invents");
+    const id = await open({ useLibrary: true });
+    const reply = await exchange(id, "boil water");
+    expect(reply).toMatchObject({ unsupported: [7], used: [1], repointed: [], declined: false });
+    // Stored as the model wrote it; shown without the marker that leads nowhere.
+    expect(reply.text).toMatch(/every time \[7\]\.$/);
+    expect(wordsOf(reply.blocks)).not.toContain("[7]");
+    expect(wordsOf(reply.blocks)).toContain("[1]");
+    // The same when the conversation is read again.
+    expect((await detail(id)).messages.at(-1)).toMatchObject({ unsupported: [7], used: [1] });
+  });
+
+  it("points a stray citation at the passage whose own sentence it stands on", async () => {
+    const { open, exchange } = await station("stand-in-misnumbers");
     const reply = await exchange(await open({ useLibrary: true }), "boil water");
-    expect(reply.unsupported).toEqual([7]);
+    expect(reply).toMatchObject({ used: [1], unsupported: [7], repointed: [{ from: 7, to: 1 }] });
+    expect(wordsOf(reply.blocks)).toContain("[1]");
+    expect(wordsOf(reply.blocks)).not.toContain("[7]");
+  });
+
+  it("shows a reply that says the passages hold no answer as that, citing nothing", async () => {
+    const { open, exchange } = await station("stand-in-declines");
+    const reply = await exchange(await open({ useLibrary: true }), "boil water");
+    expect(reply).toMatchObject({ state: "complete", declined: true, used: [], unsupported: [] });
+    expect(wordsOf(reply.blocks)).toContain("There is no information about that in the provided sources.");
+    expect(wordsOf(reply.blocks)).not.toMatch(/\[\d\]/);
+    // A plain conversation is never read that way: there were no passages to decline.
+    const plain = await station("stand-in-declines");
+    expect(await plain.exchange(await plain.open(), "Hello")).toMatchObject({ declined: false, used: [] });
+  });
+
+  it("says when the model is being loaded, and only when Ollama says so", async () => {
+    const { open, send, watch, app } = await station("stand-in-slow-start", { loadMs: 300, slowMs: 200 });
+    const id = await open();
+    expect((await send(id, "Hello")).status).toBe(200);
+    const events = await watch(id);
+    const phases = events.flatMap((event) => (event.type === "phase" || event.type === "start" ? [event.phase] : []));
+    expect(phases).toContain("loading");
+    expect(phases.indexOf("loading")).toBeLessThan(phases.lastIndexOf("writing"));
+    await app.ctx.services.chat.runner.current()?.finished;
+
+    const llama = await station("stand-in", {}, "/llamacpp/v1");
+    const other = await llama.open();
+    expect((await llama.send(other, "Hello")).status).toBe(200);
+    const seen = await llama.watch(other);
+    expect(seen.flatMap((event) => (event.type === "phase" ? [event.phase] : []))).not.toContain("loading");
   });
 
   it("can be turned on and off for a conversation, and the next reply follows", async () => {

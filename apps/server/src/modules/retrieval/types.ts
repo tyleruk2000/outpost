@@ -112,6 +112,14 @@ export interface GenerationRequest {
   contextTokens?: number;
   signal?: AbortSignal;
   /**
+   * Called once, before the request is sent, when the model server has said that the
+   * model is not in memory (or is there for another context size) and so must be loaded
+   * first. Only a server that can be asked (Ollama, by `/api/ps`) ever causes this; with
+   * any other it is never called, because a slow start there may be loading or reading
+   * and nothing says which.
+   */
+  onLoading?: () => void;
+  /**
    * Called once when the model ends the answer itself, with why it stopped:
    * "stop" (it had finished), "length" (it reached `maxTokens`), or null when the
    * server did not say; and how many tokens the prompt came to, when the server says.

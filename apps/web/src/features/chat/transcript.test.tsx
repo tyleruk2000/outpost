@@ -24,7 +24,11 @@ const base: ChatMessage = {
   grounded: false,
   sources: [],
   searchedFor: null,
+  declined: false,
+  used: [],
   unsupported: [],
+  repointed: [],
+  citesAll: false,
   omitted: 0,
   tookMs: 48_000,
   createdAt: Date.UTC(2026, 10, 16, 14, 2),
@@ -181,10 +185,13 @@ describe("a conversation as it reads", () => {
     const user = userEvent.setup();
     show([
       said("u1", "How long to boil?"),
+      // Stored as written, shown as the server settled it: the marker to a number never given is out of the blocks.
       reply("a1", "Boil it for one minute [1]. The stove takes four [2, 3].", {
+        blocks: [paragraph("Boil it for one minute [1]. The stove takes four [2].")],
         grounded: true,
         sources,
         searchedFor: "boil",
+        used: [1, 2],
         unsupported: [3],
       }),
     ]);
@@ -205,9 +212,49 @@ describe("a conversation as it reads", () => {
 
     await user.click(within(theirs).getByRole("button", { name: /^Source 2: Kit list, Stove/ }));
     expect(await screen.findByText("The small stove boils a litre in four minutes.")).toBeVisible();
-    // A marker for a passage that was never given is struck out, and said to be unsupported.
-    expect(within(theirs).getByText(/refers to no source the model was given/)).toBeInTheDocument();
-    expect(within(theirs).getByText("[3] refers to no passage")).toBeVisible();
+    // A marker for a passage that was never given is taken out, and the reply says so.
+    expect(within(theirs).queryByText(/refers to no source the model was given/)).toBeNull();
+    expect(within(theirs).getByText("[3] taken out: no passage has that number")).toBeVisible();
+    expect(within(theirs).getByText(/stands without a source/)).toBeVisible();
+  });
+
+  it("says where a stray marker was pointed, and why", () => {
+    show([
+      said("u1", "How long to boil?"),
+      reply("a1", "Bring the water to a rolling boil for one minute [7].", {
+        blocks: [paragraph("Bring the water to a rolling boil for one minute [1].")],
+        grounded: true,
+        sources,
+        used: [1],
+        unsupported: [7],
+        repointed: [{ from: 7, to: 1 }],
+      }),
+    ]);
+    const theirs = screen.getByRole("article", { name: "Reply from llama3.2:3b" });
+    expect(within(theirs).getByText("[7] pointed at the passage that holds the words")).toBeVisible();
+    expect(within(theirs).getByText(/The words marked \[7\] are, word for word, in passage \[1\]/)).toBeVisible();
+    expect(within(theirs).getByRole("button", { name: /^Source 1:/ })).toBeVisible();
+  });
+
+  it("shows a reply that says the passages hold no answer as not covered, with nothing cited", () => {
+    show([
+      said("u1", "Who won the World Cup in 1966?"),
+      reply("a1", "There is no information about the World Cup in the provided sources. [1][2]", {
+        blocks: [paragraph("There is no information about the World Cup in the provided sources.")],
+        grounded: true,
+        sources,
+        declined: true,
+      }),
+    ]);
+    const theirs = screen.getByRole("article", { name: "Reply from llama3.2:3b" });
+    expect(within(theirs).getByTestId("reply-declined")).toHaveTextContent("Your library does not seem to cover this.");
+    expect(within(theirs).queryByRole("button", { name: /^Source \d/ })).toBeNull();
+    // The passages are still there to be checked, and none is marked cited or not.
+    expect(within(theirs).getByRole("button", { name: "The 2 passages the model read" })).toBeVisible();
+    expect(within(theirs).queryByText("Cited")).toBeNull();
+    expect(within(theirs).queryByText("Not cited")).toBeNull();
+    // Not also called a reply that cites nothing.
+    expect(within(theirs).queryByText(/This reply cites none of the passages/)).toBeNull();
   });
 
   it("says when a reply from the library cites nothing", () => {
@@ -230,9 +277,32 @@ describe("a conversation as it reads", () => {
     const theirs = screen.getByRole("article", { name: "Reply from llama3.2:3b" });
     expect(theirs).toHaveAttribute("aria-busy", "true");
     expect(within(theirs).getByTestId("reply-waiting")).toHaveTextContent("Waiting for the model to start writing, 12 seconds so far");
-    expect(within(theirs).getByText(/A model is loaded into memory the first time it is used/)).toBeVisible();
+    // Nothing said the model was being loaded, so the screen does not say it is.
+    expect(within(theirs).getByText(/On a small computer a model can take a minute or more/)).toBeVisible();
+    expect(within(theirs).queryByText(/is loading the model/)).toBeNull();
     expect(within(theirs).queryByRole("button")).toBeNull();
     expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
+  });
+
+  it("says the model is being loaded when the model server said so", () => {
+    const live: LiveReply = {
+      messageId: "a1",
+      phase: "loading",
+      model: "llama3.2:1b",
+      grounded: false,
+      sources: [],
+      searchedFor: null,
+      blocks: [],
+      since: Date.now() - 5_000,
+    };
+    show([said("u1", "Hello"), reply("a1", "", { state: "writing", tookMs: null, model: "llama3.2:1b" })], { live, busy: true });
+    const theirs = screen.getByRole("article", { name: "Reply from llama3.2:1b" });
+    expect(within(theirs).getByTestId("reply-waiting")).toHaveTextContent(
+      "The model server is loading the model into memory, 5 seconds so far",
+    );
+    expect(within(theirs).getByText(/It said the model was not loaded/)).toBeVisible();
+    // No time is promised for the loading itself.
+    expect(within(theirs).getByTestId("reply-waiting").textContent).not.toMatch(/will take|about \d/);
   });
 
   it("while passages are being found, says so", () => {

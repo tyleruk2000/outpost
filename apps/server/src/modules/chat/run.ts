@@ -310,6 +310,10 @@ export function createRunner(ctx: AppContext, store: ChatStore) {
         // The same size an answer asks for, so that Ollama does not load the model afresh between the two.
         contextTokens: contextTokensFor(settings.get("answers.contextChars"), CHAT_MAX_TOKENS),
         signal: controller.signal,
+        onLoading: () => {
+          run.phase = "loading";
+          tell({ type: "phase", phase: "loading" });
+        },
         onFinish: (info) => {
           finishReason = info.finishReason;
         },

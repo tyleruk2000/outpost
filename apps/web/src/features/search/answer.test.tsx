@@ -53,6 +53,7 @@ const sourcesEvent = (over: Partial<Extract<AnswerEvent, { type: "sources" }>> =
   server: "127.0.0.1:11434",
   sources,
   omitted: 0,
+  leftOut: 0,
   safetyCritical: false,
   ...over,
 });
@@ -61,6 +62,8 @@ const done = (over: Partial<Extract<AnswerEvent, { type: "done" }>> = {}): Answe
   outcome: "answered",
   used: [1],
   unsupported: [],
+  repointed: [],
+  citesAll: false,
   cutShort: false,
   tookMs: 1200,
   ...over,
@@ -291,15 +294,101 @@ describe("Answer from my library", () => {
     expect(within(panel).getByText("The small stove boils a litre in four minutes.")).toBeInTheDocument();
   });
 
-  it("strikes through a marker that refers to no source, and says so", async () => {
+  it("takes out a marker that refers to no source once the answer is finished, and says so", async () => {
     const served = serve(ready);
     show("how long to boil water");
     await ask();
-    await served.send(sourcesEvent(), { type: "delta", text: "Boil it [1]. It always works [9]." }, done({ used: [1], unsupported: [9] }));
+    await served.send(sourcesEvent(), { type: "delta", text: "Boil it [1]. It always works [9]." });
+    // While it is being written the marker is struck through: nothing is settled yet.
     expect(screen.getByText("(refers to no source the model was given)")).toBeInTheDocument();
+    await served.send(done({ text: "Boil it [1]. It always works.", used: [1], unsupported: [9] }));
+    expect(screen.queryByText("(refers to no source the model was given)")).toBeNull();
+    expect(screen.getByTestId("answer-text")).toHaveTextContent("Boil it [1]. It always works.");
     expect(screen.queryByRole("button", { name: /Source 9/ })).not.toBeInTheDocument();
-    expect(screen.getByText("[9] refers to no source")).toBeInTheDocument();
-    expect(screen.getByText(/numbered 1 to 2, and cited a number that is not among them/)).toBeInTheDocument();
+    expect(screen.getByText("[9] taken out: no passage has that number")).toBeInTheDocument();
+    expect(screen.getByText(/numbered 1 to 2, and cited \[9\]\. That marker was taken out/)).toBeInTheDocument();
+  });
+
+  it("says when a stray marker was pointed at the passage that holds its words", async () => {
+    const served = serve(ready);
+    show("how long to boil water");
+    await ask();
+    await served.send(
+      sourcesEvent(),
+      { type: "delta", text: "Bring the water to a rolling boil for one minute [7]." },
+      done({ text: "Bring the water to a rolling boil for one minute [1].", used: [1], unsupported: [7], repointed: [{ from: 7, to: 1 }] }),
+    );
+    expect(screen.getByText("[7] pointed at the passage that holds the words")).toBeInTheDocument();
+    expect(screen.getByText(/The words marked \[7\] are, word for word, in passage \[1\]/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Source 1:/ })).toBeInTheDocument();
+  });
+
+  it("shows plainly when the model said the library does not cover the question, citing nothing", async () => {
+    const served = serve(ready);
+    show("who won the world cup in 1966");
+    await ask();
+    await served.send(
+      sourcesEvent({ question: "who won the world cup in 1966" }),
+      { type: "delta", text: "There is no information about that in the provided sources. [1][2]" },
+      done({ outcome: "not-covered", text: "There is no information about that in the provided sources.", used: [] }),
+    );
+    expect(screen.getByTestId("answer-declined")).toHaveTextContent("Your library does not seem to cover this.");
+    expect(screen.getByTestId("answer-text")).toHaveTextContent("There is no information about that in the provided sources.");
+    expect(screen.queryByRole("button", { name: /^Source \d/ })).toBeNull();
+    // The passages are listed as what was read, not as the sources of an answer.
+    expect(screen.getByRole("heading", { name: "The 2 passages the model read" })).toBeInTheDocument();
+    expect(screen.queryByText("Cited in the answer")).toBeNull();
+    expect(screen.queryByText("Not cited")).toBeNull();
+    expect(screen.queryByText("This answer cites no source")).toBeNull();
+  });
+
+  it("says nothing of the model's when all it wrote was that the passages do not answer", async () => {
+    const served = serve(ready);
+    show("how long to boil water");
+    await ask();
+    await served.send(
+      sourcesEvent(),
+      { type: "delta", text: "The sources do not answer this." },
+      done({ outcome: "not-covered", text: "", used: [] }),
+    );
+    expect(screen.getByTestId("answer-declined")).toBeInTheDocument();
+    expect(screen.queryByTestId("answer-text")).toBeNull();
+  });
+
+  it("says how many passages were left out when the model server refused them as too long", async () => {
+    const served = serve(ready);
+    show("how long to boil water");
+    await ask();
+    await served.send(sourcesEvent({ sources: [...sources, { ...sources[0]!, marker: 3 }] }));
+    expect(screen.queryByTestId("answer-left-out")).toBeNull();
+    await served.send(sourcesEvent({ sources: sources.slice(0, 1), leftOut: 2 }), { type: "delta", text: "Boil it [1]." }, done());
+    expect(screen.getByTestId("answer-left-out")).toHaveTextContent(
+      "2 passages left out: the model server said all 3 were more than the model can read at once, so Outpost asked again with the best one.",
+    );
+    expect(screen.getByRole("heading", { name: "The passage the model was given" })).toBeInTheDocument();
+  });
+
+  it("says the model is being loaded only when the model server said so", async () => {
+    const served = serve(ready);
+    show("how long to boil water");
+    await ask();
+    await served.send(sourcesEvent());
+    expect(screen.getByTestId("answer-waiting")).toHaveTextContent("The model is reading 2 passages.");
+    expect(screen.queryByText(/into memory/)).toBeNull();
+    await served.send({ type: "loading" });
+    expect(screen.getByTestId("answer-waiting")).toHaveTextContent(
+      "The model server is loading llama3.2:3b into memory before it can read 2 passages: it said the model was not loaded.",
+    );
+    await served.send({ type: "delta", text: "Boil it [1]." });
+    expect(screen.queryByTestId("answer-waiting")).toBeNull();
+  });
+
+  it("says when an answer cites every passage it was given", async () => {
+    const served = serve(ready);
+    show("how long to boil water");
+    await ask();
+    await served.send(sourcesEvent(), { type: "delta", text: "Boil it [1][2]." }, done({ used: [1, 2], citesAll: true }));
+    expect(screen.getByText(/cites every passage it was given/)).toBeInTheDocument();
   });
 
   it("says plainly when an answer cites nothing", async () => {

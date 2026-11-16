@@ -110,6 +110,46 @@ function AnswerText({ answer }: { answer: AnswerState }) {
   );
 }
 
+/** Markers to numbers no passage carried, and what was done with each: pointed at the passage that holds the words, or taken out. */
+export function StrayMarkers({
+  unsupported,
+  repointed,
+  count,
+  className,
+}: {
+  unsupported: number[];
+  repointed: Array<{ from: number; to: number }>;
+  count: number;
+  className?: string;
+}) {
+  const moved = new Map(repointed.map((entry) => [entry.from, entry.to]));
+  const dropped = unsupported.filter((marker) => !moved.has(marker));
+  const list = (markers: number[]) => markers.map((marker) => `[${marker}]`).join(" ");
+  const given = count === 1 ? "one passage, numbered 1" : `${plural(count, "passage")}, numbered 1 to ${count}`;
+  return (
+    <Notice
+      tone="warning"
+      className={className}
+      title={
+        dropped.length > 0
+          ? `${list(dropped)} taken out: no passage has ${dropped.length === 1 ? "that number" : "those numbers"}`
+          : `${list([...moved.keys()])} pointed at the passage that holds the words`
+      }
+    >
+      The model was given {given}, and cited {list(unsupported)}.
+      {[...moved].map(([from, to]) => (
+        <span key={from}>
+          {" "}
+          The words marked [{from}] are, word for word, in passage [{to}], so that marker now points there.
+        </span>
+      ))}
+      {dropped.length > 0
+        ? ` ${dropped.length === 1 ? "That marker was" : "Those markers were"} taken out, so whatever ${dropped.length === 1 ? "it was" : "they were"} attached to stands without a source.`
+        : ""}
+    </Notice>
+  );
+}
+
 function SourceRow({ source, state, startOpen }: { source: AnswerSource; state: "cited" | "not cited" | null; startOpen: boolean }) {
   const [open, setOpen] = useState(startOpen);
   useEffect(() => setOpen(startOpen), [startOpen]);
@@ -178,8 +218,8 @@ function AnswerPanel({
   const where = placeWords(status?.place ?? null, answer.server || status?.server || null);
   const count = answer.sources.length;
   const settled = answer.phase === "done";
-  const uncited = settled && answer.used.length === 0 && answer.unsupported.length === 0;
-  const invented = answer.unsupported.map((marker) => `[${marker}]`).join(" ");
+  const declined = settled && answer.declined;
+  const uncited = settled && !declined && answer.used.length === 0 && answer.unsupported.length === 0;
   const unfinished = answer.phase === "stopped" || answer.phase === "failed";
   // The heading names the model once it has the passages, and never credits it with an answer it did not write.
   const written = Boolean(answer.model) && (answer.text.length > 0 || answer.phase === "waiting");
@@ -188,11 +228,15 @@ function AnswerPanel({
     answer.phase === "finding"
       ? "Finding passages in your library."
       : answer.phase === "waiting"
-        ? "The model is reading the passages."
+        ? answer.loading
+          ? "The model is being loaded into memory."
+          : "The model is reading the passages."
         : answer.phase === "writing"
           ? "The answer is being written."
           : answer.phase === "done"
-            ? "The answer is finished."
+            ? declined
+              ? "The model said your library does not seem to cover this."
+              : "The answer is finished."
             : answer.phase === "stopped"
               ? "Stopped."
               : "";
@@ -252,12 +296,22 @@ function AnswerPanel({
           </p>
         ) : null}
         {answer.phase === "waiting" ? (
-          <p className="flex items-baseline gap-2.5 text-small text-ink">
+          <p className="flex items-baseline gap-2.5 text-small text-ink" data-testid="answer-waiting">
             <Lamp className="translate-y-px" />
-            <span>
-              The model is reading {plural(count, "passage")}.{" "}
-              <span className="text-ink-muted">On a small machine it can be a minute or more before the first word.</span>
-            </span>
+            {answer.loading ? (
+              <span>
+                The model server is loading <span className="font-mono text-[0.8125rem] [overflow-wrap:anywhere]">{answer.model}</span> into
+                memory before it can read {plural(count, "passage")}: it said the model was not loaded.{" "}
+                <span className="text-ink-muted">
+                  That happens the first time a model is used and after it has sat idle. Outpost waits up to 3 minutes for the first word.
+                </span>
+              </span>
+            ) : (
+              <span>
+                The model is reading {plural(count, "passage")}.{" "}
+                <span className="text-ink-muted">On a small machine it can be a minute or more before the first word.</span>
+              </span>
+            )}
           </p>
         ) : null}
 
@@ -271,6 +325,18 @@ function AnswerPanel({
               {referenceResults > 0
                 ? ` The ${plural(referenceResults, "reference article")} in the results below ${referenceResults === 1 ? "was" : "were"} not read: answers are written from documents, notes and book chapters only.`
                 : " Reference collections such as Wikipedia are not read for answers."}
+            </p>
+          </div>
+        ) : null}
+
+        {declined ? (
+          <div className="max-w-[60ch]" data-testid="answer-declined">
+            <p className="font-medium text-ink">Your library does not seem to cover this.</p>
+            <p className="mt-1 text-small text-ink-muted">
+              The model read {count === 1 ? "the passage" : `the ${plural(count, "passage")}`} below and said{" "}
+              {count === 1 ? "it does" : "they do"} not hold the answer, so nothing here is cited. A small model sometimes says this when a
+              passage does hold it: if you expected one to, read {count === 1 ? "it" : "them"}.
+              {answer.text ? " What the model wrote follows, without markers." : ""}
             </p>
           </div>
         ) : null}
@@ -297,16 +363,13 @@ function AnswerPanel({
           </Notice>
         ) : null}
 
-        {settled && answer.unsupported.length > 0 ? (
-          <Notice tone="warning" title={`${invented} ${answer.unsupported.length === 1 ? "refers" : "refer"} to no source`}>
-            The model was given {count === 1 ? "one passage, numbered 1" : `${plural(count, "passage")}, numbered 1 to ${count}`}, and cited{" "}
-            {count === 1
-              ? "a different number"
-              : answer.unsupported.length === 1
-                ? "a number that is not among them"
-                : "numbers that are not among them"}
-            . Whatever {answer.unsupported.length === 1 ? "that marker is" : "those markers are"} attached to is unsupported.
-          </Notice>
+        {settled && !declined && answer.unsupported.length > 0 ? (
+          <StrayMarkers unsupported={answer.unsupported} repointed={answer.repointed} count={count} />
+        ) : null}
+        {settled && !declined && answer.citesAll ? (
+          <p className="text-small text-ink-muted">
+            The answer cites every passage it was given, so its markers do not show which passage each statement rests on.
+          </p>
         ) : null}
         {uncited ? (
           <Notice tone="warning" title="This answer cites no source">
@@ -322,22 +385,36 @@ function AnswerPanel({
       {count > 0 ? (
         <div className="border-t border-border px-4 pt-3 pb-4">
           <h3 className="text-small font-semibold text-ink">
-            {count === 1 ? "The passage the model was given" : `The ${plural(count, "passage")} the model was given`}
+            {declined
+              ? count === 1
+                ? "The passage the model read"
+                : `The ${plural(count, "passage")} the model read`
+              : count === 1
+                ? "The passage the model was given"
+                : `The ${plural(count, "passage")} the model was given`}
           </h3>
           <p className="mt-0.5 text-small text-ink-muted">
             Quoted from your library, exactly as stored.{" "}
             {answer.searchedFor && answer.searchedFor !== answer.question ? `Found by searching for “${answer.searchedFor}”. ` : ""}
-            {unfinished || settled || answer.text
-              ? `Check the answer against ${count === 1 ? "it" : "them"}.`
-              : `The answer may only draw on ${count === 1 ? "this" : "these"}.`}
+            {declined
+              ? ""
+              : unfinished || settled || answer.text
+                ? `Check the answer against ${count === 1 ? "it" : "them"}.`
+                : `The answer may only draw on ${count === 1 ? "this" : "these"}.`}
             {answer.omitted > 0 ? ` ${plural(answer.omitted, "more passage")} matched but did not fit the context budget.` : ""}
           </p>
+          {answer.leftOut > 0 ? (
+            <p className="mt-1 text-small text-ink" data-testid="answer-left-out">
+              {plural(answer.leftOut, "passage")} left out: the model server said all {count + answer.leftOut} were more than the model can
+              read at once, so Outpost asked again with the {count === 1 ? "best one" : `best ${count}`}.
+            </p>
+          ) : null}
           <ol className="mt-2 divide-y divide-border border-y border-border">
             {answer.sources.map((source) => (
               <SourceRow
                 key={source.marker}
                 source={source}
-                state={settled ? (answer.used.includes(source.marker) ? "cited" : "not cited") : null}
+                state={settled && !declined ? (answer.used.includes(source.marker) ? "cited" : "not cited") : null}
                 startOpen={source.safetyCritical}
               />
             ))}

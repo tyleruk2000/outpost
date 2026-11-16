@@ -74,8 +74,22 @@ export interface ChatMessage {
   sources: AnswerSource[];
   /** What the library was searched for, when it was. */
   searchedFor: string | null;
-  /** Citation markers in the reply that match no passage the model was given. */
+  /**
+   * A reply from the library whose first sentence says the passages do not hold the
+   * answer. Its markers are taken out of `blocks`: it rests on no passage.
+   */
+  declined: boolean;
+  /** The markers left in the reply as shown (`blocks`), each a passage the model was given. */
+  used: number[];
+  /**
+   * Numbers the reply cited that no passage carried. None of them is left in `blocks` as
+   * written: each is taken out, or pointed at a passage as `repointed` says.
+   */
   unsupported: number[];
+  /** Which of those were pointed at the one passage whose own whole sentences the marker stood on. */
+  repointed: Array<{ from: number; to: number }>;
+  /** Three or more passages were given and the reply cites every one of them. */
+  citesAll: boolean;
   /** Earlier messages of the conversation that were not sent to the model for this reply. */
   omitted: number;
   tookMs: number | null;
@@ -162,8 +176,12 @@ export interface ModelSetupTry extends AnswerTestResult {
   saved: boolean;
 }
 
-/** What a reply is doing at this moment. */
-export type ChatPhase = "finding" | "waiting" | "writing";
+/**
+ * What a reply is doing at this moment. `loading` only when the model server has said
+ * the model is not in memory (Ollama can be asked; other servers cannot, and are never
+ * reported as loading).
+ */
+export type ChatPhase = "finding" | "loading" | "waiting" | "writing";
 
 /**
  * What `GET /api/chat/conversations/:id/stream` sends, as server-sent events named by
