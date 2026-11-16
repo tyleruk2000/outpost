@@ -87,17 +87,31 @@ export class LocalArchive {
 
   /** The stored bytes of a tile (still compressed as the archive has them), or undefined. */
   async getTile(z: number, x: number, y: number): Promise<Buffer | undefined> {
+    return this.during(z, async () => {
+      const found = await this.locate(zxyToTileId(z, x, y));
+      return found ? this.readAt(this.header.tileDataOffset + found.offset, found.length) : undefined;
+    });
+  }
+
+  /** How many bytes a tile takes as stored, read from the directories alone, or undefined when the archive has no such tile. */
+  async tileLength(z: number, x: number, y: number): Promise<number | undefined> {
+    return this.during(z, async () => (await this.locate(zxyToTileId(z, x, y)))?.length);
+  }
+
+  /** Runs one read, keeping the file open until it has finished even if the archive is closed meanwhile. */
+  private async during<T>(z: number, read: () => Promise<T | undefined>): Promise<T | undefined> {
     if (this.closed || z < this.header.minZoom || z > this.header.maxZoom) return undefined;
     this.active += 1;
     try {
-      return await this.lookUp(zxyToTileId(z, x, y));
+      return await read();
     } finally {
       this.active -= 1;
       if (this.closed && this.active === 0) await this.handle.close();
     }
   }
 
-  private async lookUp(tileId: number): Promise<Buffer | undefined> {
+  /** Where a tile's bytes are within the tile data, from the directories. */
+  private async locate(tileId: number): Promise<{ offset: number; length: number } | undefined> {
     this.root ??= await this.directory(this.header.rootDirectoryOffset, this.header.rootDirectoryLength);
     let directory = this.root;
     for (let depth = 0; depth < MAX_DEPTH; depth += 1) {
@@ -112,7 +126,7 @@ export class LocalArchive {
       }
       if (tileId >= directory.tileIds[index]! + run) return undefined;
       if (length === 0 || length > MAX_TILE_BYTES || offset + length > this.header.tileDataLength) return undefined;
-      return this.readAt(this.header.tileDataOffset + offset, length);
+      return { offset, length };
     }
     return undefined;
   }

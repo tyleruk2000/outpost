@@ -10,6 +10,7 @@ export * from "./common.ts";
 export * from "./documents.ts";
 export * from "./downloads.ts";
 export * from "./imports.ts";
+export * from "./kept.ts";
 export * from "./kiwix.ts";
 export * from "./links.ts";
 export * from "./manage.ts";

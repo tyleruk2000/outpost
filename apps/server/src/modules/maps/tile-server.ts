@@ -35,6 +35,8 @@ interface Candidate {
 
 export interface TileServer {
   getTile(tileType: MapTileType, z: number, x: number, y: number): Promise<ServedTile | undefined>;
+  /** The stored size of the tile `getTile` would answer with, without reading it; undefined when there is none. */
+  tileLength(tileType: MapTileType, z: number, x: number, y: number): Promise<number | undefined>;
   regions(): InstalledRegion[];
   sources(): MapSources;
   /** Lets go of an archive's file, e.g. before it is deleted or once it has moved. */
@@ -152,43 +154,61 @@ export function createTileServer(ctx: AppContext): TileServer {
     if (event.type === "maps.changed" || event.type === "storage.changed" || event.type === "collections.changed") candidates.clear();
   });
 
+  /** Asks the installed archives for a tile, most detailed first, and returns the first answer. */
+  async function find<T>(
+    tileType: MapTileType,
+    z: number,
+    x: number,
+    y: number,
+    read: (archive: LocalArchive) => Promise<T | undefined>,
+  ): Promise<T | undefined> {
+    const size = 2 ** z;
+    if (
+      !Number.isInteger(z) ||
+      !Number.isInteger(x) ||
+      !Number.isInteger(y) ||
+      z < 0 ||
+      z > 24 ||
+      x < 0 ||
+      y < 0 ||
+      x >= size ||
+      y >= size
+    ) {
+      return undefined;
+    }
+    const tile = tileToBbox(z, x, y);
+    for (const candidate of listCandidates(tileType)) {
+      if (z < candidate.minZoom || z > candidate.maxZoom || !overlaps(tile, candidate.bounds)) continue;
+      const archive = await archiveFor(candidate.row);
+      if (!archive) continue;
+      try {
+        const found = await read(archive);
+        if (found !== undefined) return found;
+      } catch (error) {
+        // A drive pulled out mid-read, or a damaged file: drop the handle and try the next region.
+        ctx.log.warn({ err: error, collection: candidate.row.id }, "map tile could not be read");
+        void release(candidate.row.id);
+      }
+    }
+    return undefined;
+  }
+
   return {
     async getTile(tileType, z, x, y) {
-      const size = 2 ** z;
-      if (
-        !Number.isInteger(z) ||
-        !Number.isInteger(x) ||
-        !Number.isInteger(y) ||
-        z < 0 ||
-        z > 24 ||
-        x < 0 ||
-        y < 0 ||
-        x >= size ||
-        y >= size
-      ) {
-        return undefined;
-      }
-      const tile = tileToBbox(z, x, y);
-      for (const candidate of listCandidates(tileType)) {
-        if (z < candidate.minZoom || z > candidate.maxZoom || !overlaps(tile, candidate.bounds)) continue;
-        const archive = await archiveFor(candidate.row);
-        if (!archive) continue;
-        try {
-          const data = await archive.getTile(z, x, y);
-          if (data) {
-            return {
+      return find(tileType, z, x, y, async (archive) => {
+        const data = await archive.getTile(z, x, y);
+        return data
+          ? {
               data,
               contentType: contentTypeOf(archive.header.tileType),
               contentEncoding: contentEncodingOf(archive.header.tileCompression),
-            };
-          }
-        } catch (error) {
-          // A drive pulled out mid-read, or a damaged file: drop the handle and try the next region.
-          ctx.log.warn({ err: error, collection: candidate.row.id }, "map tile could not be read");
-          void release(candidate.row.id);
-        }
-      }
-      return undefined;
+            }
+          : undefined;
+      });
+    },
+
+    async tileLength(tileType, z, x, y) {
+      return find(tileType, z, x, y, (archive) => archive.tileLength(z, x, y));
     },
 
     regions() {
