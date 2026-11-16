@@ -62,7 +62,7 @@ function forecast(fetchedAt: number, hoursAhead: number): KeptCopy {
   };
 }
 
-function show(response: Partial<WeatherResponse> | "fails" | "never", view = "") {
+function show(response: Partial<WeatherResponse> | "fails" | "never", view = "", markers: unknown[] = []) {
   const posted: Array<{ path: string; body: unknown }> = [];
   vi.stubGlobal(
     "fetch",
@@ -81,7 +81,7 @@ function show(response: Partial<WeatherResponse> | "fails" | "never", view = "")
         return json({ places: [], kept: [], sources, updateOnOpen: false, now: NOW, ...response });
       }
       if (pathname === "/api/weather/readings") return json({ readings: [] });
-      if (pathname === "/api/maps/markers") return json({ markers: [] });
+      if (pathname === "/api/maps/markers") return json({ markers });
       return json({});
     }),
   );
@@ -152,6 +152,19 @@ describe("the Weather and hazards screen", () => {
 });
 
 describe("the device's position", () => {
+  it("says in one line how to mark a home when no saved place has the home icon, with a link to Maps", async () => {
+    show({ places: [{ ...home, isHome: false }] }, "?view=places");
+    expect(await screen.findByText(/No saved place has the home icon/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open Maps" })).toHaveAttribute("href", "/maps");
+  });
+
+  it("says when the home is a saved place that is not in the list", async () => {
+    const marker = { id: "m9", name: "Cottage", icon: "home", createdAt: 1, lat: 52, lon: -1 };
+    show({ places: [{ ...home, isHome: false }] }, "?view=places", [marker]);
+    expect(await screen.findByText(/Cottage has the home icon but is not in this list/)).toBeInTheDocument();
+    expect(screen.queryByText(/No saved place has the home icon/)).not.toBeInTheDocument();
+  });
+
   it("is not offered on a page that is not secure, and says how to get it", () => {
     vi.stubGlobal("isSecureContext", false);
     const answer = positionAvailable();

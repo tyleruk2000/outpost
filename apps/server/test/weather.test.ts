@@ -168,6 +168,28 @@ describe("weather and hazards", () => {
     expect(body.stale).toBe(false);
   });
 
+  it("takes home to be the saved place with the home icon, the first saved if several, and says so when there is none or it is not listed", async () => {
+    const none = (await app.api("GET", "/api/weather/home-warnings")).body;
+    expect(none).toMatchObject({ place: null, homeMarker: null });
+    expect(none.note).toMatch(/^No saved place has the home icon/);
+
+    const first = await app.api("POST", "/api/maps/markers", { name: "Cottage", lat: 52.1, lon: -0.4, icon: "home" });
+    const firstId = first.body.marker?.id ?? first.body.id;
+    const unlisted = (await app.api("GET", "/api/weather/home-warnings")).body;
+    expect(unlisted).toMatchObject({ place: null, homeMarker: { id: firstId, name: "Cottage" } });
+    expect(unlisted.note).toMatch(/^Cottage is home, but it is not in the weather list/);
+
+    // A second place with the home icon, saved later and starred (which puts it first on the map's list), is not home.
+    const second = await homePlace("Flat");
+    const secondMarker = second.markerId as string;
+    await app.api("PATCH", `/api/maps/markers/${secondMarker}`, { isFavorite: true });
+    expect((await app.api("GET", "/api/weather")).body.places.map((place: { isHome: boolean }) => place.isHome)).toEqual([false]);
+    const added = await app.api("POST", "/api/weather/places", { markerId: firstId });
+    expect(added.body.place.isHome).toBe(true);
+    expect((await app.api("GET", "/api/weather/home-warnings")).body.place).toMatchObject({ id: added.body.place.id, name: "Cottage" });
+    expect(asked).toEqual([]);
+  });
+
   it("keeps the 'update when I open' choice, off until ticked", async () => {
     expect((await app.api("PUT", "/api/weather/options", { updateOnOpen: true })).status).toBe(200);
     expect((await app.api("GET", "/api/weather")).body.updateOnOpen).toBe(true);

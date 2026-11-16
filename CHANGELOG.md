@@ -879,6 +879,10 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   home place when they were last fetched.
 - The fetched copies are listed and cleared under Manage and clean up; places, copies
   and readings go with "erase everything". Migration `0021_weather`.
+- One meaning of "home" everywhere: the saved place with the home icon, the first saved
+  if several (it no longer depends on which was edited or starred last). With none,
+  Weather and hazards says in one line how to mark one, with a link to Maps, and says
+  when the home is not in its list of places.
 #### Emergency plans (Preparedness)
 
 - **Preparedness → Emergency plans**: a household's own plans for a power cut,

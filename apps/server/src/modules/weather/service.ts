@@ -11,6 +11,7 @@ import {
   type FloodWarning,
   freshness,
   type HomeWarningsResponse,
+  homePlaceOf,
   type KeptCopy,
   type MetOfficeRegionId,
   type PressureReading,
@@ -104,17 +105,18 @@ export function createWeatherService(ctx: AppContext, fetcher: SourceFetcher): W
   const changed = () => ctx.events.publish({ type: "weather.changed" });
   let updating = false;
 
-  const homeMarkers = (): Set<string> => {
+  /** The saved place with the home icon, the first saved if several (`homePlaceOf`), or null. */
+  const homeMarker = (): { id: string; name: string } | null => {
     try {
-      return new Set(
-        ctx.services.maps.annotations
-          .listMarkers()
-          .filter((marker) => marker.icon === "home")
-          .map((marker) => marker.id),
-      );
+      const home = homePlaceOf(ctx.services.maps.annotations.listMarkers());
+      return home ? { id: home.id, name: home.name } : null;
     } catch {
-      return new Set();
+      return null;
     }
+  };
+  const homeMarkers = (): Set<string> => {
+    const home = homeMarker();
+    return new Set(home ? [home.id] : []);
   };
 
   const toPlace = (row: typeof weatherPlaces.$inferSelect, homes: Set<string>): WeatherPlace => ({
@@ -396,13 +398,17 @@ export function createWeatherService(ctx: AppContext, fetcher: SourceFetcher): W
         (warningsCopy !== null && freshness(warningsCopy, now).state !== "fresh") ||
         (floodCopy !== null && freshness(floodCopy, now).state !== "fresh");
       const live = `${WEATHER_SOURCES["met-office-warnings"].liveUrl} and ${WEATHER_SOURCES["ea-flood"].liveUrl}`;
-      const note = !home
-        ? "No place in the weather list is a saved place with the home icon."
-        : !warningsCopy
-          ? `Warnings have not been fetched. The live warnings are at ${live}.`
-          : `${freshness(warningsCopy, now).sentence} Outpost's copy may be out of date; the live warnings are at ${live}.${region ? "" : " No Met Office region is chosen for the home place, so no weather warning is matched to it."}`;
+      const marked = homeMarker();
+      const note = !marked
+        ? "No saved place has the home icon, so Outpost does not know which place is home."
+        : !home
+          ? `${marked.name || "The saved place with the home icon"} is home, but it is not in the weather list, so no warnings are matched to it.`
+          : !warningsCopy
+            ? `Warnings have not been fetched. The live warnings are at ${live}.`
+            : `${freshness(warningsCopy, now).sentence} Outpost's copy may be out of date; the live warnings are at ${live}.${region ? "" : " No Met Office region is chosen for the home place, so no weather warning is matched to it."}`;
       return {
         place: home ? { id: home.id, name: home.name, region } : null,
+        homeMarker: marked,
         fetchedAt: warningsCopy?.fetchedAt ?? null,
         weather,
         flood,

@@ -4,7 +4,7 @@
  * offers it. It offers it only on a secure page; the owner's plain http address is not
  * one, and the screen says so rather than offering a button that cannot work.
  */
-import { MET_OFFICE_REGIONS, type MetOfficeRegionId, type WeatherPlace } from "@outpost/shared";
+import { homePlaceOf, MET_OFFICE_REGIONS, type MetOfficeRegionId, type WeatherPlace } from "@outpost/shared";
 import { House, LocateFixed, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog, Dialog, DialogBody, DialogContent } from "@/components/ui/dialog";
 import { Badge, Select, Spinner } from "@/components/ui/misc";
 import { useMarkers } from "@/features/maps/data";
+import { NoHomePlace } from "@/features/maps/home-place";
 import { errorMessage } from "@/lib/api";
 import { useAddPlace, useRemovePlace, useUpdatePlace } from "./data";
 
@@ -37,6 +38,8 @@ export function PlacesView({ places }: { places: WeatherPlace[] }) {
   const remove = useRemovePlace();
   const [adding, setAdding] = useState(false);
   const [removing, setRemoving] = useState<WeatherPlace | null>(null);
+  const markers = useMarkers();
+  const home = markers.data ? homePlaceOf(markers.data) : undefined;
   return (
     <div>
       {places.length > 0 ? (
@@ -73,8 +76,14 @@ export function PlacesView({ places }: { places: WeatherPlace[] }) {
       ) : null}
       <p className="mt-3 max-w-[70ch] text-small text-ink-muted">
         The Met Office words its warnings by region and Outpost cannot tell a region from a position, so choose each place's. The home place
-        is the saved place with the home icon on the map.
+        is the saved place with the home icon on the map (the first saved, if several have it).
       </p>
+      {home === null ? <NoHomePlace className="mt-2 max-w-[70ch]" /> : null}
+      {home && !places.some((place) => place.markerId === home.id) ? (
+        <p className="mt-2 max-w-[70ch] text-small text-ink-muted">
+          {home.name || "Your home"} has the home icon but is not in this list, so no warnings are matched to it. Add it below.
+        </p>
+      ) : null}
       <Button className="mt-4" onClick={() => setAdding(true)}>
         <Plus />
         Add a place

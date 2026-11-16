@@ -34,7 +34,13 @@ and why.
 ## Places
 
 Forecasts are for places the person chooses from their saved places on the map. The
-saved place with the **home** icon is the home place. A place in the list is a copy of
+saved place with the **home** icon is the home place; if several have the icon, the one
+saved first is home (editing or starring a place does not change which). This is the
+one meaning of home across Outpost (`homePlaceOf` in `packages/shared/src/home-place.ts`):
+the warnings on Emergency plans use it too, and there is no separate setting. With no
+saved place carrying the icon there is no home place, and the Places view says in one
+line how to mark one, with a link to the Maps screen; with a home that is not in the
+weather list, it says that no warnings are matched to it until it is added. A place in the list is a copy of
 the saved place's name and position, so the cache still makes sense if the saved place
 is moved or removed.
 
