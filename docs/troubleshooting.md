@@ -365,7 +365,19 @@ and cannot read. PDFs larger than 512 MB are stored but their text is not read.
 
 Check that the server is running and that the address is right from where Outpost
 runs. In Docker, `127.0.0.1` is the container itself; see
-[search.md](search.md#choosing-a-provider).
+[search.md](search.md#a-local-embedding-server-local-server).
+
+### Semantic search: "The built-in model has not been fetched yet" or "…is not part of this installation"
+
+The model's files are missing. Running from source, fetch them once with
+`node scripts/fetch-embedding-model.mjs` (it needs a connection, that once). A packaged
+app or image without them was built without that step: build it again after running
+the script, or use a local embedding server. Ordinary search is not affected.
+
+### Semantic search: "…does not match its checksum"
+
+A file of the built-in model is damaged or was replaced. Install Outpost again (or,
+from source, run `node scripts/fetch-embedding-model.mjs --force`).
 
 ## Notes
 

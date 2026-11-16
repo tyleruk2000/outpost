@@ -15,7 +15,8 @@ what exists, what does not, and how to connect a local model yourself.
 - **A safety flag** on that context, set when a source belongs to a field where a
   wrong paraphrase can hurt someone.
 - **Optional semantic search**, so retrieval can work by meaning as well as by words.
-  See [search.md](search.md#semantic-search).
+  A small embedding model is built in, so this needs no server; a local embedding
+  server can be used instead. See [search.md](search.md#semantic-search).
 - **Typed interfaces** for the missing parts, in
   `apps/server/src/modules/retrieval/types.ts`.
 - **A page that shows all of this working**: *How search works*
@@ -175,7 +176,9 @@ that:
 
 - Vectors are stored per passage **and per model id** (`<provider>:<model>`). Vectors
   from different models, even with different dimensions, sit side by side and are
-  never compared with each other.
+  never compared with each other. The built-in model's id carries a fingerprint of its
+  files and settings (`built-in:all-MiniLM-L6-v2-q8-84769597`), so a release of Outpost
+  that ships another model, or changes how text is fed to it, starts a new set.
 - Switching the model in Settings does not delete anything. Searches use the new
   model's vectors as soon as some exist; until then they are keyword searches. Start
   **Build index** for the new model.

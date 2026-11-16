@@ -26,7 +26,8 @@ runs on, and what to know about drive formats and security.
 What travels:
 
 - **Always:** all your notes with their attachments, tags, map markers and tracks,
-  settings, and the search index.
+  settings, and the search index, with its vectors for search by meaning if you built
+  them.
 - **Your choice:** all documents or none; and any installed collections and maps you
   tick.
 - The database on the drive is a copy narrowed to match: it lists only the documents
@@ -188,6 +189,11 @@ the whole workspace as Markdown from Notes, documents from the Library.
   it before starting Outpost.
 - **Nothing is written to the host computer.** Data and settings stay in the drive's
   `data` folder.
+- **Search by meaning.** The built-in model is part of the app on the drive, and the
+  vectors travel in the database, so semantic search works from the drive on every
+  platform the drive starts on, with no connection: the model runs as WebAssembly and
+  gives the same vectors on every kind of computer. Only starting it on an Apple Silicon
+  Mac has been tried.
 - **Embedding servers.** Settings travel with the drive. If semantic search was set to
   a local embedding server, the drive will look for one at the same address on the new
   computer. If none answers, searches return keyword results with a note saying so.

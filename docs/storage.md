@@ -18,7 +18,7 @@ folder you choose. You can have several, on different drives.
 | Note attachments: `attachments/` | Reference collections (ZIM archives): `collections/zim/` |
 | Text extracted from documents: `extracted/` | Other catalogue files: `collections/files/` |
 | Your own catalogue manifests: `catalog/` | Map regions: `collections/maps/`, terrain: `collections/terrain/` |
-| Embedding model files, if you use the in-process provider: `models/` | Downloaded place-name files: `collections/places/` |
+| `models/`: not used any more (the built-in embedding model is part of the app); files put there for earlier builds can be cleared from Leftovers | Downloaded place-name files: `collections/places/` |
 | Cached programs for portable drives: `runtimes/` | Files still arriving: `*.part`, and `documents/.incoming/` |
 | `secret.key`, used to sign links to reference content | The marker file `.outpost-location.json` |
 
@@ -541,7 +541,7 @@ its things are and what clearing them does. Nothing is cleared that you did not 
 | Records whose file has gone | The file is no longer on its location, which is connected. Removes the record and its text in search. There is no file to delete. A catalogue item can be downloaded again from Explore. |
 | Files no record refers to | A file inside `collections/` or `documents/` in a storage location that no collection, document, download or move lays claim to, and that has not changed for ten minutes. Deletes that file. |
 | Uploads that did not finish | Parts of uploads more than a day old in `documents/.incoming/`. Deletes them. |
-| Things that can be fetched or worked out again | Programs fetched for portable drives (fetched again, 50 to 100 MB per kind of computer, when a drive is next written); search model files (fetched again when search by meaning is next used); text kept for documents that are no longer in the library; database copies left by a backup that was cut off. |
+| Things that can be fetched or worked out again | Programs fetched for portable drives (fetched again, 50 to 100 MB per kind of computer, when a drive is next written); search model files left in `models/` by earlier builds (not used any more: the built-in model is part of the app); text kept for documents that are no longer in the library; database copies left by a backup that was cut off. |
 | Data set aside by a restore | The `before-restore-<time>` folders. Deleting one means that restore can no longer be undone by hand. |
 | History | The lists of finished work and finished downloads. A failed download keeps its entry so that it can still be retried. |
 

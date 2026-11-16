@@ -27,8 +27,8 @@ library and shows what each step produced:
 Everything on that page comes from the same code as real search. Two things to know
 when reading it:
 
-- With no embedding model set up, the "meaning" steps use the built-in
-  [demonstration vectors](#demonstration-demonstration), and the page says so. They
+- While search by meaning is off, or its index is not built, the "meaning" steps use
+  [demonstration vectors](#demonstration-vectors), and the page says so. They
   show the mechanics; they are word matching by another route, not understanding.
 - The ranking steps cover everything search covers, including catalogue listings and
   saved places. The context step keeps only passages from your documents and pages,
@@ -236,23 +236,112 @@ portable drive; copy them yourself.
 
 ## Semantic search
 
-Semantic search finds passages about the same thing even when they share no words
-with your query. It needs an **embedding model**: a program that turns text into a
-list of numbers (a vector). Outpost stores one vector per passage and compares them
-with the vector of your query.
+Semantic search ("search by meaning") finds passages about the same thing even when
+they share no words with your query. It needs an **embedding model**: a program that
+turns text into a list of numbers (a vector). Outpost stores one vector per passage and
+compares them with the vector of your query.
 
-Nothing is sent to the internet. Text goes only to the provider you configure.
+A small model is **built in**: it is part of the packaged app, the Docker image and
+portable drives, and there is nothing to install or download. It is **off by default**,
+because building the index takes processor time and disk space.
 
-### Choosing a provider
+Nothing is sent to the internet. Text goes only to the model: the built-in one, on the
+machine Outpost runs on, or a server you configure.
 
-Set these under **Settings → Search by meaning**.
+### Turning it on
 
-#### A local embedding server ("Local server", recommended)
+Open **Settings → Search by meaning**. The section says what the index will cost for
+your library before you touch anything. Switch it on; **Built in** is already chosen.
+Then choose **Build index**. That is all.
 
-Any server that speaks the OpenAI embeddings format works: Ollama, the llama.cpp
-server, LocalAI and others. Outpost sends
-`POST <server address>/embeddings` with `{"model": "...", "input": ["..."]}`. No API
-key is sent, so the server must accept requests without one.
+### What it costs
+
+Measured with the built-in model as shipped, on an Apple M2 Max laptop (four processor
+threads):
+
+| What | Measured |
+| --- | --- |
+| Building the index | 254 seconds for a library of 6,614 passages averaging 745 characters (the bundled handbook and radio guides): **38 seconds per thousand passages**. Passages of the full default length (about 1,200 characters) took 42 seconds per thousand. Settings quotes 45. |
+| The same with one thread | About 160 seconds per thousand full-length passages. Two threads: 82. Eight threads were no faster than four. |
+| A search while that build was running | 40 to 140 ms, question embedded and 6,614 vectors compared. The question goes ahead of the passages being indexed. |
+| A search with the index built | 12 to 20 ms. |
+| Starting the model | About 0.3 seconds, the first time it is needed and again after five idle minutes. |
+| Disk | **2.16 kB per passage** inside the database (14.3 MB for those 6,614), so about 2.2 MB per thousand. The numbers are 1.5 kB of that; the rest is how the database stores them. |
+| Memory | About 550 MB while the model is loaded, on top of the server's own use. It is given back after five minutes without a search or a build. |
+| Size of the model and its runtime | 39 MB in the packaged app: the model 23.7 MB, the WebAssembly runtime 14.8 MB, licence texts 0.4 MB. |
+
+A small computer will be several times slower. Nobody has measured a Raspberry Pi; the
+build's own progress line shows the time left at the speed it is really going. A build
+can be made on a faster computer and [moved](#moving-vectors-between-installations).
+
+### Choosing where the model runs
+
+#### Built in ("Built in")
+
+The model is [all-MiniLM-L6-v2](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2)
+from the Sentence Transformers project, in the 8-bit ONNX form published for
+Transformers.js ([Xenova/all-MiniLM-L6-v2](https://huggingface.co/Xenova/all-MiniLM-L6-v2)),
+Apache-2.0. Each passage becomes 384 numbers.
+
+How it runs:
+
+- **No native code.** The model is run by [ONNX Runtime](https://github.com/microsoft/onnxruntime)
+  compiled to WebAssembly (the `onnxruntime-web` package), in a worker thread of its
+  own. The same files run wherever Node does: Apple Silicon and Intel Macs, 64-bit PCs,
+  ARM boards, glibc or musl Linux, Windows. This is slower than the native runtime
+  (about four times, measured: the native one took 11.7 seconds per thousand passages on
+  the same laptop), and was chosen because it needs no build per platform.
+- **Nothing is downloaded when Outpost runs.** The model's files are part of the
+  installation. They were fetched once, when the app was built, at a pinned revision,
+  and each was checked against a SHA-256 checksum; the model checks them again every
+  time it loads, and refuses files that do not match.
+- **The server stays responsive.** The model uses half the processor threads, four at
+  most. A search's question is embedded ahead of passages waiting to be indexed.
+- **A vector does not depend on the machine.** The same text gives the same numbers on
+  every platform and with any number of threads, so vectors built on one computer can be
+  loaded on another, and a portable drive's index works wherever the drive is plugged in.
+
+What to know about the model:
+
+- **It was trained on English.** Text in other languages is matched poorly. A small
+  multilingual model (multilingual-e5-small was tried) is five times the size (135 MB),
+  twice as slow and needs twice the memory, so it is not the default. Use a local server
+  for a multilingual model.
+- **It reads the first 256 word pieces of a passage**, about a thousand characters of
+  English. That is the limit the model's makers set. Outpost's passages run to 1,200
+  characters, so the last part of a long passage is left out of its vector, and is found
+  by its words only (or by the next passage, which repeats the last 150 characters).
+  Reading 512 word pieces instead was tried: text near the end of a passage was found
+  more often (in the top five 70% of the time rather than 43%), text in the first
+  three-quarters slightly less often (80% rather than 84%), and building took 1.7 times
+  as long.
+- **It is small.** It knows that "paw" and "pads" belong together; it will not follow
+  an argument. Larger models rank better. Hybrid search covers for it with exact words.
+- The model card lists what it was trained on: about a billion sentence pairs from
+  public collections, some of which have terms of their own (MS MARCO and Reddit
+  comments among them). Its publishers release the weights under Apache-2.0.
+
+Where the files are, and their licences: `server/embed/` in the packaged app, with
+`NOTICE.txt` and the licence texts beside them. Running from source, fetch them once:
+
+```bash
+node scripts/fetch-embedding-model.mjs
+```
+
+That downloads three files (23.7 MB) from `huggingface.co` and two licence texts from
+ONNX Runtime's repository on GitHub, checks each against its checksum, and puts them in
+`apps/server/models/`, which is not committed. `scripts/build-app.mjs` copies them into
+the packaged app and warns if they are missing; the Docker build runs the fetch itself.
+Without them, Settings says "The built-in model has not been fetched yet" and ordinary
+search is unaffected.
+
+#### A local embedding server ("Local server")
+
+For a larger model, a multilingual one, or one you already run. Any server that speaks
+the OpenAI embeddings format works: Ollama, the llama.cpp server, LocalAI and others.
+Outpost sends `POST <server address>/embeddings` with
+`{"model": "...", "input": ["..."]}`. No API key is sent, so the server must accept
+requests without one.
 
 A minimal example with Ollama on the same machine. The model name is an example; use
 any embedding model your server offers. (The test suite exercises this provider
@@ -276,41 +365,19 @@ Docker Desktop use `http://host.docker.internal:11434/v1`. On Linux, add
 `extra_hosts: ["host.docker.internal:host-gateway"]` to the `outpost` service and make
 the embedding server listen on an address the container can reach.
 
-#### Demonstration ("Demonstration")
+#### Demonstration vectors
 
-Built in, with nothing to install. Each passage's vector is made from counts of its
-words (after dropping common words and trimming endings), placed in 256 positions by
-hashing. Two passages that share words point in similar directions.
+Each passage's vector is made from counts of its words (after dropping common words
+and trimming endings), placed in 256 positions by hashing. Two passages that share
+words point in similar directions.
 
 This is **not a language model**. It cannot know that "purify" and "boil" are related
-unless the passages share words, so its results add little to keyword search. It is
-there so that every step of vector search (cutting into passages, making vectors,
-comparing, fusing) can be seen working on your own library before you set up a real
-model. The **How search works** screen uses it automatically when no other provider
-is configured.
-
-#### Inside Outpost
-
-Outpost can run a model in its own process through the `@huggingface/transformers`
-package. This has real limits:
-
-- The package is optional and **not installed**: it is not in the Docker image, the
-  packaged app or portable drives. It can only be used when running from source, after
-  you add the package to `apps/server` yourself. Its native runtime has no builds for
-  musl Linux or Intel Macs.
-- The calls Outpost makes to the library were tried once by hand with a real model
-  (all-MiniLM-L6-v2). The test suite does not repeat that: it checks only that a
-  missing package or missing model is reported clearly.
-- Model files are read only from `<data directory>/models/`. Outpost tells the library
-  never to download anything, and this version has no model downloader. Copy the
-  model's files there yourself, keeping the folder layout of the model's repository,
-  so that a model called `Xenova/all-MiniLM-L6-v2` is at
-  `<data directory>/models/Xenova/all-MiniLM-L6-v2/`. Outpost asks for the 8-bit
-  quantised ONNX variant of the model.
-- The **Model** setting is that folder name.
-
-If the package is missing, the status reads: "Running a model inside Outpost needs the
-optional @huggingface/transformers package, which is not part of this installation."
+unless the passages share words, so its results add little to keyword search. The
+**How search works** screen uses these vectors when search by meaning is off or its
+index is not built, so that every step (cutting into passages, making vectors,
+comparing, fusing) can be seen working on your own library. As a setting
+(`search.semantic.provider` set to `demo`) it still works, and Settings shows it only to
+someone who had already chosen it.
 
 ### Building the index
 
@@ -319,10 +386,14 @@ This starts a background job that sends every passage without a vector to the mo
 in batches of 16 (`search.semantic.batchSize`).
 
 - Each passage is embedded together with its title and heading.
-- The job only does what is missing. You can pause it, cancel it or restart the server,
-  and **Continue building** carries on.
+- The job only does what is missing. **Pause** and **Stop** are beside the progress
+  line; after either, or after a restart of the server, **Continue building** carries
+  on from where it was. What is already built is used by searches in the meantime.
 - After the first build, new and changed passages are embedded automatically a few
-  seconds after they are indexed.
+  seconds after they are indexed. That never starts a first build, and never restarts
+  one you paused or stopped: only you do that.
+- A build that fails says why in the same place, keeps what it had built, and offers
+  **Try again**.
 - Until at least one vector exists, searches remain keyword searches, with the note
   "Semantic search is not set up, so this is a keyword search."
 
@@ -346,6 +417,10 @@ curl -o vectors.jsonl.gz "http://localhost:8080/api/semantic/export"
 
 `?model=<model id>` exports a model other than the current one. A model id is the
 provider and model joined by a colon, for example `openai-compatible:nomic-embed-text`.
+The built-in model's id ends in a fingerprint of its exact files and settings, for
+example `built-in:all-MiniLM-L6-v2-q8-84769597`, so a later version of Outpost that
+ships a different model, or reads passages differently, gets an id of its own and never
+mixes its vectors with these.
 
 On the small device:
 
@@ -403,8 +478,8 @@ because they have no vectors.
   and needs no extra software, and is comfortable to roughly 100,000 passages. Beyond
   that, searches slow down in proportion. There is no approximate index in this
   version.
-- Vectors live in the database. A 384-dimension model needs about 1.5 kB per passage,
-  so 100,000 passages add about 150 MB.
+- Vectors live in the database. A 384-dimension model (the built-in one) needs about
+  2.2 kB per passage as measured, so 100,000 passages add about 220 MB.
 - Reference articles are not embedded and are found by keyword only.
 - Semantic results show the start of the matching passage rather than highlighted
   words, because there are no matching words to highlight.

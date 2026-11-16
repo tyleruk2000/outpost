@@ -233,7 +233,10 @@ Linux on x86-64, not an Intel Mac, not Windows, not a Raspberry Pi, not a NAS.
   no 32-bit image.
 - Memory: the Compose file limits the two containers to 1 GB and 512 MB by default
   (`OUTPOST_MEMORY_LIMIT`, `KIWIX_MEMORY_LIMIT`), which fits a 4 GB board for keyword
-  search, reading, notes and maps. Choose 8 GB if you plan to run an embedding server
+  search, reading, notes and maps. The built-in model for semantic search takes about
+  550 MB while it is loaded (measured on a Mac, not on a Pi), which does not fit in the
+  default 1 GB beside everything else: raise `OUTPOST_MEMORY_LIMIT` to `2g` before
+  switching it on. Choose 8 GB if you plan to run an embedding server
   on the same board for semantic search, or to index very large PDFs (a PDF is held in
   memory while its text is read).
 - Leave **Documents processed at once** at 1 (the default) and keep downloads at 1 or 2
@@ -273,6 +276,7 @@ git clone https://github.com/tyleruk2000/outpost.git
 cd outpost
 pnpm install
 node scripts/fetch-map-assets.mjs   # map fonts and icons; needs a connection once
+node scripts/fetch-embedding-model.mjs  # the model for search by meaning (24 MB); also once
 pnpm build                          # builds the web app into apps/web/dist
 pnpm start
 ```
@@ -296,7 +300,8 @@ Things to know:
   `/media/<user>`, `/run/media/<user>` and `/mnt` on Linux. On Windows only the library
   folder is used.
 - If you skip `fetch-map-assets.mjs`, everything works except that maps draw without
-  labels and icons.
+  labels and icons. If you skip `fetch-embedding-model.mjs`, everything works except
+  the built-in option of search by meaning, which says that its model is missing.
 - For LAN access, set `OUTPOST_HOST=0.0.0.0` together with `OUTPOST_LAN_ACCESS=true`,
   and read [what that means](#letting-other-devices-use-it-lan-access) first.
 
@@ -308,6 +313,7 @@ the Docker image and portable drives contain.
 ```bash
 pnpm install
 node scripts/fetch-map-assets.mjs
+node scripts/fetch-embedding-model.mjs
 node scripts/build-app.mjs            # writes dist/app
 ```
 
