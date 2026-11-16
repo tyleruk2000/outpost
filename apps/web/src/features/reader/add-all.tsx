@@ -284,7 +284,7 @@ export function AddAllStatus({
               {job.state === "queued" ? "Waiting to start" : job.state === "paused" ? "Paused" : (message ?? "Working")}
             </p>
           </div>
-          <Button size="sm" onClick={() => addAll.stop.mutate()} loading={addAll.stop.isPending}>
+          <Button size="sm" className="max-md:h-11" onClick={() => addAll.stop.mutate()} loading={addAll.stop.isPending}>
             {addAll.stop.isPending ? null : <Square />} Stop
           </Button>
         </div>

@@ -116,7 +116,7 @@ function KeepFile({
   const documentId = save.data?.document.id ?? file.documentId;
   if (documentId) {
     return (
-      <Button asChild size="sm" variant="ghost">
+      <Button asChild size="sm" variant="ghost" className="max-md:h-11">
         <Link to={`/library/documents/${documentId}`} aria-label={`In your library: ${named}`}>
           <Check /> In your library
         </Link>
@@ -125,7 +125,7 @@ function KeepFile({
   }
   if (file.adding === "waiting" && !save.isPending) {
     return (
-      <p className="flex h-8 items-center gap-2 px-2.5 text-small text-ink-muted max-md:h-10">
+      <p className="flex h-8 items-center gap-2 px-2.5 text-small text-ink-muted max-md:h-11">
         <Hourglass aria-hidden className="size-4 shrink-0" />
         <span>
           Waiting its turn<span className="sr-only">: {named}</span>
@@ -142,6 +142,7 @@ function KeepFile({
         size="sm"
         variant="ghost"
         loading={adding}
+        className="max-md:h-11"
         onClick={() => save.mutate()}
         aria-label={`${adding ? "Adding to library" : problem ? "Try again" : "Add to library"}: ${named}`}
       >

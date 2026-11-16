@@ -31,6 +31,7 @@ const httpsPort = Number(process.env.OUTPOST_E2E_HTTPS_PORT ?? filesPort + 2);
 process.env.OUTPOST_E2E_HTTPS_PORT = String(httpsPort);
 // The stand-in for kiwix-serve, holding one archive that is a list of documents (apps/server/test/nautilus-archive.ts).
 const kiwixPort = Number(process.env.OUTPOST_E2E_KIWIX_PORT ?? filesPort + 5);
+process.env.OUTPOST_E2E_KIWIX_URL = `http://127.0.0.1:${kiwixPort}`;
 
 const work = fs.mkdtempSync(path.join(os.tmpdir(), "outpost-e2e-"));
 process.env.OUTPOST_E2E_WORK = work;
