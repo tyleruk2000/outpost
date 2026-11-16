@@ -28,6 +28,7 @@ export function FolderPicker({
   startAt,
   floor,
   preferFolder,
+  pickOnly,
 }: {
   label: string;
   onChange: (picked: PickedFolder) => void;
@@ -41,6 +42,8 @@ export function FolderPicker({
    * there, and offered as a new folder if it is not, so nothing has to be typed.
    */
   preferFolder?: string;
+  /** The folder is only read from: no new folder is offered, and whether it can be written to is not the question. */
+  pickOnly?: boolean;
 }) {
   const [path, setPath] = useState<string | undefined>(startAt);
   const [newFolder, setNewFolder] = useState<string | null>(null);
@@ -103,7 +106,7 @@ export function FolderPicker({
           <span className="min-w-0 flex-1 truncate font-mono text-[0.8125rem] text-ink" title={listing?.path ?? undefined}>
             {listing?.path ? tailPath(listing.path) : "Storage roots"}
           </span>
-          {!atRoots && listing?.writable ? (
+          {!atRoots && listing?.writable && !pickOnly ? (
             <Button
               variant="ghost"
               size="sm"
@@ -149,7 +152,9 @@ export function FolderPicker({
                 <li className="px-3 py-4 text-small text-ink-muted">
                   {atRoots
                     ? "No storage roots are reachable on this server."
-                    : "No folders inside this one. You can use it as it is, or make a new folder."}
+                    : pickOnly
+                      ? "No folders inside this one."
+                      : "No folders inside this one. You can use it as it is, or make a new folder."}
                 </li>
               ) : null}
               {listing!.entries.map((entry) => (
@@ -176,14 +181,14 @@ export function FolderPicker({
           )}
         </ul>
       </div>
-      {target ? (
+      {pickOnly ? null : target ? (
         <p className="mt-1.5 text-small text-ink-muted">
           Outpost will use <span className="font-mono text-[0.8125rem] break-all text-ink">{target}</span>
         </p>
       ) : (
         <p className="mt-1.5 text-small text-ink-muted">Open a folder to choose it.</p>
       )}
-      {listing?.path && !listing.writable ? (
+      {listing?.path && !listing.writable && !pickOnly ? (
         <p className="mt-1 text-small text-warning">Outpost cannot write to this folder. Check its permissions, or pick another.</p>
       ) : null}
     </div>

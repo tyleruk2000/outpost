@@ -280,7 +280,8 @@ export function diffLibraries(input: DiffInput): DiffResult {
         if (homePage.parentId === base.entry.parentId) {
           item("page", "moved", page.id, {
             title: homePage.title.trim() || UNTITLED,
-            context: page.parentId === null ? "To the top level" : `To under “${titlePath(drive.pages, page.parentId) ?? UNTITLED}”`,
+            context:
+              page.parentId === null ? "Moved to the top level" : `Moved to under “${titlePath(drive.pages, page.parentId) ?? UNTITLED}”`,
             homeItemId: homePage.id,
             notes: targetIsNew ? ["The page it was moved under was made on the drive; it is moved only if that page is added."] : [],
             choices: APPLY,
