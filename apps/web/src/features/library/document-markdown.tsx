@@ -1,5 +1,5 @@
 import type { MarkdownBlock, MarkdownInline, MarkdownListItem, MarkdownRef } from "@outpost/shared";
-import { lazy, type ReactNode, Suspense, useEffect, useRef } from "react";
+import { createContext, lazy, type ReactNode, Suspense, useContext, useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router";
 import { DataTable } from "./document-table";
 import MermaidDiagram from "./figures/mermaid-diagram";
@@ -21,6 +21,42 @@ export function plainText(runs: readonly MarkdownInline[]): string {
 const RECORD_ID = /^[0-9A-Za-z]{1,40}$/;
 const ENTRY_ID = /^[a-z0-9]+(?:[.-][a-z0-9]+)*$/;
 const HEADING_ID = /^[\p{L}\p{M}\p{N}_-]{1,200}$/u;
+
+/** The document being drawn, for the pictures it carries. Not set where there is no document (a preview, a test). */
+const DocumentContext = createContext<string | undefined>(undefined);
+
+/**
+ * Where a picture the file carries is served. Built here from the document's own id and
+ * a number, both checked: nothing a file wrote is ever part of the address.
+ */
+export function pictureAddress(documentId: string | undefined, picture: number | undefined): string | null {
+  if (documentId === undefined || !RECORD_ID.test(documentId)) return null;
+  if (typeof picture !== "number" || !Number.isInteger(picture) || picture < 1 || picture > 9999) return null;
+  return `/api/documents/${documentId}/pictures/${picture}`;
+}
+
+/** What stands in for a picture that is not shown: the description its author gave it. */
+function PictureDescription({ alt, caption, label }: { alt: string; caption?: string; label: string }) {
+  return (
+    <span className="doc-picture">
+      <span className="doc-picture-label">{label} </span>
+      {alt}
+      {caption ? <span className="doc-picture-caption"> {caption}</span> : null}
+    </span>
+  );
+}
+
+/** A picture, or its description when the file does not carry it or it cannot be had. */
+function Picture({ run }: { run: Extract<MarkdownInline, { t: "image" }> }) {
+  const address = pictureAddress(useContext(DocumentContext), run.picture);
+  const [failed, setFailed] = useState(false);
+  if (!address) return <PictureDescription alt={run.alt} caption={run.caption} label="Picture, not shown here." />;
+  // Its storage is unplugged, or the file changed under us: say so, and keep what the author wrote about it.
+  if (failed) return <PictureDescription alt={run.alt} caption={run.caption} label="Picture, which could not be loaded." />;
+  return (
+    <img src={address} alt={run.alt} loading="lazy" decoding="async" className="doc-carried-picture" onError={() => setFailed(true)} />
+  );
+}
 
 /** The id a heading carries in the page. The prefix keeps a file's words from naming anything else in it. */
 export const headingElementId = (id: string) => `h-${id}`;
@@ -120,15 +156,9 @@ function Inline({ runs }: { runs: readonly MarkdownInline[] }): ReactNode {
         // biome-ignore lint/suspicious/noArrayIndexKey: runs of one paragraph, in order
         return <Ref key={index} run={run} />;
       case "image":
-        // The picture is not here; what its author wrote about it is.
-        return (
-          // biome-ignore lint/suspicious/noArrayIndexKey: runs of one paragraph, in order
-          <span key={index} className="doc-picture">
-            <span className="doc-picture-label">Picture, not shown here. </span>
-            {run.alt}
-            {run.caption ? <span className="doc-picture-caption"> {run.caption}</span> : null}
-          </span>
-        );
+        // Shown only when the file carries the picture itself; otherwise what its author wrote about it is.
+        // biome-ignore lint/suspicious/noArrayIndexKey: runs of one paragraph, in order
+        return <Picture key={index} run={run} />;
       case "link":
         // The server sends a link only for a web or mail address; it opens away from Outpost.
         return (
@@ -309,7 +339,16 @@ function MissingBooks({ entries }: { entries: Array<{ entryId: string; entryName
 }
 
 /** A Markdown file with its formatting, drawn from the plain values the server sends. */
-export function MarkdownDocument({ blocks, title }: { blocks: readonly MarkdownBlock[]; title: string }) {
+export function MarkdownDocument({
+  blocks,
+  title,
+  documentId,
+}: {
+  blocks: readonly MarkdownBlock[];
+  title: string;
+  /** The document these blocks are of, so that pictures it carries can be shown. */
+  documentId?: string;
+}) {
   const sections = sectionsOf(blocks, title);
   const article = useRef<HTMLElement>(null);
   const { hash } = useLocation();
@@ -321,18 +360,19 @@ export function MarkdownDocument({ blocks, title }: { blocks: readonly MarkdownB
   }, [hash, blocks]);
 
   if (sections.length === 0) return <p className="text-ink-muted">This document has no text.</p>;
+  const body = sections.map((section, index) => (
+    <section
+      // biome-ignore lint/suspicious/noArrayIndexKey: sections have no identity beyond their order
+      key={index}
+      className="[contain-intrinsic-size:auto_24rem] [content-visibility:auto] [&>*+*]:mt-[0.85em] [&>h2:first-child]:mt-[0.65em] first:[&>h2:first-child]:mt-0"
+    >
+      <Blocks blocks={section} />
+    </section>
+  ));
   return (
     <article ref={article} className="prose prose-doc">
       <MissingBooks entries={missingRefs(blocks)} />
-      {sections.map((section, index) => (
-        <section
-          // biome-ignore lint/suspicious/noArrayIndexKey: sections have no identity beyond their order
-          key={index}
-          className="[contain-intrinsic-size:auto_24rem] [content-visibility:auto] [&>*+*]:mt-[0.85em] [&>h2:first-child]:mt-[0.65em] first:[&>h2:first-child]:mt-0"
-        >
-          <Blocks blocks={section} />
-        </section>
-      ))}
+      <DocumentContext value={documentId}>{body}</DocumentContext>
     </article>
   );
 }

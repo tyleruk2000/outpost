@@ -1,6 +1,6 @@
 import { type DocumentFacets, type DocumentListResponse, type DocumentSort, type DocumentType, formatBytes } from "@outpost/shared";
 import { keepPreviousData, useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowDownUp, Plus, Search, Upload, X } from "lucide-react";
+import { ArrowDownUp, Globe, Plus, Search, Upload, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { toast } from "sonner";
@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
 import { useStorage } from "@/lib/queries";
 import { cn, formatNumber, plural } from "@/lib/utils";
+import { SaveWebPagePanel } from "../webpages/save-page";
 import { useCollections } from "./collection-data";
 import { isBook } from "./collection-meta";
 import { ChoiceMenu } from "./document-filter-menu";
@@ -252,6 +253,25 @@ export default function DocumentsPanel() {
     </Button>
   );
 
+  // Saving a web page is the other way a document arrives. It is named in the address
+  // (?save=page), so the command palette and the Import screen can lead straight to it.
+  const savingPage = params.get("save") === "page";
+  const setSavingPage = (open: boolean) =>
+    setParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        if (open) next.set("save", "page");
+        else next.delete("save");
+        return next;
+      },
+      { replace: true },
+    );
+  const savePageButton = (
+    <Button aria-expanded={savingPage} onClick={() => setSavingPage(!savingPage)}>
+      <Globe /> Save a web page
+    </Button>
+  );
+
   return (
     <div className="relative mt-6">
       <input
@@ -274,7 +294,10 @@ export default function DocumentsPanel() {
         <>
           <div className="flex flex-wrap items-center gap-2">
             <NameFilter value={filters.q} onChange={(q) => setFilters({ q }, true)} />
-            <div className="md:order-last md:ml-auto">{addButton}</div>
+            <div className="flex flex-wrap gap-2 md:order-last md:ml-auto">
+              {savePageButton}
+              {addButton}
+            </div>
             <div className="scroll-quiet flex items-center gap-2 max-md:-mx-5 max-md:w-screen max-md:overflow-x-auto max-md:px-5 max-md:py-0.5">
               {typeChoices.length > 1 || filters.type ? (
                 <ChoiceMenu<DocumentType>
@@ -331,6 +354,8 @@ export default function DocumentsPanel() {
         </>
       )}
 
+      {savingPage ? <SaveWebPagePanel onClose={() => setSavingPage(false)} className={libraryEmpty ? "mb-6" : "mt-3"} /> : null}
+
       <UploadTray
         items={uploads}
         onAddAnyway={uploadQueue.addAnyway}
@@ -354,7 +379,16 @@ export default function DocumentsPanel() {
           <ErrorState error={list.error} onRetry={() => list.refetch()} />
         </div>
       ) : libraryEmpty ? (
-        <EmptyState title="No documents yet" seed={7} action={addButton}>
+        <EmptyState
+          title="No documents yet"
+          seed={7}
+          action={
+            <>
+              {addButton}
+              {savePageButton}
+            </>
+          }
+        >
           <p>
             Add the manuals, books, papers and scans you want to keep. Outpost reads their text so that one search finds the page you need.
           </p>

@@ -228,7 +228,7 @@ export function describeStatus(status: number, what: string): string {
   if (status === 401 || status === 403) {
     return `The site refused to send ${what} (it answered ${status}). It may want you to sign in, or it may turn away programs that are not browsers. Outpost does not sign in to sites.`;
   }
-  if (status === 404 || status === 410) return `${What} is not there: the site answered ${status}, "not found". Check the address.`;
+  if (status === 404 || status === 410) return `${What} is not there: the site answered ${status}, "not found".`;
   if (status === 429) return `The site said it is being asked too often (it answered 429). Wait a while before trying again.`;
   if (status >= 500) return `The site could not send ${what} (it answered ${status}, an error on its side). Try again later.`;
   return `The site did not send ${what}: it answered ${status}.`;
