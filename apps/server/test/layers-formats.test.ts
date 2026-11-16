@@ -249,3 +249,17 @@ describe("reading a CSV file that cannot be read", () => {
     await expect(read()).rejects.toMatchObject({ code: "ENOENT" });
   });
 });
+
+describe("names looked up in a table", () => {
+  it("are never read from what every object has", async () => {
+    const { kindLabel } = await import("../src/modules/layers/kinds.ts");
+    const { licenseUrlOf } = await import("../src/modules/layers/store.ts");
+    const { serviceLabel } = await import("../src/modules/network/announcements.ts");
+    for (const name of ["constructor", "__proto__", "toString"]) {
+      expect(kindLabel(name)).toBe(name);
+      expect(licenseUrlOf(name)).toBeNull();
+      expect(serviceLabel(name)).toBe(name);
+      expect(serviceLabel(`${name}._tcp.local`)).toBe(`${name}._tcp.local`);
+    }
+  });
+});

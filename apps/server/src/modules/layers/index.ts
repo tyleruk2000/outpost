@@ -95,6 +95,8 @@ const startSchema = z.object({
   keys: z.array(z.string().min(1).max(200)).min(1).max(40),
   locationId: z.string().min(1).optional(),
 });
+/** A CSV form's name, from the address: only the forms there are, never a name every object has ("constructor"). */
+const templateName = z.string().refine((name) => Object.hasOwn(TEMPLATES, name));
 const optionsSchema = z.record(z.string().max(60), z.string().max(2000)).default({});
 const importFromStorageSchema = z.object({
   format: z.enum(REFERENCE_IMPORT_FORMATS),
@@ -247,9 +249,10 @@ export async function registerLayers(app: FastifyInstance, ctx: AppContext): Pro
   });
 
   app.get<{ Params: { format: string } }>("/api/reference/templates/:format", async (request, reply) => {
-    const format = request.params.format.replace(/\.csv$/, "");
-    const columns = TEMPLATES[format];
-    if (!columns) throw notFound("There is no template of that name.");
+    const known = templateName.safeParse(request.params.format.replace(/\.csv$/, ""));
+    if (!known.success) throw notFound("There is no template of that name.");
+    const format = known.data;
+    const columns = TEMPLATES[format]!;
     return reply
       .header("Content-Type", "text/csv; charset=utf-8")
       .header("Content-Disposition", `attachment; filename="outpost-${format}.csv"`)

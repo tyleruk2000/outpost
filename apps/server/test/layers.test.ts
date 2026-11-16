@@ -320,6 +320,14 @@ describe("imports a person brings", () => {
     expect(response.status).toBe(200);
     expect(String(response.body)).toMatch(/^record_id,name,latitude,longitude,location_text,country,period,record_type,/);
   });
+
+  it("has no template named after what every object has", async () => {
+    for (const name of ["constructor", "__proto__", "toString", "hasOwnProperty", "constructor.csv"]) {
+      const response = await app.api("GET", `/api/reference/templates/${name}`);
+      expect(response.status, name).toBe(404);
+      expect(response.body.error.message).toMatch(/no template of that name/);
+    }
+  });
 });
 
 describe("downloaded packs", () => {
