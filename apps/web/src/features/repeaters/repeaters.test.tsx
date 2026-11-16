@@ -358,7 +358,7 @@ describe("bringing in a file", () => {
     expect(await within(dialog).findByText("“Club” is imported")).toBeVisible();
     const sent = fieldsOf(upload.mock.calls[2]![1]);
     expect(upload.mock.calls[2]![0]).toBe("/api/repeaters/import");
-    expect(sent).toMatchObject({ name: "club", source: "Fell Radio Club", edited: "keep", gone: "remove", duplicates: "keep-both" });
+    expect(sent).toMatchObject({ name: "club", source: "Fell Radio Club", edited: "keep", gone: "remove", duplicates: "prefer-newer" });
     // With nothing already held, nothing is asked about duplicates.
     expect(within(dialog).queryByRole("region", { name: "Repeaters already held" })).toBeNull();
     expect(sent.dataDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
@@ -512,9 +512,10 @@ describe("the same repeater twice, in an import", () => {
     expect(held).toHaveTextContent("1 repeats an earlier row of this file.");
     expect(held).toHaveTextContent(/1 may be an entry you hold under another callsign.*It is brought in as it is whatever you choose/);
 
-    // The default is the one that touches nothing held and leaves nothing out.
-    expect(within(held).getByRole("radio", { name: /^Keep both/ })).toBeChecked();
+    // The default shows each repeater once; nothing is lost by it, and the others are a press away.
+    expect(within(held).getByRole("radio", { name: /^Show each repeater once, with the newer data/ })).toBeChecked();
     expect(within(held).getByRole("radio", { name: /^Leave what I hold as it is/ })).not.toBeChecked();
+    expect(within(held).getByRole("radio", { name: /^Keep both/ })).not.toBeChecked();
     expect(held).toHaveTextContent("Nothing is deleted by any of these.");
 
     // Side by side: only the parts that differ, with what is agreed said once.
@@ -529,7 +530,6 @@ describe("the same repeater twice, in an import", () => {
     await user.click(within(held).getByRole("button", { name: "Show 1 more side by side" }));
     expect(held).toHaveTextContent("QZ7CD B, 439.4625 MHz: may be one you hold under another callsign, listed 1.3 km apart");
 
-    await user.click(within(held).getByRole("radio", { name: /^Show the newer data/ }));
     await user.click(within(dialog).getByRole("button", { name: "Import 7 repeaters" }));
     expect(await within(dialog).findByText("“World list” is imported")).toBeVisible();
     const sent = Object.fromEntries([...upload.mock.calls.at(-1)![1].entries()].filter(([, value]) => typeof value === "string"));
@@ -776,7 +776,7 @@ describe("where lists can be had", () => {
       name: "North list",
       source: "A made-up society",
       dataDate: "2026-10-01",
-      duplicates: "keep-both",
+      duplicates: "prefer-newer",
     });
     // Kept, so there is nothing for the server to forget.
     await user.click(within(dialog).getByRole("button", { name: "Done" }));

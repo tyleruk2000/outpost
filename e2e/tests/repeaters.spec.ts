@@ -236,7 +236,9 @@ test.describe("repeaters", () => {
     const held = dialog.getByRole("region", { name: "Repeaters already held" });
     await expect(held.getByRole("heading")).toHaveText("6 rows of this file are repeaters already here");
     await expect(held).toContainText("6 are held already, in another list or entered by hand (1 of them typed or changed by you).");
-    await expect(held.getByRole("radio", { name: /^Keep both/ })).toBeChecked();
+    // Each repeater once is what is offered first; this run keeps both, to merge them by hand below.
+    await expect(held.getByRole("radio", { name: /^Show each repeater once, with the newer data/ })).toBeChecked();
+    await held.getByRole("radio", { name: /^Keep both/ }).check();
     const pair = held.getByRole("table", { name: "QZ3AB, 145.6625 MHz: what is held beside what the file says" });
     await expect(pair.getByRole("row", { name: /CTCSS tone/ })).toHaveText(/77\.0 Hz.*94\.8 Hz/);
 

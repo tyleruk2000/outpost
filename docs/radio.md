@@ -229,14 +229,19 @@ the file, and how many may be one you hold under another callsign. A few of each
 shown side by side: one column each, a row for each part in which they differ. You
 choose, for that import:
 
-- **Keep both** (the default). Every row is brought in and nothing you hold is
-  touched. The repeaters are then listed twice until you merge them.
+- **Show each repeater once, with the newer data** (the default on the screen).
+  Whichever has the later date of data is shown and the other is set aside. Anything
+  you typed or changed by hand is carried onto the one that is shown: your tone, your
+  notes, your position. That entry is then marked "Changed by you", with what its
+  list says beside it, like any entry you change.
 - **Leave what I hold as it is.** The incoming ones are set aside. Each repeater is
   shown once, as you hold it now.
-- **Show the newer data.** Whichever has the later date of data is shown and the
-  other is set aside. Anything you typed or changed by hand is carried onto the one
-  that is shown: your tone, your notes, your position. That entry is then marked
-  "Changed by you", with what its list says beside it, like any entry you change.
+- **Keep both.** Every row is brought in and nothing you hold is touched. The
+  repeaters are then listed twice until you merge them. This is what the API does
+  when an import does not say.
+
+Nothing is deleted by any of the three: an entry that is set aside can be brought
+back from its repeater's page.
 
 **Find duplicates**, beside the lists, does the same for what is already held. Each
 group is shown side by side, with the entry Outpost would keep already chosen: the

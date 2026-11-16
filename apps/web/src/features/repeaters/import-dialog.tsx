@@ -182,12 +182,14 @@ function Pair({ pair }: { pair: RepeaterDuplicatePair }) {
   );
 }
 
+// The first is the default: a person bringing in a second list wants each repeater once,
+// and nothing is lost by it, since what is set aside can be brought back.
 const DUPLICATE_CHOICES: Array<{ value: RepeaterDuplicateChoice; label: string; detail: string }> = [
   {
-    value: "keep-both",
-    label: "Keep both",
+    value: "prefer-newer",
+    label: "Show each repeater once, with the newer data",
     detail:
-      "Every row is brought in and nothing you hold is touched. These repeaters are then listed twice, until you merge them with Find duplicates.",
+      "Whichever has the later date of data is shown, and the other is set aside. Anything you typed or changed by hand is carried onto the one that is shown.",
   },
   {
     value: "skip",
@@ -195,10 +197,10 @@ const DUPLICATE_CHOICES: Array<{ value: RepeaterDuplicateChoice; label: string; 
     detail: "The incoming ones are set aside. Each repeater is shown once, as you hold it now.",
   },
   {
-    value: "prefer-newer",
-    label: "Show the newer data",
+    value: "keep-both",
+    label: "Keep both",
     detail:
-      "Whichever has the later date of data is shown, and the other is set aside. Anything you typed or changed by hand is carried onto the one that is shown.",
+      "Every row is brought in and nothing you hold is touched. These repeaters are then listed twice, until you merge them with Find duplicates.",
   },
 ];
 
@@ -317,7 +319,7 @@ export function ImportDialog({
   const [keepGone, setKeepGone] = useState(false);
   const [showColumns, setShowColumns] = useState(false);
   const [result, setResult] = useState<RepeaterImportResult | null>(null);
-  const [duplicates, setDuplicates] = useState<RepeaterDuplicateChoice>("keep-both");
+  const [duplicates, setDuplicates] = useState<RepeaterDuplicateChoice>("prefer-newer");
   const commitFile = useImportRepeaters();
   const commitFetched = useImportFetched();
   const commit = fetched ? commitFetched : commitFile;
@@ -340,7 +342,7 @@ export function ImportDialog({
     setReplaceEdits(false);
     setKeepGone(false);
     setShowColumns(Boolean(fetched && (fetched.response.preview.usable === 0 || isGuessedRepeaterFormat(fetched.response.preview.format))));
-    setDuplicates("keep-both");
+    setDuplicates("prefer-newer");
     kept.current = false;
     commitFile.reset();
     commitFetched.reset();
