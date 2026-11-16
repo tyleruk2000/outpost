@@ -59,6 +59,8 @@ export interface DatabaseService {
   setSpace(measure: ((dir: string) => Promise<DiskSpace | undefined>) | undefined): void;
   /** Tests hold a reclaim after it has stopped other work and before it starts rewriting. */
   setBeforeVacuum(hook: (() => Promise<void>) | undefined): void;
+  /** Tests shorten how long a reclaim waits for changes under way to finish. */
+  setDrainWait(ms: number | undefined): void;
 }
 
 declare module "../../core/context.ts" {
@@ -69,6 +71,15 @@ declare module "../../core/context.ts" {
 
 const BUSY =
   "Outpost is reclaiming unused space in its database, and nothing can be changed until that has finished. Try again in a moment; the Storage screen shows when it is done.";
+
+/** How long a reclaim waits for changes already under way (an upload, a reply being written) before it gives up. */
+const DRAIN_WAIT_MS = 30_000;
+
+/**
+ * Methods that only read, on every path: WebDAV's PROPFIND and REPORT (the address book
+ * for phones under /dav/) read as GET does.
+ */
+const READ_METHODS = new Set(["GET", "HEAD", "OPTIONS", "PROPFIND", "REPORT"]);
 
 async function measureSpace(dir: string): Promise<DiskSpace | undefined> {
   try {
@@ -146,6 +157,9 @@ export async function registerDatabase(app: FastifyInstance, ctx: AppContext): P
   let measuring: Promise<void> | null = null;
   let vacuuming = false;
   let copying = 0;
+  let drainWait = DRAIN_WAIT_MS;
+  /** Requests that may write, from when they arrive until their answer has gone or the connection closed. */
+  const inFlight = new Map<object, string>();
   let closed = false;
   /** Stops a measure in flight when the server stops. */
   const stopMeasuring = new AbortController();
@@ -183,14 +197,31 @@ export async function registerDatabase(app: FastifyInstance, ctx: AppContext): P
     return (done?.result as T | undefined) ?? null;
   }
 
-  /** Work that must finish before space can be reclaimed: anything running but the reclaim itself, and a backup's copy. */
-  function waitingFor(except?: string): string[] {
+  /**
+   * Changes that are being made outside any job: a request that may write (an upload
+   * still arriving, a form being saved, on any path, /api/ or /dav/), and a reply the
+   * model is writing, which is stored as it goes and when it ends.
+   */
+  function writesUnderWay(exceptRequest?: object): string[] {
+    const found = new Set<string>();
+    for (const [request, label] of inFlight) if (request !== exceptRequest) found.add(label);
+    if (ctx.services.answers?.status().busy) found.add("The model is writing a reply");
+    return [...found];
+  }
+
+  /** Work that refuses a reclaim at once: anything running but the reclaim itself, and a backup's copy. */
+  function otherWork(except?: string): string[] {
     const titles = ctx.jobs
       .list({ states: ["running"], limit: 50 })
       .filter((job) => job.id !== except)
       .map((job) => job.title);
     if (copying > 0) titles.push("A backup is copying the database");
     return titles;
+  }
+
+  /** Work that must finish before space can be reclaimed: other work, and changes under way. */
+  function waitingFor(except?: string, exceptRequest?: object): string[] {
+    return [...otherWork(except), ...writesUnderWay(exceptRequest)];
   }
 
   async function room(usedBytes: number) {
@@ -272,17 +303,37 @@ export async function registerDatabase(app: FastifyInstance, ctx: AppContext): P
       // Nothing else starts from here on; anything already running must finish first.
       ctx.jobs.holdFor(QUEUE, BUSY);
       try {
-        const busy = waitingFor(run.job.id);
+        const busy = otherWork(run.job.id);
         if (busy.length > 0) throw new PermanentJobError(`Space was not reclaimed, because other work started first: ${busy.join("; ")}.`);
+        // From here a new change is refused with the reason; one already under way is
+        // let finish, for a while, rather than broken by the lock.
+        vacuuming = true;
+        try {
+          const deadline = Date.now() + drainWait;
+          for (let left = writesUnderWay(); left.length > 0; left = writesUnderWay()) {
+            if (Date.now() >= deadline) {
+              throw new PermanentJobError(
+                `Space was not reclaimed, because this was still under way after ${Math.max(1, Math.round(drainWait / 1000))} seconds: ${left.join("; ")}. Nothing was changed; try again when it has finished.`,
+              );
+            }
+            run.signal.throwIfAborted();
+            await new Promise((resolve) => setTimeout(resolve, 50));
+          }
+        } catch (error) {
+          vacuuming = false;
+          throw error;
+        }
         const pageSize = ctx.sqlite.pragma("page_size", { simple: true }) as number;
         const used =
           ((ctx.sqlite.pragma("page_count", { simple: true }) as number) -
             (ctx.sqlite.pragma("freelist_count", { simple: true }) as number)) *
           pageSize;
         const place = await room(used);
-        if (!place.enoughRoom) throw new PermanentJobError("Space was not reclaimed, because the drive no longer has room for it.");
+        if (!place.enoughRoom) {
+          vacuuming = false;
+          throw new PermanentJobError("Space was not reclaimed, because the drive no longer has room for it.");
+        }
         run.progress({ message: "Rewriting the database without its unused pages" });
-        vacuuming = true;
         // While the rewrite holds the write lock, a write from this thread would wait
         // here, holding up every request, and then fail. It fails at once instead.
         ctx.sqlite.pragma("busy_timeout = 0");
@@ -310,11 +361,20 @@ export async function registerDatabase(app: FastifyInstance, ctx: AppContext): P
   });
 
   // While the rewrite runs, a request that would change something is refused, in words
-  // for a person, before it reaches a route that would fail on the locked database.
-  app.addHook("onRequest", async (request) => {
-    if (!vacuuming || ["GET", "HEAD", "OPTIONS"].includes(request.method)) return;
-    if (!(request.routeOptions?.url ?? request.url).startsWith("/api/")) return;
-    throw conflict(BUSY);
+  // for a person, before it reaches a route that would fail on the locked database: on
+  // every path, not only /api/. Otherwise it is counted until its answer has gone, so
+  // that a reclaim waits for it.
+  app.addHook("onRequest", async (request, reply) => {
+    if (READ_METHODS.has(request.method)) return;
+    if (vacuuming) throw conflict(BUSY);
+    inFlight.set(
+      request,
+      `A change sent to Outpost (${request.method} ${(request.routeOptions?.url ?? request.url.split("?")[0])!.slice(0, 80)})`,
+    );
+    reply.raw.once("close", () => inFlight.delete(request));
+  });
+  app.addHook("onResponse", async (request) => {
+    inFlight.delete(request);
   });
 
   ctx.onClose.push(() => {
@@ -338,6 +398,9 @@ export async function registerDatabase(app: FastifyInstance, ctx: AppContext): P
     },
     setBeforeVacuum(hook) {
       beforeVacuum = hook;
+    },
+    setDrainWait(ms) {
+      drainWait = ms ?? DRAIN_WAIT_MS;
     },
   };
 
@@ -378,9 +441,10 @@ export async function registerDatabase(app: FastifyInstance, ctx: AppContext): P
         { requiredBytes: now.reclaim.neededBytes, freeBytes: now.disk.freeBytes },
       );
     }
-    if (now.reclaim.waitingFor.length > 0) {
-      throw conflict(`Space can be reclaimed once this has finished, or been paused: ${now.reclaim.waitingFor.join("; ")}.`, {
-        waitingFor: now.reclaim.waitingFor,
+    const waiting = waitingFor(undefined, request);
+    if (waiting.length > 0) {
+      throw conflict(`Space can be reclaimed once this has finished, or been paused: ${waiting.join("; ")}.`, {
+        waitingFor: waiting,
       });
     }
     const job = ctx.jobs.enqueue(VACUUM_JOB, {}, { title: "Reclaim unused space in the database", subject: SUBJECT });

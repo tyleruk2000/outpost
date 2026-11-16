@@ -39,10 +39,11 @@ export async function registerStorage(app: FastifyInstance, ctx: AppContext): Pr
   let timer: NodeJS.Timeout | undefined;
   const schedule = () => {
     if (timer) clearInterval(timer);
-    timer = setInterval(
-      () => storage.refresh().catch((error) => ctx.log.error({ err: error }, "storage check failed")),
-      settings.get("storage.checkIntervalSeconds") * 1000,
-    );
+    timer = setInterval(() => {
+      // While space is being reclaimed nothing can be written; the next check sees whatever changed.
+      if (ctx.services.database?.busy()) return;
+      storage.refresh().catch((error) => ctx.log.error({ err: error }, "storage check failed"));
+    }, settings.get("storage.checkIntervalSeconds") * 1000);
     timer.unref();
   };
   schedule();
