@@ -119,14 +119,14 @@ describe("database migrations", () => {
   });
 
   it("gives places saved before there were icons the plain pin, and loses none of them", () => {
-    // An installation as it was before 0012: every migration before it applied by hand, with places in it.
+    // An installation as it was before 0013: every migration before it applied by hand, with places in it.
     const file = tempDb();
     const raw = new Database(file);
     const journal = JSON.parse(fs.readFileSync(path.join(migrationsDir, "meta/_journal.json"), "utf8")) as {
       entries: Array<{ tag: string; when: number }>;
     };
     const before = journal.entries.filter((entry) => entry.tag < "0013_place_icons");
-    expect(before).toHaveLength(12);
+    expect(before).toHaveLength(13);
     expect(journal.entries.map((entry) => entry.tag)).toContain("0013_place_icons");
     raw.exec("CREATE TABLE __drizzle_migrations (id SERIAL PRIMARY KEY, hash text NOT NULL, created_at numeric)");
     for (const entry of before) {
