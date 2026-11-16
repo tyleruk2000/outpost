@@ -266,6 +266,13 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   pointer or the arrow keys.
 - Moving a saved place straight from the map (press and hold, the map's menu, or the
   list), by pointer or keyboard, with the new position confirmed before it is kept.
+- Maidenhead locators: a grid over the map (fields, squares, subsquares and extended
+  squares as the zoom allows), the locator of a position beside its coordinates, and
+  locators of four, six or eight characters read by the map's search.
+- A line-of-sight check between two points, from installed terrain: distance, bearing
+  each way, the path drawn from the side with the ray, the Earth's curve (4/3 radius)
+  and the first Fresnel zone, and the answer in words. It is geometry over terrain,
+  not a prediction of coverage, and gives no verdict where terrain is missing.
 
 #### Portable drives
 

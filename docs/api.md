@@ -478,12 +478,13 @@ Types: `packages/shared/src/maps.ts`. See [maps.md](maps.md).
 | `GET /api/maps/sources` | The parts of a MapLibre style that depend on what is installed: tile addresses, bounds, zoom range, glyph and sprite addresses, attribution (`MapSources`). |
 | `GET /api/maps/tiles/:z/:x/:y.mvt` | A vector tile from the best installed region. `204` when no region has it. |
 | `GET /api/maps/terrain/:z/:x/:y.webp` (or `.png`) | A terrain tile. |
+| `GET /api/maps/terrain-profile` | The ground along the great circle between two points, read from installed terrain (`TerrainProfile` in `packages/shared/src/radio.ts`). Query: `from` and `to`, each `latitude,longitude`. At most 4,096 samples; `heights` holds `null` where no terrain is installed, and `gaps` names those stretches. Points more than 1,000 km apart, or in the same place, are refused with a 400. Nothing is downloaded. See [maps.md](maps.md#line-of-sight). |
 
 ### Places
 
 | Method and path | Purpose |
 | --- | --- |
-| `GET /api/maps/places` | Place search (`PlaceSearchResponse`). Query: `q`, `limit` (at most 50), `near` (`latitude,longitude`). When `q` is a position, `coordinate` is set and `places` is empty. |
+| `GET /api/maps/places` | Place search (`PlaceSearchResponse`). Query: `q`, `limit` (at most 50), `near` (`latitude,longitude`). When `q` is a position (coordinates, a British grid reference or a Maidenhead locator), `coordinate` is set and `places` is empty; for a locator, `coordinate.locator` is the locator in capitals and the position is the middle of its cell. `otherReadings` is there only when the text can mean a second position (four characters that are both a grid reference and a locator). |
 | `GET /api/maps/places/datasets` | Installed place-name datasets. |
 | `POST /api/maps/places/datasets` | Downloads one. Body: `dataset` (`cities500`, `cities15000` or `country`), `country` (two letters, with `country`), `locationId?`. `{ download }`. |
 | `DELETE /api/maps/places/datasets/:id` | Removes a dataset and its names. |

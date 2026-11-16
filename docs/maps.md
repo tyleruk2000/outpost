@@ -3,7 +3,8 @@
 This page covers downloading map regions and choosing where they are kept, hill
 shading and contour lines, where the map data comes from and how it must be credited,
 using your own map source, markers and moving them, drawing routes and importing GPX
-tracks, coordinate formats, and offline place search.
+tracks, coordinate formats, Maidenhead locators, checking line of sight between two
+points, and offline place search.
 
 Outpost draws a vector map in the browser from tiles it serves itself. Once a region
 is installed, viewing it needs no internet connection.
@@ -35,16 +36,22 @@ On the map itself:
 
 - The **search box** takes a place name (once place names are downloaded, see
   [below](#offline-place-search)), coordinates in any of the formats under
-  [Coordinate formats](#coordinate-formats), or a British grid reference.
-- The **ruler** measures a path you click out, in kilometres and miles. **Save as a
-  route** keeps the measured path as a route.
+  [Coordinate formats](#coordinate-formats), a British grid reference, or a Maidenhead
+  locator.
+- The **ruler** measures a path you click out, in kilometres and miles, and gives the
+  locators of its two ends. **Save as a route** keeps the measured path as a route;
+  **Check line of sight** hands its first and last points to the tool described under
+  [Line of sight](#line-of-sight).
 - **Hill shading** appears as a button once terrain is installed.
 - **Contour lines** is the button below it (see [Contour lines](#contour-lines)). It
   is always there: pressed where there is nothing to draw them from, it says so.
+- **Maidenhead locator grid** and **Line of sight between two points** are the two
+  buttons below those (beside the top of the column on a phone). See
+  [Maidenhead locators](#maidenhead-locators) and [Line of sight](#line-of-sight).
 - The readout at the bottom shows the centre of the map; choose decimal degrees,
-  degrees-minutes-seconds or British National Grid, and copy it.
-- Right-click (or press and hold) for "Save a place here", "Measure from here", "Draw
-  a route from here" and "Copy coordinates".
+  degrees-minutes-seconds, British National Grid or Maidenhead locator, and copy it.
+- Right-click (or press and hold) for the position and its locator, "Save a place here",
+  "Measure from here", "Draw a route from here" and "Copy coordinates".
 - The address bar always holds the current view, so a link to it can be saved in a
   note.
 
@@ -477,6 +484,7 @@ understood:
 | `geo:` links | `geo:54.4609,-3.0886` |
 | British National Grid reference | `NY 215 072` · `NY21540721` · `NY 21540 07210` |
 | National Grid easting and northing | `321540 507210` |
+| Maidenhead locator | `IO83` · `IO83QM` · `io83qm` · `IO83QM54` |
 
 Notes:
 
@@ -488,6 +496,163 @@ Notes:
   a hand-typed reference, but it is not survey grade.
 - Grid references are only meaningful in Great Britain. There is no support for UTM,
   MGRS or the Irish Grid.
+- A Maidenhead locator of four, six or eight characters is read, in either case. It
+  names a cell too; see [Maidenhead locators](#maidenhead-locators).
+
+## Maidenhead locators
+
+Radio amateurs give positions as Maidenhead locators: pairs of characters, each pair
+dividing the cell before it.
+
+| Characters | Cell | Size | Example |
+| --- | --- | --- | --- |
+| 2 | Field | 20° of longitude by 10° of latitude | `IO` |
+| 4 | Square | 2° by 1° (about 132 km by 111 km at 53.5° north) | `IO83` |
+| 6 | Subsquare | 5′ by 2.5′ (about 5.5 km by 4.6 km) | `IO83QM` |
+| 8 | Extended square | 30″ by 15″ (about 550 m by 460 m) | `IO83QM54` |
+
+Outpost writes locators in capitals and reads them in either case.
+
+- **The grid.** The **Maidenhead locator grid** button draws the grid over the map, with
+  each cell named at its middle; the choice is remembered in the browser. Which cells
+  are drawn follows the zoom: fields from as far out as the map goes, squares from zoom
+  4.5, subsquares from zoom 9 and extended squares from zoom 12.5, each from the point
+  where a cell is 60 pixels wide. The edges of the cell one size up are drawn heavier.
+  The lines and names are the text colour of the theme, thinned, and take no room from
+  the map's own names.
+- **Beside coordinates.** The six-character locator of a position is written with its
+  coordinates: on a found position, on a saved place, in the right-click menu, and for
+  both ends of a measured path. Press it to copy it.
+- **As the coordinate format.** With **Maidenhead locator** chosen for the readout at
+  the bottom of the map, the position under the pointer is given as a locator of four,
+  six or eight characters, as many as the view can tell apart.
+- **In the search box.** A locator of four, six or eight characters goes to the middle
+  of its cell, and the result says which kind of cell it is and how big. A field alone
+  (two letters) is not read as a position.
+- **One overlap.** Four characters such as `NN16` are both a British grid reference
+  for a 10 km square and a locator. The search lists both; the grid reference first.
+
+A locator names a cell, not a point. Going to "IO83QM" goes to the middle of a cell
+more than five kilometres across.
+
+The conversion is checked both ways against published examples: W1AW's locator as
+given by Wikipedia and by the ARRL, and the seven positions in the test table of the
+go-maidenhead library, each at six and eight characters
+(`apps/server/test/maps-sight.test.ts` lists them with where they were read).
+
+## Line of sight
+
+**This is a check of geometry against terrain. It is not a prediction of signal
+strength, propagation or coverage.** It answers one question: with an antenna this
+high at each end, does the ground between two points stand in the way of the straight
+line between them, and by how much does it clear?
+
+### Using it
+
+1. Press **Line of sight between two points**, then click or tap the map at each end:
+   point A, then point B. Pressing a saved place puts the point exactly on it. Without
+   a pointer, move the map and use **Use the centre of the map**. Or measure a path
+   with the ruler and choose **Check line of sight**.
+2. Give the height of the antenna at each end, in metres above the ground it stands
+   on, and choose a band (10 m to 13 cm, and PMR446) or type a frequency. The heights
+   and the band are remembered in the browser.
+3. Read the answer in the panel beside the map (on a phone, **Show the path and the
+   details** raises it). Changing a height or the band answers again at once.
+
+**Move** beside A or B chooses that end again; **Swap A and B** turns the path round;
+Escape puts the tool down.
+
+### What it shows
+
+- The great-circle **distance** between the two points, the **bearing** to set out on
+  from each towards the other, and the **locator** of each.
+- **The answer in words**, one of:
+
+  | Answer | Meaning |
+  | --- | --- |
+  | Clear | No ground is above the straight line, and at least 60% of the first Fresnel zone's radius is clear all along it. |
+  | In sight, with the Fresnel zone partly blocked | No ground is above the line, but somewhere less than 60% of the first Fresnel zone's radius is clear. It says where, and how much is clear there. |
+  | Blocked | Ground is above the line. It says how far above at the worst place, how far along that is, and over what stretch of the path. |
+  | Not known | Terrain is missing for part of the path, or under one of the ends. It says which part. |
+  | No terrain here | No terrain is installed anywhere along the path. |
+
+- **The path from the side**: the ground between the two antennas, the straight ray,
+  and the first Fresnel zone around the ray. Move along it with the pointer, a finger
+  or the arrow keys for the ground height, the height of the ray above it and the
+  Fresnel radius at that place; the place is shown on the map.
+- On the map, the path as the great circle it is, with A, B and the place the answer
+  turns on.
+
+### The sums
+
+- **The Earth's curve.** Between the two ends the ground is lifted above the straight
+  line joining them by d1 × d2 ÷ (2 × k × R): d1 and d2 are the distances to each end,
+  R is the Earth's radius (6,371 km) and k is 4/3. **k = 4/3 is the "effective Earth
+  radius" that radio planning uses for a standard atmosphere**, in which the air bends
+  a ray gently downwards so that it reaches a little further than a straight line
+  would. It is an average. On a given day the air may bend a signal more or less. The
+  chart draws this lift into the ground, so the ray is a straight line; the lift at the
+  middle of the path is given under the chart's title.
+- **The first Fresnel zone.** Its radius at a point is √(λ × d1 × d2 ÷ (d1 + d2)), with
+  λ the wavelength. The usual guide is that 60% of that radius should be clear of the
+  ground; the answer is measured against it, at the place where least is clear.
+- **The ray** runs straight from the top of one antenna to the top of the other, each
+  standing on the terrain's height at its end.
+
+These are checked in `apps/server/test/maps-sight.test.ts` against values worked by
+hand, against the handbook forms of the same formulas, and against made-up ground
+whose answer is known (a ridge of known height midway, level ground, a valley between
+two summits, the sea).
+
+### What it rests on, and its limits
+
+- **Terrain only.** The heights are those of the terrain installed on this device. It
+  holds no buildings, trees, masts or pylons as such, and a wood or a row of houses on
+  the path will block or weaken a signal that this check calls clear.
+- **How fine the terrain is.** Terrain Outpost downloads comes from Mapterhorn as tiles
+  512 cells across down to zoom 12, where one cell is about 19 m wide at the equator
+  and about 11.5 m at 53° north. The data behind those cells is coarser than that over
+  most of the world: Mapterhorn's list of sources (read on 16 November 2026) gives
+  Copernicus GLO-30, a 30 m model, as its worldwide source, with finer national models
+  where a country publishes one. Whether a given source measures bare ground or the
+  top of what stands on it was not checked source by source. Either way, a sharp
+  summit or a narrow ridge reads a few metres low, and nothing narrower than a cell is
+  there at all. The panel says how wide the cells that were read are.
+- **How closely the path is sampled.** One sample for each cell of the finest terrain
+  installed, since a height between two cells is only a blend of the cells around it
+  and a closer sample would read nothing new. A profile holds at most 4,096 samples:
+  about 47 km of path in Britain at the finest terrain, 78 km at the equator. A longer
+  path is sampled more widely, and its heights are read from coarser tiles whose cells
+  are between half a step and a step wide, so nothing between two samples is skipped;
+  but each cell then stands for more ground, and a narrow ridge reads lower on a long
+  path than on a short one. The panel says so when it applies.
+- **Missing terrain.** Where no terrain is installed for part of the path, the panel
+  names the stretch and gives no verdict: nothing in the way where terrain is known
+  does not make the path clear. Ground above the line where terrain *is* known does
+  make it blocked, whatever the gap hides. With no terrain under an end there is no
+  ground to stand the antenna on, and nothing is worked out. Nothing is downloaded to
+  fill a gap.
+- **A blocked path may still work, and a clear one may not.** Signals bend over ridges,
+  reflect, and are carried by the weather; a clear path can still be spoiled by
+  reflection from the ground or by what stands on it. None of that is modelled.
+- **Up to 1,000 km.** Further apart than that, no two points on the ground can see each
+  other: from the top of the highest mountain the radio horizon is under 400 km away.
+- **How long it takes.** Reading the ground for a 300 km path took about 0.23 seconds
+  and 14 terrain tiles, and for a 690 km path about 0.28 seconds and 17, with tiles
+  the size and format of a real download; the server went no longer than about 0.03
+  seconds without giving other requests a turn (16 November 2026, Node 24 on a Mac).
+  This was measured with made-up terrain in real-sized tiles, not with a Mapterhorn download.
+
+### In the API
+
+`GET /api/maps/terrain-profile?from=<lat>,<lon>&to=<lat>,<lon>` answers with the ground
+along the great circle between the two points (`TerrainProfile` in
+`packages/shared/src/radio.ts`): `distanceMeters`, `stepMeters`, `heights` (one for each
+sample, both ends included, `null` where no terrain is installed), `coverage`
+(`"terrain"`, `"partial"` or `"none"`), `gaps` (each stretch with no terrain, in metres
+from the first point) and `terrain` (the width of the cells that were read). The ray,
+the curve, the Fresnel zone and the verdict are worked out from that by `analyseSight`
+in the same file; the web app runs it in the browser.
 
 ## Offline place search
 
@@ -528,6 +693,9 @@ matches, by population, and by distance from a point when one is given
   snaps to paths or roads.
 - **Routes across the 180° meridian.** A drawn leg that crosses it is drawn the long
   way round the world.
+- **Radio propagation or coverage.** The line-of-sight check is geometry over terrain
+  (see [Line of sight](#line-of-sight)). It does not predict signal strength, and it
+  does not draw the area a station covers.
 - **Satellite or aerial imagery.**
 - **Other map schemas.** The bundled styles draw the Protomaps basemap schema only.
 
