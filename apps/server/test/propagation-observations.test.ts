@@ -90,11 +90,11 @@ describe("reading ADIF", () => {
     expect(Object.fromEntries(file.records[0]!.fields)).toEqual({ CALL: "M0XX", NAME: "" });
   });
 
-  it("counts a record the file stops in the middle of, and reads nothing from a header that never ends", () => {
+  it("counts a record the file stops in the middle of, and reads nothing from a header that never ends", async () => {
     expect(parseAdif(Buffer.from("<CALL:4>M0XX<EOR><CALL:5>G4BBB<QSO_DATE:8>2026")).truncated).toBe(1);
     expect(parseAdif(Buffer.from("<CALL:4>M0XX<EOR><CALL:5>G4BBB")).truncated).toBe(1);
     expect(parseAdif(Buffer.from("Not a log at all <CALL:4>M0XX<EOR>")).records).toEqual([]);
-    expect(looksLikeAdif(Buffer.from("callsign,date\nG4BBB,2026-11-16"))).toBe(false);
+    expect(await looksLikeAdif(Buffer.from("callsign,date\nG4BBB,2026-11-16"))).toBe(false);
   });
 
   it("takes a byte-order mark or white space before the first data-specifier as no header at all", () => {
