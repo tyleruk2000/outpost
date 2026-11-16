@@ -24,7 +24,7 @@ const invalidations: Record<string, string[][]> = {
   "download.updated": [],
   "download.removed": [["downloads"], ["catalog"], ["manage"]],
   "storage.changed": [["storage"], ["collections"], ["documents"], ["manage"]],
-  "settings.changed": [["settings"]],
+  "settings.changed": [["settings"], ["answers"]],
   "documents.changed": [["documents"], ["search"], ["storage"], ["manage"]],
   "notes.changed": [["notes"], ["search"]],
   "collections.changed": [["collections"], ["catalog"], ["storage"], ["kiwix"], ["maps"], ["manage"]],

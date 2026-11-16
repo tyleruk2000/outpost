@@ -1,7 +1,8 @@
 # Search
 
 This page describes what the search box understands, what is searched, how results
-are ranked, and how to turn on optional semantic search ("search by meaning").
+are ranked, how to turn on optional semantic search ("search by meaning"), and how to
+have a language model of your own write an answer from what was found.
 
 Keyword search is always available and needs no set-up. Semantic search is optional
 and off by default. So is reading the text of scanned pages and images
@@ -20,8 +21,9 @@ library and shows what each step produced:
 4. search by meaning: vectors, the angle between them, and a map of the passages;
 5. how the two ranked lists are combined, with the constant and the weights adjustable
    on the page to see what would change;
-6. the numbered sources a language model would be given;
-7. the prompt that would be sent (it is shown, never sent: Outpost runs no model);
+6. the numbered sources a language model is given;
+7. the exact prompt [Answer from my library](#answers-from-your-library) sends to your
+   own model for that question (the page shows it; it sends nothing);
 8. what can go wrong at each step, and how to tell.
 
 Everything on that page comes from the same code as real search. Two things to know
@@ -33,6 +35,42 @@ when reading it:
 - The ranking steps cover everything search covers, including catalogue listings and
   saved places. The context step keeps only passages from your documents and pages,
   because those are what a model should quote from.
+
+## Answers from your library
+
+Optional, and off until you set it up. With a language model running on your own
+machine or network (through Ollama, llama.cpp or LM Studio), the Search screen offers
+**Answer from my library** above the results. Pressing it:
+
+1. searches your documents, notes and book chapters for what the question is about
+   (the question's small words, such as "how" and "should", are left out, and the
+   answer says which words were searched for);
+2. sends the best passages, numbered, to your model with the question and a fixed set
+   of rules: answer only from these, cite the number after each statement, say so when
+   they do not hold the answer;
+3. shows the answer as it is written, under the heading "Generated answer" and the
+   model's name, with the passages it was given listed beneath.
+
+The results list does not change and stays underneath. An answer can be stopped. Its
+`[n]` markers show the quoted passage and open the source; a marker that matches no
+passage is struck through; an answer that cites nothing is called out. If no passage
+matches, the model is not asked at all.
+
+Things to know:
+
+- **Outpost includes no model and downloads none.** You install a model server and
+  fetch a model yourself. [ai.md](ai.md#setting-it-up) has the steps, suggested small
+  models with their sizes, and the settings.
+- **Your question and the passages are sent to the model server you configured**, and
+  nowhere else. By default that is a program on the same machine.
+- **Reference collections are not read.** Articles in ZIM archives are not split into
+  passages, so an answer never draws on Wikipedia, even when reference articles appear
+  in the results below it.
+- **Nothing is kept.** No question or answer is stored on the server or in the
+  browser; an answer goes when the tab is closed or reloaded.
+- **It is one question and one answer.** There is no conversation and no follow-up.
+- **It has not been run against a real model yet**, only against a stand-in server
+  that speaks the same protocol. See [ai.md](ai.md).
 
 ## Keyword search
 

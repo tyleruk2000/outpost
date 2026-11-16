@@ -23,6 +23,9 @@ if (!fs.existsSync(entry)) {
 // Two suites on one machine (two checkouts, say) need ports of their own.
 const port = Number(process.env.OUTPOST_E2E_PORT ?? 8471);
 const filesPort = Number(process.env.OUTPOST_E2E_FILES_PORT ?? 8473);
+// The stand-in for a local model server (not a language model; see apps/server/test/model-server.ts).
+const modelPort = Number(process.env.OUTPOST_E2E_MODEL_PORT ?? filesPort + 1);
+process.env.OUTPOST_E2E_MODEL_URL = `http://127.0.0.1:${modelPort}`;
 
 const work = fs.mkdtempSync(path.join(os.tmpdir(), "outpost-e2e-"));
 process.env.OUTPOST_E2E_WORK = work;
@@ -109,6 +112,12 @@ export default defineConfig({
       command: `node "${path.join(import.meta.dirname, "tools/fake-dist.mjs")}" ${filesPort}`,
       url: `http://127.0.0.1:${filesPort}/health`,
       reuseExistingServer: false,
+    },
+    {
+      command: `node "${path.join(root, "apps/server/test/model-server.ts")}" ${modelPort}`,
+      url: `http://127.0.0.1:${modelPort}/health`,
+      reuseExistingServer: false,
+      env: { STAND_IN_LONG_DELAY_MS: "40" },
     },
     // The open server fetches portable-drive runtimes from the stand-in above, which is on a private address.
     server("open", port, { OUTPOST_NODE_DIST_URL: `http://127.0.0.1:${filesPort}`, OUTPOST_ALLOW_PRIVATE_DOWNLOADS: "true" }),

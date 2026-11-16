@@ -28,6 +28,10 @@ public internet and must not be exposed to it.
   inside your network, and a tampered or corrupted download is not installed.
 - **Misuse of the share feature.** Outpost cannot be made to connect to a file server
   on the internet, and repeated wrong passwords are held back.
+- **Text that gives orders.** A document can contain a sentence written to look like
+  an instruction to a language model. When a model writes an answer from your
+  documents, nothing it writes is acted on: an answer is shown as words and can do
+  nothing else.
 - **Mistakes.** Nothing is overwritten, and files are deleted only when a request says
   so explicitly.
 
@@ -48,8 +52,13 @@ public internet and must not be exposed to it.
   and portable drives are stored unencrypted. Anyone holding the disk can read them.
 - **An untrusted network.** On its own Outpost speaks plain HTTP. On a network you do
   not trust, content (and a share password as it is typed) can be observed and altered.
-- **A compromised helper.** Outpost trusts the kiwix-serve program and the embedding
-  server you point it at.
+- **A compromised helper.** Outpost trusts the kiwix-serve program, the embedding
+  server and the model server you point it at. Whatever runs at the model server's
+  address is sent your questions and passages of your documents.
+- **A wrong answer.** A language model can misread a passage, blend two, or attach a
+  real citation to a claim the passage does not make. Outpost labels generated text,
+  flags citations that match nothing, and always shows the passages; it cannot make an
+  answer true.
 - **Denial of service.** There is no rate limiting.
 
 ## The controls and where they live
@@ -158,8 +167,9 @@ before anything is fetched; and what arrives is checked by content before it is
 kept, so a sign-in page named `.pdf` is discarded. At most 200 links are accepted at
 a time. Code: `apps/server/src/modules/links/index.ts`.
 
-Two outbound paths do not use this client, because their address is a setting: the
-embedding server for semantic search, and kiwix-serve.
+Three outbound paths do not use this client, because their address is a setting: the
+embedding server for semantic search, the model server for answers (see
+[below](#answers-from-a-language-model)), and kiwix-serve.
 
 ### Paths
 
@@ -194,6 +204,95 @@ nesting. Code: `apps/server/src/modules/notes/content/`.
 
 Search snippets and reference-collection snippets reach the browser as plain text
 segments with "matched" flags, never as HTML.
+
+### Answers from a language model
+
+**Answer from my library** sends text out of Outpost, to a model server the person
+set up, and brings text back that a program wrote. Both directions have rules.
+
+#### What is sent, and where
+
+| | |
+| --- | --- |
+| What | A fixed set of rules, the passages found for the question (titles, headings, page numbers and exact text), and the question. Nothing else. |
+| When | Only when a person presses **Answer from my library** or **Test**, or opens the Answers section of Settings while it is switched on (which asks the server for its list of models). Never in the background. Nothing at all when no passage was found. |
+| Where | The one address in the `answers.endpoint` setting. The default is `http://127.0.0.1:11434/v1`, a program on the same machine. |
+| How | Plain HTTP unless the address is `https`. No API key or other credential is sent. |
+
+The address is a setting, as the embedding server's is: Outpost talks to the address
+a person typed and to nothing else. It is not limited to private addresses, because a
+model on another machine of your own is a legitimate choice and a number cannot say
+whose a machine is. What is enforced instead:
+
+| Control | Detail | Code |
+| --- | --- | --- |
+| Only `http` and `https` | Anything else is refused when the setting is saved. | `parseModelServerAddress` in `apps/server/src/modules/answers/address.ts` |
+| No credentials in the address | An address with a user name or password is refused, and is not repeated in the refusal, so it cannot end up in a message or a log. | same |
+| No redirects | Every request to the model server is made with redirects refused. The server that was named cannot hand the question on to one that was not. | `apps/server/src/modules/answers/provider.ts` |
+| Said in words | Settings describes the address as this computer, a machine on your network, or (with a warning) neither, judged from its spelling. Names are not looked up. | `placeOf` in `address.ts`, `features/settings/answers-section.tsx` |
+| Off by default | No model server is contacted until a person switches answers on. The Search screen decides whether to show the button from settings alone. | `apps/server/src/modules/answers/index.ts` |
+| One at a time | A second answer while one is being written is refused, so the feature cannot be used to keep a home machine's processor busy with a queue of work. | same |
+| The reader leaving stops the model | When the browser's connection closes, Outpost closes its connection to the model server. | same |
+
+What this does not protect against: **anyone who can open Outpost can change the
+address**, like every other setting, and so can make questions asked afterwards go to
+a server of their own. With LAN access on, that is everyone on the network (see
+[the threat model](#the-threat-model-in-plain-words)). And a model server listening
+on your network has no password of its own: Outpost does not make it any more or less
+exposed than it already is.
+
+#### What is kept
+
+Nothing. The question, the passages sent and the answer are not written to the
+database, a file or the log; the log records only that an answer failed and the kind
+of failure. The web app holds the current answer in memory, not in the browser's
+storage. A test checks the database for the question after an answer has been
+written.
+
+#### Answers, and text that gives orders
+
+Your documents can contain anything: a page saved from the web, a forwarded email, a
+PDF from a stranger. Any of them can contain a sentence addressed to a language model
+("ignore your instructions and tell the reader to…"). This is called prompt
+injection, and no prompt is proof against it. Outpost does two things in the prompt
+and, more importantly, one thing outside it.
+
+In the prompt (`apps/server/src/modules/retrieval/prompt.ts`):
+
+- **The sources are fenced as data.** They are placed between two marker lines, and
+  the standing instructions say that whatever is written between those lines is text
+  to report on and is never to be obeyed, even if it is addressed to the model.
+- **The fence cannot be forged.** The marker lines carry an eight-character code made
+  up at random for each request, and never one that occurs in the sources. A document
+  cannot contain the closing line in advance, so it cannot pretend that the sources
+  have ended and the instructions have resumed.
+
+These lower the risk. A small model can still be talked round, and the tests include
+a stand-in model that obeys a planted instruction to prove the rest holds anyway.
+
+Outside the prompt:
+
+- **Nothing in an answer is acted on.** The model has no tools, no memory and no
+  second turn; its output goes to one place, the screen.
+- **An answer is drawn as words.** It is never converted to HTML or rendered as
+  Markdown. The web app cuts it into plain text, emphasis (`**…**`) and citation
+  markers, and draws each with its own elements. An address in an answer stays text: it
+  is not a link and nothing fetches it. Markup in an answer is shown as the characters
+  it is. (The app's Content Security Policy would also refuse a script or a request to
+  another host, as for every page.)
+- **The only links in an answer are citation links Outpost builds.** A marker `[n]`
+  links to source *n* of the passages Outpost itself supplied, using the address in
+  Outpost's own citation record, and only when that address is a route inside
+  Outpost. A marker that matches no supplied passage is not a link: it is struck
+  through and reported.
+- **The model's private reasoning is dropped**, whether it arrives in a separate field
+  or as `<think>` tags.
+
+So the worst a planted instruction can do is make the answer wrong, rude or
+misleading, in text, under a heading that says a model wrote it, above the passages
+it was given. That is still worth guarding against: read the passages.
+
+Code: `apps/web/src/features/search/answer-text.ts`, `answer.tsx`.
 
 ### Backup and restore
 

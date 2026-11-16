@@ -12,7 +12,7 @@ export const STAGES = [
   { id: "stage-meaning", short: "Search by meaning", title: "Search by meaning" },
   { id: "stage-fusion", short: "Combining the two", title: "Combining the two lists" },
   { id: "stage-context", short: "Building the context", title: "Building the context" },
-  { id: "stage-model", short: "The language model", title: "Handing it to a language model: the step Outpost does not take" },
+  { id: "stage-model", short: "The language model", title: "Handing it to a language model: the step your own model takes" },
   { id: "stage-wrong", short: "What can go wrong", title: "What can go wrong, and how to tell" },
 ] as const;
 
@@ -36,6 +36,7 @@ export function Stage({ id, children }: { id: StageId; children: ReactNode }) {
 
 export const SETTINGS_MEANING = "/settings#semantic-title";
 export const SETTINGS_READING = "/settings#indexing-title";
+export const SETTINGS_ANSWERS = "/settings#answers-title";
 
 /** Says plainly which vectors are in use. Shown wherever vectors appear. */
 export function VectorNotice({ source, className }: { source: ExplainVectorSource | undefined; className?: string }) {

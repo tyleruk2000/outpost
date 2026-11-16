@@ -296,8 +296,8 @@ describe("How search works", () => {
       "/library/documents/d-13?page=4",
     );
     expect(screen.getByText(/1 passage that ranked well enough was left out/)).toBeInTheDocument();
-    // The prompt is labelled as not sent.
-    expect(screen.getByText("What would be sent. Outpost does not run a model, so nothing was.")).toBeInTheDocument();
+    // The prompt is the one answers send, and this page only shows it.
+    expect(screen.getByText("What is sent when you ask for an answer. Shown here, not sent.")).toBeInTheDocument();
     // The map has a table for people who cannot see it.
     expect(screen.getByRole("table", { name: "The passages nearest the question, of those drawn on the map" })).toBeInTheDocument();
   });
@@ -340,7 +340,7 @@ describe("How search works", () => {
     serve();
     show("/search/how-it-works?q=boil%20water");
     await screen.findByText(/Traced “boil water”/);
-    await userEvent.type(screen.getByLabelText("An answer from your own model"), "Boil it {[}1{]}. Add salt {[}7{]}.");
+    await userEvent.type(screen.getByLabelText("An answer to check"), "Boil it {[}1{]}. Add salt {[}7{]}.");
     expect(screen.getByText("Supported")).toBeInTheDocument();
     expect(screen.getByText(/\[7\] refers to no source that was supplied/)).toBeInTheDocument();
     expect(screen.getByText(/\[2\] was supplied but never cited/)).toBeInTheDocument();

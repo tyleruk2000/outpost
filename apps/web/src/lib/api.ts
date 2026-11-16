@@ -71,6 +71,29 @@ async function request<T>(method: string, path: string, options: { query?: Query
   return parse<T>(response);
 }
 
+/**
+ * A POST whose answer arrives a piece at a time (an answer being written). Resolves
+ * with the response once it has started; a refusal is thrown as an `ApiError` exactly
+ * as for any other request, and the caller reads `response.body` as it comes.
+ */
+async function stream(path: string, body: unknown, signal?: AbortSignal): Promise<Response> {
+  let response: Response;
+  try {
+    response = await fetch(path, {
+      method: "POST",
+      headers: { Accept: "text/event-stream, application/json", "Content-Type": "application/json", "X-Outpost-Request": "1" },
+      body: JSON.stringify(body),
+      signal,
+      credentials: "same-origin",
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") throw error;
+    throw new ApiError(0, "unreachable", "The Outpost server is not responding. It may be restarting.");
+  }
+  if (!response.ok) await parse(response);
+  return response;
+}
+
 export const api = {
   get: <T>(path: string, query?: Query, signal?: AbortSignal) => request<T>("GET", path, { query, signal }),
   post: <T>(path: string, body?: unknown, query?: Query) => request<T>("POST", path, { body: body ?? {}, query }),
@@ -78,6 +101,7 @@ export const api = {
   put: <T>(path: string, body: unknown) => request<T>("PUT", path, { body }),
   delete: <T>(path: string, query?: Query) => request<T>("DELETE", path, { query }),
   upload: <T>(path: string, form: FormData, query?: Query) => request<T>("POST", path, { body: form, query }),
+  stream,
 };
 
 /**

@@ -1,11 +1,11 @@
 /**
  * The contracts for retrieval-augmented generation.
  *
- * Outpost does not run a language model in this release. What exists today is
- * everything a model needs handed to it: retrieval, context assembly and citations.
- * `ModelProvider` and `Reranker` are declared so that integrations (Ollama, llama.cpp,
- * any OpenAI-compatible local endpoint) can be added without changing the layers
- * below them. Nothing here imports a model library.
+ * Retrieval, context assembly and citations are implemented in this module.
+ * `ModelProvider` is implemented in `modules/answers` for any OpenAI-compatible chat
+ * server a person runs themselves (Ollama, llama.cpp, LM Studio); Outpost bundles no
+ * model. `Reranker` is declared and nothing implements it. Nothing here imports a
+ * model library.
  *
  *   question ─▶ Retriever ─▶ [Reranker] ─▶ ContextAssembler ─▶ ModelProvider ─▶ answer
  *                                                   │                               │
@@ -100,15 +100,21 @@ export interface GenerationRequest {
   maxTokens?: number;
   temperature?: number;
   signal?: AbortSignal;
+  /**
+   * Called once when the model ends the answer itself, with why it stopped:
+   * "stop" (it had finished), "length" (it reached `maxTokens`), or null when the
+   * server did not say. Not called when generation fails or is cancelled.
+   */
+  onFinish?: (info: { finishReason: string | null }) => void;
 }
 
-/** A locally hosted language model. No implementation ships in this release. */
+/** A locally hosted language model. Implemented for OpenAI-compatible servers in `modules/answers/provider.ts`. */
 export interface ModelProvider {
   readonly id: string;
   generate(request: GenerationRequest): AsyncIterable<string>;
 }
 
-/** An answer with its claims tied to sources. Produced by a future answer pipeline. */
+/** An answer with its claims tied to sources: what `modules/answers` has once a model has finished writing. */
 export interface CitedAnswer {
   /** Generated wording. Always presented as an interpretation, never as the source. */
   text: string;

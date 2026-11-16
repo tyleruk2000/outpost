@@ -85,6 +85,10 @@ All three are bundled and served locally. Fixed rem scale, ratio about 1.2:
 - Reading prose is 1.0625rem at 1.72 line height, capped at 70ch.
 - Sentence case everywhere. No all-caps labels, no tracked eyebrows, no decorative
   numbering.
+- Words a language model wrote are not reading matter from the library, so they are
+  set in the functional face, under a heading that says they were generated and by
+  what. Passages quoted from the library beside them are set in Literata. The two
+  faces keep the model's wording and the source's wording apart.
 - Numbers people compare use tabular figures.
 
 ## Shape and depth

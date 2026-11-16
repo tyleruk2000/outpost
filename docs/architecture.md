@@ -87,8 +87,39 @@ and never see how search works.
 
 Passages keep document id, page, heading, character offsets, content hash and index
 version: everything needed to cite a source. The retrieval module turns a question
-into numbered, quoted context with citations. No language model ships; the interfaces
-for one are in `modules/retrieval/types.ts` and described in [ai.md](ai.md).
+into numbered, quoted context with citations.
+
+### Answers: a model the person runs, never one Outpost ships
+
+The last step of that pipeline, a language model writing an answer from the numbered
+passages, is done by a server the person runs themselves (Ollama, llama.cpp, LM
+Studio), reached over the OpenAI-compatible chat API. Outpost bundles no model and
+downloads none: a model is gigabytes, the good choice changes every few months, and
+which one to trust with your documents is not Outpost's decision to make. The
+`answers` module is therefore small: an address, one prompt, a stream.
+
+- **One question, one answer.** No conversation, memory, agents or tools. Each of
+  those widens what a planted sentence in a document could make the model do; a
+  reference tool that can also write a sourced summary does not need them.
+- **Streamed, not a job.** An answer is tied to the person waiting for it. It is sent
+  as server-sent events on the `POST` that asked for it, and when that connection
+  closes (Stop, a closed tab, a lost network) the connection to the model closes too.
+  A job would outlive the reader and would have to be stored.
+- **One at a time, refused not queued.** A model on a home machine cannot write two
+  answers at once, and a queue would hide a wait of minutes behind a spinner.
+- **Nothing stored.** The question, the passages sent and the answer exist for the
+  length of the request. The browser keeps the current answer in memory only.
+- **Sources fenced, answers inert.** Passages are sent between marker lines carrying a
+  code made up for that request, with a rule that nothing between them is an
+  instruction. The answer is drawn as words; the only links are citation markers,
+  which lead to passages Outpost supplied.
+- **Grounding is checked where it can be.** No passage found means no request to the
+  model. Markers that match no source are flagged. Whether a real source supports a
+  claim cannot be checked mechanically, so every marker opens its passage.
+
+It has been tested against a stand-in server that speaks the protocol, not against a
+real model. The interfaces are in `modules/retrieval/types.ts`; the whole of it is
+described in [ai.md](ai.md).
 
 ### Reference collections through kiwix-serve, behind a sandboxing proxy
 
@@ -186,7 +217,8 @@ search uses GeoNames data loaded into FTS5.
 - No telemetry. The server makes an outbound request only as the direct result of a
   person's action: refreshing the catalogue, starting a download, saving a file from
   a link, estimating or downloading a map region or place names, fetching the runtimes
-  for a portable drive, or, if they configured one, calling their own embedding server.
+  for a portable drive, or, if they configured one, calling their own embedding server
+  or asking their own model server for an answer.
 
 See [security.md](security.md) for the threat model.
 
@@ -210,7 +242,7 @@ scripts/             packaged-app build, map asset fetch
 e2e/                 Playwright tests against the packaged app
 ```
 
-Modules, in registration order: search, semantic, retrieval, documents, notes, imports,
+Modules, in registration order: search, semantic, retrieval, answers, documents, notes, imports,
 collections, books, kiwix, downloads, links, catalog, maps, backup, portable, manage. A module may use the
 services of those before it. [development/server-modules.md](development/server-modules.md)
 is the contract a module works to.
@@ -225,7 +257,7 @@ These are deliberate, and stated so nobody has to discover them.
 | Vector search | Flat index: every query compares against every stored vector. | Exact and dependency-free; comfortable to roughly 100,000 passages. `VectorIndex` is the seam for sqlite-vec or pgvector. |
 | Local embedding model | Needs the optional `@huggingface/transformers` package, which is not in the packaged app. | Its native runtime is large and has no musl or Intel-macOS builds. A local embedding server (Ollama, llama.cpp) works everywhere today. |
 | OCR | Optional and off by default; slow, and it makes mistakes. Tesseract compiled to WebAssembly, English built in, other languages from a data file a person adds. Only pictures on a page are read: text drawn as shapes is not. A page scanned the wrong way up is found by trying the other ways, not by detecting its orientation. | No native code, so it runs everywhere Node does. Reading drawn text needs a PDF renderer with a canvas (`@napi-rs/canvas`), a native dependency. Languages could be fetched through the download manager; that is not built. `modules/ocr/types.ts` is the seam for another engine. |
-| Language model answers | Not included, by design for this release. | Interfaces exist; see ai.md. |
+| Language model answers | Need a model server the person runs (Ollama, llama.cpp, LM Studio); no model is bundled. One question and one answer, one at a time, from documents, notes and book chapters only. Tested against a stand-in server, not a real model. | Bundling a model would add gigabytes and a native runtime. Reference articles would need Outpost to split ZIM content into passages. See ai.md. |
 | ZIM archives | Need kiwix-serve (the Compose sidecar, or a binary for non-Docker installs). | Reading the format in pure JavaScript would mean reimplementing libzim. |
 | Maps | Vector basemap only from the Protomaps schema; hill shading and contour lines need a separate terrain download; contour lines are only as fine as that terrain; routing is not offered. | Contour lines are traced in the browser from the installed terrain (see maps.md), so there is no contour tileset to download or host. |
 | Map source | Depends on the Protomaps build host staying available for new downloads. | The source address is a setting; any PMTiles archive with the same schema works, including one you host. |

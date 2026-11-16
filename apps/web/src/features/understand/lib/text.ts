@@ -46,15 +46,19 @@ export function buildExamples(titles: readonly string[], headings: ReadonlyArray
   return [...fromHeadings, ...fromTitles, ...more];
 }
 
+/** "[2]", and "[1, 3]" as some models write it. The same rule as the server's `checkCitations`. */
+const MARKER = /\[(\d{1,3}(?:\s*[,;]\s*\d{1,3})*)\]/g;
+const numbersIn = (list: string) => list.split(/[,;]/).map(Number);
+
 /**
  * Which citation markers an answer uses, and which of them point at no source that was
- * supplied. The same check the server has (`checkCitations`), for an answer the reader
- * brings from their own model.
+ * supplied. The same check the server runs on every answer (`checkCitations`), for any
+ * text the reader pastes in.
  */
 export function checkMarkers(answer: string, known: readonly number[]): { used: number[]; unsupported: number[] } {
   const supplied = new Set(known);
   const found = new Set<number>();
-  for (const match of answer.matchAll(/\[(\d{1,3})\]/g)) found.add(Number(match[1]));
+  for (const match of answer.matchAll(MARKER)) for (const marker of numbersIn(match[1]!)) found.add(marker);
   const all = [...found].sort((a, b) => a - b);
   return { used: all.filter((marker) => supplied.has(marker)), unsupported: all.filter((marker) => !supplied.has(marker)) };
 }
@@ -63,10 +67,11 @@ export function checkMarkers(answer: string, known: readonly number[]): { used: 
 export function splitMarkers(answer: string): Array<{ text: string; marker: number | null }> {
   const parts: Array<{ text: string; marker: number | null }> = [];
   let last = 0;
-  for (const match of answer.matchAll(/\[(\d{1,3})\]/g)) {
+  for (const match of answer.matchAll(MARKER)) {
     const at = match.index ?? 0;
     if (at > last) parts.push({ text: answer.slice(last, at), marker: null });
-    parts.push({ text: match[0], marker: Number(match[1]) });
+    // A list such as "[1, 3]" is shown as its separate markers.
+    for (const marker of numbersIn(match[1]!)) parts.push({ text: `[${marker}]`, marker });
     last = at + match[0].length;
   }
   if (last < answer.length) parts.push({ text: answer.slice(last), marker: null });
