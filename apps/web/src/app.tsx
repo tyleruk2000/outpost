@@ -23,6 +23,8 @@ const DownloadsPage = lazy(() => import("./features/downloads/downloads-page"));
 const DownloadPage = lazy(() => import("./features/downloads/download-page"));
 const UnderstandPage = lazy(() => import("./features/understand/understand-page"));
 const MapsPage = lazy(() => import("./features/maps/maps-page"));
+const RepeatersPage = lazy(() => import("./features/repeaters/repeaters-page"));
+const RepeaterPage = lazy(() => import("./features/repeaters/repeater-page"));
 const SearchPage = lazy(() => import("./features/search/search-page"));
 const StoragePage = lazy(() => import("./features/storage/storage-page"));
 const ManagePage = lazy(() => import("./features/manage/manage-page"));
@@ -83,6 +85,8 @@ export function App() {
           <Route path="library/collections/:id" element={<CollectionPage />} />
           <Route path="library/read/:collectionId/*" element={<ReaderPage />} />
           <Route path="maps" element={<MapsPage />} />
+          <Route path="radio/repeaters" element={<RepeatersPage />} />
+          <Route path="radio/repeaters/:id" element={<RepeaterPage />} />
           <Route path="notes" element={<NotesPage />} />
           <Route path="notes/:id" element={<NotesPage />} />
           <Route path="import" element={<ImportPage />} />

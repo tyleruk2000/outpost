@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Skeleton, Tooltip } from "@/components/ui/misc";
 import { useDownloads } from "@/features/downloads/use-downloads";
+import { type SightStart, useRepeatersOnMap } from "@/features/repeaters/map/use-repeaters-on-map";
 import { errorMessage } from "@/lib/api";
 import { cn, plural } from "@/lib/utils";
 import {
@@ -192,7 +193,7 @@ export default function MapsPage() {
   const nameShown = useCallback(() => setNameRequested(false), []);
   const [measurePoints, setMeasurePoints] = useState<LatLon[]>([]);
   /** The two ends a line-of-sight check starts with, when it is taken up from a measured path. */
-  const [sightStart, setSightStart] = useState<[LatLon, LatLon] | null>(null);
+  const [sightStart, setSightStart] = useState<SightStart | null>(null);
   const [draft, setDraft] = useState<PlaceDraft | null>(null);
   const [moving, setMoving] = useState<PlaceMove | null>(null);
   /** What had the keyboard when a move began from the list, to give it back when the move ends. */
@@ -833,6 +834,17 @@ export default function MapsPage() {
     engine?.setOverlay("o-location", locationData(locate.fix));
   }, [engine, locate.fix]);
 
+  // Repeaters held on this device: drawn when switched on, opened by a press, handed to the line-of-sight check.
+  const repeaters = useRepeatersOnMap({
+    engine,
+    browsing: tool === "browse" && !moving && !draft,
+    here: locate.fix,
+    onSight: useCallback((start: SightStart) => {
+      setSightStart(start);
+      setTool("sight");
+    }, []),
+  });
+
   const chooseResult = (result: SearchResult) => {
     setContextMenu(null);
     if (result.kind === "marker") return openMarker(result.marker);
@@ -1071,7 +1083,8 @@ export default function MapsPage() {
     );
 
   const card =
-    tool === "measure" ? (
+    repeaters.card ??
+    (tool === "measure" ? (
       <MeasureCard
         points={measurePoints}
         onUndo={() => setMeasurePoints((points) => points.slice(0, -1))}
@@ -1079,7 +1092,7 @@ export default function MapsPage() {
         onDone={leaveTool}
         onSaveAsRoute={() => startDrawing(measurePoints)}
         onSight={() => {
-          setSightStart([measurePoints[0]!, measurePoints.at(-1)!]);
+          setSightStart([{ position: measurePoints[0]! }, { position: measurePoints.at(-1)! }]);
           setMeasurePoints([]);
           setTool("sight");
         }}
@@ -1163,7 +1176,7 @@ export default function MapsPage() {
           </Button>
         </div>
       </MapCard>
-    ) : null;
+    ) : null);
 
   return (
     <div className="relative isolate flex h-dvh overflow-hidden max-md:h-[calc(100dvh-3.25rem)] max-md:pb-14">
@@ -1268,6 +1281,8 @@ export default function MapsPage() {
             onContoursChange={changeContours}
             locatorGrid={locatorGrid}
             onLocatorGridChange={setLocatorGrid}
+            repeaters={repeaters.on}
+            onRepeatersChange={repeaters.setOn}
             record={<RecordButton />}
             disabled={!engine}
           />

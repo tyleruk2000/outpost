@@ -9,6 +9,7 @@ import {
   type LucideIcon,
   Map as MapIcon,
   NotebookText,
+  RadioReceiver,
   Search,
   Settings,
   Undo2,
@@ -55,5 +56,6 @@ export const tuckedAwayNav: Array<Omit<NavItem, "key">> = [
   { to: "/storage/manage", label: "Manage and clean up", icon: ListChecks },
   { to: "/storage/merge", label: "Bring back from a drive", icon: Undo2 },
   { to: "/import", label: "Import files", icon: FolderInput },
+  { to: "/radio/repeaters", label: "Repeaters", icon: RadioReceiver },
   { to: "/search/how-it-works", label: "How search works", icon: Waypoints },
 ];

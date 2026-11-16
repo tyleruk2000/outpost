@@ -5,6 +5,7 @@
  * MapLibre.
  */
 import { type Bbox, haversineMeters, type InstalledRegion, type MarkerDto, type TrackWithGeometryDto } from "@outpost/shared";
+import { repeaterLayers } from "@/features/repeaters/map/layers";
 import { bboxRing, circleRing, formatDistance, type LatLon, metersPerPixel } from "../lib/geo";
 import { measure } from "../lib/measure";
 import { MARKER_HEX } from "../lib/palette";
@@ -22,6 +23,7 @@ export const OVERLAY_SOURCES = [
   "o-tracks",
   "o-track-ends",
   "o-measure",
+  "o-repeaters",
   "o-sight",
   "o-draw",
   "o-recording",
@@ -165,6 +167,8 @@ export function overlayLayers(theme: MapTheme): LayerSpecification[] {
       layout: { ...label, "text-field": ["get", "label"], "text-anchor": "bottom", "text-offset": [0, -0.8], "text-allow-overlap": false },
       paint: halo,
     },
+    // Repeaters, when they are switched on; see features/repeaters/map.
+    ...repeaterLayers(theme),
     // The path of a line-of-sight check.
     ...sightLayers(theme),
     // A track being recorded; see recording/overlay.ts.
