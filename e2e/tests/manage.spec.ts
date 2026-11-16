@@ -54,7 +54,8 @@ test.describe("managing and cleaning up", () => {
     await dialog.getByRole("button", { name: "Remove 1 item" }).click();
     await expect(page.getByText(/Remove 1 item: finished/)).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText(/^Deleted 1 item, /)).toBeVisible();
-    await expect(page.getByText("Nothing matches.")).toBeVisible();
+    // "Nothing matches" beside other things installed; "Nothing is installed yet" when this spec runs by itself.
+    await expect(page.getByText(/Nothing matches\.|Nothing is installed yet/)).toBeVisible();
 
     // Both records are gone, and Explore offers the sheet again.
     const gone = await page.request.get(`/api/documents/${added.documentId}`);
