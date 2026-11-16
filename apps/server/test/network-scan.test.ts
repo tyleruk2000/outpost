@@ -10,7 +10,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { createPacer, runScan, type ScanLimits } from "../src/modules/network/scan.ts";
 import { webUrlOf } from "../src/modules/network/service.ts";
 import { planSubnets } from "../src/modules/network/subnets.ts";
-import { standInSystem } from "../src/modules/network/system.ts";
+import { localName, parseAvahiResolve, parseDnsSdAddresses, realSystem, standInSystem } from "../src/modules/network/system.ts";
 import { standInWorld } from "./fixtures/network/stand-in.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
 
@@ -57,6 +57,85 @@ describe("a scan", () => {
     expect(new Set(system.sent.filter((entry) => entry.kind === "connect").map((entry) => entry.port))).toEqual(new Set([80, 443]));
     // Nothing outside the swept network is probed.
     expect(system.sent.every((entry) => entry.address.startsWith("192.168.77."))).toBe(true);
+  });
+
+  it("resolves announced names only by multicast, never a name a device chose under someone else's domain", async () => {
+    const world = standInWorld();
+    const long = `kitchen-${"x".repeat(300)}`;
+    world.announcements = [
+      // A name under a domain the device controls: a query for it would leave the network.
+      { type: "_http._tcp", name: "Tracker", host: "beacon.attacker.example", address: null, port: 80 },
+      { type: "_http._tcp", name: "Trailing dot", host: "beacon.attacker.example.", address: null, port: 80 },
+      { type: "_http._tcp", name: "Not quite local", host: "evil.local.attacker.example", address: null, port: 80 },
+      // An address in the announcement itself, outside the network looked at.
+      { type: "_http._tcp", name: "Elsewhere", host: null, address: "8.8.8.8", port: 80 },
+      { type: "_ipp._tcp", name: "Printer", host: "8.8.4.4", address: null, port: 631 },
+      // Names on screen: control characters, markup and length.
+      { type: "_ipp._tcp", name: "Hall\u0007 <b>printer</b>\n", host: null, address: "192.168.77.30", port: 631 },
+      { type: "_http._tcp", name: "Long", host: `${long}.local`, address: "192.168.77.44", port: 80 },
+    ];
+    const system = standInSystem(world);
+    const asked: string[] = [];
+    const lookup = system.lookup;
+    system.lookup = async (host, timeoutMs) => {
+      asked.push(host);
+      return lookup(host, timeoutMs);
+    };
+    const reversed: string[] = [];
+    const reverseName = system.reverseName;
+    system.reverseName = async (address, timeoutMs) => {
+      reversed.push(address);
+      return reverseName(address, timeoutMs);
+    };
+    const { subnets } = planSubnets(system.interfaces());
+    const outcome = await runScan(system, subnets, { limits: FAST, signal: new AbortController().signal });
+
+    expect(
+      asked.every((host) => /\.local$/.test(host)),
+      asked.join(", "),
+    ).toBe(true);
+    expect(outcome.devices.flatMap((device) => device.addresses).some((address) => address.startsWith("8.8."))).toBe(false);
+    expect(reversed.every((address) => address.startsWith("192.168.77."))).toBe(true);
+    const printer = outcome.devices.find((device) => device.addresses.includes("192.168.77.30"))!;
+    const pi = outcome.devices.find((device) => device.addresses.includes("192.168.77.44"))!;
+    expect(pi.name.length).toBeLessThanOrEqual(80);
+    const { toAdvert } = await import("../src/modules/network/announcements.ts");
+    const advert = toAdvert(printer.announcements.find((entry) => entry.name.startsWith("Hall"))!);
+    // Kept as text: the markup is shown as written, without the control characters.
+    expect(advert.name).toBe("Hall <b>printer</b>");
+  });
+
+  it("asks multicast DNS, and only about .local names, on the real machine", async () => {
+    expect(["nas.local", "NAS.local.", "my-pi.home.local"].map(localName)).toEqual(["nas.local", "nas.local", "my-pi.home.local"]);
+    for (const hostile of [
+      "beacon.attacker.example",
+      "local",
+      "8.8.8.8",
+      "evil.local.example",
+      "a b.local",
+      "<b>x</b>.local",
+      "x\u0007.local",
+      "",
+    ]) {
+      expect(localName(hostile), hostile).toBeNull();
+    }
+    expect(
+      parseDnsSdAddresses(
+        "DATE: ---Mon 16 Nov 2026---\n 9:00:00.000  ...STARTING...\nTimestamp     A/R  Flags         IF  Hostname   Address   TTL\n 9:00:00.001  Add  40000002      14  nas.local.   192.168.1.20   120\n 9:00:00.002  Add  40000002      14  nas.local.   FE80:0:0:0:1:2:3:4%en0   120\n",
+      ),
+    ).toEqual(["192.168.1.20", "fe80:0:0:0:1:2:3:4"]);
+    expect(parseAvahiResolve("nas.local\t192.168.1.20\n")).toEqual(["192.168.1.20"]);
+    // Whatever the platform, a name that is not .local is never handed to anything.
+    const ran: string[][] = [];
+    for (const platform of ["darwin", "linux"] as const) {
+      const system = realSystem(async (file, args) => {
+        ran.push([file, ...args]);
+        return { code: 0, stdout: "", stderr: "" } as never;
+      }, platform);
+      expect(await system.lookup("beacon.attacker.example", 100)).toEqual([]);
+      expect(await system.lookup("8.8.8.8", 100)).toEqual([]);
+    }
+    expect(ran).toEqual([]);
   });
 
   it("uses connection attempts alone where ping cannot be used, and says so by sending none", async () => {

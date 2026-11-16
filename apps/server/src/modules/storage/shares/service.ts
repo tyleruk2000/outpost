@@ -36,7 +36,7 @@ import { AppError, badRequest, conflict, notFound } from "../../../core/errors.t
 import { isInside } from "../../../core/fs-safe.ts";
 import { newId } from "../../../core/ids.ts";
 import { downloads, networkShares } from "../../../db/schema.ts";
-import { type HostLookup, lookupHost, type PortProbe, probePort, resolveShareHost, urlHost } from "./address.ts";
+import { type HostLookup, localName, lookupHost, type PortProbe, probePort, resolveShareHost, urlHost } from "./address.ts";
 import {
   browseFileServers,
   type CommandRunner,
@@ -818,8 +818,10 @@ export function createSharesService(ctx: AppContext, overrides: Partial<SharesDe
       const found = await browseFileServers(deps.run);
       const servers: DiscoveredServer[] = [];
       for (const entry of found) {
-        // Names come from the network; only something that passes as a host name is offered.
-        if (shareHostKind(entry.host) !== "name") continue;
+        // Names come from the network; only a `.local` name, which is reached by multicast
+        // DNS, is offered. A name under another domain would send a query the device chose
+        // to the computer's DNS server when connected to.
+        if (shareHostKind(entry.host) !== "name" || !localName(entry.host)) continue;
         // biome-ignore lint/suspicious/noControlCharactersInRegex: stripping control characters is the point
         const name = entry.name.replace(/[\u0000-\u001f\u007f]/g, "").slice(0, 80);
         servers.push({ name: name || entry.host, host: entry.host, port: entry.port === DEFAULT_PORT ? null : entry.port });

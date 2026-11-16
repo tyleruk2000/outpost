@@ -928,6 +928,9 @@ describe("reconnecting, disconnecting and forgetting", () => {
       { name: "WORKSHOP-NAS", host: "WORKSHOP-NAS.local", port: 445 },
       { name: "Felicity’s MacBook Pro", host: "Felicitys-MacBook-Pro.local", port: 445 },
       { name: "Odd one", host: 'bad"host.local', port: 445 },
+      // A name under a domain the device controls, and an address: connecting would ask the computer's DNS server.
+      { name: "Tracker", host: "beacon.attacker.example", port: 445 },
+      { name: "Elsewhere", host: "8.8.8.8", port: 445 },
     ];
     const { body } = await app.api("GET", "/api/storage/shares/discover");
     expect(body).toEqual({

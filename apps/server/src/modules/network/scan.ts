@@ -22,7 +22,7 @@ import { NETWORK_SCAN_LIMITS, type NetworkSubnet } from "@outpost/shared";
 import { type Announcement, cleanName } from "./announcements.ts";
 import { isPrivateMac } from "./neighbours.ts";
 import { insidePlanned, sweepAddresses } from "./subnets.ts";
-import type { NetworkSystem } from "./system.ts";
+import { localName, type NetworkSystem } from "./system.ts";
 
 export interface ScanLimits {
   packetsPerSecond: number;
@@ -222,17 +222,21 @@ export async function runScan(
   // What was announced, matched to an address by the name it gave.
   const hosts = new Map<string, string[]>();
   for (const entry of heard) {
+    // An address only from the announcement's own record, or from a `.local` name asked
+    // by multicast DNS. A name under any other domain is the device's choice of where a
+    // DNS query would go, and is never looked up.
     let addresses = entry.address ? [entry.address] : [];
-    if (addresses.length === 0 && entry.host) {
-      if (!hosts.has(entry.host)) hosts.set(entry.host, await system.lookup(entry.host, 2000).catch(() => []));
-      addresses = hosts.get(entry.host) ?? [];
+    const local = entry.host ? localName(entry.host) : null;
+    if (addresses.length === 0 && local) {
+      if (!hosts.has(local)) hosts.set(local, await system.lookup(local, 2000).catch(() => []));
+      addresses = hosts.get(local) ?? [];
     }
     const address = addresses.find((candidate) => insidePlanned(candidate, subnets));
     if (!address) continue;
     const device = keyOfAddress.has(address) ? byKey.get(keyOfAddress.get(address)!)! : add(address, null);
     if (!device) continue;
     if (!device.announcements.some((known) => known.type === entry.type && known.name === entry.name)) device.announcements.push(entry);
-    if (!device.name && entry.host) device.name = cleanName(entry.host.replace(/\.local$/, ""));
+    if (!device.name && local) device.name = cleanName(local.replace(/\.local$/, ""));
   }
   stopIfAsked();
 

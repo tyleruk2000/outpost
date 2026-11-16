@@ -174,6 +174,20 @@ Discovery only, in this order (`scan.ts`):
    public DNS service, that service is asked for the names of private addresses, as it
    is whenever any program on the computer does this.
 
+   Only addresses in the swept private ranges are asked about. A reverse lookup goes to
+   whatever resolver the computer uses (usually the router), and nothing else is ever
+   asked of that resolver.
+
+**Names a device announces are never looked up through DNS.** An announcement can name
+any host as where its service is, including a name under a domain the device's owner
+controls; looking that name up would send a query the device chose to the internet's
+DNS servers. So an address is taken only from the announcement's own record (Avahi
+gives one), or by asking multicast DNS for a `.local` name (`dns-sd -G` on macOS,
+`avahi-resolve` on Linux), and only when it falls inside the network looked at. Any
+other name is ignored, and so is an address outside the network. The same rule holds
+for file servers offered under Storage, Network shares: only `.local` names are
+offered. Names are shown as text, without control characters, cut to 80 characters.
+
 Not done, by design: no other port is tried, no service is asked anything, nothing is
 logged in to, nothing is checked for weaknesses, no traffic is captured, and no
 special rights are asked for or assumed. The screen says all of this in a few lines
@@ -195,7 +209,8 @@ What is used, all of it without special rights (`system.ts`):
 | Neighbour table | `arp -an`, `ndp -an` | `ip neigh show`, or `/proc/net/arp` (IPv4 only) without iproute2 | `/proc/net/arp` |
 | Router | `route -n get default` | `/proc/net/route` | `/proc/net/route` |
 | Announcements | `dns-sd` (first the kinds of service announced, then the devices announcing each, then where each is: at most 40 kinds and 80 devices, each question given 1.5 seconds) | `avahi-browse --all --resolve --parsable --terminate` if Avahi is installed (the `avahi-utils` package) | none |
-| Names | the system's resolver | the same | the same |
+| Names of addresses | the system's resolver (reverse lookups of swept private addresses only) | the same | the same |
+| Addresses of announced `.local` names | `dns-sd -G v4v6` (multicast DNS) | `avahi-resolve -n` if installed (multicast DNS; not tried on a real Linux machine by this project) | none |
 
 Where something is missing, the screen says what and what it means ("Ping cannot be
 used here…", "Avahi is not installed…"); the scan goes on with the rest. Programs are
