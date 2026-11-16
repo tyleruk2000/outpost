@@ -1251,11 +1251,9 @@ In the API: `GET /api/maps/route-sources`, `POST /api/maps/route-search`,
   points and bounds.
 - **Export.** One track as GPX (`GET /api/maps/tracks/:id/export.gpx`), or a selection
   of tracks together with your markers as waypoints
-  (`GET /api/maps/export.gpx?markers=1&tracks=<id>,<id>`). The output is GPX 1.1. An
-  imported track, a drawn route, places alone and a mixed selection were each checked
-  against the published GPX 1.1 schema with `xmllint` on 15 November 2026, with names
-  containing `<`, `&`, quotation marks and accented letters; all four validated. Opening
-  the files in other map programs has not been tried.
+  (`GET /api/maps/export.gpx?markers=1&tracks=<id>,<id>`). The output is GPX 1.1,
+  checked against the published schema; see
+  [Exports checked against the GPX 1.1 schema](#exports-checked-against-the-gpx-11-schema).
 - **A drawn route in GPX.** It is written as a track (`<trk>` with one `<trkseg>`),
   which more apps read than a `<rte>`, and which no device will try to re-plan along
   roads. It carries the route's name, one `<trkpt>` for each point you placed with its
@@ -1263,12 +1261,93 @@ In the API: `GET /api/maps/route-sources`, `POST /api/maps/route-search`,
   elements: a drawn route was never walked. The samples taken between your points for
   the elevation profile are not exported.
 - **Numbers.** Latitudes, longitudes and heights are always written as plain decimals
-  (never in a form such as `5e-8`, which GPX does not allow).
+  (never in a form such as `5e-8`, which GPX does not allow): positions to seven
+  places, heights to the centimetre. GPX 1.1 allows a longitude from -180 up to, but
+  not including, 180, so a point at 180° east is written as `-180`, which is the same
+  meridian.
+- **Times.** Written in the one form GPX allows, such as `2026-03-01T12:30:00Z`. A
+  time already in that form goes out exactly as it came in, zone and fractions of a
+  second included. An imported file may give times in other forms that Outpost can
+  read (`2026-03-01 12:30:00`, `Sun, 01 Mar 2026 12:30:00 GMT`, a date alone); those
+  are kept as the file gave them and written out as the same moment in UTC. One of
+  those with no zone is taken as the local time of the computer Outpost runs on.
 - **Safety.** A GPX file is checked before it is read: files with a DOCTYPE or entity
   declarations are refused. It is then read in one pass that keeps only what is stored,
   so the memory a file costs depends on the points in it and not on how its XML is
   shaped; see [security.md](security.md#files-people-upload). Positions are stored to
   six decimal places.
+
+
+### Exports checked against the GPX 1.1 schema
+
+On 16 November 2026, thirteen exports made by a test server were validated against the
+GPX 1.1 schema as its publisher serves it (`https://www.topografix.com/GPX/1/1/gpx.xsd`,
+26,665 bytes, SHA-256 `9e4d1988b862edbe556305b130f8f6f1b29864fefd0dc02d5dab04ccdd1f34d6`)
+with `xmllint --noout --schema gpx.xsd <file>` (libxml2 2.9.13, the one that comes with
+macOS). The exports were:
+
+| Export | What is in it |
+| --- | --- |
+| A route drawn on the map | One track, a description, no times. |
+| A recorded track | The time and the height of every point, as the recorder sends them. |
+| An imported file with waypoints | Waypoints with heights, times, descriptions and symbols (`<sym>`), one with a symbol and nothing else, beside a track. |
+| Awkward names | `&`, `<`, `>`, both kinds of quotation mark, emoji, Cyrillic, Greek, Chinese, Hebrew and Arabic, in the file's name, its description, a track and a waypoint. |
+| Nothing named | A waypoint, a track and a route with no names, imported with no name given. |
+| Several segments | A track of three segments (times with `Z`, times with an offset and a fraction of a second, no times), and a second track with heights below zero. |
+| Times written other ways | Waypoint and point times in forms Outpost reads and GPX does not allow. |
+| Saved places alone | Among them places at 180° and -180° longitude, at both poles, and at 179.99999996°. |
+| A route across the date line | A drawn route with a point at 180°. |
+| Everything together | All of the above in one file, places included. |
+| A file that came in as GPX 1.0 | Sent out as 1.1. |
+| A found route | With its credit in `<copyright>`, `<link>` and `<src>`. The credit was written into a stored route as the finder stores it; the finder itself was not run. |
+| A found route with a drawn one | Where only the track carries the credit. |
+
+**What the schema refused, and what was done.** Nine of the thirteen validated as they
+were. Four did not, for two reasons, both now fixed in the writer
+(`apps/server/src/modules/maps/gpx.ts`):
+
+- **Times in forms GPX does not allow.** The reader keeps any time it can read as a
+  date, and the writer wrote it back unchanged, so `2026-03-01 12:30:00` or
+  `Sun, 01 Mar 2026 12:30:00 GMT` in an imported file came out the same way. They are
+  now written as the schema's `xsd:dateTime`.
+- **A longitude of exactly 180.** The schema's longitude stops just short of it. A
+  saved place or a route point at 180°, or one that rounds to it, is now written as
+  `-180`.
+
+The order of elements, which is the usual fault, was right everywhere: in a waypoint
+`ele`, `time`, `name`, `desc`, `sym`; in the metadata `name`, `desc`, `copyright`,
+`link`; in a track `name`, `desc`, `src`, `link`, then its segments. After the two
+fixes all thirteen validate.
+
+**Read back.** Each file was then read with Outpost's own GPX reader and compared with
+what is stored. Positions, heights (to the centimetre), the moment of every time,
+names, descriptions and symbols all came back as stored, with 180° read back as -180°.
+The export adds two things on purpose: a single line with no name of its own takes the
+route's name, and a waypoint with no name is written as "Waypoint".
+
+**How this is kept true.** The schema file says nothing about its own licence, so it
+is not kept in this repository and no test needs it or the internet.
+`apps/server/test/maps-gpx-schema.test.ts` has the schema's order of elements written
+out and checks it, and the forms of every latitude, longitude, height and time, on the
+same kinds of export made by a test server. To validate again, fetch the schema and run
+the `xmllint` command above on an exported file.
+
+**Earlier checks.** Four exports were validated on 15 November 2026 and the four
+found-route exports described under [Finding a known route](#finding-a-known-route) on 16 November
+2026. All eight passed; none of them held a time in another form or a point at 180°.
+
+**What has not been tested.**
+
+- **No other program has opened these files.** Not one. Programs a person might try,
+  and which may each be stricter or looser than the schema: Garmin BaseCamp and a
+  Garmin handheld, OsmAnd, Organic Maps, Gaia GPS, Komoot, QGIS, GPXSee, gpx.studio,
+  Google Earth and JOSM. If one of them refuses a file or shows it wrongly, that is
+  worth an issue with the file attached.
+- **Addresses.** `xmllint` checks a web address (`<link href>`, `<license>`) only
+  loosely, so validating says little about those.
+- **What is not in the schema.** That a program shows a symbol name it knows as an icon,
+  keeps the credit, or draws a route across the date line as one line and not as a
+  stroke round the world.
 
 ## Coordinate formats
 

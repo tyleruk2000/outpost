@@ -391,6 +391,10 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 - Offline place search from GeoNames data.
 - Markers, GPX import and export, and coordinate parsing including British National
   Grid references.
+- Exported GPX checked against the GPX 1.1 schema with a wider set of exports. Two
+  things it refused are fixed: a time kept from an imported file in a form GPX does
+  not allow is written in the form it does, and a point at 180° east is written as
+  180° west. `docs/maps.md` says what was checked, with what, and what was not.
 - GPX 1.0 and 1.1 files read in one pass that keeps only what is stored, with stated
   limits on what a file may hold (1,000,000 points, 20,000 waypoints, 10,000 tracks
   and routes, 100,000 segments, in 20 MB). A day's recording of 150,000 points is

@@ -202,10 +202,41 @@ export function decimal(value: number, digits: number): string {
   return trimmed === "-0" ? "0" : trimmed;
 }
 
+/**
+ * A longitude as GPX 1.1 allows it: from -180 up to, but not including, 180. The schema
+ * leaves 180 itself out, and 180 east is the same meridian as 180 west, so that is how
+ * it is written. Checked after rounding, since 179.99999996 rounds to 180.
+ */
+export function gpxLongitude(lon: number): string {
+  const text = decimal(lon, 7);
+  return text === "180" ? "-180" : text;
+}
+
+const XSD_DATE_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?$/;
+
+/**
+ * A time as GPX 1.1 allows it (the schema's `xsd:dateTime`), or undefined for one that
+ * cannot be read as a time. One already in that form is written as it is, with its zone
+ * and its fractions of a second. The reader keeps whatever time a file gave that can be
+ * read as a date, "2026-03-01 12:30:00" for one; those are written as the same moment
+ * in UTC. (A time with no zone that is not in GPX's own form is taken as the local time
+ * of the computer Outpost runs on, which is how JavaScript reads it.)
+ */
+export function gpxTime(time: string | null | undefined): string | undefined {
+  if (!time) return undefined;
+  const moment = Date.parse(time);
+  if (Number.isNaN(moment)) return undefined;
+  if (XSD_DATE_TIME.test(time)) return time;
+  const utc = new Date(moment).toISOString();
+  // A year before 0 or after 9999 is written with a sign, which the schema does not read.
+  return XSD_DATE_TIME.test(utc) ? utc : undefined;
+}
+
 function pointXml(tag: string, position: Position, time: string | null | undefined, indent: string, extra = ""): string {
   const [lon, lat, ele] = position;
-  const inner = `${typeof ele === "number" && Number.isFinite(ele) ? `${indent}  <ele>${decimal(ele, 2)}</ele>\n` : ""}${time ? `${indent}  <time>${escapeXml(time)}</time>\n` : ""}${extra}`;
-  const open = `${indent}<${tag} lat="${decimal(lat!, 7)}" lon="${decimal(lon!, 7)}"`;
+  const when = gpxTime(time);
+  const inner = `${typeof ele === "number" && Number.isFinite(ele) ? `${indent}  <ele>${decimal(ele, 2)}</ele>\n` : ""}${when ? `${indent}  <time>${escapeXml(when)}</time>\n` : ""}${extra}`;
+  const open = `${indent}<${tag} lat="${decimal(lat!, 7)}" lon="${gpxLongitude(lon!)}"`;
   return inner ? `${open}>\n${inner}${indent}</${tag}>\n` : `${open}/>\n`;
 }
 
