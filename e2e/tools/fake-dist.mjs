@@ -6,8 +6,13 @@
 // /overpass/ it stands in for a route source, answering with made-up routes, so that
 // finding a route can be followed from the search to the GPX export. Under
 // /repeater-lists/ it stands in for a publisher of repeater lists, with made-up stations.
+// Under /voacap/ it stands in for the engine's repository, serving VOACAP's real
+// coefficients from the tests' copy (engines/voacap/.cache), by the names in
+// engines/voacap/coefficients.json and no others.
 import { createHash } from "node:crypto";
+import fs from "node:fs";
 import http from "node:http";
+import path from "node:path";
 import { gzipSync } from "node:zlib";
 import { createOverpassStandIn } from "../../apps/server/test/fixtures/maps/overpass-answers.ts";
 import { serveP533StandIn } from "../../apps/server/test/fixtures/propagation/p533-maps-stand-in.ts";
@@ -46,6 +51,8 @@ const sums = [...files].map(([name, body]) => `${createHash("sha256").update(bod
 export const FIELD_MANUAL = Buffer.alloc(300_000, "A field manual for end-to-end tests. ");
 
 const routeSource = createOverpassStandIn();
+const voacapHome = path.resolve(import.meta.dirname, "../../engines/voacap");
+const voacapFiles = new Set(JSON.parse(fs.readFileSync(path.join(voacapHome, "coefficients.json"), "utf8")).files.map((file) => file.path));
 const repeaterSource = createRepeaterSourceStandIn();
 
 http
@@ -54,6 +61,16 @@ http
     if (request.url?.startsWith("/overpass/")) return routeSource.handle(request, response);
     if (request.url?.startsWith("/repeater-lists/")) return repeaterSource.handle(request, response);
     if (request.url?.startsWith("/p533/")) return serveP533StandIn(request, response);
+    if (request.url?.startsWith("/voacap/")) {
+      const name = decodeURIComponent(request.url.slice("/voacap/".length));
+      if (!voacapFiles.has(name)) {
+        response.statusCode = 404;
+        return response.end();
+      }
+      const body = fs.readFileSync(path.join(voacapHome, ".cache", name));
+      response.setHeader("Content-Length", body.length);
+      return response.end(body);
+    }
     if (request.url === "/files/field-manual.bin") {
       response.setHeader("Content-Length", FIELD_MANUAL.length);
       return response.end(FIELD_MANUAL);

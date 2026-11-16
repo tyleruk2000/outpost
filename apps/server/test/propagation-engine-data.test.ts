@@ -266,6 +266,34 @@ describe("downloading VOACAP's data, from the suite's own file server", () => {
   });
 });
 
+describe("a data directory without its copy, beside a downloaded bundle", () => {
+  it("is put back from the bundle on start, with no request (a portable drive's, say)", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "outpost-voacap-restore-"));
+    const asked: string[] = [];
+    const server = fileServer(new Map(standIn.map((file) => [`embedded/${file.path}`, () => file.bytes])), asked);
+    try {
+      fs.writeFileSync(path.join(dir, "list.json"), JSON.stringify(standInManifest(await listen(server), standIn)));
+      const env = { OUTPOST_VOACAP_DATA_MANIFEST: path.join(dir, "list.json") };
+      const first = await createTestApp(env, dir, { voacapData: false });
+      await first.api("POST", "/api/radio/propagation/engine-data/download", {});
+      await first.ctx.jobs.whenIdle();
+      await first.close();
+      fs.rmSync(workingCopyDir(path.join(dir, "data")), { recursive: true });
+      const fetched = asked.length;
+      const again = await createTestApp(env, dir, { voacapData: false });
+      try {
+        expect(await dataStatus(again)).toMatchObject({ installed: true, how: "downloaded" });
+        expect(asked.length).toBe(fetched);
+      } finally {
+        await again.close();
+      }
+    } finally {
+      await new Promise((resolve) => server.close(resolve));
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
 describe("an installation from before the data left the repository", () => {
   const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "outpost-voacap-adopt-"));
   afterAll(() => fs.rmSync(scratch, { recursive: true, force: true }));

@@ -138,6 +138,33 @@ export function registerEngineData(
     };
   }
 
+  /**
+   * Puts the engine's copy back from a downloaded bundle that is still on its storage
+   * location, with no request. With `removeBroken`, a bundle that is away or does not match
+   * is removed, so that the files can be fetched again. `starting`: nothing is loaded yet
+   * to be told.
+   */
+  async function restore(removeBroken: boolean, starting = false): Promise<boolean> {
+    const list = manifest();
+    for (const row of ourCollections()) {
+      try {
+        const files = splitBundle(new Uint8Array(fs.readFileSync(ctx.services.collections.absolutePath(row.id))), list);
+        writeWorkingCopy(dataDir, list, (entry) => files.get(entry.path)!, {
+          how: "downloaded",
+          from: list.source.baseUrl,
+          at: new Date(row.installedAt).toISOString(),
+          collectionId: row.id,
+        });
+        if (starting) checked = null;
+        else await changed("VOACAP's data was put back.");
+        return true;
+      } catch {
+        if (removeBroken) await ctx.services.collections.remove(row.id, { deleteFiles: ctx.services.storage.isAvailable(row.locationId) });
+      }
+    }
+    return false;
+  }
+
   ctx.services.downloads.registerFetcher(
     FETCHER,
     createMapsFetcher(
@@ -210,22 +237,7 @@ export function registerEngineData(
     const list = manifest();
     if (check() === null) throw conflict("VOACAP's data is already on this computer.");
     // A collection that is here but whose copy in the data directory went: put the copy back from it.
-    for (const row of ourCollections()) {
-      try {
-        const files = splitBundle(new Uint8Array(fs.readFileSync(ctx.services.collections.absolutePath(row.id))), list);
-        writeWorkingCopy(dataDir, list, (entry) => files.get(entry.path)!, {
-          how: "downloaded",
-          from: list.source.baseUrl,
-          at: new Date(row.installedAt).toISOString(),
-          collectionId: row.id,
-        });
-        await changed("VOACAP's data was put back.");
-        return { download: null, status: status() };
-      } catch {
-        // Away, or not the files: it is removed below, and the files fetched again.
-        await ctx.services.collections.remove(row.id, { deleteFiles: ctx.services.storage.isAvailable(row.locationId) });
-      }
-    }
+    if (await restore(true)) return { download: null, status: status() };
     const locations = ctx.services.storage.list().filter((location) => location.status === "available");
     const location = locations.find((candidate) => candidate.isDefault) ?? locations[0];
     if (!location) throw new AppError("storage_unavailable", "No storage location is connected to download VOACAP's data into.");
@@ -263,6 +275,9 @@ export function registerEngineData(
     await changed("VOACAP's data was removed.");
     return status();
   });
+
+  // On start, a downloaded bundle whose copy in the data directory is not there is put back from it.
+  if (check() !== null) void restore(false, true).catch((error) => ctx.log.warn({ err: error }, "VOACAP's data could not be put back"));
 
   return {
     status,

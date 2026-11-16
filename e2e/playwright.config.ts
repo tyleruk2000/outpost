@@ -7,6 +7,7 @@
  * thing under test. Set OUTPOST_E2E_SOURCE=1 to run the server from source instead
  * (the web app must have been built).
  */
+import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
@@ -200,6 +201,30 @@ fs.writeFileSync(
   }),
 );
 
+// VOACAP's coefficients are not in the repository. The suite runs the real engine on the
+// tests' copy of them (engines/voacap/.cache): the open server starts with that copy in
+// its data directory, put there by the same script a set-up uses, and its Download
+// button fetches the same files from the stand-in file server, under Outpost's own list.
+const voacapCache = path.join(root, "engines/voacap/.cache");
+if (!fs.existsSync(path.join(voacapCache, "coeffs/fof2CCIR.daw"))) {
+  throw new Error(
+    `VOACAP's coefficients are not in ${voacapCache}, and the suite makes real predictions. Fill it once, with the internet: node scripts/fetch-voacap-data.mjs --cache`,
+  );
+}
+if (work !== inherited) {
+  execFileSync(
+    process.execPath,
+    [path.join(root, "scripts/fetch-voacap-data.mjs"), "--data-dir", path.join(work, "open", "data"), "--from", voacapCache],
+    { stdio: "ignore" },
+  );
+}
+const voacapList = JSON.parse(fs.readFileSync(path.join(root, "engines/voacap/coefficients.json"), "utf8"));
+const voacapData = path.join(work, "voacap-coefficients.json");
+fs.writeFileSync(
+  voacapData,
+  JSON.stringify({ ...voacapList, source: { ...voacapList.source, baseUrl: `http://127.0.0.1:${filesPort}/voacap/` } }),
+);
+
 // Small stand-ins for the ITU's P.533 maps, served by the stand-in file server.
 const p533Maps = path.join(work, "p533-maps.json");
 fs.writeFileSync(p533Maps, JSON.stringify(p533StandInManifest(`http://127.0.0.1:${filesPort}/p533/`)));
@@ -256,6 +281,7 @@ export default defineConfig({
       OUTPOST_HTTPS_PORT: String(httpsPort),
       OUTPOST_KIWIX_URL: `http://127.0.0.1:${kiwixPort}`,
       OUTPOST_P533_MAPS_MANIFEST: p533Maps,
+      OUTPOST_VOACAP_DATA_MANIFEST: voacapData,
     }),
   ],
 });

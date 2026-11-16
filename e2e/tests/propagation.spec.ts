@@ -66,7 +66,8 @@ test.describe("HF propagation", () => {
 
     await page.getByRole("tab", { name: "Engine and data" }).click();
     await expect(page.getByText("Ionospheric and noise coefficients")).toBeVisible();
-    await expect(page.getByText(/44 files · checksums match/)).toBeVisible();
+    await expect(page.getByText(/15 files · checksums match/)).toBeVisible();
+    await expect(page.getByText(/Fetched when Outpost was set up on \d{4}-\d{2}-\d{2}/)).toBeVisible();
     await expect(page.getByText("Solar cycle prediction").first()).toBeVisible();
     await expect(page.getByRole("button", { name: "Download a newer table" })).toBeVisible();
     await expect(page.getByText(/SILSO/).first()).toBeVisible();
