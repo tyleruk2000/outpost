@@ -201,6 +201,15 @@ If the regions installed on the server change after an area was kept, "On this p
 says so and offers **Fetch again**. Areas are not fetched again by themselves: they are
 large.
 
+Fetching again never takes the copy you have away first. Each tile replaces the one
+kept in its place as it arrives, and tiles the area no longer has are removed only when
+every tile has arrived. If it is interrupted (you walk out of range, the server
+restarts, you press **Stop**), the area is still whole and still draws: the tiles that
+arrived are new and the rest are the copy that was there. "On this phone" says that it
+stopped part of the way and offers **Fetch again**, which starts from the first tile.
+If the server no longer has any map for the area, the copy on the phone is kept as it
+was.
+
 ### What out of reach looks like
 
 - A line across the top: "The server is out of reach. Showing what is kept on this

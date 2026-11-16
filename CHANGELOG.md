@@ -457,6 +457,9 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 - Out of reach the app is read-only and says so in one line; a page or screen that was
   not kept says so instead of loading. Back in reach, kept copies are replaced by the
   server's versions. A new build replaces the kept app.
+- Fetching a kept map area again replaces each tile as it arrives and removes nothing
+  until every tile has: an interrupted refresh leaves a whole area, part of it newer,
+  and says so.
 - `GET /api/maps/area-size`, and `?raw=1` on map tiles.
 - Print or save as PDF: a box the shape of the paper chooses part of the map, and one
   page is made on the device from the installed maps (A4, A3 or US Letter, either way
