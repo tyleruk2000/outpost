@@ -21,10 +21,18 @@ export default function setup(): () => void {
     Object.assign(process.env, before);
     for (const [name, value] of Object.entries(before)) if (value === undefined) delete process.env[name];
     const left = fs.readdirSync(root);
+    // What is in each, a few paths deep, so that the test that left it can be found.
+    const inside = left.flatMap((name) => {
+      try {
+        return (fs.readdirSync(path.join(root, name), { recursive: true }) as string[]).slice(0, 8).map((entry) => `${name}/${entry}`);
+      } catch {
+        return [];
+      }
+    });
     fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
     if (left.length > 0) {
       throw new Error(
-        `The server's tests left ${left.length} ${left.length === 1 ? "thing" : "things"} in the temporary directory: ${left.slice(0, 20).join(", ")}${left.length > 20 ? ", …" : ""}. Make folders with tempDir (test/temp.ts), which removes them.`,
+        `The server's tests left ${left.length} ${left.length === 1 ? "thing" : "things"} in the temporary directory: ${left.slice(0, 20).join(", ")}${left.length > 20 ? ", …" : ""}${inside.length ? ` (holding ${inside.join(", ")})` : ""}. Make folders with tempDir (test/temp.ts), which removes them.`,
       );
     }
   };
