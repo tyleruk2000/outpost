@@ -86,7 +86,23 @@ export interface KeptArea extends KeptBase {
   mixed?: boolean;
 }
 
-export type KeptItem = KeptNote | KeptTrack | KeptPlaces | KeptArea;
+/**
+ * An emergency plan, as "Use now" needs it: the server's answer for the plan (its steps,
+ * numbers, people and places, with what its links point at). Unlike every other kept
+ * thing, a plan can be changed on the phone in one way: steps can be ticked while the
+ * server is out of reach. Those ticks are kept with the copy and sent when the server
+ * is back (`features/kept/plan-copy.ts`).
+ */
+export interface KeptPlan extends KeptBase {
+  kind: "plan";
+  /** The plan's own date when the copy was made. */
+  updatedAt: number;
+  steps: number;
+  /** Ticks and unticks made on this device and not yet sent. */
+  pending: number;
+}
+
+export type KeptItem = KeptNote | KeptTrack | KeptPlaces | KeptArea | KeptPlan;
 export type KeptKind = KeptItem["kind"];
 
 /**

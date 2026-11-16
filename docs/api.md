@@ -1179,6 +1179,7 @@ document is now, `null` for one deleted since.
 | `DELETE /api/emergency-plans/:id` | Delete a plan. What it links to is not touched. |
 | `POST /api/emergency-plans/:id/copy` | A copy, named "(copy)", not in use. |
 | `POST /api/emergency-plans/:id/ticks` | Body: `stepId`, `done`. Ticks a step now (keeping the first time it was ticked) or unticks it; starts the plan if it was not started. Does not change `updatedAt`. |
+| `POST /api/emergency-plans/:id/ticks/merge` | Ticks made on a phone while the server was out of reach (`PlanTickMerge`). Body: `knownStartedAt` (the start time the phone's copy had, or null), `ticks` (step id to the time it was ticked there), `unticks` (step id to the time of the tick that was unticked there). A tick is added with its time, the earlier kept where the step is ticked already; an untick removes a tick only if it still has that time; after a reset since the phone's copy, what was done before the new start is dropped; steps no longer in the plan are dropped; a time after now is taken as now. Starts the plan at the earliest tick if it was not started. Returns `{ plan, resolved, applied, dropped }`. Does not change `updatedAt`. |
 | `POST /api/emergency-plans/:id/start` | Start using the plan. |
 | `POST /api/emergency-plans/:id/reset` | Clear the ticks and the start. |
 | `POST /api/emergency-plans/:id/reviewed` | Mark it looked over now. |

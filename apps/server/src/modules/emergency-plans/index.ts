@@ -26,6 +26,8 @@ import {
   PLAN_LIMITS,
   type PlanBody,
   type PlanResolved,
+  type PlanTickMerge,
+  type PlanTickMergeResponse,
   type PlanUse,
   SUPPLY_CATEGORY_IDS,
 } from "@outpost/shared";
@@ -47,6 +49,8 @@ export interface EmergencyPlansService {
   /** Marks a step done now, or not done. Starts the plan if it was not started. */
   tick(id: string, stepId: string, done: boolean): EmergencyPlanResponse;
   start(id: string): EmergencyPlanResponse;
+  /** Ticks made on a phone out of reach, by the rule set out at `PlanTickMerge`. */
+  mergeTicks(id: string, merge: PlanTickMerge, now?: number): PlanTickMergeResponse;
   /** Clears the ticks and the start, for next time. */
   reset(id: string): EmergencyPlanResponse;
   reviewed(id: string): EmergencyPlanResponse;
@@ -398,6 +402,38 @@ export async function registerEmergencyPlans(app: FastifyInstance, ctx: AppConte
       else delete ticks[stepId];
       return setUse(id, { startedAt: plan.use.startedAt ?? Date.now(), ticks });
     },
+    mergeTicks(id, merge, now = Date.now()) {
+      const plan = toPlan(rowOf(id));
+      const steps = new Set(plan.body.steps.map((step) => step.id));
+      // A phone's clock may run ahead; nothing is taken to have happened later than now.
+      const at = (time: number) => Math.min(time, now);
+      const reset = merge.knownStartedAt !== plan.use.startedAt && merge.knownStartedAt !== null;
+      // After a reset, only what the phone did after the plan was started again counts (nothing, if it was not).
+      const counts = (time: number) => !reset || (plan.use.startedAt !== null && at(time) >= plan.use.startedAt);
+      const ticks = { ...plan.use.ticks };
+      let applied = 0;
+      let dropped = 0;
+      for (const [stepId, time] of Object.entries(merge.unticks)) {
+        if (steps.has(stepId) && counts(time) && ticks[stepId] === time) {
+          delete ticks[stepId];
+          applied += 1;
+        } else dropped += 1;
+      }
+      let earliest: number | null = null;
+      for (const [stepId, time] of Object.entries(merge.ticks)) {
+        if (!steps.has(stepId) || !counts(time)) {
+          dropped += 1;
+          continue;
+        }
+        const when = at(time);
+        ticks[stepId] = Math.min(ticks[stepId] ?? when, when);
+        earliest = Math.min(earliest ?? when, when);
+        applied += 1;
+      }
+      const startedAt =
+        earliest === null ? plan.use.startedAt : plan.use.startedAt === null ? earliest : Math.min(plan.use.startedAt, earliest);
+      return { ...setUse(id, { startedAt, ticks }), applied, dropped };
+    },
     start(id) {
       const plan = toPlan(rowOf(id));
       if (plan.use.startedAt !== null) return answer(rowOf(id));
@@ -444,6 +480,18 @@ export async function registerEmergencyPlans(app: FastifyInstance, ctx: AppConte
     const { stepId, done } = z.object({ stepId: itemId, done: z.boolean() }).strict().parse(request.body);
     return service.tick(id(request), stepId, done);
   });
+  const tickTimes = z.record(itemId, z.number().int().nonnegative()).refine((value) => Object.keys(value).length <= PLAN_LIMITS.steps, {
+    message: "Too many ticks.",
+  });
+  app.post("/api/emergency-plans/:id/ticks/merge", async (request) =>
+    service.mergeTicks(
+      id(request),
+      z
+        .object({ knownStartedAt: z.number().int().nonnegative().nullable(), ticks: tickTimes, unticks: tickTimes })
+        .strict()
+        .parse(request.body),
+    ),
+  );
   app.post("/api/emergency-plans/:id/start", async (request) => service.start(id(request)));
   app.post("/api/emergency-plans/:id/reset", async (request) => service.reset(id(request)));
   app.post("/api/emergency-plans/:id/reviewed", async (request) => service.reviewed(id(request)));

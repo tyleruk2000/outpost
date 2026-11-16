@@ -4,10 +4,15 @@
  *
  * A kept copy is only ever read. Nothing changed on the phone is sent back from it, so
  * a stale copy can never overwrite what is on the server: the copy is replaced by the
- * server's version, never the other way round.
+ * server's version, never the other way round. The one exception is an emergency
+ * plan's ticks, which are sent as a list of what was done, for the server to apply by
+ * its own rule (`plan-copy.ts`), never as a copy.
  */
 import type { MarkerDto, NoteDetail, NoteNodeJson, NoteResponse, NoteTreeResponse, TrackDto, TrackWithGeometryDto } from "@outpost/shared";
+import { toast } from "sonner";
 import { ApiError, api } from "@/lib/api";
+import { DEVICE } from "./device";
+import { refreshPlan } from "./plan-copy";
 import {
   getKept,
   type KeptNote,
@@ -309,6 +314,19 @@ export function refreshKept(): Promise<number> {
         } else {
           await putKept({ ...item, refreshedAt: Date.now() });
         }
+      }
+    }
+    for (const item of items) {
+      if (item.kind !== "plan") continue;
+      try {
+        const sent = await refreshPlan(item);
+        if (sent) replaced += 1;
+        if (sent)
+          toast(
+            `Ticks made on this ${DEVICE} for “${sent.title}” were sent to the server${sent.dropped > 0 ? `; ${sent.dropped} of them no longer applied (the plan had been reset or changed meanwhile) and were left out` : ""}.`,
+          );
+      } catch (error) {
+        if (error instanceof ApiError && error.isUnreachable) throw error;
       }
     }
     if (items.some((item) => item.kind === "places")) {

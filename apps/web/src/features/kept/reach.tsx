@@ -130,6 +130,7 @@ export function ReachGate({ children }: { children: ReactNode }) {
   }, [lost]);
   useServerEvent("notes.changed", () => soon(3_000));
   useServerEvent("maps.changed", () => soon(3_000));
+  useServerEvent("emergency-plans.changed", () => soon(3_000));
 
   if (lost && (away || leaving) && canOpenOutOfReach()) {
     return <OutOfReach onReachable={() => setLost(false)} />;

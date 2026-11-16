@@ -129,6 +129,54 @@ describe("emergency plans", () => {
     expect((await app.api("POST", `/api/emergency-plans/${saved.plan.id}/ticks`, { stepId: "no-such-step", done: true })).status).toBe(404);
   });
 
+  it("takes ticks made on a phone out of reach: the union, the earliest time, and a reset wins", async () => {
+    const plan = await ok("POST", "/api/emergency-plans", { ...inputOf(saved), name: "Kept on a phone" });
+    const id = plan.plan.id;
+    const [a, b, c, d] = plan.plan.body.steps.map((step) => step.id);
+    // Meanwhile on another phone in reach: a and c ticked.
+    await ok("POST", `/api/emergency-plans/${id}/ticks`, { stepId: a!, done: true });
+    const there = await ok("POST", `/api/emergency-plans/${id}/ticks`, { stepId: c!, done: true });
+    const aAt = there.plan.use.ticks[a!]!;
+    const cAt = there.plan.use.ticks[c!]!;
+
+    // The phone ticked a earlier and b, and unticked c as it had seen it ticked at a time the server no longer has.
+    const merged = await ok<{ plan: EmergencyPlanResponse["plan"]; applied: number; dropped: number }>(
+      "POST",
+      `/api/emergency-plans/${id}/ticks/merge`,
+      { knownStartedAt: null, ticks: { [a!]: aAt - 60_000, [b!]: aAt - 30_000, "gone-step": aAt }, unticks: { [c!]: cAt - 1 } },
+    );
+    expect(merged.plan.use.ticks).toEqual({ [a!]: aAt - 60_000, [b!]: aAt - 30_000, [c!]: cAt });
+    expect(merged.plan.use.startedAt).toBe(aAt - 60_000);
+    expect({ applied: merged.applied, dropped: merged.dropped }).toEqual({ applied: 2, dropped: 2 });
+
+    // An untick of the very tick the server has takes it away; a tick dated in the future is taken as now.
+    const before = Date.now();
+    const again = await ok<{ plan: EmergencyPlanResponse["plan"] }>("POST", `/api/emergency-plans/${id}/ticks/merge`, {
+      knownStartedAt: merged.plan.use.startedAt,
+      ticks: { [d!]: before + 86_400_000 },
+      unticks: { [c!]: cAt },
+    });
+    expect(again.plan.use.ticks[c!]).toBeUndefined();
+    expect(again.plan.use.ticks[d!]).toBeLessThanOrEqual(Date.now());
+
+    // Reset on the server since the phone's copy: what the phone did before the new start is dropped.
+    const known = again.plan.use.startedAt;
+    await ok("POST", `/api/emergency-plans/${id}/reset`);
+    const afterReset = await ok<{ plan: EmergencyPlanResponse["plan"]; dropped: number }>(
+      "POST",
+      `/api/emergency-plans/${id}/ticks/merge`,
+      {
+        knownStartedAt: known,
+        ticks: { [b!]: Date.now() - 1000 },
+        unticks: {},
+      },
+    );
+    expect(afterReset.plan.use).toEqual({ startedAt: null, ticks: {} });
+    expect(afterReset.dropped).toBe(1);
+    expect((await app.api("POST", `/api/emergency-plans/${id}/ticks/merge`, { knownStartedAt: null, ticks: {} })).status).toBe(400);
+    await ok("DELETE", `/api/emergency-plans/${id}`);
+  });
+
   it("resets for next time", async () => {
     const step = saved.plan.body.steps[0]!;
     await ok("POST", `/api/emergency-plans/${saved.plan.id}/ticks`, { stepId: step.id, done: true });

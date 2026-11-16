@@ -259,14 +259,22 @@ in the browser. The reasons and the behaviour are in
 - **The worker never writes to a cache after it is installed.** Kept copies are written
   by the page, from answers the server gave to ordinary same-origin `GET` requests, and
   only when a person pressed "Keep" or a kept copy is being brought up to date.
-- **A kept copy is never sent back.** Out of reach the app is read-only. There is no
-  queue of changes and no sync, so a stale copy on a phone cannot overwrite anything.
+- **A kept copy is never sent back.** Out of reach the app is read-only, with one
+  exception: the steps of a kept emergency plan can be ticked. Those ticks are not a
+  copy: they are a list of what was ticked and unticked and when, sent when the server
+  is back to `POST /api/emergency-plans/:id/ticks/merge`, which applies them by a rule
+  that cannot take away anything done elsewhere meanwhile (the union of ticks with the
+  earliest time; an untick only removes the very tick it saw; a reset wins). It
+  touches only that plan's ticks, never its steps or anything else, so a stale copy on
+  a phone still cannot overwrite anything ([offline.md](offline.md#an-emergency-plan)).
 - **The worker script is served with its own policy,** `default-src 'self';
   connect-src 'self'`, and `Cache-Control: no-cache` (`apps/server/src/app.ts`). It can
   reach nothing but this server, and a browser always sees a new one.
 - **Kept copies are as private as the phone.** They are stored unencrypted in the
   browser's profile. They hold what the person chose: the text and pictures of the
-  pages, the lines of the routes, the saved places with their notes. There are no
+  pages, the lines of the routes, the saved places with their notes, and a kept
+  emergency plan's people with their names and numbers (the keep action says so before
+  it is pressed). There are no
   accounts, so nothing on the phone is any more private than it is on the server; it
   has simply left the house. "On this phone" says this where things are listed, and
   removes copies.

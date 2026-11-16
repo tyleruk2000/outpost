@@ -362,6 +362,10 @@ describe("a plan in use", () => {
       expect(server.posted.find((post) => post.path === "POST /api/emergency-plans/p1/ticks")?.body).toMatchObject({ done: true }),
     );
     expect(await screen.findByText(/Done at 14:05/)).toBeInTheDocument();
+    // At an address that is not secure, keeping it on the device says what it needs and where to fix it.
+    const keep = screen.getByRole("heading", { name: /^Keep on this / }).closest("section")!;
+    expect(keep).toHaveTextContent(/needs Outpost opened at an HTTPS address/);
+    expect(within(keep).getByRole("link", { name: "Settings, HTTPS on your network" })).toHaveAttribute("href", "/settings#https");
   });
 
   it("resets for next time after asking", async () => {

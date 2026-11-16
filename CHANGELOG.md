@@ -925,6 +925,12 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   view, which is measured by the server before anything is fetched.
 - "On this phone": what is kept, with sizes and dates, removing copies, the room the
   browser reports, and asking the browser to keep the data.
+- "Keep on this phone" for an emergency plan, at the foot of its "Use now": the plan's
+  steps, numbers, people and places, so that "Use now" opens out of reach. Its steps can
+  be ticked there; the ticks are kept on the phone and sent when the server is back,
+  added to those made elsewhere meanwhile (the union, earliest time; an untick only
+  removes the very tick it saw; a reset on the server wins).
+  `POST /api/emergency-plans/:id/ticks/merge`.
 - Out of reach the app is read-only and says so in one line; a page or screen that was
   not kept says so instead of loading. Back in reach, kept copies are replaced by the
   server's versions. A new build replaces the kept app.

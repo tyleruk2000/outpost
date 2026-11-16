@@ -290,9 +290,12 @@ From the Preparedness page a plan in use is two presses away: **Emergency plans*
 then **Use now** beside it. On a phone, the "use now" page can be added to the Home
 Screen from the browser's Share menu for one press.
 
-It needs Outpost's server and nothing beyond it. Reading a plan with the server out of
-reach is the job of **Keep on this phone** ([offline.md](offline.md)), which needs a
-secure page; this screen keeps nothing in the browser.
+It needs Outpost's server and nothing beyond it, unless the plan is kept on the phone:
+**Keep on this phone**, at the foot of "Use now", keeps it through the same store as
+pages and map areas, so that "Use now" opens with the server out of reach, and ticks
+made there are sent when the server is back, added to those made elsewhere (the union,
+earliest time; a reset on the server wins). It needs a secure page. The whole rule,
+and what is kept, is in [offline.md](offline.md#an-emergency-plan).
 
 ### Warnings held for the home place
 

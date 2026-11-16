@@ -170,6 +170,7 @@ cannot reach it. Two things make the phone still useful there:
 | A page of notes | The page's menu (the three dots), **Keep on this phone** | Every page inside it, however deep, and the pictures and attached files those pages hold. At most 300 pages as one; a file over 50 MB is left out and counted. |
 | A route or recorded track | Its panel on the map, **Keep on this phone** | Its line, heights and waypoints. |
 | Saved places | Under the list of places, **Keep on this phone** | All of them, as a set. |
+| An emergency plan | At the foot of its **Use now** (`/prepare/plans/:id/use`), **Keep on this phone** | The plan as "Use now" shows it: the steps, the emergency number, who to call with their numbers, the places to meet, and the plan's ticks. Not the cards to print. See [below](#an-emergency-plan). |
 | An area of the map | Maps, **Offline maps**, "Map areas on this phone" | Every tile of the part of the map in view, from the coarsest zoom to the one you choose, the lettering those tiles use, the map's icons, and terrain if you tick it. |
 
 The words follow the device: on a tablet the button reads "Keep on this tablet", on a
@@ -178,6 +179,46 @@ laptop "Keep on this computer".
 **On this phone** (in the sidebar, and in the phone's More sheet) lists what is kept,
 with the size and date of each copy, and removes copies. Removing a copy never touches
 the server.
+
+### An emergency plan
+
+A plan's "Use now" is what a household needs when the server is out of reach, so it can
+be kept like a page. The copy is the server's answer for the plan
+(`GET /api/emergency-plans/:id`, with the names and numbers of linked contacts and the
+positions of linked places as they were), filed in the plan's own cache through the
+same store as everything else, and listed on **On this phone** under "Emergency plans".
+A plan holds people's names and numbers: the keep action says, before it is pressed,
+that a copy of them will be on this device, readable by anyone who can open the
+browser. At a plain http address it says that it needs HTTPS and links to the setting,
+as the other keep actions do.
+
+Out of reach, `/prepare/plans/:id/use` opens the kept copy in the same view, with a
+line saying how old the copy is. A press on a number still calls it; a place opens the
+kept map if an area there is kept. **The steps can be ticked.** This is the one
+exception to "kept copies are for reading": the ticks are not written into the copy but
+kept beside it, as a list of what was ticked and unticked and when, and sent to the
+server when it is back in reach (`POST /api/emergency-plans/:id/ticks/merge`). The
+server applies them by one rule, so that nothing done elsewhere meanwhile is
+overwritten:
+
+- **A tick is added with the time it was made. Where the step was ticked elsewhere
+  too, the earlier time is kept** (the union of the ticks, earliest time).
+- An untick made on the phone takes a tick away only if the server still has that very
+  tick (the same time). A step ticked again elsewhere stays ticked.
+- If the plan was **reset** on the server since the phone's copy, what the phone did
+  before the plan was started again is dropped: the reset wins.
+- A tick for a step taken out of the plan meanwhile is dropped. A tick dated later
+  than the server's clock is taken as made now.
+
+A message says when ticks were sent, and how many were dropped by the rule. Ticks wait
+on the phone, with a count beside the copy, for as long as the server is out of reach;
+removing the copy first asks, and says that unsent ticks go with it. A plan deleted at
+home is marked "No longer on the server" and its ticks stay unsent. The copy is
+brought up to date each time the phone has Outpost open within reach, and a few
+seconds after any plan changes. "Reset for next time" and "Start using this plan" are
+not offered out of reach (a first tick starts the plan, as in reach). If the server goes
+out of reach while "Use now" is open, that screen stays as it is and a tick there fails
+with a message; the kept copy takes over from the next screen opened.
 
 ### A map area
 
@@ -231,9 +272,11 @@ was.
   kept says "This page is not kept on this phone". A screen that lives on the server
   (Library, Search, Settings and the rest) says it needs the server. Nothing spins and
   nothing shows an error for being out of reach.
-- **Nothing can be changed.** There is no editing out of reach in this version. A kept
-  copy is only ever replaced by the server's version; it is never sent back, so a stale
-  copy cannot overwrite a page. Documents and reference collections cannot be kept.
+- **Nothing can be changed**, except ticking the steps of a kept emergency plan (see
+  [An emergency plan](#an-emergency-plan)). There is no editing out of reach in this
+  version. A kept copy is only ever replaced by the server's version; it is never sent
+  back, so a stale copy cannot overwrite a page. Documents and reference collections
+  cannot be kept.
 
 If the server goes out of reach while a screen is open, that screen is left exactly as
 it is, because you may be half-way through writing. The notes editor holds unsaved
@@ -242,7 +285,7 @@ next screen you open.
 
 ### Keeping copies up to date
 
-Kept pages, routes and places are compared with the server whenever the phone has
+Kept pages, routes, places and plans are compared with the server whenever the phone has
 Outpost open within reach of it: when the app starts, when the server comes back, and
 a few seconds after anything changes. Only what changed is fetched. A phone that is not
 running Outpost learns nothing, so **open Outpost on the phone once before you leave**.
@@ -356,6 +399,11 @@ to take it out of reach: keeping a page with a page inside it, a route, saved pl
 and a small map area; opening all of them with the server gone; a page that was not
 kept saying so; a changed page replacing its kept copy when the server returns; a new
 build replacing the kept app; removing a kept area.
+
+Kept emergency plans are tested in the web suite (`features/kept/plan-copy.test.ts`,
+`kept-screens.test.tsx`) with a stand-in for the browser's storage, and the rule for
+ticks on a real test server (`apps/server/test/emergency-plans.test.ts`); not end to
+end with the server stopped.
 
 Not tested: a real iPhone or Android phone; adding to the Home Screen on any device;
 Safari and Firefox at all; what any browser does with the storage over days; a phone

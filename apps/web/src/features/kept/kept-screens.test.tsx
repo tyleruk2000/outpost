@@ -292,3 +292,55 @@ describe("losing the server while the app is open", () => {
     expect(screen.getByRole("heading", { name: "The page, from the server" })).toBeInTheDocument();
   }, 20_000);
 });
+
+describe("an emergency plan kept on this device", () => {
+  async function keptPlan() {
+    const { PLAN_TEMPLATES, planFromTemplate } = await import("@outpost/shared");
+    let n = 0;
+    const input = planFromTemplate(PLAN_TEMPLATES.find((each) => each.id === "power-cut")!, () => `s${++n}`);
+    const answer = {
+      plan: { ...input, id: "p1", use: { startedAt: null, ticks: {} }, reviewedAt: 1, openedAt: null, createdAt: 1, updatedAt: 1 },
+      resolved: { contacts: {}, places: {}, links: [] },
+    };
+    await putKeptJson(await caches.open("outpost-kept:plan:p1"), "/api/emergency-plans/p1", answer);
+    await putKept({
+      kind: "plan",
+      id: "p1",
+      title: "Power cut",
+      updatedAt: 1,
+      steps: input.body.steps.length,
+      pending: 0,
+      bytes: 900,
+      keptAt: 1,
+      refreshedAt: Date.now() - 2 * 3_600_000,
+    });
+  }
+
+  it("is listed with the other kept things, said to hold people's names and numbers, and opens Use now", async () => {
+    await keptPlan();
+    showKeptPage();
+    const row = (await screen.findByRole("link", { name: "Power cut" })).closest("li")!;
+    expect(within(row).getByRole("link", { name: "Power cut" })).toHaveAttribute("href", "/prepare/plans/p1/use");
+    expect(row).toHaveTextContent(/An emergency plan, \d+ steps, with its people's names and numbers/);
+    expect(within(row).getByRole("button", { name: /Remove Power cut from this/ })).toBeVisible();
+  });
+
+  it("opens with the server out of reach, says how old it is, and keeps a tick on the device", async () => {
+    await keptPlan();
+    const { default: KeptPlanScreen } = await import("./kept-plan-screen");
+    render(
+      <MemoryRouter initialEntries={["/prepare/plans/p1/use"]}>
+        <Routes>
+          <Route path="/prepare/plans/:id/use" element={<KeptPlanScreen />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    expect(await screen.findByRole("heading", { level: 1, name: "Power cut" })).toBeInTheDocument();
+    expect(screen.getByText(/The copy kept on this \w+, from .* \(2 hours ago\)\. Ticks made here are kept/)).toBeInTheDocument();
+    const [first] = within(screen.getByRole("heading", { name: "Before" }).closest("section")!).getAllByRole("checkbox");
+    await userEvent.click(first!);
+    expect(await screen.findByText(/1 change waiting/)).toBeInTheDocument();
+    const { readKeptPlan } = await import("./plan-copy");
+    expect(Object.keys((await readKeptPlan("p1"))!.pending.ticks)).toEqual(["s1"]);
+  });
+});
