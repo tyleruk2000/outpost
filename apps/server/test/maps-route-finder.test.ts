@@ -17,7 +17,7 @@ import {
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { AppError } from "../src/core/errors.ts";
 import { createHttpClient } from "../src/core/http.ts";
-import type { AnnotationsService } from "../src/modules/maps/annotations.ts";
+import { type AnnotationsService, createAnnotationsService } from "../src/modules/maps/annotations.ts";
 import type { TrackCollection } from "../src/modules/maps/gpx.ts";
 import { Compression, TileType } from "../src/modules/maps/pmtiles/header.ts";
 import { arrangeLines, clusterLines, describeLines, joinWays, lengthOf, type Point } from "../src/modules/maps/route-finder/assemble.ts";
@@ -1198,5 +1198,125 @@ describe("heights for a found route", () => {
     expect(refilled.features).toHaveLength(3);
     expect((refilled.features[0]!.geometry.coordinates as number[][]).every((position) => position[2] === 321)).toBe(true);
     expect(readTrackSource(refilled)).toEqual(preview.credit);
+  });
+
+  /** A route finder over a real server's routes, with terrain that answers as the test says. */
+  const finderOver = (app: TestApp, sample: (positions: ReadonlyArray<readonly [number, number]>) => Promise<Array<number | null>>) =>
+    createRouteFinder({
+      loaded: { sources: [source], defaultId: "stand-in", problems: [] },
+      overpass: { ask: async () => relationAnswer },
+      annotations: createAnnotationsService(app.ctx, { elevation: { sample, sampleWithCells: notAsked } }),
+      elevation: { sample, sampleWithCells: notAsked },
+      userAgent: "test",
+    });
+  const storedLines = async (app: TestApp, id: string) => {
+    const stored = await app.api<{ track: TrackWithGeometryDto }>("GET", `/api/maps/tracks/${id}`);
+    return (stored.body.track.geojson as unknown as TrackCollection).features.filter((feature) => feature.geometry.type === "LineString");
+  };
+
+  it("does not write over a route that was redrawn while its heights were being read", async () => {
+    const app = await createTestApp();
+    try {
+      let release = () => {};
+      const terrainRead = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let reading = () => {};
+      const started = new Promise<void>((resolve) => {
+        reading = resolve;
+      });
+      const adder = finderOver(app, async (positions) => positions.map(() => null));
+      const added = await adder.add({ token: (await adder.preview({ ref: { type: "relation", id: ROUTE_ID } })).token });
+      const id = added.track.id;
+
+      // Terrain takes its time, as it does for a long route.
+      const slow = finderOver(app, async (positions) => {
+        reading();
+        await terrainRead;
+        return positions.map(() => 321);
+      });
+      const filling = slow.fillHeights(id);
+      filling.catch(() => undefined);
+      await started;
+      // Meanwhile the shape is redrawn and saved, from another tab or another device.
+      const redrawn = await app.api("PUT", `/api/maps/tracks/${id}/points`, {
+        points: [
+          { lat: 54.4, lon: -3.2 },
+          { lat: 54.41, lon: -3.2 },
+        ],
+      });
+      expect(redrawn.status).toBe(200);
+      release();
+
+      await expect(filling).rejects.toThrow("This route's shape has been redrawn by hand.");
+      const lines = await storedLines(app, id);
+      expect(lines).toHaveLength(1);
+      expect(lines[0]!.properties._drawn).toBe(true);
+      expect((lines[0]!.geometry.coordinates as number[][]).map(([lon, lat]) => [lon, lat])).toEqual([
+        [-3.2, 54.4],
+        [-3.2, 54.41],
+      ]);
+    } finally {
+      await app.close();
+    }
+  });
+
+  it("gives up when the route's heights were filled in by someone else meanwhile, and says so", async () => {
+    const app = await createTestApp();
+    try {
+      let release = () => {};
+      const terrainRead = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let reading = () => {};
+      const started = new Promise<void>((resolve) => {
+        reading = resolve;
+      });
+      const adder = finderOver(app, async (positions) => positions.map(() => null));
+      const added = await adder.add({ token: (await adder.preview({ ref: { type: "relation", id: ROUTE_ID } })).token });
+      const slow = finderOver(app, async (positions) => {
+        reading();
+        await terrainRead;
+        return positions.map(() => 321);
+      });
+      const filling = slow.fillHeights(added.track.id);
+      filling.catch(() => undefined);
+      await started;
+      await finderOver(app, async (positions) => positions.map(() => 999)).fillHeights(added.track.id);
+      release();
+      await expect(filling).rejects.toThrow("This route was changed while its heights were being read, so nothing was written. Try again.");
+      const lines = await storedLines(app, added.track.id);
+      expect(lines.flatMap((line) => line.geometry.coordinates as number[][]).every((position) => position[2] === 999)).toBe(true);
+    } finally {
+      await app.close();
+    }
+  });
+
+  it("keeps the heights a route already has where terrain has none to give now", async () => {
+    const app = await createTestApp();
+    try {
+      // Added when terrain covered the south of the route only.
+      const south = finderOver(app, async (positions) => positions.map(([, lat]) => (lat < 54.51 ? 100 : null)));
+      const added = await south.add({ token: (await south.preview({ ref: { type: "relation", id: ROUTE_ID } })).token });
+      expect(added.elevation).toBe("partial");
+      const before = (await storedLines(app, added.track.id)).flatMap((line) => line.geometry.coordinates as number[][]);
+      expect(before.some((position) => position.length === 3)).toBe(true);
+      expect(before.some((position) => position.length === 2)).toBe(true);
+
+      // Since then the southern terrain was removed and the northern installed.
+      const north = finderOver(app, async (positions) => positions.map(([, lat]) => (lat < 54.51 ? null : 700)));
+      const filled = await north.fillHeights(added.track.id);
+      expect(filled.elevation).toBe("terrain");
+      const after = (await storedLines(app, added.track.id)).flatMap((line) => line.geometry.coordinates as number[][]);
+      expect(after.map(([lon, lat]) => [lon, lat])).toEqual(before.map(([lon, lat]) => [lon, lat]));
+      expect(after.map((position) => position[2])).toEqual(before.map((position) => (position.length === 3 ? 100 : 700)));
+
+      // With no terrain at all, nothing is taken away either.
+      const nowhere = finderOver(app, async (positions) => positions.map(() => null));
+      expect((await nowhere.fillHeights(added.track.id)).elevation).toBe("terrain");
+      expect((await storedLines(app, added.track.id)).flatMap((line) => line.geometry.coordinates as number[][])).toEqual(after);
+    } finally {
+      await app.close();
+    }
   });
 });

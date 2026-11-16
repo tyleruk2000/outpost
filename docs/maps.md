@@ -1113,6 +1113,12 @@ no terrain where it runs, it has no ascent and no elevation profile, and its pan
 says so. If terrain is installed later, open the route and choose **Fill in heights
 from terrain**: the route is not fetched again.
 
+Filling in heights only adds. A point keeps the height it has where the terrain
+installed now has none to give (terrain may have been removed since), and takes the
+terrain's height where there is one. Reading terrain for a long route takes some
+seconds; if the route is redrawn, filled in or removed in that time, from another tab
+or another device, nothing is written and the answer says so.
+
 ### Credit and licence
 
 A found route's line is OpenStreetMap's data, © OpenStreetMap contributors, under the

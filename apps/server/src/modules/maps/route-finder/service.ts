@@ -253,6 +253,8 @@ export interface RouteFinderDeps {
 }
 
 const round6 = (value: number) => Math.round(value * 1e6) / 1e6;
+/** How far apart heights are read along lines of this length. */
+const heightSpacing = (lines: Point[][]) => Math.max(25, lengthOf(lines) / HEIGHT_SAMPLES);
 
 /** Lines as they are stored: six decimal places, no point repeated, a height where terrain knows one. */
 async function withHeights(lines: Point[][], sampler: ElevationSampler): Promise<{ lines: Position[][]; elevation: RouteElevation }> {
@@ -269,8 +271,7 @@ async function withHeights(lines: Point[][], sampler: ElevationSampler): Promise
     })
     .filter((line) => line.length >= 2);
   const positions = stored.flat();
-  const spacing = Math.max(25, lengthOf(stored) / HEIGHT_SAMPLES);
-  const heights = await sampler.sample(positions, spacing);
+  const heights = await sampler.sample(positions, heightSpacing(stored));
   const known = heights.filter((height) => height !== null).length;
   const elevation: RouteElevation = known === 0 ? "none" : known === heights.length ? "terrain" : "partial";
   let index = 0;
@@ -544,34 +545,63 @@ export function createRouteFinder(deps: RouteFinderDeps): RouteFinderService {
     },
 
     async fillHeights(trackId) {
-      const track = deps.annotations.getTrack(trackId);
-      const source = readTrackSource(track.geojson);
-      if (!source) {
-        throw badRequest(
-          "Heights are only filled in this way for a route found in a route source. A recording keeps the heights it was recorded with.",
+      const read = () => {
+        const track = deps.annotations.getTrack(trackId);
+        const source = readTrackSource(track.geojson);
+        if (!source) {
+          throw badRequest(
+            "Heights are only filled in this way for a route found in a route source. A recording keeps the heights it was recorded with.",
+          );
+        }
+        const features = (track.geojson as unknown as TrackCollection).features ?? [];
+        const lines = features.filter((feature) => feature.geometry?.type === "LineString");
+        if (lines.length === 0 || lines.some((feature) => feature.properties?._drawn)) {
+          throw badRequest("This route's shape has been redrawn by hand. Use “Fill in heights from terrain” on the route itself.");
+        }
+        return { source, features, lines: lines.map((feature) => feature.geometry.coordinates as Position[]) };
+      };
+      const before = read();
+      const positions = before.lines.flat().map(([lon, lat]) => [lon!, lat!] as Point);
+      const heights = await deps.elevation.sample(positions, heightSpacing(before.lines as Point[][]));
+      // Read again: the terrain took a moment (seconds, for a long route), and the route may have been redrawn,
+      // filled in or removed meanwhile. What is written is what is there now with heights added, or nothing.
+      const current = read();
+      const unchanged =
+        current.lines.length === before.lines.length &&
+        current.lines.every(
+          (line, at) =>
+            line.length === before.lines[at]!.length &&
+            line.every((position, i) => {
+              const was = before.lines[at]![i]!;
+              return position[0] === was[0] && position[1] === was[1] && position[2] === was[2];
+            }),
         );
+      if (!unchanged) {
+        throw new AppError("conflict", "This route was changed while its heights were being read, so nothing was written. Try again.");
       }
-      const features = (track.geojson as unknown as TrackCollection).features ?? [];
-      const lines = features.filter((feature) => feature.geometry?.type === "LineString");
-      if (lines.length === 0 || lines.some((feature) => feature.properties?._drawn)) {
-        throw badRequest("This route's shape has been redrawn by hand. Use “Fill in heights from terrain” on the route itself.");
-      }
-      const sampled = await withHeights(
-        lines.map((feature) => (feature.geometry.coordinates as Position[]).map(([lon, lat]) => [lon!, lat!] as Point)),
-        deps.elevation,
-      );
-      // Lines are kept one for one; `withHeights` only drops a line that had fewer than two points, and none stored has.
+      // A point keeps the height it has where terrain has none to give now: terrain may have been removed since.
       let index = 0;
+      let known = 0;
+      const filled = current.lines.map((line) =>
+        line.map((position): Position => {
+          const height = heights[index++] ?? (typeof position[2] === "number" ? position[2] : null);
+          if (height === null) return [position[0]!, position[1]!];
+          known += 1;
+          return [position[0]!, position[1]!, height];
+        }),
+      );
+      const elevation: RouteElevation = known === 0 ? "none" : known === positions.length ? "terrain" : "partial";
+      let line = 0;
       const collection: TrackCollection = {
         type: "FeatureCollection",
-        features: features.map((feature) =>
+        features: current.features.map((feature) =>
           feature.geometry?.type === "LineString"
-            ? { ...feature, geometry: { type: "LineString", coordinates: sampled.lines[index++] ?? feature.geometry.coordinates } }
+            ? { ...feature, geometry: { type: "LineString", coordinates: filled[line++]! } }
             : feature,
         ),
-        source,
+        source: current.source,
       };
-      return deps.annotations.replaceCollection(trackId, collection, sampled.elevation);
+      return deps.annotations.replaceCollection(trackId, collection, elevation);
     },
   };
 }
