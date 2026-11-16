@@ -137,7 +137,8 @@ export function useRepeatersOnMap({
   const [centre, setCentre] = useState<LatLon | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [emptyDismissed, setEmptyDismissed] = useState(false);
-  const overview = useRepeatersOverview();
+  // Nothing is asked of the server about repeaters until they are switched on.
+  const overview = useRepeatersOverview(on);
   const overlay = useRepeaterOverlay(on ? box : null, {});
   const detail = useRepeater(selectedId);
 
@@ -240,21 +241,29 @@ export function useRepeatersOnMap({
     window.history.replaceState(window.history.state, "", `${location.pathname}${rest ? `?${rest}` : ""}`);
   }, [engine, linked, location.key, location.search, location.pathname, selectedId, detail.data, detail.isError, navigate, onSight]);
 
+  // Switched on by hand: once it is known that there are some to draw, say how to use them and where the list is.
+  const announce = useRef(false);
   const setOn = useCallback(
     (next: boolean) => {
       setStored(next);
       setEmptyDismissed(false);
-      if (next && (overview.data?.withPosition ?? 0) > 0) {
-        toast("Repeaters are on the map. Press one for its details.", {
-          action: {
-            label: "Open the list",
-            onClick: () => navigate(`/radio/repeaters${centre ? `?near=${centre.lat.toFixed(4)},${centre.lon.toFixed(4)}` : ""}`),
-          },
-        });
-      }
+      announce.current = next;
     },
-    [setStored, overview.data, navigate, centre],
+    [setStored],
   );
+  const drawable = overview.data?.withPosition;
+  useEffect(() => {
+    if (!on || !announce.current || drawable === undefined) return;
+    announce.current = false;
+    if (drawable === 0) return;
+    const at = engine?.getCenter();
+    toast("Repeaters are on the map. Press one for its details.", {
+      action: {
+        label: "Open the list",
+        onClick: () => navigate(`/radio/repeaters${at ? `?near=${at.lat.toFixed(4)},${at.lon.toFixed(4)}` : ""}`),
+      },
+    });
+  }, [on, drawable, engine, navigate]);
 
   let card: ReactNode | null = null;
   if (browsing && on) {

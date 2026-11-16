@@ -52,8 +52,8 @@ export function filterQuery(filters: Partial<RepeaterFilters>, near?: LatLon | n
 
 export const PAGE_SIZE = 50;
 
-export const useRepeatersOverview = () =>
-  useQuery({ queryKey: ["repeaters", "overview"], queryFn: () => api.get<RepeatersOverview>("/api/repeaters/overview") });
+export const useRepeatersOverview = (enabled = true) =>
+  useQuery({ queryKey: ["repeaters", "overview"], queryFn: () => api.get<RepeatersOverview>("/api/repeaters/overview"), enabled });
 
 /** The list, a page at a time: "Show more" asks for the next fifty. */
 export function useRepeaterList(filters: RepeaterFilters, near: LatLon | null, withinKm: number | null) {
