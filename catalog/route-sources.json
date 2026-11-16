@@ -1,7 +1,6 @@
 {
   "schemaVersion": 1,
-  "description": "Where the Maps screen may look for a known route when a person searches for one. Each source is an Overpass API server, which answers from OpenStreetMap data (Open Database Licence). A search goes to the host of one of these and to no other. The terms of each were read on the day given; see docs/sources.md. Add your own in <data directory>/catalog/routes/route-sources.json.",
-  "defaultSource": "private-coffee",
+  "description": "Where the Maps screen may look for a known route when a person searches for one. Each source is an Overpass API server, which answers from OpenStreetMap data (Open Database Licence). A search goes to the host of one of these and to no other. No source is named as the default: a search goes to the first source whose box holds the middle of the map view, and otherwise to the first with no box, unless the person chooses another. The boxes are drawn inside what each regional server holds, not around it. The terms of each were read on the day given; see docs/sources.md. Add your own in <data directory>/catalog/routes/route-sources.json.",
   "sources": [
     {
       "id": "private-coffee",
@@ -21,7 +20,7 @@
       "endpoint": "https://ovp.dresel.systems/api/interpreter",
       "operator": "Christian Dresel, a private person in Germany",
       "coverage": "Europe only",
-      "bbox": [-32, 34, 60, 82],
+      "bbox": [-11, 36, 32, 71.5],
       "termsUrl": "https://ovp.dresel.systems/",
       "termsNote": "The operator's page (in German) describes an open server, free for everyone, with no registration and no key, run privately on limited hardware: at most four queries at once from one address, no guarantee of availability, and blocking in case of abuse. Its entry on the OpenStreetMap wiki asks applications to send a User-Agent or Referer that identifies them. Data is refreshed about once a day.",
       "lastVerified": "2026-11-16"
@@ -33,9 +32,9 @@
       "endpoint": "https://ovp.dresel.systems/api-na/interpreter",
       "operator": "Christian Dresel, a private person in Germany",
       "coverage": "North America only",
-      "bbox": [-180, 14, -11, 84],
+      "bbox": [-168, 25, -52, 72],
       "termsUrl": "https://ovp.dresel.systems/",
-      "termsNote": "As for the Europe server, which is run by the same person on the same machine. This endpoint was not queried when the terms were read.",
+      "termsNote": "As for the Europe server, which is run by the same person on the same machine. One search was made of it when the terms were read.",
       "lastVerified": "2026-11-16"
     }
   ]

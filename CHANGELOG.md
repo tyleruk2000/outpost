@@ -266,6 +266,13 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   pointer or the arrow keys.
 - Moving a saved place straight from the map (press and hold, the map's menu, or the
   list), by pointer or keyboard, with the new position confirmed before it is kept.
+- "Find a route" in the Routes tab: look a waymarked walk, a cycle route or a named
+  path up in OpenStreetMap by name or by the map view, see it on the map, and add it
+  to your routes with heights from installed terrain. It needs the internet at the
+  moment of searching and says so, names the server before anything is sent, and asks
+  one question per press. The servers are declared in `catalog/route-sources.json`. A
+  found route keeps its credit: in its panel, in the map's credits and in its GPX
+  export. Gaps in a route are left open, never drawn across.
 
 #### Portable drives
 

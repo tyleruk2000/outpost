@@ -12,6 +12,8 @@ catalog/
                              and the books generated from LogBook73 (logbook73/)
   schema/manifest.schema.json   the format, generated from the server's code
   packs.json                 named sets of entries
+  map-regions.json           ready-made map regions (generated; see docs/maps.md)
+  route-sources.json         the servers "Find a route" may ask (see below)
 ```
 
 People running Outpost can add their own manifests, in the same format, to
@@ -203,6 +205,59 @@ Packs live in `packs.json` beside this file (a person's own go in
   packs hold nothing larger than about 1.5 GB; the complete Wikipedia and the video
   collections stay as single entries for people who want them.
 - Say what the pack is for, not how large it is: the app works the size out.
+
+## Route sources
+
+`route-sources.json` declares the servers that the Maps screen's "Find a route" may
+send a search to. It plays the part for route searches that `downloadHosts` plays for
+downloads: a search goes to the host of a source listed here and to no other.
+
+```json
+{
+  "schemaVersion": 1,
+  "sources": [
+    {
+      "id": "private-coffee",
+      "name": "Private.coffee",
+      "type": "overpass",
+      "endpoint": "https://overpass.private.coffee/api/interpreter",
+      "operator": "Private.coffee, a non-profit association in Austria",
+      "coverage": "The whole world",
+      "bbox": null,
+      "termsUrl": "https://overpass.private.coffee/",
+      "termsNote": "What the operator's terms say, and where they say it.",
+      "lastVerified": "2026-11-16"
+    }
+  ]
+}
+```
+
+- `type` is `overpass`: an [Overpass API](https://wiki.openstreetmap.org/wiki/Overpass_API)
+  server, which answers from OpenStreetMap data under the Open Database Licence. The
+  credit a found route carries follows from that and is not written here.
+- `endpoint` is the server's interpreter address, `https` with no credentials or query.
+- `operator` and `coverage` are shown to the person before they search.
+- `bbox` (`[west, south, east, north]`) is for a server that knows only part of the
+  world: a search of a view whose middle is inside it goes to that server first. Draw
+  it inside what the server holds. A source with no `bbox` is asked about anywhere
+  else. The person can always choose another.
+- `defaultSource` (optional, and absent from the shipped file) names one source to ask
+  wherever the map is, in place of that rule.
+
+Rules, beyond those for entries:
+
+1. **Read the operator's own terms first, on the day**, and say in `termsNote` what
+   they allow and ask for. A server whose operator asks applications not to depend on
+   it is not listed, however open its address. That is why the main public instance,
+   `overpass-api.de`, is not here: see [docs/sources.md](../docs/sources.md#routes).
+2. **One question per action by a person.** Nothing may be added that would ask a
+   source on a timer, in the background, or for more than the person asked about.
+3. People running Outpost add their own in
+   `<data directory>/catalog/routes/route-sources.json`, in the same format, where
+   `http` is also allowed and `"replaceShipped": true` leaves these out.
+
+`node apps/server/src/cli/validate-catalog.ts` checks the file's format. It does not
+contact the servers.
 
 ## How entries are verified
 

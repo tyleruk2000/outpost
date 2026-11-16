@@ -2,7 +2,8 @@
 
 This page lists the information sources that have been considered for Outpost's
 catalogue, says what Outpost does with each one, and gives the reason wherever a source
-is not used. It was last checked on 2026-11-15.
+is not used. It was last checked on 2026-11-15; the [routes](#routes) section was added
+on 2026-11-16.
 
 The catalogue itself lives in [`catalog/manifests/`](../catalog/manifests):
 
@@ -115,11 +116,104 @@ from it stored in the catalogue.
 
 | # | Source | What it is | How Outpost uses it | Licence and terms |
 | --- | --- | --- | --- | --- |
-| 22 | OpenStreetMap | The free, community-made map of the world | **Built in.** The Maps screen downloads regions cut from the Protomaps build of OpenStreetMap data; see [maps.md](maps.md). The OpenStreetMap wiki is also in `kiwix-essentials`. | Open Database Licence, per the [copyright page](https://www.openstreetmap.org/copyright). The credit is shown on the map. |
+| 22 | OpenStreetMap | The free, community-made map of the world | **Built in.** The Maps screen downloads regions cut from the Protomaps build of OpenStreetMap data; see [maps.md](maps.md). The OpenStreetMap wiki is also in `kiwix-essentials`. Named routes are fetched from it on request: see [Routes](#routes). | Open Database Licence, per the [copyright page](https://www.openstreetmap.org/copyright). The credit is shown on the map. |
 | 23 | Geofabrik downloads (download.geofabrik.de) | Regional extracts of raw OpenStreetMap data, updated daily | **Not integrated.** The extracts are raw data, not tiles. See [the note below](#geofabrik-extracts-and-what-outpost-uses-instead). | [ODbL 1.0](https://download.geofabrik.de/); the service is offered free of charge by Geofabrik. |
 | 24–25 | Natural Earth | Public-domain map data at small scales | **Built in.** The 1:110m data draws the simple world outline beneath the map and the boxes of the country presets. | Public domain, as recorded in [maps.md](maps.md). The Natural Earth terms page did not answer on the day (two time-outs), so it was not read again. |
 | 26 | USGS (usgs.gov) | The US Geological Survey | **Direct: 3 entries** (Topographic Map Symbols; Finding Your Way with Map and Compass; Map Projections: A Working Manual). USGS map and elevation data are not integrated. | The Publications Warehouse [says](https://pubs.usgs.gov/documentation/faq) that PDF files of USGS-published reports are in the public domain, though some illustrations are used with permission. The main usgs.gov site returned an empty page to the catalogue check. |
 | 27 | NASA Earthdata Search | A search tool over NASA's Earth-observation datasets | **Not integrated.** It is an interactive search over scientific data files, not a set of documents or map tiles; nothing in it is a single stable file that the library or the map could use as it stands. | NASA's [data use guidance](https://www.earthdata.nasa.gov/engage/open-data-services-software-policies/data-use-guidance) says the data are freely accessible and asks for citation. |
+
+### Routes
+
+Added on 2026-11-16 with "Find a route" on the Maps screen ([maps.md](maps.md#finding-a-known-route)).
+The question was whether a named route, such as the Llanberis Path, can be put on the
+map without the person finding a GPX file somewhere. These rows are numbered T1
+onwards. Every page linked in the last column was read on 2026-11-16; where a page was
+read somewhere other than its own address, that is said.
+
+| # | Source | What it has | How Outpost uses it | Licence, terms and what they say about automated access |
+| --- | --- | --- | --- | --- |
+| T1 | OpenStreetMap route relations and named ways | Walking, cycling, riding and running routes that mappers have gathered into "route relations", each a list of ways; and paths that merely share a name. The Llanberis Path is a route relation ([4004181](https://www.openstreetmap.org/relation/4004181), five ways, 6.0 km as mapped); a search of ways round Snowdon turned up eight separate ways named Miners' Track. | **Built in: "Find a route".** Outpost's installed map does not carry routes, so one is fetched when a person chooses it, through a server in rows T2 and T3, and kept as a track. Nothing is bundled. | Open Database Licence 1.0, per the [copyright page](https://www.openstreetmap.org/copyright). Credit: "© OpenStreetMap contributors". What the licence asks of a route kept as data and of a map with the route on it is set out [below](#what-the-open-database-licence-asks-of-a-found-route). OpenStreetMap's own servers are not contacted: see T8. |
+| T2 | Overpass API at Private.coffee (overpass.private.coffee) | A public Overpass API server for the whole world, run by a non-profit association in Austria (the server formerly at overpass.kumi.systems) | **Built in, listed in `catalog/route-sources.json`:** asked about any part of the world that no regional server is listed for. | Its [own page](https://overpass.private.coffee/) carries terms of use dated 10 April 2026: "Use our endpoints in any project requiring access to OpenStreetMap data, including commercial use. No registration needed, just point your application to our endpoint", with no rate limit. It asks users to optimise queries and limit simultaneous requests, to make sure requests "do not contain any personally identifiable information", to credit OpenStreetMap, and to send "a meaningful User-Agent header" with "your project name and a means to contact you (e.g., a link to your project website)"; it prefers `POST`. Not to be used in "projects related to warfare, military applications", nor "for critical infrastructure or where incorrect data could cause serious consequences". No warranty; may end at any time. Outpost does each of the things asked: one question at a time, `POST`, the client name "Outpost/&lt;version&gt;" with the project's address, the credit kept with every route. **On the day:** one search answered, after 95 seconds, from a copy of the map dated 2026-07-28; three more searches and one status request got no answer within 29 to 60 seconds. |
+| T3 | Overpass API at dresel.systems (ovp.dresel.systems) | Two public Overpass API databases on one privately run machine in Germany: Europe and North America, from Geofabrik's extracts, refreshed about daily | **Built in, listed in `catalog/route-sources.json`:** asked first about views in Europe and in North America. | The operator's [own page](https://ovp.dresel.systems/) (in German) calls it an open server, "ohne Anmeldung und ohne API-Schlüssel", a free offer for everyone ("ein freies Angebot für alle"), on limited hardware (four cores): at most four queries at once per address and region, bulk queries to be batched not looped, no guarantee of availability, blocking in case of abuse. Its row on the [OpenStreetMap wiki](https://wiki.openstreetmap.org/wiki/Overpass_API#Public_Overpass_API_instances) adds: "Please send a User-Agent or Referer that identifies your app." The operator's page says nothing for or against use by applications; the wiki row expects it. **On the day:** seven questions to the Europe database answered in 0.2 to 5.5 seconds and one to the North America database in 0.5, all from the map as it was the evening before. |
+| T4 | Overpass API main instance (overpass-api.de), run by FOSSGIS | The original public Overpass API servers | **Not listed.** Three things were read, and together they say an application should not be pointed at it by default. The [Overpass manual](https://dev.overpass-api.de/overpass-doc/en/preface/commons.html) lists among "problematic behaviour": "Setting up an app for more than just OSM mappers and relying on the public instances as backend", for which "only running your own instance sustainably serves your mission". FOSSGIS's [terms of use](https://www.fossgis.de/arbeitsgruppen/osm-server/nutzungsbedingungen/) say its services exist chiefly for its own website and for OpenStreetMap contributors, welcome third-party use within limits, and add "Explicitly recommended: The URLs of our services should not be hardcoded into the app." And on the day its status address answered "This Overpass API server is currently at capacity ... This public endpoint is intended for browser-based and human-operated tools." A person can still declare it for their own use in their own route source file; it is then their use to answer for. | As quoted. The same terms ask for a User-Agent that identifies the application, at most two connections, attribution, and a link for reporting map errors. |
+| T5 | Britain and Ireland Overpass instance (overpass.atownsend.org.uk) | A regional Overpass API server run by one mapper | **Not listed.** Its [usage policy](https://overpass.atownsend.org.uk/) refers to the "problematic behaviours" of row T4, which include applications that depend on a public instance, and says it is not for commercial use. It mostly answers over IPv6 only. | As described. |
+| T6 | VK Maps Overpass instance (maps.mail.ru) | A public Overpass API server run by a Russian company | **Not listed.** The OpenStreetMap wiki's table says "Feel free to use our services in any project", but the operator's [own page](https://maps.mail.ru/osm/tools/overpass/) is a query tool with no terms on it, so nothing was read from the operator. | Not found at the source. |
+| T7 | Overpass API servers that need a key or payment (Geofabrik, FairwayMapper, Tracestrack, Overspan, NextGIS, Mapsource, Overpass.ch) | Commercial or registered-access servers, as listed on the OpenStreetMap wiki | **Not listed.** Outpost has no accounts and stores no keys for this. Someone who has such a service can declare its address in their own route source file if the key is not part of a secret (the file is not a place for credentials). | Not read: each has its own terms. |
+| T8 | OpenStreetMap's editing API (api.openstreetmap.org) | The API the map is edited through, which can also return one relation | **Not used.** The [API usage policy](https://operations.osmfoundation.org/policies/api/): "The editing API is provided in order to edit the map data, not for read-only purposes or projects." | As quoted. |
+| T9 | Waymarked Trails (waymarkedtrails.org) | A map of OpenStreetMap's route relations, with a GPX file for each | **Not used.** Its "Legal and usage terms" say: "GPX tracks are provided for the convenience of visitors of this site. Mass download is not allowed." Nothing there offers its search or its files to other applications. Outpost reads the same relations from the same data instead (T1). | The routes overlay is CC BY-SA 3.0 DE and the GPX tracks ODbL. The site draws its help pages with a script, so the text was read in the site's [source](https://github.com/waymarkedtrails/waymarkedtrails-website/blob/master/src/i18n/qot/helppages.yaml), not on the site itself; its `robots.txt` answered "not found". |
+| T10 | National Trails (England), Natural England | The lines of the National Trails as one dataset: shapefile, GeoPackage, GeoJSON (zipped), and map services | **A candidate, not integrated.** The files are real and open, but they are one zip of every trail, in a format Outpost has no reader for, and would need splitting into trails and joining into lines; none was downloaded, so there is no size or checksum to list. Until someone builds that, the same trails are found through T1 where mappers have recorded them. | The [data.gov.uk record](https://www.data.gov.uk/dataset/national-trails-england3) (updated 15 May 2026) links the Open Government Licence v3.0 and gives the attribution "© Natural England copyright. Contains Ordnance Survey data © Crown copyright and database right [year]". The Natural England geoportal page it points to is drawn by a script and was not read. Trails in Wales and Scotland are published by other bodies and were not looked for. |
+| T11 | US National Park Service public trails | Trail lines for the national parks, as a map service | **A candidate, not integrated.** The [service's own description](https://mapservices.nps.gov/arcgis/rest/services/NationalDatasets/NPS_Public_Trails/MapServer/0/iteminfo?f=pjson) states no licence. It says the data is "for general informational and mapping purposes only" and "Not for navigation, emergency response, or resource protection decision-making". It is trail segments, not named routes put together. | No licence statement found. Works of the US Government are generally in the public domain, but that was not confirmed for this dataset, and copies of it on data.gov carry differing labels. |
+| T12 | US Forest Service, National Forest System Trails | Trail lines for the national forests: a 248 MB shapefile or a 119 MB geodatabase, refreshed 8 November 2026 | **A candidate, not integrated.** Found on the Forest Service's [dataset list](https://data.fs.usda.gov/geodata/edw/datasets.php?xmlKeyword=trail); neither the file nor its metadata was downloaded, so no licence was read. Segments, not named routes, in a format Outpost does not read. | Not read. |
+| T13 | Route-sharing websites and apps (AllTrails, Komoot, Walkhighlands, OS Maps, Strava, Wikiloc and the like) | Routes drawn or recorded by their staff and users | **Not used, and not contacted.** These are their owners' collections under their owners' terms, which were not read for this work; nothing is fetched from them and nothing was. If your account with one lets you export a GPX file, import that file. | Not read. |
+
+#### What the Open Database Licence asks of a found route
+
+Read on 2026-11-16 in the [licence itself](https://opendatacommons.org/licenses/odbl/1-0/)
+and in three guidelines of the OpenStreetMap Foundation: on
+[produced works](https://osmfoundation.org/wiki/Licence/Community_Guidelines/Produced_Work_-_Guideline),
+on [what is substantial](https://osmfoundation.org/wiki/Licence/Community_Guidelines/Substantial_-_Guideline),
+and on [attribution](https://osmfoundation.org/wiki/Licence/Attribution_Guidelines).
+This is a reading of those texts, not legal advice.
+
+- **A route's points, kept as data, are an extract of the database, not a "produced
+  work".** The licence defines a produced work as "a work (such as an image,
+  audiovisual material, text, or sounds)" made from the data. The Foundation's
+  guideline draws the line by purpose: "If the published result of your project is
+  intended for the extraction of the original data, then it is a database and not a
+  Produced Work." A track in Outpost's database, and a GPX file of it, exist to hand
+  the coordinates on. So they are OpenStreetMap data still: a "derivative database"
+  where the extract is substantial.
+- **Whether one route is "substantial" is not settled by a number, and Outpost does
+  not try to settle it.** The Foundation regards "less than 100 Features" taken once
+  as not substantial; the Llanberis Path is five ways, a long trail is thousands. A
+  rule that changed the credit at some size would be a guess. Every found route is
+  treated the same: as OpenStreetMap's data, with the notice kept.
+- **What that asks.** Section 4.2: whoever passes the data on to people outside their
+  own household or organisation must do so under the same licence, "include a copy of
+  this License ... or its Uniform Resource Identifier (URI) with the Database", and
+  "keep intact any copyright or Database Right notices". Hence the licence address and
+  the credit inside the GPX file, in the fields GPX has for them, and in the route's
+  description. Section 4.4 (share alike) and 4.6 (offering the data) fall on the
+  person who publishes it, not on Outpost: Outpost passes nothing on. Keeping a route
+  on your own server for your own household is not "public" use (the licence's
+  definition of "Publicly", and section 4.5 c).
+- **A map with the route drawn on it is a produced work.** That covers the screen, a
+  screenshot, a printed map, a PDF. Section 4.3: when it is shown to other people it
+  needs "a notice ... reasonably calculated to make any Person that uses, views,
+  accesses, interacts with, or is otherwise exposed to the Produced Work aware that
+  Content was obtained from the Database ... and that it is available under this
+  License". The attribution guideline accepts "© OpenStreetMap contributors" with a
+  way to reach openstreetmap.org/copyright, in a corner of an interactive map, and
+  asks for the address printed out on paper. Hence "Routes: © OpenStreetMap
+  contributors", linked, in the map's credits while a found route is drawn.
+
+#### What was done on 2026-11-16 for routes, and how
+
+- **Terms.** Each operator's own page was fetched once and read. Web search was used
+  twice, to find the government datasets.
+- **Questions to route sources.** Fourteen in all, each typed or started by hand, one
+  at a time. Five to overpass.private.coffee: routes named "llanberis path" anywhere
+  (answered in 95 seconds: relation 4004181); the routes in a box round Snowdon (no
+  answer in 60 seconds); its status address (no answer in 30); and the same box
+  searched twice through Outpost itself (no answer in 30 and in 29). One to
+  overpass-api.de: its status address, which answered that it was at capacity. Seven
+  to the Europe database at ovp.dresel.systems: relation 4004181 with its points;
+  routes and paths named "track" round Snowdon; every route in that box with its
+  length (19 routes); "llanberis path" across Europe; and through Outpost itself
+  "pyg track" in that box, "Llanberis Path" anywhere, and the preview of relation
+  4004181. One to its North America database, through Outpost: "Bright Angel" in a box
+  at the Grand Canyon (two routes and three named paths).
+- **The Llanberis Path, end to end.** Through a private copy of Outpost on a
+  development machine: found by name anywhere in 5.5 seconds; previewed in 0.2 as one
+  unbroken line of 277 points from five ways, 6.03 km; added; exported as GPX with its
+  credit; the file validated against the GPX 1.1 schema. No terrain was installed on
+  that copy, so its heights were not seen; heights are tested with made-up terrain
+  tiles and the made-up route.
+- **What was not tried.** A route of thousands of ways from a real source; a route
+  with real gaps or branches (the tests use made-up ones); the search on a real
+  source from a phone; any source over a slow connection.
+- **Conduct.** A plain client name on every request, nothing personal in any of them,
+  no retries beyond those listed, and nothing fetched that was not looked at.
 
 ### Reference software
 
@@ -157,6 +251,9 @@ These are programs, not content, so none of them appears in the catalogue.
   if you pass the files on.
 - Outpost never redistributes anything. A download goes from the publisher's server to
   your disk. What you do with the file afterwards is governed by its licence.
+- A route found with "Find a route" is OpenStreetMap data under the Open Database
+  Licence. Its credit is stored with it and written into its GPX export; see
+  [what the licence asks](#what-the-open-database-licence-asks-of-a-found-route).
 
 ## Checksums, and what happens when a publisher changes a file
 

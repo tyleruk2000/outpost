@@ -18,6 +18,7 @@ import {
   type Bbox,
   type FoundRouteRef,
   MARKER_COLORS,
+  pickRouteSource,
   ROUTE_SEARCH_MAX_SPAN,
   ROUTE_SEARCH_MAX_TEXT,
   ROUTE_SEARCH_MIN_TEXT,
@@ -216,7 +217,6 @@ function pathResults(ways: OsmWay[]): RouteSearchResult[] {
   return results.sort((a, b) => (b.lengthMeters ?? 0) - (a.lengthMeters ?? 0));
 }
 
-const overlaps = (a: Bbox, b: Bbox) => a[0] <= b[2] && a[2] >= b[0] && a[1] <= b[3] && a[3] >= b[1];
 const union = (boxes: Bbox[]): Bbox | null =>
   boxes.length === 0
     ? null
@@ -290,11 +290,15 @@ export function createRouteFinder(deps: RouteFinderDeps): RouteFinderService {
   const now = deps.now ?? Date.now;
   const held = new Map<string, HeldPreview>();
 
-  function sourceFor(id: string | undefined): RouteSource {
-    const wanted = id ?? deps.loaded.defaultId;
-    const source = deps.loaded.sources.find((candidate) => candidate.id === wanted);
+  function sourceFor(id: string | undefined, view?: Bbox): RouteSource {
+    if (id) {
+      const named = deps.loaded.sources.find((candidate) => candidate.id === id);
+      if (named) return named;
+      throw badRequest("That route source is not one of the sources declared for this Outpost.");
+    }
+    const centre = view ? { lon: (view[0] + view[2]) / 2, lat: (view[1] + view[3]) / 2 } : null;
+    const source = pickRouteSource(deps.loaded.sources, deps.loaded.defaultId, centre);
     if (source) return source;
-    if (id) throw badRequest("That route source is not one of the sources declared for this Outpost.");
     throw new AppError("not_found", "No route source is declared for this Outpost, so there is nowhere to look for routes.");
   }
 
@@ -328,7 +332,7 @@ export function createRouteFinder(deps: RouteFinderDeps): RouteFinderService {
     },
 
     async search(input, signal) {
-      const source = sourceFor(input.sourceId);
+      const source = sourceFor(input.sourceId, input.bbox as Bbox | undefined);
       const text = cleanText(input.text ?? "", 200) ?? "";
       const pattern = text ? namePattern(text) : "";
       if (text) {
@@ -340,11 +344,6 @@ export function createRouteFinder(deps: RouteFinderDeps): RouteFinderService {
       const bbox = input.bbox as Bbox | undefined;
       if (bbox && (bbox[2] - bbox[0] > ROUTE_SEARCH_MAX_SPAN || bbox[3] - bbox[1] > ROUTE_SEARCH_MAX_SPAN)) {
         throw badRequest("That is too much of the map to search at once. Zoom in, or search by name without the map view.");
-      }
-      if (bbox && source.bbox && !overlaps(bbox, source.bbox)) {
-        throw badRequest(
-          `${source.name} does not know this part of the world (it covers: ${source.coverage}). Choose another server, or move the map.`,
-        );
       }
 
       const answer = await ask(

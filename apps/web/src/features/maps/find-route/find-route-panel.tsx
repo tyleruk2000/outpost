@@ -6,7 +6,15 @@
  * the search goes to before it is. One question is in flight at a time; leaving the
  * view drops it.
  */
-import type { Bbox, RoutePreview, RouteSearchResult, RouteSourceDto, TrackDto, TrackWithGeometryDto } from "@outpost/shared";
+import {
+  type Bbox,
+  pickRouteSource,
+  type RoutePreview,
+  type RouteSearchResult,
+  type RouteSourceDto,
+  type TrackDto,
+  type TrackWithGeometryDto,
+} from "@outpost/shared";
 import { ArrowLeft, CircleAlert, Plus, Scan, Search, WifiOff } from "lucide-react";
 import { type FormEvent, useEffect, useId, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -140,14 +148,12 @@ export function FindRoutePanel({
   const [fetched, setFetched] = useState<Record<string, RoutePreview>>({});
 
   const declared = sources.data?.sources ?? [];
+  const centre = engine?.getCenter() ?? null;
+  // The server the person chose; failing that, the one for this part of the map.
   const source: RouteSourceDto | null =
-    declared.find((item) => item.id === storedSource) ??
-    declared.find((item) => item.id === sources.data?.defaultId) ??
-    declared[0] ??
-    null;
+    declared.find((item) => item.id === storedSource) ?? pickRouteSource(declared, sources.data?.defaultId ?? null, centre);
   const scope: SearchScope = chosenScope ?? (view && viewSearchable(view) ? "view" : "anywhere");
   const blocker = searchBlocker(text, scope, view);
-  const centre = engine?.getCenter() ?? null;
   const opened = trail.at(-1) ?? null;
 
   useEffect(() => {
@@ -390,6 +396,7 @@ export function FindRoutePanel({
   // ── The search ──
 
   const results = search.data?.results ?? [];
+  const answeredBy = declared.find((item) => item.id === search.data?.source.id);
   const searchedDay = dayOf(search.data?.dataAsOf ?? null);
   return (
     <div key="search" className="flex min-h-0 flex-1 flex-col">
@@ -456,7 +463,8 @@ export function FindRoutePanel({
               <p id={noteId} className="text-small text-ink-muted">
                 Search sends {scope === "view" ? "this name and the edges of the map view" : "this name"} to{" "}
                 <span className="font-mono text-[0.8125rem] break-words text-ink">{source.host}</span> ({source.operator}), which answers
-                from {source.data.name}. It needs the internet. A route you add is kept here and works offline.{" "}
+                from {source.data.name}. {source.bbox ? `It knows: ${source.coverage}. ` : ""}It needs the internet. A route you add is kept
+                here and works offline.{" "}
                 <a href={source.termsUrl} target="_blank" rel="noopener noreferrer" className={link}>
                   The server's terms
                 </a>
@@ -518,6 +526,7 @@ export function FindRoutePanel({
                   : "No walking or cycling routes are mapped in this view."}
               </p>
               <p className="text-small text-ink-muted">
+                {answeredBy?.bbox ? `${answeredBy.host} knows: ${answeredBy.coverage}. ` : ""}
                 {asked.scope === "view"
                   ? "Names are matched as OpenStreetMap writes them, so part of the name often does better than all of it. The path may also lie outside the view."
                   : "Searching anywhere finds routes only. A path that nobody has mapped as a route is found by moving the map to it and searching the view."}
@@ -532,6 +541,11 @@ export function FindRoutePanel({
                   }}
                 >
                   Search anywhere for it
+                </Button>
+              ) : null}
+              {declared.length > 1 && !choosing ? (
+                <Button className="justify-self-start" onClick={() => setChoosing(true)}>
+                  Ask another server
                 </Button>
               ) : null}
             </div>

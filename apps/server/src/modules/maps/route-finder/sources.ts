@@ -76,7 +76,7 @@ function fileSchema(options: { allowHttp: boolean }) {
     $schema: z.string().optional(),
     schemaVersion: z.literal(ROUTE_SOURCES_SCHEMA_VERSION),
     description: z.string().max(2000).optional(),
-    /** The source used when a search names none. */
+    /** The source asked first wherever the map is. Without it, a source is chosen by where the map is. */
     defaultSource: z.string().max(60).optional(),
     /** In a person's own file: leave out the sources shipped with Outpost. */
     replaceShipped: z.boolean().optional(),
@@ -134,7 +134,8 @@ function readFile(file: string, options: { allowHttp: boolean }): { parsed?: z.i
 /**
  * Reads the shipped file and then a person's own. Shipped sources come first and
  * cannot be replaced one by one: a second source with an id already taken is skipped
- * and reported. A person's `defaultSource` wins over the shipped one.
+ * and reported. A person's `defaultSource` wins over a shipped one; with none named,
+ * the source is chosen search by search from where the map is (`pickRouteSource`).
  */
 export function loadRouteSources(config: { catalogDir: string; dataDir: string }): LoadedRouteSources {
   const shipped = readFile(path.join(config.catalogDir, ROUTE_SOURCES_FILE), { allowHttp: false });
@@ -157,7 +158,7 @@ export function loadRouteSources(config: { catalogDir: string; dataDir: string }
       problems.push(`The default route source "${file.defaultSource}" is not one of the declared sources.`);
     }
   }
-  return { sources, defaultId: wanted ?? sources[0]?.id ?? null, problems };
+  return { sources, defaultId: wanted ?? null, problems };
 }
 
 export const toSourceDto = ({ endpoint: _endpoint, allowHost: _allowHost, ...dto }: RouteSource): RouteSourceDto => dto;

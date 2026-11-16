@@ -224,7 +224,7 @@ function serve(handlers: { search?: (body: unknown) => unknown; preview?: (body:
       const json = (value: unknown, status = 200) =>
         new Response(JSON.stringify(value), { status, headers: { "content-type": "application/json" } });
       try {
-        if (path === "/api/maps/route-sources") return json(sources);
+        if (path === "/api/maps/route-sources") return json(declared);
         if (path === "/api/maps/route-search") return json(handlers.search?.(body) ?? found([]));
         if (path === "/api/maps/route-search/preview") return json(handlers.preview?.(body) ?? preview());
         if (path === "/api/maps/route-search/add") return json(handlers.add?.(body) ?? {});
@@ -249,6 +249,9 @@ const found = (results: RouteSearchResult[], change: Partial<RouteSearchResponse
   ...change,
 });
 
+/** What `GET /api/maps/route-sources` answers; a test may put its own list here. */
+let declared: RouteSourcesResponse = sources;
+
 function show(view: Bbox = [-3.3, 54.4, -3, 54.6]) {
   const map: FindRouteMap = {
     getBounds: () => view,
@@ -267,6 +270,7 @@ function show(view: Bbox = [-3.3, 54.4, -3, 54.6]) {
 }
 
 afterEach(() => {
+  declared = sources;
   vi.unstubAllGlobals();
   localStorage.clear();
 });
@@ -283,6 +287,38 @@ describe("finding a route", () => {
     await userEvent.type(screen.getByLabelText("Name of the route"), "Kestrel");
     // Typing asks nobody: there is no search-as-you-type.
     expect(sent).toEqual([]);
+  });
+
+  it("asks the server for this part of the map unless the person chose another, and remembers their choice", async () => {
+    const world = sources.sources[0]!;
+    const europe = {
+      ...world,
+      id: "europe",
+      name: "Europe server",
+      host: "europe.example.org",
+      coverage: "Europe only",
+      bbox: [-11, 36, 32, 71.5] as Bbox,
+    };
+    declared = { sources: [world, europe], defaultId: null, problems: [] };
+    serve({});
+    const inEurope = show();
+    expect(await screen.findByText(/Search sends this name and the edges of the map view to/)).toHaveTextContent(
+      "to europe.example.org (an example association), which answers from OpenStreetMap. It knows: Europe only.",
+    );
+    inEurope.unmount();
+
+    // Somewhere the regional server does not know: the one that is asked about anywhere.
+    const elsewhere = show([170, -43.7, 170.2, -43.5]);
+    expect(await screen.findByText(/Search sends this name and the edges of the map view to/)).toHaveTextContent("to routes.example.org (");
+    await userEvent.click(screen.getByRole("button", { name: "Change server" }));
+    await userEvent.click(screen.getByRole("combobox", { name: "Server to ask" }));
+    await userEvent.click(await screen.findByRole("option", { name: /Europe server/ }));
+    expect(screen.getByText(/Search sends this name and the edges of the map view to/)).toHaveTextContent("to europe.example.org (");
+    elsewhere.unmount();
+
+    // The choice is kept for next time, wherever the map is.
+    show([170, -43.7, 170.2, -43.5]);
+    expect(await screen.findByText(/Search sends this name and the edges of the map view to/)).toHaveTextContent("to europe.example.org (");
   });
 
   it("searches the map view by name, lists what was found, and shows the chosen route on the map", async () => {

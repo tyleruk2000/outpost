@@ -506,6 +506,23 @@ Types: `packages/shared/src/maps.ts`. See [maps.md](maps.md).
 | `GET /api/maps/tracks/:id/export.gpx` | One track as GPX. |
 | `GET /api/maps/export.gpx` | A selection as one GPX file. Query: `markers=1`, `tracks=<id>,<id>`. |
 
+### Finding a route
+
+Types: `packages/shared/src/route-finder.ts`. See
+[maps.md](maps.md#finding-a-known-route). Searching and previewing each make one
+request to a route source on the internet; everything else here is local.
+
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/maps/route-sources` | The declared route sources, the one an administrator named as the default (`null` when the source is chosen by where the map is), and what was wrong with a source file that could not be read (`RouteSourcesResponse`). Contacts nobody. |
+| `POST /api/maps/route-search` | Body: `text?` (3 to 80 characters of a name), `bbox?` (`[west, south, east, north]`, at most 2° each way), `sourceId?` (without it: the administrator's default, else the first source whose box holds the middle of `bbox`, else the first with no box). At least one of `text` and `bbox`. Answers `RouteSearchResponse`: up to 40 routes and 20 named paths, whether there were more, and how fresh the source's copy of the map is. `503` with code `offline` when the source cannot be reached; `502` when it is busy, slow or answers with something else; `409` while another search is running. |
+| `POST /api/maps/route-search/preview` | Body: `ref` (`{ "type": "relation", "id" }` or `{ "type": "ways", "ids" }`, as a search result gives it), `sourceId?`. Answers a `RoutePreview`: the route as lines, its length, gaps and branches, its alternative legs, its sections if it is kept as sections, its credit, and a `token`. `413` when the route is too large to add. |
+| `POST /api/maps/route-search/add` | Body: `token`, `name?`, `color?`, `includeAlternatives?`. Saves the previewed route as a track and answers `{ track, elevation }` (`RouteSaveResponse`). The source is not asked again. `409` when the preview is no longer held (after fifteen minutes, or once added). |
+| `POST /api/maps/tracks/:id/heights` | For a route added this way: reads its heights again from installed terrain. Answers `{ track, elevation }`. `400` for a track that was drawn or imported. |
+
+A track added this way carries `source` on its GeoJSON (`TrackSource`): the credit,
+the licence, the OpenStreetMap element, when it was fetched and from which server.
+
 ## Backup
 
 Types: `BackupStatus` in `packages/shared/src/semantic.ts`.

@@ -3,8 +3,10 @@ import http from "node:http";
 import type { AddressInfo } from "node:net";
 import os from "node:os";
 import path from "node:path";
+import zlib from "node:zlib";
 import {
   haversineMeters,
+  pickRouteSource,
   type RoutePreview,
   type RouteSaveResponse,
   type RouteSearchResponse,
@@ -17,6 +19,7 @@ import { AppError } from "../src/core/errors.ts";
 import { createHttpClient } from "../src/core/http.ts";
 import type { AnnotationsService } from "../src/modules/maps/annotations.ts";
 import type { TrackCollection } from "../src/modules/maps/gpx.ts";
+import { Compression, TileType } from "../src/modules/maps/pmtiles/header.ts";
 import { arrangeLines, clusterLines, describeLines, joinWays, lengthOf, type Point } from "../src/modules/maps/route-finder/assemble.ts";
 import { ROUTE_FINDER_USER_AGENT } from "../src/modules/maps/route-finder/index.ts";
 import {
@@ -31,6 +34,7 @@ import {
 } from "../src/modules/maps/route-finder/overpass.ts";
 import { createRouteFinder, MAX_ROUTE_POINTS } from "../src/modules/maps/route-finder/service.ts";
 import { loadRouteSources, type RouteSource, routeSourcesSchema } from "../src/modules/maps/route-finder/sources.ts";
+import { buildArchive, type FixtureTile } from "./fixtures/maps/archive.ts";
 import {
   A,
   B,
@@ -429,7 +433,16 @@ describe("route sources", () => {
     const loaded = loadRouteSources({ catalogDir: repoCatalog, dataDir: path.join(dir, "data") });
     expect(loaded.problems).toEqual([]);
     expect(loaded.sources.length).toBeGreaterThan(0);
-    expect(loaded.sources.map((source) => source.id)).toContain(loaded.defaultId);
+    // No default is named: the source is chosen by where the map is.
+    expect(loaded.defaultId).toBeNull();
+    const pick = (lat: number, lon: number) => pickRouteSource(loaded.sources, loaded.defaultId, { lat, lon })?.id;
+    expect(pick(53.07, -4.08)).toBe("dresel-europe"); // Snowdon
+    expect(pick(36.1, -112.1)).toBe("dresel-north-america"); // the Grand Canyon
+    expect(pick(-43.6, 170.1)).toBe("private-coffee"); // Aoraki / Mount Cook
+    expect(pick(19.4, -99.1)).toBe("private-coffee"); // Mexico City: outside the box drawn for North America
+    expect(pickRouteSource(loaded.sources, null, null)?.id).toBe("private-coffee");
+    expect(pickRouteSource(loaded.sources, "dresel-europe", { lat: -43.6, lon: 170.1 })?.id).toBe("dresel-europe");
+    expect(pickRouteSource([], null, null)).toBeNull();
     for (const source of loaded.sources) {
       expect(source.endpoint.startsWith("https://")).toBe(true);
       expect(source.data.attribution).toBe("© OpenStreetMap contributors");
@@ -460,7 +473,8 @@ describe("route sources", () => {
     writeOwn({ schemaVersion: 1, replaceShipped: true, sources: [own("valley", "https://overpass.example.org/api/interpreter")] });
     const loaded = loadRouteSources({ catalogDir: repoCatalog, dataDir: path.join(dir, "data") });
     expect(loaded.sources.map((source) => source.id)).toEqual(["valley"]);
-    expect(loaded.defaultId).toBe("valley");
+    expect(loaded.defaultId).toBeNull();
+    expect(pickRouteSource(loaded.sources, loaded.defaultId, null)?.id).toBe("valley");
   });
 
   it("says what is wrong with a file it cannot use, and uses none of it", () => {
@@ -543,7 +557,7 @@ describe("finding a route and adding it", () => {
   it("lists the declared sources with the credit their data needs, and never the address a question is posted to", async () => {
     const { status, body } = await app.api<RouteSourcesResponse>("GET", "/api/maps/route-sources");
     expect(status).toBe(200);
-    expect(body.defaultId).toBe("stand-in");
+    expect(body.defaultId).toBeNull();
     expect(body.sources).toEqual([
       {
         id: "stand-in",
@@ -618,10 +632,6 @@ describe("finding a route and adding it", () => {
       [{ text: "?? !!" }, "Type at least 3 letters of the route's name."],
       [{ text: "x".repeat(81) }, "Search for at most 80 characters of a name."],
       [{ bbox: [-6, 50, 2, 56] }, "That is too much of the map to search at once. Zoom in, or search by name without the map view."],
-      [
-        { bbox: [10, 45, 11, 46] },
-        "Stand-in does not know this part of the world (it covers: A made-up hillside). Choose another server, or move the map.",
-      ],
       [{ text: "kestrel", sourceId: "somewhere-else" }, "That route source is not one of the sources declared for this Outpost."],
     ];
     for (const [body, message] of cases) {
@@ -994,6 +1004,125 @@ describe("when the source cannot be reached or may not be asked", () => {
 });
 
 // ── Heights ─────────────────────────────────────────────────────────────────
+
+/** Made-up ground that rises to the east and to the south, as a plain function of where on the world map a point is. */
+const groundAt = (worldX: number, worldY: number) => 200 + 800 * worldX + 400 * worldY;
+const heightAt = (lat: number, lon: number) =>
+  groundAt((lon + 180) / 360, (1 - Math.log(Math.tan((lat * Math.PI) / 180) + 1 / Math.cos((lat * Math.PI) / 180)) / Math.PI) / 2);
+
+/** A PNG of 8-bit RGB pixels, unfiltered: enough to write terrain tiles for a test. */
+function png(size: number, rgb: (x: number, y: number) => number): Buffer {
+  const rows = Buffer.alloc(size * (size * 3 + 1));
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) rows.writeUIntBE(rgb(x, y) & 0xffffff, y * (size * 3 + 1) + 1 + x * 3, 3);
+  }
+  const chunk = (kind: string, data: Buffer) => {
+    const body = Buffer.concat([Buffer.from(kind, "latin1"), data]);
+    const framed = Buffer.alloc(body.length + 8);
+    framed.writeUInt32BE(data.length, 0);
+    body.copy(framed, 4);
+    framed.writeUInt32BE(zlib.crc32(body), body.length + 4);
+    return framed;
+  };
+  const header = Buffer.alloc(13);
+  header.writeUInt32BE(size, 0);
+  header.writeUInt32BE(size, 4);
+  header.set([8, 2, 0, 0, 0], 8);
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk("IHDR", header),
+    chunk("IDAT", zlib.deflateSync(rows)),
+    chunk("IEND", Buffer.alloc(0)),
+  ]);
+}
+
+/** Terrain for the whole world down to zoom 3, in the encoding the map's terrain uses, installed as a person would. */
+async function installTerrain(app: TestApp) {
+  const size = 64;
+  const tiles: FixtureTile[] = [];
+  for (let z = 0; z <= 3; z += 1) {
+    for (let x = 0; x < 2 ** z; x += 1) {
+      for (let y = 0; y < 2 ** z; y += 1) {
+        const data = png(size, (i, j) =>
+          Math.round((groundAt((x + (i + 0.5) / size) / 2 ** z, (y + (j + 0.5) / size) / 2 ** z) + 32768) * 256),
+        );
+        tiles.push({ z, x, y, data });
+      }
+    }
+  }
+  const archive = buildArchive({
+    tiles,
+    bounds: [-180, -85.0511, 180, 85.0511],
+    tileType: TileType.Png,
+    tileCompression: Compression.None,
+  });
+  const location = app.ctx.services.storage.getDefault();
+  fs.mkdirSync(path.join(location.path, "imports"), { recursive: true });
+  fs.writeFileSync(path.join(location.path, "imports/terrain.pmtiles"), archive.bytes);
+  const imported = await app.api("POST", "/api/maps/import", {
+    locationId: location.id,
+    relPath: "imports/terrain.pmtiles",
+    name: "Terrain",
+    tileType: "terrain",
+  });
+  expect(imported.status).toBe(200);
+}
+
+describe("heights from the terrain that is installed", () => {
+  it("gives a found route its heights and its ascent when it is added, and later for one added before there was terrain", async () => {
+    standIn.requests.length = 0;
+    const app = await appWithSource();
+    try {
+      // Added with no terrain: no heights.
+      const before = await app.api<RoutePreview>("POST", "/api/maps/route-search/preview", { ref: { type: "relation", id: ROUTE_ID } });
+      const early = await app.api<RouteSaveResponse>("POST", "/api/maps/route-search/add", { token: before.body.token });
+      expect(early.body.elevation).toBe("none");
+      expect(early.body.track.ascentMeters).toBeNull();
+
+      await installTerrain(app);
+
+      // Added with terrain: every point has the height of the ground beneath it.
+      const preview = await app.api<RoutePreview>("POST", "/api/maps/route-search/preview", { ref: { type: "relation", id: ROUTE_ID } });
+      const added = await app.api<RouteSaveResponse>("POST", "/api/maps/route-search/add", { token: preview.body.token });
+      expect(added.body.elevation).toBe("terrain");
+      const stored = await app.api<{ track: TrackWithGeometryDto }>("GET", `/api/maps/tracks/${added.body.track.id}`);
+      const lines = (stored.body.track.geojson as unknown as TrackCollection).features.map(
+        (feature) => feature.geometry.coordinates as number[][],
+      );
+      expect(lines).toHaveLength(3);
+      for (const line of lines) {
+        for (const [lon, lat, height] of line) expect(Math.abs(height! - heightAt(lat!, lon!))).toBeLessThan(1.5);
+      }
+      // The made-up ground falls to the north, so a walk north climbs nothing worth counting.
+      expect(added.body.track.ascentMeters).not.toBeNull();
+      expect(added.body.track.ascentMeters!).toBeLessThan(5);
+
+      // The earlier one is given its heights from the terrain, and the source is not asked again.
+      const asked = standIn.requests.length;
+      const filled = await app.api<RouteSaveResponse>("POST", `/api/maps/tracks/${early.body.track.id}/heights`);
+      expect(filled.status).toBe(200);
+      expect(filled.body.elevation).toBe("terrain");
+      expect(filled.body.track.ascentMeters).not.toBeNull();
+      expect(standIn.requests).toHaveLength(asked);
+      const refilled = await app.api<{ track: TrackWithGeometryDto }>("GET", `/api/maps/tracks/${early.body.track.id}`);
+      expect(readTrackSource(refilled.body.track.geojson)).toEqual(before.body.credit);
+
+      // A route that was drawn or imported is not touched this way.
+      const drawn = await app.api<RouteSaveResponse>("POST", "/api/maps/tracks", {
+        name: "Mine",
+        points: [
+          { lat: 54, lon: -3 },
+          { lat: 54.01, lon: -3 },
+        ],
+      });
+      const refused = await app.api("POST", `/api/maps/tracks/${drawn.body.track.id}/heights`);
+      expect(refused.status).toBe(400);
+      expect(refused.body.error.message).toContain("only filled in this way for a route found in a route source");
+    } finally {
+      await app.close();
+    }
+  });
+});
 
 describe("heights for a found route", () => {
   /** Terrain that knows the ground south of 54.51 and nothing north of it. */

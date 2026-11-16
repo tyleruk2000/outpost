@@ -25,7 +25,11 @@ export interface RouteSourceDto {
   operator: string;
   /** What part of the world it knows, in words: "The whole world". */
   coverage: string;
-  /** The box it knows, or null for the whole world. */
+  /**
+   * The part of the world it is asked about first: a search of a view whose middle is
+   * inside this box goes to it unless the person chose another server. Null for a
+   * source that is asked about anywhere.
+   */
   bbox: Bbox | null;
   /** The page that says how the server may be used. */
   termsUrl: string;
@@ -47,10 +51,32 @@ export interface RouteDataCredit {
 
 export interface RouteSourcesResponse {
   sources: RouteSourceDto[];
-  /** The source used when a search names none; null when no source is declared. */
+  /**
+   * The source an administrator has said to ask first, wherever the map is. Null when
+   * none was named: the source is then chosen by where the map is (`pickRouteSource`).
+   */
   defaultId: string | null;
   /** What was wrong with a route source file, in words, when one could not be read. */
   problems: string[];
+}
+
+/**
+ * Which source a search goes to when the person has not chosen one: the one an
+ * administrator named; failing that, the first declared whose box holds the middle of
+ * the map; failing that, the first that is asked about anywhere; failing that, the first.
+ * A server that knows one region well is asked about that region before one that
+ * serves the whole world.
+ */
+export function pickRouteSource<T extends Pick<RouteSourceDto, "id" | "bbox">>(
+  sources: T[],
+  defaultId: string | null,
+  centre: { lat: number; lon: number } | null,
+): T | null {
+  const named = sources.find((source) => source.id === defaultId);
+  if (named) return named;
+  const holds = (box: Bbox) =>
+    centre !== null && centre.lon >= box[0] && centre.lon <= box[2] && centre.lat >= box[1] && centre.lat <= box[3];
+  return sources.find((source) => source.bbox && holds(source.bbox)) ?? sources.find((source) => !source.bbox) ?? sources[0] ?? null;
 }
 
 export type RouteKind = "walking" | "running" | "cycling" | "mountain-biking" | "riding" | "path";
