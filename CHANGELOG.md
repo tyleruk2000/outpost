@@ -973,6 +973,30 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 - Checks to run locally: lint, type checking, server and web tests, catalogue
   validation, and browser tests against the packaged app with the internet blocked.
 
+#### Tidy-ups
+
+- A model's reply stops at the piece where its reader stopped, even when several pieces
+  arrived in one read.
+- A file that did not decrypt no longer leaves the Encryption screen showing it being
+  decrypted, with its button busy, for good (seen on a busy machine).
+- Chat no longer takes someone who has scrolled up back down when a piece of the reply
+  is drawn before the browser has said they scrolled.
+- A backup is not listed until its check has finished; it was shown as "Not verified"
+  while it was being checked.
+- A prediction's basis sentence, which is kept and printed, is dated and no longer says
+  "(today)"; the screen says how old the table is.
+- A map page made twice the same day is one document in the library.
+- `formatDuration` says "1 second", and never "60 seconds".
+- At a plain http address, every "Keep" action says it needs HTTPS and opens Settings,
+  "HTTPS on your network"; the repeaters screen's location message names it too.
+- On a phone: the shared dialog's Close and the segmented control are 44 px; a dialog
+  whose header and footer outgrow the screen scrolls as a whole; HF coverage, plans,
+  Offline maps, the Sun tab and drawing a route fit 320 px with the text at 150%.
+- Tests: those that failed only on a busy machine wait on what they wait for, or do
+  less (see the commits); server tests remove the folders they make, and a run fails
+  if one is left; an end-to-end test presses each secure-page-only action at a plain
+  http address.
+
 ### Known limitations
 
 These are deliberate or known, and are explained in
