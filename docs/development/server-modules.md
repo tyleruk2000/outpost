@@ -64,7 +64,9 @@ Queues in use: `download` (network transfers), `index` (text extraction, embeddi
 files), `import`, `manage` (bulk removal and clean-ups, one at a time), `backup`
 (scheduled and hand-started backups, one at a time), `webpage` (saving a web page, one
 at a time), `reference-files` (copying the documents of a reference collection into
-the library, one collection at a time). Handlers
+the library, one collection at a time), `database` (checking the database and reclaiming
+unused space in it, one at a time; reclaiming holds every other queue with
+`ctx.jobs.holdFor` while it runs). Handlers
 receive an `AbortSignal`
 and must stop promptly when it fires (pause, cancel, shutdown). Report progress with
 `run.progress({ current, total, message })`. Throw `PermanentJobError` for failures
@@ -133,6 +135,7 @@ table; see `modules/repeaters/index.ts`.
    by any method, and a route outside `/api/` that could would need a defence of its own.
    The routes that ask where a request came from are "erase everything", the ones
    that restore a backup, delete a stored one or keep fewer (`modules/backup/right.ts`),
+   reclaiming unused space in the database (`modules/database`),
    and, in `modules/https`, replacing or deleting the certificate authority, deleting a
    certificate the person brought, and uploading a private key (which is also accepted
    over a connection that is already HTTPS). They

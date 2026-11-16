@@ -83,6 +83,20 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 - A selection of documents can be moved to another location (`ids` on
   `POST /api/documents/move`).
 
+#### Database
+
+- A Database section on the Storage screen: where Outpost's SQLite file is and how big,
+  with its write-ahead log and the free space on its drive (with a warning below
+  256 MB); what is in it, counted as the rest of the app names things, and where its
+  bytes go in seven groups, measured with SQLite's `dbstat` in a worker and kept with
+  the time it was worked out; the layout version, SQLite version, journal mode and the
+  last backup.
+- **Check the database** (SQLite's quick check, or the full integrity check) as a job
+  that reads on a connection of its own, open to every device.
+- **Reclaim unused space** (`VACUUM`) as a job, from the computer Outpost runs on only:
+  refused without room for it or while other work runs; while it runs, other jobs
+  wait, backups cannot take their copy, and changes are refused with a message.
+
 #### Automatic backups
 
 - Backups on a schedule (daily or weekly, at a chosen time) to a folder of Outpost's

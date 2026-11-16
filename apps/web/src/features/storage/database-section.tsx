@@ -1,0 +1,323 @@
+/**
+ * The database on the Storage screen: where Outpost's one SQLite file is, what is in it,
+ * the state it is in, and the two ways of looking after it. See modules/database.
+ */
+import { type DatabaseJobResponse, type DatabaseStatus, formatBytes } from "@outpost/shared";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { CircleAlert, CircleCheck, RefreshCw } from "lucide-react";
+import { type ReactNode, useState } from "react";
+import { Link } from "react-router";
+import { toast } from "sonner";
+import { ErrorState, Notice, Section } from "@/components/page";
+import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/dialog";
+import { Skeleton } from "@/components/ui/misc";
+import { api, errorMessage } from "@/lib/api";
+import { formatDateTime, timeAgo } from "@/lib/utils";
+import { countWords, duration, GROUP_WORDS, reclaimBlocked, schemaWords } from "./database-text";
+
+export const useDatabase = () =>
+  useQuery({
+    queryKey: ["database"],
+    queryFn: () => api.get<DatabaseStatus>("/api/database"),
+    // Looked at again while something is being worked out; otherwise only when the server says it changed.
+    refetchInterval: (query) => (query.state.data?.measuring || query.state.data?.active ? 1500 : false),
+  });
+
+/** One fact: its name in the margin on a wide screen, above it on a phone. */
+function Fact({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="grid gap-x-8 gap-y-1 py-4 md:grid-cols-[11rem_minmax(0,1fr)]">
+      <dt className="text-small font-medium text-ink">{label}</dt>
+      <dd className="min-w-0 text-small text-ink-muted">{children}</dd>
+    </div>
+  );
+}
+
+function Live({ children }: { children: ReactNode }) {
+  return (
+    <p className="flex items-center gap-2 text-small text-ink" role="status">
+      <span aria-hidden className="size-2 shrink-0 rounded-full bg-lamp" />
+      {children}
+    </p>
+  );
+}
+
+function Contents({ status, onAgain, again }: { status: DatabaseStatus; onAgain: () => void; again: boolean }) {
+  const { contents } = status;
+  if (!contents) {
+    return status.measuring ? (
+      <div className="space-y-2" aria-busy>
+        <Live>Working out what is in it, on a connection of its own. The rest of Outpost carries on.</Live>
+        <Skeleton className="h-4 w-3/4" />
+        <Skeleton className="h-24 max-w-xl" />
+      </div>
+    ) : (
+      <p>
+        What is in it could not be worked out.{" "}
+        <button type="button" onClick={onAgain} className="min-h-11 font-medium text-primary underline underline-offset-2 md:min-h-0">
+          Try again
+        </button>
+      </p>
+    );
+  }
+  const counted = countWords(contents.counts);
+  return (
+    <div className="space-y-4">
+      <p className="max-w-[70ch] text-ink">
+        {counted.length === 0
+          ? "Nothing has been added yet. The file holds only the tables Outpost keeps for itself."
+          : `${counted.join(", ").replace(/, ([^,]*)$/, " and $1")}.`}
+      </p>
+      {contents.groups ? (
+        <table className="w-full max-w-xl">
+          <caption className="sr-only">Where the bytes of the database go</caption>
+          <thead className="sr-only">
+            <tr>
+              <th>Part</th>
+              <th>Size</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border border-y border-border">
+            {contents.groups
+              .filter((group) => group.bytes > 0)
+              .map((group) => (
+                <tr key={group.id}>
+                  <td className="py-2.5 pr-4">
+                    <span className="block text-ink">{GROUP_WORDS[group.id].label}</span>
+                    <span className="block text-ink-muted">{GROUP_WORDS[group.id].detail}</span>
+                  </td>
+                  <td className="tabular py-2.5 text-right align-top font-medium whitespace-nowrap text-ink">{formatBytes(group.bytes)}</td>
+                </tr>
+              ))}
+            <tr>
+              <td className="py-2.5 pr-4">
+                <span className="block text-ink">Unused</span>
+                <span className="block text-ink-muted">Left by things removed; reclaiming gives it back</span>
+              </td>
+              <td className="tabular py-2.5 text-right align-top font-medium whitespace-nowrap text-ink">
+                {formatBytes(contents.unusedBytes)}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      ) : (
+        <p>This build of SQLite cannot say how many bytes each part takes (it has no dbstat table), so only the counts are shown.</p>
+      )}
+      <div className="flex max-w-[70ch] flex-wrap items-center gap-x-4 gap-y-2">
+        <p>
+          Worked out {timeAgo(contents.workedOutAt)}, in {duration(contents.milliseconds)},{" "}
+          {contents.method === "dbstat"
+            ? `by reading every page of the ${formatBytes(contents.fileBytes)} file with SQLite's dbstat table. The parts add up to the file exactly.`
+            : "by counting the rows of each table."}
+        </p>
+        <Button size="sm" onClick={onAgain} loading={again || status.measuring} className="max-md:min-h-11">
+          {again || status.measuring ? null : <RefreshCw />} Work out again
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function CheckRow({ status }: { status: DatabaseStatus }) {
+  const client = useQueryClient();
+  const check = useMutation({
+    mutationFn: (kind: "quick" | "full") => api.post<DatabaseJobResponse>("/api/database/check", { kind }),
+    onSuccess: () => client.invalidateQueries({ queryKey: ["database"] }),
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+  const last = status.lastCheck;
+  const running = status.active?.type === "database.check" ? status.active : null;
+  const busy = status.active !== null || check.isPending;
+  return (
+    <div className="space-y-3">
+      <p className="max-w-[70ch]">
+        SQLite reads every page and confirms each is sound. It reads only, on a connection of its own, so Outpost carries on as usual. The
+        full check also confirms that every index matches its table, and takes a little longer.
+      </p>
+      {running ? (
+        <Live>
+          {running.title === "Check the database fully" ? "Checking every page and every index now." : "Checking every page now."}
+        </Live>
+      ) : last ? (
+        last.ok ? (
+          <p className="flex items-start gap-2 text-ink">
+            <CircleCheck aria-hidden className="mt-0.5 size-4 shrink-0 text-success" />
+            <span>
+              No problems found by the {last.kind === "quick" ? "quick" : "full"} check {timeAgo(last.at)} ({formatDateTime(last.at)}),
+              which took {duration(last.milliseconds)}.
+            </span>
+          </p>
+        ) : (
+          <Notice tone="danger" icon={<CircleAlert />} title={`The ${last.kind} check ${timeAgo(last.at)} found problems`}>
+            <p>SQLite reported, in its own words:</p>
+            <ul className="mt-1 space-y-0.5 font-mono text-[0.8125rem] break-all">
+              {last.problems.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+            <p className="mt-2">
+              Make no large changes until this is resolved. Restoring the most recent backup that passed its check (under{" "}
+              <Link to="/settings#backup" className="font-medium underline underline-offset-2">
+                Settings, Backup
+              </Link>
+              ) puts back a sound copy; what changed since that backup would be lost.
+            </p>
+          </Notice>
+        )
+      ) : (
+        <p>Not checked yet, or not since the history of work was last cleared.</p>
+      )}
+      <div className="flex flex-wrap gap-2">
+        <Button onClick={() => check.mutate("quick")} disabled={busy} loading={check.isPending && check.variables === "quick"}>
+          Check the database
+        </Button>
+        <Button
+          variant="ghost"
+          onClick={() => check.mutate("full")}
+          disabled={busy}
+          loading={check.isPending && check.variables === "full"}
+        >
+          Run the full check
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function ReclaimRow({ status }: { status: DatabaseStatus }) {
+  const client = useQueryClient();
+  const [confirming, setConfirming] = useState(false);
+  const reclaim = useMutation({
+    mutationFn: () => api.post<DatabaseJobResponse>("/api/database/reclaim"),
+    onSuccess: () => {
+      setConfirming(false);
+      return client.invalidateQueries({ queryKey: ["database"] });
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+  const running = status.active?.type === "database.vacuum" ? status.active : null;
+  const blocked = reclaimBlocked(status, formatBytes);
+  const unused = formatBytes(status.file.unusedBytes);
+  const took = status.lastVacuum ? ` Last time it took ${duration(status.lastVacuum.milliseconds)}.` : "";
+  return (
+    <div className="space-y-3">
+      <p className="max-w-[70ch]">
+        {status.file.unusedPages === 0 ? (
+          "No space in the file is unused."
+        ) : (
+          <>
+            <span className="tabular font-medium text-ink">{unused}</span> of the file is unused, left by things that were removed.
+            Reclaiming rewrites the whole file without it.
+          </>
+        )}{" "}
+        While it runs, Outpost can be read but nothing can be saved, and backups, imports, downloads and index builds wait. It needs up to{" "}
+        <span className="tabular">{formatBytes(status.reclaim.neededBytes)}</span> free on this drive.{took}
+      </p>
+      {running ? (
+        <Live>Reclaiming unused space now. Nothing can be saved until it has finished.</Live>
+      ) : blocked ? (
+        <p className="max-w-[70ch] text-ink">{blocked}</p>
+      ) : (
+        <Button onClick={() => setConfirming(true)} disabled={status.active !== null}>
+          Reclaim unused space
+        </Button>
+      )}
+      {status.lastVacuum && !running ? (
+        <p>
+          Last reclaimed {timeAgo(status.lastVacuum.at)}: {formatBytes(status.lastVacuum.beforeBytes)} became{" "}
+          {formatBytes(status.lastVacuum.afterBytes)}.
+        </p>
+      ) : null}
+      <ConfirmDialog
+        open={confirming}
+        onOpenChange={setConfirming}
+        title="Reclaim unused space?"
+        description={`Outpost rewrites its database without the ${unused} that is unused. Until that has finished, nobody can save anything: notes, places and settings are refused with a message, and backups, imports and downloads wait. It reads and writes the whole ${formatBytes(status.file.bytes)} file, so it takes a few times as long as a full check.${took} Nothing in the database is changed or lost, and if Outpost stops part way, the file is left as it was.`}
+        confirmLabel="Reclaim space"
+        confirmVariant="primary"
+        onConfirm={() => reclaim.mutate()}
+        loading={reclaim.isPending}
+      />
+    </div>
+  );
+}
+
+export function DatabaseSection() {
+  const database = useDatabase();
+  const client = useQueryClient();
+  const again = useMutation({
+    mutationFn: () => api.post<DatabaseStatus>("/api/database/contents"),
+    onSuccess: (data) => client.setQueryData(["database"], data),
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+  const status = database.data;
+
+  return (
+    <Section
+      title="Database"
+      description="Notes, library records, the search index and everything else that is not a file, in one SQLite file on this device."
+    >
+      {database.isPending ? (
+        <div className="grid gap-3" aria-busy>
+          <Skeleton className="h-5 w-2/3" />
+          <Skeleton className="h-5 w-1/2" />
+          <Skeleton className="h-24" />
+        </div>
+      ) : database.isError ? (
+        <ErrorState error={database.error} onRetry={() => database.refetch()} />
+      ) : status ? (
+        <dl className="divide-y divide-border border-y border-border">
+          <Fact label="Where">
+            <span className="block font-mono text-[0.8125rem] break-all text-ink">{status.file.path}</span>
+            <span className="tabular mt-1 block">
+              {status.disk.freeBytes === null
+                ? "The system did not say how much room the drive has."
+                : `${formatBytes(status.disk.freeBytes)} free of ${formatBytes(status.disk.totalBytes)} on this drive.`}
+            </span>
+            {status.disk.low ? (
+              <Notice tone="warning" icon={<CircleAlert />} title="This drive is nearly full" className="mt-2">
+                It has less free than the {formatBytes(status.disk.reserveBytes)} Outpost keeps free on every storage location. When it
+                fills, nothing new can be saved. Free some space on it.
+              </Notice>
+            ) : null}
+          </Fact>
+          <Fact label="Size">
+            <span className="tabular">
+              <span className="font-medium text-ink">{formatBytes(status.file.bytes)}</span>, and {formatBytes(status.file.walBytes)} in the
+              write-ahead log beside it: recent changes, folded into the file as it goes.
+            </span>
+          </Fact>
+          <Fact label="What is in it">
+            <Contents status={status} onAgain={() => again.mutate()} again={again.isPending} />
+          </Fact>
+          <Fact label="State">
+            <ul className="space-y-1">
+              <li>{schemaWords(status.schema)}</li>
+              <li>
+                SQLite {status.sqlite.version}, with changes written to a write-ahead log first
+                {status.sqlite.journalMode === "wal" ? "" : ` (journal mode: ${status.sqlite.journalMode})`}.
+              </li>
+              <li>
+                {status.backup.lastAt
+                  ? `Last backed up ${timeAgo(status.backup.lastAt)} (${formatDateTime(status.backup.lastAt)}), ${status.backup.kind === "scheduled" ? "on the schedule" : "with Back up now"}.`
+                  : status.backup.scheduled
+                    ? "Not backed up to a storage location yet; the first scheduled backup has not run."
+                    : "Not backed up to a storage location. Backups downloaded from Settings are not recorded here."}{" "}
+                <Link to="/settings#backup" className="text-primary underline underline-offset-2">
+                  Backup settings
+                </Link>
+              </li>
+            </ul>
+          </Fact>
+          <Fact label="Check">
+            <CheckRow status={status} />
+          </Fact>
+          <Fact label="Reclaim space">
+            <ReclaimRow status={status} />
+          </Fact>
+        </dl>
+      ) : null}
+    </Section>
+  );
+}
