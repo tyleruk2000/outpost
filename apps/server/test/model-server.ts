@@ -59,6 +59,8 @@
  * `"truncate": false` it is refused with the two figures in a sentence; asked any other
  * way (and always on `/v1`) the front of it is dropped without a word, leaving half the
  * context, and the answer is written from what is left. `truncated()` counts those.
+ * Asked with `"shift": false`, a reply that fills the context is stopped there with
+ * `done_reason` "length", the way 0.40.16 stopped one; a piece counts as a token.
  * A model that is not in memory, or is there for another context size, is "loaded"
  * first, which takes `loadMs`.
  *
@@ -613,6 +615,7 @@ export async function startModelServer(options: StandInOptions = {}): Promise<St
         `data: ${JSON.stringify({ id, object: "chat.completion.chunk", created, model: asked, choices: [{ index: 0, delta, finish_reason: finish }] })}\n\n`,
       );
     };
+    let written = 0;
     const end = (reason: string) => {
       if (protocol === "ollama") {
         // Ollama's last line says why it ended and what the prompt came to.
@@ -626,7 +629,7 @@ export async function startModelServer(options: StandInOptions = {}): Promise<St
             total_duration: 1_000_000,
             load_duration: 1_000,
             prompt_eval_count: promptTokens,
-            eval_count: 3,
+            eval_count: written,
           })}\n`,
         );
       } else {
@@ -695,7 +698,10 @@ export async function startModelServer(options: StandInOptions = {}): Promise<St
         return void response.end();
       }
       if (index === 6 && model === "stand-in-length") return end("length");
+      // Told not to make room ("shift": false), Ollama stops a reply that fills the context, as 0.40.16 did. A piece is a token here.
+      if (protocol === "ollama" && input.shift === false && promptTokens + written >= context) return end("length");
       write(piece);
+      written += 1;
       await sleep(delay);
     }
     end("stop");

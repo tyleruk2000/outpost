@@ -553,6 +553,21 @@ describe("a conversation longer than the model can read", () => {
     expect((await detail(id)).messages.at(-1)).toMatchObject({ omitted: 4 });
   });
 
+  it("says a reply ran out of room, not that it reached its length limit, when Ollama stops it at the edge of the context", async () => {
+    const { open, exchange } = await station("stand-in-long", { longChunkDelayMs: 1 });
+    // About 3,900 of the 4,096 tokens asked for (the stand-in counts four characters to a token): it fits, and leaves little room.
+    const reply = await exchange(await open(), "kettle ".repeat(2200));
+    expect(reply.state).toBe("cut-short");
+    expect(reply.notice).toMatch(
+      /^The model ran out of room, so this reply stops before its end: this turn came to \d+ tokens, and with the reply that filled the 4096/,
+    );
+    // A reply that reaches the limit it was given is still called that.
+    const limited = await station("stand-in-length");
+    expect((await limited.exchange(await limited.open(), "Hello")).notice).toBe(
+      "The model reached its length limit, so this reply stops before its end.",
+    );
+  });
+
   it("is refused by Ollama too, which is asked for a context size and told not to cut the turn down", async () => {
     const { app, model, open, exchange } = await station();
     // More than the 4,096 tokens that are asked for with the settings a new Outpost has (the stand-in counts four characters to a token).

@@ -196,7 +196,9 @@ test.describe("answer from my library", () => {
     await page.goto(`/search?q=${encodeURIComponent("blocked jet pricker")}`);
     await page.getByRole("button", { name: "Answer from my library" }).click();
     const panel = page.getByRole("region", { name: "Generated answer" });
-    await expect(panel.getByTestId("answer-waiting")).toContainText(/into memory before it can read \d+ passages?: it said the model was not loaded/);
+    await expect(panel.getByTestId("answer-waiting")).toContainText(
+      /into memory before it can read \d+ passages?: it said the model was not loaded/,
+    );
     await expect(panel.getByTestId("answer-text")).toContainText("Clear a blocked jet with the pricker");
     // Now in memory: the next answer says nothing of loading.
     await panel.getByRole("button", { name: "Ask again" }).click();

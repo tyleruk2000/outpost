@@ -300,6 +300,8 @@ export function createRunner(ctx: AppContext, store: ChatStore) {
       tell({ type: "phase", phase: "waiting", sources: run.sources, searchedFor: run.searchedFor });
 
       let finishReason: string | null = null;
+      let used: { promptTokens?: number | null; replyTokens?: number | null } = {};
+      const contextTokens = contextTokensFor(settings.get("answers.contextChars"), CHAT_MAX_TOKENS);
       /** Said with the reply when it was written from less than was planned, because the model server refused the first try. */
       let shortened: string | null = null;
       for (let attempt = 1; ; attempt += 1) {
@@ -315,7 +317,7 @@ export function createRunner(ctx: AppContext, store: ChatStore) {
             temperature: settings.get("answers.temperature"),
             maxTokens: CHAT_MAX_TOKENS,
             // The same size an answer asks for, so that Ollama does not load the model afresh between the two.
-            contextTokens: contextTokensFor(settings.get("answers.contextChars"), CHAT_MAX_TOKENS),
+            contextTokens,
             signal: controller.signal,
             onLoading: () => {
               run.phase = "loading";
@@ -323,6 +325,7 @@ export function createRunner(ctx: AppContext, store: ChatStore) {
             },
             onFinish: (info) => {
               finishReason = info.finishReason;
+              used = info;
             },
           });
           for await (const piece of withoutThinking(pieces)) {
@@ -362,11 +365,22 @@ export function createRunner(ctx: AppContext, store: ChatStore) {
             : "The model sent back no words. Regenerate the reply, or try another model.",
         );
       }
+      // Told not to make room by dropping the start of the conversation, Ollama stops a reply that fills the context. That is
+      // not the length limit, and the person is told which it was: the figures are Ollama's own.
+      const outOfRoom =
+        typeof used.promptTokens === "number" &&
+        typeof used.replyTokens === "number" &&
+        used.replyTokens < CHAT_MAX_TOKENS &&
+        used.promptTokens + used.replyTokens >= contextTokens - 16;
       return settle(
         finishReason === "length"
           ? {
               state: "cut-short",
-              notice: `The model reached its length limit, so this reply stops before its end.${shortened ? ` ${shortened}` : ""}`,
+              notice: `${
+                outOfRoom
+                  ? `The model ran out of room, so this reply stops before its end: this turn came to ${used.promptTokens} tokens, and with the reply that filled the ${contextTokens} the model reads at once. A shorter message, or a new conversation, leaves more room; with Ollama, a larger context budget in Settings asks for a larger context.`
+                  : "The model reached its length limit, so this reply stops before its end."
+              }${shortened ? ` ${shortened}` : ""}`,
             }
           : { state: "complete", notice: shortened },
       );

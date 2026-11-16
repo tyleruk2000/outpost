@@ -121,11 +121,11 @@ export interface GenerationRequest {
   onLoading?: () => void;
   /**
    * Called once when the model ends the answer itself, with why it stopped:
-   * "stop" (it had finished), "length" (it reached `maxTokens`), or null when the
-   * server did not say; and how many tokens the prompt came to, when the server says.
-   * Not called when generation fails or is cancelled.
+   * "stop" (it had finished), "length" (it reached `maxTokens`, or, with Ollama told not to make room, filled the context), or null when the
+   * server did not say; how many tokens the prompt came to, and how many the reply did,
+   * when the server says (Ollama does). Not called when generation fails or is cancelled.
    */
-  onFinish?: (info: { finishReason: string | null; promptTokens?: number | null }) => void;
+  onFinish?: (info: { finishReason: string | null; promptTokens?: number | null; replyTokens?: number | null }) => void;
 }
 
 /** A locally hosted language model. Implemented for OpenAI-compatible servers in `modules/answers/provider.ts`. */

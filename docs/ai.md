@@ -17,8 +17,9 @@ is several gigabytes, and which one to run is your decision.
 > were also measured with a real Ollama and two small models, on a fixed set of 45
 > questions: see [Measured with a real model](#measured-with-a-real-model) for the
 > figures, what was changed because of them, and the list of things that were **not**
-> tried with a real model, which is long. llama.cpp and LM Studio have still not been
-> run.
+> tried with a real model, which is long. Later that day Chat, Stop, a model loading,
+> a conversation past the context size and two requests at once were tried with the
+> same models. llama.cpp and LM Studio have still not been run.
 
 ## What exists
 
@@ -415,39 +416,128 @@ passages, which is what the "invented" column counts for it.
 - **A worked example given as an earlier exchange** was being run when the work was
   stopped. There is no result.
 
-### Known and not done
+### Known and not done (first round)
 
-The work was stopped part-way. These were seen and are not fixed:
+The first round was stopped part-way. What it left, and what became of each, is under
+[Second round](#second-round-finishing-the-work); in short, all of it is now done or
+was tried and left out, except where the list there says otherwise.
 
-- **Citing after declining.** The 3b says "There is no information about … in the
-  provided sources. [1][2]" in two or three of the 13 questions it declines. Outpost
-  reports those markers as passages the answer used. Code that recognises a reply
-  which declines, takes its markers out and says "your library does not seem to cover
-  this" was written and unit-tested but not wired in or measured, and is not part of
-  Outpost.
-- **A marker to a number that was never given** is still struck through, with a
-  notice; it is not pointed at the passage that holds the sentence's words, nor
-  removed. The same unfinished code does both.
-- **Citing every passage** is not reported.
-- **No limit shorter than 1,024 tokens** on an answer, and no stop text, were tried.
-- **A prompt refused as too long** is reported and not retried with fewer passages.
-- **A model that is being loaded** is not told apart from one that is reading: the
-  screen still says the model is reading the passages, and that it can be a minute.
+### Second round: finishing the work
+
+Later on 2026-11-16, with the same Ollama 0.40.16, the same two models and the same
+Mac, the unfinished work was finished and measured, and the things never tried with a
+real model were tried through a private copy of Outpost run from source.
+
+**Before** (Outpost as the first round left it; two runs of the set):
+
+| Model | Search | Search gave the passage that answers | Right, citing the passage | Right, passage not cited | Said it could not, though the passage was given | Said it could not; passage not found by search | Wrong | Declined rightly | Answered what the library does not hold | Citation faults: invented / cites all / cites after declining / none | First word, s: median (longest) | Whole answer, s: median (longest) | Cut short | Failed |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `llama3.2:3b` | words | 58 of 64 | 57 of 64 | 0 | 1 | 5 | 1 | 26 of 26 | 0 | 0 / 0 / 5 / 0 | 0.4 (1.9) | 0.7 (2.2) | 0 | 0 |
+| `llama3.2:3b` | words and meaning | 64 of 64 | 62 of 64 | 0 | 1 | 0 | 1 | 26 of 26 | 0 | 0 / 2 / 11 / 0 | 0.5 (1.5) | 0.9 (10.4) | 0 | 0 |
+| `llama3.2:1b` | words | 58 of 64 | 50 of 64 | 0 | 4 | 2 | 8 | 22 of 26 | 4 | 41 / 13 / 7 / 0 | 0.1 (0.9) | 0.5 (2.3) | 0 | 0 |
+| `llama3.2:1b` | words and meaning | 64 of 64 | 51 of 64 | 0 | 5 | 0 | 8 | 12 of 26 | 14 | 32 / 31 / 8 / 0 | 0.2 (0.6) | 0.8 (5.5) | 0 | 0 |
+
+**After** settling the reply (below), with the notice while loading and the retry with
+fewer passages in place (two runs of the set):
+
+| Model | Search | Search gave the passage that answers | Right, citing the passage | Right, passage not cited | Said it could not, though the passage was given | Said it could not; passage not found by search | Wrong | Declined rightly | Answered what the library does not hold | Citation faults: invented / cites all / cites after declining / none | First word, s: median (longest) | Whole answer, s: median (longest) | Cut short | Failed |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `llama3.2:3b` | words | 58 of 64 | 58 of 64 | 0 | 0 | 4 | 2 | 26 of 26 | 0 | 0 / 0 / 0 / 0 | 0.5 (1.9) | 0.9 (3.2) | 0 | 0 |
+| `llama3.2:3b` | words and meaning | 64 of 64 | 63 of 64 | 0 | 1 | 0 | 0 | 26 of 26 | 0 | 0 / 0 / 1 / 0 | 0.6 (1.7) | 1.1 (5.5) | 0 | 0 |
+| `llama3.2:1b` | words | 58 of 64 | 47 of 64 | 1 | 7 | 2 | 7 | 22 of 26 | 4 | 0 / 13 / 8 / 0 | 0.1 (1.5) | 0.8 (3.8) | 0 | 0 |
+| `llama3.2:1b` | words and meaning | 64 of 64 | 52 of 64 | 0 | 4 | 0 | 8 | 13 of 26 | 13 | 0 / 33 / 4 / 0 | 0.2 (0.7) | 1.0 (7.3) | 0 | 0 |
+
+Both tables are as the script printed them. The judge reads what the person is shown,
+so the "invented" and "cites after declining" columns fall partly by construction:
+the markers they count are what the change takes out. What the change must not do is
+lose right answers, and it did not: judging each of the 360 replies of the "after"
+runs by what the model wrote, before Outpost settled it, gives the same verdict for
+every one. The differences in right answers between the two tables (one more for the
+3b in each column; three fewer and one more for the 1b) are the run-to-run variation
+the first round described. Of the 1b's 148 markers to numbers no passage carried in
+the "after" runs, 62 were pointed at a passage by the rule below and 86 were taken
+out; the 3b wrote none. A reply the judge still counts as "cites after declining" is
+one that answers in its first sentence and declines later ("Bring clear water to a
+rolling boil… [1] The sources do not answer this."), which Outpost leaves as an
+answer, by design.
+
+What was done:
+
+- **Declining cleanly, and markers to numbers never given**: the unfinished
+  `answers/tidy.ts` was taken and its rule for pointing a marker at a passage made
+  strict. The first round's version pointed a marker at the passage that shared the
+  longest run of five or more words with the sentence; that would have shown "cool it
+  with ice from a source you have not treated" as resting on a passage that says "Do
+  not cool it with ice from a source you have not treated". The rule now is that the
+  words must be one or more whole sentences of exactly one passage; unit tests hold
+  the cases where it must refuse (a dropped "not", a changed figure, a sentence of the
+  passage with a claim added, two passages that both hold the words, fewer than four
+  words). Wired into answers, into Chat for replies from the library, and into the
+  screens ([The answer on screen](#the-answer-on-screen)).
+- **The notice while the model loads**: wired in and tried (below). Only Ollama is
+  asked; for other servers nothing is said, and no time is ever given.
+- **Asking again with fewer passages** after "too long for the model": written and
+  tested against the stand-in, which refuses as llama-server does. It could not be
+  made to happen with a real model and the evaluation library: with the default
+  context budget, Ollama is asked for a context that holds the passages. In Chat, the
+  same refusal is now answered by sending the turn again without its earliest
+  messages, and that was tried with Ollama (below).
+- **A reply that fills the context.** Found while trying a long conversation: told
+  not to make room (`"shift": false`), Ollama stops a reply that fills the context
+  with the same `done_reason` as one that reaches its length limit, and Outpost said
+  "the model reached its length limit" for a reply of about 300 words. Chat now tells
+  the two apart from Ollama's own token counts and says the model ran out of room.
+
+Tried and left out, each one run of the set:
+
+| Model | Search | Search gave the passage that answers | Right, citing the passage | Right, passage not cited | Said it could not, though the passage was given | Said it could not; passage not found by search | Wrong | Declined rightly | Answered what the library does not hold | Citation faults: invented / cites all / cites after declining / none | First word, s: median (longest) | Whole answer, s: median (longest) | Cut short | Failed |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `llama3.2:3b` (reply cap 256 tokens) | words | 29 of 32 | 27 of 32 | 0 | 1 | 2 | 2 | 13 of 13 | 0 | 0 / 0 / 1 / 0 | 0.4 (2.2) | 0.9 (3.7) | 0 | 0 |
+| `llama3.2:3b` (reply cap 256 tokens) | words and meaning | 32 of 32 | 32 of 32 | 0 | 0 | 0 | 0 | 13 of 13 | 0 | 0 / 0 / 0 / 0 | 0.6 (1.7) | 1.3 (2.4) | 0 | 0 |
+| `llama3.2:1b` (reply cap 256 tokens) | words | 29 of 32 | 23 of 32 | 0 | 4 | 1 | 4 | 11 of 13 | 2 | 0 / 6 / 5 / 0 | 0.1 (1.7) | 0.8 (3.3) | 2 | 0 |
+| `llama3.2:1b` (reply cap 256 tokens) | words and meaning | 32 of 32 | 25 of 32 | 0 | 3 | 0 | 4 | 6 of 13 | 7 | 0 / 12 / 2 / 0 | 0.2 (0.4) | 1.0 (3.5) | 2 | 0 |
+| `llama3.2:3b` (stop at a blank line) | words | 29 of 32 | 28 of 32 | 0 | 0 | 2 | 2 | 13 of 13 | 0 | 0 / 0 / 0 / 0 | 0.5 (2.1) | 0.9 (2.7) | 0 | 0 |
+| `llama3.2:3b` (stop at a blank line) | words and meaning | 32 of 32 | 32 of 32 | 0 | 0 | 0 | 0 | 13 of 13 | 0 | 0 / 0 / 0 / 0 | 0.6 (2.5) | 1.1 (5.7) | 0 | 0 |
+| `llama3.2:1b` (stop at a blank line) | words | 29 of 32 | 25 of 32 | 0 | 2 | 1 | 4 | 11 of 13 | 2 | 0 / 3 / 3 / 0 | 0.1 (1.1) | 0.7 (3.1) | 0 | 0 |
+| `llama3.2:1b` (stop at a blank line) | words and meaning | 32 of 32 | 25 of 32 | 2 | 2 | 0 | 3 | 7 of 13 | 6 | 0 / 5 / 2 / 0 | 0.2 (0.5) | 0.7 (2.6) | 0 | 0 |
+
+(The script prints the model's name alone; the cap or stop text is added here.)
+
+- **A reply cap of 256 tokens** in place of 1,024: the 3b never came near either; the
+  1b reached it four times, two of them on answers judged right (the fact came first).
+  Right answers were within a run's variation of the "after" runs. It does not move
+  the numbers, so it was left out. The 3b repeating itself over five paragraphs, seen
+  once on the owner's library, did not happen on this set, so the set cannot say
+  whether a cap would help there.
+- **A stop at the first blank line** (`"stop": ["\n\n"]`, so an answer is one
+  paragraph): right answers within a run's variation; it cut the 1b's "cites all"
+  fault (3 and 5 against 6.5 and 16.5 a run). Left out all the same: a stop ends the
+  answer with the same word as a finished one, so a second paragraph the model meant
+  to write would be dropped without the person being told, and the gain is in a fault
+  of the model the list already calls unreliable. One run only.
+
+**The things never tried with a real model, tried** (from Outpost run from source,
+port 8935, its own data folder, with the evaluation library as notes):
+
+| What | What happened |
+| --- | --- |
+| Stop in the middle of a reply (Chat, `llama3.2:3b`, a 700-word story) | Stopped 4 s in, with 1,600 characters written, kept and marked unfinished. The `llama-server` processes Ollama runs went from about 430% processor use to under 20% within 1.5 s, and a new message to the same model started writing 0.12 s after it was sent: the model had stopped, not gone on in the background. The model stayed in memory, as Ollama keeps it for five minutes. |
+| Stop in the middle of an answer (`llama3.2:3b`) | The connection closed 2 s in: processor use fell from about 420% to 30% within a second, `/api/answers/status` said not busy at once, and the next answer arrived in 1.6 s. |
+| A conversation past the context size (`llama3.2:3b`, plain) | A 4,200-character reply, then a table of weather figures of 4,600 characters. Ollama refused the turn with the reply in it (`"truncate": false`); Outpost sent it again without the two earlier messages, and the reply says so. That turn came to 3,308 tokens, and Ollama stopped the reply when it filled the 4,096-token context; it now says it ran out of room (before the change: "reached its length limit"). A table of 6,400 characters came to 4,540 tokens by itself, about 1.4 characters a token, and was refused with what to do. |
+| Use my library on (both models, five messages each) | 3b: "At above 2,000 metres, boil water for three minutes. [1]"; "Why?" answered from the same passages, citing [1]; "Four drops [1]."; the World Cup found nothing and the model was not asked; a question about the flame's colour was declined and shown as not covered. 1b: wrote "[1] At 2,000 metres, boil water for three minutes. … [5] At 2,000 metres, boil water for four minutes.", five numbered lines with real numbers and wrong content, which nothing in Outpost can catch; "[1] Four drops. [2] Four drops. [3] Four drops." from one passage, where [2] and [3] were taken out (too short to point anywhere); and declined "Why?". |
+| The first answer with nothing in memory | Waited until Ollama's `/api/ps` was empty. `llama3.2:1b`: the `loading` event 0.08 s after asking, first word at 2.4 s. `llama3.2:3b` in Chat: phase `loading`, first word at 1.05 s. Both models had been loaded earlier that day, so the system's file cache held them: this is not the 20 s first load from disk, which could not be repeated without clearing the cache. |
+| The model server stopping part-way | Not with the real Ollama: stopping it is not this work's to do. With the stand-in (`stand-in-drops`, `stand-in-fails`) behind the same Outpost: the answer kept "Boiling is the" and said "The model server stopped part-way through the answer."; the reply said "The model server answered with an error (500): the model ran out of memory"; the next answer worked. |
+| Two devices asking at once | A second answer 0.15 s after a first: `409`, "Outpost is already writing an answer, here or on another device…"; the first finished in 1.1 s. A chat message while a reply was being written elsewhere: `409` naming the conversation. Ollama only ever had one request. |
 
 ### Not tried with a real model
 
-Stop in the middle of an answer or a reply (it is tested against the stand-in, which
-counts abandoned requests; whether Ollama's processor use drops was not looked at); a
-conversation long enough to pass the context size; a conversation with **Use my
-library** on; the first answer after the model has been put out of memory, through
-Outpost (asked directly, Ollama took 20 seconds to load `llama3.2:1b` cold in the
-first trial and about half a second to load it again from the system's file cache);
-the model server stopping in mid-answer; two devices asking at once; a model that
-thinks before answering; anything on Windows, Linux, a Raspberry Pi or in Docker; a
-model server on another computer; llama.cpp; LM Studio; and any model but the two
-named. Answers on a real library were looked at only as far as which passages search
-returns (one report from the earlier trial: for two plain questions the passages found
-did not contain the answer, and the model rightly said so).
+A model that thinks before answering; anything on Windows, Linux, a Raspberry Pi or in
+Docker; a model server on another computer; llama.cpp; LM Studio; any model but the
+two named; the model server really stopping in mid-answer (only the stand-in); a first
+load from disk rather than the file cache; the retry with fewer passages for an answer
+(only the stand-in, see above); and the screens themselves with a real model (the
+trials above read the same events the screens read, from the command line). Answers on
+a real library were looked at only as far as which passages search returns.
 
 ## What happens when you ask
 
@@ -566,8 +656,10 @@ reasons under [With Ollama](#with-ollama): one `POST <host>/api/chat`, after a
 }
 ```
 
-Its reply is read a line of JSON at a time, the last line saying why it ended
-(`done_reason`) and how many tokens the prompt came to.
+Before it, Outpost asks `GET <host>/api/ps` (which carries nothing) whether the model
+is in memory at that context size, to say so on screen when it is being loaded. Its
+reply is read a line of JSON at a time, the last line saying why it ended
+(`done_reason`) and how many tokens the prompt and the reply came to.
 
 No API key or other header is sent, so the server must accept requests without one.
 Redirects are refused. The reply is read as server-sent events
@@ -884,10 +976,12 @@ gives. That documentation was read on 2026-11-16
 (`docs/api.md` in the Ollama repository, "List Local Models": `models[].name`,
 `.size` in bytes, `.details.parameter_size`, `.details.quantization_level`).
 
-Not tested, because it could not be: a real model's Markdown, which is less tidy than
-the stand-in's; how a real small model behaves with the grounded prompt across
-several turns; Ollama's real `/api/tags`; the time a real model takes to load; and
-**a telephone's on-screen keyboard**. The message box is moved above the keyboard
+Later, Chat was also tried with `llama3.2:3b` and `llama3.2:1b` on a real Ollama:
+Stop, a conversation past the context size, Use my library over five messages, a
+model loading, and two requests at once (see
+[Second round](#second-round-finishing-the-work)). Not tested: a real model's
+Markdown on screen; a first load from disk on a small computer; and **a telephone's
+on-screen keyboard**. The message box is moved above the keyboard
 using the browser's report of how much of the window is visible; that was checked
 with a stand-in for the report, in an emulated phone, not on a telephone.
 

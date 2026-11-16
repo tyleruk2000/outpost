@@ -392,6 +392,7 @@ export function openAiChatProvider(
           done?: unknown;
           done_reason?: unknown;
           prompt_eval_count?: unknown;
+          eval_count?: unknown;
         };
         try {
           event = JSON.parse(line);
@@ -408,6 +409,7 @@ export function openAiChatProvider(
           request.onFinish?.({
             finishReason: typeof event.done_reason === "string" ? event.done_reason : null,
             promptTokens: typeof event.prompt_eval_count === "number" ? event.prompt_eval_count : null,
+            replyTokens: typeof event.eval_count === "number" ? event.eval_count : null,
           });
           break;
         }

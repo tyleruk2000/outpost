@@ -15,7 +15,9 @@
  * asked for a named context size, told to refuse a prompt that does not fit, and told
  * to stop a reply that runs out of room (see provider.ts); a refusal reaches the person
  * as "too long for the model", with the two figures, and never as an answer written
- * from half of what was sent.
+ * from half of what was sent. An answer refused that way is asked once more with fewer
+ * passages, and a turn of a conversation without its earliest messages, by the
+ * server's own figures (`passageCharsAfterRefusal`, `charsThatFit`).
  */
 
 /** Characters to a token, for planning. Prose runs higher (more room than planned); figures and some languages run lower. */
