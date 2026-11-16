@@ -6,6 +6,7 @@ import {
   type AntennaProfile,
   type AntennaProfileInput,
   hasStatedLength,
+  isSlopingAntenna,
   type ModeId,
   type RadioProfile,
   type RadioProfileInput,
@@ -38,9 +39,17 @@ export function createProfilesService(ctx: AppContext): ProfilesService {
     return radio(row);
   };
   /** A wire's length is part of an antenna only for the kinds that have one; every other profile is as it was before lengths were kept. */
-  const antenna = ({ lengthM, ...row }: typeof antennaProfiles.$inferSelect): AntennaProfile =>
-    hasStatedLength(row.kind) && lengthM !== null ? { ...row, lengthM } : row;
+  // A sloping wire's slope and bearing likewise belong to that kind alone.
+  const antenna = ({ lengthM, slopeDeg, highEndDeg, ...row }: typeof antennaProfiles.$inferSelect): AntennaProfile => ({
+    ...row,
+    ...(hasStatedLength(row.kind) && lengthM !== null ? { lengthM } : {}),
+    ...(isSlopingAntenna(row.kind) ? { slopeDeg: slopeDeg ?? undefined, highEndDeg } : {}),
+  });
   const lengthOf = (input: AntennaProfileInput) => (hasStatedLength(input.kind) ? (input.lengthM ?? null) : null);
+  const slopeOf = (input: AntennaProfileInput) =>
+    isSlopingAntenna(input.kind)
+      ? { slopeDeg: input.slopeDeg ?? null, highEndDeg: input.highEndDeg ?? null }
+      : { slopeDeg: null, highEndDeg: null };
   const getAntenna = (id: string): AntennaProfile => {
     const row = db.select().from(antennaProfiles).where(eq(antennaProfiles.id, id)).get();
     if (!row) throw notFound("The antenna profile");
@@ -77,7 +86,7 @@ export function createProfilesService(ctx: AppContext): ProfilesService {
       const now = Date.now();
       const id = newId();
       db.insert(antennaProfiles)
-        .values({ id, ...input, lengthM: lengthOf(input), createdAt: now, updatedAt: now })
+        .values({ id, ...input, lengthM: lengthOf(input), ...slopeOf(input), createdAt: now, updatedAt: now })
         .run();
       changed();
       return getAntenna(id);
@@ -86,7 +95,7 @@ export function createProfilesService(ctx: AppContext): ProfilesService {
       getAntenna(id);
       db.update(antennaProfiles)
         // The length is set every time, to nothing for a kind that has none: left out, the old one would stay.
-        .set({ ...input, lengthM: lengthOf(input), updatedAt: Date.now() })
+        .set({ ...input, lengthM: lengthOf(input), ...slopeOf(input), updatedAt: Date.now() })
         .where(eq(antennaProfiles.id, id))
         .run();
       changed();

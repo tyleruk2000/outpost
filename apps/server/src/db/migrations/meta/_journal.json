@@ -127,6 +127,13 @@
       "when": 1794846004151,
       "tag": "0017_supplies",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "6",
+      "when": 1794848339166,
+      "tag": "0018_sloping_wire",
+      "breakpoints": true
     }
   ]
 }

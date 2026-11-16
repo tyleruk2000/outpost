@@ -15,6 +15,7 @@ import {
   haversineMeters,
   type IonosphereHour,
   initialBearingDeg,
+  isSlopingAntenna,
   type PredictionCell,
   type PropagationSite,
 } from "@outpost/shared";
@@ -160,8 +161,12 @@ export function createVoacapEngine(paths: VoacapPaths): PropagationEngine {
   };
 
   /** The broadside bearing of an end's antenna, as the engine is given it for a dipole: the person's, or turned to the other station. */
-  const broadsideOf = (spec: AntennaSpec, from: PropagationSite, to: PropagationSite) =>
-    hasAzimuthPattern(spec) ? Math.round((spec.broadsideDeg ?? initialBearingDeg(from, to)) * 10) / 10 : 0;
+  const broadsideOf = (spec: AntennaSpec, from: PropagationSite, to: PropagationSite) => {
+    if (!hasAzimuthPattern(spec)) return 0;
+    // A sloping wire's bearing is its high end's: the person's, or turned away from the other station.
+    if (isSlopingAntenna(spec.kind)) return Math.round(((spec.highEndDeg ?? (initialBearingDeg(from, to) + 180) % 360) % 360) * 10) / 10;
+    return Math.round((spec.broadsideDeg ?? initialBearingDeg(from, to)) * 10) / 10;
+  };
 
   /**
    * One end at one frequency: the file, the bearing the engine is given, and the gain the
@@ -171,6 +176,8 @@ export function createVoacapEngine(paths: VoacapPaths): PropagationEngine {
    */
   function endAt(spec: AntennaSpec, from: PropagationSite, to: PropagationSite, mhz: number) {
     const broadside = broadsideOf(spec, from, to);
+    if (isSlopingAntenna(spec.kind))
+      return { text: antennaFile(spec, mhz), beamDeg: broadside, outsideDb: runsAsLongWire(spec, mhz) ? netGainDb(spec) : 0 };
     if (runsAsLongWire(spec, mhz))
       return { text: antennaFile(spec, mhz), beamDeg: Math.round(((broadside + 90) % 360) * 10) / 10, outsideDb: netGainDb(spec) };
     return { text: antennaFile(spec), beamDeg: broadside, outsideDb: 0 };
@@ -350,13 +357,18 @@ export function createVoacapEngine(paths: VoacapPaths): PropagationEngine {
           continue;
         }
         const which = long[0] && long[1] ? "Both antennas are" : long[0] ? "The transmitting antenna is" : "The receiving antenna is";
+        const sloping = [request.txAntenna, request.rxAntenna].filter((spec, at) => long[at] && isSlopingAntenna(spec.kind)).length;
+        const what =
+          sloping === 0
+            ? "a level wire longer than a half-wave, run as VOACAP's sloping long wire (type 41) laid level"
+            : sloping === long.filter(Boolean).length
+              ? "a sloping wire, run as VOACAP's sloping long wire (type 41) at its slope"
+              : "an end-fed wire run as VOACAP's sloping long wire (type 41): the level one laid level, the sloping one at its slope";
         const lowered =
           outside === 0
             ? ""
             : ` Its file cannot carry the gain added and feedline loss (${outside.toFixed(1)} dB), so the requirement on this page is lowered by that much and the signal, ratio and gains printed do not include it.`;
-        pages.push(
-          `Outpost: ${freqs[0]} MHz, approximate. ${which} a level wire longer than a half-wave, run as VOACAP's sloping long wire (type 41) laid level.${lowered}\n\n${page}`,
-        );
+        pages.push(`Outpost: ${freqs[0]} MHz, approximate. ${which} ${what}.${lowered}\n\n${page}`);
       }
       return pages.join("\n\f\n");
     },

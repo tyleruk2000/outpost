@@ -21,6 +21,7 @@ import {
   type CoverageResult,
   coverageCellCentre,
   coverageGrid,
+  isSlopingAntenna,
   noiseSetting,
   type SavedCoverage,
 } from "@outpost/shared";
@@ -35,7 +36,7 @@ import { propagationSaved } from "../../db/schema.ts";
 import { EngineRefused } from "./host.ts";
 import { engineProblem, fix, type PropagationService, wireRunsMark } from "./service.ts";
 import { antenna, checkedMode, checkedModelled, date, frequency, modes, noise, power, site } from "./shapes.ts";
-import { hasAzimuthPattern } from "./voacap/antenna-files.ts";
+import { turnedToOtherStation } from "./voacap/antenna-files.ts";
 
 export const COVERAGE_JOB = "propagation.coverage";
 /** How many coverage maps may be waiting or running at once. One runs at a time; the rest queue. */
@@ -201,15 +202,17 @@ export function registerCoverage(app: FastifyInstance, ctx: AppContext, service:
       }
       if (!antennas) throw badRequest("The engine answered for none of the cells, so there is no map to show.");
 
-      const turned = (spec: CoverageRequest["txAntenna"]) => hasAzimuthPattern(spec) && spec.broadsideDeg === null;
+      const turned = (spec: CoverageRequest["txAntenna"]) => turnedToOtherStation(spec);
       const approximate = approximateOn(request.txAntenna, request.rxAntenna, request.frequencyMhz);
       const limits = [
         ...(approximate ? [`Every figure on this map is approximate. ${approximate}`] : []),
         ...(turned(request.txAntenna)
           ? [
-              antennaRunOn(request.txAntenna, request.frequencyMhz) === "approximate"
-                ? "The transmitting antenna has no bearing, so it was turned broadside to each cell in turn: the picture is of the wire broadside to every direction, not of one fixed wire, and a wire longer than a half-wave is not strongest broadside. Give the antenna a bearing to see its pattern."
-                : "The transmitting antenna has no bearing, so it was turned broadside to each cell in turn: the picture is of the best the antenna can do in every direction, not of one fixed wire. Give the antenna a bearing to see its pattern.",
+              isSlopingAntenna(request.txAntenna.kind)
+                ? "The transmitting antenna has no bearing, so it was turned with its low end towards each cell in turn and its high end away: the picture is of the wire turned to every direction, not of one fixed wire. Give the antenna the bearing of its high end to see its pattern."
+                : antennaRunOn(request.txAntenna, request.frequencyMhz) === "approximate"
+                  ? "The transmitting antenna has no bearing, so it was turned broadside to each cell in turn: the picture is of the wire broadside to every direction, not of one fixed wire, and a wire longer than a half-wave is not strongest broadside. Give the antenna a bearing to see its pattern."
+                  : "The transmitting antenna has no bearing, so it was turned broadside to each cell in turn: the picture is of the best the antenna can do in every direction, not of one fixed wire. Give the antenna a bearing to see its pattern.",
             ]
           : []),
         ...LIMITS,
@@ -220,6 +223,7 @@ export function registerCoverage(app: FastifyInstance, ctx: AppContext, service:
           ? words
               .replace(/, broadside towards \d+° \(the other station\)/, `, broadside turned towards ${whom}`)
               .replace(/, the wire running \d+° to \d+°/, "")
+              .replace(/, its high end towards \d+° \(away from the other station\)/, `, its low end turned towards ${whom}`)
           : words;
       const result: CoverageResult = {
         key,

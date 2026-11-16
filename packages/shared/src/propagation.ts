@@ -272,6 +272,10 @@ export type RadioProfileInput = Omit<RadioProfile, "id" | "createdAt" | "updated
  * - `end-fed-vertical`: one wire of a stated length standing upright from the ground,
  *   fed at the bottom. Run as VOACAP's vertical monopole (type 22) of that height on
  *   every frequency.
+ * - `end-fed-sloping`: one wire of a stated length fed at its low end (`heightM` above
+ *   the ground) and rising at `slopeDeg` towards `highEndDeg`. Where it is a half-wave or
+ *   longer it is run as VOACAP's sloping long wire (type 41) at that slope, and every
+ *   figure is labelled approximate; where it is shorter no figure is given (`wireOn`).
  * - `vertical-monopole`: VOACAP's quarter-wave vertical over ground (type 22).
  */
 export const ANTENNA_KINDS = [
@@ -282,11 +286,15 @@ export const ANTENNA_KINDS = [
   "end-fed-horizontal",
   "end-fed-vertical",
   "vertical-monopole",
+  "end-fed-sloping",
 ] as const;
 export type AntennaKind = (typeof ANTENNA_KINDS)[number];
 
 /** The kinds that are one wire of a stated length. */
-export const hasStatedLength = (kind: AntennaKind): boolean => kind === "end-fed-horizontal" || kind === "end-fed-vertical";
+export const hasStatedLength = (kind: AntennaKind): boolean =>
+  kind === "end-fed-horizontal" || kind === "end-fed-vertical" || kind === "end-fed-sloping";
+/** The kind that slopes: its slope, the height of its low end and the way it rises all matter. */
+export const isSlopingAntenna = (kind: AntennaKind): boolean => kind === "end-fed-sloping";
 /** The kinds that hang level: their height above the ground and the way their broadside faces both matter. */
 export const isHorizontalAntenna = (kind: AntennaKind): boolean =>
   kind === "horizontal-dipole" || kind === "inverted-v" || kind === "end-fed-half-wave" || kind === "end-fed-horizontal";
@@ -339,6 +347,18 @@ export interface AntennaSpec {
    * kind, whose length follows the frequency.
    */
   lengthM?: number;
+  /**
+   * For a sloping wire (`isSlopingAntenna`) only: its angle above the horizontal, in
+   * degrees, between `SLOPE_MIN_DEG` and `SLOPE_MAX_DEG`. `heightM` is then the height
+   * of its low end, where it is fed.
+   */
+  slopeDeg?: number;
+  /**
+   * For a sloping wire only: the compass bearing from its low end towards its high end,
+   * in degrees; null to turn it with its low end towards the other station and its high
+   * end away (the way the engine shows it stronger at low angles on its half-wave band).
+   */
+  highEndDeg?: number | null;
 }
 
 export interface AntennaProfile extends AntennaSpec {
@@ -360,7 +380,23 @@ export interface AntennaPreset {
   spec: AntennaSpec;
   /** How it is modelled and what that leaves out, shown wherever the preset is offered. */
   modelledAs: string;
+  /** The heading it is listed under in a chooser (`PRESET_GROUPS`). */
+  group: PresetGroup;
+  /** Its name under that heading: "Sloping, 25° from 1.5 m". */
+  short: string;
+  /** Other words a person might look for it by, for a chooser's search. */
+  also?: string;
 }
+
+/** The headings the generic antennas are listed under, in order: by wire length, then how it is put up. */
+export const PRESET_GROUPS = [
+  "Dipoles",
+  "End-fed wire, 20 m (a half-wave on 40 m)",
+  "End-fed wire, 10 m (a half-wave on 20 m)",
+  "End-fed wire, 5 m (a half-wave on 10 m)",
+  "Verticals and others",
+] as const;
+export type PresetGroup = (typeof PRESET_GROUPS)[number];
 
 const DIPOLE_NOTE =
   "Run as VOACAP's horizontal half-wave dipole over ground at this height, resonant on whichever frequency is asked about. A real antenna cut for one band, bent, sloping or near buildings will differ.";
@@ -381,6 +417,17 @@ export const WIRE_MAX_M = 82;
  */
 export const HALF_WAVE_FROM = 0.45;
 export const HALF_WAVE_TO = 0.55;
+/** The slopes measured on this engine (10° to 60°, and 90° stood upright); outside them nothing was checked. */
+export const SLOPE_MIN_DEG = 10;
+export const SLOPE_MAX_DEG = 60;
+/** The height of a sloping wire's high end, in metres. */
+export const highEndHeightM = (spec: AntennaSpec): number =>
+  spec.heightM + (spec.lengthM ?? 0) * Math.sin(((spec.slopeDeg ?? 0) * Math.PI) / 180);
+const metres = (value: number): string => `${Number(value.toFixed(1))} m`;
+/** "sloping 25° from 1.5 m to 10 m": how a sloping wire is put up, in a few words. */
+export const slopeWords = (spec: AntennaSpec): string =>
+  `sloping ${spec.slopeDeg}° from ${metres(spec.heightM)} to ${metres(highEndHeightM(spec))}`;
+
 /** Below this length in wavelengths VOACAP's vertical monopole takes off a loss for being short (its "antenna efficiency"). */
 export const SHORT_VERTICAL_WAVELENGTHS = 0.35;
 
@@ -427,6 +474,14 @@ const longWords = (lengthM: number): string => {
  */
 export type WireState = "half-wave" | "other-length" | "approximate" | "not-modelled";
 
+/**
+ * What is known of the level of VOACAP's sloping long wire at a slope, in one sentence.
+ * Measured on this engine by summing the power in its pattern over a near-perfect ground
+ * (docs/hf-propagation.md, "A sloping wire"): it is not the power the wire is fed with.
+ */
+export const SLOPING_LEVEL_NOTE =
+  "Summed over its whole pattern above a perfect ground, the model sends out between about 9 dB less (a shallow slope, on its half-wave band) and 2 dB more than the power it is fed, so read its figures as a few decibels either way.";
+
 export interface WireOnFrequency {
   /** The wire's length in free-space wavelengths at this frequency. */
   wavelengths: number;
@@ -441,6 +496,19 @@ export function wireOn(spec: AntennaSpec, mhz: number): WireOnFrequency | null {
   const wavelengths = spec.lengthM / hfWavelengthMeters(mhz);
   const said = `${spec.lengthM} m of wire is ${wavelengths.toFixed(2)} wavelengths at ${mhzWords(mhz)}`;
   const half = wavelengths >= HALF_WAVE_FROM && wavelengths <= HALF_WAVE_TO;
+  if (spec.kind === "end-fed-sloping") {
+    if (wavelengths < HALF_WAVE_FROM)
+      return {
+        wavelengths,
+        state: "not-modelled",
+        note: `Not modelled: ${said}, shorter than a half-wave. A wire this short, fed at one end, draws current at the feed that an end-fed half-wave has no ground or counterpoise to return, so no model in the engine describes it and no figure is given. This wire is a half-wave or longer from ${mhzWords(halfWaveRangeMhz(spec.lengthM).fromMhz)} up.`,
+      };
+    return {
+      wavelengths,
+      state: "approximate",
+      note: `Approximate: ${said}, ${half ? "about a half-wave" : "longer than a half-wave"}. Run as VOACAP's sloping long wire (type 41) at its slope, ${slopeWords(spec)}, fed at its low end: a model of a wire fed at one end whose level is unchecked. ${SLOPING_LEVEL_NOTE}`,
+    };
+  }
   if (spec.kind === "end-fed-horizontal") {
     if (half)
       return {
@@ -540,6 +608,7 @@ export const RUN_LABELS = {
   halfWave: "Half-wave: VOACAP's dipole",
   approximate:
     "Approximate: VOACAP's sloping long wire, laid level; its level is unchecked and reads about 1.3 dB below the dipole model at a half-wave",
+  sloping: "Approximate: VOACAP's sloping long wire, at the wire's slope; its level is unchecked, a few decibels either way",
   notModelled: "Not modelled",
 } as const;
 
@@ -551,7 +620,7 @@ export const RUN_LABELS = {
 export const APPROXIMATE_MARK = "~";
 /** The key to the mark, said once under every printed or exported table that holds an approximate figure. */
 export const APPROXIMATE_KEY =
-  "~ before a figure is approximate: an antenna is a level wire longer than a half-wave on that band, run as VOACAP's sloping long wire laid level, whose level is unchecked and reads about 1.3 dB below the dipole model at a half-wave.";
+  "~ before a figure is approximate: an antenna is an end-fed wire run as VOACAP's sloping long wire, whose level is unchecked (a level wire longer than a half-wave on that band, laid level, reading about 1.3 dB below the dipole model at a half-wave; or a sloping wire, at its slope, a few decibels either way).";
 
 /**
  * Said wherever a level wire's figures stand side by side across bands: where the model
@@ -570,6 +639,7 @@ export function runWords(spec: AntennaSpec, mhz: number): string {
     if (wire.state === "approximate") return RUN_LABELS.approximate;
     return RUN_LABELS.notModelled;
   }
+  if (spec.kind === "end-fed-sloping" && wire) return wire.state === "not-modelled" ? RUN_LABELS.notModelled : RUN_LABELS.sloping;
   if (spec.kind === "end-fed-vertical" && wire)
     return `VOACAP's vertical monopole, a wire ${wire.wavelengths.toFixed(2)} wavelengths high${wire.state === "half-wave" ? " (about a half-wave)" : ""}`;
   return antennaModelLabel(spec.kind, spec.lengthM);
@@ -609,6 +679,12 @@ export function levelWireRuns(lengthM: number): string {
   return `${half}${longer}${shorter}`;
 }
 
+const WIRE_GROUPS: Record<number, PresetGroup> = {
+  20: "End-fed wire, 20 m (a half-wave on 40 m)",
+  10: "End-fed wire, 10 m (a half-wave on 20 m)",
+  5: "End-fed wire, 5 m (a half-wave on 10 m)",
+};
+
 function wirePreset(lengthM: number, upright: boolean, halfWaveBand: string): AntennaPreset {
   const spec: AntennaSpec = {
     kind: upright ? "end-fed-vertical" : "end-fed-horizontal",
@@ -622,6 +698,9 @@ function wirePreset(lengthM: number, upright: boolean, halfWaveBand: string): An
   return {
     id: `efhw-${lengthM}m-${upright ? "vertical" : "horizontal"}`,
     name: `End-fed half-wave, ${lengthM} m wire, ${upright ? "vertical" : "horizontal"}`,
+    group: WIRE_GROUPS[lengthM]!,
+    short: upright ? "Vertical, from the ground up" : "Horizontal, level 6 m up",
+    also: upright ? "upright" : "level flat-top off-centre-fed dipole OCFD",
     spec,
     modelledAs: upright
       ? `A wire ${lengthM} m long standing upright with its bottom end at the ground, fed there: a half-wave on the ${halfWaveBand} band. Run as VOACAP's vertical monopole (type 22) ${lengthM} m high on every frequency. Off the ${halfWaveBand} band the figure is for a wire that is not a half-wave, fed against the ground, and says how long it is in wavelengths. ${MATCHING_UNIT_NOTE}`
@@ -629,26 +708,85 @@ function wirePreset(lengthM: number, upright: boolean, halfWaveBand: string): An
   };
 }
 
+/** How a sloping wire of this length is run across the engine's range, in sentences. */
+export function slopingWireRuns(spec: AntennaSpec): string {
+  const { fromMhz } = halfWaveRangeMhz(spec.lengthM ?? WIRE_MIN_M);
+  const shorter = fromMhz > HF_MIN_MHZ ? ` Below ${fromMhz.toFixed(1)} MHz, where it is shorter than a half-wave, no figure is given.` : "";
+  return `From ${fromMhz.toFixed(1)} MHz up, where it is a half-wave or longer, it is run as VOACAP's sloping long wire (type 41) at its slope, fed at its low end, and every figure is approximate: ${SLOPING_LEVEL_NOTE.charAt(0).toLowerCase()}${SLOPING_LEVEL_NOTE.slice(1)}${shorter} Turned towards the other station, its low end faces it and the wire rises away from it: the engine shows that side, not the high end's, the stronger at low angles on its half-wave band.`;
+}
+
+/** The 20 m wire most often seen in the field: fed near the ground and run up a 10 m pole or a tree. */
+const SLOPER_20M: AntennaSpec = {
+  kind: "end-fed-sloping",
+  heightM: 1.5,
+  ground: "average",
+  broadsideDeg: null,
+  gainDb: 0,
+  feedlineLossDb: 0,
+  lengthM: 20,
+  slopeDeg: 25,
+  highEndDeg: null,
+};
+
+/**
+ * The maker's own figures (SPOOLTENNA PARKS and ULTRA owner's manuals, both dated
+ * 19 August 2026): 65 ft of wire (19.8 m), a half-wave on 40 m, sold for 40, 20, 15 and
+ * 10 m, through a 49:1 transformer with 100 pF across the feed; no loading coil or link.
+ * Put up as the manuals' Figure 4: the spool about 6 ft (1.8 m) up, the far end about
+ * 25 ft (7.6 m) up a mast or tree, which with 19.8 m of wire is a slope of 17°.
+ */
+const SPOOLTENNA: AntennaSpec = { ...SLOPER_20M, lengthM: 19.8, heightM: 1.8, slopeDeg: 17 };
+
+const SPOOLTENNA_NOTE = `SPOOLTENNA is the maker's trade mark (Panther Creek Solutions LLC), used here only to say which antenna is meant. As its owner's manuals describe it (PARKS and ULTRA, both dated 19 August 2026): 65 ft (19.8 m) of wire, a half-wave on 40 m, sold for 40, 20, 15 and 10 m, through a 49:1 transformer with 100 pF across the feed. Run as that wire put up as the manuals' Figure 4 shows it: the spool about 1.8 m up, the far end about 7.6 m up a mast or tree, a slope of 17°. ${slopingWireRuns(SPOOLTENNA)} The transformer's loss, the coax braid that the maker says serves as the return path, and the maker's own claims are not modelled. The manuals' other way of putting it up (Figure 3, the spool at the top) is not offered: Outpost's sloping wire is fed at its low end.`;
+
 /** Generic starting points. Two antennas of the same kind do not have the same pattern; these are one model of each kind. */
 export const ANTENNA_PRESETS: readonly AntennaPreset[] = [
   {
     id: "low-dipole",
     name: "Low horizontal dipole, 5 m",
+    group: "Dipoles",
+    short: "Horizontal, 5 m up",
+    also: "linked resonant",
     spec: { kind: "horizontal-dipole", heightM: 5, ground: "average", broadsideDeg: null, gainDb: 0, feedlineLossDb: 0 },
     modelledAs: DIPOLE_NOTE,
   },
   {
     id: "dipole-10m",
     name: "Horizontal dipole, 10 m",
+    group: "Dipoles",
+    short: "Horizontal, 10 m up",
+    also: "linked resonant",
     spec: { kind: "horizontal-dipole", heightM: 10, ground: "average", broadsideDeg: null, gainDb: 0, feedlineLossDb: 0 },
     modelledAs: DIPOLE_NOTE,
   },
   {
     id: "inverted-v",
     name: "Inverted-V, mean wire height 6 m",
+    group: "Dipoles",
+    short: "Inverted-V, mean height 6 m",
+    also: "linked resonant",
     spec: { kind: "inverted-v", heightM: 6, ground: "average", broadsideDeg: null, gainDb: 0, feedlineLossDb: 0 },
     modelledAs:
       "VOACAP has no inverted-V. It is run as a horizontal half-wave dipole at the height you give, so give the mean height of the wire, not the apex. An approximation: a real inverted-V radiates a little less upwards and more off its ends.",
+  },
+  {
+    id: "efhw-20m-sloping",
+    name: "End-fed half-wave, 20 m wire, sloping 25° from 1.5 m to 10 m",
+    group: "End-fed wire, 20 m (a half-wave on 40 m)",
+    short: "Sloping 25°, from 1.5 m up to 10 m",
+    also: "sloper 40 m pole mast tree",
+    spec: SLOPER_20M,
+    modelledAs: `A wire 20 m long fed at its low end 1.5 m up and run up a 10 m pole or a tree at 25°: a half-wave on the 40 m band. ${slopingWireRuns(SLOPER_20M)} ${MATCHING_UNIT_NOTE}`,
+  },
+  { ...wirePreset(20, false, "40 m"), also: "level flat-top 40 m off-centre-fed dipole OCFD" },
+  {
+    id: "spooltenna-sloping",
+    name: "SPOOLTENNA (PARKS or ULTRA), 65 ft wire, sloping as its manual shows",
+    group: "End-fed wire, 20 m (a half-wave on 40 m)",
+    short: "SPOOLTENNA, 19.8 m, sloping 17° from 1.8 m to 7.6 m",
+    also: "spooltenna parks ultra spool 65 ft",
+    spec: SPOOLTENNA,
+    modelledAs: SPOOLTENNA_NOTE,
   },
   wirePreset(10, false, "20 m"),
   wirePreset(10, true, "20 m"),
@@ -659,13 +797,18 @@ export const ANTENNA_PRESETS: readonly AntennaPreset[] = [
     // at 6 m". Its id and its antenna are unchanged, so everything saved with it still is it.
     id: "efhw",
     name: "End-fed half-wave recut for every band, horizontal at 6 m",
+    group: "Verticals and others",
+    short: "End-fed half-wave recut for every band, 6 m up",
     spec: { kind: "end-fed-half-wave", heightM: 6, ground: "average", broadsideDeg: null, gainDb: 0, feedlineLossDb: 0 },
     modelledAs:
-      "Not one wire: its length follows the frequency, so on every band it is run as a horizontal half-wave dipole at the wire's height (VOACAP has no end-fed model, and a half-wave wire carries much the same current wherever it is fed). For one wire of a fixed length choose a 10 m or 5 m wire, or make a profile. An approximation: a sloping wire and the matching unit's loss are not in it.",
+      "Not one wire: its length follows the frequency, so on every band it is run as a horizontal half-wave dipole at the wire's height (VOACAP has no end-fed model, and a half-wave wire carries much the same current wherever it is fed). For one wire of a fixed length choose a 20 m, 10 m or 5 m wire, or make a profile. An approximation: a sloping wire and the matching unit's loss are not in it.",
   },
   {
     id: "vertical",
     name: "Quarter-wave vertical",
+    group: "Verticals and others",
+    short: "Quarter-wave vertical",
+    also: "ground plane radials",
     spec: { kind: "vertical-monopole", heightM: 0, ground: "average", broadsideDeg: null, gainDb: 0, feedlineLossDb: 0 },
     modelledAs:
       "Run as VOACAP's quarter-wave vertical over ground, resonant on whichever frequency is asked about. A short or loaded vertical, or one with few radials, is weaker than this; take the difference off as gain.",
@@ -673,6 +816,8 @@ export const ANTENNA_PRESETS: readonly AntennaPreset[] = [
   {
     id: "isotropic",
     name: "Isotropic (no pattern), 0 dBi",
+    group: "Verticals and others",
+    short: "Isotropic (no pattern), 0 dBi",
     spec: { kind: "isotropic", heightM: 0, ground: "average", broadsideDeg: null, gainDb: 0, feedlineLossDb: 0 },
     modelledAs: "The same gain in every direction. Not a real antenna: useful for comparing with other tools.",
   },
@@ -694,6 +839,8 @@ export function antennaModelLabel(kind: AntennaKind, lengthM?: number): string {
       return `${wire}, horizontal (VOACAP type 23 where it is a half-wave, approximate where longer, no figure where shorter)`;
     case "end-fed-vertical":
       return `${wire}, vertical (VOACAP type 22 of that height)`;
+    case "end-fed-sloping":
+      return `${wire}, sloping (VOACAP type 41 at its slope, approximate, where it is a half-wave or longer; no figure where shorter)`;
     case "vertical-monopole":
       return "Quarter-wave vertical (VOACAP type 22)";
   }
@@ -709,13 +856,20 @@ export const sameAntennaSpec = (a: AntennaSpec, b: AntennaSpec): boolean =>
   a.broadsideDeg === b.broadsideDeg &&
   a.gainDb === b.gainDb &&
   a.feedlineLossDb === b.feedlineLossDb &&
-  (a.lengthM ?? null) === (b.lengthM ?? null);
+  (a.lengthM ?? null) === (b.lengthM ?? null) &&
+  (a.slopeDeg ?? null) === (b.slopeDeg ?? null) &&
+  (a.highEndDeg ?? null) === (b.highEndDeg ?? null);
 
 /** An antenna as a request carries it: a profile or a preset without its name, and with no length unless its kind has one. */
 export function antennaSpecOf(from: AntennaSpec): AntennaSpec {
   const { kind, heightM, ground, broadsideDeg, gainDb, feedlineLossDb } = from;
   const spec: AntennaSpec = { kind, heightM, ground, broadsideDeg, gainDb, feedlineLossDb };
   if (hasStatedLength(kind) && typeof from.lengthM === "number") spec.lengthM = from.lengthM;
+  // A sloping wire's slope and the way it rises; no other kind carries them, so every other antenna's request is as it was.
+  if (isSlopingAntenna(kind)) {
+    if (typeof from.slopeDeg === "number") spec.slopeDeg = from.slopeDeg;
+    spec.highEndDeg = typeof from.highEndDeg === "number" ? from.highEndDeg : null;
+  }
   return spec;
 }
 
