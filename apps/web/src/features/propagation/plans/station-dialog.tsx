@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/misc";
+import { localId } from "@/lib/utils";
 import { antennaOf, antennaSummary, type PlaceField, wireBandsNote } from "../data";
 import { PlaceInput } from "../place-field";
 
@@ -68,7 +69,7 @@ export function StationDialog({
     const chosen = antennaId === KEPT && station ? { spec: station.antenna, name: station.antennaName } : antennaOf(antennaId, antennas);
     if (!chosen) return setProblem({ field: "antenna", text: "Choose the antenna at this station." });
     onSave({
-      id: station?.id ?? crypto.randomUUID().slice(0, 12),
+      id: station?.id ?? localId().slice(0, 12),
       name: called.slice(0, 60),
       lat: found.lat,
       lon: found.lon,

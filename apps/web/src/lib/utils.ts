@@ -50,3 +50,18 @@ export function plural(count: number, singular: string, pluralForm = `${singular
 
 export const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
 export const modKey = isMac ? "⌘" : "Ctrl";
+
+/**
+ * An identifier made in the browser, as 32 hexadecimal characters.
+ *
+ * Not the browser's own `randomUUID`: browsers offer that only on a secure page (https, or the
+ * computer itself), and Outpost is mostly used at a plain http address on a home
+ * network, where calling it throws and the button that needed an identifier appears to
+ * do nothing. `crypto.getRandomValues` is offered everywhere.
+ */
+export function localId(): string {
+  const bytes = new Uint8Array(16);
+  if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") crypto.getRandomValues(bytes);
+  else for (let index = 0; index < bytes.length; index += 1) bytes[index] = Math.floor(Math.random() * 256);
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+}

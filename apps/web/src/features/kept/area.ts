@@ -33,6 +33,7 @@ import { useSyncExternalStore } from "react";
 import { toast } from "sonner";
 import { regionsCacheKey } from "@/features/maps/lib/tiles";
 import { api } from "@/lib/api";
+import { localId } from "@/lib/utils";
 import { TILE_ENCODING_HEADER } from "@/sw/rules";
 import { DEVICE } from "./device";
 import { BASE_GLYPH_RANGES, collectGlyphRanges, GLYPH_FONTS, glyphPath, spritePaths } from "./glyphs";
@@ -180,7 +181,7 @@ export async function startArea(request: AreaRequest): Promise<KeptArea> {
   const now = Date.now();
   const area: KeptArea = {
     kind: "area",
-    id: crypto.randomUUID(),
+    id: localId(),
     title: request.title,
     bbox: request.bbox,
     maxZoom: request.size.map.maxZoom,

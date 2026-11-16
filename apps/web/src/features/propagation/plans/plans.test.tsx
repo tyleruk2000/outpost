@@ -381,6 +381,26 @@ describe("a plan", () => {
     expect(screen.getByRole("button", { name: "Work out the plan" })).toBeDisabled();
   });
 
+  it("adds a station on a page that is not secure, where the browser offers no randomUUID", async () => {
+    // Outpost at http://192.168.x.x: the owner pressed Add station and nothing happened, because the call threw.
+    const real = globalThis.crypto;
+    vi.stubGlobal("crypto", { getRandomValues: <T extends ArrayBufferView<ArrayBuffer>>(bytes: T) => real.getRandomValues(bytes) });
+    try {
+      const server = show("/radio/plans/p1");
+      fireEvent.click(await screen.findByRole("button", { name: "Add a station" }));
+      const dialog = screen.getByRole("dialog", { name: "Add a station" });
+      fireEvent.change(within(dialog).getByLabelText("Name"), { target: { value: "Test" } });
+      fireEvent.change(within(dialog).getByLabelText("Where it is"), { target: { value: "51.46386, -0.18517" } });
+      fireEvent.click(within(dialog).getByRole("button", { name: "Add station" }));
+      await waitFor(() => expect(server.patched).toHaveLength(1));
+      const added = server.patched[0]!.stations[2]!;
+      expect(added).toMatchObject({ name: "Test", lat: 51.46386, lon: -0.18517 });
+      expect(added.id).toMatch(/^[0-9a-f]{12}$/);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("adds a station with a place, a power and an antenna, and says what is missing first", async () => {
     const server = show("/radio/plans/p1");
     fireEvent.click(await screen.findByRole("button", { name: "Add a station" }));
