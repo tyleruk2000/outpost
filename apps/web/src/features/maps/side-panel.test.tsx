@@ -29,7 +29,14 @@ describe("the tab names", () => {
     const list = screen.getByRole("tablist");
     expect(list).toHaveClass("flex-wrap", "overflow-x-visible");
     expect(list).not.toHaveClass("overflow-x-auto");
-    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Places128", "Routes14", "Layers", "Offline maps", "Sun"]);
+    // Named in full (a narrow phone writes "Offline maps" as "Offline", with the full name as the tab's name).
+    expect(screen.getAllByRole("tab").map((tab) => tab.getAttribute("aria-label") ?? tab.textContent)).toEqual([
+      "Places128",
+      "Routes14",
+      "Layers",
+      "Offline maps",
+      "Sun",
+    ]);
     // Each is tall enough to touch on a phone.
     for (const tab of screen.getAllByRole("tab")) expect(tab).toHaveClass("max-md:min-h-[44px]", "max-md:min-w-[44px]");
   });

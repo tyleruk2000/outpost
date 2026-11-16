@@ -11,6 +11,9 @@ import { cn } from "@/lib/utils";
 export const PANEL_TABS = ["places", "routes", "layers", "offline", "sun"] as const;
 export type PanelTab = (typeof PANEL_TABS)[number];
 
+/** Shorter names for the narrowest phones, where five full names do not fit on one line. */
+const SHORT_LABELS: Partial<Record<PanelTab, string>> = { offline: "Offline" };
+
 const TAB_LABELS: Record<PanelTab, string> = { places: "Places", routes: "Routes", layers: "Layers", offline: "Offline maps", sun: "Sun" };
 
 export function PanelTabs({
@@ -29,18 +32,27 @@ export function PanelTabs({
 }) {
   return (
     <Tabs value={tab} onValueChange={(next) => onTabChange(next as PanelTab)} className="flex min-h-0 flex-1 flex-col">
-      {/* Five names and two counts fit across a 320 px phone at the usual text size. Where they do not (larger text, a zoomed page, counts in the
+      {/* Five names and two counts fit across a 320 px phone at the usual text size, with "Offline maps" written "Offline"
+          there (its full name is still its accessible name). Where they do not (larger text, a zoomed page, counts in the
           hundreds) the row takes a second line: a name that had slid off the edge of a row that scrolls was a tab nobody found.
           The two lines sit close: each name has its own height to touch, and the map has little enough room there. */}
-      <TabsList className="shrink-0 flex-wrap gap-y-0 overflow-x-visible px-4 max-[23rem]:gap-x-3.5 max-[23rem]:px-3">
+      <TabsList className="shrink-0 flex-wrap gap-y-0 overflow-x-visible px-4 max-[23rem]:gap-x-3 max-[23rem]:px-3">
         {PANEL_TABS.map((item) => (
           <TabsTrigger
             key={item}
             value={item}
             onClick={onTabPress}
+            aria-label={SHORT_LABELS[item] ? TAB_LABELS[item] : undefined}
             className="max-md:min-h-[44px] max-md:min-w-[44px] max-md:justify-center"
           >
-            {TAB_LABELS[item]}
+            {SHORT_LABELS[item] ? (
+              <>
+                <span className="max-[23rem]:hidden">{TAB_LABELS[item]}</span>
+                <span className="hidden max-[23rem]:inline">{SHORT_LABELS[item]}</span>
+              </>
+            ) : (
+              TAB_LABELS[item]
+            )}
             {counts[item] ? <span className="tabular text-micro font-normal text-ink-muted">{counts[item]}</span> : null}
           </TabsTrigger>
         ))}
