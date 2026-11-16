@@ -11,6 +11,24 @@ const TOOLS = [
       "Predict how a shortwave signal gets between two places through the day, across the bands, with your power and antennas. Includes short, steep (NVIS) paths.",
   },
   {
+    to: "/radio/coverage",
+    name: "HF coverage",
+    about:
+      "Where one transmitter is predicted to be heard, as a layer over the offline map: the engine asked about every cell of a grid, hour by hour.",
+  },
+  {
+    to: "/radio/plans",
+    name: "Communication plans",
+    about:
+      "Several stations, and for each pair of them which band is predicted to serve at which hour, with a primary and an alternate. Written out as a PDF or as Markdown to print and carry.",
+  },
+  {
+    to: "/radio/log",
+    name: "Contact log",
+    about:
+      "What actually happened on the air, typed in or imported from an ADIF file, and set beside what the engine predicted for the same paths.",
+  },
+  {
     to: "/radio/repeaters",
     name: "Repeaters",
     about:

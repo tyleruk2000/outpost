@@ -118,7 +118,7 @@ export function createVoacapEngine(paths: VoacapPaths): PropagationEngine {
     implementation: `${manifest.implementation.name} ${manifest.implementation.version} (${manifest.implementation.commit.slice(0, 12)}), WebAssembly`,
     licence: manifest.implementation.licence,
     sha256: manifest.wasm.sha256,
-    gives: { reliability: true, luf: true, ionosphere: true, measuredFoF2: false, coverage: false },
+    gives: { reliability: true, luf: true, ionosphere: true, measuredFoF2: false, coverage: true },
     minMhz: HF_MIN_MHZ,
     maxMhz: HF_MAX_MHZ,
   };

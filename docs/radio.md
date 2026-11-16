@@ -20,8 +20,9 @@ two radio tools on its map, and a place to keep repeaters:
   connection. See [Repeaters](#repeaters).
 
 It also has an **HF propagation planner**, which predicts how a shortwave signal gets
-between two places through the day. That has a page of its own:
-[hf-propagation.md](hf-propagation.md). The **Radio** entry in the sidebar lists all of
+between two places through the day, with **coverage maps** over the offline map,
+**communication plans** between several stations, and a **contact log** that reads ADIF
+files. Those have a page of their own: [hf-propagation.md](hf-propagation.md). The **Radio** entry in the sidebar lists all of
 these.
 
 ## Radio tools on the map

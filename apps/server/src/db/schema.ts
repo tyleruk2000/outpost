@@ -902,7 +902,7 @@ export const propagationResults = sqliteTable(
   "propagation_results",
   {
     key: text("key").primaryKey(),
-    kind: text("kind", { enum: ["point", "compare", "coverage"] }).notNull(),
+    kind: text("kind", { enum: ["point", "compare", "coverage", "plan"] }).notNull(),
     engine: text("engine").notNull(),
     request: json<Record<string, unknown>>("request").notNull(),
     result: json<Record<string, unknown>>("result").notNull(),
@@ -926,5 +926,96 @@ export const propagationSaved = sqliteTable("propagation_saved", {
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });
+
+/**
+ * A communication plan: several stations (places with their equipment), the hours and
+ * bands of interest, and what the plan is for. The matrix worked out for it is an
+ * answer like any other (`propagation_results`, by `resultKey`); the plan itself is the
+ * person's own.
+ */
+export const communicationPlans = sqliteTable("communication_plans", {
+  id: id(),
+  name: text("name").notNull(),
+  notes: text("notes").notNull().default(""),
+  /** The stations, as `PlanStation[]`. */
+  stations: json<Array<Record<string, unknown>>>("stations").notNull(),
+  /** The day planned for, YYYY-MM-DD (UTC). */
+  date: text("date").notNull(),
+  /** The hours of interest, UTC, 1 to 24; a window may run past midnight. */
+  fromUtc: integer("from_utc").notNull(),
+  toUtc: integer("to_utc").notNull(),
+  bands: json<string[]>("bands").notNull(),
+  mode: text("mode").notNull(),
+  requiredSnrDb: real("required_snr_db"),
+  referenceBandwidthHz: real("reference_bandwidth_hz"),
+  solar: json<Record<string, unknown>>("solar").notNull(),
+  /** Notes and documents the plan points at, as `PlanLink[]`. */
+  links: json<Array<Record<string, unknown>>>("links").notNull(),
+  /** The key of the matrix last worked out for the plan as it stands. */
+  resultKey: text("result_key"),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+});
+
+/** One file of logged contacts brought in, with what was and was not read from it. */
+export const observationImports = sqliteTable("observation_imports", {
+  id: id(),
+  fileName: text("file_name").notNull(),
+  /** What the file's header says of itself. */
+  adifVersion: text("adif_version").notNull().default(""),
+  program: text("program").notNull().default(""),
+  records: integer("records").notNull(),
+  imported: integer("imported").notNull(),
+  duplicates: integer("duplicates").notNull(),
+  /** Records not brought in by reason, and things read with a loss, as `{ skipped, notes }` of `{ reason, count }[]`. */
+  skipped: json<Record<string, unknown>>("skipped").notNull(),
+  createdAt: createdAt(),
+});
+
+/**
+ * What actually happened on the air: a contact made, a station heard, or an attempt
+ * that failed. An end's position is only ever what the person or their log stated; an
+ * end with no stated position has none, and is left out of any comparison.
+ */
+export const radioObservations = sqliteTable(
+  "radio_observations",
+  {
+    id: id(),
+    /** When, UTC, in milliseconds. */
+    at: integer("at").notNull(),
+    frequencyMhz: real("frequency_mhz"),
+    band: text("band").notNull().default(""),
+    /** The mode as it was logged ("SSB", "FT8", "MFSK/JS8"). */
+    mode: text("mode").notNull().default(""),
+    outcome: text("outcome", { enum: ["contact", "heard", "failed"] }).notNull(),
+    txCall: text("tx_call").notNull().default(""),
+    txLat: real("tx_lat"),
+    txLon: real("tx_lon"),
+    /** Where the position came from: a locator as logged, "coordinates", or "" for none. */
+    txFrom: text("tx_from").notNull().default(""),
+    rxCall: text("rx_call").notNull().default(""),
+    rxLat: real("rx_lat"),
+    rxLon: real("rx_lon"),
+    rxFrom: text("rx_from").notNull().default(""),
+    powerWatts: real("power_watts"),
+    antenna: text("antenna").notNull().default(""),
+    reportSent: text("report_sent").notNull().default(""),
+    reportReceived: text("report_received").notNull().default(""),
+    notes: text("notes").notNull().default(""),
+    /** How the signal travelled, when the log says (ADIF's PROP_MODE: "F2", "SAT", "RPT"…); "" when it does not. */
+    propMode: text("prop_mode").notNull().default(""),
+    source: text("source", { enum: ["manual", "adif"] }).notNull(),
+    importId: text("import_id").references(() => observationImports.id, { onDelete: "cascade" }),
+    /** The same contact brought in twice has the same value here; see `observations.ts`. */
+    sameAs: text("same_as").notNull(),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    index("radio_observations_at_idx").on(table.at),
+    uniqueIndex("radio_observations_same_idx").on(table.sameAs),
+    index("radio_observations_import_idx").on(table.importId),
+  ],
+);
 
 export const nowMs = sql`(unixepoch('subsec') * 1000)`;

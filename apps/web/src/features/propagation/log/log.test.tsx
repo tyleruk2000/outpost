@@ -1,0 +1,394 @@
+import {
+  ADIF_READ,
+  type ComparisonRequest,
+  type ComparisonResult,
+  type Observation,
+  type ObservationImport,
+  type ObservationInput,
+} from "@outpost/shared";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { MemoryRouter } from "react-router";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import LogPage from "./log-page";
+
+// The map needs WebGL; nothing here presses it.
+vi.mock("../map/plan-map", () => ({ PlanMap: () => null }));
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+  localStorage.clear();
+});
+
+const entry = (patch: Partial<Observation> = {}): Observation => ({
+  id: "o1",
+  at: Date.UTC(2026, 10, 16, 12, 4),
+  frequencyMhz: 7.1,
+  band: "40m",
+  mode: "SSB/LSB",
+  outcome: "contact",
+  tx: { call: "G4AAA", lat: 51.52, lon: -0.13, from: "locator IO91WM" },
+  rx: { call: "G4BBB", lat: null, lon: null, from: "" },
+  powerWatts: 5,
+  antenna: "Low dipole",
+  reportSent: "57",
+  reportReceived: "55",
+  notes: "Sked with Brum",
+  propMode: "",
+  source: "adif",
+  importId: "i1",
+  createdAt: 1,
+  ...patch,
+});
+
+const imported = (patch: Partial<ObservationImport> = {}): ObservationImport => ({
+  id: "i1",
+  fileName: "test log.adi",
+  adifVersion: "3.1.8",
+  program: "TestLog 2.0",
+  records: 12,
+  imported: 5,
+  duplicates: 1,
+  skipped: [
+    { reason: "No callsign for the station contacted (CALL)", count: 4 },
+    { reason: "No mode (MODE)", count: 2 },
+  ],
+  notes: [{ reason: "No position was given for the contacted station, so that end has none", count: 3 }],
+  createdAt: Date.UTC(2026, 10, 16, 13, 0),
+  ...patch,
+});
+
+function comparisonOf(made: [number, number, number], patch: Partial<ComparisonResult> = {}): ComparisonResult {
+  const compared = made[0] + made[1] + made[2];
+  return {
+    computedAt: 1,
+    tookMs: 300,
+    engine: { model: "VOACAP Version 16.1207W" } as ComparisonResult["engine"],
+    request: {} as ComparisonRequest,
+    total: compared + 4,
+    compared,
+    levels: [
+      { id: "low", contact: made[0], heard: 0, failed: 0 },
+      { id: "middling", contact: made[1], heard: 0, failed: 0 },
+      { id: "high", contact: made[2], heard: 0, failed: 0 },
+    ],
+    excluded: [
+      { reason: "One end or both have no stated position", count: 3 },
+      { reason: "The solar table has no sunspot number for that month, and none was given", count: 1 },
+    ],
+    monthsWithoutSsn: [{ month: "2014-03", count: 1 }],
+    rows: [
+      {
+        id: "o1",
+        at: Date.UTC(2026, 10, 16, 12, 4),
+        utcHour: 12,
+        frequencyMhz: 7.1,
+        mode: "ssb",
+        outcome: "contact",
+        txCall: "G4AAA",
+        rxCall: "G4BBB",
+        distanceKm: 162.4,
+        reliability: 0.55,
+        snrDbHz: 46.7,
+        ssn: 83,
+        level: "middling",
+      },
+    ],
+    reading: ["A log holds the contacts that were made.", "These counts do not adjust the engine in any way."],
+    ...patch,
+  };
+}
+
+interface Server {
+  posted: Array<{ path: string; body: unknown }>;
+  deleted: string[];
+}
+
+function show(
+  options: {
+    observations?: Observation[] | "fails";
+    total?: number;
+    imports?: ObservationImport[];
+    importAnswer?: ObservationImport | "refused";
+    addAnswer?: "duplicate";
+    comparison?: ComparisonResult | "fails";
+    engineReady?: boolean;
+  } = {},
+): Server {
+  const server: Server = { posted: [], deleted: [] };
+  const observations = options.observations ?? [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const { pathname } = new URL(String(input), "http://outpost.test");
+      const json = (body: unknown, status = 200) =>
+        new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+      if (init?.method === "POST") {
+        const body = init.body instanceof FormData ? (init.body.get("file") as File).name : JSON.parse(String(init.body));
+        server.posted.push({ path: pathname, body });
+        if (pathname.endsWith("/import")) {
+          if (options.importAnswer === "refused")
+            return json(
+              { error: { code: "bad_request", message: "That is not an ADIF file Outpost can read: it has no <EOH> or <EOR> tag." } },
+              400,
+            );
+          return json({ import: options.importAnswer ?? imported() });
+        }
+        if (pathname.endsWith("/compare")) {
+          if (options.comparison === "fails")
+            return json({ error: { code: "unsupported", message: "A propagation data file is damaged." } }, 415);
+          return json({ comparison: options.comparison ?? comparisonOf([1, 1, 1]) });
+        }
+        if (options.addAnswer === "duplicate")
+          return json(
+            {
+              error: {
+                code: "conflict",
+                message: "That entry is already in the log: the same minute, stations, band and mode. Nothing was added.",
+              },
+            },
+            409,
+          );
+        return json({ observation: entry({ id: "new" }) });
+      }
+      if (init?.method === "DELETE") {
+        server.deleted.push(pathname);
+        return json({ ok: true, removed: 5 });
+      }
+      if (pathname === "/api/radio/observations") {
+        if (observations === "fails") return json({ error: { code: "internal", message: "The database is busy." } }, 500);
+        return json({ observations, total: options.total ?? observations.length, imports: options.imports ?? [], adif: ADIF_READ });
+      }
+      if (pathname === "/api/radio/propagation/engines")
+        return json({
+          engines: [{ id: "voacap", name: "VOACAP", ready: options.engineReady ?? true, problem: "A data file is damaged." }],
+        });
+      if (pathname === "/api/radio/profiles") return json({ radios: [], antennas: [] });
+      if (pathname === "/api/maps/markers") return json({ markers: [] });
+      return json({}, 404);
+    }),
+  );
+  render(
+    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      <MemoryRouter>
+        <LogPage />
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+  return server;
+}
+
+const chooseFile = (name: string) =>
+  fireEvent.change(screen.getByLabelText("ADIF file to import"), {
+    target: { files: [new File(["<EOH>"], name, { type: "text/plain" })] },
+  });
+
+describe("the contact log", () => {
+  it("starts empty, and says which ADIF it reads and that a position is never worked out", async () => {
+    show();
+    expect(await screen.findByRole("heading", { name: "Nothing is logged yet" })).toBeInTheDocument();
+    const footer = screen.getByText(/ADIF files are read as version 3\.1\.8 of the specification/);
+    expect(footer.textContent).toContain("QSO_DATE, TIME_ON, CALL");
+    expect(footer.textContent).toContain("MY_GRIDSQUARE");
+    expect(footer.textContent).toContain(
+      "A position is taken only from a latitude and longitude or a locator of four characters or more that the file states.",
+    );
+    expect(screen.queryByRole("heading", { name: "Compare with predictions" })).not.toBeInTheDocument();
+  });
+
+  it("says so when the log cannot be read", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    show({ observations: "fails" });
+    expect(await screen.findByText("The database is busy.")).toBeInTheDocument();
+  });
+
+  it("lists entries in UTC with where each end's position came from, or that it has none", async () => {
+    show({
+      observations: [
+        entry(),
+        entry({ id: "o2", outcome: "heard", frequencyMhz: null, band: "20m", mode: "FT8", propMode: "SAT", powerWatts: null }),
+      ],
+      total: 40,
+    });
+    const first = (await screen.findByText(/16 Nov 2026, 12:04 UTC · 7\.100 MHz · SSB\/LSB · Contact/)).closest("li")!;
+    expect(first.textContent).toContain("G4AAA (IO91WM) to G4BBB (no position)");
+    expect(first.textContent).toContain("5 W · Low dipole · sent 57 · received 55 · Sked with Brum");
+    expect(screen.getByText(/20m · FT8 · Heard, no contact/).closest("li")!.textContent).toContain("logged as SAT");
+    expect(screen.getByText("40 entries, newest first. Times are UTC.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Show more \(2 of 40 shown\)/ })).toBeInTheDocument();
+  });
+
+  it("imports an ADIF file and accounts for every record: brought in, already there, or left out with the reason", async () => {
+    const server = show();
+    await screen.findByRole("heading", { name: "Nothing is logged yet" });
+    chooseFile("test log.adi");
+    expect(await screen.findByText("test log.adi: 5 entries brought in")).toBeInTheDocument();
+    expect(server.posted).toEqual([{ path: "/api/radio/observations/import", body: "test log.adi" }]);
+    expect(
+      screen.getByText(
+        /12 records in the file, which says it is ADIF 3\.1\.8, written by TestLog 2\.0\. 5 brought in, 1 already in the log, 6 left out\./,
+      ),
+    ).toBeInTheDocument();
+    const reasons = screen.getByRole("list", { name: "Records left out, by reason" });
+    expect(
+      within(reasons)
+        .getAllByRole("listitem")
+        .map((item) => item.textContent),
+    ).toEqual(["No callsign for the station contacted (CALL): 4", "No mode (MODE): 2"]);
+    expect(within(screen.getByRole("list", { name: "Read with a loss" })).getByRole("listitem").textContent).toBe(
+      "No position was given for the contacted station, so that end has none: 3",
+    );
+  });
+
+  it("says why when a file is not ADIF", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    show({ importAnswer: "refused" });
+    await screen.findByRole("heading", { name: "Nothing is logged yet" });
+    chooseFile("log.csv");
+    expect(await screen.findByText("Nothing was imported")).toBeInTheDocument();
+    expect(screen.getByText(/That is not an ADIF file Outpost can read/)).toBeInTheDocument();
+  });
+
+  it("takes a typed entry with or without positions, and says what is wrong before sending", async () => {
+    const server = show();
+    fireEvent.click(await screen.findByRole("button", { name: "Log an entry" }));
+    const dialog = screen.getByRole("dialog", { name: "Log an entry" });
+    const add = within(dialog).getByRole("button", { name: "Add to the log" });
+    fireEvent.change(within(dialog).getByLabelText("Date and time, UTC"), { target: { value: "2026-11-16T15:55" } });
+    fireEvent.click(add);
+    expect(within(dialog).getByRole("alert").textContent).toBe("Give the frequency in megahertz.");
+    fireEvent.change(within(dialog).getByLabelText("Frequency, MHz"), { target: { value: "7.12" } });
+    fireEvent.change(within(dialog).getByLabelText("Your station: where"), { target: { value: "somewhere" } });
+    fireEvent.click(add);
+    expect(within(dialog).getByRole("alert").textContent).toContain("That is not a position");
+    fireEvent.change(within(dialog).getByLabelText("Your station: where"), { target: { value: "51.5074, -0.1278" } });
+    fireEvent.change(within(dialog).getByLabelText("Your station: callsign"), { target: { value: "G4AAA" } });
+    fireEvent.change(within(dialog).getByLabelText("The other station: callsign"), { target: { value: "G4BBB" } });
+    fireEvent.change(within(dialog).getByLabelText("Transmitter power, watts"), { target: { value: "5" } });
+    fireEvent.click(add);
+    await waitFor(() => expect(server.posted).toHaveLength(1));
+    const sent = server.posted[0]!.body as ObservationInput;
+    expect(sent).toMatchObject({
+      at: "2026-11-16T15:55:00Z",
+      frequencyMhz: 7.12,
+      mode: "SSB",
+      outcome: "contact",
+      tx: { call: "G4AAA", lat: 51.5074, lon: -0.1278 },
+      // No position was given for the other station, and none is made up for it.
+      rx: { call: "G4BBB", lat: null, lon: null },
+      powerWatts: 5,
+    });
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+
+  it("names the ends by who is transmitting when a station was only heard, and says when an entry is already there", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    show({ addAnswer: "duplicate" });
+    fireEvent.click(await screen.findByRole("button", { name: "Log an entry" }));
+    const dialog = screen.getByRole("dialog", { name: "Log an entry" });
+    expect(within(dialog).getByRole("group", { name: "Your station, transmitting" })).toBeInTheDocument();
+    fireEvent.change(within(dialog).getByLabelText("Frequency, MHz"), { target: { value: "7.1" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Add to the log" }));
+    expect(await within(dialog).findByText("Not added")).toBeInTheDocument();
+    expect(within(dialog).getByText(/already in the log/)).toBeInTheDocument();
+  });
+
+  it("deletes an entry, and takes back a file with what it brought in, only when confirmed", async () => {
+    const server = show({ observations: [entry()], imports: [imported()] });
+    fireEvent.click(await screen.findByRole("button", { name: /Delete the entry of 16 Nov 2026, 12:04 UTC with G4BBB/ }));
+    let confirm = await screen.findByRole("alertdialog");
+    expect(confirm.textContent).toContain("G4AAA (IO91WM) to G4BBB (no position)");
+    fireEvent.click(within(confirm).getByRole("button", { name: "Delete" }));
+    await waitFor(() => expect(server.deleted).toEqual(["/api/radio/observations/o1"]));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
+
+    expect(screen.getByText(/12 records: 5 brought in, 1 already in the log, 6 left out\./)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Take back test log.adi" }));
+    confirm = await screen.findByRole("alertdialog");
+    expect(confirm.textContent).toContain("The 5 entries that “test log.adi” brought in will be removed from the log.");
+    expect(confirm.textContent).toContain("the file itself is not Outpost's to delete");
+    fireEvent.click(within(confirm).getByRole("button", { name: "Take back" }));
+    await waitFor(() => expect(server.deleted).toContain("/api/radio/observations/imports/i1"));
+  });
+});
+
+describe("comparing the log with predictions", () => {
+  const compare = async () => fireEvent.click(await screen.findByRole("button", { name: "Compare" }));
+
+  it("gives counts and no percentages for a handful, and says why", async () => {
+    const server = show({ observations: [entry()] });
+    await compare();
+    expect(await screen.findByText("3 of 7 entries could be compared with a prediction.")).toBeInTheDocument();
+    expect(server.posted[0]).toMatchObject({
+      path: "/api/radio/observations/compare",
+      body: { noise: "residential", defaultPowerWatts: null, ssnByMonth: {}, myAntenna: { kind: "horizontal-dipole", heightM: 5 } },
+    });
+    const table = screen.getByRole("table", { name: /Where the entries fell/ });
+    expect(within(table).getByRole("row", { name: /Low: under 30% of days/ }).textContent).toBe("Low: under 30% of days10");
+    expect(within(table).getByRole("row", { name: /High: 70% of days or more/ }).textContent).toBe("High: 70% of days or more10");
+    expect(table.textContent).not.toContain("%)");
+    expect(
+      screen.getByText(/With fewer than 30 compared, no percentages are given: a share of a handful says nothing either way\./),
+    ).toBeInTheDocument();
+    expect(within(screen.getByRole("list", { name: "Entries left out, by reason" })).getAllByRole("listitem")[0]!.textContent).toBe(
+      "One end or both have no stated position: 3",
+    );
+    expect(screen.getByText("These counts do not adjust the engine in any way.")).toBeInTheDocument();
+    const rows = screen.getByRole("table", { name: "Each entry compared, with the engine's figures for it" });
+    expect(within(rows).getByRole("row", { name: /G4AAA to G4BBB/ }).textContent).toContain("55% at 12:00, SSN 83");
+    // It counts; it does not grade the engine.
+    expect(document.body.textContent).not.toMatch(/\b(wrong|accurate|accuracy|correct|verified|validated)\b/i);
+  });
+
+  it("gives each share with the count it rests on once there are thirty", async () => {
+    show({ observations: [entry()], comparison: comparisonOf([6, 9, 15]) });
+    await compare();
+    const table = await screen.findByRole("table", { name: /Where the entries fell/ });
+    expect(within(table).getByRole("row", { name: /Low/ }).textContent).toContain("6 (20%)");
+    expect(within(table).getByRole("row", { name: /Middling/ }).textContent).toContain("9 (30%)");
+    expect(within(table).getByRole("row", { name: /High/ }).textContent).toContain("15 (50%)");
+    expect(
+      screen.getByText("Each percentage is a share of its own column, and the count beside it is what it rests on."),
+    ).toBeInTheDocument();
+  });
+
+  it("asks for a sunspot number for a month the table does not reach, and sends it with the next comparison", async () => {
+    const server = show({ observations: [entry()] });
+    await compare();
+    const field = await screen.findByLabelText("March 2014 (1 entry)");
+    expect(screen.getByText(/Outpost does not ship past sunspot numbers/)).toBeInTheDocument();
+    fireEvent.change(field, { target: { value: "400" } });
+    fireEvent.click(screen.getByRole("button", { name: "Compare again" }));
+    expect(screen.getByRole("alert").textContent).toBe("Give a smoothed sunspot number between 0 and 300 for March 2014.");
+    fireEvent.change(field, { target: { value: "115" } });
+    fireEvent.change(screen.getByLabelText("Power to assume where the log gives none, watts"), { target: { value: "50" } });
+    fireEvent.click(screen.getByRole("button", { name: "Compare again" }));
+    await waitFor(() => expect(server.posted).toHaveLength(2));
+    expect(server.posted[1]!.body).toMatchObject({ defaultPowerWatts: 50, ssnByMonth: { "2014-03": 115 } });
+    expect(JSON.parse(localStorage.getItem("outpost.propagation.log.ssn.v1")!)).toEqual({ "2014-03": "115" });
+  });
+
+  it("says when nothing could be compared, when the engine cannot run, and when the comparison fails", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    show({ observations: [entry()], comparison: comparisonOf([0, 0, 0], { rows: [] }) });
+    await compare();
+    expect(await screen.findByText(/0 of 4 entries could be compared with a prediction\. There is nothing to count\./)).toBeInTheDocument();
+    expect(screen.queryByRole("table", { name: /Where the entries fell/ })).not.toBeInTheDocument();
+  });
+
+  it("does not compare when the engine cannot run, and reports a failure in words", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    show({ observations: [entry()], engineReady: false });
+    expect(await screen.findByText("The propagation engine cannot run, so nothing can be compared")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Compare" })).toBeDisabled();
+  });
+
+  it("reports a failed comparison in the server's words", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    show({ observations: [entry()], comparison: "fails" });
+    await compare();
+    expect(await screen.findByText("Nothing was compared")).toBeInTheDocument();
+    expect(screen.getByText("A propagation data file is damaged.")).toBeInTheDocument();
+  });
+});

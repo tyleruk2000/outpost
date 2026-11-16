@@ -29,6 +29,7 @@ import {
   type PredictionHour,
   type PredictionRequest,
   type PredictionResult,
+  type SolarInput,
   snrInOneHertz,
   toMaidenhead,
   utcLabel,
@@ -48,8 +49,13 @@ export const SWEEP_MHZ: number[] = Array.from({ length: HF_MAX_MHZ - HF_MIN_MHZ 
 const LUF_RELIABILITY = 0.9;
 /** A solar table no older than this is called recent. NOAA republishes its table every month. */
 export const RECENT_TABLE_DAYS = 45;
-/** How many worked-out answers are kept. Each is about 60 kB. */
+/** How many worked-out answers for single paths are kept. Each is about 60 kB. */
 const MAX_KEPT_RESULTS = 300;
+/**
+ * How many coverage maps and plans are kept beyond the ones a person saved by name or
+ * that belong to a plan. A fine coverage map is about a megabyte.
+ */
+const MAX_KEPT_LARGE = 8;
 /** How many sunspot numbers found from a measured foF2 are remembered while the server runs. */
 const MAX_FOUND_SSN = 500;
 /** Bump when the shape of a stored result changes, so that old rows are not read as new ones. */
@@ -65,6 +71,27 @@ export interface PropagationService {
   result(key: string): PredictionResult | CompareResult | undefined;
   /** The text the reference program prints for the frequency asked about and each band. */
   listing(request: PredictionRequest): Promise<string>;
+  /** What coverage maps and communication plans share with a single prediction: the engine, the Sun, and kept answers. */
+  internals: PropagationInternals;
+}
+
+export type KeptKind = "point" | "compare" | "coverage" | "plan";
+
+export interface PropagationInternals {
+  host: EngineHost;
+  /** The engine and data answering, and the sunspot number for a month with where it came from. */
+  basis(
+    date: string,
+    solar: Exclude<SolarInput, { source: "fof2" }>,
+  ): Promise<{
+    basis: PredictionBasis;
+    tableSha: string | null;
+    description: EngineDescription;
+    datasets: Array<{ id: string; version: string }>;
+  }>;
+  keyOf(kind: KeptKind, body: unknown): string;
+  kept<T>(key: string): T | undefined;
+  keep(key: string, kind: KeptKind, engine: EngineDescription, request: unknown, result: unknown): void;
 }
 
 /** Turns an engine failure into something the HTTP layer reports properly. */
@@ -126,7 +153,7 @@ export function createPropagationService(ctx: AppContext, host: EngineHost): Pro
 
   // ── Kept answers ──────────────────────────────────────────────────────────
 
-  function keyOf(kind: string, body: unknown): string {
+  function keyOf(kind: KeptKind, body: unknown): string {
     return createHash("sha256")
       .update(JSON.stringify({ v: RESULT_VERSION, kind, body }))
       .digest("hex")
@@ -140,7 +167,7 @@ export function createPropagationService(ctx: AppContext, host: EngineHost): Pro
     return row.result as T;
   }
 
-  function keep(key: string, kind: "point" | "compare", engine: EngineDescription, request: unknown, result: unknown): void {
+  function keep(key: string, kind: KeptKind, engine: EngineDescription, request: unknown, result: unknown): void {
     const now = Date.now();
     db.insert(propagationResults)
       .values({
@@ -154,9 +181,16 @@ export function createPropagationService(ctx: AppContext, host: EngineHost): Pro
       })
       .onConflictDoNothing()
       .run();
-    // The least recently used go when there are too many.
+    // The least recently used go when there are too many. Single paths are small and many;
+    // maps and plans are large and few, and one a person saved or a plan shows is never dropped.
     db.run(
-      sql`DELETE FROM propagation_results WHERE key NOT IN (SELECT key FROM propagation_results ORDER BY last_used_at DESC LIMIT ${MAX_KEPT_RESULTS})`,
+      sql`DELETE FROM propagation_results WHERE kind IN ('point', 'compare') AND key NOT IN (SELECT key FROM propagation_results WHERE kind IN ('point', 'compare') ORDER BY last_used_at DESC LIMIT ${MAX_KEPT_RESULTS})`,
+    );
+    db.run(
+      sql`DELETE FROM propagation_results WHERE kind IN ('coverage', 'plan')
+          AND key NOT IN (SELECT result_key FROM propagation_saved WHERE result_key IS NOT NULL)
+          AND key NOT IN (SELECT result_key FROM communication_plans WHERE result_key IS NOT NULL)
+          AND key NOT IN (SELECT key FROM propagation_results WHERE kind IN ('coverage', 'plan') ORDER BY last_used_at DESC LIMIT ${MAX_KEPT_LARGE})`,
     );
   }
 
@@ -486,6 +520,17 @@ export function createPropagationService(ctx: AppContext, host: EngineHost): Pro
   return {
     predict,
     compare,
+    internals: {
+      host,
+      keyOf,
+      kept,
+      keep,
+      async basis(date, solar) {
+        const described = await host.describe();
+        const { basis, tableSha } = await basisOf({ date, solar } as PredictionRequest, engineOf(described));
+        return { basis, tableSha, description: described.description, datasets: described.datasets };
+      },
+    },
     result: (key) => kept(key),
     async listing(asked) {
       const request = normalise(asked);

@@ -297,9 +297,9 @@ function EraseSteps({ onClose }: { onClose: () => void }) {
             <div className="rounded-panel border border-border px-4 py-3 text-small">
               <p className="font-semibold text-ink">Make a backup first</p>
               <p className="mt-0.5 text-ink-muted">
-                A backup holds your notes, their attachments, saved places, routes, contacts, chat conversations, repeaters and settings,
-                and can be restored afterwards. It does not hold the files of documents you added: copy those yourself from the documents
-                folder of each storage location if you want to keep them.
+                A backup holds your notes, their attachments, saved places, routes, contacts, chat conversations, repeaters, radio plans and
+                logged contacts, and settings, and can be restored afterwards. It does not hold the files of documents you added: copy those
+                yourself from the documents folder of each storage location if you want to keep them.
               </p>
               <Button asChild size="sm" className="mt-2.5">
                 <a href="/api/backup/download" download>
@@ -368,7 +368,7 @@ export default function CleanupView({ status, loading }: { status: CleanupStatus
           "Downloads still under way or left unfinished, with their partial files",
         ]}
         keeps={[
-          "Documents you added, your notes, saved places, routes, contacts, chat conversations and repeaters",
+          "Documents you added, your notes, saved places, routes, contacts, chat conversations, repeaters, and radio plans and logged contacts",
           "Archives and maps of your own that you pointed Outpost at",
           "Settings, storage locations and network shares",
         ]}

@@ -114,11 +114,25 @@ export interface CleanupPlan {
     /** Repeaters in imported lists and ones the person added, and how many lists hold them. */
     repeaters: number;
     repeaterLists: number;
+    /** What the HF planner keeps for a person; see `RadioKept`. Absent from a plan made before it was counted. */
+    radio?: RadioKept;
     settings: number;
     vectors: number;
     /** Copies of the database and attachments that a restore set aside. */
     previous: Tally;
   };
+}
+
+/** The person's own things in the HF planner: all of it goes with "erase everything". */
+export interface RadioKept {
+  /** Communication plans. */
+  plans: number;
+  /** Entries of the contact log. */
+  observations: number;
+  /** Radio and antenna profiles. */
+  equipment: number;
+  /** Saved predictions and saved coverage maps. */
+  saved: number;
 }
 
 // ── What a clean-up did ─────────────────────────────────────────────────────
@@ -156,6 +170,7 @@ export interface CleanupResult extends Record<string, unknown> {
     conversations: number;
     repeaters: number;
     repeaterLists: number;
+    radio?: RadioKept;
     settings: number;
   };
 }

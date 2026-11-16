@@ -563,6 +563,27 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   screen reader.
 - Three reference circuits held to the text the Fortran original prints. See
   [docs/hf-propagation.md](docs/hf-propagation.md).
+- **Choose a place on the offline map** wherever the planner takes a position: press
+  the map, or press a saved place to use it by name. Works by touch.
+- **HF coverage** under Radio: the engine asked about every cell of a grid laid over
+  the area the map shows, drawn as a layer over the offline map by reliability,
+  signal-to-noise ratio or signal strength for any hour of the day. Every cell is one
+  answer from the engine; a cell it cannot answer is crossed through, and nothing is
+  smoothed or filled in. The legend says what the number is, states the grid and counts
+  the cells in each class. The work is a job that can be stopped; three grid sizes, up
+  to 2,304 cells; maps can be saved, reopened and deleted.
+- **Communication plans** under Radio: several stations with their equipment, the hours
+  and bands of interest, and for every pair each band through the day, both ways. A
+  primary and an alternate band are chosen by a rule written out on the screen. Plans
+  link to notes and documents, and are written out as a PDF or as Markdown that reads
+  as plain text.
+- **Contact log** under Radio: contacts, stations heard and calls not answered, typed in
+  or imported from an ADIF file (specification 3.1.8, the `.adi` form). An end has a
+  position only when the file states one; the same contact is never added twice; every
+  record is accounted for. The log can be set beside the engine's predictions, as
+  counts, with every entry left out given its reason and no percentage from a handful.
+- Plans, the log, equipment profiles and saved predictions are counted among a person's
+  own things under Manage and clean up, and erased with everything else.
 
 #### On a phone, out of reach of the server
 

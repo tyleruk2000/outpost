@@ -1,0 +1,81 @@
+/** What the contact log asks the server for. */
+import type {
+  ADIF_READ,
+  ComparisonRequest,
+  ComparisonResult,
+  Observation,
+  ObservationImport,
+  ObservationInput,
+  ObservationList,
+} from "@outpost/shared";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { api, errorMessage } from "@/lib/api";
+
+export const logKeys = { all: ["propagation", "log"] as const, page: (limit: number) => ["propagation", "log", limit] as const };
+
+export const useLog = (limit: number) =>
+  useQuery({
+    queryKey: logKeys.page(limit),
+    queryFn: () => api.get<ObservationList & { adif: typeof ADIF_READ }>("/api/radio/observations", { limit }),
+    placeholderData: (previous) => previous,
+  });
+
+function useChange<T, R>(run: (input: T) => Promise<R>, quiet = false) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: run,
+    onSuccess: () => void client.invalidateQueries({ queryKey: logKeys.all }),
+    onError: quiet ? undefined : (error) => toast.error(errorMessage(error)),
+  });
+}
+
+export const useAddObservation = () =>
+  useChange((input: ObservationInput) => api.post<{ observation: Observation }>("/api/radio/observations", input), true);
+export const useRemoveObservation = () => useChange((id: string) => api.delete(`/api/radio/observations/${id}`));
+export const useRemoveImport = () => useChange((id: string) => api.delete<{ removed: number }>(`/api/radio/observations/imports/${id}`));
+export const useImportAdif = () =>
+  useChange((file: File) => {
+    const form = new FormData();
+    form.append("file", file, file.name);
+    return api.upload<{ import: ObservationImport }>("/api/radio/observations/import", form).then((data) => data.import);
+  }, true);
+export const useCompareLog = () =>
+  useMutation({
+    mutationFn: (request: ComparisonRequest) =>
+      api.post<{ comparison: ComparisonResult }>("/api/radio/observations/compare", request).then((data) => data.comparison),
+  });
+
+const STORE = "outpost.propagation.log.ssn.v1";
+
+/** Sunspot numbers a person gave for months the solar table does not reach, kept in this browser. */
+export function rememberedSsn(): Record<string, string> {
+  try {
+    const stored = JSON.parse(localStorage.getItem(STORE) ?? "{}") as unknown;
+    return stored && typeof stored === "object" ? (stored as Record<string, string>) : {};
+  } catch {
+    return {};
+  }
+}
+export function rememberSsn(values: Record<string, string>): void {
+  try {
+    localStorage.setItem(STORE, JSON.stringify(values));
+  } catch {
+    // Nothing depends on it.
+  }
+}
+
+const stamp = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+  timeZone: "UTC",
+});
+/** "16 Nov 2026, 12:04 UTC". A log is kept in UTC, always on the 24-hour clock. */
+export const utcStamp = (at: number): string => `${stamp.format(at)} UTC`;
+
+const monthName = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
+export const monthWords = (month: string): string => monthName.format(new Date(`${month}-15T00:00:00Z`));

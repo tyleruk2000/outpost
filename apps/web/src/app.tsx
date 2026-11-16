@@ -37,6 +37,10 @@ const SetupGuidePage = lazy(() => import("./features/help/setup-guide-page"));
 const KeptPage = lazy(() => import("./features/kept/kept-page"));
 const RadioPage = lazy(() => import("./features/radio/radio-page"));
 const PropagationPage = lazy(() => import("./features/propagation/propagation-page"));
+const PlansPage = lazy(() => import("./features/propagation/plans/plans-page"));
+const PlanPage = lazy(() => import("./features/propagation/plans/plan-page"));
+const LogPage = lazy(() => import("./features/propagation/log/log-page"));
+const CoveragePage = lazy(() => import("./features/propagation/coverage-map/coverage-page"));
 
 function NotFound() {
   return (
@@ -111,6 +115,10 @@ export function App() {
           <Route path="kept" element={<KeptPage />} />
           <Route path="radio" element={<RadioPage />} />
           <Route path="radio/propagation" element={<PropagationPage />} />
+          <Route path="radio/coverage" element={<CoveragePage />} />
+          <Route path="radio/log" element={<LogPage />} />
+          <Route path="radio/plans" element={<PlansPage />} />
+          <Route path="radio/plans/:id" element={<PlanPage />} />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>

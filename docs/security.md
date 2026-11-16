@@ -473,6 +473,36 @@ Outpost. It is treated as untrusted code doing arithmetic:
   JSON and accepted only if every row is a month with a sunspot number between 0 and
   500; anything else is discarded and the table already installed stays in use.
 
+### Coverage maps, plans and the contact log
+
+These sit on the same engine and add no way out of it. What they add, and how each is
+bounded, given that anyone who can reach Outpost can use them:
+
+- **Work.** A coverage map is at most 2,304 runs of the engine (about six seconds on a
+  laptop). One is worked out at a time, three may wait, and a fourth request is refused.
+  It runs in the engine's worker thread, reports each cell, and stops between cells
+  when cancelled, so cancelling it does not end a prediction someone else is waiting
+  for. A plan is at most eight stations, 56 runs. A comparison of the log is at most 500
+  runs. None of them can be made larger by a request.
+- **Space.** Coverage maps and plans' matrices are kept under keys like any other
+  answer; the eight most recently used are kept beyond those a person saved or that
+  belong to a plan. A fine map is about a megabyte.
+- **The ADIF importer** (`modules/propagation/adif.ts`) reads a file a person uploads.
+  The upload is held to 64 MB and 200,000 records and is never written to disk. The
+  reader is a scanner over bytes: it runs nothing, follows no reference to another
+  file, and a length that runs past the end of the file ends the reading. Field values
+  are stored as text and shown as text. A position is taken only from the file's own
+  latitude and longitude or locator fields, checked against the forms the
+  specification gives; nothing is looked up, and no request leaves the computer.
+- **Exports.** A plan's PDF and Markdown are made in the browser from what is already
+  on the screen and saved by the browser. Nothing is sent to the server or anywhere
+  else. Markdown cells have their `|` characters escaped; the PDF holds text only.
+- **Links** from a plan to notes and documents hold an id and nothing else. A link to
+  something that no longer exists is shown as such, and following a link is an
+  ordinary in-app route.
+- **Places chosen on the map** use the map already installed. Choosing a place fetches
+  no tile that the Maps screen would not, and nothing from outside the computer.
+
 ### Paths
 
 Content is recorded as *(storage location, relative path)*, and storage locations can
@@ -1077,7 +1107,8 @@ anything else. What they can and cannot touch:
 
 Removing downloaded content loses nothing that cannot be fetched again, so, like
 removing items one at a time, any device that can reach Outpost may do it. **Erase
-everything** destroys notes, contacts, chat conversations, repeaters and documents, and
+everything** destroys notes, contacts, chat conversations, repeaters, radio plans and
+logged contacts, and documents, and
 Outpost has no accounts to ask "who is this?". It asks "where from?" instead:
 
 - The request must come from **the computer Outpost runs on**. It counts as local when

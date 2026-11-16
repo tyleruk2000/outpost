@@ -47,6 +47,8 @@ picture, not a surveyed path.
   another, hour by hour and band by band, for your power, antennas and mode, including
   short, steep (NVIS) paths. Worked out on your own computer by VOACAP, from monthly
   maps of the ionosphere: a planning aid that always says it is not today's conditions.
+  Coverage maps over the offline map, communication plans between several stations
+  (exported as a PDF or as Markdown), and a contact log that reads ADIF files.
   See [docs/hf-propagation.md](docs/hf-propagation.md).
 - **Reference collections.** Browse a curated catalogue (Wikipedia, medicine and first
   aid, repair guides, food preservation, engineering, and more) and download
