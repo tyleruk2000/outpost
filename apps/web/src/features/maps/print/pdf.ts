@@ -125,7 +125,9 @@ function content(sheet: Sheet, names: ReadonlyMap<string, string>): string {
         const back = item.anchor === "end" ? width : item.anchor === "middle" ? width / 2 : 0;
         const matrix = item.upward ? `0 1 -1 0 ${n(item.x)} ${n(up(item.y) - back)}` : `1 0 0 1 ${n(item.x - back)} ${n(up(item.y))}`;
         const face = item.mono ? (item.bold ? "F4" : "F3") : item.bold ? "F2" : "F1";
-        lines.push(`BT /${face} ${n(item.size)} Tf ${rgb(item.color)} rg ${matrix} Tm ${pdfString(item.text)} Tj ET`);
+        // Rendering mode 3 is "neither fill nor stroke": the words are in the file and nothing is drawn. It stays set until changed, like the dashes above.
+        const show = item.hidden ? `3 Tr ${pdfString(item.text)} Tj 0 Tr` : `${pdfString(item.text)} Tj`;
+        lines.push(`BT /${face} ${n(item.size)} Tf ${rgb(item.color)} rg ${matrix} Tm ${show} ET`);
         break;
       }
     }

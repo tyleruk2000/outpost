@@ -282,6 +282,49 @@ describe("what is accepted", () => {
     expect(pair.body.results.map((result: { status: string }) => result.status)).toEqual(["created", "duplicate"]);
   });
 
+  it("records a title and a source sent with the file, and keeps them when the text is read", async () => {
+    const pdf = buildPdf([["Reliability by band and hour"]], { title: "A title from inside the file" });
+    const made = await add(
+      { name: "hf-prediction.pdf", content: pdf },
+      {
+        title: "HF prediction, London to Edinburgh, 20 m",
+        source: "Made in Outpost from the HF propagation planner: /radio/propagation",
+        category: "Made in Outpost",
+        tags: "HF prediction",
+      },
+    );
+    expect(made).toMatchObject({
+      // The title that was sent is one a person chose: the file's own does not replace it.
+      title: "HF prediction, London to Edinburgh, 20 m",
+      source: "Made in Outpost from the HF propagation planner: /radio/propagation",
+      category: "Made in Outpost",
+      tags: ["HF prediction"],
+      extraction: "done",
+    });
+    expect((await search("Edinburgh ")).results[0].entityId).toBe(made.id);
+
+    // The same bytes again are the same document, and nothing about it is changed.
+    const again = await upload([{ name: "another-name.pdf", content: pdf }], { title: "Another title", source: "Somewhere else" });
+    expect(again.body.results[0]).toMatchObject({ status: "duplicate", document: { id: made.id, title: made.title, source: made.source } });
+
+    // Without the fields nothing changes: the title comes from the name, and there is no source.
+    const plain = (await upload([{ name: "plain.txt", content: "plain words" }])).body.results[0].document;
+    expect(plain).toMatchObject({ title: "plain", source: null });
+
+    // A title names one file.
+    const two = await upload(
+      [
+        { name: "a.txt", content: "first of two" },
+        { name: "b.txt", content: "second of two" },
+      ],
+      { title: "One name for both" },
+    );
+    expect(two.status).toBe(400);
+    expect(two.body.error.message).toContain("only when one file is sent");
+    expect(incoming()).toEqual([]);
+    expect((await upload([{ name: "long.txt", content: "x" }], { source: "s".repeat(1001) })).status).toBe(400);
+  });
+
   it("refuses types it does not support and files that are not what their name says", async () => {
     const { status, body } = await upload([
       { name: "setup.exe", content: Buffer.from("MZ\u0090\u0000binary", "latin1"), type: "application/pdf" },

@@ -71,6 +71,70 @@ as **As saved** and is run as it was saved; another antenna is never put in its 
 If the form cannot ask exactly what was saved, nothing is predicted and the screen says
 what would not be the same.
 
+### A prediction on paper
+
+Under the form, once there is an answer, **This prediction on paper** offers the
+prediction as a PDF to print and carry, with the three things every PDF made in Outpost
+offers: **Save as PDF**, **Add to library** and, where the device can, **Share**
+([library.md](library.md) says what each does and where the file goes). **Export as
+Markdown** writes the same content as text. It is there for any prediction on screen,
+whether just asked or a saved one opened again.
+
+The PDF is two pages of A4 or US Letter. The paper is the choice the paper aids on the
+Encryption screen use: one setting in the browser, starting from US Letter on a device
+set to a country that prints on it and A4 everywhere else. Black on white, text and
+figures only: every value is a printed figure, and nothing is carried by colour.
+
+What is on it, in order:
+
+- **The path and the date**, the mode and what it is taken to need, and that the model
+  works by month.
+- **The sunspot number and where it came from**: the same sentence the screen gives
+  above the answer, the table's own range for the month, the number the engine ran at,
+  and that it is not a reading of the ionosphere on the day.
+- **Both stations as the engine ran them**: place, position, locator, power, noise, and
+  for each antenna the engine's own sentence, which says when an antenna was
+  approximated. The reply's power and noise, or that the reply was not asked for.
+- **The best of it**, by the rules the screen uses: the hour at which the frequency
+  does best, what the reply allows at that hour, the hours at which it reaches half the
+  days, and the three best bands at that hour.
+- **The frequency asked about, hour by hour**: reliability, the reply's reliability,
+  the median signal-to-noise ratio with the worst and best tenth of days, signal in dBm
+  and as an S-meter reading, MUF, FOT, the path and the take-off angle.
+- **Every band, hour by hour**: reliability in per cent, nine bands by twenty-four
+  hours. For a mode with no requirement there is no reliability, and the table gives the
+  median signal-to-noise ratio instead and says so.
+- **Before relying on it**: every caveat the screen lists.
+- **Where the figures come from**: the engine and its checksum, the data versions, when
+  the engine answered, and the answer's key.
+
+It is built from the answer's own words and figures, and reads the answer loosely so
+that it stays true as the engine's answer grows
+(`apps/web/src/features/propagation/prediction-document.ts`): whatever is said under
+`antennas` is printed, whatever its keys; any other sentence the answer carries that
+the page has no place for (at the top level, or on a cell of the band table) is printed
+under "More that came with the answer"; and **a cell with no figure is a dash, never a
+nought**. A cell has no figure when the engine found no path at that hour, when the mode
+has no requirement to measure against, or when the cell is missing or holds something
+that is not a number. A nought on the page is the engine's own nought: a path was found
+and the mode is predicted to get through on no day. The reply's figure is printed only
+for an hour at which the outward direction has a path, because the answer does not say
+whether the reply has one.
+
+The file is dated by the moment the engine answered, so the same answer written out
+twice is the same file, and the library says it already has it.
+
+Characters the PDF's typeface cannot write (a place name outside Western European
+letters) are printed as "?", and the screen says which; the Markdown export keeps them.
+
+Under **the same path with one thing changed**, the comparison on screen has the same
+buttons. Its PDF gives what was tried (each row, its sunspot number and its foF2 at
+12:00 UTC) and, for every row, the reliability, the median signal-to-noise ratio and the
+MUF hour by hour, with the caveats.
+
+Not done: charts on the page (it is tables), the VOACAP listing, and the steep-path
+working, which the screen shows for one chosen hour.
+
 ### Reading the answer
 
 - **The notice at the top** says what kind of knowledge the answer rests on and how old
@@ -255,6 +319,38 @@ the figures it was saved with (the screen says when they were worked out, with w
 engine and data and at what sunspot number); it is not worked out again. Deleting it
 from the list deletes nothing else.
 
+### A coverage map on paper
+
+Under the legend, **This map on paper** makes a PDF of the map as it is shown: what it
+shades by and the hour chosen. **Make the PDF** draws the picture, which takes a moment
+and a second, unseen map, so nothing is made until it is asked for; changing the hour or
+what the map shows takes a file already made down. Then **Save as PDF**, **Add to
+library** and **Share**, as for every PDF made here ([library.md](library.md)).
+
+The page has:
+
+- **The picture**: the light map with the cells in their five shades, the edge of the
+  area and the transmitter, drawn at 150 dots to the inch by the same off-screen map as
+  a printed map page.
+- **The legend**, highest class first, each with its figure, its swatch as it looks
+  over land, and the count of cells in it at that hour; then "no shade" for cells below
+  the lowest class and for cells with no path, and "not answered" for cells the engine
+  gave no answer for.
+- **What the number is**, and **the size of the grid**: how many cells, their size in
+  degrees and kilometres, and that each cell is one answer from the engine for a
+  receiver at its centre, with nothing smoothed or filled in between.
+- **The same grid in figures**: one character to a cell, north at the top, each row
+  with its latitude. 1 to 5 are the classes of the legend, 0 is below the lowest, a
+  dash is a cell with no path at that hour, and an x is a cell the engine did not
+  answer. This is there because the picture carries its values by colour, which a grey
+  printer and a search of the file both lose.
+- **What the map rests on** and **before relying on it**: the basis, both antennas as
+  run, the noise, every caveat, the engine and data versions and when it was worked out.
+
+If the device cannot draw the picture, the PDF is made without it and says why; the
+figures are all there. The shades on paper are the light theme's, whatever the screen
+is set to. Not tried: an area that crosses the 180° meridian.
+
 ### How large, and how long
 
 | Grid | Cells on the longer side | Britain and Ireland from London (14° by 10°) | On this machine |
@@ -340,7 +436,8 @@ stands.
 
 ### Exports
 
-**Export as PDF** and **Export as Markdown** write the plan out to print and carry: the
+**Save as PDF**, **Add to library** and **Export as Markdown** write the plan out to
+print and carry (and **Share**, where the device can): the
 date and hours, where the sunspot number came from, the stations, the primary and
 alternate for each pair, each pair's bands hour by hour through the window, the rule,
 the limits, the engine and data versions, your notes, and the titles of what is linked.
@@ -355,7 +452,11 @@ the limits, the engine and data versions, your notes, and the titles of what is 
 - The **Markdown** reads as plain text: its tables are padded so that every line of a
   table is the same width.
 
-Neither is sent anywhere: the file is made in the browser and saved by it.
+The files are made in the browser. Saving one sends nothing anywhere. **Add to
+library** sends the PDF to this Outpost's own library, where it is filed under "Made in
+Outpost", read for search and kept in backups, with a link back to the plan
+([library.md](library.md)). The PDF says the day it was written out; written out twice
+in a day it is the same file, and the library keeps one.
 
 ### Notes and links
 

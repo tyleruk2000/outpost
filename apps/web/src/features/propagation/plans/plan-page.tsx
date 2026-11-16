@@ -33,6 +33,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Field, Input, Textarea } from "@/components/ui/input";
 import { Checkbox, Select, Skeleton } from "@/components/ui/misc";
+import { PdfButtons } from "@/features/library/made/pdf-actions";
 import { pdfFileName } from "@/features/maps/print/pdf";
 import { errorMessage } from "@/lib/api";
 import { formatDateTime } from "@/lib/utils";
@@ -41,6 +42,7 @@ import { useEngines, usePlaces, useProfiles } from "../data";
 import { BasisNotice } from "../results";
 import { inputOf, useKeptMatrix, useLinkSearch, usePlan, useRemovePlan, useSavePlan, useWorkOut } from "./data";
 import { choiceWords, pairNotModelled, planDocument, planFigure, planMarkdown, planPdf, saveFile, unwritable } from "./document";
+import { PlanPdfStatus, usePlanPdf } from "./plan-export";
 import { StationDialog } from "./station-dialog";
 
 const HOURS = Array.from({ length: 24 }, (_, index) => ({ value: String(index + 1), label: `${utcLabel(index + 1)} UTC` }));
@@ -318,6 +320,8 @@ export default function PlanPage() {
     setNotes(current.notes);
     setSsn(current.solar.source === "manual" ? String(current.solar.ssn) : "");
   }, [current]);
+  // The plan's PDF, made as soon as there are figures to put in it.
+  const pdf = usePlanPdf(current, current?.workedOut ? (work.data ?? kept.data ?? null) : null);
 
   if (plan.isPending) {
     return (
@@ -348,20 +352,10 @@ export default function PlanPage() {
   const hours = planHours(current.fromUtc, current.toUtc);
   const stationName = (stationId: string) => current.stations.find((station) => station.id === stationId)?.name ?? stationId;
 
-  const exportAs = (kind: "pdf" | "markdown") => {
+  const exportMarkdown = () => {
     if (!result) return;
-    const written = new Date();
     const file = pdfFileName(`Communication plan ${current.name}`).replace(/\.pdf$/, "");
-    if (kind === "markdown") {
-      saveFile(`${file}.md`, "text/markdown;charset=utf-8", planMarkdown(current, result, written));
-      return;
-    }
-    const lost = unwritable(planDocument(current, result, written));
-    saveFile(`${file}.pdf`, "application/pdf", planPdf(current, result, written));
-    if (lost.length > 0)
-      toast.message(
-        `The PDF's typeface cannot write ${lost.slice(0, 8).join(" ")}; they are printed as “?”. The Markdown export keeps them.`,
-      );
+    saveFile(`${file}.md`, "text/markdown;charset=utf-8", planMarkdown(current, result, new Date()));
   };
 
   return (
@@ -378,11 +372,8 @@ export default function PlanPage() {
         }
         actions={
           <>
-            <Button disabled={!result} onClick={() => exportAs("pdf")}>
-              <FileDown aria-hidden />
-              Export as PDF
-            </Button>
-            <Button disabled={!result} onClick={() => exportAs("markdown")}>
+            <PdfButtons made={pdf.made} lead="none" />
+            <Button disabled={!result} onClick={exportMarkdown}>
               <FileDown aria-hidden />
               Export as Markdown
             </Button>
@@ -392,6 +383,7 @@ export default function PlanPage() {
           </>
         }
       />
+      <PlanPdfStatus file={pdf} className="-mt-4 mb-6" />
       {engine && !engine.ready ? (
         <Notice tone="danger" title="The propagation engine cannot run, so the plan cannot be worked out" className="mb-6">
           {engine.problem} The plan itself can still be written and changed.

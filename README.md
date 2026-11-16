@@ -278,6 +278,7 @@ The reasoning behind each choice, the security model and the known trade-offs ar
 | [Sources](docs/sources.md) | Every content source considered, its licence, and how it is used |
 | [Maps](docs/maps.md) | Regions, data sources, GPX, coordinates |
 | [Reading EPUB books](docs/epub.md) | What the reader shows, what it leaves out, and what it refuses |
+| [The library, and PDFs made in Outpost](docs/library.md) | Saving, sharing and adding to the library the PDFs Outpost makes |
 | [Notes and imports](docs/notes-and-imports.md) | The editor, Markdown and Notion imports |
 | [Contacts](docs/contacts.md) | What a contact holds, bringing contacts from a phone, and a copy on a phone |
 | [Portable drives](docs/portable.md) | Making and using a USB drive |

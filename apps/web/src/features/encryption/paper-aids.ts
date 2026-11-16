@@ -50,6 +50,8 @@ export const SQUARE_HOW =
 export const AID_PAPERS = ["a4", "letter"] as const;
 export type AidPaper = (typeof AID_PAPERS)[number];
 export const isAidPaper = (value: unknown): value is AidPaper => (AID_PAPERS as readonly unknown[]).includes(value);
+/** Where the paper last chosen is kept in the browser. Other sheets made for a home printer (an HF prediction) read and write the same choice. */
+export const AID_PAPER_KEY = "outpost.encryption.paper";
 
 /** US Letter where the device is set to a country that uses it; A4 everywhere else. */
 export function likelyPaper(language: string | undefined): AidPaper {

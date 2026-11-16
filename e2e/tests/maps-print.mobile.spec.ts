@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import { expect, test, watchForErrors } from "./fixtures";
+import { api, expect, test, watchForErrors } from "./fixtures";
 import { CENTRE, type InstalledTestMaps, installTestMaps, jpegSize, keep, measurePatch, readPdf, removeTestMaps } from "./map-fixture";
 
 test.describe("printing the map from a phone", () => {
@@ -77,7 +77,7 @@ test.describe("printing the map from a phone", () => {
     const make = dialog.getByRole("button", { name: "Make the PDF" });
     expect((await make.boundingBox())!.height).toBeGreaterThanOrEqual(44);
     await make.tap();
-    const save = dialog.getByRole("link", { name: "Save the PDF" });
+    const save = dialog.getByRole("link", { name: "Save as PDF" });
     await expect(save).toBeVisible({ timeout: 120_000 });
     expect((await save.boundingBox())!.height).toBeGreaterThanOrEqual(44);
     // A phone is given smaller pictures to draw, and is told so.
@@ -105,6 +105,20 @@ test.describe("printing the map from a phone", () => {
     const below = await measurePatch(page, pdf.images[1]!.jpeg, { x: 0.5 - 150 / 2240, y: 40 / 1480 });
     expect(Math.abs(above.width - 472.4), `above the join the lake is ${above.width} px wide`).toBeLessThanOrEqual(3);
     expect(Math.abs(below.width - 472.4), `below the join the lake is ${below.width} px wide`).toBeLessThanOrEqual(3);
+
+    // The way that does not depend on the phone saving a file: the same bytes go to the library.
+    const add = dialog.getByRole("button", { name: "Add to library" });
+    await add.scrollIntoViewIfNeeded();
+    expect((await add.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    await add.tap();
+    const status = dialog.getByTestId("pdf-status");
+    await expect(status).toContainText("Added to the library under “Made in Outpost” as", { timeout: 30_000 });
+    expect(await overflow(), "sideways overflow once the page is in the library").toBeLessThanOrEqual(1);
+    await keep(testInfo, "added to the library.png", await page.screenshot(), "image/png");
+    const documentId = (await status.getByRole("link", { name: /^Map, / }).getAttribute("href"))!.split("/").pop()!;
+    const document = (await api(page, "GET", `/api/documents/${documentId}`)).document;
+    expect(document).toMatchObject({ category: "Made in Outpost", tags: ["Map"], sizeBytes: bytes.length });
+    await api(page, "DELETE", `/api/documents/${documentId}`);
     expect(errors).toEqual([]);
   });
 });

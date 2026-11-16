@@ -12,6 +12,7 @@ import { SavedField } from "./document-field";
 import { copyText, documentKeys, isReading, kindOfDocument } from "./document-meta";
 import { OcrDetails, useDocumentOcr } from "./document-ocr";
 import { TagEditor } from "./document-tags";
+import { MadeInOutpostLine } from "./made/made-in-outpost";
 
 function Group({ title, children, className }: { title: string; children: ReactNode; className?: string }) {
   return (
@@ -215,6 +216,7 @@ export function DocumentDetails({
             placeholder="Where it came from"
             maxLength={1000}
           />
+          <MadeInOutpostLine source={document.source} />
           <SavedField
             label="Language"
             value={document.language}

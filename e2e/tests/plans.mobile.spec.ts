@@ -39,10 +39,13 @@ test.describe("Communication plans on a phone", () => {
     ).toBeVisible();
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(overflow).toBeLessThanOrEqual(0);
-    for (const name of ["Export as PDF", "Export as Markdown", "Add a station", "Work it out again", "Change Car park"]) {
+    for (const name of ["Add to library", "Export as Markdown", "Add a station", "Work it out again", "Change Car park"]) {
       const button = await page.getByRole("button", { name }).boundingBox();
       expect(button!.height, name).toBeGreaterThanOrEqual(40);
     }
+    // The plan's PDF: saving it is a link, and both it and the way into the library are full-sized targets.
+    expect((await page.getByRole("link", { name: "Save as PDF" }).boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    expect((await page.getByRole("button", { name: "Add to library" }).boundingBox())!.height).toBeGreaterThanOrEqual(44);
     // The matrix is one block to a pair at this width, each figure with its column's name.
     const row = page.getByRole("row", { name: /Car park and Home/ });
     await expect(row).toContainText(/km/);

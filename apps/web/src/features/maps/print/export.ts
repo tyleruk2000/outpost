@@ -119,6 +119,8 @@ export interface MapPicture {
   /** Its size in device pixels, and the JPEG itself. */
   pixels: PixelSize;
   blob: Blob;
+  /** The names written on this piece of the map, for the words that go into the file beside the picture (map-words.ts). */
+  names: string[];
 }
 
 /** Draws every piece of a plan. `onPiece` is told as each is finished, for a progress bar that shows real progress. */
@@ -135,7 +137,9 @@ export async function drawPieces(
     const canvas = await map.draw(pieceView(frame, pixels, piece, plan.pixelRatio), signal);
     const size = { width: piece.width * plan.pixelRatio, height: piece.height * plan.pixelRatio };
     const blob = await capture(canvas, { x: piece.bleed.left * plan.pixelRatio, y: piece.bleed.top * plan.pixelRatio, ...size });
-    pictures.push({ id: `map-${index + 1}`, x: piece.x, y: piece.y, width: piece.width, height: piece.height, pixels: size, blob });
+    // Asked for while this piece is still what the map shows; the next one draws over it.
+    const names = map.names();
+    pictures.push({ id: `map-${index + 1}`, x: piece.x, y: piece.y, width: piece.width, height: piece.height, pixels: size, blob, names });
     onPiece?.(index + 1, plan.pieces.length);
   }
   return pictures;

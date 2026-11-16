@@ -127,6 +127,20 @@ Write for the person using it. Name things as they would ("Add documents", not
 through the flow. An error says what happened and what to do next. Deleting anything
 goes through `ConfirmDialog`, which names what will be removed.
 
+## A screen that makes a PDF
+
+PDFs are made in the browser by `features/maps/print/pdf.ts` (pages of text in
+Helvetica and Courier, pictures, lines). A screen that makes one does not write its own
+buttons: it wraps the bytes with `madePdf(bytes, title, kind, from)` and hands them to
+`PdfActions` (or `useMadePdf` with `PdfButtons` and `PdfStatus` where the buttons live
+in a header), all in `features/library/made/`. That gives **Save as PDF**, **Add to
+library** and **Share** in the same words everywhere, with every state of the upload
+said in words. Give the file a title that says what it is and for when, and a `from`
+with the address inside Outpost that shows the thing again. Date the file by its
+content, not by the clock, where you can, so that the same thing written out twice is
+the same file and the library can say it already has it. A secret (a one-time pad) is
+not given these buttons. [library.md](../library.md) has the whole of it.
+
 ## Access and layout
 
 - Everything works from the keyboard, with visible focus (the global `:focus-visible`

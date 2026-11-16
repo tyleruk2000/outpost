@@ -51,6 +51,11 @@ export type SheetItem =
       anchor?: "start" | "middle" | "end";
       /** Turned a quarter-turn to read from the bottom of the page upwards, as figures down the side of a map do. */
       upward?: boolean;
+      /**
+       * In the file as text and drawn in no ink: words that say what a picture shows, for
+       * a search of the file and for a reader that speaks the page. The preview leaves it out.
+       */
+      hidden?: boolean;
     };
 
 export type SheetText = Extract<SheetItem, { kind: "text" }>;

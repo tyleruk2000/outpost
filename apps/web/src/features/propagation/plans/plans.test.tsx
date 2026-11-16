@@ -350,7 +350,9 @@ describe("a plan", () => {
       await screen.findByText(/Not worked out for the plan as it stands\. Nothing is shown until the engine has been asked\./),
     ).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "How the bands are chosen" })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Export as PDF" })).toBeDisabled();
+    // No figures, no file: there is nothing to save or to add to the library yet.
+    expect(screen.getByRole("button", { name: "Save as PDF" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Add to library" })).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "Work out the plan" }));
     expect(await screen.findByRole("heading", { name: "How the bands are chosen" })).toBeInTheDocument();
     expect(server.posted.map((item) => item.path)).toEqual(["/api/radio/communication-plans/p1/matrix"]);
@@ -475,9 +477,51 @@ describe("a plan", () => {
     fireEvent.click(screen.getByRole("button", { name: "Export as Markdown" }));
     expect(saved[0]).toMatchObject({ name: "communication-plan-family-net.md", type: "text/markdown;charset=utf-8" });
     expect(saved[0]!.content).toContain("# Communication plan: Family net");
-    fireEvent.click(screen.getByRole("button", { name: "Export as PDF" }));
-    expect(saved[1]).toMatchObject({ name: "communication-plan-family-net.pdf", type: "application/pdf" });
-    expect(new TextDecoder("latin1").decode(saved[1]!.content as Uint8Array).startsWith("%PDF-1.")).toBe(true);
+  });
+
+  it("offers the plan's PDF to save or to add to the library, named for the plan and its day", async () => {
+    const made: Blob[] = [];
+    URL.createObjectURL = vi.fn((blob: Blob) => `blob:plan-${made.push(blob)}`);
+    URL.revokeObjectURL = vi.fn();
+    const server = show("/radio/plans/p1");
+    await screen.findByRole("heading", { name: "How the bands are chosen" });
+    // The file is there as soon as the plan has figures: saving it is a plain link, which is what a phone will follow.
+    const save = await screen.findByRole("link", { name: "Save as PDF" });
+    expect(save.getAttribute("download")).toMatch(/^communication-plan-family-net-for-\d+-[a-z]{3}-\d{4}\.pdf$/);
+    const file = made.at(-1) as File;
+    expect(file.type).toBe("application/pdf");
+    expect((await file.text()).startsWith("%PDF-1.")).toBe(true);
+    expect(screen.getByTestId("pdf-status")).toHaveTextContent("“Add to library” files it under “Made in Outpost”");
+    // Adding it sends that same file to the library's upload, saying which plan it came from.
+    const sent: FormData[] = [];
+    class Upload {
+      upload = {};
+      status = 200;
+      responseText = JSON.stringify({
+        results: [
+          {
+            originalName: file.name,
+            status: "created",
+            document: { id: "d9", title: "Communication plan, Family net", category: "Made in Outpost" },
+          },
+        ],
+      });
+      onload: (() => void) | undefined;
+      open() {}
+      setRequestHeader() {}
+      send(form: FormData) {
+        sent.push(form);
+        this.onload?.();
+      }
+      abort() {}
+    }
+    vi.stubGlobal("XMLHttpRequest", Upload);
+    fireEvent.click(screen.getByRole("button", { name: "Add to library" }));
+    expect(await screen.findByRole("link", { name: "Communication plan, Family net" })).toHaveAttribute("href", "/library/documents/d9");
+    expect(sent[0]!.get("source")).toBe("Made in Outpost from the communication plan “Family net”: /radio/plans/p1");
+    expect(sent[0]!.get("title")).toMatch(/^Communication plan, Family net, for \d+ [A-Z][a-z]{2} \d{4}$/);
+    expect(sent[0]!.get("tags")).toBe("Communication plan");
+    expect(server.posted.map((item) => item.path)).not.toContain("/api/documents");
   });
 
   it("is deleted only after it is confirmed, and says so when it does not exist", async () => {
