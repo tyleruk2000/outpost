@@ -1,6 +1,6 @@
 import type { SearchMode, SearchResponse, SearchResult } from "@outpost/shared";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { Search as SearchIcon, X } from "lucide-react";
+import { LoaderCircle, Search as SearchIcon, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { EmptyState, ErrorState, Notice, Page } from "@/components/page";
@@ -8,12 +8,13 @@ import { Highlighted, kindMeta, kindOf, resultHref } from "@/components/search-h
 import { Button } from "@/components/ui/button";
 import { Segmented, Skeleton } from "@/components/ui/misc";
 import { api } from "@/lib/api";
+import { type ReferenceSearch, referenceProgress, referenceTrouble, useReferenceSearch } from "@/lib/reference-search";
 import { cn, plural } from "@/lib/utils";
 import { AnswerArea, AnswerHint } from "./answer";
 
 const PAGE_SIZE = 20;
 
-function ResultRow({ result }: { result: SearchResult }) {
+function ResultRow({ result, heading: Heading = "h2" }: { result: SearchResult; heading?: "h2" | "h3" }) {
   const kind = kindOf(result.kind);
   const context = [kind.label, result.collection, result.subtitle].filter(Boolean);
   return (
@@ -37,11 +38,11 @@ function ResultRow({ result }: { result: SearchResult }) {
           {Math.round(result.score * 100)}% match
         </span>
       </div>
-      <h2 className="mt-1 font-title text-lead">
+      <Heading className="mt-1 font-title text-lead">
         <Link to={resultHref(result)} className="text-ink decoration-primary decoration-1 underline-offset-[0.22em] hover:underline">
           <Highlighted segments={result.titleSegments.length ? result.titleSegments : [{ text: result.title, hit: false }]} />
         </Link>
-      </h2>
+      </Heading>
       {result.passages.length > 0 ? (
         <ul className="mt-2 grid gap-1.5">
           {result.passages.map((passage, index) => (
@@ -59,6 +60,76 @@ function ResultRow({ result }: { result: SearchResult }) {
       ) : null}
       {result.tags.length > 0 ? <p className="mt-2 text-micro text-ink-faint">{result.tags.map((tag) => `#${tag}`).join("  ")}</p> : null}
     </li>
+  );
+}
+
+function Pager({ page, pages, onPage }: { page: number; pages: number; onPage: (page: number) => void }) {
+  return (
+    <nav aria-label="Result pages" className="mt-6 flex items-center gap-3">
+      <Button disabled={page <= 1} onClick={() => onPage(page - 1)}>
+        Previous
+      </Button>
+      <span className="tabular text-small text-ink-muted">
+        Page {page} of {pages}
+      </span>
+      <Button disabled={page >= pages} onClick={() => onPage(page + 1)}>
+        Next
+      </Button>
+    </nav>
+  );
+}
+
+/** While collections are still answering: a quiet line that says so and how far it has got. */
+function StillSearching({ reference, className }: { reference: ReferenceSearch; className?: string }) {
+  return (
+    <p className={cn("flex items-center gap-2 text-small text-ink-muted", className)}>
+      <LoaderCircle aria-hidden className="size-3.5 shrink-0 animate-spin" />
+      <span className="tabular">{referenceProgress(reference)}</span>
+    </p>
+  );
+}
+
+/** Which collections are missing from the results, and why. */
+function ReferenceTrouble({ reference }: { reference: ReferenceSearch }) {
+  if (reference.status !== "done") return null;
+  return (
+    <>
+      {referenceTrouble(reference).map((sentence) => (
+        <Notice key={sentence} tone="info" className="mt-3 max-w-[46rem]">
+          {sentence}
+        </Notice>
+      ))}
+    </>
+  );
+}
+
+/**
+ * One line under the count of a person's own results that says where the search of
+ * reference collections has got to. It is there from the first results and always one
+ * line high, so that nothing below it moves when the collections answer.
+ */
+function ReferenceLine({ reference, onShow }: { reference: ReferenceSearch; onShow: () => void }) {
+  const found = reference.results.length;
+  const missing = reference.missing.length;
+  return (
+    <p className="tabular mt-1 truncate text-small text-ink-muted" role="status">
+      {reference.status !== "done" ? (
+        referenceProgress(reference)
+      ) : reference.problem ? (
+        "Reference collections were not searched; the reason is below."
+      ) : (
+        <>
+          {found > 0 ? (
+            <button type="button" onClick={onShow} className="text-primary underline underline-offset-2">
+              {plural(found, "article")} in reference collections
+            </button>
+          ) : (
+            "No article in your reference collections matches"
+          )}
+          {missing > 0 ? `. ${plural(missing, "collection")} ${missing === 1 ? "is" : "are"} missing; see below.` : "."}
+        </>
+      )}
+    </p>
   );
 }
 
@@ -96,12 +167,21 @@ export default function SearchPage() {
     queryFn: ({ signal }) =>
       api.get<SearchResponse>(
         "/api/search",
-        { q, kinds: kind || undefined, mode, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE },
+        // Reference collections are asked separately (below), so that these results never wait on them.
+        {
+          q,
+          kinds: kind || undefined,
+          mode,
+          limit: PAGE_SIZE,
+          offset: kind === "reference" ? 0 : (page - 1) * PAGE_SIZE,
+          reference: "later",
+        },
         signal,
       ),
     enabled: q.trim().length > 0,
     placeholderData: keepPreviousData,
   });
+  const reference = useReferenceSearch(q, search.data?.referenceToCome === true);
 
   const setParam = (key: string, value: string | undefined) =>
     setParams((current) => {
@@ -113,7 +193,18 @@ export default function SearchPage() {
     });
 
   const data = search.data;
-  const facets = Object.entries(data?.facets ?? {}).sort((a, b) => b[1] - a[1]);
+  const facets = Object.entries(data?.facets ?? {})
+    .filter(([key]) => key !== "reference")
+    .sort((a, b) => b[1] - a[1]);
+  // Reference comes last and is there from the first results, so the other tabs never move when its count arrives.
+  const referenceTab = data?.referenceToCome || kind === "reference" || reference.results.length > 0;
+  const referenceCount = reference.results.length > 0 || reference.status === "done" ? reference.results.length : undefined;
+  // On "Everything", reference results follow a person's own. They count as something to show while they may still come.
+  const referenceBelow = kind === "" && Boolean(data?.referenceToCome) && reference.status !== "idle";
+  const trouble = referenceTrouble(reference);
+  const referenceHasSomething = reference.status === "searching" || reference.results.length > 0 || trouble.length > 0;
+  const referencePages = Math.max(1, Math.ceil(reference.results.length / PAGE_SIZE));
+  const referencePage = Math.min(page, referencePages);
   const semanticOffered = data && !data.warnings.some((warning) => warning.source === "semantic") && data.mode !== "keyword";
 
   return (
@@ -148,7 +239,7 @@ export default function SearchPage() {
         ) : null}
       </div>
 
-      <AnswerArea q={q} mode={mode} referenceResults={q.trim() ? (data?.facets.reference ?? 0) : 0} />
+      <AnswerArea q={q} mode={mode} referenceResults={q.trim() ? reference.results.length : 0} />
 
       {!q.trim() ? (
         <EmptyState title="One search for everything you keep" seed={11} className="mt-8">
@@ -182,6 +273,7 @@ export default function SearchPage() {
               {[
                 ["", "Everything", undefined] as const,
                 ...facets.map(([key, count]) => [key, kindMeta[key]?.plural ?? key, count] as const),
+                ...(referenceTab ? [["reference", kindMeta.reference!.plural, referenceCount] as const] : []),
               ].map(([key, label, count]) => (
                 <button
                   key={key || "all"}
@@ -196,6 +288,9 @@ export default function SearchPage() {
                 >
                   {label}
                   {count !== undefined ? <span className="tabular text-micro text-ink-faint">{count}</span> : null}
+                  {key === "reference" && reference.status === "searching" ? (
+                    <LoaderCircle aria-hidden className="size-3 animate-spin text-ink-faint" />
+                  ) : null}
                 </button>
               ))}
             </div>
@@ -214,7 +309,36 @@ export default function SearchPage() {
             ) : null}
           </div>
 
-          {search.isPending ? (
+          {kind === "reference" ? (
+            <section aria-label="Reference results">
+              {reference.results.length > 0 ? (
+                <>
+                  <p className="tabular mt-4 text-small text-ink-muted" role="status">
+                    {plural(reference.results.length, "article")} in reference collections
+                    {reference.status === "searching" ? " so far." : "."}
+                  </p>
+                  <ReferenceTrouble reference={reference} />
+                  <ol className="mt-1 divide-y divide-border">
+                    {reference.results.slice((referencePage - 1) * PAGE_SIZE, referencePage * PAGE_SIZE).map((result) => (
+                      <ResultRow key={`${result.kind}:${result.entityId}`} result={result} />
+                    ))}
+                  </ol>
+                  {reference.status === "searching" ? <StillSearching reference={reference} className="mt-2" /> : null}
+                  {referencePages > 1 ? (
+                    <Pager page={referencePage} pages={referencePages} onPage={(next) => setParam("page", String(next))} />
+                  ) : null}
+                </>
+              ) : reference.status === "searching" || search.isPending ? (
+                <StillSearching reference={reference} className="mt-6" />
+              ) : (
+                <div className="mt-8 max-w-[52ch]">
+                  <h2 className="font-title text-heading">Nothing in your reference collections matches “{q}”</h2>
+                  <p className="mt-2 text-ink-muted">Check the spelling, or try fewer or different words.</p>
+                  <ReferenceTrouble reference={reference} />
+                </div>
+              )}
+            </section>
+          ) : search.isPending ? (
             <div className="mt-6 grid gap-7" aria-busy>
               {[0, 1, 2].map((row) => (
                 <div key={row} className="grid gap-2">
@@ -228,7 +352,7 @@ export default function SearchPage() {
             <div className="mt-6">
               <ErrorState error={search.error} onRetry={() => search.refetch()} />
             </div>
-          ) : data && data.results.length === 0 ? (
+          ) : data && data.results.length === 0 && !(referenceBelow && referenceHasSomething) ? (
             <div className="mt-8 max-w-[52ch]">
               <h2 className="font-title text-heading">Nothing matches “{data.query}”</h2>
               <p className="mt-2 text-ink-muted">
@@ -241,39 +365,68 @@ export default function SearchPage() {
               </p>
             </div>
           ) : data ? (
-            <div className={cn("transition-opacity", search.isPlaceholderData && "opacity-60")}>
-              <p className="tabular mt-4 text-small text-ink-muted" aria-live="polite">
-                {plural(data.total, "result")}
-                {data.relaxed ? ". No single item had every word, so these match some of them." : ""}
-                <span className="text-ink-faint"> in {data.tookMs} ms. </span>
-                <Link to={`/search/how-it-works?q=${encodeURIComponent(data.query)}`} className="text-primary underline underline-offset-2">
-                  How were these found?
-                </Link>
-              </p>
-              {data.warnings.map((warning) => (
-                <Notice key={warning.source} tone="info" className="mt-3 max-w-[46rem]">
-                  {warning.message}
-                </Notice>
-              ))}
-              <ol className="mt-1 divide-y divide-border">
-                {data.results.map((result) => (
-                  <ResultRow key={`${result.kind}:${result.entityId}`} result={result} />
+            <>
+              <div className={cn("transition-opacity", search.isPlaceholderData && "opacity-60")}>
+                {data.results.length === 0 ? (
+                  <p className="mt-4 text-small text-ink-muted" aria-live="polite">
+                    Nothing of your own matches “{data.query}”.
+                  </p>
+                ) : (
+                  <p className="tabular mt-4 text-small text-ink-muted" aria-live="polite">
+                    {plural(data.total, "result")}
+                    {data.relaxed ? ". No single item had every word, so these match some of them." : ""}
+                    <span className="text-ink-faint"> in {data.tookMs} ms. </span>
+                    <Link
+                      to={`/search/how-it-works?q=${encodeURIComponent(data.query)}`}
+                      className="text-primary underline underline-offset-2"
+                    >
+                      How were these found?
+                    </Link>
+                  </p>
+                )}
+                {referenceBelow ? <ReferenceLine reference={reference} onShow={() => setParam("kind", "reference")} /> : null}
+                {data.warnings.map((warning) => (
+                  <Notice key={warning.source} tone="info" className="mt-3 max-w-[46rem]">
+                    {warning.message}
+                  </Notice>
                 ))}
-              </ol>
-              {data.total > PAGE_SIZE ? (
-                <nav aria-label="Result pages" className="mt-6 flex items-center gap-3">
-                  <Button disabled={page <= 1} onClick={() => setParam("page", String(page - 1))}>
-                    Previous
-                  </Button>
-                  <span className="tabular text-small text-ink-muted">
-                    Page {page} of {Math.ceil(data.total / PAGE_SIZE)}
-                  </span>
-                  <Button disabled={page * PAGE_SIZE >= data.total} onClick={() => setParam("page", String(page + 1))}>
-                    Next
-                  </Button>
-                </nav>
+                <ol className="mt-1 divide-y divide-border">
+                  {data.results.map((result) => (
+                    <ResultRow key={`${result.kind}:${result.entityId}`} result={result} />
+                  ))}
+                </ol>
+                {data.total > PAGE_SIZE ? (
+                  <Pager page={page} pages={Math.ceil(data.total / PAGE_SIZE)} onPage={(next) => setParam("page", String(next))} />
+                ) : null}
+              </div>
+              {referenceBelow ? (
+                // Always after a person's own results, and only ever added to at its end: nothing above it moves.
+                <section aria-labelledby="reference-results" className="mt-8 border-t border-border pt-5">
+                  <h2 id="reference-results" className="text-lead font-medium text-ink">
+                    In reference collections
+                  </h2>
+                  <ReferenceTrouble reference={reference} />
+                  {reference.best.length > 0 ? (
+                    <>
+                      <p className="mt-1 text-small text-ink-muted">The best match from each collection that has one.</p>
+                      <ol className="divide-y divide-border">
+                        {reference.best.map((result) => (
+                          <ResultRow key={`${result.kind}:${result.entityId}`} result={result} heading="h3" />
+                        ))}
+                      </ol>
+                    </>
+                  ) : reference.status === "done" && trouble.length === 0 ? (
+                    <p className="mt-2 text-small text-ink-muted">No article in your reference collections matches.</p>
+                  ) : null}
+                  {reference.status === "searching" ? <StillSearching reference={reference} className="mt-2" /> : null}
+                  {reference.status === "done" && reference.results.length > reference.best.length ? (
+                    <Button className="mt-4" onClick={() => setParam("kind", "reference")}>
+                      See all {reference.results.length} reference results
+                    </Button>
+                  ) : null}
+                </section>
               ) : null}
-            </div>
+            </>
           ) : null}
         </>
       )}

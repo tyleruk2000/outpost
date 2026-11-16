@@ -94,6 +94,53 @@ async function stream(path: string, body: unknown, signal?: AbortSignal): Promis
   return response;
 }
 
+/**
+ * A GET whose answer arrives a line of JSON at a time (search inside reference
+ * collections). Calls `onLine` for each line as it comes and resolves when the answer
+ * has ended. Aborting the signal closes the connection, which is how the server knows
+ * to stop.
+ */
+async function lines<T>(path: string, query: Query, onLine: (line: T) => void, signal?: AbortSignal): Promise<void> {
+  let response: Response;
+  try {
+    response = await fetch(withQuery(path, query), {
+      headers: { Accept: "application/x-ndjson, application/json", "X-Outpost-Request": "1" },
+      signal,
+      credentials: "same-origin",
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") throw error;
+    throw new ApiError(0, "unreachable", "The Outpost server is not responding. It may be restarting.");
+  }
+  if (!response.ok || !response.body) {
+    await parse(response);
+    return;
+  }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  const take = (text: string) => {
+    buffer += text;
+    for (let at = buffer.indexOf("\n"); at !== -1; at = buffer.indexOf("\n")) {
+      const line = buffer.slice(0, at).trim();
+      buffer = buffer.slice(at + 1);
+      if (line) onLine(JSON.parse(line) as T);
+    }
+  };
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      take(decoder.decode(value, { stream: true }));
+    }
+    take(`${decoder.decode()}\n`);
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") throw error;
+    if (signal?.aborted) throw new DOMException("The operation was aborted.", "AbortError");
+    throw new ApiError(0, "unreachable", "The connection to the Outpost server was lost.");
+  }
+}
+
 export const api = {
   get: <T>(path: string, query?: Query, signal?: AbortSignal) => request<T>("GET", path, { query, signal }),
   post: <T>(path: string, body?: unknown, query?: Query) => request<T>("POST", path, { body: body ?? {}, query }),
@@ -102,6 +149,7 @@ export const api = {
   delete: <T>(path: string, query?: Query) => request<T>("DELETE", path, { query }),
   upload: <T>(path: string, form: FormData, query?: Query) => request<T>("POST", path, { body: form, query }),
   stream,
+  lines,
 };
 
 /**

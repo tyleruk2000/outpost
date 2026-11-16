@@ -63,13 +63,8 @@ async function world(books: SlowBook[], env: Record<string, string> = {}): Promi
   return { app, kiwix, base, ids };
 }
 
+// biome-ignore lint/suspicious/noExplicitAny: tests read lines loosely and assert on them
 type Line = Record<string, any>;
-const linesOf = (text: string): Line[] =>
-  text
-    .split("\n")
-    .filter(Boolean)
-    .map((line) => JSON.parse(line));
-
 /** Reads the reference part to its end, noting when each line came. */
 async function readReference(base: string, q: string, signal?: AbortSignal): Promise<Array<Line & { at: number }>> {
   const started = performance.now();
@@ -226,7 +221,9 @@ describe("search in two parts", () => {
     const own = await app.api("GET", "/api/search?q=water&reference=later");
     expect(performance.now() - started).toBeLessThan(200);
     expect(own.body.results.map((result: Line) => result.kind).sort()).toEqual(["document", "note"]);
-    expect(own.body).toMatchObject({ total: 2, facets: { document: 1, note: 1 }, warnings: [] });
+    expect(own.body).toMatchObject({ total: 2, facets: { document: 1, note: 1 }, warnings: [], referenceToCome: true });
+    expect((await app.api("GET", "/api/search?q=water&reference=later&kinds=note")).body.referenceToCome).toBe(true);
+    expect((await app.api("GET", "/api/search?q=water")).body.referenceToCome).toBeUndefined();
     expect(own.body.facets.reference).toBeUndefined();
 
     const lines = await readReference(base, "water");
@@ -344,8 +341,9 @@ describe("search in two parts", () => {
     ]);
     await app.api("PATCH", "/api/settings", { "search.includeReference": false });
     expect((await readReference(base, "water"))[0]).toMatchObject({ type: "start", collections: 0 });
+    expect((await app.api("GET", "/api/search?q=water&reference=later")).body.referenceToCome).toBe(false);
     expect(kiwix.started).toEqual([]);
-    expect((await app.api("GET", "/api/search/reference?q=" + "x".repeat(501))).status).toBe(400);
+    expect((await app.api("GET", `/api/search/reference?q=${"x".repeat(501)}`)).status).toBe(400);
 
     const down = await world([book(1, 5)], { OUTPOST_KIWIX_URL: "http://127.0.0.1:9" });
     const lines = await readReference(down.base, "water");

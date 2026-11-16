@@ -75,5 +75,10 @@ export interface SearchResponse {
   results: SearchResult[];
   facets: Record<string, number>;
   warnings: Array<{ source: string; message: string }>;
+  /**
+   * Only in an answer asked for with `reference=later`: true when there are reference
+   * collections to search for this, which `GET /api/search/reference` does.
+   */
+  referenceToCome?: boolean;
   tookMs: number;
 }

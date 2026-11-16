@@ -3,7 +3,7 @@
  * actions. With text, places and actions whose names match stay at the top, and the
  * whole library is searched underneath as you type.
  */
-import type { SearchResponse } from "@outpost/shared";
+import type { SearchResponse, SearchResult } from "@outpost/shared";
 import { useQuery } from "@tanstack/react-query";
 import { Command } from "cmdk";
 import {
@@ -24,6 +24,7 @@ import { Dialog } from "radix-ui";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { api } from "@/lib/api";
+import { referenceProgress, useReferenceSearch } from "@/lib/reference-search";
 import { useTheme } from "@/lib/theme";
 import { allNav } from "./nav";
 import { Highlighted, kindOf, resultHref } from "./search-hit";
@@ -60,6 +61,33 @@ function useDebounced<T>(value: T, delay: number): T {
 
 const itemClass =
   "flex cursor-default items-center gap-3 rounded-control px-3 py-2 text-small text-ink data-[selected=true]:bg-primary-soft data-[selected=true]:text-primary-soft-ink max-md:py-3 [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-ink-muted";
+/** How many reference articles the palette lists: the best match of each of the first collections to answer. */
+const REFERENCE_SHOWN = 5;
+
+function ResultItem({ result, onSelect }: { result: SearchResult; onSelect: () => void }) {
+  const kind = kindOf(result.kind);
+  const passage = result.passages[0];
+  return (
+    <Command.Item value={`${result.kind}:${result.entityId}`} onSelect={onSelect} className={`${itemClass} items-start`}>
+      <kind.icon aria-hidden className="mt-0.5" />
+      <span className="min-w-0 flex-1">
+        <span className="block truncate font-medium">
+          <Highlighted segments={result.titleSegments.length ? result.titleSegments : [{ text: result.title, hit: false }]} />
+        </span>
+        {passage ? (
+          <span className="mt-0.5 line-clamp-1 block text-micro text-ink-muted">
+            <Highlighted segments={passage.segments} />
+          </span>
+        ) : null}
+      </span>
+      <span className="mt-0.5 max-w-[40%] shrink-0 truncate text-micro text-ink-faint">
+        {result.kind === "reference" && result.collection ? result.collection : kind.label}
+        {passage?.page ? `, p. ${passage.page}` : ""}
+      </span>
+    </Command.Item>
+  );
+}
+
 const groupClass =
   "[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:text-micro [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-ink-faint";
 
@@ -83,11 +111,13 @@ export function CommandPalette({
 
   const results = useQuery({
     queryKey: ["search", "palette", debounced],
-    queryFn: ({ signal }) => api.get<SearchResponse>("/api/search", { q: debounced, limit: 8 }, signal),
+    // Reference collections are asked separately (below), so that these results never wait on them.
+    queryFn: ({ signal }) => api.get<SearchResponse>("/api/search", { q: debounced, limit: 8, reference: "later" }, signal),
     enabled: open && debounced.length > 1,
     placeholderData: (previous) => previous,
     staleTime: 10_000,
   });
+  const reference = useReferenceSearch(debounced, open && debounced.length > 1 && results.data?.referenceToCome === true);
 
   const go = (to: string) => {
     onOpenChange(false);
@@ -99,6 +129,8 @@ export function CommandPalette({
   };
   const typed = query.trim();
   const searching = debounced.length > 1 && typed.length > 1;
+  const stillSearching = searching && reference.status === "searching";
+  const referenceShown = searching ? reference.best.slice(0, REFERENCE_SHOWN) : [];
 
   const everyAction: PaletteAction[] = [
     { id: "new-page", label: "New page", icon: Plus, run: () => run(onNewPage) },
@@ -137,7 +169,7 @@ export function CommandPalette({
                 placeholder="Search your library, or type a place to go"
                 className="h-13 flex-1 bg-transparent text-body text-ink placeholder:text-ink-faint focus:outline-none"
               />
-              {results.isFetching && searching ? <Spinner /> : null}
+              {(results.isFetching || stillSearching) && searching ? <Spinner label="Searching" /> : null}
             </div>
             <Command.List className="scroll-quiet max-h-[min(60dvh,26rem)] overflow-y-auto p-1.5">
               {/* Places come first, so typing the name of a screen and pressing Enter always goes there. */}
@@ -182,43 +214,29 @@ export function CommandPalette({
                   </Command.Group>
                   {searching && results.data && results.data.results.length > 0 ? (
                     <Command.Group heading={results.data.relaxed ? "Closest matches" : "Top matches"} className={groupClass}>
-                      {results.data.results.map((result) => {
-                        const kind = kindOf(result.kind);
-                        const passage = result.passages[0];
-                        return (
-                          <Command.Item
-                            key={`${result.kind}:${result.entityId}`}
-                            value={`${result.kind}:${result.entityId}`}
-                            onSelect={() => go(resultHref(result))}
-                            className={`${itemClass} items-start`}
-                          >
-                            <kind.icon aria-hidden className="mt-0.5" />
-                            <span className="min-w-0 flex-1">
-                              <span className="block truncate font-medium">
-                                <Highlighted
-                                  segments={result.titleSegments.length ? result.titleSegments : [{ text: result.title, hit: false }]}
-                                />
-                              </span>
-                              {passage ? (
-                                <span className="mt-0.5 line-clamp-1 block text-micro text-ink-muted">
-                                  <Highlighted segments={passage.segments} />
-                                </span>
-                              ) : null}
-                            </span>
-                            <span className="mt-0.5 shrink-0 text-micro text-ink-faint">
-                              {kind.label}
-                              {passage?.page ? `, p. ${passage.page}` : ""}
-                            </span>
-                          </Command.Item>
-                        );
-                      })}
+                      {results.data.results.map((result) => (
+                        <ResultItem key={`${result.kind}:${result.entityId}`} result={result} onSelect={() => go(resultHref(result))} />
+                      ))}
                     </Command.Group>
-                  ) : searching && results.isSuccess ? (
+                  ) : searching && results.isSuccess && !stillSearching && referenceShown.length === 0 ? (
                     <p className="px-3 py-4 text-small text-ink-muted">
                       Nothing in your library matches “{debounced}”. Check the spelling, or try fewer words.
                     </p>
                   ) : searching && results.isError ? (
                     <p className="px-3 py-4 text-small text-danger">Search is not available right now. The server may be restarting.</p>
+                  ) : null}
+                  {/* Last, and only ever added to at its end, so nothing above moves under a finger or the selection. */}
+                  {referenceShown.length > 0 ? (
+                    <Command.Group heading="In reference collections" className={groupClass}>
+                      {referenceShown.map((result) => (
+                        <ResultItem key={`${result.kind}:${result.entityId}`} result={result} onSelect={() => go(resultHref(result))} />
+                      ))}
+                    </Command.Group>
+                  ) : null}
+                  {stillSearching ? (
+                    <p role="status" className="tabular px-3 py-2 text-micro text-ink-muted">
+                      {referenceProgress(reference)}
+                    </p>
                   ) : null}
                 </>
               ) : null}

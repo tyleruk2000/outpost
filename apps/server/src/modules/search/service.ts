@@ -83,6 +83,11 @@ export interface SearchResponse {
   facets: Record<string, number>;
   /** Sources that could not answer, with a reason a person can read. */
   warnings: Array<{ source: string; message: string }>;
+  /**
+   * Only when asked with `reference: "later"`: true when there are reference collections
+   * to search for this, so asking `searchReference` is worth it.
+   */
+  referenceToCome?: boolean;
   tookMs: number;
 }
 
@@ -462,8 +467,20 @@ export function createSearchService(ctx: AppContext): SearchService {
         mode = "keyword";
       }
 
+      // Whatever kinds were asked for: the caller shows reference results beside any of them.
+      const later =
+        params.reference === "later"
+          ? {
+              referenceToCome:
+                Boolean(q) &&
+                mode !== "semantic" &&
+                ctx.services.settings.get("search.includeReference") &&
+                sources.some((source) => source.layer === "reference" && source.isAvailable()),
+            }
+          : {};
+
       if (!q) {
-        return { query: q, mode, relaxed: false, total: 0, results: [], facets: {}, warnings, tookMs: 0 };
+        return { query: q, mode, relaxed: false, total: 0, results: [], facets: {}, warnings, ...later, tookMs: 0 };
       }
 
       const keyword = mode === "semantic" ? { results: [], relaxed: false, facets: {} } : keywordSearch(params, window);
@@ -529,6 +546,7 @@ export function createSearchService(ctx: AppContext): SearchService {
         results: results.slice(offset, offset + limit),
         facets: keyword.facets,
         warnings,
+        ...later,
         tookMs: Math.round(performance.now() - started),
       };
     },
