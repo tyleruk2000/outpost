@@ -26,7 +26,8 @@ export type DatabaseCountId =
   | "predictions"
   | "powerPlans"
   | "supplies"
-  | "scenarios";
+  | "scenarios"
+  | "pressureReadings";
 
 /** Where the bytes go, in a few plain groups of tables. */
 export type DatabaseGroupId = "search" | "meaning" | "library" | "notes" | "maps" | "radio" | "prepare" | "other";

@@ -749,6 +749,51 @@ can reach Outpost's origin.
 the guarded HTTP client (every redirect held to the same host), capped at 20 MB, and
 kept only if it reads as the registry.
 
+### Weather and hazards
+
+Preparedness → Weather and hazards ([weather.md](weather.md)) fetches forecasts,
+warnings and flood data from five publishers, and keeps the person's barometer
+readings. What it sends, and to whom:
+
+| Host | When | What is sent |
+| --- | --- | --- |
+| `api.open-meteo.com` | Update now; or opening the screen with the tick on | A place's latitude and longitude, rounded to two decimal places (about 1 km), and the fixed list of figures wanted |
+| `www.metoffice.gov.uk` | The same | Nothing about the person or their places: the one feed for the whole UK |
+| `environment.data.gov.uk` | The same | A place's latitude and longitude to two decimal places and a distance (15 km, 8 km); then the reference of each of up to five river gauges the answer named |
+| `power.larc.nasa.gov` | "Fetch the averages for this place" only | A place's latitude and longitude to two decimal places |
+| `re.jrc.ec.europa.eu` | The same | A place's latitude and longitude to two decimal places |
+
+- **Only on a press.** The one route that fetches, `POST /api/weather/update`, is a
+  `POST`, so `core/guard.ts` lets only Outpost's own pages cause it (a test checks that
+  a request without its header is refused and reaches no publisher). Nothing runs on a
+  timer. **Also update when I open this screen** is off until a person ticks it. Ticked,
+  it is stored on the server, and **every opening of the screen, on every device, makes
+  the requests above**, once per visit: an outbound request per visit, which is why it
+  is off by default. A place's position therefore goes to Open-Meteo and the
+  Environment Agency on every such visit.
+- **To the named hosts only.** The addresses are built in code (`modules/weather/sources.ts`).
+  The HTTP client holds every hop, redirects included, to the publisher's host, and to
+  public addresses. The client name is Outpost's generic one, with no contact details:
+  that is why MET Norway is not used (sources.md). Each answer is at most 2 MB and 30
+  seconds.
+- **What is kept.** The publishers' answers, read into checked figures and words, are
+  in the database (`weather_cache`) with the size received and a line saying what was
+  sent. They are visible to anyone who can reach Outpost, as everything is, and so is
+  each place's position. Places, copies and readings are in backups, and are erased by
+  "erase everything". The copies can also be cleared under Manage and clean up →
+  Leftovers.
+- **Untrusted answers.** JSON is parsed and every figure checked for type and range.
+  The Met Office's RSS is read by Outpost's strict XML reader (`maps/gpx-xml.ts`),
+  which refuses a DOCTYPE, so no entity can be expanded or fetched. Words are shown as
+  text, never as HTML. A warning's link is kept only if it is on `www.metoffice.gov.uk`.
+- **The device's position** is asked for only after "Use this device's position" is
+  pressed, and only on a secure page (otherwise the button is not there and the dialog
+  says why). Once given, it is stored as a place like any other.
+- **Barometer CSV files** are read as text of at most 4 MB in a JSON body, parsed by
+  `csv-parse`, at most 50,000 rows. Every value becomes a number or a time, or is
+  refused. Nothing is run, fetched or used as a path. The preview changes nothing, and
+  applying is one transaction.
+
 ### Paths
 
 Content is recorded as *(storage location, relative path)*, and storage locations can
@@ -1429,7 +1474,9 @@ What this does not do:
 ### No telemetry
 
 Outpost sends no usage data and makes no outbound request unless a person starts a
-download, a catalogue refresh or one of the other actions listed in
+download, a catalogue refresh, a weather update (or opens Weather and hazards with
+"also update when I open this screen" ticked, which is off by default) or one of the
+other actions listed in
 [offline.md](offline.md#what-needs-a-connection).
 
 ## Network shares

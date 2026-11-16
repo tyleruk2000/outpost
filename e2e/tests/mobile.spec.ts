@@ -97,6 +97,7 @@ test.describe("on a phone", () => {
       ["Devices on this network", "/tools/network"],
       ["Preparedness", "/prepare"],
       ["Supplies", "/prepare/supplies"],
+      ["Weather and hazards", "/prepare/weather"],
       ["Nuclear preparedness", "/prepare/nuclear"],
       // A tab, listed again as the heading of the screen under it.
       ["Notes", "/notes"],

@@ -333,6 +333,8 @@ export default defineConfig({
       OUTPOST_IMAGERY_WORLD_BYTES: String(standInWorld().length),
       OUTPOST_IMAGERY_LINZ_BASE: `http://127.0.0.1:${filesPort}/imagery/linz`,
       OUTPOST_NETWORK_STAND_IN: networkStandIn,
+      // Every weather publisher, stood in for by the file server above.
+      OUTPOST_WEATHER_STAND_IN: `http://127.0.0.1:${filesPort}/weather`,
       // The made-up name the "not secure" projects use; for this test server only.
       OUTPOST_ALLOWED_HOSTS: notSecureHost,
     }),

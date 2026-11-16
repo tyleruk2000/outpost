@@ -18,6 +18,7 @@ import { createImageryStandIn } from "../../apps/server/test/fixtures/maps/image
 import { createOverpassStandIn } from "../../apps/server/test/fixtures/maps/overpass-answers.ts";
 import { serveP533StandIn } from "../../apps/server/test/fixtures/propagation/p533-maps-stand-in.ts";
 import { createRepeaterSourceStandIn } from "../../apps/server/test/fixtures/repeaters/source-stand-in.ts";
+import { serveWeatherStandIn } from "../../apps/server/test/fixtures/weather/stand-in.ts";
 
 const port = Number(process.argv[2] ?? 8473);
 const version = process.version;
@@ -64,6 +65,8 @@ http
     if (request.url?.startsWith("/overpass/")) return routeSource.handle(request, response);
     if (request.url?.startsWith("/repeater-lists/")) return repeaterSource.handle(request, response);
     if (request.url?.startsWith("/p533/")) return serveP533StandIn(request, response);
+    // Every weather publisher, with recorded answers (apps/server/test/fixtures/weather).
+    if (request.url?.startsWith("/weather/")) return serveWeatherStandIn(request, response);
     if (request.url?.startsWith("/voacap/")) {
       const name = decodeURIComponent(request.url.slice("/voacap/".length));
       if (!voacapFiles.has(name)) {

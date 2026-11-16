@@ -15,6 +15,7 @@ import {
   type UsageId,
   type UsageResponse,
   type UsageRow,
+  type WeatherKept,
 } from "@outpost/shared";
 import { formatNumber, plural } from "@/lib/utils";
 
@@ -252,6 +253,17 @@ export function suppliesWords(supplies: SuppliesKept | undefined): string | null
   return parts.length > 0 ? parts.join(", ") : null;
 }
 
+/** "2 weather places, 140 barometer readings and 6 fetched forecasts and warnings", leaving out what there is none of; null when there is nothing. */
+export function weatherWords(weather: WeatherKept | undefined): string | null {
+  if (!weather) return null;
+  const parts = [
+    weather.places > 0 ? plural(weather.places, "weather place") : null,
+    weather.readings > 0 ? plural(weather.readings, "barometer reading") : null,
+    weather.copies > 0 ? plural(weather.copies, "fetched forecast or warning", "fetched forecasts and warnings") : null,
+  ].filter((part): part is string => part !== null);
+  return parts.length > 0 ? parts.join(", ") : null;
+}
+
 /** The person's own things that "erase everything" takes besides files, leaving out what there is none of. */
 export function personalWords(personal: NonNullable<CleanupPlan["personal"]>): string {
   const parts: string[] = [];
@@ -272,6 +284,8 @@ export function personalWords(personal: NonNullable<CleanupPlan["personal"]>): s
   if (supplies) parts.push(supplies);
   if ((personal.nuclearScenarios ?? 0) > 0) parts.push(plural(personal.nuclearScenarios!, "saved nuclear effects scenario"));
   if (personal.networkDevices) parts.push(plural(personal.networkDevices, "device found on the network", "devices found on the network"));
+  const weather = weatherWords(personal.weather);
+  if (weather) parts.push(weather);
   if (personal.settings > 0) parts.push(plural(personal.settings, "changed setting"));
   if (personal.vectors > 0) parts.push(plural(personal.vectors, "semantic vector"));
   parts.push("the history of downloads and other work");
@@ -303,6 +317,8 @@ export function resultSentences(result: CleanupResult): string[] {
       attachments,
       settings,
     } = result.personal;
+    // Kept apart from the list above, one name to a line, so that a new kind of data adds a line and nothing else.
+    const { weather } = result.personal;
     const erased = [
       pages > 0 ? `${plural(pages, "page")} of notes${attachments > 0 ? ` with ${plural(attachments, "attachment")}` : ""}` : null,
       places > 0 ? plural(places, "saved place") : null,
@@ -314,6 +330,7 @@ export function resultSentences(result: CleanupResult): string[] {
       (powerPlans ?? 0) > 0 ? plural(powerPlans ?? 0, "power plan") : null,
       suppliesWords(supplies),
       (nuclearScenarios ?? 0) > 0 ? plural(nuclearScenarios!, "saved nuclear effects scenario") : null,
+      weatherWords(weather),
       settings > 0 ? plural(settings, "changed setting") : null,
       "the history",
     ].filter((part): part is string => part !== null);
@@ -406,6 +423,8 @@ export const leftoverWords: Record<LeftoverKind, LeftoverWords> = {
 export const cacheCost: Record<string, string> = {
   runtimes:
     "Fetched again, about 50 to 100 MB for each kind of computer, the next time a portable drive is written. That needs a connection.",
+  weather:
+    "Fetched again from the publishers when Update now is pressed on Weather and hazards. That needs a connection; until then there is no forecast or warning to read offline.",
   models: "Left by an earlier version. Nothing uses them now: the model for search by meaning is part of Outpost itself.",
   text: "Belongs to documents that have been removed. Nothing uses it.",
   snapshots: "Left by backups that were interrupted. Nothing uses them.",

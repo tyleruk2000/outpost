@@ -50,6 +50,7 @@ const invalidations: Record<string, string[][]> = {
   "supplies.changed": [["supplies"], ["manage"]],
   "nuclear.changed": [["nuclear"]],
   "network.changed": [["network"], ["manage"]],
+  "weather.changed": [["weather"], ["manage"]],
   // The background count of what is on disk has finished.
   "manage.changed": [["manage"]],
 };

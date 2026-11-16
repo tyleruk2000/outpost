@@ -23,6 +23,7 @@ const COUNT_WORDS: Record<DatabaseCountId, [string, string]> = {
   supplies: ["row of supplies", "rows of supplies"],
   scenarios: ["saved nuclear effects scenario", "saved nuclear effects scenarios"],
   networkDevices: ["device found on the network", "devices found on the network"],
+  pressureReadings: ["barometer reading", "barometer readings"],
 };
 
 /** "68,600 passages in the search index", for each count above nought. */
@@ -37,7 +38,7 @@ export const GROUP_WORDS: Record<DatabaseGroupId, { label: string; detail: strin
   notes: { label: "Notes", detail: "Pages, links, attachment records" },
   maps: { label: "Maps", detail: "Saved places, routes, place names" },
   radio: { label: "Radio", detail: "Repeaters, plans, the log, predictions" },
-  prepare: { label: "Preparedness", detail: "Supplies, the household, the shopping list" },
+  prepare: { label: "Preparedness", detail: "Supplies, the household, the shopping list, weather and barometer readings" },
   other: { label: "Everything else", detail: "Contacts, chat, settings, the history of work" },
 };
 

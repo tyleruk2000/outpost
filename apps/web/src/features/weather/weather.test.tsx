@@ -1,0 +1,207 @@
+import type { KeptCopy, WeatherPlace, WeatherResponse, WeatherSourceInfo } from "@outpost/shared";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { positionAvailable } from "./places-view";
+import WeatherPage from "./weather-page";
+import { daySentence, levelWords, windText } from "./words";
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+  localStorage.clear();
+});
+
+const HOUR = 3_600_000;
+const NOW = Date.now();
+
+const home: WeatherPlace = { id: "p1", name: "Home", lat: 52.13, lon: -0.46, markerId: "m1", isHome: true, region: "em", createdAt: 1 };
+const source = (id: WeatherSourceInfo["id"], kind: WeatherSourceInfo["kind"], publisher: string): WeatherSourceInfo => ({
+  id,
+  kind,
+  publisher,
+  name: publisher,
+  covers: "",
+  host: "example.org",
+  sends: "",
+  licence: "",
+  licenceUrl: "https://example.org",
+  attribution: `${publisher} credit`,
+  liveUrl: "https://example.org/live",
+  termsUrl: "https://example.org/terms",
+  termsRead: "2026-11-16",
+});
+const sources = [source("open-meteo", "forecast", "Open-Meteo"), source("met-office-warnings", "warnings", "Met Office")];
+
+function forecast(fetchedAt: number, hoursAhead: number): KeptCopy {
+  const start = Math.floor(fetchedAt / HOUR) * HOUR;
+  const hours = Array.from({ length: hoursAhead }, (_, index) => ({
+    t: start + index * HOUR,
+    tempC: 8 + index * 0.1,
+    precipMm: 0,
+    precipChance: 10,
+    code: 3,
+    windKmh: 20,
+    gustKmh: 40,
+    windFrom: 225,
+    pressureHpa: 1010,
+  }));
+  return {
+    id: "c1",
+    kind: "forecast",
+    source: "open-meteo",
+    placeId: "p1",
+    fetchedAt,
+    validFrom: start,
+    validUntil: start + hoursAhead * HOUR,
+    bytes: 10_000,
+    sent: "api.open-meteo.com: latitude 52.13, longitude -0.46",
+    data: { service: "Open-Meteo", model: "Met Office UKV", elevation: 30, gridLat: 52.13, gridLon: -0.46, hours, days: [] },
+  };
+}
+
+function show(response: Partial<WeatherResponse> | "fails" | "never", view = "") {
+  const posted: Array<{ path: string; body: unknown }> = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const { pathname } = new URL(String(input), "http://outpost.test");
+      const json = (body: unknown, status = 200) =>
+        new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+      if (init?.method && init.method !== "GET") {
+        posted.push({ path: `${init.method} ${pathname}`, body: init.body ? JSON.parse(String(init.body)) : null });
+        if (pathname === "/api/weather/update") return json({ outcomes: [] });
+        return json({ ok: true });
+      }
+      if (pathname === "/api/weather") {
+        if (response === "never") return new Promise<Response>(() => {});
+        if (response === "fails") return json({ error: { code: "internal", message: "The database is busy." } }, 500);
+        return json({ places: [], kept: [], sources, updateOnOpen: false, now: NOW, ...response });
+      }
+      if (pathname === "/api/weather/readings") return json({ readings: [] });
+      if (pathname === "/api/maps/markers") return json({ markers: [] });
+      return json({});
+    }),
+  );
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(
+    <QueryClientProvider client={client}>
+      <MemoryRouter initialEntries={[`/prepare/weather${view}`]}>
+        <WeatherPage />
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+  return posted;
+}
+
+describe("the Weather and hazards screen", () => {
+  it("shows a skeleton while loading, and the error with a retry", async () => {
+    show("never");
+    expect(screen.getByRole("status", { name: "Loading weather" })).toBeInTheDocument();
+    vi.unstubAllGlobals();
+  });
+
+  it("says what went wrong when the cache cannot be read", async () => {
+    show("fails");
+    expect(await screen.findByText("The database is busy.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
+  });
+
+  it("invites a first place when there is none, and fetches nothing on opening", async () => {
+    const posted = show({});
+    expect(await screen.findByRole("heading", { name: "Choose a place for forecasts" })).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "Also update when I open this screen" })).not.toBeChecked();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(posted).toEqual([]);
+  });
+
+  it("fetches once on opening when the tick is on, and only then", async () => {
+    const posted = show({ places: [home], updateOnOpen: true });
+    await waitFor(() => expect(posted.filter((call) => call.path === "POST /api/weather/update")).toHaveLength(1));
+    expect(posted[0]!.body).toEqual({ kinds: ["forecast", "warnings", "flood"] });
+  });
+
+  it("fetches when Update now is pressed", async () => {
+    const posted = show({ places: [home] });
+    await userEvent.click(await screen.findByRole("button", { name: "Update now" }));
+    await waitFor(() => expect(posted.map((call) => call.path)).toEqual(["POST /api/weather/update"]));
+  });
+
+  it("shows a fresh forecast in words, with when it was fetched and who from", async () => {
+    show({ places: [home], kept: [forecast(NOW - 5 * 60_000, 48)] });
+    expect(await screen.findByText("Fetched 5 minutes ago.")).toBeInTheDocument();
+    expect(screen.getByText(/^From Open-Meteo, fetched/)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Temperature through the hours ahead" })).toBeInTheDocument();
+  });
+
+  it("says an old forecast has run out, and does not show it as current", async () => {
+    show({ places: [home], kept: [forecast(NOW - 3 * 24 * HOUR, 24)] });
+    expect(
+      await screen.findByText("Fetched 3 days ago: this forecast has run out. Update it to see what is expected now."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Nothing in this forecast is still ahead. Update it to see what is expected.")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Temperature through the hours ahead" })).not.toBeInTheDocument();
+  });
+
+  it("says when warnings have never been fetched", async () => {
+    show({ places: [home] }, "?view=warnings");
+    expect(await screen.findByText(/Warnings have not been fetched yet/)).toBeInTheDocument();
+  });
+});
+
+describe("the device's position", () => {
+  it("is not offered on a page that is not secure, and says how to get it", () => {
+    vi.stubGlobal("isSecureContext", false);
+    const answer = positionAvailable();
+    expect(answer.ok).toBe(false);
+    expect(!answer.ok && answer.reason).toMatch(/needs a secure page.*HTTPS on your network/);
+  });
+
+  it("is offered on a secure page with a browser that has it", () => {
+    vi.stubGlobal("isSecureContext", true);
+    vi.stubGlobal("navigator", { ...navigator, geolocation: {} });
+    expect(positionAvailable().ok).toBe(true);
+  });
+});
+
+describe("the words", () => {
+  it("writes a day in plain words, in either unit", () => {
+    const day = {
+      date: "2026-11-17",
+      code: 63,
+      maxC: 12.5,
+      minC: 5.1,
+      precipMm: 15.2,
+      precipChance: 100,
+      windMaxKmh: 23,
+      gustMaxKmh: 49.3,
+    };
+    expect(daySentence(day, "kmh", "c")).toBe(
+      "Moderate rain. 5 to 13 °C. 15.2 mm of rain or snow; the chance of some is 100%. Wind up to 23 km/h, gusts to 49 km/h.",
+    );
+    expect(daySentence(day, "mph", "f")).toBe(
+      "Moderate rain. 41 to 55 °F. 15.2 mm of rain or snow; the chance of some is 100%. Wind up to 14 mph, gusts to 31 mph.",
+    );
+    expect(windText(null, "mph")).toBe("no figure");
+  });
+
+  it("places a river level against its typical range", () => {
+    const station = {
+      id: "s",
+      label: "Bedford",
+      river: null,
+      town: null,
+      lat: 0,
+      lon: 0,
+      distanceKm: 1,
+      highestRecent: null,
+      typicalLow: 0.25,
+      typicalHigh: 0.52,
+    };
+    expect(levelWords({ ...station, latest: { value: 0.29, unit: "m", at: 0 } })).toBe("within its typical range");
+    expect(levelWords({ ...station, latest: { value: 0.6, unit: "m", at: 0 } })).toBe("above its typical range");
+    expect(levelWords({ ...station, latest: null })).toBeNull();
+  });
+});

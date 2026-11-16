@@ -263,6 +263,7 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
         supplies: ctx.services.supplies.count(),
         nuclearScenarios: ctx.services.nuclear.count(),
         networkDevices: ctx.services.network.count(),
+        weather: ctx.services.weather.count(),
         settings: count("SELECT count(*) AS n FROM settings"),
         vectors: count("SELECT count(*) AS n FROM embeddings"),
         previous: previousData(),
@@ -521,6 +522,7 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
       supplies: { items: 0, members: 0, shopping: 0, barcodes: 0 },
       nuclearScenarios: 0,
       networkDevices: 0,
+      weather: { places: 0, readings: 0, copies: 0, copyBytes: 0 },
       settings: 0,
     };
     personal.attachments = (sqlite.prepare("SELECT count(*) AS n FROM attachments").get() as { n: number }).n;
@@ -568,6 +570,8 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
     personal.nuclearScenarios = ctx.services.nuclear.eraseAll();
     // Devices found on the network, with the names and notes given them: names there can be people's names.
     personal.networkDevices = ctx.services.network.eraseAll();
+    // Weather places, the copies fetched for them, and barometer readings.
+    personal.weather = ctx.services.weather.eraseAll();
 
     // Whatever is left belongs to records that no longer exist: attachments no page
     // used, import reports, history, vectors, and the settings.
@@ -656,6 +660,7 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
           "propagation.changed",
           "supplies.changed",
           "network.changed",
+          "weather.changed",
           "documents.changed",
           "collections.changed",
           "semantic.changed",

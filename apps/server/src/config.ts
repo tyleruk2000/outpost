@@ -73,6 +73,8 @@ const envSchema = z.object({
   // Set in a container run with host networking, which then sees the computer's own network.
   OUTPOST_HOST_NETWORK: z.string().optional(),
   OUTPOST_LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).optional(),
+  // For tests: one local server that stands in for every weather publisher (modules/weather/sources.ts).
+  OUTPOST_WEATHER_STAND_IN: z.string().url().optional(),
 });
 
 export interface Config {
@@ -140,6 +142,8 @@ export interface Config {
     /** A container told that it shares the computer's own network (host networking). */
     hostNetwork: boolean;
   };
+  /** For tests: a local server answering for every weather publisher, at /<source id>/<path>; unset in use. */
+  weatherStandIn?: string;
   /** Stand-ins for satellite imagery's publishers, for tests; unset in use. */
   imagery?: {
     endpoints?: {
@@ -238,6 +242,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       hostNetwork: ["1", "true", "yes", "on"].includes((parsed.OUTPOST_HOST_NETWORK ?? "").toLowerCase()),
     },
     imagery: imageryStandIns(parsed),
+    weatherStandIn: parsed.OUTPOST_WEATHER_STAND_IN,
   };
 }
 

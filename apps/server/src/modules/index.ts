@@ -35,6 +35,7 @@ import { registerRetrieval } from "./retrieval/index.ts";
 import { registerSearch } from "./search/index.ts";
 import { registerSemantic } from "./semantic/index.ts";
 import { registerSupplies } from "./supplies/index.ts";
+import { registerWeather } from "./weather/index.ts";
 import { registerWebPages } from "./webpages/index.ts";
 
 export type ModuleRegister = (app: FastifyInstance, ctx: AppContext) => Promise<void>;
@@ -71,4 +72,5 @@ export const modules: ModuleRegister[] = [
   registerNuclear,
   registerNetwork,
   registerLayers,
+  registerWeather,
 ];
