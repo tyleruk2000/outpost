@@ -38,6 +38,12 @@ saved place with the **home** icon is the home place. A place in the list is a c
 the saved place's name and position, so the cache still makes sense if the saved place
 is moved or removed.
 
+Removing a place from the list removes what was fetched for it. A place may be removed
+while an update is under way: the removal wins. An answer for it that arrives afterwards
+is not kept, nothing more is asked about it, and the update lists it as removed. Copies
+left for a place that is no longer in the list (as an earlier version could leave them)
+are cleared when Outpost starts.
+
 The device's own position is offered only where the browser gives it: on a secure page
 (an https address or localhost). On a phone reaching Outpost at a plain
 `http://192.168.x.x` address, it is not offered. The dialog says so, and points to
