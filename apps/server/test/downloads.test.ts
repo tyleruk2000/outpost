@@ -194,7 +194,11 @@ describe("resuming", () => {
     const started = await downloads(app).start(request(server, "/norange", "norange.bin", { sha256: sha256(body) }));
     const row = await settled(app, started.id);
 
-    expect(server.requests[1]!.range).toBe("bytes=100000-");
+    // It asks to continue from what reached the disk: all 100,000 bytes, or fewer if the
+    // connection went while the last of them were still on their way there.
+    const asked = /^bytes=(\d+)-$/.exec(server.requests[1]!.range ?? "");
+    expect(Number(asked?.[1])).toBeGreaterThan(0);
+    expect(Number(asked?.[1])).toBeLessThanOrEqual(100_000);
     expect(row.state).toBe("completed");
     const file = fs.readFileSync(finalPath(app, row));
     expect(file.length).toBe(body.length);

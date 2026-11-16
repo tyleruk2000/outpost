@@ -1,7 +1,7 @@
 import { type ReactNode, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router";
-import { RecordingIndicator } from "@/features/maps/recording/indicator";
 import { ReachNotice } from "@/features/kept/reach";
+import { RecordingIndicator } from "@/features/maps/recording/indicator";
 import { CommandPalette } from "./command-palette";
 import { MobileNav } from "./mobile-nav";
 import { allNav } from "./nav";
