@@ -216,6 +216,10 @@ test.describe("on a phone", () => {
 
   test("moves a page with a long press and a drag, and with Move to… without dragging", async ({ page }) => {
     const errors = watchForErrors(page);
+    // Earlier tests leave pages of their own. A long tree would scroll under the finger, which is not what is tried here.
+    for (const note of (await api(page, "GET", "/api/notes/tree")).notes as Array<{ id: string; parentId: string | null }>) {
+      if (note.parentId === null) await api(page, "DELETE", `/api/notes/${note.id}`);
+    }
     const kit = (await api(page, "POST", "/api/notes", { title: "Kit" })).note;
     const ropes = (await api(page, "POST", "/api/notes", { title: "Ropes" })).note;
     const parentOf = async (id: string) =>
