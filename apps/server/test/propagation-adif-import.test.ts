@@ -3,7 +3,7 @@
  * goes on answering, with all of the file in the log at the end or none of it.
  */
 import type { JobDto, ObservationImport, ObservationList } from "@outpost/shared";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { adifReader, parseAdif } from "../src/modules/propagation/adif.ts";
 import { ADIF_DIRECT_BYTES, ADIF_IMPORT_JOB } from "../src/modules/propagation/observations.ts";
 import { multipart } from "./fixtures/documents/builders.ts";
@@ -273,9 +273,11 @@ describe("a large log", () => {
     const dir = app.dir;
     await app.app.close();
     app = await createTestApp({}, dir);
-    for (let tries = 0; tries < 500 && rowsOf("orphan") > 0; tries++) await new Promise((resolve) => setTimeout(resolve, 10));
+    // The entries go a batch at a time and the import's own row last, so the row going is the sign it has finished.
+    // (Waiting for the entries alone raced the last step: on a busy machine the row was still there when they had gone.)
+    const imports = () => (app.ctx.sqlite.prepare("SELECT count(*) AS n FROM observation_imports").get() as { n: number }).n;
+    await vi.waitFor(() => expect(imports()).toBe(0), { timeout: 30_000, interval: 10 });
     expect(rowsOf("orphan")).toBe(0);
-    expect((app.ctx.sqlite.prepare("SELECT count(*) AS n FROM observation_imports").get() as { n: number }).n).toBe(0);
     const { rmSync } = await import("node:fs");
     const close = app.close.bind(app);
     app.close = async () => {
