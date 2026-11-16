@@ -231,6 +231,10 @@ const p533Maps = path.join(work, "p533-maps.json");
 fs.writeFileSync(p533Maps, JSON.stringify(p533StandInManifest(`http://127.0.0.1:${filesPort}/p533/`)));
 
 export const OPEN_URL = `http://localhost:${port}`;
+// Kept in step with NOT_SECURE_HOST in tests/every-screen.ts and the offline guard in tests/fixtures.ts.
+const notSecureHost = "outpost-lan.test";
+const NOT_SECURE_URL = `http://${notSecureHost}:${port}`;
+const notSecure = { args: [`--host-resolver-rules=MAP ${notSecureHost} 127.0.0.1`] };
 
 export default defineConfig({
   testDir: "./tests",
@@ -257,6 +261,20 @@ export default defineConfig({
   projects: [
     { name: "desktop", use: { ...devices["Desktop Chrome"], viewport: { width: 1360, height: 860 } }, testIgnore: /mobile\.spec\.ts/ },
     { name: "phone", use: { ...devices["Pixel 7"] }, testMatch: /mobile\.spec\.ts/ },
+    // The walk to every screen again, at an address browsers do not treat as secure, as the server is reached
+    // from another device on a home network (http://192.168.1.232:8080). 127.0.0.1 and localhost count as
+    // secure, which hid faults such as a call to crypto.randomUUID(), absent on such a page. A made-up name is
+    // pointed at 127.0.0.1 inside Chromium, and the open server is told to answer to it (OUTPOST_ALLOWED_HOSTS).
+    {
+      name: "not-secure desktop",
+      use: { ...devices["Desktop Chrome"], viewport: { width: 1360, height: 860 }, baseURL: NOT_SECURE_URL, launchOptions: notSecure },
+      testMatch: /every-screen\.spec\.ts/,
+    },
+    {
+      name: "not-secure phone",
+      use: { ...devices["Pixel 7"], baseURL: NOT_SECURE_URL, launchOptions: notSecure },
+      testMatch: /every-screen\.mobile\.spec\.ts/,
+    },
   ],
   webServer: [
     {
@@ -288,6 +306,8 @@ export default defineConfig({
       OUTPOST_IMAGERY_SENTINEL_HOST: "127.0.0.1",
       OUTPOST_IMAGERY_WORLD_URL: `http://127.0.0.1:${filesPort}/imagery/world.tif`,
       OUTPOST_IMAGERY_WORLD_BYTES: String(standInWorld().length),
+      // The made-up name the "not secure" projects use; for this test server only.
+      OUTPOST_ALLOWED_HOSTS: notSecureHost,
     }),
   ],
 });

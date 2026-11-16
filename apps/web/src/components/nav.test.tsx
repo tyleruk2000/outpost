@@ -1,0 +1,194 @@
+import fs from "node:fs";
+import path from "node:path";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import RadioPage from "@/features/radio/radio-page";
+import { ThemeProvider } from "@/lib/theme";
+import { CommandPalette } from "./command-palette";
+import { allNav, everyScreen } from "./nav";
+import { Sidebar } from "./sidebar";
+import { TooltipProvider } from "./ui/misc";
+
+/** The routes app.tsx draws, as written there ("radio/plans/:id", "contacts/*"), with "" for the index. */
+function routes(): string[] {
+  const source = fs.readFileSync(path.join(import.meta.dirname, "../app.tsx"), "utf8");
+  return [...source.matchAll(/<Route\s+(index\b|path="([^"]*)")/g)].map((match) => (match[1] === "index" ? "" : match[2]!));
+}
+
+/**
+ * Routes that are not screens of their own, so belong in no navigation. Keep this short:
+ * anything a person is meant to open belongs in nav.ts.
+ */
+const NOT_SCREENS = new Set([
+  // The page for an address that is nothing.
+  "*",
+]);
+
+describe("the navigation's description of every screen", () => {
+  it("reads the routes it checks from app.tsx", () => {
+    expect(routes()).toContain("");
+    expect(routes()).toContain("search/how-it-works");
+    expect(routes().length).toBeGreaterThan(20);
+  });
+
+  it("lists every route with no parameters, so that no screen is reachable only by its address", () => {
+    const listed = new Set(everyScreen.map((item) => item.to));
+    const missing = routes()
+      .filter((route) => !route.includes(":") && !NOT_SCREENS.has(route))
+      .map((route) => `/${route.replace(/\/\*$/, "")}`)
+      .filter((to) => !listed.has(to));
+    expect(missing, "add these to knowledgeNav or upkeepNav in nav.ts, as a screen or under one").toEqual([]);
+  });
+
+  it("points every entry at a route that exists", () => {
+    const exact = new Set(routes().map((route) => `/${route}`));
+    const prefixes = routes()
+      .filter((route) => route.endsWith("/*"))
+      .map((route) => `/${route.slice(0, -2)}`);
+    const nowhere = everyScreen.map((item) => item.to).filter((to) => !exact.has(to) && !prefixes.includes(to));
+    expect(nowhere).toEqual([]);
+  });
+
+  it("names each screen once, at one address, and gives each shortcut to one screen", () => {
+    const paths = everyScreen.map((item) => item.to);
+    expect(new Set(paths).size).toBe(paths.length);
+    const names = everyScreen.map((item) => (item.parent ? `${item.parent.label}: ${item.label}` : item.label));
+    expect(new Set(names).size).toBe(names.length);
+    const keys = allNav.map((item) => item.key);
+    expect(new Set(keys).size).toBe(keys.length);
+  });
+});
+
+function Where() {
+  const location = useLocation();
+  return <output aria-label="Address">{location.pathname}</output>;
+}
+
+function showSidebar(at: string, collapsed = false) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  vi.stubGlobal(
+    "fetch",
+    // Nothing running, nothing stored: the lamp and the downloads count have something to read.
+    vi.fn(async () => new Response(JSON.stringify({ jobs: [], locations: [] }), { headers: { "Content-Type": "application/json" } })),
+  );
+  return render(
+    <QueryClientProvider client={client}>
+      <TooltipProvider>
+        <MemoryRouter initialEntries={[at]}>
+          <Sidebar collapsed={collapsed} onToggle={() => {}} onOpenSearch={() => {}} />
+          <Where />
+        </MemoryRouter>
+      </TooltipProvider>
+    </QueryClientProvider>,
+  );
+}
+
+describe("the sidebar", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.unstubAllGlobals();
+  });
+
+  it("marks each screen with others under it with a button that shows them", async () => {
+    const user = userEvent.setup();
+    showSidebar("/");
+    const sidebar = screen.getByRole("complementary", { name: "Main" });
+    for (const name of ["Search page", "Radio", "Notes", "Storage", "Settings"]) {
+      expect(within(sidebar).getByRole("button", { name: `Show the screens under ${name}` })).toHaveAttribute("aria-expanded", "false");
+    }
+    expect(within(sidebar).queryByRole("link", { name: "How search works" })).toBeNull();
+
+    await user.click(within(sidebar).getByRole("button", { name: "Show the screens under Search page" }));
+    expect(within(sidebar).getByRole("button", { name: "Hide the screens under Search page" })).toHaveAttribute("aria-expanded", "true");
+    await user.click(within(sidebar).getByRole("link", { name: "How search works" }));
+    expect(screen.getByRole("status", { name: "Address" })).toHaveTextContent("/search/how-it-works");
+    // Remembered on this device.
+    expect(JSON.parse(localStorage.getItem("outpost.sidebar.groups")!)).toEqual({ "/search": true });
+  });
+
+  it("opens the group of the screen in view by itself, and lights only that screen", () => {
+    showSidebar("/radio/plans/abc");
+    const sidebar = screen.getByRole("complementary", { name: "Main" });
+    const under = within(sidebar).getByRole("list", { name: "Under Radio" });
+    expect(
+      within(under)
+        .getAllByRole("link")
+        .map((link) => link.textContent),
+    ).toEqual(["HF propagation", "HF coverage", "Communication plans", "Contact log", "Repeaters"]);
+    expect(within(under).getByRole("link", { name: "Communication plans" })).toHaveAttribute("aria-current", "page");
+    expect(within(sidebar).getByRole("link", { name: "Radio" })).not.toHaveAttribute("aria-current");
+  });
+
+  it("keeps a group closed that was closed on this device, unless its screen is in view", () => {
+    localStorage.setItem("outpost.sidebar.groups", JSON.stringify({ "/storage": false, "/settings": true }));
+    showSidebar("/");
+    const sidebar = screen.getByRole("complementary", { name: "Main" });
+    expect(within(sidebar).queryByRole("link", { name: "Manage and clean up" })).toBeNull();
+    expect(within(sidebar).getByRole("link", { name: "Set-up guide" })).toBeInTheDocument();
+  });
+
+  it("collapsed to icons, opens a menu of a screen and those under it from the keyboard", async () => {
+    const user = userEvent.setup();
+    showSidebar("/", true);
+    const trigger = screen.getByRole("button", { name: "Radio, and the screens under it" });
+    trigger.focus();
+    await user.keyboard("{Enter}");
+    const menu = await screen.findByRole("menu");
+    expect(
+      within(menu)
+        .getAllByRole("menuitem")
+        .map((item) => item.textContent?.trim()),
+    ).toEqual(["Radio", "HF propagation", "HF coverage", "Communication plans", "Contact log", "Repeaters"]);
+    await user.click(within(menu).getByRole("menuitem", { name: "Repeaters" }));
+    expect(screen.getByRole("status", { name: "Address" })).toHaveTextContent("/radio/repeaters");
+  });
+});
+
+describe("the quick search's Go to list", () => {
+  it("lists every screen, those under another with its name, and goes to the first match on Enter", async () => {
+    const user = userEvent.setup();
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify({ results: [], warnings: [] }), { headers: { "Content-Type": "application/json" } })),
+    );
+    render(
+      <QueryClientProvider client={client}>
+        <ThemeProvider>
+          <MemoryRouter>
+            <CommandPalette open onOpenChange={() => {}} onNewPage={() => {}} />
+            <Where />
+          </MemoryRouter>
+        </ThemeProvider>
+      </QueryClientProvider>,
+    );
+    const goTo = screen.getByRole("group", { name: "Go to" });
+    expect(within(goTo).getAllByRole("option")).toHaveLength(everyScreen.length);
+    expect(within(goTo).getByRole("option", { name: "Radio: Repeaters" })).toBeInTheDocument();
+
+    await user.type(screen.getByPlaceholderText(/Search your library/), "repeat");
+    expect(within(screen.getByRole("group", { name: "Go to" })).getAllByRole("option")[0]).toHaveTextContent("Radio: Repeaters");
+    await user.keyboard("{Enter}");
+    // Outside the open dialog, so hidden from the accessibility tree while it is open.
+    expect(screen.getByRole("status", { name: "Address", hidden: true })).toHaveTextContent("/radio/repeaters");
+    vi.unstubAllGlobals();
+  });
+});
+
+describe("the Radio screen", () => {
+  it("links to every screen the navigation puts under Radio", () => {
+    render(
+      <MemoryRouter>
+        <Routes>
+          <Route path="*" element={<RadioPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    const radio = allNav.find((item) => item.to === "/radio")!;
+    const hrefs = screen.getAllByRole("link").map((link) => link.getAttribute("href"));
+    for (const child of radio.children!) expect(hrefs).toContain(child.to);
+  });
+});

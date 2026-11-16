@@ -46,7 +46,7 @@ export default function SettingsPage({ extraSections }: { extraSections?: ReactN
 
   return (
     <Page>
-      <PageHeader title="Settings" />
+      <PageHeader title="Settings" under="/settings" />
 
       <SettingsSection id="appearance" title="Appearance" description="Saved in this browser, so each device can have its own.">
         <SettingRow

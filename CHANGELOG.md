@@ -28,6 +28,19 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   Settings → Appearance → Clock and kept in the browser. It follows the device until
   someone chooses, and applies to every time the app writes; UTC is always 24-hour.
 - Database migrations applied automatically at start.
+- Every screen can be found from the navigation, on a wide screen as on a phone. One
+  description of every screen and where it belongs (`apps/web/src/components/nav.ts`)
+  draws the sidebar, the phone's More sheet, the quick search's "Go to" list and the
+  shortcuts. A screen reached from inside another (How search works, the five radio
+  tools, Import files, Manage and clean up, Bring back from a drive, the set-up guide)
+  is listed indented under it in the sidebar and in the More sheet, behind a button that
+  shows or hides them; the group of the screen in view opens by itself, and what was
+  opened or closed is remembered on the device. Collapsed to icons, such a screen opens
+  a short menu of itself and those under it. The parent screen links to them under its
+  title ("How search works" beside the box on the Search page). On a short window the
+  screens, the page tree and the upkeep list scroll together. A test fails if a route is
+  in no list, and an end-to-end walk presses its way to every screen at desktop and
+  phone width, also at an address browsers do not treat as secure.
 - A drop-down, a menu or a popover opened inside a dialog is drawn above the dialog.
   It was drawn underneath, so the drop-downs of every form in a dialog ("Log an entry"
   on the contact log, a plan's station, an equipment profile) opened where they could

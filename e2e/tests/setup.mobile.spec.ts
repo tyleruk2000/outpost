@@ -53,9 +53,11 @@ test.describe("setting up answers and chat, on a phone", () => {
     await expect(download).toHaveAttribute("href", "https://ollama.com/download");
     await expect(download).toHaveAttribute("target", "_blank");
     expect(await overflow(page)).toBeLessThanOrEqual(1);
-    // It is not in the navigation: it is reached from where it is needed.
+    // It is reached from where it is needed, and from the navigation too, under Settings.
     await page.getByRole("button", { name: "More" }).click();
-    await expect(page.getByRole("link", { name: /guide/i })).toHaveCount(0);
+    await expect(
+      page.getByRole("dialog", { name: "More" }).getByRole("list", { name: "Under Settings" }).getByRole("link", { name: "Set-up guide" }),
+    ).toBeVisible();
     await page.keyboard.press("Escape");
 
     // From the guide to the switch, and from each section back to its part of the guide.

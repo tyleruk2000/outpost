@@ -217,7 +217,13 @@ Code: the `onRequest` hook in `apps/server/src/core/guard.ts`.
 
 Every response also carries `X-Content-Type-Options: nosniff`,
 `Referrer-Policy: no-referrer`, `Cross-Origin-Opener-Policy: same-origin` and
-`X-Frame-Options: SAMEORIGIN`. API responses are sent with `Cache-Control: no-store`.
+`X-Frame-Options: SAMEORIGIN`. API responses are sent with `Cache-Control: no-store`. At a plain
+`http://` address other than this computer's own (a phone on the home network), a
+browser ignores `Cross-Origin-Opener-Policy` and Chrome writes a line saying so in its
+console on every page; the header is still sent, because the server cannot tell such an
+address from one behind an HTTPS proxy. The end-to-end suite reaches its test server by
+a made-up name of that kind (`outpost-lan.test`, allowed with `OUTPOST_ALLOWED_HOSTS` for
+that server only) to walk every screen as such a phone sees it.
 
 ### Content Security Policy
 
