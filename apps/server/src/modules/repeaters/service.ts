@@ -218,6 +218,11 @@ export interface RepeaterInput {
   lat?: number | null;
   lon?: number | null;
   locator?: string;
+  /**
+   * How closely `lat` and `lon` are known, in metres, when they are not exact: a grid
+   * reference for a 10 km square gives 10,000. Left out, coordinates given are exact.
+   */
+  positionPrecisionMeters?: number | null;
   antennaMeters?: number | null;
   keeper?: string;
   status?: RepeaterStatus;
@@ -566,7 +571,7 @@ export function createRepeatersService(ctx: AppContext): RepeatersService {
       next.lat = lat;
       next.lon = lon;
       if (lat === null) next.positionPrecisionMeters = null;
-      else if (moved) next.positionPrecisionMeters = 0;
+      else if (moved) next.positionPrecisionMeters = Math.max(0, Math.round(patch.positionPrecisionMeters ?? 0));
     }
     // A new locator with no coordinates beside it is the person saying where it is.
     if (square && !givesPosition && square.locator !== current.locator) next.lat = null;

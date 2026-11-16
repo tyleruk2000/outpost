@@ -122,6 +122,7 @@ const repeaterShape = {
   lat: z.number().min(-90).max(90).nullable().optional(),
   lon: z.number().min(-180).max(180).nullable().optional(),
   locator: short(12).optional(),
+  positionPrecisionMeters: z.number().min(0).max(1_000_000).nullable().optional(),
   antennaMeters: z.number().min(0).max(1000).nullable().optional(),
   keeper: short(80).optional(),
   status: z.enum(REPEATER_STATUSES).optional(),

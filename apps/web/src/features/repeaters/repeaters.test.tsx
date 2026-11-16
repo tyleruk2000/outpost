@@ -8,7 +8,7 @@ import { exportHref, NO_FILTERS } from "./data";
 import { ImportDialog } from "./import-dialog";
 import { nearestHit, overlayBox, repeatersData } from "./map/layers";
 import { sightEndOf } from "./map/use-repeaters-on-map";
-import { readDraft } from "./repeater-form";
+import { positionReadings, readDraft } from "./repeater-form";
 import { accessParts, ageWarning, isApproximate, positionDigits, positionNote, shiftWords, sourceOf } from "./words";
 
 const DAY = 86_400_000;
@@ -177,6 +177,7 @@ describe("the form for an entry", () => {
     region: "",
     country: "",
     position: "IO84EJ",
+    positionReading: "",
     antenna: "10",
     keeper: "",
     status: "unknown" as const,
@@ -198,6 +199,30 @@ describe("the form for an entry", () => {
     });
     expect(readDraft({ ...draft, position: "54.4012, -3.6101" }, null).input).toMatchObject({ lat: 54.4012, lon: -3.6101, locator: "" });
     expect(readDraft({ ...draft, position: "", input: "" }, null).input).toMatchObject({ lat: null, lon: null, inputHz: null });
+  });
+
+  it("asks which is meant when a position can be read two ways, and does not call a grid square an exact place", () => {
+    // "NO14" is a British 10 km grid square in Fife and a Maidenhead square in Siberia.
+    const twoWays = positionReadings("NO14");
+    expect(twoWays.map((item) => item.name)).toEqual(["British grid reference", "Maidenhead locator"]);
+    const undecided = readDraft({ ...draft, position: "NO14" }, null);
+    expect(undecided.problems.position).toBe("This can be read two ways. Choose which it is.");
+    expect("lat" in undecided.input || "locator" in undecided.input).toBe(false);
+
+    const asLocator = readDraft({ ...draft, position: "NO14", positionReading: "maidenhead" }, null);
+    expect(asLocator.problems).toEqual({});
+    expect(asLocator.input).toMatchObject({ lat: null, lon: null, locator: "NO14" });
+
+    const asGrid = readDraft({ ...draft, position: "NO14", positionReading: "osgb" }, null);
+    expect(asGrid.problems).toEqual({});
+    expect(asGrid.input).toMatchObject({ locator: "", positionPrecisionMeters: 10_000 });
+    expect(asGrid.input.lat).toBeGreaterThan(56);
+    expect(asGrid.input.lat).toBeLessThan(57);
+
+    // One reading needs no choice; a full grid reference is as exact as it says, typed coordinates are exact.
+    expect(positionReadings("IO84EJ")).toHaveLength(1);
+    expect(readDraft({ ...draft, position: "NY 2154 0718" }, null).input).toMatchObject({ positionPrecisionMeters: 10 });
+    expect(readDraft({ ...draft, position: "54.4012, -3.6101" }, null).input).toMatchObject({ positionPrecisionMeters: 0 });
   });
 
   it("does not send a position that was only looked at, so a listed position is not made exact", () => {

@@ -108,6 +108,8 @@ export interface RepeaterInput {
   lat: number | null;
   lon: number | null;
   locator: string;
+  /** How closely the coordinates are known, in metres, when they are not exact. */
+  positionPrecisionMeters?: number | null;
   antennaMeters: number | null;
   keeper: string;
   status: RepeaterStatus;

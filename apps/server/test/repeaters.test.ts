@@ -644,6 +644,26 @@ describe("repeaters API", () => {
     expect((await app.api("PATCH", `/api/repeaters/lists/${listId}`, { sourceUrl: "javascript:alert(1)" })).status).toBe(400);
   });
 
+  it("takes coordinates as exact unless told how roughly they are known", async () => {
+    const add = (extra: object) =>
+      app.api<{ repeater: RepeaterDto }>("POST", "/api/repeaters", {
+        callsign: "QZ3SQ",
+        outputHz: 145_725_000,
+        lat: 56.31,
+        lon: -3.39,
+        ...extra,
+      });
+    // Typed coordinates: exact.
+    expect((await add({})).body.repeater.positionPrecisionMeters).toBe(0);
+    // The middle of a 10 km grid square: known to 10 km, and said to be.
+    const square = (await add({ positionPrecisionMeters: 10_000 })).body.repeater;
+    expect(square).toMatchObject({ lat: 56.31, lon: -3.39, positionPrecisionMeters: 10_000 });
+    // Moving it to typed coordinates makes it exact again.
+    const moved = await app.api<{ repeater: RepeaterDto }>("PATCH", `/api/repeaters/${square.id}`, { lat: 56.3201, lon: -3.4012 });
+    expect(moved.body.repeater.positionPrecisionMeters).toBe(0);
+    expect((await add({ positionPrecisionMeters: -5 })).status).toBe(400);
+  });
+
   it("adds, changes and removes an entry made by hand", async () => {
     const created = await app.api<{ repeater: RepeaterDto }>("POST", "/api/repeaters", {
       callsign: " qz3hand ",
