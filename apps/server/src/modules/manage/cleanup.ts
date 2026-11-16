@@ -259,6 +259,7 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
         repeaters: ctx.services.repeaters.count().repeaters,
         repeaterLists: ctx.services.repeaters.count().lists,
         radio: ctx.services.propagation.kept.count(),
+        powerPlans: ctx.services.power.kept.count(),
         settings: count("SELECT count(*) AS n FROM settings"),
         vectors: count("SELECT count(*) AS n FROM embeddings"),
         previous: previousData(),
@@ -513,6 +514,7 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
       repeaters: 0,
       repeaterLists: 0,
       radio: { plans: 0, observations: 0, equipment: 0, saved: 0 },
+      powerPlans: 0,
       settings: 0,
     };
     personal.attachments = (sqlite.prepare("SELECT count(*) AS n FROM attachments").get() as { n: number }).n;
@@ -552,6 +554,8 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
     personal.repeaterLists = repeaters.lists;
     // Communication plans, the contact log, equipment profiles, and saved predictions and coverage maps.
     personal.radio = ctx.services.propagation.kept.eraseAll();
+    // Power plans: batteries, loads and charging a person described.
+    personal.powerPlans = ctx.services.power.kept.eraseAll();
 
     // Whatever is left belongs to records that no longer exist: attachments no page
     // used, import reports, history, vectors, and the settings.
@@ -615,7 +619,9 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
         checkStop(run, result, 0);
 
         // From here on nothing can be stopped half-way in a state worth keeping.
-        run.progress({ message: "Erasing notes, places, routes, contacts, conversations, repeaters, radio plans and logs, and settings" });
+        run.progress({
+          message: "Erasing notes, places, routes, contacts, conversations, repeaters, radio plans and logs, power plans, and settings",
+        });
         await erasePersonal(result);
         await eraseDataFolders(result);
         db.delete(jobsTable).where(ne(jobsTable.id, run.job.id)).run();

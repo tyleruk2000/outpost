@@ -254,6 +254,7 @@ export function personalWords(personal: NonNullable<CleanupPlan["personal"]>): s
   if (personal.repeaters > 0 || personal.repeaterLists > 0) parts.push(repeaterWords(personal.repeaters, personal.repeaterLists));
   const radio = radioWords(personal.radio);
   if (radio) parts.push(radio);
+  if ((personal.powerPlans ?? 0) > 0) parts.push(plural(personal.powerPlans ?? 0, "power plan"));
   if (personal.settings > 0) parts.push(plural(personal.settings, "changed setting"));
   if (personal.vectors > 0) parts.push(plural(personal.vectors, "semantic vector"));
   parts.push("the history of downloads and other work");
@@ -270,7 +271,8 @@ export function resultSentences(result: CleanupResult): string[] {
   const lines: string[] = [];
   if (result.scope === "derived") return (result.steps ?? []).map((step) => step.message);
   if (result.scope === "everything" && result.personal) {
-    const { pages, places, routes, contacts, conversations, repeaters, repeaterLists, radio, attachments, settings } = result.personal;
+    const { pages, places, routes, contacts, conversations, repeaters, repeaterLists, radio, powerPlans, attachments, settings } =
+      result.personal;
     const erased = [
       pages > 0 ? `${plural(pages, "page")} of notes${attachments > 0 ? ` with ${plural(attachments, "attachment")}` : ""}` : null,
       places > 0 ? plural(places, "saved place") : null,
@@ -279,6 +281,7 @@ export function resultSentences(result: CleanupResult): string[] {
       conversations > 0 ? plural(conversations, "chat conversation") : null,
       repeaters > 0 || repeaterLists > 0 ? repeaterWords(repeaters, repeaterLists) : null,
       radioWords(radio),
+      (powerPlans ?? 0) > 0 ? plural(powerPlans ?? 0, "power plan") : null,
       settings > 0 ? plural(settings, "changed setting") : null,
       "the history",
     ].filter((part): part is string => part !== null);

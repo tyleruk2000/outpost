@@ -889,6 +889,25 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   removed only where restoring is allowed, and never from another device over plain
   http. The file format is written out in `docs/storage.md`.
 
+#### Tools: Power and batteries
+
+- Quick calculators under Tools → Power and batteries: battery runtime, solar output
+  and time to charge (PVWatts' losses, each one changeable), cable size and voltage
+  drop (IEC 60028 copper, ASTM B258 gauges, and the current limits of 33 CFR 183.425
+  given as guidance), batteries in series and parallel, generator fuel from the
+  generator's own data sheet, Ohm's law, the resistor colour code, resistors in series
+  and parallel, an LED's resistor and a voltage divider. Nothing typed into them is
+  kept. Each says its formula and source.
+- Power plans: a battery bank, its loads (a radio with transmit, receive and standby
+  power and a duty cycle from its mode; a Raspberry Pi; anything typed in; AC loads
+  through an inverter), solar with peak sun hours by month, and a generator or mains
+  charger. Worked out into the day's use, runtime and days of autonomy, each month from
+  full, the solar to break even in the darkest month, peak currents against the
+  battery's and the cable's ratings, and the state of charge hour by hour, with every
+  assumption listed. Plans are kept on the server (migration `0016_power_plans`),
+  copied, compared, written out as a PDF (Save as PDF, Add to library, Share), counted
+  on the Storage screen and erased with everything else.
+
 #### Security
 
 - Local-only by default. Sharing Outpost with the network is a start-up setting

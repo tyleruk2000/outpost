@@ -1031,4 +1031,16 @@ export const radioObservations = sqliteTable(
   ],
 );
 
+// ── Power plans (Tools → Power and batteries) ───────────────────────────────
+
+/** A battery bank, its loads and its charging, as a person typed them (`PowerPlanInput` without the name and notes). */
+export const powerPlans = sqliteTable("power_plans", {
+  id: id(),
+  name: text("name").notNull(),
+  notes: text("notes").notNull().default(""),
+  system: json<Record<string, unknown>>("system").notNull(),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+});
+
 export const nowMs = sql`(unixepoch('subsec') * 1000)`;

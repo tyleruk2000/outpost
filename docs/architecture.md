@@ -351,7 +351,7 @@ e2e/                 Playwright tests against the packaged app
 ```
 
 Modules, in registration order: search, semantic, retrieval, answers, documents, notes, chat, imports,
-collections, books, kiwix, downloads, links, webpages, catalog, maps, repeaters, encryption, backup, portable, merge, manage, https, contacts, propagation. A module may use the
+collections, books, kiwix, downloads, links, webpages, catalog, maps, repeaters, encryption, backup, portable, merge, manage, https, contacts, propagation, power. A module may use the
 services of those before it. [development/server-modules.md](development/server-modules.md)
 is the contract a module works to.
 

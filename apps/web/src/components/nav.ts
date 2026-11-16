@@ -29,11 +29,15 @@ import {
   RadioTower,
   Search,
   Settings,
+  ShieldCheck,
   Undo2,
   Waves,
   Waypoints,
+  Wrench,
 } from "lucide-react";
 import { DeviceIcon, ON_THIS_DEVICE } from "@/features/kept/device";
+import { prepareScreens } from "@/features/prepare/screens";
+import { toolScreens } from "@/features/tools/screens";
 
 /** A screen reached from inside another one. */
 export interface ChildScreen {
@@ -85,6 +89,10 @@ export const knowledgeNav: NavItem[] = [
       { to: "/radio/repeaters", label: "Repeaters", icon: RadioReceiver },
     ],
   },
+  // Two sections that are lists of screens, each drawn from its own registry (features/<section>/screens.ts).
+  // "o" for tOols and "y" for readY: the obvious letters are taken.
+  { to: "/tools", label: "Tools", icon: Wrench, key: "o", children: toolScreens },
+  { to: "/prepare", label: "Preparedness", icon: ShieldCheck, key: "y", children: prepareScreens },
   // Last, so that the tree of pages sits under it in the sidebar. Importing brings in pages (Markdown, Notion), so it is Notes'.
   { to: "/notes", label: "Notes", icon: NotebookText, key: "n", children: [{ to: "/import", label: "Import files", icon: FolderInput }] },
 ];
