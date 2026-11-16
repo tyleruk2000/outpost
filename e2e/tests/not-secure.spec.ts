@@ -86,4 +86,24 @@ test.describe("at an address that is not secure", () => {
 
     expect(failing(errors)).toEqual([]);
   });
+
+  test("the Morse trainer says a wired key needs a secure page, and keys and sounds without one", async ({ page }) => {
+    const errors = watchForErrors(page);
+    await page.goto("/radio/morse?tab=send");
+    await page.getByRole("button", { name: "Use a real key or paddle" }).click();
+    const panel = page.locator("#real-key-panel");
+    await expect(panel.getByText(/needs Web Serial, which browsers offer only on a secure page/)).toBeVisible();
+    await expect(panel.getByRole("link", { name: "Settings → HTTPS on your network" }).first()).toHaveAttribute("href", "/settings#https");
+    await expect(panel.getByRole("button", { name: "Connect a wired key" })).toHaveCount(0);
+    // The on-screen paddles need nothing secure.
+    const paddles = page.getByTestId("morse-paddles");
+    await paddles.scrollIntoViewIfNeeded();
+    const box = (await paddles.boundingBox())!;
+    await page.mouse.move(box.x + box.width * 0.25, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.waitForTimeout(40);
+    await page.mouse.up();
+    await expect(page.getByRole("log", { name: "Decoded Morse" })).toContainText("E", { timeout: 5000 });
+    expect(failing(errors)).toEqual([]);
+  });
 });
