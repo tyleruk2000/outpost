@@ -73,6 +73,7 @@ import { SightCard } from "./radio/sight-card";
 import { SightPanel } from "./radio/sight-panel";
 import { useLocatorGrid } from "./radio/use-locator-grid";
 import { useSight } from "./radio/use-sight";
+import { RecordButton, TrackRecording } from "./recording/record-ui";
 import { SearchBox } from "./search-box";
 import { DesktopPanel, type Detent, detentHeight, MobileSheet, PANEL_TABS, type PanelTab, PanelTabs } from "./side-panel";
 
@@ -1253,6 +1254,7 @@ export default function MapsPage() {
             onContoursChange={changeContours}
             locatorGrid={locatorGrid}
             onLocatorGridChange={setLocatorGrid}
+            record={<RecordButton />}
             disabled={!engine}
           />
         </div>
@@ -1290,6 +1292,7 @@ export default function MapsPage() {
             !isDesktop && detent === "full" && "hidden",
           )}
         >
+          <TrackRecording engine={engine} onShowTrack={(track) => openTrack(track, false)} />
           {card}
           {/* No map drawn, nothing to credit. */}
           <MapFooter engine={engine} format={format} onFormatChange={setFormat} credits={engine ? credits : []} className="w-full" />

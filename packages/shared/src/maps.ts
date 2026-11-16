@@ -178,6 +178,36 @@ export interface TrackImportResponse {
   markers: MarkerDto[];
 }
 
+/**
+ * A height has to change by this much from the last counted one before it counts as
+ * climbing, so that the wobble of a GPS standing still does not add up to a mountain.
+ * The server uses it for every stored track; the map uses it for a track being recorded,
+ * so the climb shown while walking is the climb the saved track will have.
+ */
+export const ASCENT_THRESHOLD_METERS = 3;
+
+/**
+ * The most points one track recorded on the map may hold. As the map writes GPX, a
+ * point with a height and a time is at most 111 bytes, so this many come to under
+ * 17 MB, inside the 20 MB a GPX upload may be.
+ */
+export const MAX_RECORDING_POINTS = 150_000;
+
+/**
+ * The id a recording is given on the device that made it: 26 characters in the same
+ * alphabet as the ids the server makes. The track is saved under it, so sending the
+ * same recording twice (a save whose answer was lost when the network dropped) cannot
+ * make two tracks.
+ */
+export const RECORDING_ID_PATTERN = /^[0-9a-hjkmnp-tv-z]{26}$/;
+
+/** `PUT /api/maps/recordings/:id`: a track recorded on the map, sent as GPX. */
+export interface RecordingSaveResponse {
+  track: TrackDto;
+  /** True when a track with this id was there already, so nothing was written this time. */
+  alreadySaved: boolean;
+}
+
 /** The most points a route drawn or edited by hand may have. */
 export const MAX_ROUTE_POINTS = 2000;
 

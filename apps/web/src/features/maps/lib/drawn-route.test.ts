@@ -96,14 +96,24 @@ describe("a drawn route's elevation profile", () => {
 
 describe("telling how a route came to be", () => {
   it("knows a drawn line and where its heights came from", () => {
-    expect(routeOrigin(drawn)).toEqual({ drawn: true, elevation: "terrain", timed: false });
+    expect(routeOrigin(drawn)).toEqual({ drawn: true, elevation: "terrain", timed: false, recorded: false });
   });
 
   it("knows a recording, and whether it carries times", () => {
-    expect(routeOrigin(recorded)).toEqual({ drawn: false, elevation: null, timed: true });
+    expect(routeOrigin(recorded)).toEqual({ drawn: false, elevation: null, timed: true, recorded: false });
     const untimed = structuredClone(recorded);
     untimed.features[0]!.properties = { _gpxType: "trk" } as never;
-    expect(routeOrigin(untimed)).toEqual({ drawn: false, elevation: null, timed: false });
+    expect(routeOrigin(untimed)).toEqual({ drawn: false, elevation: null, timed: false, recorded: false });
+  });
+
+  it("tells a track recorded on the map from one imported from a file, until its shape is redrawn by hand", () => {
+    const onTheMap = structuredClone(recorded);
+    onTheMap.features[0]!.properties = { ...onTheMap.features[0]!.properties, _recorded: true } as never;
+    expect(routeOrigin(onTheMap)).toEqual({ drawn: false, elevation: null, timed: true, recorded: true });
+    const track = { distanceMeters: 3420, ascentMeters: null, pointCount: 3 };
+    expect(trackFacts(track, { recorded: true })[1]).toEqual({ label: "Ascent", value: "No heights from the device that recorded it" });
+    // A line drawn over it afterwards is a drawn line: nothing of the recording is left in it.
+    expect(routeOrigin(drawn).recorded).toBe(false);
   });
 
   it("says why a drawn route has no ascent, in other words than for a file", () => {

@@ -307,6 +307,13 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   each way, the path drawn from the side with the ray, the Earth's curve (4/3 radius)
   and the first Fresnel zone, and the answer in words. It is geometry over terrain,
   not a prediction of coverage, and gives no verdict where terrain is missing.
+- Recording a track as you walk: start, pause, resume and stop on the map, with the
+  line drawn live and distance, time, moving time and climb shown as it goes. Points
+  are kept on the device as they arrive, so a reload or a closed tab loses nothing and
+  the unfinished recording is offered back; a save that cannot reach Outpost waits and
+  is sent again. It runs only while the screen is on and Outpost is in front, which
+  is as much as a browser allows, and says so before it starts. Not tried on a real
+  phone outdoors.
 
 #### Portable drives
 

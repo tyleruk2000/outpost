@@ -159,6 +159,48 @@ test.describe("on a phone", () => {
     await next.click();
     await expect(page.getByRole("heading", { level: 1, name: "Fog" })).toBeVisible();
     expect(errors).toEqual([]);
+  test("records a track with the card folded out of the map's way, and saves it", async ({ page, context }) => {
+    await context.grantPermissions(["geolocation"]);
+    await context.setGeolocation({ latitude: 54.46, longitude: -3.09, accuracy: 6 });
+    await page.goto("/maps?lat=54.46&lon=-3.09&z=15");
+    await page.locator('.outpost-map[data-map-idle="true"]').waitFor({ timeout: 20_000 });
+    await page.getByRole("button", { name: "Dismiss" }).click();
+
+    await page.getByRole("button", { name: "Record a track", exact: true }).click();
+    // What a browser will not do is said before the start, and fits the screen.
+    const intro = page.getByRole("region", { name: "Record a track" });
+    await expect(intro).toContainText("A recording runs only while this screen is on and Outpost is in front.");
+    const start = intro.getByRole("button", { name: "Start recording" });
+    expect((await start.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    await start.click();
+
+    const card = page.getByRole("region", { name: "Recording", exact: true });
+    // The first position has arrived before the phone is moved.
+    await expect(card).toContainText("Position good to 6 m.");
+    await context.setGeolocation({ latitude: 54.4602, longitude: -3.09, accuracy: 6 });
+    await expect(card).toContainText("22 m (");
+    // Folded to one line, it still shows how far, and still has Pause and Stop at a size a thumb can hit.
+    await card.getByRole("button", { name: "Show less" }).click();
+    await expect(card).toContainText("Recording 22 m,");
+    for (const name of ["Pause", "Stop", "Show the figures"]) {
+      const box = (await card.getByRole("button", { name, exact: true }).boundingBox())!;
+      expect(box.height, name).toBeGreaterThanOrEqual(40);
+      expect(box.width, name).toBeGreaterThanOrEqual(40);
+    }
+    // The map's own tools are not under the folded card.
+    await expect(page.getByRole("button", { name: "Measure a distance" })).toBeVisible();
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(overflow).toBeLessThanOrEqual(1);
+
+    await card.getByRole("button", { name: "Stop", exact: true }).click();
+    const dialog = page.getByRole("dialog", { name: "Save the recording" });
+    await dialog.getByRole("textbox", { name: "Name" }).fill("From the phone");
+    await dialog.getByRole("button", { name: "Save to routes" }).click();
+    await expect(page.getByText("“From the phone” is saved to your routes.")).toBeVisible();
+    const { tracks } = await api(page, "GET", "/api/maps/tracks");
+    const saved = tracks.filter((track: { name: string }) => track.name === "From the phone");
+    expect(saved).toHaveLength(1);
+    await api(page, "DELETE", `/api/maps/tracks/${saved[0].id}`);
   });
 
   test("gives controls a comfortable touch size", async ({ page }) => {

@@ -17,13 +17,18 @@ export interface TrackFact {
 /**
  * The facts shown for one track: distance with miles, ascent (or its absence, said
  * plainly), points. A drawn route has no file to lack heights: it lacks them because no
- * terrain is installed where it runs.
+ * terrain is installed where it runs. A track recorded on the map lacks them when the
+ * device that recorded it reported none.
  */
 export function trackFacts(
   track: Pick<TrackDto, "distanceMeters" | "ascentMeters" | "pointCount">,
-  options: { drawn?: boolean } = {},
+  options: { drawn?: boolean; recorded?: boolean } = {},
 ): TrackFact[] {
-  const noHeights = options.drawn ? "Not known: no terrain installed here" : "No heights in this file";
+  const noHeights = options.drawn
+    ? "Not known: no terrain installed here"
+    : options.recorded
+      ? "No heights from the device that recorded it"
+      : "No heights in this file";
   return [
     { label: "Distance", value: formatDistanceWithMiles(track.distanceMeters) },
     { label: "Ascent", value: track.ascentMeters === null ? noHeights : formatHeight(track.ascentMeters) },

@@ -47,7 +47,13 @@ export function trackLines(geojson: TrackWithGeometryDto["geojson"]): Position[]
 }
 
 interface LineFeature {
-  properties?: { _drawn?: unknown; _elevation?: unknown; _profile?: unknown; coordinateProperties?: { times?: unknown } } | null;
+  properties?: {
+    _drawn?: unknown;
+    _recorded?: unknown;
+    _elevation?: unknown;
+    _profile?: unknown;
+    coordinateProperties?: { times?: unknown };
+  } | null;
   geometry?: { type?: string; coordinates?: unknown } | null;
 }
 
@@ -60,6 +66,8 @@ export interface RouteOrigin {
   elevation: RouteElevation | null;
   /** The recording carries a time at each point. */
   timed: boolean;
+  /** The line was recorded on this map as its maker walked it, rather than imported from a file. */
+  recorded: boolean;
 }
 
 /** How a stored track came to have its line, read from the line itself. */
@@ -71,6 +79,7 @@ export function routeOrigin(geojson: TrackWithGeometryDto["geojson"]): RouteOrig
     drawn: Boolean(drawn),
     elevation: elevation === "terrain" || elevation === "partial" || elevation === "none" ? elevation : drawn ? "none" : null,
     timed: lines.some((feature) => Array.isArray(feature.properties?.coordinateProperties?.times)),
+    recorded: !drawn && lines.some((feature) => feature.properties?._recorded === true),
   };
 }
 

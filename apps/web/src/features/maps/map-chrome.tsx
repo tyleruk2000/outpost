@@ -73,6 +73,7 @@ export function MapControls({
   onContoursChange,
   locatorGrid,
   onLocatorGridChange,
+  record,
   disabled,
   className,
 }: {
@@ -96,6 +97,8 @@ export function MapControls({
   /** Whether the Maidenhead locator grid is drawn over the map. */
   locatorGrid: boolean;
   onLocatorGridChange: (on: boolean) => void;
+  /** The button that records a track as it is walked; see recording/record-ui.tsx. */
+  record?: ReactNode;
   /** The map could not be drawn; the controls that move it have nothing to act on. */
   disabled: boolean;
   className?: string;
@@ -132,6 +135,7 @@ export function MapControls({
           ) : null}
         </ControlGroup>
       ) : null}
+      {record}
       <ControlGroup>
         <ControlButton
           label="Measure a distance"

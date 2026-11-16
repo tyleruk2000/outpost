@@ -502,9 +502,14 @@ export class MapEngine {
   }
   private padding = { top: 0, right: 0, bottom: 0, left: 0 };
 
-  flyTo(position: LatLon, zoom?: number): void {
+  /** `clearBottom` is how much more of the bottom of the map is covered just now, beyond the usual chrome. */
+  flyTo(position: LatLon, zoom?: number, clearBottom = 0): void {
     const target = zoom === undefined ? Math.max(this.map.getZoom(), 12) : zoom;
-    this.map.flyTo({ center: [position.lon, position.lat], zoom: target, padding: this.padding, essential: false });
+    this.map.flyTo({ center: [position.lon, position.lat], zoom: target, padding: this.paddingWith(clearBottom), essential: false });
+  }
+
+  private paddingWith(clearBottom: number) {
+    return { ...this.padding, bottom: this.padding.bottom + Math.max(0, clearBottom) };
   }
 
   jumpTo(view: CameraView): void {
@@ -731,18 +736,29 @@ export class MapEngine {
     this.emit("pindrag", lngLatOf(next));
   };
 
-  /** Brings a position that has been stepped to the edge of the map, or past it, back into view. */
-  private keepInView(position: LngLat): void {
-    const point = this.map.project(position);
+  /** Whether a position is on the part of the map that is in plain view: not under the chrome, and not at the very edge. */
+  isInView(position: LatLon, clearBottom = 0): boolean {
+    const point = this.map.project([position.lon, position.lat]);
     const canvas = this.map.getCanvas();
-    const margin = 56;
-    const { top, right, bottom, left } = this.padding;
-    const inside =
+    const { top, right, bottom, left } = this.paddingWith(clearBottom);
+    // Where little of the map is left clear, the margin gives way before the map does.
+    const margin = Math.max(8, Math.min(56, (canvas.clientHeight - top - bottom) / 4, (canvas.clientWidth - left - right) / 4));
+    return (
       point.x >= left + margin &&
       point.x <= canvas.clientWidth - right - margin &&
       point.y >= top + margin &&
-      point.y <= canvas.clientHeight - bottom - margin;
-    if (!inside) this.map.panTo(position, { duration: prefersReducedMotion() ? 0 : 200 });
+      point.y <= canvas.clientHeight - bottom - margin
+    );
+  }
+
+  /** Slides the map so that a position is in the middle of the part in plain view, at the zoom it has. */
+  panTo(position: LatLon, clearBottom = 0): void {
+    this.map.panTo([position.lon, position.lat], { duration: prefersReducedMotion() ? 0 : 200, padding: this.paddingWith(clearBottom) });
+  }
+
+  /** Brings a position that has been stepped to the edge of the map, or past it, back into view. */
+  private keepInView(position: LngLat): void {
+    if (!this.isInView(lngLatOf(position))) this.map.panTo(position, { duration: prefersReducedMotion() ? 0 : 200 });
   }
 
   // ── Picking a saved place up from the map ──

@@ -7,8 +7,10 @@ import {
   type Bbox,
   formatDecimal,
   MARKER_COLORS,
+  MAX_RECORDING_POINTS,
   type MarkerColor,
   type MarkerDto,
+  type RecordingSaveResponse,
   type RouteSaveResponse,
   type TrackDto,
   type TrackImportResponse,
@@ -70,6 +72,51 @@ export interface TrackImportInput {
   importWaypointsAsMarkers?: boolean;
 }
 
+export interface RecordingSaveInput {
+  /** The id the recording was given on the device that made it; the track is saved under it. */
+  id: string;
+  /** The recording as GPX text, built on that device. */
+  source: string;
+  name: string;
+  color?: MarkerColor;
+}
+
+/**
+ * The lines of a recording, checked and marked as recorded. A recording is tracks and
+ * nothing else, with the time each point was taken, and no more points than the map
+ * will record. Anything else is a GPX file, and belongs to the import.
+ */
+function recordedLines(collection: TrackCollection): TrackCollection["features"] {
+  let points = 0;
+  for (const feature of collection.features) {
+    if (feature.geometry.type === "Point" || feature.properties._gpxType !== "trk") {
+      throw badRequest("A recording holds a track and nothing else. To bring in a GPX file with routes or waypoints, import it instead.");
+    }
+    const segments = feature.geometry.type === "LineString" ? [feature.geometry.coordinates] : feature.geometry.coordinates;
+    const times = feature.properties.coordinateProperties?.times;
+    const timesBySegment = (feature.geometry.type === "LineString" ? [times] : (times ?? [])) as Array<Array<string | null> | undefined>;
+    segments.forEach((segment, index) => {
+      points += segment.length;
+      const segmentTimes = timesBySegment[index];
+      if (!segmentTimes || segmentTimes.length !== segment.length || segmentTimes.includes(null)) {
+        throw badRequest(
+          "Every point of a recording carries the time it was taken, and some of these do not. Import the file as GPX instead.",
+        );
+      }
+    });
+  }
+  if (points > MAX_RECORDING_POINTS) {
+    throw badRequest(
+      `That recording has ${points.toLocaleString("en-GB")} points, and one recording can hold at most ${MAX_RECORDING_POINTS.toLocaleString("en-GB")}.`,
+    );
+  }
+  // The recording's name is the track's own, so that renaming the track renames what is exported.
+  return collection.features.map((feature) => {
+    const { name: _name, desc: _desc, ...properties } = feature.properties;
+    return { ...feature, properties: { ...properties, _recorded: true as const } };
+  });
+}
+
 export interface AnnotationsService {
   listMarkers(): MarkerDto[];
   createMarker(input: z.infer<typeof markerCreateSchema>): MarkerDto;
@@ -78,6 +125,11 @@ export interface AnnotationsService {
   listTracks(): TrackDto[];
   getTrack(id: string): TrackWithGeometryDto;
   importTrack(input: TrackImportInput): Promise<TrackImportResponse>;
+  /**
+   * Saves a track recorded on the map under the id its device gave it. Asked twice
+   * with the same id, it answers the second time with the track that is already there.
+   */
+  saveRecording(input: RecordingSaveInput): Promise<RecordingSaveResponse>;
   /** A route drawn on the map: straight lines between the points given. */
   createRoute(input: z.infer<typeof routeCreateSchema>): Promise<RouteSaveResponse>;
   /** Replaces a track's lines with one drawn through the points given. Its waypoints are kept. */
@@ -353,6 +405,44 @@ export function createAnnotationsService(ctx: AppContext, deps: { elevation: Ele
 
       changed();
       return { track: result.track ? toTrackDto(result.track) : null, markers: result.created.map(toMarkerDto) };
+    },
+
+    async saveRecording(input) {
+      const saved = () => {
+        const row = db.select(trackColumns).from(tracks).where(eq(tracks.id, input.id)).get();
+        return row ? { track: toTrackDto(row), alreadySaved: true } : null;
+      };
+      // A save whose answer never arrived is sent again: the track is there, and that is the answer.
+      const already = saved();
+      if (already) return already;
+      const parsed = await parseGpxSafely(input.source);
+      const features = recordedLines(parsed.collection);
+      const collection: TrackCollection = { type: "FeatureCollection", features };
+      const stats = trackStats(collection);
+      // The file was read away from this thread, and the same recording may have arrived twice at once.
+      const meanwhile = saved();
+      if (meanwhile) return meanwhile;
+      const now = Date.now();
+      db.insert(tracks)
+        .values({
+          id: input.id,
+          name: input.name,
+          description: "",
+          color: input.color ?? "teal",
+          geojson: collection as unknown as Record<string, unknown>,
+          sourceFilename: null,
+          distanceMeters: stats.distanceMeters,
+          ascentMeters: stats.ascentMeters,
+          pointCount: stats.pointCount,
+          bounds: stats.bounds,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run();
+      const row = trackRow(input.id);
+      indexTrack(row);
+      changed();
+      return { track: toTrackDto(row), alreadySaved: false };
     },
 
     async createRoute(input) {

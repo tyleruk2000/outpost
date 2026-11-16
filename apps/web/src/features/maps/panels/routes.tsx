@@ -100,7 +100,9 @@ export function RouteDetail({
               <p className="text-small text-ink-muted">
                 {origin?.drawn
                   ? "No terrain is installed where this route runs, so there are no heights to draw an elevation profile from. Nothing is downloaded to find them."
-                  : "This file has no heights, so there is no elevation profile to draw."}
+                  : origin?.recorded
+                    ? "The device that recorded this gave no heights, so there is no elevation profile to draw."
+                    : "This file has no heights, so there is no elevation profile to draw."}
               </p>
             )}
             {origin?.drawn && profile ? (
@@ -137,12 +139,12 @@ export function RouteDetail({
         )}
 
         <dl>
-          {trackFacts(track, { drawn: origin?.drawn }).map((fact) => (
+          {trackFacts(track, { drawn: origin?.drawn, recorded: origin?.recorded }).map((fact) => (
             <Fact key={fact.label} label={fact.label}>
               {fact.value}
             </Fact>
           ))}
-          <Fact label={track.sourceFilename || origin?.drawn === false ? "Imported" : "Drawn"}>
+          <Fact label={origin?.recorded ? "Recorded" : track.sourceFilename || origin?.drawn === false ? "Imported" : "Drawn"}>
             {formatDate(track.createdAt)}
             {track.sourceFilename ? (
               <span className="block font-mono text-[0.8125rem] break-all text-ink-muted">{track.sourceFilename}</span>
@@ -283,7 +285,7 @@ function ReshapeRecordingDialog({
         description={
           track.sourceFilename
             ? `This route is a recording imported from ${track.sourceFilename}. Saving a new shape replaces what was recorded.`
-            : "This route is an imported recording. Saving a new shape replaces what was recorded."
+            : "This route is a recording. Saving a new shape replaces what was recorded."
         }
         size="md"
       >
