@@ -207,7 +207,10 @@ describe("the account of a clean-up", () => {
     ).toBe("Erased 1 repeater and the history.");
     expect(
       resultSentences(
-        result({ scope: "everything", personal: { ...personal, conversations: 0, repeaters: 0, repeaterLists: 0, morse: { sessions: 1, progress: 1 } } }),
+        result({
+          scope: "everything",
+          personal: { ...personal, conversations: 0, repeaters: 0, repeaterLists: 0, morse: { sessions: 1, progress: 1 } },
+        }),
       )[0],
     ).toBe("Erased 1 Morse practice session with the trainer's progress and settings and the history.");
   });
