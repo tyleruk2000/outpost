@@ -33,8 +33,25 @@ process.env.OUTPOST_E2E_HTTPS_PORT = String(httpsPort);
 const kiwixPort = Number(process.env.OUTPOST_E2E_KIWIX_PORT ?? filesPort + 5);
 process.env.OUTPOST_E2E_KIWIX_URL = `http://127.0.0.1:${kiwixPort}`;
 
-const work = fs.mkdtempSync(path.join(os.tmpdir(), "outpost-e2e-"));
-process.env.OUTPOST_E2E_WORK = work;
+// This file is read by the runner and again by every worker it starts. Only the runner
+// makes the folder; the workers find it in the environment they inherit. (Each used to
+// make one of its own and none was ever removed: six hundred of them, 19 GB, in a day.)
+const inherited = process.env.OUTPOST_E2E_WORK;
+const work = inherited && fs.existsSync(inherited) ? inherited : fs.mkdtempSync(path.join(os.tmpdir(), "outpost-e2e-"));
+if (work !== inherited) {
+  process.env.OUTPOST_E2E_WORK = work;
+  // Removed when the runner ends, which is after the servers it started have stopped.
+  // Set OUTPOST_E2E_KEEP=1 to look at what a failed run left behind.
+  if (process.env.OUTPOST_E2E_KEEP !== "1") {
+    process.once("exit", () => {
+      try {
+        fs.rmSync(work, { recursive: true, force: true });
+      } catch {
+        // A folder left behind is a nuisance, not a failure of the run.
+      }
+    });
+  }
+}
 
 function server(name: string, port: number, env: Record<string, string>) {
   const dir = path.join(work, name);
