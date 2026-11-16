@@ -520,6 +520,59 @@ describe("repeaters API", () => {
     expect((await list("?near=54.5,-3.1&withinKm=500")).total).toBe(6);
   });
 
+  it("leaves a list exactly as it was when bringing it up to date cannot be finished", async () => {
+    // Three thousand entries, so that the update is written in several steps.
+    const heading = '"callsign","TX MHz","RX MHz","where","lat","lon","status",';
+    const row = (n: number, place: string, status = "OPERATIONAL") =>
+      `QZ${String(n).padStart(4, "0")},${(430 + n / 1000).toFixed(6)},${(437.6 + n / 1000).toFixed(6)},${place},${(50 + n / 1000).toFixed(3)},-3.1,${status},`;
+    const file = (place: (n: number) => string, count = 3000) =>
+      [heading, ...Array.from({ length: count }, (_, index) => row(index + 1, place(index + 1)))].join("\n");
+    const first = await importFile(
+      "big.csv",
+      file(() => "OLDTOWN"),
+      { name: "Big list", dataDate: "2026-09-01" },
+    );
+    expect(first.status).toBe(200);
+    expect(first.body.added).toBe(3000);
+    const listId = first.body.list.id;
+    // One the person changed, and one they removed: both must come through untouched.
+    const edited = await find("QZ0007");
+    await app.api("PATCH", `/api/repeaters/${edited.id}`, { notes: "Mine" });
+    await app.api("DELETE", `/api/repeaters/${(await find("QZ0008")).id}`);
+
+    const snapshot = () => ({
+      list: app.ctx.sqlite.prepare("SELECT * FROM repeater_lists WHERE id = ?").get(listId),
+      rows: app.ctx.sqlite.prepare("SELECT * FROM repeaters WHERE list_id = ? ORDER BY id").all(listId),
+    });
+    const before = snapshot();
+    expect(before.rows).toHaveLength(3000);
+
+    // A newer copy changes every entry, drops the last five hundred and adds one. Writing
+    // entry 1,800 fails, as a full disk would make it: after a thousand and more are in.
+    app.ctx.sqlite.exec(
+      "CREATE TRIGGER fail_part_way BEFORE UPDATE ON repeaters WHEN NEW.place = 'FAULTLINE' BEGIN SELECT RAISE(ABORT, 'disk full'); END",
+    );
+    const newer = `${file((n) => (n === 1800 ? "FAULTLINE" : "NEWTOWN"), 2500)}\n${row(9999, "ADDED")}`;
+    const failed = await importFile("big-newer.csv", newer, { listId, dataDate: "2026-11-01" });
+    expect(failed.status).toBeGreaterThanOrEqual(400);
+
+    // Nothing of it stayed: not the new date or file name, not one changed entry, none added, none gone.
+    expect(snapshot()).toEqual(before);
+    expect((await find("QZ0007")).notes).toBe("Mine");
+    expect(await calls("?q=QZ0008")).toEqual([]);
+    expect(await calls("?q=QZ9999")).toEqual([]);
+    expect(app.ctx.sqlite.prepare("SELECT count(*) AS n FROM repeaters WHERE place = 'NEWTOWN'").get()).toEqual({ n: 0 });
+
+    // With the fault gone the same file goes in whole, and another import is not locked out by the failure.
+    app.ctx.sqlite.exec("DROP TRIGGER fail_part_way");
+    const again = await importFile("big-newer.csv", newer, { listId, dataDate: "2026-11-01" });
+    expect(again.status).toBe(200);
+    expect(again.body).toMatchObject({ added: 1, removed: 500 });
+    expect(app.ctx.sqlite.prepare("SELECT count(*) AS n FROM repeaters WHERE place = 'NEWTOWN' AND removed_at IS NULL").get()).toEqual({
+      n: 2497,
+    });
+  });
+
   it("brings a list up to date without overwriting what the person changed or bringing back what they removed", async () => {
     const first = await importStatus();
     const listId = first.body.list.id;
