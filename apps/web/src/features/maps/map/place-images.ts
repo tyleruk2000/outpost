@@ -5,8 +5,10 @@
  * come from the sprite sheet under /map-assets; these are made here, in the browser, from
  * the strokes in `lib/place-icons.ts`, so nothing is fetched and nothing is added to what
  * Outpost ships. They are made when the map first asks for one: a style that names a
- * picture the map does not have raises `styleimagemissing`, and the picture is drawn and
- * handed over there and then. A map of places that are all plain pins never draws one,
+ * picture the map does not have asks the map's resolver for it before it lays the place
+ * out, and the picture is drawn and handed over there and then. (The `styleimagemissing`
+ * event comes too late for that in this version of MapLibre: by then the place has been
+ * laid out without its picture.) A map of places that are all plain pins never draws one,
  * and one with thousands of places draws at most one per icon and colour in use.
  *
  * A picture is the whole marker: the ring in the page colour, the disc in the place's
@@ -64,9 +66,10 @@ export function drawPlaceImage(id: string, ratio: number): ImageData | null {
  * drawn from.
  */
 export function providePlaceImages(map: MapLibreMap, ratio = Math.max(2, Math.ceil(window.devicePixelRatio || 1))): void {
-  map.on("styleimagemissing", (event) => {
-    if (map.hasImage(event.id)) return;
-    const image = drawPlaceImage(event.id, ratio);
-    if (image) map.addImage(event.id, image, { pixelRatio: ratio });
+  map.setMissingStyleImageResolver((id) => {
+    // Anything that is not a place's picture is left as it was: missing.
+    if (map.hasImage(id)) return;
+    const image = drawPlaceImage(id, ratio);
+    if (image) map.addImage(id, image, { pixelRatio: ratio });
   });
 }

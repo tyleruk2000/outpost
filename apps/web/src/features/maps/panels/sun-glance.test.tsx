@@ -43,7 +43,7 @@ describe("today's sunrise and sunset under the centre readout", () => {
     const { engine } = fakeEngine(GREENWICH);
     render(<SunGlance engine={engine} onOpen={onOpen} zone="Europe/London" />);
     const line = screen.getByRole("button", {
-      name: "Sun today at the centre of the map: Sunrise 04:43, Sunset 21:21. Show all of the day’s times",
+      name: "Today at the centre of the map: Sunrise 04:43, Sunset 21:21. Show all of the day’s sun times",
     });
     expect(line).toHaveTextContent("Sunrise 04:43");
     expect(line).toHaveTextContent("Sunset 21:21");

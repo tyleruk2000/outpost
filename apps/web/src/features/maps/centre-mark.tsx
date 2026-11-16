@@ -31,7 +31,9 @@ export function CentreMark({
   useEffect(() => {
     const place = () => {
       const at = engine.centrePoint();
-      if (mark.current) mark.current.style.transform = `translate(${Math.round(at.x)}px, ${Math.round(at.y)}px)`;
+      if (!mark.current) return;
+      mark.current.style.left = `${Math.round(at.x)}px`;
+      mark.current.style.top = `${Math.round(at.y)}px`;
     };
     place();
     const offMove = engine.on("move", place);
@@ -47,11 +49,12 @@ export function CentreMark({
       ref={mark}
       aria-hidden
       data-centre-mark
-      className={cn("pointer-events-none absolute top-0 left-0 size-0", !always && pointerOver && "hidden")}
+      // A box 20 px across with the point in its middle.
+      className={cn("pointer-events-none absolute size-5 -translate-x-1/2 -translate-y-1/2", !always && pointerOver && "hidden")}
     >
       {/* Ink with a hairline of the page colour round it, so it reads on any ground in either theme. */}
-      <span className="absolute -top-px -left-2.5 h-0.5 w-5 bg-ink shadow-[0_0_0_1px_var(--page)]" />
-      <span className="absolute -top-2.5 -left-px h-5 w-0.5 bg-ink shadow-[0_0_0_1px_var(--page)]" />
+      <span className="absolute top-1/2 left-0 h-0.5 w-full -translate-y-1/2 bg-ink shadow-[0_0_0_1px_var(--page)]" />
+      <span className="absolute top-0 left-1/2 h-full w-0.5 -translate-x-1/2 bg-ink shadow-[0_0_0_1px_var(--page)]" />
     </div>
   );
 }

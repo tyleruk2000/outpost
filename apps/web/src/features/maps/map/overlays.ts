@@ -80,12 +80,15 @@ const placeImage = (theme: MapTheme): ["concat", string, ["get", string], string
 export function overlayLayers(theme: MapTheme): LayerSpecification[] {
   const label = { "text-font": [MAP_FONTS.medium] as string[], "text-size": 12.5 };
   const halo = { "text-color": theme.ink, "text-halo-color": theme.page, "text-halo-width": 1.6 } as const;
-  /** A place's name, under its marker and clear of it; the marker is larger when it carries an icon. */
+  /**
+   * A place's name, under its marker and clear of it. The marker is larger when it carries an icon, and the name
+   * has to start below the whole picture, or the map takes the two to overlap and leaves the name out.
+   */
   const placeName = {
     ...label,
     "text-field": ["get", "name"] as ["get", string],
     "text-anchor": "top",
-    "text-offset": ["case", ["has", "icon"], ["literal", [0, 1.25]], ["literal", [0, 0.9]]] as [
+    "text-offset": ["case", ["has", "icon"], ["literal", [0, 1.45]], ["literal", [0, 0.9]]] as [
       "case",
       ["has", string],
       ["literal", [number, number]],

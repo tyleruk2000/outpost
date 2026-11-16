@@ -44,7 +44,8 @@ export function SunGlance({
       type="button"
       data-sun-glance
       onClick={onOpen}
-      aria-label={`Sun today at the centre of the map: ${pieces.join(", ")}. Show all of the day’s times`}
+      // Not "Sun …": that is the name of the Sun line of a place, which can be on screen at the same time.
+      aria-label={`Today at the centre of the map: ${pieces.join(", ")}. Show all of the day’s sun times`}
       className={cn("flex min-h-11 w-full items-center gap-2 px-2.5 py-1 text-left hover:bg-surface-strong", className)}
     >
       {/* Each piece stays whole; where both do not fit on one line, the sunset goes under the sunrise. */}

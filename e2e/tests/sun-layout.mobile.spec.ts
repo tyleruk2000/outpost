@@ -80,9 +80,19 @@ async function openMaps(page: Page): Promise<void> {
   await page.goto(GREENWICH);
   await expect(page.locator("canvas").first()).toBeVisible({ timeout: 15_000 });
   // The card that offers a first map is not what these are about, and on a small screen it covers most of the map.
+  // On the smallest screens with the largest text its close button is off the top of the map; it is then left
+  // where it is, which is what a person there has too.
   const dismiss = page.getByRole("button", { name: "Dismiss" });
   await expect(dismiss.or(page.getByRole("tab", { name: "Sun" })).first()).toBeVisible();
-  if (await dismiss.isVisible()) await dismiss.tap();
+  // Only touched where a finger could reach it: asked to tap something off the screen, the browser would scroll
+  // the map's own box to bring it into view, which no person can do.
+  if ((await dismiss.isVisible()) && (await isInReach(page, dismiss))) await dismiss.tap();
+}
+
+/** The middle of the cross that marks the centre of the map. */
+async function crossAt(page: Page): Promise<{ x: number; y: number }> {
+  const box = (await page.locator("[data-centre-mark]").boundingBox())!;
+  return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
 }
 
 const TABS = [/^Places/, /^Routes/, "Offline maps", "Sun"] as const;
@@ -98,7 +108,7 @@ test.describe("sun times on a phone", () => {
     await openMaps(page);
 
     // Under the coordinates of the centre, above the lowered sheet: today's sunrise and sunset.
-    const line = page.getByRole("button", { name: /^Sun today at the centre of the map: Sunrise 04:43, Sunset 21:21\./ });
+    const line = page.getByRole("button", { name: /^Today at the centre of the map: Sunrise 04:43, Sunset 21:21\./ });
     await expect(line).toBeVisible();
     await expectInReach(page, line);
     await expectInReach(page, line.getByText("Sunrise 04:43", { exact: true }));
@@ -110,7 +120,8 @@ test.describe("sun times on a phone", () => {
     await expect(readout).toContainText("Centre");
     await expect(readout).toContainText("51.4800, 0.0000");
     expect(Math.abs((await readout.boundingBox())!.x - box.x)).toBeLessThanOrEqual(1);
-    const cross = (await page.locator("[data-centre-mark]").boundingBox())!;
+    await expect(page.locator("[data-centre-mark]")).toBeVisible();
+    const cross = await crossAt(page);
     const sheet = (await page.getByRole("button", { name: /^Panel height: lowered/ }).boundingBox())!;
     expect(cross.y, "the cross is on the part of the map that shows").toBeLessThan(box.y);
     expect(cross.y).toBeLessThan(sheet.y);
@@ -127,7 +138,8 @@ test.describe("sun times on a phone", () => {
     // The centre has not moved for being looked at: the same point, still marked, above the sheet.
     await expect(page.getByRole("button", { name: "Copy coordinates 51.4800, 0.0000" })).toBeAttached();
     const raised = (await page.getByRole("button", { name: /^Panel height: half/ }).boundingBox())!;
-    await expect.poll(async () => (await page.locator("[data-centre-mark]").boundingBox())!.y).toBeLessThan(raised.y - 40);
+    await expect(page.locator("[data-centre-mark]")).toBeVisible();
+    await expect.poll(async () => (await crossAt(page)).y).toBeLessThan(raised.y - 40);
     expect(await overflow(page)).toBeLessThanOrEqual(1);
     expect(errors).toEqual([]);
   });
@@ -138,6 +150,16 @@ test.describe("sun times on a phone", () => {
     await page.getByRole("tab", { name: "Sun" }).tap();
     await page.getByRole("button", { name: /^Panel height: half/ }).tap();
     await expect(page.getByRole("button", { name: /^Panel height: full/ })).toBeVisible();
+    // The sheet takes a moment to finish rising; nothing is measured until it has come to rest.
+    let before = -1;
+    await expect
+      .poll(async () => {
+        const now = (await time(page, "Sunrise").boundingBox())!.y;
+        const still = now === before;
+        before = now;
+        return still;
+      })
+      .toBe(true);
 
     const figures = (label: string) => time(page, label).locator(".tabular").first();
     const style = (locator: Locator) =>
@@ -218,7 +240,8 @@ test.describe("sun times on a phone", () => {
           const panel = document.querySelector('[role="tabpanel"]:not([hidden])');
           if (!panel) return ["no panel"];
           const edge = panel.getBoundingClientRect().right;
-          return [...panel.querySelectorAll("dt, dd, dd *, p, button")]
+          // Not the line kept for screen readers, which is clipped to nothing on purpose.
+          return [...panel.querySelectorAll("dt, dd, dd *, p:not(.sr-only), button")]
             .filter(
               (element) =>
                 element.getBoundingClientRect().right > edge + 0.5 ||

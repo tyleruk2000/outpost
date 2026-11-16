@@ -684,6 +684,13 @@ export default function MapsPage() {
     engine?.setCursor(tool === "browse" || tool === "print" ? "" : "crosshair");
   }, [engine, tool]);
 
+  /**
+   * On a phone, today's sunrise and sunset are written under the readout while the sheet is lowered and nothing
+   * is being done on the map: a tool's card, or the card of a point that was found or is being moved, needs the
+   * room and has the person's attention (and a found point's card has sun times of its own).
+   */
+  const sunLine = !isDesktop && detent === "peek" && tool === "browse" && !pin && !moving;
+
   // "Fit" and "fly" should land in the part of the map that is not under the chrome.
   useEffect(() => {
     if (!engine) return;
@@ -691,13 +698,13 @@ export default function MapsPage() {
     const height = area.current?.clientHeight ?? 0;
     // On a phone: the sheet (at most half the height, as "full" hides the map anyway), the readout above it,
     // and under the readout, while the sheet is lowered, the line with today's sunrise and sunset.
-    const sheet = isDesktop ? 0 : detentHeight(detent === "peek" ? "peek" : "half", height, peekHeight) + 88 + (detent === "peek" ? 44 : 0);
+    const sheet = isDesktop ? 0 : detentHeight(detent === "peek" ? "peek" : "half", height, peekHeight) + 88 + (sunLine ? 44 : 0);
     // A short screen (a phone on its side) keeps some map clear whatever lies over it.
     const bottom = Math.max(0, Math.min(sheet, height - top - 96));
     // A phone's sheet covers the lower part of the map, so there the camera keeps the space all the time and the
     // centre of the map is the middle of what shows. On a wide screen nothing lies over the middle of the map.
     engine.setPadding({ top, right: isDesktop ? 56 : 0, bottom, left: 0 }, !isDesktop);
-  }, [engine, isDesktop, detent, peekHeight]);
+  }, [engine, isDesktop, detent, peekHeight, sunLine]);
 
   // ── What the person does on the map ──
 
@@ -1379,7 +1386,7 @@ export default function MapsPage() {
             format={format}
             onFormatChange={setFormat}
             credits={engine ? credits : []}
-            underReadout={!isDesktop && engine && detent === "peek" ? <SunGlance engine={engine} onOpen={showSun} /> : undefined}
+            underReadout={sunLine && engine ? <SunGlance engine={engine} onOpen={showSun} /> : undefined}
             className="w-full"
           />
         </div>

@@ -25,7 +25,8 @@ const mapReady = async (page: Page) => {
 async function centreOf(page: Page): Promise<{ x: number; y: number }> {
   const box = await page.locator("[data-centre-mark]").boundingBox();
   expect(box, "the cross at the centre of the map").not.toBeNull();
-  return { x: Math.round(box!.x), y: Math.round(box!.y) };
+  // The cross is a small box with the point in its middle.
+  return { x: Math.round(box!.x + box!.width / 2), y: Math.round(box!.y + box!.height / 2) };
 }
 
 /**
@@ -103,19 +104,22 @@ test.describe("icons for saved places", () => {
     // A new place is a plain pin until an icon is chosen.
     await expect(icons.getByRole("radio", { name: "Pin" })).toBeChecked();
     await expect(page.locator(".outpost-pin svg")).toHaveCount(0);
-    // From the keyboard: the arrow keys move through the set and choose.
+    // From the keyboard: the arrow keys move through the set and choose. A key is down for longer than it
+    // takes the focus to move, which is when the icon it lands on is chosen.
     await icons.getByRole("radio", { name: "Pin" }).focus();
-    await page.keyboard.press("ArrowRight");
-    await expect(icons.getByRole("radio", { name: "Home" })).toBeChecked();
-    await page.keyboard.press("ArrowRight");
-    await expect(icons.getByRole("radio", { name: "Shelter or hut" })).toBeChecked();
+    for (const lands of ["Home", "Shelter or hut"]) {
+      await page.keyboard.down("ArrowRight");
+      await expect(icons.getByRole("radio", { name: lands })).toBeChecked();
+      await page.keyboard.up("ArrowRight");
+    }
     // The pin on the map carries the icon as soon as it is chosen, and the heading shows it.
     await expect(page.locator(".outpost-pin svg")).toBeVisible();
     await expect(page.getByRole("heading", { name: "New place" }).locator('[data-place-icon="shelter"]')).toBeVisible();
     await page.getByRole("button", { name: "Save place" }).click();
 
     // ── In the list ──
-    const row = page.getByRole("button", { name: "Esk Hause shelter, Shelter or hut" });
+    // Its icon's name is read out after the place's own.
+    const row = page.getByRole("button", { name: /^Esk Hause shelter\s*, Shelter or hut/ });
     await expect(row).toBeVisible();
     await expect(row.locator('[data-place-icon="shelter"] svg')).toBeVisible();
     const [saved] = (await api(page, "GET", "/api/maps/markers")).markers;
@@ -175,11 +179,11 @@ test.describe("icons for saved places", () => {
     const dialog = page.getByRole("dialog", { name: "Import a GPX file" });
     await dialog.getByRole("checkbox", { name: /Also save its waypoints as places/ }).check();
     await dialog.getByRole("button", { name: "Import" }).click();
-    await expect(dialog.getByText("1 place", { exact: true })).toBeVisible();
+    await expect(dialog.getByText(/1 waypoint from it was saved as places\./)).toBeVisible();
     await dialog.getByRole("button", { name: "Close" }).first().click();
 
     await page.getByRole("tab", { name: /Places/ }).click();
-    const back = page.getByRole("button", { name: /Esk Hause shelter, Shelter or hut/ });
+    const back = page.getByRole("button", { name: /^Esk Hause shelter\s*, Shelter or hut/ });
     await expect(back.first()).toBeVisible();
     const [returned] = (await api(page, "GET", "/api/maps/markers")).markers;
     expect(returned).toMatchObject({ name: "Esk Hause shelter", icon: "shelter", lat: PLACE.lat, lon: PLACE.lon });
@@ -203,11 +207,11 @@ test.describe("icons for saved places", () => {
     const dialog = page.getByRole("dialog", { name: "Import a GPX file" });
     await dialog.getByRole("checkbox", { name: /Also save its waypoints as places/ }).check();
     await dialog.getByRole("button", { name: "Import" }).click();
-    await expect(dialog.getByText("2 places", { exact: true })).toBeVisible();
+    await expect(dialog.getByText(/2 waypoints from it were saved as places/)).toBeVisible();
     await dialog.getByRole("button", { name: "Close" }).first().click();
 
     await page.getByRole("tab", { name: /Places/ }).click();
-    await expect(page.getByRole("button", { name: "Wasdale Head, Camp" }).locator('[data-place-icon="tent"]')).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Wasdale Head\s*, Camp/ }).locator('[data-place-icon="tent"]')).toBeVisible();
     await expect(page.getByRole("button", { name: "Cache twelve", exact: true }).locator('[data-place-icon="pin"]')).toBeVisible();
     const out = await (await page.request.get("/api/maps/export.gpx?markers=1")).text();
     expect(out).toContain("<sym>Geocache</sym>");

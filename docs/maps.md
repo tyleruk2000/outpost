@@ -546,8 +546,8 @@ a link to one of your note pages. Markers are found by the app-wide search.
 - **The drawings** are part of the app (`apps/web/src/features/maps/lib/place-icons.ts`):
   a few strokes each, in the line style of the icons the rest of the interface uses,
   drawn for this size rather than taken from that set. The map is handed them as small
-  pictures made in the browser when it first asks for one
-  (`map/place-images.ts`). Nothing is fetched and nothing is added to the map assets.
+  pictures made in the browser when it first asks for one (`map/place-images.ts`, through
+  MapLibre's resolver for images a style names and the map does not have). Nothing is fetched and nothing is added to the map assets.
 - **Existing places** are plain pins. The database gains two columns
   (`0012_place_icons`), and nothing else about a place changes.
 
@@ -652,7 +652,8 @@ looked up and nothing needs a connection.
 line under the coordinates of the centre, just above the lowered sheet ("Sunrise 04:43
 Sunset 21:21"). Touch it and the Sun tab opens with the rest of the day. Nothing has to
 be found first. The line steps aside while the sheet is raised, when the tab itself is
-in view.
+in view, and while a card is up over the map (a tool in use, a point that was found),
+which needs the room.
 
 The **Sun** tab of the panel gives the whole day for **the centre of the map**: the
 same point the readout at the bottom of the map gives, and the one the cross on the map

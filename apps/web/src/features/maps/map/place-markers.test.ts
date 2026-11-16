@@ -114,7 +114,7 @@ describe("the layers saved places are drawn with", () => {
         "text-anchor": "top",
         "text-max-width": 9,
         "text-optional": true,
-        "text-offset": ["case", ["has", "icon"], ["literal", [0, 1.25]], ["literal", [0, 0.9]]],
+        "text-offset": ["case", ["has", "icon"], ["literal", [0, 1.45]], ["literal", [0, 0.9]]],
       });
     }
     expect(others.layout).not.toHaveProperty("icon-image");

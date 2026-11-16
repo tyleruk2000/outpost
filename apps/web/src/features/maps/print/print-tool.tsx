@@ -60,15 +60,20 @@ function tidyBox(bbox: Bbox, pixels: PixelSize): Bbox {
   return boxAtScale(frameOfBox(bbox, pixels).center, tidyScale(scaleOfBox(bbox, pixels)), pixels);
 }
 
-/** The page-shaped box that fits in the middle of what the map shows, with room round it for its handles. */
+/**
+ * The page-shaped box that fits in the middle of what the map shows, with room round it for its handles.
+ * The middle is the map's own centre, which on a phone is the middle of the part the sheet leaves in view,
+ * not of the whole rectangle the map is drawn in.
+ */
 function boxInView(engine: MapEngine, pixels: PixelSize): Bbox {
   const [west, south, east, north] = engine.getBounds();
-  const inset = (low: number, high: number) => (high - low) * 0.14;
+  const centre = engine.getCenter();
+  const [halfWidth, halfHeight] = [(east - west) * 0.36, (north - south) * 0.36];
   const view: Bbox = [
-    Math.max(-180, west + inset(west, east)),
-    south + inset(south, north),
-    Math.min(180, east - inset(west, east)),
-    north - inset(south, north),
+    Math.max(-180, centre.lon - halfWidth),
+    centre.lat - halfHeight,
+    Math.min(180, centre.lon + halfWidth),
+    centre.lat + halfHeight,
   ];
   return tidyBox(shapeBox(view, pixels.width / pixels.height, "inside"), pixels);
 }

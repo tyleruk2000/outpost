@@ -18,7 +18,8 @@ const readout = (page: Page) => page.getByRole("button", { name: "Copy these coo
 async function markAt(page: Page): Promise<{ x: number; y: number }> {
   const box = await mark(page).boundingBox();
   expect(box, "the cross").not.toBeNull();
-  return { x: box!.x, y: box!.y };
+  // The cross is a small box with the point in its middle.
+  return { x: box!.x + box!.width / 2, y: box!.y + box!.height / 2 };
 }
 
 test.describe("the centre of the map", () => {
@@ -88,7 +89,7 @@ test.describe("the centre of the map", () => {
     expect(Math.abs(after.x - tip.x), "the cross and the pin, across").toBeLessThanOrEqual(1.5);
     expect(Math.abs(after.y - tip.y), "the cross and the pin, down").toBeLessThanOrEqual(1.5);
     // The times are for that point now.
-    await expect(page.getByText(/^Sunrise 04:\d\d, sunset 21:\d\d$/)).toBeAttached();
+    await expect(page.getByRole("tabpanel", { name: "Sun" }).getByText(/^Sunrise 04:\d\d, sunset 21:\d\d$/)).toBeAttached();
     expect(errors).toEqual([]);
   });
 });

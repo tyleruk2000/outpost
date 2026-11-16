@@ -34,7 +34,9 @@ describe("the cross at the centre of the map", () => {
     // 28 px left of the middle and 8 px below it: what a wide screen's controls leave clear.
     const map = fakeEngine({ x: 472, y: 438 });
     render(<CentreMark engine={map.engine} always={false} />);
-    expect(mark().style.transform).toBe("translate(472px, 438px)");
+    expect([mark().style.left, mark().style.top]).toEqual(["472px", "438px"]);
+    // Its own middle is on that point.
+    expect(mark()).toHaveClass("-translate-x-1/2", "-translate-y-1/2");
     expect(mark()).toHaveAttribute("aria-hidden", "true");
     expect(mark()).toHaveClass("pointer-events-none");
   });
@@ -43,7 +45,7 @@ describe("the cross at the centre of the map", () => {
     const map = fakeEngine({ x: 195, y: 256 });
     render(<CentreMark engine={map.engine} always={false} />);
     act(() => map.moveCentreTo({ x: 195, y: 179.4 }));
-    expect(mark().style.transform).toBe("translate(195px, 179px)");
+    expect([mark().style.left, mark().style.top]).toEqual(["195px", "179px"]);
   });
 
   it("is hidden while the readout gives the pointer's position instead, and back when the pointer leaves", () => {
