@@ -126,7 +126,8 @@ export function rotate(image: Luma, degrees: number): Luma {
 export function shade(image: Luma, from: number, to: number): Luma {
   const data = Uint8Array.from(image.data);
   for (let y = 0; y < image.height; y += 1)
-    for (let x = 0; x < image.width; x += 1) data[y * image.width + x] = Math.round(data[y * image.width + x]! * (from + ((to - from) * x) / (image.width - 1)));
+    for (let x = 0; x < image.width; x += 1)
+      data[y * image.width + x] = Math.round(data[y * image.width + x]! * (from + ((to - from) * x) / (image.width - 1)));
   return { ...image, data };
 }
 
@@ -134,7 +135,8 @@ export function shade(image: Luma, from: number, to: number): Luma {
 export function shadow(image: Luma, fraction: number, factor: number): Luma {
   const data = Uint8Array.from(image.data);
   const edge = Math.round(image.width * fraction);
-  for (let y = 0; y < image.height; y += 1) for (let x = edge; x < image.width; x += 1) data[y * image.width + x] = Math.round(data[y * image.width + x]! * factor);
+  for (let y = 0; y < image.height; y += 1)
+    for (let x = edge; x < image.width; x += 1) data[y * image.width + x] = Math.round(data[y * image.width + x]! * factor);
   return { ...image, data };
 }
 
@@ -157,7 +159,8 @@ export function shrink(image: Luma, factor: number): Luma {
   for (let y = 0; y < height; y += 1)
     for (let x = 0; x < width; x += 1) {
       let sum = 0;
-      for (let j = 0; j < factor; j += 1) for (let i = 0; i < factor; i += 1) sum += image.data[(y * factor + j) * image.width + x * factor + i]!;
+      for (let j = 0; j < factor; j += 1)
+        for (let i = 0; i < factor; i += 1) sum += image.data[(y * factor + j) * image.width + x * factor + i]!;
       data[y * width + x] = Math.round(sum / (factor * factor));
     }
   return { data, width, height };

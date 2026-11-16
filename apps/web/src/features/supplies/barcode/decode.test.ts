@@ -15,7 +15,10 @@ describe("the tables", () => {
   it("has 107 Code 128 symbols of 11 modules (the stop 13), every one different, with an even number of bar modules", () => {
     expect(CODE128).toHaveLength(107);
     CODE128.forEach((widths, value) => {
-      expect(widths.reduce((a, b) => a + b, 0), `symbol ${value}`).toBe(value === 106 ? 13 : 11);
+      expect(
+        widths.reduce((a, b) => a + b, 0),
+        `symbol ${value}`,
+      ).toBe(value === 106 ? 13 : 11);
       // ISO/IEC 15417: the bars of every symbol add up to an even number of modules.
       const bars = widths.filter((_, index) => index % 2 === 0).reduce((a, b) => a + b, 0);
       expect(bars % 2, `symbol ${value}`).toBe(0);
@@ -50,7 +53,9 @@ describe("a clean picture", () => {
   it("reads from RGBA as a canvas gives it", () => {
     const grey = render(ean13Modules(EAN), 3);
     const rgba = new Uint8ClampedArray(grey.width * grey.height * 4);
-    grey.data.forEach((value, index) => rgba.set([value, value, value, 255], index * 4));
+    grey.data.forEach((value, index) => {
+      rgba.set([value, value, value, 255], index * 4);
+    });
     expect(read(toLuma(rgba, grey.width, grey.height))).toBe(EAN);
   });
 });

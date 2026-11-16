@@ -10,12 +10,13 @@ import {
   type ManagedItem,
   type ManagedKind,
   type RadioKept,
+  type SuppliesKept,
   type Tally,
   type UsageId,
   type UsageResponse,
   type UsageRow,
 } from "@outpost/shared";
-import { plural } from "@/lib/utils";
+import { formatNumber, plural } from "@/lib/utils";
 
 export const kindNames: Record<ManagedKind, { one: string; many: string }> = {
   zim: { one: "Reference archive", many: "Reference archives" },
@@ -239,6 +240,18 @@ function radioWords(radio: RadioKept | undefined): string | null {
   return parts.length > 0 ? parts.join(", ") : null;
 }
 
+/** "40 rows of supplies, a household of 3 and a shopping list of 6 lines", leaving out what there is none of; null when there is nothing. */
+export function suppliesWords(supplies: SuppliesKept | undefined): string | null {
+  if (!supplies) return null;
+  const parts = [
+    supplies.items > 0 ? plural(supplies.items, "row of supplies", "rows of supplies") : null,
+    supplies.members > 0 ? `a household of ${formatNumber(supplies.members)}` : null,
+    supplies.shopping > 0 ? `a shopping list of ${plural(supplies.shopping, "line")}` : null,
+    supplies.barcodes > 0 ? plural(supplies.barcodes, "remembered barcode") : null,
+  ].filter((part): part is string => part !== null);
+  return parts.length > 0 ? parts.join(", ") : null;
+}
+
 /** The person's own things that "erase everything" takes besides files, leaving out what there is none of. */
 export function personalWords(personal: NonNullable<CleanupPlan["personal"]>): string {
   const parts: string[] = [];
@@ -254,6 +267,8 @@ export function personalWords(personal: NonNullable<CleanupPlan["personal"]>): s
   if (personal.repeaters > 0 || personal.repeaterLists > 0) parts.push(repeaterWords(personal.repeaters, personal.repeaterLists));
   const radio = radioWords(personal.radio);
   if (radio) parts.push(radio);
+  const supplies = suppliesWords(personal.supplies);
+  if (supplies) parts.push(supplies);
   if (personal.settings > 0) parts.push(plural(personal.settings, "changed setting"));
   if (personal.vectors > 0) parts.push(plural(personal.vectors, "semantic vector"));
   parts.push("the history of downloads and other work");
@@ -270,7 +285,8 @@ export function resultSentences(result: CleanupResult): string[] {
   const lines: string[] = [];
   if (result.scope === "derived") return (result.steps ?? []).map((step) => step.message);
   if (result.scope === "everything" && result.personal) {
-    const { pages, places, routes, contacts, conversations, repeaters, repeaterLists, radio, attachments, settings } = result.personal;
+    const { pages, places, routes, contacts, conversations, repeaters, repeaterLists, radio, supplies, attachments, settings } =
+      result.personal;
     const erased = [
       pages > 0 ? `${plural(pages, "page")} of notes${attachments > 0 ? ` with ${plural(attachments, "attachment")}` : ""}` : null,
       places > 0 ? plural(places, "saved place") : null,
@@ -279,6 +295,7 @@ export function resultSentences(result: CleanupResult): string[] {
       conversations > 0 ? plural(conversations, "chat conversation") : null,
       repeaters > 0 || repeaterLists > 0 ? repeaterWords(repeaters, repeaterLists) : null,
       radioWords(radio),
+      suppliesWords(supplies),
       settings > 0 ? plural(settings, "changed setting") : null,
       "the history",
     ].filter((part): part is string => part !== null);
