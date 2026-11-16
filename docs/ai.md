@@ -925,9 +925,10 @@ each with a JSON `data` line:
 
 | Event | Data |
 | --- | --- |
-| `sources` | Always first. `question`, `searchedFor`, `model`, `server`, `sources` (each with `marker`, `kind`, `entityId`, `title`, `collection`, `url`, `page`, `heading`, `quote`, `safetyCritical`), `omitted`, `safetyCritical`. |
-| `delta` | `text`: the next piece of the answer. |
-| `done` | `outcome` (`answered` or `nothing-found`), `used`, `unsupported`, `cutShort`, `tookMs`. |
+| `sources` | Always first. `question`, `searchedFor`, `model`, `server`, `sources` (each with `marker`, `kind`, `entityId`, `title`, `collection`, `url`, `page`, `heading`, `quote`, `safetyCritical`), `omitted`, `leftOut`, `safetyCritical`. Sent a second time, before any `delta`, when the model server refused the passages as too long and Outpost asked again with fewer: the second list replaces the first, and `leftOut` counts the passages taken away. |
+| `loading` | No data. The model server (Ollama, asked at `/api/ps`) said the model is not in memory, so it is loaded first. Never sent for a server that cannot be asked. |
+| `delta` | `text`: the next piece of the answer, as the model wrote it. |
+| `done` | `outcome` (`answered`, `nothing-found`, or `not-covered`: the model said the passages do not hold the answer), `text` (the answer as it is to be shown, present only when it differs from the `delta`s), `used`, `unsupported` (numbers no passage carried; none left in `text`), `repointed` (`{ from, to }` for each of those pointed at a passage), `citesAll`, `cutShort`, `tookMs`. |
 | `error` | `failure` (`unreachable`, `no-such-model`, `not-a-chat-model`, `no-chat-endpoint`, `context-too-long`, `too-slow`, `interrupted`, `empty`, `other`) and a `message` for a person. |
 
 A stream ends with `done` or `error`. While the model has not started, a comment line

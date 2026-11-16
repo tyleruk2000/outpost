@@ -243,6 +243,25 @@ test.describe("chat with a local model", () => {
     expect(errors).toEqual([]);
   });
 
+  test("with the library on, shows a reply that says the passages hold no answer as not covered, citing nothing", async ({ page }) => {
+    const errors = watchForErrors(page);
+    const model = (await api(page, "GET", "/api/answers/status")).model;
+    await api(page, "PATCH", "/api/settings", { "answers.model": "stand-in-declines" });
+    await page.goto("/chat");
+    await page.getByRole("switch", { name: "Use my library" }).click();
+    await box(page).fill("How should I trim a lamp wick?");
+    await box(page).press("Enter");
+    const reply = replies(page).last();
+    await expect(reply.getByTestId("reply-declined")).toContainText("Your library does not seem to cover this.");
+    await expect(reply.getByTestId("reply-text")).toContainText("There is no information about that in the provided sources.");
+    // The model put markers on its refusal; none is shown, and no passage is marked as cited.
+    await expect(reply.getByRole("button", { name: /^Source \d/ })).toHaveCount(0);
+    await expect(reply.getByText("Cited", { exact: true })).toHaveCount(0);
+    await expect(reply.getByRole("button", { name: /passages? the model read/ })).toBeVisible();
+    await api(page, "PATCH", "/api/settings", { "answers.model": model });
+    expect(errors).toEqual([]);
+  });
+
   test("asks about one page of notes from that page, and answers from it alone", async ({ page }) => {
     const errors = watchForErrors(page);
     const note = made[0];

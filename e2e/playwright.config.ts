@@ -267,7 +267,8 @@ export default defineConfig({
       command: `node "${path.join(root, "apps/server/test/model-server.ts")}" ${modelPort}`,
       url: `http://127.0.0.1:${modelPort}/health`,
       reuseExistingServer: false,
-      env: { STAND_IN_LONG_DELAY_MS: "40" },
+      // A model the stand-in has not got "in memory" takes it a moment to load, so that the notice that says so can be seen.
+      env: { STAND_IN_LONG_DELAY_MS: "40", STAND_IN_LOAD_MS: "700" },
     },
     {
       command: `node "${path.join(root, "apps/server/test/nautilus-archive.ts")}" ${kiwixPort}`,

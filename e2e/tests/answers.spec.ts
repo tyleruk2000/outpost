@@ -161,13 +161,47 @@ test.describe("answer from my library", () => {
     await useModel(page, "stand-in");
   });
 
-  test("flags a citation that matches no source", async ({ page }) => {
+  test("takes out a citation that matches no source, and points one at the passage whose sentence it stands on", async ({ page }) => {
     await useModel(page, "stand-in-invents");
     await page.goto(`/search?q=${encodeURIComponent("blocked jet pricker")}`);
     await page.getByRole("button", { name: "Answer from my library" }).click();
     const panel = page.getByRole("region", { name: "Generated answer" });
-    await expect(panel.getByText(/refers to no source$/)).toBeVisible();
+    await expect(panel.getByText(/taken out: no passage has that number$/)).toBeVisible();
+    await expect(panel.getByTestId("answer-text")).toContainText("It is also widely known that this works every time.");
+    await expect(panel.getByText(/refers to no source the model was given/)).toHaveCount(0);
+
+    await useModel(page, "stand-in-misnumbers");
+    await panel.getByRole("button", { name: "Ask again" }).click();
+    await expect(panel.getByText(/pointed at the passage that holds the words$/)).toBeVisible();
+    await expect(panel.getByRole("button", { name: /^Source 1: Stove care for answers/ })).toBeVisible();
+    await expect(panel.getByText("Cited in the answer").first()).toBeVisible();
     await useModel(page, "stand-in");
+  });
+
+  test("says plainly when the model said the library does not cover the question, and cites nothing", async ({ page }) => {
+    await useModel(page, "stand-in-declines");
+    await page.goto(`/search?q=${encodeURIComponent("blocked jet pricker")}`);
+    await page.getByRole("button", { name: "Answer from my library" }).click();
+    const panel = page.getByRole("region", { name: "Generated answer" });
+    await expect(panel.getByTestId("answer-declined")).toContainText("Your library does not seem to cover this.");
+    await expect(panel.getByRole("button", { name: /^Source \d/ })).toHaveCount(0);
+    await expect(panel.getByRole("heading", { name: /passages? the model read$/ })).toBeVisible();
+    await expect(panel.getByText("Cited in the answer")).toHaveCount(0);
+    await useModel(page, "stand-in");
+  });
+
+  test("says the model is being loaded when the model server says it is not in memory", async ({ page }) => {
+    // The stand-in, like Ollama, puts its models out of memory; loading one takes it a moment (STAND_IN_LOAD_MS).
+    await page.request.get(`${MODEL_URL}/unload`);
+    await page.goto(`/search?q=${encodeURIComponent("blocked jet pricker")}`);
+    await page.getByRole("button", { name: "Answer from my library" }).click();
+    const panel = page.getByRole("region", { name: "Generated answer" });
+    await expect(panel.getByTestId("answer-waiting")).toContainText(/into memory before it can read \d+ passages?: it said the model was not loaded/);
+    await expect(panel.getByTestId("answer-text")).toContainText("Clear a blocked jet with the pricker");
+    // Now in memory: the next answer says nothing of loading.
+    await panel.getByRole("button", { name: "Ask again" }).click();
+    await expect(panel.getByRole("button", { name: "Ask again" })).toBeVisible();
+    await expect(panel.getByText(/into memory/)).toHaveCount(0);
   });
 
   test("does not ask the model when nothing in the library matches", async ({ page }) => {
