@@ -25,6 +25,7 @@ const GROUPS: Record<Exclude<DatabaseGroupId, "other">, string[]> = {
     "markers",
     "tracks",
     "nuclear_scenarios",
+    "nuclear_scenario_sets",
     // The reference layers (modules/layers): records downloaded or imported, with their indexes.
     "reference_features",
     "reference_features_rtree",
@@ -88,7 +89,11 @@ const COUNTS: Array<{ id: DatabaseCountId; table: string; sql: string }> = [
   { id: "predictions", table: "propagation_saved", sql: "SELECT count(*) AS n FROM propagation_saved" },
   { id: "powerPlans", table: "power_plans", sql: "SELECT count(*) AS n FROM power_plans" },
   { id: "supplies", table: "supply_items", sql: "SELECT count(*) AS n FROM supply_items" },
-  { id: "scenarios", table: "nuclear_scenarios", sql: "SELECT count(*) AS n FROM nuclear_scenarios" },
+  {
+    id: "scenarios",
+    table: "nuclear_scenarios",
+    sql: "SELECT (SELECT count(*) FROM nuclear_scenarios) + (SELECT count(*) FROM nuclear_scenario_sets) AS n",
+  },
   { id: "networkDevices", table: "network_devices", sql: "SELECT count(*) AS n FROM network_devices" },
   { id: "pressureReadings", table: "weather_readings", sql: "SELECT count(*) AS n FROM weather_readings" },
   { id: "emergencyPlans", table: "emergency_plans", sql: "SELECT count(*) AS n FROM emergency_plans" },

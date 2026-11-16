@@ -1370,6 +1370,21 @@ export const nuclearScenarios = sqliteTable("nuclear_scenarios", {
   updatedAt: updatedAt(),
 });
 
+/**
+ * A set of scenarios kept together, as they were on the nuclear preparedness map at once
+ * (at most six). Each member is only what the person typed, as for a single scenario;
+ * the set holds its own copies, so deleting a saved single scenario leaves it whole.
+ * Nothing about the set as a whole is worked out or kept: no total of any kind.
+ */
+export const nuclearScenarioSets = sqliteTable("nuclear_scenario_sets", {
+  id: id(),
+  name: text("name").notNull(),
+  /** `NuclearSetMember[]`: each member's name, notes, ground zero, `EffectsInput` and whether it was hidden. */
+  members: json<Array<Record<string, unknown>>>("members").notNull(),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+});
+
 // ── Devices on this network ─────────────────────────────────────────────────
 
 /**
