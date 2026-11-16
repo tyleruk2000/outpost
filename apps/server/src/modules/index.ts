@@ -12,6 +12,7 @@ import { registerCatalog } from "./catalog/index.ts";
 import { registerChat } from "./chat/index.ts";
 import { registerCollections } from "./collections/index.ts";
 import { registerContacts } from "./contacts/index.ts";
+import { registerDatabase } from "./database/index.ts";
 import { registerDocuments } from "./documents/index.ts";
 import { registerDownloads } from "./downloads/index.ts";
 import { registerEncryption } from "./encryption/index.ts";
@@ -53,6 +54,7 @@ export const modules: ModuleRegister[] = [
   registerRepeaters,
   registerEncryption,
   registerBackup,
+  registerDatabase,
   registerPortable,
   registerMerge,
   registerManage,
