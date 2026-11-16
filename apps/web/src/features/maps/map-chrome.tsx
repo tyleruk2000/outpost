@@ -214,19 +214,6 @@ export function mapTools({
     onPress: () => onContoursChange(!contours),
     disabled,
   });
-  // Pictures of the ground beneath the roads and names. Offered with nothing installed too: pressed, it says what to get.
-  if (onSatelliteChange) {
-    tools.push({
-      id: "satellite",
-      label: satelliteLabel ?? "Satellite imagery",
-      icon: <Satellite />,
-      group: "tools",
-      layer: true,
-      pressed: satellite ?? false,
-      onPress: () => onSatelliteChange(!satellite),
-      disabled,
-    });
-  }
   // A paper map of part of this one; the tool itself is in print/.
   tools.push(take("print", "Print or save as PDF", <Printer />, "tools"));
   // Radio: the locator grid, the repeaters, and whether two points can see each other.
@@ -261,6 +248,20 @@ export function mapTools({
       layer: true,
       pressed: repeaters ?? false,
       onPress: () => onRepeatersChange(!repeaters),
+      disabled,
+    });
+  }
+  // Pictures of the ground beneath the roads and names, with the other things drawn on the map. Offered with nothing
+  // installed too: pressed, it says what to get. After the grey line, so that on a phone it gives way to the menu first.
+  if (onSatelliteChange) {
+    tools.push({
+      id: "satellite",
+      label: satelliteLabel ?? "Satellite imagery",
+      icon: <Satellite />,
+      group: "radio",
+      layer: true,
+      pressed: satellite ?? false,
+      onPress: () => onSatelliteChange(!satellite),
       disabled,
     });
   }

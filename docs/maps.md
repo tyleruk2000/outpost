@@ -55,12 +55,11 @@ On the map itself:
 - **Hill shading** appears as a button once terrain is installed.
 - **Contour lines** is the button below it (see [Contour lines](#contour-lines)). It
   is always there: pressed where there is nothing to draw them from, it says so.
-- **Satellite** follows: pictures of the ground under the map, once some are downloaded
-  (see [Satellite imagery](#satellite-imagery)).
 - **Print or save as PDF** is the button below that (see
   [Printing a map](#printing-a-map)).
-- **Maidenhead locator grid**, **Grey line (day and night)** and **Line of sight
-  between two points** are the last buttons in the column. See
+- **Maidenhead locator grid**, **Grey line (day and night)**, **Satellite** (see
+  [Satellite imagery](#satellite-imagery)) and **Line of sight between two points** are
+  the last buttons in the column. See
   [Maidenhead locators](#maidenhead-locators),
   [The grey line](#the-grey-line-day-and-night) and [Line of sight](#line-of-sight).
 - **On a phone, every one of these is also in a menu by name**: the button with three
@@ -2055,7 +2054,9 @@ matches, by population, and by distance from a point when one is given
 
 ## Satellite imagery
 
-**Satellite** (the button with a satellite on it, after **Contour lines**) draws
+**Satellite** (the button with a satellite on it, after **Grey line** and
+**Repeaters**; on a phone, in the menu at the end of the search box when the column has
+no room for it) draws
 pictures of the ground under the map's roads, paths, names and everything you have put
 on it. The choice is remembered in the browser. The pictures come from Outpost's own
 disk: nothing is fetched from the internet while you look at the map.
