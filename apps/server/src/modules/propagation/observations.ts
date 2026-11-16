@@ -243,6 +243,23 @@ export async function registerObservations(
         `That file holds more than ${MAX_ADIF_RECORDS.toLocaleString("en-GB")} contacts. Export it in parts and import each.`,
       );
     }
+    // A file with not one whole record in it is refused in words. Recorded as an import of
+    // nothing, it would read as a log that had been looked through and found empty.
+    if (file.records.length === 0) {
+      const nothing = (message: string) => badRequest(`${message} Nothing was brought in.`, { reason: "nothing-to-read" });
+      if (file.headerNeverEnds) {
+        throw nothing(
+          "This file begins with text, which ADIF takes as a header, but has no <EOH> tag to end the header, so its contacts cannot be told from it. Export the log again, or delete the text before the first < in the file.",
+        );
+      }
+      if (file.truncated > 0)
+        throw nothing("This file ends in the middle of its first contact: it has no <EOR> tag that ends a whole one.");
+      throw nothing(
+        file.headerEnded
+          ? "This file has a header and no contacts after it."
+          : "This file has no contacts in it: no fields come before any of its <EOR> tags.",
+      );
+    }
     const skipped = new Map<string, number>();
     const notes = new Map<string, number>();
     const rows: NewRow[] = [];
