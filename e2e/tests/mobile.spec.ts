@@ -86,6 +86,8 @@ test.describe("on a phone", () => {
       ["Communication plans", "/radio/plans"],
       ["Contact log", "/radio/log"],
       ["Repeaters", "/radio/repeaters"],
+      ["Tools", "/tools"],
+      ["Preparedness", "/prepare"],
       // A tab, listed again as the heading of the screen under it.
       ["Notes", "/notes"],
       ["Import files", "/import"],

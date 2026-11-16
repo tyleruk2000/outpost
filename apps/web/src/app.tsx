@@ -36,6 +36,8 @@ const SettingsPage = lazy(() => import("./features/settings/settings-page"));
 const SetupGuidePage = lazy(() => import("./features/help/setup-guide-page"));
 const KeptPage = lazy(() => import("./features/kept/kept-page"));
 const RadioPage = lazy(() => import("./features/radio/radio-page"));
+const ToolsPage = lazy(() => import("./features/tools/tools-page"));
+const PreparePage = lazy(() => import("./features/prepare/prepare-page"));
 const PropagationPage = lazy(() => import("./features/propagation/propagation-page"));
 const PlansPage = lazy(() => import("./features/propagation/plans/plans-page"));
 const PlanPage = lazy(() => import("./features/propagation/plans/plan-page"));
@@ -114,6 +116,8 @@ export function App() {
           <Route path="help/search-and-answers" element={<SetupGuidePage />} />
           <Route path="kept" element={<KeptPage />} />
           <Route path="radio" element={<RadioPage />} />
+          <Route path="tools" element={<ToolsPage />} />
+          <Route path="prepare" element={<PreparePage />} />
           <Route path="radio/propagation" element={<PropagationPage />} />
           <Route path="radio/coverage" element={<CoveragePage />} />
           <Route path="radio/log" element={<LogPage />} />
