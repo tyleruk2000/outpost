@@ -1,17 +1,20 @@
 /**
  * What the HF planner asks the server for, and the form a person fills in.
  *
- * The form is remembered in this browser between visits (a convenience, nothing more);
- * a prediction worth keeping is saved on the server by name.
+ * The form is remembered in this browser between visits (a convenience, nothing more),
+ * all but its date; a prediction worth keeping is saved on the server by name.
  */
 import {
   ANTENNA_PRESETS,
   type AntennaProfile,
   type AntennaProfileInput,
   type AntennaSpec,
+  antennaModelLabel,
+  bandOf,
   type CompareResult,
   type CompareWhat,
   type EngineStatus,
+  groundSetting,
   type MarkerDto,
   type ModeId,
   type NoiseEnvironment,
@@ -126,9 +129,15 @@ export interface PlannerForm {
   /** A radio profile's id, or "" for none. */
   radioId: string;
   powerWatts: string;
-  /** "preset:<id>" or a profile's id. */
+  /** "preset:<id>", a profile's id, or `AS_SAVED` for the antenna kept below. */
   txAntennaId: string;
   rxAntennaId: string;
+  /**
+   * The antennas of a saved prediction that was opened, when no generic antenna and no
+   * profile is exactly that antenna any more. They are run as they were saved.
+   */
+  txAntennaSaved: AntennaSpec | null;
+  rxAntennaSaved: AntennaSpec | null;
   noise: NoiseEnvironment;
   /** A band's id, or "other" for a typed frequency. */
   band: string;
@@ -146,6 +155,9 @@ export interface PlannerForm {
   replyNoise: NoiseEnvironment;
 }
 
+/** The antenna a saved prediction was made with, chosen in the form under this id. */
+export const AS_SAVED = "as-saved";
+
 export const todayUtc = () => new Date().toISOString().slice(0, 10);
 
 export const emptyForm = (): PlannerForm => ({
@@ -156,6 +168,8 @@ export const emptyForm = (): PlannerForm => ({
   powerWatts: "5",
   txAntennaId: "preset:low-dipole",
   rxAntennaId: "preset:low-dipole",
+  txAntennaSaved: null,
+  rxAntennaSaved: null,
   noise: "residential",
   band: "40m",
   frequencyMhz: "7.1",
@@ -181,10 +195,20 @@ export const exampleForm = (): PlannerForm => ({
 
 const STORE = "outpost.propagation.form.v1";
 
+/**
+ * The form as it was left, on today's date. The date is the one thing that goes stale:
+ * brought back weeks later it would ask about a month gone by, on a screen that reads
+ * as a plan for now. It is kept only through the day (UTC) it was chosen on, so that
+ * leaving the planner for the equipment and coming back does not lose it.
+ */
 export function rememberedForm(): PlannerForm {
   try {
     const stored = localStorage.getItem(STORE);
-    if (stored) return { ...emptyForm(), ...(JSON.parse(stored) as Partial<PlannerForm>) };
+    if (stored) {
+      const { rememberedOn, ...kept } = JSON.parse(stored) as Partial<PlannerForm> & { rememberedOn?: string };
+      const today = todayUtc();
+      return { ...emptyForm(), ...kept, date: rememberedOn === today && kept.date ? kept.date : today };
+    }
   } catch {
     // Private windows and blocked storage: start from the empty form.
   }
@@ -193,13 +217,39 @@ export function rememberedForm(): PlannerForm {
 
 export function rememberForm(form: PlannerForm): void {
   try {
-    localStorage.setItem(STORE, JSON.stringify(form));
+    localStorage.setItem(STORE, JSON.stringify({ ...form, rememberedOn: todayUtc() }));
   } catch {
     // Nothing depends on it.
   }
 }
 
-export function antennaOf(id: string, profiles: AntennaProfile[]): { spec: AntennaSpec; name: string } | null {
+const sameAntenna = (a: AntennaSpec, b: AntennaSpec) =>
+  a.kind === b.kind &&
+  a.heightM === b.heightM &&
+  a.ground === b.ground &&
+  a.broadsideDeg === b.broadsideDeg &&
+  a.gainDb === b.gainDb &&
+  a.feedlineLossDb === b.feedlineLossDb;
+
+/** An antenna in a few words, for one that has no name of its own. */
+export function antennaSummary(spec: AntennaSpec): string {
+  const parts = [antennaModelLabel(spec.kind)];
+  if (spec.kind !== "isotropic") {
+    if (spec.kind !== "vertical-monopole") parts.push(`${spec.heightM} m up`);
+    parts.push(`${groundSetting(spec.ground).label.toLowerCase()} ground`);
+  }
+  if (spec.broadsideDeg !== null) parts.push(`broadside to ${spec.broadsideDeg}°`);
+  if (spec.gainDb !== 0) parts.push(`${spec.gainDb} dB gain`);
+  if (spec.feedlineLossDb !== 0) parts.push(`${spec.feedlineLossDb} dB lost in the feedline`);
+  return parts.join(", ");
+}
+
+export function antennaOf(
+  id: string,
+  profiles: AntennaProfile[],
+  saved: AntennaSpec | null = null,
+): { spec: AntennaSpec; name: string } | null {
+  if (id === AS_SAVED) return saved ? { spec: saved, name: "As saved" } : null;
   if (id.startsWith("preset:")) {
     const preset = ANTENNA_PRESETS.find((item) => `preset:${item.id}` === id);
     return preset ? { spec: preset.spec, name: preset.name } : null;
@@ -233,8 +283,8 @@ export function requestOf(
   const frequencyMhz = number(form.frequencyMhz);
   if (!(frequencyMhz >= 2 && frequencyMhz <= 30))
     return { field: "frequencyMhz", problem: "Give a frequency between 2 and 30 MHz, the range the engine covers." };
-  const txAntenna = antennaOf(form.txAntennaId, profiles);
-  const rxAntenna = antennaOf(form.rxAntennaId, profiles);
+  const txAntenna = antennaOf(form.txAntennaId, profiles, form.txAntennaSaved);
+  const rxAntenna = antennaOf(form.rxAntennaId, profiles, form.rxAntennaSaved);
   if (!txAntenna) return { field: "txAntennaId", problem: "Choose the transmitting antenna." };
   if (!rxAntenna) return { field: "rxAntennaId", problem: "Choose the receiving antenna." };
   const request: PredictionRequest = {
@@ -249,16 +299,22 @@ export function requestOf(
     mode: form.mode,
     solar: { source: "table" },
   };
+  // Each of the two is sent whenever it is filled in. A bandwidth on its own goes with
+  // the mode's own figure, which the server has: what the form shows is what is asked.
   if (form.requiredSnrDb.trim() !== "") {
     const snr = number(form.requiredSnrDb);
-    const bandwidth = form.referenceBandwidthHz.trim() === "" ? undefined : number(form.referenceBandwidthHz);
-    if (!Number.isFinite(snr) || (bandwidth !== undefined && !(bandwidth >= 1)))
-      return {
-        field: "requiredSnrDb",
-        problem: "Give the signal-to-noise ratio the mode needs as a number of decibels, and its bandwidth in hertz.",
-      };
+    if (!Number.isFinite(snr))
+      return { field: "requiredSnrDb", problem: "Give the signal-to-noise ratio the mode needs as a number of decibels." };
     request.requiredSnrDb = snr;
-    if (bandwidth !== undefined) request.referenceBandwidthHz = bandwidth;
+  }
+  if (form.referenceBandwidthHz.trim() !== "") {
+    const bandwidth = number(form.referenceBandwidthHz);
+    if (!(bandwidth >= 1))
+      return {
+        field: "referenceBandwidthHz",
+        problem: "Give the bandwidth the figure is measured in as a number of hertz, at least 1.",
+      };
+    request.referenceBandwidthHz = bandwidth;
   }
   if (form.solar === "manual") {
     const ssn = number(form.ssn);
@@ -277,20 +333,29 @@ export function requestOf(
   return { request };
 }
 
-/** The form that asks a saved request again. Antennas that match a preset are shown as that preset. */
-export function formOf(request: PredictionRequest, band: string): PlannerForm {
+/**
+ * The form that asks a saved request again. An antenna is shown as the generic antenna
+ * or the profile that is exactly it; one that is neither any more (a profile since
+ * changed or deleted) is kept in the form and run as it was saved, never replaced.
+ */
+export function formOf(request: PredictionRequest, band: string, profiles: AntennaProfile[]): PlannerForm {
   const antennaId = (spec: AntennaSpec) => {
-    const preset = ANTENNA_PRESETS.find((item) => JSON.stringify(item.spec) === JSON.stringify(spec));
-    return preset ? `preset:${preset.id}` : "preset:low-dipole";
+    const preset = ANTENNA_PRESETS.find((item) => sameAntenna(item.spec, spec));
+    if (preset) return `preset:${preset.id}`;
+    return profiles.find((item) => sameAntenna(item, spec))?.id ?? AS_SAVED;
   };
+  const txAntennaId = antennaId(request.txAntenna);
+  const rxAntennaId = antennaId(request.rxAntenna);
   return {
     ...emptyForm(),
     tx: { text: `${request.tx.lat}, ${request.tx.lon}`, name: request.tx.name },
     rx: { text: `${request.rx.lat}, ${request.rx.lon}`, name: request.rx.name },
     date: request.date,
     powerWatts: String(request.powerWatts),
-    txAntennaId: antennaId(request.txAntenna),
-    rxAntennaId: antennaId(request.rxAntenna),
+    txAntennaId,
+    rxAntennaId,
+    txAntennaSaved: txAntennaId === AS_SAVED ? request.txAntenna : null,
+    rxAntennaSaved: rxAntennaId === AS_SAVED ? request.rxAntenna : null,
     noise: request.noise,
     band,
     frequencyMhz: String(request.frequencyMhz),
@@ -304,5 +369,59 @@ export function formOf(request: PredictionRequest, band: string): PlannerForm {
     reply: request.reply !== undefined,
     replyPowerWatts: String(request.reply?.powerWatts ?? 5),
     replyNoise: request.reply?.noise ?? "residential",
+  };
+}
+
+/** What a prediction depends on, in the words used when a saved one cannot be asked again. */
+const ASKED: Array<[string, (request: PredictionRequest) => unknown]> = [
+  ["the transmitter's position", (r) => [r.tx.lat, r.tx.lon]],
+  ["the receiver's position", (r) => [r.rx.lat, r.rx.lon]],
+  ["the date", (r) => r.date],
+  ["the power", (r) => r.powerWatts],
+  ["the transmitting antenna", (r) => r.txAntenna],
+  ["the receiving antenna", (r) => r.rxAntenna],
+  ["the noise", (r) => r.noise],
+  ["the frequency", (r) => r.frequencyMhz],
+  ["the mode and what it needs", (r) => [r.mode, r.requiredSnrDb ?? null, r.referenceBandwidthHz ?? null]],
+  ["the sunspot number", (r) => r.solar],
+  ["the reply", (r) => (r.reply ? [r.reply.powerWatts, r.reply.noise] : null)],
+];
+/** The same words for the field of the form that could not be read back. */
+const FIELD_ASKED: Partial<Record<keyof PlannerForm, string>> = {
+  tx: "the transmitter's position",
+  rx: "the receiver's position",
+  powerWatts: "the power",
+  txAntennaId: "the transmitting antenna",
+  rxAntennaId: "the receiving antenna",
+  frequencyMhz: "the frequency",
+  requiredSnrDb: "the mode and what it needs",
+  referenceBandwidthHz: "the mode and what it needs",
+  ssn: "the sunspot number",
+  fof2Mhz: "the sunspot number",
+  replyPowerWatts: "the reply",
+};
+/** A value written so that two of them can be compared whatever order their fields are in. */
+const written = (value: unknown) => JSON.stringify(value && typeof value === "object" ? Object.entries(value).sort() : value);
+
+/**
+ * A saved prediction, opened: the form that shows it and the request to send, which is
+ * the question that was saved. If the form cannot ask exactly that question, there is
+ * no request, and the reason is given instead: a different question is never sent
+ * under the saved name.
+ */
+export function openSaved(
+  saved: SavedPrediction,
+  profiles: AntennaProfile[],
+): { form: PlannerForm; request: PredictionRequest } | { form: PlannerForm; problem: string } {
+  const form = formOf(saved.request, bandOf(saved.request.frequencyMhz)?.id ?? "other", profiles);
+  const built = requestOf(form, profiles);
+  const differs =
+    "request" in built
+      ? ASKED.filter(([, read]) => written(read(built.request)) !== written(read(saved.request))).map(([words]) => words)
+      : [FIELD_ASKED[built.field] ?? "something in it"];
+  if ("request" in built && differs.length === 0) return { form, request: built.request };
+  return {
+    form,
+    problem: `The form cannot ask exactly what was saved: ${differs.join(", ")} would not be the same. Nothing was predicted. The form shows the nearest it can ask; check it before pressing Predict.`,
   };
 }

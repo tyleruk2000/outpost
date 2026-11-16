@@ -31,7 +31,9 @@ Read [What it is not](#what-it-is-not) before relying on it.
    a British grid reference or a Maidenhead locator (`IO91WM`), or choose a saved place.
    Saved places are the markers you keep on the map; there is no second list.
 2. **Date.** Any day. The model works by month, so every day of a month gets the same
-   answer.
+   answer. The planner opens on today's date (UTC). The rest of the form is remembered
+   in the browser from one visit to the next; a date you chose is remembered only until
+   the end of that day, so the planner never opens on a date from weeks ago.
 3. **With what.** Transmitter power, an antenna at each end, a band or a frequency, and
    a mode. A radio profile fills in the power.
 4. **Noise where the receiver is.** Urban, residential, rural or remote. These are
@@ -45,6 +47,19 @@ Read [What it is not](#what-it-is-not) before relying on it.
 
 Press **Predict**. The first time, **Try London to Birmingham on 40 m** fills the form
 in and runs it.
+
+### Saved predictions
+
+**Save this prediction** keeps the question under a name. **Open** asks that question
+again, with whatever data is installed then, and a notice above the answer names the
+saved prediction and the date it is for, which is the date it was saved with and not
+today's.
+
+An antenna is shown as the generic antenna or the profile that is exactly the antenna
+that was saved. If the profile has been changed or deleted since, the antenna is listed
+as **As saved** and is run as it was saved; another antenna is never put in its place.
+If the form cannot ask exactly what was saved, nothing is predicted and the screen says
+what would not be the same.
 
 ### Reading the answer
 
@@ -104,6 +119,13 @@ basis, and the planner says so.
 | Another digital mode | none | No figure is assumed. Without one, signal-to-noise ratios are shown and no reliability | your own |
 
 All four were read on 16 November 2026.
+
+**Needs, dB** and **Measured in, Hz** are each used whenever they are filled in. A
+bandwidth typed on its own is applied to the mode's starting figure: CW with 500 in
+**Measured in, Hz** and **Needs, dB** left empty is asked as 24 dB in 500 Hz, which is
+24 + 10·log10(500) = 51 dB in 1 Hz. The answer then lists the mode as your own
+bandwidth with the published figure, because 24 dB in 500 Hz is not what the guide
+states.
 
 Hearing a station is not a contact. With **The reply** filled in, both directions are
 predicted, and the planner says a contact can be expected on *no more than* the weaker
@@ -314,6 +336,12 @@ of a watt), the sunspot number, the solar table's checksum, the engine's checksu
 the data's version. The same key is always the same answer. The 300 most recently used
 are kept. `POST /api/radio/propagation/predict?background=true` runs the same work as a
 job, for anything long.
+
+The sunspot number found from a measured foF2 is part of that key, and finding it is a
+search: ten or eleven questions to the engine. The number is remembered, while the
+server runs, by the path, the month, the foF2, the hour, the engine and the data, so
+that a kept answer, a comparison or the printed page of the same question does not
+search again. After a restart the first of them searches once.
 
 ### Rebuilding the engine
 

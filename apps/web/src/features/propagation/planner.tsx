@@ -27,10 +27,12 @@ import { Field, Input } from "@/components/ui/input";
 import { Checkbox, Select, Skeleton } from "@/components/ui/misc";
 import { errorMessage } from "@/lib/api";
 import {
+  AS_SAVED,
   antennaOf,
+  antennaSummary,
   emptyForm,
   exampleForm,
-  formOf,
+  openSaved,
   type PlaceField,
   type PlannerForm,
   rememberedForm,
@@ -95,11 +97,17 @@ function Place({
   );
 }
 
+const longDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+
+/** The saved prediction on screen: asked again as it was saved, or the reason it was not asked. */
+type Opened = { name: string; date: string; antennas: string[] } | { name: string; problem: string };
+
 export function Planner() {
   const [form, setForm] = useState<PlannerForm>(rememberedForm);
   const [problem, setProblem] = useState<{ field: keyof PlannerForm; problem: string } | null>(null);
   const [result, setResult] = useState<PredictionResult | null>(null);
   const [hour, setHour] = useState(12);
+  const [opened, setOpened] = useState<Opened | null>(null);
   const [saveName, setSaveName] = useState<string | null>(null);
   const [removing, setRemoving] = useState<{ id: string; name: string } | null>(null);
   const replyId = useId();
@@ -136,11 +144,14 @@ export function Planner() {
     });
   };
 
-  const antennaOptions = [
+  const antennaOptions = (saved: PlannerForm["txAntennaSaved"]) => [
+    ...(saved ? [{ value: AS_SAVED, label: "As saved", description: antennaSummary(saved) }] : []),
     ...antennas.map((antenna) => ({ value: antenna.id, label: antenna.name, description: antennaModelLabel(antenna.kind) })),
     ...ANTENNA_PRESETS.map((preset) => ({ value: `preset:${preset.id}`, label: preset.name, description: "Generic" })),
   ];
-  const antennaNote = (id: string) => {
+  const antennaNote = (id: string, saved: PlannerForm["txAntennaSaved"]) => {
+    if (id === AS_SAVED && saved)
+      return `The antenna this prediction was saved with: ${antennaSummary(saved)}. None of your profiles or the generic antennas is exactly this now.`;
     const preset = ANTENNA_PRESETS.find((item) => `preset:${item.id}` === id);
     if (preset) return preset.modelledAs;
     const chosen = antennaOf(id, antennas);
@@ -166,6 +177,7 @@ export function Planner() {
         noValidate
         onSubmit={(event) => {
           event.preventDefault();
+          setOpened(null);
           run();
         }}
       >
@@ -248,11 +260,25 @@ export function Planner() {
               />
             )}
           </Field>
-          <Field label="Transmitting antenna" hint={antennaNote(form.txAntennaId)} error={fieldError("txAntennaId")}>
-            {(ids) => <Select {...ids} value={form.txAntennaId} onChange={(value) => set("txAntennaId", value)} options={antennaOptions} />}
+          <Field label="Transmitting antenna" hint={antennaNote(form.txAntennaId, form.txAntennaSaved)} error={fieldError("txAntennaId")}>
+            {(ids) => (
+              <Select
+                {...ids}
+                value={form.txAntennaId}
+                onChange={(value) => set("txAntennaId", value)}
+                options={antennaOptions(form.txAntennaSaved)}
+              />
+            )}
           </Field>
-          <Field label="Receiving antenna" hint={antennaNote(form.rxAntennaId)} error={fieldError("rxAntennaId")}>
-            {(ids) => <Select {...ids} value={form.rxAntennaId} onChange={(value) => set("rxAntennaId", value)} options={antennaOptions} />}
+          <Field label="Receiving antenna" hint={antennaNote(form.rxAntennaId, form.rxAntennaSaved)} error={fieldError("rxAntennaId")}>
+            {(ids) => (
+              <Select
+                {...ids}
+                value={form.rxAntennaId}
+                onChange={(value) => set("rxAntennaId", value)}
+                options={antennaOptions(form.rxAntennaSaved)}
+              />
+            )}
           </Field>
           <div className="grid grid-cols-2 gap-4">
             <Field label="Band">
@@ -314,7 +340,11 @@ export function Planner() {
                 />
               )}
             </Field>
-            <Field label="Measured in, Hz" hint={`Leave empty for ${mode.referenceBandwidthHz} Hz.`}>
+            <Field
+              label="Measured in, Hz"
+              hint={`Leave empty for ${mode.referenceBandwidthHz} Hz.`}
+              error={fieldError("referenceBandwidthHz")}
+            >
               {(ids) => (
                 <Input
                   {...ids}
@@ -434,7 +464,14 @@ export function Planner() {
           <Button type="submit" variant="primary" loading={predict.isPending} disabled={engine ? !engine.ready : false}>
             Predict
           </Button>
-          <Button type="button" variant="ghost" onClick={() => setForm(emptyForm())}>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => {
+              setForm(emptyForm());
+              setOpened(null);
+            }}
+          >
             Clear the form
           </Button>
           {result ? (
@@ -480,6 +517,17 @@ export function Planner() {
       ) : null}
 
       <div className="mt-10" aria-busy={predict.isPending}>
+        {opened && "problem" in opened ? (
+          <Notice tone="danger" title={`“${opened.name}” was not asked again`} className="mb-4">
+            {opened.problem}
+          </Notice>
+        ) : opened ? (
+          <Notice title={`Saved prediction: ${opened.name}`} className="mb-4">
+            Asked again as it was saved, for {longDate.format(new Date(`${opened.date}T00:00:00Z`))}. That is the date it was saved with,
+            not today's.
+            {opened.antennas.map((line) => ` ${line}`)}
+          </Notice>
+        ) : null}
         {predict.isError ? (
           <Notice tone="danger" title="No prediction was made">
             {errorMessage(predict.error)}
@@ -501,6 +549,7 @@ export function Planner() {
                 onClick={() => {
                   const example = exampleForm();
                   setForm(example);
+                  setOpened(null);
                   run(example);
                 }}
               >
@@ -529,9 +578,28 @@ export function Planner() {
                   <Button
                     size="sm"
                     onClick={() => {
-                      const opened = formOf(item.request, bandOf(item.request.frequencyMhz)?.id ?? "other");
-                      setForm(opened);
-                      run(opened);
+                      const next = openSaved(item, antennas);
+                      setForm(next.form);
+                      if ("problem" in next) {
+                        // Nothing else is shown under the saved name: not the last answer, and not a different question's.
+                        setResult(null);
+                        predict.reset();
+                        setProblem(null);
+                        setOpened({ name: item.name, problem: next.problem });
+                      } else {
+                        const kept = (which: string, spec: PlannerForm["txAntennaSaved"]) =>
+                          spec
+                            ? [
+                                `Its ${which} antenna is not one of your profiles or a generic antenna now, so it is run as it was saved: ${antennaSummary(spec)}.`,
+                              ]
+                            : [];
+                        setOpened({
+                          name: item.name,
+                          date: item.request.date,
+                          antennas: [...kept("transmitting", next.form.txAntennaSaved), ...kept("receiving", next.form.rxAntennaSaved)],
+                        });
+                        run(next.form);
+                      }
                       window.scrollTo({ top: 0 });
                     }}
                   >
