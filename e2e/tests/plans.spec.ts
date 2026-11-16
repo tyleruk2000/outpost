@@ -58,9 +58,15 @@ test.describe("Communication plans", () => {
     await expect(page.getByText(/by VOACAP Version 16\.\d+W\./)).toBeVisible();
 
     // A note is linked to the plan and travels with it.
-    await page.getByLabel("Find a note or document to link").fill("procedure");
+    // Other tests leave notes and documents of their own; the one linked is found by its own words.
+    await page.getByLabel("Find a note or document to link").fill("procedure family");
     await page.getByRole("button", { name: "Find" }).click();
-    await page.getByRole("list", { name: "Notes and documents found" }).getByRole("button", { name: "Link" }).click();
+    await page
+      .getByRole("list", { name: "Notes and documents found" })
+      .getByRole("listitem")
+      .filter({ hasText: "Net procedure for the family" })
+      .getByRole("button", { name: "Link" })
+      .click();
     await expect(page.getByRole("link", { name: "Net procedure for the family" })).toHaveAttribute("href", `/notes/${note.id}`);
     // Linking does not change what the engine was asked: the matrix is still there after a reload.
     await page.reload();
