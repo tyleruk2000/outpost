@@ -42,7 +42,12 @@ export function ChatSetup({ status }: { status: ChatStatus }) {
     if (!found?.address) return;
     save.mutate(
       { "answers.enabled": true, "answers.endpoint": found.address, "answers.model": model ?? "" },
-      { onSuccess: () => void client.invalidateQueries({ queryKey: chatKeys.all }) },
+      {
+        onSuccess: () => {
+          void client.invalidateQueries({ queryKey: chatKeys.all });
+          void client.invalidateQueries({ queryKey: ["answers"] });
+        },
+      },
     );
   };
 

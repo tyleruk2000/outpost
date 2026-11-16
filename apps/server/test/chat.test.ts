@@ -207,6 +207,9 @@ describe("which earlier messages go with a question", () => {
     expect(titleFrom(`${"word ".repeat(30)}`)).toMatch(/^(word ){11}word…$/);
     expect(titleFrom("   ")).toBe("New conversation");
     expect(excerptOf("# Title\n\n```sh\nrm -rf\n```\nSome **bold** words")).toBe("Title Some bold words");
+    expect(excerptOf("The usual times.\n\n| Method | Soak |\n| --- | --- |\n| Overnight | 8 hours |\n\n---\n\nThen cook.")).toBe(
+      "The usual times. Then cook.",
+    );
   });
 });
 

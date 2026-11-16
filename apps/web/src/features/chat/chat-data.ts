@@ -25,7 +25,9 @@ import { api } from "@/lib/api";
 export const chatKeys = {
   all: ["chat"] as const,
   status: ["chat", "status"] as const,
-  models: ["chat", "models"] as const,
+  // Under "answers", not "chat": the model server is asked for its list when the screen opens or the
+  // setting changes, not every time a conversation does.
+  models: ["answers", "chat-models"] as const,
   list: (q: string) => ["chat", "list", q] as const,
   detail: (id: string) => ["chat", "conversation", id] as const,
 };

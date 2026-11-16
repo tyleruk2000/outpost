@@ -14,12 +14,16 @@ const stats = async (page: Page) =>
 const box = (page: Page) => page.getByRole("textbox", { name: "Your message" });
 const replies = (page: Page) => page.getByRole("article", { name: /^Reply from/ });
 
+/** Pages of notes this suite made, to be taken away again when it is done. */
+const made: string[] = [];
+
 test.describe("chat with a local model", () => {
   test.describe.configure({ mode: "serial" });
 
   test.afterAll(async ({ browser }) => {
-    // Leave the server as other suites expect it: no model server set up.
+    // Leave the server as other suites expect it: no model server set up, and no pages of ours in the tree.
     const page = await browser.newPage();
+    for (const id of made) await page.request.delete(`/api/notes/${id}`, { headers: { "X-Outpost-Request": "1" } });
     await page.request.fetch("/api/settings", {
       method: "PATCH",
       headers: { "X-Outpost-Request": "1", "Content-Type": "application/json" },
@@ -54,7 +58,7 @@ test.describe("chat with a local model", () => {
 
   test("starts a conversation, watches the reply being written, and stops it", async ({ page }) => {
     const errors = watchForErrors(page);
-    await api(page, "POST", "/api/notes", {
+    const lamp = await api(page, "POST", "/api/notes", {
       title: "Lamp oil for chat",
       content: {
         type: "doc",
@@ -64,6 +68,7 @@ test.describe("chat with a local model", () => {
         ],
       },
     });
+    made.push(lamp.note.id);
     await api(page, "PATCH", "/api/settings", {
       "answers.enabled": true,
       "answers.endpoint": `${MODEL_URL}/v1`,
@@ -178,6 +183,7 @@ test.describe("chat with a local model", () => {
     await reply.getByRole("button", { name: "Save as a note" }).click();
     await page.getByRole("button", { name: "Open it" }).click();
     await expect(page).toHaveURL(/\/notes\/[0-9a-z]+$/);
+    made.push(new URL(page.url()).pathname.split("/").pop()!);
     await expect(page.getByText(/Written by a language model/)).toBeVisible();
     await expect(page.getByText(/written without your library, and not a source/)).toBeVisible();
     await expect(page.getByRole("cell", { name: "Paraffin" })).toBeVisible();
@@ -236,10 +242,7 @@ test.describe("chat with a local model", () => {
 
   test("asks about one page of notes from that page, and answers from it alone", async ({ page }) => {
     const errors = watchForErrors(page);
-    const tree = await api(page, "GET", "/api/notes/tree");
-    const note =
-      JSON.stringify(tree).match(/"id":"([0-9a-z]+)","[^{}]*"title":"Lamp oil for chat"/)?.[1] ??
-      (await api(page, "GET", "/api/notes/lookup?q=Lamp%20oil")).notes?.[0]?.id;
+    const note = made[0];
     expect(note).toBeTruthy();
     await page.goto(`/notes/${note}`);
     await page.getByRole("button", { name: "Page actions" }).click();

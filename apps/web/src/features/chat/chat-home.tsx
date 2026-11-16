@@ -6,7 +6,7 @@
  * with that item named above the box.
  */
 import type { ChatConversationSummary } from "@outpost/shared";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ellipsis, PencilLine, Search, Trash2, X } from "lucide-react";
 import { useDeferredValue, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
@@ -17,7 +17,7 @@ import { ConfirmDialog, Dialog, DialogBody, DialogContent, DialogFooter } from "
 import { Field, Input } from "@/components/ui/input";
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
 import { Skeleton } from "@/components/ui/misc";
-import { errorMessage } from "@/lib/api";
+import { api, errorMessage } from "@/lib/api";
 import { plural, timeAgo } from "@/lib/utils";
 import { chatApi, chatKeys, SETTINGS_MODEL, storeDetail, useChatModels, useChatStatus, useConversations } from "./chat-data";
 import { Composer } from "./composer";
@@ -235,8 +235,19 @@ function NewConversation() {
   const location = useLocation();
   const [params, setParams] = useSearchParams();
   const about = readAbout(params.get("about"));
-  const aboutTitle =
+  // The link that led here names the item; an address typed or reloaded does not, so the item is asked for.
+  const carried =
     typeof (location.state as { title?: unknown } | null)?.title === "string" ? (location.state as { title: string }).title : "";
+  const item = useQuery({
+    queryKey: ["chat", "about", about?.kind, about?.id],
+    enabled: about !== null,
+    retry: false,
+    queryFn: async () =>
+      about?.kind === "note"
+        ? (await api.get<{ note: { title: string } }>(`/api/notes/${about.id}`)).note.title
+        : (await api.get<{ document: { title: string } }>(`/api/documents/${about?.id}`)).document.title,
+  });
+  const aboutTitle = item.data ?? carried;
   const status = useChatStatus().data;
   const modelsQuery = useChatModels(status?.usable === true);
   const models = modelsQuery.data;
@@ -320,6 +331,13 @@ function NewConversation() {
             <Notice tone="warning" title="Not sent">
               {refusal}
             </Notice>
+          ) : about && item.isError ? (
+            <Notice
+              tone="warning"
+              title={about.kind === "note" ? "That page is not in your notes" : "That document is not in your library"}
+            >
+              It may have been deleted. Close “About” above the box to have a conversation that is not about it.
+            </Notice>
           ) : status?.writingIn ? (
             <Notice tone="info" title="The model is writing a reply in another conversation">
               It writes one at a time. Start this one when that reply has finished.{" "}
@@ -332,10 +350,12 @@ function NewConversation() {
               {models.message}{" "}
               <button type="button" onClick={() => void modelsQuery.refetch()} className="font-medium underline underline-offset-2">
                 Look again
-              </button>{" "}
+              </button>
+              , or{" "}
               <Link to={SETTINGS_MODEL} className="font-medium underline underline-offset-2">
-                Open Settings
+                open Settings
               </Link>
+              .
             </Notice>
           ) : isMissing(chosen, models) ? (
             <Notice tone="warning" title="This model is not on the model server">

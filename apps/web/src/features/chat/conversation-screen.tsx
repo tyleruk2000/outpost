@@ -203,6 +203,18 @@ function Loaded({ detail }: { detail: ChatConversationDetail }) {
   useLayoutEffect(() => {
     if (pinned.current) toEnd();
   }, [messages.length, live?.blocks, live?.phase, last?.state, toEnd]);
+  // What is on screen also grows for reasons of its own (a face that loads late, a table that settles, the
+  // box getting taller as it is typed in): the end is kept in view through those too.
+  const content = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const observed = [content.current, scroller.current].filter((element) => element !== null);
+    if (observed.length === 0 || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => {
+      if (pinned.current) toEnd();
+    });
+    for (const element of observed) observer.observe(element);
+    return () => observer.disconnect();
+  }, [toEnd]);
 
   const model = conversation.model || status?.defaultModel || "";
   const modelInfo = models?.models.find((entry) => entry.id === model || entry.id === `${model}:latest`);
@@ -387,7 +399,7 @@ function Loaded({ detail }: { detail: ChatConversationDetail }) {
         onScroll={onScroll}
         className="scroll-quiet relative min-h-0 flex-1 overflow-y-auto overscroll-contain [overflow-anchor:none]"
       >
-        <div className={cn(COLUMN, "pt-6 pb-10 md:pt-10")}>
+        <div ref={content} className={cn(COLUMN, "pt-6 pb-10 md:pt-10")}>
           <header className={cn(TURN, "mb-8 md:mb-10")}>
             <span aria-hidden className="max-md:hidden" />
             <div className="min-w-0">
@@ -478,10 +490,12 @@ function Loaded({ detail }: { detail: ChatConversationDetail }) {
                   {models.message}{" "}
                   <button type="button" onClick={() => void modelsQuery.refetch()} className="font-medium underline underline-offset-2">
                     Look again
-                  </button>{" "}
+                  </button>
+                  , or{" "}
                   <Link to={SETTINGS_MODEL} className="font-medium underline underline-offset-2">
-                    Open Settings
+                    open Settings
                   </Link>
+                  .
                 </Notice>
               ) : isMissing(model, models) && last?.failure !== "no-such-model" ? (
                 <Notice tone="warning" title="This model is not on the model server">

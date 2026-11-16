@@ -61,7 +61,7 @@ export function AnswersSection({
     <SettingsSection
       id="answers"
       title="Answers from your library"
-      description="Optional. A language model you run yourself writes a short answer to a question from passages of your library, and cites them. Search works without it."
+      description="Optional. A language model you run yourself writes a short answer to a question from passages of your library, and cites them. Chat uses the same model server. Search works without it."
     >
       <SettingRow
         label="Write answers"

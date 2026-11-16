@@ -119,10 +119,13 @@ export function titleFrom(text: string, most = 60): string {
   return `${(space > most * 0.5 ? cut.slice(0, space) : cut.slice(0, most)).replace(/[.?!:;,]+$/, "")}…`;
 }
 
-/** The start of a message as plain words, for a list. */
+/** The start of a message as plain words, for a list: its sentences, without code, tables or rules. */
 export function excerptOf(text: string, most = 140): string {
   const plain = text
     .replace(/```[\s\S]*?(```|$)/g, " ")
+    .split("\n")
+    .filter((line) => !/^\s*(\|.*|[-*_=]{3,}|[-:| ]+)\s*$/.test(line))
+    .join(" ")
     .replace(/[#>*_`|]/g, "")
     .replace(/\s+/g, " ")
     .trim();
