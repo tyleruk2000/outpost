@@ -29,7 +29,7 @@ async function preview(page: Page) {
 /** Makes the file and saves it the way a person would, by pressing the link. */
 async function makeAndSave(page: Page, dialog: ReturnType<Page["getByRole"]>) {
   await dialog.getByRole("button", { name: "Make the PDF" }).click();
-  const save = dialog.getByRole("link", { name: "Save the PDF" });
+  const save = dialog.getByRole("link", { name: "Save as PDF" });
   await expect(save).toBeVisible({ timeout: 120_000 });
   const downloading = page.waitForEvent("download");
   await save.click();
@@ -54,7 +54,10 @@ test.describe("printing the map", () => {
 
   test.afterAll(async ({ browser }) => {
     const page = await browser.newPage();
-    for (const id of made) await page.request.delete(`/api/maps/markers/${id}`, { headers: { "X-Outpost-Request": "1" } });
+    for (const id of made) {
+      const path = id.startsWith("document:") ? `/api/documents/${id.slice(9)}` : `/api/maps/markers/${id}`;
+      await page.request.delete(path, { headers: { "X-Outpost-Request": "1" } });
+    }
     await removeTestMaps(page, installed);
     await page.close();
   });
@@ -172,6 +175,70 @@ test.describe("printing the map", () => {
     } finally {
       await page.request.delete(`/api/documents/${documentId}`, { headers: { "X-Outpost-Request": "1" } });
     }
+    expect(errors).toEqual([]);
+  });
+
+  test("adds the page to the library, where the names on the map are found by search and the page opens in the reader", async ({
+    page,
+  }, testInfo) => {
+    test.setTimeout(180_000);
+    const errors = watchForErrors(page);
+    await layOut(page, CENTRE);
+    const dialog = await preview(page);
+    await dialog.getByRole("textbox", { name: "Title" }).fill("Round the lake");
+    await expect(dialog.getByText("Drawing the preview")).toBeHidden({ timeout: 30_000 });
+    await dialog.getByRole("button", { name: "Make the PDF" }).click();
+    const add = dialog.getByRole("button", { name: "Add to library" });
+    await expect(add).toBeVisible({ timeout: 120_000 });
+    // Until it is pressed, nothing has been sent anywhere.
+    const posted: string[] = [];
+    page.on("request", (request) => request.method() === "POST" && posted.push(new URL(request.url()).pathname));
+    await expect(dialog.getByTestId("pdf-status")).toContainText("“Add to library” files it under “Made in Outpost”");
+    await add.click();
+    const status = dialog.getByTestId("pdf-status");
+    await expect(status).toContainText("Added to the library under “Made in Outpost” as", { timeout: 30_000 });
+    expect(posted).toEqual(["/api/documents"]);
+    const added = status.getByRole("link", { name: /^Map, Round the lake, 1:25,000, \d+ \w+ \d{4}$/ });
+    const documentId = (await added.getAttribute("href"))!.split("/").pop()!;
+    made.push(`document:${documentId}`);
+
+    await expect
+      .poll(async () => (await api(page, "GET", `/api/documents/${documentId}`)).document.extraction, { timeout: 30_000 })
+      .toBe("done");
+    const document = (await api(page, "GET", `/api/documents/${documentId}`)).document;
+    expect(document).toMatchObject({ category: "Made in Outpost", tags: ["Map"], type: "pdf", pageCount: 1 });
+    expect(document.source).toMatch(/^Made in Outpost from the map: \/maps\?lat=53\.07\d\d&lon=-4\.07\d\d&z=\d+\.\d$/);
+    // A page at 300 dots to the inch: the largest thing Outpost makes, sent by the same upload as any file.
+    // (This test map is a lake and a few roads, so it is small; a page of a real town is a few megabytes.)
+    expect(document.sizeBytes).toBeGreaterThan(50_000);
+    await keep(testInfo, "in-the-library.pdf", Buffer.from(await (await page.request.get(document.fileUrl)).body()), "application/pdf");
+
+    // The map itself is a picture. What the library read is the words the file carries beside it:
+    // where the map is, its scale, and the names that were drawn on it.
+    const text = ((await api(page, "GET", `/api/documents/${documentId}/text`)).sections as Array<{ text: string }>)
+      .map((section) => section.text)
+      .join("\n")
+      .replace(/\s+/g, " ");
+    expect(text).toContain("What this map shows: Round the lake.");
+    expect(text).toMatch(/An area of 4\.7 × 6\.3 km centred on 53\.07\d\d°N 4\.07\d\d°W \(Maidenhead locator IO73XB\)/);
+    expect(text).toContain("Scale 1:25,000 on A4 portrait.");
+    expect(text).toContain("Your saved places on it: Boathouse.");
+    // The names are the ones drawn on this page: the hill, the road and the lake. The three villages of the test map lie off it.
+    expect(text).toMatch(/Names written on it: [^.]*\./);
+    for (const name of ["Bryn Prawf", "Ffordd Brawf", "Llyn Prawf"]) expect(text, name).toContain(name);
+    expect(text).not.toContain("Capel Prawf");
+    // And what was already text on the page: the scale and the credits.
+    expect(text).toContain("© OpenStreetMap, openstreetmap.org/copyright");
+
+    // The hill on the map finds the map.
+    await page.goto(`/search?q=${encodeURIComponent('"Bryn Prawf"')}`);
+    const result = page.getByRole("link", { name: /Map, Round the lake, 1:25,000/ }).first();
+    await expect(result).toBeVisible();
+    await result.click();
+    await expect(page).toHaveURL(new RegExp(`/library/documents/${documentId}`));
+    await expect(page.locator("canvas").first()).toBeVisible({ timeout: 15_000 });
+    // From the document, the way back to the same ground on the map.
+    await expect(page.getByRole("link", { name: "Open the map" })).toHaveAttribute("href", /^\/maps\?lat=53\.07/);
     expect(errors).toEqual([]);
   });
 

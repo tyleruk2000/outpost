@@ -298,6 +298,51 @@ in the browser. The reasons and the behaviour are in
 | A recording made on the map is an upload like any other | `PUT /api/maps/recordings/:id` takes GPX the browser built from a recording. It is not trusted for that: it goes through the same checks, the same reader in the same worker, and the same limits as an imported file, and is then held to what a recording is (tracks only, a time at every point, at most 150,000 points). The id in the address is chosen by the device and becomes the track's id, so it is held to 26 characters of the alphabet the server's own ids use, and a track that exists under it is never changed: the request answers with what is there. Until it is saved, a recording is kept in the browser's own storage for Outpost's address (IndexedDB), where anyone using that browser profile can read where its owner walked; nothing of it is sent anywhere but to Outpost. | `saveRecording` in `apps/server/src/modules/maps/annotations.ts`; `apps/web/src/features/maps/recording/`; `apps/server/test/maps-recording.test.ts` |
 | What importing a GPX file still costs the server's thread | Storing the result. A 150,000-point recording holds it up for about 0.13 seconds and the largest file of points for about 0.25. Turning waypoints into markers costs about 0.2 ms each, a row and a search entry, and used to be done in one go: 4.4 seconds for the 20,000 a file may hold, with nothing else answered and 0.57 GB more memory in use, which is why one file was once held to 5,000. They are now written 100 at a time, each hundred a transaction of its own, with a pause between for requests to be answered. Measured on 16 November 2026 for 20,000 waypoints: the longest the thread was held was 0.09 seconds, which is what receiving a file of that many waypoints from the reader costs however they are kept, and memory rose by 0.1 GB. If a later batch or the track itself cannot be written, the markers already written are taken out again, so an import that fails leaves nothing; only the process being killed part of the way through can leave some markers without the rest. | `importTrack` in `apps/server/src/modules/maps/annotations.ts`; `apps/server/test/maps-annotations.test.ts` |
 
+### PDFs made in Outpost and added to the library
+
+The web app makes PDFs itself (a map page, an HF prediction, a comparison, a coverage
+map, a communication plan) and can add one to the library. See
+[library.md](library.md).
+
+- **It is an upload like any other.** The file goes through `POST /api/documents`, the
+  route the Library screen uses, and is trusted no more for having been made by the web
+  app: the server checks its type by content, hashes it, checks for room, and reads its
+  text in the extraction worker exactly as it would a PDF from anywhere. There is no
+  second route and no flag that means "made here". The two fields added for this,
+  `title` and `source`, are text of bounded length that anyone could already set with a
+  `PATCH` afterwards.
+- **Nothing is sent until the button is pressed.** Making a PDF sends nothing; **Save
+  as PDF** sends nothing. **Add to library** sends the file to this Outpost and nowhere
+  else.
+- **What is added is readable by everyone.** Outpost has no accounts, so a document in
+  the library can be opened, searched and downloaded by anyone who can reach it, and it
+  is copied into backups and onto portable drives. A prediction, a plan or a map holds
+  the positions of the stations or the ground it shows: adding it to the library puts
+  those where the rest of the household can find them by search, which is the point of
+  it, and which the screen says ("where search and backups reach it").
+- **One-time pads are never offered to the library**, and nor is the cipher square that
+  is printed from the same view. A pad is a secret meant for paper; the reasons are on
+  the screen and in [library.md](library.md#paper-aids-are-not-offered-to-the-library).
+  Nothing stops a person saving the pads' PDF and uploading it by hand, as nothing stops
+  them photographing the paper; the screen warns that a saved file is another copy.
+- **The link back is an address inside Outpost or nothing.** A document's `source` is a
+  field anyone can type in. When it begins "Made in Outpost from", the document's page
+  offers a link to the address it ends with, and only if that address is a path inside
+  Outpost: it must start with one slash followed by a letter or figure and hold no
+  colon, backslash, space or second slash in a row, so nothing with a scheme or a host
+  passes (`isInsidePath` in `apps/web/src/features/library/made/made-pdf.ts`, with tests
+  for `//host`, `/\host`, `https:` and `javascript:`). It is followed by the app's own
+  router as a route, never set as a web address, and leads to a screen of the app that
+  anyone could already open. The words of the source are drawn as text.
+- **The words a map's PDF carries are the map's own.** The hidden text of a map page
+  (what it shows, and the names drawn on it) is made from the names in the installed
+  map data, the person's saved places and routes, and the title they typed. It is
+  written into the PDF as text strings with their brackets and backslashes escaped,
+  holds only characters of the one encoding the writer uses, and is read back by the
+  library as text like any other.
+- **Where the PDFs go is remembered in the browser** (`outpost.library.madeCategory`
+  in `localStorage`): a category name, nothing else.
+
 ### Reference (ZIM) content
 
 Pages from ZIM archives are served through `/kiwix/open/…` with a policy that

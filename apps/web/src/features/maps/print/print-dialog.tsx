@@ -268,6 +268,12 @@ export function PrintDialog({
       ? Object.fromEntries(made.pictures.map((picture) => [picture.id, picture.url]))
       : { preview: preview.status === "error" ? undefined : preview.url };
 
+  /** The ticked parts of one of the things that can be put on the map, or null when it is not ticked at all. */
+  const ticked = (id: string): Set<string> | null => {
+    const overlay = PRINT_OVERLAYS.find((item) => item.id === id);
+    return overlay && context && overlayOn(overlay, context, selection) ? partsOn(overlay, context, selection) : null;
+  };
+
   const make = async () => {
     if (!printed) return;
     const stop = new AbortController();
@@ -294,10 +300,13 @@ export function PrintDialog({
         date: DATE.format(now),
         paper: paperName(geometry.paper, geometry.orientation),
         names: drawn.pictures.flatMap((picture) => picture.names),
-        places: (markers.data ?? [])
-          .filter((marker) => marker.lon >= bbox[0] && marker.lon <= bbox[2] && marker.lat >= bbox[1] && marker.lat <= bbox[3])
-          .map((marker) => marker.name),
-        routes: here.map((track) => track.name),
+        // Only what was ticked, and so drawn: the words say what is on the page, not what could have been.
+        places: ticked("places")
+          ? (markers.data ?? [])
+              .filter((marker) => marker.lon >= bbox[0] && marker.lon <= bbox[2] && marker.lat >= bbox[1] && marker.lat <= bbox[3])
+              .map((marker) => marker.name)
+          : [],
+        routes: here.filter((track) => ticked("routes")?.has(track.id)).map((track) => track.name),
       });
       const file = await assemblePdf(
         withMapWords(sheetOf(drawn.pictures), geometry.map, words),

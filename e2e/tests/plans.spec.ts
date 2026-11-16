@@ -88,8 +88,12 @@ test.describe("Communication plans", () => {
       expect(new Set(table.split("\n").map((line) => [...line].length)).size).toBe(1);
     }
 
-    const pdf = await exported(page, "Export as PDF");
-    expect(pdf.name).toBe("communication-plan-family-net.pdf");
+    // The PDF is there as soon as the plan has figures; saving it is a plain link to the file.
+    const downloading = page.waitForEvent("download");
+    await page.getByRole("link", { name: "Save as PDF" }).click();
+    const download = await downloading;
+    const pdf = { name: download.suggestedFilename(), bytes: fs.readFileSync(await download.path()) };
+    expect(pdf.name).toBe("communication-plan-family-net-for-16-nov-2026.pdf");
     const file = pdf.bytes.toString("latin1");
     expect(file.startsWith("%PDF-1.")).toBe(true);
     expect(file.trimEnd().endsWith("%%EOF")).toBe(true);
@@ -98,6 +102,41 @@ test.describe("Communication plans", () => {
     expect(file).toContain("(How the bands were chosen)");
     expect(file).toContain("/BaseFont /Courier");
     expect((file.match(/\/Type \/Page\b/g) ?? []).length).toBeGreaterThanOrEqual(2);
+
+    // The same file goes into the library, which reads its text for search and records where it came from.
+    const planId = page.url().split("/").pop()!;
+    await page.getByRole("button", { name: "Add to library" }).click();
+    const status = page.getByTestId("pdf-status");
+    await expect(status).toContainText("Added to the library under “Made in Outpost” as");
+    const added = status.getByRole("link", { name: "Communication plan, Family net, for 16 Nov 2026" });
+    const documentId = (await added.getAttribute("href"))!.split("/").pop()!;
+    await expect
+      .poll(async () => (await api(page, "GET", `/api/documents/${documentId}`)).document.extraction, { timeout: 20_000 })
+      .toBe("done");
+    const document = (await api(page, "GET", `/api/documents/${documentId}`)).document;
+    expect(document).toMatchObject({
+      title: "Communication plan, Family net, for 16 Nov 2026",
+      category: "Made in Outpost",
+      tags: ["Communication plan"],
+      source: `Made in Outpost from the communication plan “Family net”: /radio/plans/${planId}`,
+      sizeBytes: pdf.bytes.length,
+    });
+    // The tables are in Courier, which the file names and does not carry; the library reads them all the same.
+    const pages = (await api(page, "GET", `/api/documents/${documentId}/text`)).sections as Array<{ text: string }>;
+    const words = pages.map((section) => section.text).join("\n");
+    expect(words).toContain("Home base and Remote shelter");
+    expect(words).toMatch(/Gran's house +52\.48, -1\.88 +IO92BL +50 W/);
+    // Pressed again, it is the same file: the library says it has it, and keeps one.
+    await page.getByRole("button", { name: "Add to library" }).click();
+    await expect(status).toContainText("Already in the library as Communication plan, Family net, for 16 Nov 2026");
+    expect((await api(page, "GET", "/api/documents?q=Communication%20plan%2C%20Family%20net")).total).toBe(1);
+    // From the document, the way back to the plan it was made from.
+    await added.click();
+    await expect(page.locator("canvas").first()).toBeVisible({ timeout: 15_000 });
+    await page.getByRole("link", { name: "Open the communication plan “Family net”" }).click();
+    await expect(page).toHaveURL(new RegExp(`/radio/plans/${planId}$`));
+    await expect(page.getByRole("heading", { level: 1, name: "Family net" })).toBeVisible();
+    await api(page, "DELETE", `/api/documents/${documentId}`);
 
     // Deleting the plan leaves the note it linked to.
     await page.getByRole("button", { name: "Delete plan" }).click();

@@ -367,6 +367,16 @@ the boxes of the installed regions. Terrain for only part of the page is said to
   carried in the file. Helvetica as a PDF addresses it has western European letters
   only; a title with other letters in it (Polish, Greek, Cyrillic, Chinese) is put in
   the file as a small picture instead, and the dialog says so.
+- **Words that say what the map shows**, as text laid over the map that is in the file
+  and drawn in no ink (PDF text rendering mode 3, the way a scanned page carries the
+  text read from it). The map is a picture, and a picture cannot be searched; these
+  sentences can. They give the title, how much ground the page covers and where (its
+  centre, its corners, the Maidenhead locator), the scale and paper, the day, the saved
+  places and routes that were ticked for the page, and the names that were drawn on the
+  map: those the map gave room to, as its data spells them, at most 250. A name in a
+  script Helvetica cannot write is left out and counted, never written as "?". A reader
+  that speaks the page says them; selecting all the text of the page picks them up.
+  `apps/web/src/features/maps/print/map-words.ts`.
 - **No name is cut by the edge of the map.** A name that would cross the border is
   left out, as it would be if another name were in its way.
 - **The credits**, exactly those the map on screen shows for what is drawn (so terrain
@@ -380,6 +390,29 @@ The file is written by Outpost's own small PDF writer
 (`apps/web/src/features/maps/print/pdf.ts`), not a library: a page of one or a few
 JPEG pictures and some text needs eight kinds of object, and JPEG data goes into a PDF
 as it stands.
+
+### Saving, sharing, and adding the page to the library
+
+Once the page is made, the dialog offers what every PDF made in Outpost offers
+([library.md](library.md)):
+
+- **Save as PDF**: a link to the file.
+- **Add to library**: sends the file to this Outpost's library, where it is filed under
+  "Made in Outpost" as "Map, *title*, 1:25,000, *date*" (by the centre of the page when
+  it has no title), read for search and kept in backups. Its source records the map
+  address of the same ground, and the document's page links back to it. Because of the
+  words above, a search for a place on the map finds the map. On a phone this is the
+  way that does not depend on the phone saving a file, and from the Home Screen it is
+  the main button.
+- **Share**, where the device has a share sheet that takes files.
+
+A page is a few megabytes at 300 dots to the inch. It is sent with a progress bar and a
+**Stop**, and if the storage location is full or not connected the dialog says so and
+keeps the file to save or to try again with. Nothing is sent until **Add to library**
+is pressed: making the page still asks the server only for map data.
+
+The page is a picture drawn afresh each time it is made, so a page made twice is two
+documents; the same file added twice is one.
 
 ### The browser's own Print
 

@@ -156,6 +156,30 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   the Library, the Import screen and the command palette.
 - A Markdown document shows the pictures it carries in its own file; any other picture
   is still only described, and nothing is loaded from another site.
+- PDFs that Outpost makes can be added to the library from the screen that made them.
+  Wherever a PDF is made (a printed map page, an HF prediction, the comparison under it,
+  a coverage map, a communication plan) the same three actions are offered in the same
+  words: **Save as PDF**, **Add to library** and, where the device can, **Share**. Adding
+  goes through the library's own upload, so the file is checksummed, checked for a
+  duplicate and for room, read for search and kept in backups like any other. It is
+  filed under the category "Made in Outpost" (or one chosen once and remembered on the
+  device), named for what it is and when, and its source links back to what it was made
+  from. Progress, **Stop**, and plain words when there is no room, the storage is away
+  or the library already has the file. On a phone it is the route that does not depend
+  on the phone saving a file. The upload takes a `title` and a `source` with the file.
+  One-time pads and the cipher square are not offered to the library, and the screen
+  says why. See `docs/library.md`.
+- An HF prediction as a PDF (A4 or US Letter, two pages, black on white) and as
+  Markdown: the path and date, both stations as the engine ran them, the sunspot number
+  and its source, the frequency and every band hour by hour with the engine's figures,
+  the best hours and bands, every caveat, and the engine and data versions. A cell with
+  no figure is printed as a dash, never as a nought.
+- A coverage map as a PDF: its picture, the legend with the count of cells in each
+  class, the size of the grid, the grid again in figures so that it reads when printed
+  in grey, what was asked and the caveats.
+- A printed map page carries, as text drawn in no ink, what it shows: where, how large,
+  at what scale, when, and the names drawn on it. A search for a place on a map that is
+  in the library finds the map.
 
 #### Notes
 
