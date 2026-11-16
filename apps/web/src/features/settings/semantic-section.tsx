@@ -196,17 +196,17 @@ export function SemanticSection({
                 ? "The part of Outpost that does this could not be started"
                 : "The program this was set up to use is not answering"
           }
-          action={
-            // Missing files do not come back by asking again; anything else might.
-            !ownServer && !builtIn.installed ? null : (
-              <Button size="sm" loading={read.isPending} disabled={disabled} onClick={() => read.mutate()}>
-                Try again
-              </Button>
-            )
-          }
         >
           <p>{data.reason}</p>
           <p className="mt-1.5">Ordinary search is not affected.</p>
+          {/* Missing files do not come back by asking again; anything else might. */}
+          {!ownServer && !builtIn.installed ? null : (
+            <div className="mt-3">
+              <Button size="sm" loading={read.isPending} disabled={disabled} onClick={() => read.mutate()}>
+                Try again
+              </Button>
+            </div>
+          )}
         </Notice>
       ) : null}
 

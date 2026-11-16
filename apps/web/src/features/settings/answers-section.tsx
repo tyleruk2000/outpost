@@ -160,20 +160,16 @@ export function AnswersSection({
               {data.reason}
             </Notice>
           ) : silent ? (
-            <Notice
-              tone="warning"
-              icon={<CircleAlert aria-hidden />}
-              title="The model server is not answering"
-              action={
-                <Button size="sm" loading={models.isFetching} onClick={() => void models.refetch()}>
-                  Look again
-                </Button>
-              }
-            >
+            <Notice tone="warning" icon={<CircleAlert aria-hidden />} title="The model server is not answering">
               <p>{list?.message}</p>
               <p className="mt-1.5">
                 Start Ollama on that computer, then press Look again. <GuideLink part="when-it-does-not-work">What else to check</GuideLink>
               </p>
+              <div className="mt-3">
+                <Button size="sm" loading={models.isFetching} onClick={() => void models.refetch()}>
+                  Look again
+                </Button>
+              </div>
             </Notice>
           ) : gone && known ? (
             <>
