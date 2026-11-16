@@ -45,6 +45,7 @@ import { type JobRow, type JobRun, PermanentJobError, toJobDto } from "../../cor
 import { settings as settingsTable } from "../../db/schema.ts";
 import type { LocationRow } from "../storage/service.ts";
 import { DATA_FOLDERS, startBackup, verifyBackupFile } from "./archive.ts";
+import { assertPassphraseRight, PROTECTED_TYPE, type ProtectionService, passphraseField, readProtection } from "./protection.ts";
 import type { RestoreStager } from "./restore.ts";
 import { assertBackupRight, backupRight } from "./right.ts";
 import {
@@ -92,6 +93,7 @@ const settingsShape = {
   keep: z.number().int().min(1).max(BACKUP_KEEP_MAX),
 };
 const patchBody = z.object(settingsShape).partial().strict();
+const restoreBody = z.object({ passphrase: passphraseField.optional() }).strict();
 const storedSettings = z.object({ ...settingsShape, setAt: z.number() });
 type StoredSettings = z.infer<typeof storedSettings>;
 
@@ -121,6 +123,8 @@ export interface BackupsService {
   setClock(now: () => number): void;
   /** Tests damage a backup between its being written and its being read back. */
   setBeforeCheck(hook: ((file: string) => Promise<void>) | undefined): void;
+  /** Tests fix how much work a passphrase is put through (see `sealed.ts`), so that each does not spend a second on it. */
+  setPassphraseCost(logN: number | undefined): void;
 }
 
 declare module "../../core/context.ts" {
@@ -129,7 +133,12 @@ declare module "../../core/context.ts" {
   }
 }
 
-export function registerAutomaticBackups(app: FastifyInstance, ctx: AppContext, stager: RestoreStager): void {
+export function registerAutomaticBackups(
+  app: FastifyInstance,
+  ctx: AppContext,
+  stager: RestoreStager,
+  protection: ProtectionService,
+): void {
   const { storage } = ctx.services;
   const { dataDir } = ctx.config;
   let clock: () => number = Date.now;
@@ -292,10 +301,11 @@ export function registerAutomaticBackups(app: FastifyInstance, ctx: AppContext, 
 
     run.progress({ message: "Copying the database" });
     const backup = await startBackup(ctx, undefined, now);
-    const name = backupFileName(Date.parse(backup.manifest.createdAt), kind);
+    const name = backupFileName(Date.parse(backup.manifest.createdAt), kind, backup.fileKey !== undefined);
     const file = path.join(folder, name);
     const part = path.join(folder, partName(name));
     const discard = async () => {
+      backup.fileKey?.fill(0);
       backup.archive.abort();
       backup.cleanup();
       await fs.promises.rm(part, { force: true }).catch(() => undefined);
@@ -303,7 +313,7 @@ export function registerAutomaticBackups(app: FastifyInstance, ctx: AppContext, 
     try {
       run.progress({ message: `Writing the backup to ${location.name}` });
       // Under a temporary name until it is whole, and flushed to the disk before it is renamed.
-      await pipeline(backup.archive, fs.createWriteStream(part, { flags: "wx" }), { signal: run.signal });
+      await pipeline(backup.output, fs.createWriteStream(part, { flags: "wx" }), { signal: run.signal });
       await flushToDisk(part);
       // The same folder must still be the location: a share can go away part-way through.
       const still = await connectedLocation(location.id).catch(() => undefined);
@@ -325,8 +335,12 @@ export function registerAutomaticBackups(app: FastifyInstance, ctx: AppContext, 
     let check: Awaited<ReturnType<typeof verifyBackupFile>>;
     try {
       await beforeCheck?.(file);
-      check = await verifyBackupFile(file, dataDir, run.signal);
+      // A protected backup is read back with the key of this one file, which this run
+      // still holds and which is wiped as soon as the check is over. After that only
+      // the passphrase opens it, and the passphrase is not here.
+      check = await verifyBackupFile(file, dataDir, run.signal, backup.fileKey ? { fileKey: backup.fileKey } : undefined);
     } catch (error) {
+      backup.fileKey?.fill(0);
       // Whether it failed its check or the check was cut short, this run's archive has not been shown to be good.
       const aside = await setAsideFailed(folder, name, bytes, Date.now()).catch(() => ({ kept: true, removed: [] as string[] }));
       if (aside.removed.length > 0) run.log.info({ removed: aside.removed }, "older backups that failed their check were removed");
@@ -340,6 +354,7 @@ export function registerAutomaticBackups(app: FastifyInstance, ctx: AppContext, 
         "verification",
       );
     }
+    backup.fileKey?.fill(0);
     await writeRecord(folder, name, bytes, check, Date.now());
 
     const removed = await applyRetention(folder, kind, settings.keep).catch((error) => {
@@ -405,6 +420,7 @@ export function registerAutomaticBackups(app: FastifyInstance, ctx: AppContext, 
     setBeforeCheck(hook) {
       beforeCheck = hook;
     },
+    setPassphraseCost: protection.setCost,
   };
 
   // ── Routes ──
@@ -520,7 +536,7 @@ export function registerAutomaticBackups(app: FastifyInstance, ctx: AppContext, 
       throw error;
     }
     try {
-      return { available: true, reason: null, backups: await listStored(folder) };
+      return { available: true, reason: null, backups: await listStored(folder, readProtection(ctx)?.key.publicKey) };
     } catch (error) {
       return { available: false, reason: `The backup folder could not be read: ${messageOf(error)}`, backups: [] };
     }
@@ -532,17 +548,23 @@ export function registerAutomaticBackups(app: FastifyInstance, ctx: AppContext, 
     if (site && site !== "same-origin" && site !== "none") throw new AppError("forbidden", "Download the backup from the Outpost app.");
     const { file, stat } = await storedFile(request.params.name);
     reply
-      .header("Content-Type", "application/zip")
+      .header("Content-Type", request.params.name.endsWith(".enc") ? PROTECTED_TYPE : "application/zip")
       .header("Content-Length", stat.size)
       .header("Content-Disposition", `attachment; filename="${request.params.name}"`);
     return reply.send(fs.createReadStream(file));
   });
 
-  /** "Restore this one": checks the stored backup and stages it, exactly as an uploaded file is. */
+  /**
+   * "Restore this one": checks the stored backup and stages it, exactly as an uploaded
+   * file is. A protected one is opened with the passphrase in the body and read where it
+   * lies; no decrypted copy of it is written.
+   */
   app.post<{ Params: { name: string } }>("/api/backup/stored/:name/restore", async (request) => {
     assertBackupRight(request, ctx, "Restoring a backup");
+    const { passphrase } = restoreBody.parse(request.body ?? {});
+    if (passphrase !== undefined) assertPassphraseRight(request, ctx, "Restoring a backup");
     const { file } = await storedFile(request.params.name);
-    const staged = await stager.stage(async () => file);
+    const staged = await stager.stage(async () => file, passphrase);
     changed();
     return staged;
   });

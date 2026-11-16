@@ -13,6 +13,32 @@ export interface BackupRight {
   option: string;
 }
 
+/**
+ * Whether this request may carry a passphrase for backups: to set or change it, or to
+ * open a protected backup. It needs the right above, and the passphrase must not cross
+ * the network in the clear. `local`: this is the computer Outpost runs on. `https`:
+ * another device, allowed by the start-up option, over HTTPS. `remote`: another device,
+ * and the option is not set. `insecure`: the option is set, but this is plain http.
+ */
+export interface BackupPassphraseRight {
+  allowed: boolean;
+  reason: "local" | "https" | "remote" | "insecure";
+}
+
+/** Whether backups made now are protected with a passphrase. Outpost keeps no copy of the passphrase. */
+export interface BackupProtection {
+  on: boolean;
+  /** When the passphrase in use was set, or null while backups are not protected. */
+  setAt: number | null;
+  right: BackupPassphraseRight;
+}
+
+/** A passphrase shorter than this is said to be short. Nothing is refused for its length or its characters. */
+export const BACKUP_PASSPHRASE_SHORT = 12;
+
+/** The request header an uploaded backup's passphrase travels in: its UTF-8 bytes, in base64. */
+export const BACKUP_PASSPHRASE_HEADER = "X-Outpost-Backup-Passphrase";
+
 export interface BackupStatus {
   restorePending: boolean;
   /** Folders of data kept from before earlier restores. */
@@ -21,6 +47,7 @@ export interface BackupStatus {
   supervised: boolean;
   /** Whether this device may restore, delete stored backups, or keep fewer of them. */
   right: BackupRight;
+  protection: BackupProtection;
 }
 
 export type BackupFrequency = "daily" | "weekly";
@@ -92,6 +119,14 @@ export interface StoredBackup {
    */
   check: "verified" | "unverified" | "unreadable";
   checkedAt: number | null;
+  /** Whether the file is encrypted and needs a passphrase to open. */
+  protected: boolean;
+  /**
+   * For a protected backup: whether it opens with the passphrase in use now (true), or
+   * with one that was in use when it was made and has been changed or removed since
+   * (false). Null for a backup that is not protected.
+   */
+  currentPassphrase: boolean | null;
 }
 
 export interface StoredBackupsResponse {

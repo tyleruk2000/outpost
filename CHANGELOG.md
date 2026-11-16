@@ -427,6 +427,10 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 - Offline place search from GeoNames data.
 - Markers, GPX import and export, and coordinate parsing including British National
   Grid references.
+- Exported GPX checked against the GPX 1.1 schema with a wider set of exports. Two
+  things it refused are fixed: a time kept from an imported file in a form GPX does
+  not allow is written in the form it does, and a point at 180° east is written as
+  180° west. `docs/maps.md` says what was checked, with what, and what was not.
 - GPX 1.0 and 1.1 files read in one pass that keeps only what is stored, with stated
   limits on what a file may hold (1,000,000 points, 20,000 waypoints, 10,000 tracks
   and routes, 100,000 segments, in 20 MB). A day's recording of 150,000 points is
@@ -656,6 +660,14 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 - The restart that applies a staged restore is accepted only from the computer Outpost
   runs on, like the restore itself (or from anywhere with
   `OUTPOST_ALLOW_REMOTE_ERASE=true`). On another device the notice says where to do it.
+- Backups can be protected with a passphrase (Settings → Backup), off by default. Every
+  backup made afterwards, scheduled ones included, is encrypted to a public key; Outpost
+  keeps no passphrase and nothing that opens a backup, so it cannot recover a lost one.
+  A file that was altered or cut short is refused and told apart from a wrong
+  passphrase. Changing the passphrase applies to later backups; older ones open with
+  the passphrase they were made under, and the list shows which. Set, changed and
+  removed only where restoring is allowed, and never from another device over plain
+  http. The file format is written out in `docs/storage.md`.
 
 #### Security
 
@@ -766,6 +778,7 @@ These are deliberate or known, and are explained in
   it automatically, and no image is published.
 - **No accounts.** Everyone who can reach Outpost can read and change everything. There
   are no per-page or per-person permissions.
-- **No built-in HTTPS and no encryption at rest.** Use a reverse proxy and encrypted
-  drives where that matters; see [docs/security.md](docs/security.md).
+- **No encryption at rest**, apart from backups protected with a passphrase and private
+  keys on the Encryption page. Use encrypted drives where that matters. HTTPS is built
+  in but off until turned on in Settings; see [docs/security.md](docs/security.md).
 - **The HTTP API is not versioned** and may change between releases.

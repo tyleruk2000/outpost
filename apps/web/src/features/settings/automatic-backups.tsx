@@ -3,6 +3,7 @@ import {
   type BackupSchedule,
   type BackupScheduleSettings,
   type BackupStagedResponse,
+  type BackupStatus,
   formatBytes,
   type JobDto,
   type StoredBackup,
@@ -10,7 +11,7 @@ import {
   weekdayName,
 } from "@outpost/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, CircleAlert, DatabaseBackup, Download, Ellipsis, RotateCcw, Trash2 } from "lucide-react";
+import { Check, CircleAlert, DatabaseBackup, Download, Ellipsis, Lock, LockOpen, RotateCcw, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ErrorState, Notice, Rows } from "@/components/page";
@@ -23,7 +24,8 @@ import { api, errorMessage } from "@/lib/api";
 import { useServerEvent } from "@/lib/events";
 import { useStorage } from "@/lib/queries";
 import { formatDateTime } from "@/lib/utils";
-import { backupSummary, checkText, kindText, retryText, scheduleText, waitingTitle } from "./backup-text";
+import { passphraseProblem, RestorePassphrase } from "./backup-protection";
+import { backupSummary, checkText, kindText, protectionText, retryText, scheduleText, waitingTitle } from "./backup-text";
 import { NumberSetting, SettingRow, SettingsSection } from "./parts";
 
 const OFF = "off";
@@ -60,6 +62,9 @@ export function AutomaticBackups() {
   const client = useQueryClient();
   const storage = useStorage();
   const schedule = useQuery({ queryKey: ["backup", "schedule"], queryFn: () => api.get<BackupSchedule>("/api/backup/schedule") });
+  // Shared with the Backup section above: whether backups are protected changes what is said about where they are kept.
+  const status = useQuery({ queryKey: ["backup", "status"], queryFn: () => api.get<BackupStatus>("/api/backup/status") });
+  const protection = status.data?.protection;
   const refresh = () => client.invalidateQueries({ queryKey: ["backup"] });
   // A location coming or going, and each step of a backup under way, change what is said here.
   useServerEvent("storage.changed", () => void refresh());
@@ -137,8 +142,10 @@ export function AutomaticBackups() {
             hint={
               <>
                 Outpost writes them to a folder named <span className="font-mono text-[0.8125rem] text-ink">{data.folder}</span> on the
-                location you choose, and nowhere else. A backup holds your notes, saved places and settings as they are, not encrypted:
-                anyone who can open that folder can read them, so choose storage you trust.
+                location you choose, and nowhere else.{" "}
+                {protection?.on
+                  ? "Backups are encrypted with your passphrase: anyone who can open that folder can copy them and see when each was made, and cannot read them without it."
+                  : "A backup holds your notes, saved places and settings as they are, not encrypted: anyone who can open that folder can read them, so choose storage you trust."}
               </>
             }
             control={
@@ -234,7 +241,7 @@ export function AutomaticBackups() {
                   </Button>
                 }
               />
-              {data.location ? <StoredBackups schedule={data} locationName={data.location.name} /> : null}
+              {data.location ? <StoredBackups schedule={data} locationName={data.location.name} protection={protection} /> : null}
             </>
           ) : null}
         </>
@@ -244,16 +251,37 @@ export function AutomaticBackups() {
 }
 
 /** The backups on the chosen location: download one, restore one, delete one. */
-function StoredBackups({ schedule, locationName }: { schedule: BackupSchedule; locationName: string }) {
+function StoredBackups({
+  schedule,
+  locationName,
+  protection,
+}: {
+  schedule: BackupSchedule;
+  locationName: string;
+  protection: BackupStatus["protection"] | undefined;
+}) {
   const client = useQueryClient();
   const stored = useQuery({ queryKey: ["backup", "stored"], queryFn: () => api.get<StoredBackupsResponse>("/api/backup/stored") });
-  const [restoring, setRestoring] = useState<StoredBackup>();
+  const [restoring, setRestoringBackup] = useState<StoredBackup>();
   const [deleting, setDeleting] = useState<StoredBackup>();
+  const [passphrase, setPassphrase] = useState("");
+  const [problem, setProblem] = useState<string>();
+  const setRestoring = (backup: StoredBackup | undefined) => {
+    setPassphrase("");
+    setProblem(undefined);
+    setRestoringBackup(backup);
+  };
+  /** A protected backup cannot be opened from a device that may not send its passphrase. */
+  const cannotOpen = Boolean(restoring?.protected) && protection?.right.allowed === false;
   const refresh = () => client.invalidateQueries({ queryKey: ["backup"] });
   const allowed = schedule.right.allowed;
 
   const restore = useMutation({
-    mutationFn: (backup: StoredBackup) => api.post<BackupStagedResponse>(`/api/backup/stored/${encodeURIComponent(backup.name)}/restore`),
+    mutationFn: (backup: StoredBackup) =>
+      api.post<BackupStagedResponse>(
+        `/api/backup/stored/${encodeURIComponent(backup.name)}/restore`,
+        backup.protected ? { passphrase } : undefined,
+      ),
     onSuccess: (staged) => {
       setRestoring(undefined);
       toast.success(
@@ -264,6 +292,8 @@ function StoredBackups({ schedule, locationName }: { schedule: BackupSchedule; l
       return refresh();
     },
     onError: (error) => {
+      // A passphrase that was wrong is said beside the field, and the dialog stays for another try.
+      if (passphraseProblem(error)) return setProblem(errorMessage(error));
       setRestoring(undefined);
       toast.error(errorMessage(error));
     },
@@ -313,6 +343,10 @@ function StoredBackups({ schedule, locationName }: { schedule: BackupSchedule; l
                       <Badge tone={check.tone}>
                         {backup.check === "verified" ? <Check aria-hidden /> : <CircleAlert aria-hidden />} {check.label}
                       </Badge>
+                      <Badge tone="neutral">
+                        {backup.protected ? <Lock aria-hidden /> : <LockOpen aria-hidden />}{" "}
+                        {backup.protected ? "Protected" : "Not protected"}
+                      </Badge>
                     </p>
                     <p className="tabular mt-0.5 text-small text-ink-muted">
                       {kindText[backup.kind]}
@@ -326,6 +360,9 @@ function StoredBackups({ schedule, locationName }: { schedule: BackupSchedule; l
                       ) : null}
                     </p>
                     {check.explain ? <p className="mt-0.5 text-small text-ink-muted">{check.explain}</p> : null}
+                    {backup.check !== "unreadable" && protectionText(backup) ? (
+                      <p className="mt-0.5 text-small text-ink-muted">{protectionText(backup)}</p>
+                    ) : null}
                   </div>
                   <Menu>
                     <MenuTrigger asChild>
@@ -366,7 +403,7 @@ function StoredBackups({ schedule, locationName }: { schedule: BackupSchedule; l
 
       <ConfirmDialog
         open={Boolean(restoring)}
-        onOpenChange={(open) => !open && setRestoring(undefined)}
+        onOpenChange={(open) => !open && !restore.isPending && setRestoring(undefined)}
         title="Restore from this backup?"
         description={
           <>
@@ -378,8 +415,23 @@ function StoredBackups({ schedule, locationName }: { schedule: BackupSchedule; l
         confirmLabel="Check and stage restore"
         confirmVariant="primary"
         loading={restore.isPending}
-        onConfirm={() => restoring && restore.mutate(restoring)}
-      />
+        onConfirm={() => {
+          if (!restoring || cannotOpen) return;
+          if (restoring.protected && passphrase === "") return setProblem("Type the passphrase this backup was made under.");
+          setProblem(undefined);
+          restore.mutate(restoring);
+        }}
+      >
+        {restoring?.protected ? (
+          <RestorePassphrase
+            value={passphrase}
+            onChange={setPassphrase}
+            problem={problem}
+            earlier={restoring.currentPassphrase === false}
+            right={protection?.right}
+          />
+        ) : null}
+      </ConfirmDialog>
       <ConfirmDialog
         open={Boolean(deleting)}
         onOpenChange={(open) => !open && setDeleting(undefined)}

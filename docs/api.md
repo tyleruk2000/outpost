@@ -54,8 +54,9 @@ the network can. Both rules are in `apps/server/src/core/guard.ts`.
 There is one kind of exception. `POST /api/manage/cleanup/everything`, which erases a
 person's own notes and documents, is accepted only from the computer the server runs
 on, unless the server was started with `OUTPOST_ALLOW_REMOTE_ERASE=true`. The same
-holds for restoring a backup, deleting a stored one and lowering how many are kept (see
-[Backup](#backup)), and for `POST /api/https/authority/replace`,
+holds for restoring a backup, deleting a stored one, lowering how many are kept and
+setting or removing the passphrase backups are protected with (see [Backup](#backup)),
+and for `POST /api/https/authority/replace`,
 `DELETE /api/https/authority` and `DELETE /api/https/own`, which would stop every device
 that trusted Outpost's HTTPS certificate from trusting it, or leave HTTPS impossible to
 put back from another device. `POST /api/https/own`, which carries a private key, has a
@@ -845,21 +846,33 @@ Outpost runs on or the server was started with `OUTPOST_ALLOW_REMOTE_ERASE=true`
 `right` in the status and schedule says whether this request has that right:
 `{ allowed, reason: "local" | "option" | "remote", option }`.
 
+Backups can be protected with a passphrase ([storage.md](storage.md#protecting-backups-with-a-passphrase)).
+A request may carry a passphrase only if it is local-only allowed **and** the passphrase
+would not cross the network in the clear: `protection.right` in the status is
+`{ allowed, reason }`, where `reason` is `local` (this computer), `https` (another
+device, allowed by the option, over HTTPS), `remote` (another device, no option) or
+`insecure` (the option is set, but the request came over plain http). A refused restore
+says why in `error.details.reason`: `passphrase_required`, `wrong_passphrase`,
+`damaged`, or `insecure`.
+
 | Method and path | Purpose |
 | --- | --- |
-| `GET /api/backup/status` | `{ restorePending, previousData, supervised, right }`. |
-| `GET /api/backup/download` | Streams a backup `.zip`: the database, attachments, extracted text and your own catalogue manifests. Refuses a request that another site caused the browser to make. |
-| `POST /api/backup/restore` | Local only, refused before the body is read. Body: the backup file itself, with `Content-Type: application/zip`. Checks it and stages it for the next start. `{ staged, createdAt, appVersion, supervised }`. When applied, the database, attachments and extracted text are replaced; catalogue manifests in the backup are not put back; unfinished jobs are dropped, downloads that were under way are marked cancelled, and unfinished imports are discarded. |
+| `GET /api/backup/status` | `{ restorePending, previousData, supervised, right, protection }`, where `protection` is `{ on, setAt, right }`. |
+| `PUT /api/backup/protection` | Local only, and never from another device over plain http. Body: `{ passphrase }`, 1 to 1024 characters, nothing else asked of it. Sets the passphrase, or changes it: backups made from now on are encrypted to a new key pair. The passphrase is not stored. Returns `protection`. |
+| `DELETE /api/backup/protection` | Local only. Backups made from now on are not protected; those already made are not changed. Returns `protection`. |
+| `GET /api/backup/download` | Streams a backup: the database, attachments, extracted text and your own catalogue manifests. A `.zip` (`application/zip`), or when backups are protected a `.zip.enc` (`application/vnd.outpost.backup`). Refuses a request that another site caused the browser to make. |
+| `POST /api/backup/restore` | Local only, refused before the body is read. Body: the backup file itself, with `Content-Type: application/zip`, or `application/vnd.outpost.backup` for a protected one (which kind it is is decided by how the file starts). A protected backup needs its passphrase in the header `X-Outpost-Backup-Passphrase`, as the base64 of its UTF-8 bytes; a request carrying that header from a device that may not send a passphrase is refused before the body is read. Checks it and stages it for the next start. `{ staged, createdAt, appVersion, supervised }`. When applied, the database, attachments and extracted text are replaced; catalogue manifests in the backup are not put back; unfinished jobs are dropped, downloads that were under way are marked cancelled, and unfinished imports are discarded. |
 | `DELETE /api/backup/restore` | Drops a staged restore. |
 | `GET /api/backup/schedule` | `BackupSchedule`: the settings (`locationId`, `frequency`, `time`, `weekday`, `keep`), the folder name, the location and whether it is connected, `lastBackupAt`, `nextRunAt`, `waiting` (a scheduled backup that is due and has not been made, with `reason` `not_connected`, `location_removed` or `failed`, a message and, for `failed`, `retryAt`), `lastFailure`, the `active` job, and `right`. |
 | `PATCH /api/backup/schedule` | Body: any of `locationId` (a connected location, or `null` for off), `frequency` (`daily`, `weekly`), `time` (`HH:MM`, the server's clock), `weekday` (0 is Sunday), `keep` (1 to 60). A lower `keep` is local only. Returns the schedule. |
 | `POST /api/backup/run` | "Back up now": a `backup.run` job. `409` when no location is chosen or a backup is already under way; `503 storage_unavailable` when the location is not connected. |
-| `GET /api/backup/stored` | `{ available, reason, backups }`: Outpost's own backups on the chosen location, newest first, each with `name`, `kind` (`scheduled`, `manual`), `createdAt`, `sizeBytes`, `appVersion` and `check` (`verified`, `unverified`, `unreadable`). |
+| `GET /api/backup/stored` | `{ available, reason, backups }`: Outpost's own backups on the chosen location, newest first, each with `name`, `kind` (`scheduled`, `manual`), `createdAt`, `sizeBytes`, `appVersion`, `check` (`verified`, `unverified`, `unreadable`), `protected`, and `currentPassphrase` (for a protected one, whether the passphrase in use now opens it; `null` otherwise). |
 | `GET /api/backup/stored/:name/download` | The file. Refuses a request that another site caused the browser to make. |
-| `POST /api/backup/stored/:name/restore` | Local only. Checks that backup and stages it, exactly as an upload is. `{ staged, createdAt, appVersion, supervised }`. |
+| `POST /api/backup/stored/:name/restore` | Local only. Body: `{}`, or `{ passphrase }` for a protected backup (never from another device over plain http). Checks that backup and stages it, exactly as an upload is. `{ staged, createdAt, appVersion, supervised }`. |
 | `DELETE /api/backup/stored/:name` | Local only. Deletes that backup and the record of its check. |
 
-`:name` must be a file name Outpost gives its backups; anything else is `404`. The
+`:name` must be a file name Outpost gives its backups (`….zip`, or `….zip.enc` for a
+protected one); anything else is `404`. The
 server publishes `backup.changed` on the event stream when the schedule, a backup or
 the list changes.
 

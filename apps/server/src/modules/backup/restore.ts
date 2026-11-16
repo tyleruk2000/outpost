@@ -3,6 +3,10 @@
  * ready. It is applied on the next start, before the database is opened, and the data
  * it replaces is kept beside it. The same staging serves a file a person uploads and a
  * backup chosen from the ones kept on a storage location.
+ *
+ * A protected backup is opened with its passphrase and unpacked straight from where it
+ * lies: the only decrypted bytes written are the unpacked files in the staging folder,
+ * which is removed whole if anything fails.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -13,7 +17,9 @@ import type yauzl from "yauzl";
 import type { AppContext } from "../../core/context.ts";
 import { AppError, badRequest, conflict } from "../../core/errors.ts";
 import { resolveInside } from "../../core/fs-safe.ts";
-import { type BackupManifest, crcCheck, entryStream, migrationCount, openZip, parseManifest } from "./archive.ts";
+import { type BackupManifest, crcCheck, entryStream, migrationCount, openBackup, parseManifest } from "./archive.ts";
+import { readProtection, settleStagedProtection } from "./protection.ts";
+import { BackupDamaged, BackupLocked } from "./sealed.ts";
 
 export const PENDING = "restore-pending";
 export const READY_MARKER = "READY";
@@ -58,8 +64,9 @@ export function applyPendingRestore(dataDir: string, log: (message: string) => v
 }
 
 /** Unpacks a backup into `target`, accepting only the entries a backup can contain. */
-async function unpack(file: string, target: string): Promise<BackupManifest> {
-  const zip = await openZip(file);
+async function unpack(file: string, target: string, passphrase?: string): Promise<{ manifest: BackupManifest; sealedTo?: Buffer }> {
+  const opened = await openBackup(file, passphrase === undefined ? undefined : { passphrase });
+  const { zip } = opened;
   const packedSize = (await fs.promises.stat(file)).size;
   const space = await fs.promises.statfs(target).catch(() => undefined);
   const room = space ? space.bavail * space.bsize - SPACE_RESERVE : Number.POSITIVE_INFINITY;
@@ -99,7 +106,7 @@ async function unpack(file: string, target: string): Promise<BackupManifest> {
     zip.close();
   }
   if (!manifest) throw badRequest("That file is not an Outpost backup.");
-  return manifest;
+  return { manifest, sealedTo: opened.sealed?.publicKey };
 }
 
 export interface RestoreStager {
@@ -107,9 +114,9 @@ export interface RestoreStager {
    * Checks a backup file and stages it for the next start. `prepare` is given the empty
    * staging folder and returns the path of the zip to read: an upload writes itself
    * there first, a stored backup is read where it lies. A file inside the staging
-   * folder is removed once it has been unpacked.
+   * folder is removed once it has been unpacked. `passphrase` opens a protected backup.
    */
-  stage(prepare: (pending: string) => Promise<string>): Promise<BackupStagedResponse>;
+  stage(prepare: (pending: string) => Promise<string>, passphrase?: string): Promise<BackupStagedResponse>;
   pending(): boolean;
   cancel(): Promise<void>;
 }
@@ -128,15 +135,18 @@ export function createRestoreStager(ctx: AppContext): RestoreStager {
       await fs.promises.rm(pending, { recursive: true, force: true });
     },
 
-    async stage(prepare) {
+    async stage(prepare, passphrase) {
       if (busy) throw conflict("Another backup is being checked for restore. Wait for it to finish.");
       busy = true;
       try {
         await fs.promises.rm(pending, { recursive: true, force: true });
         await fs.promises.mkdir(pending, { recursive: true });
         const source = await prepare(pending);
-        const manifest = await unpack(source, pending).catch((error) => {
+        const { manifest, sealedTo } = await unpack(source, pending, passphrase).catch((error) => {
           if (error instanceof AppError) throw error;
+          // Told apart, so that a person who mistyped is not told their backup is ruined.
+          if (error instanceof BackupLocked) throw badRequest(error.message, { reason: error.reason });
+          if (error instanceof BackupDamaged) throw badRequest(`That backup cannot be restored. ${error.message}`, { reason: "damaged" });
           throw badRequest(`That file could not be read as a backup: ${error instanceof Error ? error.message : error}`);
         });
         if (path.dirname(source) === pending) await fs.promises.rm(source, { force: true });
@@ -170,6 +180,8 @@ export function createRestoreStager(ctx: AppContext): RestoreStager {
             UPDATE downloads SET state = 'cancelled', job_id = NULL, error = 'This download was in progress when the backup was made.' WHERE state IN ('queued', 'running', 'verifying', 'paused');
             UPDATE imports SET state = 'discarded' WHERE state NOT IN ('completed', 'discarded');
           `);
+          // Nor does the passphrase backups were protected with then take over from the one in use here now.
+          settleStagedProtection(clean, readProtection(ctx), sealedTo);
         } finally {
           clean.close();
         }

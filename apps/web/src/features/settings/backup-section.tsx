@@ -10,12 +10,24 @@ import { ConfirmDialog } from "@/components/ui/dialog";
 import { ApiError, api, errorMessage } from "@/lib/api";
 import { manageLink } from "../manage/manage-data";
 import { AutomaticBackups } from "./automatic-backups";
+import { BackupProtectionRow, passphraseHeader, passphraseProblem, RestorePassphrase, startsAsProtected } from "./backup-protection";
 import { SettingRow, SettingsSection } from "./parts";
 
 export function BackupSection() {
   const client = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const [chosen, setChosen] = useState<File>();
+  /** Whether the chosen file is a protected backup, the passphrase typed for it, and what was wrong with the last one tried. */
+  const [locked, setLocked] = useState(false);
+  const [passphrase, setPassphrase] = useState("");
+  const [problem, setProblem] = useState<string>();
+  const choose = (file: File | undefined) => {
+    setPassphrase("");
+    setProblem(undefined);
+    setLocked(false);
+    setChosen(file);
+    if (file) void startsAsProtected(file).then(setLocked);
+  };
   const status = useQuery({ queryKey: ["backup", "status"], queryFn: () => api.get<BackupStatus>("/api/backup/status") });
   const refresh = () => client.invalidateQueries({ queryKey: ["backup"] });
 
@@ -23,20 +35,34 @@ export function BackupSection() {
     mutationFn: async (file: File) => {
       const response = await fetch("/api/backup/restore", {
         method: "POST",
-        headers: { "X-Outpost-Request": "1", "Content-Type": "application/zip" },
+        headers: {
+          "X-Outpost-Request": "1",
+          "Content-Type": locked ? "application/vnd.outpost.backup" : "application/zip",
+          ...(locked ? passphraseHeader(passphrase) : {}),
+        },
         body: file,
       });
       const body = await response.json();
       if (!response.ok)
-        throw new ApiError(response.status, body.error?.code ?? "http", body.error?.message ?? "The backup could not be read.");
+        throw new ApiError(
+          response.status,
+          body.error?.code ?? "http",
+          body.error?.message ?? "The backup could not be read.",
+          body.error?.details,
+        );
       return body;
     },
     onSuccess: () => {
-      setChosen(undefined);
+      choose(undefined);
       return refresh();
     },
     onError: (error) => {
-      setChosen(undefined);
+      // A passphrase that was wrong or missing is said beside the field, and the file stays chosen for another try.
+      if (passphraseProblem(error)) {
+        setLocked(true);
+        return setProblem(errorMessage(error));
+      }
+      choose(undefined);
       toast.error(errorMessage(error));
     },
   });
@@ -53,6 +79,9 @@ export function BackupSection() {
   // Restoring replaces everything at once, so it is offered where "erase everything" is.
   const right = status.data?.right;
   const mayRestore = right?.allowed !== false;
+  const passphraseRight = status.data?.protection.right;
+  /** A protected backup cannot be sent from a device that may not send its passphrase. */
+  const cannotOpen = locked && passphraseRight?.allowed === false;
 
   return (
     <>
@@ -63,7 +92,11 @@ export function BackupSection() {
       >
         <SettingRow
           label="Save a backup"
-          hint="One .zip file. Keep it somewhere other than this device."
+          hint={
+            status.data?.protection.on
+              ? "One file, encrypted with your passphrase (.zip.enc). Keep it somewhere other than this device."
+              : "One .zip file. Keep it somewhere other than this device."
+          }
           control={
             <Button asChild>
               <a href="/api/backup/download" download>
@@ -72,6 +105,7 @@ export function BackupSection() {
             </Button>
           }
         />
+        <BackupProtectionRow status={status.data} isPending={status.isPending} error={status.error} onRetry={() => status.refetch()} />
         <SettingRow
           label="Restore from a backup"
           hint="Replaces what this Outpost holds with the backup. What is here now is kept in a dated folder in the data directory."
@@ -84,12 +118,12 @@ export function BackupSection() {
                 <input
                   ref={fileRef}
                   type="file"
-                  accept=".zip,application/zip"
+                  accept=".zip,.enc,application/zip"
                   className="sr-only"
                   tabIndex={-1}
                   aria-label="Backup file"
                   onChange={(event) => {
-                    setChosen(event.target.files?.[0]);
+                    choose(event.target.files?.[0]);
                     event.target.value = "";
                   }}
                 />
@@ -155,7 +189,7 @@ export function BackupSection() {
         />
         <ConfirmDialog
           open={Boolean(chosen)}
-          onOpenChange={(open) => !open && setChosen(undefined)}
+          onOpenChange={(open) => !open && !restore.isPending && choose(undefined)}
           title="Restore from this backup?"
           description={
             <>
@@ -166,8 +200,15 @@ export function BackupSection() {
           confirmLabel="Check and stage restore"
           confirmVariant="primary"
           loading={restore.isPending}
-          onConfirm={() => chosen && restore.mutate(chosen)}
-        />
+          onConfirm={() => {
+            if (!chosen || cannotOpen) return;
+            if (locked && passphrase === "") return setProblem("Type the passphrase this backup was made under.");
+            setProblem(undefined);
+            restore.mutate(chosen);
+          }}
+        >
+          {locked ? <RestorePassphrase value={passphrase} onChange={setPassphrase} problem={problem} right={passphraseRight} /> : null}
+        </ConfirmDialog>
       </SettingsSection>
       <AutomaticBackups />
     </>

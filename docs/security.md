@@ -52,7 +52,8 @@ public internet and must not be exposed to it.
   from the library, one item at a time or everything that was downloaded at once. What
   they cannot do from another device is erase your own notes and documents in one step
   (see [Erasing everything](#erasing-everything)), replace them all by restoring a
-  backup, or delete the backups kept on a storage location (see
+  backup, delete the backups kept on a storage location, or set or change the
+  passphrase backups are protected with (see
   [Backup and restore](#backup-and-restore)).
   There are no permissions, no per-person views and no audit log. Share it only with a
   network where you trust everyone.
@@ -541,7 +542,9 @@ can also change, delete and export them all as one file (`GET /api/contacts/expo
 
 **Where they travel.**
 
-- **Backups** hold them all, unencrypted, like the rest of the database.
+- **Backups** hold them all, like the rest of the database: unencrypted, unless a
+  passphrase has been set for backups (see
+  [Backups protected by a passphrase](#backups-protected-by-a-passphrase)).
 - **Portable drives** carry them unless the person turns Contacts off when making the
   drive; a drive is unencrypted. The setting that shares the address book with phones is
   never copied to a drive.
@@ -937,6 +940,7 @@ may do what cannot be taken back.
 | `DELETE /api/backup/stored/:name` | Refused. |
 | `PATCH /api/backup/schedule` with a lower `keep` | Refused: fewer kept means older backups deleted at the next run. |
 | `PATCH /api/backup/schedule` otherwise, `POST /api/backup/run`, downloads | Allowed, as reading and adding are everywhere in Outpost. |
+| `PUT /api/backup/protection`, `DELETE /api/backup/protection` | Refused: see [Backups protected by a passphrase](#backups-protected-by-a-passphrase). |
 | `DELETE /api/backup/restore` (cancel a staged restore) | Allowed: it keeps what is here. |
 | `POST /api/system/restart` | Refused. Its one use is applying a staged restore, which only the computer itself can stage; left open, any device could stop the server for everyone as often as it liked, cutting off uploads and replies being written. |
 
@@ -962,15 +966,69 @@ at once. Code: `apps/server/src/modules/backup/right.ts`, `automatic.ts`.
 | Names, not paths | A request names a stored backup by its file name, which must match the pattern Outpost uses; anything else is `404`. The path is built with `resolveInside`. |
 | No share credentials | This feature reads and stores nothing about a network share's sign-in. It writes into the mounted folder like any other location. |
 
-**A backup is not encrypted.** It is a zip of the database and attachments: the notes
-are in the clear, and so is everything else in the database. Anyone who can read the
-`outpost-backups` folder, on the NAS or wherever it is, can read them, and anyone who
-can reach Outpost can download one. The screen says so where the location is chosen.
-Encryption is not built in this version; put the backups on storage you trust, or on an
-encrypted volume. The record of a check (`.verified.json`) is a plain file on the same
-storage, so it tells you a backup was sound when written, not that nobody has replaced
-it since: restoring checks the file again from scratch and does not rely on it.
+**A backup is not encrypted unless a passphrase has been set for backups.** Without one
+it is a zip of the database and attachments: the notes are in the clear, and so is
+everything else in the database. Anyone who can read the `outpost-backups` folder, on
+the NAS or wherever it is, can read them, and anyone who can reach Outpost can download
+one. The screen says so where the location is chosen. Put such backups on storage you
+trust, or on an encrypted volume, or set a passphrase (below). The record of a check
+(`.verified.json`) is a plain file on the same storage, so it tells you a backup was
+sound when written, not that nobody has replaced it since: restoring checks the file
+again from scratch and does not rely on it.
 Code: `apps/server/src/modules/backup/automatic.ts`, `stored.ts`, `archive.ts`.
+
+#### Backups protected by a passphrase
+
+Off by default, and nothing about an unprotected backup changes. When a person sets a
+passphrase (**Settings → Backup**), every backup made afterwards is encrypted, whichever
+way it is made. What this is for: a backup file on a NAS, a shared folder or a drive
+that travels, read by someone who should not have it. The file format is written out in
+[storage.md](storage.md#the-protected-backup-file).
+
+| Control | Detail |
+| --- | --- |
+| No secret on the server | A scheduled backup runs with nobody there, so it cannot ask for a passphrase, and a passphrase or key kept beside the backups would protect nothing. Setting a passphrase makes an X25519 key pair. Outpost keeps the public key and the private key wrapped under a key derived from the passphrase; the passphrase is used for that one request and not written anywhere. Each backup is encrypted to the public key with a key pair made for that file alone. What is on the server can make a protected backup and cannot open one. |
+| What is kept, and where | One row in the settings table, `backup.protection`: the public key, the scrypt salt and cost, and the wrapped private key. It is not in the settings schema, so `GET /api/settings` does not show it and `PATCH /api/settings` cannot set it. It is inside the database, so it is inside every backup; the same wrapped key is in the header of every protected backup, which is what lets a file and a passphrase restore onto a fresh installation. Neither copy is a secret without the passphrase. |
+| The passphrase's only defence is itself | Anyone who holds a protected backup (or the database) can try passphrases against the wrapped key for as long as they like. scrypt makes each try cost what one costs here: `N` is chosen by timing this computer when the passphrase is set, to take about a second, using no more than an eighth of its memory, never less than 2^15 (32 MiB) and never more than 2^19 (512 MiB), with `r` = 8 and `p` = 1. On the Apple M-series machine this was written on, that came out at 2^18 or 2^19 (0.5 to 1.1 s). A short or guessable passphrase is still weak. No rule is imposed on it; the screen says when it is under twelve characters, and offers one made at random (80 bits). |
+| The cipher | X25519, HKDF-SHA-256, ChaCha20-Poly1305, scrypt: all from Node's own `crypto` (OpenSSL), no library added. ChaCha20-Poly1305 was chosen over AES-256-GCM because it is as fast on a computer without AES instructions, such as a Raspberry Pi 4; here it ran at about 1.5 GB a second, far faster than the zip is made. |
+| Cut short or altered | The zip is encrypted in 64 KiB chunks, each with its own tag, numbered, the last one marked as the last. A changed byte anywhere, chunks swapped or dropped, and a file cut off (inside a chunk, or exactly between two) all fail. The header carries a checksum, which also goes into the file's key. A restore reads every chunk and checks it before it opens the zip inside. |
+| Wrong passphrase or damaged file | Told apart: a header that fails its checksum, or a chunk that fails its tag, is reported as damage; a wrapped key that does not open is reported as a wrong passphrase. One case cannot be told apart: a header altered on purpose in its salt or wrapped key, with its checksum put right, looks like a wrong passphrase. It does not open either way. |
+| Who may set, change or remove it | Only a request that may restore: the computer Outpost runs on, or any device when Outpost was started with `OUTPOST_ALLOW_REMOTE_ERASE=true`. Anyone on the network could otherwise set a passphrase of their own and lock the owner out of every backup made from then on. Changing it does not ask for the old one: nothing made under the old one is touched, the right to change it is the same right that could restore over everything, and a forgotten passphrase must not stop the next backup being protected. |
+| Never over plain http from another device | A passphrase (to set one, or to restore with one) is accepted from another device only when the connection itself is HTTPS, whatever the start-up option says: the option is about who may do what cannot be taken back, not about a secret crossing the network. From the computer itself it never leaves the machine. An uploaded protected backup sent with a passphrase from a device that may not send one is refused before the file is read. The screen does not show the fields there. |
+| Changing and switching off | A new passphrase means a new key pair. Backups already made are not re-encrypted, so each opens with the passphrase it was made under, and the list marks the ones that open with an earlier one. Switching protection off deletes the row; it decrypts nothing. |
+| Restoring | The passphrase arrives in the request, opens the private key in memory, and is dropped; so are the keys, which are overwritten with zeros when the file is closed. The backup is decrypted in memory as the zip reader asks for it: no decrypted copy of the file is written, for an upload or for a stored backup. The only decrypted bytes on disk are the unpacked files in `restore-pending`, where every restore stages its work, and that folder is removed if anything fails. |
+| What a restore does to the setting | A backup holds the settings of its day, the protection row among them. Restoring an old backup must not put an old passphrase back in charge, so the staged database is given this installation's row if it has one. If it has none, the backup's row is kept only when the backup was itself opened with the passphrase of that key (a fresh installation); otherwise it is removed, so a backup file cannot bring a key that nobody here has the passphrase for. |
+| Checking a protected backup after writing it | The run that wrote the file still holds that one file's key in memory. It reads the whole file back with it, checks every chunk, every entry's checksum and the database, and then overwrites the key. Nothing that opens the file is kept after that. For its check the database is copied into the data directory, beside the database it was copied from, as for any backup, and the copy is removed; nothing decrypted is written to the location the backup is kept on. |
+
+**What it does not do.**
+
+- It does not protect Outpost itself or the data directory: the database and
+  attachments on the computer are not encrypted, and anyone on a network Outpost is
+  shared with can read the notes through it.
+- It does not hide when a backup was made, by which version, or how large it is: the
+  file name, the header and the `.verified.json` beside it say so.
+- It cannot recover a lost passphrase, and nothing can. The screen says so before one
+  is set.
+- A passphrase is a JavaScript string while a request is being answered, and a string
+  cannot be overwritten: it goes when the memory is collected. Keys and derived bytes
+  are held in buffers and are overwritten.
+- Anyone on the network can still start a backup and download it; when protection is
+  on, what they get is encrypted. They can also switch automatic backups off, as before.
+- It does not sign backups. Anyone who knows the public key (it is in every backup's
+  header) can make a file that opens with your passphrase; they cannot read yours.
+  Restoring is accepted only where it always was, and replaces everything, so restore
+  only files you trust, as before.
+
+Tested (`apps/server/test/backup-protection.test.ts`): the round trip on a real server
+onto a fresh data folder; a reader written from the format description alone; a wrong
+passphrase; a changed byte in the header, in a chunk and in the last chunk; a file cut
+inside a chunk, between chunks and inside the header; chunks swapped; a backup made
+under an old passphrase after a change; a scheduled backup made by a server that was
+never given the passphrase, with every file on disk searched for the passphrase and the
+keys; and who may set it, over http and over a real HTTPS connection. Not tested: a
+computer with too little memory for the cost a backup asks for (it reports that it
+could not do the work), and reading these files with any program other than Outpost.
+Code: `apps/server/src/modules/backup/sealed.ts`, `protection.ts`.
 
 ### Bringing a drive back
 
@@ -1117,7 +1175,9 @@ readable only by you. See [storage.md](storage.md#connecting-a-network-share).
    [deployment.md](deployment.md#behind-a-reverse-proxy).
 3. **Back up** from Settings, and keep the backup somewhere other than the device, or
    turn on automatic backups to a storage location on another disk. Backups are not
-   encrypted. Back up storage locations as ordinary folders.
+   encrypted unless you set a passphrase for them in Settings; if they are kept on a
+   NAS, a shared folder or a drive that travels, set one, and keep it written down
+   somewhere else. Back up storage locations as ordinary folders.
 4. **Encrypt drives that leave the house**: laptops, external disks and portable
    drives (BitLocker, FileVault, LUKS, VeraCrypt). Outpost does not encrypt anything
    at rest.

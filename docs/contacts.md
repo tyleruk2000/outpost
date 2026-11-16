@@ -338,7 +338,8 @@ If a phone will not connect, a vCard file from the Contacts menu always works.
 ## Backups, portable drives and erasing
 
 - **Backups** hold every contact: they are in the database, which a backup copies
-  whole. A backup is not encrypted ([storage.md](storage.md)).
+  whole. A backup is not encrypted unless you set a passphrase for backups
+  ([storage.md](storage.md#protecting-backups-with-a-passphrase)).
 - **Portable drives** carry the contacts unless you turn **Contacts** off when making
   the drive. A drive is not encrypted, and contacts are other people's details: leave
   them off a drive you will hand to someone else. Contacts added or changed while

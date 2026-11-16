@@ -15,16 +15,22 @@
  * `<name>.failed.json`. That is how the archives of failed runs are told from every
  * other file that is not verified (a backup a person copied here without its record,
  * say): only the newest few with such a record are kept, see `setAsideFailed`.
+ *
+ * A backup made while a passphrase is set is named `….zip.enc`. What it is is decided
+ * by how the file starts, not by its name; the name only tells a person, and the
+ * program they open it with, what to expect.
  */
 import fs from "node:fs";
 import path from "node:path";
 import type { StoredBackup, StoredBackupKind } from "@outpost/shared";
 import { type BackupCheck, readManifest } from "./archive.ts";
+import { BackupDamaged, readSealedHeader } from "./sealed.ts";
 
 /** The folder inside a storage location that backups are written to. */
 export const BACKUP_FOLDER = "outpost-backups";
 
-const NAME = /^outpost-backup-(\d{4})-(\d{2})-(\d{2})T(\d{2})-(\d{2})-(\d{2})-(\d{3})Z-(scheduled|manual)\.zip$/;
+const NAME = /^outpost-backup-(\d{4})-(\d{2})-(\d{2})T(\d{2})-(\d{2})-(\d{2})-(\d{3})Z-(scheduled|manual)\.zip(\.enc)?$/;
+const EXTENSION = /\.zip(\.enc)?$/;
 const CHECK_FORMAT = "outpost-backup-check";
 const FAILED_FORMAT = "outpost-backup-failed-check";
 const MAX_RECORD_BYTES = 16 * 1024;
@@ -44,9 +50,12 @@ interface CheckRecord {
   entries: number;
 }
 
-/** `outpost-backup-2026-11-16T03-00-00-000Z-scheduled.zip`: sorts by time, and says how it was started. */
-export function backupFileName(createdAt: number, kind: StoredBackupKind): string {
-  return `outpost-backup-${new Date(createdAt).toISOString().replace(/[:.]/g, "-")}-${kind}.zip`;
+/**
+ * `outpost-backup-2026-11-16T03-00-00-000Z-scheduled.zip`: sorts by time, and says how
+ * it was started. A protected one ends `.zip.enc`.
+ */
+export function backupFileName(createdAt: number, kind: StoredBackupKind, sealed = false): string {
+  return `outpost-backup-${new Date(createdAt).toISOString().replace(/[:.]/g, "-")}-${kind}.zip${sealed ? ".enc" : ""}`;
 }
 
 export function parseBackupName(name: string): { createdAt: number; kind: StoredBackupKind } | undefined {
@@ -58,8 +67,10 @@ export function parseBackupName(name: string): { createdAt: number; kind: Stored
 }
 
 export const isBackupName = (name: string): boolean => parseBackupName(name) !== undefined;
-export const recordName = (name: string): string => name.replace(/\.zip$/, ".verified.json");
-export const failedRecordName = (name: string): string => name.replace(/\.zip$/, ".failed.json");
+/** `….zip` has `….verified.json` beside it, and `….zip.enc` has `….enc.verified.json`. */
+const beside = (name: string, what: string): string => name.replace(EXTENSION, (_whole, enc?: string) => `${enc ?? ""}.${what}.json`);
+export const recordName = (name: string): string => beside(name, "verified");
+export const failedRecordName = (name: string): string => beside(name, "failed");
 export const partName = (name: string): string => `${name}.part`;
 
 async function isOrdinaryFile(file: string): Promise<fs.Stats | undefined> {
@@ -95,24 +106,48 @@ export async function writeRecord(folder: string, name: string, bytes: number, c
   await fs.promises.writeFile(path.join(folder, recordName(name)), `${JSON.stringify(record, null, 2)}\n`, { flag: "wx" });
 }
 
-/** Versions read from manifests, so that listing does not open every archive every time. */
-const manifestCache = new Map<string, string | null>();
+interface Glance {
+  /** The version in the manifest, or null when the file does not read as a backup. */
+  appVersion: string | null;
+  /** Whether the file starts as a protected backup does. */
+  sealed: boolean;
+  /** For a protected backup whose header reads, the public key it was encrypted to. */
+  sealedTo: Buffer | null;
+}
 
-async function versionOf(file: string, stat: fs.Stats): Promise<string | null> {
+/** What the start of each file said, so that listing does not open every archive every time. */
+const glanceCache = new Map<string, Glance>();
+
+async function glanceAt(file: string, stat: fs.Stats): Promise<Glance> {
   const key = `${file}\n${stat.size}\n${stat.mtimeMs}`;
-  const cached = manifestCache.get(key);
-  if (cached !== undefined) return cached;
-  const version = await readManifest(file).then(
+  const cached = glanceCache.get(key);
+  if (cached) return cached;
+  let sealed = false;
+  let sealedTo: Buffer | null = null;
+  try {
+    const header = await readSealedHeader(file);
+    sealed = header !== undefined;
+    sealedTo = header?.publicKey ?? null;
+  } catch (error) {
+    // A protected backup whose header does not read.
+    sealed = error instanceof BackupDamaged;
+  }
+  const appVersion = await readManifest(file).then(
     (manifest) => manifest.appVersion,
     () => null,
   );
-  if (manifestCache.size > 500) manifestCache.clear();
-  manifestCache.set(key, version);
-  return version;
+  const glance = { appVersion, sealed, sealedTo };
+  if (glanceCache.size > 500) glanceCache.clear();
+  glanceCache.set(key, glance);
+  return glance;
 }
 
-/** Outpost's own backups in `folder`, newest first. A folder that does not exist yet holds none. */
-export async function listStored(folder: string): Promise<StoredBackup[]> {
+/**
+ * Outpost's own backups in `folder`, newest first. A folder that does not exist yet
+ * holds none. `currentKey` is the public key backups are encrypted to now, if any, so
+ * that each protected backup can say whether today's passphrase opens it.
+ */
+export async function listStored(folder: string, currentKey?: Buffer): Promise<StoredBackup[]> {
   let names: string[];
   try {
     names = await fs.promises.readdir(folder);
@@ -128,13 +163,26 @@ export async function listStored(folder: string): Promise<StoredBackup[]> {
     const stat = await isOrdinaryFile(file);
     if (!stat) continue;
     const record = await readRecord(folder, name);
-    const base = { name, kind: parsed.kind, createdAt: parsed.createdAt, sizeBytes: stat.size };
-    if (record && record.bytes === stat.size) {
+    const glance = await glanceAt(file, stat);
+    const base = {
+      name,
+      kind: parsed.kind,
+      createdAt: parsed.createdAt,
+      sizeBytes: stat.size,
+      protected: glance.sealed,
+      currentPassphrase: glance.sealed ? Boolean(glance.sealedTo && currentKey?.equals(glance.sealedTo)) : null,
+    };
+    // A protected backup's header is read every time, so one that no longer reads is not shown as sound on the word of its record.
+    if (record && record.bytes === stat.size && (!glance.sealed || glance.sealedTo)) {
       backups.push({ ...base, appVersion: record.appVersion, check: "verified", checkedAt: record.checkedAt });
       continue;
     }
-    const appVersion = await versionOf(file, stat);
-    backups.push({ ...base, appVersion, check: appVersion === null ? "unreadable" : "unverified", checkedAt: null });
+    backups.push({
+      ...base,
+      appVersion: glance.appVersion,
+      check: glance.appVersion === null ? "unreadable" : "unverified",
+      checkedAt: null,
+    });
   }
   return backups.sort((a, b) => b.createdAt - a.createdAt || b.name.localeCompare(a.name));
 }

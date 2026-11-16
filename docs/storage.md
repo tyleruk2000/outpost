@@ -635,9 +635,11 @@ implements them.
 text and your own catalogue manifests. It does not include documents, collections or
 maps: those stay on their storage locations, and the backup records where.
 
-A backup is not encrypted. It holds your notes, contacts, saved places and settings as they are,
-and anyone who can open the file can read them. Keep it on storage you trust, and on an
-encrypted disk if it leaves the house.
+A backup is not encrypted unless you set a passphrase for backups (see
+[Protecting backups with a passphrase](#protecting-backups-with-a-passphrase)). Without
+one it holds your notes, contacts, saved places and settings as they are, and anyone
+who can open the file can read them: keep it on storage you trust, and on an encrypted
+disk if it leaves the house.
 
 Restoring replaces the database, attachments and extracted text after a restart. The
 data they replace is kept in the data directory in a folder named
@@ -649,6 +651,162 @@ with `OUTPOST_ALLOW_REMOTE_ERASE=true`: it replaces everything at once, as erasi
 does. From another device the screen says so and does not offer it. See
 [security.md](security.md#backup-and-restore).
 
+### Protecting backups with a passphrase
+
+**Settings → Backup → Protect backups with a passphrase** is off to begin with. Set a
+passphrase, typed twice, and every backup made from then on is encrypted: the ones made
+on the schedule, the ones started with **Back up now**, and the download from Settings.
+A protected backup is named `….zip.enc`, and restoring one asks for the passphrase.
+
+**A protected backup cannot be opened without the passphrase, and Outpost cannot recover
+it.** The screen says so before the passphrase is set. Outpost does not keep it: what it
+keeps is a public key, which can only lock, and the matching private key locked under
+the passphrase. That is why a backup can be made at three in the morning with nobody
+there, and why nothing on the computer can read one back afterwards. Write the
+passphrase down and keep the paper somewhere other than with the backups.
+
+- **Any passphrase is accepted.** There are no rules about length or kinds of
+  character. One shorter than twelve characters is said to be short, because anyone
+  who gets a backup file can try passphrases against it for as long as they like;
+  **Suggest one** makes five random words of five letters, which is 80 bits.
+- **Changing it** applies to backups made afterwards. The ones already made are not
+  touched: each still opens with the passphrase that was set when it was made, so keep
+  the old one for as long as you keep them. The old passphrase is not asked for when
+  you change it, so a forgotten one does not stop you protecting what comes next. The
+  list of stored backups shows for each whether it is protected, and marks the ones
+  that open with an earlier passphrase.
+- **Switching it off** makes the backups made from then on plain zips again. It
+  decrypts nothing: protected backups stay protected.
+- **Where it can be set.** Setting, changing and removing the passphrase are accepted
+  only where restoring is: at the computer Outpost runs on, or from other devices when
+  Outpost was started with `OUTPOST_ALLOW_REMOTE_ERASE=true`. Otherwise anyone on the
+  network could set a passphrase of their own and lock you out of every backup made
+  from then on. And a passphrase is never accepted from another device over plain
+  `http`, whatever that option says, because it would cross the network where anyone
+  could copy it: from another device, open Outpost at its `https` address
+  ([deployment.md](deployment.md)). The same goes for the passphrase typed to restore.
+- **Restoring.** Choose the file, or **Restore this one** in the list, and give the
+  passphrase. A wrong passphrase is said to be wrong; a file that has been damaged,
+  altered or cut short is said to be that, and nothing of it is restored. The backup is
+  decrypted in memory as it is unpacked; no decrypted copy of the file is written. On a
+  fresh installation the file and the passphrase are all that is needed, and the
+  restored Outpost goes on protecting its backups with that same passphrase.
+- **After restoring an older backup onto an Outpost that protects its backups**, the
+  passphrase in use stays the one in use: the older backup's passphrase does not come
+  back with it.
+- **A portable drive** carries the setting, so a backup made from the drive is
+  protected with the same passphrase.
+
+**What protection does not hide.** The file's name and its header say when the backup
+was made, which version of Outpost made it and how large it is; the small
+`.verified.json` file beside a stored backup says the same. Nothing about what is in
+the notes can be read from them. And the passphrase is all that stands between the file
+and whoever holds it: a short or guessable one can be found by trying. Deriving the key
+is made slow on purpose (about a second, and 32 to 512 MiB of memory, on the computer
+that set the passphrase) so that each guess costs that much.
+
+**What it does not protect.** Outpost itself: anyone who can open it on your network
+can still read the notes there. The data directory, which is not encrypted. Backups
+made before a passphrase was set. Storage locations (documents, collections, maps),
+which are not in a backup at all.
+
+**A protected backup is checked after it is written like any other.** The run that
+wrote it still holds the key of that one file in memory, reads the whole file back with
+it, and then discards it. After that only the passphrase opens the file.
+
+**What it costs.** Measured on 16 November 2026 on an Apple M-series Mac with 32 GB
+(Node 24.15), three runs each, while other work was running on the machine, so the
+times are rough. "Small" is a new library with one note and a 300 kB attachment;
+"large" is 500 MB of attachments, half of them bytes that do not compress, which makes
+a 251 MB backup. A backup is timed from **Back up now** to the end of its check; a
+restore from the request to the backup being staged. Memory is the most the whole
+server process held, which idles at about 310 MiB.
+
+| | Plain | Protected |
+| --- | --- | --- |
+| Small, back up | 0.06 to 0.07 s, 322 to 330 MiB | 0.06 to 0.08 s, 332 to 349 MiB |
+| Small, restore | 0.02 to 0.03 s, 321 to 329 MiB | 1.06 to 1.07 s, 819 to 824 MiB |
+| Large, back up | 5.8 to 6.3 s, 430 to 446 MiB | 6.5 to 10.5 s, 472 to 488 MiB |
+| Large, restore | 0.7 to 0.9 s, 415 to 430 MiB | 2.3 to 2.9 s, 815 to 829 MiB |
+
+Making a protected backup costs little more than making a plain one: no passphrase is
+involved, and the encryption is far quicker than the compression. Restoring one costs
+the second and the memory that deriving the key is meant to cost (here 512 MiB, the
+most Outpost ever asks), and reads the file twice: once to check every chunk, once to
+unpack it. A computer with less memory chooses a smaller cost when the passphrase is
+set there; a backup made on a large computer and restored on a small one needs the
+memory its header asks for, and the restore says so if it is not there.
+
+#### The protected backup file
+
+Written out so that another program can read one. Version 1; integers are big-endian.
+Code: `apps/server/src/modules/backup/sealed.ts`. A test
+(`apps/server/test/backup-protection.test.ts`) opens a backup with a reader written
+from this section alone.
+
+The file is a header followed by the zip that an unprotected backup would have been,
+encrypted in chunks.
+
+| Offset | Bytes | Field |
+| --- | --- | --- |
+| 0 | 8 | The ASCII letters `OPBACKUP`. |
+| 8 | 1 | Format version: `1`. |
+| 9 | 4 | `H`, the length of the header in bytes: `210 + M`. |
+| 13 | 4 | `C`, the bytes of zip in each chunk but the last. Outpost writes 65,536. |
+| 17 | 32 | The public key the backup is encrypted to (X25519, the 32 raw bytes). |
+| 49 | 32 | The public key made for this one file (X25519, raw). |
+| 81 | 1 | scrypt cost: `N` is 2 to the power of this byte, 15 to 20. Outpost writes 15 to 19. |
+| 82 | 1 | scrypt `r`: `8`. |
+| 83 | 1 | scrypt `p`: `1`. |
+| 84 | 32 | scrypt salt. |
+| 116 | 12 | Nonce of the wrapped private key. |
+| 128 | 48 | The wrapped private key: 32 encrypted bytes, then a 16-byte tag. |
+| 176 | 2 | `M`, the length of the manifest in bytes, at most 16,384. |
+| 178 | `M` | The backup's `manifest.json`, as UTF-8 text, in the clear. |
+| 178 + `M` | 32 | SHA-256 of every byte of the header before this one. |
+
+Then, from offset `H` to the end of the file, the chunks, one after another. Each is
+its encrypted bytes followed by a 16-byte tag. Every chunk but the last holds exactly
+`C` bytes of the zip; the last holds what is left, between 1 and `C` bytes (0 only when
+the zip itself is empty). So the number of chunks is the length of the rest of the file
+divided by `C + 16`, rounded up.
+
+To open one:
+
+1. **The passphrase's bytes** are its UTF-8 encoding after Unicode normalisation to
+   NFC. Nothing is trimmed.
+2. **The wrapping key** is `scrypt(passphrase bytes, salt, N, r, p)`, 32 bytes.
+3. **The private key** is the wrapped private key decrypted with ChaCha20-Poly1305
+   (RFC 8439) under the wrapping key and the nonce beside it, with the ASCII text
+   `outpost-backup-v1 key` followed by the 32 bytes at offset 17 as associated data. If
+   the tag does not match, the passphrase is wrong. The X25519 public key of the result
+   must equal the bytes at offset 17.
+4. **The shared secret** is X25519 of that private key and the public key at offset 49.
+5. **The file key** is HKDF-SHA-256 (RFC 5869) of the shared secret, 32 bytes long,
+   with salt the 32 bytes at offset 49 followed by the 32 bytes at offset 17, and info
+   the ASCII text `outpost-backup-v1 file` followed by the 32-byte SHA-256 that ends
+   the header.
+6. **Each chunk** is decrypted with ChaCha20-Poly1305 under the file key, with no
+   associated data and a 12-byte nonce: the chunk's number, counting from 0, as an
+   11-byte integer, then one byte that is `1` for the last chunk of the file and `0`
+   for every other. A chunk whose tag does not match means the file is damaged,
+   altered or cut short, and the whole file is refused.
+
+The last byte of the nonce is what makes a file cut off exactly between two chunks fail:
+its last chunk was not written as the last. The numbering is what makes chunks that
+have been swapped, dropped or repeated fail. The checksum in the header catches
+accidental damage there before a passphrase is tried, so that damage is not reported as
+a wrong passphrase; because it also goes into the file key, a header altered on purpose
+with its checksum put right opens nothing. One case cannot be told apart: a salt or
+wrapped key altered that way looks the same as a wrong passphrase.
+
+The manifest in the header is what lets Outpost list a protected backup, with its date
+and version, without the passphrase. It is the same text as `manifest.json` inside, and
+a restore reads the one inside.
+
+Outpost reads `N` up to 2 to the power 20 (1 GiB of memory) and refuses a header that
+asks for more, a chunk size below 4 KiB or above 4 MiB, and any other `r` or `p`.
+
 ### Automatic backups
 
 **Settings → Automatic backups** makes the same backup on a schedule and keeps it on a
@@ -658,7 +816,7 @@ storage location. It is off until you choose a location.
   go into a folder named `outpost-backups` at the top of that location, and nowhere
   else. The files are named
   `outpost-backup-<date and time, UTC>-scheduled.zip` (or `-manual.zip` for one started
-  with **Back up now**). Outpost writes through the folder the location is mounted at;
+  with **Back up now**), ending `.zip.enc` when backups are protected with a passphrase. Outpost writes through the folder the location is mounted at;
   it does not read or store anything about a share's sign-in for this.
 - **When.** Every day, or every week on a day you choose, at a time you choose, by the
   clock of the computer Outpost runs on. The first one is made at the next such time

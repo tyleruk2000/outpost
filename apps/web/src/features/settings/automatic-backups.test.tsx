@@ -44,6 +44,8 @@ const backup = (change: Partial<StoredBackup> = {}): StoredBackup => ({
   appVersion: "0.1.0",
   check: "verified",
   checkedAt: NEWER + 60_000,
+  protected: false,
+  currentPassphrase: null,
   ...change,
 });
 
@@ -76,7 +78,18 @@ function serve(options: {
         current = options.after ?? current;
       }
       if (url.pathname === "/api/backup/status") {
-        return json({ restorePending: false, previousData: [], supervised: false, right: current.right, ...options.status });
+        return json({
+          restorePending: false,
+          previousData: [],
+          supervised: false,
+          right: current.right,
+          protection: {
+            on: false,
+            setAt: null,
+            right: { allowed: current.right.allowed, reason: current.right.allowed ? "local" : "remote" },
+          },
+          ...options.status,
+        });
       }
       if (url.pathname === "/api/backup/schedule") return json(current);
       if (url.pathname === "/api/backup/stored")
