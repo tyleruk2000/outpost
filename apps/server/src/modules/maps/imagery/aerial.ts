@@ -169,7 +169,8 @@ export async function planAerial(
       const cog = await Cog.open(remote(fetcher, file.url), head);
       checkForm(cog, file.id);
       const project = options.projectionOf(cog.geo.epsg);
-      if (!project) throw new Error(`The photograph ${file.id} is in a projection (EPSG ${cog.geo.epsg ?? "unknown"}) Outpost does not expect.`);
+      if (!project)
+        throw new Error(`The photograph ${file.id} is in a projection (EPSG ${cog.geo.epsg ?? "unknown"}) Outpost does not expect.`);
       return { file, cog, level: levelFor(cog, metres), project, zeroIsNoData: options.zeroIsNoData === true };
     }),
   );
@@ -179,7 +180,8 @@ export async function planAerial(
   for (const plan of plans) {
     const window = windowOf(plan, plan.level, bbox);
     if (!window) continue;
-    for (const ref of plan.cog.tilesFor(plan.level, ...window)) if (ref.length > 0) needed.set(`${plan.file.url}#${ref.image}:${ref.index}`, ref.length);
+    for (const ref of plan.cog.tilesFor(plan.level, ...window))
+      if (ref.length > 0) needed.set(`${plan.file.url}#${ref.image}:${ref.index}`, ref.length);
   }
   return {
     bbox,
@@ -307,7 +309,12 @@ export async function buildAerial(
       for (const filePlan of plan.files) {
         const window = windowOf(filePlan, filePlan.level, part);
         if (!window) continue;
-        readers.push({ plan: filePlan, patch: await readPatch(fetcher, filePlan, window), gx: new Float64Array(0), gy: new Float64Array(0) });
+        readers.push({
+          plan: filePlan,
+          patch: await readPatch(fetcher, filePlan, window),
+          gx: new Float64Array(0),
+          gy: new Float64Array(0),
+        });
       }
 
       report(chunkCount > 1 ? `Making map tiles for part ${chunkIndex} of ${chunkCount}` : "Making map tiles");

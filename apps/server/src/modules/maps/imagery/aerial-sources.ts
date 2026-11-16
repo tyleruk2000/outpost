@@ -125,7 +125,9 @@ async function getJson(
   try {
     const { response } = await client.fetch(url, {
       method: options.method ?? "GET",
-      ...(options.body ? { body: JSON.stringify(options.body), headers: { "content-type": "application/json", accept: "application/json" } } : {}),
+      ...(options.body
+        ? { body: JSON.stringify(options.body), headers: { "content-type": "application/json", accept: "application/json" } }
+        : {}),
       allowedHosts: [hostOf(url)],
       everyHop: true,
       signal: options.signal,
@@ -287,7 +289,9 @@ function nztmBox(bbox: Bbox): [number, number, number, number] {
 }
 
 const linzCatalogSchema = z.object({
-  links: z.array(z.object({ rel: z.string(), href: z.string(), title: z.string().optional(), "file:size": z.number().optional() }).passthrough()),
+  links: z.array(
+    z.object({ rel: z.string(), href: z.string(), title: z.string().optional(), "file:size": z.number().optional() }).passthrough(),
+  ),
 });
 const linzTailSchema = z
   .object({
@@ -335,7 +339,10 @@ export const LINZ: AerialSourceDef = {
       .map(([name]) => name);
     if (regions.length === 0) return [];
     const catalog = linzCatalogSchema.safeParse(
-      await getJson(context.client, `${base}/catalog.json`, "New Zealand's imagery catalogue", { signal: context.signal, limit: 4_000_000 }),
+      await getJson(context.client, `${base}/catalog.json`, "New Zealand's imagery catalogue", {
+        signal: context.signal,
+        limit: 4_000_000,
+      }),
     );
     if (!catalog.success) throw new AppError("upstream", "New Zealand's imagery catalogue is in a form Outpost does not understand.");
     const thisYear = new Date().getUTCFullYear();
@@ -397,7 +404,8 @@ export const LINZ: AerialSourceDef = {
 
   async filesFor(context, choice, bbox) {
     const url = choice.ref.collectionUrl;
-    if (!url || hostOf(url) !== hostOf(context.endpoints.linzBase ?? LINZ_BASE)) throw new AppError("bad_request", "That survey is not one Outpost found.");
+    if (!url || hostOf(url) !== hostOf(context.endpoints.linzBase ?? LINZ_BASE))
+      throw new AppError("bad_request", "That survey is not one Outpost found.");
     // The first file named in the survey's description says the scale of its grid.
     const head = Buffer.from(await context.fetcher.read(url, 0, 8192)).toString("utf8");
     const first = /"\.\/([A-Z]{2}\d{2})_(\d+)_(\d+)\.json"/.exec(head);
@@ -466,7 +474,8 @@ function naipSigner(context: Pick<SourceContext, "client" | "endpoints">): (url:
       const answer = z
         .object({ token: z.string().min(1).max(4000), "msft:expiry": z.string().optional() })
         .safeParse(await getJson(context.client, tokenUrl, "The Planetary Computer's token service", { limit: 100_000 }));
-      if (!answer.success) throw new AppError("upstream", "The Planetary Computer's token service answered in a form Outpost does not understand.");
+      if (!answer.success)
+        throw new AppError("upstream", "The Planetary Computer's token service answered in a form Outpost does not understand.");
       const expiry = answer.data["msft:expiry"] ? Date.parse(answer.data["msft:expiry"]) : Number.NaN;
       token = { value: answer.data.token, until: Number.isFinite(expiry) ? expiry - 5 * 60_000 : Date.now() + 30 * 60_000 };
     }
@@ -480,7 +489,11 @@ export const NAIP: AerialSourceDef = {
   short: "USDA NAIP",
   // The lower 48 states.
   bounds: [[-125, 24.4, -66.8, 49.5]],
-  hosts: (endpoints) => [hostOf(endpoints.naipSearchUrl ?? NAIP_SEARCH_URL), hostOf(endpoints.naipTokenUrl ?? NAIP_TOKEN_URL), endpoints.naipHost ?? NAIP_HOST],
+  hosts: (endpoints) => [
+    hostOf(endpoints.naipSearchUrl ?? NAIP_SEARCH_URL),
+    hostOf(endpoints.naipTokenUrl ?? NAIP_TOKEN_URL),
+    endpoints.naipHost ?? NAIP_HOST,
+  ],
   fileHosts: (endpoints) => [endpoints.naipHost ?? NAIP_HOST],
   minZoom: 10,
   maxZoomCeiling: 19,
@@ -501,7 +514,8 @@ export const NAIP: AerialSourceDef = {
       limit: 8_000_000,
     });
     const features = z.object({ features: z.array(z.unknown()) }).safeParse(answer);
-    if (!features.success) throw new AppError("upstream", "The Planetary Computer's catalogue answered in a form Outpost does not understand.");
+    if (!features.success)
+      throw new AppError("upstream", "The Planetary Computer's catalogue answered in a form Outpost does not understand.");
     const local = host === "127.0.0.1" || host === "localhost";
     // One choice per state and year: the files of one survey.
     const groups = new Map<string, Array<z.infer<typeof naipItemSchema>>>();
@@ -543,7 +557,8 @@ export const NAIP: AerialSourceDef = {
   async filesFor(context, choice) {
     const host = context.endpoints.naipHost ?? NAIP_HOST;
     const files = choice.ref.files ?? [];
-    if (files.length === 0 || files.some((file) => hostOf(file.url) !== host)) throw new AppError("bad_request", "That survey is not one Outpost found.");
+    if (files.length === 0 || files.some((file) => hostOf(file.url) !== host))
+      throw new AppError("bad_request", "That survey is not one Outpost found.");
     return files.map((file) => ({ id: file.id, url: file.url }));
   },
 

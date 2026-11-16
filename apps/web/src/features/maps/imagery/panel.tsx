@@ -26,7 +26,22 @@ import { DestinationLine, DestinationPicker, useDestination } from "../panels/de
 import { Fact, PanelHeading } from "../ui";
 import { estimateArea, searchScenes, useImagery, useStartArea, useStartWorld } from "./data";
 
-const resolution = (metres: number) => (metres >= 1000 ? `${formatNumber(metres / 1000)} km a pixel` : `${formatNumber(metres)} m a pixel`);
+/** "2 km", "10 m", "7.5 cm". */
+const length = (metres: number) =>
+  metres >= 1000
+    ? `${formatNumber(metres / 1000)} km`
+    : metres >= 1
+      ? `${formatNumber(metres)} m`
+      : `${formatNumber(Math.round(metres * 1000) / 10)} cm`;
+const resolution = (metres: number) => `${length(metres)} a pixel`;
+const isAerial = (source: string) => source !== "sentinel-2" && source !== "blue-marble";
+const SOURCE_NAMES: Record<string, string> = {
+  "blue-marble": "NASA Blue Marble",
+  "sentinel-2": "Sentinel-2",
+  "linz-aerial": "Aerial photograph, LINZ",
+  naip: "Aerial photograph, USDA NAIP",
+};
+const SHORT_NAMES: Record<string, string> = { "linz-aerial": "LINZ", naip: "USDA NAIP" };
 const minutes = (seconds: number) => (seconds < 90 ? `${Math.max(1, Math.round(seconds))} seconds` : `${Math.round(seconds / 60)} minutes`);
 const percent = (value: number) => `${value < 10 ? value.toFixed(1).replace(/\.0$/, "") : Math.round(value)}%`;
 
@@ -43,14 +58,15 @@ function SetRow({ set, onShow }: { set: ImagerySet; onShow: (() => void) | undef
       : set.status === "damaged"
         ? "The file is damaged"
         : null;
-  const who = set.source === "blue-marble" ? "NASA Blue Marble" : "Sentinel-2";
+  const who = SOURCE_NAMES[set.source] ?? set.source;
   return (
     <li className="py-3">
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1">
           <h4 className="font-title text-body text-ink">{set.name}</h4>
           <p className="tabular mt-0.5 text-small text-ink-muted">
-            {who}, taken {set.source === "blue-marble" ? "in" : "on"} {set.imageDateText}, {resolution(set.resolutionMeters)}
+            {who}, {isAerial(set.source) ? "flown" : set.source === "blue-marble" ? "taken in" : "taken on"} {set.imageDateText},{" "}
+            {resolution(set.resolutionMeters)}
           </p>
           {set.source === "sentinel-2" ? (
             <p className="tabular text-small text-ink-muted">
@@ -251,12 +267,84 @@ export function SatelliteSection({
             10 m a pixel from the European Union's Sentinel-2 satellites, free and with no account: fields, woods, lakes and the shape of a
             town, not single houses. Choose the area and the day; Outpost fetches only the part of the picture it needs.
           </p>
+          <p className="mt-2 text-small text-ink-muted">
+            Where a government publishes its aerial photographs openly in a form Outpost can read (New Zealand and the United States so
+            far), the photograph of the area is offered beside the satellite's days: 7.5 cm to 1 m a pixel, enough for single houses and
+            cars, but a great deal more data, so it is for a town centre or a valley floor, not a county. The Environment Agency's
+            photographs of England are published only in a closed format (ECW) that Outpost cannot read.
+          </p>
           <Button className="mt-3" onClick={onChooseArea}>
             <SquareDashedMousePointer /> Choose an area
           </Button>
         </>
       )}
     </section>
+  );
+}
+
+/** Sentences about a source that could not be asked, or had nothing for the area. */
+function SearchNotes({ notes }: { notes: string[] | undefined }) {
+  if (!notes || notes.length === 0) return null;
+  return (
+    <ul className="grid gap-1 text-small text-ink-muted" aria-label="About the search">
+      {notes.map((note) => (
+        <li key={note}>{note}</li>
+      ))}
+    </ul>
+  );
+}
+
+/** What an aerial photograph of the area will be, take and cost, before anything is fetched. */
+function AerialFacts({ estimated }: { estimated: ImageryEstimate }) {
+  const aerial = estimated.aerial!;
+  const finer = aerial.readMeters > estimated.source.resolutionMeters * 1.05;
+  return (
+    <dl aria-label="What it will be">
+      <Fact label="Picture">{estimated.scene.title ?? estimated.source.name}</Fact>
+      <Fact label="Flown">{estimated.scene.dateText}</Fact>
+      <Fact label="Detail">
+        {resolution(estimated.source.resolutionMeters)}, to zoom {estimated.maxZoom}
+        {finer ? (
+          <span className="block text-ink-muted">
+            Read from the publisher's own reduced copy at {length(aerial.readMeters)}, as fine as the map shows at zoom {estimated.maxZoom}
+          </span>
+        ) : null}
+      </Fact>
+      <Fact label="Area">
+        {formatNumber(Math.round(estimated.areaKm2 * 100) / 100)} km²
+        {estimated.scene.coveragePercent < 99 ? (
+          <span className="block text-ink-muted">The survey covers {estimated.scene.coveragePercent}% of it</span>
+        ) : null}
+      </Fact>
+      <Fact label="To fetch">
+        {formatBytes(estimated.transferBytes)}
+        <span className="block text-ink-muted">
+          {formatNumber(estimated.requests)} requests, from{" "}
+          {aerial.files === 1 ? "one of the publisher's files" : `${formatNumber(aerial.files)} of the publisher's files`}
+        </span>
+      </Fact>
+      <Fact label="Kept on disk">
+        About {formatBytes(estimated.estimatedSizeBytes)}
+        <span className="block text-ink-muted">{formatNumber(estimated.tileCount)} map tiles</span>
+      </Fact>
+      <Fact label="Time">
+        About {minutes(estimated.estimatedSeconds.low)} to {minutes(estimated.estimatedSeconds.high)}
+      </Fact>
+      <Fact label="Free space">
+        {estimated.freeBytes === null ? "Not known" : `${formatBytes(estimated.freeBytes)} on ${estimated.locationName}`}
+      </Fact>
+      <Fact label="From">{estimated.source.publisher}</Fact>
+      <Fact label="Licence">
+        <a href={estimated.source.licenceUrl} target="_blank" rel="noopener noreferrer" className={link}>
+          {estimated.source.licence}
+        </a>
+        <span className="block text-ink-muted">Credited on the map as “{aerial.credit}”</span>
+      </Fact>
+      <Fact label="Cost">
+        <span className="font-semibold">Free</span>
+        <span className="block text-ink-muted">{estimated.source.cost.replace(/^Free\.\s*/, "")}</span>
+      </Fact>
+    </dl>
   );
 }
 
@@ -430,16 +518,20 @@ export function ImageryArea({
         {header}
         <div className="scroll-quiet grid min-h-0 flex-1 content-start gap-4 overflow-y-auto px-4 py-4">
           <div>
-            <h3 className="font-title text-lead text-ink">Choose the day</h3>
+            <h3 className="font-title text-lead text-ink">Choose the picture</h3>
             <p className="mt-1 text-small text-ink-muted">
-              Each is one moment's picture by one satellite, with whatever cloud, shadow, snow and season it had. The cloud figure is the
-              publisher's, for the whole 110 km scene; the next step works it out for your area.
+              Each satellite day is one moment's picture, with whatever cloud, shadow, snow and season it had; its cloud figure is the
+              publisher's, for the whole 110 km scene, and the next step works it out for your area. An aerial photograph, where there is
+              one, is far sharper, taken on a clear day of the season it was flown, which may be years ago.
             </p>
           </div>
           {search.isPending ? (
             <div role="status">
               <Progress label="Searching" tone="lamp" />
-              <p className="mt-2 text-small text-ink-muted">Asking the Sentinel-2 catalogue for pictures of the area from the last year.</p>
+              <p className="mt-2 text-small text-ink-muted">
+                Asking the Sentinel-2 catalogue for pictures of the area from the last year, and, where a government publishes aerial
+                photographs of it, its catalogue too.
+              </p>
             </div>
           ) : search.isError ? (
             <Notice
@@ -451,22 +543,37 @@ export function ImageryArea({
               {errorMessage(search.error)}
             </Notice>
           ) : search.data && search.data.options.length === 0 ? (
-            <Notice tone="info">No picture of this area in the last year was clear enough to offer. Try a different area.</Notice>
+            <>
+              <Notice tone="info">No picture of this area in the last year was clear enough to offer. Try a different area.</Notice>
+              <SearchNotes notes={search.data.notes} />
+            </>
           ) : search.data ? (
-            <ChoiceList
-              label="Day of the picture"
-              value={scene?.key}
-              onChange={(key) => {
-                setScene(search.data!.options.find((option) => option.key === key) ?? null);
-                resetEstimate();
-              }}
-              choices={search.data.options.map((option) => ({
-                value: option.key,
-                title: option.dateText,
-                detail: `Cloud over the scene ${percent(option.sceneCloudPercent)}${option.coveragePercent < 99 ? `; covers ${option.coveragePercent}% of the area` : ""}${option.sceneIds.length > 1 ? `; ${option.sceneIds.length} scenes joined` : ""}`,
-                trailing: option.platform.replace(/^sentinel-2(\w)$/i, (_, letter: string) => `Sentinel-2${letter.toUpperCase()}`),
-              }))}
-            />
+            <>
+              <ChoiceList
+                label="Picture of the area"
+                value={scene?.key}
+                onChange={(key) => {
+                  setScene(search.data!.options.find((option) => option.key === key) ?? null);
+                  resetEstimate();
+                }}
+                choices={search.data.options.map((option) =>
+                  isAerial(option.source)
+                    ? {
+                        value: option.key,
+                        title: `Aerial photograph, ${length(option.resolutionMeters)}`,
+                        detail: `Flown ${option.dateText}${option.licensor ? `, ${option.licensor}` : ""}${option.coveragePercent < 99 ? `; covers ${option.coveragePercent}% of the area` : ""}`,
+                        trailing: SHORT_NAMES[option.source] ?? option.source,
+                      }
+                    : {
+                        value: option.key,
+                        title: option.dateText,
+                        detail: `Sentinel-2, 10 m; cloud over the scene ${percent(option.sceneCloudPercent)}${option.coveragePercent < 99 ? `; covers ${option.coveragePercent}% of the area` : ""}${option.sceneIds.length > 1 ? `; ${option.sceneIds.length} scenes joined` : ""}`,
+                        trailing: option.platform.replace(/^sentinel-2(\w)$/i, (_, letter: string) => `Sentinel-2${letter.toUpperCase()}`),
+                      },
+                )}
+              />
+              <SearchNotes notes={search.data.notes} />
+            </>
           ) : null}
         </div>
         <footer className="flex border-t border-border px-4 py-3">
@@ -486,6 +593,7 @@ export function ImageryArea({
     );
   }
 
+  const aerial = scene ? isAerial(scene.source) : false;
   const download = () => {
     if (!bbox || !scene || !destination.location) return;
     const kept = destination.location.name;
@@ -508,14 +616,17 @@ export function ImageryArea({
         <div>
           <h3 className="font-title text-lead text-ink">{name.trim()}</h3>
           <p className="tabular mt-1 text-small text-ink-muted">
-            {bbox ? formatBboxSize(bbox) : ""}, Sentinel-2 picture of {scene?.dateText}
+            {bbox ? formatBboxSize(bbox) : ""},{" "}
+            {aerial ? `aerial photograph flown ${scene?.dateText}` : `Sentinel-2 picture of ${scene?.dateText}`}
           </p>
         </div>
         {estimate.isPending ? (
           <div role="status">
             <Progress label="Working out the size" tone="lamp" />
             <p className="mt-2 text-small text-ink-muted">
-              Reading the index of the scene's files, and its cloud map for the area: a few hundred kilobytes.
+              {aerial
+                ? "Reading the index at the start of each of the photograph's files the area needs: a few kilobytes each."
+                : "Reading the index of the scene's files, and its cloud map for the area: a few hundred kilobytes."}
             </p>
           </div>
         ) : estimate.isError ? (
@@ -537,54 +648,67 @@ export function ImageryArea({
                   estimated.warning.level === "refuse"
                     ? "Too large for one area"
                     : estimated.warning.level === "warn"
-                      ? "A large area"
+                      ? aerial
+                        ? "A lot of data"
+                        : "A large area"
                       : undefined
                 }
               >
                 {estimated.warning.message}
               </Notice>
             ) : null}
-            <dl aria-label="What it will be">
-              <Fact label="Picture">Sentinel-2, Level-2A, {estimated.scene.dateText}</Fact>
-              <Fact label="Detail">10 m a pixel, to zoom {estimated.maxZoom}</Fact>
-              <Fact label="Cloud over the area">
-                {estimated.areaCloudPercent === null ? "Not known" : percent(estimated.areaCloudPercent)}
-                <span className="block text-ink-muted">Whole scene: {percent(estimated.scene.sceneCloudPercent)}</span>
-              </Fact>
-              <Fact label="Area">{formatNumber(Math.round(estimated.areaKm2))} km²</Fact>
-              <Fact label="To fetch">
-                {formatBytes(estimated.transferBytes)}
-                <span className="block text-ink-muted">{formatNumber(estimated.requests)} requests</span>
-              </Fact>
-              <Fact label="Kept on disk">About {formatBytes(estimated.estimatedSizeBytes)}</Fact>
-              <Fact label="Time">
-                About {minutes(estimated.estimatedSeconds.low)} to {minutes(estimated.estimatedSeconds.high)}
-              </Fact>
-              <Fact label="Scenes">
-                {estimated.scene.sceneIds.length === 1 ? "One, so no seams" : `${estimated.scene.sceneIds.length}, from the same day`}
-              </Fact>
-              <Fact label="Free space">
-                {estimated.freeBytes === null ? "Not known" : `${formatBytes(estimated.freeBytes)} on ${estimated.locationName}`}
-              </Fact>
-              <Fact label="From">European Union Copernicus programme, through AWS Open Data and Element 84's Earth Search</Fact>
-              <Fact label="Licence">
-                <a href={estimated.source.licenceUrl} target="_blank" rel="noopener noreferrer" className={link}>
-                  Free, full and open
-                </a>
-                <span className="block text-ink-muted">Credited on the map as “Contains modified Copernicus Sentinel data”</span>
-              </Fact>
-              <Fact label="Cost">
-                <span className="font-semibold">Free</span>
-                <span className="block text-ink-muted">
-                  No account and no bill: the files are in a public bucket that is not requester-pays.
-                </span>
-              </Fact>
-            </dl>
-            <p className="text-small text-ink-muted">
-              This is one moment's picture, not a seamless mosaic: it has the cloud, shadow and season of {estimated.scene.dateText}, and
-              the colours are the satellite's own, made into an image by one fixed rule. If cloud covers what you care about, go back and
-              choose another day.
-            </p>
+            {estimated.aerial ? (
+              <AerialFacts estimated={estimated} />
+            ) : (
+              <dl aria-label="What it will be">
+                <Fact label="Picture">Sentinel-2, Level-2A, {estimated.scene.dateText}</Fact>
+                <Fact label="Detail">10 m a pixel, to zoom {estimated.maxZoom}</Fact>
+                <Fact label="Cloud over the area">
+                  {estimated.areaCloudPercent === null ? "Not known" : percent(estimated.areaCloudPercent)}
+                  <span className="block text-ink-muted">Whole scene: {percent(estimated.scene.sceneCloudPercent)}</span>
+                </Fact>
+                <Fact label="Area">{formatNumber(Math.round(estimated.areaKm2))} km²</Fact>
+                <Fact label="To fetch">
+                  {formatBytes(estimated.transferBytes)}
+                  <span className="block text-ink-muted">{formatNumber(estimated.requests)} requests</span>
+                </Fact>
+                <Fact label="Kept on disk">About {formatBytes(estimated.estimatedSizeBytes)}</Fact>
+                <Fact label="Time">
+                  About {minutes(estimated.estimatedSeconds.low)} to {minutes(estimated.estimatedSeconds.high)}
+                </Fact>
+                <Fact label="Scenes">
+                  {estimated.scene.sceneIds.length === 1 ? "One, so no seams" : `${estimated.scene.sceneIds.length}, from the same day`}
+                </Fact>
+                <Fact label="Free space">
+                  {estimated.freeBytes === null ? "Not known" : `${formatBytes(estimated.freeBytes)} on ${estimated.locationName}`}
+                </Fact>
+                <Fact label="From">European Union Copernicus programme, through AWS Open Data and Element 84's Earth Search</Fact>
+                <Fact label="Licence">
+                  <a href={estimated.source.licenceUrl} target="_blank" rel="noopener noreferrer" className={link}>
+                    Free, full and open
+                  </a>
+                  <span className="block text-ink-muted">Credited on the map as “Contains modified Copernicus Sentinel data”</span>
+                </Fact>
+                <Fact label="Cost">
+                  <span className="font-semibold">Free</span>
+                  <span className="block text-ink-muted">
+                    No account and no bill: the files are in a public bucket that is not requester-pays.
+                  </span>
+                </Fact>
+              </dl>
+            )}
+            {estimated.aerial ? (
+              <p className="text-small text-ink-muted">
+                This is the photograph as the publisher made it, of the season it was flown ({estimated.scene.dateText}), not of today: new
+                buildings and roads since then are not on it. Nothing is sharpened, and no zoom is made finer than the photograph.
+              </p>
+            ) : (
+              <p className="text-small text-ink-muted">
+                This is one moment's picture, not a seamless mosaic: it has the cloud, shadow and season of {estimated.scene.dateText}, and
+                the colours are the satellite's own, made into an image by one fixed rule. If cloud covers what you care about, go back and
+                choose another day.
+              </p>
+            )}
             {needsAccept ? (
               <div className="flex items-start gap-3">
                 <Checkbox
@@ -594,7 +718,7 @@ export function ImageryArea({
                   className="mt-0.5"
                 />
                 <label htmlFor={acceptId} className="text-small text-ink">
-                  I have read this and want the whole area
+                  {aerial ? "I have read this and want all of it" : "I have read this and want the whole area"}
                 </label>
               </div>
             ) : null}

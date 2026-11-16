@@ -80,7 +80,7 @@ async function load(): Promise<Codec> {
 }
 
 interface Decoder {
-  decode(data: Uint8Array):{ data: Uint8ClampedArray; width: number; height: number } | null;
+  decode(data: Uint8Array): { data: Uint8ClampedArray; width: number; height: number } | null;
 }
 
 let decoder: Promise<Decoder> | undefined;

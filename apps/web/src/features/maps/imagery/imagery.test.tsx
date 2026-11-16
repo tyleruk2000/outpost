@@ -143,6 +143,7 @@ const overview = (over: Partial<ImageryOverview> = {}): ImageryOverview => ({
   ],
   sources: [],
   limits: { noticeKm2: 400, warnKm2: 2500, maxKm2: 10000 },
+  aerialLimits: { noticeBytes: 50e6, warnBytes: 400e6, maxBytes: 2e9, warnTiles: 15000, maxTiles: 60000 },
   ...over,
 });
 
@@ -199,9 +200,12 @@ const search: SceneSearchResponse = {
   from: "2025-11-16",
   to: "2026-11-16",
   searchedAt: 1,
+  notes: [],
   options: [
     {
       key: "A",
+      source: "sentinel-2",
+      resolutionMeters: 10,
       date: "2026-07-12",
       dateText: "12 July 2026",
       platform: "sentinel-2b",
@@ -211,6 +215,8 @@ const search: SceneSearchResponse = {
     },
     {
       key: "B",
+      source: "sentinel-2",
+      resolutionMeters: 10,
       date: "2026-10-17",
       dateText: "17 October 2026",
       platform: "sentinel-2a",
@@ -266,7 +272,7 @@ async function walkToConfirmation(answer: ImageryEstimate) {
   expect(server.calls.filter((call) => call.startsWith("POST"))).toEqual([]);
   await userEvent.click(screen.getByRole("button", { name: "Find pictures" }));
   await userEvent.click(await screen.findByRole("radio", { name: /17 October 2026/ }));
-  expect(screen.getByText(/Cloud over the scene 12%; covers 80% of the area/)).toBeInTheDocument();
+  expect(screen.getByText(/cloud over the scene 12%; covers 80% of the area/)).toBeInTheDocument();
   await userEvent.click(screen.getByRole("radio", { name: /12 July 2026/ }));
   await userEvent.click(screen.getByRole("button", { name: "Continue" }));
   await screen.findByText("To fetch");
@@ -312,5 +318,95 @@ describe("choosing an area", () => {
     await walkToConfirmation(estimate({ warning: { level: "refuse", message: "20,000 km² is more than one area can be (10,000 km²)." } }));
     expect(screen.getByText("Too large for one area")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Fetch 16.2 MB" })).toBeDisabled();
+  });
+});
+
+describe("an aerial photograph of an area", () => {
+  const photo = {
+    key: "linz:christchurch",
+    source: "linz-aerial" as const,
+    resolutionMeters: 0.075,
+    title: "Christchurch 0.075m Urban Aerial Photos (2023)",
+    licensor: "Environment Canterbury",
+    date: "2023-01-15",
+    dateText: "January to April 2023",
+    platform: "aerial",
+    sceneIds: [],
+    sceneCloudPercent: 0,
+    coveragePercent: 100,
+  };
+  const aerialEstimate = estimate({
+    source: {
+      id: "linz-aerial",
+      name: "New Zealand aerial photographs",
+      publisher: "Toitū Te Whenua Land Information New Zealand (LINZ)",
+      resolutionMeters: 0.075,
+      licence: "Creative Commons Attribution 4.0 International (CC BY 4.0)",
+      licenceUrl: "https://creativecommons.org/licenses/by/4.0/",
+      credit: "Licensed by [the licensor] for re-use under CC-BY-4.0",
+      cost: "Free. The files are in a public AWS bucket that needs no account and is not requester-pays: nobody is billed.",
+    },
+    scene: photo,
+    areaKm2: 0.6,
+    maxZoom: 19,
+    minZoom: 10,
+    transferBytes: 7_200_000,
+    requests: 40,
+    estimatedSizeBytes: 9_000_000,
+    tileCount: 1_230,
+    areaCloudPercent: null,
+    aerial: { readMeters: 0.15, files: 4, credit: "Licensed by Environment Canterbury for re-use under CC-BY-4.0" },
+  });
+
+  it("is offered beside the satellite's days, and its confirmation says how fine, how much, whose and on what terms", async () => {
+    installBrowserStubs();
+    const server = fakeServer({
+      "GET /api/maps/imagery": overview(),
+      "GET /api/storage/locations": { roots: ["/srv"], locations: [location()] },
+      "POST /api/maps/imagery/scenes": { ...search, options: [photo, ...search.options], notes: ["Nothing else to say."] },
+      "POST /api/maps/imagery/estimate": aerialEstimate,
+      "POST /api/maps/imagery/areas": { download: {} },
+    });
+    renderScreen(<ImageryArea engine={engine()} onClose={() => {}} onNeedMap={() => {}} onNeedRoom={() => {}} />);
+    await userEvent.click(screen.getByRole("button", { name: "Use the current view" }));
+    await userEvent.type(screen.getByRole("textbox", { name: "Name for this area" }), "Cathedral Square");
+    await userEvent.click(screen.getByRole("button", { name: "Find pictures" }));
+    const choice = await screen.findByRole("radio", { name: /Aerial photograph, 7.5 cm/ });
+    expect(screen.getByText("Flown January to April 2023, Environment Canterbury")).toBeInTheDocument();
+    expect(screen.getByText("Nothing else to say.")).toBeInTheDocument();
+    await userEvent.click(choice);
+    await userEvent.click(screen.getByRole("button", { name: "Continue" }));
+    const figures = await screen.findByLabelText("What it will be");
+    expect(figures).toHaveTextContent("Christchurch 0.075m Urban Aerial Photos (2023)");
+    expect(figures).toHaveTextContent("7.5 cm a pixel, to zoom 19");
+    expect(figures).toHaveTextContent("reduced copy at 15 cm");
+    expect(figures).toHaveTextContent("from 4 of the publisher's files");
+    expect(figures).toHaveTextContent("1,230 map tiles");
+    expect(figures).toHaveTextContent("Credited on the map as “Licensed by Environment Canterbury for re-use under CC-BY-4.0”");
+    expect(figures).not.toHaveTextContent("Cloud");
+    expect(screen.getByText(/not of today/)).toBeInTheDocument();
+    expect(server.calls.filter((call) => call.startsWith("POST /api/maps/imagery/areas"))).toEqual([]);
+    await userEvent.click(screen.getByRole("button", { name: "Fetch 7.20 MB" }));
+    await waitFor(() => expect(server.calls).toContain("POST /api/maps/imagery/areas"));
+  });
+
+  it("lists an installed photograph with the season it was flown", async () => {
+    installBrowserStubs();
+    fakeServer({
+      "GET /api/maps/imagery": overview({
+        sets: [
+          set({
+            source: "linz-aerial",
+            imageDateText: "January to April 2023",
+            resolutionMeters: 0.075,
+            sceneCloudPercent: null,
+            areaCloudPercent: null,
+          }),
+        ],
+      }),
+    });
+    renderScreen(<SatelliteSection engine={null} onChooseArea={() => {}} />);
+    const row = (await screen.findByText("Derwentwater")).closest("li")!;
+    expect(row).toHaveTextContent("Aerial photograph, LINZ, flown January to April 2023, 7.5 cm a pixel");
   });
 });

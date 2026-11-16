@@ -42,7 +42,15 @@ import { LocalArchive, readLocalHeader } from "../pmtiles/reader.ts";
 import { bboxSchema, slugify } from "../regions.ts";
 import { hostOf } from "../source.ts";
 import { type AerialFile, aerialMaxZoom, buildAerial, planAerial } from "./aerial.ts";
-import { AERIAL_SOURCES, type AerialChoice, type AerialEndpoints, type AerialSourceDef, aerialChoiceSchema, aerialSource, sourceCovers } from "./aerial-sources.ts";
+import {
+  AERIAL_SOURCES,
+  type AerialChoice,
+  type AerialEndpoints,
+  type AerialSourceDef,
+  aerialChoiceSchema,
+  aerialSource,
+  sourceCovers,
+} from "./aerial-sources.ts";
 import { buildWorld, fetchWorldFiles, worldTileCount } from "./blue-marble.ts";
 import {
   AERIAL_LIMITS,
@@ -91,7 +99,10 @@ const aerialMetaSchema = z.object({
   bbox: z.tuple([z.number(), z.number(), z.number(), z.number()]),
   choice: aerialChoiceSchema,
   /** The publisher's files the area needs, found when it was started. */
-  files: z.array(z.object({ id: z.string(), url: z.string() })).min(1).max(2000),
+  files: z
+    .array(z.object({ id: z.string(), url: z.string() }))
+    .min(1)
+    .max(2000),
   plannedBytes: z.number().int().nonnegative(),
 });
 const imageryMetaSchema = z.discriminatedUnion("kind", [worldMetaSchema, sentinelMetaSchema, aerialMetaSchema]);
@@ -338,12 +349,17 @@ export function createImageryService(ctx: AppContext, deps: ImageryDeps): Imager
       zeroIsNoData: source.zeroIsNoData,
       headerBytes: source.headerBytes,
     });
-    if (plan.files.length === 0) throw new AppError("not_found", "The publisher has no photograph of this area in that survey. Choose another picture.");
+    if (plan.files.length === 0)
+      throw new AppError("not_found", "The publisher has no photograph of this area in that survey. Choose another picture.");
     return plan;
   }
 
   function aerialTilesOf(source: AerialSourceDef, choice: AerialChoice, bbox: Bbox): number {
-    return countOutputTiles(bbox, source.minZoom, Math.max(source.minZoom, aerialMaxZoom(choice.resolutionMeters, bbox, source.maxZoomCeiling)));
+    return countOutputTiles(
+      bbox,
+      source.minZoom,
+      Math.max(source.minZoom, aerialMaxZoom(choice.resolutionMeters, bbox, source.maxZoomCeiling)),
+    );
   }
 
   function locationFor(locationId: string | undefined) {
@@ -447,7 +463,12 @@ export function createImageryService(ctx: AppContext, deps: ImageryDeps): Imager
           return;
         }
         const choices = (result.value as { choices: AerialChoice[] }).choices
-          .sort((a, b) => Number(b.coveragePercent >= 99) - Number(a.coveragePercent >= 99) || b.date.localeCompare(a.date) || a.resolutionMeters - b.resolutionMeters)
+          .sort(
+            (a, b) =>
+              Number(b.coveragePercent >= 99) - Number(a.coveragePercent >= 99) ||
+              b.date.localeCompare(a.date) ||
+              a.resolutionMeters - b.resolutionMeters,
+          )
           .slice(0, 12);
         for (const choice of choices) {
           found.set(choice.key, { aerial: choice, at: now });
@@ -470,7 +491,9 @@ export function createImageryService(ctx: AppContext, deps: ImageryDeps): Imager
       if (sentinelResult.status === "rejected") {
         // With no aerial photograph to offer either, the search simply failed.
         if (options.length === 0) throw sentinelResult.reason;
-        notes.push(sentinelResult.reason instanceof AppError ? sentinelResult.reason.message : "The Sentinel-2 search service could not be read.");
+        notes.push(
+          sentinelResult.reason instanceof AppError ? sentinelResult.reason.message : "The Sentinel-2 search service could not be read.",
+        );
       } else {
         // Only scenes whose files are on the public bucket are ever offered.
         const usable = (sentinelResult.value as Scene[]).filter((scene) =>
@@ -662,7 +685,11 @@ export function createImageryService(ctx: AppContext, deps: ImageryDeps): Imager
     return { plan, transferBytes, estimatedSizeBytes, seconds, warning };
   }
 
-  async function estimateAerial(input: z.infer<typeof areaEstimateSchema>, choice: AerialChoice, signal?: AbortSignal): Promise<ImageryEstimate> {
+  async function estimateAerial(
+    input: z.infer<typeof areaEstimateSchema>,
+    choice: AerialChoice,
+    signal?: AbortSignal,
+  ): Promise<ImageryEstimate> {
     const source = aerialSourceOf(choice);
     const location = locationFor(input.locationId);
     const { plan, transferBytes, estimatedSizeBytes, seconds, warning } = await aerialFigures(source, choice, input.bbox, signal);
@@ -812,7 +839,10 @@ export function createImageryService(ctx: AppContext, deps: ImageryDeps): Imager
             signal,
             onProgress: ({ tilesWritten, tilesTotal, message }) =>
               context.progress(
-                Math.min(total, job.fetcher.transfer.bytes + Math.round((tilesWritten / Math.max(1, tilesTotal)) * (total - meta.plannedBytes))),
+                Math.min(
+                  total,
+                  job.fetcher.transfer.bytes + Math.round((tilesWritten / Math.max(1, tilesTotal)) * (total - meta.plannedBytes)),
+                ),
                 total || null,
                 `${message} (${megabytes(previous + job.fetcher.transfer.bytes)} fetched)`,
               ),
@@ -821,7 +851,12 @@ export function createImageryService(ctx: AppContext, deps: ImageryDeps): Imager
             bounds: meta.bbox as Bbox,
             minZoom: plan.minZoom,
             maxZoom: plan.maxZoom,
-            metadata: { source: meta.choice.source, date: meta.choice.date, survey: meta.choice.title, files: meta.files.map((file) => file.id) },
+            metadata: {
+              source: meta.choice.source,
+              date: meta.choice.date,
+              survey: meta.choice.title,
+              files: meta.files.map((file) => file.id),
+            },
           });
         } catch (error) {
           await writer.abandon();
