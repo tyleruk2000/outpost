@@ -347,3 +347,104 @@ describe("saved coverage maps", () => {
     expect((await app.api("POST", "/api/radio/propagation/coverage/saved", { name: "Gone", key: "0".repeat(40) })).status).toBe(404);
   });
 });
+
+describe("what is kept of maps and plans", () => {
+  let own: TestApp;
+  const pause = () => new Promise((resolve) => setTimeout(resolve, 5));
+  const used = () =>
+    own.ctx.sqlite.prepare("SELECT key, last_used_at AS at FROM propagation_results ORDER BY key").all() as Array<{
+      key: string;
+      at: number;
+    }>;
+  const point = (lat: number) => ({
+    ...britain,
+    rx: { name: "Somewhere", lat, lon: -1.89 },
+    area: undefined,
+    resolution: undefined,
+  });
+
+  beforeAll(async () => {
+    own = await createTestApp();
+    const map = async (request: CoverageRequest): Promise<CoverageResult> => {
+      const asked = await own.api("POST", "/api/radio/propagation/coverage", request);
+      expect(asked.status).toBe(200);
+      await own.ctx.jobs.whenIdle();
+      return (await own.api("GET", `/api/radio/propagation/coverage/${own.ctx.jobs.get(asked.body.job.id)!.subject}`)).body.coverage;
+    };
+    // Six maps saved by name and two plans worked out: eight large answers a person has pinned.
+    for (let n = 0; n < 6; n++) {
+      const saved = await own.api("POST", "/api/radio/propagation/coverage/saved", {
+        name: `Strip ${n}`,
+        key: (await map(strip(40 + n))).key,
+      });
+      expect(saved.status).toBe(200);
+    }
+    for (const name of ["North net", "South net"]) {
+      const station = (id: string, lat: number) => ({
+        id,
+        name: id,
+        lat,
+        lon: name === "North net" ? -3.1 : -0.1,
+        powerWatts: 5,
+        antenna: dipole,
+        antennaName: "Low horizontal dipole, 5 m",
+        noise: "residential",
+      });
+      const { body } = await own.api("POST", "/api/radio/communication-plans", {
+        name,
+        notes: "",
+        stations: [station("a", 51.5), station("b", 54.4)],
+        date: "2026-11-16",
+        fromUtc: 8,
+        toUtc: 17,
+        bands: ["40m"],
+        mode: "ssb",
+        requiredSnrDb: null,
+        referenceBandwidthHz: null,
+        solar: { source: "table" },
+        links: [],
+      });
+      expect((await own.api("POST", `/api/radio/communication-plans/${body.plan.id}/matrix`)).status).toBe(200);
+    }
+    (own as TestApp & { map?: typeof map }).map = map;
+  });
+  afterAll(async () => {
+    await own.close();
+  });
+
+  it("keeps a new map that is not saved yet, however many saved maps and plans there are", async () => {
+    const { map } = own as TestApp & { map: (request: CoverageRequest) => Promise<CoverageResult> };
+    const fresh = await map(strip(50));
+    await pause();
+    // The screen fetches its lists again when the map's job ends.
+    await own.api("GET", "/api/radio/propagation/coverage");
+    await own.api("GET", "/api/radio/communication-plans");
+    await pause();
+    // Anything else worked out and kept, a single path here, trims what is kept.
+    expect((await own.api("POST", "/api/radio/propagation/predict", point(52.49))).status).toBe(200);
+    const saved = await own.api("POST", "/api/radio/propagation/coverage/saved", { name: "The new one", key: fresh.key });
+    expect(saved.status).toBe(200);
+    expect(saved.body.saved).toMatchObject({ name: "The new one", key: fresh.key, cells: 16 });
+  });
+
+  it("drops the least recently used of the unsaved ones past eight, and only those", async () => {
+    const { map } = own as TestApp & { map: (request: CoverageRequest) => Promise<CoverageResult> };
+    const keys: string[] = [];
+    for (let n = 0; n < 10; n++) {
+      keys.push((await map(strip(60 + n))).key);
+      await pause();
+    }
+    const status = async (key: string) => (await own.api("GET", `/api/radio/propagation/coverage/${key}`)).status;
+    expect(await status(keys[0]!)).toBe(404);
+    expect(await status(keys[1]!)).toBe(404);
+    for (const key of keys.slice(2)) expect(await status(key)).toBe(200);
+    // Seven saved maps (the six, and the new one) and two plans are all still there.
+    expect((await own.api<CoverageOverview>("GET", "/api/radio/propagation/coverage")).body.saved).toHaveLength(7);
+    const plans = (await own.api("GET", "/api/radio/communication-plans")).body.plans;
+    expect(plans.map((plan: { workedOut: boolean }) => plan.workedOut)).toEqual([true, true]);
+    const count = own.ctx.sqlite.prepare("SELECT count(*) AS n FROM propagation_results WHERE kind IN ('coverage', 'plan')").get() as {
+      n: number;
+    };
+    expect(count.n).toBe(9 + 8);
+  });
+});

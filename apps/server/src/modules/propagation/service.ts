@@ -186,11 +186,16 @@ export function createPropagationService(ctx: AppContext, host: EngineHost): Pro
     db.run(
       sql`DELETE FROM propagation_results WHERE kind IN ('point', 'compare') AND key NOT IN (SELECT key FROM propagation_results WHERE kind IN ('point', 'compare') ORDER BY last_used_at DESC LIMIT ${MAX_KEPT_RESULTS})`,
     );
+    // The eight are counted among the ones nobody has pinned. Counted among them all, eight
+    // saved maps and plans would fill every place and a new map would go as soon as it was made.
     db.run(
-      sql`DELETE FROM propagation_results WHERE kind IN ('coverage', 'plan')
-          AND key NOT IN (SELECT result_key FROM propagation_saved WHERE result_key IS NOT NULL)
-          AND key NOT IN (SELECT result_key FROM communication_plans WHERE result_key IS NOT NULL)
-          AND key NOT IN (SELECT key FROM propagation_results WHERE kind IN ('coverage', 'plan') ORDER BY last_used_at DESC LIMIT ${MAX_KEPT_LARGE})`,
+      sql`WITH loose AS (
+            SELECT key, last_used_at FROM propagation_results WHERE kind IN ('coverage', 'plan')
+              AND key NOT IN (SELECT result_key FROM propagation_saved WHERE result_key IS NOT NULL)
+              AND key NOT IN (SELECT result_key FROM communication_plans WHERE result_key IS NOT NULL)
+          )
+          DELETE FROM propagation_results WHERE key IN (SELECT key FROM loose)
+            AND key NOT IN (SELECT key FROM loose ORDER BY last_used_at DESC LIMIT ${MAX_KEPT_LARGE})`,
     );
   }
 
