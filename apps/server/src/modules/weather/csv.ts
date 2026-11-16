@@ -22,6 +22,7 @@ import {
 } from "@outpost/shared";
 import { parse } from "csv-parse/sync";
 import { badRequest } from "../../core/errors.ts";
+import { type DecimalMark, decimalMarkOfCells, decimalMarkOfDelimiter, readSpreadsheetNumber } from "../../core/spreadsheet-number.ts";
 
 const squash = (value: string) => value.toLowerCase().replace(/[^a-z]/g, "");
 
@@ -95,10 +96,12 @@ export function readTime(text: string, zone: string): number | null {
   return wall - zoneOffsetMinutes(first, zone) * 60_000;
 }
 
-function readNumber(text: string): number | null {
+/** A pressure or a height, with the file's decimal mark; a message when the file does not settle which number it is. */
+function readNumber(text: string, mark: DecimalMark | null): number | string | null {
   const cleaned = text.trim().replace(/\s*(hpa|mb|mbar|inhg|in|m)$/i, "");
-  if (!/^-?\d+([.,]\d+)?$/.test(cleaned)) return null;
-  return Number(cleaned.replace(",", "."));
+  const read = readSpreadsheetNumber(cleaned, mark);
+  if (read.kind === "ambiguous") return read.message;
+  return read.kind === "number" ? read.value : null;
 }
 
 function readUnit(text: string): PressureUnit | null {
@@ -148,6 +151,12 @@ export function readReadingsCsv(text: string, options: ReadCsvOptions): ReadingI
     throw badRequest('That file has no column of times. Name it "time", or have a "date" and a "time" column.');
   const headerUnit = readUnit(header[pressureColumn]!.replace(/^pressure/, ""));
 
+  const mark: DecimalMark | null =
+    decimalMarkOfDelimiter(delimiter) ??
+    decimalMarkOfCells(
+      records.slice(1).flatMap((record) => [record[pressureColumn] ?? "", heightColumn === -1 ? "" : (record[heightColumn] ?? "")]),
+    );
+
   const rows: ReadingImportRow[] = [];
   const problems: ReadingImportResult["problems"] = [];
   const seen = new Set<number>();
@@ -165,7 +174,11 @@ export function readReadingsCsv(text: string, options: ReadCsvOptions): ReadingI
       problem("The time is in the future.");
       continue;
     }
-    const value = readNumber(cell(pressureColumn));
+    const value = readNumber(cell(pressureColumn), mark);
+    if (typeof value === "string") {
+      problem(value);
+      continue;
+    }
     if (value === null) {
       problem(`"${cell(pressureColumn).slice(0, 20)}" is not a pressure.`);
       continue;
@@ -177,7 +190,11 @@ export function readReadingsCsv(text: string, options: ReadCsvOptions): ReadingI
       continue;
     }
     const heightText = cell(heightColumn);
-    const heightM = heightText ? readNumber(heightText) : options.heightM;
+    const heightM = heightText ? readNumber(heightText, mark) : options.heightM;
+    if (typeof heightM === "string") {
+      problem(heightM);
+      continue;
+    }
     if (heightM === null || heightM < HEIGHT_RANGE.min || heightM > HEIGHT_RANGE.max) {
       problem(`The height must be between ${HEIGHT_RANGE.min} and ${HEIGHT_RANGE.max} metres.`);
       continue;

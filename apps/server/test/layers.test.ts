@@ -187,6 +187,25 @@ describe("imports a person brings", () => {
     expect(figures).toEqual([expect.objectContaining({ country: "GB", value: 225, sourceTitle: "A yearbook (test)", page: "p. 4" })]);
   });
 
+  it("reads a quoted decimal comma in a country figure as a decimal, and keeps thousands separators", async () => {
+    write(
+      "imports/figures-decimal.csv",
+      [
+        "country,indicator,value,unit,year,source_title,publisher",
+        'DE,Decimal comma,"1,5",per cent,2026,A yearbook (test),A publisher',
+        'DE,Thousands,"1,234,567",people,2026,A yearbook (test),A publisher',
+        'DE,Both,"1.234,5",km,2026,A yearbook (test),A publisher',
+      ].join("\n"),
+    );
+    await importFile("country-figures-csv", "imports/figures-decimal.csv", {}, "Decimal figures");
+    const figures = (await app.api("GET", "/api/reference/figures?country=DE")).body.figures as Array<{ indicator: string; value: number }>;
+    expect(Object.fromEntries(figures.map((figure) => [figure.indicator, figure.value]))).toEqual({
+      "Decimal comma": 1.5,
+      Thousands: 1234567,
+      Both: 1234.5,
+    });
+  });
+
   it("imports a planning zone drawn in British National Grid, and finds it from a press inside it", async () => {
     const square = [
       [440000, 160000],

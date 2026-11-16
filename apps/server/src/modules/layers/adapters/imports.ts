@@ -18,6 +18,7 @@ import type { FeatureProvenance, HistoricalRecordType, ReferenceLayerId } from "
 import { HISTORICAL_RECORD_TYPES, REFERENCE_LAYERS } from "@outpost/shared";
 import type { AppContext } from "../../../core/context.ts";
 import { PermanentJobError } from "../../../core/jobs.ts";
+import { readSpreadsheetNumber } from "../../../core/spreadsheet-number.ts";
 import { COUNTRIES, countryOf } from "../countries.ts";
 import { type Crs, CrsError, crsFromName, toWgs84 } from "../crs.ts";
 import { PROVIDERS } from "../providers.ts";
@@ -345,8 +346,11 @@ async function readFiguresCsv(context: ReadContext): Promise<void> {
       sink.skip(`Line ${line}: "${cleanText(row.country, 40)}" is not a country Outpost knows; give its two-letter code.`);
       continue;
     }
-    const raw = (row.value ?? "").replace(/,/g, "").trim();
-    const value = raw && /^-?\d+(\.\d+)?$/.test(raw) ? Number(raw) : null;
+    // The file is separated by commas, so its decimal mark is the point; "1,5" can still only be a decimal.
+    // Words after it ("5 million") are kept as text, not read as the number before them.
+    const raw = (row.value ?? "").trim();
+    const read = readSpreadsheetNumber(/^[+-]?[\d.,]+$/.test(raw) ? raw : "", ".");
+    const value = read.kind === "number" ? read.value : null;
     await sink.figure({
       country,
       indicator: cleanText(row.indicator, 200),

@@ -28,6 +28,7 @@ import {
 } from "@outpost/shared";
 import { parse } from "csv-parse/sync";
 import { badRequest } from "../../core/errors.ts";
+import { type DecimalMark, decimalMarkOfCells, decimalMarkOfDelimiter, readSpreadsheetNumber } from "../../core/spreadsheet-number.ts";
 
 /** One cell: quoted when it holds a comma, a quote or a line break, and never starting a formula in a spreadsheet. */
 function cell(value: string | number | null): string {
@@ -109,14 +110,6 @@ function readCategory(text: string): { category: SupplyCategory; warning: string
   return { category: "other", warning: `The category “${text.trim()}” is not one Outpost has: read as Other.` };
 }
 
-/** A number as people write one in a spreadsheet: "1,250", "2.5", "330 g". Null when the cell is empty; NaN when it is not a number. */
-function readNumber(text: string): number | null {
-  const trimmed = text.trim();
-  if (!trimmed) return null;
-  const match = /^([+-]?\d[\d,]*(?:\.\d+)?|[+-]?\.\d+)\s*[a-zA-Z%]*$/.exec(trimmed);
-  return match ? Number(match[1]!.replaceAll(",", "")) : Number.NaN;
-}
-
 /** A date as a calendar day: 2027-03-31, 31/03/2027 (day first, as in the UK), or 03/2027 (the last day of the month, as a "best before end" reads). */
 function readDate(text: string): string | null | undefined {
   const trimmed = text.trim();
@@ -145,10 +138,11 @@ export function previewCsv(text: string, existing: SupplyItem[]): ImportPreview 
     throw badRequest("That file is larger than Outpost reads as a list of supplies (2 MB).");
   if (/^\s*</.test(text)) throw badRequest("That file looks like a web page, not a CSV file of supplies.");
   let records: string[][];
+  let delimiter: string;
   try {
     // Semicolons are what a spreadsheet set to European number formats writes.
     const firstLine = text.replace(/^﻿/, "").split(/\r?\n/, 1)[0] ?? "";
-    const delimiter =
+    delimiter =
       (firstLine.match(/;/g)?.length ?? 0) > (firstLine.match(/,/g)?.length ?? 0)
         ? ";"
         : firstLine.includes("\t") && !firstLine.includes(",")
@@ -175,6 +169,14 @@ export function previewCsv(text: string, existing: SupplyItem[]): ImportPreview 
   const dateHeader = index.has("date") ? header[index.get("date")!]! : "";
   const headerKind = /useby/.test(dateHeader) ? "use-by" : /bestbefore|bbe/.test(dateHeader) ? "best-before" : null;
 
+  const NUMERIC = ["quantity", "kcal_per_unit", "kcal_per_100g", "grams_per_unit", "litres_per_unit", "minimum"] as const;
+  // The decimal mark: from the separator when it decides it, otherwise from the file's own numbers.
+  const mark: DecimalMark | null =
+    decimalMarkOfDelimiter(delimiter) ??
+    decimalMarkOfCells(
+      records.slice(1).flatMap((record) => NUMERIC.flatMap((column) => (index.has(column) ? [record[index.get(column)!] ?? ""] : []))),
+    );
+
   const byId = new Map(existing.map((item) => [item.id, item]));
   const sameKey = (item: Pick<SupplyItem, "barcode" | "name" | "unit" | "location" | "date">) =>
     `${productKey(item)}|${item.location.trim().toLowerCase()}|${item.date ?? ""}`;
@@ -193,11 +195,18 @@ export function previewCsv(text: string, existing: SupplyItem[]): ImportPreview 
     const { category, warning } = readCategory(get("category"));
     if (warning) warnings.push(warning);
     const numbers: Partial<Record<Column, number | null>> = {};
-    for (const column of ["quantity", "kcal_per_unit", "kcal_per_100g", "grams_per_unit", "litres_per_unit", "minimum"] as const) {
-      const value = readNumber(get(column));
-      if (value !== null && (Number.isNaN(value) || value < 0 || value > SUPPLY_LIMITS.quantity))
-        return fail(`“${get(column)}” in the ${column.replaceAll("_", " ")} column is not a number Outpost can use.`);
-      numbers[column] = value;
+    for (const column of NUMERIC) {
+      const label = column.replaceAll("_", " ");
+      const read = readSpreadsheetNumber(get(column), mark);
+      if (read.kind === "ambiguous") return fail(`${read.message} (the ${label} column)`);
+      if (read.kind === "empty") {
+        numbers[column] = null;
+        continue;
+      }
+      if (read.kind === "invalid" || read.value < 0 || read.value > SUPPLY_LIMITS.quantity)
+        return fail(`“${get(column)}” in the ${label} column is not a number Outpost can use.`);
+      if (read.note) warnings.push(`${read.note.replace(/ read as /, ` in the ${label} column read as `)}`);
+      numbers[column] = read.value;
     }
     const date = readDate(get("date"));
     if (date === undefined) return fail(`“${get("date")}” is not a date Outpost can read: write it as 2027-03-31 or 31/03/2027.`);

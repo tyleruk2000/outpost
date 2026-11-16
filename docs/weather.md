@@ -256,7 +256,11 @@ not already kept: a reading at the same time is not added twice.
   `2026-11-16 09:00:00+01:00`, `2026-11-16 09:00`), British `16/11/2026 09:00`, or Unix
   seconds or milliseconds. A time with no zone is read in the zone of the device the
   file was chosen on, which the screen names.
-- Comma, semicolon or tab separators; at most 50,000 rows and 4 MB.
+- Comma, semicolon or tab separators; at most 50,000 rows and 4 MB. A semicolon file
+  uses the decimal comma (`1.013,2` or `1013,2`), a comma file the decimal point
+  (`"1,013.2"`), and a tab file is judged from its own numbers; a pressure the file does
+  not settle is listed as a problem with both readings, not guessed. The rule is the one
+  the supplies importer uses.
 
 ### A weather station
 
