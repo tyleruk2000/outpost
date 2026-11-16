@@ -985,9 +985,9 @@ These are deliberate or known, and are explained in
   server can be used instead.
 - **OCR** is slow and makes mistakes, reads only pictures of pages (not text drawn as
   shapes), and has English only unless a language file is added by hand.
-- **No language model is included.** Answers need a model server you run yourself.
-  They are one question and one answer, from documents, notes and book chapters only
-  (reference collections are not read), and have been run with two small models
+- **No language model is included.** Answers and Chat need a model server you run
+  yourself. They read documents, notes and book chapters only (reference collections
+  are not read), and have been run with two small models
   (`llama3.2:3b`, `llama3.2:1b`) on Ollama on a Mac only; llama.cpp, LM Studio and a
   Raspberry Pi have not been tried.
 - **Reference collections need kiwix-serve**: the Compose sidecar, or a binary for
