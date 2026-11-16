@@ -259,6 +259,7 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
         repeaters: ctx.services.repeaters.count().repeaters,
         repeaterLists: ctx.services.repeaters.count().lists,
         radio: ctx.services.propagation.kept.count(),
+        nuclearScenarios: ctx.services.nuclear.count(),
         settings: count("SELECT count(*) AS n FROM settings"),
         vectors: count("SELECT count(*) AS n FROM embeddings"),
         previous: previousData(),
@@ -513,6 +514,7 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
       repeaters: 0,
       repeaterLists: 0,
       radio: { plans: 0, observations: 0, equipment: 0, saved: 0 },
+      nuclearScenarios: 0,
       settings: 0,
     };
     personal.attachments = (sqlite.prepare("SELECT count(*) AS n FROM attachments").get() as { n: number }).n;
@@ -552,6 +554,8 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
     personal.repeaterLists = repeaters.lists;
     // Communication plans, the contact log, equipment profiles, and saved predictions and coverage maps.
     personal.radio = ctx.services.propagation.kept.eraseAll();
+    // Scenarios saved in the nuclear effects simulator: the places and notes are the person's own.
+    personal.nuclearScenarios = ctx.services.nuclear.eraseAll();
 
     // Whatever is left belongs to records that no longer exist: attachments no page
     // used, import reports, history, vectors, and the settings.

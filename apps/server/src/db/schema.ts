@@ -1032,3 +1032,20 @@ export const radioObservations = sqliteTable(
 );
 
 export const nowMs = sql`(unixepoch('subsec') * 1000)`;
+
+/**
+ * A scenario saved in the nuclear effects simulator (Preparedness → Nuclear
+ * preparedness): only what the person typed. The effects are worked out again from it
+ * whenever it is opened, so it always shows what the current model says.
+ */
+export const nuclearScenarios = sqliteTable("nuclear_scenarios", {
+  id: id(),
+  name: text("name").notNull(),
+  notes: text("notes").notNull().default(""),
+  lat: real("lat").notNull(),
+  lon: real("lon").notNull(),
+  /** The simulator's input, as `EffectsInput`: yield, burst height and wind. */
+  effects: json<Record<string, unknown>>("effects").notNull(),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+});

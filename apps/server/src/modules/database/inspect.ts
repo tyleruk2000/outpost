@@ -15,7 +15,7 @@ const GROUPS: Record<Exclude<DatabaseGroupId, "other">, string[]> = {
   meaning: ["embeddings", "embedding_models"],
   library: ["documents", "document_tags", "tags", "book_chapters", "collections", "downloads", "catalog_cache"],
   notes: ["notes", "note_tags", "note_links", "attachments", "imports"],
-  maps: ["places", "places_fts", "places_fts_config", "places_fts_data", "places_fts_docsize", "places_fts_idx", "markers", "tracks"],
+  maps: ["places", "places_fts", "places_fts_config", "places_fts_data", "places_fts_docsize", "places_fts_idx", "markers", "tracks", "nuclear_scenarios"],
   radio: [
     "repeaters",
     "repeater_lists",
@@ -51,6 +51,7 @@ const COUNTS: Array<{ id: DatabaseCountId; table: string; sql: string }> = [
     sql: "SELECT (SELECT count(*) FROM radio_profiles) + (SELECT count(*) FROM antenna_profiles) AS n",
   },
   { id: "predictions", table: "propagation_saved", sql: "SELECT count(*) AS n FROM propagation_saved" },
+  { id: "scenarios", table: "nuclear_scenarios", sql: "SELECT count(*) AS n FROM nuclear_scenarios" },
 ];
 
 function groupOf(table: string): DatabaseGroupId {
