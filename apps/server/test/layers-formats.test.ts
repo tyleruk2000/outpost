@@ -9,7 +9,16 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { classifyOsm } from "../src/modules/layers/adapters/osm-tags.ts";
 import { readPbf, wantedForLayers } from "../src/modules/layers/adapters/pbf.ts";
-import { britishNationalGrid, CrsError, nationalGridToOsgb36, checkDegrees, crsFromName, geoJsonCrs, swissGrid, toWgs84 } from "../src/modules/layers/crs.ts";
+import {
+  britishNationalGrid,
+  CrsError,
+  checkDegrees,
+  crsFromName,
+  geoJsonCrs,
+  nationalGridToOsgb36,
+  swissGrid,
+  toWgs84,
+} from "../src/modules/layers/crs.ts";
 import { cellAreaKm2, openPopulationTiff, roundPeople } from "../src/modules/layers/population.ts";
 import { containsPoint, sameName, simplifyGeometry } from "../src/modules/layers/store.ts";
 import { lzwDecode } from "../src/modules/maps/imagery/lzw.ts";
@@ -72,7 +81,10 @@ describe("GeoTIFF population grids as WorldPop writes them", () => {
     for (let i = 0; i < values.length; i += 1) values[i] = i % 13 === 0 ? -99999 : (i % 97) * 1.25;
     const dir = scratch();
     const file = path.join(dir, "lux_ppp_2020_1km_Aggregated_UNadj.tif");
-    fs.writeFileSync(file, buildTiff({ width, height, values, originLon: 5.748749977638909, originLat: 50.182916651778896, pixel: 1 / 120, nodata: -99999 }));
+    fs.writeFileSync(
+      file,
+      buildTiff({ width, height, values, originLon: 5.748749977638909, originLat: 50.182916651778896, pixel: 1 / 120, nodata: -99999 }),
+    );
     const { cog, source } = await openPopulationTiff(file);
     try {
       expect(cog.images[0]).toMatchObject({ width, height, sampleFormat: 3, compression: 5, predictor: 2 });
@@ -90,7 +102,10 @@ describe("GeoTIFF population grids as WorldPop writes them", () => {
   it("refuses a grid in another coordinate system", async () => {
     const dir = scratch();
     const file = path.join(dir, "projected.tif");
-    fs.writeFileSync(file, buildTiff({ width: 4, height: 4, values: new Float32Array(16), originLon: 600000, originLat: 6600000, pixel: 1000, epsg: 3857 }));
+    fs.writeFileSync(
+      file,
+      buildTiff({ width: 4, height: 4, values: new Float32Array(16), originLon: 600000, originLat: 6600000, pixel: 1000, epsg: 3857 }),
+    );
     await expect(openPopulationTiff(file)).rejects.toThrow(/EPSG:3857, not latitude and longitude/);
     fs.rmSync(dir, { recursive: true, force: true });
   });
@@ -181,14 +196,18 @@ describe("OpenStreetMap", () => {
     const dir = scratch();
     const text = path.join(dir, "not.osm.pbf");
     fs.writeFileSync(text, "<osm version='0.6'></osm>");
-    await expect(readPbf(text, { wanted: wantedForLayers, onObject: async () => {}, onSkip: () => {} })).rejects.toThrow(/not an OpenStreetMap PBF file/);
+    await expect(readPbf(text, { wanted: wantedForLayers, onObject: async () => {}, onSkip: () => {} })).rejects.toThrow(
+      /not an OpenStreetMap PBF file/,
+    );
     const whole = buildPbf({ nodes: [{ id: 1, lat: 1, lon: 1, tags: { amenity: "hospital" } }], ways: [], relations: [] });
     const cut = path.join(dir, "cut.osm.pbf");
     fs.writeFileSync(cut, whole.subarray(0, whole.length - 20));
     await expect(readPbf(cut, { wanted: wantedForLayers, onObject: async () => {}, onSkip: () => {} })).rejects.toThrow(/damaged/);
     const history = path.join(dir, "history.osm.pbf");
     fs.writeFileSync(history, buildPbf({ nodes: [], ways: [], relations: [], features: ["OsmSchema-V0.6", "LocationsOnWays"] }));
-    await expect(readPbf(history, { wanted: wantedForLayers, onObject: async () => {}, onSkip: () => {} })).rejects.toThrow(/LocationsOnWays/);
+    await expect(readPbf(history, { wanted: wantedForLayers, onObject: async () => {}, onSkip: () => {} })).rejects.toThrow(
+      /LocationsOnWays/,
+    );
     fs.rmSync(dir, { recursive: true, force: true });
   });
 });

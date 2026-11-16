@@ -51,12 +51,13 @@ export function representativePoint(geometry: GeoJsonGeometry, bbox: Bbox): [num
   }
   const centre: [number, number] = [(bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2];
   if (geometry.type === "LineString" || geometry.type === "MultiLineString" || geometry.type === "MultiPoint") {
-    const first = geometry.type === "MultiLineString" ? (geometry.coordinates as number[][][])[0]?.[0] : (geometry.coordinates as number[][])[0];
+    const first =
+      geometry.type === "MultiLineString" ? (geometry.coordinates as number[][][])[0]?.[0] : (geometry.coordinates as number[][])[0];
     if (first) return [first[0]!, first[1]!];
   }
-  const outer = (geometry.type === "Polygon" ? (geometry.coordinates as number[][][])[0]?.[0] : (geometry.coordinates as number[][][][])[0]?.[0]?.[0]) as
-    | number[]
-    | undefined;
+  const outer = (
+    geometry.type === "Polygon" ? (geometry.coordinates as number[][][])[0]?.[0] : (geometry.coordinates as number[][][][])[0]?.[0]?.[0]
+  ) as number[] | undefined;
   return outer && !containsPoint(geometry, centre[0], centre[1]) ? [outer[0]!, outer[1]!] : centre;
 }
 
@@ -67,7 +68,9 @@ export async function readGeoJsonFile(
 ): Promise<{ crs: Crs; total: number }> {
   const stat = await fs.promises.stat(filePath);
   if (stat.size > MAX_GEOJSON_BYTES) {
-    throw new PermanentJobError(`The file is ${Math.round(stat.size / 1048576)} MB; GeoJSON files over 160 MB are not read. Split it, or keep only the area you need.`);
+    throw new PermanentJobError(
+      `The file is ${Math.round(stat.size / 1048576)} MB; GeoJSON files over 160 MB are not read. Split it, or keep only the area you need.`,
+    );
   }
   let parsed: unknown;
   try {
@@ -77,7 +80,8 @@ export async function readGeoJsonFile(
   }
   if (typeof parsed !== "object" || parsed === null) throw new PermanentJobError("The file is not a GeoJSON object.");
   const object = parsed as { type?: unknown; features?: unknown };
-  const features = object.type === "FeatureCollection" && Array.isArray(object.features) ? object.features : object.type === "Feature" ? [object] : null;
+  const features =
+    object.type === "FeatureCollection" && Array.isArray(object.features) ? object.features : object.type === "Feature" ? [object] : null;
   if (!features) throw new PermanentJobError("The file is not a GeoJSON FeatureCollection.");
   let crs: Crs;
   try {
@@ -91,7 +95,8 @@ export async function readGeoJsonFile(
   for (const raw of features) {
     index += 1;
     const feature = raw as { properties?: unknown; geometry?: { type?: unknown; coordinates?: unknown } | null };
-    const properties = typeof feature?.properties === "object" && feature.properties !== null ? (feature.properties as Record<string, unknown>) : {};
+    const properties =
+      typeof feature?.properties === "object" && feature.properties !== null ? (feature.properties as Record<string, unknown>) : {};
     const type = feature?.geometry?.type;
     if (typeof type !== "string" || !GEOMETRY_TYPES.has(type)) {
       options.onSkip(`Feature ${index} has no point, line or area.`);

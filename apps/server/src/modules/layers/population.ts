@@ -54,7 +54,8 @@ interface Grid {
   pixel: number;
   nodata: number | null;
   levels: Level[];
-  filePath: string;
+  /** Null while the drive holding the GeoTIFF is not connected: the coarse grids, kept in the data directory, still serve. */
+  filePath: string | null;
   bbox: Bbox;
 }
 
@@ -105,7 +106,13 @@ export function roundPeople(value: number): number {
 
 export interface PopulationService {
   /** Reads a downloaded grid, writes its coarse grids, and returns what it is. */
-  install(filePath: string, sidecarKey: string, meta: PopulationMeta, signal: AbortSignal, progress: (done: number, total: number) => void): Promise<{ bbox: Bbox; total: number }>;
+  install(
+    filePath: string,
+    sidecarKey: string,
+    meta: PopulationMeta,
+    signal: AbortSignal,
+    progress: (done: number, total: number) => void,
+  ): Promise<{ bbox: Bbox; total: number }>;
   sidecarKey(locationId: string, relPath: string): string;
   forget(sidecarKey: string): void;
   sets(): PopulationSetDto[];
@@ -148,15 +155,28 @@ export function createPopulationService(
       const copy = new Uint8Array(buffer.subarray(start, start + level.width * level.height * 4));
       return { factor: level.factor, width: level.width, height: level.height, data: new Float32Array(copy.buffer) };
     });
-    const bbox: Bbox = [header.originX, header.originY - header.height * header.pixel, header.originX + header.width * header.pixel, header.originY];
-    return { width: header.width, height: header.height, originX: header.originX, originY: header.originY, pixel: header.pixel, nodata: header.nodata, levels, bbox };
+    const bbox: Bbox = [
+      header.originX,
+      header.originY - header.height * header.pixel,
+      header.originX + header.width * header.pixel,
+      header.originY,
+    ];
+    return {
+      width: header.width,
+      height: header.height,
+      originX: header.originX,
+      originY: header.originY,
+      pixel: header.pixel,
+      nodata: header.nodata,
+      levels,
+      bbox,
+    };
   }
 
   function current(): Grid[] {
     const seen = new Set<string>();
     const out: Grid[] = [];
     for (const set of installed()) {
-      if (!set.available || !set.filePath) continue;
       seen.add(set.sidecarKey);
       let grid = grids.get(set.sidecarKey);
       if (!grid) {
@@ -165,6 +185,7 @@ export function createPopulationService(
         grid = { ...loaded, key: set.sidecarKey, collectionId: set.collectionId, meta: set.meta, filePath: set.filePath };
         grids.set(set.sidecarKey, grid);
       }
+      grid.filePath = set.available ? set.filePath : null;
       out.push(grid);
     }
     for (const key of grids.keys()) if (!seen.has(key)) grids.delete(key);
@@ -175,7 +196,7 @@ export function createPopulationService(
   async function window(grid: Grid, x0: number, y0: number, x1: number, y1: number): Promise<Float32Array> {
     const width = x1 - x0;
     const out = new Float32Array(width * (y1 - y0)).fill(Number.NaN);
-    if (width <= 0 || y1 <= y0) return out;
+    if (width <= 0 || y1 <= y0 || !grid.filePath) return out;
     const { cog, source } = await openPopulationTiff(grid.filePath);
     try {
       const image = cog.images[0]!;
@@ -235,7 +256,8 @@ export function createPopulationService(
         const image = cog.images[0]!;
         const { width, height } = image;
         const pixel = cog.geo.pixelWidth;
-        if (Math.abs(cog.geo.pixelHeight - pixel) > pixel * 1e-6) throw new PermanentJobError("This grid's cells are not square in degrees, which WorldPop's are.");
+        if (Math.abs(cog.geo.pixelHeight - pixel) > pixel * 1e-6)
+          throw new PermanentJobError("This grid's cells are not square in degrees, which WorldPop's are.");
         const first = POPULATION_FACTORS[0];
         const fw = Math.ceil(width / first);
         const fh = Math.ceil(height / first);
@@ -296,7 +318,10 @@ export function createPopulationService(
         const length = Buffer.alloc(4);
         length.writeUInt32LE(headerBytes.length, 0);
         const temporary = `${sidecarPath(key)}.tmp`;
-        fs.writeFileSync(temporary, Buffer.concat([Buffer.from(MAGIC, "latin1"), length, headerBytes, ...levels.map((level) => Buffer.from(level.data.buffer))]));
+        fs.writeFileSync(
+          temporary,
+          Buffer.concat([Buffer.from(MAGIC, "latin1"), length, headerBytes, ...levels.map((level) => Buffer.from(level.data.buffer))]),
+        );
         fs.renameSync(temporary, sidecarPath(key));
         grids.delete(key);
         void meta;
@@ -337,7 +362,7 @@ export function createPopulationService(
         const down = (north - south) / grid.pixel;
         // The finest level that keeps within the budget; full resolution only close in.
         let factor = 1;
-        for (const candidate of [1, ...POPULATION_FACTORS]) {
+        for (const candidate of grid.filePath ? [1, ...POPULATION_FACTORS] : POPULATION_FACTORS) {
           factor = candidate;
           if ((across / candidate) * (down / candidate) <= CELL_BUDGET / Math.max(1, list.length)) break;
         }
@@ -369,7 +394,13 @@ export function createPopulationService(
             const cellNorth = grid.originY - y * size;
             const density = people / cellAreaKm2(cellNorth - size / 2, size);
             if (density < DENSITY_CLASSES[0]!) continue;
-            cells.push({ west: cellWest, south: cellNorth - size, east: cellWest + size, north: cellNorth, density: Math.round(density * 10) / 10 });
+            cells.push({
+              west: cellWest,
+              south: cellNorth - size,
+              east: cellWest + size,
+              north: cellNorth,
+              density: Math.round(density * 10) / 10,
+            });
           }
         }
       }
@@ -400,7 +431,9 @@ export function createPopulationService(
           seen.add(`${x}:${y}`);
         }
       }
+      const away = list.filter((grid) => !grid.filePath);
       for (const grid of list) {
+        if (!grid.filePath) continue;
         const x0 = Math.max(0, Math.floor((box[0] - grid.originX) / grid.pixel));
         const x1 = Math.min(grid.width, Math.ceil((box[2] - grid.originX) / grid.pixel));
         const y0 = Math.max(0, Math.floor((grid.originY - box[3]) / grid.pixel));
@@ -426,7 +459,9 @@ export function createPopulationService(
         sets: setsOf(used),
         note:
           used.length === 0
-            ? "No population grid installed covers this circle."
+            ? away.some((grid) => grid.bbox[0] < box[2] && grid.bbox[2] > box[0] && grid.bbox[1] < box[3] && grid.bbox[3] > box[1])
+              ? "The drive holding the population grid for this place is not connected. Connect it to count people within a distance."
+              : "No population grid installed covers this circle."
             : `About this many people lived in the cells whose middle is inside the circle, by WorldPop's ${used.map((grid) => `${grid.meta.year} estimate for ${grid.meta.country}`).join(" and ")}, rounded to two figures. A modelled estimate, not a count.${covered < 0.99 ? ` Only ${Math.round(covered * 100)}% of the circle is covered by installed grids.` : ""}`,
       };
     },

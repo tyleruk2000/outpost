@@ -164,7 +164,13 @@ export function simplifyGeometry(geometry: GeoJsonGeometry, tolerance: number): 
   const polygon = (rings: Ring[]): Ring[] | null => {
     const outer = rings[0] ? ring(rings[0], true) : null;
     if (!outer) return null;
-    return [outer, ...rings.slice(1).map((hole) => ring(hole, true)).filter((hole): hole is Ring => hole !== null)];
+    return [
+      outer,
+      ...rings
+        .slice(1)
+        .map((hole) => ring(hole, true))
+        .filter((hole): hole is Ring => hole !== null),
+    ];
   };
   switch (geometry.type) {
     case "Polygon": {
@@ -200,7 +206,8 @@ function inRing(x: number, y: number, ring: Ring): boolean {
 
 /** Whether a point is inside a Polygon or MultiPolygon. */
 export function containsPoint(geometry: GeoJsonGeometry, lon: number, lat: number): boolean {
-  const polygon = (rings: Ring[]) => rings.length > 0 && inRing(lon, lat, rings[0]!) && !rings.slice(1).some((hole) => inRing(lon, lat, hole));
+  const polygon = (rings: Ring[]) =>
+    rings.length > 0 && inRing(lon, lat, rings[0]!) && !rings.slice(1).some((hole) => inRing(lon, lat, hole));
   if (geometry.type === "Polygon") return polygon(geometry.coordinates as Ring[]);
   if (geometry.type === "MultiPolygon") return (geometry.coordinates as Ring[][]).some(polygon);
   return false;
@@ -260,6 +267,13 @@ export interface ReferenceStore {
 
 export function createReferenceStore(ctx: AppContext, providerName: (id: string) => string): ReferenceStore {
   const { sqlite } = ctx;
+  /**
+   * Answers to recent views, cleared whenever a record is written or removed. Counting a
+   * few hundred thousand features into patches for a view of the world takes about a
+   * second on a laptop; zooming out and in again asks the same few questions.
+   */
+  const answers = new Map<string, ReferenceOverlayResponse>();
+  const forget = () => answers.clear();
 
   const insertFeature = sqlite.prepare(
     `INSERT INTO reference_features (collection_id, provider, source_id, layer, kind, name, alt_names, country, lat, lon, min_lon, min_lat,
@@ -278,84 +292,87 @@ export function createReferenceStore(ctx: AppContext, providerName: (id: string)
   const deleteHistorical = sqlite.prepare(
     "DELETE FROM historical_records WHERE feature_id IN (SELECT id FROM reference_features WHERE collection_id = ? LIMIT ?)",
   );
-  const deleteFeatures = sqlite.prepare("DELETE FROM reference_features WHERE id IN (SELECT id FROM reference_features WHERE collection_id = ? LIMIT ?)");
+  const deleteFeatures = sqlite.prepare(
+    "DELETE FROM reference_features WHERE id IN (SELECT id FROM reference_features WHERE collection_id = ? LIMIT ?)",
+  );
   const deleteFigures = sqlite.prepare("DELETE FROM country_figures WHERE collection_id = ?");
 
   const writeBatch = sqlite.transaction(
     (owner: string, provider: string, retrievedAt: number, features: NewFeature[], figures: NewCountryFigure[]) => {
-    for (const f of features) {
-      const box = f.bbox;
-      const { lastInsertRowid } = insertFeature.run(
-        owner,
-        provider,
-        f.sourceId,
-        f.layer,
-        f.kind,
-        f.name,
-        f.altNames,
-        f.country,
-        f.lat,
-        f.lon,
-        box?.[0] ?? null,
-        box?.[1] ?? null,
-        box?.[2] ?? null,
-        box?.[3] ?? null,
-        f.geometry ? JSON.stringify(f.geometry) : null,
-        JSON.stringify(f.props),
-        f.provenance,
-        f.accuracy,
-        f.accuracyMeters,
-        f.publisher,
-        f.license,
-        f.sourceUrl,
-        f.publishedAt,
-        retrievedAt,
-      );
-      const h = f.historical;
-      if (h) {
-        insertHistorical.run(
-          lastInsertRowid,
-          h.recordType,
-          h.period,
-          h.locationText,
-          h.documentTitle,
-          h.documentPublisher,
-          h.documentDate,
-          h.archiveRef,
-          h.classification,
-          h.targetCategory,
-          h.evidenceQuality,
-          h.geographicPrecision,
-          JSON.stringify(h.citations),
-          h.documentUrl,
-          h.libraryDocumentId,
-          h.notes,
+      for (const f of features) {
+        const box = f.bbox;
+        const { lastInsertRowid } = insertFeature.run(
+          owner,
+          provider,
+          f.sourceId,
+          f.layer,
+          f.kind,
+          f.name,
+          f.altNames,
+          f.country,
+          f.lat,
+          f.lon,
+          box?.[0] ?? null,
+          box?.[1] ?? null,
+          box?.[2] ?? null,
+          box?.[3] ?? null,
+          f.geometry ? JSON.stringify(f.geometry) : null,
+          JSON.stringify(f.props),
+          f.provenance,
+          f.accuracy,
+          f.accuracyMeters,
+          f.publisher,
+          f.license,
+          f.sourceUrl,
+          f.publishedAt,
+          retrievedAt,
+        );
+        const h = f.historical;
+        if (h) {
+          insertHistorical.run(
+            lastInsertRowid,
+            h.recordType,
+            h.period,
+            h.locationText,
+            h.documentTitle,
+            h.documentPublisher,
+            h.documentDate,
+            h.archiveRef,
+            h.classification,
+            h.targetCategory,
+            h.evidenceQuality,
+            h.geographicPrecision,
+            JSON.stringify(h.citations),
+            h.documentUrl,
+            h.libraryDocumentId,
+            h.notes,
+          );
+        }
+      }
+      for (const g of figures) {
+        insertFigure.run(
+          owner,
+          g.country,
+          g.indicator,
+          g.value,
+          g.valueText,
+          g.unit,
+          g.year,
+          g.sourceTitle,
+          g.publisher,
+          g.publishedAt,
+          g.url,
+          g.page,
+          g.license,
+          g.notes,
+          retrievedAt,
         );
       }
-    }
-    for (const g of figures) {
-      insertFigure.run(
-        owner,
-        g.country,
-        g.indicator,
-        g.value,
-        g.valueText,
-        g.unit,
-        g.year,
-        g.sourceTitle,
-        g.publisher,
-        g.publishedAt,
-        g.url,
-        g.page,
-        g.license,
-        g.notes,
-        retrievedAt,
-      );
-    }
-  },
+    },
   );
 
   function removeRowsNow(owner: string): number {
+    forget();
     let removed = 0;
     for (;;) {
       deleteHistorical.run(owner, DELETE_BATCH);
@@ -384,9 +401,15 @@ export function createReferenceStore(ctx: AppContext, providerName: (id: string)
 
   /** The R*Tree boxes for a view; a view across the 180° meridian is two. */
   const boxesOf = ([west, south, east, north]: Bbox): Bbox[] =>
-    west <= east ? [[west, south, east, north]] : [[west, south, 180, north], [-180, south, east, north]];
+    west <= east
+      ? [[west, south, east, north]]
+      : [
+          [west, south, 180, north],
+          [-180, south, east, north],
+        ];
 
-  const rtreeJoin = "FROM reference_features_rtree r JOIN reference_features f ON f.id = r.id";
+  // CROSS JOIN keeps SQLite from starting at the layer index and visiting the spatial index once per row.
+  const rtreeJoin = "FROM reference_features_rtree r CROSS JOIN reference_features f ON f.id = r.id";
   const rtreeWhere = "r.max_lon >= ? AND r.min_lon <= ? AND r.max_lat >= ? AND r.min_lat <= ?";
 
   function sourceInfo(row: FeatureRow, packs: Map<string, { title: string }>): ReferenceSourceInfo {
@@ -411,12 +434,22 @@ export function createReferenceStore(ctx: AppContext, providerName: (id: string)
   const markDuplicate = sqlite.prepare("UPDATE reference_features SET duplicate_of = ? WHERE id = ?");
 
   async function findDuplicates(collectionId: string): Promise<number> {
+    forget();
     const rows = sqlite
       .prepare(
         `SELECT id, provider, source_id AS sourceId, layer, name, lat, lon, props FROM reference_features
          WHERE collection_id = ? AND duplicate_of IS NULL ORDER BY id`,
       )
-      .all(collectionId) as Array<{ id: number; provider: string; sourceId: string; layer: string; name: string; lat: number | null; lon: number | null; props: string }>;
+      .all(collectionId) as Array<{
+      id: number;
+      provider: string;
+      sourceId: string;
+      layer: string;
+      name: string;
+      lat: number | null;
+      lon: number | null;
+      props: string;
+    }>;
     const sameRecord = sqlite.prepare(
       `SELECT id FROM reference_features WHERE provider = ? AND source_id = ? AND collection_id != ? AND collection_id NOT LIKE 'pending:%'
        AND duplicate_of IS NULL LIMIT 1`,
@@ -455,14 +488,23 @@ export function createReferenceStore(ctx: AppContext, providerName: (id: string)
       if (original === undefined && row.lat !== null && row.lon !== null && row.name) {
         const dLat = SAME_PLACE_METRES / 111_000;
         const dLon = dLat / Math.max(0.05, Math.cos((row.lat * Math.PI) / 180));
-        const candidates = near.all(row.lon - dLon, row.lon + dLon, row.lat - dLat, row.lat + dLat, row.layer, row.provider, collectionId) as Array<{
+        const candidates = near.all(
+          row.lon - dLon,
+          row.lon + dLon,
+          row.lat - dLat,
+          row.lat + dLat,
+          row.layer,
+          row.provider,
+          collectionId,
+        ) as Array<{
           id: number;
           name: string;
           lat: number;
           lon: number;
         }>;
         original = candidates.find(
-          (candidate) => sameName(candidate.name, row.name) && haversineMeters(row.lat!, row.lon!, candidate.lat, candidate.lon) <= SAME_PLACE_METRES,
+          (candidate) =>
+            sameName(candidate.name, row.name) && haversineMeters(row.lat!, row.lon!, candidate.lat, candidate.lon) <= SAME_PLACE_METRES,
         )?.id;
       }
       if (original !== undefined && original !== row.id) {
@@ -475,7 +517,7 @@ export function createReferenceStore(ctx: AppContext, providerName: (id: string)
     return found;
   }
 
-  return {
+  const store: ReferenceStore = {
     sink(owner, provider, retrievedAt) {
       let features: NewFeature[] = [];
       let figures: NewCountryFigure[] = [];
@@ -485,6 +527,7 @@ export function createReferenceStore(ctx: AppContext, providerName: (id: string)
       const flush = async () => {
         if (features.length === 0 && figures.length === 0) return;
         writeBatch(owner, provider, retrievedAt, features, figures);
+        forget();
         count += features.length + figures.length;
         features = [];
         figures = [];
@@ -517,6 +560,7 @@ export function createReferenceStore(ctx: AppContext, providerName: (id: string)
     removeRowsNow,
 
     async removeRows(owner) {
+      forget();
       let removed = 0;
       for (;;) {
         deleteHistorical.run(owner, DELETE_BATCH);
@@ -530,6 +574,7 @@ export function createReferenceStore(ctx: AppContext, providerName: (id: string)
     },
 
     adopt(from, to, replaced) {
+      forget();
       sqlite.transaction(() => {
         for (const old of replaced) removeRowsNow(old);
         sqlite.prepare("UPDATE reference_features SET collection_id = ? WHERE collection_id = ?").run(to, from);
@@ -540,6 +585,7 @@ export function createReferenceStore(ctx: AppContext, providerName: (id: string)
     findDuplicates,
 
     async releaseDuplicates() {
+      forget();
       const orphans = sqlite
         .prepare(
           `SELECT DISTINCT f.collection_id AS owner FROM reference_features f
@@ -559,12 +605,17 @@ export function createReferenceStore(ctx: AppContext, providerName: (id: string)
       const boxes = boxesOf(bbox);
       const pointLayers = filter.layers.filter((layer) => !AREA_LAYERS.has(layer) || layer === "planning-zones");
       const pointWhere = filterSql({ ...filter, layers: pointLayers });
-      const total = boxes.reduce(
+      // Only whether there are more than can be sent is counted here; when there are, the patches' counts give the total.
+      let total = boxes.reduce(
         (sum, box) =>
           sum +
           (pointLayers.length === 0
             ? 0
-            : (sqlite.prepare(`SELECT count(*) AS n ${rtreeJoin} WHERE ${rtreeWhere} AND ${pointWhere.sql}`).get(box[0], box[2], box[1], box[3], ...pointWhere.args) as { n: number }).n),
+            : (
+                sqlite
+                  .prepare(`SELECT count(*) AS n FROM (SELECT 1 ${rtreeJoin} WHERE ${rtreeWhere} AND ${pointWhere.sql} LIMIT ?)`)
+                  .get(box[0], box[2], box[1], box[3], ...pointWhere.args, POINT_LIMIT + 1) as { n: number }
+              ).n),
         0,
       );
       let points: ReferencePoint[] = [];
@@ -595,6 +646,7 @@ export function createReferenceStore(ctx: AppContext, providerName: (id: string)
               )
               .all(box[0], box[2], box[1], box[3], ...pointWhere.args, latSize, lonSize) as ReferenceCell[],
         );
+        total = cells.reduce((sum, cell) => sum + cell.count, 0);
       }
       // Areas: those of the area layers at any zoom, the rest from close in, and never more than the limit.
       const shapeLayers = filter.layers.filter((layer) => AREA_LAYERS.has(layer) || zoom >= SHAPE_ZOOM);
@@ -665,11 +717,18 @@ export function createReferenceStore(ctx: AppContext, providerName: (id: string)
     detail(id, packs) {
       const row = sqlite.prepare(`SELECT ${COLUMNS} FROM reference_features f WHERE f.id = ?`).get(id) as FeatureRow | undefined;
       if (!row || row.collectionId.startsWith("pending:")) return null;
-      const primary = row.duplicateOf !== null ? ((sqlite.prepare(`SELECT ${COLUMNS} FROM reference_features f WHERE f.id = ?`).get(row.duplicateOf) as FeatureRow | undefined) ?? row) : row;
+      const primary =
+        row.duplicateOf !== null
+          ? ((sqlite.prepare(`SELECT ${COLUMNS} FROM reference_features f WHERE f.id = ?`).get(row.duplicateOf) as
+              | FeatureRow
+              | undefined) ?? row)
+          : row;
       const others = (
         sqlite.prepare(`SELECT ${COLUMNS} FROM reference_features f WHERE f.duplicate_of = ? ORDER BY f.id`).all(primary.id) as FeatureRow[]
       ).filter((other) => !other.collectionId.startsWith("pending:"));
-      const h = sqlite.prepare("SELECT * FROM historical_records WHERE feature_id = ?").get(primary.id) as Record<string, unknown> | undefined;
+      const h = sqlite.prepare("SELECT * FROM historical_records WHERE feature_id = ?").get(primary.id) as
+        | Record<string, unknown>
+        | undefined;
       let historical: HistoricalRecordDto | null = null;
       if (h) {
         const documentId = (h.library_document_id as string | null) ?? null;
@@ -750,19 +809,27 @@ export function createReferenceStore(ctx: AppContext, providerName: (id: string)
             .all(layer) as Array<{ country: string }>
         ).map((row) => row.country);
         const providers = (
-          sqlite.prepare(`SELECT provider, count(*) AS n FROM reference_features WHERE ${live} AND layer = ? GROUP BY provider ORDER BY provider`).all(layer) as Array<{
+          sqlite
+            .prepare(
+              `SELECT provider, count(*) AS n FROM reference_features WHERE ${live} AND layer = ? GROUP BY provider ORDER BY provider`,
+            )
+            .all(layer) as Array<{
             provider: string;
             n: number;
           }>
         ).map((row) => ({ id: row.provider, name: providerNames.get(row.provider) ?? row.provider, count: row.n }));
         const kinds = (
-          sqlite.prepare(`SELECT kind, count(*) AS n FROM reference_features WHERE ${live} AND layer = ? GROUP BY kind ORDER BY kind`).all(layer) as Array<{
+          sqlite
+            .prepare(`SELECT kind, count(*) AS n FROM reference_features WHERE ${live} AND layer = ? GROUP BY kind ORDER BY kind`)
+            .all(layer) as Array<{
             kind: string;
             n: number;
           }>
         ).map((row) => ({ kind: row.kind, label: kindLabel(row.kind), count: row.n }));
         const provenance = (
-          sqlite.prepare(`SELECT provenance, count(*) AS n FROM reference_features WHERE ${live} AND layer = ? GROUP BY provenance`).all(layer) as Array<{
+          sqlite
+            .prepare(`SELECT provenance, count(*) AS n FROM reference_features WHERE ${live} AND layer = ? GROUP BY provenance`)
+            .all(layer) as Array<{
             provenance: FeatureProvenance;
             n: number;
           }>
@@ -772,14 +839,22 @@ export function createReferenceStore(ctx: AppContext, providerName: (id: string)
     },
 
     countsOf(collectionId) {
-      const records = (sqlite.prepare("SELECT count(*) AS n FROM reference_features WHERE collection_id = ?").get(collectionId) as { n: number }).n;
-      const duplicates = (
-        sqlite.prepare("SELECT count(*) AS n FROM reference_features WHERE collection_id = ? AND duplicate_of IS NOT NULL").get(collectionId) as { n: number }
+      const records = (
+        sqlite.prepare("SELECT count(*) AS n FROM reference_features WHERE collection_id = ?").get(collectionId) as { n: number }
       ).n;
-      const figures = (sqlite.prepare("SELECT count(*) AS n FROM country_figures WHERE collection_id = ?").get(collectionId) as { n: number }).n;
-      const layers = (sqlite.prepare("SELECT DISTINCT layer FROM reference_features WHERE collection_id = ?").all(collectionId) as Array<{ layer: ReferenceLayerId }>).map(
-        (row) => row.layer,
-      );
+      const duplicates = (
+        sqlite
+          .prepare("SELECT count(*) AS n FROM reference_features WHERE collection_id = ? AND duplicate_of IS NOT NULL")
+          .get(collectionId) as { n: number }
+      ).n;
+      const figures = (
+        sqlite.prepare("SELECT count(*) AS n FROM country_figures WHERE collection_id = ?").get(collectionId) as { n: number }
+      ).n;
+      const layers = (
+        sqlite.prepare("SELECT DISTINCT layer FROM reference_features WHERE collection_id = ?").all(collectionId) as Array<{
+          layer: ReferenceLayerId;
+        }>
+      ).map((row) => row.layer);
       return { records, duplicates, figures, layers };
     },
 
@@ -797,7 +872,9 @@ export function createReferenceStore(ctx: AppContext, providerName: (id: string)
     owners() {
       return (
         sqlite
-          .prepare("SELECT DISTINCT collection_id AS id FROM reference_features UNION SELECT DISTINCT collection_id AS id FROM country_figures")
+          .prepare(
+            "SELECT DISTINCT collection_id AS id FROM reference_features UNION SELECT DISTINCT collection_id AS id FROM country_figures",
+          )
           .all() as Array<{ id: string }>
       ).map((row) => row.id);
     },
@@ -806,6 +883,17 @@ export function createReferenceStore(ctx: AppContext, providerName: (id: string)
       return (sqlite.prepare("SELECT count(*) AS n FROM reference_features").get() as { n: number }).n;
     },
   };
+  const answer = store.overlay;
+  store.overlay = (query) => {
+    const key = JSON.stringify(query);
+    const known = answers.get(key);
+    if (known) return known;
+    const found = answer(query);
+    if (answers.size >= 64) answers.delete(answers.keys().next().value as string);
+    answers.set(key, found);
+    return found;
+  };
+  return store;
 }
 
 /** Addresses of the licences records carry, for the drawer's link. */

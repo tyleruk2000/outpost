@@ -265,7 +265,13 @@ function blob(type: string, payload: Buffer): Buffer {
 }
 
 /** An `.osm.pbf` file: a header, then one block of dense nodes, one of ways and one of relations, as osmium writes them. */
-export function buildPbf(data: { nodes: PbfNode[]; ways: PbfWay[]; relations: PbfRelation[]; timestamp?: number; features?: string[] }): Buffer {
+export function buildPbf(data: {
+  nodes: PbfNode[];
+  ways: PbfWay[];
+  relations: PbfRelation[];
+  timestamp?: number;
+  features?: string[];
+}): Buffer {
   const header = new Writer();
   for (const feature of data.features ?? ["OsmSchema-V0.6", "DenseNodes"]) header.field(4, Buffer.from(feature, "utf8"));
   if (data.timestamp) header.uint(32, data.timestamp);
@@ -289,9 +295,24 @@ export function buildPbf(data: { nodes: PbfNode[]; ways: PbfWay[]; relations: Pb
 
   const nodes = block((group, string) => {
     const dense = new Writer();
-    dense.packed(1, data.nodes.map((node) => node.id), true, true);
-    dense.packed(8, data.nodes.map((node) => Math.round(node.lat * 1e7)), true, true);
-    dense.packed(9, data.nodes.map((node) => Math.round(node.lon * 1e7)), true, true);
+    dense.packed(
+      1,
+      data.nodes.map((node) => node.id),
+      true,
+      true,
+    );
+    dense.packed(
+      8,
+      data.nodes.map((node) => Math.round(node.lat * 1e7)),
+      true,
+      true,
+    );
+    dense.packed(
+      9,
+      data.nodes.map((node) => Math.round(node.lon * 1e7)),
+      true,
+      true,
+    );
     const keysVals: number[] = [];
     for (const node of data.nodes) {
       for (const [key, value] of Object.entries(node.tags ?? {})) keysVals.push(string(key), string(value));
@@ -304,8 +325,18 @@ export function buildPbf(data: { nodes: PbfNode[]; ways: PbfWay[]; relations: Pb
     for (const way of data.ways) {
       const w = new Writer().uint(1, way.id);
       const tags = Object.entries(way.tags ?? {});
-      w.packed(2, tags.map(([key]) => string(key)), false, false);
-      w.packed(3, tags.map(([, value]) => string(value)), false, false);
+      w.packed(
+        2,
+        tags.map(([key]) => string(key)),
+        false,
+        false,
+      );
+      w.packed(
+        3,
+        tags.map(([, value]) => string(value)),
+        false,
+        false,
+      );
       w.packed(8, way.refs, true, true);
       group.field(3, w.bytes);
     }
@@ -314,11 +345,36 @@ export function buildPbf(data: { nodes: PbfNode[]; ways: PbfWay[]; relations: Pb
     for (const relation of data.relations) {
       const r = new Writer().uint(1, relation.id);
       const tags = Object.entries(relation.tags ?? {});
-      r.packed(2, tags.map(([key]) => string(key)), false, false);
-      r.packed(3, tags.map(([, value]) => string(value)), false, false);
-      r.packed(8, relation.members.map((member) => string(member.role)), false, false);
-      r.packed(9, relation.members.map((member) => member.ref), true, true);
-      r.packed(10, relation.members.map(() => 1), false, false);
+      r.packed(
+        2,
+        tags.map(([key]) => string(key)),
+        false,
+        false,
+      );
+      r.packed(
+        3,
+        tags.map(([, value]) => string(value)),
+        false,
+        false,
+      );
+      r.packed(
+        8,
+        relation.members.map((member) => string(member.role)),
+        false,
+        false,
+      );
+      r.packed(
+        9,
+        relation.members.map((member) => member.ref),
+        true,
+        true,
+      );
+      r.packed(
+        10,
+        relation.members.map(() => 1),
+        false,
+        false,
+      );
       group.field(4, r.bytes);
     }
   });

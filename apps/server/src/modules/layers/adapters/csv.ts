@@ -5,7 +5,13 @@ import { PermanentJobError } from "../../../core/jobs.ts";
 
 export async function* csvRecords(filePath: string, signal?: AbortSignal): AsyncGenerator<{ row: Record<string, string>; line: number }> {
   const parser = fs.createReadStream(filePath).pipe(
-    parse({ columns: (header: string[]) => header.map((name) => name.trim().toLowerCase().replace(/^﻿/, "")), bom: true, relax_column_count: true, skip_empty_lines: true, trim: true }),
+    parse({
+      columns: (header: string[]) => header.map((name) => name.trim().toLowerCase().replace(/^﻿/, "")),
+      bom: true,
+      relax_column_count: true,
+      skip_empty_lines: true,
+      trim: true,
+    }),
   );
   let line = 1;
   try {

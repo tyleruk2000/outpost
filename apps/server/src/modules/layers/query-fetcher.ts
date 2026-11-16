@@ -98,7 +98,9 @@ export function createQueryFetcher(client: HttpClient, options: { gapMs?: number
         for await (const chunk of response.body as unknown as AsyncIterable<Uint8Array>) {
           received += chunk.byteLength;
           if (received > spec.maxBytes) {
-            throw new PermanentJobError(`The answer from ${host} is larger than ${Math.round(spec.maxBytes / 1048576)} MB. Choose a smaller area or fewer layers.`);
+            throw new PermanentJobError(
+              `The answer from ${host} is larger than ${Math.round(spec.maxBytes / 1048576)} MB. Choose a smaller area or fewer layers.`,
+            );
           }
           await throttle(chunk.byteLength);
           if (!out.write(chunk)) await new Promise<void>((resolve) => out.once("drain", () => resolve()));

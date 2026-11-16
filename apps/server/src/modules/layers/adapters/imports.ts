@@ -18,8 +18,8 @@ import type { FeatureProvenance, HistoricalRecordType, ReferenceLayerId } from "
 import { HISTORICAL_RECORD_TYPES, REFERENCE_LAYERS } from "@outpost/shared";
 import type { AppContext } from "../../../core/context.ts";
 import { PermanentJobError } from "../../../core/jobs.ts";
-import { type Crs, CrsError, crsFromName, toWgs84 } from "../crs.ts";
 import { COUNTRIES, countryOf } from "../countries.ts";
+import { type Crs, CrsError, crsFromName, toWgs84 } from "../crs.ts";
 import { PROVIDERS } from "../providers.ts";
 import type { FeatureSink, ReadContext, ReadResult } from "../types.ts";
 import { csvRecords } from "./csv.ts";
@@ -29,7 +29,16 @@ import { cleanText } from "./osm-tags.ts";
 export const provider = PROVIDERS.find((entry) => entry.id === "import")!;
 
 /** Layers a features file may put things in. Historical records have their own form; boundaries come from Natural Earth. */
-export const IMPORTABLE_LAYERS: ReferenceLayerId[] = ["shelters", "planning-zones", "military", "nuclear", "hospitals", "emergency", "airports", "towns"];
+export const IMPORTABLE_LAYERS: ReferenceLayerId[] = [
+  "shelters",
+  "planning-zones",
+  "military",
+  "nuclear",
+  "hospitals",
+  "emergency",
+  "airports",
+  "towns",
+];
 
 export const TEMPLATES: Record<string, string[]> = {
   "features-csv": [
@@ -73,7 +82,20 @@ export const TEMPLATES: Record<string, string[]> = {
     "license",
     "notes",
   ],
-  "country-figures-csv": ["country", "indicator", "value", "unit", "year", "source_title", "publisher", "published", "url", "page", "license", "notes"],
+  "country-figures-csv": [
+    "country",
+    "indicator",
+    "value",
+    "unit",
+    "year",
+    "source_title",
+    "publisher",
+    "published",
+    "url",
+    "page",
+    "license",
+    "notes",
+  ],
 };
 
 export function provenanceOf(text: string | undefined): FeatureProvenance | null {
@@ -123,7 +145,9 @@ async function readFeaturesCsv(context: ReadContext, crs: Crs): Promise<void> {
     }
     const layer = merged.layer!.trim() as ReferenceLayerId;
     if (!IMPORTABLE_LAYERS.includes(layer)) {
-      sink.skip(`Line ${line}: "${cleanText(merged.layer, 40)}" is not a layer a place can be imported into (${IMPORTABLE_LAYERS.join(", ")}).`);
+      sink.skip(
+        `Line ${line}: "${cleanText(merged.layer, 40)}" is not a layer a place can be imported into (${IMPORTABLE_LAYERS.join(", ")}).`,
+      );
       continue;
     }
     const provenance = provenanceOf(merged.provenance);
@@ -149,7 +173,8 @@ async function readFeaturesCsv(context: ReadContext, crs: Crs): Promise<void> {
       geometry: null,
       props: merged.notes ? { notes: cleanText(merged.notes, 1000) } : {},
       provenance,
-      accuracy: cleanText(merged.accuracy, 300) + (crs.errorMeters ? `; converted from ${crs.name}, adding up to about ${crs.errorMeters} m` : ""),
+      accuracy:
+        cleanText(merged.accuracy, 300) + (crs.errorMeters ? `; converted from ${crs.name}, adding up to about ${crs.errorMeters} m` : ""),
       accuracyMeters: Number(merged.accuracy_m) > 0 ? Number(merged.accuracy_m) + crs.errorMeters : null,
       publisher: cleanText(merged.publisher),
       license: cleanText(merged.license),
@@ -186,10 +211,12 @@ async function readGeoJson(context: ReadContext): Promise<string> {
     async onFeature(feature) {
       index += 1;
       const p = feature.properties;
-      const name = textProp(p, options.nameField ?? "", "name", "NAME", "Name", "title", "label") || `${options.kind || "Feature"} ${index}`;
+      const name =
+        textProp(p, options.nameField ?? "", "name", "NAME", "Name", "title", "label") || `${options.kind || "Feature"} ${index}`;
       const props: Record<string, string> = {};
       for (const [key, value] of Object.entries(p).slice(0, 30)) {
-        const text = typeof value === "string" ? cleanText(value, 300) : typeof value === "number" || typeof value === "boolean" ? String(value) : "";
+        const text =
+          typeof value === "string" ? cleanText(value, 300) : typeof value === "number" || typeof value === "boolean" ? String(value) : "";
         if (text && cleanText(key, 60)) props[cleanText(key, 60)] = text;
       }
       await sink.add({
@@ -222,14 +249,26 @@ async function readHistoricalCsv(context: ReadContext, ctx: AppContext, crs: Crs
   const documentExists = ctx.sqlite.prepare("SELECT 1 FROM documents WHERE id = ?");
   const seen = new Set<string>();
   for await (const { row, line } of csvRecords(context.filePath, context.signal)) {
-    const missing = required(row, ["record_id", "period", "record_type", "document_title", "evidence_quality", "geographic_precision", "citations", "publisher", "license"]);
+    const missing = required(row, [
+      "record_id",
+      "period",
+      "record_type",
+      "document_title",
+      "evidence_quality",
+      "geographic_precision",
+      "citations",
+      "publisher",
+      "license",
+    ]);
     if (missing.length > 0) {
       sink.skip(`Line ${line}: no ${missing.join(", ")}. Every historical record needs them.`);
       continue;
     }
     const recordType = row.record_type!.trim().toLowerCase() as HistoricalRecordType;
     if (!(HISTORICAL_RECORD_TYPES as readonly string[]).includes(recordType)) {
-      sink.skip(`Line ${line}: record_type must be one of ${HISTORICAL_RECORD_TYPES.join(", ")}, saying whether it is an actual target list, an assessment of likely targets, or an author's speculation.`);
+      sink.skip(
+        `Line ${line}: record_type must be one of ${HISTORICAL_RECORD_TYPES.join(", ")}, saying whether it is an actual target list, an assessment of likely targets, or an author's speculation.`,
+      );
       continue;
     }
     const recordId = cleanText(row.record_id, 120);

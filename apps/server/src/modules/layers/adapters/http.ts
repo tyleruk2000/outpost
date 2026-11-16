@@ -8,12 +8,19 @@ export { ROUTE_FINDER_USER_AGENT as REFERENCE_USER_AGENT } from "../../maps/rout
 function unreachable(host: string, error: unknown): AppError {
   if (error instanceof AppError) return error;
   return classifyNetworkError(error) === "offline"
-    ? new AppError("offline", `Outpost could not reach ${host}. Estimating needs an internet connection; what is installed works without one.`)
+    ? new AppError(
+        "offline",
+        `Outpost could not reach ${host}. Estimating needs an internet connection; what is installed works without one.`,
+      )
     : new AppError("upstream", `${host} did not answer properly. Try again in a little while.`);
 }
 
 /** The size the publisher gives for a file, from a HEAD request, following redirects on the same host. */
-export async function headSize(client: HttpClient, url: string, signal?: AbortSignal): Promise<{ bytes: number | null; finalUrl: string; lastModified: string | null }> {
+export async function headSize(
+  client: HttpClient,
+  url: string,
+  signal?: AbortSignal,
+): Promise<{ bytes: number | null; finalUrl: string; lastModified: string | null }> {
   const host = new URL(url).hostname;
   try {
     const { response, url: finalUrl } = await client.fetch(url, { method: "HEAD", allowedHosts: [host], everyHop: true, signal });
@@ -34,7 +41,12 @@ export async function fetchText(
 ): Promise<string> {
   const host = new URL(url).hostname;
   try {
-    const { response } = await client.fetch(url, { allowedHosts: [host], everyHop: true, signal: options.signal, headers: options.headers });
+    const { response } = await client.fetch(url, {
+      allowedHosts: [host],
+      everyHop: true,
+      signal: options.signal,
+      headers: options.headers,
+    });
     if (!response.ok) {
       await response.body?.cancel().catch(() => undefined);
       throw new AppError("upstream", `${host} answered HTTP ${response.status} for ${new URL(url).pathname}.`);

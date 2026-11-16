@@ -242,7 +242,8 @@ export const LINKED: ReferenceCatalogueResponse["linked"] = [
     name: "Swiss zone plans for emergency planning round nuclear facilities (ENSI)",
     url: "https://map.geo.admin.ch/?layers=ch.ensi.zonenplan-notfallschutz-kernanlagen",
     why: "Published as geodata, but its licence signals disagree (“proprietary” in one record, “no restriction” in another). Not fetched until that is settled; a copy you obtain can be imported (Swiss grid coordinates are converted).",
-    termsQuote: "The federal administration's terms: “Any reproduction requires the prior written consent of the copyright holder.” The geocat.ch record: “keine Einschränkungen”.",
+    termsQuote:
+      "The federal administration's terms: “Any reproduction requires the prior written consent of the copyright holder.” The geocat.ch record: “keine Einschränkungen”.",
     termsRead: READ,
   },
 ];

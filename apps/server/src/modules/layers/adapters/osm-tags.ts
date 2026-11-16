@@ -16,6 +16,7 @@
  * - There is no documented tag for a research reactor; Wikidata is used for those.
  */
 import type { ReferenceLayerId } from "@outpost/shared";
+import { cleanText as routeCleanText } from "../../maps/route-finder/overpass.ts";
 
 export type OsmLayer = Extract<ReferenceLayerId, "military" | "nuclear" | "hospitals" | "emergency" | "shelters">;
 export const OSM_LAYERS: OsmLayer[] = ["military", "nuclear", "hospitals", "emergency", "shelters"];
@@ -97,7 +98,11 @@ export function overpassFilters(layer: OsmLayer): string[] {
     case "emergency":
       return ['["amenity"~"^(police|fire_station)$"]', '["emergency"="ambulance_station"]'];
     case "shelters":
-      return [`["bunker_type"~"^(${SHELTER_BUNKER_TYPES.join("|")})$"]`, '["amenity"="shelter"]["shelter_type"="bomb_shelter"]', '["emergency"="assembly_point"]'];
+      return [
+        `["bunker_type"~"^(${SHELTER_BUNKER_TYPES.join("|")})$"]`,
+        '["amenity"="shelter"]["shelter_type"="bomb_shelter"]',
+        '["emergency"="assembly_point"]',
+      ];
   }
 }
 
@@ -145,12 +150,9 @@ export const KEPT_OSM_TAGS = new Set([
   "source",
 ]);
 
-const CONTROL = /[\u0000-\u001f\u007f-\u009f‎‏‪-‮⁦-⁩﻿]/g;
-
-/** Text fit to show: no control or direction characters, spaces collapsed, cut to length. */
+/** Text fit to show: no control or direction characters, spaces collapsed, cut to length; empty if there is none. */
 export function cleanText(value: unknown, max = 200): string {
-  if (typeof value !== "string") return "";
-  return value.replace(CONTROL, " ").replace(/\s+/g, " ").trim().slice(0, max).trim();
+  return routeCleanText(value, max) ?? "";
 }
 
 export function keptTags(tags: Record<string, string>): Record<string, string> {

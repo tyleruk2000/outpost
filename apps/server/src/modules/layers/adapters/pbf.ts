@@ -85,8 +85,7 @@ class Proto {
       // Read the length first: `pos += varint()` would add it to where the length began.
       const length = this.varint();
       this.pos += length;
-    }
-    else if (wire === 5) this.pos += 4;
+    } else if (wire === 5) this.pos += 4;
     else throw new PbfError(`The file is damaged: an unknown field type (${wire}).`);
   }
   packed(signed: boolean, delta: boolean): number[] {
@@ -129,7 +128,8 @@ async function* blobs(filePath: string, signal?: AbortSignal): AsyncGenerator<Bl
     while (offset < size) {
       signal?.throwIfAborted();
       const headerLength = (await read(4)).readUInt32BE(0);
-      if (headerLength === 0 || headerLength > MAX_BLOB_HEADER) throw new PbfError("This is not an OpenStreetMap PBF file, or it is damaged.");
+      if (headerLength === 0 || headerLength > MAX_BLOB_HEADER)
+        throw new PbfError("This is not an OpenStreetMap PBF file, or it is damaged.");
       const header = new Proto(await read(headerLength));
       let type = "";
       let dataSize = -1;
@@ -212,7 +212,11 @@ function tagsOf(strings: string[], keys: number[], values: number[]): Record<str
 }
 
 /** Calls back for each node in a block (dense or not), with its tags only when asked. */
-function eachNode(block: Block, wantTags: boolean, visit: (id: number, lat: number, lon: number, tags: Record<string, string> | null) => void): void {
+function eachNode(
+  block: Block,
+  wantTags: boolean,
+  visit: (id: number, lat: number, lon: number, tags: Record<string, string> | null) => void,
+): void {
   const { buf, strings, granularity, latOffset, lonOffset } = block;
   for (const [start, end] of block.groups) {
     const group = new Proto(buf, start, end);
@@ -262,7 +266,12 @@ function eachNode(block: Block, wantTags: boolean, visit: (id: number, lat: numb
           else if (f.no === 9 && f.wire === 0) lon = node.svarint();
           else node.skip(f.wire);
         }
-        visit(id, degrees(lat, latOffset, granularity), degrees(lon, lonOffset, granularity), wantTags ? tagsOf(strings, keys, values) : null);
+        visit(
+          id,
+          degrees(lat, latOffset, granularity),
+          degrees(lon, lonOffset, granularity),
+          wantTags ? tagsOf(strings, keys, values) : null,
+        );
       } else group.skip(field.wire);
     }
   }
@@ -310,7 +319,10 @@ function eachWay(block: Block, visit: (id: number, tags: () => Record<string, st
   }
 }
 
-function eachRelation(block: Block, visit: (id: number, tags: Record<string, string>, ways: Array<{ ref: number; role: string }>) => void): void {
+function eachRelation(
+  block: Block,
+  visit: (id: number, tags: Record<string, string>, ways: Array<{ ref: number; role: string }>) => void,
+): void {
   const { buf, strings } = block;
   for (const [start, end] of block.groups) {
     const group = new Proto(buf, start, end);
@@ -428,7 +440,8 @@ export async function readPbf(filePath: string, options: PbfReadOptions): Promis
 
   // Pass 2: the ways that relations are made of.
   const memberWays = new Map<number, number[]>();
-  for (const relation of relations.values()) for (const member of relation.ways) if (member.role !== "inner") memberWays.set(member.ref, []);
+  for (const relation of relations.values())
+    for (const member of relation.ways) if (member.role !== "inner") memberWays.set(member.ref, []);
   if (memberWays.size > 0) {
     passes = 3;
     for await (const blob of blobs(filePath, options.signal)) {
@@ -482,14 +495,24 @@ export async function readPbf(filePath: string, options: PbfReadOptions): Promis
   for (const [id, relation] of relations) {
     const lines = relation.ways
       .filter((member) => member.role !== "inner")
-      .map((member) => (memberWays.get(member.ref) ?? []).map((ref) => positions.get(ref)).filter((point): point is [number, number] => Boolean(point)))
+      .map((member) =>
+        (memberWays.get(member.ref) ?? []).map((ref) => positions.get(ref)).filter((point): point is [number, number] => Boolean(point)),
+      )
       .filter((line) => line.length >= 2);
     if (lines.length === 0) {
       options.onSkip(`relation/${id} has none of its outer ways in the extract.`);
       continue;
     }
     const box = boxOf(lines.flat());
-    await options.onObject({ type: "relation", id, tags: relation.tags, lat: (box[1] + box[3]) / 2, lon: (box[0] + box[2]) / 2, lines, bbox: box });
+    await options.onObject({
+      type: "relation",
+      id,
+      tags: relation.tags,
+      lat: (box[1] + box[3]) / 2,
+      lon: (box[0] + box[2]) / 2,
+      lines,
+      bbox: box,
+    });
     objects += 1;
   }
   return { header, objects };

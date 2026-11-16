@@ -130,9 +130,18 @@ export function swissGrid(eastOffset: number, northOffset: number): Converter {
 const KNOWN: Array<{ pattern: RegExp; crs: Crs }> = [
   { pattern: /^(?:urn:ogc:def:crs:)?(?:OGC:(?:1\.3:)?)?CRS84$/i, crs: WGS84 },
   { pattern: /^(?:urn:ogc:def:crs:)?EPSG:{1,2}4326$/i, crs: WGS84 },
-  { pattern: /^(?:urn:ogc:def:crs:)?EPSG:{1,2}(?:3857|900913|3785)$/i, crs: { name: "Web Mercator (EPSG:3857)", convert: webMercator, errorMeters: 0 } },
-  { pattern: /^(?:urn:ogc:def:crs:)?EPSG:{1,2}2056$/i, crs: { name: "Swiss LV95 (EPSG:2056)", convert: swissGrid(2_600_000, 1_200_000), errorMeters: 1 } },
-  { pattern: /^(?:urn:ogc:def:crs:)?EPSG:{1,2}21781$/i, crs: { name: "Swiss LV03 (EPSG:21781)", convert: swissGrid(600_000, 200_000), errorMeters: 1 } },
+  {
+    pattern: /^(?:urn:ogc:def:crs:)?EPSG:{1,2}(?:3857|900913|3785)$/i,
+    crs: { name: "Web Mercator (EPSG:3857)", convert: webMercator, errorMeters: 0 },
+  },
+  {
+    pattern: /^(?:urn:ogc:def:crs:)?EPSG:{1,2}2056$/i,
+    crs: { name: "Swiss LV95 (EPSG:2056)", convert: swissGrid(2_600_000, 1_200_000), errorMeters: 1 },
+  },
+  {
+    pattern: /^(?:urn:ogc:def:crs:)?EPSG:{1,2}21781$/i,
+    crs: { name: "Swiss LV03 (EPSG:21781)", convert: swissGrid(600_000, 200_000), errorMeters: 1 },
+  },
   {
     pattern: /^(?:urn:ogc:def:crs:)?EPSG:{1,2}27700$/i,
     crs: { name: "British National Grid (EPSG:27700)", convert: britishNationalGrid, errorMeters: 5 },

@@ -21,7 +21,10 @@ const OSM_LICENSE = "ODbL 1.0";
 const OSM_PUBLISHER = "OpenStreetMap contributors";
 
 /** A feature from an object, or null if it is in none of the wanted layers. */
-export function osmFeature(object: OsmObject, options: { layers: Set<OsmLayer>; country: string | null; publishedAt: string | null }): NewFeature | null {
+export function osmFeature(
+  object: OsmObject,
+  options: { layers: Set<OsmLayer>; country: string | null; publishedAt: string | null },
+): NewFeature | null {
   const found = classifyOsm(object.tags);
   if (!found || !options.layers.has(found.layer)) return null;
   const { name, altNames } = osmName(object.tags);
@@ -29,9 +32,12 @@ export function osmFeature(object: OsmObject, options: { layers: Set<OsmLayer>; 
   let accuracy = "As mapped in OpenStreetMap: a point";
   let bbox: Bbox | null = object.bbox ?? null;
   if (object.type === "way" && object.points && object.points.length >= 2) {
-    const closed = object.points.length >= 4 && object.points[0]![0] === object.points.at(-1)![0] && object.points[0]![1] === object.points.at(-1)![1];
+    const closed =
+      object.points.length >= 4 && object.points[0]![0] === object.points.at(-1)![0] && object.points[0]![1] === object.points.at(-1)![1];
     geometry = closed ? { type: "Polygon", coordinates: [object.points] } : { type: "LineString", coordinates: object.points };
-    accuracy = closed ? "As mapped in OpenStreetMap: the outline, with the mark at its centre" : "As mapped in OpenStreetMap: a line, with the mark on it";
+    accuracy = closed
+      ? "As mapped in OpenStreetMap: the outline, with the mark at its centre"
+      : "As mapped in OpenStreetMap: a line, with the mark on it";
     const xs = object.points.map((point) => point[0]);
     const ys = object.points.map((point) => point[1]);
     bbox = [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];

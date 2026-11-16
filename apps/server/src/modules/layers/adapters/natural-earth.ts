@@ -65,7 +65,9 @@ export function createNaturalEarthAdapter({ client }: AdapterDeps): ReferenceAda
   return {
     provider,
     async estimate(request, signal) {
-      const wanted = request.layers?.length ? NATURAL_EARTH_FILES.filter((file) => request.layers!.includes(file.layer)) : NATURAL_EARTH_FILES;
+      const wanted = request.layers?.length
+        ? NATURAL_EARTH_FILES.filter((file) => request.layers!.includes(file.layer))
+        : NATURAL_EARTH_FILES;
       const items: ReferenceEstimateItem[] = [];
       for (const file of wanted) {
         const url = NATURAL_EARTH_BASE + file.file;

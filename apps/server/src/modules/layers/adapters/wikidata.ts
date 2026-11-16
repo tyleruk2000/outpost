@@ -4,12 +4,13 @@
  * to reach the project, and allows a minute of work a minute; one small query is far
  * inside that.
  */
+
+import fs from "node:fs";
 import type { ReferenceEstimateItem } from "@outpost/shared";
 import { AppError } from "../../../core/errors.ts";
 import { PermanentJobError } from "../../../core/jobs.ts";
-import fs from "node:fs";
-import { checkDegrees } from "../crs.ts";
 import { boxOfCountries } from "../countries.ts";
+import { checkDegrees } from "../crs.ts";
 import { PROVIDERS } from "../providers.ts";
 import type { QuerySpec } from "../query-fetcher.ts";
 import { QUERY_FETCHER } from "../query-fetcher.ts";
@@ -27,7 +28,9 @@ const provider = PROVIDERS.find((entry) => entry.id === "wikidata")!;
 
 function countryFilter(countries: string[]): string {
   const codes = countries.filter((code) => /^[A-Z]{2}$/.test(code));
-  return codes.length > 0 ? `VALUES ?iso { ${codes.map((code) => `"${code}"`).join(" ")} } ?item wdt:P17 ?country . ?country wdt:P297 ?iso .` : "";
+  return codes.length > 0
+    ? `VALUES ?iso { ${codes.map((code) => `"${code}"`).join(" ")} } ?item wdt:P17 ?country . ?country wdt:P297 ?iso .`
+    : "";
 }
 
 export function wikidataQuery(countries: string[]): string {
@@ -92,7 +95,12 @@ export function createWikidataAdapter({ client }: AdapterDeps): ReferenceAdapter
     },
     download(request, item) {
       const countries = request.scope.countries ?? [];
-      const query: QuerySpec = { method: "GET", url: urlOf(wikidataQuery(countries)), accept: "application/sparql-results+json", maxBytes: 32 * 1048576 };
+      const query: QuerySpec = {
+        method: "GET",
+        url: urlOf(wikidataQuery(countries)),
+        accept: "application/sparql-results+json",
+        maxBytes: 32 * 1048576,
+      };
       return {
         url: WIKIDATA_SPARQL,
         fetcher: QUERY_FETCHER,
@@ -111,7 +119,21 @@ export function createWikidataAdapter({ client }: AdapterDeps): ReferenceAdapter
         throw new PermanentJobError("The answer from Wikidata is not a query result. Remove the download and fetch it again.");
       }
       // One row per item, operator and state: gathered into one feature per item.
-      const items = new Map<string, { label: string; kind: string; lon: number; lat: number; precision: number | null; iso: string | null; operators: Set<string>; states: Set<string>; start: string; end: string }>();
+      const items = new Map<
+        string,
+        {
+          label: string;
+          kind: string;
+          lon: number;
+          lat: number;
+          precision: number | null;
+          iso: string | null;
+          operators: Set<string>;
+          states: Set<string>;
+          start: string;
+          end: string;
+        }
+      >();
       for (const row of bindings) {
         const uri = row.item?.value ?? "";
         const id = /\/entity\/(Q\d+)$/.exec(uri)?.[1];
@@ -167,7 +189,9 @@ export function createWikidataAdapter({ client }: AdapterDeps): ReferenceAdapter
           geometry: null,
           props,
           provenance: "public-infrastructure",
-          accuracy: metres ? `Wikidata's coordinate location, given to about ${metres.toLocaleString("en-GB")} m` : "Wikidata's coordinate location",
+          accuracy: metres
+            ? `Wikidata's coordinate location, given to about ${metres.toLocaleString("en-GB")} m`
+            : "Wikidata's coordinate location",
           accuracyMeters: metres,
           publisher: provider.publisher,
           license: provider.license,

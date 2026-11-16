@@ -42,7 +42,14 @@ const codes = z
   .string()
   .max(2000)
   .optional()
-  .transform((value) => (value ? value.split(",").filter(Boolean).map((code) => code.toUpperCase()) : []))
+  .transform((value) =>
+    value
+      ? value
+          .split(",")
+          .filter(Boolean)
+          .map((code) => code.toUpperCase())
+      : [],
+  )
   .pipe(z.array(z.string().regex(/^[A-Z]{2}$/)).max(300));
 const words = z
   .string()
@@ -54,7 +61,10 @@ const bbox = z
   .string()
   .regex(/^-?\d+(\.\d+)?,-?\d+(\.\d+)?,-?\d+(\.\d+)?,-?\d+(\.\d+)?$/, "Give the box as west,south,east,north in degrees.")
   .transform((value) => value.split(",").map(Number) as [number, number, number, number])
-  .refine(([west, south, east, north]) => Math.abs(west) <= 180 && Math.abs(east) <= 180 && south >= -90 && north <= 90 && south < north, "That box is not on Earth.");
+  .refine(
+    ([west, south, east, north]) => Math.abs(west) <= 180 && Math.abs(east) <= 180 && south >= -90 && north <= 90 && south < north,
+    "That box is not on Earth.",
+  );
 
 const filterQuery = z.object({ layers: list(REFERENCE_LAYERS), countries: codes, providers: words, kinds: words });
 const overlayQuery = filterQuery.extend({ bbox, zoom: z.coerce.number().min(0).max(24) });
@@ -62,7 +72,15 @@ const atQuery = filterQuery.extend({ lat: z.coerce.number().min(-90).max(90), lo
 const searchQuery = filterQuery.extend({ q: z.string().max(200).default(""), limit: z.coerce.number().int().min(1).max(100).default(30) });
 
 const scopeSchema = z.object({
-  countries: z.array(z.string().regex(/^[A-Za-z]{2}$/).transform((code) => code.toUpperCase())).max(20).optional(),
+  countries: z
+    .array(
+      z
+        .string()
+        .regex(/^[A-Za-z]{2}$/)
+        .transform((code) => code.toUpperCase()),
+    )
+    .max(20)
+    .optional(),
   bbox: z
     .tuple([z.number().min(-180).max(180), z.number().min(-90).max(90), z.number().min(-180).max(180), z.number().min(-90).max(90)])
     .refine(([, south, , north]) => south < north, "A box has its south edge below its north edge.")
@@ -73,7 +91,11 @@ const estimateSchema = z.object({
   scope: scopeSchema.refine((scope) => (scope.countries?.length ?? 0) > 0 || scope.bbox || true),
   layers: z.array(z.enum(REFERENCE_LAYERS)).max(20).optional(),
 });
-const startSchema = z.object({ estimateId: z.string().min(1).max(40), keys: z.array(z.string().min(1).max(200)).min(1).max(40), locationId: z.string().min(1).optional() });
+const startSchema = z.object({
+  estimateId: z.string().min(1).max(40),
+  keys: z.array(z.string().min(1).max(200)).min(1).max(40),
+  locationId: z.string().min(1).optional(),
+});
 const optionsSchema = z.record(z.string().max(60), z.string().max(2000)).default({});
 const importFromStorageSchema = z.object({
   format: z.enum(REFERENCE_IMPORT_FORMATS),
@@ -96,7 +118,13 @@ export async function registerLayers(app: FastifyInstance, ctx: AppContext): Pro
     queue: "import",
     async run({ payload, signal, progress }) {
       const result = await service.importFile(payload, signal, (current, total, message) => progress({ current, total, message }));
-      return { packId: result.pack.id, imported: result.imported, skipped: result.skipped, duplicates: result.duplicates, problems: result.problems };
+      return {
+        packId: result.pack.id,
+        imported: result.imported,
+        skipped: result.skipped,
+        duplicates: result.duplicates,
+        problems: result.problems,
+      };
     },
   });
 
@@ -129,7 +157,10 @@ export async function registerLayers(app: FastifyInstance, ctx: AppContext): Pro
   });
 
   const startImport = (input: ImportInput) => {
-    const job = ctx.jobs.enqueue(IMPORT_JOB, input as unknown as Record<string, unknown>, { title: `Importing ${input.title}`, maxAttempts: 1 });
+    const job = ctx.jobs.enqueue(IMPORT_JOB, input as unknown as Record<string, unknown>, {
+      title: `Importing ${input.title}`,
+      maxAttempts: 1,
+    });
     return { jobId: job.id };
   };
 
@@ -177,7 +208,8 @@ export async function registerLayers(app: FastifyInstance, ctx: AppContext): Pro
       }
     } catch (error) {
       const code = (error as { code?: string } | null)?.code;
-      if (code === "FST_REQ_FILE_TOO_LARGE") throw new AppError("too_large", "That file is larger than 32 MB. Put it in a storage location and import it from there.");
+      if (code === "FST_REQ_FILE_TOO_LARGE")
+        throw new AppError("too_large", "That file is larger than 32 MB. Put it in a storage location and import it from there.");
       if (code === "FST_FILES_LIMIT") throw badRequest("Import one file at a time.");
       throw error;
     }
@@ -188,7 +220,13 @@ export async function registerLayers(app: FastifyInstance, ctx: AppContext): Pro
     } catch {
       throw badRequest("The import's details could not be read.");
     }
-    const input = importFromStorageSchema.parse({ ...saved, format: fields.format, title: fields.title, options, replaces: fields.replaces || undefined });
+    const input = importFromStorageSchema.parse({
+      ...saved,
+      format: fields.format,
+      title: fields.title,
+      options,
+      replaces: fields.replaces || undefined,
+    });
     return startImport(input);
   });
 
@@ -225,7 +263,14 @@ export async function registerLayers(app: FastifyInstance, ctx: AppContext): Pro
   });
 
   app.get("/api/reference/figures", async (request) => {
-    const { country } = z.object({ country: z.string().regex(/^[A-Za-z]{2}$/).optional() }).parse(request.query);
+    const { country } = z
+      .object({
+        country: z
+          .string()
+          .regex(/^[A-Za-z]{2}$/)
+          .optional(),
+      })
+      .parse(request.query);
     return { figures: service.store.figures(country?.toUpperCase()) };
   });
 
@@ -236,7 +281,11 @@ export async function registerLayers(app: FastifyInstance, ctx: AppContext): Pro
 
   app.get("/api/reference/population/sum", async (request) => {
     const query = z
-      .object({ lat: z.coerce.number().min(-90).max(90), lon: z.coerce.number().min(-180).max(180), radiusKm: z.coerce.number().gt(0).max(300) })
+      .object({
+        lat: z.coerce.number().min(-90).max(90),
+        lon: z.coerce.number().min(-180).max(180),
+        radiusKm: z.coerce.number().gt(0).max(300),
+      })
       .parse(request.query);
     return service.population.sum(query.lat, query.lon, query.radiusKm);
   });

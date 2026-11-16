@@ -63,7 +63,12 @@ export function overpassCountQuery(parts: Array<{ layer: OsmLayer; country: stri
   parts.forEach((part, index) => {
     const area = areaOf(part.country, part.bbox);
     if (area.prelude) lines.push(area.prelude);
-    lines.push(`(${overpassFilters(part.layer).map((filter) => `nwr${filter}${area.filter};`).join(" ")})->.c${index};`, `.c${index} out count;`);
+    lines.push(
+      `(${overpassFilters(part.layer)
+        .map((filter) => `nwr${filter}${area.filter};`)
+        .join(" ")})->.c${index};`,
+      `.c${index} out count;`,
+    );
   });
   return lines.join("\n");
 }
@@ -83,7 +88,9 @@ interface Part {
 }
 
 function partsOf(request: ReferenceEstimateRequest): Part[] {
-  const layers = (request.layers?.length ? request.layers : OSM_LAYERS).filter((layer): layer is OsmLayer => (OSM_LAYERS as string[]).includes(layer));
+  const layers = (request.layers?.length ? request.layers : OSM_LAYERS).filter((layer): layer is OsmLayer =>
+    (OSM_LAYERS as string[]).includes(layer),
+  );
   const countries = request.scope.countries ?? [];
   if (countries.length > 10) throw new AppError("bad_request", "Choose at most ten countries at a time.");
   const parts: Part[] = [];
@@ -97,7 +104,10 @@ function partsOf(request: ReferenceEstimateRequest): Part[] {
     } else if (request.scope.bbox) {
       const box = request.scope.bbox;
       if ((box[2] - box[0]) * (box[3] - box[1]) > 400) {
-        throw new AppError("bad_request", "That box is too large to ask a public server about. Draw a smaller one (up to about 20 by 20 degrees), or choose a country.");
+        throw new AppError(
+          "bad_request",
+          "That box is too large to ask a public server about. Draw a smaller one (up to about 20 by 20 degrees), or choose a country.",
+        );
       }
       parts.push({ layer, country: null, bbox: box, key: `osm:${layer}:${box.map((value) => value.toFixed(3)).join(",")}` });
     }
@@ -142,7 +152,8 @@ export function createOverpassAdapter({ ctx, client }: AdapterDeps): ReferenceAd
       const counts = ((body as { elements?: unknown[] }).elements ?? []).filter(
         (element): element is { type: "count"; tags: Record<string, string> } => (element as { type?: unknown }).type === "count",
       );
-      if (counts.length !== parts.length) throw new AppError("upstream", `${source.host} did not count every layer. Try again in a little while.`);
+      if (counts.length !== parts.length)
+        throw new AppError("upstream", `${source.host} did not count every layer. Try again in a little while.`);
       const items: ReferenceEstimateItem[] = parts.map((part, index) => {
         const tags = counts[index]!.tags;
         const nodes = Number(tags.nodes) || 0;
@@ -203,7 +214,9 @@ export function createOverpassAdapter({ ctx, client }: AdapterDeps): ReferenceAd
         throw new PermanentJobError("The answer from the Overpass server is not JSON. Remove the download and try again.");
       }
       if (typeof body.remark === "string" && /timed out|out of memory|runtime error/i.test(body.remark)) {
-        throw new PermanentJobError(`The Overpass server gave up on the question (${body.remark.slice(0, 120)}). Try a smaller area, or a Geofabrik extract.`);
+        throw new PermanentJobError(
+          `The Overpass server gave up on the question (${body.remark.slice(0, 120)}). Try a smaller area, or a Geofabrik extract.`,
+        );
       }
       if (!Array.isArray(body.elements)) throw new PermanentJobError("The answer from the Overpass server holds no map data.");
       const stamp = typeof body.osm3s?.timestamp_osm_base === "string" ? body.osm3s.timestamp_osm_base.slice(0, 10) : null;
@@ -246,7 +259,11 @@ export function createOverpassAdapter({ ctx, client }: AdapterDeps): ReferenceAd
           sink.skip(`${element.type}/${element.id} has no usable position.`);
           continue;
         }
-        await addOsm(sink, { type: element.type, id: element.id, tags, lat, lon, points }, { layers, country, publishedAt: stamp ? `Map data as of ${stamp}` : null });
+        await addOsm(
+          sink,
+          { type: element.type, id: element.id, tags, lat, lon, points },
+          { layers, country, publishedAt: stamp ? `Map data as of ${stamp}` : null },
+        );
       }
       return { version: stamp, publishedAt: stamp, countries: meta.countries, bbox: meta.bbox };
     },
@@ -259,7 +276,11 @@ async function ask(client: HttpClient, source: RouteSource, query: string, signa
     const { response } = await client.fetch(source.endpoint, {
       method: "POST",
       body: `data=${encodeURIComponent(query)}`,
-      headers: { "content-type": "application/x-www-form-urlencoded; charset=UTF-8", accept: "application/json", "user-agent": REFERENCE_USER_AGENT },
+      headers: {
+        "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
+        accept: "application/json",
+        "user-agent": REFERENCE_USER_AGENT,
+      },
       allowedHosts: [source.allowHost],
       everyHop: true,
       signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(29_000)]) : AbortSignal.timeout(29_000),
@@ -273,6 +294,9 @@ async function ask(client: HttpClient, source: RouteSource, query: string, signa
     return JSON.parse(text);
   } catch (error) {
     if (error instanceof AppError) throw error;
-    throw new AppError("upstream", `Outpost could not get an answer from ${source.host}. Estimating needs an internet connection; what is installed works without one.`);
+    throw new AppError(
+      "upstream",
+      `Outpost could not get an answer from ${source.host}. Estimating needs an internet connection; what is installed works without one.`,
+    );
   }
 }

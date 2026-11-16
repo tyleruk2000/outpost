@@ -57,7 +57,11 @@ export interface PackMeta extends ReferenceMeta {
   problems: string[];
   extra?: Record<string, unknown>;
   sidecar?: string;
+  /** The countries and box asked for, as a key: a later pack of the same source and key replaces this one. */
+  scope?: string;
 }
+
+const scopeOf = (meta: ReferenceMeta) => JSON.stringify({ countries: [...meta.countries].sort(), bbox: meta.bbox });
 
 const packMetaOf = (row: CollectionRow): PackMeta | null => {
   const reference = (row.meta as CollectionMeta & { reference?: PackMeta }).reference;
@@ -86,7 +90,11 @@ export interface LayersService {
   packs(): ReferencePackDto[];
   pack(id: string): ReferencePackDto;
   remove(id: string, deleteFiles: boolean): Promise<void>;
-  importFile(input: ImportInput, signal: AbortSignal, progress: (current: number, total: number | null, message: string) => void): Promise<ReferenceImportResult>;
+  importFile(
+    input: ImportInput,
+    signal: AbortSignal,
+    progress: (current: number, total: number | null, message: string) => void,
+  ): Promise<ReferenceImportResult>;
   layers(): ReferenceLayersResponse;
   installer: Installer;
   packTitles(): Map<string, { title: string }>;
@@ -181,11 +189,7 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
     return installedPacks()
       .filter(
         ({ meta: other }) =>
-          other.origin === "download" &&
-          other.provider === meta.provider &&
-          other.key === meta.key &&
-          JSON.stringify(other.countries) === JSON.stringify(meta.countries) &&
-          JSON.stringify(other.bbox) === JSON.stringify(meta.bbox),
+          other.origin === "download" && other.provider === meta.provider && other.key === meta.key && other.scope === scopeOf(meta),
       )
       .map(({ row }) => row.id);
   }
@@ -206,14 +210,23 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
     progress: (current: number, total: number | null, message: string) => void;
   }): Promise<{ collection: CollectionRow; meta: PackMeta; duplicates: number; skipped: number; problems: string[] }> {
     const retrievedAt = Date.now();
-    const providerId = input.adapter === "import" ? (input.meta.format === "osm-pbf" ? "osm-extract" : "import") : input.adapter.provider.id;
+    const providerId =
+      input.adapter === "import" ? (input.meta.format === "osm-pbf" ? "osm-extract" : "import") : input.adapter.provider.id;
     store.removeRowsNow(input.owner);
     const sink = store.sink(input.owner, providerId, retrievedAt);
     const meta: ReferenceMeta = { ...input.meta };
     if (providerId === "worldpop") {
       meta.options = { ...meta.options, sidecar: population.sidecarKey(input.locationId, input.relPath) };
     }
-    const context = { filePath: input.filePath, meta, sink, signal: input.signal, progress: input.progress, retrievedAt, sourceDate: input.sourceDate };
+    const context = {
+      filePath: input.filePath,
+      meta,
+      sink,
+      signal: input.signal,
+      progress: input.progress,
+      retrievedAt,
+      sourceDate: input.sourceDate,
+    };
     let result: ReadResult;
     try {
       if (input.adapter === "import") {
@@ -239,6 +252,7 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
     const provider = PROVIDERS.find((entry) => entry.id === providerId) ?? importProvider;
     const packMeta: PackMeta = {
       ...meta,
+      scope: scopeOf(meta),
       countries: result.countries ?? meta.countries,
       bbox: result.bbox ?? meta.bbox,
       version: result.version,
@@ -254,7 +268,10 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
     const collection = await collections.create({
       kind: "dataset",
       title: input.title,
-      description: providerId === "worldpop" ? "Population grid for the map" : `${sink.count.toLocaleString("en-GB")} records for the map's reference layers`,
+      description:
+        providerId === "worldpop"
+          ? "Population grid for the map"
+          : `${sink.count.toLocaleString("en-GB")} records for the map's reference layers`,
       category: "Maps",
       publisher: firstPublisher,
       license: input.adapter === "import" ? (meta.options?.license ?? "As stated in the file") : provider.license,
@@ -273,7 +290,9 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
       if (!row) continue;
       const oldMeta = packMetaOf(row);
       // A downloaded file is Outpost's to tidy; a file the person brought is theirs.
-      await collections.remove(old, { deleteFiles: oldMeta?.origin === "download" && storage.isAvailable(row.locationId) && row.relPath !== input.relPath });
+      await collections.remove(old, {
+        deleteFiles: oldMeta?.origin === "download" && storage.isAvailable(row.locationId) && row.relPath !== input.relPath,
+      });
     }
     changed();
     return { collection, meta: packMeta, duplicates, skipped: sink.skipped, problems: sink.problems };
@@ -283,7 +302,10 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
     const meta = (download.meta as { reference?: ReferenceMeta }).reference;
     const adapter = meta ? adapters.get(meta.provider) : undefined;
     if (!meta || !adapter) throw new PermanentJobError("Outpost does not know what kind of reference data this download is.");
-    const sourceDate = download.lastModified && !Number.isNaN(Date.parse(download.lastModified)) ? new Date(download.lastModified).toISOString().slice(0, 10) : null;
+    const sourceDate =
+      download.lastModified && !Number.isNaN(Date.parse(download.lastModified))
+        ? new Date(download.lastModified).toISOString().slice(0, 10)
+        : null;
     const { collection } = await ingest({
       adapter,
       owner: `pending:${download.id}`,
@@ -307,7 +329,8 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
     if (!meta) return;
     await store.removeRows(row.id);
     await store.releaseDuplicates();
-    if (meta.sidecar && !installedPacks().some((other) => other.row.id !== row.id && other.meta.sidecar === meta.sidecar)) population.forget(meta.sidecar);
+    if (meta.sidecar && !installedPacks().some((other) => other.row.id !== row.id && other.meta.sidecar === meta.sidecar))
+      population.forget(meta.sidecar);
     changed();
   });
 
@@ -337,7 +360,10 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
       const estimateId = newId();
       estimates.set(estimateId, { request, items, at: Date.now() });
       const totalBytes = items.reduce((sum, item) => sum + item.bytes, 0);
-      const databaseBytes = items.reduce((sum, item) => sum + (item.records ?? Math.round(item.bytes / 400)) * DATABASE_BYTES_PER_RECORD, 0);
+      const databaseBytes = items.reduce(
+        (sum, item) => sum + (item.records ?? Math.round(item.bytes / 400)) * DATABASE_BYTES_PER_RECORD,
+        0,
+      );
       const caution = adapter.provider.caution;
       return {
         estimateId,
@@ -428,7 +454,8 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
         geojson: [".geojson", ".json"],
         "osm-pbf": [".pbf"],
       };
-      if (!expected[input.format].includes(extension)) throw badRequest(`A ${input.format} import is a ${expected[input.format].join(" or ")} file.`);
+      if (!expected[input.format].includes(extension))
+        throw badRequest(`A ${input.format} import is a ${expected[input.format].join(" or ")} file.`);
       const layers: ReferenceLayerId[] =
         input.format === "historical-csv"
           ? ["historical"]
@@ -450,7 +477,13 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
         options: { ...input.options, ...(input.replaces ? { replaces: input.replaces } : {}) },
         origin: "import",
       };
-      const { collection, meta: packMeta, duplicates, skipped, problems } = await ingest({
+      const {
+        collection,
+        meta: packMeta,
+        duplicates,
+        skipped,
+        problems,
+      } = await ingest({
         adapter: "import",
         owner: `pending:import-${newId()}`,
         meta,
@@ -472,13 +505,25 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
       for (const { meta, row } of installedPacks()) {
         const provider = PROVIDERS.find((entry) => entry.id === meta.provider);
         if (meta.provider === "osm" || meta.provider === "osm-extract") {
-          credits.set("osm", { provider: "osm", text: "© OpenStreetMap contributors, ODbL", url: "https://www.openstreetmap.org/copyright" });
+          credits.set("osm", {
+            provider: "osm",
+            text: "© OpenStreetMap contributors, ODbL",
+            url: "https://www.openstreetmap.org/copyright",
+          });
         } else if (meta.provider === "worldpop") {
           credits.set("worldpop", { provider: "worldpop", text: "Population: WorldPop, CC BY 4.0", url: "https://www.worldpop.org" });
         } else if (meta.provider === "import") {
-          credits.set(`import:${row.id}`, { provider: "import", text: `${row.publisher ?? "Imported"}${row.license ? `, ${row.license}` : ""}`, url: meta.sourceUrl });
+          credits.set(`import:${row.id}`, {
+            provider: "import",
+            text: `${row.publisher ?? "Imported"}${row.license ? `, ${row.license}` : ""}`,
+            url: meta.sourceUrl,
+          });
         } else if (provider) {
-          credits.set(provider.id, { provider: provider.id, text: `${provider.name}${provider.license.startsWith("Public domain") ? "" : `, ${provider.license}`}`, url: provider.url });
+          credits.set(provider.id, {
+            provider: provider.id,
+            text: `${provider.name}${provider.license.startsWith("Public domain") ? "" : `, ${provider.license}`}`,
+            url: provider.url,
+          });
         }
       }
       return { layers: store.summary(providerNames), population: population.sets(), credits: [...credits.values()] };

@@ -48,7 +48,10 @@ export function createWorldPopAdapter({ client }: AdapterDeps, population: Popul
           extra: { iso3: country.iso3, code: country.code, name: country.name },
         });
       }
-      return { items, notes: ["Modelled estimates of where people lived in 2020, not a census count. WorldPop publishes no checksum for these files."] };
+      return {
+        items,
+        notes: ["Modelled estimates of where people lived in 2020, not a census count. WorldPop publishes no checksum for these files."],
+      };
     },
     download(_request, item) {
       const iso3 = item.extra?.iso3;
@@ -70,11 +73,25 @@ export function createWorldPopAdapter({ client }: AdapterDeps, population: Popul
     async read({ filePath, meta, signal, progress }) {
       const iso3 = meta.options?.iso3;
       if (!iso3) throw new PermanentJobError("This download does not say which country's grid it is.");
-      const info: PopulationMeta = { iso3, country: meta.options?.country ?? iso3, year: WORLDPOP_YEAR, product: WORLDPOP_PRODUCT, citation: WORLDPOP_CITATION };
+      const info: PopulationMeta = {
+        iso3,
+        country: meta.options?.country ?? iso3,
+        year: WORLDPOP_YEAR,
+        product: WORLDPOP_PRODUCT,
+        citation: WORLDPOP_CITATION,
+      };
       const key = meta.options?.sidecar;
       if (!key) throw new PermanentJobError("This download does not say where its grid goes.");
-      const { bbox, total } = await population.install(filePath, key, info, signal, (done, all) => progress(done, all, "Reading the population grid"));
-      return { version: String(WORLDPOP_YEAR), publishedAt: "2020 estimate, released 2018–2020", countries: meta.countries, bbox, extra: { population: info, totalPeople: Math.round(total) } };
+      const { bbox, total } = await population.install(filePath, key, info, signal, (done, all) =>
+        progress(done, all, "Reading the population grid"),
+      );
+      return {
+        version: String(WORLDPOP_YEAR),
+        publishedAt: "2020 estimate, released 2018–2020",
+        countries: meta.countries,
+        bbox,
+        extra: { population: info, totalPeople: Math.round(total) },
+      };
     },
   };
 }

@@ -122,14 +122,24 @@ export const REFERENCE_LAYER_INFO: Record<ReferenceLayerId, ReferenceLayerInfo> 
     about: "Zones round nuclear sites that authorities publish for emergency planning, from files you import.",
     areas: true,
   },
-  boundaries: { id: "boundaries", label: "Country boundaries", about: "Countries as Natural Earth draws them, at 1:50 million.", areas: true },
+  boundaries: {
+    id: "boundaries",
+    label: "Country boundaries",
+    about: "Countries as Natural Earth draws them, at 1:50 million.",
+    areas: true,
+  },
   regions: {
     id: "regions",
     label: "Regions",
     about: "First-level divisions of countries (states, provinces, nations, regions) from Natural Earth.",
     areas: true,
   },
-  towns: { id: "towns", label: "Populated places", about: "Cities and towns from Natural Earth, with its population estimates.", areas: false },
+  towns: {
+    id: "towns",
+    label: "Populated places",
+    about: "Cities and towns from Natural Earth, with its population estimates.",
+    areas: false,
+  },
   historical: {
     id: "historical",
     label: "Historical records",

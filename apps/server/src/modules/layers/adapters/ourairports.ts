@@ -6,8 +6,8 @@
  */
 import type { Bbox } from "@outpost/shared";
 import { PermanentJobError } from "../../../core/jobs.ts";
-import { checkDegrees } from "../crs.ts";
 import { boxOfCountries } from "../countries.ts";
+import { checkDegrees } from "../crs.ts";
 import { PROVIDERS } from "../providers.ts";
 import type { AdapterDeps, ReferenceAdapter } from "../types.ts";
 import { csvRecords } from "./csv.ts";
@@ -38,13 +38,18 @@ export function createOurAirportsAdapter({ client }: AdapterDeps): ReferenceAdap
             layers: ["airports"],
             bytes: head.bytes ?? KNOWN_BYTES,
             exact: head.bytes !== null,
-            basis: head.bytes !== null ? "The size the publisher's server gives for today's file." : "The size the file had on 16 November 2026.",
+            basis:
+              head.bytes !== null
+                ? "The size the publisher's server gives for today's file."
+                : "The size the file had on 16 November 2026.",
             records: null,
             host: new URL(OURAIRPORTS_URL).host,
             replaces: null,
           },
         ],
-        notes: ["The file lists every airport in the world; only those in the countries or box you chose are kept. The file is kept too, so it can be read again."],
+        notes: [
+          "The file lists every airport in the world; only those in the countries or box you chose are kept. The file is kept too, so it can be read again.",
+        ],
       };
     },
     download() {
@@ -64,7 +69,8 @@ export function createOurAirportsAdapter({ client }: AdapterDeps): ReferenceAdap
       for await (const { row, line } of csvRecords(filePath, signal)) {
         if (!checkedHeader) {
           const missing = REQUIRED.filter((column) => !(column in row));
-          if (missing.length > 0) throw new PermanentJobError(`This is not OurAirports' airports.csv: it has no ${missing.join(", ")} column.`);
+          if (missing.length > 0)
+            throw new PermanentJobError(`This is not OurAirports' airports.csv: it has no ${missing.join(", ")} column.`);
           checkedHeader = true;
         }
         const country = (row.iso_country ?? "").toUpperCase();
@@ -89,7 +95,21 @@ export function createOurAirportsAdapter({ client }: AdapterDeps): ReferenceAdap
         }
         found.add(country);
         const props: Record<string, string> = {};
-        for (const key of ["ident", "type", "icao_code", "iata_code", "gps_code", "local_code", "municipality", "iso_region", "elevation_ft", "scheduled_service", "home_link", "wikipedia_link", "keywords"]) {
+        for (const key of [
+          "ident",
+          "type",
+          "icao_code",
+          "iata_code",
+          "gps_code",
+          "local_code",
+          "municipality",
+          "iso_region",
+          "elevation_ft",
+          "scheduled_service",
+          "home_link",
+          "wikipedia_link",
+          "keywords",
+        ]) {
           const value = cleanText(row[key], 300);
           if (value) props[key] = value;
         }
@@ -98,7 +118,10 @@ export function createOurAirportsAdapter({ client }: AdapterDeps): ReferenceAdap
           layer: "airports",
           kind: type,
           name: cleanText(row.name) || ident,
-          altNames: [row.iata_code, row.icao_code, row.gps_code].map((code) => cleanText(code, 10)).filter(Boolean).join(","),
+          altNames: [row.iata_code, row.icao_code, row.gps_code]
+            .map((code) => cleanText(code, 10))
+            .filter(Boolean)
+            .join(","),
           country: country || null,
           lat,
           lon,

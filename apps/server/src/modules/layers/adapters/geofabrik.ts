@@ -84,7 +84,8 @@ export function createGeofabrikAdapter({ client }: AdapterDeps): ReferenceAdapte
           layers,
           bytes: head.bytes ?? 0,
           exact: head.bytes !== null,
-          basis: "The size Geofabrik's server gives for today's file. The whole of OpenStreetMap for the country is downloaded and kept; only the chosen layers are read from it.",
+          basis:
+            "The size Geofabrik's server gives for today's file. The whole of OpenStreetMap for the country is downloaded and kept; only the chosen layers are read from it.",
           records: null,
           host: new URL(entry.pbf).host,
           replaces: null,
@@ -93,7 +94,8 @@ export function createGeofabrikAdapter({ client }: AdapterDeps): ReferenceAdapte
         // The dated address the "latest" one leads to, so that resuming fetches the same file, and its MD5.
         (items.at(-1) as EstimatedItem).extra = { url: head.finalUrl, ...(md5 ? { md5: md5.toLowerCase() } : {}) };
       }
-      if (items.length > 0) notes.push("Geofabrik asks that its files be downloaded responsibly: each is fetched once, on your press, and its MD5 checked.");
+      if (items.length > 0)
+        notes.push("Geofabrik asks that its files be downloaded responsibly: each is fetched once, on your press, and its MD5 checked.");
       return { items, notes };
     },
     download(request, item) {
@@ -106,7 +108,13 @@ export function createGeofabrikAdapter({ client }: AdapterDeps): ReferenceAdapte
         relPath: `collections/reference/osm-extract/${id.replace(/[^a-z0-9-]/gi, "-")}-${new Date().toISOString().slice(0, 10)}.osm.pbf`,
         sizeBytes: item.bytes || undefined,
         allowedHosts: [new URL(url).hostname],
-        meta: { sourceUrl: url, ...(md5 ? { md5 } : {}), countries: [code], bbox: countryOf(code)?.bbox ?? null, layers: request.layers?.length ? request.layers : OSM_LAYERS },
+        meta: {
+          sourceUrl: url,
+          ...(md5 ? { md5 } : {}),
+          countries: [code],
+          bbox: countryOf(code)?.bbox ?? null,
+          layers: request.layers?.length ? request.layers : OSM_LAYERS,
+        },
       };
     },
     async read({ filePath, meta, sink, signal, progress }) {
@@ -114,7 +122,9 @@ export function createGeofabrikAdapter({ client }: AdapterDeps): ReferenceAdapte
         progress(0, null, "Checking the file against Geofabrik's MD5");
         const actual = await md5File(filePath, signal);
         if (actual !== meta.md5.toLowerCase()) {
-          throw new PermanentJobError("The file does not match the MD5 Geofabrik published for it: it was changed or damaged on the way. Remove the download and fetch it again.");
+          throw new PermanentJobError(
+            "The file does not match the MD5 Geofabrik published for it: it was changed or damaged on the way. Remove the download and fetch it again.",
+          );
         }
       }
       const layers = new Set(meta.layers.filter((layer): layer is OsmLayer => (OSM_LAYERS as string[]).includes(layer)));

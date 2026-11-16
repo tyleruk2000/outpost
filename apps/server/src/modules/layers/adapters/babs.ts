@@ -33,7 +33,10 @@ export function createBabsAdapter({ client }: AdapterDeps): ReferenceAdapter {
             layers: ["shelters"],
             bytes: head.bytes ?? KNOWN_BYTES,
             exact: head.bytes !== null,
-            basis: head.bytes !== null ? "The size the publisher's server gives for today's file." : "The size the file had on 16 November 2026.",
+            basis:
+              head.bytes !== null
+                ? "The size the publisher's server gives for today's file."
+                : "The size the file had on 16 November 2026.",
             records: null,
             host: new URL(BABS_URL).host,
             replaces: null,
@@ -97,7 +100,13 @@ export function createBabsAdapter({ client }: AdapterDeps): ReferenceAdapter {
         },
       });
       if (sink.count === 0) throw new PermanentJobError("The file held no meeting points Outpost could use.");
-      return { version: sourceDate, publishedAt: sourceDate, countries: ["CH"], bbox: countryOf("CH")?.bbox ?? null, extra: { crs: crs.name } };
+      return {
+        version: sourceDate,
+        publishedAt: sourceDate,
+        countries: ["CH"],
+        bbox: countryOf("CH")?.bbox ?? null,
+        extra: { crs: crs.name },
+      };
     },
   };
 }
