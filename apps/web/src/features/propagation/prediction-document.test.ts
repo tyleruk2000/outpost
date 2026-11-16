@@ -10,6 +10,7 @@ import type { Block } from "./plans/document";
 import {
   bestHourOf,
   NO_FIGURE,
+  NOT_MODELLED,
   predictionDocument,
   predictionMarkdown,
   predictionPdf,
@@ -178,6 +179,43 @@ describe("what the prediction says", () => {
     expect(bestHourOf(result)).toBeNull();
     expect(wordsOf(blocks)).toContain("At no hour of the day does the engine find a way for 14.2 MHz to reach the receiver.");
     for (const cells of tableAfter(blocks, "14.2 MHz hour by hour").rows) expect(cells.slice(1, 8)).toEqual(Array(7).fill(NO_FIGURE));
+  });
+
+  it("prints n/m, and why, for a band the antenna is not modelled on, and never a dash that reads as no path", () => {
+    // A 10 m end-fed wire, horizontal: a half-wave on 20 m, and not modelled on 40 m (index 2 of the bands).
+    const wire = {
+      kind: "end-fed-horizontal",
+      heightM: 6,
+      lengthM: 10,
+      ground: "average",
+      broadsideDeg: null,
+      gainDb: 0,
+      feedlineLossDb: 0,
+    } as const;
+    const result = prediction();
+    result.request = { ...result.request, txAntenna: wire };
+    const forty = HF_BANDS.findIndex((band) => band.label === "40 m");
+    for (const hour of result.hours) hour.bands[forty] = { ...noPath(HF_BANDS[forty]!.mhz), notModelled: true };
+    const blocks = predictionDocument(result);
+    const bands = tableAfter(blocks, "Bands by hour");
+    expect(bands.rows[forty]!.slice(1)).toEqual(Array(24).fill(NOT_MODELLED));
+    const words = wordsOf(blocks);
+    expect(words).toContain("n/m is not modelled (40 m): the engine has no model of the antenna on that band, so there is no figure.");
+    expect(words).toContain("The transmitting antenna:");
+    // The band is not among the best bands, and 20 m is still predicted.
+    expect(words).not.toMatch(/Best bands[^.]*40 m/);
+    expect(bestHourOf(result)).not.toBeNull();
+
+    // Asked about a frequency the wire is not modelled on: said outright, and not as a closed path.
+    const asked = prediction();
+    asked.request = { ...asked.request, txAntenna: wire, frequencyMhz: 7.1 };
+    for (const hour of asked.hours) hour.asked = { ...noPath(7.1), notModelled: true };
+    const said = wordsOf(predictionDocument(asked));
+    expect(said).toContain(
+      "7.10 MHz is not modelled with this antenna, so no figure is given for it: this is not a prediction that the path is closed.",
+    );
+    expect(said).not.toContain("At no hour of the day does the engine find a way");
+    expect(said).toContain("that is not the same as no path");
   });
 
   it("prints what an answer carries that this file has never heard of", () => {

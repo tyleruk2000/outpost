@@ -41,7 +41,7 @@ import { HourGrid } from "../charts";
 import { useEngines, usePlaces, useProfiles } from "../data";
 import { BasisNotice } from "../results";
 import { inputOf, useKeptMatrix, useLinkSearch, usePlan, useRemovePlan, useSavePlan, useWorkOut } from "./data";
-import { choiceWords, pairNotModelled, planDocument, planFigure, planMarkdown, planPdf, saveFile, unwritable } from "./document";
+import { choiceWords, pairNotModelled, planFigure, planMarkdown, saveFile } from "./document";
 import { PlanPdfStatus, usePlanPdf } from "./plan-export";
 import { StationDialog } from "./station-dialog";
 

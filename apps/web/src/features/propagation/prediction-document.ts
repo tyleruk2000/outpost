@@ -26,6 +26,7 @@ import {
   dbwToDbm,
   HF_BANDS,
   NOISE_ENVIRONMENTS,
+  notModelledOn,
   type PredictionCell,
   type PredictionHour,
   type PredictionResult,
@@ -45,6 +46,12 @@ const dateOf = (iso: string) => new Date(`${iso}T00:00:00Z`);
 
 /** What is printed where there is no figure. */
 export const NO_FIGURE = "-";
+/** What is printed where the engine has no model of an antenna on a band: not a poor prediction, no prediction. */
+export const NOT_MODELLED = "n/m";
+
+/** A cell the answer marks as not modelled (an end-fed wire away from the band it is a half-wave on). */
+const notModelled = (cell: PredictionCell | null | undefined): boolean =>
+  Boolean(cell) && typeof cell === "object" && cell!.notModelled === true;
 
 const isNumber = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value);
 const mhz = (value: number) => `${value.toFixed(value >= 10 ? 1 : 2)} MHz`;
@@ -227,7 +234,12 @@ export function predictionDocument(result: PredictionResult): Block[] {
   // ── The best of it, as the screen states it ──
   const best = bestHourOf(result);
   const findings: string[] = [];
-  if (!best) {
+  if (notModelled(result.hours[0]?.asked)) {
+    const why = notModelledOn(result.request.txAntenna, result.request.rxAntenna, result.request.frequencyMhz);
+    findings.push(
+      `${f} is not modelled with this antenna, so no figure is given for it: this is not a prediction that the path is closed. ${why ?? ""}`.trim(),
+    );
+  } else if (!best) {
     findings.push(`At no hour of the day does the engine find a way for ${f} to reach the receiver.`);
   } else if (noMode) {
     findings.push(
@@ -315,7 +327,7 @@ export function predictionDocument(result: PredictionResult): Block[] {
       noMode
         ? ""
         : `Rel is the share of the month's days on which ${mode.label} reaches what it is taken to need, in per cent${withReply ? "; Reply is the same for the way back" : ""}. `
-    }SNR is the median signal-to-noise ratio in 1 Hz, with the ratio on the worst and on the best tenth of days. Signal is the median power at the receiver; the S-meter reading follows the convention that S9 is -73 dBm, which real meters seldom do. MUF (open on half the days) and FOT (on nine days in ten) are in MHz. Path is the hops and the layer that returns the signal; angle is how far above the horizon it leaves. 24:00 is midnight at the end of the day. A dash is an hour for which the engine gave no figure: it found no path.`,
+    }SNR is the median signal-to-noise ratio in 1 Hz, with the ratio on the worst and on the best tenth of days. Signal is the median power at the receiver; the S-meter reading follows the convention that S9 is -73 dBm, which real meters seldom do. MUF (open on half the days) and FOT (on nine days in ten) are in MHz. Path is the hops and the layer that returns the signal; angle is how far above the horizon it leaves. 24:00 is midnight at the end of the day. ${notModelled(result.hours[0]?.asked) ? "There are no figures here because the antenna is not modelled on this frequency (see above); that is not the same as no path." : "A dash is an hour for which the engine gave no figure: it found no path."}`,
   });
 
   // ── Every band, hour by hour ──
@@ -329,10 +341,12 @@ export function predictionDocument(result: PredictionResult): Block[] {
       item.label,
       ...result.hours.map((hour) => {
         const cell = hour.bands?.[index];
+        if (notModelled(cell)) return NOT_MODELLED;
         return noMode ? whole(figure(cell, "snrDbHz")) : share(reliability(result, cell));
       }),
     ]),
   });
+  const without = HF_BANDS.filter((_item, index) => result.hours.some((hour) => notModelled(hour.bands?.[index])));
   blocks.push({
     kind: "para",
     text: `${
@@ -341,6 +355,13 @@ export function predictionDocument(result: PredictionResult): Block[] {
         : `Each figure is the reliability of ${mode.label} in per cent of days,`
     } on one frequency near the middle of the band (${HF_BANDS.map((item) => `${item.label} ${item.mhz}`).join(", ")} MHz), at the hour UTC above it. A dash is an hour for which the engine gave no figure for that band. Your licence decides which bands you may use.`,
   });
+  if (without.length > 0) {
+    const why = notModelledOn(result.request.txAntenna, result.request.rxAntenna, without[0]!.mhz);
+    blocks.push({
+      kind: "para",
+      text: `${NOT_MODELLED} is not modelled (${without.map((item) => item.label).join(", ")}): the engine has no model of the antenna on that band, so there is no figure. It is not a poor prediction, and the band is left out of the best bands above. ${why ?? ""}`.trim(),
+    });
+  }
 
   const more = otherWords(result);
   if (more.length > 0) blocks.push({ kind: "heading", text: "More that came with the answer" }, { kind: "list", items: more });
