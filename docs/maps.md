@@ -2416,11 +2416,14 @@ its limits and what browsers do with the kept data are in
   (see [Line of sight](#line-of-sight)). It does not predict signal strength, and it
   does not draw the area a station covers.
 - **Repeater coverage, and repeaters you have not put in.** The map draws the repeaters
-  you hold as points (see [Repeaters on the map](#repeaters-on-the-map)); it downloads
-  no list and draws no coverage.
-- **Aerial photographs, imagery finer than 10 m, and cloud-free mosaics.** Satellite
-  imagery is the world at 2 km or 500 m and chosen areas at 10 m, each a picture of
-  one day (see [Satellite imagery](#satellite-imagery)).
+  you hold as points (see [Repeaters on the map](#repeaters-on-the-map)); the map
+  fetches no list and draws no coverage.
+- **Aerial photographs outside New Zealand and the lower 48 United States, satellite
+  imagery finer than 10 m, and cloud-free mosaics.** Satellite imagery is the world at
+  2 km or 500 m and chosen areas at 10 m, each a picture of one day (see
+  [Satellite imagery](#satellite-imagery)); aerial photographs are offered only where
+  a publisher's terms and file format allow (see
+  [Aerial photographs](#aerial-photographs)).
 - **The time zone of a place, moonrise and moonset.** Sun times are shown on the
   device's clock or in UTC (see [Time zones](#time-zones)).
 - **Other map schemas.** The bundled styles draw the Protomaps basemap schema only.

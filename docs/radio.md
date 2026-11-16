@@ -14,10 +14,11 @@ two radio tools on its map, and a place to keep repeaters:
   Outpost. See [The handbook and the radio guides](#the-handbook-and-the-radio-guides).
 - **On the map: Maidenhead locators and a line-of-sight check.** See
   [Radio tools on the map](#radio-tools-on-the-map).
-- **Repeaters: a database of your own.** Outpost ships with no repeaters and downloads
-  none. You bring in a list as a file, or enter repeaters by hand, and they are then
-  found, measured from a place, drawn on the map and written out for a radio with no
-  connection. See [Repeaters](#repeaters).
+- **Repeaters: a database of your own.** Outpost ships with no repeaters and fetches
+  none by itself. You bring in a list as a file, enter repeaters by hand, or, for the
+  two publishers that allow a program to, press a button to fetch their list. They are
+  then found, measured from a place, drawn on the map and written out for a radio with
+  no connection. See [Repeaters](#repeaters).
 
 It also has an **HF propagation planner**, which predicts how a shortwave signal gets
 between two places through the day, with **coverage maps** over the offline map,

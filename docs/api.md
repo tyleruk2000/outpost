@@ -786,7 +786,7 @@ request to a route source on the internet; everything else here is local.
 A track added this way carries `source` on its GeoJSON (`TrackSource`): the credit,
 the licence, the OpenStreetMap element, when it was fetched and from which server.
 
-## Backup
+## Contacts
 
 Types: `packages/shared/src/contacts.ts`. See [contacts.md](contacts.md).
 
