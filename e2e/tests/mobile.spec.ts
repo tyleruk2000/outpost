@@ -82,6 +82,7 @@ test.describe("on a phone", () => {
       ["Encryption", "/encryption"],
       ["Radio", "/radio"],
       ["HF propagation", "/radio/propagation"],
+      ["HF coverage", "/radio/coverage"],
       ["Repeaters", "/radio/repeaters"],
       ["Import files", "/import"],
       ["Downloads", "/downloads"],

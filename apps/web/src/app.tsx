@@ -36,6 +36,7 @@ const SettingsPage = lazy(() => import("./features/settings/settings-page"));
 const KeptPage = lazy(() => import("./features/kept/kept-page"));
 const RadioPage = lazy(() => import("./features/radio/radio-page"));
 const PropagationPage = lazy(() => import("./features/propagation/propagation-page"));
+const CoveragePage = lazy(() => import("./features/propagation/coverage-map/coverage-page"));
 
 function NotFound() {
   return (
@@ -109,6 +110,7 @@ export function App() {
           <Route path="kept" element={<KeptPage />} />
           <Route path="radio" element={<RadioPage />} />
           <Route path="radio/propagation" element={<PropagationPage />} />
+          <Route path="radio/coverage" element={<CoveragePage />} />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>

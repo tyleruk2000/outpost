@@ -9,6 +9,7 @@ import {
   type CompareWhat,
   dbwToDbm,
   HF_BANDS,
+  type PredictionBasis,
   type PredictionHour,
   type PredictionResult,
   rankBands,
@@ -32,6 +33,24 @@ const BASIS_TITLE = {
   "recent-solar": "A monthly median, with a recent solar forecast",
   "own-measurement": "A monthly median, run at your own figure",
 } as const;
+
+/** What kind of knowledge an answer rests on and how old it is, said before any figure. */
+export function BasisNotice({ basis, className }: { basis: PredictionBasis; className?: string }) {
+  return (
+    <Notice
+      tone={basis.kind === "climatology" ? "warning" : "info"}
+      icon={basis.kind === "climatology" ? <TriangleAlert /> : <Info />}
+      title={BASIS_TITLE[basis.kind]}
+      className={className}
+    >
+      {basis.summary}
+      {basis.ssnLow !== null && basis.ssnHigh !== null
+        ? ` The table's own range for the month is ${basis.ssnLow} to ${basis.ssnHigh}.`
+        : ""}{" "}
+      It is not a reading of the ionosphere today.
+    </Notice>
+  );
+}
 
 const db = (value: number, places = 0) => `${value.toFixed(places)} dB`;
 const mhz = (value: number) => `${value.toFixed(value >= 10 ? 1 : 2)} MHz`;
@@ -213,17 +232,7 @@ export function Results({ result, hour, onHour }: { result: PredictionResult; ho
 
   return (
     <div>
-      <Notice
-        tone={result.basis.kind === "climatology" ? "warning" : "info"}
-        icon={result.basis.kind === "climatology" ? <TriangleAlert /> : <Info />}
-        title={BASIS_TITLE[result.basis.kind]}
-      >
-        {result.basis.summary}
-        {result.basis.ssnLow !== null && result.basis.ssnHigh !== null
-          ? ` The table's own range for the month is ${result.basis.ssnLow} to ${result.basis.ssnHigh}.`
-          : ""}{" "}
-        It is not a reading of the ionosphere today.
-      </Notice>
+      <BasisNotice basis={result.basis} />
 
       <Section
         title={`${result.request.tx.name} to ${result.request.rx.name}`}

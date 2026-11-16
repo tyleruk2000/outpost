@@ -11,6 +11,12 @@ const TOOLS = [
       "Predict how a shortwave signal gets between two places through the day, across the bands, with your power and antennas. Includes short, steep (NVIS) paths.",
   },
   {
+    to: "/radio/coverage",
+    name: "HF coverage",
+    about:
+      "Where one transmitter is predicted to be heard, as a layer over the offline map: the engine asked about every cell of a grid, hour by hour.",
+  },
+  {
     to: "/radio/repeaters",
     name: "Repeaters",
     about:
