@@ -9,8 +9,10 @@
  *  - small enough for a Raspberry Pi 5 with 8 GB of memory; say whether 4 GB is enough;
  *  - the name and the download size exactly as Ollama's library page for the model
  *    states them (ollama.com/library/<model>/tags) on the day in RECOMMENDED_MODELS_CHECKED;
- *  - what it is good at only as far as the publisher's page says, or as far as its size
- *    implies. Nothing here is a benchmark of ours.
+ *  - what it is good at only as far as the publisher's page says, as far as its size
+ *    implies, or as far as it was seen to do when tried. Nothing here is a benchmark.
+ *    The two llama3.2 models were each asked a few questions through Outpost on
+ *    2026-11-16 (docs/ai.md, "Tried with a real model"); the others have not been run.
  *
  * Memory: `memoryGb` is what Ollama reported holding for the model once loaded (its
  * `/api/ps`, which is what `ollama ps` shows) with its default 4,096-token context,
@@ -54,7 +56,8 @@ export const RECOMMENDED_MODELS: readonly RecommendedModel[] = [
     memoryGb: 2.3,
     memoryMeasured: true,
     fits: "8 GB",
-    suits: "Its maker says it is good at following instructions and summarising, which is what answering from your library asks of it.",
+    suits:
+      "Its maker says it is good at following instructions and summarising. In a short trial with Outpost it answered in a sentence and named its sources.",
     start: true,
     page: "https://ollama.com/library/llama3.2",
   },
@@ -64,7 +67,8 @@ export const RECOMMENDED_MODELS: readonly RecommendedModel[] = [
     memoryGb: 1.5,
     memoryMeasured: true,
     fits: "4 GB",
-    suits: "Lighter, for a computer with 4 GB of memory; a model this small is less careful about keeping to what the passages say.",
+    suits:
+      "Lighter, for a computer with 4 GB of memory. In a short trial with Outpost it copied passages out instead of answering, so expect less of it.",
     start: false,
     page: "https://ollama.com/library/llama3.2",
   },

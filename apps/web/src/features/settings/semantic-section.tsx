@@ -52,6 +52,8 @@ export function SemanticSection({
   const status = useQuery({
     queryKey: ["semantic", "status", enabled, provider, settings["search.semantic.model"], settings["search.semantic.endpoint"]],
     queryFn: () => api.get<SemanticStatus>("/api/semantic/status"),
+    // A change made under More options asks again; what is on screen stays until the new answer is in, so that More options stays open.
+    placeholderData: (previous) => previous,
     // While something is being read, or is about to be (new passages wait a few seconds), the screen keeps up with it.
     refetchInterval: (query) => {
       const data = query.state.data;
@@ -77,6 +79,8 @@ export function SemanticSection({
     onError: failed,
   });
 
+  // While a change is being read back from the server, what is held is the state before it.
+  const settling = status.isPlaceholderData;
   const data = status.data;
   const stage = data ? indexStage(data) : "empty";
   const underWay = stage === "building" || stage === "waiting";
@@ -92,7 +96,7 @@ export function SemanticSection({
   const builtIn = data?.builtIn;
   const ownServer = provider !== "built-in";
   // A set-up that names something other than what comes with Outpost, and is off or not answering.
-  const offerBuiltIn = Boolean(data && builtIn?.installed && ownServer && (!enabled || !data.ready));
+  const offerBuiltIn = Boolean(data && !settling && builtIn?.installed && ownServer && (!enabled || !data.ready));
 
   return (
     <SettingsSection
@@ -109,9 +113,9 @@ export function SemanticSection({
               The state of search by meaning could not be read. {errorMessage(status.error)}
             </State>
           ) : !enabled ? (
-            <State word="Off">
-              <Off data={data} ownServer={ownServer} />
-            </State>
+            <State word="Off">{settling ? null : <Off data={data} ownServer={ownServer} />}</State>
+          ) : settling ? (
+            <State word="Starting" />
           ) : !data.ready ? (
             <State word="On, but not working yet" />
           ) : starting ? (
@@ -140,7 +144,7 @@ export function SemanticSection({
         />
       </div>
 
-      {data && enabled && data.ready ? (
+      {data && enabled && data.ready && !settling ? (
         <Reading data={data} stage={stage} starting={starting} busy={read.isPending} disabled={disabled} onRead={() => read.mutate()} />
       ) : null}
 
@@ -181,7 +185,7 @@ export function SemanticSection({
         </Notice>
       ) : null}
 
-      {data && builtIn && enabled && !data.ready && !offerBuiltIn ? (
+      {data && builtIn && enabled && !settling && !data.ready && !offerBuiltIn ? (
         <Notice
           tone="warning"
           icon={<CircleAlert aria-hidden />}

@@ -455,7 +455,7 @@ export const SETUP_GUIDE: Guide = {
         },
         {
           kind: "text",
-          text: "What was tried: step 3 was run against a real Ollama (version 0.40.16) on an Apple Silicon Mac that day, with `llama3.2:1b` and `llama3.2:3b`. What was not tried: installing Ollama by these steps on any system, Windows, Linux, a Raspberry Pi, Docker, Ollama on another computer, llama.cpp and LM Studio. For those, only the pages above were read.",
+          text: "What was tried: step 3 was run against a real Ollama (version 0.40.16) on an Apple Silicon Mac that day, with `llama3.2:3b` and `llama3.2:1b`, and each was asked a few questions. What was not tried: installing Ollama by these steps on any system, Windows, Linux, a Raspberry Pi, Docker, Ollama on another computer, llama.cpp and LM Studio. For those, only the pages above were read.",
         },
       ],
     },

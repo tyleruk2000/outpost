@@ -50,7 +50,8 @@ test.describe("chat with a local model", () => {
     expect((await stats(page)).chats).toBe(before.chats);
     // Looking is one press. Whether an Ollama happens to be running on the machine under test is not ours to say.
     await page.getByRole("button", { name: "Look for Ollama on this computer" }).click();
-    await expect(page.getByText(/^(Ollama was not found|Found a model server)$/)).toBeVisible();
+    await expect(page.getByText(/^(Ollama was not found$|Found a model server )/)).toBeVisible();
+    await expect(page.getByRole("link", { name: "Set-up guide" })).toHaveAttribute("href", "/help/search-and-answers#answers-and-chat");
     // Finding one changes no setting: chat is still not set up until the person says to use it.
     expect((await api(page, "GET", "/api/chat/status")).usable).toBe(false);
     expect(errors).toEqual([]);

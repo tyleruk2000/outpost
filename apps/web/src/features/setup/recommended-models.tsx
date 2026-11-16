@@ -27,7 +27,8 @@ export function CommandLine({ command, className }: { command: string; className
   const [copied, setCopied] = useState(false);
   return (
     <div className={cn("flex items-start gap-1 rounded-control border border-border bg-surface py-1 pr-1 pl-3", className)}>
-      <pre className="min-w-0 flex-1 overflow-x-auto py-1.5 font-mono text-[0.8125rem] leading-5 text-ink [scrollbar-width:thin]">
+      {/* Shown whole, wrapped if it must be: it is often read off a phone and typed on another computer. */}
+      <pre className="min-w-0 flex-1 py-1.5 font-mono text-[0.8125rem] leading-5 whitespace-pre-wrap text-ink [overflow-wrap:anywhere]">
         <code>{command}</code>
       </pre>
       <Button
@@ -40,7 +41,7 @@ export function CommandLine({ command, className }: { command: string; className
         }}
       >
         {copied ? <Check aria-hidden /> : <Copy aria-hidden />}
-        {copied ? "Copied" : "Copy"}
+        <span className="max-sm:sr-only">{copied ? "Copied" : "Copy"}</span>
       </Button>
     </div>
   );
@@ -56,12 +57,15 @@ export function modelCost(model: RecommendedModel, held = false): string {
 export function RecommendedModels({
   held,
   command = true,
+  note = true,
   className,
 }: {
   /** Names of the models the model server has. Null when no server has been asked. */
   held: string[] | null;
   /** Show the command that fetches the one to start with, when the server has none of these. */
   command?: boolean;
+  /** Say where the list came from and when. The guide leaves it out: it says so itself. */
+  note?: boolean;
   className?: string;
 }) {
   const has = (model: RecommendedModel) => Boolean(held?.some((name) => sameModelName(name, model.name)));
@@ -93,19 +97,21 @@ export function RecommendedModels({
           <CommandLine command={pullCommand(STARTING_MODEL.name)} className="mt-1.5" />
         </div>
       ) : null}
-      <p className="mt-2 text-small text-ink-muted">
-        Small models for a laptop or a Raspberry Pi 5. Names and sizes are as{" "}
-        <a
-          href={MODEL_LIBRARY_URL}
-          target="_blank"
-          rel="noreferrer"
-          className="underline decoration-1 underline-offset-2 hover:decoration-2"
-        >
-          Ollama’s library
-        </a>{" "}
-        listed them on {longDate(RECOMMENDED_MODELS_CHECKED)}; memory is roughly what each takes once loaded. Outpost does not download
-        models itself.
-      </p>
+      {note ? (
+        <p className="mt-2 text-small text-ink-muted">
+          Small models for a laptop or a Raspberry Pi 5. Names and sizes are as{" "}
+          <a
+            href={MODEL_LIBRARY_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="underline decoration-1 underline-offset-2 hover:decoration-2"
+          >
+            Ollama’s library
+          </a>{" "}
+          listed them on {longDate(RECOMMENDED_MODELS_CHECKED)}; memory is roughly what each takes once loaded. Outpost does not download
+          models itself.
+        </p>
+      ) : null}
     </div>
   );
 }

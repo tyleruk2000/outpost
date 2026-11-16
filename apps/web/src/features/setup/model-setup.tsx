@@ -135,7 +135,7 @@ export function ModelSetup({
   const result = attempt.data;
 
   return (
-    <ol className={cn("grid gap-4", className)} aria-label="Setting up answers and chat">
+    <ol className={cn("grid grid-cols-[minmax(0,1fr)] gap-4", className)} aria-label="Setting up answers and chat">
       {server ? (
         <Step number={1} done title={<>Found a model server {where}.</>} />
       ) : (

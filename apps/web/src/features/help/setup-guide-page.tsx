@@ -18,7 +18,7 @@ import {
   SETUP_GUIDE,
   type SystemInfo,
 } from "@outpost/shared";
-import { ArrowUpRight, Wifi } from "lucide-react";
+import { ArrowUpRight, ChevronRight, Wifi } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { Link, useLocation } from "react-router";
 import { Page, PageHeader } from "@/components/page";
@@ -85,7 +85,7 @@ function Block({ block, system, choose }: { block: GuideBlock; system: GuideSyst
       return <CommandLine command={block.command} />;
     case "steps":
       return (
-        <ol className="grid list-decimal gap-3 pl-6 marker:font-medium marker:text-ink">
+        <ol className="grid grid-cols-[minmax(0,1fr)] list-decimal gap-3 pl-6 marker:font-medium marker:text-ink">
           {block.steps.map((step) =>
             typeof step === "string" ? (
               <li key={step} className="pl-1">
@@ -102,7 +102,7 @@ function Block({ block, system, choose }: { block: GuideBlock; system: GuideSyst
       );
     case "bySystem":
       return (
-        <div className="grid gap-4" data-system={system}>
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-4" data-system={system}>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
             <span className="text-small text-ink-muted">Steps for</span>
             <Segmented
@@ -120,10 +120,10 @@ function Block({ block, system, choose }: { block: GuideBlock; system: GuideSyst
         </div>
       );
     case "models":
-      return <RecommendedModels held={null} command={false} />;
+      return <RecommendedModels held={null} command={false} note={false} />;
     case "problems":
       return (
-        <ol className="grid list-decimal gap-5 pl-6 marker:font-medium marker:text-ink">
+        <ol className="grid grid-cols-[minmax(0,1fr)] list-decimal gap-5 pl-6 marker:font-medium marker:text-ink">
           {block.problems.map((problem) => (
             <li key={problem.says} className="pl-1">
               <p className="font-semibold">
@@ -141,16 +141,22 @@ function Block({ block, system, choose }: { block: GuideBlock; system: GuideSyst
       );
     case "sources":
       return (
-        <ul className="divide-y divide-border border-y border-border text-small">
-          {block.sources.map((source) => (
-            <li key={source.url} className="py-2">
-              <a href={source.url} target="_blank" rel="noreferrer" className={link}>
-                {source.label}
-              </a>
-              <span className="block text-ink-muted">Gave: {source.gave}.</span>
-            </li>
-          ))}
-        </ul>
+        <details className="group border-y border-border">
+          <summary className="flex min-h-11 cursor-default items-center gap-1.5 text-small font-medium text-ink-muted marker:content-none hover:text-ink [&::-webkit-details-marker]:hidden">
+            <ChevronRight aria-hidden className="size-4 transition-transform duration-150 group-open:rotate-90" />
+            The {block.sources.length} pages that were read
+          </summary>
+          <ul className="divide-y divide-border border-t border-border text-small">
+            {block.sources.map((source) => (
+              <li key={source.url} className="py-2">
+                <a href={source.url} target="_blank" rel="noreferrer" className={link}>
+                  {source.label}
+                </a>
+                <span className="block text-ink-muted">Gave: {source.gave}.</span>
+              </li>
+            ))}
+          </ul>
+        </details>
       );
   }
 }
@@ -179,7 +185,7 @@ function Section({ section, system, choose, level }: { section: GuideSection; sy
           </Badge>
         </p>
       ) : null}
-      <div className="mt-3 grid gap-4">
+      <div className="mt-3 grid grid-cols-[minmax(0,1fr)] gap-4">
         {section.blocks.map((block, index) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: the blocks of a guide are fixed text in a fixed order
           <Block key={index} block={block} system={system} choose={choose} />
@@ -193,7 +199,7 @@ function Section({ section, system, choose, level }: { section: GuideSection; sy
         ) : null}
       </div>
       {section.parts?.length ? (
-        <div className="mt-8 grid gap-8">
+        <div className="mt-8 grid grid-cols-[minmax(0,1fr)] gap-8">
           {section.parts.map((part) => (
             <Section key={part.id} section={part} system={system} choose={choose} level={3} />
           ))}
@@ -241,7 +247,7 @@ export default function SetupGuidePage() {
         </ul>
       </nav>
 
-      <div className="grid gap-10 text-body text-ink">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-10 text-body text-ink">
         {SETUP_GUIDE.sections.map((section) => (
           <Section key={section.id} section={section} system={system} choose={setChosen} level={2} />
         ))}

@@ -102,8 +102,8 @@ On a Raspberry Pi, use the terminal window from step 1.
 
 | Model | Download | Memory once loaded | Smallest computer | What to expect |
 | --- | --- | --- | --- | --- |
-| `llama3.2:3b` | 2.0 GB | about 2.3 GB (measured) | 8 GB of memory | Its maker says it is good at following instructions and summarising, which is what answering from your library asks of it. |
-| `llama3.2:1b` | 1.3 GB | about 1.5 GB (measured) | 4 GB of memory | Lighter, for a computer with 4 GB of memory; a model this small is less careful about keeping to what the passages say. |
+| `llama3.2:3b` | 2.0 GB | about 2.3 GB (measured) | 8 GB of memory | Its maker says it is good at following instructions and summarising. In a short trial with Outpost it answered in a sentence and named its sources. |
+| `llama3.2:1b` | 1.3 GB | about 1.5 GB (measured) | 4 GB of memory | Lighter, for a computer with 4 GB of memory. In a short trial with Outpost it copied passages out instead of answering, so expect less of it. |
 | `gemma3:1b` | 806 MB | about 1.1 GB (estimated) | 4 GB of memory | The smallest here, for when memory is very short; expect short, plain answers and more mistakes. |
 | `phi4-mini` | 2.5 GB | about 2.8 GB (estimated) | 8 GB of memory | About the size of llama3.2:3b; its maker describes it as stronger at reasoning, mathematics and languages other than English. |
 | `gemma3:4b` | 3.4 GB | about 3.7 GB (estimated) | 8 GB of memory | The largest here and the slowest on a small computer; its family is trained on over 140 languages. |
@@ -258,4 +258,4 @@ Every command, setting name, port and model name on this page was read from its 
 - [LM Studio: local server](https://lmstudio.ai/docs/developer/core/server): the Developer tab and the Start server switch.
 - [LM Studio: OpenAI compatibility](https://lmstudio.ai/docs/developer/openai-compat): port 1234 in its examples.
 
-What was tried: step 3 was run against a real Ollama (version 0.40.16) on an Apple Silicon Mac that day, with `llama3.2:1b` and `llama3.2:3b`. What was not tried: installing Ollama by these steps on any system, Windows, Linux, a Raspberry Pi, Docker, Ollama on another computer, llama.cpp and LM Studio. For those, only the pages above were read.
+What was tried: step 3 was run against a real Ollama (version 0.40.16) on an Apple Silicon Mac that day, with `llama3.2:3b` and `llama3.2:1b`, and each was asked a few questions. What was not tried: installing Ollama by these steps on any system, Windows, Linux, a Raspberry Pi, Docker, Ollama on another computer, llama.cpp and LM Studio. For those, only the pages above were read.

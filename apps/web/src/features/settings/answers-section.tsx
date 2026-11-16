@@ -48,6 +48,8 @@ export function AnswersSection({
   const status = useQuery({
     queryKey: ["answers", "status", enabled, endpoint, model],
     queryFn: () => api.get<AnswersStatus>("/api/answers/status"),
+    // A change made under More options asks again; what is on screen stays until the new answer is in, so that More options stays open.
+    placeholderData: (previous) => previous,
   });
   // "Ready" should mean the model server is there. While answers are on, opening this section asks it for its
   // list of models, which is the cheapest way to know; while they are off, nothing is asked.
@@ -57,21 +59,27 @@ export function AnswersSection({
     enabled,
     staleTime: 60_000,
     retry: false,
+    placeholderData: (previous) => previous,
   });
 
   const data = status.data;
   const list = models.data;
   const listed = list && !list.message ? list.models : null;
-  const refused = Boolean(enabled && data && !data.ready && data.reason && (data.place === "elsewhere" || data.server === null));
+  // While a change is being read back from the server, what is on screen is the state before it: say nothing new yet.
+  const settling = status.isPlaceholderData || (enabled && models.isPlaceholderData);
   const setUp = model !== "";
+  const on = enabled && setUp && !settling && Boolean(data?.ready);
+  const refused = Boolean(
+    enabled && !settling && data && !data.ready && data.reason && (data.place === "elsewhere" || data.server === null),
+  );
   const held = Boolean(listed?.some((entry) => sameModelName(entry.id, model)));
-  const working = enabled && setUp && Boolean(data?.ready) && held;
-  const silent = enabled && setUp && Boolean(data?.ready) && Boolean(list?.message);
-  const gone = enabled && setUp && Boolean(data?.ready) && listed !== null && !held;
-  const checking = enabled && setUp && Boolean(data?.ready) && !list && models.isFetching;
+  const working = on && held;
+  const silent = on && Boolean(list?.message);
+  const gone = on && listed !== null && !held;
+  const checking = enabled && setUp && (settling || (Boolean(data?.ready) && !list && models.isFetching));
   // The model server in Settings, as the first step would have found it, for choosing again from its list.
   const known: ModelSetupLook | undefined =
-    (gone || (enabled && !setUp)) && listed && data?.server
+    (gone || (enabled && !setUp && !settling)) && listed && data?.server
       ? { found: true, address: endpoint, models: listed, message: "", recommended: recommendModel(listed) }
       : undefined;
 

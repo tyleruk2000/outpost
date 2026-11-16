@@ -33,7 +33,7 @@ import { planHistory, titleFrom } from "./context.ts";
 import { chatModels, lookForOllama, OLLAMA_DEFAULT_ADDRESSES } from "./models.ts";
 import { replyAsNote } from "./note.ts";
 import { type ChatRunner, createRunner, historyBudget } from "./run.ts";
-import { lookForModelServer, tryModel } from "./setup.ts";
+import { lookForModelServer, placesToLook, tryModel } from "./setup.ts";
 import { type ChatStore, createChatStore, toConversation, toMessage } from "./store.ts";
 
 /** The longest message a person can send, in characters. */
@@ -188,9 +188,16 @@ export async function registerChat(app: FastifyInstance, ctx: AppContext): Promi
    */
   app.post("/api/chat/setup/try", async (request): Promise<ModelSetupTry> => {
     const input = tryBody.parse(request.body);
-    return tryModel(input, answers.timeouts(), answers.guard, runner.current() !== undefined || answers.status().busy, (saved) => {
-      settings.update(saved);
-    });
+    return tryModel(
+      input,
+      placesToLook(settings.get("answers.endpoint"), ollamaAddresses),
+      answers.timeouts(),
+      answers.guard,
+      runner.current() !== undefined || answers.status().busy,
+      (saved) => {
+        settings.update(saved);
+      },
+    );
   });
 
   app.get("/api/chat/conversations", async (request) => {

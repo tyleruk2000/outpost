@@ -19,25 +19,32 @@ import { lookForOllama } from "./models.ts";
 type Guard = (address: ModelServerAddress) => Promise<void>;
 
 /**
- * Step one. The address already in Settings is asked first, because a person who typed
- * one has said where their server is; then the places Ollama listens by default.
+ * The only places set-up looks, and so the only places it will try a model: the address
+ * already in Settings first, because a person who typed one has said where their server
+ * is, then the places Ollama listens by default. A request cannot add to them.
  */
+export function placesToLook(endpoint: string, ollamaAddresses: readonly string[]): string[] {
+  const addresses: string[] = [];
+  try {
+    addresses.push(parseModelServerAddress(endpoint).base);
+  } catch {
+    // An address that cannot be read is not asked; the usual places still are.
+  }
+  for (const candidate of ollamaAddresses) {
+    const base = parseModelServerAddress(candidate).base;
+    if (!addresses.includes(base)) addresses.push(base);
+  }
+  return addresses;
+}
+
+/** Step one: asks each of those places, in order, whether a model server is there. */
 export async function lookForModelServer(
   settings: Pick<Settings, "answers.endpoint" | "answers.model">,
   timeouts: ModelTimeouts,
   guard: Guard,
   ollamaAddresses: readonly string[],
 ): Promise<ModelSetupLook> {
-  const addresses: string[] = [];
-  try {
-    addresses.push(parseModelServerAddress(settings["answers.endpoint"]).base);
-  } catch {
-    // An address that cannot be read is not asked; the usual places still are.
-  }
-  for (const candidate of ollamaAddresses) {
-    if (!addresses.includes(parseModelServerAddress(candidate).base)) addresses.push(candidate);
-  }
-  const found = await lookForOllama(timeouts, guard, addresses);
+  const found = await lookForOllama(timeouts, guard, placesToLook(settings["answers.endpoint"], ollamaAddresses));
   return { ...found, recommended: found.found ? recommendModel(found.models, settings["answers.model"].trim()) : null };
 }
 
@@ -48,6 +55,8 @@ export async function lookForModelServer(
  */
 export async function tryModel(
   input: { address: string; model: string },
+  /** The addresses step one looks at. Any other is refused: this is not a way to ask after hosts of the caller's choosing. */
+  places: readonly string[],
   timeouts: ModelTimeouts,
   guard: Guard,
   busy: boolean,
@@ -65,6 +74,12 @@ export async function tryModel(
   let address: ModelServerAddress;
   try {
     address = parseModelServerAddress(input.address);
+    if (!places.includes(address.base)) {
+      return failed(
+        "address",
+        `Outpost has not looked for a model server at ${address.host}. Enter that address in Settings, under More options, and look again.`,
+      );
+    }
     // An address that may not be contacted is an answer in itself; nothing is sent to find out more.
     await guard(address);
   } catch (error) {

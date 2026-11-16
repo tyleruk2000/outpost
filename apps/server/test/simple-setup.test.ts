@@ -394,6 +394,7 @@ describe("answers: set up in three steps", () => {
 
   it("tries the model, and when it answers saves the address and the model and switches answers on", async () => {
     const { app, server } = await station();
+    app.ctx.services.chat.setOllamaAddresses([NOBODY, `${server.url}/v1`]);
     const tried = (await app.api("POST", "/api/chat/setup/try", { address: `${server.url}/v1`, model: "stand-in:latest" }))
       .body as ModelSetupTry;
     expect(tried).toMatchObject({ ok: true, saved: true, failure: null, reply: "ready" });
@@ -409,6 +410,7 @@ describe("answers: set up in three steps", () => {
 
   it("changes nothing when the try fails, and says exactly what went wrong", async () => {
     const { app, server } = await station();
+    app.ctx.services.chat.setOllamaAddresses([`${server.url}/v1`]);
     const before = await settings(app);
     const cannotWrite = (await app.api("POST", "/api/chat/setup/try", { address: `${server.url}/v1`, model: "embed-only:latest" }))
       .body as ModelSetupTry;
@@ -419,18 +421,34 @@ describe("answers: set up in three steps", () => {
     expect(nobody).toMatchObject({ ok: false, saved: false, failure: "unreachable" });
     expect(nobody.message).toMatch(/No model server answered at 127\.0\.0\.1:9/);
 
-    // An address on the internet is refused before anything is sent to it.
+    // An address that set-up did not look at is refused before anything is sent to it: the address comes
+    // from Settings or from where Ollama listens, never from the request alone.
     const requests = server.requests.length;
-    const elsewhere = (await app.api("POST", "/api/chat/setup/try", { address: "https://models.example.com/v1", model: "stand-in" }))
+    const other = await startModelServer();
+    cleanups.push(() => other.close());
+    const notLookedAt = (await app.api("POST", "/api/chat/setup/try", { address: `${other.url}/v1`, model: "stand-in" }))
       .body as ModelSetupTry;
-    expect(elsewhere).toMatchObject({ ok: false, saved: false, failure: "address" });
-    expect(elsewhere.message).toMatch(/is on the internet, not on this computer or your own network/);
+    expect(notLookedAt).toMatchObject({ ok: false, saved: false, failure: "address" });
+    expect(notLookedAt.message).toMatch(/Outpost has not looked for a model server at 127\.0\.0\.1:\d+\. Enter that address in Settings/);
+    expect(other.requests.length).toBe(0);
     expect(server.requests.length).toBe(requests);
 
     const notAnAddress = (await app.api("POST", "/api/chat/setup/try", { address: "ollama", model: "stand-in" })).body as ModelSetupTry;
     expect(notAnAddress).toMatchObject({ ok: false, saved: false, failure: "address" });
     expect((await app.api("POST", "/api/chat/setup/try", { address: `${server.url}/v1` })).status).toBe(400);
     expect(await settings(app)).toEqual(before);
+  });
+
+  it("refuses to try a model at an address on the internet, even when that address is the one in Settings", async () => {
+    const { app, server } = await station();
+    await app.api("PATCH", "/api/settings", { "answers.endpoint": "https://models.example.com/v1" });
+    const requests = server.requests.length;
+    const elsewhere = (await app.api("POST", "/api/chat/setup/try", { address: "https://models.example.com/v1", model: "stand-in" }))
+      .body as ModelSetupTry;
+    expect(elsewhere).toMatchObject({ ok: false, saved: false, failure: "address" });
+    expect(elsewhere.message).toMatch(/is on the internet, not on this computer or your own network/);
+    expect(server.requests.length).toBe(requests);
+    expect((await app.api("GET", "/api/answers/status")).body).toMatchObject({ enabled: false });
   });
 });
 

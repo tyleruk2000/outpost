@@ -157,7 +157,7 @@ describe("search by meaning in Settings: the first level", () => {
     serve(status());
     rerender(view(settings(), () => {}));
     expect(await screen.findByText("Starting")).toBeVisible();
-    expect(screen.getByText("Outpost is about to read your library.")).toBeVisible();
+    expect(await screen.findByText("Outpost is about to read your library.")).toBeVisible();
     expect(screen.queryByRole("button", { name: /Start reading|Build index/ })).not.toBeInTheDocument();
     expect(requests).not.toContain("POST /api/semantic/index");
   });
