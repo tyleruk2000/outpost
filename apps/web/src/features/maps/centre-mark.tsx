@@ -50,7 +50,12 @@ export function CentreMark({
       aria-hidden
       data-centre-mark
       // A box 20 px across with the point in its middle.
-      className={cn("pointer-events-none absolute size-5 -translate-x-1/2 -translate-y-1/2", !always && pointerOver && "hidden")}
+      // On a phone with no room for the readout or for clear map (maps.css), the cross goes with it unless something else is reading the centre.
+      className={cn(
+        "pointer-events-none absolute size-5 -translate-x-1/2 -translate-y-1/2",
+        !always && pointerOver && "hidden",
+        !always && "outpost-centre-mark-yields",
+      )}
     >
       {/* Ink with a hairline of the page colour round it, so it reads on any ground in either theme. */}
       <span className="absolute top-1/2 left-0 h-0.5 w-full -translate-y-1/2 bg-ink shadow-[0_0_0_1px_var(--page)]" />

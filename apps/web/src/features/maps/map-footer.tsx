@@ -33,7 +33,7 @@ function ScaleBar({ engine }: { engine: MapEngine }) {
   }, [engine]);
 
   return (
-    <div className="pointer-events-none flex flex-col items-start gap-0.5" role="img" aria-label="Map scale">
+    <div className="outpost-scale pointer-events-none flex flex-col items-start gap-0.5" role="img" aria-label="Map scale">
       <span ref={label} className="tabular rounded-[3px] bg-page/85 px-1 text-micro font-medium text-ink" />
       {/* A ruler: ticks at both ends, on a backing that keeps it readable over any ground. */}
       <div ref={bar} className="h-1.5 border-x-2 border-b-2 border-ink shadow-[0_1px_0_1px_var(--page),0_-1px_0_0_var(--page)]" />
@@ -89,16 +89,16 @@ function CoordinateReadout({
 
   return (
     <div className={cn(mapSurface, "flex flex-col divide-y divide-border overflow-hidden")}>
-      <div className="flex items-stretch">
+      <div className="outpost-readout-coords flex items-stretch">
         <button
           type="button"
           onClick={copy}
           aria-label="Copy these coordinates"
           title="Copy"
-          className="group flex min-h-9 min-w-0 flex-1 items-center gap-2 px-2.5 text-left focus-visible:-outline-offset-2 max-md:min-h-11"
+          className="group flex min-h-9 min-w-0 flex-1 items-center gap-2 px-2.5 text-left focus-visible:-outline-offset-2 max-md:min-h-[44px]"
         >
           <span className="grid">
-            <span ref={source} className="text-[0.6875rem] leading-tight text-ink-muted" />
+            <span ref={source} className="text-micro leading-tight text-ink-muted" />
             <span ref={text} className="tabular font-mono text-[0.8125rem] leading-tight text-ink" />
           </span>
           <Copy aria-hidden className="size-3.5 shrink-0 text-ink-faint group-hover:text-ink" />
@@ -107,7 +107,7 @@ function CoordinateReadout({
           <MenuTrigger
             aria-label={`Coordinate format: ${READOUT_LABELS[format]}. Change`}
             title="Coordinate format"
-            className="grid w-8 place-content-center border-l border-border text-ink-muted hover:bg-surface-strong hover:text-ink focus-visible:-outline-offset-2 max-md:w-11"
+            className="grid w-8 place-content-center border-l border-border text-ink-muted hover:bg-surface-strong hover:text-ink focus-visible:-outline-offset-2 max-md:w-[44px]"
           >
             <ChevronUp className="size-4" />
           </MenuTrigger>
@@ -150,7 +150,7 @@ export function creditsFor(attributions: MapAttribution[], options: { hasTiles: 
 
 function Attribution({ credits }: { credits: Credit[] }) {
   return (
-    <p className="pointer-events-auto max-w-full rounded-[4px] bg-page/85 px-1.5 py-0.5 text-right text-[0.6875rem] leading-snug text-ink-muted">
+    <p className="pointer-events-auto max-w-full rounded-[4px] bg-page/85 px-1.5 py-0.5 text-right text-micro leading-snug text-ink-muted">
       {credits.map((credit, index) => (
         <Fragment key={credit.key}>
           {index > 0 ? <span aria-hidden> · </span> : null}
@@ -193,7 +193,7 @@ export function MapFooter({
 }) {
   return (
     <div className={cn("pointer-events-none flex flex-wrap items-end justify-between gap-x-4 gap-y-1.5", className)}>
-      <div className="flex items-end gap-3">
+      <div className="outpost-readout-row flex min-w-0 items-end gap-3">
         {engine ? (
           <>
             <div className="pointer-events-auto min-w-0">
@@ -203,7 +203,7 @@ export function MapFooter({
           </>
         ) : null}
       </div>
-      <div className="ml-auto flex min-w-0 justify-end">
+      <div className="outpost-credits ml-auto flex min-w-0 justify-end">
         <Attribution credits={credits} />
       </div>
     </div>

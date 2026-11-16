@@ -22,7 +22,8 @@ import { formatTimeOfDay } from "@/lib/clock";
 import { cn, formatDate, formatNumber, plural } from "@/lib/utils";
 import { formatDistance, formatDistanceWithMiles, formatHeight } from "../lib/geo";
 import type { MapEngine } from "../map/engine";
-import { ColorPicker, ControlButton, ControlGroup, Fact, mapSurface } from "../ui";
+import type { MapTool } from "../map-chrome";
+import { ColorPicker, ControlButton, ControlGroup, Fact, mapCard, mapCardHeader } from "../ui";
 import { useRecorder } from "./browser";
 import { recordingData } from "./overlay";
 import type { PendingSave, Recorder, RecorderSnapshot } from "./recorder";
@@ -45,6 +46,14 @@ const subscribeView = (listener: () => void) => {
   return () => viewListeners.delete(listener);
 };
 const useCardView = () => useSyncExternalStore(subscribeView, () => cardView);
+
+/**
+ * Folds the recording's card to its one line, if it is open: on a phone, when another card comes up
+ * over the map, the two would otherwise share the half of it that cards have. It unfolds as before.
+ */
+export function foldRecordingCard(): void {
+  if (cardView === "open") setCardView("folded");
+}
 
 const timeOfDay = (time: number) => formatTimeOfDay(time);
 
@@ -83,30 +92,39 @@ const PHASE_WORDS = { recording: "Recording", paused: "Paused", stopped: "Record
  * unfolds its card.
  */
 export function RecordButton() {
+  const tool = useRecordTool();
+  if (!tool) return null;
+  return (
+    <ControlGroup>
+      <ControlButton label={tool.label} pressed={tool.pressed} onClick={tool.onPress}>
+        {tool.icon}
+      </ControlButton>
+    </ControlGroup>
+  );
+}
+
+/** The same button as an entry in the list the map's controls are drawn from (`mapTools`), so the phone's menu has it too. */
+export function useRecordTool(): MapTool | null {
   const { recorder, state } = useRecorder();
   const view = useCardView();
   // A browser with no geolocation at all has nothing to record with, as it has nothing to locate with.
   if (recorder.ability() === "unsupported") return null;
   const active = state.phase !== "idle";
-  const label = active
-    ? `${PHASE_WORDS[state.phase as keyof typeof PHASE_WORDS]}: ${view === "folded" ? "show the figures" : "show less"}`
-    : view === "intro"
-      ? "Record a track: close"
-      : "Record a track";
-  return (
-    <ControlGroup>
-      <ControlButton
-        label={label}
-        pressed={active || view === "intro"}
-        onClick={() => {
-          if (active) setCardView(view === "folded" ? "open" : "folded");
-          else setCardView(view === "intro" ? "closed" : "intro");
-        }}
-      >
-        <RecordGlyph live={state.phase === "recording"} />
-      </ControlButton>
-    </ControlGroup>
-  );
+  return {
+    id: "record",
+    group: "record",
+    label: active
+      ? `${PHASE_WORDS[state.phase as keyof typeof PHASE_WORDS]}: ${view === "folded" ? "show the figures" : "show less"}`
+      : view === "intro"
+        ? "Record a track: close"
+        : "Record a track",
+    icon: <RecordGlyph live={state.phase === "recording"} />,
+    pressed: active || view === "intro",
+    onPress: () => {
+      if (active) setCardView(view === "folded" ? "open" : "folded");
+      else setCardView(view === "intro" ? "closed" : "intro");
+    },
+  };
 }
 
 // ── Words ──
@@ -183,11 +201,12 @@ export function beforeYouStart(wakeLock: boolean, fromHomeScreen: boolean): stri
 
 // ── The card ──
 
-const cardShell = cn(mapSurface, "pointer-events-auto w-full max-w-[26rem] p-3.5");
+// The shell every card over the map has: where it sits and how tall it may be are settled in one place for all of them.
+const cardShell = mapCard;
 
 function CardHeader({ title, lamp, action }: { title: ReactNode; lamp?: boolean; action?: ReactNode }) {
   return (
-    <div className="flex items-start justify-between gap-3">
+    <div className={mapCardHeader}>
       <h2 className="flex min-w-0 items-center gap-2.5 text-body font-semibold text-ink">
         {lamp === undefined ? null : <LampDot lit={lamp} />}
         {title}
@@ -370,9 +389,10 @@ function Running({ recorder, state, folded }: { recorder: Recorder; state: Recor
 
   if (folded) {
     return (
-      <section className={cn(cardShell, "flex items-center gap-2.5 py-2")} aria-label={title}>
+      // One line where it fits. On a narrow phone, or with larger text, the buttons go under the words rather than the words being cut short.
+      <section className={cn(cardShell, "flex flex-wrap items-center justify-end gap-x-2.5 gap-y-1 py-2")} aria-label={title}>
         <LampDot lit={recording} />
-        <p className="tabular min-w-0 flex-1 truncate text-small text-ink">
+        <p className="tabular min-w-[9rem] flex-1 text-small text-ink">
           <span className="font-semibold">{title}</span>
           <span className="text-ink-muted">
             {" "}
@@ -753,7 +773,10 @@ export function TrackRecording({ engine, onShowTrack }: { engine: MapEngine | nu
 
   return (
     <>
-      <div ref={cards} className="pointer-events-none flex w-full flex-col items-center gap-2 empty:hidden">
+      <div
+        ref={cards}
+        className="pointer-events-none flex w-full flex-col items-center gap-2 empty:hidden max-md:min-h-[52px] max-md:shrink"
+      >
         {state.pending.length > 0 ? (
           <Waiting recorder={recorder} pending={state.pending} onDiscard={(entry) => setDiscarding({ what: "waiting", entry })} />
         ) : null}

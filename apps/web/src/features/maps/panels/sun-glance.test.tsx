@@ -48,7 +48,7 @@ describe("today's sunrise and sunset under the centre readout", () => {
     expect(line).toHaveTextContent("Sunrise 04:43");
     expect(line).toHaveTextContent("Sunset 21:21");
     // Tall enough to touch.
-    expect(line).toHaveClass("min-h-11");
+    expect(line).toHaveClass("min-h-[44px]");
     await userEvent.click(line);
     expect(onOpen).toHaveBeenCalledTimes(1);
   });

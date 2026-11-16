@@ -86,7 +86,7 @@ describe("the Satellite button", () => {
     act(() => result.current.setOn(true));
     expect(result.current.on).toBe(false);
     expect(toast).toHaveBeenCalledWith(expect.stringMatching(/No satellite imagery is downloaded yet/), expect.anything());
-    const action = (vi.mocked(toast).mock.calls[0]![1] as { action: { onClick: () => void } }).action;
+    const action = (vi.mocked(toast).mock.calls[0]![1] as unknown as { action: { onClick: () => void } }).action;
     action.onClick();
     expect(onGetImagery).toHaveBeenCalled();
   });

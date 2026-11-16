@@ -133,7 +133,11 @@ export function SightPanel({
 
   return (
     <section aria-label="Line of sight" className="flex min-h-0 flex-1 flex-col">
-      <div className="flex min-h-11 shrink-0 items-center justify-between gap-2 border-b border-border pr-2 pl-4 max-md:min-h-[3.25rem]">
+      {/* On a phone with the sheet lowered this line is all of the tool that shows in it: its one title, and what puts it down. */}
+      <div
+        data-sheet-peek
+        className="sticky top-0 z-[1] flex min-h-11 shrink-0 items-center justify-between gap-2 border-b border-border bg-page pr-2 pl-4 max-md:min-h-[3.25rem]"
+      >
         <h2 className="text-body font-semibold text-ink">Line of sight</h2>
         <Button variant="ghost" size="icon-sm" aria-label="Stop checking line of sight" onClick={onDone}>
           <X />

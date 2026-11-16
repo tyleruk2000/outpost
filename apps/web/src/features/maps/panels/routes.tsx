@@ -469,7 +469,7 @@ export function RoutesList({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {chooser}
-      <div className="flex items-center gap-2 px-4 pt-3">
+      <div className="flex flex-wrap items-center gap-2 px-4 pt-3">
         <Button onClick={onDraw} disabled={!canDraw}>
           <PenLine /> Draw a route
         </Button>
