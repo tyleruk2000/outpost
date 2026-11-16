@@ -77,6 +77,8 @@ const envSchema = z.object({
   OUTPOST_LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).optional(),
   // For tests: one local server that stands in for every weather publisher (modules/weather/sources.ts).
   OUTPOST_WEATHER_STAND_IN: z.string().url().optional(),
+  // For tests: a local server in place of the Environment Agency's flood zones service (modules/layers/adapters/flood-zones.ts).
+  OUTPOST_FLOOD_ZONES_URL: z.string().url().optional(),
 });
 
 export interface Config {
@@ -148,6 +150,8 @@ export interface Config {
   };
   /** For tests: a local server answering for every weather publisher, at /<source id>/<path>; unset in use. */
   weatherStandIn?: string;
+  /** For tests: the flood zones collection's address in place of the Environment Agency's; unset in use. */
+  floodZonesUrl?: string;
   /** Stand-ins for satellite imagery's publishers, for tests; unset in use. */
   imagery?: {
     endpoints?: {
@@ -248,6 +252,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     },
     imagery: imageryStandIns(parsed),
     weatherStandIn: parsed.OUTPOST_WEATHER_STAND_IN,
+    floodZonesUrl: parsed.OUTPOST_FLOOD_ZONES_URL,
   };
 }
 

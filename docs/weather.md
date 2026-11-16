@@ -295,19 +295,10 @@ was last fetched. It fetches nothing. See [api.md](api.md#weather-and-hazards).
 
 ## Not done
 
-- **Flood-risk zones on the map.** The Environment Agency's Flood Map for Planning
-  (Flood Zones 2 and 3) is open data with an OGC API Features endpoint that answers by
-  bounding box (sources.md). The intended design follows the satellite imagery's.
-  Download the zones for a box round each place, through the download manager onto a
-  storage location, with the size stated first. Then draw them as an overlay with a
-  toggle in `mapTools` (`apps/web/src/features/maps/map-chrome.tsx`), as the satellite
-  and grey-line toggles are, until the Maps screen's "Layers" panel (being built on
-  another branch) takes it as one of its layers. The legend would quote the Agency:
-  Flood Zone 3 is "Areas shown to be at a 1% (1 in 100) or greater annual probability
-  of flooding from rivers or, 0.5% (1 in 200) or greater annual probability of flooding
-  from the sea", "ignoring the benefits of defences", and the zones "are not suitable
-  for showing whether an individual property is at risk of flooding". None of this is
-  built.
+- **Flood-risk zones on the map** are now a reference layer on the Maps screen's
+  Layers tab, not part of this screen: see
+  [reference-layers.md](reference-layers.md#flood-zones-england). The Agency's "Risk
+  of Flooding from Rivers and Sea" is not, as it has no feature service.
 - **Wildfire risk** is linked, not fetched (above).
 - **Scotland, Wales and Northern Ireland** have no flood data here (above).
 

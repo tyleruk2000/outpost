@@ -12,7 +12,7 @@ import {
 } from "@outpost/shared";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { Layers, Search } from "lucide-react";
-import { useId, useMemo, useState } from "react";
+import { type ReactNode, useId, useMemo, useState } from "react";
 import { ErrorState } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,7 @@ import { Select, Skeleton, Switch } from "@/components/ui/misc";
 import type { LatLon } from "@/features/maps/lib/geo";
 import { formatNumber } from "@/lib/utils";
 import { useLayerSearch } from "./data";
+import { FloodZonesLegend } from "./flood-legend";
 import { AreaMark, ProvenanceMark } from "./marks";
 import type { LayerChoice } from "./use-reference-layers";
 
@@ -50,29 +51,35 @@ function LayerRow({
   on,
   colour,
   onChange,
+  below,
 }: {
   layer: ReferenceLayerId;
   count: number;
   on: boolean;
   colour: string;
   onChange: (on: boolean) => void;
+  /** Anything that belongs under the row: a layer's own legend. */
+  below?: ReactNode;
 }) {
   const id = useId();
   const info = REFERENCE_LAYER_INFO[layer];
   return (
-    <li className="flex items-start gap-3 py-2.5">
-      {info.areas && (layer === "boundaries" || layer === "regions" || layer === "planning-zones") ? (
-        <AreaMark colour={colour} />
-      ) : (
-        <ProvenanceMark provenance={layer === "historical" ? "historical" : "public-infrastructure"} colour={colour} />
-      )}
-      <div className="min-w-0 flex-1">
-        <label htmlFor={id} className="text-small font-medium text-ink">
-          {info.label}
-        </label>
-        <p className="tabular text-small text-ink-muted">{formatNumber(count)} held</p>
+    <li className="py-2.5">
+      <div className="flex items-start gap-3">
+        {info.areas && (layer === "boundaries" || layer === "regions" || layer === "planning-zones" || layer === "flood-zones") ? (
+          <AreaMark colour={colour} />
+        ) : (
+          <ProvenanceMark provenance={layer === "historical" ? "historical" : "public-infrastructure"} colour={colour} />
+        )}
+        <div className="min-w-0 flex-1">
+          <label htmlFor={id} className="text-small font-medium text-ink">
+            {info.label}
+          </label>
+          <p className="tabular text-small text-ink-muted">{formatNumber(count)} held</p>
+        </div>
+        <Switch id={id} checked={on} onCheckedChange={onChange} className="mt-0.5 max-md:my-[10px]" />
       </div>
-      <Switch id={id} checked={on} onCheckedChange={onChange} className="mt-0.5 max-md:my-[10px]" />
+      {below}
     </li>
   );
 }
@@ -85,6 +92,7 @@ export function LayersPanel({
   shades,
   onManage,
   onOpen,
+  floodZones,
 }: {
   summary: UseQueryResult<ReferenceLayersResponse>;
   choice: LayerChoice;
@@ -93,6 +101,8 @@ export function LayersPanel({
   shades: string[];
   onManage: () => void;
   onOpen: (id: number, layer: ReferenceLayerId, at: LatLon | null) => void;
+  /** Why flood zones are not drawn in this view, when they are not. */
+  floodZones?: "zoom-in" | "too-many" | null;
 }) {
   const [text, setText] = useState("");
   const layers = useMemo(() => [...(summary.data?.layers ?? [])].sort((a, b) => ORDER.indexOf(a.id) - ORDER.indexOf(b.id)), [summary.data]);
@@ -204,6 +214,11 @@ export function LayersPanel({
               on={choice.layers.includes(layer.id)}
               colour={colours[layer.id]}
               onChange={(on) => toggle(layer.id, on)}
+              below={
+                layer.id === "flood-zones" && choice.layers.includes("flood-zones") ? (
+                  <FloodZonesLegend colour={colours["flood-zones"]} status={floodZones} />
+                ) : null
+              }
             />
           ))}
           {population.length > 0 ? (

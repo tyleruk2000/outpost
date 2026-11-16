@@ -16,6 +16,8 @@ const LABELS: Record<string, string> = {
   "ne:populated-place": "Populated place",
   "ne:capital": "Capital",
   "babs:meeting-point": "Emergency meeting point (official)",
+  "ea:flood-zone-3": "Flood Zone 3 (Environment Agency)",
+  "ea:flood-zone-2": "Flood Zone 2 (Environment Agency)",
 };
 
 export function kindLabel(kind: string): string {

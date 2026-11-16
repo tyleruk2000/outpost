@@ -666,6 +666,13 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   duplicates across sources found and kept with both sources, packs replaced only when
   their successor is in, and records kept on the map while the drive holding a pack is
   away. The GeoTIFF reader learns LZW and 32-bit floating point.
+- Flood zones for England as a reference layer: the Environment Agency's Flood Map for
+  Planning (Flood Zones 2 and 3, Open Government Licence), fetched on a press for the
+  area on screen up to about 20 km across, after a count and a stated size; drawn filled
+  under the map's names, zone 3 in a deeper tone with a solid edge and zone 2 lighter
+  with a broken one; the legend quotes the Agency's definitions and its caveat that the
+  zones are "not suitable for showing whether an individual property is at risk of
+  flooding", and says a planning zone is not a forecast.
 
 #### Repeaters
 

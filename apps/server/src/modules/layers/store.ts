@@ -41,7 +41,13 @@ export const POINT_LIMIT = 1_500;
 /** At most this many shapes in one answer. */
 const SHAPE_LIMIT = 600;
 /** Layers whose areas are the point of them, drawn at every zoom. */
-const AREA_LAYERS = new Set<ReferenceLayerId>(["boundaries", "regions", "planning-zones"]);
+const AREA_LAYERS = new Set<ReferenceLayerId>(["boundaries", "regions", "planning-zones", "flood-zones"]);
+/**
+ * Flood zones are many detailed areas (about 250 in a box 7 km across round Bedford): drawn
+ * only from this zoom in, at most this many in a view, and never as points or patches.
+ */
+const FLOOD_ZOOM = 11;
+const FLOOD_SHAPE_LIMIT = 3_000;
 /** Other layers' areas are drawn from this zoom in. */
 const SHAPE_ZOOM = 9;
 /** How far apart two records of one thing from different sources may be placed. */
@@ -649,35 +655,46 @@ export function createReferenceStore(ctx: AppContext, providerName: (id: string)
         total = cells.reduce((sum, cell) => sum + cell.count, 0);
       }
       // Areas: those of the area layers at any zoom, the rest from close in, and never more than the limit.
-      const shapeLayers = filter.layers.filter((layer) => AREA_LAYERS.has(layer) || zoom >= SHAPE_ZOOM);
-      let shapes: ReferenceShape[] = [];
-      if (shapeLayers.length > 0) {
-        const shapeWhere = filterSql({ ...filter, layers: shapeLayers });
-        const tolerance = (360 / (256 * 2 ** Math.max(0, zoom))) * 0.75;
+      const shapeLayers = filter.layers.filter((layer) => layer !== "flood-zones" && (AREA_LAYERS.has(layer) || zoom >= SHAPE_ZOOM));
+      const tolerance = (360 / (256 * 2 ** Math.max(0, zoom))) * 0.75;
+      const shapesOf = (layers: ReferenceLayerId[], limit: number): ReferenceShape[] | null => {
+        const shapeWhere = filterSql({ ...filter, layers });
         const rows = boxes.flatMap(
           (box) =>
             sqlite
               .prepare(
-                `SELECT f.id AS id, f.layer AS layer, f.provenance AS provenance, f.name AS name, f.geometry AS geometry
+                `SELECT f.id AS id, f.layer AS layer, f.provenance AS provenance, f.name AS name, f.kind AS kind, f.geometry AS geometry
                  ${rtreeJoin} WHERE ${rtreeWhere} AND ${shapeWhere.sql} AND f.geometry IS NOT NULL
                  AND (r.max_lon - r.min_lon > ? OR r.max_lat - r.min_lat > ?) LIMIT ?`,
               )
-              .all(box[0], box[2], box[1], box[3], ...shapeWhere.args, tolerance * 2, tolerance * 2, SHAPE_LIMIT + 1) as Array<{
+              .all(box[0], box[2], box[1], box[3], ...shapeWhere.args, tolerance * 2, tolerance * 2, limit + 1) as Array<{
               id: number;
               layer: ReferenceLayerId;
               provenance: FeatureProvenance;
               name: string;
+              kind: string;
               geometry: string;
             }>,
         );
-        if (rows.length <= SHAPE_LIMIT) {
-          shapes = rows.flatMap((row) => {
-            const simple = simplifyGeometry(JSON.parse(row.geometry) as GeoJsonGeometry, tolerance);
-            return simple ? [{ id: row.id, layer: row.layer, provenance: row.provenance, name: row.name, geometry: simple }] : [];
-          });
+        if (rows.length > limit) return null;
+        return rows.flatMap((row) => {
+          const simple = simplifyGeometry(JSON.parse(row.geometry) as GeoJsonGeometry, tolerance);
+          return simple
+            ? [{ id: row.id, layer: row.layer, provenance: row.provenance, name: row.name, kind: row.kind, geometry: simple }]
+            : [];
+        });
+      };
+      let shapes: ReferenceShape[] = shapeLayers.length > 0 ? (shapesOf(shapeLayers, SHAPE_LIMIT) ?? []) : [];
+      let floodZones: "zoom-in" | "too-many" | null = null;
+      if (filter.layers.includes("flood-zones")) {
+        if (zoom < FLOOD_ZOOM) floodZones = "zoom-in";
+        else {
+          const flood = shapesOf(["flood-zones"], FLOOD_SHAPE_LIMIT);
+          if (flood) shapes = [...flood, ...shapes];
+          else floodZones = "too-many";
         }
       }
-      return { total, points, cells, shapes };
+      return { total, points, cells, shapes, floodZones };
     },
 
     at({ lat, lon, ...filter }) {

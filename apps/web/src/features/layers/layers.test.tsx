@@ -290,3 +290,89 @@ describe("the record's card", () => {
     expect(screen.getByText("That record is no longer held.")).toBeVisible();
   });
 });
+
+describe("flood zones", () => {
+  const flood: ReferenceLayersResponse = {
+    layers: [
+      {
+        id: "flood-zones",
+        count: 2,
+        countries: ["GB"],
+        providers: [{ id: "ea-flood-zones", name: "Flood zones, England (Environment Agency)", count: 2 }],
+        kinds: [{ kind: "ea:flood-zone-3", label: "Flood Zone 3 (Environment Agency)", count: 1 }],
+        provenance: [{ provenance: "public-infrastructure", count: 2 }],
+      },
+    ] as ReferenceLayersResponse["layers"],
+    population: [],
+    credits: [],
+  };
+
+  it("gives each zone in the Agency's words, its caveat, that a zone is not a forecast, and why nothing is drawn far out", () => {
+    render(
+      wrap(
+        <LayersPanel
+          summary={query(flood)}
+          choice={{ ...CHOICE, layers: ["flood-zones"] }}
+          onChoice={vi.fn()}
+          colours={layerColours()}
+          shades={["a", "b", "c", "d", "e"]}
+          onManage={vi.fn()}
+          onOpen={vi.fn()}
+          floodZones="zoom-in"
+        />,
+      ),
+    );
+    const legend = screen.getByRole("group", { name: "Flood zones legend" });
+    expect(legend).toHaveTextContent("Zoom in to see the flood zones");
+    expect(legend).toHaveTextContent(
+      "Deeper tone, solid edge. Flood Zone 3 – Areas shown to be at a 1% (1 in 100) or greater annual probability",
+    );
+    expect(legend).toHaveTextContent("Lighter tone, broken edge. Flood Zone 2 – Land having between 0.1% - 1%");
+    expect(legend).toHaveTextContent("not suitable for showing whether an individual property is at risk of flooding");
+    expect(legend).toHaveTextContent("England only");
+    expect(legend).toHaveTextContent("It is not a forecast that a place will flood");
+  });
+
+  it("draws zone 3 and zone 2 apart by their kind, not by colour alone", () => {
+    const square = {
+      type: "Polygon",
+      coordinates: [
+        [
+          [0, 0],
+          [1, 0],
+          [1, 1],
+          [0, 0],
+        ],
+      ],
+    };
+    const data = referenceData(
+      {
+        total: 0,
+        points: [],
+        cells: [],
+        shapes: [
+          {
+            id: 1,
+            layer: "flood-zones",
+            provenance: "public-infrastructure",
+            name: "Flood Zone 3",
+            kind: "ea:flood-zone-3",
+            geometry: square,
+          },
+          {
+            id: 2,
+            layer: "flood-zones",
+            provenance: "public-infrastructure",
+            name: "Flood Zone 2",
+            kind: "ea:flood-zone-2",
+            geometry: square,
+          },
+        ],
+      },
+      null,
+      layerColours(),
+    );
+    expect(data.features.map((feature) => feature.properties?.zone)).toEqual([3, 2]);
+    expect(data.features[0]!.properties?.colour).toBe(data.features[1]!.properties?.colour);
+  });
+});

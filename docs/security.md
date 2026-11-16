@@ -548,6 +548,7 @@ manager, and only from these hosts, each named in code:
 | `query.wikidata.org` | One count and one query | CC0; within the service's limits, with a contact address |
 | `data.worldpop.org` | One country's population GeoTIFF | CC BY 4.0 |
 | `data.geo.admin.ch` | The Swiss emergency meeting points | Open use with the source given |
+| `environment.data.gov.uk` | The Environment Agency's flood zones for a box at most about 20 km across: a count (`limit=1`), then the areas in one answer | Open Government Licence; one box per press |
 
 Every request names Outpost and its project address, carries nothing about the person,
 and must land on a public address (rule 2 above). A redirect off the named host is

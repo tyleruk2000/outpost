@@ -30,6 +30,7 @@ import type { CollectionMeta } from "../../db/schema.ts";
 import type { CollectionRow } from "../collections/service.ts";
 import type { DownloadRow, Installer } from "../downloads/types.ts";
 import { createBabsAdapter } from "./adapters/babs.ts";
+import { createFloodZonesAdapter } from "./adapters/flood-zones.ts";
 import { createGeofabrikAdapter } from "./adapters/geofabrik.ts";
 import { provider as importProvider, readImport } from "./adapters/imports.ts";
 import { createNaturalEarthAdapter } from "./adapters/natural-earth.ts";
@@ -139,6 +140,7 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
       createWikidataAdapter(deps),
       createWorldPopAdapter(deps, population),
       createBabsAdapter(deps),
+      createFloodZonesAdapter(deps),
     ].map((adapter) => [adapter.provider.id, adapter]),
   );
 
@@ -517,6 +519,12 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
             provider: "import",
             text: `${row.publisher ?? "Imported"}${row.license ? `, ${row.license}` : ""}`,
             url: meta.sourceUrl,
+          });
+        } else if (meta.provider === "ea-flood-zones") {
+          credits.set("ea-flood-zones", {
+            provider: "ea-flood-zones",
+            text: "Flood zones: © Environment Agency copyright and/or database right 2025, OGL v3.0",
+            url: "https://www.data.gov.uk/dataset/flood-map-for-planning-flood-zones1",
           });
         } else if (meta.provider === "babs") {
           credits.set("babs", {

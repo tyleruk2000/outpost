@@ -11,7 +11,7 @@
 import type { FeatureProvenance, PopulationGridResponse, ReferenceLayerId, ReferenceOverlayResponse } from "@outpost/shared";
 import type { ExpressionSpecification } from "maplibre-gl";
 import { tokenToHex } from "@/features/maps/lib/color";
-import { MAP_FONTS, type MapTheme } from "@/features/maps/lib/style";
+import { MAP_FONTS, type MapTheme, UNDER_LABELS } from "@/features/maps/lib/style";
 import type { LayerSpecification } from "@/features/maps/lib/style-types";
 import type { FeatureCollection } from "@/features/maps/map/overlays";
 import { formatNumber } from "@/lib/utils";
@@ -32,6 +32,7 @@ export const LAYER_TOKENS: Record<ReferenceLayerId, string> = {
   regions: "--ink-faint",
   towns: "--ink",
   historical: "--ink",
+  "flood-zones": "--chart-1",
 };
 
 const FALLBACK: Record<string, string> = {
@@ -74,19 +75,55 @@ export function referenceLayers(theme: MapTheme): LayerSpecification[] {
   const label = { "text-font": [MAP_FONTS.medium] as string[] };
   const isShape: ExpressionSpecification = ["==", ["get", "kind"], "shape"];
   const ring: ExpressionSpecification = ["!=", ["get", "letter"], ""];
+  const isFlood: ExpressionSpecification = ["==", ["get", "layer"], "flood-zones"];
+  const notFlood: ExpressionSpecification = ["!=", ["get", "layer"], "flood-zones"];
+  const zone3: ExpressionSpecification = ["==", ["get", "zone"], 3];
   return [
+    // Flood zones: under the map's names, told apart by tone and edge, not by colour. Zone 3 is the deeper tone with a
+    // solid edge; zone 2 the lighter tone with a broken edge. Where they overlap, zone 3 is drawn over zone 2.
+    {
+      id: "o-reference-flood-fill",
+      type: "fill",
+      source: REFERENCE_SOURCE,
+      metadata: UNDER_LABELS,
+      filter: ["all", isShape, isFlood],
+      layout: { "fill-sort-key": ["get", "zone"] },
+      paint: { "fill-color": ["get", "colour"], "fill-opacity": ["case", zone3, 0.42, 0.16] },
+    },
+    {
+      id: "o-reference-flood-edge-3",
+      type: "line",
+      source: REFERENCE_SOURCE,
+      metadata: UNDER_LABELS,
+      filter: ["all", isShape, isFlood, zone3],
+      paint: { "line-color": ["get", "colour"], "line-width": 1.2, "line-opacity": 0.9 },
+    },
+    {
+      id: "o-reference-flood-edge-2",
+      type: "line",
+      source: REFERENCE_SOURCE,
+      metadata: UNDER_LABELS,
+      filter: ["all", isShape, isFlood, ["!", zone3]],
+      paint: { "line-color": ["get", "colour"], "line-width": 1, "line-opacity": 0.8, "line-dasharray": [3, 2] },
+    },
     {
       id: "o-reference-area-fill",
       type: "fill",
       source: REFERENCE_SOURCE,
-      filter: ["all", isShape, ["in", ["geometry-type"], ["literal", ["Polygon", "MultiPolygon"]]], ["!=", ["get", "layer"], "boundaries"]],
+      filter: [
+        "all",
+        isShape,
+        notFlood,
+        ["in", ["geometry-type"], ["literal", ["Polygon", "MultiPolygon"]]],
+        ["!=", ["get", "layer"], "boundaries"],
+      ],
       paint: { "fill-color": ["get", "colour"], "fill-opacity": ["case", ["==", ["get", "layer"], "planning-zones"], 0.14, 0.08] },
     },
     {
       id: "o-reference-area-line",
       type: "line",
       source: REFERENCE_SOURCE,
-      filter: ["all", isShape, ["==", ["get", "letter"], ""]],
+      filter: ["all", isShape, notFlood, ["==", ["get", "letter"], ""]],
       layout: { "line-join": "round" },
       paint: {
         "line-color": ["get", "colour"],
@@ -99,7 +136,7 @@ export function referenceLayers(theme: MapTheme): LayerSpecification[] {
       id: "o-reference-area-dashed",
       type: "line",
       source: REFERENCE_SOURCE,
-      filter: ["all", isShape, ring],
+      filter: ["all", isShape, notFlood, ring],
       paint: { "line-color": ["get", "colour"], "line-width": 1.6, "line-dasharray": [3, 2] },
     },
     {
@@ -194,6 +231,7 @@ export function referenceData(
       properties: {
         kind: "shape",
         id: shape.id,
+        zone: shape.kind === "ea:flood-zone-3" ? 3 : shape.kind === "ea:flood-zone-2" ? 2 : 0,
         layer: shape.layer,
         colour: colours[shape.layer],
         letter: PROVENANCE_LETTER[shape.provenance],

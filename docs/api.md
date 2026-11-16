@@ -730,7 +730,7 @@ server on the internet.
 | `POST /api/reference/imports/from-storage` | The same for a file already in a storage location. Body: `format`, `locationId`, `relPath`, `title`, `options`, `replaces?`. The file is left where it is. |
 | `GET /api/reference/templates/:format.csv` | The columns of a CSV form, as a file. |
 | `GET /api/reference/layers` | What is installed by layer (counts, countries, sources, kinds, provenance), the population grids, and the credits. |
-| `GET /api/reference/features` | Query: `bbox` (`west,south,east,north`), `zoom`, `layers`, `countries?`, `providers?`, `kinds?`. The view: up to 1,500 `points`, or `cells` counted per layer and provenance; `shapes` for areas. |
+| `GET /api/reference/features` | Query: `bbox` (`west,south,east,north`), `zoom`, `layers`, `countries?`, `providers?`, `kinds?`. The view: up to 1,500 `points`, or `cells` counted per layer and provenance; `shapes` for areas, each with its `kind`. Flood zones are drawn only from zoom 11 and at most 3,000 to a view; `floodZones` is `zoom-in` or `too-many` when they are asked for and not sent, and null otherwise. |
 | `GET /api/reference/at` | Query: `lat`, `lon`, `layers`, filters. Areas that contain the point, smallest first. |
 | `GET /api/reference/features/:id` | One record with its source, other sources of the same thing, and its historical record if it is one. `404` once its pack is gone. |
 | `GET /api/reference/search` | Query: `q`, `layers?`, filters, `limit` (at most 100). Records by name. |
