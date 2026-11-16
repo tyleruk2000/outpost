@@ -25,7 +25,7 @@ import { eq } from "drizzle-orm";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
-import { AppError } from "../../core/errors.ts";
+import { AppError, messageOf } from "../../core/errors.ts";
 import { isLocalRequest } from "../../core/local.ts";
 import { settings as settingsTable } from "../../db/schema.ts";
 import { assertBackupRight } from "./right.ts";
@@ -195,7 +195,11 @@ export function registerProtection(app: FastifyInstance, ctx: AppContext): Prote
   let measured: Promise<number> | undefined;
   const cost = (): Promise<number> => {
     if (fixedCost !== undefined) return Promise.resolve(fixedCost);
-    measured ??= measureLogN();
+    // A measurement that failed is taken again next time, not remembered.
+    measured ??= measureLogN().catch((error) => {
+      measured = undefined;
+      throw error;
+    });
     return measured;
   };
 
@@ -214,7 +218,9 @@ export function registerProtection(app: FastifyInstance, ctx: AppContext): Prote
   app.put("/api/backup/protection", async (request) => {
     assertPassphraseRight(request, ctx, "Setting the passphrase for backups");
     const { passphrase } = setBody.parse(request.body);
-    const key = await makeProtectionKey(passphrase, await cost());
+    const key = await makeProtectionKey(passphrase, await cost()).catch((error) => {
+      throw new AppError("internal", `The passphrase was not set: this computer could not derive a key from it. ${messageOf(error)}`);
+    });
     const value = toStored({ key, setAt: Date.now() });
     const now = Date.now();
     ctx.db

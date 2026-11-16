@@ -304,7 +304,7 @@ export function BackupProtectionRow({
         }
         control={
           allowed ? (
-            <span className="flex flex-wrap justify-end gap-2">
+            <span className="flex flex-col items-end gap-2 max-md:items-start">
               <Button onClick={() => setAsking(true)}>
                 <KeyRound /> {protection.on ? "Change passphrase" : "Set a passphrase"}
               </Button>
