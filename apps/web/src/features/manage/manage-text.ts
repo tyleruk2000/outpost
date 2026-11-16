@@ -72,7 +72,7 @@ export const usageNames: Record<UsageId, string> = {
   vectors: "Semantic vectors",
   extracted: "Text read from documents",
   runtimes: "Programs for portable drives",
-  models: "Search model files",
+  models: "Search model files from an earlier version",
   previous: "Data set aside by a restore",
   unfinished: "Unfinished downloads",
   untracked: "Files no record refers to",
@@ -342,7 +342,7 @@ export const leftoverWords: Record<LeftoverKind, LeftoverWords> = {
 export const cacheCost: Record<string, string> = {
   runtimes:
     "Fetched again, about 50 to 100 MB for each kind of computer, the next time a portable drive is written. That needs a connection.",
-  models: "Fetched again the next time search by meaning is used. That needs a connection.",
+  models: "Left by an earlier version. Nothing uses them now: the model for search by meaning is part of Outpost itself.",
   text: "Belongs to documents that have been removed. Nothing uses it.",
   snapshots: "Left by backups that were interrupted. Nothing uses them.",
 };

@@ -5,7 +5,9 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { indexCost, indexStage, SemanticSection, secondsLeft } from "./semantic-section";
 
-const MODEL_ID = "built-in:all-MiniLM-L6-v2-q8-84769597";
+const MODEL_ID = "built-in:all-MiniLM-L6-v2-q8-245889ee";
+/** The built-in model as first shipped, which cut long passages off. */
+const EARLIER_MODEL_ID = "built-in:all-MiniLM-L6-v2-q8-84769597";
 
 const settings = (change: Partial<Settings> = {}) =>
   ({
@@ -81,6 +83,7 @@ function serve(first: SemanticStatus, next: SemanticStatus = first) {
       }
       if (url.pathname === "/api/semantic/status" || url.pathname === "/api/semantic/index") return json(current);
       if (url.pathname.startsWith("/api/jobs/")) return json({ job: job() });
+      if (url.pathname.startsWith("/api/semantic/models/")) return json({ removed: 5045 });
       return new Response("{}", { status: 404, headers: { "content-type": "application/json" } });
     }),
   );
@@ -254,6 +257,23 @@ describe("search by meaning in Settings", () => {
     // The built-in model's vectors are kept, and say how much room they take.
     const kept = screen.getByText(MODEL_ID).closest("li");
     expect(kept).toHaveTextContent("5,045 passages, 10.9 MB");
+  });
+
+  it("says that vectors from an earlier built-in model are not used and need building again", async () => {
+    serve(status({ otherModels: [{ modelId: EARLIER_MODEL_ID, dimensions: 384, vectors: 5045 }] }));
+    show(settings());
+
+    // Nothing is built for the model in use, so the screen offers to build, as for any change of model.
+    expect(await screen.findByText("Index not built yet")).toBeVisible();
+    expect(screen.getByText("0 of 5,045 passages")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Build index" })).toBeEnabled();
+    expect(
+      screen.getByText(/An earlier version of the built-in model made some of these.*build the index again, then remove them/),
+    ).toBeVisible();
+    const kept = screen.getByText(EARLIER_MODEL_ID).closest("li");
+    expect(kept).toHaveTextContent("5,045 passages, 10.9 MB");
+    await userEvent.click(within(kept as HTMLElement).getByRole("button", { name: "Remove" }));
+    await waitFor(() => expect(requests).toContain(`DELETE /api/semantic/models/${encodeURIComponent(EARLIER_MODEL_ID)}`));
   });
 
   it("shows the demonstration choice only to someone who already made it", async () => {

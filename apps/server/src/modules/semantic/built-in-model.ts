@@ -32,7 +32,10 @@ export interface BuiltInModel {
   name: string;
   /** Numbers in each vector. */
   dimensions: number;
-  /** Longest input, in word pieces, counting the two markers at the ends. Longer text is cut. */
+  /**
+   * Most the model reads at once, in word pieces, counting the two markers at the ends.
+   * A longer text is read in stretches; see `stretches.ts`.
+   */
   maxTokens: number;
   licence: string;
   madeBy: string;
@@ -45,14 +48,16 @@ export const BUILT_IN_MODEL: BuiltInModel = manifest;
 /**
  * The name vectors are stored under: the model, its variant, and a fingerprint of the
  * exact files and of the settings that decide what a vector comes out as. A different
- * file, a different length limit or a different way of pooling gives a different name,
- * so vectors made one way are never compared with vectors made another.
+ * file, a different length limit, a different way of pooling or of reading a long text
+ * gives a different name, so vectors made one way are never compared with vectors made
+ * another.
  */
 export function modelNameFor(model: {
   name: string;
   variant: string;
   maxTokens: number;
   pooling: string;
+  longText: string;
   files: Record<"model" | "tokenizer" | "tokenizerConfig", { sha256: string }>;
 }): string {
   const fingerprint = createHash("sha256")
@@ -65,6 +70,8 @@ export function modelNameFor(model: {
         model.pooling,
         // One text at a time: an 8-bit model's arithmetic depends on what else is in the batch.
         "single",
+        // How a text longer than the limit is read. The first built-in model cut it off.
+        model.longText,
       ]),
     )
     .digest("hex")

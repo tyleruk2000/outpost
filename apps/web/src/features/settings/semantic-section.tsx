@@ -11,10 +11,11 @@ import { formatNumber, plural } from "@/lib/utils";
 import { SettingRow, SettingsSection, TextSetting } from "./parts";
 
 /**
- * Seconds the built-in model took for every thousand passages when measured on a recent
- * laptop (Apple M2 Max, four threads, passages of the default length). Quoted before
- * anything is built; once a build is running, the time left comes from its own speed.
- * See "What it costs" in docs/search.md.
+ * Seconds the built-in model takes for every thousand passages on a recent laptop,
+ * quoted before anything is built. Measured on an Apple M2 Max with four threads: 33
+ * for the bundled books, whose passages are mostly shorter than the longest allowed,
+ * and 54 for a library made only of full-length ones. Once a build is running, the time
+ * left comes from its own speed. See "What it costs" in docs/search.md.
  */
 export const LAPTOP_SECONDS_PER_THOUSAND = 45;
 
@@ -184,8 +185,7 @@ export function SemanticSection({
             <p className="text-small text-ink-muted">
               The built-in model is <span className="font-medium text-ink">{builtIn.name}</span> ({formatBytes(builtIn.bytes)}), made by the
               Sentence Transformers project and used under the {builtIn.licence} licence. It was trained on {builtIn.languages} text and
-              matches other languages poorly. It reads about the first thousand characters of a passage; the rest of a longer one is found
-              by its words only.
+              matches other languages poorly.
             </p>
           ) : null}
 
@@ -363,6 +363,12 @@ export function SemanticSection({
           {data && data.otherModels.length > 0 ? (
             <div>
               <p className="text-small font-medium text-ink">Vectors from other models</p>
+              {usesBuiltIn && data.otherModels.some((model) => model.modelId.startsWith("built-in:")) ? (
+                <p className="mt-0.5 text-small text-ink-muted">
+                  An earlier version of the built-in model made some of these. It read passages differently, so they are not used: build the
+                  index again, then remove them.
+                </p>
+              ) : null}
               <ul className="mt-1 divide-y divide-border border-y border-border">
                 {data.otherModels.map((model) => (
                   <li key={model.modelId} className="flex items-center justify-between gap-4 py-2">

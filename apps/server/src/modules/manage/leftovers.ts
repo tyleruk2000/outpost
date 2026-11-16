@@ -198,7 +198,7 @@ export function createLeftovers(ctx: AppContext, inventory: Inventory, survey: S
         }
       };
       cache("runtimes", "Programs fetched for portable drives", latest.data.runtimes, path.join(config.dataDir, "runtimes"));
-      cache("models", "Search model files", latest.data.models, path.join(config.dataDir, "models"));
+      cache("models", "Search model files from an earlier version", latest.data.models, path.join(config.dataDir, "models"));
       cache(
         "text",
         "Text kept for documents that are no longer in the library",
@@ -360,7 +360,7 @@ export function createLeftovers(ctx: AppContext, inventory: Inventory, survey: S
         found.data.total -= found.data.models;
         found.data.models = 0;
       });
-      return { title: "Search model files", bytes, count: 1 };
+      return { title: "Search model files from an earlier version", bytes, count: 1 };
     }
     if (id === "cache:text") {
       let bytes = 0;
