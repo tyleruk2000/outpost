@@ -11,7 +11,7 @@ test.describe("the calculators, on a phone", () => {
     await expect(page.getByRole("heading", { level: 1, name: "Water" })).toBeVisible();
 
     const storage = page.getByRole("region", { name: "Water to store" });
-    const people = storage.getByLabel("People");
+    const people = storage.getByRole("textbox", { name: "People", exact: true });
     await people.fill("4");
     await expect(storage.getByText("36 litres").first()).toBeVisible();
     await people.fill("four");
@@ -34,7 +34,7 @@ test.describe("the calculators, on a phone", () => {
 
     // The purification guidance and its sheet.
     const purification = page.getByRole("region", { name: "Making water safe to drink" });
-    await purification.getByLabel("Your height above sea level").fill("2500");
+    await purification.getByRole("textbox", { name: "Your height above sea level", exact: true }).fill("2500");
     await expect(purification.getByText("3 minutes", { exact: true })).toBeVisible();
     await expect(purification.getByRole("link", { name: "Save as PDF" })).toBeVisible();
 
@@ -47,8 +47,8 @@ test.describe("the calculators, on a phone", () => {
     const errors = watchForErrors(page);
     await page.goto("/tools/outdoors");
     const walking = page.getByRole("region", { name: "Walking time" });
-    await walking.getByLabel("Distance").fill("10");
-    await walking.getByLabel("Total climb").fill("900");
+    await walking.getByRole("textbox", { name: "Distance", exact: true }).fill("10");
+    await walking.getByRole("textbox", { name: "Total climb", exact: true }).fill("900");
     await expect(walking.getByText("3 hours 30 minutes")).toBeVisible();
     await walking.getByRole("radio", { name: "miles" }).click();
     await page.reload();
@@ -65,7 +65,7 @@ test.describe("the calculators, on a phone", () => {
     const antenna = page.getByRole("region", { name: "Antenna lengths" });
     await antenna.getByRole("combobox", { name: "Fill in a band" }).click();
     await page.getByRole("option", { name: /^20 m/ }).click();
-    await expect(antenna.getByLabel("Frequency")).toHaveValue("14.18");
+    await expect(antenna.getByRole("textbox", { name: "Frequency", exact: true })).toHaveValue("14.18");
     await expect(antenna.getByText("5.02 m", { exact: true })).toBeVisible();
     expect(errors).toEqual([]);
   });
