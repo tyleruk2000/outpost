@@ -221,13 +221,17 @@ describe("a large log", () => {
     expect(empty.state).toBe("failed");
     expect(empty.error).toContain("has a header and no contacts after it. Nothing was brought in.");
 
-    // One contact more than is taken. They are written as they are read, so 200,000 have to come out again.
-    const bare = (n: number) =>
-      `<CALL:5>G${String(n % 10_000).padStart(4, "0")}<QSO_DATE:8>${20000101 + (n % 28)}<TIME_ON:4>${String(n % 24).padStart(2, "0")}${String(Math.floor(n / 24) % 60).padStart(2, "0")}<BAND:3>${["40m", "80m", "20m", "15m", "10m", "17m", "30m", "12m"][Math.floor(n / 40_320) % 8]}<MODE:2>CW<EOR>`;
-    const many = Array.from({ length: 200_001 }, (_, n) => bare(n)).join("");
-    const refused = await settled((await send("lifetime.adi", many)).body.job!.id);
-    expect(refused.state).toBe("failed");
-    expect(refused.error).toContain("holds more than 200,000 contacts");
+    // More contacts than are taken. They are written as they are read, so those written have to come out again.
+    // (The limit is 200,000; the importer is asked for 2,000 here, which takes the same way out in a hundredth of the time.)
+    let read = 0;
+    const refused = await app.ctx.services.propagation.observations
+      .importAdif("lifetime.adi", Buffer.from(log(2_500)), { mostRecords: 2_000, progress: (bytes) => (read = bytes) })
+      .then(
+        () => null,
+        (error: Error) => error,
+      );
+    expect(refused?.message).toBe("That file holds more than 2,000 contacts. Export it in parts and import each.");
+    expect(read).toBeGreaterThan(0);
     expect(await list()).toMatchObject({ total: 0, imports: [] });
     expect((app.ctx.sqlite.prepare("SELECT count(*) AS n FROM radio_observations").get() as { n: number }).n).toBe(0);
     expect((app.ctx.sqlite.prepare("SELECT count(*) AS n FROM observation_imports").get() as { n: number }).n).toBe(0);

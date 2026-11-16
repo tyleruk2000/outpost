@@ -228,6 +228,8 @@ export interface Unhurried {
   importId?: string;
   signal?: AbortSignal;
   progress?(readBytes: number, totalBytes: number): void;
+  /** The most contacts taken from one file: `MAX_ADIF_RECORDS` unless a test asks for fewer. */
+  mostRecords?: number;
 }
 
 export interface ObservationsService {
@@ -419,6 +421,7 @@ export async function registerObservations(
     const importId = unhurried?.importId ?? newId();
     const now = Date.now();
     const reader = adifReader(bytes);
+    const most = unhurried?.mostRecords ?? MAX_ADIF_RECORDS;
     const skipped = new Map<string, number>();
     const notes = new Map<string, number>();
     let imported = 0;
@@ -427,10 +430,10 @@ export async function registerObservations(
     try {
       while (!reader.done) {
         const records = reader.read(IMPORT_BATCH);
-        if (reader.count > MAX_ADIF_RECORDS) {
+        if (reader.count > most) {
           throw new AppError(
             "too_large",
-            `That file holds more than ${MAX_ADIF_RECORDS.toLocaleString("en-GB")} contacts. Export it in parts and import each.`,
+            `That file holds more than ${most.toLocaleString("en-GB")} contacts. Export it in parts and import each.`,
           );
         }
         const rows: NewRow[] = [];
