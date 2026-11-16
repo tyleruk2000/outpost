@@ -1,4 +1,4 @@
-import { api, expect, test, watchForErrors } from "./fixtures";
+import { api, clearPages, expect, test, watchForErrors } from "./fixtures";
 
 test.describe("notes", () => {
   test.describe.configure({ mode: "serial" });
@@ -89,6 +89,7 @@ test.describe("notes", () => {
 
   test("moves a page into another by dragging it in the sidebar, and takes it back from the toast", async ({ page }) => {
     const errors = watchForErrors(page);
+    await clearPages(page);
     const hut = (await api(page, "POST", "/api/notes", { title: "Hut log" })).note;
     const visit = (await api(page, "POST", "/api/notes", { title: "First visit" })).note;
     const parentOf = async (id: string) =>

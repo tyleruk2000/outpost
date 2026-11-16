@@ -1,5 +1,5 @@
 import { lampRoomBook } from "./epub";
-import { api, expect, test, watchForErrors } from "./fixtures";
+import { api, clearPages, expect, test, watchForErrors } from "./fixtures";
 
 test.describe("on a phone", () => {
   test("uses the bottom bar and the More sheet instead of the sidebar", async ({ page }) => {
@@ -221,10 +221,7 @@ test.describe("on a phone", () => {
 
   test("moves a page with a long press and a drag, and with Move to… without dragging", async ({ page }) => {
     const errors = watchForErrors(page);
-    // Earlier tests leave pages of their own. A long tree would scroll under the finger, which is not what is tried here.
-    for (const note of (await api(page, "GET", "/api/notes/tree")).notes as Array<{ id: string; parentId: string | null }>) {
-      if (note.parentId === null) await api(page, "DELETE", `/api/notes/${note.id}`);
-    }
+    await clearPages(page);
     const kit = (await api(page, "POST", "/api/notes", { title: "Kit" })).note;
     const ropes = (await api(page, "POST", "/api/notes", { title: "Ropes" })).note;
     const parentOf = async (id: string) =>

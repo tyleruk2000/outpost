@@ -51,3 +51,14 @@ export async function api<T = any>(page: Page, method: string, url: string, body
   expect(response.ok(), `${method} ${url} -> ${response.status()} ${await response.text()}`).toBe(true);
   return (await response.json()) as T;
 }
+
+/**
+ * Moves every page to the trash. Tests that drag pages about need a short tree: pages
+ * left by earlier tests make it long enough to scroll under the pointer, which is not
+ * what those tests are about.
+ */
+export async function clearPages(page: Page): Promise<void> {
+  for (const note of (await api(page, "GET", "/api/notes/tree")).notes as Array<{ id: string; parentId: string | null }>) {
+    if (note.parentId === null) await api(page, "DELETE", `/api/notes/${note.id}`);
+  }
+}
