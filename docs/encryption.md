@@ -520,12 +520,11 @@ download it (WebKit [bug 275288](https://bugs.webkit.org/show_bug.cgi?id=275288)
 
 The PDFs Outpost makes elsewhere (a map page, an HF prediction, a communication plan)
 have a way that depends on none of this: **Add to library** sends the file to the
-server instead of to the device ([library.md](library.md)). **The paper aids do not
-offer it.** A one-time pad should exist as two sheets of paper and nowhere else, and the
+server instead of to the device ([library.md](library.md)). The paper aids offer it
+too. A one-time pad should exist as two sheets of paper and nowhere else, and the
 library can be read by everyone who can reach Outpost, is in every backup and is in the
-search index. The cipher square is no secret, but it is printed from the same view, and
-a button that must never be pressed for one of the two is left off both; the view says
-so, and says to save the square and add the file by hand if it is wanted there.
+search index, so for a pad the button asks first and says exactly that; the cipher
+square is no secret and is added without a question.
 
 So the screen does three things, and so do the emergency sheet in Contacts and the map's
 "Print or save as PDF" (`apps/web/src/lib/printing.ts`):

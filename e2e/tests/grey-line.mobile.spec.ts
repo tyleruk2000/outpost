@@ -45,18 +45,46 @@ test("the grey line on a phone: in reach, clear of the rest, and drawn", async (
   const centre = await centreOf(page);
   // Beside the cross, on the land or sea round Britain.
   const spot = { x: centre.x - 70, y: centre.y + 30 };
+  // The same piece of ground each time: on a phone the map slides to keep its centre in the clear part of the
+  // screen when something (the legend, its time control) takes room, so the spot is found from the cross again.
+  const spotNow = async () => {
+    const at = await centreOf(page);
+    return { x: at.x - 70, y: at.y + 30 };
+  };
   const before = await lightnessAt(page, spot);
 
+  // On a phone a layer is switched in the column of icons where there is room for it, and in the menu at the end
+  // of the search box always. Both go by the same name.
   const button = page.getByRole("button", { name: "Grey line (day and night)" });
-  await expect.poll(() => isInReach(page, button)).toBe(true);
-  const size = (await button.boundingBox())!;
-  expect(size.width).toBeGreaterThanOrEqual(44);
-  expect(size.height).toBeGreaterThanOrEqual(44);
-  await button.tap();
-  await expect(button).toHaveAttribute("aria-pressed", "true");
+  const inMenu = async <T>(act: (item: ReturnType<Page["getByRole"]>) => Promise<T>): Promise<T> => {
+    await page.getByRole("button", { name: "All map tools" }).tap();
+    const item = page.getByRole("menuitemcheckbox", { name: "Grey line (day and night)" });
+    await expect(item).toBeVisible();
+    // Measured once the menu has finished opening: it grows into place.
+    await expect.poll(async () => (await item.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    return act(item);
+  };
+  if ((await button.count()) > 0) {
+    await expect.poll(() => isInReach(page, button)).toBe(true);
+    const size = (await button.boundingBox())!;
+    expect(size.width).toBeGreaterThanOrEqual(44);
+    expect(size.height).toBeGreaterThanOrEqual(44);
+    await button.tap();
+  } else {
+    await inMenu((item) => item.tap());
+  }
 
   const legend = page.getByRole("region", { name: "Grey line" });
   await expect(legend).toBeVisible();
+  // It says it is on. The legend takes room from the column, so the icon may have given way to the menu by now.
+  await settled(page);
+  if ((await button.count()) > 0) {
+    await expect(button).toHaveAttribute("aria-pressed", "true");
+  } else {
+    await inMenu((item) => expect(item).toHaveAttribute("aria-checked", "true"));
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("menuitemcheckbox", { name: "Grey line (day and night)" })).toHaveCount(0);
+  }
   await expect(legend.locator("[data-grey-line-time]")).toHaveText("Now, 17:00 on Monday 21 December 2026");
   expect(await overflow(page)).toBe(0);
 
@@ -76,7 +104,7 @@ test("the grey line on a phone: in reach, clear of the rest, and drawn", async (
 
   // Night over Britain at five in the evening in December.
   await settled(page);
-  await expect.poll(async () => before - (await lightnessAt(page, spot)), { message: "darker after dark" }).toBeGreaterThan(15);
+  await expect.poll(async () => before - (await lightnessAt(page, await spotNow())), { message: "darker after dark" }).toBeGreaterThan(15);
 
   // The time control: opened with a touch, its fields and "now" 44 points high and in reach.
   const choose = legend.getByRole("button", { name: "Choose the time it is drawn for" });
@@ -94,7 +122,9 @@ test("the grey line on a phone: in reach, clear of the rest, and drawn", async (
   // Closed again to look at the map under it.
   await choose.tap();
   await settled(page);
-  await expect.poll(async () => Math.abs(before - (await lightnessAt(page, spot))), { message: "midday in December" }).toBeLessThan(3);
+  await expect
+    .poll(async () => Math.abs(before - (await lightnessAt(page, await spotNow()))), { message: "midday in December" })
+    .toBeLessThan(3);
   await choose.tap();
   const now = legend.getByRole("button", { name: "Now", exact: true });
   await expect.poll(() => isInReach(page, now)).toBe(true);

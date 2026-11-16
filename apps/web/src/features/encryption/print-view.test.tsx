@@ -107,9 +107,16 @@ describe("printing one-time pads", () => {
     expect(within(paper).getAllByText(/Never use any part of this pad for a second message/)).toHaveLength(4);
     // Everything that is not paper is marked to be left off it.
     for (const name of ["Print", "Close"]) expect(within(view).getByRole("button", { name }).closest(".print-chrome")).not.toBeNull();
-    // A pad is never offered to the library, which everyone on the network can read, and the screen says why.
-    expect(within(view).queryByRole("button", { name: "Add to library" })).not.toBeInTheDocument();
-    expect(view).toHaveTextContent("That is why there is no “Add to library” here");
+    // A pad can be added to the library, which everyone on the network can read: the screen says so, and the
+    // button asks before anything is sent.
+    expect(view).toHaveTextContent("a pad kept there is no longer known only to the two people holding the paper");
+    await user.click(within(view).getByRole("button", { name: "Add to library" }));
+    const question = screen.getByRole("alertdialog", { name: "Add these pads to the library?" });
+    expect(question).toHaveTextContent("can be read and searched by everyone who can reach Outpost on this network");
+    expect(question).toHaveTextContent("copied into every backup");
+    await user.click(within(question).getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(within(view).getByTestId("pdf-status")).toHaveAttribute("data-state", "idle");
     expect(paper.closest(".print-chrome")).toBeNull();
 
     // Print leads, with the PDF beside it.
@@ -117,6 +124,7 @@ describe("printing one-time pads", () => {
     expect([...ways.getByRole("button", { name: "Print" }).parentElement!.children].map((node) => node.textContent?.trim())).toEqual([
       "Print",
       "Save as PDF",
+      "Add to library",
       "Close",
     ]);
     await user.click(ways.getByRole("button", { name: "Print" }));
@@ -181,7 +189,7 @@ describe("printing one-time pads", () => {
     const view = await openPads(user);
     expect(within(view).queryByRole("button", { name: "Print" })).not.toBeInTheDocument();
     const ways = within(view).getByTestId("print-ways");
-    expect([...ways.children].map((node) => node.textContent?.trim())).toEqual(["Save as PDF", "Close"]);
+    expect([...ways.children].map((node) => node.textContent?.trim())).toEqual(["Save as PDF", "Add to library", "Close"]);
     const notice = within(view).getByText("This browser cannot print from a page").closest('[role="status"]')!;
     expect(notice).toHaveTextContent("Save the PDF and print that.");
     expect(notice).toHaveTextContent("The browser’s own Share menu, then Print, prints this sheet too.");
@@ -197,7 +205,7 @@ describe("printing one-time pads", () => {
     const user = userEvent.setup();
     const view = await openPads(user);
     const ways = within(view).getByTestId("print-ways");
-    expect([...ways.children].map((node) => node.textContent?.trim())).toEqual(["Save as PDF", "Print", "Close"]);
+    expect([...ways.children].map((node) => node.textContent?.trim())).toEqual(["Save as PDF", "Print", "Add to library", "Close"]);
     expect(within(view).getByText("Opened from the Home Screen, a phone does not always print from a button")).toBeInTheDocument();
     await user.click(within(view).getByRole("button", { name: "Print" }));
     expect(print).toHaveBeenCalledOnce();
@@ -237,9 +245,9 @@ describe("printing a Vigenère square", () => {
     expect(paper.querySelector('[data-sheet="vigenere-square"]')).not.toBeNull();
     expect(paper.querySelectorAll("tbody tr")).toHaveLength(26);
     expect(within(view).queryByText(/another copy of the pads/)).not.toBeInTheDocument();
-    // Nor is the square, from this view; it says how to put it there by hand.
-    expect(within(view).queryByRole("button", { name: "Add to library" })).not.toBeInTheDocument();
-    expect(within(view).getByTestId("no-library")).toHaveTextContent("Paper aids are not added to the library from this screen");
+    // The square is no secret: it is offered to the library with no question and no warning.
+    expect(within(view).getByRole("button", { name: "Add to library" })).toBeEnabled();
+    expect(within(view).queryByText(/no longer known only to the two people/)).not.toBeInTheDocument();
     expect(within(view).getByTestId("pdf-summary")).toHaveTextContent(
       "The PDF is 1 page of US Letter, made on this device and sent nowhere.",
     );

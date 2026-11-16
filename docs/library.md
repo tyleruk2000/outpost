@@ -121,20 +121,20 @@ A **coverage map**'s picture carries its values by colour. The page repeats the 
 figures (one character to a cell) so that the values survive a grey printer and can be
 read as text.
 
-## Paper aids are not offered to the library
+## Paper aids: a pad asks first
 
-The one-time pads and the cipher square on the Encryption screen can be printed and
-saved as a PDF, and have no **Add to library**.
+The one-time pads and the cipher square on the Encryption screen can be printed, saved
+as a PDF, and added to the library like every other PDF Outpost makes.
 
 A one-time pad is a secret that should exist as two sheets of paper and nowhere else.
 The library is the opposite of that: Outpost has no accounts, so every document can be
 read by everyone who can reach it on the network; documents are in every backup and on
-every portable drive; and their text is in the search index. The screen says so beside
-the warning it already gives about a saved file.
+every portable drive; and their text is in the search index. So for a pad **Add to
+library** asks first, in those words, and nothing is sent unless the question is
+answered yes. It is there for pads made for practice or teaching, and for a person who
+has decided a copy need not be secret. The warning beside the saved file says the same.
 
-The cipher square is not a secret. It is printed from the same view as the pads, and a
-button that must never be pressed for one of two sheets shown by one view is left off
-both. To keep the square in the library, save the PDF and add the file there.
+The cipher square is not a secret and is added with no question.
 
 ## Not done
 

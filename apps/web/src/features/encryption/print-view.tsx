@@ -12,20 +12,23 @@
  *
  * The view is a child of the page's body, which is what the print rules look for.
  *
- * It does not offer "Add to library", which every other PDF Outpost makes does
- * (features/library/made). A one-time pad is a secret meant to exist on two sheets of
- * paper and nowhere else; the library is readable by everyone who can reach Outpost and
- * is in every backup. The cipher square is not a secret, but it is printed from the
- * same view, and one button that must never be pressed for a pad is one too many.
+ * "Add to library" is offered here as it is for every PDF Outpost makes
+ * (features/library/made); the owner asked for it. A one-time pad is a secret meant to
+ * exist on two sheets of paper and nowhere else, and the library is readable by everyone
+ * who can reach Outpost and is in every backup, so for a pad the button asks first and
+ * says exactly that. The cipher square is no secret and is added without a question.
  */
-import { Download, Printer, Share2, TriangleAlert, X } from "lucide-react";
+import { Download, LibraryBig, Printer, Share2, TriangleAlert, X } from "lucide-react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { type CSSProperties, type ReactNode, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Notice } from "@/components/page";
 import { PrintNotice } from "@/components/print-notice";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/dialog";
 import { Segmented } from "@/components/ui/misc";
+import { madePdf } from "@/features/library/made/made-pdf";
+import { PdfStatus, useMadePdf } from "@/features/library/made/pdf-actions";
 import { readStored, writeStored } from "@/features/maps/lib/view";
 import { PAPERS } from "@/features/maps/print/paper";
 import { pdfFileName } from "@/features/maps/print/pdf";
@@ -82,6 +85,16 @@ export function PrintView({
     }
   }, [pages, paper, title]);
   const file = "file" in made ? made.file : null;
+
+  // The same file, as the library takes it: through the library's own upload, like every PDF Outpost makes.
+  const forLibrary = useMemo(
+    () =>
+      file ? madePdf(file, title, secret ? "One-time pads" : "Cipher aid", { what: "the Encryption page", path: "/encryption" }) : null,
+    [file, title, secret],
+  );
+  const library = useMadePdf(forLibrary);
+  const [asking, setAsking] = useState(false);
+  const adding = library.state.status === "adding";
 
   // The address is given back when the paper changes or the view closes; the browser then lets the bytes go.
   const [url, setUrl] = useState<string>();
@@ -152,6 +165,9 @@ export function PrintView({
               <div className="flex flex-wrap items-center gap-2" data-testid="print-ways">
                 {leadWithFile ? save : print}
                 {leadWithFile ? print : save}
+                <Button disabled={!forLibrary} loading={adding} onClick={() => (secret ? setAsking(true) : library.add())}>
+                  {adding ? null : <LibraryBig aria-hidden />} Add to library
+                </Button>
                 {canShare ? (
                   <Button onClick={share}>
                     <Share2 /> Share the PDF
@@ -193,16 +209,12 @@ export function PrintView({
               {secret ? (
                 <Notice tone="warning" icon={<TriangleAlert />} title="A saved PDF is another copy of the pads">
                   It is made on this device and sent nowhere, and Outpost keeps nothing once this screen is left. The file you save stays:
-                  delete it when it is printed, here and anywhere it was shared or backed up, as you would burn the paper. That is why there
-                  is no “Add to library” here, as there is for other PDFs Outpost makes: the library can be read by everyone on this network
-                  and is copied into every backup.
+                  delete it when it is printed, here and anywhere it was shared or backed up, as you would burn the paper. The same goes for
+                  “Add to library”: the library can be read by everyone on this network and is copied into every backup, so a pad kept there
+                  is no longer known only to the two people holding the paper.
                 </Notice>
-              ) : (
-                <p className="text-small text-ink-muted" data-testid="no-library">
-                  Paper aids are not added to the library from this screen, so that a pad never is by a slip. The square is no secret: to
-                  keep it in the library, save the PDF and add the file there.
-                </p>
-              )}
+              ) : null}
+              <PdfStatus made={library} />
             </div>
 
             <div ref={setRoom} className="print-room mx-auto max-w-[210mm]">
@@ -213,6 +225,17 @@ export function PrintView({
           </div>
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
+      <ConfirmDialog
+        open={asking}
+        onOpenChange={setAsking}
+        title="Add these pads to the library?"
+        description="A one-time pad protects a message only while nobody else has a copy. In the library this PDF can be read and searched by everyone who can reach Outpost on this network, and it is copied into every backup. Add it only if that is what you want: pads for practice, say, or a copy you accept is no longer secret."
+        confirmLabel="Add to library"
+        onConfirm={() => {
+          setAsking(false);
+          library.add();
+        }}
+      />
     </DialogPrimitive.Root>
   );
 }

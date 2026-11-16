@@ -50,8 +50,9 @@ export function Sidebar({
 }) {
   const jobs = useActiveJobs();
   const downloads = jobs.data?.filter((job) => job.queue === "download" && job.state !== "paused").length ?? 0;
-  // Search opens the palette from the spine; the full screen is one keystroke further.
-  const primary = knowledgeNav.filter((item) => item.to !== "/search");
+  // The field above opens the quick search from anywhere. The full search screen (every result, the filters, and
+  // how search works) is listed with the other screens too: left to a keystroke, it could not be found.
+  const primary = knowledgeNav.map((item) => (item.to === "/search" ? { ...item, label: "Search page" } : item));
 
   return (
     <aside
