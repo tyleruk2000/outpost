@@ -152,5 +152,10 @@ All three are bundled and served locally. Fixed rem scale, ratio about 1.2:
 
 ## Layers
 
-`sticky 10` · `nav 20` · `dropdown 30` · `overlay 40` · `dialog 50` · `toast 60` ·
-`tooltip 70`.
+`sticky 10` · `nav 20` · `dropdown 30` · `overlay 40` · `dialog 50` · `popover 55` ·
+`toast 60` · `tooltip 70`.
+
+`popover` is for what a press opens and puts at the end of the page: a drop-down's
+list, a menu, a popover (`floating` in `components/ui/menu.tsx`). It is above `dialog`
+because any of them can be opened from inside one. `dropdown` is for what floats over
+the page itself and belongs under a dialog: a list of suggestions, the editor's toolbar.

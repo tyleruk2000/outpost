@@ -93,6 +93,9 @@
   --z-dropdown: 30;
   --z-overlay: 40;
   --z-dialog: 50;
+  /* What a press opens: a drop-down's list, a menu, a popover. It is put at the end of the page, outside
+     what it was opened from, so it is drawn above a dialog or it would open underneath one, out of reach. */
+  --z-popover: 55;
   --z-toast: 60;
   --z-tooltip: 70;
 }

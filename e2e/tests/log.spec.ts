@@ -56,6 +56,39 @@ test.describe("The contact log", () => {
     expect(errors).toEqual([]);
   });
 
+  test("the drop-down in the form for an entry works with a mouse and with the keyboard", async ({ page }) => {
+    const errors = watchForErrors(page);
+    await page.goto("/radio/log");
+    await page.getByRole("button", { name: "Log an entry" }).click();
+    const dialog = page.getByRole("dialog", { name: "Log an entry" });
+    const what = dialog.getByRole("combobox", { name: "What happened" });
+
+    // With a mouse: the list is over the form, where the pointer is.
+    await what.click();
+    const item = page.getByRole("option", { name: "Called, not heard" });
+    await expect(item).toBeVisible();
+    expect(
+      await item.evaluate((element) => {
+        const box = element.getBoundingClientRect();
+        return element.contains(document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2));
+      }),
+    ).toBe(true);
+    await item.click();
+    await expect(what).toHaveText("Called, not heard");
+
+    // With the keyboard: opened from the field, moved through with the arrows, taken with Enter.
+    await what.focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("listbox")).toBeVisible();
+    await page.keyboard.press("ArrowUp");
+    await page.keyboard.press("Enter");
+    await expect(what).toHaveText("Heard, no contact");
+    await expect(page.getByRole("listbox")).toHaveCount(0);
+    await dialog.getByRole("button", { name: "Cancel" }).click();
+    await expect(dialog).toBeHidden();
+    expect(errors).toEqual([]);
+  });
+
   test("a long log is brought in by a job, and is in the log whole or not at all", async ({ page, request }) => {
     const errors = watchForErrors(page);
     await page.goto("/radio/log");
