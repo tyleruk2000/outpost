@@ -12,15 +12,14 @@
 import type { BackupRight } from "@outpost/shared";
 import type { AppContext } from "../../core/context.ts";
 import { AppError } from "../../core/errors.ts";
-import { isLocalRequest, type RequestOrigin } from "../../core/local.ts";
+import { localBy, type RequestOrigin } from "../../core/local.ts";
 
 const OPTION = "OUTPOST_ALLOW_REMOTE_ERASE";
 
 export function backupRight(request: RequestOrigin, ctx: AppContext): BackupRight {
   if (ctx.config.allowRemoteErase) return { allowed: true, reason: "option", option: OPTION };
-  return isLocalRequest(request, ctx.config)
-    ? { allowed: true, reason: "local", option: OPTION }
-    : { allowed: false, reason: "remote", option: OPTION };
+  const by = localBy(request, ctx.config);
+  return by ? { allowed: true, reason: "local", option: OPTION, localBy: by } : { allowed: false, reason: "remote", option: OPTION };
 }
 
 /** Throws `forbidden`, saying why and what to do, unless the request has the right. `action` starts the sentence. */

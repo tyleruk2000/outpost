@@ -1,7 +1,8 @@
 import http from "node:http";
 import os from "node:os";
 import { afterEach, describe, expect, it } from "vitest";
-import { isLocalRequest, isOwnAddress, type Machine, ownAddresses, thisMachine } from "../src/core/local.ts";
+import { loadConfig } from "../src/config.ts";
+import { containerReason, isLocalRequest, isOwnAddress, localBy, type Machine, ownAddresses, thisMachine } from "../src/core/local.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
 
 type Interfaces = ReturnType<typeof os.networkInterfaces>;
@@ -129,6 +130,93 @@ describe("this computer's own addresses count as this computer", () => {
   });
 });
 
+describe("knowing it runs in a container", () => {
+  /** A made-up file system: the files there, and what each holds. */
+  const files = (contents: Record<string, string>) => ({
+    exists: (file: string) => Object.hasOwn(contents, file),
+    read: (file: string) => (Object.hasOwn(contents, file) ? contents[file]! : null),
+  });
+  const desktop = {
+    "/proc/self/cgroup": "0::/user.slice/user-1000.slice/session-2.scope\n",
+    "/proc/self/mountinfo": "23 1 179:2 / / rw,noatime shared:1 - ext4 /dev/mmcblk0p2 rw\n",
+  };
+
+  it.each([
+    ["Docker's marker file", {}, { ...desktop, "/.dockerenv": "" }, /\/\.dockerenv/],
+    ["Podman's marker file", {}, { ...desktop, "/run/.containerenv": 'engine="podman-4.9.3"\n' }, /\/run\/\.containerenv/],
+    ["the container variable systemd and Podman set", { container: "podman" }, desktop, /container=podman/],
+    ["a systemd-nspawn container", { container: "systemd-nspawn" }, desktop, /container=systemd-nspawn/],
+    ["Kubernetes's service variables", { KUBERNETES_SERVICE_HOST: "10.96.0.1" }, desktop, /KUBERNETES_SERVICE_HOST/],
+    ["Outpost's own variable", { OUTPOST_IN_CONTAINER: "true" }, desktop, /OUTPOST_IN_CONTAINER/],
+    [
+      "a Kubernetes control group",
+      {},
+      { ...desktop, "/proc/self/cgroup": "12:memory:/kubepods/burstable/pod1234/abcd\n" },
+      /control group/,
+    ],
+    [
+      "a Docker control group (cgroup v1)",
+      {},
+      { ...desktop, "/proc/self/cgroup": "11:cpuset:/docker/0123456789abcdef\n" },
+      /control group/,
+    ],
+    [
+      "a Podman control group",
+      {},
+      { ...desktop, "/proc/self/cgroup": "0::/machine.slice/libpod-0123abcd.scope/container\n" },
+      /control group/,
+    ],
+    [
+      "a root file system kept by a container engine",
+      {},
+      {
+        ...desktop,
+        "/proc/self/mountinfo":
+          "512 400 0:52 / / rw,relatime - overlay overlay rw,lowerdir=/var/lib/docker/overlay2/l/ABC:/var/lib/docker/overlay2/l/DEF,upperdir=/var/lib/docker/overlay2/123/diff\n",
+      },
+      /mount/,
+    ],
+  ])("is seen from %s", (_what, env, contents, reason) => {
+    expect(containerReason(env, files(contents))).toMatch(reason);
+    expect(thisMachine(env, () => ({}), Date.now, files(contents)).inContainer).toBe(true);
+  });
+
+  it.each([
+    ["a desktop or a Raspberry Pi", {}, desktop],
+    [
+      "a Raspberry Pi with its root file system made read-only by raspi-config (an overlay, but no engine's)",
+      {},
+      {
+        ...desktop,
+        "/proc/self/mountinfo": "25 1 0:22 / / rw,noatime - overlay overlay rw,lowerdir=/ro,upperdir=/rw/upper,workdir=/rw/work\n",
+      },
+    ],
+    ["a Mac (none of these files)", {}, {}],
+    ["an empty container variable", { container: "" }, desktop],
+  ])("is not seen on %s", (_what, env, contents) => {
+    expect(containerReason(env, files(contents))).toBeNull();
+    expect(thisMachine(env, () => ({}), Date.now, files(contents)).inContainer).toBe(false);
+  });
+});
+
+describe("the rule that made a request this computer's", () => {
+  const here = machine(mac);
+  it("is said, with the address", () => {
+    expect(localBy(from("192.168.1.232"), lan, here)).toEqual({ rule: "own-address", address: "192.168.1.232" });
+    expect(localBy(from("::ffff:127.0.0.1"), lan, here)).toEqual({ rule: "loopback", address: "127.0.0.1" });
+    expect(localBy(from("192.168.1.20"), { lanAccess: false }, here)).toEqual({ rule: "not-on-network", address: null });
+    expect(localBy(from("192.168.1.20"), lan, here)).toBeNull();
+  });
+
+  it("can be turned off at start-up, leaving loopback", () => {
+    const off = { lanAccess: true, ownAddressIsLocal: false };
+    expect(isLocalRequest(from("192.168.1.232"), off, here)).toBe(false);
+    expect(isLocalRequest(from("127.0.0.1"), off, here)).toBe(true);
+    expect(loadConfig({ OUTPOST_DATA_DIR: "/x", OUTPOST_OWN_ADDRESS_IS_LOCAL: "false" }).ownAddressIsLocal).toBe(false);
+    expect(loadConfig({ OUTPOST_DATA_DIR: "/x" }).ownAddressIsLocal).toBe(true);
+  });
+});
+
 // ── At the real network address of the computer the tests run on ──
 
 const realAddress = [...ownAddresses(os.networkInterfaces())].find((address) => !address.includes(":"));
@@ -188,13 +276,14 @@ describe("a browser on this computer at its network address", () => {
 
     // What each screen is told, over a real connection that arrives from this computer's own address.
     const cleanup = await send(base, "GET", "/api/manage/cleanup");
-    expect(cleanup.body.erase).toMatchObject({ allowed: true, reason: "local" });
+    const byOwnAddress = { rule: "own-address", address };
+    expect(cleanup.body.erase).toMatchObject({ allowed: true, reason: "local", localBy: byOwnAddress });
     const backup = await send(base, "GET", "/api/backup/status");
-    expect(backup.body.right).toMatchObject({ allowed: true, reason: "local" });
-    expect(backup.body.protection.right).toEqual({ allowed: true, reason: "local" });
+    expect(backup.body.right).toMatchObject({ allowed: true, reason: "local", localBy: byOwnAddress });
+    expect(backup.body.protection.right).toEqual({ allowed: true, reason: "local", localBy: byOwnAddress });
     const https = await send(base, "GET", "/api/https");
-    expect(https.body.authorityRight).toMatchObject({ allowed: true, reason: "local" });
-    expect(https.body.own.keyRight).toEqual({ allowed: true, reason: "local" });
+    expect(https.body.authorityRight).toMatchObject({ allowed: true, reason: "local", localBy: byOwnAddress });
+    expect(https.body.own.keyRight).toEqual({ allowed: true, reason: "local", localBy: byOwnAddress });
 
     // And what the server does when asked: past the rule each time (the answers that follow are the actions' own).
     expect((await send(base, "DELETE", "/api/backup/stored/outpost-backup-none.zip")).status).not.toBe(403);
@@ -219,5 +308,24 @@ describe("a browser on this computer at its network address", () => {
     ] as const) {
       expect((await app.api(method, url, body, elsewhere)).status, `${method} ${url}`).toBe(403);
     }
+  });
+
+  it.skipIf(!realAddress)("is not this computer when the own-address rule is turned off at start-up", async () => {
+    const address = realAddress as string;
+    running = await createTestApp({
+      OUTPOST_LAN_ACCESS: "true",
+      OUTPOST_HOST: "0.0.0.0",
+      OUTPOST_ALLOWED_HOSTS: address,
+      OUTPOST_OWN_ADDRESS_IS_LOCAL: "false",
+    });
+    await running.app.listen({ port: 0, host: address });
+    const port = (running.app.server.address() as { port: number }).port;
+    const base = `http://${address}:${port}`;
+    expect((await send(base, "GET", "/api/manage/cleanup")).body.erase).toEqual({
+      allowed: false,
+      reason: "remote",
+      option: "OUTPOST_ALLOW_REMOTE_ERASE",
+    });
+    expect((await send(base, "POST", "/api/manage/cleanup/everything", { confirm: "erase everything" })).status).toBe(403);
   });
 });

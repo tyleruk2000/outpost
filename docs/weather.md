@@ -44,6 +44,12 @@ weather list, it says that no warnings are matched to it until it is added. A pl
 the saved place's name and position, so the cache still makes sense if the saved place
 is moved or removed.
 
+Removing a place from the list removes what was fetched for it. A place may be removed
+while an update is under way: the removal wins. An answer for it that arrives afterwards
+is not kept, nothing more is asked about it, and the update lists it as removed. Copies
+left for a place that is no longer in the list (as an earlier version could leave them)
+are cleared when Outpost starts.
+
 The device's own position is offered only where the browser gives it: on a secure page
 (an https address or localhost). On a phone reaching Outpost at a plain
 `http://192.168.x.x` address, it is not offered. The dialog says so, and points to
@@ -259,7 +265,11 @@ not already kept: a reading at the same time is not added twice.
   `2026-11-16 09:00:00+01:00`, `2026-11-16 09:00`), British `16/11/2026 09:00`, or Unix
   seconds or milliseconds. A time with no zone is read in the zone of the device the
   file was chosen on, which the screen names.
-- Comma, semicolon or tab separators; at most 50,000 rows and 4 MB.
+- Comma, semicolon or tab separators; at most 50,000 rows and 4 MB. A semicolon file
+  uses the decimal comma (`1.013,2` or `1013,2`), a comma file the decimal point
+  (`"1,013.2"`), and a tab file is judged from its own numbers; a pressure the file does
+  not settle is listed as a problem with both readings, not guessed. The rule is the one
+  the supplies importer uses.
 
 ### A weather station
 

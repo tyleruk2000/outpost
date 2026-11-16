@@ -7,6 +7,8 @@
  * manager's, with its back-off.
  */
 import fs from "node:fs";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import { AppError } from "../../core/errors.ts";
 import type { HttpClient } from "../../core/http.ts";
 import { PermanentJobError } from "../../core/jobs.ts";
@@ -92,23 +94,28 @@ export function createQueryFetcher(client: HttpClient, options: { gapMs?: number
         if (response.status === 400) throw new PermanentJobError(`${host} did not accept the question (HTTP 400).`);
         throw new AppError("upstream", `${host} could not answer (HTTP ${response.status}).`);
       }
-      const out = fs.createWriteStream(partPath, { flags: "w" });
       let received = 0;
-      try {
-        for await (const chunk of response.body as unknown as AsyncIterable<Uint8Array>) {
-          received += chunk.byteLength;
-          if (received > spec.maxBytes) {
-            throw new PermanentJobError(
-              `The answer from ${host} is larger than ${Math.round(spec.maxBytes / 1048576)} MB. Choose a smaller area or fewer layers.`,
-            );
+      // pipeline(), as the other fetchers: a write that fails (a full drive, one unplugged,
+      // a folder that has gone) rejects here and becomes the job's error, and the disk's
+      // pace holds the socket back. The part file is left for the download manager.
+      await pipeline(
+        response.body ? Readable.fromWeb(response.body as never) : Readable.from([]),
+        async function* count(chunks: AsyncIterable<Buffer>) {
+          for await (const chunk of chunks) {
+            received += chunk.byteLength;
+            if (received > spec.maxBytes) {
+              throw new PermanentJobError(
+                `The answer from ${host} is larger than ${Math.round(spec.maxBytes / 1048576)} MB. Choose a smaller area or fewer layers.`,
+              );
+            }
+            await throttle(chunk.byteLength);
+            progress(received, null);
+            yield chunk;
           }
-          await throttle(chunk.byteLength);
-          if (!out.write(chunk)) await new Promise<void>((resolve) => out.once("drain", () => resolve()));
-          progress(received, null);
-        }
-      } finally {
-        await new Promise<void>((resolve, reject) => out.end((error?: Error | null) => (error ? reject(error) : resolve())));
-      }
+        },
+        fs.createWriteStream(partPath, { flags: "w" }),
+        { signal },
+      );
       progress(received, received);
     } finally {
       turn.notBefore = Date.now() + (busy ? busyGap : gap);

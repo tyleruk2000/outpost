@@ -1,4 +1,4 @@
-import type { JobDto } from "./common.ts";
+import type { JobDto, LocalBy } from "./common.ts";
 
 /**
  * Whether this request may do the things that replace or remove what a person keeps:
@@ -9,6 +9,8 @@ import type { JobDto } from "./common.ts";
 export interface BackupRight {
   allowed: boolean;
   reason: "local" | "option" | "remote";
+  /** With `local`: which rule made it so. */
+  localBy?: LocalBy;
   /** The start-up option that allows it from other devices. */
   option: string;
 }
@@ -23,6 +25,8 @@ export interface BackupRight {
 export interface BackupPassphraseRight {
   allowed: boolean;
   reason: "local" | "https" | "remote" | "insecure";
+  /** With `local`: which rule made it so. */
+  localBy?: LocalBy;
 }
 
 /** Whether backups made now are protected with a passphrase. Outpost keeps no copy of the passphrase. */

@@ -102,6 +102,13 @@ const SOURCE_OF: Record<WeatherKind, WeatherSourceId> = {
 
 export function createWeatherService(ctx: AppContext, fetcher: SourceFetcher): WeatherService {
   const { db, sqlite } = ctx;
+  // Copies kept for places that are no longer in the list (an update an earlier version
+  // finished after the place was removed) are counted as fetched with nowhere to show
+  // them: they go at start-up.
+  const orphans = sqlite
+    .prepare("DELETE FROM weather_cache WHERE place_id <> '' AND place_id NOT IN (SELECT id FROM weather_places)")
+    .run().changes;
+  if (orphans > 0) ctx.log.info({ removed: orphans }, "weather copies of removed places cleared");
   const changed = () => ctx.events.publish({ type: "weather.changed" });
   let updating = false;
 
@@ -159,7 +166,19 @@ export function createWeatherService(ctx: AppContext, fetcher: SourceFetcher): W
     data: row.data as KeptCopy["data"],
   });
 
+  /** Whether a place is still in the list. */
+  const stillThere = (placeId: string) => sqlite.prepare("SELECT 1 FROM weather_places WHERE id = ?").get(placeId) !== undefined;
+
+  /** Said of a place removed while its answer was on the way: what arrived for it is not kept. */
+  const REMOVED = "The place was removed while this was being fetched, so nothing was kept for it.";
+
+  /**
+   * Keeps an answer. For a place, only while the place is still in the list: removing a
+   * place during an update wins, and the answer that arrives after is dropped. The check
+   * and the write happen together, with nothing awaited between them.
+   */
   function keep(kind: WeatherKind, placeId: string | null, parsed: Parsed<unknown>, bytes: number, sent: string): void {
+    if (placeId !== null && !stillThere(placeId)) throw gone(REMOVED);
     const values = {
       kind,
       source: SOURCE_OF[kind],
@@ -359,6 +378,19 @@ export function createWeatherService(ctx: AppContext, fetcher: SourceFetcher): W
         for (const target of chosen) {
           for (const kind of perPlace) {
             if (signal?.aborted) break;
+            // Removed since the update began: nothing more is asked about it.
+            if (!stillThere(target.id)) {
+              outcomes.push({
+                kind,
+                placeId: target.id,
+                placeName: target.name,
+                source: SOURCE_OF[kind],
+                ok: false,
+                message: REMOVED,
+                bytes: 0,
+              });
+              continue;
+            }
             try {
               const { bytes } = await fetchForPlace(kind, target, signal);
               outcomes.push({ kind, placeId: target.id, placeName: target.name, source: SOURCE_OF[kind], ok: true, message: null, bytes });

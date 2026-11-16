@@ -18,6 +18,7 @@ import {
   type Bbox,
   type FoundRouteRef,
   MARKER_COLORS,
+  ownValue,
   pickRouteSource,
   ROUTE_SEARCH_MAX_SPAN,
   ROUTE_SEARCH_MAX_TEXT,
@@ -186,7 +187,7 @@ function relationResult(relation: OsmRelation, length: number | undefined, patte
     key: `r${relation.id}`,
     ref: { type: "relation", id: relation.id },
     ...namesOf(relation.tags, pattern),
-    kind: KINDS[relation.tags.route ?? ""] ?? "walking",
+    kind: ownValue(KINDS, relation.tags.route ?? "") ?? "walking",
     network: networkOf(relation.tags),
     from: relation.tags.from ?? null,
     to: relation.tags.to ?? null,
@@ -492,7 +493,7 @@ export function createRouteFinder(deps: RouteFinderDeps): RouteFinderService {
           );
         }
         ({ name, otherNames } = namesOf(relation.tags, null));
-        kind = KINDS[relation.tags.route ?? ""] ?? "walking";
+        kind = ownValue(KINDS, relation.tags.route ?? "") ?? "walking";
         const ways = relation.members.filter((member) => member.type === "way");
         const mainRuns: Point[][] = [];
         const sideRuns: Point[][] = [];

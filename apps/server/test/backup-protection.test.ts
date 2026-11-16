@@ -415,7 +415,11 @@ const pendingFolder = (app: TestApp) => path.join(app.ctx.config.dataDir, "resto
 describe("backups protected by a passphrase", () => {
   it("is off until a passphrase is set, and a backup is then the plain zip it always was", async () => {
     const w = await world();
-    expect((await w.status()).protection).toEqual({ on: false, setAt: null, right: { allowed: true, reason: "local" } });
+    expect((await w.status()).protection).toEqual({
+      on: false,
+      setAt: null,
+      right: { allowed: true, reason: "local", localBy: { rule: "loopback", address: "127.0.0.1" } },
+    });
     fill(w.app);
     const plain = await w.backUpNow();
     expect(plain).toMatchObject({ protected: false, currentPassphrase: null, check: "verified" });

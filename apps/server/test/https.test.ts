@@ -872,7 +872,12 @@ describe("HTTPS on the home network", () => {
     expect((await w.app.api("GET", "/api/https/outpost-authority.crt", undefined, phone)).status).toBe(200);
 
     // At the computer itself: a new authority, a new certificate, the same port.
-    expect((await w.status()).authorityRight).toEqual({ allowed: true, reason: "local", option: "OUTPOST_ALLOW_REMOTE_ERASE" });
+    expect((await w.status()).authorityRight).toEqual({
+      allowed: true,
+      reason: "local",
+      option: "OUTPOST_ALLOW_REMOTE_ERASE",
+      localBy: { rule: "loopback", address: "127.0.0.1" },
+    });
     const replaced = await w.app.api<HttpsStatus>("POST", "/api/https/authority/replace");
     expect(replaced.status).toBe(200);
     expect(replaced.body.authority?.fingerprint).not.toBe(before.authority?.fingerprint);

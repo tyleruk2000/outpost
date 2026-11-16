@@ -30,7 +30,7 @@ import type {
   ReferenceShape,
   ReferenceSourceInfo,
 } from "@outpost/shared";
-import { haversineMeters } from "@outpost/shared";
+import { haversineMeters, ownValue } from "@outpost/shared";
 import type { AppContext } from "../../core/context.ts";
 import { yieldToEventLoop } from "../../core/event-loop.ts";
 import { kindLabel } from "./kinds.ts";
@@ -429,7 +429,7 @@ export function createReferenceStore(ctx: AppContext, providerName: (id: string)
       sourceId: row.sourceId,
       publisher: row.publisher,
       license: row.license,
-      licenseUrl: LICENSE_URLS[row.license] ?? null,
+      licenseUrl: licenseUrlOf(row.license),
       sourceUrl: row.sourceUrl,
       publishedAt: row.publishedAt,
       retrievedAt: row.retrievedAt,
@@ -949,3 +949,6 @@ export const LICENSE_URLS: Record<string, string> = {
   "CC BY 4.0": "https://creativecommons.org/licenses/by/4.0/",
   "Open Government Licence v3.0": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
 };
+
+/** The address of a licence's text, by the name a source or an import gave it; null for any other name. */
+export const licenseUrlOf = (license: string): string | null => ownValue(LICENSE_URLS, license) ?? null;

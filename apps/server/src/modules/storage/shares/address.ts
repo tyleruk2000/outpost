@@ -143,3 +143,14 @@ export function urlHost(address: string): string {
   // The "%" before an interface name has to be written "%25" inside a URL.
   return `[${address.replace("%", "%25")}]`;
 }
+
+/**
+ * A host name as multicast DNS gives them: labels of letters, digits and hyphens, ending
+ * in `.local`. Returned in lower case without a final dot, or null for anything else (a
+ * name under another domain, an address, a name with spaces or markup).
+ */
+export function localName(host: string): string | null {
+  const name = host.trim().toLowerCase().replace(/\.$/, "");
+  if (name.length > 253) return null;
+  return /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+local$/.test(name) ? name : null;
+}

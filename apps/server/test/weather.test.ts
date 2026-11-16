@@ -18,6 +18,8 @@ let base = "";
 const asked: string[] = [];
 /** Paths that answer with a failure until cleared. */
 const failing = new Set<string>();
+/** While set, a forecast is not answered until it is. */
+let held: Promise<void> | null = null;
 
 beforeAll(async () => {
   standIn = http.createServer((request, response) => {
@@ -28,7 +30,10 @@ beforeAll(async () => {
       response.end(body);
     };
     if ([...failing].some((prefix) => url.pathname.startsWith(prefix))) return send(503, "busy", "text/plain");
-    if (url.pathname === "/open-meteo/v1/forecast") return send(200, fixture("open-meteo-forecast.json"));
+    if (url.pathname === "/open-meteo/v1/forecast") {
+      if (held) return void held.then(() => send(200, fixture("open-meteo-forecast.json")));
+      return send(200, fixture("open-meteo-forecast.json"));
+    }
     if (url.pathname === "/met-office-warnings/public/data/PWSCache/WarningsRSS/Region/UK")
       return send(200, fixture("met-office-uk.xml"), "application/rss+xml");
     if (url.pathname === "/ea-flood/flood-monitoring/id/floods") return send(200, fixture("ea-floods.json"));
@@ -58,6 +63,62 @@ async function homePlace(name = "Home", icon = "home", lat = 52.13, lon = -0.46)
   expect(added.status).toBe(200);
   return added.body.place;
 }
+
+describe("a place removed while it is being updated", () => {
+  it("keeps nothing for it: removal wins, and the answer that arrives after is dropped", async () => {
+    const place = await homePlace();
+    let release = () => {};
+    held = new Promise<void>((resolve) => (release = resolve));
+    try {
+      const update = app.api("POST", "/api/weather/update", { kinds: ["forecast", "climate"] });
+      for (let i = 0; i < 200 && !asked.some((line) => line.startsWith("/open-meteo/")); i += 1)
+        await new Promise((r) => setTimeout(r, 10));
+      expect(asked.some((line) => line.startsWith("/open-meteo/"))).toBe(true);
+      expect((await app.api("DELETE", `/api/weather/places/${place.id}`)).status).toBe(200);
+      release();
+      const { body } = await update;
+      expect(body.outcomes).toEqual([
+        expect.objectContaining({
+          kind: "forecast",
+          placeId: place.id,
+          ok: false,
+          message: expect.stringMatching(/removed while/),
+          bytes: 0,
+        }),
+        expect.objectContaining({
+          kind: "climate",
+          placeId: place.id,
+          ok: false,
+          message: expect.stringMatching(/removed while/),
+          bytes: 0,
+        }),
+      ]);
+      // Nothing more was asked about the place once it had gone.
+      expect(asked.some((line) => line.startsWith("/nasa-power/"))).toBe(false);
+    } finally {
+      held = null;
+      release();
+    }
+    const after = (await app.api("GET", "/api/weather")).body;
+    expect(after.kept.filter((copy: { placeId: string | null }) => copy.placeId !== null)).toEqual([]);
+  });
+
+  it("clears copies left for a place that has gone when the server starts", async () => {
+    const place = await homePlace();
+    await app.api("POST", "/api/weather/update", { kinds: ["forecast"] });
+    // As an older version could leave it: the place gone, its copy still kept.
+    app.ctx.sqlite.prepare("DELETE FROM weather_places WHERE id = ?").run(place.id);
+    expect(app.ctx.sqlite.prepare("SELECT count(*) AS n FROM weather_cache WHERE place_id = ?").get(place.id)).toEqual({ n: 1 });
+    const dir = app.dir;
+    await app.app.close();
+    const again = await createTestApp({ OUTPOST_WEATHER_STAND_IN: base }, dir, { voacapData: false });
+    try {
+      expect(again.ctx.sqlite.prepare("SELECT count(*) AS n FROM weather_cache WHERE place_id = ?").get(place.id)).toEqual({ n: 0 });
+    } finally {
+      await again.close();
+    }
+  });
+});
 
 describe("weather and hazards", () => {
   it("starts empty, says nothing is kept, and asks nobody for anything", async () => {

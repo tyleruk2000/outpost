@@ -13,7 +13,8 @@
  * | Neighbour table | `arp -an`, `ndp -an` | `ip neigh show`, else `/proc/net/arp` | `/proc/net/arp` |
  * | Router | `route -n get default` | `/proc/net/route` | `/proc/net/route` |
  * | Announcements | `dns-sd` | `avahi-browse` if installed | none |
- * | Names | `dns.lookupService` (the system's resolver) | the same | the same |
+ * | Names of addresses | `dns.lookupService` (the system's resolver, for swept private addresses only) | the same | the same |
+ * | Addresses of announced `.local` names | `dns-sd -G` (multicast DNS only) | `avahi-resolve` if installed (multicast DNS only) | none |
  *
  * Programs are started with `execFile` by full path and a list of arguments, never
  * through a shell, each with a time limit (`runCommand` from the shares feature).
@@ -23,7 +24,7 @@ import fs from "node:fs";
 import net from "node:net";
 import os from "node:os";
 import type { NetworkAbilities } from "@outpost/shared";
-import { type ProbeResult, probePort } from "../storage/shares/address.ts";
+import { localName, type ProbeResult, probePort } from "../storage/shares/address.ts";
 import { type CommandRunner, runCommand } from "../storage/shares/commands.ts";
 import { type Announcement, parseAvahi, parseInstances, parseServiceTypes } from "./announcements.ts";
 import { type Neighbour, parseIpNeigh, parseMacArp, parseMacNdp, parseMacRoute, parseProcArp, parseProcRoute } from "./neighbours.ts";
@@ -43,7 +44,11 @@ export interface NetworkSystem {
   reverseName(address: string, timeoutMs: number): Promise<string | null>;
   /** What is announced on the network, listening for at most `ms`. */
   announcements(ms: number, signal: AbortSignal): Promise<Announcement[]>;
-  /** The address of an announced host name ("nas.local"), through the system's resolver. */
+  /**
+   * The addresses of an announced host name ("nas.local"), asked by multicast DNS only:
+   * never through the system's resolver, which would send a name a device chose to
+   * whatever DNS server the computer uses. Anything but a `.local` name gets nothing.
+   */
   lookup(host: string, timeoutMs: number): Promise<string[]>;
 }
 
@@ -56,6 +61,29 @@ const exists = (file: string) => {
   }
 };
 const firstThere = (files: string[]) => files.find(exists) ?? null;
+
+export { localName };
+
+/** Addresses from `dns-sd -G v4v6 name.local` ("… Add 40000002 14 nas.local. 192.168.1.20 120"). */
+export function parseDnsSdAddresses(output: string): string[] {
+  const found: string[] = [];
+  for (const line of output.split("\n")) {
+    const match = /\sAdd\s+\S+\s+\d+\s+\S+\s+(\S+)\s+\d+\s*$/.exec(line);
+    const address = match?.[1]?.split("%")[0]?.toLowerCase();
+    if (address && net.isIP(address) !== 0 && !found.includes(address)) found.push(address);
+  }
+  return found;
+}
+
+/** Addresses from `avahi-resolve -n name.local` ("nas.local\t192.168.1.20"). */
+export function parseAvahiResolve(output: string): string[] {
+  const found: string[] = [];
+  for (const line of output.split("\n")) {
+    const address = line.trim().split(/\s+/)[1]?.split("%")[0]?.toLowerCase();
+    if (address && net.isIP(address) !== 0 && !found.includes(address)) found.push(address);
+  }
+  return found;
+}
 
 function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
   return new Promise((resolve) => {
@@ -80,6 +108,7 @@ export function realSystem(run: CommandRunner = runCommand, platform: NodeJS.Pla
     kind === "macos" ? firstThere(["/sbin/ping"]) : firstThere(["/bin/ping", "/usr/bin/ping", "/sbin/ping", "/usr/sbin/ping"]);
   const ipPath = kind === "linux" ? firstThere(["/usr/sbin/ip", "/sbin/ip", "/usr/bin/ip", "/bin/ip"]) : null;
   const avahiPath = kind === "linux" ? firstThere(["/usr/bin/avahi-browse", "/bin/avahi-browse"]) : null;
+  const avahiResolve = kind === "linux" ? firstThere(["/usr/bin/avahi-resolve", "/bin/avahi-resolve"]) : null;
   const dnsSd = kind === "macos" ? firstThere(["/usr/bin/dns-sd"]) : null;
 
   // Whether ping works without special rights is only known by trying it: once, on loopback, which sends nothing onto the network.
@@ -189,11 +218,12 @@ export function realSystem(run: CommandRunner = runCommand, platform: NodeJS.Pla
       return found;
     },
     async lookup(host, timeoutMs) {
-      return withTimeout(
-        dns.promises.lookup(host, { all: true }).then((list) => list.map((entry) => entry.address.split("%")[0]!.toLowerCase())),
-        timeoutMs,
-        [] as string[],
-      );
+      const name = localName(host);
+      if (!name) return [];
+      // dns-sd keeps listening until stopped: what it printed by its time limit is used.
+      if (dnsSd) return parseDnsSdAddresses((await run(dnsSd, ["-G", "v4v6", name], { timeoutMs })).stdout);
+      if (avahiResolve) return parseAvahiResolve((await run(avahiResolve, ["-n", name], { timeoutMs })).stdout);
+      return [];
     },
   };
 }

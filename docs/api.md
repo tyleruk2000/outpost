@@ -258,7 +258,7 @@ Types: `packages/shared/src/database.ts`. See [storage.md](storage.md#the-databa
 | `GET /api/database` | `DatabaseStatus`: the file's path and size, the write-ahead log, free space on its drive, SQLite version and journal mode, how many layout changes are made of how many known, the last backup, the last check and reclaim, a check or reclaim under way, and what reclaiming would need. `contents` (counts and sizes by group, with `workedOutAt`) is null until worked out; the first request after a start begins working it out in a worker, and `measuring` is true until it is done. Answers without reading the whole file. |
 | `POST /api/database/contents` | Works the contents out again. Answers `DatabaseStatus` with `measuring: true`; `database.changed` is published when it is done. |
 | `POST /api/database/check` | Body: `{ kind: "quick" \| "full" }`. Starts a `database.check` job (`quick_check` or `integrity_check`). Its result is a `DatabaseCheck`. `409` while a check or reclaim is queued or running. |
-| `POST /api/database/reclaim` | Starts a `database.vacuum` job. Local only (see above). `409` when nothing is unused, while a check or reclaim is under way, or while any job is running (`details.waitingFor` names them); `507 insufficient_space` without the room. While it runs, every request under `/api/` that is not a `GET`, `HEAD` or `OPTIONS` is answered `409 conflict` saying why, jobs on other queues wait, and `GET /api/backup/download` is refused. |
+| `POST /api/database/reclaim` | Starts a `database.vacuum` job. Local only (see above). `409` when nothing is unused, while a check or reclaim is under way, or while any job is running, a request that may write is under way or the model is writing a reply (`details.waitingFor` names them); `507 insufficient_space` without the room. Once it starts, every request on any path (`/api/`, `/dav/`) that is not a `GET`, `HEAD`, `OPTIONS`, `PROPFIND` or `REPORT` is answered `409 conflict` saying why; the job waits up to 30 seconds for changes already under way and fails, changing nothing, if one is still going. Jobs on other queues wait, and `GET /api/backup/download` is refused. Any request whose write meets the database's lock is answered `409 conflict`, not `500`. |
 
 ### Network shares
 
@@ -722,11 +722,11 @@ server on the internet.
 | Method and path | Purpose |
 | --- | --- |
 | `GET /api/reference/catalogue` | The providers with licence, terms quoted, the date read and the verdict; the sources that are only linked; the countries to choose from. Contacts nobody. |
-| `POST /api/reference/estimate` | Body: `provider`, `scope` (`countries?`, `bbox?`), `layers?`. Asks the source what it would send and answers each item with its size, whether that size is the publisher's, how it was worked out, the host and what it would replace; the total, an allowance for the database and notes (the caution about mapping military sites among them). `estimateId` is kept for half an hour. Needs a connection. |
+| `POST /api/reference/estimate` | Body: `provider`, `scope` (`countries?`, `bbox?`), `layers?`. A scope with neither countries nor a box means the whole world, and is refused (`400`) unless the source is published for the whole world at once (its `scopes` include `world`). Asks the source what it would send and answers each item with its size, whether that size is the publisher's, how it was worked out, the host and what it would replace; the total, an allowance for the database and notes (the caution about mapping military sites among them). `estimateId` is kept for half an hour. Needs a connection. |
 | `POST /api/reference/downloads` | Body: `estimateId`, `keys`, `locationId?`. Starts the chosen items through the download manager. `{ downloads }`. `409` for an estimate that is gone. |
 | `GET /api/reference/packs` | Installed packs (`ReferencePackDto`): source, layers, countries, version, dates, records, duplicates, size, licence, location and whether it is connected, and the request to update from. |
 | `DELETE /api/reference/packs/:id` | Removes a pack and its records. `?deleteFiles=1` deletes its file too. |
-| `POST /api/reference/imports` | Multipart: `format` (`features-csv`, `geojson`, `historical-csv`, `country-figures-csv`, `osm-pbf`, `worldpop-tif`: a WorldPop 2020 1 km grid a person downloaded, named as WorldPop names it, with `options.country`), `title`, `options` (JSON: `layer`, `provenance`, `publisher`, `license`, `accuracy`, `sourceUrl`, `publishedAt`, `crs`, `country`), `replaces?`, and the file (at most 32 MB). The file is kept in the default location under `collections/reference/imports/` and read by a job: `{ jobId }`. The job's result has `imported`, `skipped`, `duplicates` and up to twenty `problems`. |
+| `POST /api/reference/imports` | Multipart: `format` (`features-csv`, `geojson`, `historical-csv`, `country-figures-csv`, `osm-pbf`, `worldpop-tif`: a WorldPop 2020 1 km grid a person downloaded, named as WorldPop names it, with `options.country`), `title`, `options` (JSON: `layer`, `provenance`, `publisher`, `license`, `accuracy`, `sourceUrl`, `publishedAt`, `crs`, `country`), `replaces?`, and the file (at most 32 MB). The fields are checked before the file is written when they come first (as the web app sends them); the file is written under a temporary name and kept in the default location under `collections/reference/imports/` only once the import is accepted, so a refused request (`400`, `413`) leaves nothing on the drive. It is read by a job: `{ jobId }`. The job's result has `imported`, `skipped`, `duplicates` and up to twenty `problems`. |
 | `POST /api/reference/imports/from-storage` | The same for a file already in a storage location. Body: `format`, `locationId`, `relPath`, `title`, `options`, `replaces?`. The file is left where it is. |
 | `GET /api/reference/templates/:format.csv` | The columns of a CSV form, as a file. |
 | `GET /api/reference/layers` | What is installed by layer (counts, countries, sources, kinds, provenance), the population grids, and the credits. |
@@ -994,7 +994,10 @@ Types: `packages/shared/src/backup.ts`.
 "Local only" below means `403 forbidden` unless the request comes from the computer
 Outpost runs on or the server was started with `OUTPOST_ALLOW_REMOTE_ERASE=true`. The
 `right` in the status and schedule says whether this request has that right:
-`{ allowed, reason: "local" | "option" | "remote", option }`.
+`{ allowed, reason: "local" | "option" | "remote", option, localBy? }`. With `local`,
+`localBy` says which rule decided: `{ rule: "loopback" | "own-address", address }` or
+`{ rule: "not-on-network", address: null }`; the HTTPS rights, the passphrase right and
+`erase` under `GET /api/manage/cleanup` carry it too.
 
 Backups can be protected with a passphrase ([storage.md](storage.md#protecting-backups-with-a-passphrase)).
 A request may carry a passphrase only if it is local-only allowed **and** the passphrase

@@ -35,7 +35,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
 import { AppError, badRequest, forbidden, notFound } from "../../core/errors.ts";
-import { isLocalRequest } from "../../core/local.ts";
+import { localBy } from "../../core/local.ts";
 import { registerMultipart } from "../../core/multipart.ts";
 import { MOST_FILE_BYTES } from "./own.ts";
 import { createHttpsService } from "./service.ts";
@@ -50,8 +50,10 @@ export async function registerHttps(app: FastifyInstance, ctx: AppContext): Prom
   /** Whether this request may replace or delete the certificate authority. */
   function authorityRight(request: FastifyRequest): HttpsAuthorityRight {
     if (ctx.config.allowRemoteErase) return { allowed: true, reason: "option", option: REMOTE_OPTION };
-    const local = isLocalRequest(request.raw, ctx.config);
-    return { allowed: local, reason: local ? "local" : "remote", option: REMOTE_OPTION };
+    const by = localBy(request.raw, ctx.config);
+    return by
+      ? { allowed: true, reason: "local", option: REMOTE_OPTION, localBy: by }
+      : { allowed: false, reason: "remote", option: REMOTE_OPTION };
   }
 
   function assertAuthorityRight(request: FastifyRequest): void {
@@ -68,7 +70,8 @@ export async function registerHttps(app: FastifyInstance, ctx: AppContext): Prom
    * about a secret crossing the network unencrypted, which no option makes safe.
    */
   function keyRight(request: FastifyRequest): HttpsKeyRight {
-    if (isLocalRequest(request.raw, ctx.config)) return { allowed: true, reason: "local" };
+    const by = localBy(request.raw, ctx.config);
+    if (by) return { allowed: true, reason: "local", localBy: by };
     const overHttps = (request.raw.socket as Partial<TLSSocket>).encrypted === true;
     return { allowed: overHttps, reason: overHttps ? "https" : "remote" };
   }

@@ -526,7 +526,8 @@ HTTP, where anyone on the network could read an upload. So:
 - **At the computer Outpost runs on**, or over an address that already begins `https`,
   the files are simply taken. The computer counts whether its browser opens Outpost at
   `localhost` or at the computer's own network address (`http://192.168.1.20:8080`):
-  a connection to its own address never leaves the computer.
+  a connection to its own address never leaves the computer. (Settings says which, with the address; if
+  something on the computer forwards connections, see `OUTPOST_OWN_ADDRESS_IS_LOCAL`).
 - **From another device over plain http**, Settings first says what that gives away:
   the key (and the password of a `.pfx` file) crosses your network unencrypted, anyone
   able to listen on it could copy the key, and with it later pass off another server as
@@ -1220,7 +1221,10 @@ from the code; check your own set-up.
   `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;`; Caddy and Traefik send
   it without being asked). Outpost uses it for one thing: a request that carries it is
   not treated as coming from this computer, so **Erase everything** is not offered to
-  people who arrive through the proxy. Without the header every visitor looks local.
+  people who arrive through the proxy. Without the header every visitor looks local. If the
+  proxy (or a port forwarder, a tunnel) cannot be made to send it and connects to
+  Outpost at the computer's network address, start Outpost with
+  `OUTPOST_OWN_ADDRESS_IS_LOCAL=false` as well.
 - **Live updates.** `/api/events` is a server-sent-events stream that stays open.
   Outpost sends `X-Accel-Buffering: no` with it, which nginx honours. Other proxies
   must not buffer that response, or progress will not appear until the page is
@@ -1279,6 +1283,7 @@ value the image sets when it differs from the default.
 | `OUTPOST_DATA_DIR` | `./data` | `/data` | Database, attachments and other state Outpost owns. |
 | `OUTPOST_STORAGE_ROOTS` | see [above](#from-source) | `/storage` | Comma-separated folders in which storage locations may be created. |
 | `OUTPOST_LAN_ACCESS` | `false` | | Share Outpost with every device on the network: accept requests addressed to LAN names and addresses, and allow the server to listen on (or be published on) an address other devices can reach. There are no accounts, so everyone who can reach it can change it. |
+| `OUTPOST_OWN_ADDRESS_IS_LOCAL` | `true` | | Whether a browser connecting from one of this computer's own network addresses counts as the computer itself, for the few things kept for it (erasing everything, restoring a backup, reclaiming database space, uploading a private key). Set it to `false` wherever something on this computer forwards connections from other devices without adding a forwarding header (a port forwarder such as `socat` or `rinetd`, an SSH tunnel, a relaying VPN client, a proxy you cannot make send `X-Forwarded-For`): otherwise every device it forwards would count as this computer. Inside a container the rule is never used, whatever this says. |
 | `OUTPOST_IN_CONTAINER` | `false` | `true` | Tells the server it is inside a container, where it always listens on every interface, so `OUTPOST_HOST` says nothing about who can reach it. |
 | `OUTPOST_PUBLISHED_ADDRESS` | unset | set by Compose to the value of `OUTPOST_BIND` | Inside a container, the host address the port was published on. Unless this is a loopback address, the server refuses to start without `OUTPOST_LAN_ACCESS=true`. |
 | `OUTPOST_ALLOWED_HOSTS` | empty | | Extra host names the server answers to, comma separated. |

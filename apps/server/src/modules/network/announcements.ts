@@ -13,7 +13,7 @@
  * Both only send the standard questions every phone and computer on the network sends
  * to find a printer. Nothing is sent to a device itself.
  */
-import type { NetworkAdvert } from "@outpost/shared";
+import { type NetworkAdvert, ownValue } from "@outpost/shared";
 
 export interface Announcement {
   /** "_smb._tcp". */
@@ -70,7 +70,7 @@ const LABELS: Record<string, string> = {
 
 export function serviceLabel(type: string): string {
   const head = type.split(".")[0] ?? type;
-  return LABELS[head.toLowerCase()] ?? type;
+  return ownValue(LABELS, head.toLowerCase()) ?? type;
 }
 
 /** Text from the network, made safe to keep and show: no control characters, no more than 80 characters. */

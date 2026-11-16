@@ -1,4 +1,4 @@
-import type { HttpsStatus, Settings } from "@outpost/shared";
+import { type HttpsStatus, localByReason, type Settings } from "@outpost/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronRight, CircleAlert, CircleCheck, Download, MonitorSmartphone } from "lucide-react";
 import { useState } from "react";
@@ -375,7 +375,7 @@ export function HttpsSection({
                     Outpost’s HTTPS address until it is told to trust the new one.{" "}
                     {data.authorityRight.reason === "option"
                       ? `Offered on every device because Outpost was started with ${data.authorityRight.option}=true.`
-                      : "Offered here because you are at the computer Outpost runs on."}
+                      : `Offered here because ${localByReason(data.authorityRight.localBy)}.`}
                   </p>
                   <div className="flex flex-wrap gap-2">
                     <Button variant="danger-ghost" onClick={() => setAsking("replace")} disabled={Boolean(data.unavailable)}>

@@ -262,7 +262,9 @@ Migration **0020** (`apps/server/src/db/migrations/0020_reference_layers.sql`).
   with its feature, `record_type` CHECKed.
 - **`country_figures`**: a country, an indicator, a value (or words), unit, year, and the
   source's title, publisher, date, address, page and licence. Nothing finer than a
-  country.
+  country. The file is separated by commas, so its decimal mark is the point: `"1,234,567"`
+  is a whole number, `"1,5"` can only be one and a half, and a value with words in it
+  ("5 million") is kept as words.
 - **Population grids** are the GeoTIFF in the storage location and, in the data
   directory, `reference/population/<key>.bin`: the grid summed into cells of 4, 16, 64
   and 256 to a side, written at install.

@@ -541,9 +541,19 @@ are stated beside it:
   queue (a scheduled backup is made at the next minute after), and a backup cannot
   take its copy of the database. It took 1.4 seconds on an idle machine and 3.9
   seconds under load for the 306 MB file; expect a few times as long as the full check.
-- **It waits for nothing.** It is refused while any job is running (a backup, an
-  import, an index build, a download, a move), naming what is running; pause it or
-  wait for it to finish.
+- **It is refused while any job is running** (a backup, an import, an index build, a
+  download, a move), naming what is running; pause it or wait for it to finish.
+- **It lets changes already under way finish first.** A request that may write, on
+  any path (an upload still arriving, a form being saved, a write to the phones' address
+  book under `/dav/`), and a reply the model is writing are counted from when they
+  start until they have finished. Once a reclaim begins, new changes are refused with
+  the reason, and the reclaim waits up to 30 seconds for those under way; if one is
+  still going then, the reclaim stops without changing anything and says what it was
+  waiting for. While it waits and while it runs, work that is not a request holds
+  back: the backup timer, jobs on other queues (downloads, a kept area's refresh), the
+  storage check and the semantic index's own catching up wait for it to finish.
+- **A write that meets the lock anyway** (one that reads with `GET`, or another
+  program holding the database) is answered `409` with the reason, never as a fault.
 - **It cannot be stopped part way,** because stopping would undo it. If the server
   stops while it runs, the rewrite is rolled back when the database is next opened:
   nothing is lost but the time.

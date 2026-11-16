@@ -7,6 +7,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { csvRecords } from "../src/modules/layers/adapters/csv.ts";
 import { classifyOsm } from "../src/modules/layers/adapters/osm-tags.ts";
 import { readPbf, wantedForLayers } from "../src/modules/layers/adapters/pbf.ts";
 import {
@@ -235,5 +236,30 @@ describe("geometry", () => {
     expect(simplifyGeometry({ type: "Polygon", coordinates: [ring] }, 5)).toBeNull();
     expect(containsPoint({ type: "Polygon", coordinates: [ring] }, 1, 1)).toBe(true);
     expect(containsPoint({ type: "Polygon", coordinates: [ring] }, 3, 1)).toBe(false);
+  });
+});
+
+describe("reading a CSV file that cannot be read", () => {
+  it("fails the reading, rather than ending the process", async () => {
+    const read = async () => {
+      for await (const _ of csvRecords(path.join(os.tmpdir(), "outpost-no-such-folder", "figures.csv"))) {
+        // Nothing to read.
+      }
+    };
+    await expect(read()).rejects.toMatchObject({ code: "ENOENT" });
+  });
+});
+
+describe("names looked up in a table", () => {
+  it("are never read from what every object has", async () => {
+    const { kindLabel } = await import("../src/modules/layers/kinds.ts");
+    const { licenseUrlOf } = await import("../src/modules/layers/store.ts");
+    const { serviceLabel } = await import("../src/modules/network/announcements.ts");
+    for (const name of ["constructor", "__proto__", "toString"]) {
+      expect(kindLabel(name)).toBe(name);
+      expect(licenseUrlOf(name)).toBeNull();
+      expect(serviceLabel(name)).toBe(name);
+      expect(serviceLabel(`${name}._tcp.local`)).toBe(`${name}._tcp.local`);
+    }
   });
 });

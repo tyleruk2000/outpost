@@ -97,6 +97,15 @@ describe("runtime downloads", () => {
     expect(await extractOneFromTarGz(fs.createReadStream(archive), (name) => name === "pkg/missing", path.join(dir, "none"))).toBe(false);
   });
 
+  it("fails, rather than ending the process, when the file it writes cannot be made", async () => {
+    const dir = tempDir();
+    const archive = path.join(dir, "a.tar.gz");
+    fs.writeFileSync(archive, gzipSync(tar({ "pkg/bin/node": Buffer.alloc(70_000, 7) })));
+    await expect(
+      extractOneFromTarGz(fs.createReadStream(archive), (name) => name === "pkg/bin/node", path.join(dir, "gone", "node")),
+    ).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
   it("reads the published checksum list", () => {
     const sums = parseShasums(`${"a".repeat(64)}  node-v24.0.0-linux-x64.tar.gz\n${"b".repeat(64)}  win-x64/node.exe\nnot a line\n`);
     expect(sums.get("win-x64/node.exe")).toBe("b".repeat(64));

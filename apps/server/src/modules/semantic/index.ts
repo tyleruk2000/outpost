@@ -11,7 +11,7 @@
  * index for a Raspberry Pi holding the same library.
  */
 
-import { Readable } from "node:stream";
+import { pipeline, Readable } from "node:stream";
 import { createGunzip, createGzip } from "node:zlib";
 import { secondsLeft } from "@outpost/shared";
 import type { FastifyInstance } from "fastify";
@@ -210,6 +210,11 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
   function requestIndexing(byPerson = true): void {
     const provider = currentProvider();
     if (!provider || isIndexing()) return;
+    // Nothing can be written while space is being reclaimed: asked by itself, it asks again later.
+    if (!byPerson && ctx.services.database?.busy()) {
+      laterIndexing();
+      return;
+    }
     const subject = `semantic:${provider.modelId}`;
     const last = jobs.findBySubject(subject).at(-1);
     if (!byPerson) {
@@ -254,11 +259,20 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
   // New or changed passages get vectors without anyone asking, a little after the
   // burst of indexing that produced them has settled.
   let debounce: NodeJS.Timeout | undefined;
+  function laterIndexing(): void {
+    if (debounce) clearTimeout(debounce);
+    debounce = setTimeout(() => {
+      try {
+        requestIndexing(false);
+      } catch (error) {
+        ctx.log.warn({ err: error }, "the semantic index could not be brought up to date");
+      }
+    }, 5_000);
+    debounce.unref();
+  }
   search.onChunksChanged(() => {
     if (!currentProvider()) return;
-    if (debounce) clearTimeout(debounce);
-    debounce = setTimeout(() => requestIndexing(false), 5_000);
-    debounce.unref();
+    laterIndexing();
   });
   ctx.onClose.push(() => debounce && clearTimeout(debounce));
 
@@ -487,7 +501,9 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
     reply
       .header("Content-Type", "application/gzip")
       .header("Content-Disposition", `attachment; filename="outpost-embeddings-${safeName}.jsonl.gz"`);
-    return reply.send(Readable.from(lines()).pipe(createGzip()));
+    // pipeline(), not pipe(): an error reading the index destroys the reply instead of
+    // being emitted with no listener, which would end the process.
+    return reply.send(pipeline(Readable.from(lines()), createGzip(), () => undefined));
   });
 
   // Import accepts the exported file as the raw request body.

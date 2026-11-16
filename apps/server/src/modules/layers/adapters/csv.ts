@@ -4,7 +4,8 @@ import { parse } from "csv-parse";
 import { PermanentJobError } from "../../../core/jobs.ts";
 
 export async function* csvRecords(filePath: string, signal?: AbortSignal): AsyncGenerator<{ row: Record<string, string>; line: number }> {
-  const parser = fs.createReadStream(filePath).pipe(
+  const source = fs.createReadStream(filePath);
+  const parser = source.pipe(
     parse({
       columns: (header: string[]) => header.map((name) => name.trim().toLowerCase().replace(/^﻿/, "")),
       bom: true,
@@ -13,6 +14,9 @@ export async function* csvRecords(filePath: string, signal?: AbortSignal): Async
       trim: true,
     }),
   );
+  // pipe() does not pass a read error on: a file that has gone, or a drive unplugged
+  // mid-read, would emit "error" with no listener and end the process.
+  source.on("error", (error) => parser.destroy(error));
   let line = 1;
   try {
     for await (const record of parser) {
@@ -26,5 +30,7 @@ export async function* csvRecords(filePath: string, signal?: AbortSignal): Async
       throw new PermanentJobError(`The file could not be read as CSV near line ${line + 1}: ${error.message}`);
     }
     throw error;
+  } finally {
+    source.destroy();
   }
 }

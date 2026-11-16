@@ -103,6 +103,13 @@ export async function buildApp(config: Config): Promise<BuiltApp> {
         error: { code: "bad_request", message: `${where}${first?.message ?? "Invalid request."}`, details: { issues: error.issues } },
       });
     }
+    // A write that met the database's lock (space being reclaimed, or another program
+    // holding it) is refused with the reason, not reported as a fault.
+    if (/^SQLITE_(BUSY|LOCKED)/.test(String((error as { code?: unknown }).code ?? ""))) {
+      const message =
+        ctx.services.database?.busy() ?? "Outpost's database is busy with other work, and nothing could be changed. Try again in a moment.";
+      return reply.status(409).send({ error: { code: "conflict", message } });
+    }
     const status = (error as { statusCode?: number }).statusCode;
     if (status && status >= 400 && status < 500) {
       const code = status === 413 ? "too_large" : status === 404 ? "not_found" : "bad_request";

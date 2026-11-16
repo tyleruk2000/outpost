@@ -14,7 +14,7 @@ import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
 import { AppError, badRequest, messageOf } from "../../core/errors.ts";
 import { type JobRow, toJobDto } from "../../core/jobs.ts";
-import { isLocalRequest } from "../../core/local.ts";
+import { localBy } from "../../core/local.ts";
 import { createCleanup, MANAGE_QUEUE } from "./cleanup.ts";
 import { createInventory } from "./inventory.ts";
 import { createLeftovers } from "./leftovers.ts";
@@ -59,8 +59,9 @@ export async function registerManage(app: FastifyInstance, ctx: AppContext): Pro
   /** Whether this request may erase everything, and on what grounds. */
   function eraseRight(request: FastifyRequest): CleanupStatus["erase"] {
     if (ctx.config.allowRemoteErase) return { allowed: true, reason: "option", option: ERASE_OPTION };
-    return isLocalRequest(request, ctx.config)
-      ? { allowed: true, reason: "local", option: ERASE_OPTION }
+    const by = localBy(request, ctx.config);
+    return by
+      ? { allowed: true, reason: "local", option: ERASE_OPTION, localBy: by }
       : { allowed: false, reason: "remote", option: ERASE_OPTION };
   }
 

@@ -273,6 +273,15 @@ last day of that month). Semicolon- and tab-separated files are read too. A row 
 cannot be read is listed with why; a category Outpost does not have is read as Other,
 and said.
 
+Numbers are read with the file's decimal mark, the same in every numeric column. A file
+separated by semicolons uses the decimal comma (`1,5` is one and a half, `1.234,5` is
+1234.5); a file separated by commas uses the decimal point (`"1,250"` is 1250). Some
+cells mean one thing in any file: `1,5` and `0,250` are decimals, `1.234,5` and
+`1,234.5` are both 1234.5. A tab-separated file is judged from its own numbers; where
+they do not settle it, a cell such as `1,250` (1250 or 1.25) is refused with both
+readings rather than guessed. Every number that was not plain is listed under its row
+with how it was read.
+
 A row is **already in the supplies** when it carries the id of one (a file exported from
 here), or is the same product kept in the same place with the same date. For those the
 person chooses: skip (the default), update the item, or add again. Exporting and

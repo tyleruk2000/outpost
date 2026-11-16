@@ -51,6 +51,7 @@ const envSchema = z.object({
   OUTPOST_P533_MAPS_MANIFEST: z.string().optional(),
   OUTPOST_VOACAP_DATA_MANIFEST: z.string().optional(),
   OUTPOST_ALLOW_REMOTE_ERASE: bool(false),
+  OUTPOST_OWN_ADDRESS_IS_LOCAL: bool(true),
   OUTPOST_ALLOW_REMOTE_MODEL_SERVER: bool(false),
   OUTPOST_OLLAMA_ADDRESSES: list,
   OUTPOST_DOWNLOAD_HOSTS: list,
@@ -120,6 +121,12 @@ export interface Config {
    * it, only a request from this computer may erase the person's own things.
    */
   allowRemoteErase: boolean;
+  /**
+   * Whether a connection from one of this computer's own network addresses counts as
+   * this computer (core/local.ts). On by default; turned off where something on this
+   * computer forwards connections from elsewhere without a forwarding header.
+   */
+  ownAddressIsLocal: boolean;
   /** Let answers be written by a model server on the internet, not only one on this computer or the local network. */
   allowRemoteModelServer: boolean;
   /**
@@ -236,6 +243,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     voacapDataManifest: parsed.OUTPOST_VOACAP_DATA_MANIFEST ? path.resolve(parsed.OUTPOST_VOACAP_DATA_MANIFEST) : null,
     extraDownloadHosts: parsed.OUTPOST_DOWNLOAD_HOSTS.map((host) => host.toLowerCase()),
     allowRemoteErase: parsed.OUTPOST_ALLOW_REMOTE_ERASE,
+    ownAddressIsLocal: parsed.OUTPOST_OWN_ADDRESS_IS_LOCAL,
     allowRemoteModelServer: parsed.OUTPOST_ALLOW_REMOTE_MODEL_SERVER,
     ollamaAddresses: parsed.OUTPOST_OLLAMA_ADDRESSES,
     // A portable drive runs in a window a person is looking at: keep it quiet.

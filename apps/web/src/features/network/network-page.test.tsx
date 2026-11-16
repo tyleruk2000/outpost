@@ -157,6 +157,19 @@ describe("the Devices on this network screen", () => {
     await waitFor(() => expect(api.requests.some((request) => request.call === "POST /api/jobs/j1/cancel")).toBe(true));
   });
 
+  it("shows names a device announced as text, never as markup", async () => {
+    const markup = '<img src="x" onerror="alert(1)"><b>Printer</b>';
+    fakeApi({
+      "GET /api/network": status({
+        devices: [device({ name: markup, services: [{ type: "_ipp._tcp", label: "Printer", name: markup, port: 631 }], webUrl: null })],
+      }),
+    });
+    const { container } = renderScreen(<NetworkPage />, "/tools/network");
+    const rows = await screen.findAllByTestId("network-device");
+    expect(within(rows[0]!).getAllByText(markup, { exact: false }).length).toBeGreaterThan(0);
+    expect(container.querySelector("img[src='x'], b")).toBeNull();
+  });
+
   it("lists devices with what they say, marks this computer, the router, new and gone, and links a web page for the browser to open", async () => {
     fakeApi({
       "GET /api/network": status({

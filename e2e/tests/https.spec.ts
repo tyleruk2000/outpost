@@ -202,7 +202,11 @@ test.describe("HTTPS on your network", () => {
     const choice = section.locator("details", { has: page.locator("summary", { hasText: "Use a certificate of your own instead" }) });
     await expect(choice.getByText("Choose the files here")).toBeHidden();
     await choice.locator("summary").click();
-    await expect(choice.getByText("Offered here because you are at the computer Outpost runs on.")).toBeVisible();
+    await expect(
+      choice.getByText(
+        /Offered here because this is the computer Outpost runs on: you are connected from its loopback address (127\.0\.0\.1|::1)\./,
+      ),
+    ).toBeVisible();
 
     // A key that is not the certificate's own is refused in words, and nothing changes.
     await choice.getByLabel("Certificate file").setInputFiles(pick("fullchain.pem", mine.pem + house.intermediate.pem + house.root.pem));

@@ -1,7 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
+import { PassThrough } from "node:stream";
 import type { DatabaseStatus } from "@outpost/shared";
+import Database from "better-sqlite3";
 import { afterEach, describe, expect, it } from "vitest";
+import { VACUUM_JOB } from "../src/modules/database/index.ts";
 import { checkFile } from "../src/modules/database/inspect.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
 
@@ -258,5 +261,184 @@ describe("the database on the Storage screen", () => {
     expect(refused.body.error.message).toMatch(/OUTPOST_ALLOW_REMOTE_ERASE/);
     expect((await app.api("POST", "/api/database/check", { kind: "quick" }, phone)).status).toBe(200);
     await app.ctx.jobs.whenIdle();
+  });
+});
+
+describe("changes under way when space is reclaimed", () => {
+  const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+  const reclaimJob = (app: TestApp) =>
+    app.ctx.jobs.enqueue(VACUUM_JOB, {}, { title: "Reclaim unused space in the database", subject: "database" });
+  /** Another connection holding the database's write lock, as the rewrite does while it runs. */
+  function holdLock(app: TestApp): () => void {
+    const other = new Database(path.join(app.ctx.config.dataDir, "outpost.db"));
+    other.exec("BEGIN IMMEDIATE");
+    return () => {
+      other.exec("ROLLBACK");
+      other.close();
+    };
+  }
+
+  it("waits for a reply the model is writing, and starts once it has been stored", async () => {
+    const app = await start();
+    leaveUnusedPages(app);
+    const { answers } = app.ctx.services;
+    const release = answers.takeTurn(new AbortController())!;
+    expect((await status(app)).reclaim.waitingFor).toEqual(["The model is writing a reply"]);
+    expect((await app.api("POST", "/api/database/reclaim")).status).toBe(409);
+
+    // A reply that began after the reclaim was asked for: the reclaim waits for it.
+    const job = reclaimJob(app);
+    await sleep(150);
+    expect(app.ctx.jobs.get(job.id)!.state).toBe("running");
+    // Meanwhile nothing new is started.
+    expect((await app.api("POST", "/api/notes", { title: "Not now" })).status).toBe(409);
+    release();
+    await app.ctx.jobs.whenIdle();
+    expect(app.ctx.jobs.get(job.id)!.state).toBe("succeeded");
+    expect((await app.api("POST", "/api/notes", { title: "Now" })).status).toBe(200);
+  });
+
+  it("gives up with the reason, and breaks nothing, when a reply outlasts the wait", async () => {
+    const app = await start();
+    leaveUnusedPages(app);
+    app.ctx.services.database.setDrainWait(200);
+    const release = app.ctx.services.answers.takeTurn(new AbortController())!;
+    const job = reclaimJob(app);
+    await app.ctx.jobs.whenIdle();
+    const done = app.ctx.jobs.get(job.id)!;
+    expect(done.state).toBe("failed");
+    expect(done.error).toMatch(/still under way after 1 seconds: The model is writing a reply\. Nothing was changed/);
+    release();
+    // Changes are accepted again at once.
+    expect((await app.api("POST", "/api/notes", { title: "Still writable" })).status).toBe(200);
+  });
+
+  it("waits for an upload still arriving, which is stored, not lost", async () => {
+    const app = await start();
+    leaveUnusedPages(app);
+    const body = new PassThrough();
+    const upload = app.app.inject({
+      method: "POST",
+      url: "/api/notes",
+      payload: body,
+      headers: { host: "localhost", "x-outpost-request": "1", "content-type": "application/json" },
+    });
+    body.write('{"title": ');
+    for (let i = 0; i < 100 && (await status(app)).reclaim.waitingFor.length === 0; i += 1) await sleep(10);
+    expect((await status(app)).reclaim.waitingFor).toEqual(["A change sent to Outpost (POST /api/notes)"]);
+
+    // The rewrite holds the write lock until the upload has had its answer (or a second has passed).
+    let uploaded = false;
+    void upload.then(() => (uploaded = true));
+    app.ctx.services.database.setBeforeVacuum(async () => {
+      const release = holdLock(app);
+      for (let i = 0; i < 100 && !uploaded; i += 1) await sleep(10);
+      release();
+    });
+    const job = reclaimJob(app);
+    await sleep(100);
+    body.end('"Arrived while reclaiming"}');
+    const response = await upload;
+    expect(response.statusCode).toBe(200);
+    await app.ctx.jobs.whenIdle();
+    expect(app.ctx.jobs.get(job.id)!.state).toBe("succeeded");
+    expect(app.ctx.sqlite.prepare("SELECT count(*) AS n FROM notes WHERE title = 'Arrived while reclaiming'").get()).toEqual({ n: 1 });
+  });
+
+  it("refuses a write on any path while it runs, the phones' address book too; reading goes on", async () => {
+    const app = await start();
+    leaveUnusedPages(app);
+    let finish = () => {};
+    let held = false;
+    app.ctx.services.database.setBeforeVacuum(
+      () =>
+        new Promise<void>((resolve) => {
+          held = true;
+          finish = resolve;
+        }),
+    );
+    const job = reclaimJob(app);
+    for (let i = 0; i < 100 && !held; i += 1) await sleep(10);
+    const card = "BEGIN:VCARD\r\nVERSION:3.0\r\nFN:Ann\r\nEND:VCARD\r\n";
+    const put = await app.api("PUT", "/dav/addressbooks/contacts/ann.vcf", card, { headers: { "content-type": "text/vcard" } });
+    expect(put.status).toBe(409);
+    expect(String(put.body.error?.message ?? put.body)).toMatch(/reclaiming unused space/);
+    expect((await app.api("DELETE", "/dav/addressbooks/contacts/ann.vcf")).status).toBe(409);
+    expect((await app.api("PROPFIND", "/dav/")).status).not.toBe(409);
+    finish();
+    await app.ctx.jobs.whenIdle();
+    expect(app.ctx.jobs.get(job.id)!.state).toBe("succeeded");
+  });
+
+  it("answers a write that meets the lock with 409 and the reason, never a 500", async () => {
+    const app = await start();
+    app.ctx.sqlite.pragma("busy_timeout = 0");
+    const release = holdLock(app);
+    try {
+      const refused = await app.api("POST", "/api/notes", { title: "Locked out" });
+      expect(refused.status).toBe(409);
+      expect(refused.body.error.message).toMatch(/database is busy with other work.*Try again in a moment/);
+    } finally {
+      release();
+      app.ctx.sqlite.pragma("busy_timeout = 5000");
+    }
+  });
+
+  it("holds work that is not a request: the backup timer, held jobs and the semantic index wait, nothing fails", async () => {
+    const app = await start();
+    leaveUnusedPages(app);
+    const { database, backups, semantic, search } = app.ctx.services;
+    const provider = {
+      modelId: "test:stand-in",
+      provider: "test",
+      model: "stand-in",
+      embedded: 0,
+      async embed(texts: string[]) {
+        provider.embedded += texts.length;
+        return texts.map(() => Float32Array.from([1, 0, 0]));
+      },
+      async check() {
+        return { ok: true as const, dimensions: 3 };
+      },
+    };
+    semantic.overrideProvider(provider);
+    search.upsert({ kind: "note", entityId: "a", title: "a", url: "/notes/a", sections: [{ text: "Carry water." }] });
+    await app.api("POST", "/api/semantic/index");
+    await app.ctx.jobs.whenIdle();
+    expect(provider.embedded).toBe(1);
+
+    // A job another module queued (a download, a kept area's refresh) just before the rewrite.
+    let ranAt = 0;
+    app.ctx.jobs.register("test.other", {
+      queue: "test-other",
+      run: async () => {
+        ranAt = Date.now();
+        return {};
+      },
+    });
+    let finishedAt = 0;
+    let problem: unknown;
+    database.setBeforeVacuum(async () => {
+      app.ctx.jobs.enqueue("test.other", {}, { title: "Other work" });
+      const release = holdLock(app);
+      try {
+        await sleep(100);
+        // With the lock held: the backup timer looks and does nothing, and the semantic
+        // index, asked by itself after a change, waits rather than failing on the lock.
+        backups.tick();
+        semantic.requestIndexing(false);
+      } catch (error) {
+        problem = error;
+      } finally {
+        release();
+        finishedAt = Date.now();
+      }
+    });
+    const job = reclaimJob(app);
+    await app.ctx.jobs.whenIdle();
+    expect(problem).toBeUndefined();
+    expect(app.ctx.jobs.get(job.id)!.state).toBe("succeeded");
+    expect(ranAt).toBeGreaterThanOrEqual(finishedAt);
+    expect(app.ctx.jobs.findBySubject("backup")).toHaveLength(0);
   });
 });

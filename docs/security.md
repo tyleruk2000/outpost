@@ -1479,8 +1479,26 @@ what is done:
 - **A relay on the same computer** (a reverse proxy, tunnel or port forwarder) that
   connects to Outpost at the network address and adds no forwarding header makes every
   visitor look local. That was already so for one connecting to loopback; the answer is
-  the same: it must send `X-Forwarded-For`.
-- **In a container** the rule is not used. The container's own addresses are not the
+  the same: it must send `X-Forwarded-For`. Where it cannot (a user-space port
+  forwarder such as `socat`, `rinetd` or an SSH tunnel's far end, a VPN client that
+  relays, or a rootless container network that carries connections in from the
+  computer's own address), start Outpost with `OUTPOST_OWN_ADDRESS_IS_LOCAL=false`:
+  then only loopback, and LAN access off, count. Nothing else changes.
+- **In a container** the rule is not used. Outpost takes itself to be in one at any of
+  these signs, each what an engine documents or has long made for programs inside to
+  find: `OUTPOST_IN_CONTAINER` (this repository's image and Compose file); `/.dockerenv`
+  (Docker); `/run/.containerenv` (Podman, podman-run(1)); the `container` environment
+  variable (systemd's Container Interface asks every container manager to set it, and
+  Podman, LXC and systemd-nspawn do); `KUBERNETES_SERVICE_HOST` (set in every container
+  of a Kubernetes pod, whatever its runtime); a control group under an engine's or
+  Kubernetes's path in `/proc/self/cgroup` (`docker`, `kubepods`, `libpod-…`, `lxc`); or
+  a root file system kept in an engine's storage in `/proc/self/mountinfo`
+  (`/var/lib/docker/`, `/var/lib/containers/storage/`, …). An overlay root on its own is
+  not a sign: Raspberry Pi OS makes one for its read-only mode. Taking a computer for a
+  container only takes the own-address rule away, so any one sign is enough. Each sign
+  is tested against a made-up file system and environment (`test/local.test.ts`); none
+  has been tried in a real Podman or Kubernetes container by this project. The
+  container's own addresses are not the
   computer's, and connections reach it through Docker's port publishing, or through
   Docker's user-land proxy (`--userland-proxy`, on by default, for loopback traffic),
   which connects from the bridge's gateway. The gateway is not among the container's
@@ -1509,7 +1527,14 @@ What this does not do:
   this computer can connect at all, and erasing is offered.
 - **A reverse proxy that adds no forwarding header** makes every visitor look local.
   Make sure yours sends `X-Forwarded-For`; see
-  [deployment.md](deployment.md#behind-a-reverse-proxy).
+  [deployment.md](deployment.md#behind-a-reverse-proxy). Where something forwards
+  without one, start Outpost with `OUTPOST_OWN_ADDRESS_IS_LOCAL=false`.
+
+**Seeing which rule decided.** Where Settings and Storage say an action is "offered here
+because" this is the computer Outpost runs on, they say which rule made it so: "you are
+connected from its own address 192.168.1.232", "from its loopback address 127.0.0.1",
+or "Outpost is not open to the network". A phone that sees that sentence with its own
+address in it has found a set-up the rule does not fit (`localBy` in `core/local.ts`).
 
 ### No telemetry
 

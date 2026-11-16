@@ -2,7 +2,7 @@
  * Managing and cleaning up what Outpost stores: what is taking the space, everything
  * installed in one list, leftovers, and the three bulk clean-ups.
  */
-import type { JobDto } from "./common.ts";
+import type { JobDto, LocalBy } from "./common.ts";
 import type { StorageKind } from "./storage.ts";
 import type { WeatherKept } from "./weather.ts";
 
@@ -338,7 +338,7 @@ export type DerivedStep = "vectors" | "text" | "compact";
 
 export interface CleanupStatus {
   /** Whether this request may erase everything, and if not, why. */
-  erase: { allowed: boolean; reason: "local" | "option" | "remote"; option: string };
+  erase: { allowed: boolean; reason: "local" | "option" | "remote"; option: string; localBy?: LocalBy };
   derived: {
     vectors: { count: number; bytes: number };
     documents: { count: number; unreachable: number };

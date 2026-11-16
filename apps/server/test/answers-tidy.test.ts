@@ -2,6 +2,8 @@
  * What is done to a model's reply before it is shown as settled. Every reply quoted here
  * as "seen" was written by llama3.2:3b or llama3.2:1b during the evaluation (docs/ai.md).
  */
+import fs from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { saysNotAnswered, tidyReply } from "../src/modules/answers/tidy.ts";
 
@@ -68,6 +70,70 @@ describe("a reply that says the passages do not answer", () => {
     expect(tidyReply("The sources do not answer this. They cover boiling water and beans.", passages).text).toBe(
       "The sources do not answer this. They cover boiling water and beans.",
     );
+  });
+});
+
+describe("which first sentences decline", () => {
+  /**
+   * Every reply in the evaluation's saved runs (llama3.2:3b and :1b, four runs, the "--json"
+   * output of test/eval/answers-eval.ts) that the judge counted as declining and Outpost
+   * read as declining too: the first 400 characters of each, and the markers its passages carried.
+   */
+  const seen = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, "fixtures/answers/refusals-seen.json"), "utf8")) as Array<{
+    text: string;
+    given: number[];
+  }>;
+
+  it("still declines every refusal seen in the evaluation", () => {
+    expect(seen.length).toBeGreaterThan(70);
+    const lost = seen.filter((reply) => !saysNotAnswered(reply.text, new Set(reply.given))).map((reply) => reply.text);
+    expect(lost).toEqual([]);
+  });
+
+  const given = new Set([1, 2, 3]);
+  it.each([
+    "If you cannot find clean water, boil what you have for one minute [1].",
+    "Tap water is not available in an outage, so store three litres per person a day [2].",
+    "Tap water is not available in an outage, so store three litres per person a day.",
+    "If you cannot find clean water, boil what you have for one minute.",
+    "Radon is not found in tap water in most areas [1].",
+    "There is no way to tell from the colour alone whether water is safe [3].",
+    "There is no way to tell from the colour alone whether water is safe.",
+    "You cannot make sea water safe by boiling it [1].",
+    "You cannot make sea water safe by boiling it.",
+    "A generator cannot be run indoors, even with the windows open.",
+    "Fuel that is not found in a sealed can should be thrown away.",
+    "If the gas is not available, use the wood stove [2].",
+    "Water from sources such as rivers does not contain chlorine, so treat it [1].",
+    "Use water from sources that do not contain fuel or paint.",
+    "Where no information is posted, assume the water is unsafe.",
+    "When the documents are not found, call the council on 101 [1].",
+    "The manual does not say to drain the tank, so leave it full [2].",
+    "Paracetamol cannot answer for a fever over 39 °C; see a doctor [3].",
+  ])("“%s” is an answer", (sentence) => {
+    expect(saysNotAnswered(sentence, given)).toBe(false);
+    expect(tidyReply(sentence, passages).outcome).toBe("answered");
+  });
+
+  it.each([
+    "The passages do not say how long to boil it.",
+    "I could not find anything about iodine in the library.",
+    "I cannot answer that from these documents.",
+    "I don't know.",
+    "Unfortunately, I found no information about nitrate.",
+    "There is no information about the flue in the provided sources. [1]",
+    "No information about the flue is given in the documents.",
+    "The weight of the stove is not mentioned in the manual.",
+    "The provided context does not cover dogs.",
+    "The sources do not answer this [1].",
+  ])("“%s” declines", (sentence) => {
+    expect(saysNotAnswered(sentence, given)).toBe(true);
+  });
+
+  it("keeps the citations of a cited instruction that opens with “cannot”", () => {
+    const tidied = tidyReply("If you cannot find clean water, boil what you have for one minute [1].", passages);
+    expect(tidied).toMatchObject({ outcome: "answered", used: [1] });
+    expect(tidied.text).toContain("[1]");
   });
 });
 

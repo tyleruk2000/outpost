@@ -766,7 +766,17 @@ note, with its sources. (Conversations in Chat are another matter: they are kept
     passages listed as what the model read, not as the sources of an answer. A first
     sentence that goes on with "but" or "however" is a caveat in front of an answer
     and is left alone. When all the model wrote was the sentence it is told to use,
-    nothing of its own is shown.
+    nothing of its own is shown. The sentence must be about the passages, the sources,
+    the documents or the library ("The passages do not say…", "It is not mentioned in
+    the sources", "There is no information about it in the provided sources"), or the
+    model about itself ("I could not find…"); "cannot", "not available" or "no way"
+    alone do not make one, because instructions are full of them ("If you cannot find
+    clean water, boil what you have for one minute [1]."). A first sentence with a
+    marker inside it, to a passage that was given, is an answer resting on that
+    passage; a marker after the full stop of a refusal is the fault above and is taken
+    out. The rule is tested against every refusal in the evaluation's saved runs
+    (`test/fixtures/answers/refusals-seen.json`) and against a list of instructions
+    that must not be read as one. Chat replies go through the same rule.
 - An answer that cites every passage it was given (three or more) says that its
   markers do not show which passage each statement rests on.
 - An answer with no markers at all is called out: nothing in it can be checked.

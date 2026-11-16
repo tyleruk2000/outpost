@@ -86,6 +86,9 @@ export async function extractOneFromTarGz(source: Readable, wanted: (entryPath: 
       if (isFile && !found && wanted(name)) {
         found = true;
         output = fs.createWriteStream(destination, { mode: 0o755 });
+        // A write that fails reaches the callbacks of write() and end(), which reject; the
+        // stream also emits "error", and without a listener that would end the process.
+        output.on("error", () => undefined);
       }
       if (size === 0) remaining = 0;
     }
