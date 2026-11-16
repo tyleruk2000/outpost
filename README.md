@@ -160,6 +160,7 @@ language model, and a real model's answers read differently.*
 | Communication plans | Several stations, and which band serves each pair at which hour; exported as PDF or Markdown. | [HF propagation](docs/hf-propagation.md#communication-plans) |
 | Contact log | What actually happened on the air, typed in or read from ADIF, set beside what the engine predicted. | [HF propagation](docs/hf-propagation.md#the-contact-log) |
 | Repeaters | A database of repeaters you bring in as a file, enter by hand, or fetch from the two publishers whose terms allow it; found, measured from a place, drawn on the map and written out for a radio. | [Radio](docs/radio.md#repeaters) |
+| Morse trainer | Learn Morse by ear with the Koch method and drills, send it on the screen (multi-touch paddles on a phone), on a keyboard or on a real key, work a practice contact, and get a call ready for the air. Progress over time and weak characters, kept for the household. | [Morse trainer](docs/morse-trainer.md) |
 
 ![An HF prediction from London to Birmingham on 40 m](docs/screenshots/propagation.webp)
 

@@ -50,6 +50,10 @@ describe("features that only a secure page has", () => {
     { what: "notifications", use: /new Notification\(|Notification\.requestPermission\(/, guard: /"Notification" in window/ },
     { what: "a wake lock", use: /wakeLock\.request\(/, guard: /"wakeLock" in navigator/ },
     { what: "web locks", use: /\blocks\s*\.request\(/, guard: /"locks" in navigator/ },
+    // The Morse trainer's wired keys and game controllers (features/morse/input/key-sources.ts): Web Serial exists only on a secure
+    // page, and some browsers list game controllers only on one. The panel says which is missing and points to Settings.
+    { what: "Web Serial", use: /\.serial\b[^\n]*\.requestPort\(|serial\.requestPort\(/, guard: /isSecureContext/ },
+    { what: "game controllers", use: /navigator\.getGamepads\(/, guard: /isSecureContext/ },
   ];
 
   it("are used only after looking for them", () => {
@@ -82,6 +86,8 @@ describe("features that only a secure page has", () => {
       "the camera or microphone",
       "a wake lock",
       "web locks",
+      "Web Serial",
+      "game controllers",
     ]);
   });
 });

@@ -26,6 +26,11 @@ between two places through the day, with **coverage maps** over the offline map,
 files. Those have a page of their own: [hf-propagation.md](hf-propagation.md). The **Radio** entry in the sidebar lists all of
 these.
 
+And a **Morse trainer** (Radio → Morse trainer), from LogBook73's: Koch receive lessons and
+drills, a send trainer for the screen, a keyboard or a real key, a practice contact, a call
+made ready for the air, a code chart and progress. It has a page of its own:
+[morse-trainer.md](morse-trainer.md).
+
 ## Radio tools on the map
 
 Both are on the **Maps** screen and work from what is installed, with no connection.

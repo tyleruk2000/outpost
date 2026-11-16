@@ -2,8 +2,8 @@
  * What the Morse trainer reads from and keeps on the server: the household's one record
  * of progress and settings, and its practice sessions. Training itself never waits for
  * the server: a session that cannot be kept (the server out of reach) is still counted
- * here for the adaptive weighting until the page is closed, and the Progress tab says
- * when a session was not kept.
+ * here for the adaptive weighting until the page is closed, and the tab that recorded
+ * it says that it was not kept.
  */
 import {
   type CharOutcome,

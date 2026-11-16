@@ -138,6 +138,29 @@ describe("what a removal says before it happens", () => {
       "Also erased: the history of downloads and other work.",
     );
   });
+
+  it("counts the Morse trainer's practice and progress among the person's own things", () => {
+    const none = {
+      pages: 0,
+      attachments: { count: 0, bytes: 0 },
+      places: 0,
+      routes: 0,
+      contacts: 0,
+      conversations: 0,
+      repeaters: 0,
+      repeaterLists: 0,
+      settings: 0,
+      vectors: 0,
+      previous: { count: 0, bytes: 0 },
+    };
+    expect(personalWords({ ...none, morse: { sessions: 120, progress: 1 } })).toBe(
+      "Also erased: 120 Morse practice sessions with the trainer's progress and settings and the history of downloads and other work.",
+    );
+    expect(personalWords({ ...none, morse: { sessions: 0, progress: 1 } })).toBe(
+      "Also erased: the Morse trainer's progress and settings and the history of downloads and other work.",
+    );
+    expect(personalWords({ ...none, morse: { sessions: 0, progress: 0 } })).toBe("Also erased: the history of downloads and other work.");
+  });
 });
 
 describe("the account of a clean-up", () => {
@@ -182,6 +205,11 @@ describe("the account of a clean-up", () => {
     expect(
       resultSentences(result({ scope: "everything", personal: { ...personal, conversations: 0, repeaters: 1, repeaterLists: 0 } }))[0],
     ).toBe("Erased 1 repeater and the history.");
+    expect(
+      resultSentences(
+        result({ scope: "everything", personal: { ...personal, conversations: 0, repeaters: 0, repeaterLists: 0, morse: { sessions: 1, progress: 1 } } }),
+      )[0],
+    ).toBe("Erased 1 Morse practice session with the trainer's progress and settings and the history.");
   });
 
   it("says when it was stopped and how much it had not reached, and when there was nothing to do", () => {

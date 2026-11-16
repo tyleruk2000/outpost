@@ -838,6 +838,26 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   download. The engine refuses cleanly without them and never runs on a partial or
   altered set. See [docs/hf-propagation.md](docs/hf-propagation.md#data).
 
+#### Morse trainer (Radio)
+
+- Radio → Morse trainer, from LogBook73's: Koch receive lessons (40, in LCWO's order,
+  with the offer of the next at 90 %) and callsign, word, abbreviation and QSO-phrase
+  drills; a send trainer with a straight key, iambic paddle (Curtis A and B, radio
+  presets), single lever and bug, and Quick targets, Echo (with timing coaching and a
+  played-against-keyed time line) and guided CQ conversations; a practice contact with
+  a made-up station; On the air, which builds a call a Reverse Beacon Network skimmer
+  can spot, plays it, checks your keying of it and links to the network's own page
+  (Outpost asks the network nothing); a code chart with the timing rule; and progress
+  over time, by lesson and by weak character.
+- Keys on the screen made for thumbs (both paddles held at once, no scrolling, zooming
+  or long-press menu), keyboard bindings for USB interfaces that type keys, mouse-paddle
+  capture, and wired keys and game controllers where the browser and the page allow,
+  saying what is missing where they do not. Sound starts on the first tap on an iPhone
+  and asks not to be muted by its silent switch.
+- One record of progress and one list of sessions for the household, in the database
+  (migration `0026_morse_trainer`): counted in Storage → Database and Manage and clean
+  up, erased with everything else, in backups, and cleared by Start again.
+
 #### Supplies (Preparedness)
 
 - **Preparedness → Supplies** keeps stored food, water, fuel, medicine, batteries and

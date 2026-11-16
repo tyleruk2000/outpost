@@ -971,6 +971,19 @@ Types: `packages/shared/src/power.ts`. The server keeps plans and works nothing 
 | `POST /api/power/plans/:id/copy` | A copy under the name "… (copy)". Returns `{ plan }`. |
 | `GET` / `POST /api/power/devices` | A person's own devices for the battery calculators, by name. `POST` body: `name`, `kind` (`run`, `charge`, `radio`), `supply` (`dc`, `usb`, `ac`), `watts`, `wattHours`, `receiveW`, `transmitW`, `standbyW` (each a number or `null`; the one its kind needs is required, the others are kept as `null`), `note`. Returns `{ device }`. `400` with the reason when the figure its kind needs is missing, or past 500 devices. |
 | `PUT` / `DELETE /api/power/devices/:id` | One device. `PUT` takes the whole device, as `POST` does. Loads already made from it keep their figures. |
+## Morse trainer
+
+Types: `packages/shared/src/morse.ts`; the engine is `packages/shared/src/morse/` and
+runs in the browser. One record of progress and one list of sessions for the whole
+copy (there are no accounts); see [morse-trainer.md](morse-trainer.md).
+
+| Route | What it does |
+| --- | --- |
+| `GET /api/morse` | `{ progress, sessions, sessionCount, weakChars, suggestedCallsign }`: the Koch lesson, the best receive speeds and the trainer's settings; the newest 200 sessions, newest first; how many are kept in all; missed characters counted over every kept session; and the station's own call in the latest entry of the contact log, or `null`. |
+| `PUT /api/morse/progress` | Merges a change: any of `kochLesson` (1–40), `bestCharWpm`, `bestEffWpm` (each only ever raised), `settings` (a `MorseSettings`, merged field by field; unknown fields are refused). Returns `{ progress }`. |
+| `POST /api/morse/sessions` | One finished drill: `kind` (`receive`, `send`, `qso`, `echo`), `accuracy` (0–1), and optionally `charWpm`, `effWpm`, `rhythm`, `lesson`, `misses` and `tries` (character → count, at most 64 characters). A receive drill at 90 % or better raises the best speeds. The oldest go beyond 5,000. Returns `{ session }`. |
+| `DELETE /api/morse` | Forgets the progress, the settings and every session ("Start again" on the Progress tab). Returns `{ removed: { sessions, progress } }`. |
+
 ## Nuclear preparedness
 
 Scenarios saved in the effects simulator (Preparedness → Nuclear preparedness). Only
