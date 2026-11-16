@@ -26,6 +26,7 @@ import {
   SignatureReport,
   UnlockForm,
 } from "./parts";
+import { progressUntilDone } from "./progress";
 import { unlockedKey } from "./session";
 import { OptionalPassphrase, SignerPicker } from "./text-tab";
 
@@ -157,6 +158,7 @@ function EncryptFile({ shelf }: { shelf: Shelf }) {
     setError(null);
     setResult(null);
     setProgress(0);
+    const report = progressUntilDone(setProgress);
     try {
       const engine = await getEngine();
       const signWith = signer === NO_SIGNER ? undefined : (unlockedKey(signer) ?? undefined);
@@ -170,13 +172,13 @@ function EncryptFile({ shelf }: { shelf: Shelf }) {
           signWith,
           armor,
         },
-        setProgress,
+        report.progress,
       );
       setResult({ blob, name: `${safeDownloadName(file.name, "file")}.${armor ? "asc" : "gpg"}` });
     } catch (failure) {
       setError(errorMessage(failure));
     } finally {
-      setProgress(null);
+      report.done();
     }
   };
 
@@ -270,6 +272,7 @@ function DecryptFile({ shelf }: { shelf: Shelf }) {
     setError(null);
     setResult(null);
     setProgress(0);
+    const report = progressUntilDone(setProgress);
     try {
       const engine = await getEngine();
       const keys = usable.map((entry) => unlockedKey(entry.fingerprint)).filter((key) => key !== null);
@@ -280,7 +283,7 @@ function DecryptFile({ shelf }: { shelf: Shelf }) {
           passphrase: needs?.passphrase && passphrase ? passphrase : undefined,
           verifyWith: shelf.keys.map((entry) => entry.publicKey),
         },
-        setProgress,
+        report.progress,
       );
       setPassphrase("");
       const stripped = file.name.replace(/\.(gpg|pgp|asc)$/i, "");
@@ -292,7 +295,7 @@ function DecryptFile({ shelf }: { shelf: Shelf }) {
     } catch (failure) {
       setError(errorMessage(failure));
     } finally {
-      setProgress(null);
+      report.done();
     }
   };
 
