@@ -16,7 +16,7 @@ import type {
   ChatScope,
   MarkdownBlock,
 } from "@outpost/shared";
-import { and, asc, desc, eq, gt, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, sql } from "drizzle-orm";
 import type { AppContext } from "../../core/context.ts";
 import { notFound } from "../../core/errors.ts";
 import { newId } from "../../core/ids.ts";
@@ -140,27 +140,40 @@ export function createChatStore(ctx: AppContext) {
         .orderBy(desc(chatConversations.updatedAt), desc(chatConversations.id))
         .limit(500)
         .all();
+      if (rows.length === 0) return [];
+      // Two questions for the whole list, whatever its length: how many messages each
+      // of these conversations has, and what the newest of them says. The list is asked
+      // for again on every change, so it must not cost a question per conversation.
+      const ids = rows.map((entry) => entry.id);
       const counts = new Map(
         db
-          .select({ id: chatMessages.conversationId, n: sql<number>`count(*)`, last: sql<number>`max(${chatMessages.seq})` })
+          .select({ id: chatMessages.conversationId, n: sql<number>`count(*)` })
           .from(chatMessages)
+          .where(inArray(chatMessages.conversationId, ids))
           .groupBy(chatMessages.conversationId)
+          .all()
+          .map((entry) => [entry.id, entry.n]),
+      );
+      const newest = new Map(
+        db
+          .select({ id: chatMessages.conversationId, text: chatMessages.text, notice: chatMessages.notice })
+          .from(chatMessages)
+          .where(
+            and(
+              inArray(chatMessages.conversationId, ids),
+              // The index on (conversation, order) answers this without reading the messages.
+              sql`${chatMessages.seq} = (SELECT max(later.seq) FROM chat_messages AS later WHERE later.conversation_id = ${chatMessages.conversationId})`,
+            ),
+          )
           .all()
           .map((entry) => [entry.id, entry]),
       );
       return rows.map((entry) => {
-        const count = counts.get(entry.id);
-        const newest = count
-          ? db
-              .select({ text: chatMessages.text, notice: chatMessages.notice })
-              .from(chatMessages)
-              .where(and(eq(chatMessages.conversationId, entry.id), eq(chatMessages.seq, count.last)))
-              .get()
-          : undefined;
+        const last = newest.get(entry.id);
         return {
           ...toConversation(entry),
-          messageCount: count?.n ?? 0,
-          excerpt: excerptOf(newest?.text || newest?.notice || ""),
+          messageCount: counts.get(entry.id) ?? 0,
+          excerpt: excerptOf(last?.text || last?.notice || ""),
           writing: writingIn === entry.id,
         };
       });
