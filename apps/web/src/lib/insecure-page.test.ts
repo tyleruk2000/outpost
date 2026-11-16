@@ -29,4 +29,54 @@ describe("features that only a secure page has", () => {
     }
     expect(found).toEqual([]);
   });
+
+  // Each of these is missing on such a page, or refuses. A file that uses one must also look before it
+  // does, and the screen must then say what is needed (the end-to-end suite presses each at such an
+  // address: e2e/tests/not-secure.spec.ts). The service worker is left out: it only exists on a secure page.
+  // crypto.subtle is not here: only OpenPGP.js uses it, loaded after cryptoAvailable() in encryption/engine.ts,
+  // and encryption-page.test.tsx checks what the screen says without it.
+  const SECURE_ONLY: Array<{ what: string; use: RegExp; guard: RegExp }> = [
+    { what: "the clipboard", use: /navigator\.clipboard\.\w+\(/, guard: /if \(navigator\.clipboard\b/ },
+    { what: "sharing", use: /navigator\.share\(/, guard: /typeof navigator\.canShare === "function"/ },
+    { what: "the device's location", use: /\.geolocation\.(getCurrentPosition|watchPosition)\(/, guard: /isSecureContext|secure\(\)/ },
+    { what: "a service worker", use: /navigator\.serviceWorker\s*(\/\/[^\n]*\n\s*)*\.register\(/, guard: /isSecureContext/ },
+    { what: "Cache Storage", use: /\bcaches\.(open|keys|delete|match)\(/, guard: /keepingSupported\(\)/ },
+    { what: "the browser's storage manager", use: /navigator\.storage\.\w+\(/, guard: /\bcatch\b|keepingSupported\(\)/ },
+    { what: "the camera or microphone", use: /getUserMedia\(|mediaDevices\./, guard: /isSecureContext/ },
+    { what: "notifications", use: /new Notification\(|Notification\.requestPermission\(/, guard: /"Notification" in window/ },
+    { what: "a wake lock", use: /wakeLock\.request\(/, guard: /"wakeLock" in navigator/ },
+    { what: "web locks", use: /\blocks\s*\.request\(/, guard: /"locks" in navigator/ },
+  ];
+
+  it("are used only after looking for them", () => {
+    const found: string[] = [];
+    for (const file of sources(root)) {
+      const name = path.relative(root, file);
+      if (name.startsWith(`sw${path.sep}`) || name.endsWith("fake-caches.ts")) continue;
+      const text = fs.readFileSync(file, "utf8");
+      for (const { what, use, guard } of SECURE_ONLY) {
+        if (use.test(text) && !guard.test(text)) found.push(`${name}: ${what}, used without looking for it first`);
+      }
+    }
+    expect(found).toEqual([]);
+  });
+
+  it("are each found where they are used: the list above is not out of date", () => {
+    const all = sources(root)
+      .filter((file) => !path.relative(root, file).startsWith(`sw${path.sep}`))
+      .map((file) => fs.readFileSync(file, "utf8"))
+      .join("\n");
+    const used = SECURE_ONLY.filter(({ use }) => use.test(all)).map(({ what }) => what);
+    // What the app uses today. One that is no longer used can come off the list; one that is new goes on it.
+    expect(used).toEqual([
+      "the clipboard",
+      "sharing",
+      "the device's location",
+      "a service worker",
+      "Cache Storage",
+      "the browser's storage manager",
+      "a wake lock",
+      "web locks",
+    ]);
+  });
 });

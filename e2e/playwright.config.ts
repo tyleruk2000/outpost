@@ -259,7 +259,11 @@ export default defineConfig({
     locale: "en-GB",
   },
   projects: [
-    { name: "desktop", use: { ...devices["Desktop Chrome"], viewport: { width: 1360, height: 860 } }, testIgnore: /mobile\.spec\.ts/ },
+    {
+      name: "desktop",
+      use: { ...devices["Desktop Chrome"], viewport: { width: 1360, height: 860 } },
+      testIgnore: /mobile\.spec\.ts|not-secure\.spec\.ts/,
+    },
     { name: "phone", use: { ...devices["Pixel 7"] }, testMatch: /mobile\.spec\.ts/ },
     // The walk to every screen again, at an address browsers do not treat as secure, as the server is reached
     // from another device on a home network (http://192.168.1.232:8080). 127.0.0.1 and localhost count as
@@ -268,7 +272,8 @@ export default defineConfig({
     {
       name: "not-secure desktop",
       use: { ...devices["Desktop Chrome"], viewport: { width: 1360, height: 860 }, baseURL: NOT_SECURE_URL, launchOptions: notSecure },
-      testMatch: /every-screen\.spec\.ts/,
+      // And every action that needs a secure page pressed there (not-secure.spec.ts).
+      testMatch: /every-screen\.spec\.ts|not-secure\.spec\.ts/,
     },
     {
       name: "not-secure phone",
