@@ -992,7 +992,10 @@ Types: `packages/shared/src/backup.ts`.
 "Local only" below means `403 forbidden` unless the request comes from the computer
 Outpost runs on or the server was started with `OUTPOST_ALLOW_REMOTE_ERASE=true`. The
 `right` in the status and schedule says whether this request has that right:
-`{ allowed, reason: "local" | "option" | "remote", option }`.
+`{ allowed, reason: "local" | "option" | "remote", option, localBy? }`. With `local`,
+`localBy` says which rule decided: `{ rule: "loopback" | "own-address", address }` or
+`{ rule: "not-on-network", address: null }`; the HTTPS rights, the passphrase right and
+`erase` under `GET /api/manage/cleanup` carry it too.
 
 Backups can be protected with a passphrase ([storage.md](storage.md#protecting-backups-with-a-passphrase)).
 A request may carry a passphrase only if it is local-only allowed **and** the passphrase

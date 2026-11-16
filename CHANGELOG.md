@@ -1205,6 +1205,36 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   if one is left; an end-to-end test presses each secure-page-only action at a plain
   http address.
 
+#### Fixes from a review (ten faults)
+
+- CSV imports read numbers by the file's own decimal mark, the same in every numeric
+  column: a semicolon file's `1,5` litres is one and a half, not fifteen; `1.234,5` and
+  `1,234.5` are read as one number; a cell the file does not settle is refused with both
+  readings. The supplies preview says how each number that was not plain was read. The
+  same rule reads the barometer's CSV and country figures.
+- Answers and chat decline only when the first sentence says the passages, sources,
+  documents or library do not hold the answer, or the model says it could not find it;
+  a cited instruction that uses "cannot" or "not available" keeps its citations.
+- A reference query's answer is written through `pipeline()`: a full or unplugged drive
+  fails the download with a message instead of ending the process. The same kind of
+  unhandled stream error is closed in the reference CSV reader, the tar extractor and
+  the semantic index export.
+- "Reclaim unused space" waits up to 30 seconds for changes under way (an upload, a
+  reply being written) and otherwise stops with the reason; every write on any path,
+  `/dav/` included, is refused while it runs; a write that meets the lock is a `409`.
+- A refused reference import leaves nothing on the drive.
+- A device's announcement can no longer make Outpost look up a name of its choosing
+  through DNS: only `.local` names, by multicast DNS, and only inside the network looked
+  at. File servers offered under Network shares are limited to `.local` names.
+- A weather place removed during an update keeps nothing; orphan copies are cleared at
+  start-up.
+- `GET /api/reference/templates/constructor` is a `404`, not a `500`; names from
+  devices, imports and OpenStreetMap are looked up only among a table's own keys.
+- An estimate for no country and no box is refused unless the source covers the world.
+- More kinds of container are recognised (Podman, Kubernetes, systemd-nspawn, LXC), the
+  own-address rule can be turned off with `OUTPOST_OWN_ADDRESS_IS_LOCAL=false`, and
+  Settings and Storage say which rule made them take a device for this computer.
+
 ### Known limitations
 
 These are deliberate or known, and are explained in
