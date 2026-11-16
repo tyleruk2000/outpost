@@ -1,8 +1,11 @@
 import { createHash, X509Certificate } from "node:crypto";
 import fs from "node:fs";
 import https from "node:https";
+import path from "node:path";
 import tls from "node:tls";
 import { chromium } from "@playwright/test";
+import { make, makeAuthority } from "../../apps/server/test/https-certs.ts";
+import type { HttpsStatus } from "../../packages/shared/src/https.ts";
 import { api, expect, test, watchForErrors } from "./fixtures";
 
 const httpsPort = Number(process.env.OUTPOST_E2E_HTTPS_PORT);
@@ -39,9 +42,27 @@ function presentedKey(ca: string): Promise<string> {
   });
 }
 
+/** The certificate the server presents to a client that trusts `ca` and nothing else. */
+function presented(ca: string): Promise<X509Certificate> {
+  return new Promise((resolve, reject) => {
+    const socket = tls.connect({ host: "localhost", port: httpsPort, servername: "localhost", ca }, () => {
+      const certificate = socket.getPeerX509Certificate();
+      socket.end();
+      if (certificate) resolve(certificate);
+      else reject(new Error("the server presented no certificate"));
+    });
+    socket.on("error", reject);
+  });
+}
+
 test.describe("HTTPS on your network", () => {
+  // The two tests share one server's HTTPS listener, so they take turns.
+  test.describe.configure({ mode: "serial" });
+
   test.afterAll(async ({ request }) => {
-    await request.patch("/api/settings", { headers: { "X-Outpost-Request": "1" }, data: { "https.enabled": false, "https.names": "" } });
+    const headers = { "X-Outpost-Request": "1" };
+    await request.delete("/api/https/own", { headers });
+    await request.patch("/api/settings", { headers, data: { "https.enabled": false, "https.certificate": "outpost", "https.names": "" } });
   });
 
   test("is turned on in Settings, hands out its certificate, and serves the app over HTTPS", async ({ page }) => {
@@ -70,9 +91,19 @@ test.describe("HTTPS on your network", () => {
     expect(authority.ca).toBe(true);
     expect(der.toString("latin1")).not.toContain("PRIVATE KEY");
     await expect(section.getByText(authority.fingerprint256)).toBeVisible();
-    for (const device of ["iPhone and iPad", "Android", "Mac", "Windows", "Firefox on a computer"]) {
+    for (const device of ["iPhone and iPad", "Android", "Mac", "Windows", "Linux", "Firefox, on any computer"]) {
       await expect(section.locator("summary", { hasText: device })).toBeVisible();
     }
+    // The steps come before the upkeep, and Linux gets the text form of the same certificate.
+    const linux = section.locator("details", { has: page.locator("summary", { hasText: "Linux" }) });
+    await linux.locator("summary").click();
+    await expect(linux.getByText("sudo update-ca-certificates", { exact: false }).first()).toBeVisible();
+    const [asText] = await Promise.all([
+      page.waitForEvent("download"),
+      linux.getByRole("link", { name: "Download the certificate" }).click(),
+    ]);
+    expect(asText.suggestedFilename()).toBe("outpost-authority.pem");
+    expect(new X509Certificate(fs.readFileSync(await asText.path())).fingerprint256).toBe(authority.fingerprint256);
 
     // A client that trusts this authority, and nothing else, accepts the HTTPS address.
     const pem = authority.toString();
@@ -153,5 +184,76 @@ test.describe("HTTPS on your network", () => {
     // The certificate is kept, so turning it on again asks nothing of any device.
     await expect(section.getByRole("link", { name: "Download certificate" })).toBeVisible();
     expect(errors).toEqual([]);
+  });
+
+  test("uses a certificate of the person's own, takes a renewal from the folder, and goes back in one press", async ({ page }) => {
+    const errors = watchForErrors(page);
+    const house = makeAuthority("Hill House Root");
+    const mine = make({ name: "localhost", issuer: house.intermediate, names: ["localhost", "127.0.0.1"], until: 90 });
+    const pick = (name: string, text: string) => ({ name, mimeType: "application/x-pem-file", buffer: Buffer.from(text) });
+
+    await page.goto("/settings#https");
+    const section = page.locator("#https");
+    // Outpost's own authority, from the test above, is what going back must find unchanged.
+    const outposts = (await api<HttpsStatus>(page, "GET", "/api/https")).authority;
+    expect(outposts).not.toBeNull();
+
+    // One closed line until it is wanted.
+    const choice = section.locator("details", { has: page.locator("summary", { hasText: "Use a certificate of your own instead" }) });
+    await expect(choice.getByText("Choose the files here")).toBeHidden();
+    await choice.locator("summary").click();
+    await expect(choice.getByText("Offered here because you are at the computer Outpost runs on.")).toBeVisible();
+
+    // A key that is not the certificate's own is refused in words, and nothing changes.
+    await choice.getByLabel("Certificate file").setInputFiles(pick("fullchain.pem", mine.pem + house.intermediate.pem + house.root.pem));
+    await choice.getByLabel("Key file").setInputFiles(pick("privkey.pem", make({ name: "elsewhere", names: ["elsewhere.lan"] }).keyPem));
+    await choice.getByRole("button", { name: "Use this certificate" }).click();
+    await expect(choice.getByRole("alert")).toContainText("This key does not belong to any certificate in the file");
+    expect((await api<HttpsStatus>(page, "GET", "/api/https")).source).toBe("outpost");
+
+    // The right key: HTTPS is on with it.
+    await choice.getByLabel("Key file").setInputFiles(pick("privkey.pem", mine.keyPem));
+    await choice.getByRole("button", { name: "Use this certificate" }).click();
+    await expect(section.getByRole("heading", { name: "Your certificate" })).toBeVisible({ timeout: 30_000 });
+    await expect(section.getByText(mine.certificate.fingerprint256)).toBeVisible();
+    await expect(section.getByText(`On this computer itself: ${secure}`)).toBeVisible();
+    // It says whose root devices must trust, and that it cannot see what they do trust.
+    await expect(section.getByRole("heading", { name: "Each device has to trust your authority’s root" })).toBeVisible();
+    await expect(section.getByText(/It is your authority’s root that devices must trust, not Outpost’s/)).toBeVisible();
+    await expect(section.getByText(house.root.certificate.fingerprint256)).toBeVisible();
+    await expect(section.getByRole("heading", { name: "Trust the certificate on each device" })).toHaveCount(0);
+
+    // The listener really presents it, with a chain that verifies against the house root and nothing else.
+    expect((await presented(house.root.pem)).fingerprint256).toBe(mine.certificate.fingerprint256);
+    expect((await getTrusting(`${secure}/api/health`, house.root.pem)).status).toBe(200);
+    await expect(getTrusting(`${secure}/api/health`, "")).rejects.toThrow();
+    // The root it offers for download is the house's, public half only.
+    const root = await page.request.get("/api/https/own-root.crt");
+    expect(new X509Certificate(await root.body()).fingerprint256).toBe(house.root.certificate.fingerprint256);
+    expect((await page.request.get("/api/https/own/privkey.pem")).status()).toBe(404);
+
+    // A renewal arrives in the folder, as a script would leave it, and is taken up from there.
+    const renewed = make({ name: "localhost", issuer: house.intermediate, names: ["localhost", "127.0.0.1"], until: 90 });
+    // The folder is where the server says it is; the test runs on the same computer, so it can write there.
+    const folder = (await api<HttpsStatus>(page, "GET", "/api/https")).own.folder;
+    expect(folder).toMatch(/tls[\\/]own$/);
+    fs.writeFileSync(path.join(folder, "fullchain.pem"), renewed.pem + house.intermediate.pem);
+    fs.writeFileSync(path.join(folder, "privkey.pem"), renewed.keyPem);
+    await section.getByRole("button", { name: "Give Outpost another certificate" }).click();
+    await section.getByRole("button", { name: "Use them" }).click();
+    await expect(section.getByText(renewed.certificate.fingerprint256)).toBeVisible();
+    expect((await presented(house.root.pem)).fingerprint256).toBe(renewed.certificate.fingerprint256);
+    // The root was not in the renewed file, so it is no longer Outpost's to offer.
+    await expect(section.getByText(/The root was not in the files you gave/)).toBeVisible();
+
+    // Back to Outpost's own: one press, the same authority as before, and the person's files still in the folder.
+    await section.getByRole("button", { name: "Go back to Outpost’s own certificate" }).click();
+    await expect(section.getByRole("heading", { name: "Trust the certificate on each device" })).toBeVisible({ timeout: 30_000 });
+    await expect(section.getByText(outposts?.fingerprint ?? "")).toBeVisible();
+    const outpostsPem = await (await page.request.get("/api/https/outpost-authority.pem")).text();
+    await expect.poll(async () => (await getTrusting(`${secure}/api/health`, outpostsPem).catch(() => ({ status: 0 }))).status).toBe(200);
+    await expect(getTrusting(`${secure}/api/health`, house.root.pem)).rejects.toThrow();
+    expect(fs.existsSync(path.join(folder, "privkey.pem"))).toBe(true);
+    expect(errors.filter((error) => !/Failed to load resource/.test(error))).toEqual([]);
   });
 });

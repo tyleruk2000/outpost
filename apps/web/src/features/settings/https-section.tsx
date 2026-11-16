@@ -1,6 +1,6 @@
 import type { HttpsStatus, Settings } from "@outpost/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CircleAlert, CircleCheck, Download, MonitorSmartphone } from "lucide-react";
+import { ChevronRight, CircleAlert, CircleCheck, Download, MonitorSmartphone } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Notice } from "@/components/page";
@@ -9,11 +9,10 @@ import { ConfirmDialog } from "@/components/ui/dialog";
 import { Skeleton, Spinner, Switch } from "@/components/ui/misc";
 import { api, errorMessage } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
+import { OwnCertificateChoice, OwnCertificateInUse, HTTPS_STATUS_KEY as STATUS_KEY } from "./https-own";
 import { guessDevice, TrustSteps } from "./https-steps";
 import { SettingRow, SettingsSection, TextSetting } from "./parts";
 
-const STATUS_KEY = ["https", "status"];
-const CERTIFICATE_FILE = "outpost-authority.crt";
 const mono = "font-mono text-[0.8125rem] text-ink [overflow-wrap:anywhere]";
 
 /** The host in the address bar, as a certificate would list it: no brackets round an IPv6 address. */
@@ -30,6 +29,12 @@ function endings(names: string[]): string {
  * each device has to be told to trust, and how. The title and the section's id are
  * fixed: other screens send people to "Settings → HTTPS on your network" at
  * `/settings#https` when something needs a secure address.
+ *
+ * The order is the order a person needs things in after turning it on: the addresses,
+ * then what to do on each device, then the upkeep (other names, starting again). The
+ * simple case, Outpost's own certificate, is all that shows unless a person opens "Use
+ * a certificate of your own instead"; once they use one, that takes the place of
+ * Outpost's own part (`https-own.tsx`).
  */
 export function HttpsSection({
   settings,
@@ -79,6 +84,18 @@ export function HttpsSection({
   const listed = settings["https.names"];
   const starting = enabled && data && !data.unavailable && !data.listening && !data.problem;
   const plainAddress = data ? `http://${window.location.hostname}:${data.httpPort}` : "";
+  const usingOwn = data?.source === "own";
+  const refresh = () => void status.refetch();
+  // An address of this server for the commands in the steps: one on the network if there is one.
+  const exampleAddress = network[0]?.url ?? own?.url ?? `https://localhost:${data?.port ?? 8443}`;
+  /**
+   * Where a phone or another computer opens this page: the plain address of the first
+   * way in from the network. Not shown to a browser that is already on such an address.
+   */
+  const elsewhere =
+    data && network[0] && !network.some((address) => address.name === host)
+      ? `http://${new URL(network[0].url).hostname}:${data.httpPort}/settings#https`
+      : null;
 
   return (
     <SettingsSection
@@ -92,7 +109,8 @@ export function HttpsSection({
           <>
             Serves Outpost a second time at an address beginning <span className={mono}>https://</span>
             {data ? `, on port ${data.port}` : ""}. The <span className={mono}>http://</span> address keeps working and nothing is
-            redirected. Each device then has to be told once to trust this server’s certificate.
+            redirected. Each device then has to be told once to trust this server’s certificate, unless you bring a certificate devices
+            already trust.
           </>
         }
         control={
@@ -156,6 +174,11 @@ export function HttpsSection({
                       </li>
                     ))}
                   </ul>
+                ) : usingOwn ? (
+                  <p className="mt-1 text-small text-ink-muted">
+                    None of the names on your certificate is an address other devices can use for this server yet. See “Where it will not
+                    work” below.
+                  </p>
                 ) : (
                   <p className="mt-1 text-small text-ink-muted">
                     {data.inContainer
@@ -188,8 +211,15 @@ export function HttpsSection({
                   <a href={`${here.url}/settings#https`} className="text-primary underline underline-offset-2">
                     Open this page over HTTPS
                   </a>
-                  . If the browser then warns that the connection is not private, this device does not trust the certificate yet: go back,
-                  follow the steps below, and try again.
+                  .{" "}
+                  {usingOwn
+                    ? "If the browser then warns that the connection is not private, this device does not trust your certificate yet: go back and see below for what it has to trust."
+                    : "If the browser then warns that the connection is not private, this device does not trust the certificate yet: go back, follow the steps for it below, and try again."}
+                </p>
+              ) : usingOwn ? (
+                <p className="text-small text-ink-muted">
+                  This browser is on the plain <span className={mono}>http://</span> address, at <span className={mono}>{host}</span>, which
+                  is not a name on your certificate. Use one of the addresses above for HTTPS.
                 </p>
               ) : (
                 <Notice
@@ -209,11 +239,98 @@ export function HttpsSection({
                   trusted at it.
                 </Notice>
               )}
+            </>
+          ) : null}
 
+          {usingOwn && !data.unavailable ? (
+            <OwnCertificateInUse
+              data={data}
+              disabled={disabled}
+              address={exampleAddress}
+              refresh={refresh}
+              goBack={() => save("https.certificate", "outpost")}
+            />
+          ) : null}
+
+          {data.authority && !usingOwn ? (
+            <div className="grid gap-3 border-t border-border pt-5">
+              <h3 className="text-body font-semibold text-ink">Trust the certificate on each device</h3>
+              <p className="text-small text-ink-muted">
+                Until a phone or computer has been told to trust this server’s certificate, its browser warns that the connection is not
+                private. It is done once on each device, on the device itself: download the certificate there, then follow the steps for
+                that kind of device.
+              </p>
+              {elsewhere ? (
+                <p className="text-small text-ink-muted">
+                  On a phone or another computer, open this page there first: <span className={mono}>{elsewhere}</span>
+                </p>
+              ) : null}
+              <TrustSteps
+                certificate={{
+                  name: data.authority.name,
+                  downloads: { der: "/api/https/outpost-authority.crt", pem: "/api/https/outpost-authority.pem" },
+                  files: { der: "outpost-authority.crt", pem: "outpost-authority.pem" },
+                  address: exampleAddress,
+                }}
+                open={guessDevice(navigator.userAgent, navigator.maxTouchPoints)}
+              />
+              <div className="flex flex-wrap items-start gap-x-6 gap-y-3">
+                <div className="grid gap-1.5">
+                  <Button asChild>
+                    <a href="/api/https/outpost-authority.crt">
+                      <Download /> Download certificate
+                    </a>
+                  </Button>
+                  <a href="/api/https/outpost-authority.pem" className="text-small text-primary underline underline-offset-2">
+                    As text (PEM), for Linux and commands
+                  </a>
+                </div>
+                <dl className="min-w-56 flex-1 text-small">
+                  <div className="flex flex-wrap gap-x-2">
+                    <dt className="text-ink-muted">Listed on devices as</dt>
+                    <dd className="text-ink">{data.authority.name}</dd>
+                  </div>
+                  <div className="mt-1 flex flex-wrap gap-x-2">
+                    <dt className="text-ink-muted">Valid until</dt>
+                    <dd className="tabular text-ink">{formatDate(data.authority.expiresAt)}</dd>
+                  </div>
+                  <div className="mt-1">
+                    <dt className="text-ink-muted">SHA-256 fingerprint, to compare with what a device shows before you trust it</dt>
+                    <dd className={mono}>{data.authority.fingerprint}</dd>
+                  </div>
+                </dl>
+              </div>
+              <details className="group">
+                <summary className="flex min-h-11 cursor-default items-center gap-2 py-2 text-small font-medium text-ink marker:content-none hover:text-primary [&::-webkit-details-marker]:hidden">
+                  <ChevronRight aria-hidden className="size-4 text-ink-muted transition-transform duration-150 group-open:rotate-90" />
+                  What trusting it means
+                </summary>
+                <p className="pb-2 pl-6 text-small text-ink-muted">
+                  Trusting it tells the device to believe a server that holds the matching key, which is in Outpost’s data folder on this
+                  server and is never sent anywhere. The authority is limited to addresses on a private network and names ending in{" "}
+                  {endings(data.authority.permittedNames)}, so it cannot vouch for a site on the internet. By their makers’ documentation
+                  and code, iPhone, iPad and Mac hold it to that limit, as do Chrome, Edge and Firefox on a computer; only a Mac was tried.
+                  Android does not check the limit: on an Android phone, someone who copied the key from this server could pass off any site
+                  as genuine.
+                </p>
+              </details>
+              <p className="text-small text-ink-muted">
+                The steps follow each maker’s own instructions as they stood in November 2026; menus move between versions. Removing the
+                certificate from a device takes back the trust and nothing else.
+              </p>
+            </div>
+          ) : null}
+
+          {enabled && data.listening ? (
+            <>
               <SettingRow
                 htmlFor="https-names"
                 label="Other names and addresses"
-                hint="Ways of reaching this server that Outpost has not found for itself, separated by commas: an address, or a name ending in .local or .lan. The certificate is made again when this list or the computer’s own addresses change; devices that already trust it need do nothing."
+                hint={
+                  usingOwn
+                    ? "Names and addresses you use for this server that Outpost has not found for itself, separated by commas. With a certificate of your own this does not change the certificate: it tells Outpost which addresses to check it against and list."
+                    : "Ways of reaching this server that Outpost has not found for itself, separated by commas: an address, or a name ending in .local or .lan. The certificate is made again when this list or the computer’s own addresses change; devices that already trust it need do nothing."
+                }
                 control={
                   <TextSetting
                     id="https-names"
@@ -240,81 +357,42 @@ export function HttpsSection({
             </>
           ) : null}
 
-          {data.authority ? (
-            <>
-              <div className="grid gap-3 border-t border-border pt-5">
-                <h3 className="text-small font-medium text-ink">Trust the certificate on each device</h3>
-                <p className="text-small text-ink-muted">
-                  A device accepts the HTTPS address only once it trusts the certificate authority this server made for itself. Trusting it
-                  tells the device to believe a server that holds the matching key, which is in Outpost’s data folder on this server and is
-                  never sent anywhere. The authority is limited to addresses on a private network and names ending in{" "}
-                  {endings(data.authority.permittedNames)}, so it cannot vouch for a site on the internet. By their makers’ documentation
-                  and code, iPhone, iPad and Mac hold it to that limit, as do Chrome, Edge and Firefox on a computer; only a Mac was tried.
-                  Android does not check the limit: on an Android phone, someone who copied the key from this server could pass off any site
-                  as genuine.
-                </p>
-                <div className="flex flex-wrap items-start gap-x-6 gap-y-3">
-                  <Button asChild>
-                    <a href="/api/https/outpost-authority.crt">
-                      <Download /> Download certificate
-                    </a>
-                  </Button>
-                  <dl className="min-w-56 flex-1 text-small">
-                    <div className="flex flex-wrap gap-x-2">
-                      <dt className="text-ink-muted">Listed on devices as</dt>
-                      <dd className="text-ink">{data.authority.name}</dd>
-                    </div>
-                    <div className="mt-1 flex flex-wrap gap-x-2">
-                      <dt className="text-ink-muted">Valid until</dt>
-                      <dd className="tabular text-ink">{formatDate(data.authority.expiresAt)}</dd>
-                    </div>
-                    <div className="mt-1">
-                      <dt className="text-ink-muted">SHA-256 fingerprint, to compare with what a device shows before you trust it</dt>
-                      <dd className={mono}>{data.authority.fingerprint}</dd>
-                    </div>
-                  </dl>
-                </div>
-                <TrustSteps file={CERTIFICATE_FILE} open={guessDevice(navigator.userAgent, navigator.maxTouchPoints)} />
-                <p className="text-small text-ink-muted">
-                  The steps follow each maker’s own instructions as they stood in November 2026; menus move between versions. Removing the
-                  certificate from a device takes back the trust and nothing else.
-                </p>
-              </div>
+          {!data.unavailable && !usingOwn ? <OwnCertificateChoice data={data} refresh={refresh} /> : null}
 
-              <div className="grid gap-3 border-t border-border pt-5">
-                <h3 className="text-small font-medium text-ink">Start again with a new certificate authority</h3>
-                {data.authorityRight.allowed ? (
-                  <>
-                    <p className="text-small text-ink-muted">
-                      For when its key may have been copied, or you no longer want HTTPS. Every device that trusted this one stops trusting
-                      Outpost’s HTTPS address until it is told to trust the new one.{" "}
-                      {data.authorityRight.reason === "option"
-                        ? `Offered on every device because Outpost was started with ${data.authorityRight.option}=true.`
-                        : "Offered here because you are at the computer Outpost runs on."}
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      <Button variant="danger-ghost" onClick={() => setAsking("replace")} disabled={Boolean(data.unavailable)}>
-                        Make a new certificate authority
-                      </Button>
-                      <Button variant="danger-ghost" onClick={() => setAsking("delete")}>
-                        Turn HTTPS off and delete it
-                      </Button>
-                    </div>
-                  </>
-                ) : (
-                  <Notice tone="info" icon={<MonitorSmartphone aria-hidden />} title="Not offered on this device">
-                    <p>
-                      Replacing or deleting the certificate authority stops every device that trusted it from trusting Outpost’s HTTPS
-                      address. Outpost has no accounts, so that can only be done at the computer Outpost runs on.
-                    </p>
-                    <p className="mt-1 text-ink-muted">
-                      Whoever starts Outpost can allow it from every device by starting it with{" "}
-                      <span className="font-mono text-[0.8125rem]">{data.authorityRight.option}=true</span>.
-                    </p>
-                  </Notice>
-                )}
-              </div>
-            </>
+          {data.authority && !usingOwn ? (
+            <div className="grid gap-3 border-t border-border pt-5">
+              <h3 className="text-small font-medium text-ink">Start again with a new certificate authority</h3>
+              {data.authorityRight.allowed ? (
+                <>
+                  <p className="text-small text-ink-muted">
+                    For when its key may have been copied, or you no longer want HTTPS. Every device that trusted this one stops trusting
+                    Outpost’s HTTPS address until it is told to trust the new one.{" "}
+                    {data.authorityRight.reason === "option"
+                      ? `Offered on every device because Outpost was started with ${data.authorityRight.option}=true.`
+                      : "Offered here because you are at the computer Outpost runs on."}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button variant="danger-ghost" onClick={() => setAsking("replace")} disabled={Boolean(data.unavailable)}>
+                      Make a new certificate authority
+                    </Button>
+                    <Button variant="danger-ghost" onClick={() => setAsking("delete")}>
+                      Turn HTTPS off and delete it
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <Notice tone="info" icon={<MonitorSmartphone aria-hidden />} title="Not offered on this device">
+                  <p>
+                    Replacing or deleting the certificate authority stops every device that trusted it from trusting Outpost’s HTTPS
+                    address. Outpost has no accounts, so that can only be done at the computer Outpost runs on.
+                  </p>
+                  <p className="mt-1 text-ink-muted">
+                    Whoever starts Outpost can allow it from every device by starting it with{" "}
+                    <span className="font-mono text-[0.8125rem]">{data.authorityRight.option}=true</span>.
+                  </p>
+                </Notice>
+              )}
+            </div>
           ) : null}
         </>
       )}

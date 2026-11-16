@@ -36,6 +36,7 @@ export interface Settings {
   "downloads.rateLimitKbps": number;
   "downloads.maxAttempts": number;
   "https.enabled": boolean;
+  "https.certificate": "outpost" | "own";
   "https.names": string;
   "indexing.concurrency": number;
   "indexing.chunkSize": number;

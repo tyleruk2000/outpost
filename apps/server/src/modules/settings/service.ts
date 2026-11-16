@@ -91,6 +91,11 @@ export const settingsSchema = z.object({
    */
   "https.enabled": z.boolean().default(false),
   /**
+   * Whose certificate the HTTPS listener presents: one Outpost makes and signs with its
+   * own certificate authority, or one the person brought (see `modules/https/own.ts`).
+   */
+  "https.certificate": z.enum(["outpost", "own"]).default("outpost"),
+  /**
    * Other names and addresses this server is reached by, separated by commas, for the
    * certificate to list. Needed where Outpost cannot see them itself, as in a container.
    */

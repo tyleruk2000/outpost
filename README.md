@@ -153,8 +153,8 @@ people to authenticate.
 
 Browsers give a page a device's location, and a few other things, only at an `https`
 address. Outpost can provide one on your own network, with a certificate it makes for
-itself and each device is told once to trust: see
-[HTTPS on your network](docs/deployment.md#https-on-your-network).
+itself and each device is told once to trust, or with a certificate of your own if you
+have one: see [HTTPS on your network](docs/deployment.md#https-on-your-network).
 
 See [docs/deployment.md](docs/deployment.md) for every platform, for running without
 Docker, and for all settings.
