@@ -88,7 +88,7 @@ export interface RecorderSnapshot {
   totals: Totals;
   /** Goes up each time the line to draw changes. */
   lineRevision: number;
-  /** Where the device last said it was, whether or not that was kept. */
+  /** Where the device last was by a fix good enough to record, whether or not the fix was far enough on to be kept. */
   position: { lat: number; lon: number; accuracy: number } | null;
   lastFix: { at: number; accuracy: number; refusal: FixRefusal | null } | null;
   problem: Problem | null;
@@ -325,6 +325,14 @@ export class Recorder {
     const able = this.ability();
     if (able !== "ok") return able;
     if (this.meta || this.parked || !this.store) return "busy";
+    if (this.snapshot.elsewhere) {
+      // Another tab had a recording open when this one looked. If that tab has gone, what it
+      // left is offered back here before anything new is started.
+      this.set({ elsewhere: false });
+      const metas = await this.store.list().catch(() => []);
+      await this.findUnfinished(metas.filter((meta) => meta.status === "active" || meta.status === "stopped"));
+      if (this.parked) return "busy";
+    }
     if (!(await this.holdTab())) return "elsewhere";
     const meta: RecordingMeta = {
       id: newRecordingId(this.env.now(), this.env.random),
@@ -393,7 +401,8 @@ export class Recorder {
       lastFix: { at: now, accuracy: fix.accuracy, refusal },
       problem: this.snapshot.problem === "unavailable" ? null : this.snapshot.problem,
     };
-    if (refusal !== "invalid") patch.position = { lat: fix.lat, lon: fix.lon, accuracy: fix.accuracy };
+    // The walker is shown where a usable fix last put them: never at a position too poor to record.
+    if (verdict.keep || refusal === "too-close") patch.position = { lat: fix.lat, lon: fix.lon, accuracy: fix.accuracy };
     if (verdict.keep) {
       this.tally = addPoint(this.tally, verdict.point);
       this.line.add(verdict.point);

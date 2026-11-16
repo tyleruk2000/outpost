@@ -1183,7 +1183,7 @@ export default function MapsPage() {
             contours={contours}
             contourReach={reach}
             onContoursChange={changeContours}
-            record={<RecordButton disabled={!engine} />}
+            record={<RecordButton />}
             disabled={!engine}
           />
         </div>

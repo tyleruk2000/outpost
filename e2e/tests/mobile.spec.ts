@@ -134,6 +134,8 @@ test.describe("on a phone", () => {
     await start.click();
 
     const card = page.getByRole("region", { name: "Recording", exact: true });
+    // The first position has arrived before the phone is moved.
+    await expect(card).toContainText("Position good to 6 m.");
     await context.setGeolocation({ latitude: 54.4602, longitude: -3.09, accuracy: 6 });
     await expect(card).toContainText("22 m (");
     // Folded to one line, it still shows how far, and still has Pause and Stop at a size a thumb can hit.
@@ -155,7 +157,9 @@ test.describe("on a phone", () => {
     await dialog.getByRole("button", { name: "Save to routes" }).click();
     await expect(page.getByText("“From the phone” is saved to your routes.")).toBeVisible();
     const { tracks } = await api(page, "GET", "/api/maps/tracks");
-    expect(tracks.filter((track: { name: string }) => track.name === "From the phone")).toHaveLength(1);
+    const saved = tracks.filter((track: { name: string }) => track.name === "From the phone");
+    expect(saved).toHaveLength(1);
+    await api(page, "DELETE", `/api/maps/tracks/${saved[0].id}`);
   });
 
   test("gives controls a comfortable touch size", async ({ page }) => {

@@ -186,8 +186,9 @@ export interface TrackImportResponse {
 export const ASCENT_THRESHOLD_METERS = 3;
 
 /**
- * The most points one track recorded on the map may hold. As GPX with a height and a
- * time at each point that is about 14 MB, inside the 20 MB a GPX upload may be.
+ * The most points one track recorded on the map may hold. As the map writes GPX, a
+ * point with a height and a time is at most 111 bytes, so this many come to under
+ * 17 MB, inside the 20 MB a GPX upload may be.
  */
 export const MAX_RECORDING_POINTS = 150_000;
 

@@ -82,7 +82,7 @@ const PHASE_WORDS = { recording: "Recording", paused: "Paused", stopped: "Record
  * starting; while there is a recording it shows that there is one, and folds or
  * unfolds its card.
  */
-export function RecordButton({ disabled }: { disabled?: boolean }) {
+export function RecordButton() {
   const { recorder, state } = useRecorder();
   const view = useCardView();
   // A browser with no geolocation at all has nothing to record with, as it has nothing to locate with.
@@ -98,7 +98,6 @@ export function RecordButton({ disabled }: { disabled?: boolean }) {
       <ControlButton
         label={label}
         pressed={active || view === "intro"}
-        disabled={disabled && !active}
         onClick={() => {
           if (active) setCardView(view === "folded" ? "open" : "folded");
           else setCardView(view === "intro" ? "closed" : "intro");
@@ -202,7 +201,7 @@ const headerButton = "-mt-1 -mr-1.5";
 
 function Intro({ recorder, state }: { recorder: Recorder; state: RecorderSnapshot }) {
   const [starting, setStarting] = useState(false);
-  const able = state.elsewhere ? "elsewhere" : recorder.ability();
+  const able = recorder.ability();
   const close = (
     <Button variant="ghost" size="icon-sm" aria-label="Close" onClick={() => setCardView("closed")} className={headerButton}>
       <X />
@@ -231,10 +230,13 @@ function Intro({ recorder, state }: { recorder: Recorder; state: RecorderSnapsho
           This browser keeps nothing on the device for this page (a private window does this), so a recording could not survive a reload.
           Open Outpost in an ordinary window to record.
         </p>
-      ) : able === "elsewhere" ? (
-        <p className="mt-1 text-small text-ink">A recording is open in another tab of this browser. Carry on with it there.</p>
       ) : (
         <>
+          {state.elsewhere ? (
+            <Notice tone="warning" icon={<CircleAlert />} className="mt-2">
+              A recording is open in another tab of this browser. Carry on with it there, or close that tab and start again here.
+            </Notice>
+          ) : null}
           <ul className="mt-1.5 grid gap-1.5 text-small text-ink-muted">
             {beforeYouStart("wakeLock" in navigator, (navigator as { standalone?: boolean }).standalone === true).map((line, index) => (
               <li key={line} className={index === 0 ? "text-ink" : undefined}>
@@ -408,17 +410,13 @@ function Running({ recorder, state, folded }: { recorder: Recorder; state: Recor
           <p className={position.trouble ? "text-warning" : "text-ink-muted"}>{position.text}</p>
           {/* Said aloud when it changes, which is seldom; the position line changes with every fix and is not. */}
           <p className={screen.trouble ? "text-warning" : "text-ink-muted"} aria-live="polite">
-            {screen.text}{" "}
-            {screen.canAsk ? (
-              <button
-                type="button"
-                className="text-primary underline decoration-1 underline-offset-2 hover:decoration-2"
-                onClick={() => void recorder.keepAwake()}
-              >
-                Ask again
-              </button>
-            ) : null}
+            {screen.text}
           </p>
+          {screen.canAsk ? (
+            <Button size="sm" className="mt-0.5 justify-self-start" onClick={() => void recorder.keepAwake()}>
+              Ask the browser again
+            </Button>
+          ) : null}
         </div>
       ) : (
         <p className="mt-2 text-small text-ink-muted">Nothing is being recorded while paused. Resuming starts a new stretch of the line.</p>
@@ -697,7 +695,7 @@ export function TrackRecording({ engine, onShowTrack }: { engine: MapEngine | nu
   // biome-ignore lint/correctness/useExhaustiveDependencies: the revision says when the line has changed
   useEffect(() => {
     if (!engine) return;
-    const head = state.phase === "recording" && state.position && state.lastFix?.refusal !== "inaccurate" ? state.position : null;
+    const head = state.phase === "recording" ? state.position : null;
     engine.setOverlay("o-recording", recordingData(recorder.displayLines(), head));
   }, [engine, recorder, state.lineRevision, state.phase, state.position]);
 

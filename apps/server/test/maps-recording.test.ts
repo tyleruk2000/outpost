@@ -3,7 +3,6 @@
  * GPX it built itself; the server reads it like any other GPX, checks that it is a
  * recording, and keeps it under the id the device chose.
  */
-import { monitorEventLoopDelay } from "node:perf_hooks";
 import {
   haversineMeters,
   MAX_RECORDING_POINTS,
@@ -231,11 +230,19 @@ describe("saving a recording", () => {
     const gpx = recordingGpx([points]);
     const { payload, headers } = multipart(gpx, { name: "A whole day" });
 
-    // While it is saved, the server is asked for something else every few milliseconds.
-    const stalls = monitorEventLoopDelay({ resolution: 5 });
+    // While it is saved, the server is asked for something else every few milliseconds, and a
+    // timer that should fire every 2 ms notes the longest it was kept waiting: that is how long
+    // the server's own thread was held by one piece of work.
     let waiting = true;
     let slowest = 0;
     let answered = 0;
+    let longestStall = 0;
+    let lastTick = performance.now();
+    const ticker = setInterval(() => {
+      const now = performance.now();
+      longestStall = Math.max(longestStall, now - lastTick);
+      lastTick = now;
+    }, 2);
     const others = (async () => {
       while (waiting) {
         const asked = performance.now();
@@ -247,21 +254,19 @@ describe("saving a recording", () => {
       }
     })();
 
-    stalls.enable();
     const began = performance.now();
     const saved = await app.api<Answer>("PUT", `/api/maps/recordings/${ID}`, payload, { headers });
     const took = performance.now() - began;
-    stalls.disable();
     waiting = false;
+    clearInterval(ticker);
     await others;
 
     expect(saved.status).toBe(200);
     expect(saved.body.track.pointCount).toBe(86_400);
-    const longestStall = stalls.max / 1e6;
     console.info(
-      `recording of 86,400 points (${(gpx.length / 1e6).toFixed(1)} MB): saved in ${Math.round(took)} ms; longest stall of the server's own thread ${Math.round(longestStall)} ms; ${answered} other requests answered meanwhile, the slowest in ${Math.round(slowest)} ms`,
+      `recording of 86,400 points (${(gpx.length / 1e6).toFixed(1)} MB): saved in ${Math.round(took)} ms; the server's own thread was held for at most ${Math.round(longestStall)} ms at a time; ${answered} other requests answered meanwhile, the slowest in ${Math.round(slowest)} ms`,
     );
-    // Other requests were answered while it was read, and none waited as long as a second.
+    // Other requests were answered while it was read, and nothing held the thread for as long as a second.
     expect(answered).toBeGreaterThan(1);
     expect(slowest).toBeLessThan(1000);
     expect(longestStall).toBeLessThan(1000);

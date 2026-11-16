@@ -3,7 +3,7 @@
  * the test, the clock is the test's, the device's storage is a map in memory, and
  * "Outpost" is a function that can be made to fail.
  */
-import type { TrackDto } from "@outpost/shared";
+import { MAX_RECORDING_POINTS, type TrackDto } from "@outpost/shared";
 import { describe, expect, it } from "vitest";
 import { type PositionLike, RETRY_DELAYS_MS, Recorder, type RecorderEnv, SendFailure, type WakeSentinel } from "./recorder";
 import { createMemoryStore, type RecordingStore } from "./store";
@@ -182,6 +182,20 @@ function world(
     storageFull(full: boolean) {
       storeFails = full;
     },
+    otherTabCloses() {
+      tabHeld = false;
+    },
+    /** A long walk in one go: that many positions, a second and 11.12 m apart. */
+    async march(count: number) {
+      for (let step = 0; step < count && onPosition; step += 1) {
+        now += 1000;
+        onPosition({
+          coords: { latitude: 10 + step * 0.0001, longitude: -3.09, accuracy: 4, altitude: null, altitudeAccuracy: null },
+          timestamp: now,
+        });
+      }
+      await settle();
+    },
   };
 }
 
@@ -223,8 +237,8 @@ describe("recording", () => {
     await w.wait(5);
     await w.at(5, { accuracy: 80 });
     expect(w.state().lastFix).toMatchObject({ refusal: "inaccurate", accuracy: 80 });
-    // Where the device says it is is still shown, even when it is not kept.
-    expect(w.state().position).toMatchObject({ lat: 54.4605, accuracy: 80 });
+    // The walker stays where the last usable fix put them, not at a position too poor to record.
+    expect(w.state().position).toMatchObject({ lat: 54.46003, accuracy: 4 });
     expect(w.state().totals.points).toBe(1);
     expect(w.store.rows.get(w.state().id!)).toHaveLength(1);
   });
@@ -409,6 +423,21 @@ describe("what the browser will and will not do", () => {
     expect(w.store.metas.size).toBe(0);
   });
 
+  it("stops by itself at the most points one track can hold, and can then only be saved or discarded", async () => {
+    const w = world();
+    await w.recorder.start();
+    await w.march(MAX_RECORDING_POINTS + 50);
+    expect(w.state()).toMatchObject({ phase: "stopped", problem: "full", totals: { points: MAX_RECORDING_POINTS } });
+    expect(w.watching()).toBe(false);
+    expect(w.store.rows.get(w.state().id!)).toHaveLength(MAX_RECORDING_POINTS);
+    await w.recorder.carryOn();
+    expect(w.state().phase).toBe("stopped");
+    // What is sent is within what the server takes.
+    expect(await w.recorder.save("A very long walk", "teal")).toMatchObject({ state: "saved" });
+    expect(w.sent[0]!.gpx.match(/<trkpt /g)).toHaveLength(MAX_RECORDING_POINTS);
+    expect(new Blob([w.sent[0]!.gpx]).size).toBeLessThan(20 * 1024 * 1024);
+  }, 30_000);
+
   it("stops where the device will not keep a point, and counts only what it kept", async () => {
     const w = world();
     await w.recorder.start();
@@ -482,6 +511,23 @@ describe("coming back to a recording that was cut off", () => {
     const other = world({ store: first.store, lockHeld: true });
     await other.recorder.init();
     expect(other.state()).toMatchObject({ unfinished: null, elsewhere: true });
+  });
+
+  it("offers it here once the other tab has gone, before starting anything new", async () => {
+    const first = world();
+    await first.recorder.start();
+    await walk(first, 2);
+    const id = first.state().id!;
+    // This tab opened while the other was still recording, so it was offered nothing.
+    const w = world({ store: first.store, lockHeld: true });
+    await w.recorder.init();
+    expect(w.state()).toMatchObject({ unfinished: null, elsewhere: true });
+    expect(await w.recorder.start()).toBe("elsewhere");
+    // The other tab is closed, leaving its recording behind. Asked to start, this tab offers that one back instead.
+    w.otherTabCloses();
+    expect(await w.recorder.start()).toBe("busy");
+    expect(w.state()).toMatchObject({ phase: "idle", elsewhere: false, unfinished: { id, totals: { points: 2 } } });
+    expect(w.store.metas.size).toBe(1);
   });
 
   it("quietly forgets one that never got a position", async () => {

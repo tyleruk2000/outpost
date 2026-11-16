@@ -2,8 +2,8 @@
 
 This page covers downloading map regions and choosing where they are kept, hill
 shading and contour lines, where the map data comes from and how it must be credited,
-using your own map source, markers and moving them, drawing routes and importing GPX
-tracks, coordinate formats, and offline place search.
+using your own map source, markers and moving them, drawing routes, recording a track
+as you walk, importing GPX tracks, coordinate formats, and offline place search.
 
 Outpost draws a vector map in the browser from tiles it serves itself. Once a region
 is installed, viewing it needs no internet connection.
@@ -38,6 +38,8 @@ On the map itself:
   [Coordinate formats](#coordinate-formats), or a British grid reference.
 - The **ruler** measures a path you click out, in kilometres and miles. **Save as a
   route** keeps the measured path as a route.
+- **Record a track** (the ring with a dot in it) records where you walk, on the device
+  in your hand (see [Recording a track](#recording-a-track)).
 - **Hill shading** appears as a button once terrain is installed.
 - **Contour lines** is the button below it (see [Contour lines](#contour-lines)). It
   is always there: pressed where there is nothing to draw them from, it says so.
@@ -51,8 +53,8 @@ On the map itself:
 Before any region is installed the map shows a plain outline of the world, which
 ships with Outpost, and offers the world overview as a first download.
 
-Not there yet: "locate me" needs HTTPS, which browsers require for location, so it
-explains this on a plain `http://` LAN address.
+"Show where I am" and "Record a track" need HTTPS, which browsers require before they
+share a location, so on a plain `http://` LAN address they say so instead.
 
 ## How regions work
 
@@ -384,6 +386,203 @@ Both answer with the track and `elevation`: `"terrain"`, `"partial"` or `"none"`
 Distance, ascent, point count and bounds are worked out on the server. Positions are
 stored to six decimal places, and a point repeated straight after itself is dropped.
 
+## Recording a track
+
+**A recording runs only while the screen is on and Outpost is the page in front.** No
+browser gives a web page positions while the screen is locked, or while another app or
+another tab is in front, and Outpost cannot change that. If you want a track of a long
+day with the phone in a pocket, record it with a GPS unit or an app made for it, and
+import its GPX file afterwards. The rest of this section says exactly what Outpost
+does within that limit.
+
+Press **Record a track** on the map. A card says the paragraph above in its own words,
+and what this browser can do about the screen, before anything starts. **Start
+recording** asks the browser for the device's position (the browser asks you, the
+first time).
+
+| While recording | |
+| --- | --- |
+| The line | Drawn on the map as you go, with a dot where you are. The map moves with you when you walk off the edge of it; if you move the map to look somewhere else, it stays where you put it. |
+| Distance | Along the points kept, in kilometres and miles. |
+| Time | Since the first point, by the clock: pauses and rests are in it. |
+| Moving | The part of that time spent covering ground at 1 km/h or more. |
+| Climb | Added up from the heights the device reports, when it reports any. |
+| **Pause**, **Resume** | Nothing is kept while paused. Resuming starts a new stretch of the line; nothing is drawn or counted across the pause. |
+| **Stop** | Ends the recording and asks for a name and a colour. **Carry on** undoes a stop that was not meant. |
+
+The card folds to one line (the arrow at its corner, or the Record button), to leave
+the map clear. Leaving the Maps screen for another part of Outpost does not stop a
+recording: every other screen says that one is running, with a way back to the map.
+
+Saved, a recording is a route like any other: listed under Routes, drawn on the map,
+found by search, and exported as GPX **with the time of every point**, one track
+segment for each stretch.
+
+### What browsers do, and what Outpost does about it
+
+Read on 16 November 2026. Browser makers do not describe this in their manuals, so
+for positions the sources are the standard and each browser's own code; for keeping
+the screen on they are the makers' own pages.
+
+| | Positions while the page is hidden | Keeping the screen on |
+| --- | --- | --- |
+| The standards | Position updates go only to documents that are visible and active; otherwise they are silently "dropped on the floor" until the page is visible again. | A page may ask for a "screen wake lock". It is released by the browser whenever the page is hidden, and the page has to ask again. The browser may refuse, for instance when the battery is low or a power-saving mode is on. A lock keeps the screen on and nothing more: it does not keep a hidden page running. |
+| Safari on iPhone and iPad | None. WebKit stops the positioning itself when the page is not visible, "to save battery". | From iOS 16.4 in Safari. For Outpost opened from a Home Screen icon, only from iOS 18.4: before that it does not work there. |
+| Chrome on Android (and on computers) | None. Chrome stops updating when the page is not visible and throws away any position that arrives while it is hidden. | From Chrome 84. |
+| Firefox (Android and computers) | None since Firefox 92: positions are not passed on "if window is not fully active or the document is hidden". | From Firefox 126. |
+
+"Hidden" means the screen is locked or off, another app is in front, or (in a browser
+with tabs) another tab is, or the window is minimised.
+
+So Outpost does this:
+
+- **It asks the browser to keep the screen on** while recording, lets go on Pause and
+  Stop, and asks again each time the page comes back into view. The card says whether
+  the browser agreed. Even when it agrees, the lock button still locks the phone, and
+  the standard lets a browser report that the screen is being kept on when the
+  operating system has in fact declined, so the card says "asked", not "on".
+- **Where the browser cannot be asked, or refuses, the card says so**, and what
+  follows from it: set the screen not to lock for the length of the walk.
+- **A gap is written down, not papered over.** When the page has been out of sight for
+  more than a minute and no position arrived in that time, the card says how long was
+  not recorded and when, and what follows is a new stretch of the line: nothing is
+  drawn or counted across ground that was not recorded. A shorter absence, or one in
+  which positions kept arriving, leaves the line whole.
+- **A recording that was cut off is offered back.** Every point is written to the
+  device's own storage as it is kept, so a reload, a closed tab, a browser the phone
+  shut down or a flat battery loses nothing recorded before it. The next time Outpost
+  is opened on that device, the map offers the unfinished recording: **Continue** (as
+  a new stretch, with the time in between written down as not recorded), **Save what
+  there is**, or **Discard**, which asks first.
+
+A screen that stays on uses the battery a good deal faster than a phone asleep in a
+pocket. Outpost has no figure for how much.
+
+### Which positions are kept
+
+| Rule | Why |
+| --- | --- |
+| A fix the device says is good to worse than **30 m** is ignored. | Each position comes with a radius the device believes it is within (the standard makes it the 68% level). Outpost takes a fix that poor to come from the phone network, or from a badly obstructed sky, rather than from a clear view of the satellites; a line through such fixes would zigzag by more than a path is wide. The card says when this is happening. |
+| A fix is kept only when it is at least **5 m** from the last point kept, and at least **its own radius** from it. | A move smaller than the uncertainty is not evidence of a move. This is what stops a phone lying on a wall from adding distance while its reported position wanders. The cost: a corner tighter than 5 m is cut, so a path of tight zigzags reads a little short. |
+| A fix no later than the last point kept is dropped. | Time only goes forwards; a position handed over twice is recorded once. |
+| A height is kept unless the device says it is good to worse than 30 m. | Many devices give a height with no figure for how good it is; that height is kept as given. |
+
+These are reasoned choices, not measured ones: **they have not been tried on a real
+phone outdoors** (see [What has been tested](#what-has-been-tested)). The numbers are
+constants at the top of `apps/web/src/features/maps/recording/track-log.ts`.
+
+Heights need two cautions.
+
+- **Climb reads high when heights wander.** It is added up the way Outpost adds it up
+  for every track: a rise counts once the height is 3 m above the last counted one. A
+  device whose reported height wobbles by 3 m or more on flat ground will have that
+  wobble counted as climbing. Outpost has not measured how steady any phone's heights
+  are, so treat the figure as rough.
+- **The heights may be offset from the map's.** The standard defines the height a
+  browser reports as metres above the WGS 84 ellipsoid, which is not the same as
+  metres above sea level; the two differ by tens of metres depending on where you
+  are. Outpost keeps the number the device gives and has not checked what each
+  browser on each phone actually reports. A constant offset does not change the
+  climb, but the elevation profile may sit above or below the map's contour lines.
+
+### Saving, and when Outpost is out of reach
+
+Recording needs nothing from the server: once the Maps screen is open, positions are
+taken, filtered, drawn and stored on the device alone. Walk out of range of your
+network and the recording carries on (the map itself shows only what the browser
+already has).
+
+Saving does need the server. If it cannot be reached when you save:
+
+- the recording stays on the device, under the name you gave it, and a card says it
+  is waiting;
+- it is sent again after 5, 15 and 30 seconds and then every minute, and at once when
+  the browser reports the network back, when the page is looked at again, or when you
+  press **Try now**. It is also sent when Outpost is next opened on that device,
+  whichever screen is opened;
+- it is removed from the device only when the server has answered that it holds it.
+  If a save arrives but its answer is lost, the recording is sent again and the
+  server recognises it, so there is never a second copy;
+- **Download GPX** hands the recording over as a file at any time, without the
+  server, so a walk can always be got off the phone;
+- you can record another walk while one is waiting.
+
+If the server refuses a recording outright, the card says what it said and keeps the
+recording, with **Send again**, **Download GPX** and **Discard**.
+
+Until Outpost itself opens without its server, a page reloaded while out of reach
+shows "The server is not responding" and nothing else. The recording is still on the
+device and is offered back once Outpost opens again.
+
+### Limits
+
+- One recording holds at most 150,000 points, about 750 km at one point every 5 m.
+  At that number it stops and asks to be saved.
+- One recording at a time in one browser. A second tab says the recording is open in
+  the other.
+- An unsaved recording lives in that browser's storage for Outpost's address.
+  Clearing the browser's site data deletes it. A private window keeps nothing, so
+  recording is not offered there.
+- A browser needs geolocation, HTTPS (or `localhost`), and storage. Over plain HTTP
+  the card says so and points to **Settings → HTTPS on your network**.
+- Heights are whatever the device reports; installed terrain is not consulted for a
+  recording.
+
+### What has been tested
+
+- The rules for which positions are kept, and the distance, moving time and climb,
+  against figures worked out by hand (`track-log.test.ts`).
+- The recorder against a stand-in browser: pause and resume, the screen being asked
+  for and let go, gaps, a recording cut off and taken up again, saves that fail and
+  are sent again (`recorder.test.ts`).
+- In Chromium, with the browser's position set by the test, on `localhost`: a walk
+  recorded, saved and exported as GPX with times; a reload in the middle; the network
+  cut before saving and restored; a save whose answer was lost (`e2e/tests/recording.spec.ts`).
+- On the server: a recording of 86,400 points (a day at one a second, 8.3 MB as GPX)
+  was saved in 0.3 to 0.5 seconds, during which the server's own thread was never
+  held for more than 28 ms at a time and went on answering other requests (16 November
+  2026, Node 24.15 on a Mac, with other test suites running).
+
+**Not tested: a real phone, outdoors.** Nobody has walked with this. Real GPS noise, a
+screen that really locks, Safari on an iPhone, Chrome and Firefox on Android, a browser
+ended by the phone to free memory, and a day's worth of battery are all untried, and
+the table of browser behaviour above is read from documents and source code, not
+observed.
+
+### Sources
+
+- Geolocation: W3C Candidate Recommendation Draft, 5 November 2026,
+  <https://www.w3.org/TR/geolocation/> (updates only to visible documents; accuracy
+  at the 68% level; altitude above the WGS 84 ellipsoid).
+- Chrome: `third_party/blink/renderer/core/geolocation/geolocation.cc`,
+  <https://chromium.googlesource.com/chromium/src/+/refs/heads/main/third_party/blink/renderer/core/geolocation/geolocation.cc>.
+- Safari: `Source/WebCore/Modules/geolocation/GeolocationController.cpp`,
+  <https://github.com/WebKit/WebKit/blob/main/Source/WebCore/Modules/geolocation/GeolocationController.cpp>.
+- Firefox: `dom/geolocation/Geolocation.cpp`,
+  <https://github.com/mozilla-firefox/firefox/blob/main/dom/geolocation/Geolocation.cpp>,
+  and <https://bugzilla.mozilla.org/show_bug.cgi?id=1653549> (fixed in Firefox 92).
+- What "hidden" covers: <https://developer.mozilla.org/en-US/docs/Web/API/Document/visibilityState>.
+- Screen Wake Lock: W3C Working Draft, 11 November 2026,
+  <https://www.w3.org/TR/screen-wake-lock/>; Chrome for Developers,
+  <https://developer.chrome.com/docs/capabilities/web-apis/wake-lock>; Apple's Safari
+  16.4 and 18.4 release notes,
+  <https://developer.apple.com/documentation/safari-release-notes/safari-16_4-release-notes>
+  and
+  <https://developer.apple.com/documentation/safari-release-notes/safari-18_4-release-notes>;
+  Mozilla's Firefox 126 release notes for developers,
+  <https://developer.mozilla.org/en-US/docs/Mozilla/Firefox/Releases/126>; versions
+  from MDN's browser compatibility data for `WakeLock`.
+
+### In the API
+
+`PUT /api/maps/recordings/:id` saves a recording. The body is `multipart/form-data`
+with `name`, `color?` and one GPX file, which the device builds itself. `:id` is 26
+characters chosen by the device, and the track is saved under it: sent twice, the
+second answers with the track already there (`alreadySaved: true`) and changes
+nothing. The file is read by the same reader, under the same limits, as an imported
+GPX file, and must then be a recording: tracks only, a time at every point, at most
+150,000 points. Anything else is refused with a message saying which.
+
 ## GPX tracks
 
 - **Import.** Upload one `.gpx` file at a time, up to 20 MB. Tracks and routes become
@@ -523,6 +722,8 @@ matches, by population, and by distance from a point when one is given
 - **Surveyed contours and other topographic detail.** Contour lines are traced from
   the downloaded terrain (see [Contour lines](#contour-lines)) and are only as fine as
   it is. Crags, scree, spot heights and the like are not drawn.
+- **Recording in the background.** A track is recorded only while the screen is on
+  and Outpost is in front; see [Recording a track](#recording-a-track).
 - **Routing.** Outpost does not calculate routes or directions. A route is either
   imported from a GPX file or drawn by hand as straight lines between points; it never
   snaps to paths or roads.

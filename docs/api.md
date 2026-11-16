@@ -500,6 +500,7 @@ Types: `packages/shared/src/maps.ts`. See [maps.md](maps.md).
 | `POST /api/maps/tracks` | Saves a route drawn on the map: straight lines between the points sent. Body: `name`, `points` (at least two of `{ lat, lon }`), `description?`, `color?`. Answers `{ track, elevation }` (`RouteSaveResponse`). |
 | `PUT /api/maps/tracks/:id/points` | Replaces a track's lines with one drawn through `points`. Its waypoints are kept. Answers `{ track, elevation }`. |
 | `POST /api/maps/tracks/import` | One GPX file as `multipart/form-data` (at most 20 MB). Optional fields: `name`, `color`, `importWaypointsAsMarkers`. Answers `{ track, markers }`. |
+| `PUT /api/maps/recordings/:id` | Saves a track recorded on the map. `:id` is 26 characters chosen by the device (digits and lower-case letters, without `i`, `l`, `o`, `u`), and becomes the track's id. Body: `multipart/form-data` with `name`, `color?` and one GPX file (at most 20 MB) holding tracks only, with a time at every point and at most 150,000 points. Answers `{ track, alreadySaved }`; sent again with the same id, it answers with the track already there and writes nothing. See [maps.md](maps.md#recording-a-track). |
 | `GET /api/maps/tracks/:id` | One track with its geometry as GeoJSON. |
 | `PATCH /api/maps/tracks/:id` | Body: `name?`, `description?`, `color?`. |
 | `DELETE /api/maps/tracks/:id` | |

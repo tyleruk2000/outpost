@@ -7,14 +7,15 @@
  *
  * - **A fix the device itself calls poor is ignored.** Each fix comes with a radius the
  *   device believes it is within (the Geolocation specification makes it the 68%
- *   level). Over 30 m, the fix is more likely to come from the phone network or from a
- *   badly obstructed sky than from a clear view of the satellites, and a line drawn
- *   through such fixes zigzags by more than a path is wide.
+ *   level). Over 30 m, the fix is taken to come from the phone network or from a badly
+ *   obstructed sky rather than from a clear view of the satellites; a line drawn
+ *   through such fixes would zigzag by more than a path is wide.
  * - **A fix has to be a real move away from the last kept point**: at least 5 m, and
  *   at least its own radius. A displacement smaller than the uncertainty is not
  *   evidence of movement, so a device lying on a wall adds nothing to the distance
- *   while its position wanders. 5 m is the floor because a good fix is seldom better
- *   than that; the cost is that a corner tighter than 5 m is cut.
+ *   while its position wanders. The 5 m floor is there so that a device claiming a
+ *   very small radius still has to go a few steps before a point is added; the cost
+ *   is that a corner tighter than 5 m is cut.
  * - **Time only goes forwards.** A fix no later than the last kept point is dropped.
  * - **A height is kept as the device gives it**, unless the device says it is good to
  *   worse than 30 m. Climb is added up exactly as the server adds it up for any track

@@ -26,7 +26,9 @@ async function openMap(page: Page, context: BrowserContext) {
 async function startRecording(page: Page) {
   await page.getByRole("button", { name: "Record a track", exact: true }).click();
   await page.getByRole("button", { name: "Start recording" }).click();
-  await expect(page.getByRole("region", { name: "Recording", exact: true })).toBeVisible();
+  // The first position has arrived and is the first point, before the device is moved anywhere.
+  await expect(page.getByRole("region", { name: "Recording", exact: true })).toContainText("Position good to 5 m.");
+  await expect.poll(async () => (await onDevice(page)).points).toBe(1);
 }
 
 const card = (page: Page) => page.getByRole("region", { name: /^(Recording|Paused)$/ });
@@ -61,6 +63,8 @@ async function onDevice(page: Page): Promise<{ recordings: Array<{ status: strin
   );
 }
 
+const RECORDED_HERE = ["Round the tarn", "After the reload", "What there was", "Out of reach", "Sent twice"];
+
 interface SavedTrack {
   id: string;
   name: string;
@@ -89,6 +93,13 @@ async function nameAndSave(page: Page, name: string) {
 }
 
 test.describe("recording a track", () => {
+  // The other map tests count the routes there are; what is saved here is taken away again.
+  test.afterEach(async ({ page }) => {
+    const { tracks } = await api<{ tracks: SavedTrack[] }>(page, "GET", "/api/maps/tracks");
+    for (const track of tracks.filter((item) => RECORDED_HERE.includes(item.name)))
+      await api(page, "DELETE", `/api/maps/tracks/${track.id}`);
+  });
+
   test("says what a browser will and will not do, before anything is recorded", async ({ page, context }) => {
     await openMap(page, context);
     await page.getByRole("button", { name: "Record a track", exact: true }).click();
