@@ -822,6 +822,30 @@ beside or under the figures, so the figures stay large at 320 px wide. A day wit
 sunrise or sunset is said in words at reading size. Where the text is too large for
 two times side by side they go one under the other; nothing is cut off.
 
+### Sun times on paper
+
+Under the times, in the Sun tab and in the Sun section of a saved place or a found
+point, **A PDF of sun times, day by day** opens a sheet to print and carry: **2 weeks**
+from the day shown (the usual), the **Month** it is in, or the **Year** (one table that
+runs over six pages of A4). Each day is a line: first light, sunrise, solar noon,
+sunset, last light and the length of the day. The sheet names the place (a saved
+place's name, or the position as the screen writes it, with the decimal position and
+the Maidenhead locator), the days, and the clock: the device's time zone with its offset
+(and the day it changes, as at the start of summer time) on the 12-hour or 24-hour clock
+chosen in Settings, or UTC on the 24-hour clock, as the screen shows. Every time comes
+from the code the screen uses, so the two agree to the minute
+(`apps/web/src/features/maps/lib/sun-document.test.ts` compares them for five places,
+six dates and three clocks). A day without a sunrise, a sunset or a night says so in a
+word, explained under the table, with what the times assume: a flat horizon at sea
+level and the usual refraction, that hills make sunrise later and sunset earlier, and
+the accuracy of the method. The choice of span is kept on the device
+(`outpost.maps.sun.span`); the paper is the same choice as every other sheet.
+
+The three actions every PDF made in Outpost has: **Save as PDF**, **Add to library**
+(filed as "Sun times, Helvellyn, November 2026", tag `Sun times`, its source leading
+back to the same ground on the map), and **Share** where the device can. The file is
+dated by the day it is made, so the same sheet made twice in a day is the same file.
+
 ### The centre of the map
 
 **On a phone, the centre of the map is in the part of the map you can see**, not the

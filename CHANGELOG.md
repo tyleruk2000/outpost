@@ -185,8 +185,23 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   from. Progress, **Stop**, and plain words when there is no room, the storage is away
   or the library already has the file. On a phone it is the route that does not depend
   on the phone saving a file. The upload takes a `title` and a `source` with the file.
-  One-time pads and the cipher square are not offered to the library, and the screen
-  says why. See `docs/library.md`.
+  A one-time pad asks before it is added, and says why. See `docs/library.md`.
+- The contacts emergency sheet as a PDF, with the same three actions. Adding it to the
+  library asks first: the sheet is other people's details, readable and searchable by
+  everyone on the network once it is there, and a copy that does not change when a
+  contact does. The PDF says when it was made. Phone numbers are never broken across
+  lines. Names, addresses and labels in letters the PDF's typefaces lack (Greek, Polish,
+  Arabic, Chinese) are drawn by the browser as pictures, with the words kept in the
+  file, unseen, so that search finds them; where a device will not draw, each such run
+  is printed "[?]" and the sheet says how many entries.
+- Sun times on paper: under the times in the Sun tab and a place's Sun section, a PDF
+  of two weeks, the month or the year, a day to a line (first light, sunrise, solar
+  noon, sunset, last light, day length), on the clock the screen shows, from the same
+  code, with the screen's caveats. The same three actions.
+- The PDF writer can carry words in any script as hidden text (a Type 3 font that draws
+  nothing, with a ToUnicode map), read by pdf.js and so by the library's search.
+- A test that fails when a screen prints or makes a PDF without the shared library
+  actions (`apps/web/src/lib/made-pdf-rule.test.ts`).
 - An HF prediction as a PDF (A4 or US Letter, two pages, black on white) and as
   Markdown: the path and date, both stations as the engine ran them, the sunspot number
   and its source, the frequency and every band hour by hour with the engine's figures,

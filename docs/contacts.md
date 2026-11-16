@@ -66,8 +66,29 @@ contact is left out when the contact comes in, and the import says how many were
   no sign of printing, or Outpost was opened from the Home Screen, the screen says to use
   the browser's own Share menu, then Print, or to take a screenshot of the sheet (see
   [encryption.md](encryption.md#printing-from-a-phone) for what is known about each
-  browser). The sheet cannot yet be saved as a PDF, as the map's page and the one-time
-  pads can.
+  browser).
+- **The emergency sheet as a PDF.** Under the buttons, **The sheet as a PDF** offers
+  **Save as PDF**, **Add to library** and, where the device can, **Share**, with A4 or US
+  Letter. The PDF is made on the device when the screen opens: the same entries in the
+  same order and words as the sheet, a heading line saying how many contacts and when it
+  was made (date and time, on the app's clock), and the same in the footer of each page.
+  Each entry is kept on one page. A phone number or callsign is never broken across
+  lines; one too long for its column is set smaller. Other values wrap, and a long email
+  address is broken inside itself only where it must be. Everything is printed as it is
+  kept: a name, label or address in letters the PDF's own typefaces lack (Greek, Polish,
+  Cyrillic, Arabic, Chinese and so on) is drawn by the browser as a picture, in the
+  device's own type, where its letters would have stood, and the words are also put in
+  the file, unseen, so that the library's search finds them. If a device will not draw
+  (it has never happened in a tested browser), each run of such letters is printed
+  "[?]", the top of the sheet says how many entries were affected and that the Contacts
+  screen has them in full, and the screen says so too. Nothing is transliterated.
+- **Adding the sheet to the library asks first.** The question says that the sheet
+  holds the names, numbers and addresses of so many people; that in the library
+  everyone who can reach Outpost on the network can read it and find it by search (as
+  they can the Contacts screen); that it goes into every backup; and that it is a copy,
+  which will not change when a contact is corrected or removed and stays until it is
+  deleted from the library. Nothing is sent unless the answer is **Add to library**.
+  Saving the PDF to the device asks nothing. See [library.md](library.md).
 - **Changes are explicit.** Nothing is saved until **Save contact**. If the contact was
   changed somewhere else after you opened it, your change is refused and nothing is
   overwritten.
