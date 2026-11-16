@@ -30,6 +30,7 @@ import { createPlacesService, datasetSchema, type PlacesService } from "./places
 import { createPlanner } from "./planner.ts";
 import { removeExtractSidecars } from "./pmtiles/extract.ts";
 import { createRegionsService, estimateSchema, importSchema, type RegionsService, startRegionSchema } from "./regions.ts";
+import { registerRouteFinder } from "./route-finder/index.ts";
 import { createSourceResolver } from "./source.ts";
 import { createTileServer, type TileServer } from "./tile-server.ts";
 
@@ -86,7 +87,8 @@ export async function registerMaps(app: FastifyInstance, ctx: AppContext): Promi
   const planner = createPlanner(client);
   const tiles = createTileServer(ctx);
   const places = createPlacesService(ctx);
-  const annotations = createAnnotationsService(ctx, { elevation: createElevationSampler(ctx, tiles) });
+  const elevation = createElevationSampler(ctx, tiles);
+  const annotations = createAnnotationsService(ctx, { elevation });
   const regions = createRegionsService(ctx, { planner, sources });
 
   const service: MapsService = {
@@ -350,4 +352,7 @@ export async function registerMaps(app: FastifyInstance, ctx: AppContext): Promi
     annotations.removeTrack(request.params.id);
     return { ok: true };
   });
+
+  // ── Finding a known route in a route source ──
+  registerRouteFinder(app, ctx, { client, annotations, elevation });
 }

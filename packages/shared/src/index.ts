@@ -18,6 +18,7 @@ export * from "./merge.ts";
 export * from "./notes.ts";
 export * from "./portable.ts";
 export * from "./retrieval.ts";
+export * from "./route-finder.ts";
 export * from "./search.ts";
 export * from "./semantic.ts";
 export * from "./shares.ts";
