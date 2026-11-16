@@ -2,139 +2,285 @@
 
 **Knowledge beyond the network.**
 
-Outpost is a self-hosted, offline-first knowledge platform. It puts an encyclopedia,
-your own documents, a notes workspace and offline maps behind one search box, on
-hardware you control, and keeps working when the internet does not.
+Outpost is a self-hosted, offline-first knowledge and preparedness app. One program,
+on a laptop, a home server, a NAS or a Raspberry Pi, holds an offline encyclopedia, your
+own documents and notes, offline maps, contacts, radio planning tools, calculators and a
+household's emergency plans and supplies, behind one search box. You choose what to
+download while you have a connection; after that, everything you kept works with the
+network cable pulled out. Phones and other computers on your home network use it in
+their browser.
 
-Install it once on a laptop, a home server, a NAS or a Raspberry Pi. Download the
-reference collections and maps you want onto storage you choose. Add your own
-documents and write your own notes. Then pull the network cable: everything you chose
-to keep is still there.
+It is for people who want their reference library to keep working when the internet
+does not: students and teachers on poor connections, travellers, hill walkers,
+radio amateurs, people preparing a household for a power cut or a flood, and anyone
+who keeps a personal library.
 
-It is built for study, research, travel, the outdoors, workshops, and being prepared.
+**What it is not:**
 
-![Home: a plain account of the library, with search](docs/screenshots/home.png)
+- **Not a cloud service.** It runs on a computer you own. There is no Outpost server
+  elsewhere, no telemetry and no analytics.
+- **Not an account system.** There are no accounts and no sign-in. Everyone who can
+  reach it can read and change everything in it, so it is for one person or a household
+  on a network they trust.
+- **Not an emergency service.** Its plans, calculators, forecasts and effects simulator
+  are general information and planning aids. In an emergency, follow the emergency
+  services and official warnings.
+- **Not chatty.** Nothing leaves the machine except as the direct result of a press: a
+  download, a catalogue refresh, a weather update, and the other actions listed in
+  [What needs a connection](docs/offline.md#what-needs-a-connection).
 
-| | |
-| --- | --- |
-| ![Reading a Wikipedia article offline](docs/screenshots/reader.png) | ![The notes editor](docs/screenshots/notes.png) |
-| ![An offline map with hill shading and a route](docs/screenshots/maps.png) | ![Choosing collections to download](docs/screenshots/explore.png) |
-| ![The download plan: what is left, how fast, and when it will finish](docs/screenshots/downloads.png) | ![How search works: one question followed through every step](docs/screenshots/how-search-works.png) |
+Outpost is open source under the [MIT Licence](LICENSE). It is version 0.1.0, not yet
+released, developed and tried by hand on one kind of computer (a Mac with Apple
+Silicon); see [Limits](#limits) before relying on it.
 
-These are screenshots of the running application with real downloaded content, taken
-by the script in `e2e/tools/`. The route on the map is a test track drawn for the
-picture, not a surveyed path.
+![Home: a plain account of the library, with search](docs/screenshots/home.webp)
 
-## What it does
+*Home, with made-up demonstration data. Every picture in this README was taken by
+[`e2e/readme/screenshots.spec.ts`](e2e/readme/screenshots.spec.ts) from a fresh
+Outpost filled with data written for the purpose; see
+[Making the pictures again](#making-the-pictures-again).*
 
-- **Packs to start from.** Explore opens with curated sets for a purpose (first things,
-  home preparedness, medicine, food and growing, the hills, radio for the UK and the
-  US, repair, a schoolroom, programming). A pack shows what is in it and how much
-  there is to fetch, lets you leave things out and choose where to keep them, and
-  then fetches the lot.
-- **Radio reference sheets, included.** Nine sheets ship with Outpost and need no
-  download: amateur bands for the UK, the US and worldwide, licence-free radio (PMR446,
-  CB, FRS, GMRS, MURS), emergency and calling frequencies, weather and time
-  broadcasts, repeaters and data modes, and an operating reference. Every figure was
-  read from the regulator's own documents; see [docs/radio.md](docs/radio.md).
-- **A radio handbook and radio guides, included.** The Radio Engineering Handbook (a
-  beginner's course in ninety chapters) and companion guides to fifteen radios and
-  interfaces, written for LogBook73 by the same author and shipped as books: a
-  contents page, a document per chapter, links between chapters, and their diagrams
-  and signal figures drawn in the app. They are not the manufacturers' manuals; see
-  [docs/radio.md](docs/radio.md#the-handbook-and-the-radio-guides).
-- **HF propagation, offline.** Predict how a shortwave signal gets from one place to
-  another, hour by hour and band by band, for your power, antennas and mode, including
-  short, steep (NVIS) paths. Worked out on your own computer by VOACAP, from monthly
-  maps of the ionosphere: a planning aid that always says it is not today's conditions.
-  Those maps are not shipped (their rights holder has not given permission): they are
-  one 559 kB download, at set-up or with one press in the planner, and after that
-  everything works offline.
-  Coverage maps over the offline map, communication plans between several stations
-  (exported as a PDF or as Markdown), and a contact log that reads ADIF files.
-  See [docs/hf-propagation.md](docs/hf-propagation.md).
-- **Reference collections.** Browse a curated catalogue (Wikipedia, medicine and first
-  aid, repair guides, food preservation, engineering, and more) and download
-  individual collections as [Kiwix](https://kiwix.org) ZIM archives, or official
-  handbooks and textbooks as PDFs straight from their publishers (FAA, NASA, USGS,
-  the US National Weather Service, FAO, WHO, OpenStax and others). Downloads resume,
-  retry, can be rate limited, and are checked against a checksum. Read them in the app.
-  A PDF inside a collection opens in Outpost's own viewer, and PDFs and e-books in a
-  collection can be added to your document library with no connection. A collection
-  that is a set of documents and not a web site is shown as a list you can search. A file that a
-  page links to out on the internet can be fetched into the library while you have one.
-- **Your documents.** Add PDFs, EPUBs, Markdown, HTML, text and images. Text is
-  extracted and indexed down to the page; originals are kept untouched. A built-in
-  PDF viewer opens at the page a search result points to. An EPUB book is read in the
-  app, chapter by chapter, with its contents page and pictures. Paste the address of a
-  web page to keep a readable copy of the article for when there is no connection: one
-  page at a time, for your own reading.
-- **Notes.** A page tree and a block editor: headings, lists, to-dos, tables, code,
-  callouts, images, links between pages, backlinks, templates, favourites, trash, and
-  export to Markdown. Import from Markdown, HTML, and Notion exports.
-- **Contacts.** The people and places to reach when the phone network is down, with
-  an emergency list that prints on one sheet, radio callsigns and frequencies, and
-  one-touch call, text and email. Bring contacts in from a phone as a vCard file, and
-  let a phone keep a read-only copy over CardDAV. See [docs/contacts.md](docs/contacts.md).
-- **Offline maps.** Download a country, a mountain range, or any box you draw, with
-  the exact size shown first. Save places, draw routes, find a known route by name
-  in OpenStreetMap (the one map feature that needs a connection when you use it),
-  import and export GPX, measure distances, search place names, and enter coordinates
-  or British grid references. Sunrise, sunset and twilight for any place and date,
-  worked out on the device.
-- **On a phone, away from the server.** Over HTTPS the app keeps itself on the phone,
-  and you can keep chosen pages of notes, routes, saved places and areas of the map
-  there, to read where the phone cannot reach the server. See
-  [docs/offline.md](docs/offline.md#a-phone-out-of-reach-of-the-server).
-- **One search.** Full-text search across documents, notes, collections and saved
-  places, with ranked results, highlighted passages and filters. Optional semantic
-  search finds passages by meaning with a small model that is built in (nothing to
-  install, nothing downloaded), and hybrid ranking combines the two.
-- **Search you can see into.** *How search works* follows one question of yours
-  through every step (cutting documents into passages, matching words, matching
-  meaning, combining the two, building the context a language model is given) with
-  the real numbers from your own library.
-- **Answers with their sources, from a model you run.** If you run a language model
-  on your own machine (with Ollama, llama.cpp or LM Studio), search can also write a
-  short answer from passages of your documents and notes, with a citation after each
-  statement that opens the passage. Outpost includes no model and downloads none, and
-  nothing is sent anywhere but the model server you set up.
-- **Chat with that model.** Conversations with the same model server, kept on your
-  Outpost and so on every device, with or without passages of your library. There
-  are no accounts: everyone who can open your Outpost can read them.
-- **Storage you control.** Internal disks, USB drives, SSDs and NAS shares. See what
-  uses the space, move collections between locations with verification, and unplug a
-  drive without losing your library's records. One screen lists everything installed,
-  removes what you no longer want, clears leftovers, and can start again from nothing.
-- **Take it with you.** Write a portable drive: a USB stick holding Outpost itself and
-  part of your library, which starts with a double-click on another Mac, Windows or
-  Linux computer with nothing installed. When you are home, bring back what you wrote
-  on it: you see every change first, and where both sides changed you choose.
-- **Private by construction.** No accounts, no telemetry, no external AI. The app is
-  forbidden by its own content policy from contacting any other server.
+## Contents
 
-What it does **not** do yet is listed under [Limitations](#limitations). Nothing in
-this README describes something that is not implemented and tested.
+- [Features](#features)
+- [Install and run](#install-and-run)
+- [What needs a download or a build first](#what-needs-a-download-or-a-build-first)
+- [Privacy and security in brief](#privacy-and-security-in-brief)
+- [Limits](#limits)
+- [Data sources and licences](#data-sources-and-licences)
+- [Developing and contributing](#developing-and-contributing)
+- [Documentation](#documentation)
 
-## Supported platforms
+## Features
+
+Grouped as the app's sidebar groups them. Each row links to the page that describes it
+in full, including what it does not do.
+
+### Home and search
+
+| Feature | What it does | Docs |
+| --- | --- | --- |
+| Home | How much is in the library, recent documents and collections, free space, and the ways to add more. | |
+| One search | Full-text search across documents, notes, collections, saved places and contacts, with ranked results, highlighted passages and filters. Quick search from any screen (Ctrl or Cmd + K). | [Search](docs/search.md) |
+| Search by meaning | Optional semantic search with a small model that is built in (nothing to install, nothing downloaded at run time), and hybrid ranking of the two. Off until switched on. | [Search](docs/search.md#semantic-search) |
+| Scanned pages (OCR) | Reads the text of scanned PDFs and images on request, or automatically if turned on. English is built in. | [Search](docs/search.md#scanned-pages-and-images-ocr) |
+| How search works | Follows one question of yours through every step (cutting into passages, matching words, matching meaning, combining, the context a model is given) with the real numbers from your library. | [Search](docs/search.md#seeing-how-it-works) |
+
+### Library, collections and the reader
+
+| Feature | What it does | Docs |
+| --- | --- | --- |
+| Your documents | Add PDFs, EPUBs, Markdown, HTML, text and images. Each is checked, given a checksum, read for its text and indexed down to the page; originals are kept untouched. | [Library](docs/library.md) |
+| Readers | A PDF viewer that opens at the page a result points to; EPUB books chapter by chapter with their contents and pictures; Markdown and text. | [EPUB](docs/epub.md) |
+| Save a web page | Paste an address to keep a readable copy of the article, one page at a time, for your own reading. | [Notes and imports](docs/notes-and-imports.md#saving-a-web-page) |
+| Explore and packs | A catalogue of 310 collections that can be browsed offline: Kiwix archives (Wikipedia, medicine, repair, Project Gutenberg shelves and more) and official handbooks fetched from their publishers. Seventeen packs gather the usual things for a purpose. Each entry states its size and licence before anything is fetched. | [Sources](docs/sources.md), [catalogue](catalog/README.md) |
+| Reference collections | ZIM archives read in the app through kiwix-serve, behind a sandboxing proxy. PDFs and e-books inside an archive open in Outpost's own viewer and can be added to your library with no connection. | [Architecture](docs/architecture.md#reference-collections-through-kiwix-serve-behind-a-sandboxing-proxy) |
+| Included with Outpost | Nine radio reference sheets written for Outpost from regulators' documents, and sixteen books from LogBook73 (a radio engineering handbook and fifteen radio guides). No download needed. | [Radio](docs/radio.md) |
+| PDFs made in Outpost | Map pages, HF predictions, communication plans, power plans, emergency cards and more can be saved, shared, or added to the library from the screen that made them. | [Library](docs/library.md#where-outpost-makes-a-pdf) |
+
+![A radio reference sheet that ships with Outpost, open in the reader](docs/screenshots/reader.webp)
+
+*A reference sheet that ships with Outpost, in the reader.*
+
+### Notes
+
+| Feature | What it does | Docs |
+| --- | --- | --- |
+| Notes | A page tree and a block editor: headings, lists, to-dos, tables, code, callouts, images, links between pages, backlinks, templates, favourites, trash, and export to Markdown. | [Notes and imports](docs/notes-and-imports.md) |
+| Import files | Brings in Markdown, HTML and Notion exports as a tree of pages. | [Notes and imports](docs/notes-and-imports.md#imports) |
+| Encrypted pages | A page can be encrypted with an OpenPGP key, so it is ciphertext wherever it is copied. | [Encryption](docs/encryption.md#pages-of-notes) |
+
+![The notes editor, in the dark theme](docs/screenshots/notes-dark.webp)
+
+*A page of made-up notes, in the dark theme.*
+
+### Maps
+
+| Feature | What it does | Docs |
+| --- | --- | --- |
+| Offline maps | Download a country, a mountain range or any box you draw, with the exact size shown first, and view it with no connection. 188 ready-made regions. | [Maps](docs/maps.md) |
+| Terrain and contours | An optional terrain download gives hill shading, contour lines traced on your device, and the heights of routes. | [Maps](docs/maps.md#contour-lines) |
+| Places | Saved places with a note, a colour and one of sixteen icons. | [Maps](docs/maps.md#markers) |
+| Routes | Draw a route point by point, edit its shape, see its distance, ascent and elevation profile; import and export GPX. | [Maps](docs/maps.md#drawing-a-route) |
+| Find a known route | Search OpenStreetMap for a named route and add it (the one map feature that uses a connection, and only when you search). | [Maps](docs/maps.md#finding-a-known-route) |
+| Recording a track | Records where you walk while the screen is on. Needs an `https` address. | [Maps](docs/maps.md#recording-a-track) |
+| Coordinates and place search | Coordinates, British grid references and Maidenhead locators; offline place names from GeoNames. | [Maps](docs/maps.md#coordinate-formats) |
+| Sun times | Sunrise, sunset and twilight for any place and date, worked out on the device. | [Maps](docs/maps.md#sunrise-and-sunset) |
+| The grey line | Day and night drawn over the map, for now or a time you choose. | [Maps](docs/maps.md#the-grey-line-day-and-night) |
+| Line of sight | Whether two points can see each other over the installed terrain. | [Maps](docs/maps.md#line-of-sight) |
+| Satellite imagery | The whole world from NASA's Blue Marble, or a chosen area at 10 m from Sentinel-2, downloaded and kept on disk. | [Maps](docs/maps.md#satellite-imagery) |
+| Aerial photographs | National aerial photographs for an area in New Zealand (LINZ) and the lower 48 United States (NAIP), 5 cm to 1 m a pixel. | [Maps](docs/maps.md#aerial-photographs) |
+| Reference layers | Boundaries, populated places, airports, publicly mapped facilities, hospitals and emergency services, shelters and meeting points, population density and historical records, each pack downloaded on a press or imported, every record with its source and licence. | [Reference layers](docs/reference-layers.md) |
+| Printing | A one-page map at a stated scale, with scale bars, north, a grid of latitude and longitude, and the credits, made on your device as a PDF. | [Maps](docs/maps.md#printing-a-map) |
+
+![The map with saved places, a route and its elevation profile](docs/screenshots/maps.webp)
+
+*Saved places and a route with its profile, on the test suite's made-up map (an
+invented hill and lake; not a real map).*
+
+### Chat and answers from the library
+
+| Feature | What it does | Docs |
+| --- | --- | --- |
+| Answer from my library | If you run a language model on your own machine or network (Ollama, llama.cpp or LM Studio), search can write a short answer from passages of your documents, notes and book chapters, with a citation after each statement. Outpost includes no model and downloads none. | [Answers](docs/ai.md), [set-up guide](docs/setup-guide.md) |
+| Chat | Conversations with the same model server, kept on your Outpost, with or without your library. Everyone who can open your Outpost can read them. | [Answers](docs/ai.md#chat) |
+
+![An answer above the search results, with its numbered sources](docs/screenshots/answer-stand-in.webp)
+
+*An answer from the library. The words were written by the test suite's stand-in
+model server, which repeats the first sentence of each source it is given: it is not a
+language model, and a real model's answers read differently.*
+
+### Contacts
+
+| Feature | What it does | Docs |
+| --- | --- | --- |
+| Contacts | People and places to reach when the phone network is down, with an emergency list that prints on one sheet, radio callsigns and frequencies, and one-touch call, text and email. | [Contacts](docs/contacts.md) |
+| From and to a phone | Bring contacts in as a vCard file; let a phone keep a read-only copy over CardDAV. | [Contacts](docs/contacts.md#keeping-a-copy-on-a-phone-carddav) |
+
+![Contacts, with the emergency list first](docs/screenshots/contacts.webp)
+
+*Contacts with invented names; the numbers are from the ranges Ofcom keeps for drama.*
+
+### Encryption
+
+| Feature | What it does | Docs |
+| --- | --- | --- |
+| OpenPGP | Make and keep keys, encrypt and sign text and files, and encrypt pages of notes, in the browser; checked against GnuPG. Outpost's use of OpenPGP has not been audited. | [Encryption](docs/encryption.md) |
+| Ciphers by hand | Classical ciphers to work with pencil and paper, with printable pads. For interest and practice; they protect nothing from anyone with a computer. | [Encryption](docs/encryption.md#by-hand) |
+
+### Radio
+
+| Feature | What it does | Docs |
+| --- | --- | --- |
+| HF propagation | Predicts how a shortwave signal gets from one place to another, hour by hour and band by band, for your power, antennas and mode, including steep (NVIS) paths. Worked out on your computer by VOACAP: a monthly median for planning, never today's conditions. | [HF propagation](docs/hf-propagation.md) |
+| A second model | Optionally runs the ITU's P.533 (ITURHFProp) beside VOACAP for the same path, and states where they differ. You build its engine on your own computer. | [HF propagation](docs/hf-propagation.md#a-second-model-itu-p533) |
+| Antennas | Your own radios and antennas, and generic ones: dipoles, inverted-V, end-fed wires of a stated length (level, vertical or sloping), verticals, the SPOOLTENNA. Each is run as one of VOACAP's antenna models, and the screen says where that is an approximation. | [HF propagation](docs/hf-propagation.md#equipment) |
+| HF coverage | Where one transmitter is predicted to be heard, as a layer over the offline map. | [HF propagation](docs/hf-propagation.md#coverage-maps) |
+| Communication plans | Several stations, and which band serves each pair at which hour; exported as PDF or Markdown. | [HF propagation](docs/hf-propagation.md#communication-plans) |
+| Contact log | What actually happened on the air, typed in or read from ADIF, set beside what the engine predicted. | [HF propagation](docs/hf-propagation.md#the-contact-log) |
+| Repeaters | A database of repeaters you bring in as a file, enter by hand, or fetch from the two publishers whose terms allow it; found, measured from a place, drawn on the map and written out for a radio. | [Radio](docs/radio.md#repeaters) |
+
+![An HF prediction from London to Birmingham on 40 m](docs/screenshots/propagation.webp)
+
+*VOACAP's prediction for London to Birmingham on 40 m, the planner's own example.*
+
+![Bands through the day, in the dark theme](docs/screenshots/propagation-dark.webp)
+
+*The same prediction, band by band, in the dark theme.*
+
+### Tools
+
+| Feature | What it does | Docs |
+| --- | --- | --- |
+| Water | Water to store by the UK Government's, the CDC's, Ready.gov's or the WHO's figure; rain from a roof; filter life; making water safe to drink, quoted from the bodies that publish it. | [Tools](docs/tools.md#water) |
+| Outdoors | Walking time by Naismith's rule with Langmuir's and Tranter's corrections, gradient, distance and bearing, the sun's day, wind chill, heat index, and water and food for a walk. | [Tools](docs/tools.md#outdoors) |
+| Radio calculators | Antenna lengths, free-space path loss, the radio horizon, cable loss, watts, dBm and S-units, battery life on a duty cycle. | [Tools](docs/tools.md#radio-calculators) |
+| Building | Concrete and mortar, area and volume, roof pitch, a cutting list, U-values and heat loss, sheets and fixings. | [Tools](docs/tools.md#building) |
+| Cooking | Roasting times and safe temperatures from UK food-safety guidance, a timer, boiling at altitude, conversions, scaling a recipe. | [Tools](docs/tools.md#cooking) |
+| Power and batteries | Quick calculators (battery runtime, solar, cable size and voltage drop, series and parallel, generator fuel, small electronics), and power plans: a battery system kept by name, worked out into how long it runs and how much solar it needs. | [Power](docs/tools-power.md) |
+| QR codes | Makes a code from text, a web address, a Wi-Fi network, a contact or a saved place, on the device; nothing typed is sent anywhere. | [QR codes](docs/tools-qr-and-network.md#qr-codes-toolsqr) |
+| Devices on this network | Lists what answers on the network the computer running Outpost is on: a NAS, a printer, a Raspberry Pi whose address you have forgotten. Never put in search. | [Network](docs/tools-qr-and-network.md#devices-on-this-network-toolsnetwork) |
+
+Every calculator shows its answer as you type and says, under **How this is worked
+out**, the formula, its source with the date it was read, and the range it holds for.
+
+<table>
+<tr>
+<td width="62%"><img src="docs/screenshots/power-plan.webp" alt="A power plan: how long the battery runs, and the state of charge over three days"></td>
+<td><img src="docs/screenshots/phone-water.webp" alt="The water calculators at phone width"></td>
+</tr>
+<tr>
+<td><em>A power plan, with figures typed for the demonstration.</em></td>
+<td><em>The water calculators on a phone.</em></td>
+</tr>
+</table>
+
+![Devices on the test suite's made-up network](docs/screenshots/network-stand-in.webp)
+
+*Devices on this network, scanning the test suite's made-up network (a stand-in): no
+real network's devices are shown.*
+
+### Preparedness
+
+| Feature | What it does | Docs |
+| --- | --- | --- |
+| Emergency plans | A household's plans for a power cut, flooding, no phone or internet, severe weather, sheltering at home or leaving at short notice, started from templates drawn from official guidance, each step saying whose words it is. **Use now** shows the steps in large type with ticks; wallet cards, a fridge sheet and a grab list print as PDF. | [Emergency plans](docs/emergency-plans.md) |
+| Supplies | Food, water and kit kept at home: how many days they last for your household, what to use first, and what to buy. Find items by barcode (typed, from a photo, or with the live camera on an `https` page). | [Supplies](docs/supplies.md) |
+| Weather and hazards | Forecasts, UK severe-weather and flood warnings, river levels and climate averages for places you choose, fetched when you press and kept with their age; a log of your own barometer readings. | [Weather](docs/weather.md) |
+| Nuclear preparedness | An offline map workspace with an educational effects simulator: what Glasstone and Dolan's published model says a detonation of a stated size does at a distance, for an idealised case, with every figure cited. Scenarios are saved, compared two at a time and written out as PDF or Markdown. It covers effects, preparedness and published history only. | [Nuclear preparedness](docs/nuclear-preparedness.md) |
+
+<!--
+  TO BE SUPPLIED: a short paragraph on the nuclear preparedness module's final
+  sitting (personal planning in the workspace, and people inside a ring), written by
+  the builder finishing it. Describe only what docs/nuclear-preparedness.md then says
+  exists, and add a row or a line to the table above if it needs one.
+-->
+
+<table>
+<tr>
+<td width="62%"><img src="docs/screenshots/supplies.webp" alt="Supplies: how long the food and water last for the household"></td>
+<td><img src="docs/screenshots/phone-plan-in-use.webp" alt="An emergency plan in use, at phone width"></td>
+</tr>
+<tr>
+<td><em>Supplies for a made-up household of three.</em></td>
+<td><em>The power cut plan, from its template, in use on a phone.</em></td>
+</tr>
+</table>
+
+![An emergency plan's steps, each saying where its words come from](docs/screenshots/emergency-plan.webp)
+
+*A plan made from the power cut template: each step says whose words it is.*
+
+![The nuclear preparedness workspace with an educational scenario on the test map](docs/screenshots/nuclear.webp)
+
+*The nuclear preparedness workspace: an educational scenario on the test suite's
+made-up map, with the model's rings and idealised fallout pattern.*
+
+### Looking after it
+
+| Feature | What it does | Docs |
+| --- | --- | --- |
+| Downloads | Every download and background job in one list: resumable, retried, checked against a checksum, with pausing and rate limits. | [Offline](docs/offline.md#what-needs-a-connection) |
+| Storage | Internal disks, USB drives, SSDs and NAS shares as storage locations, recognised by a marker file when they come back. Move collections between locations with verification. On a Mac, connect a network share from the app. | [Storage](docs/storage.md) |
+| Manage and clean up | One screen that lists everything installed, removes what you no longer want, clears leftovers, checks the database, and can erase everything. | [Storage](docs/storage.md#managing-and-cleaning-up) |
+| Backups | A backup file of the database, attachments and extracted text, by hand or on a schedule to a storage location, optionally encrypted with a passphrase. | [Storage](docs/storage.md#backing-up) |
+| Portable drives | A USB drive holding Outpost and part of your library, which starts with a double-click on another Mac, Windows or Linux computer with nothing installed; what was written on it is brought back home with a preview. | [Portable drives](docs/portable.md) |
+| On this phone | Over HTTPS the app keeps itself on a phone, and chosen pages of notes, routes, saved places and map areas are kept there to read where the server cannot be reached. | [Offline](docs/offline.md#a-phone-out-of-reach-of-the-server) |
+| HTTPS on your network | An `https` address on your own network with no domain and no internet, with a certificate Outpost makes or one of your own. Location, the camera, recording a track and keeping things on a phone need it. | [Deployment](docs/deployment.md#https-on-your-network) |
+| Settings | Appearance (including the 12- or 24-hour clock), downloads, reading documents, search by meaning, answers, maps, who can use this library, backups and HTTPS. | [Deployment](docs/deployment.md#environment-variables) |
+
+<table>
+<tr>
+<td width="62%"><img src="docs/screenshots/explore.webp" alt="Explore: the catalogue of collections, by subject"></td>
+<td><img src="docs/screenshots/phone-maps.webp" alt="The map at phone width"></td>
+</tr>
+<tr>
+<td><em>Explore, browsed with no connection.</em></td>
+<td><em>The map on a phone (the test map).</em></td>
+</tr>
+</table>
+
+## Install and run
+
+Four ways are documented in [docs/deployment.md](docs/deployment.md), which also has
+every setting. What has been tried: Outpost is developed and run by hand on macOS on
+Apple Silicon, from source, as the packaged app, and as the full Compose stack with the
+`arm64` image. Nothing builds or tests it automatically, and nothing else has been
+tried: not Linux on x86-64, not an Intel Mac, not Windows, not a Raspberry Pi, not a NAS.
 
 | Platform | How | Status |
 | --- | --- | --- |
-| macOS, Apple Silicon | Docker Desktop, the packaged app, or a portable drive | Developed and tested here by hand, including the full Compose stack |
-| Linux ARM64, Raspberry Pi 4 and 5 (64-bit OS) | Docker Compose | The ARM64 image is built and run on Apple Silicon; untried on a physical Pi |
+| macOS, Apple Silicon | Docker Desktop, from source, the packaged app, or a portable drive | Developed and tried here by hand |
+| Linux ARM64, Raspberry Pi 4 and 5 (64-bit OS) | Docker Compose; the scripts in `deploy/pi/` | Untried on a Pi; the scripts have never been run on one |
 | Linux x86-64 | Docker Compose, or the packaged app | Untried |
 | macOS, Intel | Docker Desktop, or the packaged app | Untried |
-| Windows 10 and 11 | Docker Desktop with WSL2 | Untried |
+| Windows 10 and 11 | Docker Desktop with WSL 2 | Untried |
 | NAS and home servers | Any that run containers | Untried |
 
-"Untried" means nobody has run Outpost there yet. Nothing builds or tests it
-automatically: the checks are run by hand, on the one machine in the first row. Treat
-the other platforms as expected to work rather than proven. 4 GB of RAM or more is
-recommended on a Raspberry Pi.
+### With Docker Compose
 
-## Quick start
-
-You need [Docker](https://docs.docker.com/get-docker/) with Compose.
+You need Docker with the Compose plugin.
 
 ```bash
 git clone https://github.com/tyleruk2000/outpost.git
@@ -143,242 +289,311 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
-Open <http://localhost:8080>.
+Then open <http://localhost:8080>. The build needs an internet connection; no image is
+published, so there is nothing to pull. While there is internet, one more line makes
+the HF planner work offline from the start (VOACAP's data, 559 kB; see
+[below](#what-needs-a-download-or-a-build-first)):
 
-The first start builds the image on your computer, which takes a few minutes and needs
-a connection. By default Outpost answers only on the computer it runs on. To use it
-from phones and other computers on your network, set `OUTPOST_LAN_ACCESS=true` and
-`OUTPOST_BIND=0.0.0.0` in `.env` and restart.
+```bash
+docker compose exec outpost node /app/scripts/fetch-voacap-data.mjs --data-dir /data
+```
 
-Outpost has no accounts and no sign-in. With LAN access on, everyone on your network
-can read, add, change and delete everything in it, so turn it on only for a network
-where you trust everyone, such as your home. Never forward the port to the internet,
-and do not put Outpost behind a public reverse proxy unless the proxy itself asks
-people to authenticate.
+By default Outpost answers only on the computer it runs on. To use it from phones and
+other computers on your network, set both of these in `.env` and run
+`docker compose up -d` again, after reading
+[Letting other devices use it](docs/deployment.md#letting-other-devices-use-it-lan-access):
 
-Browsers give a page a device's location, and a few other things, only at an `https`
-address. Outpost can provide one on your own network, with a certificate it makes for
-itself and each device is told once to trust, or with a certificate of your own if you
-have one: see [HTTPS on your network](docs/deployment.md#https-on-your-network).
+```ini
+OUTPOST_LAN_ACCESS=true
+OUTPOST_BIND=0.0.0.0
+```
 
-See [docs/deployment.md](docs/deployment.md) for every platform, for running without
-Docker, and for all settings.
+### From source
 
-## Storage
+You need Node.js 24 or newer and pnpm 9.
 
-Outpost keeps three kinds of thing in three places:
+```bash
+git clone https://github.com/tyleruk2000/outpost.git
+cd outpost
+pnpm install
+node scripts/fetch-map-assets.mjs   # map fonts and icons; needs a connection once
+node scripts/fetch-embedding-model.mjs  # the model for search by meaning (24 MB); also once
+pnpm build                          # builds the web app into apps/web/dist
+node scripts/fetch-voacap-data.mjs --data-dir apps/server/data   # HF planner data (559 kB); optional, once
+pnpm start
+```
 
-| What | Where | Notes |
+Open <http://localhost:8080>. `pnpm start` does not read `.env`: set variables in the
+shell (`OUTPOST_DATA_DIR`, `OUTPOST_STORAGE_ROOTS`, and for LAN access
+`OUTPOST_HOST=0.0.0.0` with `OUTPOST_LAN_ACCESS=true`). Reference collections need
+kiwix-serve beside it: see
+[Reference collections without Docker](docs/deployment.md#reference-collections-without-docker).
+
+### The packaged app
+
+A folder that runs with nothing but a Node 24 binary; it is what the Docker image and
+portable drives contain.
+
+```bash
+pnpm install
+node scripts/fetch-map-assets.mjs
+node scripts/fetch-embedding-model.mjs
+node scripts/build-app.mjs            # writes dist/app
+
+NODE_ENV=production \
+OUTPOST_DATA_DIR=/srv/outpost/data \
+OUTPOST_STORAGE_ROOTS=/srv/outpost/library \
+node dist/app/server/outpost.mjs
+```
+
+`NODE_ENV=production` is required. See [The packaged app](docs/deployment.md#the-packaged-app).
+The folder includes SQLite binaries for Windows, but nobody has run it there.
+
+### On a Raspberry Pi
+
+A 64-bit operating system is required, and 4 GB of memory fits keyword search,
+reading, notes and maps. Two scripts in `deploy/pi/` set a Pi up to be carried somewhere
+with no router and no internet, reached from phones over a Wi-Fi network of its own.
+
+**Neither script has been run on a Raspberry Pi.** They were written from Docker's and
+NetworkManager's documentation and checked only for syntax and with `--dry-run` on a
+Mac. Read them, run each with `--dry-run` first, and expect to adjust them.
+
+```bash
+./deploy/pi/install.sh --dry-run                        # see what it would do
+./deploy/pi/install.sh --install-docker --lan --https   # needs the internet this once
+sudo ./deploy/pi/hotspot.sh on --ssid "Outpost"         # asks for a password
+```
+
+See [Raspberry Pi 4 and 5](docs/deployment.md#raspberry-pi-4-and-5) for memory,
+storage and what each script does.
+
+Updating, logs, reverse proxies and every environment variable are in
+[docs/deployment.md](docs/deployment.md). Back up first (**Settings → Backup**).
+
+## What needs a download or a build first
+
+Outpost ships its code, its catalogue, its reference sheets and the radio books, and
+nothing else. Everything below is fetched only when a person presses a button or runs a
+set-up line, and each states its size first.
+
+| What | Size | Why it is not in the repository | Docs |
+| --- | --- | --- | --- |
+| Map regions | Shown exactly before the download (a box of up to 60 GB); terrain is a second, optional file | OpenStreetMap data from the Protomaps build, fetched for the area you choose | [Maps](docs/maps.md#downloading-a-region) |
+| Place names | One GeoNames dataset: towns worldwide, or one country | Fetched on request from GeoNames | [Maps](docs/maps.md#offline-place-search) |
+| Reference collections | From a few megabytes to many gigabytes each, shown in Explore | Each publisher's own, under its own licence; never bundled | [Sources](docs/sources.md) |
+| VOACAP's data for the HF planner | 15 files, 559 kB | The ITU has not given permission for them to be passed on, and four of their headers say "All rights reserved"; so they are fetched once, at set-up or with one press | [HF propagation](docs/hf-propagation.md#voacaps-coefficients-a-one-time-download) |
+| The second HF model (ITU P.533) | Engine built on your computer with Docker (a build image of about 740 MB; the result is 233 kB), and maps of 137 MB | The ITU's code and maps are under no open licence, so nothing of them ships; each person builds the engine from the ITU's own repository | [HF propagation](docs/hf-propagation.md#a-second-model-itu-p533) |
+| Satellite imagery | The world at 2 km: 256 MB fetched, 15.5 MB kept. At 500 m: 3.26 GB fetched, about 350 MB kept (estimated; never run). Sentinel-2: about 16 MB fetched for 100 km², under 1 MB kept | Fetched from NASA and Copernicus for the area you choose | [Maps](docs/maps.md#satellite-imagery) |
+| Aerial photographs (New Zealand, United States) | 1 km² of a 7.5 cm survey: 11.75 MB fetched, 4.63 MB kept | Fetched from LINZ or NAIP for a small area you choose | [Maps](docs/maps.md#aerial-photographs) |
+| Reference data packs for the map | Stated per item before download (OurAirports' file is 12.8 MB; Natural Earth's regions and places are 41 MB and 19 MB) | Each publisher's own terms; fetched on a press or imported | [Reference layers](docs/reference-layers.md) |
+| A model server for answers and chat | A model is several gigabytes | Which model to run is your decision; Outpost includes and downloads none | [Set-up guide](docs/setup-guide.md) |
+| The device-maker registry | About 3.9 MB, from the IEEE | The IEEE states no permission to pass it on | [Network](docs/tools-qr-and-network.md#who-made-each-device) |
+| Map fonts and icons, and the search model | The search model is 24 MB | Fetched once when Outpost is built, not at run time | [Deployment](docs/deployment.md#from-source) |
+
+## Privacy and security in brief
+
+From [docs/security.md](docs/security.md), which has the whole threat model:
+
+- **No accounts.** Whoever can reach Outpost can read, add, change and delete
+  everything in it, contacts and chat conversations included. By default only the
+  computer it runs on can reach it. With LAN access on, everyone on that network can;
+  turn it on only for a network where you trust everyone, never forward the port to the
+  internet, and put it behind a public reverse proxy only if the proxy asks people to
+  sign in.
+- **What only the computer itself may do.** Erasing everything, restoring a backup,
+  deleting backups kept on a storage location, setting or removing the backup
+  passphrase, and replacing or deleting the HTTPS certificate authority are accepted
+  only from the computer Outpost runs on, unless it was started with
+  `OUTPOST_ALLOW_REMOTE_ERASE=true`. This is not authentication: it asks "where from?",
+  because there is no "who?".
+- **Every outbound request is the result of a press.** No telemetry, no CDN, no remote
+  fonts. The app's own content policy forbids the browser from contacting other
+  servers, and the end-to-end tests fail if the app tries. Downloads cannot be pointed
+  at addresses inside your network.
+- **Your model, your address.** Answers and Chat send your question and passages of
+  your library to the model server address you set, and nowhere else.
+- **HTTPS on your network** is optional and off by default. Outpost makes a certificate
+  authority of its own, limited to private addresses and names, and each device is told
+  once to trust it; or you give it a certificate of your own. Plain `http` keeps working
+  beside it. Location, the live camera, recording a track and keeping things on a phone
+  need it.
+- **Nothing is encrypted at rest** except what you encrypt yourself, private keys on the
+  Encryption screen, and backups protected with a passphrase. Use encrypted drives for
+  anything that leaves the house.
+
+Please report security problems privately, as described in [SECURITY.md](SECURITY.md).
+
+## Limits
+
+Stated here so nobody has to find them out. Each is taken from the docs page named.
+
+**Not tested:**
+
+- **A real iPhone or Android phone.** Phone width was tested in Chromium's emulation:
+  keeping things on a phone, the barcode camera, the emergency plans' `tel:` links,
+  printing from a phone, and trusting the HTTPS certificate on a device have not been
+  tried on a phone ([offline](docs/offline.md#what-has-and-has-not-been-tested),
+  [supplies](docs/supplies.md#what-was-not-tested),
+  [emergency plans](docs/emergency-plans.md#not-tested),
+  [HTTPS](docs/deployment.md#what-was-tested)).
+- **A Raspberry Pi, Windows, Linux on x86-64, an Intel Mac, a NAS.** See
+  [Install and run](#install-and-run).
+- **A printer.** No map page, emergency card or cipher pad has been printed on paper
+  ([maps](docs/maps.md#limits-and-what-has-not-been-tried),
+  [emergency plans](docs/emergency-plans.md#not-tested),
+  [encryption](docs/encryption.md#not-tested)).
+- **Safari and Firefox.** The screens were built and tested in Chromium; Safari and
+  Firefox were not tried for encryption or for keeping things on a phone
+  ([encryption](docs/encryption.md#not-tested), [offline](docs/offline.md#what-has-and-has-not-been-tested)).
+- **CardDAV with any phone**, and a portable drive carried to a second computer
+  ([contacts](docs/contacts.md#what-has-been-tested-and-what-has-not),
+  [portable drives](docs/portable.md)).
+- **Answers and Chat** were measured with two small models (`llama3.2:3b`,
+  `llama3.2:1b`) on Ollama on a Mac; llama.cpp and LM Studio have not been run
+  ([answers](docs/ai.md#not-tried-with-a-real-model)).
+
+**Caveats:**
+
+- **HF propagation** is a monthly median from VOACAP, not today's conditions and not a
+  promise of a contact. 2 to 30 MHz, short path only, sporadic E off
+  ([what it is not](docs/hf-propagation.md#what-it-is-not),
+  [limits](docs/hf-propagation.md#limits)).
+- **The second model** compares with isotropic antennas only, and is not offered for
+  coverage maps or plans ([what is not done](docs/hf-propagation.md#what-is-not-done)).
+- **The nuclear effects simulator** is an educational estimate from a published model
+  for an idealised case (flat ground, clear air, no buildings), not a forecast and not
+  instructions; it gives no casualty figures, and its fallout pattern is for a steady
+  wind that real fallout never follows
+  ([limitations](docs/nuclear-preparedness.md#limitations)).
+- **Calculators and plans** give general information, not advice, from the sources they
+  name ([tools](docs/tools.md), [power](docs/tools-power.md#what-is-not-modelled)).
+- **Weather** is a copy with its age, as good as the moment it was fetched; flood data
+  is for England only ([weather](docs/weather.md#not-done)).
+- **OCR** is slow and makes mistakes, and reads English unless a language file is added.
+  The built-in search model is small and English.
+- **EPUB books** are shown in Outpost's own type; fixed layouts, scripts and
+  copy-protected books are not read ([EPUB](docs/epub.md)).
+
+**Deliberately not built:**
+
+- Accounts, permissions, live co-editing, clustering, and an optional PostgreSQL back
+  end ([architecture](docs/architecture.md#limits-and-trade-offs)).
+- Routing: routes are drawn, imported or found, never calculated
+  ([maps](docs/maps.md#what-is-not-included)).
+- A bundled language model, a model download, or tools a model can call
+  ([answers](docs/ai.md#what-does-not-exist)).
+- Two-way contact sync ([contacts](docs/contacts.md#what-is-not-built)).
+- A product database for barcodes, and flood-risk zones on the map
+  ([supplies](docs/supplies.md#open-food-facts-and-why-nothing-is-looked-up),
+  [weather](docs/weather.md#not-done)).
+- Any dataset of historical targets, and any layer, sort or score that ranks places
+  ([reference layers](docs/reference-layers.md#what-is-not-built-and-why)).
+
+## Data sources and licences
+
+Every source considered, its terms in its publisher's words, and why some are not used,
+is in [docs/sources.md](docs/sources.md). In short:
+
+| Source | Used for | Licence or terms |
 | --- | --- | --- |
-| Database, notes attachments, settings | The data volume (`outpost-data`) | Keep on a local disk |
-| Documents, collections, maps | Storage locations you add | Any mounted folder |
-| The app | The image, or a portable drive | Replaceable at any time |
+| OpenStreetMap, packaged by Protomaps | Map regions, found routes, reference layers | ODbL |
+| Mapterhorn | Terrain, hill shading, contours | Various open licences ([attribution](https://mapterhorn.com/attribution)) |
+| GeoNames | Place search | CC BY 4.0 |
+| Natural Earth | World outline, boundaries | Public domain |
+| Kiwix and openZIM | Reference collections (ZIM archives), kiwix-serve | Each archive its own licence; kiwix-serve GPL-3.0, run as a separate program |
+| Official publishers (FAA, NASA, USGS, NWS, FAO, WHO, OpenStax and others) | PDF handbooks in the catalogue | Each its own, stated on each entry |
+| NASA Blue Marble, Copernicus Sentinel-2, LINZ, USDA NAIP | Satellite imagery and aerial photographs | Credit to NASA; free, full and open; CC BY 4.0; public domain |
+| VOACAP (NTIA/ITS) via hfcast-engine | HF propagation | Engine Apache-2.0; its CCIR coefficients not shipped |
+| ITU-R Study Group 3 (ITURHFProp) | The optional second HF model | No open licence; nothing shipped |
+| Open-Meteo (Met Office models), Met Office, Environment Agency, NASA POWER, PVGIS | Weather and hazards | CC BY 4.0; Crown copyright; OGL; credit to NASA; credit to the JRC |
+| OurAirports, Wikidata, WorldPop, BABS | Reference layers | Public domain; CC0; CC BY 4.0; open use with source |
+| UK Government (Be Ready, GOV.UK), Met Office, Ofcom and others | Emergency plan templates | OGL v3 and others, quoted only where their terms allow |
+| Glasstone and Dolan, *The Effects of Nuclear Weapons* (1977) | The effects simulator | A US Government work |
+| IEEE Registration Authority | Device makers, on a press | Not bundled |
 
-Whoever runs the server decides which folders Outpost may use (the storage roots; in
-Docker, anything mounted under `/storage`). Inside those, you add **storage locations**
-from the Storage screen, choose a default for new downloads, and pick a different one
-for any single download. Each location is identified by a small marker file, so a
-drive that comes back at a different mount point is recognised.
+**Outpost itself** is released under the [MIT Licence](LICENSE). The reference sheets
+that ship with it are the project's own compilations of facts from official sources,
+under the same licence. The radio handbook and guides were written by the same author
+for LogBook73 and are included under that project's MIT licence. The packaged app and
+the Docker image include `THIRD-PARTY-LICENSES.txt`.
 
-### NAS and external drives
+It is built with [MapLibre GL JS](https://maplibre.org), [Tiptap](https://tiptap.dev),
+[PDF.js](https://mozilla.github.io/pdf.js/), [Mermaid](https://mermaid.js.org),
+OpenPGP.js (LGPL-3.0, shipped as a separate file and loaded at run time), ONNX Runtime,
+and the libraries in the package manifests; the licence of each is in
+[docs/architecture.md](docs/architecture.md#dependency-licences). Typefaces: Atkinson
+Hyperlegible (Braille Institute) and Literata (TypeTogether), under the SIL Open Font
+Licence.
 
-On a Mac run directly, **Storage → Connect a network share** does this for you: enter
-the server, the share and your user name and password, and Outpost asks macOS to
-connect it and keeps it connected. The password is kept in the Mac's Keychain if you
-ask for it to be remembered, and never by Outpost. In Docker and on Linux, Outpost
-cannot mount a share itself; the same form writes out the exact lines to use instead.
+SPOOLTENNA is a trade mark of Panther Creek Solutions LLC, named only to say which
+antenna is meant. QR Code is a registered trademark of DENSO WAVE INCORPORATED.
 
-With Docker, mount the share or drive on the host, map it into both containers, then
-add it in the app:
+The projects that showed the way: Internet-in-a-Box, PrepperPi, Offgrid Pi,
+Paperless-ngx and Organic Maps. No code was taken from them.
 
-```yaml
-# compose.yaml
-services:
-  outpost:
-    volumes:
-      - /mnt/nas/outpost:/storage/nas
-  kiwix:
-    volumes:
-      - /mnt/nas/outpost:/storage/nas:ro
+## Developing and contributing
+
+Contributions are welcome: code, catalogue entries, documentation. Start with
+[CONTRIBUTING.md](CONTRIBUTING.md); how the server and the screens are put together is
+in [docs/architecture.md](docs/architecture.md),
+[docs/development/server-modules.md](docs/development/server-modules.md) and
+[docs/development/web-screens.md](docs/development/web-screens.md).
+
+```bash
+pnpm install
+pnpm dev                                   # API on :8080, web app on :5173
+pnpm lint && pnpm typecheck
+pnpm --filter @outpost/server test         # real server on temporary folders, no network
+pnpm --filter @outpost/web test
+node scripts/build-app.mjs && pnpm e2e     # browser tests against the packaged app, internet blocked
 ```
 
-Docker can also mount NFS and SMB shares itself; `compose.yaml` has commented
-examples. Full examples for Linux, macOS, Windows and common NAS systems are in
-[docs/storage.md](docs/storage.md).
+There is no continuous integration: the checks are run by hand before a change is
+accepted. `node scripts/check-readme-links.mjs` checks that every relative link and
+anchor in this README leads somewhere.
 
-## Downloading collections
+### Making the pictures again
 
-Open **Explore**. The catalogue ships with the app and can be browsed offline; press
-**Refresh catalogue** while online to get current sizes and versions. Choose a
-collection, check its size against the free space on the location you pick, and
-download. Progress, pausing and retrying are on the **Downloads** screen.
-
-Start with **Packs** if you are not sure what to choose. Collections are downloaded
-from their publishers' official endpoints and are never bundled with Outpost; the only
-content that ships with it is its own reference sheets, written for the project. Each entry states its licence, and says so plainly where the
-maintainers have not verified it. To add entries, see [catalog/README.md](catalog/README.md).
-Which sources were considered, which are used and why the rest are not is in
-[docs/sources.md](docs/sources.md).
-
-Maps are downloaded from the **Maps** screen by region. See [docs/maps.md](docs/maps.md).
-
-## Using it offline
-
-Once installed and populated, Outpost needs no connection. Reading, searching, writing
-notes, viewing documents and using maps all work with the network unplugged. Only
-starting new downloads and refreshing the catalogue need the internet, and the
-interface says so when you are offline. The end-to-end tests run with the internet
-blocked and fail if the app tries to reach it. Details and a pre-departure checklist:
-[docs/offline.md](docs/offline.md).
-
-## Portable drives
-
-From **Storage → Take it with you**, write Outpost and chosen content to a folder on
-a USB drive. On another computer, open the folder and double-click the launcher. The
-drive carries its own copy of the app and of the program that runs it, so nothing is
-installed.
-
-Notes written and documents added while running from the drive stay on the drive until
-you bring them back: plug it into the computer that runs your main Outpost and choose
-**Storage → Bring back changes from a drive**. You get a preview of what changed on
-each side; new things are added, a page changed on both sides is kept twice unless you
-choose otherwise, and nothing is removed at home unless you tick it. The drive itself
-is never changed. See [docs/portable.md](docs/portable.md).
-
-## Architecture
-
-One Node.js process serves the web app and the API from a SQLite database and a set of
-folders. One optional helper, kiwix-serve, reads ZIM archives behind a sandboxing
-proxy.
-
-```
- Browser ──► Outpost (Node 24, Fastify, React app)
-                 ├── SQLite: library records, notes, full-text index, jobs
-                 ├── data directory: attachments, extracted text
-                 ├── storage locations: documents, collections, maps
-                 └── kiwix-serve: reads ZIM archives (proxied, sandboxed)
+```bash
+node scripts/build-app.mjs
+cd e2e && pnpm exec playwright test -c readme-screenshots.config.ts
 ```
 
-- **Server:** TypeScript on Node 24, Fastify, Drizzle ORM, SQLite with FTS5.
-- **Web:** React, Vite, Tailwind CSS, TanStack Query, Tiptap, MapLibre GL JS.
-- **Search:** FTS5 keyword search; optional vectors from a built-in embedding model
-  (ONNX Runtime as WebAssembly, no native code) or a local embedding server; reciprocal
-  rank fusion for hybrid ranking.
-- **Maps:** regional extracts of the Protomaps planet build (OpenStreetMap data) as
-  PMTiles, served and styled locally.
-
-The reasoning behind each choice, the security model and the known trade-offs are in
-[docs/architecture.md](docs/architecture.md).
+This starts an Outpost of its own on an empty data folder (port 9081 and the two after
+it, or `OUTPOST_README_PORT`), beside the test suite's stand-ins, writes the
+demonstration data, and replaces the pictures in `docs/screenshots/`. Nothing in it
+reaches the internet or a real model server.
 
 ## Documentation
 
 | | |
 | --- | --- |
-| [Deployment](docs/deployment.md) | Installing on each platform, settings, running without Docker |
-| [Storage](docs/storage.md) | Locations, NAS examples, moving and verifying |
-| [Offline use](docs/offline.md) | What works without a connection, and how that is guaranteed |
-| [Search](docs/search.md) | Query syntax, semantic and hybrid search, answers from your library |
-| [Sources](docs/sources.md) | Every content source considered, its licence, and how it is used |
-| [Maps](docs/maps.md) | Regions, data sources, GPX, coordinates |
-| [Reading EPUB books](docs/epub.md) | What the reader shows, what it leaves out, and what it refuses |
-| [The library, and PDFs made in Outpost](docs/library.md) | Saving, sharing and adding to the library the PDFs Outpost makes |
-| [Notes and imports](docs/notes-and-imports.md) | The editor, Markdown and Notion imports |
-| [Contacts](docs/contacts.md) | What a contact holds, bringing contacts from a phone, and a copy on a phone |
+| [Deployment](docs/deployment.md) | Installing on each platform, LAN access, HTTPS, settings |
+| [Storage](docs/storage.md) | Locations, NAS examples, moving, backups |
+| [Offline use](docs/offline.md) | What works without a connection, and keeping things on a phone |
 | [Portable drives](docs/portable.md) | Making and using a USB drive |
-| [Encryption](docs/encryption.md) | OpenPGP keys, text, files and encrypted pages; ciphers to work by hand |
+| [Search](docs/search.md) | Query syntax, semantic and hybrid search, OCR |
+| [Answers and language models](docs/ai.md) | Setting up a model of your own, the exact prompt, what is sent where |
+| [Set-up guide](docs/setup-guide.md) | Search by meaning, answers and chat in a few steps. Also inside Outpost |
+| [The library](docs/library.md) | Documents, and PDFs made in Outpost |
+| [Reading EPUB books](docs/epub.md) | What the reader shows and leaves out |
+| [Notes and imports](docs/notes-and-imports.md) | The editor, imports, saving web pages |
+| [Contacts](docs/contacts.md) | Contacts, vCard files and CardDAV |
+| [Encryption](docs/encryption.md) | OpenPGP keys, text, files and pages; ciphers by hand |
+| [Maps](docs/maps.md) | Regions, routes, imagery, printing, the grey line, line of sight |
+| [Reference layers](docs/reference-layers.md) | Published data for the map, and its terms |
+| [Radio](docs/radio.md) | Reference sheets, the handbook and guides, repeaters |
+| [HF propagation](docs/hf-propagation.md) | The planner, coverage, plans, the log, the second model |
+| [Tools](docs/tools.md) | The calculators, with every formula and source |
+| [Power and batteries](docs/tools-power.md) | Calculators and power plans |
+| [QR codes and devices on this network](docs/tools-qr-and-network.md) | The two network tools |
+| [Emergency plans](docs/emergency-plans.md) | Plans, templates and their sources, cards |
+| [Supplies](docs/supplies.md) | Stock, the household, barcodes, CSV |
+| [Weather and hazards](docs/weather.md) | What is fetched, from whom, and how old it is |
+| [Nuclear preparedness](docs/nuclear-preparedness.md) | The workspace and the effects simulator |
+| [Sources](docs/sources.md) | Every content source considered, and its terms |
 | [Security](docs/security.md) | Threat model and controls |
 | [API](docs/api.md) | HTTP API reference |
-| [Setting up search by meaning, answers and chat](docs/setup-guide.md) | The short guide: one switch, and Ollama in three steps. Also inside Outpost |
-| [Answers and language models](docs/ai.md) | Setting up a model of your own, the exact prompt, what is sent where |
+| [Architecture](docs/architecture.md) | Design decisions, limits and dependency licences |
 | [Troubleshooting](docs/troubleshooting.md) | Common problems |
-| [Architecture](docs/architecture.md) | Design decisions and trade-offs |
-
-## Limitations
-
-Stated here so nobody has to find them out:
-
-- **OCR is optional, slow and imperfect.** Scanned PDFs and images are searchable only
-  after their text has been read on request (or automatically, if you turn that on).
-  English is built in; other languages need a data file you add yourself. Text drawn
-  as shapes is not read. See
-  [Search](docs/search.md#scanned-pages-and-images-ocr).
-- **EPUB books are shown in Outpost's own type, not the book's.** Fixed layouts, the
-  book's fonts and styling, audio, video, MathML and anything scripted are left out,
-  and a copy-protected (DRM) book cannot be read at all. See
-  [Reading EPUB books](docs/epub.md).
-- **No language model is included.** Answers in prose and Chat need a model server you
-  run yourself (Ollama, llama.cpp, LM Studio) and a model you download with it. The
-  library is read from documents, notes and book chapters only: reference collections
-  such as Wikipedia are not read. Both are tested automatically against a stand-in
-  server that speaks the same protocol, and have been run with two small models
-  (`llama3.2:3b` and `llama3.2:1b`) on Ollama on a Mac; llama.cpp and LM Studio have
-  not been run. See [Answers and language models](docs/ai.md).
-- **Semantic search is off until you switch it on**, and its built-in model is small
-  and was trained on English: other languages are matched poorly. A local embedding
-  server such as Ollama can be used for a larger or multilingual model. See
-  [Search](docs/search.md#semantic-search).
-- **Reference collections need kiwix-serve.** It is in the Compose stack. On portable
-  drives it is included for macOS and Linux; the Kiwix project publishes no Windows
-  build, so collections cannot be opened from a drive on Windows.
-- **Maps** have no routing. Hill shading and contour lines need a separate terrain
-  download, and contour lines are only as fine as that terrain.
-- **Away from the server a phone can only read,** and only what was kept on it on
-  purpose. This has been tested in Chromium, not on a phone, and how long a browser
-  keeps the data is the browser's decision (Safari on an iPhone deletes it after seven
-  days of use without a visit unless Outpost is on the Home Screen).
-- **One server, one library.** There is no clustering and no PostgreSQL back end.
-- **No accounts or permissions.** Everyone who can reach Outpost can read and change
-  everything in it.
-- **No live collaboration.** Two people editing the same page are warned of the
-  conflict rather than merged.
-- **A portable drive is a copy, not a live sync.** Its changes come home when you plug
-  it in and bring them back. Conflicts are settled per page, not line by line, and the
-  path has not yet been tried with a physical drive carried to a second computer.
-
-## Roadmap
-
-In rough order: downloading OCR languages from inside Outpost;
-answers that can also draw on reference collections; richer
-topographic layers;
-storage pools; an optional PostgreSQL and pgvector back end. Work is tracked in the
-repository's issues.
-
-## Contributing
-
-Contributions are welcome: code, catalogue entries, documentation, translations of
-the catalogue. Start with [CONTRIBUTING.md](CONTRIBUTING.md). Please report security
-problems privately as described in [SECURITY.md](SECURITY.md).
-
-```bash
-pnpm install
-pnpm dev        # API on :8080, web app on :5173
-pnpm test       # server and web unit tests
-```
-
-## Licence and attribution
-
-Outpost is released under the [MIT Licence](LICENSE).
-
-It stands on other people's work:
-
-- **[Kiwix](https://kiwix.org)** and **openZIM** publish the ZIM archives and
-  kiwix-serve (GPL-3.0), which Outpost runs as a separate program.
-- **Map data © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors**
-  (ODbL), packaged by **[Protomaps](https://protomaps.com)**. Terrain from
-  **[Mapterhorn](https://mapterhorn.com/attribution)**. Place names from
-  **[GeoNames](https://www.geonames.org)** (CC BY 4.0). World outline from
-  **Natural Earth** (public domain).
-- **[MapLibre GL JS](https://maplibre.org)**, **[Tiptap](https://tiptap.dev)**,
-  **[PDF.js](https://mozilla.github.io/pdf.js/)**, **[Mermaid](https://mermaid.js.org)**
-  (MIT), and the libraries listed in the package manifests.
-- Typefaces: **Atkinson Hyperlegible** (Braille Institute) and **Literata**
-  (TypeTogether), both under the SIL Open Font Licence.
-
-The projects that showed the way: Internet-in-a-Box, PrepperPi, Offgrid Pi,
-Paperless-ngx and Organic Maps. No code was taken from them.
-
-Every downloadable collection has its own licence, shown in the app. Outpost does not
-bundle or redistribute any of them. The reference sheets that ship with Outpost are
-the project's own compilations of facts from official sources, under its MIT licence.
-The handbook and radio guides that ship with it were written by the same author for
-LogBook73 and are included under that project's MIT licence.

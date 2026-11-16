@@ -1183,6 +1183,10 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   others can use.
 #### Tidy-ups
 
+- The README lists every feature with its docs page, the ways to install, what needs a
+  download first, and the limits; its pictures are made again from demonstration data by
+  `e2e/readme/screenshots.spec.ts` (`readme-screenshots.config.ts`), and
+  `scripts/check-readme-links.mjs` checks its relative links and anchors.
 - A model's reply stops at the piece where its reader stopped, even when several pieces
   arrived in one read.
 - A file that did not decrypt no longer leaves the Encryption screen showing it being
