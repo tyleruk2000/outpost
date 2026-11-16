@@ -262,18 +262,32 @@ that address in the note's link field; the plan's page shows it.
 Weather and hazards fetches PVGIS's monthly figures for one of its places when a person
 presses "Fetch the averages for this place" there ([weather.md](weather.md)): twelve
 numbers in kWh/m² a day, one series for a panel facing south at the tilt PVGIS found
-best over the year and one for level ground. A plan's solar section reads what is kept
-(`kept[kind="solar"]` of `GET /api/weather`) and:
+best over the year and one for level ground. A plan's solar section lets the person
+choose **where the panels are** and uses the figures for that place:
 
-- where none has been fetched, says that they can be fetched on Weather and hazards,
-  with a link;
-- where some have, offers **Fill in from Weather and hazards**, with a choice of place
-  when there are several (home first) and of the two series, and says whose figures
-  they are, for which place and position, over which years and from which database,
-  and how long ago they were fetched. Panels at another angle or facing another way get
-  a different figure, and shading is not counted: the screen says so.
+- The choice lists every place on Weather and hazards (those with sun figures first,
+  home first among them, each saying whether figures are held), then the saved places
+  from Maps that are not in that list yet, then **Somewhere else**, where a position is
+  typed as coordinates, a grid reference or a locator.
+- Where figures are held for the place, it offers **Fill in from Weather and hazards**,
+  with a choice of the two series, and says whose figures they are, for which place
+  and position, over which years and from which database, and how long ago they were
+  fetched. Panels at another angle or facing another way get a different figure, and
+  shading is not counted: the screen says so.
+- Where none are held, it offers **Fetch sun hours for** the place. Before the press it
+  says who is asked (PVGIS, the European Commission's Joint Research Centre, at
+  `re.jrc.ec.europa.eu`), that only the place's latitude and longitude rounded to two
+  decimal places are sent, that the answer is a few kilobytes and is kept, and that the
+  place joins the list on Weather and hazards. The press adds the place to that list if
+  it is not there (`POST /api/weather/places`) and asks for its sun figures alone
+  (`POST /api/weather/update` with `kinds: ["solar"]` and the one place): the weather
+  module's own route, the only one that contacts a publisher, so the copy is kept,
+  counted, aged and removed there like any other. When PVGIS gives nothing (it does not
+  cover everywhere), the screen says why; the place stays in the weather list, and a
+  second press asks about it again without adding it twice.
 
-Nothing is filled in until that press. When the months hold figures the person typed
+Nothing is fetched until the fetch is pressed, and nothing is filled in until the fill
+is. When the months hold figures the person typed
 (or changed after a fill), the press asks first and replaces them only on "Replace
 them". The figures are rounded to two decimal places.
 

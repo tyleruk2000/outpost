@@ -1302,7 +1302,17 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   own-address rule can be turned off with `OUTPOST_OWN_ADDRESS_IS_LOCAL=false`, and
   Settings and Storage say which rule made them take a device for this computer.
 
-### Known limitations
+#### A power plan chooses where its panels are
+
+- A plan's solar section now has a choice of place: every place on Weather and hazards
+  (saying whether sun figures are held), saved places not in that list yet, and a
+  position typed in. Where none are held for the place, **Fetch sun hours for** it asks
+  PVGIS on a press, through the weather module's own route, after saying what is sent;
+  the place joins the weather list and the copy is kept there. Before, the plan could
+  only use figures already fetched on the other screen, and offered no choice at all
+  when one place had them.
+
+## Known limitations
 
 These are deliberate or known, and are explained in
 [docs/architecture.md](docs/architecture.md#limits-and-trade-offs).

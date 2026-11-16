@@ -19,6 +19,45 @@ test.describe("Power and batteries on a phone", () => {
     expect(errors).toEqual([]);
   });
 
+  test("sun hours are fetched for a place chosen in the plan, and go in on a press of their own", async ({ page }) => {
+    const errors = watchForErrors(page);
+    await page.goto("/tools/power");
+    await page.getByRole("button", { name: "New power plan" }).click();
+    const naming = page.getByRole("dialog", { name: "New power plan" });
+    await naming.getByLabel("Name").fill("Sun for a chosen place");
+    await naming.getByRole("button", { name: "Create plan" }).click();
+    await expect(page.getByRole("heading", { level: 1, name: "Sun for a chosen place" })).toBeVisible();
+    const planId = page.url().split("/").pop()!;
+
+    // Somewhere else: a position typed here, whatever places other tests have left.
+    await page.getByRole("combobox", { name: "Where the panels are" }).click();
+    await page.getByRole("option", { name: /Somewhere else/ }).click();
+    await page.getByLabel("Where the panels are: coordinates, a grid reference or a locator").fill("52.13, -0.46");
+    await expect(page.getByText(/sending only the place's latitude and longitude rounded to two decimal places/)).toBeVisible();
+    const fetchIt = page.getByRole("button", { name: "Fetch sun hours for 52.13, -0.46" });
+    expect((await fetchIt.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    await expect(page.getByLabel("January")).toHaveValue("");
+    await fetchIt.click();
+
+    // Fetched and kept, and still not in the plan until asked.
+    const fill = page.getByRole("button", { name: "Fill in from Weather and hazards" });
+    await expect(fill).toBeVisible();
+    await expect(page.getByLabel("January")).toHaveValue("");
+    await fill.click();
+    await expect(page.getByLabel("January")).not.toHaveValue("");
+    await expect(page.getByText(/^Peak sun hours from PVGIS/)).toBeVisible();
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(overflow).toBeLessThanOrEqual(0);
+
+    // The place joined the weather list; both are removed again.
+    const weather = (await (await page.request.get("/api/weather")).json()) as { places: Array<{ id: string; name: string }> };
+    const place = weather.places.find((each) => each.name === "Solar panels, 52.13, -0.46");
+    expect(place).toBeTruthy();
+    await page.request.delete(`/api/weather/places/${place!.id}`, { headers: { "X-Outpost-Request": "1" } });
+    await page.request.delete(`/api/power/plans/${planId}`, { headers: { "X-Outpost-Request": "1" } });
+    expect(errors).toEqual([]);
+  });
+
   test("a plan is made, given a radio picked from a list inside the dialog, kept, and written out", async ({ page }) => {
     const errors = watchForErrors(page);
     await page.goto("/tools/power");

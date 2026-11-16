@@ -130,7 +130,10 @@ Tools → Power and batteries wants peak sun hours "on the panels' plane" for Ja
 December (`PowerSolar.sunHours`). A power plan reads the `solar` copy kept here
 (`kept[].data.optimal` or `.level`) and offers "Fill in from Weather and hazards" for a
 chosen place, on a press, asking before it replaces figures typed in, and records with
-the plan whose figures they are. It fetches nothing itself. See
+the plan whose figures they are. Where no copy is held for the place chosen there (one
+of these places, a saved place, or a position typed in), the plan offers to fetch it: a
+press that adds the place to this list if need be and asks for its `solar` copy alone,
+through `POST /api/weather/update`, the same route this screen uses. See
 [tools-power.md](tools-power.md#peak-sun-hours-from-weather-and-hazards).
 
 ## Not used, and why

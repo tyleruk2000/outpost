@@ -47,11 +47,29 @@ interface Server {
   put: PowerPlanInput[];
   posted: unknown[];
   devices: unknown[];
+  /** What the plan's sun-hours control asked of the weather module, in order. */
+  weatherAsked: Array<{ path: string; body: unknown }>;
 }
 
-function show(path: string, options: { plans?: PowerPlan[] | "fails" | "never"; plan?: PowerPlan; weather?: unknown } = {}): Server {
-  const server: Server = { put: [], posted: [], devices: [] };
+function show(
+  path: string,
+  options: {
+    plans?: PowerPlan[] | "fails" | "never";
+    plan?: PowerPlan;
+    weather?: unknown;
+    /** Saved places, as the Maps screen keeps them. */
+    markers?: Array<{ id: string; name: string; lat: number; lon: number; icon: string }>;
+    /** What PVGIS says when asked: figures unless this is set. */
+    pvgisFails?: string;
+  } = {},
+): Server {
+  const server: Server = { put: [], posted: [], devices: [], weatherAsked: [] };
   let plan = options.plan ?? planOf();
+  // What Weather and hazards holds, which a fetch from the plan adds to.
+  const weather = (options.weather ?? { places: [], kept: [], sources: [], updateOnOpen: false, now: Date.now() }) as {
+    places: Array<Record<string, unknown>>;
+    kept: Array<Record<string, unknown>>;
+  };
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -84,8 +102,36 @@ function show(path: string, options: { plans?: PowerPlan[] | "fails" | "never"; 
           devices: server.devices.map((body, index) => ({ ...(body as object), id: `d${index + 1}`, createdAt: 1, updatedAt: 1 })),
         });
       if (pathname === "/api/radio/profiles") return json({ radios: [], antennas: [] });
-      if (pathname === "/api/weather")
-        return json(options.weather ?? { places: [], kept: [], sources: [], updateOnOpen: false, now: Date.now() });
+      if (pathname === "/api/maps/markers") return json({ markers: options.markers ?? [] });
+      if (pathname === "/api/weather/places" && init?.method === "POST") {
+        const body = JSON.parse(String(init.body)) as { markerId?: string; name?: string; lat?: number; lon?: number };
+        server.weatherAsked.push({ path: pathname, body });
+        const marker = options.markers?.find((each) => each.id === body.markerId);
+        const place = {
+          id: `w${weather.places.length + 9}`,
+          name: marker?.name ?? body.name,
+          lat: marker?.lat ?? body.lat,
+          lon: marker?.lon ?? body.lon,
+          markerId: body.markerId ?? null,
+          isHome: marker?.icon === "home",
+          region: null,
+          createdAt: 1,
+        };
+        weather.places.push(place);
+        return json({ place });
+      }
+      if (pathname === "/api/weather/update" && init?.method === "POST") {
+        const body = JSON.parse(String(init.body)) as { kinds: string[]; placeIds: string[] };
+        server.weatherAsked.push({ path: pathname, body });
+        const placeId = body.placeIds[0]!;
+        if (options.pvgisFails)
+          return json({
+            outcomes: [{ kind: "solar", placeId, placeName: "x", source: "pvgis", ok: false, message: options.pvgisFails, bytes: 0 }],
+          });
+        weather.kept.push({ ...solarWeather(Date.now()).kept[0]!, id: `c-${placeId}`, placeId });
+        return json({ outcomes: [{ kind: "solar", placeId, placeName: "x", source: "pvgis", ok: true, message: null, bytes: 3000 }] });
+      }
+      if (pathname === "/api/weather") return json(weather);
       return json({ error: { code: "not_found", message: "Not here." } }, 404);
     }),
   );
@@ -227,13 +273,65 @@ const solarWeather = (fetchedAt: number) => ({
   now: Date.now(),
 });
 
+const SAVED = [
+  { id: "m1", name: "Home", lat: 52.13, lon: -0.46, icon: "home" },
+  { id: "m2", name: "Allotment", lat: 52.2, lon: -0.5, icon: "pin" },
+];
+
 describe("peak sun hours from Weather and hazards", () => {
-  it("says they can be fetched there when none have been, and fetches nothing itself", async () => {
-    show("/tools/power/plans/p1");
-    expect(await screen.findByText(/None have been fetched yet/)).toBeInTheDocument();
+  it("offers a saved place when no figures are held, says what fetching sends, and fetches nothing until pressed", async () => {
+    const server = show("/tools/power/plans/p1", { markers: SAVED });
+    // Home first, though it is not in the weather list yet.
+    expect(await screen.findByRole("button", { name: "Fetch sun hours for Home" })).toBeEnabled();
+    expect(screen.getByRole("combobox", { name: "Where the panels are" })).toHaveTextContent("Home (home)");
+    expect(screen.getByText(/No sun figures are held for Home yet\. Fetching them asks PVGIS/)).toHaveTextContent(
+      /sending only the place's latitude and longitude rounded to two decimal places.*added to the list on Weather and hazards/,
+    );
     expect(screen.getByRole("link", { name: "Open Weather and hazards" })).toHaveAttribute("href", "/prepare/weather?view=climate");
-    const asked = vi.mocked(fetch).mock.calls.map(([input]) => new URL(String(input), "http://outpost.test").pathname);
-    expect(asked.every((path) => path.startsWith("/api/") && !path.includes("update"))).toBe(true);
+    expect(screen.queryByRole("button", { name: "Fill in from Weather and hazards" })).not.toBeInTheDocument();
+    expect(server.weatherAsked).toEqual([]);
+  });
+
+  it("fetches for the chosen place on a press: adds it to the weather list, asks PVGIS about it alone, then offers its figures", async () => {
+    const server = show("/tools/power/plans/p1", { markers: SAVED });
+    fireEvent.click(await screen.findByRole("button", { name: "Fetch sun hours for Home" }));
+    const fill = await screen.findByRole("button", { name: "Fill in from Weather and hazards" });
+    expect(server.weatherAsked).toEqual([
+      { path: "/api/weather/places", body: { markerId: "m1" } },
+      { path: "/api/weather/update", body: { kinds: ["solar"], placeIds: ["w9"] } },
+    ]);
+    // Nothing went into the plan by itself.
+    expect(server.put).toHaveLength(0);
+    fireEvent.click(fill);
+    await waitFor(() => expect(server.put).toHaveLength(1), { timeout: 3000 });
+    expect(server.put[0]!.solar.sunHoursSource).toMatchObject({ kind: "pvgis", place: "Home", lat: 52.13, lon: -0.46 });
+  });
+
+  it("takes a position typed in when there is no place to choose, and refuses one it cannot read", async () => {
+    const server = show("/tools/power/plans/p1");
+    const where = await screen.findByLabelText("Where the panels are: coordinates, a grid reference or a locator");
+    expect(screen.getByRole("button", { name: "Fetch sun hours for this place" })).toBeDisabled();
+    fireEvent.change(where, { target: { value: "somewhere sunny" } });
+    expect(screen.getByText(/not a position Outpost can read/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Fetch sun hours for this place" })).toBeDisabled();
+    fireEvent.change(where, { target: { value: "51.5074, -0.1278" } });
+    fireEvent.click(screen.getByRole("button", { name: "Fetch sun hours for 51.51, -0.13" }));
+    await screen.findByRole("button", { name: "Fill in from Weather and hazards" });
+    expect(server.weatherAsked[0]).toEqual({
+      path: "/api/weather/places",
+      body: { name: "Solar panels, 51.51, -0.13", lat: 51.5074, lon: -0.1278 },
+    });
+  });
+
+  it("says why when PVGIS gives nothing, and offers nothing to fill in", async () => {
+    const server = show("/tools/power/plans/p1", { markers: SAVED, pvgisFails: "PVGIS has no data for this place." });
+    fireEvent.click(await screen.findByRole("button", { name: "Fetch sun hours for Home" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("The figures were not fetched. PVGIS has no data for this place.");
+    expect(screen.queryByRole("button", { name: "Fill in from Weather and hazards" })).not.toBeInTheDocument();
+    // Pressing again asks about the place already added: it is not added twice.
+    fireEvent.click(await screen.findByRole("button", { name: "Fetch sun hours for Home" }));
+    await waitFor(() => expect(server.weatherAsked.filter((asked) => asked.path === "/api/weather/update")).toHaveLength(2));
+    expect(server.weatherAsked.filter((asked) => asked.path === "/api/weather/places")).toHaveLength(1);
   });
 
   it("fills the months on a press, says whose they are, and records it in the plan", async () => {
