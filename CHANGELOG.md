@@ -667,6 +667,18 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   feedline loss. The antenna that was "End-fed half-wave, horizontal at 6 m" is renamed
   "End-fed half-wave recut for every band, horizontal at 6 m": its length follows the
   frequency, as it always did, and everything saved with it is unchanged.
+- **A level end-fed wire longer than a half-wave has approximate figures** in place of
+  none. On those bands it is run as VOACAP's sloping long wire (ITS-78, type 41) laid
+  level at the wire's height, one file per frequency, and every figure is labelled
+  approximate: in the planner's band table (a dashed frame and ≈, as well as the shade),
+  the first line of the answer, coverage maps' legends, plans' matrices and
+  recommendations, the comparison, the contact log's comparison (counted apart) and the
+  prediction, comparison, coverage and plan PDFs and Markdown ("~" beside "n/m"). The
+  half-wave band is unchanged, and the step of about a decibel between the two models is
+  said where bands stand side by side. A wire shorter than a half-wave is still not
+  modelled. Answers kept for questions this changes are worked out again; no other key
+  changes. The comparison's PDF and Markdown no longer print a series that is not
+  modelled as noughts. See docs/hf-propagation.md.
 - **HF coverage** under Radio: the engine asked about every cell of a grid laid over
   the area the map shows, drawn as a layer over the offline map by reliability,
   signal-to-noise ratio or signal strength for any hour of the day. Every cell is one
