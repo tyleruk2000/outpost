@@ -16,10 +16,12 @@
  *
  * A person who already has a certificate for this server can have the listener use
  * that instead (`own.ts`). Its key is a secret, and most requests reach Outpost over
- * plain HTTP, where anyone on the network could read an upload. So a key is accepted by
- * upload only from the computer Outpost runs on, or over a connection that is already
- * HTTPS; anyone else is pointed at the folder, where a key arrives by the file system
- * and never crosses the network. Choosing which certificate is presented is an ordinary
+ * plain HTTP, where anyone on the network could read an upload. So a key is taken by
+ * upload without a question only from the computer Outpost runs on, or over a
+ * connection that is already HTTPS. From another device over plain http it is taken only
+ * when the request says, in a field of its own, that the person accepts the key
+ * crossing the network unencrypted; that is logged, with the address it came from. The
+ * folder remains the way in where a key never crosses the network. Choosing which certificate is presented is an ordinary
  * setting. Deleting the person's certificate and key follows the rule for deleting the
  * authority.
  *
@@ -29,7 +31,7 @@
  */
 import type { TLSSocket } from "node:tls";
 import fastifyMultipart from "@fastify/multipart";
-import type { HttpsAuthorityRight, HttpsKeyRight, HttpsStatus } from "@outpost/shared";
+import { type HttpsAuthorityRight, type HttpsKeyRight, type HttpsStatus, PLAIN_HTTP_ACCEPTED_FIELD } from "@outpost/shared";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
@@ -60,7 +62,8 @@ export async function registerHttps(app: FastifyInstance, ctx: AppContext): Prom
   }
 
   /**
-   * Whether this request may carry a private key. Not the start-up option that allows
+   * Whether this request may carry a private key without the person's statement that
+   * they accept it crossing the network in the clear. Not the start-up option that allows
    * erasing from anywhere: that option is about who may destroy something, and this is
    * about a secret crossing the network unencrypted, which no option makes safe.
    */
@@ -150,18 +153,16 @@ export async function registerHttps(app: FastifyInstance, ctx: AppContext): Prom
    * PKCS#12, the `password` field. What is in which file does not matter.
    */
   app.post("/api/https/own", async (request) => {
-    if (!keyRight(request).allowed) {
-      throw forbidden(
-        `A private key sent from this device would cross your network unencrypted, where anyone on it could copy it. Give Outpost the key at the computer it runs on, or over an address beginning https, or put the two files in ${service.status().own.folder} and press “Use them”.`,
-      );
-    }
+    const right = keyRight(request);
     if (!request.isMultipart()) throw badRequest("Send the certificate and its key as a multipart/form-data upload.");
     const files: Buffer[] = [];
     let password: string | undefined;
+    let accepted = false;
     try {
-      for await (const part of request.parts({ limits: { fileSize: MOST_FILE_BYTES, files: 3, fields: 2, fieldSize: 1024 } })) {
+      for await (const part of request.parts({ limits: { fileSize: MOST_FILE_BYTES, files: 3, fields: 3, fieldSize: 1024 } })) {
         if (part.type === "field") {
           if (part.fieldname === "password" && typeof part.value === "string") password = part.value;
+          if (part.fieldname === PLAIN_HTTP_ACCEPTED_FIELD) accepted = part.value === "yes";
           continue;
         }
         // Bounded by the size limit above, so reading it whole is safe.
@@ -173,8 +174,21 @@ export async function registerHttps(app: FastifyInstance, ctx: AppContext): Prom
       if (code === "FST_FILES_LIMIT") throw badRequest("Give at most three files: the certificate, its key, and its chain.");
       throw error;
     }
+    // Read whole before this is decided, so that the order of the fields does not matter.
+    // What is refused is not kept: it goes out of scope here.
+    if (!right.allowed && !accepted) {
+      throw forbidden(
+        `A private key sent from this device crosses your network unencrypted, where anyone on it could copy it, so Outpost takes it only when you say you accept that (the ${PLAIN_HTTP_ACCEPTED_FIELD} field). Better: turn on HTTPS and send it over an address beginning https, or put the two files in ${service.status().own.folder} on the computer Outpost runs on and press “Use them”.`,
+      );
+    }
     if (files.length === 0) throw badRequest("No file was sent. Choose the certificate and its key.");
     await service.importOwn({ files, password });
+    if (!right.allowed) {
+      // The address only: never the key, the password or the certificate.
+      ctx.log.warn(
+        `HTTPS: a private key was accepted over plain http from another device, ${request.raw.socket.remoteAddress ?? "address unknown"}, because the person said they accept that it crossed the network unencrypted.`,
+      );
+    }
     return status(request);
   });
 

@@ -6,7 +6,7 @@ import https from "node:https";
 import os from "node:os";
 import path from "node:path";
 import type { TLSSocket } from "node:tls";
-import type { HttpsStatus } from "@outpost/shared";
+import { type HttpsStatus, PLAIN_HTTP_ACCEPTED_FIELD } from "@outpost/shared";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import yauzl from "yauzl";
 import { contextual, integer, octetString, oid, sequence } from "../src/modules/https/der.ts";
@@ -497,7 +497,11 @@ function secure(
 }
 
 /** A multipart body holding the given files, and a password if there is one. */
-function form(parts: Array<string | Buffer>, password?: string): { body: Buffer; headers: Record<string, string> } {
+function form(
+  parts: Array<string | Buffer>,
+  password?: string,
+  fields: Record<string, string> = {},
+): { body: Buffer; headers: Record<string, string> } {
   const boundary = "----formboundary7MA4YWxkTrZu0gW";
   const chunks: Buffer[] = [];
   parts.forEach((part, index) => {
@@ -509,8 +513,8 @@ function form(parts: Array<string | Buffer>, password?: string): { body: Buffer;
       Buffer.from("\r\n"),
     );
   });
-  if (password !== undefined) {
-    chunks.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="password"\r\n\r\n${password}\r\n`));
+  for (const [name, value] of Object.entries(password === undefined ? fields : { password, ...fields })) {
+    chunks.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="${name}"\r\n\r\n${value}\r\n`));
   }
   chunks.push(Buffer.from(`--${boundary}--\r\n`));
   return { body: Buffer.concat(chunks), headers: { "content-type": `multipart/form-data; boundary=${boundary}` } };
@@ -525,7 +529,7 @@ interface Running {
   /** Gives Outpost files as Settings does, from the computer it runs on unless told otherwise. */
   give(
     parts: Array<string | Buffer>,
-    options?: { password?: string; from?: string },
+    options?: { password?: string; from?: string; fields?: Record<string, string> },
   ): Promise<{ status: number; body: HttpsStatus & { error: { message: string } } }>;
   /** Looks at the folder again, as the half-minute check does. */
   tick(): Promise<void>;
@@ -554,7 +558,7 @@ async function start(env: Record<string, string> = {}, existing?: string): Promi
     settle,
     status: async () => (await app.api<HttpsStatus>("GET", "/api/https")).body,
     async give(parts, options = {}) {
-      const { body, headers } = form(parts, options.password);
+      const { body, headers } = form(parts, options.password, options.fields);
       const answer = await app.api("POST", "/api/https/own", body, { headers, ...(options.from ? { remoteAddress: options.from } : {}) });
       await settle();
       return answer;
@@ -716,7 +720,7 @@ describe("HTTPS with a certificate of your own", () => {
     });
     const refused = await w.give([chainOf(mine), mine.keyPem], { from: phone });
     expect(refused.status).toBe(403);
-    expect(refused.body.error.message).toMatch(/would cross your network unencrypted/);
+    expect(refused.body.error.message).toMatch(/crosses your network unencrypted/);
     expect(refused.body.error.message).toContain(`put the two files in ${own(w.dir).replace(/\/$/, "")}`);
     // Through a proxy on this computer counts as remote too, and every change needs the app's own header.
     const { body, headers } = form([chainOf(mine), mine.keyPem]);
@@ -765,6 +769,49 @@ describe("HTTPS with a certificate of your own", () => {
       request.end(again.body);
     });
     expect(plain).toBe(403);
+  });
+
+  it("takes a key from another device over plain http when the person says they accept it crossing the network, and logs that", async () => {
+    const w = await start({ OUTPOST_LAN_ACCESS: "true" });
+    const lines: string[] = [];
+    for (const level of ["info", "warn", "error"] as const) {
+      vi.spyOn(w.app.ctx.log, level).mockImplementation((...args: unknown[]) => {
+        lines.push(args.filter((arg) => typeof arg === "string").join(" "));
+      });
+    }
+    const mine = forThisComputer();
+    // TEST-NET-1: never this computer's own address.
+    const phone = "192.0.2.50";
+    // Only the exact field and value count: no default, no near miss.
+    for (const fields of [{}, { [PLAIN_HTTP_ACCEPTED_FIELD]: "true" }, { [PLAIN_HTTP_ACCEPTED_FIELD]: "" }, { acceptKey: "yes" }]) {
+      const refused = await w.give([chainOf(mine), mine.keyPem], { from: phone, fields });
+      expect(refused.status, JSON.stringify(fields)).toBe(403);
+      expect(refused.body.error.message).toContain(PLAIN_HTTP_ACCEPTED_FIELD);
+    }
+    expect(fs.existsSync(path.join(w.dir, "data", "tls"))).toBe(false);
+
+    const taken = await w.give([chainOf(mine), mine.keyPem], { from: phone, fields: { [PLAIN_HTTP_ACCEPTED_FIELD]: "yes" } });
+    expect(taken.status).toBe(200);
+    expect(taken.body).toMatchObject({ enabled: true, source: "own", listening: true });
+    // The answer is still about this device: it is not now "allowed" to send keys without saying so.
+    expect(taken.body.own.keyRight).toEqual({ allowed: false, reason: "remote" });
+    const said = lines.join("\n");
+    expect(said).toMatch(/private key was accepted over plain http from another device, 192\.0\.2\.50/);
+    expect(said).not.toMatch(/PRIVATE KEY/);
+    expect(said).not.toContain(mine.keyPem.split("\n")[1]);
+
+    // PKCS#12 with its password, which crosses in the clear as well. (Here the fields come after the files: order does not matter.)
+    const file = fs.readFileSync(path.join(FIXTURES, "aes.p12"));
+    const twelve = await w.give([file], { from: phone, password: FIXTURE_PASSWORD, fields: { [PLAIN_HTTP_ACCEPTED_FIELD]: "yes" } });
+    expect(twelve.status).toBe(200);
+    expect(twelve.body.own.certificate?.fingerprint).toBe(FIXTURE_FINGERPRINT);
+    expect(lines.join("\n")).not.toContain(FIXTURE_PASSWORD);
+
+    // At the computer itself the field is not needed, and not logged.
+    lines.length = 0;
+    const local = await w.give([chainOf(mine), mine.keyPem]);
+    expect(local.status).toBe(200);
+    expect(lines.join("\n")).not.toMatch(/plain http/);
   });
 
   it("uses the two files a person put in the folder, from any device, and leaves them as they are", async () => {
