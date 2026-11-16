@@ -117,7 +117,7 @@ accounts: everyone who can reach Outpost can still use all of it, over either ad
 | No route serves a key | The only things read from `tls/` for a browser are public certificates: the authority's (`GET /api/https/outpost-authority.crt`, `.pem`) and, for a certificate the person brought, the root it chains to when they gave it (`GET /api/https/own-root.crt`, `.pem`). Tests ask for the keys by a list of guessed addresses over both listeners, and check the backup archive. | `modules/https/index.ts`, `apps/server/test/https.test.ts`, `https-own.test.ts` |
 | Certificates are checked before use | Outpost lays certificates out itself (Node cannot write one) and has Node sign them. Each one is then read back by Node and its signature, issuer and kind verified before it is saved or served. | `certificates.ts` |
 | A certificate of the person's own | The listener can present a certificate and key the person brought instead of one from Outpost's authority (`https.certificate` is `own`). They live in `tls/own/` as `fullchain.pem` and `privkey.pem`: written at `0600` in a `0700` folder when given in Settings, left with the person's own permissions when put there by hand (a key other accounts can read is reported, not changed). The key is kept unencrypted, for the same reason as Outpost's own; it is never served, never logged, and not in a backup or on a portable drive. Outpost never writes through a symbolic link in that folder. | `modules/https/store.ts`, `own.ts` |
-| Who may hand over a key | Choosing which certificate is presented, and taking up files already in the folder, are open to every device: no secret moves, and either can be put back. **Uploading a key** is accepted only when the request is local (`isLocalRequest`) or itself arrived over the HTTPS listener (`socket.encrypted`); from anywhere else it would cross the network in the clear, and is refused with the reason and the folder to use instead. `OUTPOST_ALLOW_REMOTE_ERASE` does not widen this: no option makes plain HTTP private. A password for a PKCS#12 file travels in the same request, is used once and is not stored. **Deleting** the person's certificate and key follows the rule for deleting the authority, since HTTPS could not then be put back from another device. | `keyRight` in `modules/https/index.ts` |
+| Who may hand over a key | Choosing which certificate is presented, and taking up files already in the folder, are open to every device: no secret moves, and either can be put back. **Uploading a key** is accepted without a question when the request is local (`isLocalRequest`, which includes a browser on the computer at the computer's own network address: that connection never leaves the computer) or itself arrived over the HTTPS listener (`socket.encrypted`). From another device over plain http the key crosses the network in the clear; that is the owner's call to make, so it is accepted only when the request carries `acceptKeyOverPlainHttp=yes`, which Settings sends only after the person has read what it gives away (anyone listening could copy the key, and with it pass off another server as this Outpost to devices that trust the certificate) and ticked a box saying they accept it. There is no default: a missing field, or any other value, is refused with the reason, the folder, and HTTPS as the better ways. An accepted one is logged with the address it came from, never the key. `OUTPOST_ALLOW_REMOTE_ERASE` does not widen or narrow this. A password for a PKCS#12 file travels in the same request, in the clear in the same way (Settings says so), is used once and is not stored. **Deleting** the person's certificate and key follows the rule for deleting the authority, since HTTPS could not then be put back from another device. | `keyRight` in `modules/https/index.ts` |
 | What is checked before it is used | The key belongs to the certificate; the chain is put in order; dates; names (a subject alternative name is required); key kind and size; signature hash; purpose; and Node is asked to build a TLS context from it. What cannot work is refused and nothing of it is kept. | `inspectOwn` in `modules/https/own.ts` |
 | Outpost never changes certificate by itself | A certificate of the person's own that expires goes on being served, and one whose files become unusable is replaced by nothing (the pair read before is served until a restart; after one, HTTPS does not start). Outpost does not fall back to its own authority: that would present an identity the person's devices were never told to trust, and would make a certificate authority nobody asked for. Plain HTTP is unaffected throughout. | `sync`, `takeUpOwn` in `modules/https/service.ts` |
 | Who may do what | Turning HTTPS on or off and listing another name are ordinary settings, open to every device: neither breaks anything that cannot be put back. Replacing or deleting the authority stops every device that trusted it from trusting Outpost, so those two are accepted only from the computer Outpost runs on, on the same terms as [erasing everything](#erasing-everything), including the `OUTPOST_ALLOW_REMOTE_ERASE` option. An authority that cannot be read is reported, never silently replaced. | `authorityRight` in `modules/https/index.ts`, `core/local.ts` |
@@ -1114,7 +1114,12 @@ Outpost has no accounts to ask "who is this?". It asks "where from?" instead:
 - The request must come from **the computer Outpost runs on**. It counts as local when
   it did not come through a proxy and either nothing but this computer can reach
   Outpost at all (LAN access is off) or the connection itself comes from a loopback
-  address (`127.0.0.0/8`, `::1`).
+  address (`127.0.0.0/8`, `::1`) or, outside a container, from one of this computer's
+  own network addresses (so a browser on the computer opening
+  `http://192.168.1.20:8080` counts, as it should). The addresses are read from the
+  operating system at most every five seconds; link-local ones (`fe80::/10`,
+  `169.254.0.0/16`) are never counted. Why that is sound, and where it is not, is
+  below.
 - A request carrying `Forwarded`, `X-Forwarded-For`, `X-Forwarded-Host` or `X-Real-IP`
   is treated as remote. A reverse proxy on the same computer makes every visitor look
   local, and these headers are how a proxy says it is one.
@@ -1127,13 +1132,47 @@ Outpost has no accounts to ask "who is this?". It asks "where from?" instead:
 
 Code: `apps/server/src/core/local.ts`, `apps/server/src/modules/manage/index.ts`.
 
+**Why a connection from this computer's own address can be believed.** No other device
+can complete a TCP connection whose source is this computer's address. The server's
+reply to the opening SYN is addressed to that source, so the operating system delivers
+it to itself and never sends it towards whoever forged the packet; without it, the
+forger cannot learn the sequence number every later packet must acknowledge (operating
+systems choose it at random, RFC 6528). That holds wherever replies to a local address
+are delivered locally, which is how IP stacks route. Linux also drops an arriving packet
+whose source is one of its own addresses, unless `accept_local` is set (off by default,
+in the kernel's `ip-sysctl` documentation). For macOS no documentation of such a drop was
+found, so the rule rests on the TCP argument alone there. Where it does not hold, and
+what is done:
+
+- **A relay on the same computer** (a reverse proxy, tunnel or port forwarder) that
+  connects to Outpost at the network address and adds no forwarding header makes every
+  visitor look local. That was already so for one connecting to loopback; the answer is
+  the same: it must send `X-Forwarded-For`.
+- **In a container** the rule is not used. The container's own addresses are not the
+  computer's, and connections reach it through Docker's port publishing, or through
+  Docker's user-land proxy (`--userland-proxy`, on by default, for loopback traffic),
+  which connects from the bridge's gateway. The gateway is not among the container's
+  own addresses, but Docker's documentation does not say what source address a
+  container sees for a published port (the port-publishing and `dockerd` pages were
+  read for this), so nothing is assumed: in a container only loopback, and LAN access
+  off, count, as before. A test checks that the gateway (`172.18.0.1` beside a
+  container at `172.18.0.2`) is never taken as local.
+- **Link-local addresses** are unique only on one link, and some are shared on
+  purpose: macOS gives its loopback interface `fe80::1`, which is also what many home
+  routers use. They are never counted.
+
+Because a connection to the computer's own address does not leave the computer, a key
+or passphrase sent over it is not exposed on the network either, so the same rule
+serves the HTTPS key upload and the backup passphrase.
+
 What this does not do:
 
 - **It is not authentication.** Any program on the computer, and anyone at its
   keyboard, can erase. It stops a phone or a guest's laptop on the home network from
   doing so, which is the case it is for.
 - **In Docker with LAN access on**, every connection reaches Outpost from Docker's own
-  network, so nothing looks local and erasing needs `OUTPOST_ALLOW_REMOTE_ERASE=true`.
+  network, so nothing looks local (the computer's own network address included) and
+  erasing needs `OUTPOST_ALLOW_REMOTE_ERASE=true`.
   With the Compose defaults (the port published on `127.0.0.1`, LAN access off) only
   this computer can connect at all, and erasing is offered.
 - **A reverse proxy that adds no forwarding header** makes every visitor look local.

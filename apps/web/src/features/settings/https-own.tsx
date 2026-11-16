@@ -8,15 +8,16 @@
  * Outpost found in it, how long it has left, what it does not cover, and who has to
  * trust what.
  */
-import type { HttpsOwnCertificate, HttpsStatus } from "@outpost/shared";
+import { type HttpsOwnCertificate, type HttpsStatus, PLAIN_HTTP_ACCEPTED_FIELD } from "@outpost/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ChevronRight, CircleAlert, FileUp, MonitorSmartphone } from "lucide-react";
+import { ChevronRight, CircleAlert, FileUp } from "lucide-react";
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/misc";
 import { api, errorMessage } from "@/lib/api";
 import { formatDate, plural } from "@/lib/utils";
 import { guessDevice, TrustSteps } from "./https-steps";
@@ -133,22 +134,79 @@ function FilePick({
 }
 
 /**
- * Choosing the files in the browser. Offered only where the key would not cross the
- * network in the clear; the server holds to the same rule whatever this screen shows.
+ * The better ways to give a key from a device on plain http, which this section can
+ * offer: `open`, the address of this page over HTTPS; `turnOn`, turning HTTPS on.
  */
-function GiveFiles({ data, onDone }: { data: HttpsStatus; onDone?: () => void }) {
+export interface SecureWay {
+  open: string | null;
+  turnOn: (() => void) | null;
+}
+
+/**
+ * What a person on another device over plain http is told before choosing any file:
+ * what sending the key from here gives away, and the two ways that do not.
+ */
+function PlainHttpWarning({ data, secure }: { data: HttpsStatus; secure: SecureWay }) {
+  return (
+    <Notice tone="warning" icon={<CircleAlert aria-hidden />} title="This page is open over plain http">
+      <p>
+        Sent from here, the private key crosses your network unencrypted, and so does the password of a .pfx or .p12 file. Anyone able to
+        listen on this network could copy the key, and with it later pass off another server as this Outpost to every device that trusts the
+        certificate.
+      </p>
+      <p className="mt-2">Two ways keep it private:</p>
+      <ul className="mt-1 grid list-disc gap-1 pl-5">
+        <li>
+          {secure.open ? (
+            <>
+              <a href={secure.open} className="text-primary underline underline-offset-2">
+                Open this page over HTTPS
+              </a>{" "}
+              and choose the files there.
+            </>
+          ) : secure.turnOn ? (
+            <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+              <Button size="sm" onClick={secure.turnOn}>
+                Turn on HTTPS
+              </Button>
+              then open this page at its https address and choose the files there.
+            </span>
+          ) : (
+            "Open this page at an address beginning https and choose the files there."
+          )}
+        </li>
+        <li>
+          Put the two files in <span className={mono}>{data.own.folder}</span> on the computer Outpost runs on, as described below.
+        </li>
+      </ul>
+    </Notice>
+  );
+}
+
+/**
+ * Choosing the files in the browser. From the computer Outpost runs on, or over HTTPS,
+ * the key does not cross the network in the clear and nothing is asked. From another
+ * device over plain http it does, so the person is told what that gives away and has
+ * to say they accept it before the files can be sent; the server holds to the same
+ * rule whatever this screen shows.
+ */
+function GiveFiles({ data, secure, onDone }: { data: HttpsStatus; secure: SecureWay; onDone?: () => void }) {
   const taken = useTaken();
   const [certificate, setCertificate] = useState<File | null>(null);
   const [key, setKey] = useState<File | null>(null);
   const [chain, setChain] = useState<File | null>(null);
   const [password, setPassword] = useState("");
+  const [accepted, setAccepted] = useState(false);
   const passwordId = useId();
+  const acceptId = useId();
   // One file that holds everything, behind a password.
   const container = /\.(pfx|p12)$/i.test(certificate?.name ?? "");
+  const overPlainHttp = !data.own.keyRight.allowed;
 
   const give = useMutation({
     mutationFn: () => {
       const form = new FormData();
+      if (overPlainHttp && accepted) form.append(PLAIN_HTTP_ACCEPTED_FIELD, "yes");
       if (certificate) form.append("certificate", certificate);
       if (key && !container) form.append("key", key);
       if (chain && !container) form.append("chain", chain);
@@ -161,22 +219,11 @@ function GiveFiles({ data, onDone }: { data: HttpsStatus; onDone?: () => void })
       setKey(null);
       setChain(null);
       setPassword("");
+      setAccepted(false);
       toast.message("HTTPS is using your certificate.");
       onDone?.();
     },
   });
-
-  if (!data.own.keyRight.allowed) {
-    return (
-      <Notice tone="info" icon={<MonitorSmartphone aria-hidden />} title="Choosing the files here is not offered on this device">
-        <p>
-          This page is open over plain http, so a private key sent from here would cross your network unencrypted, where anyone on it could
-          copy it. Open this page at the computer Outpost runs on, or at an address beginning https, or put the files in the folder below:
-          that way the key never crosses the network.
-        </p>
-      </Notice>
-    );
-  }
 
   return (
     <form
@@ -186,6 +233,26 @@ function GiveFiles({ data, onDone }: { data: HttpsStatus; onDone?: () => void })
         give.mutate();
       }}
     >
+      {overPlainHttp ? (
+        <>
+          <PlainHttpWarning data={data} secure={secure} />
+          <div className="flex min-h-11 items-start gap-3">
+            <Checkbox
+              id={acceptId}
+              checked={accepted}
+              onCheckedChange={(checked) => {
+                setAccepted(checked === true);
+                give.reset();
+              }}
+              className="mt-[13px]"
+            />
+            <label htmlFor={acceptId} className="min-w-0 flex-1 py-3 text-small text-ink">
+              I accept that my private key, and the password of its file if it has one, will cross my network unencrypted, where anyone
+              listening could copy them.
+            </label>
+          </div>
+        </>
+      ) : null}
       <FilePick
         label="Certificate file"
         hint="PEM, usually fullchain.pem or a .crt or .cer file: the server’s certificate, with its chain after it if you have that. Or one .pfx or .p12 file, which holds the key as well."
@@ -245,14 +312,16 @@ function GiveFiles({ data, onDone }: { data: HttpsStatus; onDone?: () => void })
         </Notice>
       ) : null}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <Button type="submit" variant="primary" disabled={!certificate} loading={give.isPending}>
+        <Button type="submit" variant="primary" disabled={!certificate || (overPlainHttp && !accepted)} loading={give.isPending}>
           Use this certificate
         </Button>
         <p className="min-w-48 flex-1 text-small text-ink-muted">
           Outpost checks it first and keeps nothing it cannot use.{" "}
           {data.own.keyRight.reason === "https"
             ? "Offered here because this page is open over HTTPS."
-            : "Offered here because you are at the computer Outpost runs on."}
+            : data.own.keyRight.reason === "local"
+              ? "Offered here because you are at the computer Outpost runs on."
+              : "Sent over plain http only once you have ticked the box above."}
         </p>
       </div>
     </form>
@@ -314,12 +383,12 @@ function FromFolder({ data, refresh }: { data: HttpsStatus; refresh: () => void 
   );
 }
 
-function WaysIn({ data, refresh, onDone }: { data: HttpsStatus; refresh: () => void; onDone?: () => void }) {
+function WaysIn({ data, secure, refresh, onDone }: { data: HttpsStatus; secure: SecureWay; refresh: () => void; onDone?: () => void }) {
   return (
     <div className="grid gap-6">
       <div className="grid gap-3">
         <h4 className="text-small font-medium text-ink">Choose the files here</h4>
-        <GiveFiles data={data} onDone={onDone} />
+        <GiveFiles data={data} secure={secure} onDone={onDone} />
       </div>
       <div className="grid gap-3">
         <h4 className="text-small font-medium text-ink">Or put the files in a folder on the server</h4>
@@ -333,7 +402,7 @@ function WaysIn({ data, refresh, onDone }: { data: HttpsStatus; refresh: () => v
  * The way in, for a server still on Outpost's own certificate (or with HTTPS off). One
  * closed line: a person who wants the simple case reads no further.
  */
-export function OwnCertificateChoice({ data, refresh }: { data: HttpsStatus; refresh: () => void }) {
+export function OwnCertificateChoice({ data, secure, refresh }: { data: HttpsStatus; secure: SecureWay; refresh: () => void }) {
   return (
     <details className="group border-t border-border pt-3">
       <summary className="flex min-h-11 cursor-default items-center gap-2 py-2 text-small font-medium text-ink marker:content-none hover:text-primary [&::-webkit-details-marker]:hidden">
@@ -346,7 +415,7 @@ export function OwnCertificateChoice({ data, refresh }: { data: HttpsStatus; ref
           organisation run, or from a tool such as mkcert. HTTPS then presents that certificate in place of Outpost’s own. Outpost’s
           certificate authority is kept as it is, and going back to it is one press. Most people do not need this.
         </p>
-        <WaysIn data={data} refresh={refresh} />
+        <WaysIn data={data} secure={secure} refresh={refresh} />
       </div>
     </details>
   );
@@ -429,11 +498,13 @@ export function OwnCertificateInUse({
   data,
   disabled,
   address,
+  secure,
   refresh,
   goBack,
 }: {
   data: HttpsStatus;
   disabled: boolean;
+  secure: SecureWay;
   /** An https address of this server, for the commands in the steps. */
   address: string;
   refresh: () => void;
@@ -562,7 +633,7 @@ export function OwnCertificateInUse({
         </div>
         {replacing || (!certificate && data.enabled) ? (
           <div className="pt-2">
-            <WaysIn data={data} refresh={refresh} onDone={() => setReplacing(false)} />
+            <WaysIn data={data} secure={secure} refresh={refresh} onDone={() => setReplacing(false)} />
           </div>
         ) : null}
       </div>
