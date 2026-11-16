@@ -80,6 +80,7 @@ test.describe("on a phone", () => {
       ["Downloads", "/downloads"],
       ["Storage", "/storage"],
       ["Manage and clean up", "/storage/manage"],
+      ["Bring back from a drive", "/storage/merge"],
       ["Settings", "/settings"],
     ];
     await bar.getByRole("button", { name: "More" }).click();
