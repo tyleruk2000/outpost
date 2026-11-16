@@ -81,6 +81,12 @@ export const IMAGERY_FETCHER = "imagery-build";
 const SENTINEL_BYTES_PER_TILE = 5_500;
 /** Milliseconds to make one tile on the computer this was measured on; four times it for a small computer. */
 const MS_PER_TILE = 15;
+/**
+ * The same for an aerial photograph, whose tiles are read from finer pixels and often
+ * from WebP: a square kilometre of Christchurch (512 tiles) took 60 seconds from start
+ * to installed on 16 November 2026, fetching included; this is that, rounded up.
+ */
+const AERIAL_MS_PER_TILE = 120;
 /** How long a search's results can be chosen from before searching again. */
 const SEARCH_TTL_MS = 60 * 60_000;
 
@@ -669,7 +675,7 @@ export function createImageryService(ctx: AppContext, deps: ImageryDeps): Imager
     const plan = await planAerialArea(source, choice, bbox, signal);
     const transferBytes = plan.tileBytes + plan.headerBytes;
     const estimatedSizeBytes = Math.round(plan.outputTiles * source.bytesPerTile * (choice.coveragePercent / 100));
-    const build = (plan.outputTiles * MS_PER_TILE) / 1000;
+    const build = (plan.outputTiles * AERIAL_MS_PER_TILE) / 1000;
     const seconds = {
       low: Math.round(transferBytes / (50e6 / 8) + build),
       high: Math.round(transferBytes / (10e6 / 8) + build * 4),

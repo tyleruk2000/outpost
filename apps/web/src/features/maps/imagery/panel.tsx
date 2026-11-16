@@ -427,7 +427,7 @@ export function ImageryArea({
   const header = (
     <div className="flex items-center gap-1 border-b border-border px-2 py-1.5">
       <Button variant="ghost" size="sm" onClick={back}>
-        <ArrowLeft /> {step === "confirm" ? "Choose another day" : step === "date" ? "Change the area" : "Offline maps"}
+        <ArrowLeft /> {step === "confirm" ? "Choose another picture" : step === "date" ? "Change the area" : "Offline maps"}
       </Button>
     </div>
   );
@@ -561,7 +561,7 @@ export function ImageryArea({
                     ? {
                         value: option.key,
                         title: `Aerial photograph, ${length(option.resolutionMeters)}`,
-                        detail: `Flown ${option.dateText}${option.licensor ? `, ${option.licensor}` : ""}${option.coveragePercent < 99 ? `; covers ${option.coveragePercent}% of the area` : ""}`,
+                        detail: `${option.title ? `${option.title}, flown` : "Flown"} ${option.dateText}${option.coveragePercent < 99 ? `; covers ${option.coveragePercent}% of the area` : ""}`,
                         trailing: SHORT_NAMES[option.source] ?? option.source,
                       }
                     : {

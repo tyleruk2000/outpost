@@ -131,12 +131,15 @@ export const AREA_LIMITS = { noticeKm2: 400, warnKm2: 2_500, maxKm2: 10_000 };
  * photograph of one square kilometre is more data than 10 m of a hundred. Above
  * `noticeBytes` the figures are spelled out; above `warnBytes` or `warnTiles` the person
  * must tick that they have read it; above `maxBytes` or `maxTiles` it is refused (a town
- * centre, not a county). See docs/maps.md, "Aerial photographs".
+ * centre, not a county). Measured: a square kilometre of Christchurch at 7.5 cm is 512
+ * tiles, 11.8 MB to fetch and 4.6 MB kept; 0.3 km² of NAIP at 30 cm, 19.8 MB to fetch.
+ * So 10,000 tiles is about 20 km², and 40,000 about 80 km². See docs/maps.md,
+ * "Aerial photographs".
  */
 export const AERIAL_LIMITS = {
   noticeBytes: 50_000_000,
-  warnBytes: 400_000_000,
-  maxBytes: 2_000_000_000,
-  warnTiles: 15_000,
-  maxTiles: 60_000,
+  warnBytes: 300_000_000,
+  maxBytes: 1_500_000_000,
+  warnTiles: 10_000,
+  maxTiles: 40_000,
 };

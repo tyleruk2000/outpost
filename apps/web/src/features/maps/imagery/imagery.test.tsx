@@ -372,7 +372,7 @@ describe("an aerial photograph of an area", () => {
     await userEvent.type(screen.getByRole("textbox", { name: "Name for this area" }), "Cathedral Square");
     await userEvent.click(screen.getByRole("button", { name: "Find pictures" }));
     const choice = await screen.findByRole("radio", { name: /Aerial photograph, 7.5 cm/ });
-    expect(screen.getByText("Flown January to April 2023, Environment Canterbury")).toBeInTheDocument();
+    expect(screen.getByText("Christchurch 0.075m Urban Aerial Photos (2023), flown January to April 2023")).toBeInTheDocument();
     expect(screen.getByText("Nothing else to say.")).toBeInTheDocument();
     await userEvent.click(choice);
     await userEvent.click(screen.getByRole("button", { name: "Continue" }));

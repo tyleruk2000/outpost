@@ -73,7 +73,11 @@ export interface AerialSourceDef {
   /** Shallowest zoom made, and the deepest any area may have (see docs/maps.md, "Aerial photographs"). */
   minZoom: number;
   maxZoomCeiling: number;
-  /** Bytes a stored tile takes, from a measured build, for the size shown before fetching. */
+  /**
+   * Bytes a stored tile position takes, for the size shown before fetching: real builds
+   * on 16 November 2026 came to 9.0 kB (1 km² of Christchurch, LINZ 7.5 cm), 7.7 kB
+   * (0.3 km² of Boulder, NAIP 30 cm) and 5.5 kB (0.1 km² of Christchurch); rounded up.
+   */
   bytesPerTile: number;
   zeroIsNoData: boolean;
   /** Bytes read first from each file for its directory. */
@@ -326,7 +330,7 @@ export const LINZ: AerialSourceDef = {
   fileHosts: (endpoints) => [hostOf(endpoints.linzBase ?? LINZ_BASE)],
   minZoom: 10,
   maxZoomCeiling: 19,
-  bytesPerTile: 24_000,
+  bytesPerTile: 10_000,
   zeroIsNoData: false,
   // A file is one tile of the sheet grid, a few megabytes; its directory is well under 32 kB.
   headerBytes: 32_768,
@@ -497,7 +501,7 @@ export const NAIP: AerialSourceDef = {
   fileHosts: (endpoints) => [endpoints.naipHost ?? NAIP_HOST],
   minZoom: 10,
   maxZoomCeiling: 19,
-  bytesPerTile: 24_000,
+  bytesPerTile: 10_000,
   // The corners of each file, outside its quarter of a map sheet, are black.
   zeroIsNoData: true,
   // A file is a quarter of a 7.5-minute map sheet, up to 2 GB; its directory is BigTIFF and longer.

@@ -60,7 +60,7 @@ test.describe("an aerial photograph", () => {
 
     const photo = page.getByRole("radio", { name: /Aerial photograph, 2 m/ });
     await expect(photo).toBeVisible({ timeout: 20_000 });
-    await expect(page.getByText("Flown January to April 2023, Stand-in City Council")).toBeVisible();
+    await expect(page.getByText("Christchurch 2m Urban Aerial Photos (2023), flown January to April 2023")).toBeVisible();
     await photo.click();
     await page.getByRole("button", { name: "Continue" }).click();
 
