@@ -77,7 +77,7 @@ test.describe("Supplies on a phone", () => {
     // One adult for seven days: 2,500 kcal and 3 litres a day.
     await page.getByRole("tab", { name: "Household" }).tap();
     await page.getByRole("button", { name: "Add a person" }).tap();
-    await page.getByRole("radio", { name: "Male" }).tap();
+    await page.getByRole("radio", { name: "Male", exact: true }).tap();
     await page.getByLabel("Days wanted", { exact: true }).fill("7");
     await page.getByRole("button", { name: "Save household" }).tap();
     await expect(page.getByText("Household saved.", { exact: false })).toBeVisible();
@@ -102,7 +102,7 @@ test.describe("Supplies on a phone", () => {
     await expect(dialog).toBeHidden();
     await expect(page.getByText("8 bottles of Bottled water")).toBeHidden();
     await page.getByRole("tab", { name: "Stock" }).tap();
-    await expect(page.getByRole("listitem").filter({ hasText: "8 bottles · Best before 1 May 2028" })).toBeVisible();
+    await expect(page.getByRole("listitem").filter({ hasText: /8 bottles · .*Best before 1 May 2028/ })).toBeVisible();
 
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(overflow).toBeLessThanOrEqual(0);
@@ -142,7 +142,7 @@ test.describe("Supplies on a phone", () => {
     const scanner = page.getByRole("dialog", { name: "Scan a barcode" });
     await scanner.getByLabel("Barcode number", { exact: true }).fill("5012345678900");
     await scanner.getByLabel("Barcode number", { exact: true }).press("Enter");
-    await expect(scanner.getByText("In your supplies")).toBeVisible();
+    await expect(scanner.getByRole("heading", { name: "In your supplies" })).toBeVisible();
     await scanner.getByRole("button", { name: "Use one tin of Chopped tomatoes" }).tap();
     await expect(scanner.getByRole("listitem").filter({ hasText: "3 tins" })).toBeVisible();
 

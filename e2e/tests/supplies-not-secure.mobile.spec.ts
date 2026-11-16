@@ -6,7 +6,7 @@
  * Chromium, as the "not-secure" projects in playwright.config.ts do.
  */
 import { failing, NOT_SECURE_HOST } from "./every-screen";
-import { api, expect, test, watchForErrors } from "./fixtures";
+import { expect, test, watchForErrors } from "./fixtures";
 
 const port = Number(process.env.OUTPOST_E2E_PORT ?? 8471);
 test.use({
@@ -38,8 +38,17 @@ test("the scanner at a plain http address says the camera is not available, and 
   await expect(form).toBeHidden();
 
   // Known from then on, with nothing looked up anywhere else (the suite fails on any request off this server).
-  const { items } = await api(page, "GET", "/api/supplies/barcodes/96385074");
-  expect(items.map((item: { name: string }) => item.name)).toEqual(["Tealights"]);
-  for (const item of items as Array<{ id: string }>) await api(page, "DELETE", `/api/supplies/items/${item.id}`);
+  // Asked from the page: the test's own HTTP client cannot resolve the made-up name.
+  const items = await page.evaluate(async () => {
+    const response = await fetch("/api/supplies/barcodes/96385074");
+    return ((await response.json()) as { items: Array<{ id: string; name: string }> }).items;
+  });
+  expect(items.map((item) => item.name)).toEqual(["Tealights"]);
+  await page.evaluate(
+    async (ids) => {
+      for (const id of ids) await fetch(`/api/supplies/items/${id}`, { method: "DELETE", headers: { "X-Outpost-Request": "1" } });
+    },
+    items.map((item) => item.id),
+  );
   expect(failing(errors)).toEqual([]);
 });

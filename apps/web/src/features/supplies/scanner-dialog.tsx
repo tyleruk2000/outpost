@@ -10,7 +10,7 @@
  * Nothing is looked up on the internet: a barcode the supplies do not know is a new
  * item whose name the person types, and it is known from then on.
  */
-import type { BarcodeLookup, SupplyItemInput } from "@outpost/shared";
+import type { BarcodeLookup, SupplyItem, SupplyItemInput } from "@outpost/shared";
 import { localDay } from "@outpost/shared";
 import { Camera, CameraOff, ImageUp, ScanBarcode, Search } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -22,7 +22,7 @@ import { Field, Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/misc";
 import { errorMessage } from "@/lib/api";
 import { cameraState, formatWords, readPhoto, scanCamera } from "./barcode/camera";
-import { lookupBarcode, useUpdateItem } from "./data";
+import { lookupBarcode, useSupplies, useUpdateItem } from "./data";
 import { Adjuster, ItemFacts, itemPath } from "./stock-view";
 
 const link = "text-primary underline decoration-1 underline-offset-[0.2em] hover:decoration-2";
@@ -43,6 +43,9 @@ export function ScannerDialog({ onClose, onNew }: { onClose: () => void; onNew: 
   const scanning = useRef<AbortController | null>(null);
   const camera = cameraState();
   const used = useUpdateItem();
+  // The rows found are shown as the stock has them now, so that plus and minus here change the number at once.
+  const stock = useSupplies();
+  const live = (row: SupplyItem) => stock.data?.items.find((entry) => entry.id === row.id) ?? row;
 
   useEffect(() => () => scanning.current?.abort(), []);
 
@@ -176,7 +179,7 @@ export function ScannerDialog({ onClose, onNew }: { onClose: () => void; onNew: 
                 <>
                   <h3 className="text-lead font-semibold text-ink">In your supplies</h3>
                   <ul className="divide-y divide-border border-y border-border">
-                    {found.lookup.items.map((item) => (
+                    {found.lookup.items.map(live).map((item) => (
                       <li key={item.id} className="flex items-center gap-3 py-2.5">
                         <div className="min-w-0 flex-1">
                           <Link to={itemPath(item.id)} className="text-body font-medium text-ink hover:text-primary" onClick={onClose}>
