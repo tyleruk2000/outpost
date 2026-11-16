@@ -1,0 +1,8 @@
+Location,Name,Frequency,Duplex,Offset,Tone,rToneFreq,cToneFreq,DtcsCode,DtcsPolarity,RxDtcsCode,CrossMode,Mode,TStep,Skip,Power,Comment,URCALL,RPT1CALL,RPT2CALL,DVCODE
+1,QZ3AB,145.662500,-,0.600000,Tone,94.8,88.5,023,NN,023,Tone->Tone,FM,12.50,,,Thornwick,,,,
+2,QZ3EF,430.875000,+,7.600000,TSQL,88.5,110.9,023,NN,023,Tone->Tone,NFM,12.50,,,Eskerdale,,,,
+3,QZ3GH,50.790000,+,0.500000,DTCS,88.5,88.5,023,NN,023,Tone->Tone,FM,10.00,,,Calderholm,,,,
+4,QZ7CD,439.462500,-,9.000000,,88.5,88.5,023,NN,023,Tone->Tone,DMR,12.50,,,Marrowby,,,,
+5,Calling,145.500000,,0.600000,,88.5,88.5,023,NN,023,Tone->Tone,FM,12.50,,,2 m FM calling,,,,
+6,QZ3UV,145.787500,split,434.600000,Tone,77.0,88.5,023,NN,023,Tone->Tone,FM,12.50,,,Cross-band,,,,
+7,Listen,145.800000,off,0.000000,,88.5,88.5,023,NN,023,Tone->Tone,FM,12.50,,,Receive only,,,,

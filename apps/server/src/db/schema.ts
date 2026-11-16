@@ -616,4 +616,83 @@ export const driveMergeActions = sqliteTable(
   (table) => [primaryKey({ columns: [table.mergeId, table.seq] }), index("drive_merge_actions_item_idx").on(table.kind, table.driveItemId)],
 );
 
+// ── Radio: repeaters ────────────────────────────────────────────────────────
+
+/**
+ * A list of repeaters brought in from a file a person chose. The file itself is not
+ * kept: its rows are in `repeaters`. `dataDate` is the day the data is from, which is
+ * what every screen shows; `mapping` is how the file's columns were read, offered again
+ * when a newer copy of the same list is brought in.
+ */
+export const repeaterLists = sqliteTable("repeater_lists", {
+  id: id(),
+  name: text("name").notNull(),
+  source: text("source").notNull().default(""),
+  sourceUrl: text("source_url"),
+  format: text("format").notNull(),
+  mapping: json<Record<string, string>>("mapping"),
+  fileName: text("file_name"),
+  dataDate: integer("data_date").notNull(),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+});
+
+/**
+ * Repeaters, from lists and entered by hand (`listId` null). Frequencies are whole
+ * hertz. `sourceKey` is what ties a row to its line in the list from one update to the
+ * next, and `sourceRow` is what the list last said: an entry the person changed
+ * (`editedAt`) or removed (`removedAt`) is recognised by them, so an update can leave it
+ * alone and still tell whether the list has moved on. A removed entry of a list stays as
+ * a row, so that the next update does not bring it back. See modules/repeaters.
+ */
+export const repeaters = sqliteTable(
+  "repeaters",
+  {
+    id: id(),
+    listId: text("list_id").references(() => repeaterLists.id, { onDelete: "cascade" }),
+    sourceKey: text("source_key"),
+    callsign: text("callsign").notNull(),
+    outputHz: integer("output_hz").notNull(),
+    inputHz: integer("input_hz"),
+    band: text("band").notNull(),
+    /** Mode ids between commas (",fm,dmr,"), so one can be found with LIKE. */
+    modes: text("modes").notNull().default(","),
+    ctcssHz: real("ctcss_hz"),
+    dcsCode: text("dcs_code"),
+    dmrColourCode: integer("dmr_colour_code"),
+    talkgroups: text("talkgroups").notNull().default(""),
+    accessNote: text("access_note").notNull().default(""),
+    channel: text("channel").notNull().default(""),
+    place: text("place").notNull().default(""),
+    region: text("region").notNull().default(""),
+    country: text("country").notNull().default(""),
+    lat: real("lat"),
+    lon: real("lon"),
+    locator: text("locator").notNull().default(""),
+    positionPrecisionM: integer("position_precision_m"),
+    antennaM: real("antenna_m"),
+    keeper: text("keeper").notNull().default(""),
+    status: text("status").notNull().default("unknown"),
+    statusText: text("status_text").notNull().default(""),
+    notes: text("notes").notNull().default(""),
+    /** Lower-case words of the callsign, place, region, keeper, channel and locator, for finding by typing. */
+    searchText: text("search_text").notNull().default(""),
+    sourceRow: json<Record<string, unknown>>("source_row"),
+    editedAt: integer("edited_at"),
+    removedAt: integer("removed_at"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    index("repeaters_list_idx").on(table.listId, table.sourceKey),
+    // Everything the map and a sort by distance read, so that neither has to visit the rows themselves.
+    index("repeaters_position_idx").on(table.lat, table.lon, table.removedAt, table.id),
+    index("repeaters_output_idx").on(table.outputHz),
+    // In the order the list is shown in, whatever case a callsign was typed in.
+    index("repeaters_callsign_idx").on(sql`${table.callsign} COLLATE NOCASE`),
+    // All that the search across everything looks at, so that it reads this and not the rows: it is asked on every search.
+    index("repeaters_search_idx").on(table.searchText, table.removedAt, table.outputHz, table.inputHz, table.id),
+  ],
+);
+
 export const nowMs = sql`(unixepoch('subsec') * 1000)`;

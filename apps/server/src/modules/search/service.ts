@@ -83,8 +83,15 @@ export interface SearchResponse {
 
 export interface SearchSource {
   id: string;
-  /** "semantic" sources run in semantic and hybrid modes; "reference" ones in keyword and hybrid. */
-  layer: "semantic" | "reference";
+  /**
+   * "semantic" sources run in semantic and hybrid modes; "reference" ones in keyword and
+   * hybrid. A "local" source is a module's own table of one kind of thing, too many to
+   * index as passages (repeaters); it runs in keyword and hybrid modes whenever a search
+   * is not narrowed to other kinds or to a tag.
+   */
+  layer: "semantic" | "reference" | "local";
+  /** For a local source: the kind of thing it finds, which is also its line among the facets. */
+  kind?: string;
   isAvailable(): boolean;
   weight(): number;
   search(params: { q: string; kinds?: string[]; limit: number; signal?: AbortSignal }): Promise<SearchResult[]>;
@@ -376,6 +383,9 @@ export function createSearchService(ctx: AppContext): SearchService {
       const active = sources.filter((source) => {
         if (!source.isAvailable()) return false;
         if (source.layer === "semantic") return mode !== "keyword";
+        if (source.layer === "local") {
+          return mode !== "semantic" && !params.tag && (!params.kinds?.length || params.kinds.includes(source.kind ?? source.id));
+        }
         if (params.kinds?.length && !params.kinds.includes("reference")) return false;
         return mode !== "semantic" && ctx.services.settings.get("search.includeReference");
       });
@@ -389,6 +399,7 @@ export function createSearchService(ctx: AppContext): SearchService {
           if (source.layer === "reference" && answer.value.length > 0) {
             keyword.facets.reference = (keyword.facets.reference ?? 0) + answer.value.length;
           }
+          if (source.layer === "local" && answer.value.length > 0) keyword.facets[source.kind ?? source.id] = answer.value.length;
         } else {
           warnings.push({ source: source.id, message: answer.reason instanceof Error ? answer.reason.message : String(answer.reason) });
         }
