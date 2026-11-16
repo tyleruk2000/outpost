@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Badge, Progress, Skeleton } from "@/components/ui/misc";
 import { errorMessage } from "@/lib/api";
 import { cn, plural, timeAgo } from "@/lib/utils";
+import { SaveWebPage } from "../webpages/save-page";
 import { ACCEPT_ATTRIBUTE, sortFiles, uploadImport, useRecentImports } from "./import-data";
 import { describeState } from "./preview-model";
 
@@ -253,6 +254,12 @@ export function ChooseStep({ onUploaded }: { onUploaded: (dto: ImportDto) => voi
   return (
     <>
       <DropZone onUploaded={onUploaded} />
+      <Section
+        title="Save a web page"
+        description="Keep a readable copy of one page in your library, to read and search with no connection."
+      >
+        <SaveWebPage className="max-w-[46rem]" />
+      </Section>
       <Section title="Recent imports">
         <RecentImports />
       </Section>

@@ -69,7 +69,10 @@ fleet) would be the wrong weight for a single-node tool that must run on a Pi.
 CPU-heavy parsing (PDF text) runs in a worker thread so that one large document cannot
 stall the HTTP server. OCR does the same, on a queue of its own that runs one document
 at a time. So does the built-in embedding model, in a worker that stays loaded while it
-is in use and is ended after five idle minutes. A GPX file is read in a worker too, by
+is in use and is ended after five idle minutes. A web page being saved is read in a
+worker for the same reason: finding the article in somebody else's HTML is work in
+proportion to the page, and a worker can be ended (see
+[security.md](security.md#downloads-the-ssrf-guard)). A GPX file is read in a worker too, by
 a reader that keeps only what is stored and never builds a tree of the file, so what it
 costs in memory is bounded by the points in it (see [security.md](security.md#files-people-upload)).
 
@@ -288,9 +291,13 @@ The limits a browser puts on stored data, and what was not tested, are in
   says.
 - Archives are unpacked with path, size, count and ratio limits, and never onto paths
   outside the staging folder.
+- A web page a person saves is fetched through the same client, read in a worker
+  thread under limits of size, elements and time, and kept as a Markdown document: it
+  is cleaned with an allow-list, and shown, like any Markdown file, as a tree of plain
+  values. One page per action; nothing is crawled, scheduled or fetched again.
 - No telemetry. The server makes an outbound request only as the direct result of a
   person's action: refreshing the catalogue, starting a download, saving a file from
-  a link, estimating or downloading a map region or place names, fetching the runtimes
+  a link, saving a web page, estimating or downloading a map region or place names, fetching the runtimes
   for a portable drive, or, if they configured one, calling their own embedding server
   or asking their own model server for an answer.
 
@@ -317,7 +324,7 @@ e2e/                 Playwright tests against the packaged app
 ```
 
 Modules, in registration order: search, semantic, retrieval, answers, documents, notes, imports,
-collections, books, kiwix, downloads, links, catalog, maps, backup, portable, merge, manage, https. A module may use the
+collections, books, kiwix, downloads, links, webpages, catalog, maps, backup, portable, merge, manage, https. A module may use the
 services of those before it. [development/server-modules.md](development/server-modules.md)
 is the contract a module works to.
 
@@ -363,6 +370,7 @@ written by `scripts/build-app.mjs` from the installed packages.
 | ONNX Runtime (`onnxruntime-web`), `@huggingface/tokenizers` | MIT, Apache-2.0 | Bundled; they run the embedding model. The runtime is the project's own WebAssembly build. The npm package carries no licence file, so the build takes the licence and third-party notices from the project's repository at the release's commit: `server/embed/LICENSE-onnxruntime.txt`, `ThirdPartyNotices-onnxruntime.txt`. |
 | BlockNote | MPL-2.0, with GPL add-ons | Not used. The editor is Tiptap (MIT) with Outpost's own blocks. |
 | Workbox (`workbox-build`, `workbox-window`), `vite-plugin-pwa` | MIT | Not used. The service worker is Outpost's own (`apps/web/src/sw/`); see "A phone out of reach" above. No dependency was added for it. |
+| `@mozilla/readability`, with `jsdom` or `linkedom` (finding the article in a web page) | Apache-2.0; MIT; ISC | Not used, and no package was added for saving a web page. Readability is the obvious choice (0.6.0, 155 kB, last published in March 2025), but it works on a browser's DOM, so on a server it needs one built for it: `jsdom` (31.0.1: 6.9 MB unpacked and eighteen packages of its own, among them a cookie jar and a second XML parser, to stand in for a browser) or `linkedom` (0.18.15: 1.2 MB and five packages, among them `htmlparser2`, a second HTML parser beside the one the server has). Outpost already parses HTML into a tree with `rehype-parse`, cleans it with `rehype-sanitize` and converts it with `rehype-remark`, for imports. The article is found by Readability's published method (score blocks of text by length and commas, pass the score up, take the best, clean it), written against that tree in `apps/server/src/modules/webpages/readable.ts`, about 900 lines. Figures from the npm registry on 16 November 2026. The cost of this choice is that Outpost's finder has been tried on far fewer pages than Mozilla's. |
 | `saxes`, `sax` (streaming XML parsers) | ISC; BlueOak-1.0.0 | Not used. GPX is read by Outpost's own small XML reader (`apps/server/src/modules/maps/gpx-xml.ts`). Looked at on 16 November 2026: `saxes` is strict but its repository is archived; `sax` is maintained but accepts XML that is not well-formed, and its licence is not one of the four above. `@tmcw/togeojson` and `@xmldom/xmldom`, which read GPX before, are no longer shipped; `@xmldom/xmldom` (MIT) remains for one test. |
 | `@peculiar/x509`, `selfsigned`, `node-forge` (X.509 certificate libraries) | MIT; MIT; BSD-3-Clause or GPL-2.0 | Not used. Node writes no certificates, so the HTTPS module lays them out itself (`apps/server/src/modules/https/der.ts`, `certificates.ts`: about 400 lines) and leaves keys, signing and reading back to Node. Looked at on 16 November 2026: `@peculiar/x509` 3.1.0 is maintained and MIT but brings nine direct dependencies, among them `tsyringe`, which needs `tslib` (0BSD, not one of the four licences above); `selfsigned` 5.5.0 wraps `@peculiar/x509` and `pkijs`; `node-forge` 1.4.3 carries its own cryptography in JavaScript. The `openssl` program is not used either: the Docker image does not have it. |
 | Atkinson Hyperlegible, Literata, Noto Sans | OFL-1.1 | Bundled fonts. |

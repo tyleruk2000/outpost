@@ -14,6 +14,7 @@ import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
 import { unified } from "unified";
+import { withoutPictureData } from "./embedded-pictures.ts";
 import { type Extracted, type ExtractedSection, tidyText } from "./extract-types.ts";
 
 /** Most of a plain text, CSV or JSON file that is read for search. */
@@ -173,8 +174,12 @@ export function markdownSections(source: string): { sections: ExtractedSection[]
 
 export async function extractMarkdown(file: string): Promise<Extracted> {
   const { text, note } = await readStart(file, MAX_MARKUP_BYTES);
-  const { sections, meta } = markdownSections(text);
-  return result(sections, meta, note);
+  // Pictures a file carries come after its text and are megabytes of one line each.
+  // They are not words, so they are left out, and a file that is only large because of
+  // them has had all of its text read.
+  const words = withoutPictureData(text);
+  const { sections, meta } = markdownSections(words);
+  return result(sections, meta, words === text ? note : undefined);
 }
 
 // ── HTML ────────────────────────────────────────────────────────────────────

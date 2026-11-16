@@ -28,3 +28,4 @@ export * from "./semantic.ts";
 export * from "./shares.ts";
 export * from "./storage.ts";
 export * from "./system.ts";
+export * from "./webpages.ts";

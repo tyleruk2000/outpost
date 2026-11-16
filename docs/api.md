@@ -348,6 +348,7 @@ Types: `packages/shared/src/documents.ts`.
 | `GET /api/ocr` | Whether this installation can run OCR and with what (`OcrStatus`): `available`, `reason` when not, `engine`, the installed `languages` (each `builtIn` or added, and whether `selected`), `missingLanguages`, `languageFolder`, `auto`, and `limits`. |
 | `GET /api/documents/:id/text` | The extracted text in sections (`DocumentTextResponse`). Query: `page`. Each section has `ocr: true` when it was read from a picture by OCR. |
 | `GET /api/documents/:id/markdown` | A Markdown document with its formatting, as a tree of plain values (`DocumentMarkdownResponse`): headings (each with an `id` made from its words), paragraphs, lists, quotes, code (with the `lang` written after the fence, such as `mermaid` or `viz`), tables, and bold, italic, code and links inside them. Never HTML. A link is one of three things: `link`, for an `http`, `https` or `mailto` address; `jump`, to a heading of the same document; or `ref`, for `outpost:entry/<entry id>/<chapter key>`, which carries the entry's id and name and, when it is in the library, the `collectionId` and `documentId` the server found. Pictures become their description and caption; embedded HTML becomes its words. `415` for a document that is not Markdown, `413` for a file over 2 MB (the web app then shows the text from `/text`), `404` when the file is missing. |
+| `GET /api/documents/:id/pictures/:number` | One picture that a Markdown document carries (a saved web page keeps its pictures inside its file). `number` is 1 to 9999. Sent only if its bytes are a PNG, JPEG, GIF or WebP image, with that type, an `ETag`, and a sandbox policy. `404` when the document has no such picture or is not Markdown. |
 | `GET /api/documents/:id/epub` | What an EPUB book says about itself (`DocumentEpubResponse`): `title`, `author` and `language` from its package file, `cover` (the cover picture's path inside the archive, or `null`), `chapters` in reading order (each with its `position` from 1, a `title`, and the `heading` search knows it by), `contents` (the table of contents from the navigation document or the NCX: `title`, `chapter`, an `anchor` inside it, `depth`; empty when the book has none) and `notes` (sentences, such as that the book is fixed-layout). At most 2,000 chapters. `415` for a document that is not an EPUB, and for a book that cannot be read: `error.details.reason` is `protected` for a copy-protected (DRM) book, which is never opened, and `damaged` for one that is malformed. `404` when the file is missing, `503` while its storage is disconnected. See [epub.md](epub.md). |
 | `GET /api/documents/:id/epub/chapters/:position` | One chapter, by its place in the reading order from 1, as the same tree of plain values as `/markdown` (`DocumentEpubChapterResponse`: `position`, `total`, `title`, `blocks`, `notes`). Never the book's HTML, styles or scripts. Beyond what a Markdown file produces, a run may be `sup` or `sub`, an `anchor` (a place a link can land on), a `picture` (`src` is its path inside the archive), or a `chapter` link (to another chapter by number, 0 being the contents, with an optional `anchor`); a block may be a `figure` (a picture with a caption), a `quote` of `kind: "note"` (a footnote or sidebar), or a `table` marked `plain` (no header row). `notes` says what was left out: scripts, audio and video, mathematics, drawings, forms. `404` for a position the book does not have, `413` for a chapter over 2 MB or 120,000 tags (`details.reason` is `too_large`), `415` for one nested too deeply to read, and the refusals of the route above. |
 | `GET /api/documents/:id/epub/file?path=` | A picture from inside the book, by its path in the archive as the two routes above give it. The path must be relative, in its simplest form and free of `..`, backslashes and schemes (`400` otherwise) and name a file of the book (`404`). Only bytes that are a PNG, JPEG, GIF, WebP or SVG are sent, under the type the bytes say; anything else, whatever it is called, is a `415`. At most 16 MB (`413`). An SVG is at most 2 MB, is refused (`415`) if it holds script, an event handler, a script address, `foreignObject` or declared entities, and is sent as a download, so it is only shown through an `<img>`. Sent with a sandbox policy and `ETag`. |
@@ -451,7 +452,8 @@ Types: `packages/shared/src/downloads.ts`.
 Downloads are started by the catalogue, maps and links routes, not here. `kind` says
 what is being fetched: `zim`, `map`, `terrain`, `places`, `file`, `model`, or `document`
 for a file saved from a link. A completed `document` download carries the `documentId`
-of the library document it became.
+of the library document it became. A saved web page is not a download: it is a job of
+its own (see [Web pages](#web-pages)).
 
 ## Links
 
@@ -474,6 +476,31 @@ private network is refused with `403 forbidden`, and every connection the downlo
 makes, redirects included, must land on a public address, unless the server was started
 with `OUTPOST_ALLOW_PRIVATE_DOWNLOADS=true`. What arrives must be the kind of file its
 name says, or nothing is kept.
+
+## Web pages
+
+Types: `packages/shared/src/webpages.ts`. See
+[notes-and-imports.md](notes-and-imports.md#saving-a-web-page).
+
+These fetch one page from the web, because a person asked, and keep a readable copy
+in the document library. Each takes exactly one address; a body with any other field
+(a list of addresses, say) is a `400`.
+
+| Method and path | Purpose |
+| --- | --- |
+| `POST /api/webpages/preview` | Body: `url`. Fetches that page, finds the article, and answers `WebPagePreview`: `previewId`, the `url` it came from after redirects and the `requestedUrl`, `title`, `byline`, `site`, `published`, `language`, `words`, an `excerpt`, `pictures` (`count`, `willFetch`, and the `hosts` they would come from), `existing` (copies of this address already in the library, as `{ documentId, title, savedAt }`), and the `limits`. Nothing is kept but the look itself, in memory, for fifteen minutes. The request holds until the page has arrived (at most 20 seconds) and been read; closing the connection stops the fetch. Pictures are not fetched. |
+| `POST /api/webpages/save` | Body (`SaveWebPageRequest`): `url`; `previewId?` (saves the page as it was looked at, without fetching it again; without it, or once it has lapsed, the page is fetched); `pictures?` (default false: fetch the article's pictures); `keepBoth?` or `replaceDocumentId?` (required, one or the other, when the address is already in the library); `locationId?`. Answers `{ job }`: a job of type `webpage.save` on the `webpage` queue, followed and cancelled through `/api/jobs`. Its `result` is `SaveWebPageResult`: `documentId`, `title`, `url`, `pictures` (`kept`, `bytes`, and each one `skipped` with the reason), and `replacedDocumentId` when a copy was replaced. A second request for an address already being saved answers with the job under way. |
+
+Errors: `400` for an address that is not one `http` or `https` address without
+credentials; `403` for an address on this computer or a private network, or a page
+that redirects to one (unless the server was started with
+`OUTPOST_ALLOW_PRIVATE_DOWNLOADS=true`); `409` from `save` when the address is already
+in the library and the request does not say what to do (`details.existing` lists the
+copies), and from `preview` when too many pages are being read at once; `413` for a
+page over 5 MB or 50,000 elements; `415` for an answer that is not a web page, a page
+with no readable text, or one that could not be read; `502` when the site answered
+with an error or took too long; `503` when it could not be reached. A job that fails
+carries the same sentence in its `error`.
 
 ## Catalogue
 

@@ -56,7 +56,9 @@ picture, not a surveyed path.
 - **Your documents.** Add PDFs, EPUBs, Markdown, HTML, text and images. Text is
   extracted and indexed down to the page; originals are kept untouched. A built-in
   PDF viewer opens at the page a search result points to. An EPUB book is read in the
-  app, chapter by chapter, with its contents page and pictures.
+  app, chapter by chapter, with its contents page and pictures. Paste the address of a
+  web page to keep a readable copy of the article for when there is no connection: one
+  page at a time, for your own reading.
 - **Notes.** A page tree and a block editor: headings, lists, to-dos, tables, code,
   callouts, images, links between pages, backlinks, templates, favourites, trash, and
   export to Markdown. Import from Markdown, HTML, and Notion exports.

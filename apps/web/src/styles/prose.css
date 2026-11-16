@@ -344,6 +344,13 @@
   border-radius: var(--radius-panel);
   padding: 0.75em 1em;
 }
+/* A picture the file carries: a saved web page's own pictures. Never wider than the column. */
+.prose .doc-carried-picture {
+  display: inline-block;
+  max-width: 100%;
+  height: auto;
+  vertical-align: middle;
+}
 .prose .doc-picture-label {
   font-weight: 600;
   color: var(--ink);

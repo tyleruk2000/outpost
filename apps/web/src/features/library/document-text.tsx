@@ -11,6 +11,7 @@ import { MarkdownDocument } from "./document-markdown";
 import { documentKeys, isReading, kindOfDocument } from "./document-meta";
 import { DataTable } from "./document-table";
 import { ViewerMessage } from "./document-viewer-message";
+import { SavedFromLine } from "./saved-from";
 
 /** Files whose line and column positions carry meaning, shown in fixed-width type. */
 const isData = (document: Pick<DocumentDto, "ext">) => document.ext === "csv" || document.ext === "json";
@@ -122,14 +123,18 @@ export function TextViewer({ document, downloadUrl }: { document: DocumentDto; d
         <div className="max-w-[68rem] px-5 pt-6 pb-16 md:px-10 md:pt-8">
           <ChapterPlace chapter={chapter} />
           <p className="mb-8 max-w-[48rem] border-b border-border pb-4 text-small text-ink-muted">
-            This is the Markdown file as Outpost reads it. Pictures and embedded web content are left out.{" "}
+            {formatted.data?.savedFrom ? (
+              <SavedFromLine savedFrom={formatted.data.savedFrom} />
+            ) : (
+              "This is the Markdown file as Outpost reads it. Pictures and embedded web content are left out."
+            )}{" "}
             <a href={downloadUrl} className="font-medium text-primary underline decoration-1 underline-offset-[0.2em] hover:decoration-2">
               Download the original
             </a>
           </p>
           {formatted.data ? (
             <>
-              <MarkdownDocument blocks={formatted.data.blocks} title={document.title} />
+              <MarkdownDocument blocks={formatted.data.blocks} title={document.title} documentId={document.id} />
               <ChapterTurn chapter={chapter} />
             </>
           ) : (

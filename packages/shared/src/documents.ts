@@ -3,6 +3,8 @@
  * and images), their metadata, and the text Outpost read from them for search.
  */
 
+import type { SavedFrom } from "./webpages.ts";
+
 /** Broad family a file belongs to. Decides how it is viewed and how its text is read. */
 export type DocumentType = "pdf" | "markdown" | "text" | "html" | "epub" | "image";
 
@@ -234,8 +236,12 @@ export type MarkdownInline =
   | { t: "break" }
   | { t: "strong" | "em" | "del" | "sup" | "sub"; c: MarkdownInline[] }
   | { t: "link"; href: string; c: MarkdownInline[] }
-  /** A picture, which is not shown: only the description and caption its author gave it. */
-  | { t: "image"; alt: string; caption?: string }
+  /**
+   * A picture. Only the description and caption its author gave it are shown, unless
+   * the file carries the picture itself (a saved web page does): then `picture` is its
+   * number, and the bytes are at `/api/documents/<id>/pictures/<number>`.
+   */
+  | { t: "image"; alt: string; caption?: string; picture?: number }
   /** `to` is the id of a heading, or of an anchor, in this document. */
   | { t: "jump"; to: string; c: MarkdownInline[] }
   | MarkdownRef
@@ -283,6 +289,8 @@ export type MarkdownBlock =
 export interface DocumentMarkdownResponse {
   documentId: string;
   blocks: MarkdownBlock[];
+  /** Present when the file is a web page Outpost saved: where from, and when. */
+  savedFrom?: SavedFrom;
 }
 
 /** One document of an EPUB's reading order: usually a chapter, sometimes a cover or a title page. */

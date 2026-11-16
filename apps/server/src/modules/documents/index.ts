@@ -10,10 +10,11 @@ import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
 import { AppError } from "../../core/errors.ts";
 import { safeFileName } from "../../core/fs-safe.ts";
+import { readPicture } from "./embedded-pictures.ts";
 import { registerEpubReader } from "./epub-reader.ts";
 import { DOCUMENT_TYPES, formatForExt, servedAs } from "./file-types.ts";
 import { contentDisposition, matchesEtag, parseRange } from "./http.ts";
-import { type LinkResolver, readMarkdownBlocks } from "./markdown-view.ts";
+import { type LinkResolver, readMarkdownDocument } from "./markdown-view.ts";
 import { registerDocumentMoves } from "./move.ts";
 import { createDocumentsService } from "./service.ts";
 import { receiveUpload } from "./upload.ts";
@@ -148,7 +149,28 @@ export async function registerDocuments(app: FastifyInstance, ctx: AppContext): 
     if (document.type !== "markdown") throw new AppError("unsupported", `"${document.title}" is not a Markdown file.`);
     // Links into Outpost's catalogue are looked up as the file is read, so they follow what is in the library now.
     const resolve: LinkResolver = (entryId, chapterKey) => ctx.services.catalog?.linkTarget(entryId, chapterKey);
-    return { documentId: document.id, blocks: await readMarkdownBlocks(service.absolutePath(document.id), { resolve }) };
+    return { documentId: document.id, ...(await readMarkdownDocument(service.absolutePath(document.id), { resolve })) };
+  });
+
+  /**
+   * One picture that a Markdown file carries (a saved web page keeps its pictures this
+   * way; see `embedded-pictures.ts`). Only PNG, JPEG, GIF and WebP are ever sent, with
+   * the type the bytes themselves show, and under the same policy as any original file.
+   */
+  app.get<{ Params: { id: string; number: string } }>("/api/documents/:id/pictures/:number", async (request, reply) => {
+    const document = service.get(request.params.id);
+    const { number } = z.object({ number: z.coerce.number().int().min(1).max(9999) }).parse(request.params);
+    if (document.type !== "markdown") throw new AppError("not_found", "This document has no such picture.");
+    const etag = `"${document.sha256}-${number}"`;
+    reply
+      .header("Content-Security-Policy", FILE_CSP)
+      .header("X-Content-Type-Options", "nosniff")
+      .header("ETag", etag)
+      // A document's bytes never change, so its pictures do not either.
+      .header("Cache-Control", "private, max-age=86400");
+    if (matchesEtag(request.headers["if-none-match"], etag)) return reply.status(304).send();
+    const picture = await readPicture(service.absolutePath(document.id), number);
+    return reply.type(picture.mime).header("Content-Length", picture.bytes.length).send(picture.bytes);
   });
 
   /**

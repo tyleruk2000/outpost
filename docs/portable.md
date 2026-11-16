@@ -31,6 +31,12 @@ What travels:
   them.
 - **Your choice:** all documents or none; and any installed collections and maps you
   tick.
+- **Web pages you saved are documents.** If you copy documents to a drive, every page
+  you saved from the web goes with them, pictures included. They are copies made for
+  your own reading of pages that belong to whoever published them. A drive you keep is
+  one thing; before making a drive to hand to someone else, think about whether those
+  pages should be on it, and remove from the library (or leave documents off the
+  drive) what should not be passed on.
 - The database on the drive is a copy narrowed to match: it lists only the documents
   and collections that were copied, and one storage location, "This drive", which is
   the drive's `library` folder. Download history, background jobs, the records of
@@ -368,7 +374,8 @@ After an undo, the drive's changes are offered again the next time you look at i
 - **Local only.** From a drive, Outpost listens on `127.0.0.1`: only the computer the
   drive is plugged into can open it.
 - **The drive is not encrypted.** Anyone who has the drive can read everything on it:
-  your notes, your settings, and the documents and collections you copied. If that
+  your notes, your settings, and the documents and collections you copied, web pages
+  you saved among them, each with the address it came from and the date. If that
   matters, use an encrypted drive (BitLocker, FileVault, LUKS or VeraCrypt) and unlock
   it before starting Outpost.
 - **Nothing is written to the host computer.** Data and settings stay in the drive's

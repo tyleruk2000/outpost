@@ -61,7 +61,8 @@ before it. Use `ctx.onClose.push(fn)` for cleanup.
 Queues in use: `download` (network transfers), `index` (text extraction, embeddings),
 `ocr` (reading scanned pages, always one at a time), `transfer` (moving and verifying
 files), `import`, `manage` (bulk removal and clean-ups, one at a time), `backup`
-(scheduled and hand-started backups, one at a time). Handlers
+(scheduled and hand-started backups, one at a time), `webpage` (saving a web page, one
+at a time). Handlers
 receive an `AbortSignal`
 and must stop promptly when it fires (pause, cancel, shutdown). Report progress with
 `run.progress({ current, total, message })`. Throw `PermanentJobError` for failures
