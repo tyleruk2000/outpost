@@ -1066,6 +1066,46 @@ export const powerDevices = sqliteTable("power_devices", {
   updatedAt: updatedAt(),
 });
 
+// ── Morse trainer (Radio) ───────────────────────────────────────────────────
+
+/**
+ * The Morse trainer's progress: one row for the whole copy (there are no accounts), with
+ * the Koch lesson reached, the best receive speeds, and the trainer's settings as each
+ * browser last sent them (`MorseSettings`).
+ */
+export const morseProgress = sqliteTable("morse_progress", {
+  /** Always "household": there is one. */
+  id: id(),
+  kochLesson: integer("koch_lesson").notNull().default(1),
+  bestCharWpm: real("best_char_wpm"),
+  bestEffWpm: real("best_eff_wpm"),
+  settings: json<Record<string, unknown>>("settings").notNull(),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+});
+
+/** One finished drill or exercise of the Morse trainer: receive, send, a simulated contact or an echo reply. */
+export const morseSessions = sqliteTable(
+  "morse_sessions",
+  {
+    id: id(),
+    /** "receive", "send", "qso" or "echo". */
+    kind: text("kind").notNull(),
+    /** When it finished, milliseconds. */
+    at: integer("at").notNull(),
+    accuracy: real("accuracy").notNull(),
+    charWpm: real("char_wpm"),
+    effWpm: real("eff_wpm"),
+    rhythm: real("rhythm"),
+    lesson: integer("lesson"),
+    /** Character → times missed. */
+    misses: json<Record<string, number>>("misses").notNull(),
+    /** Character → times it was in the drill. */
+    tries: json<Record<string, number>>("tries").notNull(),
+  },
+  (table) => [index("morse_sessions_at_idx").on(table.at)],
+);
+
 // ── Supplies (Preparedness) ─────────────────────────────────────────────────
 
 /**

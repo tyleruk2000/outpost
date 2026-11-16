@@ -3,6 +3,7 @@
  * installed in one list, leftovers, and the three bulk clean-ups.
  */
 import type { JobDto, LocalBy } from "./common.ts";
+import type { MorseKept } from "./morse.ts";
 import type { StorageKind } from "./storage.ts";
 import type { WeatherKept } from "./weather.ts";
 
@@ -133,6 +134,8 @@ export interface CleanupPlan {
     weather?: WeatherKept;
     /** Emergency plans (Preparedness). Absent from a plan made before they were counted. */
     emergencyPlans?: number;
+    /** The Morse trainer's practice sessions and its record of progress. Absent from a plan made before it was counted. */
+    morse?: MorseKept;
     settings: number;
     vectors: number;
     /** Copies of the database and attachments that a restore set aside. */
@@ -207,6 +210,7 @@ export interface CleanupResult extends Record<string, unknown> {
     networkDevices?: number;
     weather?: WeatherKept;
     emergencyPlans?: number;
+    morse?: MorseKept;
     settings: number;
   };
 }

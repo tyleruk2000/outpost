@@ -52,6 +52,8 @@ const invalidations: Record<string, string[][]> = {
   "network.changed": [["network"], ["manage"]],
   "weather.changed": [["weather"], ["manage"]],
   "emergency-plans.changed": [["emergency-plans"], ["manage"]],
+  // The Morse trainer kept a session or a change of progress, here or on another device.
+  "morse.changed": [["morse"], ["manage"]],
   // The background count of what is on disk has finished.
   "manage.changed": [["manage"]],
 };

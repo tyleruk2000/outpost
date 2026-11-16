@@ -25,6 +25,7 @@ import { registerLinks } from "./links/index.ts";
 import { registerManage } from "./manage/index.ts";
 import { registerMaps } from "./maps/index.ts";
 import { registerMerge } from "./merge/index.ts";
+import { registerMorse } from "./morse/index.ts";
 import { registerNetwork } from "./network/index.ts";
 import { registerNotes } from "./notes/index.ts";
 import { registerNuclear } from "./nuclear/index.ts";
@@ -75,4 +76,6 @@ export const modules: ModuleRegister[] = [
   registerLayers,
   registerWeather,
   registerEmergencyPlans,
+  // The Morse trainer (Radio), on a line of its own so that other additions merge cleanly.
+  registerMorse,
 ];

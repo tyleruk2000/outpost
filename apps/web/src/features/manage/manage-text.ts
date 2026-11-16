@@ -9,6 +9,7 @@ import {
   type LeftoverKind,
   type ManagedItem,
   type ManagedKind,
+  type MorseKept,
   type RadioKept,
   type SuppliesKept,
   type Tally,
@@ -253,6 +254,15 @@ export function suppliesWords(supplies: SuppliesKept | undefined): string | null
   return parts.length > 0 ? parts.join(", ") : null;
 }
 
+/** "120 Morse practice sessions and the trainer's progress", or null when there is nothing. */
+export function morseWords(morse: MorseKept | undefined): string | null {
+  if (!morse || (morse.sessions === 0 && morse.progress === 0)) return null;
+  const progress = morse.progress > 0 ? "the Morse trainer's progress and settings" : null;
+  if (morse.sessions === 0) return progress;
+  const sessions = plural(morse.sessions, "Morse practice session");
+  return progress ? `${sessions} with the trainer's progress and settings` : sessions;
+}
+
 /** "2 weather places, 140 barometer readings and 6 fetched forecasts and warnings", leaving out what there is none of; null when there is nothing. */
 export function weatherWords(weather: WeatherKept | undefined): string | null {
   if (!weather) return null;
@@ -289,6 +299,8 @@ export function personalWords(personal: NonNullable<CleanupPlan["personal"]>): s
   const weather = weatherWords(personal.weather);
   if (weather) parts.push(weather);
   if ((personal.emergencyPlans ?? 0) > 0) parts.push(plural(personal.emergencyPlans ?? 0, "emergency plan"));
+  const morse = morseWords(personal.morse);
+  if (morse) parts.push(morse);
   if (personal.settings > 0) parts.push(plural(personal.settings, "changed setting"));
   if (personal.vectors > 0) parts.push(plural(personal.vectors, "semantic vector"));
   parts.push("the history of downloads and other work");
@@ -340,6 +352,7 @@ export function resultSentences(result: CleanupResult): string[] {
         : null,
       weatherWords(weather),
       (result.personal.emergencyPlans ?? 0) > 0 ? plural(result.personal.emergencyPlans ?? 0, "emergency plan") : null,
+      morseWords(result.personal.morse),
       settings > 0 ? plural(settings, "changed setting") : null,
       "the history",
     ].filter((part): part is string => part !== null);
