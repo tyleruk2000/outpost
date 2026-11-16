@@ -37,6 +37,19 @@ curl http://localhost:8080/api/health
 
 The second command prints `{"status":"ok","version":"…"}`.
 
+One more step, while there is internet, makes the HF propagation planner work offline
+from the start: it fetches VOACAP's ionospheric and noise coefficients (15 files,
+559 kB), which Outpost does not ship (see
+[hf-propagation.md](hf-propagation.md#data)), into the data volume, each checked
+against its recorded checksum:
+
+```bash
+docker compose exec outpost node /app/scripts/fetch-voacap-data.mjs --data-dir /data
+```
+
+Skip it and the planner shows a **Download** button instead, which fetches the same
+files. Outpost never fetches them by itself.
+
 ### What the stack contains
 
 | Service | What it does | Reachable from |
@@ -840,6 +853,11 @@ docker compose up -d --build
 Database migrations run automatically when the server starts. Your volumes are not
 touched by an update.
 
+An image built before 16 November 2026 carried VOACAP's coefficients inside it; the new
+one does not, and the old image is gone by the time the new one starts. Run the line in
+the [quick start](#docker-compose-quick-start) once after updating (or press Download on
+the HF planner) to put them in the data volume, where they then stay.
+
 ## Logs
 
 ```bash
@@ -1016,6 +1034,10 @@ sudo ./deploy/pi/hotspot.sh on --ssid "Outpost"         # asks for a password
   edited, and an override file already there is left alone). Then it builds and starts
   the stack and waits for it to answer. The
   build fetches map fonts and the search model, so the Pi needs the internet for it.
+  Last, it fetches VOACAP's coefficients for the HF propagation planner (15 files,
+  559 kB) into the data volume, so that the Pi predicts with no internet from then on;
+  `--no-voacap-data` skips that, and the planner then offers a Download button. If the
+  fetch fails the script says so and carries on.
 - `hotspot.sh on` makes a NetworkManager connection called `outpost-hotspot`: a WPA2
   access point on `wlan0` with the Pi at `10.42.0.1`, started by itself at boot. Phones
   that join open `http://10.42.0.1:8080`, or `http://outpost.home.arpa:8080` (the
@@ -1073,6 +1095,7 @@ pnpm install
 node scripts/fetch-map-assets.mjs   # map fonts and icons; needs a connection once
 node scripts/fetch-embedding-model.mjs  # the model for search by meaning (24 MB); also once
 pnpm build                          # builds the web app into apps/web/dist
+node scripts/fetch-voacap-data.mjs --data-dir apps/server/data   # HF planner data (559 kB); optional, once
 pnpm start
 ```
 
@@ -1096,7 +1119,9 @@ Things to know:
   folder is used.
 - If you skip `fetch-map-assets.mjs`, everything works except that maps draw without
   labels and icons. If you skip `fetch-embedding-model.mjs`, everything works except
-  the built-in option of search by meaning, which says that its model is missing.
+  the built-in option of search by meaning, which says that its model is missing. If
+  you skip `fetch-voacap-data.mjs`, the HF propagation planner says its data is missing
+  and offers a Download button. Give it the same data directory the server uses.
 - For LAN access, set `OUTPOST_HOST=0.0.0.0` together with `OUTPOST_LAN_ACCESS=true`,
   and read [what that means](#letting-other-devices-use-it-lan-access) first.
 
@@ -1124,6 +1149,24 @@ node dist/app/server/outpost.mjs
 
 `NODE_ENV=production` is required: without it the server tries to load a development
 log formatter that the packaged app does not include, and stops at start-up.
+
+The packaged app does not contain VOACAP's coefficients for the HF propagation planner.
+To prepare a data directory with them while there is internet (15 files, 559 kB, each
+checked against `engines/voacap/coefficients.json`), run, once:
+
+```bash
+node dist/app/scripts/fetch-voacap-data.mjs --data-dir /srv/outpost/data
+```
+
+Without it the planner offers a Download button for the same files. `--from <folder>`
+copies them from a folder instead (an older app folder's `engines/voacap/data/itshfbc`,
+or a checkout's `engines/voacap/.cache`), with no network.
+
+**Updating an installation from before 16 November 2026**, when the coefficients were
+inside the app folder: start the new version once with the old app folder still in
+place and it copies them into the data directory by itself. If the deploy replaces the
+folder first (`rsync --delete`, say), run the line above beforehand, with
+`--from <old app folder>/engines/voacap/data/itshfbc`, or press Download afterwards.
 
 The folder contains prebuilt SQLite binaries for macOS, Linux (glibc and musl) and
 Windows, on x64 and arm64.
@@ -1249,6 +1292,7 @@ value the image sets when it differs from the default.
 | `OUTPOST_ALLOW_PRIVATE_DOWNLOADS` | `false` | | Let downloads, including files saved from links, connect to private addresses, for a mirror on your own network. |
 | `OUTPOST_SOLAR_TABLE_URL` | NOAA's `predicted-solar-cycle.json` | | Where a newer solar cycle table for HF propagation is fetched from, when a person asks for one. See [hf-propagation.md](hf-propagation.md#where-the-sunspot-number-comes-from). |
 | `OUTPOST_P533_MAPS_MANIFEST` | | | For testing only: a JSON file listing map files to fetch and use for the second HF model in place of the ITU's (same shape as `maps` in `modules/propagation/p533/manifest.json`). The end-to-end suite uses it for small stand-ins. Leave unset. |
+| `OUTPOST_VOACAP_DATA_MANIFEST` | | | For testing only: a JSON file in the shape of `engines/voacap/coefficients.json` listing VOACAP's coefficient files to fetch, check and use in its place. The end-to-end suite uses it to fetch the real files from its own file server. Leave unset. |
 | `OUTPOST_ALLOW_REMOTE_ERASE` | `false` | | Let **Erase everything** (Storage → Manage and clean up) be started from any device that can reach Outpost, and likewise restoring a backup, deleting a stored backup, keeping fewer of them, setting or removing the passphrase backups are protected with, and replacing or deleting the HTTPS certificate authority. Without it, only the computer Outpost runs on may. A passphrase for backups is still never accepted from another device over plain http: open Outpost at its https address for that. See [security.md](security.md#erasing-everything). |
 | `OUTPOST_ALLOW_REMOTE_MODEL_SERVER` | `false` | | Let **Answers from your library**, and a local embedding server for search by meaning, be on the public internet. Without it, such a server must be on this computer or a private network, so that nobody who can open Outpost can have passages from the library sent elsewhere. See [ai.md](ai.md). |
 | `OUTPOST_OLLAMA_ADDRESSES` | empty | | Where **Look for Ollama on this computer** looks after the address in Settings, as a comma-separated list of addresses. Empty means the two places Ollama listens by default (`http://127.0.0.1:11434/v1` and `http://host.docker.internal:11434/v1`). Set it when your Ollama listens on another port. The test suites set it so that they never ask a real Ollama on the machine they run on. |

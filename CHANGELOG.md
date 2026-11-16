@@ -693,6 +693,20 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   (`scripts/build-p533-engine.mjs`, Docker) and its 137 MB of maps are downloaded when
   you ask. Nothing of the ITU's ships with Outpost. The build reproduces the ITU's nine
   reference outputs line for line. See [docs/hf-propagation.md](docs/hf-propagation.md#a-second-model-itu-p533).
+- **VOACAP's ionospheric and noise coefficients are no longer shipped.** The 13
+  coefficient files (CCIR Reports 322 and 340, with NTIA/ITS tables in the same files)
+  and two short-whip patterns of unstated source, 559 kB, left the repository and the
+  packaged app: the ITU's repository that was relied on for them also says "All rights
+  reserved". They are one download, from the engine's own repository at the pinned
+  commit, checked file by file: with **Download** where the planner, coverage maps,
+  plans and the log's comparison would run (one line says what is missing, how big and
+  why), or at set-up with `node scripts/fetch-voacap-data.mjs --data-dir <dir>`, which
+  `deploy/pi/install.sh` runs (`--no-voacap-data` to skip). They are kept in the data
+  directory, listed on **Engine and data** with where they came from and when, and in
+  **Manage and clean up** with a warning before removal. An installation whose app
+  folder still holds them copies them into the data directory on first start with no
+  download. The engine refuses cleanly without them and never runs on a partial or
+  altered set. See [docs/hf-propagation.md](docs/hf-propagation.md#data).
 
 #### On a phone, out of reach of the server
 

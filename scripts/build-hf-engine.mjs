@@ -6,9 +6,14 @@
  *   engines/voacap/engine/voacap.wasm        the engine and Outpost's bridge to it
  *   engines/voacap/engine/engine.json        what it was built from, and its checksum
  *   engines/voacap/engine/LICENSE-hfcast.txt, NOTICE-hfcast.txt
- *   engines/voacap/data/itshfbc/             the engine's data: ionospheric and noise
- *                                            coefficients, antenna definitions
- *   engines/voacap/data/dataset.json         every data file with its size and checksum
+ *   engines/voacap/data/itshfbc/             the data that ships: antenna definitions
+ *                                            and the version file (NTIA/ITS)
+ *   engines/voacap/data/dataset.json         each of those with its size and checksum
+ *   engines/voacap/coefficients.json         the data that does not ship (the CCIR-derived
+ *                                            coefficients and two short-whip patterns),
+ *                                            each with its size, checksum and address
+ *   engines/voacap/.cache/                   those files themselves, for the tests (not
+ *                                            committed; see scripts/fetch-voacap-data.mjs)
  *
  * Those files are committed, so running or packaging Outpost needs none of this. Run
  * it only to move to a newer engine or to check that the committed files are what the
@@ -48,22 +53,39 @@ const UPSTREAM = {
 const RUSTC = "1.97.1";
 const TARGET = "wasm32-wasip1";
 
-/** The data files, by where they come from; see docs/hf-propagation.md for the terms of each. */
+/**
+ * The data files that ship, by where they come from; see docs/hf-propagation.md for the
+ * terms of each. The rest are listed in coefficients.json and fetched when asked for.
+ */
 const DATA_GROUPS = [
-  {
-    id: "coefficients",
-    title: "Ionospheric and noise coefficients",
-    description:
-      "Monthly maps of foF2 and M(3000)F2 (CCIR Report 340), atmospheric radio noise (CCIR Report 322), and the E, F1 and sporadic-E maps, F2 height ratio and prediction-error tables of NTIA/ITS, in the binary form VOACAP reads.",
-    match: (rel) => rel.startsWith("coeffs/"),
-  },
   {
     id: "antennas",
     title: "Antenna definitions and the version file",
-    description: "The antenna definition files of the VOACAP distribution (NTIA/ITS) and its version string.",
-    match: (rel) => rel.startsWith("antennas/") || rel.startsWith("database/"),
+    description:
+      "The antenna definition files of the VOACAP distribution (NTIA/ITS) and its version string. The two short-whip patterns made for REC533 are not among them: they are fetched with the coefficients (engines/voacap/coefficients.json).",
+    match: (rel) => (rel.startsWith("antennas/") || rel.startsWith("database/")) && !NOT_SHIPPED.has(rel),
   },
 ];
+
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+/**
+ * What Outpost does not ship, file by file, and what is in each: the CCIR-derived
+ * coefficients, and two patterns whose source is not stated (engines/voacap/NOTICE.txt).
+ */
+const NOT_SHIPPED = new Map([
+  ...MONTHS.map((month, index) => [
+    `coeffs/coeff${String(index + 1).padStart(2, "0")}w.bin`,
+    `${month}: the M(3000)F2 map (CCIR Report 340) and the atmospheric noise maps (CCIR Report 322), with NTIA/ITS's sporadic-E, E, F1 and F2 height-ratio maps and prediction-error tables, in one file`,
+  ]),
+  ["coeffs/fof2CCIR.daw", "The foF2 maps of CCIR Report 340, every month"],
+  [
+    "antennas/default/ccir.026",
+    'A short whip\'s elevation pattern, headed "SWWhip for REC533"; where its 91 figures come from is not stated',
+  ],
+  ["antennas/default/swwhip.voa", "The same short whip's pattern under another name"],
+]);
+/** When the terms of the address below were read (engines/voacap/NOTICE.txt). */
+const TERMS_READ = "2026-11-16";
 
 const log = (message) => console.log(`[hf-engine] ${message}`);
 const run = (command, args, options = {}) =>
@@ -145,7 +167,7 @@ const engine = {
   wasm: { file: "voacap.wasm", bytes: fs.statSync(built).size, sha256: sha256(built) },
 };
 const dataset = {
-  id: "voacap-coefficients",
+  id: "voacap-antennas",
   version: `${UPSTREAM.name}-${head.slice(0, 12)}`,
   source: { repository: UPSTREAM.repository, commit: UPSTREAM.commit, path: "embedded/", committed: commitDate },
   groups: DATA_GROUPS.map((group) => {
@@ -159,8 +181,39 @@ const dataset = {
     };
   }),
 };
-const unplaced = dataFiles.filter((file) => !DATA_GROUPS.some((group) => group.match(file.rel)));
+// The files that do not ship, one after another in this order: a download is that bundle.
+const fetched = [...NOT_SHIPPED.keys()].map((rel) => {
+  const file = dataFiles.find((candidate) => candidate.rel === rel);
+  if (!file) throw new Error(`${rel} is not in the engine's embedded/ folder at this commit.`);
+  return file;
+});
+let offset = 0;
+const bundle = createHash("sha256");
+const coefficients = {
+  id: "voacap-coefficients",
+  title: "VOACAP's ionospheric and noise coefficients",
+  version: `${UPSTREAM.name}-${head.slice(0, 12)}`,
+  source: {
+    repository: UPSTREAM.repository,
+    commit: UPSTREAM.commit,
+    committed: commitDate.replace(/\+00:00$/, "Z"),
+    path: "embedded/",
+    baseUrl: `https://raw.githubusercontent.com/${new URL(UPSTREAM.repository).pathname.slice(1)}/${UPSTREAM.commit}/embedded/`,
+    read: TERMS_READ,
+  },
+  bytes: fetched.reduce((sum, file) => sum + file.bytes, 0),
+  sha256: "",
+  files: fetched.map((file) => {
+    bundle.update(fs.readFileSync(path.join(embedded, file.rel)));
+    const entry = { path: file.rel, offset, bytes: file.bytes, sha256: file.sha256, holds: NOT_SHIPPED.get(file.rel) };
+    offset += file.bytes;
+    return entry;
+  }),
+};
+coefficients.sha256 = bundle.digest("hex");
+const unplaced = dataFiles.filter((file) => !NOT_SHIPPED.has(file.rel) && !DATA_GROUPS.some((group) => group.match(file.rel)));
 if (unplaced.length > 0) throw new Error(`Data files with no group: ${unplaced.map((file) => file.rel).join(", ")}`);
+const shipped = dataFiles.filter((file) => !NOT_SHIPPED.has(file.rel));
 
 const json = (value) => `${JSON.stringify(value, null, 2)}\n`;
 
@@ -172,7 +225,8 @@ if (checkOnly) {
   if (!fs.existsSync(path.join(engineDir, "voacap.wasm")) || sha256(path.join(engineDir, "voacap.wasm")) !== engine.wasm.sha256)
     problems.push("engine/voacap.wasm is not what this build gives");
   if (!same(path.join(dataDir, "dataset.json"), json(dataset))) problems.push("data/dataset.json differs");
-  for (const file of dataFiles) {
+  if (!same(path.join(home, "coefficients.json"), json(coefficients))) problems.push("coefficients.json differs");
+  for (const file of shipped) {
     const committed = path.join(dataDir, "itshfbc", file.rel);
     if (!fs.existsSync(committed) || sha256(committed) !== file.sha256) problems.push(`data/itshfbc/${file.rel} differs`);
   }
@@ -190,10 +244,19 @@ fs.copyFileSync(path.join(upstreamDir, "LICENSE"), path.join(engineDir, "LICENSE
 fs.copyFileSync(path.join(upstreamDir, "NOTICE"), path.join(engineDir, "NOTICE-hfcast.txt"));
 fs.writeFileSync(path.join(engineDir, "engine.json"), json(engine));
 fs.rmSync(path.join(dataDir, "itshfbc"), { recursive: true, force: true });
-for (const file of dataFiles) {
+for (const file of shipped) {
   const to = path.join(dataDir, "itshfbc", file.rel);
   fs.mkdirSync(path.dirname(to), { recursive: true });
   fs.copyFileSync(path.join(embedded, file.rel), to);
 }
 fs.writeFileSync(path.join(dataDir, "dataset.json"), json(dataset));
-log(`wrote engine/voacap.wasm (${engine.wasm.bytes} bytes, sha256 ${engine.wasm.sha256.slice(0, 16)}…) and ${dataFiles.length} data files`);
+fs.writeFileSync(path.join(home, "coefficients.json"), json(coefficients));
+// The ones that do not ship go to the tests' copy, which is not committed.
+for (const file of fetched) {
+  const to = path.join(home, ".cache", file.rel);
+  fs.mkdirSync(path.dirname(to), { recursive: true });
+  fs.copyFileSync(path.join(embedded, file.rel), to);
+}
+log(
+  `wrote engine/voacap.wasm (${engine.wasm.bytes} bytes, sha256 ${engine.wasm.sha256.slice(0, 16)}…), ${shipped.length} shipped data files, and the list of ${fetched.length} that are not (copied to engines/voacap/.cache)`,
+);

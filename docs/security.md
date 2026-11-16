@@ -509,14 +509,33 @@ Outpost. It is treated as untrusted code doing arithmetic:
   dates, power, frequency and every antenna figure are held to ranges by zod, and
   antenna files are written by Outpost from those numbers, never from text a person
   supplied. Station names are cut to twenty characters and only ever printed.
-- **Its files are checked every time it is loaded**: the engine and all 44 data files
-  against SHA-256 checksums recorded when they were built. A file that does not match
-  is refused by name and no prediction is made from it.
-- **The one outbound request** is fetching a newer solar cycle table from NOAA
-  (`services.swpc.noaa.gov`), only when a person presses the button, through the
-  download manager and its public-address rule. What arrives is at most 1 MB, parsed as
-  JSON and accepted only if every row is a month with a sunspot number between 0 and
-  500; anything else is discarded and the table already installed stays in use.
+- **Its files are checked every time it is loaded**: the engine and the 29 data files
+  that ship against SHA-256 checksums recorded when they were built, the 15 coefficient files
+  against `engines/voacap/coefficients.json`, which ships with the app and never comes
+  from the data directory. A file that does not match, or one missing, is refused by
+  name and no prediction is made; the engine never runs on part of the set.
+- **Two outbound requests, each only when a person presses a button**, through the
+  download manager and its public-address rule:
+  - a newer solar cycle table from NOAA (`services.swpc.noaa.gov`). What arrives is at
+    most 1 MB, parsed as JSON and accepted only if every row is a month with a sunspot
+    number between 0 and 500; anything else is discarded and the table already
+    installed stays in use.
+  - VOACAP's coefficients (`engine-data.ts`), which Outpost does not ship: 15 GET
+    requests to `raw.githubusercontent.com`, at a commit pinned in
+    `engines/voacap/coefficients.json`, from the HF planner's **Download** button. The
+    size of every file is known in advance (559,336 bytes in all) and a file of another
+    length is refused before it is read; the bundle is checked against its SHA-256 and
+    each file against its own before anything is written where the engine looks, and
+    then they are written to a folder beside it and renamed into place. The names come
+    from that list and are refused if one would leave its folder. Nothing in a request
+    chooses the address. The app never makes these requests by itself; at set-up,
+    `scripts/fetch-voacap-data.mjs` makes the same ones, with the same checks, when a
+    person runs it. `OUTPOST_VOACAP_DATA_MANIFEST` (an administrator's setting, for
+    tests) can name another list.
+  - Removing them (`DELETE /api/radio/propagation/engine-data`, or under Manage and
+    clean up) is open to anyone who can reach Outpost, like removing any download; it
+    stops the planner until they are downloaded again, and deletes only Outpost's own
+    copy and its own downloaded file.
 
 ### The second HF model (ITU P.533)
 

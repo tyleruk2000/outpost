@@ -3,7 +3,9 @@
 Outpost can predict how well a shortwave (HF, 2 to 30 MHz) signal gets from one place
 to another: hour by hour through a day, band by band, for the power, antennas and mode
 you have. It works on the computer Outpost runs on, with no connection, and goes on
-working for as long as you like without one.
+working for as long as you like without one, once one set of data (559 kB) has been
+fetched: VOACAP's ionospheric and noise maps, which Outpost does not ship. Until then
+the planner says so in one line, with a **Download** button. See [Data](#data).
 
 It is in **Radio**, then **HF propagation**. On a phone it is in the **More** sheet.
 Three more screens are built on the same engine, each listed under **Radio** and in the
@@ -1058,7 +1060,8 @@ VOACAP into Rust (Apache-2.0), compiled to WebAssembly:
   engine can see are the data files Outpost hands it; it cannot read or write anything
   else on the computer.
 - The engine and every data file are checked against recorded SHA-256 checksums each
-  time the engine is loaded. A file that does not match is refused and named.
+  time the engine is loaded. A file that does not match is refused and named, and so is
+  a set with a file missing: the engine never runs on part of its data.
 
 Everything outside `apps/server/src/modules/propagation/voacap/` knows only the
 interface in `engine.ts` (`circuit`, `ionosphere`, `listing`, `describe`, `datasets`),
@@ -1193,14 +1196,20 @@ search again. After a restart the first of them searches once.
 
 ### Rebuilding the engine
 
-Running or packaging Outpost needs none of this; the built file and the data are
-committed.
+Running or packaging Outpost needs none of this; the built file, the data that ships
+and the list of the data that does not are committed.
 
 ```bash
 rustup toolchain install 1.97.1 --profile minimal --target wasm32-wasip1
-node scripts/build-hf-engine.mjs            # build and replace engines/voacap/engine and data
+node scripts/build-hf-engine.mjs            # build and replace engines/voacap/engine, data and coefficients.json
 node scripts/build-hf-engine.mjs --check    # build and compare with what is committed
 ```
+
+The script writes the antenna files to `engines/voacap/data/` and the coefficients, which
+are not committed, to the tests' copy in `engines/voacap/.cache/`, and records both
+lists. `--check` was last run on 16 November 2026 with the toolchain stood in for (the
+committed WebAssembly in place of a build, the engine's files from `embedded/` at the
+pinned commit): the lists it writes are the committed ones, byte for byte.
 
 The script fetches hfcast at the commit pinned in it, applies `engines/voacap/wasm.patch`
 (15 lines in a test harness Outpost never calls, so that it compiles where there are no
@@ -1214,16 +1223,84 @@ Fortran at the commit used here and says how to run them.
 
 ## Data
 
-**Engine and data** lists what is installed with versions, sizes, dates and checksums.
+**Engine and data** lists what is installed with versions, sizes, where each came from
+and when, and checksums.
 
 | Set | Size | Ships with Outpost | Can be fetched |
 | --- | --- | --- | --- |
-| Ionospheric and noise coefficients (44 files) | 650 kB | Yes | No |
+| Antenna definitions and the version file (29 files, NTIA/ITS) | 15 kB | Yes | No |
+| VOACAP's ionospheric and noise coefficients (15 files) | 559 kB | **No** | Yes, once, when you ask, or at set-up |
 | Solar cycle prediction | 17 kB | Yes, dated 16 November 2026 | Yes, when you ask |
 | ITU P.533 ionospheric and noise maps (25 files), for the second model only | 137 MB | No | Yes, when you ask, from the ITU's repository |
 
-A copy of the coefficients placed in `<data directory>/propagation/voacap-data/`
-(`dataset.json` and `itshfbc/`) is used in preference to the included one.
+### VOACAP's coefficients: a one-time download
+
+The engine cannot predict without its monthly maps of foF2 and M(3000)F2 (CCIR Report
+340) and of atmospheric radio noise (CCIR Report 322). The ITU has not given permission
+for those to be passed on ([Licences and attribution](#licences-and-attribution)), so
+Outpost does not ship them. They are fetched once, and after that nothing changes and
+nothing more is fetched:
+
+- **In the app.** Until they are here, the planner, coverage maps, communication plans
+  and the contact log's comparison each show one line where the form would run: what is
+  missing and how big it is, why it is not shipped, and **Download (559 kB)**. Pressing
+  it fetches the 15 files from the engine's own repository
+  (`raw.githubusercontent.com/jonathanmcsweet/hfcast-engine`, at the commit the engine
+  was built from) through the download manager: it is a row under Downloads, can be
+  paused and resumed, and every file and the whole are checked against
+  `engines/voacap/coefficients.json` before anything is installed. As soon as it
+  finishes the screens work; nothing needs restarting. Nothing is fetched until the
+  button is pressed, and the app never fetches them by itself, on start-up or later.
+- **At set-up,** so that a box prepared once works offline at once:
+  `node scripts/fetch-voacap-data.mjs --data-dir <data directory>` (the same list, the
+  same checksums; [deployment.md](deployment.md) gives the line for each way of
+  installing). `deploy/pi/install.sh` runs it unless given `--no-voacap-data`. With
+  `--from <folder>` it takes the files from a folder instead of the network.
+
+Where they are kept: `<data directory>/propagation/voacap-coefficients/`, with
+`installed.json` saying how they came, from where and when. The engine reads only that
+copy, so a storage location that is away does not stop predictions. A download also
+leaves the downloaded file on a storage location, as a collection, so that it is listed
+under **Manage and clean up**; removing it there, or with **Remove** on **Engine and
+data**, removes the engine's copy too, after saying that the planner stops working
+without them. If the data directory's copy goes and that file is still there, it is put
+back from it on the next start, or when Download is pressed, with no request. A portable
+drive takes the engine's copy with it.
+
+Checked when loaded: all 15 files are read and hashed each time the engine starts (a few
+milliseconds). A file missing or not matching is named, the engine refuses to run, and
+the planner offers the download again; it never runs on part of the set or an altered
+one.
+
+### An installation from before this change
+
+Until 16 November 2026 the coefficients were in the app folder
+(`engines/voacap/data/itshfbc/coeffs/`), which a deploy replaces. On the first start
+after the change, if the data directory has no copy and the app folder (or the checkout,
+when running from source) still holds the files and every one matches its checksum, they
+are **copied into the data directory with no download** ("Taken over from the app folder
+of an earlier Outpost" on Engine and data). A copy someone placed in
+`<data directory>/propagation/voacap-data/itshfbc/`, where an earlier Outpost looked for
+one, is taken over the same way. The folder they came from is left as it is; the next
+deploy's app folder no longer carries them. A deploy that replaces the app folder
+**before** the new version first starts (`rsync --delete`, a new Docker image) leaves
+nothing to take over: run the set-up line above first, with `--from` pointing at the old
+app folder's `engines/voacap/data/itshfbc` if there is no internet, or press Download
+afterwards.
+
+### For the tests
+
+The engine's tests need the real files. They are kept on each computer, not in the
+repository, in `engines/voacap/.cache/` (ignored by git), filled once with the internet:
+
+```bash
+node scripts/fetch-voacap-data.mjs --cache
+```
+
+Each test server is given that copy in its data directory. Without it, the tests that
+run the engine are reported as skipped, by name, with what is missing; the tests of the
+download, the missing-data state, adoption and removal use small stand-ins and run
+anyway. The end-to-end suite needs the copy and says so if it is not there.
 
 Looked at and not offered:
 
@@ -1236,22 +1313,59 @@ Looked at and not offered:
 
 ## Licences and attribution
 
-Outpost's rule is MIT, ISC, BSD or Apache-2.0 for what it ships. The engine's code
-meets it. **The engine's data does not**, and that is the project owner's decision to
-confirm:
+Outpost's rule is MIT, ISC, BSD or Apache-2.0 for what it ships, and it never bundles
+copyrighted material without permission. The engine's code meets the first. Of the
+engine's data, only NTIA/ITS's part ships; **the CCIR-derived coefficients are not
+shipped** and are fetched once when a person asks:
 
 | Part | Terms | Where read |
 | --- | --- | --- |
 | hfcast (the engine's code) | Apache-2.0 | its repository; `engines/voacap/engine/LICENSE-hfcast.txt`, `NOTICE-hfcast.txt` |
-| VOACAP (what hfcast translates), its antenna files, and about 195 kB of the coefficients | "NTIA/ITS has no objection to the use of this software for any purpose since it is not subject to copyright protection in the U.S." ITS's download page now asks that its disclaimer be kept "in any copied or derivative works" | the VOACAP distribution; its.ntia.gov |
-| The foF2, M(3000)F2 and atmospheric noise maps (CCIR Reports 340 and 322), about 350 kB | Published by the ITU in its own P.533 and P.372 software, which "may be used by implementers in their implementation of the Recommendation ... free from any copyright assertions". That wording is for implementations of ITU Recommendations, and VOACAP is not one | github.com/ITU-R-Study-Group-3/ITU-R-HF |
+| VOACAP (what hfcast translates) and its antenna files: **shipped** | "NTIA/ITS has no objection to the use of this software for any purpose since it is not subject to copyright protection in the U.S." ITS's download page now asks that its disclaimer be kept "in any copied or derivative works" | the VOACAP distribution; its.ntia.gov |
+| The coefficient files (the foF2, M(3000)F2 and atmospheric noise maps of CCIR Reports 340 and 322, about 350 kB, in the same files as about 195 kB of NTIA/ITS tables) and two short-whip patterns of unstated source: **not shipped** | The ITU publishes the CCIR data in its own P.533 and P.372 software, which "may be used by implementers in their implementation of the Recommendation ... free from any copyright assertions"; four headers of the same repository say "All rights reserved. No part of this publication may be reproduced, by any means whatsoever, without written permission of ITU" (both quoted in full below). The engine's repository, where Outpost fetches them, offers them under no licence: "Apache-2.0 covers the software in this repository. It does not cover these data files" | github.com/ITU-R-Study-Group-3/ITU-R-HF; github.com/jonathanmcsweet/hfcast-engine, `NOTICE` and `embedded/README.md` |
 | voacapl's changes to VOACAP | CC0 | its repository |
 | Solar cycle table | Public domain (United States Government work): "may be used without charge for any lawful purpose", without claiming it as your own, implying endorsement, or presenting a changed copy as official | weather.gov/disclaimer |
 
 The full texts are in `engines/voacap/NOTICE.txt`, which travels with the packaged app.
-If the coefficients must not ship, the alternative is already built in: leave
-`engines/voacap/data` out of the package and have each person place the same files in
-their data directory. Predictions then need that one step before they work.
+
+### VOACAP's coefficients: which files, and why they are not shipped
+
+Each file was classed by what is in it, from `engines/voacap/NOTICE.txt`, the hfcast
+project's `NOTICE` and `docs/licence.md` (which name, from VOACAP's `REDMAP`, the arrays
+each of the nine records of a month's file holds) and VOACAP's distribution. A file that
+mixes NTIA/ITS and CCIR material is treated as CCIR, and so is one whose source could
+not be found:
+
+| File | Bytes | SHA-256 | What is in it | |
+| --- | ---: | --- | --- | --- |
+| `coeffs/coeff01w.bin` … `coeff12w.bin` | 38,552 each | in `engines/voacap/coefficients.json` | the month's M(3000)F2 map (Report 340) and noise maps (Report 322), with NTIA/ITS's sporadic-E, E, F1, F2 height-ratio and error tables | mixed: not shipped |
+| `coeffs/fof2CCIR.daw` | 94,848 | `bd78d040…f7f` | the foF2 maps of Report 340 | CCIR: not shipped |
+| `antennas/default/ccir.026`, `swwhip.voa` | 921, 943 | `66fc1af2…637`, `beac38eb…8dc` | a short whip's 91-angle pattern headed "SWWhip for REC533"; its source is not stated | unknown: not shipped |
+| `antennas/default/` (the other 28) and `database/version.w32` | 14,548 in all | in `engines/voacap/data/dataset.json` | VOACAP's antenna definitions (a type code, dimensions, gain figures; `ccir.000` to `ccir.025` carry CCIR's names for antenna types) and its version string | NTIA/ITS: shipped |
+
+All 15 not shipped: 559,336 bytes; the checksum of them one after another, in the list's
+order, is `919e457a270626e5b0f2cc4726be81f556d414616be1c91200a36e1cb653f90f`.
+
+They were bundled until 16 November 2026 on the strength of the ITU's first statement
+below. The four headers that say "All rights reserved" were found since, and the
+owner's rule is never to bundle copyrighted material without permission, so they left
+the repository. **They remain in the git history of the branch that removed them**; a
+squash merge keeps them out of `main`'s history from then on, but `main`'s earlier
+commits carry them. The history was not rewritten.
+
+Where they are fetched from, and on what terms: the hfcast repository, at the commit the
+engine was built from (`bf34e8f9f375e190ed43fcac19f25d800992e0e6`), `embedded/`, over
+GitHub's ordinary file addresses. On 16 November 2026 each of the 15 fetched from there
+was byte for byte the file this repository held. NTIA/ITS publishes VOACAP only as a
+Windows installer, and voacapl publishes the coefficients only as text sources its
+installer converts, so neither offers these files as such. The hfcast repository offers
+them under no licence and says so (`NOTICE`): "Apache-2.0 covers the software in this
+repository. It does not cover these data files, which are the work of other bodies and
+keep their own status." Its `embedded/README.md` adds: "Whether these files may be
+redistributed to other people is an open question ... Embedding them for builds used on
+one's own devices is not redistribution, which is why they are here while that stays
+undecided." Outpost fetches them for the use of the person who presses the button, on
+their own computer, and does not pass them on.
 
 ### The second model's terms
 
@@ -1303,7 +1417,8 @@ software is provided "as is" without warranty and without any warranty that its 
 conform to the Recommendation.
 
 The same repository is where VOACAP's foF2, M(3000)F2 and noise maps were read (the row
-above), and its headers carry the second text too.
+above), and its headers carry the second text too; that is why those maps are no longer
+shipped either ([which files, and why](#voacaps-coefficients-which-files-and-why-they-are-not-shipped)).
 
 **If shipping is ever allowed** (the ITU's written permission, or the owner's decision),
 it is one step: take the four `engines/p533/` lines out of `.gitignore`, commit

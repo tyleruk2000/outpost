@@ -19,6 +19,10 @@
 #                     an https address for location, recording a track and keeping
 #                     things on the phone. Writes compose.override.yaml; compose.yaml
 #                     itself is not edited.
+#   --no-voacap-data  Do not fetch VOACAP's coefficients (559 kB) for the HF propagation
+#                     planner once Outpost is up. They are not shipped with Outpost (see
+#                     engines/voacap/NOTICE.txt); fetched here, the Pi predicts offline at
+#                     once. Without them the planner offers a Download button instead.
 #   --dry-run         Print the commands instead of running them.
 #
 # It never deletes anything, and it does not touch an existing .env except, with --lan,
@@ -28,15 +32,17 @@ set -euo pipefail
 INSTALL_DOCKER=false
 LAN=false
 HTTPS=false
+VOACAP_DATA=true
 DRY_RUN=false
 for arg in "$@"; do
   case "$arg" in
     --install-docker) INSTALL_DOCKER=true ;;
     --lan) LAN=true ;;
     --https) HTTPS=true ;;
+    --no-voacap-data) VOACAP_DATA=false ;;
     --dry-run) DRY_RUN=true ;;
     -h | --help)
-      sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'
+      sed -n '2,29p' "$0" | sed 's/^# \{0,1\}//'
       exit 0
       ;;
     *)
@@ -182,6 +188,18 @@ if ! $DRY_RUN; then
     sleep 5
   done
   $ok || stop "Outpost did not answer within five minutes. Look at: ${DOCKER[*]} compose logs outpost"
+fi
+
+# ── HF propagation data ──────────────────────────────────────────────────────
+# The one set-up download Outpost's planner needs: 15 files, 559 kB, from the engine's
+# own repository at a pinned commit, each checked against engines/voacap/coefficients.json.
+# Into the data volume, so that it survives rebuilds. Outpost itself never fetches them
+# unless a person presses Download.
+if $VOACAP_DATA; then
+  say "Fetching VOACAP's coefficients for the HF propagation planner (15 files, 559 kB)."
+  if ! run "${DOCKER[@]}" compose exec -T outpost node /app/scripts/fetch-voacap-data.mjs --data-dir /data; then
+    say "They could not be fetched now. The planner will offer a Download button; or run this again later."
+  fi
 fi
 
 say "Outpost is running."
