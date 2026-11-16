@@ -8,6 +8,11 @@
  * stops, each time as a fresh encryption of the whole page that has been decrypted back
  * and compared before it is sent. "Lock" forgets the text and the passphrase; so do
  * five idle minutes, and leaving the page.
+ *
+ * A page opened with a key needs that key, unlocked, for every save. So reading and
+ * typing here count as use of the key, and it is not forgotten while the page is in use.
+ * If a save finds the key locked all the same, the page asks for its passphrase again
+ * and then saves; what was typed is never left with no way to save it.
  */
 import { encryptedNoteArmor, encryptedNoteDoc, type NoteDetail, type NoteDoc, type NoteResponse } from "@outpost/shared";
 import { useQueryClient } from "@tanstack/react-query";
@@ -27,7 +32,7 @@ import { keyLabel } from "@/features/encryption/format";
 import { canUsePrivate, type ShelfKey, useShelf, useUnlocked } from "@/features/encryption/keys-data";
 import { openPage, type PageLock, sealPage } from "@/features/encryption/pages";
 import { IDLE_MINUTES, PassphraseInput, UnlockForm } from "@/features/encryption/parts";
-import { lockAll, UNLOCK_IDLE_MS, unlockedKey } from "@/features/encryption/session";
+import { keepUnlocked, lockAll, UNLOCK_IDLE_MS, unlockedKey } from "@/features/encryption/session";
 import { errorMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { NoteEditor } from "./editor/note-editor";
@@ -49,9 +54,17 @@ interface Open {
   lock: PageLock;
   /** True for a message Outpost did not write, shown as plain paragraphs. */
   foreign: boolean;
+  /** The key the page was opened with, kept so that its passphrase can be asked for again. */
+  key: ShelfKey | null;
 }
 
-type TextState = { kind: "saved" } | { kind: "unsaved" } | { kind: "saving" } | { kind: "error"; message: string };
+type TextState =
+  | { kind: "saved" }
+  | { kind: "unsaved" }
+  | { kind: "saving" }
+  | { kind: "error"; message: string }
+  /** The key the page was opened with has been locked: nothing can be saved until it is unlocked again. */
+  | { kind: "key-locked" };
 
 export default function EncryptedNote({ note }: { note: NoteDetail }) {
   const client = useQueryClient();
@@ -145,16 +158,31 @@ export default function EncryptedNote({ note }: { note: NoteDetail }) {
       await saving.current;
       if (!dirty.current) return;
     }
-    const current = openRef.current;
+    let current = openRef.current;
     const editor = editorRef.current;
     if (!current || !dirty.current) return;
+    if (current.lock.kind === "key") {
+      // Saving is a use of the key. One that was forgotten cannot check what it encrypts, so nothing is tried with it:
+      // the page asks for the passphrase, and what was typed stays unsaved until then.
+      const held = unlockedKey(current.lock.fingerprint);
+      if (!held) {
+        setText({ kind: "key-locked" });
+        return;
+      }
+      if (held !== current.lock.unlocked) {
+        current = { ...current, lock: { ...current.lock, unlocked: held } };
+        openRef.current = current;
+        setOpen(current);
+      }
+    }
+    const { lock } = current;
     const content = editor && !editor.isDestroyed ? (editor.getJSON() as NoteDoc) : current.content;
     dirty.current = false;
     setText({ kind: "saving" });
     const run = (async () => {
       try {
         const engine = await getEngine();
-        const sealed = await sealPage(engine, content, current.lock);
+        const sealed = await sealPage(engine, content, lock);
         const queue = saver.current;
         // The title's own save goes first, so that this one is made on top of it.
         queue?.flush();
@@ -183,7 +211,7 @@ export default function EncryptedNote({ note }: { note: NoteDetail }) {
 
   const onTextChange = useCallback(() => {
     dirty.current = true;
-    setText((before) => (before.kind === "saving" ? before : { kind: "unsaved" }));
+    setText((before) => (before.kind === "saving" || before.kind === "key-locked" ? before : { kind: "unsaved" }));
     clearTimeout(timer.current);
     timer.current = setTimeout(() => void saveText(), SAVE_DELAY_MS);
   }, [saveText]);
@@ -215,26 +243,44 @@ export default function EncryptedNote({ note }: { note: NoteDetail }) {
     };
   }, []);
 
-  // Idle: the decrypted text and the passphrase are forgotten after five minutes without a key or a pointer, unless something is unsaved.
+  // Idle: the decrypted text and the passphrase are forgotten after five minutes without a key or a pointer.
+  // Anything unsaved is saved first; if it cannot be, the page stays open with it.
+  const isOpen = open !== null;
   useEffect(() => {
-    if (!open) return;
-    let idle: ReturnType<typeof setTimeout>;
+    if (!isOpen) return;
+    let idle: ReturnType<typeof setTimeout> | undefined;
+    let stopped = false;
+    const onIdle = () => {
+      if (!dirty.current && !saving.current) {
+        lockPage();
+        return;
+      }
+      const fired = idle;
+      void latestSave.current().then(() => {
+        // A key or a pointer in the meantime: the person is back, and the clock has started again.
+        if (stopped || idle !== fired) return;
+        if (dirty.current) arm();
+        else lockPage();
+      });
+    };
     const arm = () => {
       clearTimeout(idle);
-      idle = setTimeout(() => {
-        if (dirty.current || saving.current) arm();
-        else lockPage();
-      }, UNLOCK_IDLE_MS);
+      idle = setTimeout(onIdle, UNLOCK_IDLE_MS);
+      // Use of the page is use of the key it was opened with: the key's own five minutes start again with the page's.
+      // The page's clock is set first, so that it runs out first and can still save with the key.
+      const lock = openRef.current?.lock;
+      if (lock?.kind === "key") keepUnlocked(lock.fingerprint);
     };
     arm();
     window.addEventListener("keydown", arm, true);
     window.addEventListener("pointerdown", arm, true);
     return () => {
+      stopped = true;
       clearTimeout(idle);
       window.removeEventListener("keydown", arm, true);
       window.removeEventListener("pointerdown", arm, true);
     };
-  }, [open, lockPage]);
+  }, [isOpen, lockPage]);
 
   // The page was encrypted again somewhere else: what is on this screen is no longer the page.
   // biome-ignore lint/correctness/useExhaustiveDependencies: reacts to a new message arriving, not to the other values it reads
@@ -249,7 +295,7 @@ export default function EncryptedNote({ note }: { note: NoteDetail }) {
   }, [armor]);
 
   // ── Opening ──
-  const openWith = async (lock: PageLock) => {
+  const openWith = async (lock: PageLock, key: ShelfKey | null = null) => {
     setOpening(true);
     setOpenError(null);
     try {
@@ -257,7 +303,7 @@ export default function EncryptedNote({ note }: { note: NoteDetail }) {
       const page = await openPage(engine, armor, lock);
       knownArmor.current = armor;
       setPassphrase("");
-      setOpen({ ...page, lock });
+      setOpen({ ...page, lock, key });
     } catch (failure) {
       setOpenError(errorMessage(failure));
     } finally {
@@ -272,7 +318,7 @@ export default function EncryptedNote({ note }: { note: NoteDetail }) {
 
   const openWithKey = (entry: ShelfKey) => {
     const key = unlockedKey(entry.fingerprint);
-    if (key) void openWith({ kind: "key", fingerprint: entry.fingerprint, publicKey: entry.publicKey, unlocked: key });
+    if (key) void openWith({ kind: "key", fingerprint: entry.fingerprint, publicKey: entry.publicKey, unlocked: key }, entry);
   };
 
   // ── Removing the encryption ──
@@ -322,7 +368,7 @@ export default function EncryptedNote({ note }: { note: NoteDetail }) {
       ? "Encrypting and saving…"
       : text.kind === "unsaved"
         ? "Not saved yet"
-        : text.kind === "error"
+        : text.kind === "error" || text.kind === "key-locked"
           ? "Not saved"
           : null;
 
@@ -416,6 +462,19 @@ export default function EncryptedNote({ note }: { note: NoteDetail }) {
               }
             >
               {text.message} They are still here on this screen, and nothing has been stored in their place.
+            </Notice>
+          ) : null}
+          {text.kind === "key-locked" ? (
+            <Notice tone="danger" icon={<CircleAlert />} title="Your changes to the text have not been saved">
+              <p>
+                The key this page was opened with has been locked again, and the page cannot be encrypted and checked without it. Your
+                changes are still here on this screen, and nothing has been stored in their place.
+              </p>
+              {open?.key ? (
+                <div className="mt-3 max-w-md">
+                  <UnlockForm entry={open.key} submitLabel="Unlock and save" onUnlocked={() => void saveText()} />
+                </div>
+              ) : null}
             </Notice>
           ) : null}
         </div>

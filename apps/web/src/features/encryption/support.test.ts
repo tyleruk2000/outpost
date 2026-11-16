@@ -12,7 +12,7 @@ import {
 import type { UnlockedKey } from "./engine";
 import { fingerprintGroups, formatFingerprint, keyLabel, safeDownloadName, slug } from "./format";
 import { assessPassphrase, proquint, suggestPassphrase } from "./passphrase";
-import { holdUnlocked, lock, lockAll, UNLOCK_IDLE_MS, unlockedKey, unlockedSnapshot } from "./session";
+import { holdUnlocked, keepUnlocked, lock, lockAll, subscribeUnlocked, UNLOCK_IDLE_MS, unlockedKey, unlockedSnapshot } from "./session";
 
 describe("a suggested passphrase", () => {
   it("is made of proquints, 16 bits each, as the published scheme writes them", () => {
@@ -140,6 +140,30 @@ describe("unlocked keys", () => {
     expect(unlockedSnapshot().has("aa11")).toBe(false);
     expect(held.forget).toHaveBeenCalledTimes(1);
     expect(unlockedKey("aa11")).toBeNull();
+  });
+
+  it("are kept while a page opened with them is in use, without anything being told", () => {
+    const held = key("aa11");
+    holdUnlocked(held);
+    const told = vi.fn();
+    const stop = subscribeUnlocked(told);
+    const before = unlockedSnapshot();
+    // A key press every four minutes, for twenty.
+    for (let press = 0; press < 5; press += 1) {
+      vi.advanceTimersByTime(4 * 60_000);
+      expect(keepUnlocked("AA11")).toBe(true);
+    }
+    expect(held.forget).not.toHaveBeenCalled();
+    expect(told).not.toHaveBeenCalled();
+    expect(unlockedSnapshot()).toBe(before);
+    expect(unlockedSnapshot().get("aa11")).toBe(Date.now() + UNLOCK_IDLE_MS);
+    // Then nothing: five minutes after the last press it is forgotten, and cannot be kept any longer.
+    vi.advanceTimersByTime(UNLOCK_IDLE_MS);
+    expect(held.forget).toHaveBeenCalledTimes(1);
+    expect(told).toHaveBeenCalledTimes(1);
+    expect(keepUnlocked("aa11")).toBe(false);
+    expect(unlockedSnapshot().size).toBe(0);
+    stop();
   });
 
   it("are wiped when locked, one or all", () => {
