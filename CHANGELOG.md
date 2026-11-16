@@ -302,17 +302,16 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 
 #### Reference collections
 
-- A catalogue of 311 items in JSON manifests, with a validator: 155 Kiwix archives; 131
+- A catalogue of 308 items in JSON manifests, with a validator: 155 Kiwix archives; 128
   official handbooks, rules, guides and textbooks fetched as PDFs from their publishers
   (FAA, NASA, USGS, the US National Weather Service, FAO, WHO, Ready.gov, USDA, OpenStax,
   UIAA, Ofcom, IARU, CEPT, NIST, NTIA, CISA, the Met Office, the Health and Safety
-  Executive, GOV.UK, Ordnance Survey, the US Department of Energy and others), each
+  Executive, GOV.UK, the US Department of Energy and others), each
   pinned by size and SHA-256; and nine radio reference sheets and sixteen radio books
   that ship with Outpost. Downloaded PDFs join
   the document library and are searchable to the page.
-- 75 of those were added in a second pass on 16 November 2026, each fetched and its
-  licence read that day: Met Office weather factsheets, Ordnance Survey's map reading
-  guides, HSE safety guidance, UK government guides (life saving signals, the
+- 72 of those were added in a second pass on 16 November 2026, each fetched and its
+  licence read that day: Met Office weather factsheets, HSE safety guidance, UK government guides (life saving signals, the
   Countryside Code, a flood plan, the National Risk Register, traffic signs), US
   Department of Energy handbooks on electricity, drawings and machinery, the six
   volumes of Lessons In Electric Circuits, six more OpenStax textbooks, U.S. Chart

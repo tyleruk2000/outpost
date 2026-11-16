@@ -21,8 +21,7 @@
     "assets.publishing.service.gov.uk",
     "nauticalcharts.noaa.gov",
     "www.energy.gov",
-    "www.ibiblio.org",
-    "www.ordnancesurvey.co.uk"
+    "www.ibiblio.org"
   ],
   "entries": [
     {
@@ -1531,75 +1530,6 @@
         "sizeBytes": 285091,
         "version": "2023",
         "published": "2023-05-26"
-      }
-    },
-    {
-      "id": "ordnance-survey.map-reading",
-      "name": "Map Reading: from the beginner to the advanced map reader (Ordnance Survey)",
-      "description": "Ordnance Survey's 28-page guide to using its maps on the ground: symbols and scale, grid references and the National Grid, contours and the shape of the land, setting the map, taking and walking on a compass bearing, magnetic north, pinpointing your position, and estimating distance by pacing and timing.",
-      "category": "navigation",
-      "publisher": "Ordnance Survey",
-      "language": "en",
-      "format": "pdf",
-      "license": "Ordnance Survey copyright; one copy for your own personal use",
-      "licenseNote": "© Ordnance Survey, Crown copyright. No open licence applies. Ordnance Survey offers this guide among its free teaching resources, and its website terms say you may download and print one copy of its pages for your own personal use and must not use its content commercially without a licence. That does not cover passing copies on: keep the file for your own use, and leave it off a portable drive made for someone else.",
-      "attribution": "© Ordnance Survey. Map Reading: from the beginner to the advanced map reader.",
-      "homepage": "https://www.ordnancesurvey.co.uk/education/teacher-resources/primary",
-      "lastVerified": "2026-11-16",
-      "tags": ["maps", "compass", "grid reference", "contours", "navigation", "UK"],
-      "sizeBytes": 5857300,
-      "source": {
-        "type": "http",
-        "url": "https://www.ordnancesurvey.co.uk/documents/resources/map-reading.pdf",
-        "sha256": "bb3b2deaec148751a0a5198eb930d10019d8b4db2ca7c24d115fc3750d9e7eab",
-        "sizeBytes": 5857300,
-        "version": "2017, file of 2023-10"
-      }
-    },
-    {
-      "id": "ordnance-survey.map-reading-made-easy",
-      "name": "Map Reading Made Easy (Ordnance Survey)",
-      "description": "Ordnance Survey's 16-page beginner's guide: what a map is, symbols, scale, the National Grid and grid references, and how contours show slopes.",
-      "category": "navigation",
-      "publisher": "Ordnance Survey",
-      "language": "en",
-      "format": "pdf",
-      "license": "Ordnance Survey copyright; one copy for your own personal use",
-      "licenseNote": "© Ordnance Survey, Crown copyright. No open licence applies. Ordnance Survey offers this guide among its free teaching resources, and its website terms say you may download and print one copy of its pages for your own personal use and must not use its content commercially without a licence. That does not cover passing copies on: keep the file for your own use, and leave it off a portable drive made for someone else.",
-      "attribution": "© Ordnance Survey. Map Reading Made Easy.",
-      "homepage": "https://www.ordnancesurvey.co.uk/education/teacher-resources/primary",
-      "lastVerified": "2026-11-16",
-      "tags": ["maps", "grid reference", "beginners", "UK"],
-      "sizeBytes": 6339570,
-      "source": {
-        "type": "http",
-        "url": "https://www.ordnancesurvey.co.uk/documents/resources/map-reading-made-easy.pdf",
-        "sha256": "4dd5890692da4bc77811f6c39df84bb464428c29c01e5ba3974a3ef3bc259936",
-        "sizeBytes": 6339570,
-        "version": "2026-06"
-      }
-    },
-    {
-      "id": "ordnance-survey.using-the-national-grid",
-      "name": "Using the National Grid (Ordnance Survey)",
-      "description": "A two-page Ordnance Survey factsheet on the National Grid: the lettered squares, eastings and northings, and how to give a four-figure and a six-figure grid reference.",
-      "category": "navigation",
-      "publisher": "Ordnance Survey",
-      "language": "en",
-      "format": "pdf",
-      "license": "Ordnance Survey copyright; one copy for your own personal use",
-      "licenseNote": "© Ordnance Survey, Crown copyright. No open licence applies. Ordnance Survey offers this guide among its free teaching resources, and its website terms say you may download and print one copy of its pages for your own personal use and must not use its content commercially without a licence. That does not cover passing copies on: keep the file for your own use, and leave it off a portable drive made for someone else.",
-      "attribution": "© Ordnance Survey. Using the National Grid.",
-      "homepage": "https://www.ordnancesurvey.co.uk/education/teacher-resources/primary",
-      "lastVerified": "2026-11-16",
-      "tags": ["maps", "grid reference", "National Grid", "UK"],
-      "sizeBytes": 1080032,
-      "source": {
-        "type": "http",
-        "url": "https://www.ordnancesurvey.co.uk/documents/resources/guide-to-nationalgrid.pdf",
-        "sha256": "348a89bb7ab7c1e6dddd4aafa06746d2ac8d29c7a44f8fc24d03e02c2bf78c04",
-        "sizeBytes": 1080032,
-        "version": "2016, file of 2023-10"
       }
     },
     {
