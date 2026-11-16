@@ -90,6 +90,48 @@ afterAll(async () => {
 });
 
 describe("imports a person brings", () => {
+  /** A form with its parts in the order given: a field before or after the file. */
+  function form(parts: Array<[string, string] | { file: string; content: string }>) {
+    const boundary = "----outpost-layers-test";
+    const body = parts
+      .map((part) =>
+        Array.isArray(part)
+          ? `--${boundary}\r\nContent-Disposition: form-data; name="${part[0]}"\r\n\r\n${part[1]}\r\n`
+          : `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${part.file}"\r\nContent-Type: text/csv\r\n\r\n${part.content}\r\n`,
+      )
+      .join("");
+    return { payload: `${body}--${boundary}--\r\n`, headers: { "content-type": `multipart/form-data; boundary=${boundary}` } };
+  }
+  const importsFolder = () => path.join(storageRoot, "collections", "reference", "imports");
+  const leftInImports = () => (fs.existsSync(importsFolder()) ? fs.readdirSync(importsFolder()) : []);
+
+  it("leaves nothing on the drive when an uploaded import is refused", async () => {
+    const before = leftInImports();
+    const csv = { file: "figures.csv", content: "country,indicator,value,source_title,publisher\nIE,x,1,t,p\n" };
+    const cases = [
+      // Fields first, as the web app sends them: refused before anything is written.
+      [["format", "country-figures-csv"], ["title", " "], csv],
+      [["format", "no-such-format"], ["title", "Figures"], csv],
+      [["format", "country-figures-csv"], ["title", "Figures"], ["options", "{not json"], csv],
+      [["format", "country-figures-csv"], ["title", "Figures"], ["options", JSON.stringify({ crs: ["not", "text"] })], csv],
+      // Fields after the file: written under a temporary name, and removed.
+      [csv, ["format", "no-such-format"], ["title", "Figures"]],
+      [csv, ["format", "country-figures-csv"]],
+    ] as Array<Array<[string, string] | { file: string; content: string }>>;
+    for (const parts of cases) {
+      const { payload, headers } = form(parts);
+      const response = await app.api("POST", "/api/reference/imports", payload, { headers });
+      expect(response.status, JSON.stringify(parts.filter(Array.isArray))).toBe(400);
+      expect(leftInImports()).toEqual(before);
+    }
+    // A good one still goes through, whichever order its parts came in.
+    const { payload, headers } = form([csv, ["format", "country-figures-csv"], ["title", "Figures after the file"]]);
+    const accepted = await app.api("POST", "/api/reference/imports", payload, { headers });
+    expect(accepted.status).toBe(200);
+    await app.ctx.jobs.whenIdle();
+    expect(leftInImports().filter((name) => !before.includes(name))).toEqual([expect.stringMatching(/-figures\.csv$/)]);
+  });
+
   it("imports places from a CSV in British National Grid coordinates, converting them, and finds them by name on the map and in search", async () => {
     write(
       "imports/shelters.csv",

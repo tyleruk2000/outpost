@@ -8,7 +8,6 @@
  * fetched otherwise.
  */
 import fs from "node:fs";
-import path from "node:path";
 import { pipeline } from "node:stream/promises";
 import { REFERENCE_IMPORT_FORMATS, REFERENCE_LAYERS } from "@outpost/shared";
 import type { FastifyInstance, FastifyReply } from "fastify";
@@ -183,51 +182,68 @@ export async function registerLayers(app: FastifyInstance, ctx: AppContext): Pro
   app.post("/api/reference/imports/from-storage", async (request) => startImport(importFromStorageSchema.parse(request.body)));
 
   await registerMultipart(app);
-  app.post("/api/reference/imports", async (request) => {
-    if (!request.isMultipart()) throw badRequest("Send the file as a multipart/form-data upload.");
-    const fields: Record<string, string> = {};
-    let saved: { locationId: string; relPath: string } | undefined;
-    try {
-      for await (const part of request.parts({ limits: { fileSize: MAX_UPLOAD_BYTES, files: 1, fields: 8, fieldSize: 8000 } })) {
-        if (part.type === "field") {
-          if (typeof part.value === "string") fields[part.fieldname] = part.value;
-          continue;
-        }
-        const location = ctx.services.storage.getDefault();
-        const name = safeFileName(part.filename || "import.csv") || "import.csv";
-        const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
-        const relPath = `collections/reference/imports/${stamp}-${name}`;
-        const target = ctx.services.storage.resolve(location.id, relPath);
-        await fs.promises.mkdir(path.dirname(target), { recursive: true });
-        await pipeline(part.file, fs.createWriteStream(target, { flags: "wx" }));
-        if (part.file.truncated) {
-          await fs.promises.rm(target, { force: true });
-          throw new AppError("too_large", "That file is larger than 32 MB. Put it in a storage location and import it from there.");
-        }
-        saved = { locationId: location.id, relPath };
-      }
-    } catch (error) {
-      const code = (error as { code?: string } | null)?.code;
-      if (code === "FST_REQ_FILE_TOO_LARGE")
-        throw new AppError("too_large", "That file is larger than 32 MB. Put it in a storage location and import it from there.");
-      if (code === "FST_FILES_LIMIT") throw badRequest("Import one file at a time.");
-      throw error;
-    }
-    if (!saved) throw badRequest("No file was sent. Choose a file to import.");
+  /** The form's fields, without where the file went: checked before the file is written when they come first. */
+  const importFieldsSchema = importFromStorageSchema.omit({ locationId: true, relPath: true });
+  const readFields = (fields: Record<string, string>) => {
     let options: unknown = {};
     try {
       options = fields.options ? JSON.parse(fields.options) : {};
     } catch {
       throw badRequest("The import's details could not be read.");
     }
-    const input = importFromStorageSchema.parse({
-      ...saved,
-      format: fields.format,
-      title: fields.title,
-      options,
-      replaces: fields.replaces || undefined,
-    });
-    return startImport(input);
+    return importFieldsSchema.parse({ format: fields.format, title: fields.title, options, replaces: fields.replaces || undefined });
+  };
+
+  app.post("/api/reference/imports", async (request) => {
+    if (!request.isMultipart()) throw badRequest("Send the file as a multipart/form-data upload.");
+    const fields: Record<string, string> = {};
+    let saved: { locationId: string; relPath: string; target: string; temp: string } | undefined;
+    // Until the import is accepted the file has a temporary name, and every refusal removes it.
+    let kept = false;
+    try {
+      try {
+        for await (const part of request.parts({ limits: { fileSize: MAX_UPLOAD_BYTES, files: 1, fields: 8, fieldSize: 8000 } })) {
+          if (part.type === "field") {
+            if (typeof part.value === "string") fields[part.fieldname] = part.value;
+            continue;
+          }
+          // Fields sent before the file (as Outpost's own form sends them) are checked before anything is written.
+          if (fields.format !== undefined || fields.title !== undefined) readFields(fields);
+          const location = ctx.services.storage.getDefault();
+          const name = safeFileName(part.filename || "import.csv") || "import.csv";
+          const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+          const folder = "collections/reference/imports";
+          await fs.promises.mkdir(ctx.services.storage.resolve(location.id, folder), { recursive: true });
+          let relPath = `${folder}/${stamp}-${name}`;
+          for (let n = 2; fs.existsSync(ctx.services.storage.resolve(location.id, relPath)); n += 1)
+            relPath = `${folder}/${stamp}-${n}-${name}`;
+          const target = ctx.services.storage.resolve(location.id, relPath);
+          const temp = `${target}.uploading`;
+          saved = { locationId: location.id, relPath, target, temp };
+          await pipeline(part.file, fs.createWriteStream(temp, { flags: "wx" }));
+          if (part.file.truncated) {
+            throw new AppError("too_large", "That file is larger than 32 MB. Put it in a storage location and import it from there.");
+          }
+        }
+      } catch (error) {
+        const code = (error as { code?: string } | null)?.code;
+        if (code === "FST_REQ_FILE_TOO_LARGE")
+          throw new AppError("too_large", "That file is larger than 32 MB. Put it in a storage location and import it from there.");
+        if (code === "FST_FILES_LIMIT") throw badRequest("Import one file at a time.");
+        throw error;
+      }
+      if (!saved) throw badRequest("No file was sent. Choose a file to import.");
+      const input = { ...readFields(fields), locationId: saved.locationId, relPath: saved.relPath };
+      await fs.promises.rename(saved.temp, saved.target);
+      const started = startImport(input);
+      kept = true;
+      return started;
+    } finally {
+      if (saved && !kept) {
+        await fs.promises.rm(saved.temp, { force: true }).catch(() => undefined);
+        await fs.promises.rm(saved.target, { force: true }).catch(() => undefined);
+      }
+    }
   });
 
   app.get<{ Params: { format: string } }>("/api/reference/templates/:format", async (request, reply) => {
