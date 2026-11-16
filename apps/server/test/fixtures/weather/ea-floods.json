@@ -1,49 +1,49 @@
 {
- "@context": "http://environment.data.gov.uk/flood-monitoring/meta/context.jsonld",
- "meta": {
-  "publisher": "Environment Agency",
-  "licence": "http://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
-  "documentation": "http://environment.data.gov.uk/flood-monitoring/doc/reference",
-  "version": "0.9",
-  "comment": "Status: Beta service",
-  "hasFormat": [
-   "http://environment.data.gov.uk/flood-monitoring/id/floods.csv?lat=50.73&long=-1.78&dist=20",
-   "http://environment.data.gov.uk/flood-monitoring/id/floods.rdf?lat=50.73&long=-1.78&dist=20",
-   "http://environment.data.gov.uk/flood-monitoring/id/floods.ttl?lat=50.73&long=-1.78&dist=20",
-   "http://environment.data.gov.uk/flood-monitoring/id/floods.html?lat=50.73&long=-1.78&dist=20"
+  "@context": "http://environment.data.gov.uk/flood-monitoring/meta/context.jsonld",
+  "meta": {
+    "publisher": "Environment Agency",
+    "licence": "http://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+    "documentation": "http://environment.data.gov.uk/flood-monitoring/doc/reference",
+    "version": "0.9",
+    "comment": "Status: Beta service",
+    "hasFormat": [
+      "http://environment.data.gov.uk/flood-monitoring/id/floods.csv?lat=50.73&long=-1.78&dist=20",
+      "http://environment.data.gov.uk/flood-monitoring/id/floods.rdf?lat=50.73&long=-1.78&dist=20",
+      "http://environment.data.gov.uk/flood-monitoring/id/floods.ttl?lat=50.73&long=-1.78&dist=20",
+      "http://environment.data.gov.uk/flood-monitoring/id/floods.html?lat=50.73&long=-1.78&dist=20"
+    ]
+  },
+  "items": [
+    {
+      "@id": "http://environment.data.gov.uk/flood-monitoring/id/floods/111WATCHXH",
+      "description": "Christchurch Harbour",
+      "eaAreaName": "Wessex",
+      "eaRegionName": "No longer used",
+      "floodArea": {
+        "@id": "http://environment.data.gov.uk/flood-monitoring/id/floodAreas/111WATCHXH",
+        "county": "Bournemouth, Christchurch and Poole",
+        "envelope": {
+          "lowerCorner": {
+            "lx": 413632.781094527,
+            "ly": 90183.2029850746
+          },
+          "upperCorner": {
+            "ux": 418626,
+            "uy": 94804.328358209
+          }
+        },
+        "notation": "111WATCHXH",
+        "polygon": "http://environment.data.gov.uk/flood-monitoring/id/floodAreas/111WATCHXH/polygon",
+        "riverOrSea": "English Channel"
+      },
+      "floodAreaID": "111WATCHXH",
+      "isTidal": true,
+      "message": "Higher than normal tides tomorrow morning may lead to flooding.\u00a0\nFlooding is possible from 03:14AM to 07:14AM on 17/11/26.\u00a0\nThe highest tide level is expected to be at Christchurch Harbour and tidal stretches of the Lower Stour and Avon at 05:14AM on 17/11/2026 with a level of 1.24 mAODN and a South Westerly force 7 wind. Our threshold for issuing the Flood Alert for Christchurch Harbour is 1.20 mAODN so we anticipate only a small rise above this level.\u00a0\nWe are closely monitoring the situation .Start acting on your flood plan if you have one.\u00a0\nAvoid beaches and coastal promenades, which may be flooded. Avoid coastal roads and low lying roads near rivers, which may be flooded.\u00a0\nThis message will be updated by 12:00PM on Tuesday 17 November or as the situation changes.\n\n",
+      "severity": "Flood alert",
+      "severityLevel": 3,
+      "timeMessageChanged": "2026-11-16T16:06:00",
+      "timeRaised": "2026-11-16T16:06:17",
+      "timeSeverityChanged": "2026-11-16T16:06:00"
+    }
   ]
- },
- "items": [
-  {
-   "@id": "http://environment.data.gov.uk/flood-monitoring/id/floods/111WATCHXH",
-   "description": "Christchurch Harbour",
-   "eaAreaName": "Wessex",
-   "eaRegionName": "No longer used",
-   "floodArea": {
-    "@id": "http://environment.data.gov.uk/flood-monitoring/id/floodAreas/111WATCHXH",
-    "county": "Bournemouth, Christchurch and Poole",
-    "envelope": {
-     "lowerCorner": {
-      "lx": 413632.781094527,
-      "ly": 90183.2029850746
-     },
-     "upperCorner": {
-      "ux": 418626,
-      "uy": 94804.328358209
-     }
-    },
-    "notation": "111WATCHXH",
-    "polygon": "http://environment.data.gov.uk/flood-monitoring/id/floodAreas/111WATCHXH/polygon",
-    "riverOrSea": "English Channel"
-   },
-   "floodAreaID": "111WATCHXH",
-   "isTidal": true,
-   "message": "Higher than normal tides tomorrow morning may lead to flooding.\u00a0\nFlooding is possible from 03:14AM to 07:14AM on 17/11/26.\u00a0\nThe highest tide level is expected to be at Christchurch Harbour and tidal stretches of the Lower Stour and Avon at 05:14AM on 17/11/2026 with a level of 1.24 mAODN and a South Westerly force 7 wind. Our threshold for issuing the Flood Alert for Christchurch Harbour is 1.20 mAODN so we anticipate only a small rise above this level.\u00a0\nWe are closely monitoring the situation .Start acting on your flood plan if you have one.\u00a0\nAvoid beaches and coastal promenades, which may be flooded. Avoid coastal roads and low lying roads near rivers, which may be flooded.\u00a0\nThis message will be updated by 12:00PM on Tuesday 17 November or as the situation changes.\n\n",
-   "severity": "Flood alert",
-   "severityLevel": 3,
-   "timeMessageChanged": "2026-11-16T16:06:00",
-   "timeRaised": "2026-11-16T16:06:17",
-   "timeSeverityChanged": "2026-11-16T16:06:00"
-  }
- ]
 }

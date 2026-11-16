@@ -1,106 +1,106 @@
 {
- "@context": "http://environment.data.gov.uk/flood-monitoring/meta/context.jsonld",
- "meta": {
-  "publisher": "Environment Agency",
-  "licence": "http://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
-  "documentation": "http://environment.data.gov.uk/flood-monitoring/doc/reference",
-  "version": "0.9",
-  "comment": "Status: Beta service",
-  "hasFormat": [
-   "http://environment.data.gov.uk/flood-monitoring/id/stations.csv?lat=52.2&long=-0.47&dist=10&parameter=level",
-   "http://environment.data.gov.uk/flood-monitoring/id/stations.rdf?lat=52.2&long=-0.47&dist=10&parameter=level",
-   "http://environment.data.gov.uk/flood-monitoring/id/stations.ttl?lat=52.2&long=-0.47&dist=10&parameter=level",
-   "http://environment.data.gov.uk/flood-monitoring/id/stations.html?lat=52.2&long=-0.47&dist=10&parameter=level"
-  ]
- },
- "items": [
-  {
-   "@id": "http://environment.data.gov.uk/flood-monitoring/id/stations/E26141",
-   "RLOIid": "6291",
-   "catchmentName": "Upper and Bedford Ouse",
-   "dateOpened": "2007-06-07",
-   "easting": 501250,
-   "gridReference": "TL01250 50770",
-   "label": "Bromham",
-   "lat": 52.145941,
-   "long": -0.521734,
-   "measures": [
-    {
-     "@id": "http://environment.data.gov.uk/flood-monitoring/id/measures/E26141-level-stage-i-15_min-mAOD",
-     "parameter": "level",
-     "parameterName": "Water Level",
-     "period": 900,
-     "qualifier": "Stage",
-     "unitName": "mAOD"
-    }
-   ],
-   "northing": 250770,
-   "notation": "E26141",
-   "riverName": "River Great Ouse",
-   "stageScale": "http://environment.data.gov.uk/flood-monitoring/id/stations/E26141/stageScale",
-   "stationReference": "E26141",
-   "status": "http://environment.data.gov.uk/flood-monitoring/def/core/statusActive",
-   "town": "Bromham",
-   "wiskiID": "L33910"
+  "@context": "http://environment.data.gov.uk/flood-monitoring/meta/context.jsonld",
+  "meta": {
+    "publisher": "Environment Agency",
+    "licence": "http://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+    "documentation": "http://environment.data.gov.uk/flood-monitoring/doc/reference",
+    "version": "0.9",
+    "comment": "Status: Beta service",
+    "hasFormat": [
+      "http://environment.data.gov.uk/flood-monitoring/id/stations.csv?lat=52.2&long=-0.47&dist=10&parameter=level",
+      "http://environment.data.gov.uk/flood-monitoring/id/stations.rdf?lat=52.2&long=-0.47&dist=10&parameter=level",
+      "http://environment.data.gov.uk/flood-monitoring/id/stations.ttl?lat=52.2&long=-0.47&dist=10&parameter=level",
+      "http://environment.data.gov.uk/flood-monitoring/id/stations.html?lat=52.2&long=-0.47&dist=10&parameter=level"
+    ]
   },
-  {
-   "@id": "http://environment.data.gov.uk/flood-monitoring/id/stations/E21609",
-   "RLOIid": "6169",
-   "catchmentName": "Upper and Bedford Ouse",
-   "dateOpened": "1993-03-01",
-   "datumOffset": 24.6,
-   "easting": 505500,
-   "gridReference": "TL0535049544",
-   "label": "Bedford",
-   "lat": 52.133733,
-   "long": -0.460042,
-   "measures": [
+  "items": [
     {
-     "@id": "http://environment.data.gov.uk/flood-monitoring/id/measures/E21609-level-stage-i-15_min-mASD",
-     "parameter": "level",
-     "parameterName": "Water Level",
-     "period": 900,
-     "qualifier": "Stage",
-     "unitName": "mASD"
-    }
-   ],
-   "northing": 249500,
-   "notation": "E21609",
-   "riverName": "River Great Ouse",
-   "stageScale": "http://environment.data.gov.uk/flood-monitoring/id/stations/E21609/stageScale",
-   "stationReference": "E21609",
-   "status": "http://environment.data.gov.uk/flood-monitoring/def/core/statusActive",
-   "town": "Bedford",
-   "wiskiID": "033002"
-  },
-  {
-   "@id": "http://environment.data.gov.uk/flood-monitoring/id/stations/E21046",
-   "easting": 507907,
-   "gridReference": "TL0790748903",
-   "label": "CARDINGTON SLUICE WITS",
-   "lat": 52.127903,
-   "long": -0.425079,
-   "measures": [
-    {
-     "@id": "http://environment.data.gov.uk/flood-monitoring/id/measures/E21046-level-stage-i-15_min-mAOD",
-     "parameter": "level",
-     "parameterName": "Water Level",
-     "period": 900,
-     "qualifier": "Stage",
-     "unitName": "mAOD"
+      "@id": "http://environment.data.gov.uk/flood-monitoring/id/stations/E26141",
+      "RLOIid": "6291",
+      "catchmentName": "Upper and Bedford Ouse",
+      "dateOpened": "2007-06-07",
+      "easting": 501250,
+      "gridReference": "TL01250 50770",
+      "label": "Bromham",
+      "lat": 52.145941,
+      "long": -0.521734,
+      "measures": [
+        {
+          "@id": "http://environment.data.gov.uk/flood-monitoring/id/measures/E26141-level-stage-i-15_min-mAOD",
+          "parameter": "level",
+          "parameterName": "Water Level",
+          "period": 900,
+          "qualifier": "Stage",
+          "unitName": "mAOD"
+        }
+      ],
+      "northing": 250770,
+      "notation": "E26141",
+      "riverName": "River Great Ouse",
+      "stageScale": "http://environment.data.gov.uk/flood-monitoring/id/stations/E26141/stageScale",
+      "stationReference": "E26141",
+      "status": "http://environment.data.gov.uk/flood-monitoring/def/core/statusActive",
+      "town": "Bromham",
+      "wiskiID": "L33910"
     },
     {
-     "@id": "http://environment.data.gov.uk/flood-monitoring/id/measures/E21046-level-stage-i-15_min-mASD",
-     "parameter": "level",
-     "parameterName": "Water Level",
-     "period": 900,
-     "qualifier": "Stage",
-     "unitName": "mASD"
+      "@id": "http://environment.data.gov.uk/flood-monitoring/id/stations/E21609",
+      "RLOIid": "6169",
+      "catchmentName": "Upper and Bedford Ouse",
+      "dateOpened": "1993-03-01",
+      "datumOffset": 24.6,
+      "easting": 505500,
+      "gridReference": "TL0535049544",
+      "label": "Bedford",
+      "lat": 52.133733,
+      "long": -0.460042,
+      "measures": [
+        {
+          "@id": "http://environment.data.gov.uk/flood-monitoring/id/measures/E21609-level-stage-i-15_min-mASD",
+          "parameter": "level",
+          "parameterName": "Water Level",
+          "period": 900,
+          "qualifier": "Stage",
+          "unitName": "mASD"
+        }
+      ],
+      "northing": 249500,
+      "notation": "E21609",
+      "riverName": "River Great Ouse",
+      "stageScale": "http://environment.data.gov.uk/flood-monitoring/id/stations/E21609/stageScale",
+      "stationReference": "E21609",
+      "status": "http://environment.data.gov.uk/flood-monitoring/def/core/statusActive",
+      "town": "Bedford",
+      "wiskiID": "033002"
+    },
+    {
+      "@id": "http://environment.data.gov.uk/flood-monitoring/id/stations/E21046",
+      "easting": 507907,
+      "gridReference": "TL0790748903",
+      "label": "CARDINGTON SLUICE WITS",
+      "lat": 52.127903,
+      "long": -0.425079,
+      "measures": [
+        {
+          "@id": "http://environment.data.gov.uk/flood-monitoring/id/measures/E21046-level-stage-i-15_min-mAOD",
+          "parameter": "level",
+          "parameterName": "Water Level",
+          "period": 900,
+          "qualifier": "Stage",
+          "unitName": "mAOD"
+        },
+        {
+          "@id": "http://environment.data.gov.uk/flood-monitoring/id/measures/E21046-level-stage-i-15_min-mASD",
+          "parameter": "level",
+          "parameterName": "Water Level",
+          "period": 900,
+          "qualifier": "Stage",
+          "unitName": "mASD"
+        }
+      ],
+      "northing": 248903,
+      "notation": "E21046",
+      "stationReference": "E21046"
     }
-   ],
-   "northing": 248903,
-   "notation": "E21046",
-   "stationReference": "E21046"
-  }
- ]
+  ]
 }
