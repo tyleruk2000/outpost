@@ -11,7 +11,7 @@
  * index for a Raspberry Pi holding the same library.
  */
 
-import { Readable } from "node:stream";
+import { pipeline, Readable } from "node:stream";
 import { createGunzip, createGzip } from "node:zlib";
 import { secondsLeft } from "@outpost/shared";
 import type { FastifyInstance } from "fastify";
@@ -487,7 +487,9 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
     reply
       .header("Content-Type", "application/gzip")
       .header("Content-Disposition", `attachment; filename="outpost-embeddings-${safeName}.jsonl.gz"`);
-    return reply.send(Readable.from(lines()).pipe(createGzip()));
+    // pipeline(), not pipe(): an error reading the index destroys the reply instead of
+    // being emitted with no listener, which would end the process.
+    return reply.send(pipeline(Readable.from(lines()), createGzip(), () => undefined));
   });
 
   // Import accepts the exported file as the raw request body.

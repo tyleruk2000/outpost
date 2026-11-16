@@ -9,10 +9,12 @@ import fs from "node:fs";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
 import path from "node:path";
+import { Writable } from "node:stream";
 import type { ReferenceFeatureDetail, ReferenceOverlayResponse, ReferencePackDto } from "@outpost/shared";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { DownloadRow } from "../src/modules/downloads/types.ts";
 import { WORLDPOP_CITATION } from "../src/modules/layers/adapters/worldpop.ts";
+import { createQueryFetcher } from "../src/modules/layers/query-fetcher.ts";
 import type { ReferenceMeta } from "../src/modules/layers/types.ts";
 import { buildPbf, buildTiff } from "./fixtures/layers/builders.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
@@ -661,9 +663,63 @@ describe("downloading through the download manager from an Overpass server", () 
     expect(JSON.stringify(estimate.body)).toMatch(/No public Overpass server whose terms allow this/);
   });
 
+  /** A file that takes the first piece and then finds the drive full. */
+  const fullDrive = () =>
+    new Writable({
+      write(_chunk, _encoding, callback) {
+        callback(Object.assign(new Error("ENOSPC: no space left on device, write"), { code: "ENOSPC" }));
+      },
+    });
+
+  it("fails the download with words a person can act on, and the server keeps answering", async () => {
+    const real = fs.createWriteStream;
+    const spy = vi
+      .spyOn(fs, "createWriteStream")
+      .mockImplementation(((target: fs.PathLike, options?: never) =>
+        String(target).endsWith(".part") && String(target).includes("osm")
+          ? fullDrive()
+          : real(target, options)) as typeof fs.createWriteStream);
+    try {
+      declare("local-test");
+      const estimate = await app.api("POST", "/api/reference/estimate", {
+        provider: "osm",
+        scope: { countries: ["LU"] },
+        layers: ["military"],
+      });
+      expect(estimate.status).toBe(200);
+      const started = await app.api("POST", "/api/reference/downloads", {
+        estimateId: estimate.body.estimateId,
+        keys: ["osm:military:LU"],
+      });
+      await app.ctx.jobs.whenIdle();
+      const download = app.ctx.services.downloads.get(started.body.downloads[0].id)!;
+      expect(download.state).toBe("failed");
+      expect(download.error).toMatch(/is full\. Free some space on it/);
+    } finally {
+      spy.mockRestore();
+    }
+    expect((await app.api("GET", "/api/health")).status).toBe(200);
+  });
+
   it("will not start from an estimate it did not make", async () => {
     const started = await app.api("POST", "/api/reference/downloads", { estimateId: "nothing", keys: ["x"] });
     expect(started.status).toBe(409);
+  });
+});
+
+describe("a query answer that cannot be written", () => {
+  it("fails, and does not hang, when the folder for the answer is missing", async () => {
+    const fetcher = createQueryFetcher({ fetch: async () => ({ response: new Response("{}".repeat(50_000)) }) } as never, { gapMs: 0 });
+    const missing = path.join(app.dir, "not-there", "answer.json.part");
+    await expect(
+      fetcher({
+        download: { meta: { query: { method: "GET", url: "http://127.0.0.1:1/q", accept: "application/json", maxBytes: 10_000_000 } } },
+        partPath: missing,
+        signal: new AbortController().signal,
+        throttle: async () => {},
+        progress: () => {},
+      } as never),
+    ).rejects.toMatchObject({ code: "ENOENT" });
   });
 });
 
