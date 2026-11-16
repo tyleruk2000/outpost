@@ -12,6 +12,7 @@ export * from "./common.ts";
 export * from "./contacts.ts";
 export * from "./documents.ts";
 export * from "./downloads.ts";
+export * from "./encryption.ts";
 export * from "./https.ts";
 export * from "./imports.ts";
 export * from "./kept.ts";

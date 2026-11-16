@@ -40,6 +40,7 @@ const invalidations: Record<string, string[][]> = {
   "merge.changed": [["merge"]],
   "backup.changed": [["backup"]],
   "https.changed": [["https"]],
+  "encryption.changed": [["encryption"]],
   // The background count of what is on disk has finished.
   "manage.changed": [["manage"]],
 };

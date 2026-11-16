@@ -71,6 +71,13 @@
       "when": 1794811868052,
       "tag": "0009_repeaters",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1794817479506,
+      "tag": "0010_pgp_keys",
+      "breakpoints": true
     }
   ]
 }

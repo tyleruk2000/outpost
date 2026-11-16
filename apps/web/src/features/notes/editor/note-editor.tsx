@@ -7,6 +7,7 @@ import type { NoteDoc, NoteRef } from "@outpost/shared";
 import { type Editor, EditorContent, useEditor } from "@tiptap/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
+import { toast } from "sonner";
 import { BlockHandle } from "./block-handle";
 import { DocumentPicker } from "./document-picker";
 import "./editor.css";
@@ -28,9 +29,16 @@ export interface NoteEditorProps {
   /** Hands the editor to the page once, and `null` when it goes away. */
   onEditor(editor: Editor | null): void;
   createSubPage(title: string): Promise<NoteRef | undefined>;
+  /**
+   * False for an encrypted page, which holds text only: a picture is uploaded to the
+   * server as a file of its own, in the clear, so one added here would not be protected.
+   */
+  pictures?: boolean;
 }
 
-export function NoteEditor({ noteId, content, editable, onChange, onBlur, onEditor, createSubPage }: NoteEditorProps) {
+const NO_PICTURES = "An encrypted page holds text only. A picture would be stored on Outpost as a separate file, not encrypted.";
+
+export function NoteEditor({ noteId, content, editable, onChange, onBlur, onEditor, createSubPage, pictures = true }: NoteEditorProps) {
   const navigate = useNavigate();
   const touch = useIsTouch();
   const fileInput = useRef<HTMLInputElement>(null);
@@ -42,6 +50,10 @@ export function NoteEditor({ noteId, content, editable, onChange, onBlur, onEdit
     noteId,
     navigate,
     pickImage(pos) {
+      if (!pictures) {
+        toast(NO_PICTURES);
+        return;
+      }
       imagePos.current = pos;
       fileInput.current?.click();
     },
@@ -50,6 +62,8 @@ export function NoteEditor({ noteId, content, editable, onChange, onBlur, onEdit
   };
   const callbacks = useRef({ onChange, onBlur });
   callbacks.current = { onChange, onBlur };
+  const picturesRef = useRef(pictures);
+  picturesRef.current = pictures;
 
   // Everything the editor is built from is fixed for its lifetime, so it is never re-created.
   // biome-ignore lint/correctness/useExhaustiveDependencies: the first values are the ones the editor is made with
@@ -72,6 +86,10 @@ export function NoteEditor({ noteId, content, editable, onChange, onBlur, onEdit
           // Text copied from a word processor also carries a picture of itself; the text wins.
           if (!current || files.length === 0 || event.clipboardData?.types.includes("text/html")) return false;
           event.preventDefault();
+          if (!picturesRef.current) {
+            toast(NO_PICTURES);
+            return true;
+          }
           uploadImages(current, host, files, current.state.selection.from);
           return true;
         },
@@ -85,6 +103,10 @@ export function NoteEditor({ noteId, content, editable, onChange, onBlur, onEdit
           const current = editorRef.current;
           if (!current || moved || files.length === 0) return false;
           event.preventDefault();
+          if (!picturesRef.current) {
+            toast(NO_PICTURES);
+            return true;
+          }
           const at = view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos ?? current.state.selection.from;
           uploadImages(current, host, files, at);
           return true;

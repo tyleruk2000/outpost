@@ -117,6 +117,7 @@ a name and a JSON `data` of the form `{ "id": …, "data": … }`; both parts ar
 | `https.changed` | The HTTPS listener starts or stops, its certificate is re-issued, or the certificate authority is replaced or deleted | |
 | `merge.changed` | A merge of a drive's changes moves to another state | merge id |
 | `chat.changed` | A conversation is started, added to, renamed or deleted, or a reply finishes | conversation id |
+| `encryption.changed` | A key is added to, changed on or removed from the key shelf | fingerprint |
 
 An event says that something changed, not what it now is: fetch the resource again.
 
@@ -457,7 +458,7 @@ Types: `packages/shared/src/notes.ts`. See
 | `GET /api/notes/lookup` | Pages whose title contains `q`, for the link menu. Query: `q`, `limit`. |
 | `POST /api/notes` | Creates a page. Body (`CreateNoteBody`): `parentId`, `title`, `icon`, `content`, `templateId`, `afterId`. `{ note }`. |
 | `GET /api/notes/:id` | `{ note }` (`NoteDetail`): content, tags, breadcrumbs, backlinks, children. Query `view=1` records that the page was opened. |
-| `PATCH /api/notes/:id` | Saves changes. Body (`UpdateNoteBody`): `title`, `icon`, `content`, `tags`, `isFavorite`, `coverAttachmentId`, `isTemplate`, `baseUpdatedAt`. If the stored page is newer than `baseUpdatedAt` the answer is `409 conflict` with `details.current`, and nothing is overwritten. |
+| `PATCH /api/notes/:id` | Saves changes. Body (`UpdateNoteBody`): `title`, `icon`, `content`, `tags`, `isFavorite`, `coverAttachmentId`, `isTemplate`, `baseUpdatedAt`, `removeEncryption`. If the stored page is newer than `baseUpdatedAt` the answer is `409 conflict` with `details.current`, and nothing is overwritten. For an encrypted page see below. |
 | `POST /api/notes/:id/move` | Body (`MoveNoteBody`): `parentId`, `afterId`. |
 | `POST /api/notes/:id/duplicate` | Body: `withChildren?`. |
 | `DELETE /api/notes/:id` | Moves the page and its sub-pages to the trash. `{ trashed: [ids] }`. |
@@ -468,6 +469,45 @@ Types: `packages/shared/src/notes.ts`. See
 | `POST /api/attachments` | Uploads one file as `multipart/form-data` (at most 50 MB). Optional `noteId` field or query parameter. `{ attachment }` (`AttachmentDto`). |
 | `GET /api/attachments/:id` | The file, sent with a sandbox policy. |
 | `DELETE /api/attachments/:id` | Deletes an attachment. `409` while a page still uses it. |
+
+### Encrypted pages
+
+A page is encrypted when its whole `content` is one code block of the language
+`pgp-message` holding one ASCII-armoured OpenPGP message
+(`encryptedNoteDoc`, `encryptedNoteArmor` in `packages/shared/src/encryption.ts`).
+`GET /api/notes/:id` then answers `encrypted: true`. The server cannot decrypt it and
+has no route that tries. Its part is this:
+
+- A `PATCH` whose `content` would put ciphertext in place of text, text in place of
+  ciphertext, or one message in place of another must carry `baseUpdatedAt`
+  (`400` without it, `409` if the page has changed).
+- One that would put text in place of ciphertext must also carry
+  `removeEncryption: true` (`409` without it).
+- A template cannot be encrypted (`400`), and an encrypted page cannot become a
+  template (`409`).
+- For an encrypted page no preview text, links or search passages are kept, and the save
+  that encrypts it erases the text it replaces from the database file.
+
+`title`, `tags`, `icon`, `isFavorite` and the rest are saved as for any page.
+
+## Encryption
+
+Types: `packages/shared/src/encryption.ts`. See [encryption.md](encryption.md) and
+[security.md](security.md#encryption). These routes are a shelf for keys and nothing
+more: the server does no cryptography, and no route takes or returns a passphrase, an
+unprotected private key, or anything to be encrypted or decrypted.
+
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/encryption/keys` | `{ keys }` (`StoredKey`): `fingerprint`, `publicKey` (armoured), `hasPrivateKey`, `mine`, `addedAt`, `updatedAt`. Never a private key. |
+| `PUT /api/encryption/keys` | Adds a public key, or replaces the stored copy of the same key. Body (`SaveKeyBody`): `publicKey` (armoured, one key, at most 100 kB), `mine?`. The key is filed under the fingerprint the server works out from it. `400` for anything that is not exactly one public key, including a private key; `413` at 500 keys. `{ key }`. |
+| `GET /api/encryption/keys/:fingerprint/private` | `{ privateKey }`: the armoured private key, still protected by its passphrase, sent with `Cache-Control: no-store`. `404` when it is not kept on the server. |
+| `PUT /api/encryption/keys/:fingerprint/private` | Keeps the private half of a key already on the shelf. Body (`SavePrivateKeyBody`): `privateKey`. `400` unless every secret part is protected by a stretched passphrase and the key is the one named; `404` when the public key is not there. `{ key }`. |
+| `DELETE /api/encryption/keys/:fingerprint/private` | Stops keeping the private half. `{ key }`. |
+| `DELETE /api/encryption/keys/:fingerprint` | Deletes the key, both halves. |
+
+`:fingerprint` is 40 hexadecimal digits (64 for a version 6 key), in either case.
+A change sends the event `encryption.changed`.
 
 ## Imports
 

@@ -295,6 +295,11 @@ The limits a browser puts on stored data, and what was not tested, are in
   thread under limits of size, elements and time, and kept as a Markdown document: it
   is cleaned with an allow-list, and shown, like any Markdown file, as a tree of plain
   values. One page per action; nothing is crawled, scheduled or fetched again.
+- Encryption is done in the browser. The server keeps public keys and, if asked, a
+  private key in the form its passphrase protects, which it checks; it never sees a
+  passphrase or anything in the clear, and does no cryptography itself. Where a browser
+  will not do cryptography (plain HTTP from another device) the feature is unavailable
+  rather than moved to the server.
 - No telemetry. The server makes an outbound request only as the direct result of a
   person's action: refreshing the catalogue, starting a download, saving a file from
   a link, saving a web page, estimating or downloading a map region or place names, searching for a route
@@ -325,7 +330,7 @@ e2e/                 Playwright tests against the packaged app
 ```
 
 Modules, in registration order: search, semantic, retrieval, answers, documents, notes, chat, imports,
-collections, books, kiwix, downloads, links, webpages, catalog, maps, repeaters, backup, portable, merge, manage, https, contacts. A module may use the
+collections, books, kiwix, downloads, links, webpages, catalog, maps, repeaters, encryption, backup, portable, merge, manage, https, contacts. A module may use the
 services of those before it. [development/server-modules.md](development/server-modules.md)
 is the contract a module works to.
 
@@ -359,7 +364,9 @@ These are deliberate, and stated so nobody has to discover them.
 ## Dependency licences
 
 Outpost is MIT. Everything linked into it is MIT, ISC, BSD or Apache-2.0. Things that
-are not are kept outside the process or left out:
+are not are kept outside the process or left out, with one exception, OpenPGP.js, which
+is LGPL and is shipped as a separate file that Outpost loads at run time (see its row
+below, and [The OpenPGP library](#the-openpgp-library)):
 
 The packaged app and the Docker image carry `THIRD-PARTY-LICENSES.txt`: every package
 the server and the web app depend on when running, each with its licence text. It is
@@ -392,4 +399,43 @@ written by `scripts/build-app.mjs` from the installed packages.
 | Handbook and radio guides (`catalog/bundled/logbook73/`) | MIT, © 2026 Tyler Allen | Bundled. Written by this project's author for LogBook73 and generated from it; each book's last chapter carries the licence text. See [radio.md](radio.md#the-handbook-and-the-radio-guides). |
 | Signal figures (`apps/web/src/features/library/figures/radio-viz*.ts*`) | MIT, © 2026 Tyler Allen | Ported from LogBook73's `RadioViz` component and its maths; the files say so. |
 | Mermaid 12 | MIT | Bundled in the web app; draws diagrams in Markdown documents. Its dependencies are MIT, ISC, BSD-3-Clause or Apache-2.0, with two notes: DOMPurify is dual-licensed and is used under Apache-2.0, and `robust-predicates` is released into the public domain (Unlicense). |
+| OpenPGP.js 6.3.2 (`openpgp`) | LGPL-3.0-or-later | **The one exception.** Not bundled into Outpost's code: the file its authors publish is copied unchanged to `web/vendor/openpgp/openpgp.min.mjs`, with `LGPL-3.0.txt`, `GPL-3.0.txt` and a `NOTICE.txt` naming its version and its source, and is loaded at run time only by the Encryption screen and encrypted pages. It can be replaced by another build. See below. |
+| `@rnpgp/rnp` 0.1.1 (RNP compiled to WebAssembly) | BSD-2-Clause | Not used; the alternative to OpenPGP.js. See below. |
+| `kbpgp` | BSD-3-Clause | Not used. See below. |
 | elkjs (Mermaid's optional ELK layout) | EPL-2.0 or GPL-3.0-or-later | Not shipped. The build replaces it with a stand-in (`figures/no-elk.ts`, `resolve.alias` in `apps/web/vite.config.ts`); diagrams are laid out with dagre. |
+
+### The OpenPGP library
+
+The Encryption screen needs an implementation of OpenPGP that works with GnuPG, and
+writing one was never an option. Three were looked at on 16 November 2026.
+
+| | OpenPGP.js 6.3.2 | `@rnpgp/rnp` 0.1.1 | `kbpgp` 2.1.20 |
+| --- | --- | --- | --- |
+| Licence | LGPL-3.0-or-later | BSD-2-Clause | BSD-3-Clause |
+| What it is | JavaScript, written for browsers | RNP (the OpenPGP library in Thunderbird) and Botan, compiled to WebAssembly, with new TypeScript bindings | Keybase's JavaScript implementation |
+| Age and state | On npm since January 2014; 6.3.2 on 24 September 2026; its README records two complete security audits by Cure53 | First release 29 July 2026, second the next day, none since; its README says "Status: alpha" | No release between April 2020 and September 2025; written in IcedCoffeeScript |
+| Size sent to the browser | 395 kB | 10.7 MB of WebAssembly plus 224 kB | not measured |
+| Works with GnuPG 2.5.18 | Yes, both directions, in the test suite | Yes in a short trial in Node: keys, encryption to a key both ways, `gpg -c` both ways, a clear-signed message | not tried |
+| Needs a secure origin | Yes: it will not load without `crypto.subtle` | No | No |
+| Other | Asynchronous; reads and writes streams | Synchronous, so it would need a worker; as published it cannot find its own `.wasm` file unless told where it is | Callback-based |
+
+OpenPGP.js was chosen: for a security feature, twelve years of releases and two audits
+outweigh a licence that needs care. The care taken is this.
+
+- **It is not part of Outpost's bundles.** `openpgpVendor` in `apps/web/vite.config.ts`
+  copies the published file as it is; nothing imports `openpgp` except for its types,
+  and the end-to-end suite checks that the file served is the published one and that no
+  other screen fetches it.
+- **Its licence travels with it**: the LGPL and the GPL it builds on, and a notice
+  giving the version and where the source is, in the same folder; and its entry in
+  `THIRD-PARTY-LICENSES.txt`.
+- **It can be replaced.** Putting another build with the same interface at that path is
+  all it takes. Outpost itself reaches the library through one interface
+  (`features/encryption/engine.ts`) with one implementation (`engine-openpgp.ts`).
+
+This is a reading of the licence by the people who wrote the code, not legal advice.
+
+If the exception is not wanted, the alternative is `@rnpgp/rnp` behind the same
+interface: a second file beside `engine-openpgp.ts`, run in a worker. It meets the
+licence policy and would also work on plain HTTP. It would mean shipping a library that
+calls itself alpha in the one feature where that matters most, and 10.7 MB more.

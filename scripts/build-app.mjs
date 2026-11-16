@@ -15,6 +15,7 @@
  *     server/embed/             the model behind "search by meaning" and the
  *                               WebAssembly runtime that runs it, with their notices
  *     web/                      built web app, fonts and map assets included
+ *     web/vendor/openpgp/       OpenPGP.js as published (LGPL), with its licences
  *     catalog/                  catalogue manifests
  *
  * Usage: node scripts/build-app.mjs [--skip-web] [--out <dir>]
@@ -59,6 +60,12 @@ if (!fs.existsSync(path.join(webDist, "index.html"))) {
   throw new Error("apps/web/dist is missing. Run without --skip-web.");
 }
 copyDir(webDist, path.join(out, "web"));
+// OpenPGP.js is LGPL: it must travel as the separate, unchanged file it is, beside its licences (apps/web/vite.config.ts).
+for (const name of ["openpgp.min.mjs", "LGPL-3.0.txt", "GPL-3.0.txt", "NOTICE.txt"]) {
+  if (!fs.existsSync(path.join(out, "web/vendor/openpgp", name))) {
+    throw new Error(`web/vendor/openpgp/${name} is missing from the web build; refusing to package the Encryption screen without it.`);
+  }
+}
 if (!fs.existsSync(path.join(out, "web/map-assets/fonts"))) {
   log("WARNING: map fonts and sprites are missing; maps will render without labels. Run `node scripts/fetch-map-assets.mjs` first.");
 }
@@ -264,6 +271,8 @@ fs.writeFileSync(
     "Outpost itself is under the MIT licence in the file LICENSE beside this one.",
     "The OCR engine and its language data have their notices in server/ocr/.",
     "The search-by-meaning model and the runtime that runs it have theirs in server/embed/.",
+    "OpenPGP.js (LGPL-3.0-or-later) is not part of Outpost's own code: it is shipped unchanged as a separate,",
+    "replaceable file in web/vendor/openpgp/, with its licences and a notice of where its source is.",
     "Map fonts, icons and data, and the catalogue's content, are credited in the app and in docs/architecture.md.",
     "",
     ...sections,

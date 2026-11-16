@@ -21,6 +21,7 @@ function page(id: string, patch: Partial<NoteDetail> = {}): NoteDetail {
     tags: [],
     isFavorite: false,
     isTemplate: false,
+    encrypted: false,
     position: 1,
     coverAttachmentId: null,
     coverUrl: null,

@@ -7,6 +7,7 @@ import {
   HardDrive,
   Home,
   ListChecks,
+  LockKeyhole,
   type LucideIcon,
   Map as MapIcon,
   MessagesSquare,
@@ -38,6 +39,7 @@ export const knowledgeNav: NavItem[] = [
   { to: "/chat", label: "Chat", icon: MessagesSquare, key: "c" },
   // "a" for address book: "c" is Chat's.
   { to: "/contacts", label: "Contacts", icon: Contact, key: "a" },
+  { to: "/encryption", label: "Encryption", icon: LockKeyhole, key: "k" },
   // Last, so that the tree of pages sits under it in the sidebar.
   { to: "/notes", label: "Notes", icon: NotebookText, key: "n" },
 ];

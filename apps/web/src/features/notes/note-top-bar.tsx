@@ -1,6 +1,18 @@
 /** The slim bar above a page: where it sits, whether it is saved, and the page's own actions. */
 import type { NoteDetail } from "@outpost/shared";
-import { ChevronLeft, CloudOff, Download, Ellipsis, ImageOff, ImagePlus, LayoutTemplate, SmilePlus, Star, Trash2 } from "lucide-react";
+import {
+  ChevronLeft,
+  CloudOff,
+  Download,
+  Ellipsis,
+  ImageOff,
+  ImagePlus,
+  LayoutTemplate,
+  LockKeyhole,
+  SmilePlus,
+  Star,
+  Trash2,
+} from "lucide-react";
 import { Fragment } from "react";
 import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
@@ -77,6 +89,7 @@ export function NoteTopBar({
   onAddCover,
   onRemoveCover,
   onTemplate,
+  onEncrypt,
 }: {
   note: NoteDetail;
   status: AutosaveStatus;
@@ -89,6 +102,8 @@ export function NoteTopBar({
   onAddCover(): void;
   onRemoveCover(): void;
   onTemplate(isTemplate: boolean): void;
+  /** Opens the dialog that encrypts this page. Not offered for a template. */
+  onEncrypt(): void;
 }) {
   const trashed = note.trashedAt !== null;
   return (
@@ -160,6 +175,9 @@ export function NoteTopBar({
                   <AskAboutMenuItem kind="note" id={note.id} title={displayTitle(note.title)} />
                   <MenuItem onSelect={() => onTemplate(true)}>
                     <LayoutTemplate /> Use as template
+                  </MenuItem>
+                  <MenuItem onSelect={onEncrypt}>
+                    <LockKeyhole /> Encrypt this page…
                   </MenuItem>
                 </PageMenuItems>
               )}

@@ -226,6 +226,18 @@ export interface SearchService {
   stats(): { entities: Record<string, number>; chunks: number };
   /** Called after an entity's passages change, so vectors can follow. */
   onChunksChanged(listener: (entityRowId: number) => void): void;
+  /**
+   * Runs `work` so that whatever it deletes or replaces is erased rather than only
+   * unlinked: freed database pages are overwritten with zeros, deleted passages are
+   * taken out of the full-text index instead of being marked as gone, and afterwards the
+   * write-ahead log, which still holds the old pages, is folded into the database and
+   * emptied. For the save that replaces a page's text with an encrypted copy.
+   *
+   * It reaches what `work` itself removes. Text freed by earlier changes may still lie
+   * in unused space until the database is compacted, and the disk underneath is not
+   * touched at all.
+   */
+  scrubbing<T>(work: () => T): T;
 }
 
 declare module "../../core/context.ts" {
@@ -457,6 +469,28 @@ export function createSearchService(ctx: AppContext): SearchService {
       db.delete(searchEntities)
         .where(and(eq(searchEntities.kind, kind), eq(searchEntities.entityId, entityId)))
         .run();
+    },
+
+    scrubbing(work) {
+      const secureDeleteWas = Number(sqlite.pragma("secure_delete", { simple: true }));
+      // Written out, not bound: the index only takes this setting as a whole number, and a bound number arrives as a real.
+      const indexSecureDelete = (on: boolean) =>
+        sqlite.exec(`INSERT INTO chunks_fts(chunks_fts, rank) VALUES('secure-delete', ${on ? 1 : 0})`);
+      sqlite.pragma("secure_delete = ON");
+      indexSecureDelete(true);
+      try {
+        return work();
+      } finally {
+        // Both are put back: erasing costs more than unlinking, and ordinary edits do not need it.
+        indexSecureDelete(false);
+        sqlite.pragma(`secure_delete = ${secureDeleteWas === 1 ? "ON" : "OFF"}`);
+        try {
+          sqlite.pragma("wal_checkpoint(TRUNCATE)");
+        } catch (error) {
+          // Something else is reading. The log is folded in at the next ordinary checkpoint instead.
+          ctx.log.warn({ err: error }, "could not empty the write-ahead log after a scrubbing save");
+        }
+      }
     },
 
     async search(params) {

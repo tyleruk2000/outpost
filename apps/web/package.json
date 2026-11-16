@@ -41,6 +41,7 @@
     "maplibre-contour": "0.1.1",
     "maplibre-gl": "^6.18.0",
     "mermaid": "^12.3.0",
+    "openpgp": "6.3.2",
     "pdfjs-dist": "^6.5.438",
     "radix-ui": "^1.8.1",
     "react": "^19.3.1",

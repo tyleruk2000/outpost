@@ -144,6 +144,19 @@ Pages do not keep a history of their versions. The one place an earlier version 
 kept is the record of a merge from a portable drive, for the pages that merge updated;
 see [Notes written on a portable drive](#notes-written-on-a-portable-drive).
 
+### Encrypted pages
+
+**Encrypt this page…** in a page's menu replaces the page's text with an encrypted copy
+that only its passphrase or key can open, in the browser. The title, tags, icon and
+cover stay readable; pictures and attached files are not allowed on an encrypted page;
+and the text is taken out of search. An encrypted page is unlocked, read and edited on
+its own screen, and locks itself after five idle minutes. It needs a page opened over
+HTTPS, or on the computer Outpost runs on.
+
+Copies made before a page was encrypted (backups, portable drives, exports) still hold
+its text. [encryption.md](encryption.md#pages-of-notes) says exactly what is and is not
+covered, and how the page is stored.
+
 ### Trash
 
 Deleting a page moves it, and its sub-pages, to the trash. Nothing is lost.

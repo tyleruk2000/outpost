@@ -22,6 +22,7 @@ import type {
   NoteTreeItem,
   TrashedNote,
 } from "@outpost/shared";
+import { encryptedNoteArmor } from "@outpost/shared";
 import { and, eq, sql } from "drizzle-orm";
 import type { AppContext } from "../../core/context.ts";
 import { badRequest, conflict, notFound } from "../../core/errors.ts";
@@ -61,6 +62,20 @@ export interface UpdateNoteInput {
   coverAttachmentId?: string | null;
   isTemplate?: boolean;
   baseUpdatedAt?: number;
+  /**
+   * Has to be true for a save that replaces an encrypted page's content with content
+   * that is not encrypted. Without it such a save is refused, so that an editor left
+   * open from before the page was encrypted cannot put the old text back by accident.
+   */
+  removeEncryption?: boolean;
+  /**
+   * Set for saves that come from a browser. They may only put ciphertext in place of
+   * text, or text in place of ciphertext, on top of the version named by
+   * `baseUpdatedAt`, and the second only with `removeEncryption`. A merge or an import
+   * replaces a page as the direct result of a person's choice and has its own check
+   * that the page is the one they were shown.
+   */
+  guardEncryption?: boolean;
 }
 
 /** A page brought in whole from another library; see `NotesService.adopt`. */
@@ -267,6 +282,7 @@ export function createNotesService(ctx: AppContext, attachments: AttachmentStore
       title: row.title,
       icon: row.icon,
       content: row.content as unknown as NoteDoc,
+      encrypted: encryptedNoteArmor(row.content) !== null,
       tags: tagsOf(row.id),
       isFavorite: row.isFavorite,
       isTemplate: row.isTemplate,
@@ -331,7 +347,14 @@ export function createNotesService(ctx: AppContext, attachments: AttachmentStore
     for (const { tagId } of before) if (!after.has(tagId)) pruneTag.run({ id: tagId });
   }
 
+  /**
+   * An encrypted page (see `encryptedNoteArmor`) has no text the server can read. Its
+   * ciphertext is kept out of everything derived from content, so no preview, search
+   * passage or vector is ever made of it; the hash still changes when the message does.
+   */
   function derive(doc: NoteDoc): { contentText: string; contentHash: string } {
+    const armor = encryptedNoteArmor(doc);
+    if (armor !== null) return { contentText: "", contentHash: sha256Hex(armor) };
     const contentText = docToText(doc);
     return { contentText, contentHash: sha256Hex(contentText) };
   }
@@ -364,7 +387,8 @@ export function createNotesService(ctx: AppContext, attachments: AttachmentStore
           .map((ancestor) => ancestor.title.trim() || UNTITLED)
           .join(" / ") || null,
       tags: tagsOf(row.id),
-      sections: docToSections(row.content as unknown as NoteDoc),
+      // An encrypted page stays findable by its title and tags, which are not encrypted.
+      sections: encryptedNoteArmor(row.content) !== null ? [] : docToSections(row.content as unknown as NoteDoc),
     };
     const result = search.upsert(entity);
     // The index compares passages by their text alone, so renaming a heading without
@@ -507,6 +531,23 @@ export function createNotesService(ctx: AppContext, attachments: AttachmentStore
       doc = sanitizeDoc(patch.content);
       // Both sides went through the same sanitiser, so equal documents serialise equally.
       if (JSON.stringify(doc) !== JSON.stringify(row.content)) {
+        const wasEncrypted = encryptedNoteArmor(row.content) !== null;
+        const willBeEncrypted = encryptedNoteArmor(doc) !== null;
+        if (patch.guardEncryption && (wasEncrypted || willBeEncrypted)) {
+          // Putting ciphertext in place of text, or the other way round, replaces the
+          // whole page. It is only done on top of the version the person was looking at.
+          if (patch.baseUpdatedAt === undefined) {
+            throw badRequest("An encrypted page can only be saved over the version it was made from. Reload the page and try again.");
+          }
+          if (wasEncrypted && !willBeEncrypted && patch.removeEncryption !== true) {
+            throw conflict(
+              "This page is encrypted. What was sent would have replaced it with text that is not, so it was not saved. Reload the page.",
+            );
+          }
+        }
+        if (willBeEncrypted && row.isTemplate && patch.isTemplate !== false) {
+          throw badRequest("A template cannot be encrypted: every page made from it would start as text nobody can read.");
+        }
         const derived = derive(doc);
         textChanged = derived.contentHash !== row.contentHash;
         Object.assign(set, { content: doc, ...derived });
@@ -525,6 +566,9 @@ export function createNotesService(ctx: AppContext, attachments: AttachmentStore
     }
 
     if (patch.isTemplate !== undefined && patch.isTemplate !== row.isTemplate) {
+      if (patch.isTemplate && encryptedNoteArmor(patch.content !== undefined ? sanitizeDoc(patch.content) : row.content) !== null) {
+        throw conflict("An encrypted page cannot be a template: every page made from it would start as text nobody can read.");
+      }
       if (patch.isTemplate) {
         // A template is a single page outside the tree; sub-pages would be left hanging.
         if (childrenStatement.all(id).length > 0) {
@@ -834,7 +878,10 @@ export function createNotesService(ctx: AppContext, attachments: AttachmentStore
     },
 
     update(id, patch) {
-      const result = update.immediate(id, patch);
+      // A save that puts ciphertext in place of a page's text also erases that text from
+      // the database file and the search index, rather than leaving it in freed space.
+      const encrypting = patch.content !== undefined && encryptedNoteArmor(patch.content) !== null;
+      const result = encrypting ? search.scrubbing(() => update.immediate(id, patch)) : update.immediate(id, patch);
       if (result.dirty) changed(id);
       return toSaveResult(result.row);
     },

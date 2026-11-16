@@ -39,8 +39,62 @@ function pdfjsAssets(): Plugin {
   };
 }
 
+/**
+ * OpenPGP.js is LGPL-3.0-or-later, the one library here that is not under a permissive
+ * licence (docs/architecture.md says why it is used all the same). It is therefore kept
+ * out of Outpost's own bundles: the file its authors publish is served as it is, under
+ * /vendor/openpgp/, beside its licence and a note saying where its source is, and the
+ * Encryption screen loads it at run time (`features/encryption/load-openpgp.ts`).
+ * Anyone can put a build of their own in its place. Nothing else may import "openpgp"
+ * except for its types.
+ */
+function openpgpVendor(): Plugin {
+  const source = path.resolve(import.meta.dirname, "node_modules/openpgp");
+  const library = "openpgp.min.mjs";
+  let outDir = "";
+  return {
+    name: "outpost:openpgp-vendor",
+    configResolved(config) {
+      outDir = path.resolve(config.root, config.build.outDir);
+    },
+    configureServer(server) {
+      server.middlewares.use(`/vendor/openpgp/${library}`, (_request, response) => {
+        response.setHeader("Content-Type", "text/javascript");
+        fs.createReadStream(path.join(source, "dist", library)).pipe(response);
+      });
+    },
+    writeBundle() {
+      const { version } = JSON.parse(fs.readFileSync(path.join(source, "package.json"), "utf8")) as { version: string };
+      const target = path.join(outDir, "vendor/openpgp");
+      fs.mkdirSync(target, { recursive: true });
+      fs.copyFileSync(path.join(source, "dist", library), path.join(target, library));
+      fs.copyFileSync(path.join(source, "LICENSE"), path.join(target, "LGPL-3.0.txt"));
+      fs.copyFileSync(path.resolve(import.meta.dirname, "third-party/openpgp/GPL-3.0.txt"), path.join(target, "GPL-3.0.txt"));
+      fs.writeFileSync(
+        path.join(target, "NOTICE.txt"),
+        [
+          `${library} in this folder is OpenPGP.js ${version}, exactly as its authors publish it`,
+          `(https://www.npmjs.com/package/openpgp/v/${version}, file dist/${library}). It has not been changed.`,
+          "",
+          "OpenPGP.js is free software under the GNU Lesser General Public License, version 3 or",
+          "(at your option) any later version. The licence is in LGPL-3.0.txt, and the GNU General",
+          "Public License it builds on is in GPL-3.0.txt. It comes with no warranty.",
+          "",
+          `Its source code is at https://github.com/openpgpjs/openpgpjs/tree/v${version}`,
+          "",
+          "Outpost itself is under the MIT licence and is not part of OpenPGP.js. Outpost's",
+          "Encryption screen loads this file when it is opened and calls it through its published",
+          "interface. You may replace the file with another build of OpenPGP.js that offers the same",
+          "interface, including one you have changed, and Outpost will use yours.",
+          "",
+        ].join("\n"),
+      );
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react(), tailwindcss(), pdfjsAssets(), serviceWorker()],
+  plugins: [react(), tailwindcss(), pdfjsAssets(), openpgpVendor(), serviceWorker()],
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "src"),
