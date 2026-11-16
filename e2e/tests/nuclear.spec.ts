@@ -54,12 +54,11 @@ test.describe("Nuclear preparedness", () => {
     await page
       .getByRole("listitem")
       .filter({ hasText: "Two kilotons, east of the lake" })
-      .getByRole("button", { name: "Compare as B" })
+      .getByRole("button", { name: "Put it on the map" })
       .click();
-    await page.getByRole("tab", { name: "Scenario" }).click();
     await page.getByRole("button", { name: "Fit the map to it" }).click();
     await page.locator('.outpost-map[data-map-idle="true"]').first().waitFor({ timeout: 20_000 });
-    await expect(page.getByText(/Distances for B/)).toBeVisible();
+    await expect(page.getByRole("list", { name: "Scenarios on the map" }).getByRole("listitem")).toHaveCount(2);
     expect(errors).toEqual([]);
 
     if (!shots) return;

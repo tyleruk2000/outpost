@@ -726,7 +726,7 @@ server on the internet.
 | `POST /api/reference/downloads` | Body: `estimateId`, `keys`, `locationId?`. Starts the chosen items through the download manager. `{ downloads }`. `409` for an estimate that is gone. |
 | `GET /api/reference/packs` | Installed packs (`ReferencePackDto`): source, layers, countries, version, dates, records, duplicates, size, licence, location and whether it is connected, and the request to update from. |
 | `DELETE /api/reference/packs/:id` | Removes a pack and its records. `?deleteFiles=1` deletes its file too. |
-| `POST /api/reference/imports` | Multipart: `format` (`features-csv`, `geojson`, `historical-csv`, `country-figures-csv`, `osm-pbf`), `title`, `options` (JSON: `layer`, `provenance`, `publisher`, `license`, `accuracy`, `sourceUrl`, `publishedAt`, `crs`, `country`), `replaces?`, and the file (at most 32 MB). The file is kept in the default location under `collections/reference/imports/` and read by a job: `{ jobId }`. The job's result has `imported`, `skipped`, `duplicates` and up to twenty `problems`. |
+| `POST /api/reference/imports` | Multipart: `format` (`features-csv`, `geojson`, `historical-csv`, `country-figures-csv`, `osm-pbf`, `worldpop-tif`: a WorldPop 2020 1 km grid a person downloaded, named as WorldPop names it, with `options.country`), `title`, `options` (JSON: `layer`, `provenance`, `publisher`, `license`, `accuracy`, `sourceUrl`, `publishedAt`, `crs`, `country`), `replaces?`, and the file (at most 32 MB). The file is kept in the default location under `collections/reference/imports/` and read by a job: `{ jobId }`. The job's result has `imported`, `skipped`, `duplicates` and up to twenty `problems`. |
 | `POST /api/reference/imports/from-storage` | The same for a file already in a storage location. Body: `format`, `locationId`, `relPath`, `title`, `options`, `replaces?`. The file is left where it is. |
 | `GET /api/reference/templates/:format.csv` | The columns of a CSV form, as a file. |
 | `GET /api/reference/layers` | What is installed by layer (counts, countries, sources, kinds, provenance), the population grids, and the credits. |
@@ -736,7 +736,8 @@ server on the internet.
 | `GET /api/reference/search` | Query: `q`, `layers?`, filters, `limit` (at most 100). Records by name. |
 | `GET /api/reference/figures` | Query: `country?`. Country figures with their citations. |
 | `GET /api/reference/population/grid` | Query: `bbox`, `zoom`. Cells with people per km² and the legend's classes. |
-| `GET /api/reference/population/sum` | Query: `lat`, `lon`, `radiusKm` (at most 300). About how many people lived in the cells whose middle is inside the circle, to two significant figures, the share of the circle covered, and what it is. |
+| `GET /api/reference/population/sum` | Query: `lat`, `lon`, `radiusKm` (at most 300). About how many people lived in the cells whose middle is inside the circle, to two significant figures, the share of the circle covered, and what it is. `cellKm2` is the area of one cell of the finest grid counted, at that latitude. |
+| `GET /api/reference/historical` | Query: `recordType?` (`target-list`, `assessment`, `speculation`), `limit` (1 to 200), `offset`. Historical records for the nuclear preparedness workspace's browser, by period and then name: `{ total, records }`, each with its kind, period, document, document date and address, and a library document if one is linked. |
 
 The live event `layers.changed` is published when a pack is installed, updated or removed.
 
@@ -979,6 +980,8 @@ what the person typed is kept; the effects are worked out in the browser from
 | --- | --- |
 | `GET` / `POST /api/nuclear/scenarios` | Saved scenarios, newest change first, as `{ scenarios }`. `POST` body: `name`, `notes`, `lat`, `lon`, `effects` (`{ yieldKt, burst, wind }`: `burst` is `{ kind: "surface" }`, `{ kind: "height", metres }` or `{ kind: "optimum", psi: 20 \| 10 \| 5 \| 2 \| 1 }`; `wind` is `{ fromDegrees, kmh }` or `null`). Returns the scenario, `201`. |
 | `GET` / `PATCH` / `DELETE /api/nuclear/scenarios/:id` | One scenario. `PATCH` takes the whole scenario, as `POST` does. |
+| `GET` / `POST /api/nuclear/sets` | Sets of scenarios kept together as they were on the map, as `{ sets }`. `POST` body: `name`, `members` (one to six, each a scenario as above with `letter`, `A` to `F`, each once, and `hidden`). Returns the set, `201`. Nothing about a set as a whole is worked out or answered. |
+| `GET` / `PATCH` / `DELETE /api/nuclear/sets/:id` | One set. `PATCH` takes the whole set. |
 
 A scenario the model cannot answer (a yield outside 1 kiloton to 10 megatons, a height
 above 12,000 m or above the blast curves' scaled 5,000 feet, a wind outside 8 to 45

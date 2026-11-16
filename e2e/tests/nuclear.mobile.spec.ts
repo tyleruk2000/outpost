@@ -23,7 +23,7 @@ test.describe("Nuclear preparedness on a phone", () => {
 
     // The map comes first on a phone, and nothing but its own column lies over it.
     await page.locator('.outpost-map[data-map-idle="true"]').first().waitFor({ timeout: 20_000 });
-    const map = page.getByRole("region", { name: "The offline map, with the scenario's rings and fallout pattern" });
+    const map = page.getByRole("region", { name: "The offline map, with the scenarios' rings and fallout patterns" });
     const box = await map.boundingBox();
     await page.touchscreen.tap(box!.x + box!.width * 0.5, box!.y + box!.height * 0.5);
     await expect(page.getByLabel("Ground zero", { exact: true })).toHaveValue(/^-?\d+\.\d{5}, -?\d+\.\d{5}$/);
@@ -59,10 +59,10 @@ test.describe("Nuclear preparedness on a phone", () => {
     await page
       .getByRole("listitem")
       .filter({ hasText: "Megaton airburst for comparison" })
-      .getByRole("button", { name: "Compare as B" })
+      .getByRole("button", { name: "Put it on the map" })
       .click();
     await page.getByRole("tab", { name: "Scenario" }).click();
-    await expect(page.getByText(/Distances for B/)).toBeVisible();
+    await expect(page.getByRole("list", { name: "Scenarios on the map" }).getByRole("listitem")).toHaveCount(2);
 
     // Both scenarios on paper.
     await expect(page.getByRole("link", { name: "Save as PDF" })).toBeVisible();

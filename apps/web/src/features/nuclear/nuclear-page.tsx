@@ -392,7 +392,7 @@ export default function NuclearPage() {
       />
       <OfflineLine regions={installedRegions} loading={overview.isPending} />
 
-      <div className={cn("grid gap-x-8 gap-y-6", panel ? "lg:grid-cols-[minmax(0,1fr)_25rem]" : "lg:grid-cols-[minmax(0,1fr)]")}>
+      <div className={cn("grid grid-cols-[minmax(0,1fr)] gap-x-8 gap-y-6", panel ? "lg:grid-cols-[minmax(0,1fr)_25rem]" : "lg:grid-cols-[minmax(0,1fr)]")}>
         <div className="grid content-start gap-2 lg:sticky lg:top-4 lg:self-start">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-small text-ink-muted">
@@ -444,7 +444,7 @@ export default function NuclearPage() {
           {drawn.length > 0 ? <MapKey drawn={drawn} slots={slots} /> : null}
         </div>
 
-        <aside className={cn("grid content-start gap-4", !panel && "lg:hidden")} aria-label="Scenarios, layers, records and plans">
+        <aside className={cn("grid min-w-0 grid-cols-[minmax(0,1fr)] content-start gap-4", !panel && "lg:hidden")} aria-label="Scenarios, layers, records and plans">
           <Tabs value={tab} onValueChange={setTab}>
             <TabsList>
               <TabsTrigger value="scenario">Scenario</TabsTrigger>
@@ -454,7 +454,7 @@ export default function NuclearPage() {
               <TabsTrigger value="planning">Plans</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="scenario" className="mt-4 grid gap-4">
+            <TabsContent value="scenario" className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-4">
               <OnTheMap
                 worked={worked}
                 selectedKey={selectedKey}
@@ -726,7 +726,7 @@ function ScenarioFields({
   const fromNumber = Number(form.windFrom.trim());
   const point = form.windFrom.trim() && Number.isFinite(fromNumber) ? pointOf(fromNumber) : null;
   return (
-    <div className="grid gap-4">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-4">
       <Field label="Name" error={fieldError("name")}>
         {(ids) => (
           <Input
@@ -849,7 +849,7 @@ function ScenarioFields({
           </Field>
         ) : null}
       </div>
-      <fieldset className="grid gap-2" aria-describedby="fallout-state">
+      <fieldset className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2" aria-describedby="fallout-state">
         <legend className="mb-1 flex items-center gap-2 text-small font-medium text-ink">
           <LineSample family="fallout" />
           Wind, for the fallout pattern
