@@ -41,16 +41,16 @@ function NumberField({
   onChange: (value: number) => void;
 }) {
   const [text, setText] = useState(String(value));
-  const typed = useRef(value);
-  // Changed from outside (the ends were swapped): show the new value.
-  if (value !== typed.current) {
-    typed.current = value;
-    setText(String(value));
-  }
   const usable = (entry: string) => {
     const number = Number(entry.replace(",", "."));
     return entry.trim() !== "" && Number.isFinite(number) && number >= min && number <= max ? number : null;
   };
+  // Changed from outside to something other than what is typed (the ends were swapped): show the new value.
+  const seen = useRef(value);
+  if (value !== seen.current) {
+    seen.current = value;
+    if (usable(text) !== value) setText(String(value));
+  }
   return (
     <Field label={label} error={usable(text) === null ? `From ${min} to ${max.toLocaleString("en-GB")} ${unit}.` : undefined}>
       {(ids) => (
@@ -63,9 +63,7 @@ function NumberField({
             onChange={(event) => {
               setText(event.target.value);
               const next = usable(event.target.value);
-              if (next === null) return;
-              typed.current = next;
-              onChange(next);
+              if (next !== null) onChange(next);
             }}
             className="tabular pr-12"
           />
@@ -120,9 +118,14 @@ export function SightPanel({
         )}
       </dd>
       {mapReady && picking !== which ? (
-        <Button size="sm" variant="ghost" onClick={() => sight.pick(which)} className="-my-1 shrink-0">
+        <Button
+          size="sm"
+          variant="ghost"
+          aria-label={`${value ? "Move" : "Choose"} point ${label}`}
+          onClick={() => sight.pick(which)}
+          className="-my-1 shrink-0"
+        >
           {value ? "Move" : "Choose"}
-          <span className="sr-only"> point {label}</span>
         </Button>
       ) : null}
     </div>
