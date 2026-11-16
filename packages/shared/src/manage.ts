@@ -47,6 +47,8 @@ export interface ManagedItem {
   catalogEntryId: string | null;
   /** In-app address of its own page. */
   href: string;
+  /** What stops working without it, said before it is removed. */
+  warning?: string | null;
 }
 
 export interface ManagedItemsResponse {

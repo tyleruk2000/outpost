@@ -7,9 +7,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { ANTENNA_PRESETS, type CleanupPlan, type CleanupResult } from "@outpost/shared";
 import Database from "better-sqlite3";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, expect, it } from "vitest";
 import { multipart } from "./fixtures/documents/builders.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
+import { describeWithVoacapData, voacapDataAbsent } from "./voacap-data.ts";
 
 const dipole = ANTENNA_PRESETS[0]!.spec;
 const station = (id: string, lat: number, lon: number) => ({
@@ -34,6 +35,8 @@ const TABLES = [
 
 let app: TestApp;
 beforeAll(async () => {
+  // Everything below asks the engine (a plan's matrix): without its data there is nothing to count.
+  if (voacapDataAbsent) return;
   app = await createTestApp();
   const ok = async (method: string, url: string, body?: unknown, extra?: Record<string, unknown>) => {
     const response = await app.api(method, url, body, extra);
@@ -85,10 +88,10 @@ beforeAll(async () => {
   await ok("POST", "/api/radio/propagation/saved", { name: "London to Birmingham", request });
 });
 afterAll(async () => {
-  await app.close();
+  await app?.close();
 });
 
-describe("what the HF planner keeps", () => {
+describeWithVoacapData("what the HF planner keeps", () => {
   it("is counted where Outpost says what erasing everything would take", async () => {
     expect(app.ctx.services.propagation.kept.count()).toEqual({ plans: 1, observations: 2, equipment: 2, saved: 1 });
     const plan = (await app.api<CleanupPlan>("POST", "/api/manage/plan", { scope: "everything" })).body;

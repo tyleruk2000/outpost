@@ -1,0 +1,122 @@
+{
+  "id": "voacap-coefficients",
+  "title": "VOACAP's ionospheric and noise coefficients",
+  "version": "hfcast-bf34e8f9f375",
+  "source": {
+    "repository": "https://github.com/jonathanmcsweet/hfcast-engine",
+    "commit": "bf34e8f9f375e190ed43fcac19f25d800992e0e6",
+    "committed": "2026-10-27T20:46:07Z",
+    "path": "embedded/",
+    "baseUrl": "https://raw.githubusercontent.com/jonathanmcsweet/hfcast-engine/bf34e8f9f375e190ed43fcac19f25d800992e0e6/embedded/",
+    "read": "2026-11-16"
+  },
+  "bytes": 559336,
+  "sha256": "919e457a270626e5b0f2cc4726be81f556d414616be1c91200a36e1cb653f90f",
+  "files": [
+    {
+      "path": "coeffs/coeff01w.bin",
+      "offset": 0,
+      "bytes": 38552,
+      "sha256": "ac032273a96d3c6d70b9df85162d8b59519a8b2a653349062509b68ce51067fc",
+      "holds": "January: the M(3000)F2 map (CCIR Report 340) and the atmospheric noise maps (CCIR Report 322), with NTIA/ITS's sporadic-E, E, F1 and F2 height-ratio maps and prediction-error tables, in one file"
+    },
+    {
+      "path": "coeffs/coeff02w.bin",
+      "offset": 38552,
+      "bytes": 38552,
+      "sha256": "c9fc358e9870299fc2ab7f1bc5151c15f0f2e98e94a7e1895abba67d48059a57",
+      "holds": "February: the M(3000)F2 map (CCIR Report 340) and the atmospheric noise maps (CCIR Report 322), with NTIA/ITS's sporadic-E, E, F1 and F2 height-ratio maps and prediction-error tables, in one file"
+    },
+    {
+      "path": "coeffs/coeff03w.bin",
+      "offset": 77104,
+      "bytes": 38552,
+      "sha256": "1993d8d6fd42cefba4cd5d2bb6a7c5df28f29551b0cbb4dd8002d0e5ff023070",
+      "holds": "March: the M(3000)F2 map (CCIR Report 340) and the atmospheric noise maps (CCIR Report 322), with NTIA/ITS's sporadic-E, E, F1 and F2 height-ratio maps and prediction-error tables, in one file"
+    },
+    {
+      "path": "coeffs/coeff04w.bin",
+      "offset": 115656,
+      "bytes": 38552,
+      "sha256": "c65322e7302a7b52015233ea05e39c88f0e6efddade679a25926d3b8609710d3",
+      "holds": "April: the M(3000)F2 map (CCIR Report 340) and the atmospheric noise maps (CCIR Report 322), with NTIA/ITS's sporadic-E, E, F1 and F2 height-ratio maps and prediction-error tables, in one file"
+    },
+    {
+      "path": "coeffs/coeff05w.bin",
+      "offset": 154208,
+      "bytes": 38552,
+      "sha256": "165d025bcd7345de6b954c3eeacb5aa5aadffcf02105b4dbbb15ba64f992818f",
+      "holds": "May: the M(3000)F2 map (CCIR Report 340) and the atmospheric noise maps (CCIR Report 322), with NTIA/ITS's sporadic-E, E, F1 and F2 height-ratio maps and prediction-error tables, in one file"
+    },
+    {
+      "path": "coeffs/coeff06w.bin",
+      "offset": 192760,
+      "bytes": 38552,
+      "sha256": "5f8b6439b5e0db94437817da06895cbe45cefa346461d4b9d3db8a9749d9aa85",
+      "holds": "June: the M(3000)F2 map (CCIR Report 340) and the atmospheric noise maps (CCIR Report 322), with NTIA/ITS's sporadic-E, E, F1 and F2 height-ratio maps and prediction-error tables, in one file"
+    },
+    {
+      "path": "coeffs/coeff07w.bin",
+      "offset": 231312,
+      "bytes": 38552,
+      "sha256": "5b69867018897ed9be26ec48615174cfd0c76dc8927d5ebc868273537a7b0da3",
+      "holds": "July: the M(3000)F2 map (CCIR Report 340) and the atmospheric noise maps (CCIR Report 322), with NTIA/ITS's sporadic-E, E, F1 and F2 height-ratio maps and prediction-error tables, in one file"
+    },
+    {
+      "path": "coeffs/coeff08w.bin",
+      "offset": 269864,
+      "bytes": 38552,
+      "sha256": "104ea8c5707f281afceec169d08bf4b804fdbbba8b2b44cdae1b63a350ec2e60",
+      "holds": "August: the M(3000)F2 map (CCIR Report 340) and the atmospheric noise maps (CCIR Report 322), with NTIA/ITS's sporadic-E, E, F1 and F2 height-ratio maps and prediction-error tables, in one file"
+    },
+    {
+      "path": "coeffs/coeff09w.bin",
+      "offset": 308416,
+      "bytes": 38552,
+      "sha256": "97ea78f802896bd033c0b563c11cc550b304c498a8689d351e824e5033db9801",
+      "holds": "September: the M(3000)F2 map (CCIR Report 340) and the atmospheric noise maps (CCIR Report 322), with NTIA/ITS's sporadic-E, E, F1 and F2 height-ratio maps and prediction-error tables, in one file"
+    },
+    {
+      "path": "coeffs/coeff10w.bin",
+      "offset": 346968,
+      "bytes": 38552,
+      "sha256": "7a7557c1c8100c2842c8c30dd83844d80ea958cf4cd080ccbbe56eadbfb91abc",
+      "holds": "October: the M(3000)F2 map (CCIR Report 340) and the atmospheric noise maps (CCIR Report 322), with NTIA/ITS's sporadic-E, E, F1 and F2 height-ratio maps and prediction-error tables, in one file"
+    },
+    {
+      "path": "coeffs/coeff11w.bin",
+      "offset": 385520,
+      "bytes": 38552,
+      "sha256": "144e0e4fbdeff474ce1feb65fffebe48b639435c99db939421814a1c9a4354ab",
+      "holds": "November: the M(3000)F2 map (CCIR Report 340) and the atmospheric noise maps (CCIR Report 322), with NTIA/ITS's sporadic-E, E, F1 and F2 height-ratio maps and prediction-error tables, in one file"
+    },
+    {
+      "path": "coeffs/coeff12w.bin",
+      "offset": 424072,
+      "bytes": 38552,
+      "sha256": "b78e44b1b13c557f7f43d48d48a24a13a6f05388a81647890857ff632d1e4d7c",
+      "holds": "December: the M(3000)F2 map (CCIR Report 340) and the atmospheric noise maps (CCIR Report 322), with NTIA/ITS's sporadic-E, E, F1 and F2 height-ratio maps and prediction-error tables, in one file"
+    },
+    {
+      "path": "coeffs/fof2CCIR.daw",
+      "offset": 462624,
+      "bytes": 94848,
+      "sha256": "bd78d04018c07996b0427b2da60b5a95471f74c832862fed93ebddee10437f7f",
+      "holds": "The foF2 maps of CCIR Report 340, every month"
+    },
+    {
+      "path": "antennas/default/ccir.026",
+      "offset": 557472,
+      "bytes": 921,
+      "sha256": "66fc1af210d28793b3c2b56639b13433e5c6a01d376ce818dab7bcc2fe6f0637",
+      "holds": "A short whip's elevation pattern, headed \"SWWhip for REC533\"; where its 91 figures come from is not stated"
+    },
+    {
+      "path": "antennas/default/swwhip.voa",
+      "offset": 558393,
+      "bytes": 943,
+      "sha256": "beac38ebff6c9f8e27d26264d430fd1926c122996900b150f534bd2e88e118dc",
+      "holds": "The same short whip's pattern under another name"
+    }
+  ]
+}

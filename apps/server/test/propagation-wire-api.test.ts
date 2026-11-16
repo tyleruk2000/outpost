@@ -23,6 +23,7 @@ import {
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { normalise } from "../src/modules/propagation/service.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
+import { describeWithVoacapData } from "./voacap-data.ts";
 
 const preset = (id: string): AntennaSpec => ANTENNA_PRESETS.find((item) => item.id === id)!.spec;
 const dipole = preset("low-dipole");
@@ -109,7 +110,7 @@ describe("the four wires offered", () => {
   });
 });
 
-describe("what a request may hold", () => {
+describeWithVoacapData("what a request may hold", () => {
   const refused = async (txAntenna: Record<string, unknown>, words: RegExp) => {
     const { status, body } = await app.api("POST", "/api/radio/propagation/predict", { ...base, txAntenna });
     expect(status).toBe(400);
@@ -133,7 +134,7 @@ describe("what a request may hold", () => {
   });
 });
 
-describe("a prediction with a level wire", () => {
+describeWithVoacapData("a prediction with a level wire", () => {
   let result: PredictionResult;
 
   it("has figures on the band where the wire is a half-wave, and says how it was run", async () => {
@@ -203,7 +204,7 @@ describe("a prediction with a level wire", () => {
   });
 });
 
-describe("a prediction with an upright wire", () => {
+describeWithVoacapData("a prediction with an upright wire", () => {
   it("has figures on every band, each for the wire of that length", async () => {
     const { status, body } = await predict({ txAntenna: upright10, frequencyMhz: 7.1 });
     expect(status).toBe(200);
@@ -214,7 +215,7 @@ describe("a prediction with an upright wire", () => {
   });
 });
 
-describe("the same path with one thing changed", () => {
+describeWithVoacapData("the same path with one thing changed", () => {
   const compare = (request: PredictionRequest, what: string) =>
     app.api<CompareResult>("POST", "/api/radio/propagation/compare", { base: request, what });
 
@@ -271,7 +272,7 @@ describe("the same path with one thing changed", () => {
   });
 });
 
-describe("a coverage map", () => {
+describeWithVoacapData("a coverage map", () => {
   const map = {
     tx: base.tx,
     date: base.date,
@@ -317,7 +318,7 @@ describe("a coverage map", () => {
   });
 });
 
-describe("a communication plan", () => {
+describeWithVoacapData("a communication plan", () => {
   const station = (id: string, name: string, lat: number, lon: number, antenna: AntennaSpec, antennaName: string) => ({
     id,
     name,
@@ -370,7 +371,7 @@ describe("a communication plan", () => {
   });
 });
 
-describe("the contact log compared with predictions", () => {
+describeWithVoacapData("the contact log compared with predictions", () => {
   it("leaves out an entry on a frequency the chosen wire is not modelled on, and says that is why", async () => {
     const made = await app.api("POST", "/api/radio/observations", {
       at: "2026-11-16T12:00:00Z",
@@ -399,7 +400,7 @@ describe("the contact log compared with predictions", () => {
   });
 });
 
-describe("equipment profiles", () => {
+describeWithVoacapData("equipment profiles", () => {
   const wire = { name: "Kite wire", ...upright10, lengthM: 20.5, feedlineLossDb: 1, minMhz: 7, maxMhz: 7.2, notes: "49:1 unit" };
   const profiles = async () => (await app.api("GET", "/api/radio/profiles")).body.antennas as AntennaProfile[];
 
@@ -463,7 +464,7 @@ describe("equipment profiles", () => {
   });
 });
 
-describe("saved predictions", () => {
+describeWithVoacapData("saved predictions", () => {
   const saved = async () => (await app.api("GET", "/api/radio/propagation/saved")).body.saved as SavedPrediction[];
 
   it("keep a wire with its length exactly, and give the same answer when asked again", async () => {

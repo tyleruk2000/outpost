@@ -20,9 +20,10 @@ import {
   type PredictionResult,
 } from "@outpost/shared";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { appRoot } from "../src/core/paths.ts";
 import { COVERAGE_JOB, COVERAGE_MAX_WAITING, normaliseCoverage } from "../src/modules/propagation/coverage.ts";
+import { workingCopyDir } from "../src/modules/propagation/voacap/coefficients.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
+import { describeWithVoacapData } from "./voacap-data.ts";
 
 const dipole = ANTENNA_PRESETS.find((preset) => preset.id === "low-dipole")!.spec;
 
@@ -114,7 +115,7 @@ describe("the grid", () => {
   });
 });
 
-describe("a coverage map", () => {
+describeWithVoacapData("a coverage map", () => {
   let map: CoverageResult;
   beforeAll(async () => {
     map = await worked(britain);
@@ -212,7 +213,7 @@ describe("a coverage map", () => {
   });
 });
 
-describe("what a coverage request may ask for", () => {
+describeWithVoacapData("what a coverage request may ask for", () => {
   it("is checked before any work is queued", async () => {
     const refused = async (patch: Record<string, unknown>) => {
       const { status, body } = await app.api("POST", "/api/radio/propagation/coverage", { ...britain, ...patch });
@@ -257,7 +258,7 @@ describe("what a coverage request may ask for", () => {
   });
 });
 
-describe("coverage maps waiting, among a great deal of other work", () => {
+describeWithVoacapData("coverage maps waiting, among a great deal of other work", () => {
   it("are still found: the same map is one job and the limit of three holds", async () => {
     const own = await createTestApp();
     try {
@@ -288,7 +289,7 @@ describe("coverage maps waiting, among a great deal of other work", () => {
   });
 });
 
-describe("the job", () => {
+describeWithVoacapData("the job", () => {
   it("reports each cell, and can be stopped without losing the engine", async () => {
     const fine = { ...britain, resolution: "fine" as const, frequencyMhz: 10.12 };
     const asked = await app.api("POST", "/api/radio/propagation/coverage", fine);
@@ -334,12 +335,10 @@ describe("the job", () => {
   it("fails in words when the engine's data is damaged, and keeps nothing", async () => {
     const broken = await createTestApp();
     try {
-      const copy = path.join(broken.ctx.config.dataDir, "propagation/voacap-data");
-      fs.cpSync(path.join(appRoot, "engines/voacap/data"), copy, { recursive: true });
-      fs.writeFileSync(path.join(copy, "itshfbc/coeffs/coeff11w.bin"), "not the coefficients");
+      fs.writeFileSync(path.join(workingCopyDir(broken.ctx.config.dataDir), "coeffs/coeff11w.bin"), "not the coefficients");
       const { status, body } = await broken.api("POST", "/api/radio/propagation/coverage", britain);
       expect(status).toBe(415);
-      expect(body.error.message).toContain("A propagation data file is damaged");
+      expect(body.error.message).toContain("VOACAP's data on this computer is damaged");
       expect(body.coverage).toBeUndefined();
     } finally {
       await broken.close();
@@ -347,7 +346,7 @@ describe("the job", () => {
   });
 });
 
-describe("saved coverage maps", () => {
+describeWithVoacapData("saved coverage maps", () => {
   it("are listed, reopened with the figures they were saved with, and deleted", async () => {
     const map = await worked(britain);
     const saved = await app.api("POST", "/api/radio/propagation/coverage/saved", { name: "Britain on 40 m", key: map.key });
@@ -380,7 +379,7 @@ describe("saved coverage maps", () => {
   });
 });
 
-describe("what is kept of maps and plans", () => {
+describeWithVoacapData("what is kept of maps and plans", () => {
   let own: TestApp;
   const pause = () => new Promise((resolve) => setTimeout(resolve, 5));
   const used = () =>

@@ -1,5 +1,5 @@
 {
-  "id": "voacap-coefficients",
+  "id": "voacap-antennas",
   "version": "hfcast-bf34e8f9f375",
   "source": {
     "repository": "https://github.com/jonathanmcsweet/hfcast-engine",
@@ -9,83 +9,10 @@
   },
   "groups": [
     {
-      "id": "coefficients",
-      "title": "Ionospheric and noise coefficients",
-      "description": "Monthly maps of foF2 and M(3000)F2 (CCIR Report 340), atmospheric radio noise (CCIR Report 322), and the E, F1 and sporadic-E maps, F2 height ratio and prediction-error tables of NTIA/ITS, in the binary form VOACAP reads.",
-      "bytes": 557472,
-      "files": [
-        {
-          "path": "coeffs/coeff01w.bin",
-          "bytes": 38552,
-          "sha256": "ac032273a96d3c6d70b9df85162d8b59519a8b2a653349062509b68ce51067fc"
-        },
-        {
-          "path": "coeffs/coeff02w.bin",
-          "bytes": 38552,
-          "sha256": "c9fc358e9870299fc2ab7f1bc5151c15f0f2e98e94a7e1895abba67d48059a57"
-        },
-        {
-          "path": "coeffs/coeff03w.bin",
-          "bytes": 38552,
-          "sha256": "1993d8d6fd42cefba4cd5d2bb6a7c5df28f29551b0cbb4dd8002d0e5ff023070"
-        },
-        {
-          "path": "coeffs/coeff04w.bin",
-          "bytes": 38552,
-          "sha256": "c65322e7302a7b52015233ea05e39c88f0e6efddade679a25926d3b8609710d3"
-        },
-        {
-          "path": "coeffs/coeff05w.bin",
-          "bytes": 38552,
-          "sha256": "165d025bcd7345de6b954c3eeacb5aa5aadffcf02105b4dbbb15ba64f992818f"
-        },
-        {
-          "path": "coeffs/coeff06w.bin",
-          "bytes": 38552,
-          "sha256": "5f8b6439b5e0db94437817da06895cbe45cefa346461d4b9d3db8a9749d9aa85"
-        },
-        {
-          "path": "coeffs/coeff07w.bin",
-          "bytes": 38552,
-          "sha256": "5b69867018897ed9be26ec48615174cfd0c76dc8927d5ebc868273537a7b0da3"
-        },
-        {
-          "path": "coeffs/coeff08w.bin",
-          "bytes": 38552,
-          "sha256": "104ea8c5707f281afceec169d08bf4b804fdbbba8b2b44cdae1b63a350ec2e60"
-        },
-        {
-          "path": "coeffs/coeff09w.bin",
-          "bytes": 38552,
-          "sha256": "97ea78f802896bd033c0b563c11cc550b304c498a8689d351e824e5033db9801"
-        },
-        {
-          "path": "coeffs/coeff10w.bin",
-          "bytes": 38552,
-          "sha256": "7a7557c1c8100c2842c8c30dd83844d80ea958cf4cd080ccbbe56eadbfb91abc"
-        },
-        {
-          "path": "coeffs/coeff11w.bin",
-          "bytes": 38552,
-          "sha256": "144e0e4fbdeff474ce1feb65fffebe48b639435c99db939421814a1c9a4354ab"
-        },
-        {
-          "path": "coeffs/coeff12w.bin",
-          "bytes": 38552,
-          "sha256": "b78e44b1b13c557f7f43d48d48a24a13a6f05388a81647890857ff632d1e4d7c"
-        },
-        {
-          "path": "coeffs/fof2CCIR.daw",
-          "bytes": 94848,
-          "sha256": "bd78d04018c07996b0427b2da60b5a95471f74c832862fed93ebddee10437f7f"
-        }
-      ]
-    },
-    {
       "id": "antennas",
       "title": "Antenna definitions and the version file",
-      "description": "The antenna definition files of the VOACAP distribution (NTIA/ITS) and its version string.",
-      "bytes": 16412,
+      "description": "The antenna definition files of the VOACAP distribution (NTIA/ITS) and its version string. The two short-whip patterns made for REC533 are not among them: they are fetched with the coefficients (engines/voacap/coefficients.json).",
+      "bytes": 14548,
       "files": [
         {
           "path": "antennas/default/ccir.000",
@@ -218,11 +145,6 @@
           "sha256": "5b1a616bc5c275dda74f00a9d564d57908233f33f22246e183fb00a2e13bc913"
         },
         {
-          "path": "antennas/default/ccir.026",
-          "bytes": 921,
-          "sha256": "66fc1af210d28793b3c2b56639b13433e5c6a01d376ce818dab7bcc2fe6f0637"
-        },
-        {
           "path": "antennas/default/const17.voa",
           "bytes": 940,
           "sha256": "a701626c38f66c1953ecff7f47b9389b284d1f90b056e4be15c86ad22ba620ee"
@@ -231,11 +153,6 @@
           "path": "antennas/default/isotrope",
           "bytes": 91,
           "sha256": "b18cbf626853802c332d81db5a97c1121b7b091d9004d430289ce569ed926f27"
-        },
-        {
-          "path": "antennas/default/swwhip.voa",
-          "bytes": 943,
-          "sha256": "beac38ebff6c9f8e27d26264d430fd1926c122996900b150f534bd2e88e118dc"
         },
         {
           "path": "database/version.w32",

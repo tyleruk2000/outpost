@@ -41,6 +41,7 @@ import { propagationResults } from "../../db/schema.ts";
 import { type CircuitRequest, EngineUnavailable } from "./engine.ts";
 import { type EngineHost, EngineRefused } from "./host.ts";
 import { currentSolarTable, daysBetween, monthOf, type SolarTable } from "./solar.ts";
+import { EngineDataMissing } from "./voacap/coefficients.ts";
 
 /** The frequencies of the heat map: every whole megahertz the engine covers. */
 export const SWEEP_MHZ: number[] = Array.from({ length: HF_MAX_MHZ - HF_MIN_MHZ + 1 }, (_, index) => HF_MIN_MHZ + index);
@@ -99,6 +100,7 @@ export interface PropagationInternals {
 
 /** Turns an engine failure into something the HTTP layer reports properly. */
 export function engineProblem(error: unknown): never {
+  if (error instanceof EngineDataMissing) throw new AppError("unsupported", error.message, { reason: "engine-data-missing" });
   if (error instanceof EngineUnavailable) throw new AppError("unsupported", error.message, { reason: "engine-unavailable" });
   if (error instanceof EngineRefused) throw badRequest(`The propagation engine could not work this out: ${error.message}`);
   throw error;

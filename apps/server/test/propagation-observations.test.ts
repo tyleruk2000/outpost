@@ -18,6 +18,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { adifInstant, adifLocation, looksLikeAdif, parseAdif } from "../src/modules/propagation/adif.ts";
 import { multipart } from "./fixtures/documents/builders.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
+import { describeWithVoacapData } from "./voacap-data.ts";
 
 const dipole = ANTENNA_PRESETS.find((preset) => preset.id === "low-dipole")!.spec;
 
@@ -380,7 +381,7 @@ describe("an entry typed in", () => {
   });
 });
 
-describe("comparing the log with predictions", () => {
+describeWithVoacapData("comparing the log with predictions", () => {
   let result: ComparisonResult;
 
   it("counts each compared entry where the engine's own figure puts it, and says why the rest are left out", async () => {

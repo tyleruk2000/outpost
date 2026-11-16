@@ -184,6 +184,8 @@ export function createInventory(ctx: AppContext, missingDocuments: () => Readonl
           documents: linked.map((document) => ({ id: document.id, title: document.title })),
           catalogEntryId: row.catalogEntryId,
           href: linked.length === 1 ? `/library/documents/${linked[0]!.id}` : `/library/collections/${row.id}`,
+          // A module can say what stops working without it (meta.removalWarning).
+          warning: typeof meta.removalWarning === "string" ? meta.removalWarning : null,
         },
       });
     }

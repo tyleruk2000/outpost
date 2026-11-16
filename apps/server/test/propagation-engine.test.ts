@@ -2,29 +2,40 @@
  * The propagation engine itself, with no server around it: that it gives what the
  * original program gives, that Outpost's antenna files mean what they are taken to
  * mean, and that damaged or missing data is refused rather than predicted from.
+ *
+ * Needs VOACAP's coefficients in engines/voacap/.cache (`voacap-data.ts`); without them
+ * the tests that run the engine are reported as skipped, and those that check it refuses
+ * to run still run.
  */
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { ANTENNA_PRESETS, type AntennaSpec } from "@outpost/shared";
 import { afterAll, describe, expect, it } from "vitest";
-import { appRoot } from "../src/core/paths.ts";
 import { type CircuitRequest, EngineUnavailable } from "../src/modules/propagation/engine.ts";
 import { antennaFile } from "../src/modules/propagation/voacap/antenna-files.ts";
+import {
+  adoptCoefficients,
+  coefficientsManifest,
+  EngineDataMissing,
+  workingCopyDir,
+} from "../src/modules/propagation/voacap/coefficients.ts";
 import { createVoacapEngine, FREQUENCIES_PER_RUN } from "../src/modules/propagation/voacap/engine.ts";
 import { loadDataset, loadEngineFile, voacapPaths } from "../src/modules/propagation/voacap/files.ts";
 import { VoacapInstance } from "../src/modules/propagation/voacap/instance.ts";
 import { REFERENCE_CASES } from "./fixtures/propagation/cases.ts";
+import { describeWithVoacapData, seedVoacapData, VOACAP_CACHE, voacapDataAbsent } from "./voacap-data.ts";
 
 const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "outpost-hf-"));
 afterAll(() => fs.rmSync(scratch, { recursive: true, force: true }));
 
+seedVoacapData(path.join(scratch, "data"));
 const paths = voacapPaths(path.join(scratch, "data"));
-const engine = createVoacapEngine(paths);
+const engine = voacapDataAbsent ? (null as never) : createVoacapEngine(paths);
 const preset = (id: string): AntennaSpec => ANTENNA_PRESETS.find((item) => item.id === id)!.spec;
 const acceptance = REFERENCE_CASES[0]!.request;
 
-describe("reference circuits", () => {
+describeWithVoacapData("reference circuits", () => {
   // Expected values: the text printed by voacapl (the Fortran VOACAP, commit c12a98b,
   // version 16.1207W) built with gfortran 12.2 -O2 -ffp-contract=off on Linux arm64, run
   // on 16 November 2026 from the decks and antenna files `make-decks.ts` writes.
@@ -99,7 +110,7 @@ describe("reference circuits", () => {
   });
 });
 
-describe("antenna files", () => {
+describeWithVoacapData("antenna files", () => {
   const noon = (request: CircuitRequest) => engine.circuit({ ...request, frequenciesMhz: [3.65, 7.1, 14.18] }).hours[11]!.cells;
   const dipole = preset("low-dipole");
 
@@ -143,10 +154,52 @@ describe("antenna files", () => {
   });
 });
 
-describe("the engine's files", () => {
+describe("the engine's files, without the coefficients", () => {
+  const manifest = coefficientsManifest();
+
+  it("refuses to load, says what is missing, and makes nothing up", () => {
+    const empty = voacapPaths(path.join(scratch, "nothing-here"));
+    expect(() => createVoacapEngine(empty)).toThrow(EngineDataMissing);
+    expect(() => createVoacapEngine(empty)).toThrow(
+      /VOACAP's ionospheric and noise maps are not on this computer yet \(15 files, 559 kB\)/,
+    );
+  });
+
+  it("refuses a set that is not whole", () => {
+    const dir = workingCopyDir(path.join(scratch, "partial"));
+    fs.mkdirSync(path.join(dir, "coeffs"), { recursive: true });
+    fs.writeFileSync(path.join(dir, "coeffs/coeff01w.bin"), "a beginning");
+    expect(() => createVoacapEngine(voacapPaths(path.join(scratch, "partial")))).toThrow(
+      /coeffs\/coeff01w\.bin does not match its checksum/,
+    );
+  });
+
+  it("lists, for each file, a size, an offset and a checksum, and the bundle adds up", () => {
+    expect(manifest.files).toHaveLength(15);
+    expect(manifest.bytes).toBe(559_336);
+    let offset = 0;
+    for (const file of manifest.files) {
+      expect(file.offset).toBe(offset);
+      expect(file.sha256).toMatch(/^[0-9a-f]{64}$/);
+      offset += file.bytes;
+    }
+    expect(offset).toBe(manifest.bytes);
+    // The pinned address is the engine's own repository at the commit the engine was built from.
+    expect(manifest.source.baseUrl).toBe(
+      "https://raw.githubusercontent.com/jonathanmcsweet/hfcast-engine/bf34e8f9f375e190ed43fcac19f25d800992e0e6/embedded/",
+    );
+  });
+
+  it("ships none of them", () => {
+    for (const file of manifest.files) expect(fs.existsSync(path.join(paths.shippedDir, "itshfbc", file.path))).toBe(false);
+  });
+});
+
+describeWithVoacapData("the engine's files", () => {
+  /** A data directory with its own copy, as a download or a set-up leaves it. */
   const copyData = (name: string) => {
     const dir = path.join(scratch, name);
-    fs.cpSync(path.join(appRoot, "engines/voacap/data"), path.join(dir, "propagation/voacap-data"), { recursive: true });
+    seedVoacapData(dir);
     return dir;
   };
 
@@ -155,35 +208,49 @@ describe("the engine's files", () => {
     expect(wasm.length).toBe(manifest.wasm.bytes);
     expect(manifest.model).toMatch(/^VOACAP Version/);
     const dataset = loadDataset(paths);
-    expect(dataset.included).toBe(true);
+    // 29 shipped (antennas and the version file) and 15 fetched: the 44 the engine has always read.
     expect(dataset.files).toHaveLength(44);
-  });
-
-  it("uses a copy of the data in the data directory in preference to the included one", () => {
-    const dir = copyData("own-copy");
-    expect(loadDataset(voacapPaths(dir)).included).toBe(false);
-    expect(createVoacapEngine(voacapPaths(dir)).circuit(acceptance).hours[11]).toEqual(engine.circuit(acceptance).hours[11]);
+    expect(dataset.bytes).toBe(14_548 + 559_336);
   });
 
   it("refuses a damaged coefficient file and names it", () => {
     const dir = copyData("damaged");
-    const file = path.join(dir, "propagation/voacap-data/itshfbc/coeffs/coeff11w.bin");
+    const file = path.join(workingCopyDir(dir), "coeffs/coeff11w.bin");
     const bytes = fs.readFileSync(file);
     bytes[1000] = bytes[1000]! ^ 0xff;
     fs.writeFileSync(file, bytes);
     expect(() => createVoacapEngine(voacapPaths(dir))).toThrow(EngineUnavailable);
-    expect(() => createVoacapEngine(voacapPaths(dir))).toThrow(/coeffs\/coeff11w\.bin .* does not match its checksum/);
+    expect(() => createVoacapEngine(voacapPaths(dir))).toThrow(/coeffs\/coeff11w\.bin does not match its checksum/);
   });
 
   it("refuses a missing file and says which", () => {
     const dir = copyData("missing");
-    fs.rmSync(path.join(dir, "propagation/voacap-data/itshfbc/coeffs/fof2CCIR.daw"));
-    expect(() => createVoacapEngine(voacapPaths(dir))).toThrow(/A propagation data file is missing: coeffs\/fof2CCIR\.daw/);
+    fs.rmSync(path.join(workingCopyDir(dir), "coeffs/fof2CCIR.daw"));
+    expect(() => createVoacapEngine(voacapPaths(dir))).toThrow(/coeffs\/fof2CCIR\.daw is missing/);
   });
 
-  it("says so when there is no data at all, and makes nothing up", () => {
-    const nowhere = { engineDir: paths.engineDir, dataDirs: [path.join(scratch, "nothing-here")] };
-    expect(() => createVoacapEngine(nowhere)).toThrow(/coefficients the propagation engine needs are missing/);
+  it("takes over an earlier installation's copy, checked, and leaves that copy as it was", () => {
+    const manifest = coefficientsManifest();
+    // An app folder from before: engines/voacap/data/itshfbc with the coefficients in it.
+    const oldApp = path.join(scratch, "old-app/engines/voacap/data/itshfbc");
+    fs.cpSync(VOACAP_CACHE, oldApp, { recursive: true });
+    const dataDir = path.join(scratch, "adopting");
+    const adopted = adoptCoefficients(dataDir, manifest, [path.join(scratch, "nowhere"), oldApp]);
+    expect(adopted).toMatchObject({ how: "adopted", from: oldApp, sha256: manifest.sha256 });
+    expect(fs.existsSync(path.join(oldApp, "coeffs/coeff01w.bin"))).toBe(true);
+    expect(createVoacapEngine(voacapPaths(dataDir)).circuit(acceptance).hours[11]).toEqual(engine.circuit(acceptance).hours[11]);
+    // Once there, it is not taken again.
+    expect(adoptCoefficients(dataDir, manifest, [oldApp])).toBeNull();
+  });
+
+  it("takes over nothing that does not match", () => {
+    const manifest = coefficientsManifest();
+    const oldApp = path.join(scratch, "altered-app/itshfbc");
+    fs.cpSync(VOACAP_CACHE, oldApp, { recursive: true });
+    fs.writeFileSync(path.join(oldApp, "coeffs/coeff03w.bin"), "altered");
+    const dataDir = path.join(scratch, "not-adopting");
+    expect(adoptCoefficients(dataDir, manifest, [oldApp])).toBeNull();
+    expect(fs.existsSync(workingCopyDir(dataDir))).toBe(false);
   });
 
   it("gives the engine no way to read or write the computer's files", () => {

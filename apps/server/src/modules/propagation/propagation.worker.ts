@@ -10,6 +10,7 @@
 import { parentPort, workerData } from "node:worker_threads";
 import { EngineUnavailable, type PropagationEngine } from "./engine.ts";
 import type { WorkerReply, WorkerRequest } from "./host.ts";
+import { EngineDataMissing } from "./voacap/coefficients.ts";
 import { createVoacapEngine } from "./voacap/engine.ts";
 import type { VoacapPaths } from "./voacap/files.ts";
 import { EngineError } from "./voacap/instance.ts";
@@ -41,7 +42,14 @@ parentPort?.on("message", (request: WorkerRequest) => {
       id: request.id,
       ok: false,
       message: error instanceof Error ? error.message : String(error),
-      kind: error instanceof EngineUnavailable ? "unavailable" : error instanceof EngineError ? "engine" : "other",
+      kind:
+        error instanceof EngineDataMissing
+          ? "data-missing"
+          : error instanceof EngineUnavailable
+            ? "unavailable"
+            : error instanceof EngineError
+              ? "engine"
+              : "other",
     };
   }
   parentPort?.postMessage(reply);
