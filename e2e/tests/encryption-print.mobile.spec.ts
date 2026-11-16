@@ -164,7 +164,7 @@ test.describe("printing paper aids from a phone", () => {
     await expect(paper.getByText(Object.keys(made)[0]!)).toBeVisible();
     await expect(view.locator(".print-chrome").first()).toBeHidden();
     await expect(page.locator("#root")).toBeHidden();
-    await page.emulateMedia({ media: "screen" });
+    await page.emulateMedia({ media: null });
 
     await view.getByRole("button", { name: "Close" }).tap();
     await expect(view).toBeHidden();

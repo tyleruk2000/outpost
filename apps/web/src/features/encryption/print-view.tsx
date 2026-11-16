@@ -160,7 +160,7 @@ export function PrintView({
             </div>
           </header>
 
-          <div className="print-scroll scroll-quiet min-h-0 flex-1 overflow-auto px-3 pt-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] md:px-6 md:pt-5">
+          <div className="print-scroll scroll-quiet min-h-0 flex-1 overflow-auto overscroll-contain px-3 pt-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] md:px-6 md:pt-5">
             <div className="print-chrome mx-auto mb-3 grid max-w-[210mm] gap-3">
               <PrintNotice
                 printing={printing}

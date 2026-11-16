@@ -157,7 +157,7 @@ export default function EmergencySheetPage() {
           {/* Where the button cannot start a print, the sheet below is still the page: the browser's own Print prints it alone. */}
           <PrintNotice
             printing={printing}
-            instead="The sheet below is the page as it prints. Use the browser’s own Share menu, then Print, or take a screenshot of it."
+            instead="Use the browser’s own Share menu, then Print, or take a screenshot of the sheet below."
             className="mb-4 max-w-[65ch]"
           />
           <p className="mb-3 max-w-[65ch] text-small text-ink-muted">

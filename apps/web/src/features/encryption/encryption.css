@@ -10,8 +10,7 @@
  * from the design tokens.
  *
  * These rules are outside every cascade layer, so they win over the app's own styles
- * (which are all in layers) without needing to shout. The few that do shout are
- * answering styles that other code writes straight onto <body> while a dialog is open.
+ * (which are all in layers) without needing to shout.
  */
 .print-sheet .print-paper {
   box-sizing: border-box;
@@ -39,19 +38,6 @@
 
   body:has(> .print-sheet) {
     background: white;
-  }
-
-  /* While a dialog is open the page behind is held still: the dialog's own code marks
-     <body> and gives it `overflow: hidden`, a position and a margin where the scroll
-     bar was, each with `!important`. Paper has no use for any of them, and a browser
-     that took the first at its word would cut the print off at the foot of page one. */
-  body[data-scroll-locked]:has(> .print-sheet) {
-    /* biome-ignore lint/complexity/noImportantStyles: answers an !important */
-    position: static !important;
-    /* biome-ignore lint/complexity/noImportantStyles: answers an !important */
-    margin: 0 !important;
-    /* biome-ignore lint/complexity/noImportantStyles: answers an !important */
-    overflow: visible !important;
   }
 
   /* The view stops filling the screen and becomes ordinary text that runs on from page to page. */

@@ -413,7 +413,7 @@ describe("the emergency sheet", () => {
     expect(within(sheet).getByText("Maya Okafor")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Print" })).not.toBeInTheDocument();
     const notice = screen.getByText("This browser cannot print from a page").closest('[role="status"]')!;
-    expect(notice).toHaveTextContent("Use the browser’s own Share menu, then Print, or take a screenshot of it.");
+    expect(notice).toHaveTextContent("Use the browser’s own Share menu, then Print, or take a screenshot of the sheet below.");
     // The copy that the browser's own Print prints is there whether or not the button is.
     expect(document.body.querySelector(":scope > .outpost-contacts-print")).toHaveTextContent("Maya Okafor");
     expect(screen.getByRole("link", { name: "Save these as a vCard file" })).toBeInTheDocument();

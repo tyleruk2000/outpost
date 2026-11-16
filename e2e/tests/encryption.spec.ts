@@ -515,7 +515,8 @@ test.describe("encryption", () => {
     await expect(sheet.getByText("A saved PDF is another copy of the pads")).toBeHidden();
     await expect(sheet.getByText("Save as PDF")).toBeHidden();
     await expect(page.locator("#root")).toBeHidden();
-    await page.emulateMedia({ media: "screen" });
+    // Back to the page's own media, not to "screen" by force: the print further down has to be laid out for paper.
+    await page.emulateMedia({ media: null });
     await expect(page.locator("#root")).toBeVisible();
     await view.getByRole("button", { name: "Close" }).click();
     await expect(view).toBeHidden();
@@ -532,8 +533,8 @@ test.describe("encryption", () => {
     await expect(view).toBeVisible();
     if (test.info().project.use.headless !== false) {
       const paper = (await page.pdf({ format: "A4" })).toString("latin1");
-      // Sixteen copies of ten lines: three or four to a page of A4.
-      expect((paper.match(/\/Type\s*\/Page\b/g) ?? []).length).toBeGreaterThanOrEqual(4);
+      // Sixteen copies of ten lines, three to a page of A4. Cut off at the first page, it would be one.
+      expect((paper.match(/\/Type\s*\/Page\b/g) ?? []).length).toBe(6);
     }
     await page.keyboard.press("Escape");
     await expect(view).toBeHidden();
