@@ -66,7 +66,7 @@ describe("the scenario written out", () => {
     expect(markdown).toMatch(/Glasstone and Philip J\. Dolan/);
     expect(markdown).toMatch(/5 psi/);
     expect(markdown).toMatch(/Idealised fallout pattern/);
-    expect(markdown).toMatch(/Affected population is not estimated/);
+    expect(markdown).toMatch(/No casualty figures are given/);
   });
 
   it("labels two scenarios A and B", () => {

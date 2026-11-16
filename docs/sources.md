@@ -921,6 +921,16 @@ this. Each publisher's terms, as read on its own terms, copyright or reuse page:
 | Ready.gov and FEMA (United States) | https://www.fema.gov/about/website-information | “Not read directly: fema.gov refused every request from here (HTTP 403). Read through a summarising fetcher, the page says “Most material on FEMA.gov is free of copyright and may be copied and distributed without permission”, which names FEMA.gov and not Ready.gov; Ready.gov has no terms page of its own that could be found.” | Not cleared: Not established from a page that could be read: pointed to or left as a question, not quoted. |
 | New Zealand Police | https://www.police.govt.nz/about-site-and-nz-police-app/copyright | “You may save to disk and reprint images and other information contained on this site for non-commercial private purposes only. Requests and enquiries concerning the reproduction of information on this website, or the use of web scripts or code, for any other purpose requires permission.” | Not cleared: Permission needed: the number 111 is given as a fact, cited, with none of the page's words. |
 
+| International Commission on Radiological Protection (ICRP) | https://www.icrp.org/page.asp?id=11 | “The publications of ICRP are copyright protected. If you want to reproduce material from an ICRP report, or if you want to translate and distribute it, permission is required from ICRP.” Its publications page: “ICRP retains copyrights on all its publications; even free to access publications require permission for reuse.” | Not cleared: permission needed. Nothing used. |
+| International Atomic Energy Agency (IAEA), iaea.org | https://www.iaea.org/about/terms-of-use (refused, HTTP 403; read from the Internet Archive's copy of 17 October 2026) | “Content may be adapted, translated, copied, printed and downloaded for private study, research and teaching purposes, and for use in commercial and non-commercial products or services, provided that appropriate acknowledgement of the IAEA as the source is given and that the IAEA's endorsement of users' views, products or services is not stated or implied in any way. Specific restrictions and/or conditions may apply to specific Materials within this Site.” | Cleared for the website's own content, with acknowledgement; a publication's own notice would be read first. Nothing used: no IAEA page for households was found. |
+
+The radiation emergency template (nuclear preparedness) adds two GOV.UK pages of the UK
+Health Security Agency, under GOV.UK's terms above, each also saying “This publication
+is licensed under the terms of the Open Government Licence v3.0 except where otherwise
+stated”, and points to Ready.gov's “Radiation Emergencies” page. Its sources and what
+was not used (local-authority REPPIR leaflets, which carry no licence statement) are in
+[nuclear-preparedness.md](nuclear-preparedness.md#the-radiation-emergency-template).
+
 The British Red Cross, Ready.gov and New Zealand Police are pointed to or cited for a
 fact, never quoted. The NHS's terms allow reuse with conditions that the templates do
 not take on; no NHS words are shipped.

@@ -890,6 +890,29 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   if several (it no longer depends on which was edited or starred last). With none,
   Weather and hazards says in one line how to mark one, with a link to Maps, and says
   when the home is not in its list of places.
+#### Nuclear preparedness: the third sitting
+
+- **The workspace shows the reference layers**: the Maps screen's Layers panel, record
+  card and dataset manager, mounted unchanged in the Layers tab; a press on the map
+  opens a record outside the Scenario tab. A **Records** tab lists historical records by
+  period with their kind and document. The provenance key counts what is held.
+- **People inside each ring** of the selected scenario, from an installed WorldPop grid:
+  a rounded count, said as who lives there and not a prediction of harm; partial or none
+  at the grid's edge; none for the fallout pattern; never a total.
+- **Plans**: an emergency plan template for a radiation emergency (UKHSA's go in, stay
+  in, tune in, on GOV.UK); the **Plans** tab gathers the household's plans of that kind,
+  places and the distances between them, supplies, ways to keep in touch, notes; a saved
+  scenario can be attached to a plan as an illustration.
+- **Several scenarios on the map** (up to six, A to F), saved together as a set
+  (migration `0024_nuclear_scenario_sets`).
+- **Colour**: a hue for each kind of effect, from validated map tokens, on the map, the
+  legend, the results and the PDF.
+- **The wind field** is labelled, takes compass points, says under itself whether a
+  pattern is drawn and why not, fits the map to the pattern, and offers a nearby
+  forecast's wind from the weather kept on this device.
+- **Reference layers**: a WorldPop grid can be imported from a file; historical records
+  are listed by `GET /api/reference/historical`.
+
 #### Emergency plans (Preparedness)
 
 - **Preparedness → Emergency plans**: a household's own plans for a power cut,

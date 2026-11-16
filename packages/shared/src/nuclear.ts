@@ -23,3 +23,29 @@ export interface NuclearScenario extends NuclearScenarioInput {
 
 export const SCENARIO_NAME_MAX = 120;
 export const SCENARIO_NOTES_MAX = 8000;
+
+/** The most scenarios on the map at once, and in a saved set: A to F. */
+export const MAX_SCENARIOS_SHOWN = 6;
+export const SCENARIO_LETTERS = ["A", "B", "C", "D", "E", "F"] as const;
+export type ScenarioLetter = (typeof SCENARIO_LETTERS)[number];
+
+/** One scenario of a saved set: what was typed, under its letter, and whether it was hidden. */
+export interface NuclearSetMember extends NuclearScenarioInput {
+  letter: ScenarioLetter;
+  hidden: boolean;
+}
+
+export interface NuclearSetInput {
+  name: string;
+  members: NuclearSetMember[];
+}
+
+/**
+ * Scenarios kept together as they were on the map. Only what was typed: nothing about
+ * the set as a whole is worked out, kept or shown (no total of any kind across them).
+ */
+export interface NuclearSet extends NuclearSetInput {
+  id: string;
+  createdAt: number;
+  updatedAt: number;
+}

@@ -282,7 +282,8 @@ export function personalWords(personal: NonNullable<CleanupPlan["personal"]>): s
   if ((personal.powerPlans ?? 0) > 0) parts.push(plural(personal.powerPlans ?? 0, "power plan"));
   const supplies = suppliesWords(personal.supplies);
   if (supplies) parts.push(supplies);
-  if ((personal.nuclearScenarios ?? 0) > 0) parts.push(plural(personal.nuclearScenarios!, "saved nuclear effects scenario"));
+  if ((personal.nuclearScenarios ?? 0) > 0)
+    parts.push(plural(personal.nuclearScenarios!, "saved nuclear effects scenario or set", "saved nuclear effects scenarios and sets"));
   if (personal.networkDevices) parts.push(plural(personal.networkDevices, "device found on the network", "devices found on the network"));
   const weather = weatherWords(personal.weather);
   if (weather) parts.push(weather);
@@ -330,7 +331,9 @@ export function resultSentences(result: CleanupResult): string[] {
       radioWords(radio),
       (powerPlans ?? 0) > 0 ? plural(powerPlans ?? 0, "power plan") : null,
       suppliesWords(supplies),
-      (nuclearScenarios ?? 0) > 0 ? plural(nuclearScenarios!, "saved nuclear effects scenario") : null,
+      (nuclearScenarios ?? 0) > 0
+        ? plural(nuclearScenarios!, "saved nuclear effects scenario or set", "saved nuclear effects scenarios and sets")
+        : null,
       weatherWords(weather),
       (result.personal.emergencyPlans ?? 0) > 0 ? plural(result.personal.emergencyPlans ?? 0, "emergency plan") : null,
       settings > 0 ? plural(settings, "changed setting") : null,

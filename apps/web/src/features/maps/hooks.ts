@@ -82,6 +82,13 @@ export function readMapTheme(): { flavour: MapFlavour; theme: MapTheme } {
       primary: hex("--primary", fallback.primary),
       lamp: hex("--lamp", fallback.lamp),
       contour,
+      effects: {
+        fireball: hex("--map-effect-fireball", fallback.effects.fireball),
+        blast: hex("--map-effect-blast", fallback.effects.blast),
+        heat: hex("--map-effect-heat", fallback.effects.heat),
+        radiation: hex("--map-effect-radiation", fallback.effects.radiation),
+        fallout: hex("--map-effect-fallout", fallback.effects.fallout),
+      },
     },
   };
 }

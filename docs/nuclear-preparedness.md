@@ -2,18 +2,57 @@
 
 Preparedness → Nuclear preparedness (`/prepare/nuclear`) is a workspace over the
 offline map for civil preparedness and education, built only from public, published
-information. This page is the plan for the whole module, then the account of what is
-built: the workspace and the educational effects simulator.
+information. This page is the module's one page: what each part is, the rules it keeps,
+every source and model, and what is not built and why. The reference layers it shows
+are described in full in [reference-layers.md](reference-layers.md); the emergency
+plans it builds on in [emergency-plans.md](emergency-plans.md).
+
+## The module's rules
 
 The module is about **effects, preparedness and published history**: what a detonation
 of a stated size does at a distance, where published sources say things are, and what
-official bodies advise people to do. It never covers how weapons are designed, built,
-obtained or delivered. It keeps historical targets, known infrastructure and
-hypothetical scenarios as separate categories, never presents a speculative target as
-confirmed, predicts no attack plans, assigns no probabilities to places, produces no
-ranked list of likely targets (nor any sort or filter that would make one), and never
-classifies modern infrastructure as a future target. Scenario results are educational
-estimates, not emergency forecasts or instructions.
+official bodies advise people to do. These hold everywhere in it, in the data and on
+the screen, and the tests named beside them fail if one is broken.
+
+1. **Nothing about how weapons are designed, built, obtained or delivered.**
+2. **Historical records, publicly mapped infrastructure and hypothetical scenarios are
+   separate categories that cannot be confused.** In the data: a `provenance` column with
+   a CHECK constraint, historical records in a table of their own with a required
+   `record_type`, scenarios in tables of their own (`nuclear_scenarios`,
+   `nuclear_scenario_sets`) never joined to either. On screen: five provenance classes,
+   each with its own mark and words; historical records say which of the three kinds of
+   record they are and that they say nothing about any place today.
+3. **Publicly mapped infrastructure is never labelled, scored, ranked, sorted or filtered
+   as a target.** It is shown as what a public dataset lists. Search is ordered by how
+   well a name matches; historical records by period and then name.
+4. **No attack probabilities, and no ranked or scored list of modern places by any
+   route**, including by combining a scenario with a layer. A scenario may say how many
+   people a published population grid counts inside each of its rings, and how far the
+   person's own saved places are from a ground zero they chose; it never lists, counts
+   or highlights mapped features inside a ring, never suggests a ground zero, never
+   snaps one to a feature, and offers no way to step through "what would be affected"
+   by facility. The reference layers are not joined to scenarios: a press on the map
+   moves ground zero only in the Scenario tab and opens a record only in the others.
+   (Tests: `nuclear-page.test.tsx` "counts people per ring of the selected scenario
+   only…"; `nuclear-final.test.ts` "hold no total…".)
+5. **Scenario results are educational estimates, not emergency forecasts or
+   instructions**, with no false precision and no casualty figures. People inside a
+   ring is a count from a named grid of a stated year, rounded, said as who lives there
+   and "not a prediction of harm" (`population-words.test.ts`). It is per ring, per
+   scenario: nothing is added up across rings or scenarios, no union of rings is worked
+   out, and no figure is offered for several scenarios together, because a combined
+   tally of several detonations is the step from an illustration to an estimate of an
+   attack.
+6. **Ground zeros are only ever where the person put them**: pressed, typed, or one of
+   their own saved places. Nothing is imported as a list of points.
+7. **Official guidance, quoted and dated, from publishers whose terms allow it**; where
+   it says nothing, a question for the household, never advice of Outpost's own
+   (`emergency-plans-templates.test.ts`). General preparedness information is told
+   apart from instructions in a real emergency on every screen and every paper.
+8. **Offline, local and private**: nothing leaves the device but a download the person
+   pressed for; saved places, scenarios and plans stay on this Outpost, are counted
+   under Manage and clean up and Storage → Database, are in backups and go with "erase
+   everything".
 
 ## What exists, and what the module reuses
 
@@ -33,8 +72,7 @@ estimates, not emergency forecasts or instructions.
 Each milestone works on its own. The numbers in brackets are the specification's
 sections.
 
-1. **Workspace and effects simulator** (§§ 4, 9, part of 10; this version). Done: see
-   below.
+1. **Workspace and effects simulator** (§§ 4, 9, part of 10). Done: see below.
 2. **Data-source framework and geographic store** (§§ 2, 8, 10). A provider adapter
    interface under `apps/server/src/modules/nuclear/sources/`: describe (name, licence,
    terms URL, what it holds), discover versions, fetch (only where the terms allow and
@@ -63,8 +101,11 @@ sections.
    official guidance, quoted and dated. *Depends on those screens.*
 7. **Tests across the module and the README** (§§ 11, 12.10).
 
-What each later sitting should take: the second, milestones 2 to 5; the third,
-milestone 6; each also its share of 7.
+All seven are done. The second sitting built milestones 2 to 5 as the map's reference
+layers ([reference-layers.md](reference-layers.md): the adapters, the geographic store,
+the layers, historical records, the dataset manager), under `modules/layers` rather than
+`modules/nuclear/sources`, so that the Maps screen has them too. The third built
+milestone 6 and brought the layers into the workspace; see "The workspace" below.
 
 ## Data providers and what their terms allow
 
@@ -167,8 +208,8 @@ It is labelled everywhere as an idealised pattern for a steady wind that real fa
 never follows, with the book's own words on its limits (§ 9.83: it "will undoubtedly
 underestimate the fallout in some locations and overestimate it in others").
 
-Affected population is **not estimated**: it needs population data (milestone 5). The
-screen says so; nothing is estimated from anything invented.
+Affected population (§ 4.5) is given **only as the people a population grid counts
+inside each ring**, never as casualties: see "People inside a ring" below.
 
 ### Validation
 
@@ -211,29 +252,270 @@ curve, nothing is given.
 
 ## The workspace
 
-- **Layout.** On a wide screen the map with the panel beside it (Scenario, Saved,
-  Layers), which can be put away; on a phone the map first and the panel after it on
-  the page. A line under the title says, always, that the screen works from this device,
-  and whether an offline map region is installed.
-- **On the map.** Each ring is a circle on the ground with its scenario letter, level
-  and rounded distance written along it; blast solid, burns long dashes, radiation
-  dots, fireball and crater thin. The fallout plume is its own layer. Two scenarios
-  (A, the one being edited, and B, a saved one chosen to compare) are told apart by the
-  letter on every ring and at each ground zero, and by colour as a second cue.
-- **Provenance.** Five classes, each with an icon, a word and its own edge, so that they
-  are told apart without colour: verified public infrastructure (solid), historical
-  documentation (double), modelled effects (dashed), made by you (shaded), unverified or
-  speculative (dotted). Only modelled effects and made by you have anything in them in
-  this version; the key in the Layers tab says the others are empty.
-- **Saved places** (the Maps screen's places) are shown on the map and listed with their
-  distance from ground zero and, in plain words, the rings and fallout contours they are
-  inside. Nothing more.
-- **Saved scenarios** keep only what was typed (`nuclear_scenarios`, migration 0016);
-  the effects are worked out again when one is opened. They are counted under Storage →
-  Database ("saved nuclear effects scenarios"), are in backups, and go with "erase
-  everything".
-- **On paper.** A PDF (Save as PDF, Add to library, Share) and Markdown with every
-  figure, what each level means, the notes, the assumptions, limitations and source;
-  both scenarios when comparing.
+### Layout
 
-Routes are in [api.md](api.md#nuclear-preparedness).
+On a wide screen the map with the panel beside it, which can be put away; on a phone
+the map first and the panel after it on the page, so that nothing lies over the map but
+its own column. The panel has five tabs: **Scenario**, **Saved**, **Layers**,
+**Records** and **Plans**. A line under the title says, always, that the screen works
+from this device and nothing in it uses the internet unless Download is pressed, and
+whether an offline map region is installed. The card for a record pressed on the map
+(the specification's "location information drawer") is under the map.
+
+### Several scenarios on the map
+
+Up to **six** scenarios are on the map at once, lettered A to F; each has its own ground
+zero, yield, burst and wind. Six because the letters and labels of more collide on a
+town-sized map, the list of them stops fitting a phone, and comparing more than a few
+at once stops being readable; at the limit the screen says so and "Add another
+scenario" is turned off. A new one is put at the middle of the map; a press moves the
+selected one. Each can be selected to edit, hidden, removed from the map, or saved; a
+saved scenario is put back on the map from the Saved tab, beside the others. On a
+phone the list is the switcher, with a row of letters under the map as well.
+
+- **Telling them apart.** The letter on each ground zero and at the start of every ring
+  and contour label is the first cue. The selected scenario is drawn at full strength
+  with its rings lightly filled; the others are thinner and fainter, with no fill.
+  No scenario has a hue of its own: hue means the kind of effect.
+- **Results** are the selected scenario's, under its letter. The PDF and Markdown cover
+  every scenario shown, each under its own letter and heading with its own caveat line
+  and colour key, with a line saying nothing is added up across them.
+- **Sets.** The scenarios on the map can be saved together as a set
+  (`nuclear_scenario_sets`, migration `0024`) and opened again as they were, hidden ones
+  hidden. A set keeps its own copy of each member as typed; deleting a saved single
+  scenario leaves it whole. Sets are counted with saved scenarios under Manage and
+  clean up and Storage → Database ("saved nuclear effects scenarios and sets"), are in
+  backups and go with "erase everything".
+
+### Colour
+
+Each kind of effect has one hue, the same on the map, in the legend under it, beside
+each heading of the results, on the switches of the Layers tab, in the plan's picture
+and in the PDF's colour key: fireball and crater, blast, heat, initial radiation,
+fallout. Within a kind the stronger level is more opaque, not another hue; the
+selected scenario's rings are filled at 4.5 per cent each, so that they stack into
+zones and the base map stays legible. Every line keeps its dashes and width, its
+letter, level and distance, so nothing depends on colour and a grey copy reads the same.
+Each line sits on a casing of the page's colour, so that it reads over imagery.
+
+The hues are tokens (`--map-effect-*` in `styles/tokens.css`, light and dark), read into
+the map's theme (`MapTheme.effects`); the PDF uses the light ones, since paper is light.
+None is a status colour (`--danger`, `--warning`): no ring is a line of danger or of
+safety, and there is no red-to-green ramp.
+
+| Kind | Light | Dark |
+| --- | --- | --- |
+| Fireball and crater | `#888d18` | `#9a9235` |
+| Blast | `#5373ef` | `#3f9bcf` |
+| Heat | `#873d08` | `#b1530f` |
+| Initial radiation | `#7343a6` | `#7260c4` |
+| Fallout | `#b3628c` | `#e25b95` |
+
+**Checked with the data-viz validator** (`validate_palette.js`, the one the `--chart-*`
+tokens were checked with), every pair, since all can touch on a map
+(`--pairs all`), on 16 November 2026:
+
+| Surface | Lightness band | Chroma | Colour-blind separation (worst pair, protan/deutan ΔE) | Tritan | Normal vision (worst pair) | Contrast, each at least |
+| --- | --- | --- | --- | --- | --- | --- |
+| Light map land `#ecefef`, and the page `#ffffff` | pass | pass | 12.6 (radiation and blast) | 10.9 | 15.4 | 3:1, pass |
+| Dark map land `#1c2224`, and the page `#141a1c` | pass | pass | 9.2 (heat and fireball) | 11.4 | 15.6 | 3:1, pass |
+
+Over satellite imagery no hue keeps 3:1 against every patch of ground (against three
+sample imagery tones, `#3e4a35`, `#6b6f5a` and `#9a9682`, the light hues measured 1.2 to
+2.6:1 and the dark 1.0 to 3.0:1), which is why every line is drawn on a casing of the
+page's colour: against the casing each meets the 3:1 above. The palette was found by a
+search within hue ranges chosen away from red and green, then validated; the search
+script is not in the repository.
+
+### Reference layers in the workspace
+
+The Layers tab mounts the Maps screen's pieces unchanged (`useReferenceLayers`, the
+Layers panel, the record card, `ReferenceDataSection`): the same switches, legend,
+filters, search, record card with its source, and the same sentence, "Nothing here
+marks a place as a likely target or ranks places". The dataset manager is the same
+one, under "Reference data". The workspace's own key to the five provenance classes
+counts what is held in each. Its first class is named "Published public record", as the
+reference layers name it: the specification's "verified public infrastructure", but
+Outpost has not checked anything on the ground. `PlanMap` was given two optional props
+for this: `onEngine` (the map engine itself) and `credits`.
+
+### Historical records browser
+
+The Records tab lists every historical record installed (`GET /api/reference/historical`),
+by period and then name, each with its mark, which of the three kinds of record it is
+(an actual historical target list, a historical assessment of likely targets, an
+author's speculation), its period and document; filtered by kind. Each opens the record's
+card (and its place on the map, where it has one), and its document in the library or
+at its archive. When none is installed it says that no dataset is cleared for Outpost to
+ship, and offers the import.
+
+### People inside a ring
+
+Where an installed WorldPop grid reaches a scenario's rings, each ring of the selected
+scenario says how many people the grid counts inside it (`GET
+/api/reference/population/sum` for the ring's rounded radius), once the scenario has
+stopped changing for half a second:
+
+- "About 220,000 people live inside this ring, by WorldPop's 2020 estimate. This is who
+  lives there, not a prediction of harm." The server rounds to two significant figures,
+  the most a modelled 1 km grid supports.
+- A ring smaller than four of the grid's cells (the cell's area at that latitude comes
+  with the answer) gets no count: the grid cannot speak for it.
+- A ring half or more inside the installed grid but not wholly: the count of the part
+  covered, said as such ("in the 64% of this ring that the installed grid covers; the
+  rest of the ring is not counted"). Less than half: no count.
+- The fallout pattern gets no count: it is an idealised shape for a steady wind.
+- No grid installed: one line says what to download, with a button to the dataset
+  manager.
+- The grid's product, year, licence (CC BY 4.0) and WorldPop's citation are behind a
+  disclosure under the counts.
+
+A WorldPop grid can also be **imported from a file** a person downloaded from WorldPop's
+site (`worldpop-tif`), credited as the download would be. Only the product Outpost
+credits is read (2020, 1 km, unconstrained, UN-adjusted), told by WorldPop's own file
+name; another is refused rather than credited wrongly.
+
+### The wind field
+
+The wind for the fallout pattern is a field of its own, labelled: the direction the wind
+blows **from**, as compass buttons (N to NW) or degrees, and its speed. Under it, in one
+line, the state: drawn ("Drawn: wind from the west, so the pattern runs east, at 24
+km/h"), or the one reason not (no wind given, one of the two missing, not numbers, a
+speed outside the model's 13 to 72 km/h, or a burst at a height, for which the model
+draws no fallout). No wind is filled in by default. When a pattern is first drawn or
+its wind changes, the map is fitted to the rings and the 100 rads per hour contour;
+"Fit the map to it" takes in the whole drawn pattern. The plume's outermost contour is
+filled at 12 per cent and edged on a casing; each contour is labelled along its edge.
+
+**Wind from the weather kept on this device.** Where Weather and hazards has fetched a
+forecast for a place within 50 km of ground zero (`GET /api/weather`, which fetches
+nothing), the field offers that forecast's wind for the hour nearest now, with the hour,
+the place, its distance and when it was fetched, and the sentence: this is one hour's
+forecast wind 10 m above the ground at one place; fallout is carried by the winds at
+every height up to the top of the cloud; Glasstone and Dolan: "For a detailed fallout
+distribution prediction, the winds from the surface to all levels in the radioactive
+cloud must be considered", and the idealised pattern's effective wind is "the mean of
+these two average winds" from the ground to the base and to the top of the stabilised
+cloud (§ 9.84, p. 423). The person can always type their own.
+
+### Saved places
+
+The household's saved places (the Maps screen's) are shown on the map and listed with
+their distance from the selected scenario's ground zero and, in plain words, the rings
+and contours they are inside. In the Plans tab they are measured against each other.
+
+### On paper
+
+A PDF (Save as PDF, Add to library, Share) and Markdown with every figure, what each
+level means, a colour key, the notes, the assumptions, limitations and source, for every
+scenario shown, each under its letter with its caveat. The people counts are not
+written out: they belong to the installed grid of the day.
+
+## Personal planning
+
+### Plans for a radiation emergency are emergency plans
+
+A household's plan for a radiation emergency is an emergency plan: made, changed, used,
+printed as cards and reviewed on the emergency plans screens, from a template added to
+theirs, **"Radiation emergency"** (kind "Sheltering at home", narrowed "Radiation
+emergency"; `packages/shared/src/emergency-templates-radiation.ts`). The Plans tab:
+
+- **Plans for a radiation emergency**: those made from the template or named for one,
+  each opened, used ("Use now") or printed ("Cards to print") on the plans screens; one
+  press makes a new one from the template. A line says these are made in advance from
+  published guidance, and that in a real emergency the emergency services and official
+  warnings come first.
+- **A scenario as an illustration**: a saved scenario can be attached to a plan. The plan
+  holds it as a link (`{ kind: "scenario", id }`), shows its picture (the rings to scale,
+  in their hues, with the fallout pattern) and its caveat, and says it is missing if it
+  is deleted. None of the plan's steps changes with it.
+- **Places that matter**: the household's saved places, with the distance from one to
+  each other, worked out on this device. They stay on this Outpost; the screen says so.
+- **Supplies for staying in**: Supplies' days of food and water against the 3 days Be
+  Ready's household plan asks for, beside UKHSA's "one to two days", longer if a release
+  goes on.
+- **If the phones fail**: each plan's own part on this, and Radio's communication plans.
+- **Notes, documents and attachments**: the library and Notes, linked from a plan's
+  "Notes and links"; files are attached to a page of notes.
+
+### The radiation emergency template
+
+Its words are the UK Health Security Agency's public guidance on GOV.UK, under the
+Open Government Licence v3.0, the GOV.UK terms already cleared for the templates; each
+page also carries "This publication is licensed under the terms of the Open Government
+Licence v3.0 except where otherwise stated". Every quote (40, counting supplies and
+"where things are") was checked word for word against the pages as downloaded on 16
+November 2026 by a script, and the existing test fails if a template line quotes a
+source whose terms are not cleared.
+
+| Source | Page's own date | Terms | Verdict | Used for |
+| --- | --- | --- | --- | --- |
+| UK Health Security Agency, [What to do in a radiation emergency](https://www.gov.uk/government/publications/radiation-emergencies-information-for-the-public/what-to-do-in-a-radiation-emergency) | Updated 10 September 2024 | GOV.UK, OGL v3.0 | Quoted | Go in, stay in, tune in; the building, the room, vents; children, pets, medication, stable iodine, food and water, evacuation, coming back |
+| UK Health Security Agency, [How to remove radioactive material from your skin and clothes – self-decontamination guidance](https://www.gov.uk/government/publications/radiation-emergencies-information-for-the-public/how-to-remove-radioactive-material-from-your-skin-and-clothes-self-decontamination-guidance) | Updated 10 September 2024 | GOV.UK, OGL v3.0 | Quoted | Taking off and bagging outer clothes, washing, clean clothes; gloves, masks, bags |
+| Be Ready (Cabinet Office), Household emergency plan and other pages already used | No date shown | Be Ready, OGL v3.0 | Quoted | Water for 3 days, food, radio, torch, medication; an alert |
+| Ready.gov (FEMA), [Radiation Emergencies](https://www.ready.gov/radiation), US, for comparison | Last Updated: 01/07/2025 | Not cleared (below) | Pointed to, not quoted | One pointer step |
+| ICRP | | Permission needed | Not used | |
+| IAEA | | Cleared for website content, with acknowledgement | Not used: nothing for households found | |
+| Local-authority REPPIR public information (Portsmouth's 2024 residents' booklet, Oxfordshire's Culham leaflet; Kent's Dungeness leaflet refused, Gloucestershire's page not found) | | No licence statement in the documents read | Not used | A question asks the household to ask its council |
+| UKHSA, [Nuclear emergencies: information for the public](https://www.gov.uk/government/publications/nuclear-emergencies-information-for-the-public/nuclear-emergencies-information-for-the-public) | Updated 28 September 2026 | GOV.UK, OGL v3.0 | Read; not quoted (background for councils) | |
+
+**Ready.gov and FEMA, read again.** Ready.gov's footer links "Website Information" to
+FEMA's page, which still refused a direct request (HTTP 403); its text was read from the
+Internet Archive's copy of 7 August 2026, word for word: "Most material on FEMA.gov is
+free of copyright and may be copied and distributed without permission", and "In
+addition to this fema.gov website, FEMA also owns and manages these these .gov domains"
+(Ready.gov among them); last updated 1 May 2023. It names FEMA.gov, and says "most", so
+the verdict already recorded (not cleared) stands.
+
+**For the household to decide** (the template's questions): which room is nearest the
+middle of the home; which building near school, work or a usual route someone would go
+into; what the children's school or nursery will do; which radio station, and who keeps
+the radio; whether the household lives or works near a nuclear site (ask the council);
+and, since the UK guidance read is for radiation emergencies such as an incident at a
+nuclear site and says nothing of a nuclear explosion's blast, heat or flash, what if
+anything the household would do differently.
+
+## Tests
+
+- `apps/server/test/nuclear-effects.test.ts`: the model against the book (above).
+- `apps/server/test/nuclear-final.test.ts`: sets saved, reopened, refused past six or
+  with a letter twice; no total in what is stored or answered; a scenario linked to a
+  plan, named, missing once deleted, steps unchanged; the radiation template's sources
+  and verdicts; historical records listed by period and kind; a WorldPop grid imported
+  from a file, refused under the wrong country's name; the cell size; a circle over the
+  grid's edge counted in part.
+- `apps/server/test/emergency-plans-templates.test.ts` (existing): every quoted line's
+  publisher is cleared, pointers quote nothing.
+- `apps/web/src/features/nuclear/`: `population-words.test.ts` (the wording, rounding,
+  partial and missing grids, small rings, the fallout pattern, no word of harm);
+  `fallout.test.ts` (the state line in each case, compass points with from and towards,
+  the map's fit); `wind.test.ts` (the forecast offered and not); `colour.test.ts` (one
+  hue per kind, from tokens, never a status colour, on the map, in the legend and in
+  the PDF; stronger levels more opaque; the selected scenario full, the others quiet);
+  `nuclear-page.test.tsx` (up to six scenarios and the limit; select, hide, remove;
+  people per ring of the selected scenario only, and no total; the layers, records and
+  plans tabs); `geometry.test.ts`, `form.test.ts`.
+- End to end, internet blocked: `nuclear-acceptance.spec.ts` and
+  `nuclear-acceptance.mobile.spec.ts` (the acceptance sentence: a country pack from
+  fixtures, a public record and its source, a historical record and its document, a
+  scenario with people inside its rings, a plan from the template with the scenario
+  attached, found again; three scenarios at phone width saved as a set and opened again;
+  the key and wind field at 320 px with the text at 150 per cent); `nuclear.spec.ts`,
+  `nuclear.mobile.spec.ts`.
+
+## What is not built, and why
+
+- **Casualty figures of any kind**, and any figure across scenarios: ruled out (above).
+- **Counting or listing reference-layer features inside a ring**: ruled out (above).
+- **Wind aloft**: no offline source of upper winds; the surface forecast is offered with
+  why it is not the same.
+- **The PDF does not carry the people counts**, nor a map picture of the rings; the
+  plan's picture is drawn without a base map.
+- **A plan holds single saved scenarios**, not sets, as illustrations.
+- **Not run on a Raspberry Pi**, and not tried on a real phone (Chromium at 390 and
+  320 px). The palette over imagery was measured against three sample tones, not
+  imagery of every kind of ground.
+- **Historical records**: none ship (see reference-layers.md); the browser lists what a
+  person imports.
+
+Routes are in [api.md](api.md#nuclear-preparedness) and [api.md](api.md#reference-layers).

@@ -23,7 +23,7 @@ import { regionsCacheKey } from "@/features/maps/lib/tiles";
 import { DEFAULT_VIEW, STORAGE_KEYS } from "@/features/maps/lib/view";
 import type { MapEngine } from "@/features/maps/map/engine";
 import { EMPTY, type FeatureCollection, markersData } from "@/features/maps/map/overlays";
-import { creditsFor, MapFooter } from "@/features/maps/map-footer";
+import { type Credit, creditsFor, MapFooter } from "@/features/maps/map-footer";
 import { errorMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import "@/features/maps/maps.css";
@@ -57,6 +57,10 @@ export interface PlanMapProps {
   satellite?: boolean;
   /** How far in a fit may zoom; 9 when left out. */
   fitMaxZoom?: number;
+  /** Handed the map engine itself, for a screen that mounts more on it (the reference layers), and null when it has gone. */
+  onEngine?: (engine: MapEngine | null) => void;
+  /** Credits for what the screen draws on the map itself, beside the map's own. */
+  credits?: Credit[];
   className?: string;
 }
 
@@ -77,6 +81,8 @@ export function PlanMap({
   nuclear,
   satellite,
   fitMaxZoom = 9,
+  onEngine,
+  credits: extraCredits,
   className,
 }: PlanMapProps) {
   const { flavour, theme } = useMapTheme();
@@ -103,8 +109,8 @@ export function PlanMap({
     }),
     [sources.data, flavour, theme, cacheKey, satellite],
   );
-  const latest = useRef({ style, fit, onPress, onReady, onMoved, places, fitMaxZoom });
-  latest.current = { style, fit, onPress, onReady, onMoved, places, fitMaxZoom };
+  const latest = useRef({ style, fit, onPress, onReady, onMoved, places, fitMaxZoom, onEngine });
+  latest.current = { style, fit, onPress, onReady, onMoved, places, fitMaxZoom, onEngine };
   const applied = useRef<typeof style | undefined>(undefined);
 
   const settled = !sources.isPending && !overview.isPending;
@@ -131,6 +137,7 @@ export function PlanMap({
         });
         setEngine(created);
         setStatus("ready");
+        latest.current.onEngine?.(created);
         const made = created;
         latest.current.onReady?.({ bounds: () => made.getBounds() });
         latest.current.onMoved?.(made.getBounds());
@@ -144,6 +151,7 @@ export function PlanMap({
     return () => {
       cancelled = true;
       latest.current.onReady?.(null);
+      latest.current.onEngine?.(null);
       created?.destroy();
       setEngine(null);
     };
@@ -171,9 +179,10 @@ export function PlanMap({
     () => [
       // Imagery is credited for every installed set while it is drawn: the frame does not follow which are in view.
       ...(satellite ? imageryCredits(sources.data?.imagery ?? []) : []),
+      ...(extraCredits ?? []),
       ...creditsFor(sources.data?.attributions ?? [], { hasTiles: sources.data?.hasTiles ?? false, terrain: false }),
     ],
-    [sources.data, satellite],
+    [sources.data, satellite, extraCredits],
   );
 
   if (status === "failed") {

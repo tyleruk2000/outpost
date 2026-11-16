@@ -66,6 +66,8 @@ export interface ReferenceLayersOnMap {
   credits: Credit[];
   /** Whether anything is drawn. */
   shown: boolean;
+  /** Opens a record by its id, switching its layer on and going to it: for a list of records elsewhere on the screen. */
+  open: (id: number, layer?: ReferenceLayerId, at?: LatLon | null) => void;
 }
 
 export function useReferenceLayers({
@@ -273,5 +275,5 @@ export function useReferenceLayers({
     />
   );
 
-  return { panel, card, credits, shown: drawn.length > 0 || populationOn };
+  return { panel, card, credits, shown: drawn.length > 0 || populationOn, open };
 }

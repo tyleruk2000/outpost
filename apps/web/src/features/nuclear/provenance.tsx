@@ -4,9 +4,11 @@
  * word and edge, so that they are told apart without colour. A record never changes
  * class by being filtered, sorted or drawn: the class is part of the record.
  *
- * In this version only "Modelled effects" (the simulator's rings and plume) and "Made
- * by you" (saved places and scenarios) have anything in them; the other three are for
- * the data layers that come later, and the key says they are empty.
+ * The reference layers (features/layers) fill the first, second and last from what is
+ * installed; the simulator fills "Modelled effects"; saved places and scenarios are
+ * "Made by you". The key says how many of each are held. The first is the
+ * specification's "verified public infrastructure", named, as the reference layers name
+ * it, for what it is: a published record, which Outpost has not checked on the ground.
  */
 import { CircleHelp, Landmark, type LucideIcon, ScrollText, Sigma, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -15,11 +17,12 @@ export type Provenance = "public" | "historical" | "model" | "own" | "unverified
 
 export const PROVENANCE: Record<Provenance, { label: string; short: string; icon: LucideIcon; edge: string; about: string }> = {
   public: {
-    label: "Verified public infrastructure",
+    label: "Published public record",
     short: "Public record",
     icon: Landmark,
     edge: "border-solid",
-    about: "Facilities as a public source records them, with the source and its date.",
+    about:
+      "Facilities as a published dataset lists them, with the source and its date (the specification's “verified public infrastructure”: Outpost has not checked them on the ground). Never marked, ranked or scored as anything else.",
   },
   historical: {
     label: "Historical documentation",
@@ -71,7 +74,7 @@ export function ProvenanceBadge({ kind, className }: { kind: Provenance; classNa
   );
 }
 
-/** The key to the five classes, with what is in each in this version. */
+/** The key to the five classes, with how many of each are held. */
 export function ProvenanceKey({ held }: { held: Partial<Record<Provenance, number>> }) {
   return (
     <ul className="grid gap-2" aria-label="Where things on this map come from">
@@ -84,8 +87,7 @@ export function ProvenanceKey({ held }: { held: Partial<Record<Provenance, numbe
               <span className="text-ink">{PROVENANCE[kind].label}.</span>{" "}
               <span className="text-ink-muted">
                 {PROVENANCE[kind].about}
-                {kind === "public" || kind === "historical" || kind === "unverified" ? " Nothing of this kind is in this version yet." : ""}
-                {kind === "own" && count > 0 ? ` ${count} on this map.` : ""}
+                {kind === "model" ? "" : count > 0 ? ` ${count.toLocaleString("en-GB")} held.` : " None held."}
               </span>
             </span>
           </li>

@@ -201,7 +201,14 @@ export interface ReferenceProviderDto {
   incremental: string;
 }
 
-export const REFERENCE_IMPORT_FORMATS = ["features-csv", "geojson", "historical-csv", "country-figures-csv", "osm-pbf"] as const;
+export const REFERENCE_IMPORT_FORMATS = [
+  "features-csv",
+  "geojson",
+  "historical-csv",
+  "country-figures-csv",
+  "osm-pbf",
+  "worldpop-tif",
+] as const;
 export type ReferenceImportFormat = (typeof REFERENCE_IMPORT_FORMATS)[number];
 
 export interface ReferenceScope {
@@ -411,6 +418,32 @@ export interface ReferenceFeatureDetail {
   hasGeometry: boolean;
 }
 
+/**
+ * One historical record as the records browser lists it (`GET /api/reference/historical`):
+ * which of the three kinds of record it is, its period and its document. Listed by period
+ * and then name, never by anything that could rank places.
+ */
+export interface HistoricalRecordRow {
+  id: number;
+  name: string;
+  provenance: FeatureProvenance;
+  recordType: HistoricalRecordType;
+  period: string;
+  country: string | null;
+  lat: number | null;
+  lon: number | null;
+  locationText: string;
+  documentTitle: string;
+  documentDate: string;
+  documentUrl: string | null;
+  libraryDocument: { id: string; title: string } | null;
+}
+
+export interface HistoricalRecordsResponse {
+  total: number;
+  records: HistoricalRecordRow[];
+}
+
 export interface LayerSearchHit {
   id: number;
   layer: ReferenceLayerId;
@@ -450,6 +483,8 @@ export interface PopulationSumResponse {
   covered: number;
   sets: Array<{ country: string; product: string; year: number }>;
   note: string;
+  /** The area of one cell of the finest grid counted, at the circle's latitude, in square kilometres; null when none was. */
+  cellKm2: number | null;
 }
 
 export interface CountryFigureDto {

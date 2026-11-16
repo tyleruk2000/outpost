@@ -10,7 +10,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { pipeline } from "node:stream/promises";
-import { REFERENCE_IMPORT_FORMATS, REFERENCE_LAYERS } from "@outpost/shared";
+import { HISTORICAL_RECORD_TYPES, REFERENCE_IMPORT_FORMATS, REFERENCE_LAYERS } from "@outpost/shared";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
@@ -260,6 +260,18 @@ export async function registerLayers(app: FastifyInstance, ctx: AppContext): Pro
   app.get("/api/reference/search", async (request) => {
     const { q, limit, ...filter } = searchQuery.parse(request.query);
     return { query: q, hits: service.store.search(q, filter, limit) };
+  });
+
+  /** Historical records for the nuclear preparedness workspace's records browser. */
+  app.get("/api/reference/historical", async (request) => {
+    const query = z
+      .object({
+        recordType: z.enum(HISTORICAL_RECORD_TYPES).optional(),
+        limit: z.coerce.number().int().min(1).max(200).default(50),
+        offset: z.coerce.number().int().min(0).max(1_000_000).default(0),
+      })
+      .parse(request.query);
+    return service.store.historical({ recordType: query.recordType ?? null, limit: query.limit, offset: query.offset });
   });
 
   app.get("/api/reference/figures", async (request) => {

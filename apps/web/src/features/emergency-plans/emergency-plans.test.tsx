@@ -238,6 +238,8 @@ const summary = (over: Partial<EmergencyPlanSummary> = {}): EmergencyPlanSummary
   name: "Power cut",
   kind: "power-cut",
   kindText: "",
+  templateId: null,
+  scenarios: [],
   steps: 29,
   ticked: 0,
   startedAt: null,

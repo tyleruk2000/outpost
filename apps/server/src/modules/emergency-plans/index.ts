@@ -37,7 +37,7 @@ import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
 import { AppError, conflict, notFound } from "../../core/errors.ts";
 import { newId } from "../../core/ids.ts";
-import { communicationPlans, documents, emergencyPlans, markers, notes, powerPlans } from "../../db/schema.ts";
+import { communicationPlans, documents, emergencyPlans, markers, notes, nuclearScenarios, powerPlans } from "../../db/schema.ts";
 
 export interface EmergencyPlansService {
   list(): EmergencyPlanSummary[];
@@ -151,7 +151,7 @@ const bodySchema = z
       .default([]),
     notes: text(L.notes),
     links: z
-      .array(z.object({ kind: z.enum(["note", "document", "place"]), id: z.string().min(1).max(64) }))
+      .array(z.object({ kind: z.enum(["note", "document", "place", "scenario"]), id: z.string().min(1).max(64) }))
       .max(L.links)
       .default([]),
   })
@@ -275,6 +275,14 @@ export async function registerEmergencyPlans(app: FastifyInstance, ctx: AppConte
         .where(inArray(documents.id, documentIds))
         .all())
         titles.set(`document:${row.id}`, row.title);
+    const scenarioIds = body.links.filter((link) => link.kind === "scenario").map((link) => link.id);
+    if (scenarioIds.length > 0)
+      for (const row of db
+        .select({ id: nuclearScenarios.id, name: nuclearScenarios.name })
+        .from(nuclearScenarios)
+        .where(inArray(nuclearScenarios.id, scenarioIds))
+        .all())
+        titles.set(`scenario:${row.id}`, row.name);
     const links = body.links.map((link) => {
       if (link.kind === "place") {
         const place = places[link.id];
@@ -332,6 +340,8 @@ export async function registerEmergencyPlans(app: FastifyInstance, ctx: AppConte
         name: plan.name,
         kind: plan.kind,
         kindText: plan.kindText,
+        templateId: plan.templateId,
+        scenarios: plan.body.links.filter((link) => link.kind === "scenario").map((link) => link.id),
         steps: plan.body.steps.length,
         ticked: Object.keys(plan.use.ticks).length,
         startedAt: plan.use.startedAt,

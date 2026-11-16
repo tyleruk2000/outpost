@@ -80,7 +80,9 @@ describe("the fallout plume", () => {
     if (!surface.ok || !air.ok) throw new Error("expected answers");
     const visible = { blast: true, thermal: true, radiation: true, fireball: true, fallout: true };
     const kinds = (result: typeof surface.result) =>
-      nuclearData([{ letter: "A", at: { lat: 54, lon: -3 }, result }], visible).features.map((feature) => feature.properties.kind);
+      nuclearData([{ letter: "A", selected: true, at: { lat: 54, lon: -3 }, result }], visible).features.map(
+        (feature) => feature.properties.kind,
+      );
     expect(kinds(surface.result).filter((kind) => kind === "plume")).toHaveLength(4);
     expect(kinds(air.result)).not.toContain("plume");
   });
@@ -93,15 +95,17 @@ describe("two scenarios on the map", () => {
     if (!a.ok || !b.ok) throw new Error("expected answers");
     const data = nuclearData(
       [
-        { letter: "A", at: { lat: 54, lon: -3 }, result: a.result },
-        { letter: "B", at: { lat: 54.5, lon: -2.5 }, result: b.result },
+        { letter: "A", selected: true, at: { lat: 54, lon: -3 }, result: a.result },
+        { letter: "B", selected: false, at: { lat: 54.5, lon: -2.5 }, result: b.result },
       ],
       { blast: true, thermal: true, radiation: true, fireball: true, fallout: true },
     );
-    for (const feature of data.features) expect(String(feature.properties.label)).toMatch(new RegExp(`^${feature.properties.scenario}`));
+    for (const feature of data.features.filter((each) => each.properties.kind !== "zone"))
+      expect(String(feature.properties.label)).toMatch(new RegExp(`^${feature.properties.scenario}`));
+    // The selected scenario is drawn last, over the other.
     expect(data.features.filter((feature) => feature.properties.kind === "zero").map((feature) => feature.properties.label)).toEqual([
-      "A",
       "B",
+      "A",
     ]);
   });
 });

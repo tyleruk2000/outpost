@@ -57,6 +57,13 @@ and never counted into one patch together).
   connected; **Get reference data** (source, a country or the area on screen or the
   world, layers, then **Show the size**, then a choice of where to keep it and
   **Download**); **Import a file**; and the sources that are only linked, with why.
+- **Preparedness → Nuclear preparedness** mounts the same panel, card and dataset manager
+  in its Layers tab, lists historical records in a Records tab
+  (`GET /api/reference/historical`), and asks the population grid for the people inside
+  each ring of a scenario; nothing else joins the layers to its scenarios
+  ([nuclear-preparedness.md](nuclear-preparedness.md)).
+- **A WorldPop grid downloaded by hand** can be imported (Import a file, "Population grid
+  from WorldPop"), read and credited as the download would be.
 - **The search across everything** finds records by name (kind "map-feature") and opens
   them on the map at `/maps?feature=<id>`.
 
