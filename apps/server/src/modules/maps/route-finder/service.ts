@@ -76,7 +76,7 @@ export const MAX_SECTIONS = 100;
 /** Ways with the same name whose ends are this near belong to one path; farther apart, they are two paths. */
 const PATH_CLUSTER_METERS = 300;
 /** Previews held so that "Add" need not ask the source again, and for how long. */
-const MAX_HELD_PREVIEWS = 6;
+const MAX_HELD_PREVIEWS = 3;
 const PREVIEW_HOLD_MS = 15 * 60_000;
 /** Heights are read at about this spacing on a long route, so it never touches thousands of terrain tiles. */
 const HEIGHT_SAMPLES = 20_000;

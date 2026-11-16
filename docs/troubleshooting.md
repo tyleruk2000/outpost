@@ -320,6 +320,24 @@ If you set `maps.tileSource`, check the address. Otherwise the daily build was
 withdrawn; try again in a few minutes, or remove the download and start the region
 again.
 
+### "Find a route" says the server is busy, or did not answer
+
+The servers that answer route searches are run by volunteers, for everyone, with no
+promise of being there. Wait a minute and try again, or choose **Ask another server**
+(or **Change server** under the search). After a server says it is busy, Outpost does
+not ask it again for 30 seconds. If no listed server works for you, an administrator
+can declare another in `<data directory>/catalog/routes/route-sources.json`; see
+[maps.md](maps.md#what-is-sent-and-to-whom). Routes already on your map are not
+affected.
+
+### "Find a route" finds nothing for a path I know exists
+
+Names are matched as OpenStreetMap writes them: try part of the name. A path that
+nobody has mapped as a route is only found when you search **This map view** with the
+map over it, not **Anywhere**. A regional server knows only its region: the note under
+the search says which. And some paths are simply not named in OpenStreetMap; draw the
+route, or import a GPX file.
+
 ### "That area is too large to download at zoom N in one go"
 
 Lower the maximum zoom or split the area into smaller regions. A single region is

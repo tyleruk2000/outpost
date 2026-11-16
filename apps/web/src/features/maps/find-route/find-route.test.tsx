@@ -173,9 +173,13 @@ describe("the credit a found route keeps", () => {
     expect(foundRouteSource(geojson(undefined))).toBeNull();
     expect(foundRouteSource(geojson({ ...credit, provider: "somewhere-else" }))).toBeNull();
     expect(foundRouteSource(geojson({ ...credit, attribution: 7 }))).toBeNull();
-    // A link that is not a plain https address is not shown as a link.
+    // The only links a credit may carry are OpenStreetMap's own pages and the licence's.
     expect(foundRouteSource(geojson({ ...credit, url: "javascript:alert(1)" }))?.url).toBeNull();
+    expect(foundRouteSource(geojson({ ...credit, url: "https://www.openstreetmap.org.example.net/relation/9001" }))?.url).toBeNull();
+    expect(foundRouteSource(geojson({ ...credit, url: "https://www.openstreetmap.org/relation/9001/../../login" }))?.url).toBeNull();
     expect(foundRouteSource(geojson({ ...credit, creditUrl: "javascript:alert(1)" }))).toBeNull();
+    expect(foundRouteSource(geojson({ ...credit, creditUrl: "https://example.net/copyright" }))).toBeNull();
+    expect(foundRouteSource(geojson({ ...credit, licenseUrl: "https://example.net/licence" }))).toBeNull();
     expect(anyFoundRoute([{ geojson: geojson(undefined) }, { geojson: geojson(credit) }])).toBe(true);
     expect(anyFoundRoute([{ geojson: geojson(undefined) }])).toBe(false);
   });

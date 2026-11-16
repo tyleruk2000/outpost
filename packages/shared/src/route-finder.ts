@@ -203,27 +203,29 @@ export interface TrackSource {
 
 const isString = (value: unknown): value is string => typeof value === "string";
 
+/** The only pages a found route's credit links to. Anything else stored in their place is not a credit. */
+export const OSM_CREDIT_URL = "https://www.openstreetmap.org/copyright";
+export const ODBL_URL = "https://opendatacommons.org/licenses/odbl/1-0/";
+const RELATION_PAGE = /^https:\/\/www\.openstreetmap\.org\/relation\/[1-9]\d{0,17}$/;
+
 /**
  * Reads the `source` of a stored route's GeoJSON. Anything that is not exactly the
- * shape above is "no source": the web app shows these words and links, so they are
- * checked like anything else that came from outside.
+ * shape above is "no source". A stored route can come from a drive that has been in
+ * other computers, and the web app shows these words and links: so the words are
+ * length-checked text, and the links can only be OpenStreetMap's copyright page, the
+ * licence's own page, and a relation's page on openstreetmap.org.
  */
 export function readTrackSource(geojson: unknown): TrackSource | null {
   const raw = (geojson as { source?: unknown } | null)?.source as Record<string, unknown> | null | undefined;
   if (!raw || typeof raw !== "object" || raw.provider !== "openstreetmap") return null;
-  const text = (value: unknown, max: number) => (isString(value) && value.length <= max ? value : null);
-  const web = (value: unknown) => {
-    const address = text(value, 300);
-    return address && /^https:\/\/[a-z0-9.-]+\//i.test(address) ? address : null;
-  };
+  const text = (value: unknown, max: number) => (isString(value) && value.length > 0 && value.length <= max ? value : null);
   const attribution = text(raw.attribution, 200);
   const license = text(raw.license, 200);
-  const licenseUrl = web(raw.licenseUrl);
-  const creditUrl = web(raw.creditUrl);
   const element = text(raw.element, 300);
   const fetchedAt = text(raw.fetchedAt, 40);
   const server = text(raw.server, 255);
-  if (!attribution || !license || !licenseUrl || !creditUrl || !element || !fetchedAt || !server) return null;
+  if (raw.licenseUrl !== ODBL_URL || raw.creditUrl !== OSM_CREDIT_URL) return null;
+  if (!attribution || !license || !element || !fetchedAt || !server) return null;
   const relationId =
     typeof raw.relationId === "number" && Number.isSafeInteger(raw.relationId) && raw.relationId > 0 ? raw.relationId : null;
   const wayIds = Array.isArray(raw.wayIds)
@@ -233,9 +235,9 @@ export function readTrackSource(geojson: unknown): TrackSource | null {
     provider: "openstreetmap",
     attribution,
     license,
-    licenseUrl,
-    creditUrl,
-    url: raw.url === null || raw.url === undefined ? null : web(raw.url),
+    licenseUrl: ODBL_URL,
+    creditUrl: OSM_CREDIT_URL,
+    url: isString(raw.url) && RELATION_PAGE.test(raw.url) ? raw.url : null,
     element,
     relationId,
     wayIds,

@@ -13,7 +13,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import type { Bbox, RouteDataCredit, RouteSourceDto } from "@outpost/shared";
+import { type Bbox, ODBL_URL, OSM_CREDIT_URL, type RouteDataCredit, type RouteSourceDto } from "@outpost/shared";
 import { z } from "zod";
 
 export const ROUTE_SOURCES_FILE = "route-sources.json";
@@ -24,8 +24,8 @@ export const OSM_CREDIT: RouteDataCredit = {
   name: "OpenStreetMap",
   attribution: "© OpenStreetMap contributors",
   license: "Open Database Licence (ODbL) 1.0",
-  licenseUrl: "https://opendatacommons.org/licenses/odbl/1-0/",
-  url: "https://www.openstreetmap.org/copyright",
+  licenseUrl: ODBL_URL,
+  url: OSM_CREDIT_URL,
 };
 
 const isoDate = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/, "Dates are written YYYY-MM-DD.");
