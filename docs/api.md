@@ -753,9 +753,10 @@ is needed. See [contacts.md](contacts.md#keeping-a-copy-on-a-phone-carddav) and
 | Anything that writes | `403` with `need-privileges`. Nothing is changed. |
 ## Repeaters
 
-Types: `packages/shared/src/repeaters.ts`. See [radio.md](radio.md#repeaters). Nothing
-here makes an outbound request. Frequencies are whole hertz; the **output** is what the
-repeater transmits on.
+Types: `packages/shared/src/repeaters.ts`. See [radio.md](radio.md#repeaters). One
+route here makes an outbound request, `POST /api/repeaters/sources/:id/fetch`; nothing
+else does. Frequencies are whole hertz; the **output** is what the repeater transmits
+on.
 
 | Method and path | Purpose |
 | --- | --- |
@@ -763,13 +764,22 @@ repeater transmits on.
 | `GET /api/repeaters` | A page of entries (`RepeaterListResponse`). Query: `q` (callsign, town, keeper, channel, locator; a number is megahertz and matches every output or input that starts that way), `band`, `mode`, `hideOffAir=1`, `list` (a list's id, or `own` for entries made by hand), `near=latitude,longitude` (sorts by distance and adds `distanceMeters` and `bearingDegrees`), `withinKm` (with `near`), `limit` (1 to 200, default 50), `offset`. Without `near` the order is by callsign. Entries with no position follow those with one, and are left out when `withinKm` is given. |
 | `GET /api/repeaters/overlay?bbox=west,south,east,north` | What to draw in a box of the map (`RepeaterOverlayResponse`): every repeater when there are at most 400, otherwise counts by patch with each patch's middle, and as a point any repeater alone in its patch. Takes the same filters as the list. A box across the 180° meridian has its west edge east of its east edge. |
 | `GET /api/repeaters/export?format=chirp` (or `outpost`) | A CSV of the entries the same filters and `near` pick, as a download: CHIRP's columns (at most 2,000 rows) or Outpost's own, which reads back without loss. `limit` takes the first so many. `X-Outpost-Repeater-Count` gives the number of rows. `404` when nothing matches. |
-| `POST /api/repeaters/import/preview` | Multipart: one CSV file (16 MB, 100,000 rows) and optional fields `mapping` (JSON, field to column heading; see `RepeaterColumnMap`) and `listId`. Answers with how the file was read and what importing it would do (`RepeaterImportPreview`), including what an update of that list would change. Keeps nothing. |
-| `POST /api/repeaters/import` | The same file and fields, committed, with `name`, `source`, `sourceUrl` and `dataDate` (`YYYY-MM-DD`, not in the future) for the list, and for an update `edited` (`keep`, the default, or `replace`) and `gone` (`remove`, the default, or `keep`). Answers with `RepeaterImportResult`. One import at a time: a second is refused with `409`. |
+| `POST /api/repeaters/import/preview` | Multipart: one CSV file, or JSON list of records (16 MB, 100,000 rows) and optional fields `mapping` (JSON, field to column heading; see `RepeaterColumnMap`) and `listId`. Answers with how the file was read and what importing it would do (`RepeaterImportPreview`), including what an update of that list would change. Keeps nothing. The answer also counts the rows that are already held or repeat within the file (`duplicates`, with a few pairs side by side). |
+| `POST /api/repeaters/import` | The same file and fields, committed, with `name`, `source`, `sourceUrl` and `dataDate` (`YYYY-MM-DD`, not in the future) for the list, and for an update `edited` (`keep`, the default, or `replace`) and `gone` (`remove`, the default, or `keep`). Answers with `RepeaterImportResult`. One import at a time: a second is refused with `409`. `duplicates` says what to do with rows that are the same repeater as one already held or as an earlier row: `keep-both` (the default), `skip` or `prefer-newer`. |
+| `GET /api/repeaters/sources` | The declared sources by region (`RepeaterSourcesResponse`): for each its kind (`fetch`, `link` or `none`), the reason, the publisher's terms as read, the steps for one to be had by hand, and the list held from it if Outpost fetched one. Contacts nobody. |
+| `POST /api/repeaters/sources/:id/fetch` | Fetch the file of a source of kind `fetch`, once, and answer with what it would bring in (`RepeaterFetchResponse`: a `token` for the held file and the same preview as for an upload). Nothing is kept. `409` when the source's host was asked too recently, with the seconds left in the message; `502` when the host refuses, is busy, sends a web page or something that is not a list, or does not finish; `503` when it cannot be reached; `400` for a source that is not of kind `fetch`. |
+| `POST /api/repeaters/fetched/:token/preview` | The held file read again. JSON body: `mapping` (an object), `listId`, `dataDate`. |
+| `POST /api/repeaters/fetched/:token/import` | The held file, committed. JSON body: the fields of an import (`name`, `source`, `dataDate`, `listId`, `edited`, `gone`, `duplicates`, `mapping`). The list records where it was fetched from, when, and the terms as read (`RepeaterListDto.fetched`). `404` once the file has been kept, forgotten, or has waited more than half an hour. |
+| `DELETE /api/repeaters/fetched/:token` | Forget a held file. |
+| `GET /api/repeaters/duplicates` | Entries held that are the same repeater (same callsign, output within 3 kHz), in groups, and pairs that may be (different callsigns, one frequency, nearly one place), each with the entry that would be kept (`RepeaterDuplicatesResponse`; the first 100 of each, with totals). Changes nothing. |
+| `POST /api/repeaters/duplicates/merge` | Body: `keepId`, `mergeIds` (1 to 20). Makes one entry of them: what the person typed on the others is carried onto the kept entry, its gaps are filled, and the others are set aside. `400` unless each is the same repeater as the kept entry, or possibly the same. |
+| `POST /api/repeaters/duplicates/merge-all` | Merges every group whose callsign and frequency agree, keeping in each the entry of the list with the newest data. Pairs that only may be the same are left. |
+| `POST /api/repeaters/:id/separate` | Bring back the entries that were set aside for this one. |
 | `PATCH /api/repeaters/lists/:id` | Change a list's `name`, `source`, `sourceUrl` or `dataDate`. |
 | `DELETE /api/repeaters/lists/:id` | Remove a list and every entry in it, the person's changes to them included. |
 | `POST /api/repeaters/lists/:id/restore-removed` | Bring back the entries of a list that were removed one by one. |
 | `POST /api/repeaters` | Add an entry by hand. Body: `callsign`, `outputHz`, and optionally `inputHz`, `modes`, `ctcssHz`, `dcsCode`, `dmrColourCode`, `talkgroups`, `accessNote`, `channel`, `place`, `region`, `country`, `lat` and `lon`, `locator`, `antennaMeters`, `keeper`, `status`, `notes`. A `locator` with no coordinates places it at the middle of the square. |
-| `GET /api/repeaters/:id` | One entry, its list, and what the list says where the person has changed it (`RepeaterDetailResponse`). |
+| `GET /api/repeaters/:id` | One entry, its list, what the list says where the person has changed it, and the entries set aside for it (`RepeaterDetailResponse`). |
 | `PATCH /api/repeaters/:id` | Change an entry. One that came from a list is then marked as the person's, and an update of the list leaves it alone. |
 | `POST /api/repeaters/:id/revert` | Put a changed entry back to what its list says. |
 | `DELETE /api/repeaters/:id` | Remove an entry. One from a list is kept as a mark, so that an update does not bring it back. |

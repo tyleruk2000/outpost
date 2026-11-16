@@ -116,6 +116,64 @@ fs.writeFileSync(
   }),
 );
 
+// Sources of repeater lists of the tests' own, in place of the ones shipped: the stand-in
+// file server is the only publisher, so that "Get the list" can be followed end to end
+// and no test can ask a real one for anything.
+fs.mkdirSync(path.join(ownCatalog, "repeaters"), { recursive: true });
+const readTerms = {
+  termsUrl: "https://example.org/terms",
+  termsNote: "The tests' own publisher: its page says anyone may fetch the file.",
+  termsRead: "2026-11-16",
+};
+fs.writeFileSync(
+  path.join(ownCatalog, "repeaters", "repeater-sources.json"),
+  JSON.stringify({
+    schemaVersion: 1,
+    replaceShipped: true,
+    regions: [
+      { id: "north", name: "The north", bbox: [-4, 54, -2, 56] },
+      { id: "world", name: "Worldwide" },
+    ],
+    sources: [
+      {
+        ...readTerms,
+        id: "e2e-north",
+        region: "north",
+        publisher: "End-to-end stand-in",
+        name: "Stand-in list",
+        covers: "Six made-up repeaters on a made-up hillside.",
+        pageUrl: "https://example.org/lists",
+        kind: "fetch",
+        why: "It is the test suite's own file server.",
+        fetch: { url: `http://127.0.0.1:${filesPort}/repeater-lists/north.csv`, waitSeconds: 0 },
+      },
+      {
+        ...readTerms,
+        id: "e2e-by-hand",
+        region: "north",
+        publisher: "A careful society",
+        name: "Careful list",
+        covers: "The same hillside.",
+        pageUrl: "https://example.org/careful",
+        kind: "link",
+        why: "Its terms forbid a program fetching it.",
+        steps: ["Open the page in your browser.", "Save the CSV file.", "Come back here and import it."],
+      },
+      {
+        ...readTerms,
+        id: "e2e-nothing",
+        region: "world",
+        publisher: "Nobody",
+        name: "A map only",
+        covers: "Nowhere.",
+        pageUrl: "https://example.org/map",
+        kind: "none",
+        why: "It offers no file.",
+      },
+    ],
+  }),
+);
+
 export const OPEN_URL = `http://localhost:${port}`;
 
 export default defineConfig({

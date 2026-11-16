@@ -4,7 +4,10 @@
  * The screen is a list (band, mode, distance from a place, and a box that finds by
  * callsign, town or frequency), the lists the entries came from with the date of each
  * one's data, and the ways in and out: import a file, add by hand, export a set for
- * programming a radio. Outpost downloads no repeater list itself; see docs/sources.md.
+ * programming a radio. Below the lists are the places a list can be had, by country:
+ * a few Outpost can fetch when asked, the rest with their page and the steps to get the
+ * file by hand (docs/sources.md says how each was decided). "Find duplicates" shows the
+ * repeaters held more than once and makes one of each.
  */
 import {
   bandName,
@@ -22,7 +25,7 @@ import {
   type RepeaterMode,
   type RepeatersOverview,
 } from "@outpost/shared";
-import { CircleAlert, Download, Ellipsis, FileUp, Pencil, Plus, RefreshCw, Search, Trash2, Undo2 } from "lucide-react";
+import { CircleAlert, Download, Ellipsis, FileUp, Merge, Pencil, Plus, RefreshCw, Search, Trash2, Undo2 } from "lucide-react";
 import { useId, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { toast } from "sonner";
@@ -42,14 +45,17 @@ import {
   type RepeaterFilters,
   useRemoveList,
   useRepeaterList,
+  useRepeaterSources,
   useRepeatersOverview,
   useRestoreRemoved,
   useUpdateList,
 } from "./data";
+import { DuplicatesDialog } from "./duplicates-dialog";
 import { ImportDialog } from "./import-dialog";
 import { OriginPicker, useOrigin } from "./origin";
 import { RepeaterFormDialog } from "./repeater-form";
-import { accessParts, ageWarning, isApproximate, shiftWords, sourceOf } from "./words";
+import { SourcesSection, useGetList } from "./sources-section";
+import { accessParts, ageWarning, dayText, isApproximate, shiftWords, sourceOf } from "./words";
 
 const ANY = "any";
 const WITHIN = ["10", "25", "50", "100", "200", "500"] as const;
@@ -281,12 +287,17 @@ function ListDetailsDialog({ list, onClose }: { list: RepeaterListDto | null; on
 function ListRow({
   list,
   onUpdate,
+  onGetAgain,
+  getting,
   onEdit,
   onRemove,
   onShow,
 }: {
   list: RepeaterListDto;
   onUpdate: () => void;
+  /** For a list Outpost fetched, from a source it may still fetch: gets it again. */
+  onGetAgain?: () => void;
+  getting: boolean;
   onEdit: () => void;
   onRemove: () => void;
   onShow: () => void;
@@ -303,6 +314,7 @@ function ListRow({
             list.source,
             `data of ${formatDate(list.dataDate)}`,
             list.editedCount > 0 ? `${formatNumber(list.editedCount)} changed by you` : "",
+            list.setAsideCount > 0 ? `${formatNumber(list.setAsideCount)} set aside as duplicates` : "",
           ]
             .filter(Boolean)
             .join(" · ")}
@@ -325,6 +337,13 @@ function ListRow({
             </>
           ) : null}
         </p>
+        {list.fetched ? (
+          <p className="text-small text-ink-muted">
+            Fetched by Outpost from <span className="font-mono text-[0.8125rem] break-all">{hostOf(list.fetched.url)}</span> on{" "}
+            {formatDate(list.fetched.fetchedAt)}, on {list.fetched.publisher}'s terms as read on {dayText(list.fetched.termsRead)}.
+            {list.fetched.attribution ? ` ${list.fetched.attribution}.` : ""}
+          </p>
+        ) : null}
         {warning ? (
           <p className="mt-1 flex items-start gap-1.5 text-small text-warning">
             <CircleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
@@ -332,7 +351,7 @@ function ListRow({
           </p>
         ) : null}
       </div>
-      <Button size="sm" onClick={onUpdate} className="max-sm:hidden">
+      <Button size="sm" onClick={onGetAgain ?? onUpdate} loading={getting} className="max-sm:hidden">
         <RefreshCw /> Bring up to date
       </Button>
       <Menu>
@@ -345,6 +364,11 @@ function ListRow({
           <MenuItem onSelect={onShow}>
             <Search /> Show only this list
           </MenuItem>
+          {onGetAgain ? (
+            <MenuItem onSelect={onGetAgain}>
+              <Download /> Get it again from its publisher
+            </MenuItem>
+          ) : null}
           <MenuItem onSelect={onUpdate}>
             <RefreshCw /> Bring up to date from a newer file
           </MenuItem>
@@ -375,6 +399,14 @@ function ListRow({
   );
 }
 
+const hostOf = (address: string) => {
+  try {
+    return new URL(address).host;
+  } catch {
+    return address;
+  }
+};
+
 function summaryOf(overview: RepeatersOverview): string {
   const parts = [`${plural(overview.total, "repeater")} held on this device`];
   if (overview.lists.length > 0) parts.push(`from ${plural(overview.lists.length, "list")}`);
@@ -404,6 +436,9 @@ export default function RepeatersPage() {
   const [exporting, setExporting] = useState(false);
   const [editing, setEditing] = useState<RepeaterListDto | null>(null);
   const [removing, setRemoving] = useState<RepeaterListDto | null>(null);
+  const [finding, setFinding] = useState(false);
+  const getList = useGetList();
+  const sources = useRepeaterSources();
   const removeList = useRemoveList();
   const hideId = useId();
 
@@ -457,16 +492,19 @@ export default function RepeatersPage() {
       ) : overview.isError ? (
         <ErrorState error={overview.error} onRetry={() => void overview.refetch()} />
       ) : held === 0 && overview.data.lists.length === 0 ? (
-        <EmptyState title="No repeaters yet" action={actions} seed={7}>
-          <p>
-            Bring in a list you have as a CSV file: one of those the RSGB's ETCC offers at ukrepeater.net, a file saved from CHIRP, or any
-            list with a row of headings. Or enter repeaters by hand.
-          </p>
-          <p className="mt-2">
-            Outpost does not fetch repeater lists itself. None of the publishers whose terms were read gives leave for that, so a list
-            arrives as a file you obtained.
-          </p>
-        </EmptyState>
+        <>
+          <EmptyState title="No repeaters yet" action={actions} seed={7}>
+            <p>
+              Bring in a list you have as a file: one of those the RSGB's ETCC offers at ukrepeater.net, a file saved from CHIRP, or any CSV
+              with a row of headings. Or enter repeaters by hand.
+            </p>
+            <p className="mt-2">
+              Below is where lists can be had, by country. Outpost fetches one itself only where its publisher's terms allow a program to;
+              for the others it gives the page and the steps to get the file by hand.
+            </p>
+          </EmptyState>
+          <SourcesSection lists={[]} getList={getList} className="mt-10" />
+        </>
       ) : (
         <>
           <p className="tabular -mt-4 mb-6 text-small text-ink-muted">{summaryOf(overview.data)}</p>
@@ -608,6 +646,11 @@ export default function RepeatersPage() {
           <Section
             title="Where these came from"
             description="Each list keeps the date of its data. Bringing one up to date leaves alone what you changed."
+            actions={
+              <Button size="sm" onClick={() => setFinding(true)} disabled={held < 2}>
+                <Merge /> Find duplicates
+              </Button>
+            }
           >
             {overview.data.lists.length === 0 ? (
               <p className="border-y border-border py-4 text-small text-ink-muted">
@@ -615,16 +658,21 @@ export default function RepeatersPage() {
               </p>
             ) : (
               <Rows aria-label="Imported lists">
-                {overview.data.lists.map((item) => (
-                  <ListRow
-                    key={item.id}
-                    list={item}
-                    onUpdate={() => setImporting({ list: item })}
-                    onEdit={() => setEditing(item)}
-                    onRemove={() => setRemoving(item)}
-                    onShow={() => set("list", item.id)}
-                  />
-                ))}
+                {overview.data.lists.map((item) => {
+                  const source = item.fetched ? sources.data?.sources.find((entry) => entry.id === item.fetched?.sourceId) : undefined;
+                  return (
+                    <ListRow
+                      key={item.id}
+                      list={item}
+                      onUpdate={() => setImporting({ list: item })}
+                      onGetAgain={source?.kind === "fetch" ? () => getList.start(source, { aloud: true }) : undefined}
+                      getting={source !== undefined && getList.busyId === source.id}
+                      onEdit={() => setEditing(item)}
+                      onRemove={() => setRemoving(item)}
+                      onShow={() => set("list", item.id)}
+                    />
+                  );
+                })}
               </Rows>
             )}
             {overview.data.ownCount > 0 ? (
@@ -636,6 +684,8 @@ export default function RepeatersPage() {
               </p>
             ) : null}
           </Section>
+
+          <SourcesSection lists={overview.data.lists} getList={getList} />
         </>
       )}
 
@@ -655,6 +705,7 @@ export default function RepeatersPage() {
         from={origin.name}
       />
       <ListDetailsDialog list={editing} onClose={() => setEditing(null)} />
+      <DuplicatesDialog open={finding} onClose={() => setFinding(false)} />
       <ConfirmDialog
         open={removing !== null}
         onOpenChange={(open) => !open && setRemoving(null)}

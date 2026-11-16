@@ -7,23 +7,48 @@
  * changed by hand. Everything is found, filtered by band, mode and distance, drawn on
  * the map and written out for programming a radio with no connection.
  *
- * This module makes no outbound request of any kind.
+ * One route here makes an outbound request: `POST /api/repeaters/sources/:id/fetch`
+ * fetches one file from a source declared in `catalog/repeater-sources.json` as one an
+ * application may fetch, once, when a person presses "Get the list". It is a `POST`,
+ * so only Outpost's own pages can cause it (`core/guard.ts`). Nothing else in this
+ * module contacts anybody. See `sources.ts` and `fetch.ts`.
  */
 import fastifyMultipart from "@fastify/multipart";
 import {
   MAX_REPEATER_FILE_BYTES,
   REPEATER_BAND_IDS,
+  REPEATER_DUPLICATE_CHOICES,
   REPEATER_EXPORT_FORMATS,
   REPEATER_MODE_IDS,
   REPEATER_STATUSES,
   type RepeaterBand,
   type RepeaterMode,
 } from "@outpost/shared";
-import type { FastifyInstance, FastifyRequest } from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
 import { AppError, badRequest } from "../../core/errors.ts";
+import { createHttpClient } from "../../core/http.ts";
+import { VERSION } from "../system/index.ts";
+import { createRepeaterFetchClient } from "./fetch.ts";
 import { createRepeatersService, type ImportOptions, type RepeatersService, type RepeaterUpload } from "./service.ts";
+import { loadRepeaterSources } from "./sources.ts";
+
+/**
+ * How Outpost names itself to a publisher it fetches a list from: what it is, its
+ * version and where the project is. Nothing about the person, their library or this
+ * installation is sent.
+ */
+export const REPEATER_FETCH_USER_AGENT = `Outpost/${VERSION} (self-hosted offline library; +https://github.com/tyleruk2000/outpost)`;
+
+/** Fires when the browser that asked has gone away, so the request to the publisher is dropped too. */
+function goneSignal(reply: FastifyReply): AbortSignal {
+  const controller = new AbortController();
+  reply.raw.once("close", () => {
+    if (!reply.raw.writableFinished) controller.abort();
+  });
+  return controller.signal;
+}
 
 declare module "../../core/context.ts" {
   interface Services {
@@ -167,10 +192,31 @@ const importFields = z.object({
   dataDate: day.optional(),
   edited: z.enum(["keep", "replace"]).optional(),
   gone: z.enum(["remove", "keep"]).optional(),
+  duplicates: z.enum(REPEATER_DUPLICATE_CHOICES).optional(),
 });
 
+/** The same choices for a list Outpost fetched, sent as JSON: there is no file to send with them. */
+const fetchedFields = importFields.omit({ mapping: true, sourceUrl: true }).extend({
+  mapping: z.record(z.string().max(40), z.string().max(200)).optional(),
+});
+
+const sourceId = z
+  .string()
+  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+  .max(60);
+const fetchedToken = z.string().regex(/^[a-f0-9]{32}$/);
+const entryId = z.string().min(1).max(40);
+const mergeSchema = z.object({ keepId: entryId, mergeIds: z.array(entryId).min(1).max(20) });
+
 export async function registerRepeaters(app: FastifyInstance, ctx: AppContext): Promise<void> {
-  const service = createRepeatersService(ctx);
+  const sources = loadRepeaterSources(ctx.config);
+  for (const problem of sources.problems) ctx.log.warn({ problem }, "repeater sources");
+  const http = createHttpClient({ allowPrivate: ctx.config.allowPrivateDownloads });
+  ctx.onClose.push(() => http.close());
+  const service = createRepeatersService(ctx, {
+    sources,
+    fetcher: createRepeaterFetchClient(http, { userAgent: REPEATER_FETCH_USER_AGENT }),
+  });
   ctx.services.repeaters = service;
 
   // Found with everything else: by callsign, town or frequency.
@@ -255,6 +301,36 @@ export async function registerRepeaters(app: FastifyInstance, ctx: AppContext): 
     return service.importFile(upload, options);
   });
 
+  // ── Where lists can be had ──
+
+  app.get("/api/repeaters/sources", async () => service.sources());
+
+  // The one request here that reaches out: one file, from the host its source names, because a person pressed the button.
+  app.post<IdParams>("/api/repeaters/sources/:id/fetch", async (request, reply) => {
+    return service.fetchSource(sourceId.parse(request.params.id), goneSignal(reply));
+  });
+
+  app.post<{ Params: { token: string } }>("/api/repeaters/fetched/:token/preview", async (request) => {
+    return service.previewFetched(fetchedToken.parse(request.params.token), fetchedFields.parse(request.body ?? {}));
+  });
+
+  app.post<{ Params: { token: string } }>("/api/repeaters/fetched/:token/import", async (request) => {
+    return service.importFetched(fetchedToken.parse(request.params.token), fetchedFields.parse(request.body ?? {}));
+  });
+
+  app.delete<{ Params: { token: string } }>("/api/repeaters/fetched/:token", async (request) => {
+    service.discardFetched(fetchedToken.parse(request.params.token));
+    return { ok: true };
+  });
+
+  // ── The same repeater twice ──
+
+  app.get("/api/repeaters/duplicates", async () => service.duplicates());
+
+  app.post("/api/repeaters/duplicates/merge", async (request) => service.merge(mergeSchema.parse(request.body)));
+
+  app.post("/api/repeaters/duplicates/merge-all", async () => service.mergeAll());
+
   app.patch<IdParams>("/api/repeaters/lists/:id", async (request) => {
     return { list: service.updateList(request.params.id, listPatchSchema.parse(request.body)) };
   });
@@ -279,6 +355,10 @@ export async function registerRepeaters(app: FastifyInstance, ctx: AppContext): 
 
   app.post<IdParams>("/api/repeaters/:id/revert", async (request) => {
     return { repeater: service.revert(request.params.id) };
+  });
+
+  app.post<IdParams>("/api/repeaters/:id/separate", async (request) => {
+    return service.separate(request.params.id);
   });
 
   app.delete<IdParams>("/api/repeaters/:id", async (request) => {

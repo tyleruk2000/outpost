@@ -14,6 +14,7 @@ catalog/
   packs.json                 named sets of entries
   map-regions.json           ready-made map regions (generated; see docs/maps.md)
   route-sources.json         the servers "Find a route" may ask (see below)
+  repeater-sources.json      where lists of repeaters can be had, and which Outpost may fetch
 ```
 
 People running Outpost can add their own manifests, in the same format, to
@@ -205,6 +206,24 @@ Packs live in `packs.json` beside this file (a person's own go in
   packs hold nothing larger than about 1.5 GB; the complete Wikipedia and the video
   collections stay as single entries for people who want them.
 - Say what the pack is for, not how large it is: the app works the size out.
+
+## Repeater sources
+
+`repeater-sources.json` declares where a list of amateur radio repeaters can be had,
+country by country, and what Outpost may do about each: fetch its file when a person
+asks (`fetch`), give its page and the steps to download it by hand (`link`), or say
+there is nothing (`none`). It plays the part for repeater lists that `downloadHosts`
+plays for downloads: a list is fetched from the address a `fetch` source names and
+from nowhere else.
+
+A source is `fetch` only when its publisher's terms and `robots.txt` were read and
+nothing in them forbids an application fetching the file when a person asks; the
+reading goes in `why`, `termsUrl`, `termsNote` and `termsRead`, and at length in
+[docs/sources.md](../docs/sources.md#repeater-lists). When in doubt it is `link`. A
+shipped source must be `https` and leave at least ten seconds between requests. The
+format, and how to keep a file of your own, are in
+[docs/radio.md](../docs/radio.md#changing-the-sources). `pnpm catalog:validate` checks
+the file.
 
 ## Route sources
 

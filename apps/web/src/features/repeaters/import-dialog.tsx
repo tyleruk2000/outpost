@@ -3,21 +3,32 @@
  * kept, correct the reading if need be, say what the list is and the date of its data,
  * and only then keep it. The same dialog brings an existing list up to date, and then
  * shows what would change and asks about anything the person had changed themselves.
+ *
+ * A list Outpost has just fetched from a source goes through the same dialog: there is
+ * no file to choose, and the rest is the same. Either way, rows that are the same
+ * repeater as one already held are counted, shown side by side, and the person says
+ * what is to be done with them.
  */
 import {
   bandName,
   formatBytes,
   formatMHz,
   formatShift,
+  isGuessedRepeaterFormat,
   MAX_REPEATER_FILE_BYTES,
   REPEATER_COLUMN_FIELD_NAMES,
   REPEATER_COLUMN_FIELDS,
   type RepeaterBand,
   type RepeaterColumnField,
   type RepeaterColumnMap,
+  type RepeaterDuplicateChoice,
+  type RepeaterDuplicatePair,
+  type RepeaterFetchResponse,
+  type RepeaterImportDuplicates,
   type RepeaterImportPreview,
   type RepeaterImportResult,
   type RepeaterListDto,
+  type RepeaterSourceDto,
 } from "@outpost/shared";
 import { CircleAlert, CircleCheck, FileUp } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
@@ -27,8 +38,9 @@ import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui
 import { Field, Input } from "@/components/ui/input";
 import { Checkbox, Select, Skeleton } from "@/components/ui/misc";
 import { errorMessage } from "@/lib/api";
-import { formatDate, formatNumber, plural } from "@/lib/utils";
-import { type ImportChoices, previewImport, useImportRepeaters } from "./data";
+import { formatDate, formatDateTime, formatNumber, plural } from "@/lib/utils";
+import { discardFetched, type ImportChoices, previewFetched, previewImport, useImportFetched, useImportRepeaters } from "./data";
+import { SideBySide } from "./side-by-side";
 import { accessParts, modesLine } from "./words";
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -125,6 +137,11 @@ function Summary({ result, updating }: { result: RepeaterImportResult; updating:
     result.removed > 0 ? `${formatNumber(result.removed)} removed, as they are no longer in the list` : "",
     result.keptEdits > 0 ? `${formatNumber(result.keptEdits)} that you had changed left as you have them` : "",
     result.replacedEdits > 0 ? `${formatNumber(result.replacedEdits)} that you had changed replaced with the list's` : "",
+    result.duplicatesSetAside > 0 ? `${formatNumber(result.duplicatesSetAside)} set aside as repeaters you already hold` : "",
+    result.heldSetAside > 0
+      ? `${plural(result.heldSetAside, "older entry", "older entries")} of the same repeaters set aside in favour of this list's`
+      : "",
+    result.carriedEdits > 0 ? `what you had typed or changed carried onto ${formatNumber(result.carriedEdits)} of them` : "",
     result.skipped > 0 ? `${plural(result.skipped, "row")} of the file could not be kept` : "",
   ].filter(Boolean);
   return (
@@ -140,15 +157,153 @@ function Summary({ result, updating }: { result: RepeaterImportResult; updating:
   );
 }
 
+const PAIR_WORDS: Record<string, string> = {
+  "same-held": "already held",
+  "same-file": "twice in this file",
+  "possible-held": "may be one you hold under another callsign",
+  "possible-file": "may be an earlier row under another callsign",
+};
+
+function Pair({ pair }: { pair: RepeaterDuplicatePair }) {
+  const what = `${pair.incoming.callsign}, ${formatMHz(pair.incoming.outputHz)} MHz`;
+  return (
+    <li className="grid gap-1.5 py-3">
+      <p className="text-small text-ink">
+        <span className="font-semibold">{what}</span>: {PAIR_WORDS[`${pair.strength}-${pair.against}`]}
+        {pair.distanceMeters !== null && pair.distanceMeters >= 100 ? (
+          <span className="tabular text-ink-muted">, listed {(pair.distanceMeters / 1000).toFixed(1)} km apart</span>
+        ) : null}
+      </p>
+      <SideBySide
+        entries={[pair.existing, pair.incoming]}
+        caption={pair.against === "held" ? `${what}: what is held beside what the file says` : `${what}: the two rows of the file`}
+      />
+    </li>
+  );
+}
+
+const DUPLICATE_CHOICES: Array<{ value: RepeaterDuplicateChoice; label: string; detail: string }> = [
+  {
+    value: "keep-both",
+    label: "Keep both",
+    detail:
+      "Every row is brought in and nothing you hold is touched. These repeaters are then listed twice, until you merge them with Find duplicates.",
+  },
+  {
+    value: "skip",
+    label: "Leave what I hold as it is",
+    detail: "The incoming ones are set aside. Each repeater is shown once, as you hold it now.",
+  },
+  {
+    value: "prefer-newer",
+    label: "Show the newer data",
+    detail:
+      "Whichever has the later date of data is shown, and the other is set aside. Anything you typed or changed by hand is carried onto the one that is shown.",
+  },
+];
+
+/** How many rows are already held or repeat, the choice about them, and a few of them side by side. */
+function Duplicates({
+  found,
+  choice,
+  onChoice,
+  disabled,
+}: {
+  found: RepeaterImportDuplicates;
+  choice: RepeaterDuplicateChoice;
+  onChoice: (choice: RepeaterDuplicateChoice) => void;
+  disabled: boolean;
+}) {
+  const [all, setAll] = useState(false);
+  const name = useId();
+  const certain = found.held + found.withinFile;
+  const shown = all ? found.examples : found.examples.slice(0, 2);
+  return (
+    <section className="grid gap-3" aria-label="Repeaters already held">
+      <h3 className="text-small font-semibold text-ink">
+        {certain > 0
+          ? `${plural(certain, "row")} of this file ${certain === 1 ? "is a repeater" : "are repeaters"} already here`
+          : "Possibly already held"}
+      </h3>
+      <p className="tabular text-small text-ink">
+        {[
+          found.held > 0
+            ? `${formatNumber(found.held)} ${found.held === 1 ? "is" : "are"} held already, in another list or entered by hand${
+                found.heldByHand > 0 ? ` (${formatNumber(found.heldByHand)} of them typed or changed by you)` : ""
+              }.`
+            : "",
+          found.withinFile > 0
+            ? `${formatNumber(found.withinFile)} ${found.withinFile === 1 ? "repeats" : "repeat"} an earlier row of this file.`
+            : "",
+          found.possible > 0
+            ? `${formatNumber(found.possible)} may be ${found.possible === 1 ? "an entry" : "entries"} you hold under another callsign: same frequency, nearly the same place. ${
+                found.possible === 1 ? "It is" : "They are"
+              } brought in as ${found.possible === 1 ? "it is" : "they are"} whatever you choose; Find duplicates will show each pair.`
+            : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      </p>
+      {certain > 0 ? (
+        <fieldset className="grid gap-1" disabled={disabled}>
+          <legend className="mb-1.5 text-small font-medium text-ink">What to do with those already here</legend>
+          {DUPLICATE_CHOICES.map((option) => (
+            <label key={option.value} className="flex min-h-11 cursor-pointer items-start gap-3 rounded-control py-1.5">
+              <input
+                type="radio"
+                name={name}
+                value={option.value}
+                checked={choice === option.value}
+                onChange={() => onChoice(option.value)}
+                className="mt-1 size-4 shrink-0 accent-primary"
+              />
+              <span className="text-small">
+                <span className="font-medium text-ink">{option.label}</span>
+                <span className="block text-ink-muted">{option.detail}</span>
+              </span>
+            </label>
+          ))}
+          <p className="text-small text-ink-muted">
+            Nothing is deleted by any of these. An entry that is set aside comes back if the two are separated on the repeater's own screen,
+            or if the list it was set aside for is removed.
+          </p>
+        </fieldset>
+      ) : null}
+      {found.examples.length > 0 ? (
+        <>
+          <ul className="divide-y divide-border border-t border-border" aria-label="Side by side">
+            {shown.map((pair) => (
+              <Pair key={`${pair.strength}-${pair.against}-${pair.incoming.line}`} pair={pair} />
+            ))}
+          </ul>
+          {found.examples.length > shown.length ? (
+            <div>
+              <Button variant="ghost" size="sm" onClick={() => setAll(true)}>
+                Show {formatNumber(found.examples.length - shown.length)} more side by side
+              </Button>
+            </div>
+          ) : null}
+        </>
+      ) : null}
+    </section>
+  );
+}
+
 export function ImportDialog({
   open,
   onClose,
   list,
+  fetched,
+  from,
 }: {
   open: boolean;
   onClose: () => void;
   /** The list being brought up to date. Without it, the file becomes a new list. */
   list?: RepeaterListDto | null;
+  /** A list Outpost has just fetched, waiting unsaved on the server: there is no file to choose. */
+  fetched?: { response: RepeaterFetchResponse; source: RepeaterSourceDto } | null;
+  /** The source whose file the person is about to choose, having downloaded it by hand: fills in what the list is. */
+  from?: RepeaterSourceDto | null;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -162,7 +317,12 @@ export function ImportDialog({
   const [keepGone, setKeepGone] = useState(false);
   const [showColumns, setShowColumns] = useState(false);
   const [result, setResult] = useState<RepeaterImportResult | null>(null);
-  const commit = useImportRepeaters();
+  const [duplicates, setDuplicates] = useState<RepeaterDuplicateChoice>("keep-both");
+  const commitFile = useImportRepeaters();
+  const commitFetched = useImportFetched();
+  const commit = fetched ? commitFetched : commitFile;
+  const token = fetched?.response.fetched.token ?? null;
+  const kept = useRef(false);
   const replaceId = useId();
   const goneId = useId();
   const request = useRef(0);
@@ -171,29 +331,39 @@ export function ImportDialog({
   useEffect(() => {
     if (!open) return;
     setFile(null);
-    setPreview(null);
+    setPreview(fetched?.response.preview ?? null);
     setProblem(null);
     setResult(null);
-    setName(list?.name ?? "");
-    setSource(list?.source ?? "");
-    setDataDate(today());
+    setName(list?.name ?? fetched?.source.name ?? from?.name ?? "");
+    setSource(list?.source ?? fetched?.source.publisher ?? from?.publisher ?? "");
+    setDataDate(fetched ? dayOf(fetched.response.fetched.dataDate) : today());
     setReplaceEdits(false);
     setKeepGone(false);
-    setShowColumns(false);
-    commit.reset();
-  }, [open, list?.id]);
+    setShowColumns(Boolean(fetched && (fetched.response.preview.usable === 0 || isGuessedRepeaterFormat(fetched.response.preview.format))));
+    setDuplicates("keep-both");
+    kept.current = false;
+    commitFile.reset();
+    commitFetched.reset();
+  }, [open, list?.id, token]);
 
-  const read = async (chosen: File, mapping?: RepeaterColumnMap) => {
+  /** Closing without importing a fetched list lets the server forget it. */
+  const close = () => {
+    if (token && !kept.current) discardFetched(token);
+    onClose();
+  };
+
+  const read = async (chosen: File | null, mapping?: RepeaterColumnMap) => {
     const mine = ++request.current;
     setReading(true);
     setProblem(null);
     try {
-      const next = await previewImport(chosen, { listId: list?.id, mapping: mapping as Record<string, string> | undefined });
+      const choices = { listId: list?.id, mapping: mapping as Record<string, string> | undefined };
+      const next = chosen ? await previewImport(chosen, choices) : await previewFetched(token!, { ...choices, dataDate });
       if (mine !== request.current) return;
       setPreview(next);
       // A file whose columns had to be guessed, or could not be, is shown with its columns open.
-      if (next.format === "csv" || next.usable === 0) setShowColumns(true);
-      if (!list && !name) setName(chosen.name.replace(/\.[a-z0-9]{1,5}$/i, ""));
+      if (isGuessedRepeaterFormat(next.format) || next.usable === 0) setShowColumns(true);
+      if (chosen && !list && !name) setName(chosen.name.replace(/\.[a-z0-9]{1,5}$/i, ""));
     } catch (error) {
       if (mine !== request.current) return;
       setPreview(null);
@@ -217,60 +387,86 @@ export function ImportDialog({
   };
 
   const save = () => {
-    if (!file || !preview) return;
+    if (!preview || (!file && !token)) return;
     const choices: ImportChoices = {
       mapping: preview.mapping as Record<string, string>,
       listId: list?.id,
       name: name.trim(),
       source: source.trim(),
+      sourceUrl: !list && from ? from.pageUrl : undefined,
       dataDate,
       edited: replaceEdits ? "replace" : "keep",
       gone: keepGone ? "keep" : "remove",
+      duplicates,
     };
-    commit.mutate({ file, choices }, { onSuccess: setResult });
+    const done = (outcome: RepeaterImportResult) => {
+      kept.current = true;
+      setResult(outcome);
+    };
+    if (token) commitFetched.mutate({ token, choices }, { onSuccess: done });
+    else if (file) commitFile.mutate({ file, choices }, { onSuccess: done });
   };
 
   const plan = preview?.update ?? null;
   const bands = preview ? (Object.entries(preview.bands) as Array<[RepeaterBand, number]>).sort((a, b) => b[1] - a[1]) : [];
-  const canSave = Boolean(file && preview && preview.usable > 0 && name.trim() && dataDate && !reading);
+  const canSave = Boolean((file || token) && preview && preview.usable > 0 && name.trim() && dataDate && !reading);
+  const found = preview?.duplicates;
+  const anyDuplicates = Boolean(found && found.held + found.withinFile + found.possible > 0);
+  const host = fetched?.source.fetch?.host ?? "";
 
   return (
-    <Dialog open={open} onOpenChange={(next) => !next && !commit.isPending && onClose()}>
+    <Dialog open={open} onOpenChange={(next) => !next && !commit.isPending && close()}>
       <DialogContent title={list ? `Bring “${list.name}” up to date` : "Import a list of repeaters"} size="lg">
         <DialogBody className="grid gap-5">
           {result ? (
             <Summary result={result} updating={Boolean(list)} />
           ) : (
             <>
-              <div className="grid gap-2">
-                <p className="text-small text-ink-muted">
-                  {list
-                    ? "Choose a newer copy of the same list. You are shown what would change before anything does."
-                    : "Choose a CSV file you have: one of the lists the RSGB's ETCC offers, a file saved from CHIRP, an Outpost export, or any list with a row of headings. Nothing is kept until you have seen how it was read."}
-                </p>
-                <div className="flex flex-wrap items-center gap-3">
-                  <input
-                    ref={input}
-                    type="file"
-                    accept=".csv,.txt,.tsv,text/csv,text/plain"
-                    className="sr-only"
-                    aria-label="File of repeaters"
-                    onChange={(event) => {
-                      choose(event.target.files?.[0]);
-                      event.target.value = "";
-                    }}
-                  />
-                  <Button onClick={() => input.current?.click()} disabled={commit.isPending}>
-                    <FileUp /> {file ? "Choose another file" : "Choose a file"}
-                  </Button>
-                  {file ? (
-                    <span className="min-w-0 text-small text-ink">
-                      <span className="font-mono text-[0.8125rem] break-all">{file.name}</span>{" "}
-                      <span className="tabular text-ink-muted">{formatBytes(file.size)}</span>
-                    </span>
-                  ) : null}
+              {fetched ? (
+                <div className="grid gap-1" role="status">
+                  <p className="text-small text-ink">
+                    Fetched from <span className="font-mono text-[0.8125rem] break-all">{host}</span> at{" "}
+                    {formatDateTime(fetched.response.fetched.fetchedAt)},{" "}
+                    <span className="tabular">{formatBytes(fetched.response.fetched.sizeBytes)}</span>. Nothing is kept until you import it.
+                  </p>
+                  <p className="text-small text-ink-muted">
+                    {fetched.source.publisher} makes this file when it is asked for, so there is no checksum to hold it to. What follows is
+                    how Outpost read it: look it over before you keep it.
+                  </p>
                 </div>
-              </div>
+              ) : (
+                <div className="grid gap-2">
+                  <p className="text-small text-ink-muted">
+                    {list
+                      ? "Choose a newer copy of the same list. You are shown what would change before anything does."
+                      : from
+                        ? `Choose the file you downloaded from ${from.publisher}. Nothing is kept until you have seen how it was read.`
+                        : "Choose a file you have: one of the lists the RSGB's ETCC offers, a file saved from CHIRP, an Outpost export, or any CSV with a row of headings. Nothing is kept until you have seen how it was read."}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <input
+                      ref={input}
+                      type="file"
+                      accept=".csv,.txt,.tsv,.json,text/csv,text/plain,application/json"
+                      className="sr-only"
+                      aria-label="File of repeaters"
+                      onChange={(event) => {
+                        choose(event.target.files?.[0]);
+                        event.target.value = "";
+                      }}
+                    />
+                    <Button onClick={() => input.current?.click()} disabled={commit.isPending}>
+                      <FileUp /> {file ? "Choose another file" : "Choose a file"}
+                    </Button>
+                    {file ? (
+                      <span className="min-w-0 text-small text-ink">
+                        <span className="font-mono text-[0.8125rem] break-all">{file.name}</span>{" "}
+                        <span className="tabular text-ink-muted">{formatBytes(file.size)}</span>
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+              )}
 
               {problem ? (
                 <Notice tone="danger" icon={<CircleAlert />} title="This file could not be read">
@@ -335,7 +531,7 @@ export function ImportDialog({
                       <ColumnsEditor
                         preview={preview}
                         disabled={reading || commit.isPending}
-                        onChange={(mapping) => file && void read(file, mapping)}
+                        onChange={(mapping) => (file || token) && void read(file, mapping)}
                       />
                     ) : null}
                   </section>
@@ -357,6 +553,10 @@ export function ImportDialog({
                     </section>
                   ) : null}
 
+                  {found && anyDuplicates ? (
+                    <Duplicates found={found} choice={duplicates} onChoice={setDuplicates} disabled={commit.isPending} />
+                  ) : null}
+
                   {plan ? (
                     <section className="grid gap-3" aria-label="What bringing the list up to date would do">
                       <h3 className="text-small font-semibold text-ink">What would change</h3>
@@ -369,6 +569,7 @@ export function ImportDialog({
                             [plan.gone, keepGone ? "no longer in the file: kept" : "no longer in the file: removed"],
                             [plan.editedSame + plan.editedGone, "changed by you: left as you have them"],
                             [plan.removedByYou, "removed by you: stay removed"],
+                            [plan.setAside, "set aside as duplicates: stay set aside"],
                           ] as Array<[number, string]>
                         )
                           .filter(([count]) => count > 0)
@@ -466,12 +667,12 @@ export function ImportDialog({
         </DialogBody>
         <DialogFooter>
           {result ? (
-            <Button variant="primary" onClick={onClose}>
+            <Button variant="primary" onClick={close}>
               Done
             </Button>
           ) : (
             <>
-              <Button variant="ghost" onClick={onClose} disabled={commit.isPending}>
+              <Button variant="ghost" onClick={close} disabled={commit.isPending}>
                 Cancel
               </Button>
               <Button variant="primary" onClick={save} disabled={!canSave} loading={commit.isPending}>

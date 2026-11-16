@@ -1,0 +1,160 @@
+{
+  "schemaVersion": 1,
+  "description": "Where a list of amateur radio repeaters can be had, by country, and what Outpost may do about each. A source is one of three kinds. \"fetch\": the publisher offers a data file, and nothing in its terms or robots.txt forbids an application fetching it when a person asks; Outpost fetches that one file, from that one host, when somebody presses \"Get the list\", and at no other time. \"link\": the publisher offers files but an application may not fetch them, or its terms could not be established; the Repeaters screen gives the publisher's page and the steps to download the file by hand. \"none\": nothing usable, said so that nobody looks twice. A file fetched this way is made by its publisher when it is asked for, so it cannot be held to a checksum; the importer's checks and caps and the preview stand in for one. The terms of each were read on the day given; what was read, and how, is in docs/sources.md. To change what Outpost does with a publisher, or to add a source, put a file of the same format in <data directory>/catalog/repeaters/repeater-sources.json: a source there with the id of one here takes its place.",
+  "regions": [
+    { "id": "gb", "name": "United Kingdom", "bbox": [-8.7, 49.8, 1.8, 60.9] },
+    { "id": "ie", "name": "Ireland", "bbox": [-10.7, 51.3, -5.3, 55.5] },
+    { "id": "au", "name": "Australia", "bbox": [112.9, -43.8, 153.7, -10.5] },
+    { "id": "fi", "name": "Finland", "bbox": [19.0, 59.6, 31.6, 70.1] },
+    { "id": "europe", "name": "Europe", "bbox": [-25.0, 34.0, 45.0, 72.0] },
+    { "id": "world", "name": "Worldwide", "bbox": null }
+  ],
+  "sources": [
+    {
+      "id": "gb-etcc",
+      "region": "gb",
+      "publisher": "RSGB ETCC (ukrepeater.net)",
+      "name": "UK voice repeaters and gateways",
+      "covers": "The list of United Kingdom repeaters and gateways kept by the RSGB's Emerging Technology Co-ordination Committee, as CSV files made afresh each time they are asked for. The fullest has status, keeper, locator and position for each.",
+      "pageUrl": "https://ukrepeater.net/csvfiles.html",
+      "kind": "link",
+      "why": "On 16 November 2026 ukrepeater.net turned a program away twice: once with \"403 - Forbidden\", and once with a page that checks its visitor is a browser. That was for robots.txt, before any file was asked for. Outpost does not get round a check like that, so this list is one to download in a browser. The site states no terms either way.",
+      "termsUrl": "https://ukrepeater.net/csvfiles.html",
+      "termsNote": "Its downloads, home, about and API pages stated no licence, terms of use or copyright notice when they were read for the first version of this feature (docs/sources.md, P1); its robots.txt then asked for ten seconds between requests. On 2026-11-16 two requests for robots.txt, by a program that named itself plainly, were refused (HTTP 403), the second with a browser check, so none of it could be read again that day.",
+      "termsRead": "2026-11-16",
+      "steps": [
+        "Open the downloads page in your browser.",
+        "Save the CSV file of voice repeaters and gateways with status. It is the fullest; the plain voice repeaters file and the all-modes file are read as well.",
+        "Come back to this screen, press Import a list and choose the file you saved. Outpost recognises it by its headings.",
+        "Give the day you downloaded it as the date of the data: the file is made when it is asked for."
+      ]
+    },
+    {
+      "id": "ie-irts-chirp",
+      "region": "ie",
+      "publisher": "Irish Radio Transmitters Society (IRTS)",
+      "name": "Irish voice repeaters, CHIRP file",
+      "covers": "The society's voice repeaters in Ireland as a CHIRP file: 45 channels on 16 November 2026, each with callsign and site, frequency, shift and tone. It holds no positions, so these are in the list but not on the map.",
+      "pageUrl": "https://www.irts.ie/cgi/repeater.cgi",
+      "kind": "fetch",
+      "why": "The society's repeater page offers this file by name to anyone (\"Download the repeater listings in various formats\"), at a fixed address, with no sign-in. Its robots.txt disallows only /callbook and /lib. Nothing on the pages that offer it forbids fetching it; nothing on them grants leave in so many words either. Outpost fetches the one file, once, when you ask, which is what your browser would do.",
+      "termsUrl": "https://www.irts.ie/cgi/repeater.cgi",
+      "termsNote": "Read on 2026-11-16: robots.txt (\"Disallow: /callbook\", \"Disallow: /lib\"), the voice repeaters page and the downloads page. None states terms of use, a licence or a copyright notice for the repeater files. The society's privacy policy was not read. This is the one source Outpost fetches on the strength of a file being offered and nothing forbidding it, with no stated permission.",
+      "termsRead": "2026-11-16",
+      "fetch": { "url": "https://www.irts.ie/dnloads/repeaters_chirp.csv", "waitSeconds": 10 }
+    },
+    {
+      "id": "world-hearham",
+      "region": "world",
+      "publisher": "Hearham (hearham.com)",
+      "name": "Hearham repeater listing",
+      "covers": "About 23,000 repeaters, two thirds of them in North America, each with an approximate position. On 16 November 2026 about 2,400 were in or near the United Kingdom and Ireland, 3,300 in the rest of Europe and 1,500 in Australia and New Zealand. One file of about 10 MB.",
+      "pageUrl": "https://hearham.com/repeaters",
+      "kind": "fetch",
+      "why": "Its repeaters page says the listing is \"Free to use and free to use in your application\" and that the \"JSON API is available to download or use in your offline/online application\". Its robots.txt does not disallow that address, and its terms say nothing against it.",
+      "termsUrl": "https://hearham.com/terms",
+      "termsNote": "Read on 2026-11-16: robots.txt (disallows only comment and favourite pages), the repeaters page, quoted beside this, and the terms and conditions (updated 14 November 2024), whose one rule on use is not to \"disassemble, reverse engineer, or otherwise intrude on server components or app components not expressly published as open-source\". Many rows carry a label naming another publisher's list (RSGB on 1,911 of them, WIA on 979). What Hearham's leave covers for those rows is Hearham's to say; Outpost keeps the list on this device and passes it to nobody.",
+      "termsRead": "2026-11-16",
+      "fetch": { "url": "https://hearham.com/api/repeaters/v1", "waitSeconds": 60 }
+    },
+    {
+      "id": "world-repeaterbook",
+      "region": "world",
+      "publisher": "RepeaterBook (repeaterbook.com)",
+      "name": "RepeaterBook",
+      "covers": "The largest directory of repeaters, worldwide, kept by its users and administrators.",
+      "pageUrl": "https://www.repeaterbook.com/",
+      "kind": "link",
+      "why": "RepeaterBook forbids what a fetch would be. Its robots.txt says \"bulk extraction, mirroring, redistribution, offline bundling, and secondary API use require written permission\" and disallows /api/. What you export for yourself in a browser is between you and RepeaterBook.",
+      "termsUrl": "https://www.repeaterbook.com/robots.txt",
+      "termsNote": "robots.txt read on 2026-11-16, quoted beside this. Its API page and legal page were read for the first version of this feature (docs/sources.md, P2): access to the API needs approval, and material is for \"your personal, non-commercial home use only\". The steps below were not walked through on its site; follow what its own pages say.",
+      "termsRead": "2026-11-16",
+      "steps": [
+        "Open RepeaterBook in your browser, and sign in if it asks you to.",
+        "Find the repeaters you want with its own search, and use the export its pages offer for CHIRP, which is a CSV file. Its terms limit what you take to your own personal, non-commercial use.",
+        "Come back to this screen, press Import a list and choose the file. A CHIRP file holds no positions, so these are in the list but not on the map."
+      ]
+    },
+    {
+      "id": "world-openrepeater",
+      "region": "world",
+      "publisher": "Open Repeater (openrepeater.org)",
+      "name": "Open Repeater",
+      "covers": "A directory of repeaters submitted by its users and reviewed before they are published. The pages read give no count.",
+      "pageUrl": "https://www.openrepeater.org/downloads",
+      "kind": "link",
+      "why": "Its downloads page offers files to anyone, but names no file address a program could be given: the page is drawn by a script, and the way a program would ask is the API that its robots.txt disallows. Its terms also contradict the licence it states.",
+      "termsUrl": "https://www.openrepeater.org/terms",
+      "termsNote": "robots.txt read on 2026-11-16: \"Disallow: /api/\". Its downloads and terms pages were read for the first version of this feature (docs/sources.md, P3): the downloads page says \"Repeater data is licensed under CC0\", and the terms say \"You may not resell or commercially redistribute the database without written permission\".",
+      "termsRead": "2026-11-16",
+      "steps": [
+        "Open the downloads page in your browser.",
+        "Download a CSV file of the area you want. The page says no sign-in is needed.",
+        "Come back to this screen, press Import a list and choose the file. Outpost does not know this layout by name: it matches the headings by what they usually mean and shows you the matching to correct before anything is kept."
+      ]
+    },
+    {
+      "id": "au-wia",
+      "region": "au",
+      "publisher": "Wireless Institute of Australia (WIA)",
+      "name": "WIA repeater directory",
+      "covers": "The institute's directory of Australian repeaters as one CSV file, about a thousand rows, dated 5 July 2026 when it was read. It holds no positions, so these are in the list but not on the map.",
+      "pageUrl": "https://www.wia.org.au/members/repeaters/data/",
+      "kind": "link",
+      "why": "The page that offers the file says \"© 2026 Wireless Institute of Australia all rights reserved\". It speaks to \"Application Developers who use this data\" but grants them nothing, so Outpost does not fetch it. The file is offered to anyone in a browser, with no sign-in.",
+      "termsUrl": "https://www.wia.org.au/members/repeaters/data/",
+      "termsNote": "Read on 2026-11-16: the repeater data page, quoted beside this. The site has no robots.txt (HTTP 404). The directory's own notes on its status letters are in a PDF that was not read: Outpost reads O and W as operational, as the page says, and keeps the other letters as written.",
+      "termsRead": "2026-11-16",
+      "steps": [
+        "Open the repeater data page in your browser.",
+        "Under “Files For Download”, save the file beside “Latest repeater list CSV”. Its name is “WIA Repeater Directory” and six digits.",
+        "Come back to this screen, press Import a list and choose the file. Outpost recognises it by its headings.",
+        "The six digits in the file's name are its date, year first: 260705 is 5 July 2026. Give that as the date of the data."
+      ]
+    },
+    {
+      "id": "au-acma",
+      "region": "au",
+      "publisher": "Australian Communications and Media Authority (ACMA)",
+      "name": "Register of Radiocommunications Licences",
+      "covers": "The regulator's register of every licensed radio station in Australia, of which amateur repeaters are a small part.",
+      "pageUrl": "https://cdn.acma.gov.au/offline-rrl/doc/LICENCE.TXT",
+      "kind": "none",
+      "why": "Nothing Outpost can read. The register is one large download of several tables covering every radio service, and picking the repeaters out of it has not been built. Its licence would allow a copy to be kept. The WIA's directory above is cross-referenced with it.",
+      "termsUrl": "https://cdn.acma.gov.au/offline-rrl/doc/LICENCE.TXT",
+      "termsNote": "Licence read on 2026-11-16. It is accepted by downloading (\"By clicking on the link below you are agreeing to these Terms and Conditions\"), grants a licence \"to use, reproduce and adapt the Register, including the right to incorporate the Register in an electronic information retrieval system\", asks for the words \"Based on Australian Communications and Media Authority information\", and does not permit reproducing the details of licensees who are people. The register itself was not downloaded.",
+      "termsRead": "2026-11-16"
+    },
+    {
+      "id": "fi-sral",
+      "region": "fi",
+      "publisher": "Suomen Radioamatööriliitto (SRAL), automatic.sral.fi",
+      "name": "Finnish automatic stations",
+      "covers": "The Finnish league's register of repeaters, beacons and other automatic stations, kept by their operators.",
+      "pageUrl": "https://automatic.sral.fi/",
+      "kind": "link",
+      "why": "Its terms would let Outpost fetch this: \"This service and data may be used for non-commercial amateur radio applications only.\" It is not fetched yet for a plain reason: the service's API gives each station's modes and access as numbers that have to be looked up in further tables, and Outpost does not read that. Until it does, the site's own export for CHIRP is the way.",
+      "termsUrl": "https://automatic.sral.fi/",
+      "termsNote": "Read on 2026-11-16: robots.txt (disallows its sign-in, help and old pages and /js) and the terms of use the site shows, taken from the script that draws its pages: \"Commercial use is not permitted\", \"Do not overload the service. Avoid unnecessary queries.\" Its API is described at /openapi.yaml. The steps below use the names the site's script gives its pages and were not walked through in a browser.",
+      "termsRead": "2026-11-16",
+      "steps": [
+        "Open automatic.sral.fi in your browser and go to its Data Export page.",
+        "Under “CHIRP/CPS”, export for CHIRP, which is a CSV file.",
+        "Come back to this screen, press Import a list and choose the file. A CHIRP file holds no positions, so these are in the list but not on the map."
+      ]
+    },
+    {
+      "id": "europe-pzk-maps",
+      "region": "europe",
+      "publisher": "Polski Związek Krótkofalowców (PZK)",
+      "name": "przemienniki.net and repeate.rs",
+      "covers": "Maps of repeaters in Poland (przemienniki.net) and in 26 more countries of Europe and beyond (repeate.rs), made by the Polish Amateur Radio Union.",
+      "pageUrl": "https://repeate.rs/",
+      "kind": "none",
+      "why": "Maps only. Neither home page offers a file to download or states terms for its data, and each draws its map from an address of its own that is not offered to other programs. Outpost does not read a list out of a web page.",
+      "termsUrl": "https://repeate.rs/",
+      "termsNote": "Read on 2026-11-16: robots.txt and the home page of each site. Both robots.txt files allow browsing; przemienniki.net's adds content signals (\"search=yes,ai-train=no\"). Neither home page mentions an export, an API for others or a licence; their privacy policies were not read.",
+      "termsRead": "2026-11-16"
+    }
+  ]
+}

@@ -27,7 +27,7 @@ import { ConfirmDialog } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/misc";
 import { formatBearing, formatDistance } from "@/features/maps/lib/geo";
 import { formatDate } from "@/lib/utils";
-import { useRemoveRepeater, useRepeater, useRevertRepeater } from "./data";
+import { useRemoveRepeater, useRepeater, useRevertRepeater, useSeparate } from "./data";
 import { OriginPicker, useOrigin } from "./origin";
 import { RepeaterFormDialog } from "./repeater-form";
 import { ageWarning, isApproximate, modesLine, positionDigits, positionNote, sourceOf } from "./words";
@@ -86,6 +86,7 @@ export default function RepeaterPage() {
   const detail = useRepeater(id);
   const origin = useOrigin();
   const revert = useRevertRepeater();
+  const separate = useSeparate();
   const remove = useRemoveRepeater();
   const [editing, setEditing] = useState(false);
   const [removing, setRemoving] = useState(false);
@@ -120,7 +121,7 @@ export default function RepeaterPage() {
     );
   }
 
-  const { repeater, list, asListed } = detail.data;
+  const { repeater, list, asListed, merged } = detail.data;
   const source = sourceOf(list);
   const warning = list ? ageWarning(list) : null;
   const placed = repeater.lat !== null && repeater.lon !== null;
@@ -317,6 +318,42 @@ export default function RepeaterPage() {
               loading={revert.isPending}
             >
               <Undo2 /> Put back to what the list says
+            </Button>
+          </div>
+        </section>
+      ) : null}
+
+      {merged.length > 0 ? (
+        <section aria-label="Merged entries" className="mt-8 grid gap-3">
+          <h2 className="text-lead font-semibold text-ink">Held more than once</h2>
+          <p className="max-w-[65ch] text-small text-ink-muted">
+            {merged.length === 1 ? "One other entry is" : `${merged.length} other entries are`} the same repeater, and{" "}
+            {merged.length === 1 ? "is" : "are"} set aside so that it is listed once. Anything you had typed on{" "}
+            {merged.length === 1 ? "it" : "them"} was carried onto this entry.
+          </p>
+          <ul className="divide-y divide-border border-y border-border">
+            {merged.map((entry) => (
+              <li key={entry.id} className="tabular py-2 text-small text-ink">
+                {entry.callsign}, {formatMHz(entry.outputHz)} MHz:{" "}
+                <span className="text-ink-muted">
+                  {entry.listName
+                    ? `from “${entry.listName}”${entry.dataDate ? `, data of ${formatDate(entry.dataDate)}` : ""}`
+                    : "entered by hand"}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <div>
+            <Button
+              onClick={() =>
+                separate.mutate(repeater.id, {
+                  onSuccess: ({ separated }) =>
+                    toast.success(`${separated === 1 ? "The other entry is" : `The ${separated} other entries are`} listed again.`),
+                })
+              }
+              loading={separate.isPending}
+            >
+              <Undo2 /> Separate them
             </Button>
           </div>
         </section>
