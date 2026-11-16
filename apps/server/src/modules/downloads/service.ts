@@ -89,7 +89,7 @@ interface ActiveRun {
 }
 
 const startSchema = z.object({
-  kind: z.enum(["zim", "map", "terrain", "places", "file", "model", "document"]),
+  kind: z.enum(["zim", "map", "terrain", "places", "file", "model", "document", "dataset"]),
   title: z.string().trim().min(1).max(300),
   url: z.string().min(1).max(4000),
   locationId: z.string().min(1).optional(),

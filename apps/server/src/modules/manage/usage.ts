@@ -17,7 +17,7 @@ import type { Cleanup } from "./cleanup.ts";
 import type { Inventory } from "./inventory.ts";
 import type { Surveyor } from "./survey.ts";
 
-const CONTENT_KINDS: ManagedKind[] = ["zim", "map", "terrain", "places", "sheet", "file", "model", "document"];
+const CONTENT_KINDS: ManagedKind[] = ["zim", "map", "terrain", "places", "sheet", "file", "model", "dataset", "document"];
 /** The word index SQLite keeps beside passage text comes to roughly half the text again. */
 const INDEX_OVERHEAD = 1.5;
 

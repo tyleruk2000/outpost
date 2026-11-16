@@ -13,6 +13,8 @@
  * (https://github.com/WebAssembly/WASI/blob/main/legacy/preview1/docs.md).
  */
 
+import type { WasmMemory } from "./wasm-types.ts";
+
 const ERRNO_SUCCESS = 0;
 const ERRNO_BADF = 8;
 const ERRNO_NOENT = 44;
@@ -49,7 +51,7 @@ export interface MemoryWasi {
   /** The functions to hand to WebAssembly as `wasi_snapshot_preview1`. */
   imports: Record<string, (...args: never[]) => number>;
   /** Must be called once the module is instantiated, before anything runs. */
-  bind(memory: WebAssembly.Memory): void;
+  bind(memory: WasmMemory): void;
   /** Adds or replaces a file. Paths have no leading slash: "data/coeffs/coeff01w.bin". */
   writeFile(path: string, bytes: Uint8Array): void;
   hasFile(path: string): boolean;
@@ -72,7 +74,7 @@ export function createMemoryWasi(): MemoryWasi {
   const files = new Map<string, Uint8Array>();
   const open = new Map<number, OpenFile>();
   let nextFd = ROOT_FD + 1;
-  let memory: WebAssembly.Memory | undefined;
+  let memory: WasmMemory | undefined;
   let output = "";
   const decoder = new TextDecoder();
   const encoder = new TextEncoder();

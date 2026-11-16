@@ -21,6 +21,7 @@ export * from "./maps.ts";
 export * from "./merge.ts";
 export * from "./notes.ts";
 export * from "./portable.ts";
+export * from "./propagation.ts";
 export * from "./radio.ts";
 export * from "./retrieval.ts";
 export * from "./search.ts";

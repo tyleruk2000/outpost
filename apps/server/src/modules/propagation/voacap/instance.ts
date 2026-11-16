@@ -5,6 +5,7 @@
  *
  * Runs in the propagation worker thread, never in the server's own.
  */
+import { type WasmMemory, wasm } from "./wasm-types.ts";
 import { createMemoryWasi, EngineExit, type MemoryWasi } from "./wasi.ts";
 
 /** Where the data files are put in the engine's view of the world. */
@@ -12,7 +13,7 @@ export const ENGINE_ROOT = "/data";
 const ROOT_PREFIX = "data/";
 
 interface EngineExports {
-  memory: WebAssembly.Memory;
+  memory: WasmMemory;
   outpost_alloc(length: number): number;
   outpost_free(pointer: number, length: number): void;
   outpost_run(pointer: number, length: number): number;
@@ -31,11 +32,11 @@ export class VoacapInstance {
   private readonly exports: EngineExports;
   private broken: string | null = null;
 
-  constructor(wasm: Uint8Array, files: Iterable<[string, Uint8Array]>) {
+  constructor(bytes: Uint8Array, files: Iterable<[string, Uint8Array]>) {
     this.wasi = createMemoryWasi();
-    for (const [path, bytes] of files) this.wasi.writeFile(ROOT_PREFIX + path, bytes);
-    const module = new WebAssembly.Module(wasm as BufferSource);
-    const instance = new WebAssembly.Instance(module, { wasi_snapshot_preview1: this.wasi.imports });
+    for (const [path, content] of files) this.wasi.writeFile(ROOT_PREFIX + path, content);
+    const module = new wasm.Module(bytes);
+    const instance = new wasm.Instance(module, { wasi_snapshot_preview1: this.wasi.imports });
     this.exports = instance.exports as unknown as EngineExports;
     this.wasi.bind(this.exports.memory);
   }

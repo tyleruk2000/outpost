@@ -1,5 +1,5 @@
 /** Arithmetic on positions, boxes and distances. Pure, so it can be tested without a map. */
-import { type Bbox, haversineMeters } from "@outpost/shared";
+import { type Bbox, haversineMeters, initialBearingDeg } from "@outpost/shared";
 import { formatNumber } from "@/lib/utils";
 
 export interface LatLon {
@@ -112,10 +112,7 @@ export function countTiles(bbox: Bbox, minZoom: number, maxZoom: number): number
 
 /** Compass bearing in degrees (0–360) to set out on from the first point towards the second. */
 export function initialBearing(from: LatLon, to: LatLon): number {
-  const dLon = (to.lon - from.lon) * DEG;
-  const y = Math.sin(dLon) * Math.cos(to.lat * DEG);
-  const x = Math.cos(from.lat * DEG) * Math.sin(to.lat * DEG) - Math.sin(from.lat * DEG) * Math.cos(to.lat * DEG) * Math.cos(dLon);
-  return (Math.atan2(y, x) / DEG + 360) % 360;
+  return initialBearingDeg(from, to);
 }
 
 const COMPASS = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"] as const;

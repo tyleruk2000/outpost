@@ -24,11 +24,12 @@ export const kindNames: Record<ManagedKind, { one: string; many: string }> = {
   sheet: { one: "Catalogue sheet or book", many: "Catalogue sheets and books" },
   file: { one: "Catalogue file", many: "Other catalogue files" },
   model: { one: "Search model", many: "Search models" },
+  dataset: { one: "Radio data", many: "Radio data" },
   document: { one: "Document", many: "Documents" },
 };
 
 /** The order kinds are offered in filters and listed in summaries. */
-export const kindOrder: ManagedKind[] = ["zim", "map", "terrain", "places", "sheet", "file", "model", "document"];
+export const kindOrder: ManagedKind[] = ["zim", "map", "terrain", "places", "sheet", "file", "model", "dataset", "document"];
 
 // ── What is taking the space ──
 
@@ -42,7 +43,7 @@ export const usageGroups: UsageGroup[] = [
   {
     title: "Downloaded",
     description: "From the catalogue or the map. All of it can be fetched again.",
-    ids: ["zim", "map", "terrain", "places", "sheet", "file", "model"],
+    ids: ["zim", "map", "terrain", "places", "sheet", "file", "model", "dataset"],
   },
   { title: "Yours", description: "What you added or wrote. Outpost holds the only copy it knows of.", ids: ["document", "attachments"] },
   {
@@ -65,6 +66,7 @@ export const usageNames: Record<UsageId, string> = {
   sheet: kindNames.sheet.many,
   file: kindNames.file.many,
   model: kindNames.model.many,
+  dataset: kindNames.dataset.many,
   document: "Documents you added",
   attachments: "Pictures and files in notes",
   database: "Database",

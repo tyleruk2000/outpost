@@ -14,7 +14,7 @@ export type {
   MovedFrom,
 } from "./service.ts";
 
-const kindSchema = z.enum(["zim", "map", "terrain", "places", "file", "model"]);
+const kindSchema = z.enum(["zim", "map", "terrain", "places", "file", "model", "dataset"]);
 
 const deleteMessage =
   "Say whether the file should be deleted too: deleteFiles=true deletes it, deleteFiles=false removes only Outpost's record and keeps the file.";

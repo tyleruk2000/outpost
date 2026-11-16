@@ -1,6 +1,6 @@
 import type { JobDto } from "./common.ts";
 
-export type CollectionKind = "zim" | "map" | "terrain" | "places" | "file" | "model";
+export type CollectionKind = "zim" | "map" | "terrain" | "places" | "file" | "model" | "dataset";
 
 /**
  * installed: the file is where Outpost expects it.
