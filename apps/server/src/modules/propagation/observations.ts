@@ -501,7 +501,9 @@ export async function registerObservations(
       /** The engine's day for one path, month, frequency, power and requirement, asked once however many contacts share it. */
       const asked = new Map<
         string,
-        Promise<{ distanceKm: number; hours: Array<{ reliability: number; snrDbHz: number; path: string | null }> } | string>
+        Promise<
+          { distanceKm: number; hours: Array<{ reliability: number; snrDbHz: number; path: string | null; notModelled?: true }> } | string
+        >
       >();
       const ssnOf = new Map<string, number | null>();
       const all = db.select().from(radioObservations).where(settled()).orderBy(desc(radioObservations.at)).all();
@@ -617,6 +619,10 @@ export async function registerObservations(
         const nearest = Math.round((when.getUTCHours() * 60 + when.getUTCMinutes()) / 60);
         const utcHour = nearest === 0 ? 24 : nearest;
         const cell = answer.hours[utcHour - 1]!;
+        if (cell.notModelled) {
+          out("One of the antennas chosen is a wire the engine's model does not describe on that frequency");
+          continue;
+        }
         if (cell.path === null) {
           out("The engine found no path at that hour, so it gives no figures for it");
           continue;

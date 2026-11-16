@@ -10,11 +10,16 @@ import {
   type AntennaProfileInput,
   type AntennaSpec,
   antennaModelLabel,
+  antennaSpecOf,
   bandOf,
   type CompareResult,
   type CompareWhat,
   type EngineStatus,
   groundSetting,
+  HF_BANDS,
+  halfWaveRangeMhz,
+  hasStatedLength,
+  isHorizontalAntenna,
   type MarkerDto,
   type ModeId,
   type NoiseEnvironment,
@@ -25,6 +30,8 @@ import {
   type RadioProfile,
   type RadioProfileInput,
   type SavedPrediction,
+  sameAntennaSpec,
+  wireOn,
 } from "@outpost/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -223,19 +230,11 @@ export function rememberForm(form: PlannerForm): void {
   }
 }
 
-const sameAntenna = (a: AntennaSpec, b: AntennaSpec) =>
-  a.kind === b.kind &&
-  a.heightM === b.heightM &&
-  a.ground === b.ground &&
-  a.broadsideDeg === b.broadsideDeg &&
-  a.gainDb === b.gainDb &&
-  a.feedlineLossDb === b.feedlineLossDb;
-
 /** An antenna in a few words, for one that has no name of its own. */
 export function antennaSummary(spec: AntennaSpec): string {
-  const parts = [antennaModelLabel(spec.kind)];
+  const parts = [antennaModelLabel(spec.kind, spec.lengthM)];
   if (spec.kind !== "isotropic") {
-    if (spec.kind !== "vertical-monopole") parts.push(`${spec.heightM} m up`);
+    if (isHorizontalAntenna(spec.kind)) parts.push(`${spec.heightM} m up`);
     parts.push(`${groundSetting(spec.ground).label.toLowerCase()} ground`);
   }
   if (spec.broadsideDeg !== null) parts.push(`broadside to ${spec.broadsideDeg}°`);
@@ -256,8 +255,40 @@ export function antennaOf(
   }
   const profile = profiles.find((item) => item.id === id);
   if (!profile) return null;
-  const { kind, heightM, ground, broadsideDeg, gainDb, feedlineLossDb } = profile;
-  return { spec: { kind, heightM, ground, broadsideDeg, gainDb, feedlineLossDb }, name: profile.name };
+  return { spec: antennaSpecOf(profile), name: profile.name };
+}
+
+/**
+ * What a wire of a stated length is on the frequency in the form, said under the
+ * antenna before anything is asked: a half-wave, a wire of another length, or not
+ * modelled there. Nothing for an antenna that is not such a wire, or with no frequency.
+ */
+export function wireHint(spec: AntennaSpec, frequencyText: string): { note: string; notModelled: boolean } | null {
+  const mhz = frequencyText.trim() === "" ? Number.NaN : Number(frequencyText);
+  if (!(mhz >= 2 && mhz <= 30)) return null;
+  const wire = wireOn(spec, mhz);
+  return wire ? { note: wire.note, notModelled: wire.state === "not-modelled" } : null;
+}
+
+/** The amateur bands a wire of a stated length is about a half-wave on, as "20 m"; empty for a wire that is one on none of them. */
+export const halfWaveBands = (spec: AntennaSpec): string[] =>
+  HF_BANDS.filter((band) => wireOn(spec, band.mhz)?.state === "half-wave").map((band) => band.label);
+
+/**
+ * Which bands a wire of a stated length has figures on, where the question is about
+ * several bands at once (a plan). Nothing for an antenna that is not such a wire.
+ */
+export function wireBandsNote(spec: AntennaSpec): string | null {
+  if (!hasStatedLength(spec.kind) || spec.lengthM === undefined) return null;
+  const bands = halfWaveBands(spec);
+  const { fromMhz, toMhz } = halfWaveRangeMhz(spec.lengthM);
+  const where =
+    bands.length > 0
+      ? `on ${bands.join(" and ")}`
+      : `from ${fromMhz.toFixed(1)} to ${toMhz.toFixed(1)} MHz, which is none of the amateur bands`;
+  return spec.kind === "end-fed-horizontal"
+    ? `${spec.lengthM} m of level wire is about a half-wave ${where}. It is given figures there and nowhere else: the engine's dipole is fed at its centre and does not describe an end-fed wire of another length.`
+    : `${spec.lengthM} m of upright wire is about a half-wave ${where}. On other bands it is run as a wire of that length, which an end-fed half-wave's matching unit is not made for.`;
 }
 
 /** The request a form stands for, or the first thing wrong with it, in words for the person. */
@@ -340,9 +371,9 @@ export function requestOf(
  */
 export function formOf(request: PredictionRequest, band: string, profiles: AntennaProfile[]): PlannerForm {
   const antennaId = (spec: AntennaSpec) => {
-    const preset = ANTENNA_PRESETS.find((item) => sameAntenna(item.spec, spec));
+    const preset = ANTENNA_PRESETS.find((item) => sameAntennaSpec(item.spec, spec));
     if (preset) return `preset:${preset.id}`;
-    return profiles.find((item) => sameAntenna(item, spec))?.id ?? AS_SAVED;
+    return profiles.find((item) => sameAntennaSpec(item, spec))?.id ?? AS_SAVED;
   };
   const txAntennaId = antennaId(request.txAntenna);
   const rxAntennaId = antennaId(request.rxAntenna);

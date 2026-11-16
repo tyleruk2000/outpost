@@ -876,8 +876,20 @@ export const radioProfiles = sqliteTable("radio_profiles", {
 export const antennaProfiles = sqliteTable("antenna_profiles", {
   id: id(),
   name: text("name").notNull(),
-  kind: text("kind", { enum: ["isotropic", "horizontal-dipole", "inverted-v", "end-fed-half-wave", "vertical-monopole"] }).notNull(),
+  kind: text("kind", {
+    enum: [
+      "isotropic",
+      "horizontal-dipole",
+      "inverted-v",
+      "end-fed-half-wave",
+      "end-fed-horizontal",
+      "end-fed-vertical",
+      "vertical-monopole",
+    ],
+  }).notNull(),
   heightM: real("height_m").notNull().default(0),
+  /** Length of the wire in metres, for an end-fed wire of a stated length; null for every other kind. */
+  lengthM: real("length_m"),
   ground: text("ground", { enum: ["poor", "average", "good", "sea"] })
     .notNull()
     .default("average"),

@@ -10,10 +10,16 @@ import {
   antennaModelLabel,
   GROUNDS,
   type GroundKind,
+  HF_BANDS,
+  halfWaveRangeMhz,
+  hasStatedLength,
+  isHorizontalAntenna,
   type ModeId,
   OPERATING_MODES,
   type RadioProfile,
   type RadioProfileInput,
+  WIRE_MAX_M,
+  WIRE_MIN_M,
 } from "@outpost/shared";
 import { useId, useState } from "react";
 import { EmptyState, ErrorState, Rows, Section } from "@/components/page";
@@ -23,15 +29,43 @@ import { Field, Input, Textarea } from "@/components/ui/input";
 import { Checkbox, Select, Skeleton } from "@/components/ui/misc";
 import { useProfiles, useRemoveAntenna, useRemoveRadio, useSaveAntenna, useSaveRadio } from "./data";
 
-const KINDS: AntennaKind[] = ["horizontal-dipole", "inverted-v", "end-fed-half-wave", "vertical-monopole", "isotropic"];
+const KINDS: AntennaKind[] = [
+  "horizontal-dipole",
+  "inverted-v",
+  "end-fed-horizontal",
+  "end-fed-vertical",
+  "end-fed-half-wave",
+  "vertical-monopole",
+  "isotropic",
+];
 const KIND_NAMES: Record<AntennaKind, string> = {
   "horizontal-dipole": "Horizontal dipole",
   "inverted-v": "Inverted-V",
-  "end-fed-half-wave": "End-fed half-wave",
+  "end-fed-horizontal": "End-fed half-wave wire, horizontal",
+  "end-fed-vertical": "End-fed half-wave wire, vertical",
+  "end-fed-half-wave": "End-fed half-wave recut for every band",
   "vertical-monopole": "Quarter-wave vertical",
   isotropic: "Isotropic (a gain figure only)",
 };
-const presetNote = (kind: AntennaKind) => ANTENNA_PRESETS.find((preset) => preset.spec.kind === kind)?.modelledAs ?? "";
+const WIRE_NOTES: Partial<Record<AntennaKind, string>> = {
+  "end-fed-horizontal":
+    "One wire of the length you give, hung level and fed at an end. Where it is about a half-wave it is run as VOACAP's horizontal dipole (type 23) of that length. On other frequencies no figure is given: the engine's dipole is fed at its centre and does not describe an end-fed wire that is not a half-wave.",
+  "end-fed-vertical":
+    "One wire of the length you give, upright with its bottom end at the ground and fed there. Run as VOACAP's vertical monopole (type 22) of that height on every frequency. Off its half-wave band the figure is for a wire that is not a half-wave, fed against the ground.",
+};
+const presetNote = (kind: AntennaKind) => WIRE_NOTES[kind] ?? ANTENNA_PRESETS.find((preset) => preset.spec.kind === kind)?.modelledAs ?? "";
+/** What a length typed in the form is at a half-wave, said as it is typed. */
+function lengthHint(kind: AntennaKind, text: string): string {
+  const bounds = `Between ${WIRE_MIN_M} and ${WIRE_MAX_M} m.`;
+  const lengthM = text.trim() === "" ? Number.NaN : Number(text);
+  if (!(lengthM >= WIRE_MIN_M && lengthM <= WIRE_MAX_M)) return bounds;
+  const { fromMhz, toMhz } = halfWaveRangeMhz(lengthM);
+  const bands = HF_BANDS.filter((band) => band.mhz >= fromMhz && band.mhz <= toMhz).map((band) => band.label);
+  const where = `${fromMhz.toFixed(1)} to ${toMhz.toFixed(1)} MHz${bands.length > 0 ? ` (${bands.join(", ")})` : ", which is none of the amateur bands"}`;
+  return kind === "end-fed-horizontal"
+    ? `About a half-wave from ${where}: figures are given there only.`
+    : `About a half-wave from ${where}.`;
+}
 const number = (text: string, fallback = Number.NaN) => (text.trim() === "" ? fallback : Number(text));
 
 type RadioDraft = {
@@ -49,6 +83,8 @@ type AntennaDraft = {
   id?: string;
   name: string;
   kind: AntennaKind;
+  /** Length of the wire, for a kind that is a wire of a stated length. */
+  lengthM: string;
   heightM: string;
   ground: GroundKind;
   broadside: string;
@@ -79,7 +115,9 @@ const antennaDraft = (antenna?: AntennaProfile): AntennaDraft =>
         id: antenna.id,
         name: antenna.name,
         kind: antenna.kind,
-        heightM: String(antenna.heightM),
+        lengthM: antenna.lengthM === undefined ? "10" : String(antenna.lengthM),
+        // An upright wire is kept with no height; if it is laid level it needs one to start from.
+        heightM: String(isHorizontalAntenna(antenna.kind) ? antenna.heightM : antenna.heightM || 6),
         ground: antenna.ground,
         broadside: antenna.broadsideDeg === null ? "" : String(antenna.broadsideDeg),
         gainDb: String(antenna.gainDb),
@@ -91,6 +129,7 @@ const antennaDraft = (antenna?: AntennaProfile): AntennaDraft =>
     : {
         name: "",
         kind: "horizontal-dipole",
+        lengthM: "10",
         heightM: "5",
         ground: "average",
         broadside: "",
@@ -215,11 +254,13 @@ function AntennaDialog({ draft, onClose }: { draft: AntennaDraft; onClose: () =>
   const [problem, setProblem] = useState<string | null>(null);
   const save = useSaveAntenna();
   const set = <K extends keyof AntennaDraft>(key: K, next: AntennaDraft[K]) => setValue((current) => ({ ...current, [key]: next }));
-  const horizontal = value.kind === "horizontal-dipole" || value.kind === "inverted-v" || value.kind === "end-fed-half-wave";
+  const horizontal = isHorizontalAntenna(value.kind);
+  const wire = hasStatedLength(value.kind);
   const submit = () => {
     const input: AntennaProfileInput = {
       name: value.name.trim(),
       kind: value.kind,
+      ...(wire ? { lengthM: number(value.lengthM) } : {}),
       heightM: horizontal ? number(value.heightM) : 0,
       ground: value.ground,
       broadsideDeg: horizontal && value.broadside.trim() !== "" ? number(value.broadside) : null,
@@ -230,6 +271,10 @@ function AntennaDialog({ draft, onClose }: { draft: AntennaDraft; onClose: () =>
       notes: value.notes,
     };
     if (!input.name) return setProblem("Give the antenna a name.");
+    if (wire && !(input.lengthM! >= WIRE_MIN_M && input.lengthM! <= WIRE_MAX_M))
+      return setProblem(
+        `Give the length of the wire in metres, between ${WIRE_MIN_M} and ${WIRE_MAX_M}: the lengths that are a half-wave somewhere between 2 and 30 MHz.`,
+      );
     if (horizontal && !(input.heightM >= 0.5)) return setProblem("Give the height of the wire above the ground in metres, at least 0.5.");
     if (input.broadsideDeg !== null && !(input.broadsideDeg >= 0 && input.broadsideDeg <= 360))
       return setProblem("Give the bearing its broadside faces, 0 to 360, or leave it empty.");
@@ -255,6 +300,19 @@ function AntennaDialog({ draft, onClose }: { draft: AntennaDraft; onClose: () =>
               />
             )}
           </Field>
+          {wire ? (
+            <Field label="Length of the wire, m" hint={lengthHint(value.kind, value.lengthM)}>
+              {(ids) => (
+                <Input
+                  {...ids}
+                  value={value.lengthM}
+                  onChange={(event) => set("lengthM", event.target.value)}
+                  inputMode="decimal"
+                  className="tabular max-w-32"
+                />
+              )}
+            </Field>
+          ) : null}
           {horizontal ? (
             <div className="grid grid-cols-2 gap-3">
               <Field label="Height of the wire, m" hint={value.kind === "inverted-v" ? "The mean height, not the apex." : undefined}>
@@ -312,7 +370,7 @@ function AntennaDialog({ draft, onClose }: { draft: AntennaDraft; onClose: () =>
                 />
               )}
             </Field>
-            <Field label="Feedline loss, dB">
+            <Field label="Feedline loss, dB" hint={wire ? "The matching unit's loss is not modelled: add it here." : undefined}>
               {(ids) => (
                 <Input
                   {...ids}
@@ -457,8 +515,8 @@ export function Equipment() {
                   <span className="block truncate text-ink">{item.name}</span>
                   <span className="tabular block text-small text-ink-muted">
                     {[
-                      antennaModelLabel(item.kind),
-                      item.kind === "isotropic" || item.kind === "vertical-monopole" ? null : `${item.heightM} m up`,
+                      antennaModelLabel(item.kind, item.lengthM),
+                      isHorizontalAntenna(item.kind) ? `${item.heightM} m up` : null,
                       item.gainDb - item.feedlineLossDb === 0 ? null : `${(item.gainDb - item.feedlineLossDb).toFixed(1)} dB net`,
                       `${item.minMhz} to ${item.maxMhz} MHz`,
                     ]

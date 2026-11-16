@@ -1,0 +1,1 @@
+ALTER TABLE `antenna_profiles` ADD `length_m` real;

@@ -263,10 +263,32 @@ export type RadioProfileInput = Omit<RadioProfile, "id" | "createdAt" | "updated
  * - `isotropic`: the same gain in every direction, the figure given.
  * - `horizontal-dipole`: VOACAP's horizontal half-wave dipole over ground (type 23).
  * - `inverted-v`, `end-fed-half-wave`: VOACAP has no model of either. Both are run as
- *   the horizontal half-wave dipole at the height given, and say so wherever shown.
+ *   the horizontal half-wave dipole at the height given, and say so wherever shown. The
+ *   end-fed one is a wire whose length follows the frequency: a half-wave on every band.
+ * - `end-fed-horizontal`: one wire of a stated length (`lengthM`), level, fed at an end.
+ *   Run as type 23 with that length, only where the wire is about a half-wave; on other
+ *   frequencies no figure is given (see `wireOn`).
+ * - `end-fed-vertical`: one wire of a stated length standing upright from the ground,
+ *   fed at the bottom. Run as VOACAP's vertical monopole (type 22) of that height on
+ *   every frequency.
  * - `vertical-monopole`: VOACAP's quarter-wave vertical over ground (type 22).
  */
-export type AntennaKind = "isotropic" | "horizontal-dipole" | "inverted-v" | "end-fed-half-wave" | "vertical-monopole";
+export const ANTENNA_KINDS = [
+  "isotropic",
+  "horizontal-dipole",
+  "inverted-v",
+  "end-fed-half-wave",
+  "end-fed-horizontal",
+  "end-fed-vertical",
+  "vertical-monopole",
+] as const;
+export type AntennaKind = (typeof ANTENNA_KINDS)[number];
+
+/** The kinds that are one wire of a stated length. */
+export const hasStatedLength = (kind: AntennaKind): boolean => kind === "end-fed-horizontal" || kind === "end-fed-vertical";
+/** The kinds that hang level: their height above the ground and the way their broadside faces both matter. */
+export const isHorizontalAntenna = (kind: AntennaKind): boolean =>
+  kind === "horizontal-dipole" || kind === "inverted-v" || kind === "end-fed-half-wave" || kind === "end-fed-horizontal";
 
 export type GroundKind = "poor" | "average" | "good" | "sea";
 
@@ -310,6 +332,12 @@ export interface AntennaSpec {
   gainDb: number;
   /** Loss in the feedline, in dB, taken off the gain. */
   feedlineLossDb: number;
+  /**
+   * Length of the wire in metres, for the two kinds that are a wire of a stated length
+   * (`hasStatedLength`), between `WIRE_MIN_M` and `WIRE_MAX_M`. Left out for every other
+   * kind, whose length follows the frequency.
+   */
+  lengthM?: number;
 }
 
 export interface AntennaProfile extends AntennaSpec {
@@ -336,6 +364,134 @@ export interface AntennaPreset {
 const DIPOLE_NOTE =
   "Run as VOACAP's horizontal half-wave dipole over ground at this height, resonant on whichever frequency is asked about. A real antenna cut for one band, bent, sloping or near buildings will differ.";
 
+// ── A wire of a stated length ───────────────────────────────────────────────
+
+/**
+ * The lengths a wire may be given: those that are about a half-wave somewhere in the
+ * engine's range (0.45 wavelengths at 30 MHz is 4.5 m; 0.55 at 2 MHz is 82 m).
+ */
+export const WIRE_MIN_M = 4.5;
+export const WIRE_MAX_M = 82;
+/**
+ * "About a half-wave": the wire's length in free-space wavelengths at the frequency. A
+ * real half-wave wire is cut about 5% short of half a free-space wavelength, so the
+ * range is centred a little below 0.5. It is Outpost's own choice of where to stop
+ * trusting the half-wave model, not a figure from VOACAP.
+ */
+export const HALF_WAVE_FROM = 0.45;
+export const HALF_WAVE_TO = 0.55;
+/** Below this length in wavelengths VOACAP's vertical monopole takes off a loss for being short (its "antenna efficiency"). */
+export const SHORT_VERTICAL_WAVELENGTHS = 0.35;
+
+/** The frequencies on which a wire is about a half-wave, kept inside what the engine covers. */
+export function halfWaveRangeMhz(lengthM: number): { fromMhz: number; toMhz: number } {
+  const at = (wavelengths: number) => (wavelengths * 299.792458) / lengthM;
+  return { fromMhz: Math.max(HF_MIN_MHZ, at(HALF_WAVE_FROM)), toMhz: Math.min(HF_MAX_MHZ, at(HALF_WAVE_TO)) };
+}
+
+const mhzWords = (mhz: number): string => `${Number(mhz.toFixed(2))} MHz`;
+const rangeWords = (lengthM: number): string => {
+  const { fromMhz, toMhz } = halfWaveRangeMhz(lengthM);
+  return `${fromMhz.toFixed(1)} to ${toMhz.toFixed(1)} MHz`;
+};
+
+/**
+ * How a wire of a stated length stands at one frequency.
+ *
+ * - `half-wave`: the wire is about a half-wave, and the engine's model describes it.
+ * - `other-length`: a vertical wire that is not a half-wave here. The engine's vertical
+ *   monopole is a wire of any height fed at the bottom, so it is still run, and the
+ *   figure is for a wire of that length, said in wavelengths.
+ * - `not-modelled`: a horizontal wire that is not a half-wave here. VOACAP's dipole is
+ *   fed at its centre; no figure is given.
+ */
+export type WireState = "half-wave" | "other-length" | "not-modelled";
+
+export interface WireOnFrequency {
+  /** The wire's length in free-space wavelengths at this frequency. */
+  wavelengths: number;
+  state: WireState;
+  /** What that means for the figures, for a person. */
+  note: string;
+}
+
+/** A wire of a stated length at one frequency; null for an antenna that is not one. */
+export function wireOn(spec: AntennaSpec, mhz: number): WireOnFrequency | null {
+  if (!hasStatedLength(spec.kind) || spec.lengthM === undefined) return null;
+  const wavelengths = spec.lengthM / hfWavelengthMeters(mhz);
+  const said = `${spec.lengthM} m of wire is ${wavelengths.toFixed(2)} wavelengths at ${mhzWords(mhz)}`;
+  const half = wavelengths >= HALF_WAVE_FROM && wavelengths <= HALF_WAVE_TO;
+  if (spec.kind === "end-fed-horizontal") {
+    if (half)
+      return {
+        wavelengths,
+        state: "half-wave",
+        note: `${said}, about a half-wave: run as VOACAP's horizontal dipole (type 23) of that length.`,
+      };
+    return {
+      wavelengths,
+      state: "not-modelled",
+      note: `Not modelled: ${said}, not a half-wave. VOACAP's dipole is fed at its centre and does not describe a wire fed at its end unless the wire is a half-wave, so no figure is given. This wire is about a half-wave from ${rangeWords(spec.lengthM)}.`,
+    };
+  }
+  if (half)
+    return {
+      wavelengths,
+      state: "half-wave",
+      note: `${said}, about a half-wave: run as VOACAP's vertical monopole (type 22) of that height.`,
+    };
+  if (wavelengths < HALF_WAVE_FROM)
+    return {
+      wavelengths,
+      state: "other-length",
+      note: `${said}, shorter than a half-wave. The figure is VOACAP's vertical monopole (type 22) of that height, which is fed against the ground at its base${
+        wavelengths < SHORT_VERTICAL_WAVELENGTHS ? " and loses some gain for being short" : ""
+      }. An end-fed half-wave's matching unit is not made for this length and the wire has no ground system, so expect less than the figure.`,
+    };
+  return {
+    wavelengths,
+    state: "other-length",
+    note: `${said}, longer than a half-wave. The figure is VOACAP's vertical monopole (type 22) of that height: more of the power leaves at steep angles than from a half-wave. VOACAP's manual says its antenna models are not accurate far from resonance or for a wire a whole wavelength long.`,
+  };
+}
+
+/** Whether the engine's model describes this antenna at this frequency. True for every antenna that is not a wire of a stated length. */
+export const antennaModelledOn = (spec: AntennaSpec, mhz: number): boolean => wireOn(spec, mhz)?.state !== "not-modelled";
+
+/** Why a path cannot be given figures at a frequency: the note of whichever antenna is not modelled there, or null. */
+export function notModelledOn(txAntenna: AntennaSpec, rxAntenna: AntennaSpec, mhz: number): string | null {
+  for (const [spec, whose] of [
+    [txAntenna, "The transmitting antenna"],
+    [rxAntenna, "The receiving antenna"],
+  ] as const) {
+    const wire = wireOn(spec, mhz);
+    if (wire?.state === "not-modelled") return `${whose}: ${wire.note.replace(/^Not modelled: /, "")}`;
+  }
+  return null;
+}
+
+const MATCHING_UNIT_NOTE = "The matching unit's loss is not modelled: take it off as feedline loss in a profile.";
+
+function wirePreset(lengthM: number, upright: boolean, halfWaveBand: string): AntennaPreset {
+  const spec: AntennaSpec = {
+    kind: upright ? "end-fed-vertical" : "end-fed-horizontal",
+    heightM: upright ? 0 : 6,
+    ground: "average",
+    broadsideDeg: null,
+    gainDb: 0,
+    feedlineLossDb: 0,
+    lengthM,
+  };
+  return {
+    id: `efhw-${lengthM}m-${upright ? "vertical" : "horizontal"}`,
+    name: `End-fed half-wave, ${lengthM} m wire, ${upright ? "vertical" : "horizontal"}`,
+    spec,
+    modelledAs: upright
+      ? `A wire ${lengthM} m long standing upright with its bottom end at the ground, fed there: a half-wave on the ${halfWaveBand} band. Run as VOACAP's vertical monopole (type 22) ${lengthM} m high on every frequency. Off the ${halfWaveBand} band the figure is for a wire that is not a half-wave, fed against the ground, and says how long it is in wavelengths. ${MATCHING_UNIT_NOTE}`
+      : `A wire ${lengthM} m long hung level 6 m up, fed at one end: a half-wave on the ${halfWaveBand} band. From ${rangeWords(lengthM)} it is run as VOACAP's horizontal dipole (type 23) of that length. On other frequencies no figure is given: the engine's dipole is fed at its centre and does not describe an end-fed wire that is not a half-wave. ${MATCHING_UNIT_NOTE}`,
+  };
+}
+
 /** Generic starting points. Two antennas of the same kind do not have the same pattern; these are one model of each kind. */
 export const ANTENNA_PRESETS: readonly AntennaPreset[] = [
   {
@@ -357,12 +513,18 @@ export const ANTENNA_PRESETS: readonly AntennaPreset[] = [
     modelledAs:
       "VOACAP has no inverted-V. It is run as a horizontal half-wave dipole at the height you give, so give the mean height of the wire, not the apex. An approximation: a real inverted-V radiates a little less upwards and more off its ends.",
   },
+  wirePreset(10, false, "20 m"),
+  wirePreset(10, true, "20 m"),
+  wirePreset(5, false, "10 m"),
+  wirePreset(5, true, "10 m"),
   {
+    // Until the wires of a stated length were added this was "End-fed half-wave, horizontal
+    // at 6 m". Its id and its antenna are unchanged, so everything saved with it still is it.
     id: "efhw",
-    name: "End-fed half-wave, horizontal at 6 m",
+    name: "End-fed half-wave recut for every band, horizontal at 6 m",
     spec: { kind: "end-fed-half-wave", heightM: 6, ground: "average", broadsideDeg: null, gainDb: 0, feedlineLossDb: 0 },
     modelledAs:
-      "VOACAP has no end-fed model. A half-wave wire carries much the same current wherever it is fed, so it is run as a horizontal half-wave dipole at the wire's height. An approximation: a sloping wire, operation on harmonics and the matching unit's loss are not in it.",
+      "Not one wire: its length follows the frequency, so on every band it is run as a horizontal half-wave dipole at the wire's height (VOACAP has no end-fed model, and a half-wave wire carries much the same current wherever it is fed). For one wire of a fixed length choose a 10 m or 5 m wire, or make a profile. An approximation: a sloping wire and the matching unit's loss are not in it.",
   },
   {
     id: "vertical",
@@ -379,8 +541,9 @@ export const ANTENNA_PRESETS: readonly AntennaPreset[] = [
   },
 ];
 
-/** One line saying how an antenna of this kind is modelled. */
-export function antennaModelLabel(kind: AntennaKind): string {
+/** One line saying how an antenna of this kind is modelled. With the wire's length, for a kind that has one, the line names it. */
+export function antennaModelLabel(kind: AntennaKind, lengthM?: number): string {
+  const wire = lengthM === undefined ? "End-fed wire of a stated length" : `End-fed wire ${lengthM} m long`;
   switch (kind) {
     case "isotropic":
       return "Isotropic";
@@ -389,13 +552,35 @@ export function antennaModelLabel(kind: AntennaKind): string {
     case "inverted-v":
       return "Inverted-V, run as a horizontal half-wave dipole (approximation)";
     case "end-fed-half-wave":
-      return "End-fed half-wave, run as a horizontal half-wave dipole (approximation)";
+      return "End-fed half-wave recut for every band, run as a horizontal half-wave dipole (approximation)";
+    case "end-fed-horizontal":
+      return `${wire}, horizontal (VOACAP type 23 where it is a half-wave, no figure elsewhere)`;
+    case "end-fed-vertical":
+      return `${wire}, vertical (VOACAP type 22 of that height)`;
     case "vertical-monopole":
       return "Quarter-wave vertical (VOACAP type 22)";
   }
 }
 
 export const isApproximatedAntenna = (kind: AntennaKind): boolean => kind === "inverted-v" || kind === "end-fed-half-wave";
+
+/** Whether two antennas are the same antenna to the engine. */
+export const sameAntennaSpec = (a: AntennaSpec, b: AntennaSpec): boolean =>
+  a.kind === b.kind &&
+  a.heightM === b.heightM &&
+  a.ground === b.ground &&
+  a.broadsideDeg === b.broadsideDeg &&
+  a.gainDb === b.gainDb &&
+  a.feedlineLossDb === b.feedlineLossDb &&
+  (a.lengthM ?? null) === (b.lengthM ?? null);
+
+/** An antenna as a request carries it: a profile or a preset without its name, and with no length unless its kind has one. */
+export function antennaSpecOf(from: AntennaSpec): AntennaSpec {
+  const { kind, heightM, ground, broadsideDeg, gainDb, feedlineLossDb } = from;
+  const spec: AntennaSpec = { kind, heightM, ground, broadsideDeg, gainDb, feedlineLossDb };
+  if (hasStatedLength(kind) && typeof from.lengthM === "number") spec.lengthM = from.lengthM;
+  return spec;
+}
 
 // ── A prediction ────────────────────────────────────────────────────────────
 
@@ -473,6 +658,12 @@ export interface PredictionCell {
   rxGainDbi: number;
   /** Total loss from transmitter to receiver, dB. */
   lossDb: number;
+  /**
+   * Set when one of the antennas is a wire the engine's model does not describe at this
+   * frequency (`wireOn`). The cell then holds no figures: `path` is null and every number
+   * is 0, and none of them is a prediction.
+   */
+  notModelled?: true;
 }
 
 /** The ionosphere over the middle of the path at one hour, from the engine's maps. */
@@ -600,11 +791,16 @@ export interface PredictionResult {
   limits: string[];
 }
 
-/** The bands of one hour, best first: by reliability, then by signal-to-noise ratio. */
+/** The bands of one hour, best first: by reliability, then by signal-to-noise ratio. A band the antenna is not modelled on has no figures and comes last. */
 export function rankBands(hour: PredictionHour): Array<{ band: HfBand; cell: PredictionCell }> {
   return HF_BANDS.map((band, index) => ({ band, cell: hour.bands[index]! }))
     .filter((item) => item.cell !== undefined)
-    .sort((a, b) => b.cell.reliability - a.cell.reliability || b.cell.snrDbHz - a.cell.snrDbHz);
+    .sort(
+      (a, b) =>
+        Number(a.cell.notModelled ?? false) - Number(b.cell.notModelled ?? false) ||
+        b.cell.reliability - a.cell.reliability ||
+        b.cell.snrDbHz - a.cell.snrDbHz,
+    );
 }
 
 /** "07:00" for hour 7, "24:00" for the last hour of the day. */
@@ -645,6 +841,8 @@ export interface CompareSeries {
   snrDbHz: number[];
   mufMhz: number[];
   foF2: number[];
+  /** Set when an antenna of this series is not modelled at the frequency compared: `reliability` and `snrDbHz` then hold no figures. */
+  notModelled?: true;
 }
 
 export interface CompareResult {

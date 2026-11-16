@@ -466,7 +466,16 @@ export function createPropagationService(ctx: AppContext, host: EngineHost): Pro
       const described = await host.describe();
       const { description, datasets } = described;
       const { basis, tableSha } = await basisOf(base, engineOf(described), signal);
-      const key = keyOf("compare", { base, what: input.what, ssn: basis.ssn, tableSha, engine: description.sha256, datasets });
+      const key = keyOf("compare", {
+        base,
+        what: input.what,
+        ssn: basis.ssn,
+        tableSha,
+        engine: description.sha256,
+        datasets,
+        // The generic antennas are part of the question when they are what is compared: an answer kept for another list is not this one's.
+        ...(input.what === "antennas" ? { antennas: ANTENNA_PRESETS.map((preset) => [preset.name, preset.spec]) } : {}),
+      });
       const found = kept<CompareResult>(key);
       if (found) return { ...found, basis };
 
@@ -520,6 +529,8 @@ export function createPropagationService(ctx: AppContext, host: EngineHost): Pro
           snrDbHz: run.hours.map((hour) => hour.cells[0]!.snrDbHz),
           mufMhz: run.hours.map((hour) => hour.mufMhz),
           foF2: iono.map((hour) => hour.foF2),
+          // An antenna that is a wire the engine's model does not describe at this frequency: the figures above are blanks.
+          ...(run.hours[0]?.cells[0]?.notModelled ? { notModelled: true as const } : {}),
         });
       }
       const result: CompareResult = { what: input.what, frequencyMhz: base.frequencyMhz, mode, series, engine: description, basis };

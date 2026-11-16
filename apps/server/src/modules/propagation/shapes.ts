@@ -2,7 +2,20 @@
  * What a request about propagation may hold: the shapes the routes check a body
  * against, shared by single predictions, coverage maps and communication plans.
  */
-import { HF_MAX_MHZ, HF_MIN_MHZ, type ModeId, type ModeLine, type PredictionRequest } from "@outpost/shared";
+import {
+  ANTENNA_KINDS,
+  type AntennaSpec,
+  HF_MAX_MHZ,
+  HF_MIN_MHZ,
+  hasStatedLength,
+  isHorizontalAntenna,
+  type ModeId,
+  type ModeLine,
+  notModelledOn,
+  type PredictionRequest,
+  WIRE_MAX_M,
+  WIRE_MIN_M,
+} from "@outpost/shared";
 import { z } from "zod";
 import { badRequest } from "../../core/errors.ts";
 import { modeLine } from "./service.ts";
@@ -16,19 +29,45 @@ export const noise = z.enum(["city", "residential", "rural", "remote"]);
 export const modes = z.enum(["ssb", "cw", "ft8", "js8", "digital"]);
 export const power = z.number().min(0.1, "The engine works in tenths of a watt: give at least 0.1 W.").max(500_000);
 
+const WIRE_LENGTH = `Give the length of the wire in metres, between ${WIRE_MIN_M} and ${WIRE_MAX_M}: the lengths that are a half-wave somewhere between ${HF_MIN_MHZ} and ${HF_MAX_MHZ} MHz.`;
+
 export const antenna = z
   .object({
-    kind: z.enum(["isotropic", "horizontal-dipole", "inverted-v", "end-fed-half-wave", "vertical-monopole"]),
+    kind: z.enum(ANTENNA_KINDS),
     heightM: z.number().min(0).max(200),
     ground: z.enum(["poor", "average", "good", "sea"]),
     broadsideDeg: z.number().min(0).max(360).nullable(),
     gainDb: z.number().min(-40).max(30),
     feedlineLossDb: z.number().min(0).max(40),
+    lengthM: z.number().min(WIRE_MIN_M, WIRE_LENGTH).max(WIRE_MAX_M, WIRE_LENGTH).optional(),
   })
-  .refine((value) => value.kind === "isotropic" || value.kind === "vertical-monopole" || value.heightM >= 0.5, {
-    message: "Give the height of a horizontal antenna above the ground: at least 0.5 m.",
-    path: ["heightM"],
+  .superRefine((value, issue) => {
+    if (isHorizontalAntenna(value.kind) && value.heightM < 0.5)
+      issue.addIssue({
+        code: "custom",
+        message: "Give the height of a horizontal antenna above the ground: at least 0.5 m.",
+        path: ["heightM"],
+      });
+    if (hasStatedLength(value.kind) && value.lengthM === undefined)
+      issue.addIssue({ code: "custom", message: WIRE_LENGTH, path: ["lengthM"] });
+    // An antenna of any other kind has no length of its own (it follows the frequency), and one sent with it is a mistake, not a hint.
+    if (!hasStatedLength(value.kind) && value.lengthM !== undefined)
+      issue.addIssue({
+        code: "custom",
+        message: "Only an end-fed wire of a stated length has a wire length. Leave it out for this kind of antenna.",
+        path: ["lengthM"],
+      });
   });
+
+/**
+ * Refuses a question about one frequency when an antenna is a wire the engine's model
+ * does not describe there. For a question that has only that one frequency to answer (a
+ * coverage map); a prediction for a path answers for every band and says which it cannot.
+ */
+export function checkedModelled(request: { txAntenna: AntennaSpec; rxAntenna: AntennaSpec; frequencyMhz: number }): void {
+  const why = notModelledOn(request.txAntenna, request.rxAntenna, request.frequencyMhz);
+  if (why) throw badRequest(`No figure can be given on ${request.frequencyMhz} MHz. ${why}`, { reason: "antenna-not-modelled" });
+}
 
 export const isDate = (value: string) => {
   const time = Date.parse(`${value}T00:00:00Z`);

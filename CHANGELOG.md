@@ -593,6 +593,20 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   [docs/hf-propagation.md](docs/hf-propagation.md).
 - **Choose a place on the offline map** wherever the planner takes a position: press
   the map, or press a saved place to use it by name. Works by touch.
+- **End-fed half-wave wires of a stated length** in the HF planner, coverage maps,
+  communication plans, the contact log's comparison and equipment profiles: a 10 m and
+  a 5 m wire, each horizontal and vertical, as generic antennas, and a wire length (4.5
+  to 82 m) as part of an antenna profile. Each is run as one of VOACAP's own models with
+  the length in metres, as checked against the engine: an upright wire as its vertical
+  monopole (type 22) of that height on every band, with its length in wavelengths said
+  band by band; a level wire as its horizontal dipole (type 23) only where the wire is
+  about a half-wave. On other bands a level wire is **not modelled**: the engine's dipole
+  is fed at its centre, so no figure is given, and the band is hatched on the charts and
+  written "Not modelled" in the ranking, the plan matrix and the plan's exports, never
+  as 0%. The matching unit's loss is not modelled and is said to be taken off as
+  feedline loss. The antenna that was "End-fed half-wave, horizontal at 6 m" is renamed
+  "End-fed half-wave recut for every band, horizontal at 6 m": its length follows the
+  frequency, as it always did, and everything saved with it is unchanged.
 - **HF coverage** under Radio: the engine asked about every cell of a grid laid over
   the area the map shows, drawn as a layer over the offline map by reliability,
   signal-to-noise ratio or signal strength for any hour of the day. Every cell is one

@@ -32,7 +32,7 @@ import { toJobDto } from "../../core/jobs.ts";
 import { propagationSaved } from "../../db/schema.ts";
 import { EngineRefused } from "./host.ts";
 import { engineProblem, fix, type PropagationService } from "./service.ts";
-import { antenna, checkedMode, date, frequency, modes, noise, power, site } from "./shapes.ts";
+import { antenna, checkedMode, checkedModelled, date, frequency, modes, noise, power, site } from "./shapes.ts";
 import { hasAzimuthPattern } from "./voacap/antenna-files.ts";
 
 export const COVERAGE_JOB = "propagation.coverage";
@@ -91,6 +91,7 @@ export function normaliseCoverage(request: CoverageRequest): CoverageRequest {
 function checkedCoverage(body: unknown): CoverageRequest {
   const request = normaliseCoverage(coverage.parse(body) as CoverageRequest);
   checkedMode(request);
+  checkedModelled(request);
   const grid = coverageGrid(request.area, request.resolution);
   // Cannot happen with the three grids offered; it guards the sum, not the person.
   if (grid.columns * grid.rows > COVERAGE_MAX_CELLS) throw badRequest(`A coverage map may have at most ${COVERAGE_MAX_CELLS} cells.`);

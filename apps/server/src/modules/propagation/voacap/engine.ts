@@ -7,6 +7,7 @@
  */
 import {
   type AntennaSpec,
+  antennaModelledOn,
   type EngineDescription,
   greatCirclePoint,
   HF_MAX_MHZ,
@@ -96,6 +97,14 @@ function cell(wire: WireCell): PredictionCell {
   };
 }
 
+/**
+ * What stands at a frequency on which an antenna is a wire the engine's model does not
+ * describe: no figures, and a mark saying why. The engine was run with the file all the
+ * same (one file serves every frequency); what it answered there is thrown away, because
+ * it is the answer for a different antenna.
+ */
+const notModelledCell = (mhz: number): PredictionCell => ({ ...cell({ mhz, mode: null }), notModelled: true });
+
 const wireSite = (site: PropagationSite) => ({ name: site.name.slice(0, 20), lat: site.lat, lon: site.lon });
 
 export function createVoacapEngine(paths: VoacapPaths): PropagationEngine {
@@ -177,7 +186,9 @@ export function createVoacapEngine(paths: VoacapPaths): PropagationEngine {
             });
           }
         }
-        for (const [index, hour] of answer.hours.entries()) hours[index]!.cells.push(...hour.freqs.map(cell));
+        const modelled = freqs.map((mhz) => antennaModelledOn(request.txAntenna, mhz) && antennaModelledOn(request.rxAntenna, mhz));
+        for (const [index, hour] of answer.hours.entries())
+          hours[index]!.cells.push(...hour.freqs.map((wire, at) => (modelled[at] ? cell(wire) : notModelledCell(wire.mhz))));
       }
       return {
         distanceKm: round(first!.distanceKm, 1),
@@ -226,11 +237,20 @@ export function createVoacapEngine(paths: VoacapPaths): PropagationEngine {
     },
 
     listing(request: CircuitRequest): string {
+      // The printed page has no way to mark a column as not this antenna, so a frequency
+      // on which an antenna is not modelled is left off the page.
+      const modelled = request.frequenciesMhz.filter(
+        (mhz) => antennaModelledOn(request.txAntenna, mhz) && antennaModelledOn(request.rxAntenna, mhz),
+      );
+      if (modelled.length === 0)
+        throw new Error(
+          "There is no page to print: on every frequency asked about, one of the antennas is a wire the engine's model does not describe.",
+        );
       const { cards } = antennas(request);
       return live().run<{ listing: string }>({
         task: "systems",
         listing: true,
-        ...base(request, request.frequenciesMhz.slice(0, FREQUENCIES_PER_RUN)),
+        ...base(request, modelled.slice(0, FREQUENCIES_PER_RUN)),
         ...cards,
       }).listing;
     },

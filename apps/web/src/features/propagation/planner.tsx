@@ -41,6 +41,7 @@ import {
   useRemoveSaved,
   useSaved,
   useSavePrediction,
+  wireHint,
 } from "./data";
 import { PlaceInput } from "./place-field";
 import { bestHour, Results } from "./results";
@@ -94,18 +95,25 @@ export function Planner() {
 
   const antennaOptions = (saved: PlannerForm["txAntennaSaved"]) => [
     ...(saved ? [{ value: AS_SAVED, label: "As saved", description: antennaSummary(saved) }] : []),
-    ...antennas.map((antenna) => ({ value: antenna.id, label: antenna.name, description: antennaModelLabel(antenna.kind) })),
+    ...antennas.map((antenna) => ({
+      value: antenna.id,
+      label: antenna.name,
+      description: antennaModelLabel(antenna.kind, antenna.lengthM),
+    })),
     ...ANTENNA_PRESETS.map((preset) => ({ value: `preset:${preset.id}`, label: preset.name, description: "Generic" })),
   ];
   const antennaNote = (id: string, saved: PlannerForm["txAntennaSaved"]) => {
+    const chosen = antennaOf(id, antennas, saved);
+    // A wire of a stated length: what it is on the frequency in the form, said before anything is asked.
+    const wire = chosen ? wireHint(chosen.spec, form.frequencyMhz) : null;
+    const onFrequency = wire ? ` ${wire.note} The matching unit's loss is not modelled: take it off as feedline loss in a profile.` : "";
     if (id === AS_SAVED && saved)
-      return `The antenna this prediction was saved with: ${antennaSummary(saved)}. None of your profiles or the generic antennas is exactly this now.`;
+      return `The antenna this prediction was saved with: ${antennaSummary(saved)}. None of your profiles or the generic antennas is exactly this now.${onFrequency}`;
     const preset = ANTENNA_PRESETS.find((item) => `preset:${item.id}` === id);
-    if (preset) return preset.modelledAs;
-    const chosen = antennaOf(id, antennas);
-    return chosen
-      ? `${antennaModelLabel(chosen.spec.kind)}${isApproximatedAntenna(chosen.spec.kind) ? "." : ", from your profile."}`
-      : undefined;
+    if (preset) return wire ? onFrequency.trim() : preset.modelledAs;
+    if (!chosen) return undefined;
+    if (wire) return `From your profile.${onFrequency}`;
+    return `${antennaModelLabel(chosen.spec.kind)}${isApproximatedAntenna(chosen.spec.kind) ? "." : ", from your profile."}`;
   };
   const mode = modeById(form.mode);
   const fieldError = (field: keyof PlannerForm) => (problem?.field === field ? problem.problem : undefined);
