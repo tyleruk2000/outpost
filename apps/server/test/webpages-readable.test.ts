@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { isFetchablePicture, parsePageAddress } from "../src/modules/webpages/address.ts";
 import { convertArticle, plainDate, writeArticle } from "../src/modules/webpages/convert.ts";
+import { PAGE_READS_AT_ONCE, PAGE_READS_WAITING, pageReads, readPageInWorker } from "../src/modules/webpages/read-host.ts";
 import { countElements, readPage } from "../src/modules/webpages/read-page.ts";
 import { findArticle } from "../src/modules/webpages/readable.ts";
 import { paragraphs } from "./fixtures/webpages/pages.ts";
@@ -274,5 +275,69 @@ describe("dates", () => {
     expect(plainDate("2026-12-01")).toBe("1 December 2026");
     expect(plainDate("2026-13-01")).toBeUndefined();
     expect(plainDate("March 2026")).toBeUndefined();
+  });
+});
+
+describe("reading a page away from the server's thread", () => {
+  const bytes = (html: string) => new Uint8Array(Buffer.from(html));
+  const article = `<!doctype html><html><head><title>A page</title></head><body><article>${paragraphs(3)}</article></body></html>`;
+
+  it("gives the same answer as reading it directly, and the same refusals", async () => {
+    const read = await readPageInWorker({ bytes: bytes(article), contentType: "text/html", url: PAGE });
+    expect(read.article.title).toBe("A page");
+    expect(read.converted.text).toBe(readPage(Buffer.from(article), "text/html", PAGE).converted.text);
+    await expect(
+      readPageInWorker({ bytes: bytes("<html><body><p>Hi.</p></body></html>"), contentType: "text/html", url: PAGE }),
+    ).rejects.toMatchObject({
+      code: "unsupported",
+      message: expect.stringMatching(/No readable text was found/),
+    });
+    await expect(
+      readPageInWorker({
+        bytes: bytes(`<body><article>${paragraphs(3)}${"<i></i>".repeat(50_001)}</article></body>`),
+        contentType: "text/html",
+        url: PAGE,
+      }),
+    ).rejects.toMatchObject({ code: "too_large", message: expect.stringMatching(/more parts than Outpost reads/) });
+  });
+
+  it("is stopped when it takes too long, or when nobody is waiting any more", async () => {
+    const long = `<body><article>${paragraphs(12_000)}</article></body>`;
+    await expect(readPageInWorker({ bytes: bytes(long), contentType: "text/html", url: PAGE }, { timeoutMs: 30 })).rejects.toThrow(
+      /took too long to read/,
+    );
+    const gone = new AbortController();
+    const reading = readPageInWorker({ bytes: bytes(long), contentType: "text/html", url: PAGE }, { signal: gone.signal });
+    gone.abort(new Error("The person left"));
+    await expect(reading).rejects.toThrow("The person left");
+    expect(pageReads()).toEqual({ reading: 0, waiting: 0 });
+  });
+
+  it("reads a page built to be slow in a time that grows no faster than the page", async () => {
+    // Thousands of empty elements, and thousands of one-word pieces, are what the converter is slowest at when left alone.
+    for (const shape of ["<i></i>", "<b><i><span></span></i></b>", "<span>word </span>", "x<sup>[note]</sup>", "a<wbr>"]) {
+      const started = performance.now();
+      const read = await readPageInWorker({
+        bytes: bytes(`<body><article>${paragraphs(3)}<div>${shape.repeat(12_000)}</div></article></body>`),
+        contentType: "text/html",
+        url: PAGE,
+      });
+      expect(read.converted.text, shape).toContain("rain barrel");
+      expect(performance.now() - started, shape).toBeLessThan(10_000);
+    }
+  }, 60_000);
+
+  it("takes pages in turn, and turns one away when the line is full", async () => {
+    const all = Array.from({ length: PAGE_READS_AT_ONCE + PAGE_READS_WAITING + 1 }, () =>
+      readPageInWorker({ bytes: bytes(article), contentType: "text/html", url: PAGE }).then(
+        (read) => read.article.title,
+        (error: Error) => error.message,
+      ),
+    );
+    expect(pageReads()).toEqual({ reading: PAGE_READS_AT_ONCE, waiting: PAGE_READS_WAITING });
+    const answers = await Promise.all(all);
+    expect(answers.filter((answer) => answer === "A page")).toHaveLength(PAGE_READS_AT_ONCE + PAGE_READS_WAITING);
+    expect(answers.at(-1)).toMatch(/already reading several web pages/);
+    expect(pageReads()).toEqual({ reading: 0, waiting: 0 });
   });
 });

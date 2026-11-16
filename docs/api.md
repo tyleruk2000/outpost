@@ -326,7 +326,8 @@ Types: `packages/shared/src/documents.ts`.
 | `POST /api/documents/:id/ocr` | Reads the text of a scanned PDF's pages, or of a PNG, JPEG, GIF or WebP image, by OCR, as a job on the `ocr` queue (one at a time). Body: `{ "redo": true }` to read again the pages OCR has read before; otherwise only pages not yet read. Answers `{ document, jobId }` (`DocumentOcrResponse`), or the job already doing it. Follow and cancel it through `/api/jobs`; cancelling keeps the pages read so far. `415` for a type OCR does not read or when OCR is not available (the message says why), `409` while the document's own text is still being read or when there is nothing left to read, `503` while its storage is disconnected. |
 | `GET /api/ocr` | Whether this installation can run OCR and with what (`OcrStatus`): `available`, `reason` when not, `engine`, the installed `languages` (each `builtIn` or added, and whether `selected`), `missingLanguages`, `languageFolder`, `auto`, and `limits`. |
 | `GET /api/documents/:id/text` | The extracted text in sections (`DocumentTextResponse`). Query: `page`. Each section has `ocr: true` when it was read from a picture by OCR. |
-| `GET /api/documents/:id/markdown` | A Markdown document with its formatting, as a tree of plain values (`DocumentMarkdownResponse`): headings (each with an `id` made from its words), paragraphs, lists, quotes, code (with the `lang` written after the fence, such as `mermaid` or `viz`), tables, and bold, italic, code and links inside them. Never HTML. A link is one of three things: `link`, for an `http`, `https` or `mailto` address; `jump`, to a heading of the same document; or `ref`, for `outpost:entry/<entry id>/<chapter key>`, which carries the entry's id and name and, when it is in the library, the `collectionId` and `documentId` the server found. Pictures become their description and caption; embedded HTML becomes its words. `415` for a document that is not Markdown, `413` for a file over 2 MB (the web app then shows the text from `/text`), `404` when the file is missing. |
+| `GET /api/documents/:id/markdown` | A Markdown document with its formatting, as a tree of plain values (`DocumentMarkdownResponse`): headings (each with an `id` made from its words), paragraphs, lists, quotes, code (with the `lang` written after the fence, such as `mermaid` or `viz`), tables, and bold, italic, code and links inside them. Never HTML. A link is one of three things: `link`, for an `http`, `https` or `mailto` address; `jump`, to a heading of the same document; or `ref`, for `outpost:entry/<entry id>/<chapter key>`, which carries the entry's id and name and, when it is in the library, the `collectionId` and `documentId` the server found. Pictures become their description and caption, unless the file carries the picture itself, in which case the `image` has `picture: <number>`; embedded HTML becomes its words. For a web page Outpost saved, `savedFrom` gives `{ url, savedAt, site? }` as the file records it (`SavedFrom`). `415` for a document that is not Markdown, `413` for a file whose text is over 2 MB (the web app then shows the text from `/text`; pictures the file carries do not count), `404` when the file is missing. |
+| `GET /api/documents/:id/pictures/:number` | One picture that a Markdown document carries (a saved web page keeps its pictures inside its file). `number` is 1 to 9999. Sent only if its bytes are a PNG, JPEG, GIF or WebP image, with that type, an `ETag`, and a sandbox policy. `404` when the document has no such picture or is not Markdown. |
 | `GET /api/documents/:id/file` | The original file. Supports byte ranges and `ETag`. Query `download=1` forces a download. Sent with a sandbox policy. |
 | `POST /api/documents/move` | Body: `locationId`. Moves every document that is not on that location to it, as a job. `{ job, documents }`. |
 | `GET /api/tags` | `{ tags }`: every tag with the number of documents carrying it (`TagDto`). |
@@ -426,7 +427,8 @@ Types: `packages/shared/src/downloads.ts`.
 Downloads are started by the catalogue, maps and links routes, not here. `kind` says
 what is being fetched: `zim`, `map`, `terrain`, `places`, `file`, `model`, or `document`
 for a file saved from a link. A completed `document` download carries the `documentId`
-of the library document it became.
+of the library document it became. A saved web page is not a download: it is a job of
+its own (see [Web pages](#web-pages)).
 
 ## Links
 
@@ -449,6 +451,31 @@ private network is refused with `403 forbidden`, and every connection the downlo
 makes, redirects included, must land on a public address, unless the server was started
 with `OUTPOST_ALLOW_PRIVATE_DOWNLOADS=true`. What arrives must be the kind of file its
 name says, or nothing is kept.
+
+## Web pages
+
+Types: `packages/shared/src/webpages.ts`. See
+[notes-and-imports.md](notes-and-imports.md#saving-a-web-page).
+
+These fetch one page from the web, because a person asked, and keep a readable copy
+in the document library. Each takes exactly one address; a body with any other field
+(a list of addresses, say) is a `400`.
+
+| Method and path | Purpose |
+| --- | --- |
+| `POST /api/webpages/preview` | Body: `url`. Fetches that page, finds the article, and answers `WebPagePreview`: `previewId`, the `url` it came from after redirects and the `requestedUrl`, `title`, `byline`, `site`, `published`, `language`, `words`, an `excerpt`, `pictures` (`count`, `willFetch`, and the `hosts` they would come from), `existing` (copies of this address already in the library, as `{ documentId, title, savedAt }`), and the `limits`. Nothing is kept but the look itself, in memory, for fifteen minutes. The request holds until the page has arrived (at most 20 seconds) and been read; closing the connection stops the fetch. Pictures are not fetched. |
+| `POST /api/webpages/save` | Body (`SaveWebPageRequest`): `url`; `previewId?` (saves the page as it was looked at, without fetching it again; without it, or once it has lapsed, the page is fetched); `pictures?` (default false: fetch the article's pictures); `keepBoth?` or `replaceDocumentId?` (required, one or the other, when the address is already in the library); `locationId?`. Answers `{ job }`: a job of type `webpage.save` on the `webpage` queue, followed and cancelled through `/api/jobs`. Its `result` is `SaveWebPageResult`: `documentId`, `title`, `url`, `pictures` (`kept`, `bytes`, and each one `skipped` with the reason), and `replacedDocumentId` when a copy was replaced. A second request for an address already being saved answers with the job under way. |
+
+Errors: `400` for an address that is not one `http` or `https` address without
+credentials; `403` for an address on this computer or a private network, or a page
+that redirects to one (unless the server was started with
+`OUTPOST_ALLOW_PRIVATE_DOWNLOADS=true`); `409` from `save` when the address is already
+in the library and the request does not say what to do (`details.existing` lists the
+copies), and from `preview` when too many pages are being read at once; `413` for a
+page over 5 MB or 50,000 elements; `415` for an answer that is not a web page, a page
+with no readable text, or one that could not be read; `502` when the site answered
+with an error or took too long; `503` when it could not be reached. A job that fails
+carries the same sentence in its `error`.
 
 ## Catalogue
 

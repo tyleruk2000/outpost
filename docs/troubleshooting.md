@@ -221,6 +221,24 @@ Free space on that drive, then press **Retry**.
 keeps working from the last known details. A different message names the source that
 failed; try again later.
 
+### "No readable text was found on this page."
+
+Saving a web page keeps what is written in the page's own HTML. A page that is drawn
+by a script after it loads (most sites that work like an app), or that only asks you
+to sign in, has nothing in it to keep: Outpost has no browser inside it, runs no
+page's scripts, and does not sign in to sites. Look for a plain or printable version
+of the page, or save it as a PDF from your browser's Print menu and add that to the
+Library. The other things Outpost says when a page cannot be saved are listed in
+[notes-and-imports.md](notes-and-imports.md#what-cannot-be-saved-and-what-outpost-says).
+
+### A saved web page is missing a part, or some of its pictures
+
+The article is found by rules, and a page laid out in an unusual way can lose a part.
+Pictures are left out when they are over a limit, are not PNG, JPEG, GIF or WebP, or
+when their host refuses to serve them to anything but its own pages; the report after
+saving lists each one and why. The address at the top of the saved page leads back to
+the original while you have a connection.
+
 ## Reference collections
 
 ### "Reading reference collections needs the kiwix-serve program, which this installation does not have."

@@ -54,7 +54,9 @@ picture, not a surveyed path.
   page links to out on the internet can be fetched into the library while you have one.
 - **Your documents.** Add PDFs, EPUBs, Markdown, HTML, text and images. Text is
   extracted and indexed down to the page; originals are kept untouched. A built-in
-  PDF viewer opens at the page a search result points to.
+  PDF viewer opens at the page a search result points to. Paste the address of a web
+  page to keep a readable copy of the article for when there is no connection: one
+  page at a time, for your own reading.
 - **Notes.** A page tree and a block editor: headings, lists, to-dos, tables, code,
   callouts, images, links between pages, backlinks, templates, favourites, trash, and
   export to Markdown. Import from Markdown, HTML, and Notion exports.

@@ -85,6 +85,18 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   with a setting. What it reads is searchable page by page and is marked as read by
   OCR. Other languages work from a data file placed in the data directory.
 
+- Save a web page to read offline. Paste the address of a page; Outpost fetches that
+  one page, finds the article in it (title, writer and site when given, and the text
+  with its headings, lists, quotations, tables, code and links), and keeps it as a
+  document that says "Saved from *address* on *date*" and is searched like any other.
+  Pictures come along if asked, inside the same file, within limits on their number
+  and size. The page is looked at before it is saved, so what will be kept is seen
+  first. One page per action: nothing is crawled, scheduled or fetched again, and the
+  same address saved twice asks whether to replace the earlier copy or keep both. On
+  the Library, the Import screen and the command palette.
+- A Markdown document shows the pictures it carries in its own file; any other picture
+  is still only described, and nothing is loaded from another site.
+
 #### Notes
 
 - A workspace of nested pages with headings, lists, task lists, quotes, code blocks,
@@ -312,6 +324,11 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   recording can exhaust the server's memory. Reading happens in a worker thread; its
   heap limit is a last line and no longer what the server's safety rests on. Two files
   are read at a time, and a file may turn at most 5,000 waypoints into saved places.
+- A saved web page is fetched through the guarded download client, pictures included,
+  with a plain client name and no cookie or referrer; read in a worker thread under
+  limits of size, elements and time; cleaned with an allow-list; and kept and shown as
+  Markdown, never as HTML. A page drawn by script is refused with the reason: Outpost
+  runs no page's scripts.
 - No telemetry, and no outbound request unless a person asks for one.
 - Answers from a language model: the question and passages go only to the model
   server a person configured (redirects refused, no credentials in the address),

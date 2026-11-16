@@ -46,7 +46,8 @@ const schema: typeof defaultSchema = {
   clobber: [],
 };
 
-const toTree = unified().use(rehypeSanitize, schema).use(rehypeRemark).freeze();
+const cleaner = unified().use(rehypeSanitize, schema).freeze();
+const toTree = unified().use(rehypeRemark).freeze();
 
 const toText = unified()
   .use(remarkGfm, { tablePipeAlign: false })
@@ -104,6 +105,9 @@ const SUBSCRIPT: Record<string, string> = {
   ")": "₎",
 };
 
+/** Elements that are complete with nothing inside them. */
+const MEANS_SOMETHING_EMPTY = new Set(["br", "hr", "img", "td", "th", "tr", "wbr"]);
+
 const CELL_BLOCKS = new Set([
   "p",
   "div",
@@ -126,33 +130,92 @@ const CELL_BLOCKS = new Set([
 ]);
 
 /**
- * Two things Markdown would otherwise lose. "H₂O" and "x²" keep their small figures
- * where the characters exist; and paragraphs inside one table cell stay apart.
+ * Inline elements that Markdown has no mark for. The converter passes their words
+ * through, one piece of text per element, and then joins neighbouring pieces one pair at
+ * a time, looking through the joined text again after each: with thousands of them in a
+ * row its time grows with the square of their number. They are opened here instead, and
+ * their words joined once.
+ */
+const NO_MARK = new Set([
+  "span",
+  "sup",
+  "sub",
+  "small",
+  "big",
+  "font",
+  "abbr",
+  "acronym",
+  "cite",
+  "dfn",
+  "time",
+  "u",
+  "ins",
+  "var",
+  "mark",
+  "bdi",
+  "bdo",
+  "data",
+  "label",
+  "nobr",
+  "ruby",
+  "rb",
+  "rt",
+  "rp",
+]);
+
+/**
+ * Gets the cleaned article ready for the converter. Two things Markdown would
+ * otherwise lose are kept: "H₂O" and "x²" keep their small figures where the
+ * characters exist, and paragraphs inside one table cell stay apart. And the shapes the
+ * converter is slow at are taken away: elements with nothing in them, and long runs of
+ * separate pieces of text.
  */
 function prepare(node: Element, depth = 0): void {
   if (depth > 400) return;
   const inCell = node.tagName === "td" || node.tagName === "th";
   const children: ElementContent[] = [];
+  const add = (child: ElementContent) => {
+    const last = children.at(-1);
+    if (child.type === "text" && last?.type === "text") last.value += child.value;
+    else children.push(child);
+  };
   for (const child of node.children) {
     if (child.type !== "element") {
-      children.push(child);
+      if (child.type === "text") add({ type: "text", value: child.value });
       continue;
     }
+    if (child.tagName === "wbr") continue;
     prepare(child, depth + 1);
+    // An element with nothing in it says nothing.
+    if (!MEANS_SOMETHING_EMPTY.has(child.tagName) && child.children.every((inner) => inner.type === "text" && !inner.value.trim())) {
+      if (child.children.length > 0) add({ type: "text", value: " " });
+      continue;
+    }
     if ((child.tagName === "sup" || child.tagName === "sub") && child.children.length === 1 && child.children[0]!.type === "text") {
       const table = child.tagName === "sup" ? SUPERSCRIPT : SUBSCRIPT;
       const written = child.children[0]!.value.trim();
       if (written && written.length <= 6 && [...written].every((letter) => table[letter])) {
-        children.push({ type: "text", value: [...written].map((letter) => table[letter]).join("") });
+        add({ type: "text", value: [...written].map((letter) => table[letter]).join("") });
         continue;
       }
     }
-    if (inCell && CELL_BLOCKS.has(child.tagName)) {
-      if (children.length > 0) children.push({ type: "element", tagName: "br", properties: {}, children: [] });
-      children.push(...child.children);
+    // The line that opens a folded part reads as its heading.
+    if (child.tagName === "summary") {
+      add({
+        type: "element",
+        tagName: "p",
+        properties: {},
+        children: [{ type: "element", tagName: "strong", properties: {}, children: child.children }],
+      });
       continue;
     }
-    children.push(child);
+    if (NO_MARK.has(child.tagName) || (inCell && CELL_BLOCKS.has(child.tagName))) {
+      if (inCell && CELL_BLOCKS.has(child.tagName) && children.length > 0)
+        add({ type: "element", tagName: "br", properties: {}, children: [] });
+      for (const inner of child.children) add(inner);
+      continue;
+    }
+    add(child);
   }
   node.children = children;
 }
@@ -205,8 +268,11 @@ export interface ConvertedArticle {
 }
 
 export function convertArticle(content: Element): ConvertedArticle {
-  prepare(content);
-  const converted = toTree.runSync({ type: "root", children: [content] } satisfies HastRoot) as unknown as Root;
+  // Cleaned first, so that what is prepared and converted is only ever what the allow-list let through.
+  const cleaned = cleaner.runSync({ type: "root", children: [content] } satisfies HastRoot) as HastRoot;
+  const article: Element = { type: "element", tagName: "div", properties: {}, children: cleaned.children as ElementContent[] };
+  prepare(article);
+  const converted = toTree.runSync({ type: "root", children: [article] } satisfies HastRoot) as unknown as Root;
   const tree = (settle(converted, 0)[0] as Root | undefined) ?? { type: "root", children: [] };
 
   // A heading left with nothing under it (its list of links was taken out, say) goes too.

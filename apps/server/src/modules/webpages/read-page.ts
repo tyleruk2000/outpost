@@ -17,10 +17,11 @@ export const MIN_TEXT = 200;
 
 /**
  * The most elements a page may have. What reading a page costs follows the number of
- * its elements, not its size in bytes: half a million empty tags fit in 5 MB and would
- * take gigabytes to hold as a tree. Long real articles have a few tens of thousands.
+ * its elements, not its size in bytes: 700,000 empty elements fit in 5 MB, and reading
+ * such a page took about 2 GB before it failed. The one long encyclopedia article tried
+ * by hand had about three thousand.
  */
-export const MAX_ELEMENTS = 100_000;
+export const MAX_ELEMENTS = 50_000;
 
 export const NO_BROWSER =
   "Outpost has no browser inside it and does not run a page's scripts, so it can only keep what is written in the page itself.";

@@ -625,7 +625,7 @@ describe("what is refused, and how it is said", () => {
     });
     const parts = await preview(app, big.url("/parts"));
     expect(parts.status).toBe(413);
-    expect(parts.body.error.message).toMatch(/more parts than Outpost reads: about 150,0\d\d elements, and the most is 100,000/);
+    expect(parts.body.error.message).toMatch(/more parts than Outpost reads: about 150,0\d\d elements, and the most is 50,000/);
 
     // Nested far deeper than anyone writes: refused, and the server is still answering.
     big.routes.set("/deep", {

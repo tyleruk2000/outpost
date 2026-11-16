@@ -2,7 +2,8 @@
 
 This page describes the notes workspace (pages, blocks, links, templates, trash,
 attachments and Markdown export), how to import existing notes, including an export
-from Notion, and what happens to notes written on a portable drive.
+from Notion, how to save a web page into the library, and what happens to notes
+written on a portable drive.
 
 ## The notes workspace
 
@@ -230,7 +231,9 @@ and nothing is written to your notes until you have seen exactly what will be cr
 Up to 500 files can be uploaded at once; for more, put them in a ZIP. Each file may be
 as large as the server's upload limit (`OUTPOST_MAX_UPLOAD_MB`).
 
-An import never downloads anything. A picture at a web address stays a link.
+An import never downloads anything. A picture at a web address stays a link. Fetching
+a page from the web is a separate thing, asked for separately: see
+[Saving a web page](#saving-a-web-page).
 
 ### The steps
 
@@ -367,6 +370,137 @@ upload limit is left out and the rest imported. See [security.md](security.md#ar
 - It does not read Word (`.docx`), OneNote or Evernote (`.enex`) files.
 - It does not merge two workspaces or sync with the source afterwards. (Notes written
   on a portable drive are a different matter: see below.)
+
+## Saving a web page
+
+Paste the address of a page you are reading, and Outpost keeps a readable copy of it
+in the document library: the article, without the menus, adverts and buttons around it,
+searchable like every other document and readable with no connection.
+
+It is on the Library (**Save a web page**, beside **Add documents**), on the Import
+screen, and in the command palette.
+
+**It is a copy for your own reading.** The page still belongs to whoever published it.
+Outpost has no way to publish or share a saved page, and adds none. A saved page is
+one of your documents, so it travels wherever your documents do: into a backup, and
+onto a portable drive if you choose to copy documents to it. Think about that before
+handing a drive to someone else (see [portable.md](portable.md#what-a-drive-contains)).
+
+### The steps
+
+1. **Paste the address** and choose **Look at the page**. Outpost fetches that one page
+   and shows what it found: the title, who wrote it and for which site if the page
+   says, how many words, the opening lines, how many pictures the article has and
+   which hosts they would come from, and whether the address is already in your
+   library. Nothing has been kept yet.
+2. **Decide about the pictures.** With the box ticked they are fetched and kept with the
+   page. Without it, each picture's description is kept in its place.
+3. **Save page.** The document appears in the library, and its text is read for search
+   like any other.
+
+The opening lines are there so that a sign-in notice, or a page that turned out to be
+a cookie banner and nothing else, is seen for what it is before it is saved.
+
+### One page, when you ask
+
+- One address, one page, each time you press the button. It follows no link, takes no
+  list of addresses, has no "save the whole site", and fetches nothing again later:
+  a saved page is as it was when it was saved and is never refreshed.
+- A save that was not carried out within fifteen minutes of being asked for (the
+  server was stopped, or the job was paused) is dropped, not run late.
+- Looking at the page fetches the page. Saving does not fetch it a second time, as
+  long as it follows within fifteen minutes; it fetches the pictures, if asked.
+
+### Saving the same address again
+
+If the address is already in your library, Outpost says so and asks, with nothing
+chosen for you:
+
+| Choice | What happens |
+| --- | --- |
+| **Keep both** | The earlier copy stays exactly as it is, and the page as it is now is added beside it. |
+| **Replace the earlier copy** | The page as it is now is saved first. Only then is the earlier copy deleted, after a confirmation that names it. The new copy takes the earlier one's tags and category. |
+
+Nothing is replaced without that choice. Only a document that Outpost itself saved
+from the address can be replaced this way: a file of your own to which you gave the
+same address as its source is never offered, and is refused if named.
+
+"The same address" means the address after any redirects, compared exactly. The same
+article at an address that differs by so much as a tracking parameter counts as a
+different page.
+
+### What is kept
+
+- **The article:** title, the writer and the site's name when the page gives them, the
+  date it says it was published, and the text with its headings, lists, quotations,
+  tables, code and links. Links are made complete (a link written as `/about` becomes
+  the full address), so they still lead somewhere from your library. They open in a
+  new tab and need a connection.
+- **Where it came from and when.** The document opens with "Saved from *address* on
+  *date*", the address being a link, and the same is in the document's details
+  (Source, Author, Language).
+- **Pictures, if you asked:** PNG, JPEG, GIF and WebP pictures from inside the article.
+- **Nothing that runs or tracks.** Scripts, styles, frames, forms, embedded video and
+  audio, and anything hidden from a reader are gone before the page is kept. So are the
+  things around an article: the site's header and menus, sidebars, sharing buttons,
+  comment sections, "related articles", cookie notices and the footer.
+
+The copy is a Markdown file in your library, with the record of where it came from at
+the top and, if pictures were brought, the pictures inside the same file. Being one
+file is what lets it be moved to another drive, checked against its checksum, backed up
+and written to a portable drive like any other document. **Download the original**
+gives you that file; other Markdown programs can read it, pictures included.
+
+### Limits
+
+| Limit | Value |
+| --- | --- |
+| The page | 5 MB of HTML (after any compression is undone), 20 seconds to arrive, 50,000 elements, 20 seconds to read |
+| Pictures | 30 to a page, 5 MB each, 20 MB in all; 20 seconds each and 3 minutes together |
+| Redirects | 8 |
+
+A picture over a limit is left out and the page is saved without it; the report after
+saving lists each picture left out and why. Pictures narrower or shorter than 8 pixels
+(spacers and counters) are dropped altogether. Drawings in SVG are not fetched: SVG can
+carry script, so the library never shows one in place.
+
+### What cannot be saved, and what Outpost says
+
+| The address… | What you are told |
+| --- | --- |
+| is not `http` or `https`, carries a user name or password, or is more than one address | The field says what is wrong with it. Nothing is fetched. |
+| is on this computer or a private network, or redirects to one | "Outpost only fetches from the public internet." See [security.md](security.md#downloads-the-ssrf-guard). |
+| holds something that is not a web page (a PDF, a picture, a data file) | What it is, and that a file is added in the Library instead. |
+| is larger than 5 MB, or made of more than 50,000 elements | Which limit, and that it was not saved. |
+| takes longer than 20 seconds to arrive | That Outpost stopped waiting. |
+| answers with an error (404, 403, 500…) | The number and what it usually means. |
+| has no readable text | "No readable text was found on this page", and why that happens (below). |
+
+**Pages with no readable text.** Outpost has no browser inside it and never runs a
+page's scripts. Many sites that work like an app send a nearly empty page and draw the
+content with a script after it loads; from such a page there is nothing to keep, and
+Outpost says so. The same goes for a page that only asks you to sign in: Outpost does
+not sign in to sites, sends no cookies, and so sees what a stranger would see. A page
+behind a paywall is saved as whatever the site shows to someone who has not paid.
+
+### What it does not get right
+
+Finding the article is done by rules, not by understanding the page, and it has only
+been tried by hand on two public pages (a Wikipedia article and an MDN guide) besides
+the pages the tests serve to themselves.
+
+- A page laid out in an unusual way can lose a part of the article, or keep a part of
+  what surrounds it. The preview's word count and opening lines are the check.
+- Formulas keep the line their author wrote for them (the LaTeX), not their drawn
+  form. Superscripts and subscripts survive only where Unicode has the character
+  ("x²", "H₂O").
+- Footnote marks stay as text, such as "[3]", but do not jump to the note.
+- A table inside a table, and other pages laid out with tables, come out as text.
+- Sites that only serve pictures to their own pages (by checking the referrer, which
+  Outpost never sends) refuse them; those pictures are left out and listed.
+- A site that turns away programs that are not browsers will refuse the page itself.
+  Outpost says who it is ("Outpost (self-hosted offline library)") and does not
+  pretend to be a browser.
 
 ## Notes written on a portable drive
 

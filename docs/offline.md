@@ -10,7 +10,8 @@ still needs to reach the Outpost server, on the same computer or over your own n
 
 Everything you have already installed or written:
 
-- reading and searching documents, notes and installed reference collections;
+- reading and searching documents, notes and installed reference collections,
+  including web pages you saved while you had a connection;
 - opening a PDF that is inside a reference collection, and adding PDFs and e-books
   from a collection to your documents (they are copied from the archive on your disk);
 - keyword search, and semantic search if its index is built: the built-in model needs
@@ -38,6 +39,7 @@ Only actions that fetch something new. Each happens because a person pressed a b
 | Estimating or downloading a map region | `build-metadata.protomaps.dev` and `build.protomaps.com`, or the archive in the `maps.tileSource` setting; for terrain, the `maps.terrainSource` archive |
 | Downloading place names | `download.geonames.org` |
 | **Save to library** on a link in a reference page, or adding a page's linked files that are only on the internet | The host named in the link, and whatever it redirects to. This is the one place Outpost fetches from a host that no catalogue manifest lists. The address must be `http` or `https`, must end in a kind of file the library keeps, and must not be on this computer or a private network (unless the server was started with `OUTPOST_ALLOW_PRIVATE_DOWNLOADS=true`). |
+| **Look at the page** and **Save page** under "Save a web page" | The host in the address you pasted, and whatever it redirects to: one request for the page. If you asked for its pictures, one request for each, to the hosts the preview names. Nothing a page links to is followed. The address must be `http` or `https` and must not be on this computer or a private network (unless the server was started with `OUTPOST_ALLOW_PRIVATE_DOWNLOADS=true`). See [notes-and-imports.md](notes-and-imports.md#saving-a-web-page). |
 | Making a portable drive for a kind of computer for the first time | `nodejs.org` for the Node runtime; `download.kiwix.org` for the reference-collection reader |
 
 Once fetched, the Node runtimes and the reader are cached in the data directory, so
@@ -79,10 +81,14 @@ meaning). Running it does not.
 - **The server calls out only on request.** Outbound requests for downloads and
   catalogue look-ups go through one guarded client (`apps/server/src/core/http.ts`),
   used by the catalogue, downloads, maps and portable modules. A file saved from a
-  link is an ordinary download through the same client. Nothing is scheduled: there is
-  no update check, no background refresh and no telemetry.
+  link is an ordinary download through the same client, and a saved web page and its
+  pictures are fetched through it too. Nothing is scheduled: there is no update check,
+  no background refresh and no telemetry. A saved page is never fetched again.
 - **Imports never download.** A picture at a web address in an imported page is kept
   as a link, not fetched.
+- **A saved page is sealed too.** What is kept of a web page is its words and, if you
+  asked, its pictures, held in your library. Opening it loads nothing from the site it
+  came from: a picture that was not brought along is shown as its description.
 
 ## How the test suite checks it
 
