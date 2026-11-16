@@ -205,12 +205,13 @@ const TABLE = 7.6;
 const TABLE_LEADING = 10.4;
 
 /**
- * The plan as A4 pages: headings and prose in Helvetica, tables in Courier so that
- * their columns stand in line. A table is never split across pages unless it is taller
- * than a page; a heading is never left at the foot of one.
+ * The plan as pages, A4 unless another paper is asked for: headings and prose in
+ * Helvetica, tables in Courier so that their columns stand in line. A table is never
+ * split across pages unless it is taller than a page; a heading is never left at the
+ * foot of one.
  */
-export function toSheets(blocks: Block[], footer: string): Sheet[] {
-  const { width: pageWidth, height: pageHeight } = PAPERS.a4;
+export function toSheets(blocks: Block[], footer: string, paper: "a4" | "letter" = "a4"): Sheet[] {
+  const { width: pageWidth, height: pageHeight } = PAPERS[paper];
   const inner = pageWidth - 2 * MARGIN;
   const bottom = pageHeight - MARGIN - 16;
   const pages: SheetItem[][] = [[]];

@@ -56,6 +56,7 @@ const SEARCH_KIND = "document";
 const MAX_TAGS = 50;
 const MAX_TAG_LENGTH = 50;
 const MAX_TITLE_LENGTH = 300;
+const MAX_SOURCE_LENGTH = 1000;
 /** A whole PDF is held in memory while it is read, so very large ones are not attempted. */
 const MAX_PDF_BYTES = 512 * 1024 * 1024;
 /** Part files older than this at start-up belong to uploads that never finished. */
@@ -72,6 +73,8 @@ const NO_TEXT_DETAIL: Record<ExtractKind, string> = {
 
 export interface CommitOptions {
   title?: string;
+  /** Where the file came from, in words. Recorded as the document's source. */
+  source?: string | null;
   category?: string | null;
   tags?: string[];
   allowDuplicate?: boolean;
@@ -461,6 +464,7 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
               locationId: location.id,
               relPath,
               category: blankToNull(options.category),
+              source: blankToNull(options.source)?.slice(0, MAX_SOURCE_LENGTH) ?? null,
               extraction: "pending",
               createdAt: now,
               updatedAt: now,

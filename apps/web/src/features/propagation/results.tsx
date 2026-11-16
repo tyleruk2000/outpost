@@ -27,6 +27,7 @@ import { Select, Skeleton } from "@/components/ui/misc";
 import { errorMessage } from "@/lib/api";
 import { ChartFrame, HourGrid, HourLines, percent, ShareBars } from "./charts";
 import { useCompare, useListing } from "./data";
+import { ComparisonExport } from "./prediction-export";
 
 const BASIS_TITLE = {
   climatology: "A monthly median, with an old solar forecast",
@@ -176,6 +177,7 @@ function Compare({ result, hour, onHour }: { result: PredictionResult; hour: num
           }))}
         />
       ) : null}
+      {compare.data && !compare.isPending && !compare.isError ? <ComparisonExport result={result} comparison={compare.data} /> : null}
     </ChartFrame>
   );
 }

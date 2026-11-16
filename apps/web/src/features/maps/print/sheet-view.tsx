@@ -46,6 +46,8 @@ function Item({ item, pictures }: { item: SheetItem; pictures: Readonly<Record<s
     case "polygon":
       return <polygon points={item.points.map((point) => point.join(",")).join(" ")} fill={css(item.fill)} />;
     case "text":
+      // Words that are in the file for search and drawn in no ink are not part of the picture.
+      if (item.hidden) return null;
       return (
         <text
           x={item.x}

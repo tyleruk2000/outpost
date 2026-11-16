@@ -43,6 +43,7 @@ import {
   useSavePrediction,
 } from "./data";
 import { PlaceInput } from "./place-field";
+import { PredictionExport } from "./prediction-export";
 import { bestHour, Results } from "./results";
 
 const longDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
@@ -488,7 +489,10 @@ export function Planner() {
             <Skeleton className="h-72 w-full" />
           </div>
         ) : result ? (
-          <Results result={result} hour={hour} onHour={setHour} />
+          <>
+            <PredictionExport result={result} savedName={opened && !("problem" in opened) ? opened.name : undefined} />
+            <Results result={result} hour={hour} onHour={setHour} />
+          </>
         ) : (
           <EmptyState
             title="No prediction yet"

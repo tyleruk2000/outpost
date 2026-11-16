@@ -21,7 +21,7 @@ import { type CommitOptions, cleanTags, type DocumentsService } from "./service.
 import { discardPart, type StagedFile, stageStream } from "./staging.ts";
 
 const MAX_FILES_PER_REQUEST = 200;
-const fieldNames = new Set(["category", "tags", "locationId", "allowDuplicate"]);
+const fieldNames = new Set(["category", "tags", "locationId", "allowDuplicate", "title", "source"]);
 
 const flag = z
   .enum(["true", "false", "1", "0", ""])
@@ -37,6 +37,10 @@ const fieldsSchema = z.object({
     .transform((value) => (value ?? "").split(",")),
   locationId: z.string().max(64).optional(),
   allowDuplicate: flag,
+  // What the file is and where it came from, when the sender knows better than the file's
+  // name does: a PDF the web app made itself says so here (see docs/library.md).
+  title: z.string().trim().max(300).optional(),
+  source: z.string().trim().max(1000).optional(),
 });
 
 type Received = { originalName: string } & ({ staged: StagedFile } | { refusal: AppError });
@@ -126,8 +130,16 @@ export async function receiveUpload(request: FastifyRequest, ctx: AppContext, se
 
     if (received.length === 0) throw badRequest("No files were sent. Choose at least one file to upload.");
     const parsed = fieldsSchema.parse(fields);
+    // A title names one thing. Given with several files it would name them all alike.
+    if (parsed.title && received.length > 1) throw badRequest("A title can be given only when one file is sent.");
     // Tags are checked once here: a bad tag is a mistake in the request, not in any one file.
-    const options: CommitOptions = { category: parsed.category, tags: cleanTags(parsed.tags), allowDuplicate: parsed.allowDuplicate };
+    const options: CommitOptions = {
+      title: parsed.title,
+      source: parsed.source,
+      category: parsed.category,
+      tags: cleanTags(parsed.tags),
+      allowDuplicate: parsed.allowDuplicate,
+    };
 
     const results: UploadResult[] = [];
     for (const item of received) {

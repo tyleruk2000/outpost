@@ -27,11 +27,11 @@ import type { Sheet } from "@/features/maps/print/sheet";
 import { errorMessage } from "@/lib/api";
 import { usePrinting } from "@/lib/printing";
 import { plural } from "@/lib/utils";
-import { AID_PAPERS, type AidPaper, aidPdf, isAidPaper, likelyPaper } from "./paper-aids";
+import { AID_PAPER_KEY, AID_PAPERS, type AidPaper, aidPdf, isAidPaper, likelyPaper } from "./paper-aids";
 import "./encryption.css";
 
 /** Which paper the PDF was last made for. The only thing this view remembers. */
-const PAPER_KEY = "outpost.encryption.paper";
+const PAPER_KEY = AID_PAPER_KEY;
 
 /** The paper on screen is as wide as A4, and drawn smaller where the screen is narrower than that. */
 const PAPER_WIDTH_PX = (210 / 25.4) * 96;

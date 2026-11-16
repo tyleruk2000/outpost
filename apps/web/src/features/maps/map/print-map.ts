@@ -170,6 +170,23 @@ export class PrintMap {
     return canvas;
   }
 
+  /**
+   * The names written on the view just drawn (towns, waters, hills, the person's own
+   * places), each once, as the map's data gives them. Only names that were given room on
+   * the picture are returned: MapLibre answers for the symbols it placed, not for those
+   * it left out where they would have overlapped.
+   */
+  names(): string[] {
+    const layers = (this.map.getStyle()?.layers ?? []).filter((layer) => layer.type === "symbol").map((layer) => layer.id);
+    if (layers.length === 0) return [];
+    const found = new Set<string>();
+    for (const feature of this.map.queryRenderedFeatures({ layers })) {
+      const name: unknown = feature.properties?.name;
+      if (typeof name === "string" && name.trim()) found.add(name.trim());
+    }
+    return [...found];
+  }
+
   /** Resolves once the view asked for is fully loaded, laid out and drawn. */
   private complete(signal: AbortSignal | undefined): Promise<void> {
     return new Promise((resolve, reject) => {

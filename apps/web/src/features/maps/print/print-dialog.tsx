@@ -10,16 +10,17 @@
  */
 import { type Bbox, formatBytes, type TrackWithGeometryDto } from "@outpost/shared";
 import { type UseQueryResult, useQueries } from "@tanstack/react-query";
-import { CircleAlert, Download, Printer, Share2 } from "lucide-react";
+import { CircleAlert, Printer } from "lucide-react";
 import { useEffect, useId, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { toast } from "sonner";
 import { ErrorState, Notice } from "@/components/page";
 import { PrintNotice } from "@/components/print-notice";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
 import { Checkbox, Progress, Segmented, Skeleton } from "@/components/ui/misc";
+import type { MadePdf } from "@/features/library/made/made-pdf";
+import { PdfButtons, PdfStatus, useMadePdf } from "@/features/library/made/pdf-actions";
 import { api, errorMessage } from "@/lib/api";
 import { usePrinting } from "@/lib/printing";
 import { mapsKeys, useMapOverview, useMarkers, useTracks } from "../data";
@@ -43,6 +44,7 @@ import {
   pieceView,
 } from "./export";
 import { graticule } from "./graticule";
+import { mapLibraryTitle, mapViewPath, mapWords, withMapWords } from "./map-words";
 import { overlayOn, PRINT_OVERLAYS, type PrintContext, type PrintSelection, partsOn, printStyle } from "./overlays";
 import { type PageGeometry, paperName } from "./paper";
 import { pdfFileName } from "./pdf";
@@ -115,6 +117,8 @@ type Made =
       status: "ready";
       url: string;
       file: File;
+      /** What the library calls it, should it be added there. */
+      libraryTitle: string;
       plan: RasterPlan;
       pictures: Array<MapPicture & { url: string }>;
       /** Lines of lettering drawn as pictures because the PDF's typeface lacks their characters. */
@@ -281,12 +285,32 @@ export function PrintDialog({
         (done, of) => !stop.signal.aborted && setMade({ status: "making", done, of }),
         stop.signal,
       );
-      const file = await assemblePdf(sheetOf(drawn.pictures), drawn.pictures, shownTitle.trim() || "Map", new Date());
+      const now = new Date();
+      // The picture cannot be searched, so the file also says in words what it shows (map-words.ts).
+      const words = mapWords({
+        title: shownTitle,
+        bbox,
+        scale,
+        date: DATE.format(now),
+        paper: paperName(geometry.paper, geometry.orientation),
+        names: drawn.pictures.flatMap((picture) => picture.names),
+        places: (markers.data ?? [])
+          .filter((marker) => marker.lon >= bbox[0] && marker.lon <= bbox[2] && marker.lat >= bbox[1] && marker.lat <= bbox[3])
+          .map((marker) => marker.name),
+        routes: here.map((track) => track.name),
+      });
+      const file = await assemblePdf(
+        withMapWords(sheetOf(drawn.pictures), geometry.map, words),
+        drawn.pictures,
+        shownTitle.trim() || "Map",
+        now,
+      );
       if (stop.signal.aborted) return;
       setMade({
         status: "ready",
         url: held.hold(file.blob),
         file: new File([file.blob], pdfFileName(shownTitle), { type: "application/pdf" }),
+        libraryTitle: mapLibraryTitle(shownTitle, bbox, scale, now),
         plan: drawn.plan,
         pictures: drawn.pictures.map((picture) => ({ ...picture, url: held.hold(picture.blob) })),
         drawnAsPictures: file.drawnAsPictures,
@@ -297,17 +321,15 @@ export function PrintDialog({
     }
   };
 
-  const canShare = made.status === "ready" && typeof navigator.canShare === "function" && navigator.canShare({ files: [made.file] });
-  const share = async () => {
-    if (made.status !== "ready") return;
-    try {
-      await navigator.share({ files: [made.file], title: shownTitle.trim() || "Map" });
-    } catch (error) {
-      // Closing the share sheet without choosing is not a failure.
-      if (!(error instanceof DOMException && error.name === "AbortError"))
-        toast.error("This device would not share the file. Save it instead.");
-    }
-  };
+  // Saving, adding to the library and sharing are the same three things as for every PDF made here.
+  const pdf = useMemo<MadePdf | null>(
+    () =>
+      made.status === "ready"
+        ? { file: made.file, title: made.libraryTitle, kind: "Map", from: { what: "the map", path: mapViewPath(bbox, frame.zoom) } }
+        : null,
+    [made, bbox, frame.zoom],
+  );
+  const madePdf = useMadePdf(pdf);
 
   // ── What to say about the page before it is made ──
 
@@ -517,6 +539,7 @@ export function PrintDialog({
                 </p>
               ) : null}
               {printing.unanswered ? <PrintNotice printing={printing} instead="Save the PDF and print that." className="mt-2" /> : null}
+              <PdfStatus made={madePdf} className="mt-2" />
             </div>
           ) : made.status === "error" ? (
             <Notice tone="danger" icon={<CircleAlert />} title="The page was not made" className="min-w-0 flex-1">
@@ -544,16 +567,8 @@ export function PrintDialog({
                     <Printer /> Print
                   </Button>
                 ) : null}
-                {canShare ? (
-                  <Button onClick={share}>
-                    <Share2 /> Share
-                  </Button>
-                ) : null}
-                <Button asChild variant="primary">
-                  <a href={made.url} download={made.file.name}>
-                    <Download /> Save the PDF
-                  </a>
-                </Button>
+                {/* From the Home Screen a phone may not save a file at all; the library is the way that always works. */}
+                <PdfButtons made={madePdf} lead={printing.standalone ? "library" : "save"} />
               </>
             ) : (
               <>
