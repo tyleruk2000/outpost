@@ -171,6 +171,10 @@ if (!fs.existsSync(path.join(out, "server/workers/ocr.mjs"))) {
   for (const name of ["webp_enc_simd.js", "webp_enc_simd.wasm", "webp_enc.js", "webp_enc.wasm"]) {
     fs.copyFileSync(path.join(webp, "codec/enc", name), path.join(imageryOut, name));
   }
+  // The decoder, for publishers whose GeoTIFFs hold WebP (imagery/cog.ts).
+  for (const name of ["webp_dec.js", "webp_dec.wasm"]) {
+    fs.copyFileSync(path.join(webp, "codec/dec", name), path.join(imageryOut, name));
+  }
   fs.copyFileSync(path.join(webp, "LICENSE"), path.join(imageryOut, "LICENSE-jsquash-webp.txt"));
 }
 

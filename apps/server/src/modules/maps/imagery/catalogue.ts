@@ -125,3 +125,18 @@ export const SOURCES: ImagerySourceInfo[] = [BLUE_MARBLE, SENTINEL_2];
  * is refused, because the job would be too long and too heavy on a free public service.
  */
 export const AREA_LIMITS = { noticeKm2: 400, warnKm2: 2_500, maxKm2: 10_000 };
+
+/**
+ * Warnings for an aerial photograph, by bytes and tiles rather than area: a 10 cm
+ * photograph of one square kilometre is more data than 10 m of a hundred. Above
+ * `noticeBytes` the figures are spelled out; above `warnBytes` or `warnTiles` the person
+ * must tick that they have read it; above `maxBytes` or `maxTiles` it is refused (a town
+ * centre, not a county). See docs/maps.md, "Aerial photographs".
+ */
+export const AERIAL_LIMITS = {
+  noticeBytes: 50_000_000,
+  warnBytes: 400_000_000,
+  maxBytes: 2_000_000_000,
+  warnTiles: 15_000,
+  maxTiles: 60_000,
+};

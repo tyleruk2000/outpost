@@ -63,6 +63,7 @@ const envSchema = z.object({
   OUTPOST_IMAGERY_SENTINEL_HOST: z.string().optional(),
   OUTPOST_IMAGERY_WORLD_URL: z.string().url().optional(),
   OUTPOST_IMAGERY_WORLD_BYTES: z.coerce.number().int().positive().optional(),
+  OUTPOST_IMAGERY_LINZ_BASE: z.string().url().optional(),
   OUTPOST_LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).optional(),
 });
 
@@ -124,7 +125,7 @@ export interface Config {
   kiwixDistUrl?: string;
   /** Stand-ins for satellite imagery's publishers, for tests; unset in use. */
   imagery?: {
-    endpoints?: { stacSearchUrl?: string; sentinelHost?: string; nasaHost?: string };
+    endpoints?: { stacSearchUrl?: string; sentinelHost?: string; nasaHost?: string; aerial?: { linzBase?: string } };
     worldEntries?: Array<{
       id: string;
       name: string;
@@ -219,11 +220,13 @@ function imageryStandIns(parsed: {
   OUTPOST_IMAGERY_SENTINEL_HOST?: string;
   OUTPOST_IMAGERY_WORLD_URL?: string;
   OUTPOST_IMAGERY_WORLD_BYTES?: number;
+  OUTPOST_IMAGERY_LINZ_BASE?: string;
 }): Config["imagery"] {
   const world = parsed.OUTPOST_IMAGERY_WORLD_URL;
-  if (!parsed.OUTPOST_IMAGERY_STAC_URL && !parsed.OUTPOST_IMAGERY_SENTINEL_HOST && !world) return undefined;
+  if (!parsed.OUTPOST_IMAGERY_STAC_URL && !parsed.OUTPOST_IMAGERY_SENTINEL_HOST && !world && !parsed.OUTPOST_IMAGERY_LINZ_BASE) return undefined;
   return {
     endpoints: {
+      ...(parsed.OUTPOST_IMAGERY_LINZ_BASE ? { aerial: { linzBase: parsed.OUTPOST_IMAGERY_LINZ_BASE.replace(/\/$/, "") } } : {}),
       stacSearchUrl: parsed.OUTPOST_IMAGERY_STAC_URL,
       sentinelHost: parsed.OUTPOST_IMAGERY_SENTINEL_HOST?.toLowerCase(),
       nasaHost: world ? new URL(world).hostname.toLowerCase() : undefined,
