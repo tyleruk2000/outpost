@@ -67,7 +67,11 @@ test.describe("Communication plans", () => {
       .filter({ hasText: "Net procedure for the family" })
       .getByRole("button", { name: "Link" })
       .click();
-    await expect(page.getByRole("link", { name: "Net procedure for the family" })).toHaveAttribute("href", `/notes/${note.id}`);
+    // In the plan itself: the sidebar's list of pages names the note too, once it has caught up.
+    await expect(page.locator("#content").getByRole("link", { name: "Net procedure for the family" })).toHaveAttribute(
+      "href",
+      `/notes/${note.id}`,
+    );
     // Linking does not change what the engine was asked: the matrix is still there after a reload.
     await page.reload();
     await expect(page.getByRole("heading", { name: "How the bands are chosen" })).toBeVisible();

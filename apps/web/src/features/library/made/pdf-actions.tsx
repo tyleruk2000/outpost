@@ -359,7 +359,8 @@ export function PdfStatus({ made, className }: { made: MadePdfHandle; className?
           ) : null}
         </Notice>
       ) : null}
-      {state.status === "adding" ? null : <WhereItGoes made={made} />}
+      {/* Said before it is sent, and again when it did not go. Once it is in the library the line above has said where. */}
+      {state.status === "adding" || state.status === "added" || state.status === "duplicate" ? null : <WhereItGoes made={made} />}
     </div>
   );
 }
