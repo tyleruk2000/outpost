@@ -549,7 +549,7 @@ that:
 - Vectors are stored per passage **and per model id** (`<provider>:<model>`). Vectors
   from different models, even with different dimensions, sit side by side and are
   never compared with each other. The built-in model's id carries a fingerprint of its
-  files and settings (`built-in:all-MiniLM-L6-v2-q8-84769597`), so a release of Outpost
+  files and settings (`built-in:all-MiniLM-L6-v2-q8-245889ee`), so a release of Outpost
   that ships another model, or changes how text is fed to it, starts a new set.
 - Switching the model in Settings does not delete anything. Searches use the new
   model's vectors as soon as some exist; until then they are keyword searches. Start

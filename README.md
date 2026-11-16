@@ -271,9 +271,8 @@ Stated here so nobody has to find them out:
   server that speaks the same protocol, **not yet against a real model**. See
   [Answers and language models](docs/ai.md).
 - **Semantic search is off until you switch it on**, and its built-in model is small
-  and was trained on English: other languages are matched poorly, and only about the
-  first thousand characters of a passage are read. A local embedding server such as
-  Ollama can be used for a larger or multilingual model. See
+  and was trained on English: other languages are matched poorly. A local embedding
+  server such as Ollama can be used for a larger or multilingual model. See
   [Search](docs/search.md#semantic-search).
 - **Reference collections need kiwix-serve.** It is in the Compose stack. On portable
   drives it is included for macOS and Linux; the Kiwix project publishes no Windows

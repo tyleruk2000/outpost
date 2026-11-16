@@ -129,8 +129,17 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   time at a pinned revision and checked against checksums, and never downloads anything
   when Outpost runs. Off by default; Settings states the cost before it is switched on,
   and shows the build with its time left, pause, stop, continue and any failure.
-  Measured on an Apple M2 Max: 38 to 42 seconds per thousand passages, 2.2 kB of disk
-  per passage. It replaces the in-process option that needed a package nobody had.
+  Measured on an Apple M2 Max: 33 seconds per thousand passages for the bundled books,
+  up to 54 for a library of nothing but full-length passages, and 2.2 kB of disk per
+  passage. It replaces the in-process option that needed a package nobody had.
+- The built-in model reads the whole of a passage. It takes 256 word pieces at a time,
+  and about a quarter of the passages in the bundled books are longer; these were cut
+  off, which left their last lines out of search by meaning. A longer passage is now
+  read in consecutive stretches whose vectors are averaged by length. Measured on 7,556
+  passages: text past the old cut is found among the first five results 73% of the time
+  instead of 24%, nothing else is found less often, and building takes 7% longer. The
+  model's id changed with it (`built-in:all-MiniLM-L6-v2-q8-245889ee`), so an index
+  built before this needs building again; Settings says so.
 - Keeping the semantic index up to date by itself now waits for a person to have built
   it once, and no longer restarts a build they paused or stopped.
 - Hybrid ranking by reciprocal rank fusion.
@@ -303,8 +312,7 @@ These are deliberate or known, and are explained in
 - **Scale.** One node and one writer (SQLite). Suited to a household or a classroom.
 - **Semantic search** uses a flat index, comfortable to roughly 100,000 passages.
 - **The built-in embedding model** is small and English: other languages are matched
-  poorly, only the first 256 word pieces of a passage (about a thousand characters) are
-  read, and it has not been run on a Raspberry Pi or on Windows. A local embedding
+  poorly, and it has not been run on a Raspberry Pi or on Windows. A local embedding
   server can be used instead.
 - **OCR** is slow and makes mistakes, reads only pictures of pages (not text drawn as
   shapes), and has English only unless a language file is added by hand.

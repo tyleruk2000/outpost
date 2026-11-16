@@ -299,14 +299,14 @@ threads):
 
 | What | Measured |
 | --- | --- |
-| Building the index | 254 seconds for a library of 6,614 passages averaging 745 characters (the bundled handbook and radio guides): **38 seconds per thousand passages**. Passages of the full default length (about 1,200 characters) took 42 seconds per thousand. Settings quotes 45. |
-| The same with one thread | About 160 seconds per thousand full-length passages. Two threads: 82. Eight threads were no faster than four. |
+| Building the index | 258 seconds for a library of 7,822 passages averaging 769 characters (the bundled handbook, radio guides and reference sheets, and four PDFs from the catalogue): **33 seconds per thousand passages**. A library made only of passages of the full length (about 1,200 characters, nearly all read in two stretches) took 54 seconds per thousand. Settings quotes 45. |
+| The same with one thread | About four times as long: 160 seconds per thousand full-length passages when they were still cut at the model's limit, which is the only time this was measured. Two threads took 82 then, four 42, and eight were no faster than four. |
 | A search while that build was running | 40 to 140 ms, question embedded and 6,614 vectors compared. The question goes ahead of the passages being indexed. |
 | A search with the index built | 12 to 20 ms. |
 | Starting the model | About 0.3 seconds, the first time it is needed and again after five idle minutes. |
-| Disk | **2.16 kB per passage** inside the database (14.3 MB for those 6,614), so about 2.2 MB per thousand. The numbers are 1.5 kB of that; the rest is how the database stores them. |
+| Disk | **2.16 kB per passage** inside the database (14.3 MB for 6,614 passages), so about 2.2 MB per thousand. The numbers are 1.5 kB of that; the rest is how the database stores them. |
 | Memory | About 300 MB while the model is loaded, measured in the Docker image: the container used 133 MiB before and 430 MiB during a build, inside its default 1 GB limit. (macOS reports more for the same work, about 550 MB.) It is given back after five minutes without a search or a build. |
-| The same build in the Docker image | 246 seconds for the same 6,614 passages (Linux on ARM64, on the same laptop): 37 seconds per thousand. |
+| A build in the Docker image | 246 seconds for 6,614 passages (Linux on ARM64, on the same laptop): 37 seconds per thousand. This was measured before long passages were read in stretches, which added 7% on the Mac; the image has not been timed since. |
 | Size of the model and its runtime | 39 MB in the packaged app: the model 23.7 MB, the WebAssembly runtime 14.8 MB, licence texts 0.4 MB. |
 
 These were taken while other work was running on the laptop, so a quiet one does a
@@ -320,8 +320,9 @@ in the Docker image on ARM64, and on AMD64 under emulation (which says it works 
 and nothing about its speed on a real PC); and from a copy of the packaged app started
 the way a portable drive starts it. Each of those was done with the network blocked or
 absent. The 6,563 distinct vectors built on the Mac and in the ARM64 image were the same
-bit for bit, as were those of the two images. It has not been run on a Raspberry Pi, an
-Intel Mac, Windows, or a musl-based Linux such as Alpine.
+bit for bit, as were those of the two images. (The images were run before long passages
+were read in stretches; since that change only the Mac has been run.) It has not been
+run on a Raspberry Pi, an Intel Mac, Windows, or a musl-based Linux such as Alpine.
 
 ### Choosing where the model runs
 
@@ -357,14 +358,13 @@ What to know about the model:
   multilingual model (multilingual-e5-small was tried) is five times the size (135 MB),
   twice as slow and needs twice the memory, so it is not the default. Use a local server
   for a multilingual model.
-- **It reads the first 256 word pieces of a passage**, about a thousand characters of
-  English. That is the limit the model's makers set. Outpost's passages run to 1,200
-  characters, so the last part of a long passage is left out of its vector, and is found
-  by its words only (or by the next passage, which repeats the last 150 characters).
-  Reading 512 word pieces instead was tried: text near the end of a passage was found
-  more often (in the top five 70% of the time rather than 43%), text in the first
-  three-quarters slightly less often (80% rather than 84%), and building took 1.7 times
-  as long.
+- **It reads 256 word pieces at a time**, about a thousand characters of English, and
+  Outpost's passages run to 1,200. A passage longer than that is read in consecutive
+  stretches, each as long as the model allows and the last whatever remains, and its
+  vector is the mean of the stretches' vectors, each counted by its length. Every word
+  of the passage then counts once. A passage that fits, and every search question, is
+  read in one go, exactly as the model's own library reads it. See
+  [long passages](#long-passages-and-the-built-in-model) for why this way.
 - **It is small.** It knows that "paw" and "pads" belong together; it will not follow
   an argument. Larger models rank better. Hybrid search covers for it with exact words.
 - The model card lists what it was trained on: about a billion sentence pairs from
@@ -384,6 +384,45 @@ ONNX Runtime's repository on GitHub, checks each against its checksum, and puts 
 the packaged app and warns if they are missing; the Docker build runs the fetch itself.
 Without them, Settings says "The built-in model has not been fetched yet" and ordinary
 search is unaffected.
+
+#### Long passages and the built-in model
+
+The first version of the built-in model cut a passage off at the model's limit, which
+left the last lines of a long passage out of its vector. How much that matters, and
+what to do instead, was measured on 7,556 passages as Outpost cuts them: the bundled
+handbook (1,899), the radio guides (4,463) and reference sheets (138), and four PDFs
+from the catalogue (1,056, mostly the NASA Systems Engineering Handbook). 1,942 of them
+(26%) were longer than the limit: about three in ten of the radio books' passages and
+one in ten of the PDFs', most by a little (290 word pieces on average, against 254).
+
+The test: take 170 characters from the start, the middle and the end of each of 1,879
+long passages, and from 1,139 short ones (6,776 questions in all), and see how often
+the passage they came from is among the five nearest of the 7,556.
+
+| How a long passage is read | From its start | Middle | End | End, wholly past the cut (114) | From short passages | Build, per thousand passages |
+| --- | --- | --- | --- | --- | --- | --- |
+| Cut at 256 word pieces (the first version) | 62% | 71% | 48% | 24% | 74% | 32.0 s |
+| Cut at 512 instead | 60% | 70% | 55% | 52% | 74% | 33.8 s |
+| Two equal halves, averaged | 61% | 85% | 63% | 75% | 70% | 33.8 s |
+| Full-length windows that overlap, averaged | 66% | 77% | 59% | 65% | 73% | 44.8 s |
+| **Consecutive stretches, mean by length (what Outpost does)** | 62% | 73% | 59% | 73% | 73% | 34.1 s |
+
+- Reading 512 word pieces in one go hardly helped: the model was trained on short texts,
+  and a long read blurs the start as much as it gains the end.
+- Equal halves found the most in long passages, but made long passages turn up for
+  questions that belonged to short ones, which are three passages in four.
+- Consecutive stretches lose nothing measurable against the first version anywhere, and
+  find text past the old cut three times as often, for 7% more building time.
+
+Those questions are quotations, which flatters every method. 57 questions written by
+hand in other words agree on the main point: for 20 about text past the old cut, the
+right passage was in the first five 20% of the time when cut at 256, 50% when cut at
+512, and 60% with consecutive stretches (75% with equal halves); for 22 about short
+passages it was 59% whichever way. Fifty-seven questions are too few to say more.
+
+A change like this gives the model a new id, so an index built by an earlier version is
+not used: Settings lists it under "Vectors from other models" and the index needs
+building again.
 
 #### A local embedding server ("Local server")
 
@@ -468,9 +507,10 @@ curl -o vectors.jsonl.gz "http://localhost:8080/api/semantic/export"
 `?model=<model id>` exports a model other than the current one. A model id is the
 provider and model joined by a colon, for example `openai-compatible:nomic-embed-text`.
 The built-in model's id ends in a fingerprint of its exact files and settings, for
-example `built-in:all-MiniLM-L6-v2-q8-84769597`, so a later version of Outpost that
-ships a different model, or reads passages differently, gets an id of its own and never
-mixes its vectors with these.
+example `built-in:all-MiniLM-L6-v2-q8-245889ee`, so a version of Outpost that ships a
+different model, or reads passages differently, gets an id of its own and never mixes
+its vectors with these. (The first built-in model, which cut long passages off, was
+`…-84769597`.)
 
 On the small device:
 
