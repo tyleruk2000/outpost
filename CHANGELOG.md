@@ -1054,6 +1054,18 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   from PVGIS for one of its places (best tilt or level ground), on a press, asking
   before replacing figures typed in. The plan records whose figures they are, and the
   PDF says so. Where none have been fetched, the screen says where to fetch them.
+- A library of common devices for the battery calculators, each figure as its maker
+  published it, with the document, URL and date read: Raspberry Pi boards and
+  additions, phones, tablets and laptops by battery, handheld and HF radios, receivers,
+  a LoRa node, routers, switches, NAS boxes, a monitor, a lamp, a cool box, and what an
+  inverter must supply for a kettle or microwave; medical devices only as their makers'
+  guides. The quick battery runtime calculator builds its load from them (or one load
+  in watts as before): how long what runs lasts, phone charges instead and besides, a
+  number of days, which uses most, the battery needed and the solar to keep up, "at
+  least" wherever a figure is a maximum. "Add a load" in a plan starts from the same
+  library; a load made from it cites its source on the screen and in the PDF. A
+  person's own devices are kept on the server (migration `0024_power_devices`). Plans
+  can now have USB loads through a converter and charges of a battery.
 #### Nuclear preparedness
 
 - Preparedness → Nuclear preparedness: a workspace over the offline map (and satellite

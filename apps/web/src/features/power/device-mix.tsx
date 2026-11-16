@@ -62,11 +62,16 @@ export function DeviceMix({
   const [days, setDays] = useState<number | null>(3);
   const [inverter, setInverter] = useState<number | null>(INVERTER_START);
   const [usb, setUsb] = useState<number | null>(USB_CONVERTER.share);
+  const [charging, setCharging] = useState<number | null>(USB_CHARGING.share);
   const [planning, setPlanning] = useState(false);
   const hasAc = loads.some((load) => load.supply === "ac");
   const hasUsb = loads.some((load) => load.supply === "usb");
+  const hasCharge = loads.some((load) => load.kind === "charge");
+  /** One charging efficiency for everything charged here; a plan keeps one for each. */
+  const withCharging = (list: PowerLoad[], share: number | null) =>
+    share && share > 0 ? list.map((load) => (load.kind === "charge" ? { ...load, chargeEfficiency: share } : load)) : list;
   const setting: MixSetting | null = battery && days !== null && inverter && usb ? { ...battery, inverter, usb, days } : null;
-  const answers = setting && loads.length > 0 ? workOutMix(loads, setting) : null;
+  const answers = setting && loads.length > 0 && charging ? workOutMix(withCharging(loads, charging), setting) : null;
 
   const pick = (choice: PickerChoice) => {
     if (choice.kind === "common" && (choice.entry.kind === "label" || choice.entry.kind === "guide")) {
@@ -76,7 +81,7 @@ export function DeviceMix({
       return;
     }
     setEntryNote(null);
-    setLoads((current) => addChoice(current, choice));
+    setLoads((current) => withCharging(addChoice(current, choice), charging));
     setPicking(false);
   };
 
@@ -109,6 +114,14 @@ export function DeviceMix({
 
       <Fields>
         <NumberField label="For how many days" unit="days" value={days} onChange={setDays} min={0} max={365} />
+        {hasCharge ? (
+          <PercentField
+            label="Charging efficiency"
+            value={charging}
+            onChange={setCharging}
+            hint={`The share of the energy from the socket that ends up in a battery being charged. ${USB_CHARGING.basis}`}
+          />
+        ) : null}
         {hasUsb ? (
           <PercentField
             label="USB converter efficiency"
@@ -166,7 +179,9 @@ export function DeviceMix({
       </Basis>
 
       {picking ? <DevicePickerDialog onPick={pick} onClose={() => setPicking(false)} /> : null}
-      {planning && setting ? <MakePlanDialog loads={loads} setting={setting} onClose={() => setPlanning(false)} /> : null}
+      {planning && setting ? (
+        <MakePlanDialog loads={withCharging(loads, charging)} setting={setting} onClose={() => setPlanning(false)} />
+      ) : null}
     </div>
   );
 }

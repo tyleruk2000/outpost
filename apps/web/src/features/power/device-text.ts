@@ -206,7 +206,7 @@ export function mixSentences(answers: MixAnswers, setting: MixSetting): MixWords
     const sentence = `With this battery, for ${days}, you can ${[runPart, chargePart].filter(Boolean).join(", and ")}${chargeWords.length === 0 ? `, with ${figure(spare, 0)} Wh to spare` : ""}.`;
     over = {
       figure: scale !== null && scale < 1 ? "Enough to run, less to charge" : answers.atLeast ? "At least enough" : "Enough",
-      detail: `${sentence}${scale !== null ? ` That is ${figure(scale * 100, 0)}% of the charging set.` : ""}`,
+      detail: `${sentence}${scale !== null && scale < 1 ? ` That is ${figure(scale * 100, 0)}% of the charging set.` : ""}`,
     };
   }
 

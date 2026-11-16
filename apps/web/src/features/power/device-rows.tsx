@@ -3,7 +3,7 @@
  * behind one disclosure, where its figures come from. Also that disclosure on its own,
  * for a plan's loads.
  */
-import { type PowerLoad, type PublishedFigure, RADIO_MODES, USB_CHARGING } from "@outpost/shared";
+import { type PowerLoad, type PublishedFigure, RADIO_MODES } from "@outpost/shared";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,7 +18,7 @@ import {
   withTransmit,
 } from "./calc/devices";
 import { figureWorking, kindWords, MAKER_SENTENCE, originSentence, sourceLine } from "./device-text";
-import { Basis, ChoiceField, Fields, figure, NumberField, PercentField } from "./inputs";
+import { Basis, ChoiceField, Fields, figure, NumberField } from "./inputs";
 
 /** One published figure with its working, the publisher's words, and the source. */
 function FigureLine({
@@ -162,15 +162,6 @@ export function DeviceRow({ load, onChange, onRemove }: { load: PowerLoad; onCha
         />
       ) : null}
       {load.kind === "radio" ? <RadioUse load={load} onChange={onChange} /> : null}
-      {load.kind === "charge" ? (
-        <PercentField
-          className="mt-3"
-          label="Charging efficiency"
-          value={load.chargeEfficiency}
-          onChange={(value) => value !== null && value > 0 && set({ chargeEfficiency: value })}
-          hint={`The share of the energy that ends up in its battery. ${USB_CHARGING.basis}`}
-        />
-      ) : null}
       <FigureSources load={load} />
     </li>
   );
@@ -183,7 +174,7 @@ function RadioUse({ load, onChange }: { load: Extract<PowerLoad, { kind: "radio"
   const output = estimate !== null ? "lower" : (load.origin?.state ?? "");
   return (
     <div className="mt-3 grid gap-3">
-      <Fields className="grid-cols-2">
+      <Fields>
         <ChoiceField
           label="Mode"
           value={load.mode}
@@ -200,7 +191,7 @@ function RadioUse({ load, onChange }: { load: Extract<PowerLoad, { kind: "radio"
         />
       </Fields>
       {radio ? (
-        <Fields className="grid-cols-2">
+        <Fields>
           <ChoiceField
             label="Output"
             value={output}

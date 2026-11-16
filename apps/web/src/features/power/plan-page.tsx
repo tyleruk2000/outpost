@@ -439,31 +439,33 @@ export default function PowerPlanPage() {
         ) : (
           <Rows>
             {draft.loads.map((load) => (
-              <li key={load.id} className="flex flex-wrap items-start justify-between gap-3 py-2.5">
-                <div className="min-w-0 flex-1">
-                  <span className="block truncate text-ink">
-                    {load.name}
-                    {load.quantity > 1 ? ` × ${load.quantity}` : ""}
+              <li key={load.id} className="py-2.5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <span className="block truncate text-ink">
+                      {load.name}
+                      {load.quantity > 1 ? ` × ${load.quantity}` : ""}
+                    </span>
+                    <span className="tabular block text-small text-ink-muted">
+                      {load.kind === "device"
+                        ? `${figure(load.watts, 1)} W for ${figure(load.hoursPerDay, 1)} h`
+                        : load.kind === "charge"
+                          ? `${figure(load.chargesPerDay, 1)} ${load.chargesPerDay === 1 ? "charge" : "charges"} a day of ${figure(load.wattHours, 1)} Wh`
+                          : `${figure(load.transmitW, 1)} W transmitting, ${figure(load.receiveW, 1)} W receiving, ${figure(load.onAirHours, 1)} h on the air, duty ${figure(radioDuty(load) * 100, 1)}%`}{" "}
+                      · {load.supply === "ac" ? "AC, through the inverter" : load.supply === "usb" ? "USB, through the converter" : "DC"} ·{" "}
+                      {figure(loadDailyWh(load), 0)} Wh a day
+                    </span>
+                  </div>
+                  <span className="flex gap-2">
+                    <Button size="sm" onClick={() => setEditing(load)} aria-label={`Change ${load.name}`}>
+                      Change
+                    </Button>
+                    <Button size="sm" variant="danger-ghost" onClick={() => setRemoving(load)} aria-label={`Remove ${load.name}`}>
+                      Remove
+                    </Button>
                   </span>
-                  <span className="tabular block text-small text-ink-muted">
-                    {load.kind === "device"
-                      ? `${figure(load.watts, 1)} W for ${figure(load.hoursPerDay, 1)} h`
-                      : load.kind === "charge"
-                        ? `${figure(load.chargesPerDay, 1)} ${load.chargesPerDay === 1 ? "charge" : "charges"} a day of ${figure(load.wattHours, 1)} Wh`
-                        : `${figure(load.transmitW, 1)} W transmitting, ${figure(load.receiveW, 1)} W receiving, ${figure(load.onAirHours, 1)} h on the air, duty ${figure(radioDuty(load) * 100, 1)}%`}{" "}
-                    · {load.supply === "ac" ? "AC, through the inverter" : load.supply === "usb" ? "USB, through the converter" : "DC"} ·{" "}
-                    {figure(loadDailyWh(load), 0)} Wh a day
-                  </span>
-                  {load.origin ? <LoadOrigin load={load} /> : null}
                 </div>
-                <span className="flex gap-2">
-                  <Button size="sm" onClick={() => setEditing(load)} aria-label={`Change ${load.name}`}>
-                    Change
-                  </Button>
-                  <Button size="sm" variant="danger-ghost" onClick={() => setRemoving(load)} aria-label={`Remove ${load.name}`}>
-                    Remove
-                  </Button>
-                </span>
+                {load.origin ? <LoadOrigin load={load} /> : null}
               </li>
             ))}
           </Rows>
@@ -707,7 +709,7 @@ export default function PowerPlanPage() {
 function LoadOrigin({ load }: { load: PowerLoad }) {
   const words = kindWords(load);
   return (
-    <div className="text-small text-ink-muted">
+    <div className="mt-1 text-small text-ink-muted">
       {load.origin?.library === "own" ? `From your own device “${load.origin.name}”` : `From the library: ${load.origin?.name}`}
       {words ? `, ${words}` : ""}.
       <FigureSources load={load} />
