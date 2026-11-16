@@ -6,8 +6,8 @@
 import {
   type CommunicationPlan,
   HF_BANDS,
-  MODEL_JOIN_NOTE,
   hourRanges,
+  MODEL_JOIN_NOTE,
   type ModeId,
   modeById,
   NOISE_ENVIRONMENTS,

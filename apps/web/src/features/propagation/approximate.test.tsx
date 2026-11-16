@@ -22,13 +22,12 @@ import {
 } from "@outpost/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
+import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { comparisonDocument } from "./comparison-document";
-import { planDocument, toMarkdown } from "./plans/document";
+import { planDocument, planPdf, toMarkdown } from "./plans/document";
 import { Pair } from "./plans/plan-page";
-import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
-import { planPdf } from "./plans/document";
 import { predictionDocument, predictionMarkdown, predictionPdf } from "./prediction-document";
 import { cell, prediction, wordsOf } from "./prediction-fixture";
 import { Results } from "./results";

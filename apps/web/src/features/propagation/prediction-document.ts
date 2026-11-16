@@ -31,10 +31,10 @@ import {
   MODEL_JOIN_NOTE,
   NOISE_ENVIRONMENTS,
   notModelledOn,
-  RUN_LABELS,
   type PredictionCell,
   type PredictionHour,
   type PredictionResult,
+  RUN_LABELS,
   sMeter,
   utcLabel,
 } from "@outpost/shared";
@@ -66,6 +66,7 @@ const approximate = (cell: PredictionCell | null | undefined): boolean =>
 /** A figure as a table prints it, with the mark when the cell is approximate. */
 const marked = (cell: PredictionCell | null | undefined, text: string): string =>
   approximate(cell) && text !== NO_FIGURE ? `${APPROXIMATE}${text}` : text;
+
 /** Said once under every table that holds an approximate figure. */
 export { APPROXIMATE_KEY };
 

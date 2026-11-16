@@ -11,12 +11,12 @@ import {
   type AntennaSpec,
   type CommunicationPlan,
   HF_BANDS,
-  pathRunOn,
   type PlanResult,
   type PredictionCell,
   type PredictionHour,
   type PredictionRequest,
   type PredictionResult,
+  pathRunOn,
   type SavedPrediction,
 } from "@outpost/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
