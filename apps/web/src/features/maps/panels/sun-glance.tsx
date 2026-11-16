@@ -20,6 +20,7 @@ export function SunGlance({
   engine,
   onOpen,
   zone,
+  where,
   className,
 }: {
   engine: MapEngine;
@@ -27,6 +28,11 @@ export function SunGlance({
   onOpen: () => void;
   /** The time zone of the device's clock; read from the browser unless given. */
   zone?: string;
+  /**
+   * Words saying which point the times are for, shown before them. Given on a wide
+   * screen, where the coordinates above the line can be the pointer's and not the centre's.
+   */
+  where?: string;
   className?: string;
 }) {
   const view = useRestingView(engine);
@@ -53,6 +59,7 @@ export function SunGlance({
     >
       {/* Each piece stays whole; where both do not fit on one line, the sunset goes under the sunrise. */}
       <span className="tabular flex min-w-0 flex-1 flex-wrap gap-x-3 text-small font-medium text-ink">
+        {where ? <span className="font-normal whitespace-nowrap text-ink-muted">{where}</span> : null}
         {pieces.map((piece) => (
           <span key={piece} className="whitespace-nowrap">
             {piece}

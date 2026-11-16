@@ -734,7 +734,9 @@ export default function MapsPage() {
    * is being done on the map: a tool's card, or the card of a point that was found or is being moved, needs the
    * room and has the person's attention (and a found point's card has sun times of its own).
    */
-  const sunLine = !isDesktop && detent === "peek" && tool === "browse" && !pin && !moving;
+  // On a phone, while the sheet is lowered and nothing else is in hand. On a wide screen there is room for it
+  // always, except while the Sun tab itself is open beside the map and says the same and more.
+  const sunLine = isDesktop ? !(panel.open && panel.tab === "sun") : detent === "peek" && tool === "browse" && !pin && !moving;
   inHand.current = tool !== "browse" || Boolean(pin) || Boolean(moving);
 
   // "Fit" and "fly" should land in the part of the map that is not under the chrome.
@@ -1483,7 +1485,11 @@ export default function MapsPage() {
               format={format}
               onFormatChange={setFormat}
               credits={engine ? credits : []}
-              underReadout={sunLine && engine ? <SunGlance engine={engine} onOpen={showSun} /> : undefined}
+              underReadout={
+                sunLine && engine ? (
+                  <SunGlance engine={engine} onOpen={showSun} where={isDesktop ? "At the centre" : undefined} />
+                ) : undefined
+              }
               // On a phone the credits always have a line of their own under the readout, never the space beside it:
               // what the readout has room for is worked out from their height, which must not depend on the answer.
               className="w-full max-md:flex-col max-md:flex-nowrap max-md:items-stretch"
