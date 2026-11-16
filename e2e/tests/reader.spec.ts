@@ -238,7 +238,7 @@ test.describe("a collection that is a list of documents", () => {
       const going = page.getByRole("region", { name: "Adding to your library" });
       await expect(going).toContainText(/[1-5] of 7/, { timeout: 20_000 });
       await expect(page.getByText("Waiting its turn").first()).toBeVisible();
-      await expect(page.getByRole("button", { name: /^Adding to library: / })).toHaveCount(1);
+      await expect(page.getByRole("list", { name: "Documents" }).getByText("Adding…")).toHaveCount(1);
       await expect(page.getByRole("button", { name: /to library$/ })).toHaveCount(0);
 
       // Leaving the page does not stop it: Downloads shows it, counted the same way.

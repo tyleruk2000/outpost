@@ -293,6 +293,10 @@ export function registerArchiveAdding(app: FastifyInstance, ctx: AppContext, opt
       report({ message: null });
       return { ...result };
     },
+    // Also when it was cancelled while it waited for its turn, and so never ran.
+    onSettled(job) {
+      files.setWaiting((job.payload as Payload).collectionId, []);
+    },
   });
 
   let problemsOf: { jobId: string; byPath: Map<string, string> } | undefined;

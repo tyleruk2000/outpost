@@ -65,9 +65,10 @@ function writeDismissed(collectionId: string, jobId: string): void {
  * The "add all" of one collection: the one under way or the last that ended, and how to
  * start, stop and put it away. One that is under way is shown wherever the collection
  * is; how one turned out is shown only where it was asked for (`asked`: of the list of
- * documents, or of the files a page links to).
+ * documents, or of the files a page links to). With `enabled` false nothing is asked of
+ * the server, for a place that has nothing to add.
  */
-export function useAddAll(collectionId: string, asked: ArchiveAddResult["scope"]) {
+export function useAddAll(collectionId: string, asked: ArchiveAddResult["scope"], enabled = true) {
   const client = useQueryClient();
   const status = useQuery({
     // Under "jobs", so that the server's word that a job moved refreshes it.
@@ -77,6 +78,7 @@ export function useAddAll(collectionId: string, asked: ArchiveAddResult["scope"]
     // The timer covers a dropped event connection.
     refetchInterval: (query) => (isActive(query.state.data?.job) ? 1500 : false),
     retry: false,
+    enabled,
   });
   const job = status.data ?? null;
   const [dismissed, setDismissed] = useState(() => readDismissed(collectionId));

@@ -25,6 +25,7 @@ import {
   Film,
   Hourglass,
   LibraryBig,
+  LoaderCircle,
   type LucideIcon,
   RotateCw,
   X,
@@ -123,40 +124,36 @@ function KeepFile({
       </Button>
     );
   }
-  if (file.adding === "waiting" && !save.isPending) {
+  // Under way: said in words that stay legible, with the lamp for what is alive right now.
+  if (save.isPending || file.adding) {
+    const now = save.isPending || file.adding === "now";
     return (
       <p className="flex h-8 items-center gap-2 px-2.5 text-small text-ink-muted max-md:h-11">
-        <Hourglass aria-hidden className="size-4 shrink-0" />
+        {now ? (
+          <LoaderCircle aria-hidden className="size-4 shrink-0 animate-spin text-lamp" />
+        ) : (
+          <Hourglass aria-hidden className="size-4 shrink-0" />
+        )}
         <span>
-          Waiting its turn<span className="sr-only">: {named}</span>
+          {now ? "Adding…" : "Waiting its turn"}
+          <span className="sr-only">: {named}</span>
         </span>
       </p>
     );
   }
-  const adding = save.isPending || file.adding === "now";
   // What the person just tried counts for more than what an earlier "add all" ran into.
-  const problem = save.isError ? errorMessage(save.error) : save.isPending ? null : file.problem;
+  const problem = save.isError ? errorMessage(save.error) : file.problem;
   return (
     <div className="flex flex-col items-end gap-1 max-md:items-start">
       <Button
         size="sm"
         variant="ghost"
-        loading={adding}
         className="max-md:h-11"
         onClick={() => save.mutate()}
-        aria-label={`${adding ? "Adding to library" : problem ? "Try again" : "Add to library"}: ${named}`}
+        aria-label={`${problem ? "Try again" : "Add to library"}: ${named}`}
       >
-        {adding ? (
-          "Adding…"
-        ) : problem ? (
-          <>
-            <RotateCw /> Try again
-          </>
-        ) : (
-          <>
-            <LibraryBig /> Add to library
-          </>
-        )}
+        {problem ? <RotateCw /> : <LibraryBig />}
+        {problem ? "Try again" : "Add to library"}
       </Button>
       {problem ? (
         <p role="alert" className="max-w-[22rem] text-small text-danger max-md:px-2.5">

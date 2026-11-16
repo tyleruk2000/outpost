@@ -62,7 +62,8 @@ Queues in use: `download` (network transfers), `index` (text extraction, embeddi
 `ocr` (reading scanned pages, always one at a time), `transfer` (moving and verifying
 files), `import`, `manage` (bulk removal and clean-ups, one at a time), `backup`
 (scheduled and hand-started backups, one at a time), `webpage` (saving a web page, one
-at a time). Handlers
+at a time), `reference-files` (copying the documents of a reference collection into
+the library, one collection at a time). Handlers
 receive an `AbortSignal`
 and must stop promptly when it fires (pause, cancel, shutdown). Report progress with
 `run.progress({ current, total, message })`. Throw `PermanentJobError` for failures

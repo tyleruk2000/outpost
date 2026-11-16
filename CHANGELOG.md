@@ -355,6 +355,22 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   addresses only, and kept only if it is the kind of file its name says.
 - Links read before a web-site archive's own script can rewrite them, so a file inside
   the archive is not mistaken for one on the internet.
+- **Add to library** in the reader says what it does where it is pressed: the document
+  is copied out of the collection into the library on a named storage location, nothing
+  is downloaded from the internet, and the space is used a second time, with each
+  file's size and what all of them come to against what is free. A line of the list
+  shows a document being added, waiting its turn, in the library, or not added, with
+  the reason and **Try again**.
+- **Add all to library** for a collection that lists documents (and **Add these** for
+  what a search is showing): one job that copies every document not yet in the
+  library, after a dialog that states how many, how much space and where, and refuses
+  when there is not room. It shows "12 of 108", can be stopped, goes on when the page
+  is closed, picks up after a restart, never copies a document twice, and waits for
+  the reading of text to keep up, so that it does not hold back other documents. At
+  the end it says how many were added, how many were already there and which failed
+  and why. Files a page links to inside its collection are added by the same job.
+  Documents added from a collection stay when the collection is removed. See
+  [docs/troubleshooting.md](docs/troubleshooting.md#adding-a-collections-documents-to-the-library).
 - Collections that are a set of documents with a list (those made with openZIM's
   nautilus, such as the Post Disaster Resource Library) are shown as that list in the
   reader: searched by title, author and description, each PDF opened in the built-in

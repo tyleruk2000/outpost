@@ -324,7 +324,9 @@ Outpost reads the collection's list itself and shows it in the reader:
 - The search box above it looks through titles, authors, descriptions and file names
   as you type. Each word must start a word: "pur" finds "purification".
 - A PDF or e-book opens over the list, with **Add to library**; the same button is on
-  each line of the list. The document takes the title the collection gives it.
+  each line of the list, and **Add all to library** above it adds every one. The
+  document takes the title the collection gives it. See
+  [Adding a collection's documents to the library](#adding-a-collections-documents-to-the-library).
 - A sound recording or a film plays in the browser's own player. Which kinds play is
   up to the browser; a WAV recording and a WebM film were tried in Chromium. When a
   file cannot be played, **Open the file** hands it to the browser, which can save it.
@@ -349,16 +351,81 @@ inside the collection is left out, and counted under the list.
 What has been tried: one real collection (Post Disaster Resource Library, May 2024,
 108 PDFs, carrying the same script as nautilus 1.2.1), read through kiwix-serve; and a stand-in of the
 same shape for the tests, with files in folders, several files to a document, a WAV
-recording and names with awkward characters. Film was tried by hand with one WebM
+recording and names with awkward characters. **Add all to library**, the sizes and the
+check for room have been tried against the stand-in only, not against kiwix-serve
+itself: the sizes rely on kiwix-serve answering a `HEAD` request with the file's
+length, and fall back to asking for the file and hanging up once the length has
+arrived. Film was tried by hand with one WebM
 clip. No collection holding real recordings or films, and none from before October
 2022, was to hand.
+
+### Adding a collection's documents to the library
+
+**Add to library** copies a document out of the collection into your document
+library. Nothing is downloaded: the bytes are read from the collection already on
+your storage, through kiwix-serve, and written to the default storage location under
+`documents/`. The collection is not changed, so the document is then on disk twice,
+and each line of the list says how large it is. In the library its text is read so
+that search finds it to the page (the same reading every document gets, as many at a
+time as **Settings → Reading documents → Documents processed at once** allows), and
+it shows with your other documents. Pages that are scans are read by OCR only if
+**Read text from scans automatically** is on; otherwise the document offers it.
+
+**Add all to library**, above the list, adds every PDF and e-book in it that is not in
+the library yet. With words in the search box it becomes **Add these**, for what is
+showing. Before it starts it says how many documents, how much space and on which
+storage location, and it does not start if they would not fit (Outpost keeps 268 MB
+clear on every location).
+
+- It runs on the server, one document after another. You can close the page; it is
+  also listed under **Downloads → Other work in the background**, counted the same way
+  ("12 of 108").
+- **Stop** keeps what has been added. Asking again later adds only what is left.
+- After a restart it goes on from where it was. It works out what is left from what
+  the library holds, so nothing is copied twice.
+- It copies the next document only when the reading of text has nearly caught up, so
+  that a hundred documents do not queue ahead of something else you add meanwhile.
+  "Waiting for the text of the documents just added to be read" means exactly that.
+- At the end it says how many were added, how many were in the library already, and
+  which could not be added, each with the reason. A line that failed says so and has
+  **Try again**; the button above the list then offers only what is left.
+- One collection is added from at a time, and one such job runs per collection.
+- Removing the collection afterwards does not remove the documents added from it.
+  They are the library's own copies. Removing a collection while it is being added
+  from stops the adding and keeps what was added.
+
+What it says when it cannot go on:
+
+- "…does not have room for these N files: … would be needed and … is free" Free some
+  space on that location, or make another location the default under **Storage**.
+- "Stopped after N of M: no room left." The location filled up part of the way
+  through. What was added stays.
+- "This collection cannot be read right now…" or "Stopped after N of M: the collection
+  could not be read." Its drive was disconnected, or kiwix-serve stopped. Reconnect
+  and ask again.
+- "…stopped arriving from this collection part of the way through." Nothing came for
+  thirty seconds. A copy has no limit on how long it takes as a whole.
+- "…is larger than this server accepts for one document." The limit for one document
+  is `OUTPOST_MAX_UPLOAD_MB` (2 GB unless changed).
+
+How long it takes, measured on 16 November 2026 on an Apple M2 Max with the archive
+on the same disk, from a stand-in for kiwix-serve and PDFs of plain text made for the
+measurement: 108 PDFs of 30 pages (139 kB each), 18 seconds from the press to the last
+text being read; 20 of 200 pages (0.9 MB each), 7 seconds; 4 of 2,000 pages (9.4 MB
+each), 12 seconds. Real PDFs with pictures are larger and
+slower to read, and an archive on a network share is slower to copy from. It has not
+been timed against a real collection, nor on a Raspberry Pi.
 
 ### A link in a reference page shows a notice instead of opening
 
 Pressing a link in a reference page does one of three things:
 
 - A PDF or e-book that is **inside the collection** opens over the page, with **Add to
-  library**. Adding it copies it out of the collection and needs no connection.
+  library**. Adding it copies it out of the collection and needs no connection. The
+  bar under the reader's header lists every such file on the page; **Add them to your
+  library** says how much space the chosen ones take and where, and adds them by the
+  same job as [a collection's documents](#adding-a-collections-documents-to-the-library),
+  so closing the page does not stop it.
 - "This file is not in the collection. It is on the internet at …" The copy of the
   site did not include that file. With a connection, **Save to library** fetches it
   and it appears under Documents when the download finishes. Without one, it cannot be

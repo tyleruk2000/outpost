@@ -291,10 +291,9 @@ describe("adding all of them", () => {
       "href",
       "/library/documents/d1",
     );
-    const adding = screen.getByRole("button", { name: "Adding to library: Finding north without a compass" });
-    expect(adding).toBeDisabled();
-    expect(adding).toHaveTextContent("Adding…");
     const rows = within(screen.getByRole("list", { name: "Documents" })).getAllByRole("listitem");
+    expect(rows[1]).toHaveTextContent("Adding…: Finding north without a compass");
+    expect(within(rows[1]!).queryByRole("button", { name: /library/ })).not.toBeInTheDocument();
     expect(rows[2]).toHaveTextContent("Waiting its turn");
     expect(within(rows[2]!).queryByRole("button", { name: /Add to library/ })).not.toBeInTheDocument();
   });

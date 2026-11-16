@@ -27,6 +27,7 @@ import { newId } from "../../core/ids.ts";
 import { documents as documentsTable } from "../../db/schema.ts";
 import type { CollectionRow } from "../collections/service.ts";
 import { extensionOf, formatForExt } from "../documents/file-types.ts";
+import { describeWriteError } from "../documents/staging.ts";
 import { SPACE_RESERVE_BYTES } from "../storage/service.ts";
 
 /** The kinds of file that can be taken out of a collection. Pages stay where they are. */
@@ -225,6 +226,7 @@ export function registerArchiveFiles(app: FastifyInstance, ctx: AppContext, opti
 
     let temp: string | undefined;
     let folder: string | undefined;
+    let placeName = "";
     try {
       const found = await followInsideBook(options.upstream, options.bookNameOf(row), file.path, { signal });
       if (!found) throw unread();
@@ -248,6 +250,7 @@ export function registerArchiveFiles(app: FastifyInstance, ctx: AppContext, opti
       const tooLarge = () => badRequest(`"${file.name}" is larger than this server accepts for one document.`);
       const declared = Number(response.headers.get("content-length"));
       const place = await destination();
+      placeName = place.name;
       // Refused before a byte is written, when the archive says how large the file is.
       if (Number.isFinite(declared) && declared > 0) {
         if (declared > limit) {
@@ -292,7 +295,8 @@ export function registerArchiveFiles(app: FastifyInstance, ctx: AppContext, opti
       if (stall.signal.aborted) {
         throw new AppError("upstream", `"${file.name}" stopped arriving from this collection part of the way through. Try again.`);
       }
-      throw error;
+      // A disk that fills while the file is being written says so in the same words as anywhere else.
+      throw describeWriteError(error, placeName);
     } finally {
       clearTimeout(timer);
       // Moved into the library when it was accepted; otherwise it is not wanted.

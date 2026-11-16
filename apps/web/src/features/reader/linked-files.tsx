@@ -180,7 +180,7 @@ export function ExternalLinkNotice({ href, foundIn, onDismiss }: { href: string;
 export function LinkedFiles({ collectionId, files, foundIn }: { collectionId: string; files: PageFile[]; foundIn: string }) {
   const [open, setOpen] = useState(false);
   const { statusOf, loading } = useFileStatus(collectionId, files);
-  const addAll = useAddAll(collectionId, "files");
+  const addAll = useAddAll(collectionId, "files", files.some((file) => file.kind === "archive"));
   if (files.length === 0) return null;
 
   const fresh = files.filter((file) => statusOf(file).state === "new");
