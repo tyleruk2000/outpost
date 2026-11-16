@@ -7,7 +7,7 @@
 import { encryptedNoteDoc, type NoteDetail, type NoteDoc, type NoteResponse } from "@outpost/shared";
 import { useQueryClient } from "@tanstack/react-query";
 import { CircleAlert, LockKeyhole, TriangleAlert } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { toast } from "sonner";
 import { Notice } from "@/components/page";
@@ -20,7 +20,7 @@ import { keyLabel } from "@/features/encryption/format";
 import { canUsePrivate, useShelf, useUnlocked } from "@/features/encryption/keys-data";
 import { attachmentCount, type PageLock, sealPage } from "@/features/encryption/pages";
 import { emptyNewPassphrase, NewPassphrase, type NewPassphraseState, newPassphraseVerdict, UnlockForm } from "@/features/encryption/parts";
-import { unlockedKey } from "@/features/encryption/session";
+import { lockAll, unlockedKey } from "@/features/encryption/session";
 import { errorMessage } from "@/lib/api";
 import { plural } from "@/lib/utils";
 import { displayTitle, noteKeys, saveNote } from "./notes-data";
@@ -53,6 +53,9 @@ export default function EncryptPageDialog({
   const [fingerprint, setFingerprint] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // A key unlocked here to check the encrypted page is forgotten when the dialog goes.
+  useEffect(() => () => lockAll(), []);
 
   const myKeys = (shelf.data?.keys ?? []).filter((entry) => entry.mine && canUsePrivate(entry) && entry.info.canEncrypt);
   const chosen = myKeys.find((entry) => entry.fingerprint === fingerprint) ?? myKeys[0];
@@ -143,13 +146,15 @@ export default function EncryptPageDialog({
                   pages, when it was last changed, and the fact that it is encrypted.
                 </p>
                 <p>
-                  <strong className="font-semibold">Removed now:</strong> the text from Outpost’s search, including search by meaning, and
-                  this page from the “linked from” lists of the pages it mentions.
+                  <strong className="font-semibold">Removed now:</strong> the text as it stands, from the page, from Outpost’s search
+                  (including search by meaning) and from the database file; and this page from the “linked from” lists of the pages it
+                  mentions.
                 </p>
                 <p>
                   <strong className="font-semibold">Not reached:</strong> copies made before now. Backups, portable drives, the record of a
                   drive that was brought back, exported files, a copy kept on a phone for use offline, and an unsaved draft open in another
-                  browser all still hold the text in the clear. The database file itself is not scrubbed.
+                  browser all still hold the text in the clear. Earlier wordings of the page can also linger in unused space in the database
+                  until it is compacted (Storage, Manage and clean up).
                 </p>
                 <p>
                   <strong className="font-semibold">No way back without the {method === "key" ? "key" : "passphrase"}:</strong> Outpost does

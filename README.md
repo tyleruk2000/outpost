@@ -250,6 +250,7 @@ The reasoning behind each choice, the security model and the known trade-offs ar
 | [Maps](docs/maps.md) | Regions, data sources, GPX, coordinates |
 | [Notes and imports](docs/notes-and-imports.md) | The editor, Markdown and Notion imports |
 | [Portable drives](docs/portable.md) | Making and using a USB drive |
+| [Encryption](docs/encryption.md) | OpenPGP keys, text, files and encrypted pages; ciphers to work by hand |
 | [Security](docs/security.md) | Threat model and controls |
 | [API](docs/api.md) | HTTP API reference |
 | [Answers and language models](docs/ai.md) | Setting up a model of your own, the exact prompt, what is sent where |

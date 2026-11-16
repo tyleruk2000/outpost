@@ -179,8 +179,8 @@ function MakeKeyForm({ onMade, onCancel }: { onMade(made: MadeKey): void; onCanc
             />
             <p className="text-small text-ink-muted">
               {algorithm === "curve25519"
-                ? "Small and fast, and read by GnuPG 2.1 and later and every current OpenPGP program."
-                : "For correspondents with software from before about 2015. Slower, with a much longer public key."}
+                ? "Small and fast, and the kind GnuPG itself makes by default today."
+                : "For correspondents whose software is too old for Curve25519. Slower, with a much longer public key."}
             </p>
           </div>
           <Field label="Expires" hint="An expiry date limits the harm if the key is lost: it stops being used without your doing anything.">

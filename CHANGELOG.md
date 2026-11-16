@@ -292,6 +292,29 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 - A card for where you are while the map follows the device: its position to copy or
   save, and how closely the device claims to know it.
 
+#### Encryption
+
+- An **Encryption** screen: OpenPGP keys, text and files, working in the browser and
+  with GnuPG, and classical ciphers to work with pencil and paper.
+- Keys: make a pair (Curve25519, or RSA 4096 for old correspondents) with a name, an
+  optional address, an expiry and a passphrase; add someone's public key or a private key
+  of your own by pasting or from a file; fingerprints shown in full; export, a
+  revocation certificate, and deleting, each after saying what follows.
+- A private key is kept in the browser, or on Outpost as well if asked, always in the
+  form its passphrase protects. The server refuses one that is not.
+- Text: encrypt to keys, with a passphrase, or both; sign; decrypt; check a signature,
+  with a result that says which key signed and whether anyone has checked whose it is.
+- Files: encrypt and decrypt a file to a download, up to 537 MB.
+- Pages of notes can be encrypted from their menu, then unlocked, read and edited in the
+  browser. The ciphertext is saved only after it has been decrypted back to the same
+  page, and the text it replaces is erased from the search index and the database file.
+- Ciphers by hand: Caesar and ROT13, Vigenère, Playfair, rail fence, columnar
+  transposition and the one-time pad, each with its steps shown on your own message, a
+  Vigenère square and one-time pad sheets to print, and a plain statement of how little
+  each protects.
+- Keys, text, files and encrypted pages need a page opened over HTTPS or on the computer
+  Outpost runs on; elsewhere the screen says why. See docs/encryption.md.
+
 #### Portable drives
 
 - Writing a standalone Outpost to a folder on a removable drive: the app, a

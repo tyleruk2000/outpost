@@ -70,6 +70,12 @@ describe("encrypted pages", () => {
       )
       .all(id) as Array<{ id: number; text: string; heading: string }>;
 
+  /** Whether the full-text index is set to erase what is deleted from it, which it should only be during a scrubbing save. */
+  const indexErases = () => {
+    const setting = app.ctx.sqlite.prepare("SELECT v FROM chunks_fts_config WHERE k = 'secure-delete'").get() as { v: number } | undefined;
+    return (setting?.v ?? 0) !== 0;
+  };
+
   async function plainPage(): Promise<Json> {
     return create({
       title: "Bothy combination",
@@ -135,6 +141,41 @@ describe("encrypted pages", () => {
     expect((sqlite.prepare("SELECT count(*) AS n FROM embeddings").get() as { n: number }).n).toBe(before.length);
     expect((await encrypt(note)).status).toBe(200);
     expect((sqlite.prepare("SELECT count(*) AS n FROM embeddings").get() as { n: number }).n).toBe(0);
+  });
+
+  it("erases the text it replaces from the database file, its log and the index's own tables", async () => {
+    const filler = Array.from({ length: 300 }, (_, index) => `An ordinary sentence, number ${index}, about nothing at all.`).join(" ");
+    // Other pages before and after, so that the index has passages of its own that must survive.
+    for (let index = 0; index < 12; index += 1) await create({ title: `Other ${index}`, content: doc(p(`${filler} Page ${index}.`)) });
+    const note = await create({ title: "Combination", content: doc(p(`The zyxquorvate word and the flimbertwist phrase. ${filler}`)) });
+    for (let index = 0; index < 6; index += 1) await create({ title: `Later ${index}`, content: doc(p(`${filler} Later ${index}.`)) });
+
+    const files = ["outpost.db", "outpost.db-wal"].map((name) => path.join(app.dir, "data", name));
+    /** True when any of the database's files holds the bytes of `word`. */
+    const onDisk = (word: string) => files.some((file) => fs.existsSync(file) && fs.readFileSync(file).includes(word));
+    expect(onDisk("zyxquorvate")).toBe(true);
+    expect(onDisk("flimbertwist")).toBe(true);
+
+    expect((await encrypt(note)).status).toBe(200);
+
+    // Neither the words nor the stems the index made of them ("zyxquorv", "flimbertwist") are anywhere in the files.
+    for (const word of ["zyxquorvate", "zyxquorv", "flimbertwist", "flimbertw"]) expect(onDisk(word), word).toBe(false);
+    // The settings it changed to do that are back as they were, the database is sound, and other pages are still found.
+    const { sqlite } = app.ctx;
+    expect(sqlite.pragma("secure_delete", { simple: true })).toBe(0);
+    expect(indexErases()).toBe(false);
+    expect(sqlite.pragma("integrity_check", { simple: true })).toBe("ok");
+    sqlite.prepare("INSERT INTO chunks_fts(chunks_fts) VALUES('integrity-check')").run();
+    expect((await searchIds("ordinary sentence")).length).toBeGreaterThan(10);
+    expect(await searchIds("combination")).toEqual([note.id]);
+  });
+
+  it("puts the erasing settings back even when the save is refused", async () => {
+    const note = await plainPage();
+    await app.api("PATCH", `/api/notes/${note.id}`, { content: doc(p("A newer version.")) });
+    expect((await encrypt(note)).status).toBe(409);
+    expect(app.ctx.sqlite.pragma("secure_delete", { simple: true })).toBe(0);
+    expect(indexErases()).toBe(false);
   });
 
   it("forgets the links the page made, since nobody can see them now", async () => {

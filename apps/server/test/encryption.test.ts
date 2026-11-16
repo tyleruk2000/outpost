@@ -190,6 +190,18 @@ describe("the key shelf API", () => {
     expect((await app.api("DELETE", "/api/encryption/keys/../../etc")).status).not.toBe(200);
   });
 
+  it("keeps at most 500 keys, and still takes a new copy of one it has", async () => {
+    await app.api("PUT", "/api/encryption/keys", { publicKey: fixture("gnupg-public.asc") });
+    const fill = app.ctx.sqlite.prepare(
+      "INSERT INTO pgp_keys (fingerprint, public_armored, mine, created_at, updated_at) VALUES (?, 'x', 0, 0, 0)",
+    );
+    for (let index = 0; index < 499; index += 1) fill.run(index.toString(16).padStart(40, "0"));
+    const full = await app.api("PUT", "/api/encryption/keys", { publicKey: fixture("rsa4096-public.asc") });
+    expect(full.status).toBe(413);
+    expect(full.body.error.message).toMatch(/at most 500 keys/);
+    expect((await app.api("PUT", "/api/encryption/keys", { publicKey: fixture("gnupg-public.asc") })).status).toBe(200);
+  });
+
   it("needs the header every changing request needs", async () => {
     const response = await app.app.inject({
       method: "PUT",
@@ -198,6 +210,23 @@ describe("the key shelf API", () => {
       payload: { publicKey: fixture("gnupg-public.asc") },
     });
     expect(response.statusCode).toBe(403);
+  });
+
+  it("is emptied by “erase everything”, private keys included", async () => {
+    const fp = fingerprint("gnupg");
+    await app.api("PUT", "/api/encryption/keys", { publicKey: fixture("gnupg-public.asc") });
+    await app.api("PUT", `/api/encryption/keys/${fp}/private`, { privateKey: fixture("gnupg-private-protected.asc") });
+    await app.api("PUT", "/api/encryption/keys", { publicKey: fixture("rsa4096-public.asc") });
+    const started = await app.api("POST", "/api/manage/cleanup/everything", { confirm: "erase everything" });
+    expect(started.status, JSON.stringify(started.body)).toBe(200);
+    await app.ctx.jobs.whenIdle();
+    expect(await list()).toEqual([]);
+    expect((await app.api("GET", `/api/encryption/keys/${fp}/private`)).status).toBe(404);
+    // The database is compacted afterwards, so the protected key is not left in freed space either.
+    const files = ["outpost.db", "outpost.db-wal"].map((name) => path.join(app.dir, "data", name));
+    const line = fixture("gnupg-private-protected.asc").split("\n")[2]!;
+    expect(line.length).toBeGreaterThan(40);
+    expect(files.some((file) => fs.existsSync(file) && fs.readFileSync(file).includes(line))).toBe(false);
   });
 
   it("tells open screens when the shelf changes", async () => {

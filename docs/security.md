@@ -55,6 +55,9 @@ public internet and must not be exposed to it.
   local programs.
 - **Physical access to an unencrypted drive.** The database, attachments, documents
   and portable drives are stored unencrypted. Anyone holding the disk can read them.
+  The exception is what a person has encrypted themselves: an encrypted page of notes is
+  ciphertext wherever it is copied (see [Encryption](#encryption) for exactly what that
+  covers).
 - **An untrusted network.** On its own Outpost speaks plain HTTP. On a network you do
   not trust, content (and a share password as it is typed) can be observed and altered.
 - **A compromised helper.** Outpost trusts the kiwix-serve program, the embedding
@@ -212,6 +215,155 @@ nesting. Code: `apps/server/src/modules/notes/content/`.
 
 Search snippets and reference-collection snippets reach the browser as plain text
 segments with "matched" flags, never as HTML.
+
+### Encryption
+
+The Encryption screen and encrypted pages of notes are the one place where Outpost
+keeps something from the people who can reach it. Everything else on this page still
+applies around them: there are no accounts, and everyone on the network can open every
+screen. [encryption.md](encryption.md) describes the feature; this is its model.
+
+#### Where the cryptography runs
+
+In the browser, and only there. A passphrase, an unlocked private key, and the text or
+file being encrypted or decrypted never reach the server: not in a request body, not in
+an address, not in a log. The server has no OpenPGP library and could not decrypt
+anything if asked.
+
+This was chosen because the alternative is worse in exactly the setting Outpost is used
+in. If the server did the work, every passphrase and every plaintext would cross the
+home network, usually over plain HTTP, and the server would hold unlocked keys in
+memory for anyone to ask it to use.
+
+What it costs: browsers allow the cryptography this needs (`crypto.subtle`) only on a
+secure origin, which is HTTPS or the computer itself (`localhost`). The library used
+here will not even load without it. So on `http://<address>:8080`, keys, text, files
+and encrypted pages are **not available**, and the screen says why and points to
+Settings, HTTPS on your network. Nothing falls back to the server. Tested in Chromium
+against the packaged app.
+
+That refusal is also the honest one. On plain HTTP the page itself arrives unprotected,
+and anyone able to alter traffic on the network could change the script before it runs.
+Cryptography in such a page protects against someone who only listens, not someone who
+interferes, and a person typing the passphrase of their private key cannot tell which
+they face.
+
+#### What the server holds
+
+| | Held as | Who can read it |
+| --- | --- | --- |
+| Public keys | Armoured text in `pgp_keys` | Everyone, which is what a public key is for. |
+| A private key, **only if its owner chose "on this device and on Outpost"** | The armoured key, still encrypted under its passphrase | Everyone can download it and guess at its passphrase offline, without limit. |
+| Encrypted pages | An OpenPGP message in the page's content | Everyone can download it and guess at its passphrase offline, if it has one. |
+| Passphrases, unlocked keys, plaintext | Not held | |
+| Which keys a person has checked with their owner | Not held: kept in that person's browser | |
+
+The server enforces the second row itself rather than trusting the browser.
+`modules/encryption/packets.ts` reads the packets of every key it is given (the framing
+only; it does no cryptography) and refuses:
+
+- anything offered as a public key that contains a secret-key packet, whatever its
+  armour says;
+- a private key any of whose secret parts is in the clear, is protected by a checksum
+  rather than a hash, or uses a passphrase that is not stretched (only iterated and
+  Argon2 are accepted);
+- a private key filed under a fingerprint that is not its own (the server works the
+  fingerprint out from the key, for version 4 and version 6 keys);
+- a key in a version, algorithm or form it does not know, since it could not check it.
+
+It fails closed. The tests feed it keys made by OpenPGP.js and by GnuPG, in the clear and
+protected, in both encodings of Curve25519, RSA 4096 and version 6, and check that its
+fingerprints agree with theirs. Keys are at most 100 kB and there are at most 500.
+
+Because of the second and third rows, a passphrase that protects anything kept on
+Outpost has to be strong on its own: at least 20 characters with 10 different ones, or
+one that Outpost made at random (80 bits). The private key is locked with the highest
+passphrase-stretching count the format allows, but that is repeated SHA-256, which is
+fast to compute, so it slows guessing by a constant and no more. "On this device only"
+is the default.
+
+#### What the server is not trusted for
+
+The key shelf can be changed by anyone on the network: keys added, replaced, deleted.
+So the browser believes nothing about a key except its bytes. Names, fingerprints,
+expiry and revocation are worked out from the key itself by the OpenPGP library, and a
+key the server files under a fingerprint that is not its own is shown as unreadable.
+
+Whether a key really belongs to the person it names cannot be worked out from anything.
+A person establishes it by comparing fingerprints, and their "checked" mark is kept in
+their own browser, by fingerprint. A key swapped on the server for another with the
+same name has a different fingerprint and shows as not checked. A signature check says
+which of the three it is: your own key, a key you checked, or a key that only claims a
+name.
+
+Someone on the network can therefore deny (delete your public key from the shelf, or a
+private key you kept only there) but cannot read, and cannot make a forged key pass as
+checked. Keep a copy of any private key that matters.
+
+#### What is kept in the browser
+
+- **Private keys**, passphrase-protected, in `localStorage`, for keys kept "on this
+  device". Anything able to read the browser's storage (the device's owner, another
+  person at the same browser profile, malware) gets the protected key and can guess at
+  its passphrase.
+- **"Checked" marks.**
+- **Unlocked keys and decrypted text**: in memory only, never in storage. An unlocked
+  key is forgotten 5 minutes after its last use, on leaving the screen, and when the tab
+  goes away; an open encrypted page locks itself after 5 idle minutes. JavaScript cannot
+  guarantee that memory is wiped, and cannot overwrite a passphrase that was typed.
+
+A person at an unlocked device, or an extension that can read the page, sees whatever is
+decrypted on it. Nothing here defends against that.
+
+#### Encrypted pages
+
+An encrypted page is an ordinary page whose whole content is one armoured OpenPGP
+message (`encryptedNoteArmor` in `packages/shared/src/encryption.ts`). Its title, icon,
+tags, cover, position, dates and the fact of its encryption are plain.
+
+- **Nothing derived from an encrypted page holds its text.** The server keeps no
+  preview text, no links and no search passages for it, so there is nothing to embed
+  either; the page is indexed by title and tags only.
+- **Ciphertext is saved only after it has been proved.** The browser encrypts the page,
+  decrypts the result again with the same passphrase or key, and compares it with what
+  was written before sending anything (`sealPage`). A failure anywhere leaves the page
+  as it was.
+- **Text and ciphertext cannot replace each other by accident.** A save from a browser
+  that would do either must name the version it was made from, and one that would put
+  text over ciphertext must also say so (`removeEncryption`). A tab left open from
+  before a page was encrypted cannot write the old text back; it is refused.
+- **The replaced text is erased, not just unlinked.** For that one save the database
+  overwrites freed pages with zeros, the full-text index removes deleted passages
+  instead of marking them, and the write-ahead log is folded in and emptied
+  (`scrubbing` in the search service). A test reads the database files afterwards.
+- **No pictures or files.** Attachments are separate files served to anyone; a page
+  with any cannot be encrypted, and an encrypted page will not take one.
+
+What it does not reach is stated to the person before they confirm, and listed in
+[encryption.md](encryption.md#what-happens-to-the-old-text): backups, portable drives,
+the record of a merge, exports, a copy kept for offline use, a draft in another tab,
+earlier wordings in unused database space until it is compacted, and the disk itself.
+Encrypting a page protects it from now on. It does not recall what was already copied.
+
+#### The library
+
+OpenPGP.js 6.3.2, loaded at run time from a file of its own
+(`/vendor/openpgp/openpgp.min.mjs`) by the Encryption screen and by encrypted pages, and
+by nothing else. It is the file its authors publish, unchanged. It is served from
+Outpost's own origin and is covered by the same Content Security Policy as the rest of
+the app, which already forbids loading script from anywhere else. Anyone who can write
+to the installation's `web/vendor` folder can replace it, as they can replace any other
+file of the app.
+
+Outpost's use of the library has not been audited. It is tested against itself and
+against GnuPG 2.5.18 in both directions.
+
+#### Ciphers by hand
+
+The classical ciphers on the same screen are not security measures and the screen says
+so for each. One-time pad letters come from `crypto.getRandomValues`, with the top of
+each byte's range discarded so that no letter is favoured; they exist only in the page
+and on the paper. Nothing typed into that part of the screen is sent or stored.
 
 ### Answers from a language model
 

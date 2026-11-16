@@ -878,7 +878,10 @@ export function createNotesService(ctx: AppContext, attachments: AttachmentStore
     },
 
     update(id, patch) {
-      const result = update.immediate(id, patch);
+      // A save that puts ciphertext in place of a page's text also erases that text from
+      // the database file and the search index, rather than leaving it in freed space.
+      const encrypting = patch.content !== undefined && encryptedNoteArmor(patch.content) !== null;
+      const result = encrypting ? search.scrubbing(() => update.immediate(id, patch)) : update.immediate(id, patch);
       if (result.dirty) changed(id);
       return toSaveResult(result.row);
     },

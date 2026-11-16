@@ -350,6 +350,72 @@ test.describe("encryption", () => {
     expect(errors).toEqual([]);
   });
 
+  test("locks a page with one of my keys, and opens and edits it with that key", async ({ page }) => {
+    const errors = watchForErrors(page);
+    const passphrase = await makeKey(page, "Page Owner");
+    const fingerprint = await page.locator("li[data-key]").filter({ hasText: "Page Owner" }).getAttribute("data-key");
+    const note = (
+      await api(page, "POST", "/api/notes", {
+        title: "Locked with a key",
+        content: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "The spare key is behind the meter." }] }] },
+      })
+    ).note;
+
+    await page.goto(`/notes/${note.id}`);
+    await page.getByRole("button", { name: "Page actions" }).click();
+    await page.getByRole("menuitem", { name: "Encrypt this page…" }).click();
+    const dialog = page.getByRole("dialog", { name: "Encrypt “Locked with a key”?" });
+    await dialog.getByRole("radio", { name: "One of my keys" }).click();
+    // The key has to be unlocked first, so that the encrypted page can be decrypted back and checked before it is saved.
+    await expect(dialog.getByRole("button", { name: "Encrypt this page" })).toBeDisabled();
+    await dialog.getByLabel("Passphrase for Page Owner’s key").fill(passphrase);
+    await dialog.getByRole("button", { name: "Unlock", exact: true }).click();
+    await dialog.getByRole("button", { name: "Encrypt this page" }).click();
+    await expect(page.getByRole("heading", { name: "This page is encrypted" })).toBeVisible({ timeout: 15_000 });
+    const stored = (await api(page, "GET", `/api/notes/${note.id}`)).note;
+    expect(stored.encrypted).toBe(true);
+    expect(JSON.stringify(stored.content)).not.toContain("meter");
+
+    // Closing the dialog forgot the key: the page asks for its passphrase again.
+    await page.getByLabel("Passphrase for Page Owner’s key").fill(passphrase);
+    await page.getByRole("button", { name: "Unlock", exact: true }).click();
+    await expect(page.getByText("The spare key is behind the meter.")).toBeVisible();
+
+    // Two edits in a row, each saved as a new message checked with the same unlocked key.
+    await page.getByRole("button", { name: "Edit" }).click();
+    await page.getByRole("textbox", { name: "Page content" }).click();
+    await page.keyboard.press("ControlOrMeta+End");
+    await page.keyboard.type(" Ask next door.");
+    await page.getByRole("button", { name: "Done" }).click();
+    await expect(page.getByRole("button", { name: "Edit" })).toBeVisible({ timeout: 15_000 });
+    await page.getByRole("button", { name: "Edit" }).click();
+    await page.getByRole("textbox", { name: "Page content" }).click();
+    await page.keyboard.press("ControlOrMeta+End");
+    await page.keyboard.type(" They are in after six.");
+    await page.getByRole("button", { name: "Done" }).click();
+    await expect(page.getByRole("button", { name: "Edit" })).toBeVisible({ timeout: 15_000 });
+    const edited = (await api(page, "GET", `/api/notes/${note.id}`)).note;
+    expect(JSON.stringify(edited.content)).not.toMatch(/meter|next door|after six/);
+
+    // In a browser without the private key, the page says where the key is and opens nothing.
+    const other = await page.context().browser()!.newContext();
+    const elsewhere = await other.newPage();
+    await elsewhere.goto(`${new URL(page.url()).origin}/notes/${note.id}`);
+    await expect(elsewhere.getByText(/It is locked with Page Owner’s key, whose\s+private half is not on this device/)).toBeVisible();
+    await expect(elsewhere.getByLabel(/Passphrase/)).toHaveCount(0);
+    await other.close();
+
+    // Back here, after a reload, the key opens both edits.
+    await page.reload();
+    await page.getByLabel("Passphrase for Page Owner’s key").fill(passphrase);
+    await page.getByRole("button", { name: "Unlock", exact: true }).click();
+    await expect(page.getByText("The spare key is behind the meter. Ask next door. They are in after six.")).toBeVisible();
+
+    await api(page, "DELETE", `/api/notes/${note.id}`);
+    await api(page, "DELETE", `/api/encryption/keys/${fingerprint}`);
+    expect(errors).toEqual([]);
+  });
+
   test("will not encrypt a page that has a picture on it", async ({ page }) => {
     const errors = watchForErrors(page);
     const note = (await api(page, "POST", "/api/notes", { title: "With a picture" })).note;

@@ -27,7 +27,7 @@ import { keyLabel } from "@/features/encryption/format";
 import { canUsePrivate, type ShelfKey, useShelf, useUnlocked } from "@/features/encryption/keys-data";
 import { openPage, type PageLock, sealPage } from "@/features/encryption/pages";
 import { IDLE_MINUTES, PassphraseInput, UnlockForm } from "@/features/encryption/parts";
-import { UNLOCK_IDLE_MS, unlockedKey } from "@/features/encryption/session";
+import { lockAll, UNLOCK_IDLE_MS, unlockedKey } from "@/features/encryption/session";
 import { errorMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { NoteEditor } from "./editor/note-editor";
@@ -195,6 +195,8 @@ export default function EncryptedNote({ note }: { note: NoteDetail }) {
   };
 
   // Leaving the page with something unsaved: it is encrypted and saved on the way out, and the browser is asked to wait for a closing tab.
+  const latestSave = useRef(saveText);
+  latestSave.current = saveText;
   useEffect(() => {
     const onBeforeUnload = (event: BeforeUnloadEvent) => {
       if (dirty.current || saving.current) event.preventDefault();
@@ -204,12 +206,14 @@ export default function EncryptedNote({ note }: { note: NoteDetail }) {
       window.removeEventListener("beforeunload", onBeforeUnload);
       clearTimeout(timer.current);
       if (dirty.current) {
-        void saveText().then(() => {
+        // The key is still needed to check what is saved; it is forgotten as soon as that is done.
+        void latestSave.current().then(() => {
           if (dirty.current) toast.error("Your last changes to an encrypted page could not be saved before you left it.");
+          lockAll();
         });
-      }
+      } else lockAll();
     };
-  }, [saveText]);
+  }, []);
 
   // Idle: the decrypted text and the passphrase are forgotten after five minutes without a key or a pointer, unless something is unsaved.
   useEffect(() => {

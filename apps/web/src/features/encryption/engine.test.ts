@@ -470,7 +470,8 @@ function findGpg(): string | null {
 }
 /** gpg's agent listens on a socket inside its home, and a socket's path may be at most about 100 characters long. */
 function gpgHome(): string | null {
-  const candidates = [os.tmpdir(), "/tmp", os.homedir()];
+  // The system's temporary folder, or the short one every Unix has. Never anywhere a person keeps things.
+  const candidates = [os.tmpdir(), "/tmp"];
   for (const base of candidates) {
     try {
       const dir = fs.mkdtempSync(path.join(base, "outpost-gpg-"));
