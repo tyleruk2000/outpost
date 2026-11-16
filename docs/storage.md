@@ -714,6 +714,29 @@ which are not in a backup at all.
 wrote it still holds the key of that one file in memory, reads the whole file back with
 it, and then discards it. After that only the passphrase opens the file.
 
+**What it costs.** Measured on 16 November 2026 on an Apple M-series Mac with 32 GB
+(Node 24.15), three runs each, while other work was running on the machine, so the
+times are rough. "Small" is a new library with one note and a 300 kB attachment;
+"large" is 500 MB of attachments, half of them bytes that do not compress, which makes
+a 251 MB backup. A backup is timed from **Back up now** to the end of its check; a
+restore from the request to the backup being staged. Memory is the most the whole
+server process held, which idles at about 310 MiB.
+
+| | Plain | Protected |
+| --- | --- | --- |
+| Small, back up | 0.06 to 0.07 s, 322 to 330 MiB | 0.06 to 0.08 s, 332 to 349 MiB |
+| Small, restore | 0.02 to 0.03 s, 321 to 329 MiB | 1.06 to 1.07 s, 819 to 824 MiB |
+| Large, back up | 5.8 to 6.3 s, 430 to 446 MiB | 6.5 to 10.5 s, 472 to 488 MiB |
+| Large, restore | 0.7 to 0.9 s, 415 to 430 MiB | 2.3 to 2.9 s, 815 to 829 MiB |
+
+Making a protected backup costs little more than making a plain one: no passphrase is
+involved, and the encryption is far quicker than the compression. Restoring one costs
+the second and the memory that deriving the key is meant to cost (here 512 MiB, the
+most Outpost ever asks), and reads the file twice: once to check every chunk, once to
+unpack it. A computer with less memory chooses a smaller cost when the passphrase is
+set there; a backup made on a large computer and restored on a small one needs the
+memory its header asks for, and the restore says so if it is not there.
+
 #### The protected backup file
 
 Written out so that another program can read one. Version 1; integers are big-endian.
