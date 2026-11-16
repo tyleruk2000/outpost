@@ -65,6 +65,11 @@ export interface SearchParams {
   limit?: number;
   offset?: number;
   mode?: "keyword" | "semantic" | "hybrid";
+  /**
+   * "later" leaves reference collections out of the answer, for a caller that asks for
+   * them separately (`searchReference`) so that nothing waits on them.
+   */
+  reference?: "include" | "later";
   signal?: AbortSignal;
 }
 
@@ -88,6 +93,93 @@ export interface SearchSource {
   isAvailable(): boolean;
   weight(): number;
   search(params: { q: string; kinds?: string[]; limit: number; signal?: AbortSignal }): Promise<SearchResult[]>;
+  /**
+   * For a source made of collections that answer at different times: the same search,
+   * handing over each collection's results as soon as that collection has answered.
+   */
+  searchInParts?(params: ReferenceSearchParams): Promise<ReferenceOutcome>;
+}
+
+/** What one reference collection found. */
+export interface ReferencePart {
+  collectionId: string;
+  title: string;
+  /** Its best matches, best first. Empty when it has none. */
+  results: SearchResult[];
+}
+
+export interface ReferenceSearchParams {
+  q: string;
+  /** Fires when whoever asked has gone: nothing more is wanted. */
+  signal?: AbortSignal;
+  /** How long to go on waiting for collections. Those that have not answered by then are reported as missing. */
+  budgetMs: number;
+  /** Called once, first, with the number of collections that will be searched. */
+  onStart?(collections: number): void;
+  /** Called once for each collection that answers, in the order they answer. */
+  onPart(part: ReferencePart): void;
+}
+
+export interface ReferenceOutcome {
+  /** How many collections there were to search. */
+  collections: number;
+  /** How many answered. */
+  searched: number;
+  /** The ones that did not, by name. */
+  missing: Array<{ collectionId: string; title: string; reason: "slow" | "failed" }>;
+  /** Why none could be searched at all, in words for a person; null when they could. */
+  message: string | null;
+}
+
+/** How long a search waits for reference collections altogether. Tests shorten these; nothing else changes them. */
+export const referenceBudgets = {
+  /** A search that answers in one part holds everything back while it waits, so it waits less. */
+  onePartMs: 10_000,
+  /** A search of reference collections on their own, which sends each collection's results as they come. */
+  inPartsMs: 30_000,
+};
+
+/** Each collection ranks its own articles; take them in turn so one large collection does not crowd out the rest. */
+export function inTurn(parts: ReferencePart[]): SearchResult[] {
+  const results: SearchResult[] = [];
+  const depth = Math.max(0, ...parts.map((part) => part.results.length));
+  for (let rank = 0; rank < depth; rank += 1) {
+    for (const part of parts) {
+      const hit = part.results[rank];
+      if (hit) results.push(hit);
+    }
+  }
+  return results;
+}
+
+/** Names the collections missing from a search, as a sentence. Null when none is. */
+export function missingMessage(missing: ReferenceOutcome["missing"]): string | null {
+  if (missing.length === 0) return null;
+  const names = (reason: "slow" | "failed") =>
+    missing
+      .filter((item) => item.reason === reason)
+      .map((item) => `“${item.title}”`)
+      .join(", ");
+  const slow = names("slow");
+  const failed = names("failed");
+  return [
+    slow ? `Not searched in time, so missing from these results: ${slow}.` : "",
+    failed ? `Could not be searched, so missing from these results: ${failed}.` : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+/** Runs a search in parts to its end and gives the whole of it, in a settled order. */
+export async function gatherParts(
+  source: SearchSource,
+  params: Omit<ReferenceSearchParams, "onPart" | "onStart">,
+): Promise<{ results: SearchResult[]; outcome: ReferenceOutcome }> {
+  const parts: ReferencePart[] = [];
+  const outcome = await source.searchInParts!({ ...params, onPart: (part) => parts.push(part) });
+  // The order collections answered in is chance; their names are not.
+  parts.sort((a, b) => a.title.localeCompare(b.title) || a.collectionId.localeCompare(b.collectionId));
+  return { results: inTurn(parts), outcome };
 }
 
 export interface ChunkRecord {
@@ -112,6 +204,11 @@ export interface SearchService {
   upsert(entity: IndexEntity): { chunks: number; changed: boolean };
   remove(kind: string, entityId: string): void;
   search(params: SearchParams): Promise<SearchResponse>;
+  /**
+   * Searches reference collections on their own, a collection at a time. This is the
+   * second part of a search asked with `reference: "later"`.
+   */
+  searchReference(params: Omit<ReferenceSearchParams, "budgetMs">): Promise<ReferenceOutcome>;
   addSource(source: SearchSource): void;
   getChunks(chunkIds: number[]): ChunkRecord[];
   stats(): { entities: Record<string, number>; chunks: number };
@@ -376,11 +473,20 @@ export function createSearchService(ctx: AppContext): SearchService {
       const active = sources.filter((source) => {
         if (!source.isAvailable()) return false;
         if (source.layer === "semantic") return mode !== "keyword";
+        if (params.reference === "later") return false;
         if (params.kinds?.length && !params.kinds.includes("reference")) return false;
         return mode !== "semantic" && ctx.services.settings.get("search.includeReference");
       });
       const answers = await Promise.allSettled(
-        active.map((source) => source.search({ q, kinds: params.kinds, limit: window, signal: params.signal })),
+        active.map(async (source) => {
+          if (!source.searchInParts) return source.search({ q, kinds: params.kinds, limit: window, signal: params.signal });
+          // Every collection's best matches, however far down the list this page is, so
+          // that the count and the pages do not change from one page to the next.
+          const { results, outcome } = await gatherParts(source, { q, signal: params.signal, budgetMs: referenceBudgets.onePartMs });
+          const problem = outcome.message ?? missingMessage(outcome.missing);
+          if (problem) warnings.push({ source: source.id, message: problem });
+          return results;
+        }),
       );
       answers.forEach((answer, index) => {
         const source = active[index]!;
@@ -425,6 +531,16 @@ export function createSearchService(ctx: AppContext): SearchService {
         warnings,
         tookMs: Math.round(performance.now() - started),
       };
+    },
+
+    async searchReference(params) {
+      const q = params.q.trim();
+      const source = sources.find((candidate) => candidate.layer === "reference" && candidate.searchInParts && candidate.isAvailable());
+      if (!q || !source || !ctx.services.settings.get("search.includeReference")) {
+        params.onStart?.(0);
+        return { collections: 0, searched: 0, missing: [], message: null };
+      }
+      return source.searchInParts!({ ...params, q, budgetMs: referenceBudgets.inPartsMs });
     },
 
     addSource(source) {

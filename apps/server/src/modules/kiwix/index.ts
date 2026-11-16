@@ -22,10 +22,11 @@ import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
 import { AppError, badRequest, notFound } from "../../core/errors.ts";
 import type { CollectionRow } from "../collections/service.ts";
-import type { SearchResult, SearchSource } from "../search/service.ts";
+import { gatherParts, referenceBudgets, type SearchSource } from "../search/service.ts";
 import { type DocumentLists, registerDocumentLists } from "./document-lists.ts";
 import { registerArchiveFiles } from "./files.ts";
 import { bookNameOf, decodeEntities, type LibraryBook, readZimUuid, writeLibrary } from "./library.ts";
+import { createSearchQueue } from "./search-queue.ts";
 import { createKiwixConnection, type KiwixConnection } from "./server.ts";
 
 interface KiwixMeta {
@@ -60,6 +61,8 @@ export interface KiwixService {
   /** Rewrites the library file from the installed collections. */
   sync(): Promise<void>;
   books(token: string): Promise<BookDto[]>;
+  /** Searches of archives at kiwix-serve now, and searches waiting their turn. */
+  searchLoad(): { running: number; waiting: number };
 }
 
 declare module "../../core/context.ts" {
@@ -90,6 +93,31 @@ const CONTENT_TOKEN = "open";
 /** Only a book's pages and its icon are reachable; search and the rest of kiwix-serve are not. */
 const isAllowedPath = (rest: string) => rest.startsWith("content/") || /^raw\/[^/]+\/meta\/Illustration_48x48@1$/.test(rest);
 const passThroughHeaders = ["content-type", "etag", "last-modified", "content-range", "accept-ranges"];
+
+/** The numbers that decide how archives are searched. Tests shorten them; nothing else changes them. */
+export const referenceTimings = {
+  /**
+   * How many searches Outpost has at kiwix-serve at once: one fewer than the four requests
+   * kiwix-serve works on at a time, so that someone reading an article is not kept waiting
+   * behind a search. Sending more does not make it search more; they wait inside it.
+   */
+  atOnce: 3,
+  /**
+   * How long a search waits for one archive once that archive's search has begun. On the
+   * network share this was measured on, under heavy load, seven archives in eight answered
+   * a first search within 7.3 seconds; on a quiet machine they take about one.
+   */
+  archiveLimitMs: 8_000,
+  /** How long a search may go on at kiwix-serve before Outpost stops waiting for it to end. */
+  archiveCeilingMs: 20_000,
+};
+
+/**
+ * How many results to ask each archive for. Every result costs kiwix-serve a read of
+ * that article (about half a second each from a cold network share, as measured), so this is no more
+ * than is shown: enough to make about twenty in all, at least three and at most ten.
+ */
+export const resultsFromEach = (archives: number) => Math.min(10, Math.max(3, Math.ceil(20 / Math.max(archives, 1))));
 
 const zimOf = (row: CollectionRow) => row.meta.zim;
 const kiwixOf = (row: CollectionRow) => (row.meta.kiwix ?? {}) as KiwixMeta;
@@ -296,6 +324,7 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
         .map((row) => bookDto(row, token, up))
         .filter((book): book is BookDto => Boolean(book));
     },
+    searchLoad: () => queue.load(),
   };
   ctx.services.kiwix = service;
 
@@ -328,6 +357,8 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
     start: number,
     limit: number,
     signal?: AbortSignal,
+    /** Throw when kiwix-serve refuses, so that the caller can say the archive was not searched. */
+    strict = false,
   ): Promise<{ total: number; hits: Hit[] }> {
     const zim = zimOf(row)!;
     const query = new URLSearchParams({
@@ -339,7 +370,10 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
     });
     const response = await upstream(`search?${query}`, { signal: signal ?? AbortSignal.timeout(8000) });
     const body = await response.text();
-    if (!response.ok) return { total: 0, hits: [] };
+    if (!response.ok) {
+      if (strict) throw new Error(`kiwix-serve answered ${response.status}`);
+      return { total: 0, hits: [] };
+    }
     const channel = parser.parse(body)?.rss?.channel;
     if (!channel) return { total: 0, hits: [] };
     const items = channel.item === undefined ? [] : Array.isArray(channel.item) ? channel.item : [channel.item];
@@ -366,59 +400,92 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
   const readerUrl = (collectionId: string, articlePath: string) =>
     `/library/read/${collectionId}/${articlePath.split("/").map(encodeURIComponent).join("/")}`;
 
+  /** One archive's answer, as the queue keeps it. */
+  type BookAnswer = { total: number; hits: Hit[] };
+  const queue = createSearchQueue<BookAnswer>({
+    concurrency: referenceTimings.atOnce,
+    limitMs: referenceTimings.archiveLimitMs,
+    ceilingMs: referenceTimings.archiveCeilingMs,
+    remember: 600,
+    rememberMs: 5 * 60_000,
+  });
+  ctx.onClose.push(() => queue.close());
+
   const source: SearchSource = {
     id: "reference",
     layer: "reference",
     isAvailable: () => Boolean(connection.baseUrl()) && zimCollections().some(servable),
     weight: () => settings.get("search.hybrid.keywordWeight"),
-    async search({ q, limit, signal }) {
-      if (!(await connection.isUp()))
-        throw new Error(
-          connection.problem() ?? "Reference collections are not answering, so their articles are missing from these results.",
-        );
-      const books = zimCollections().filter(servable).slice(0, 24);
-      const perBook = Math.max(3, Math.ceil((limit * 1.5) / Math.max(books.length, 1)));
-      const answers = await Promise.allSettled(books.map((row) => searchBook(row, q, 0, perBook, signal)));
-      // A book that is a list of documents has no articles to search; its documents are found by their titles.
-      const found = books.map((row, index) => {
-        const answer = answers[index]!;
-        const listed = (lists?.hits(row, q, perBook) ?? []).map((hit) => ({
-          entityId: hit.entityId,
-          title: hit.title,
-          url: hit.url,
-          segments: hit.description ? [{ text: hit.description, hit: false }] : [],
-        }));
-        const articles = (answer.status === "fulfilled" ? answer.value.hits : []).map((hit) => ({
-          entityId: `${row.id}:${hit.path}`,
-          title: hit.title,
-          url: readerUrl(row.id, hit.path),
-          segments: hit.snippet ? hit.segments : [],
-        }));
-        return [...listed, ...articles];
-      });
-      // Each book ranks its own articles; take them in turn so one large book does not crowd out the rest.
-      const results: SearchResult[] = [];
-      for (let rank = 0; rank < perBook && results.length < limit; rank += 1) {
-        found.forEach((hits, index) => {
-          const hit = hits[rank];
-          const row = books[index]!;
-          if (!hit || results.length >= limit) return;
-          results.push({
-            kind: "reference",
+    async search({ q, signal }) {
+      const { results, outcome } = await gatherParts(source, { q, signal, budgetMs: referenceBudgets.onePartMs });
+      if (outcome.message) throw new Error(outcome.message);
+      return results;
+    },
+    async searchInParts({ q, signal, budgetMs, onStart, onPart }) {
+      if (!(await connection.isUp())) {
+        onStart?.(0);
+        return {
+          collections: 0,
+          searched: 0,
+          missing: [],
+          message: connection.problem() ?? "Reference collections are not answering, so their articles are missing from these results.",
+        };
+      }
+      // Smallest first: a small archive is the quickest to search, so the first results come soonest.
+      const books = zimCollections()
+        .filter(servable)
+        .sort((a, b) => a.sizeBytes - b.sizeBytes || a.id.localeCompare(b.id));
+      const each = resultsFromEach(books.length);
+      onStart?.(books.length);
+      const budget = AbortSignal.timeout(budgetMs);
+      const waiting = signal ? AbortSignal.any([signal, budget]) : budget;
+      const missing: Array<{ collectionId: string; title: string; reason: "slow" | "failed" }> = [];
+      let searched = 0;
+      await Promise.all(
+        books.map(async (row) => {
+          const answer = await queue.ask(
+            `${zimOf(row)!.uuid}\n${each}\n${q}`,
+            (running) => searchBook(row, q, 0, each, running, true),
+            waiting,
+          );
+          if (signal?.aborted) return;
+          // A book that is a list of documents has no articles to search; its documents are found by their titles.
+          const listed = (lists?.hits(row, q, each) ?? []).map((hit) => ({
             entityId: hit.entityId,
             title: hit.title,
-            titleSegments: [{ text: hit.title, hit: false }],
-            subtitle: null,
-            collection: row.title,
             url: hit.url,
-            tags: [],
-            score: 1 - rank / perBook,
-            passages: hit.segments.length > 0 ? [{ chunkId: null, segments: hit.segments, page: null, heading: null }] : [],
-            sources: ["reference"],
+            segments: hit.description ? [{ text: hit.description, hit: false }] : [],
+          }));
+          const articles = (answer.status === "found" ? answer.value.hits : []).map((hit) => ({
+            entityId: `${row.id}:${hit.path}`,
+            title: hit.title,
+            url: readerUrl(row.id, hit.path),
+            segments: hit.snippet ? hit.segments : [],
+          }));
+          if (answer.status === "found") searched += 1;
+          else missing.push({ collectionId: row.id, title: row.title, reason: answer.status === "failed" ? "failed" : "slow" });
+          if (answer.status !== "found" && listed.length === 0) return;
+          onPart({
+            collectionId: row.id,
+            title: row.title,
+            results: [...listed, ...articles].slice(0, each).map((hit, rank) => ({
+              kind: "reference",
+              entityId: hit.entityId,
+              title: hit.title,
+              titleSegments: [{ text: hit.title, hit: false }],
+              subtitle: null,
+              collection: row.title,
+              url: hit.url,
+              tags: [],
+              score: 1 - rank / each,
+              passages: hit.segments.length > 0 ? [{ chunkId: null, segments: hit.segments, page: null, heading: null }] : [],
+              sources: ["reference"],
+            })),
           });
-        });
-      }
-      return results;
+        }),
+      );
+      missing.sort((a, b) => a.title.localeCompare(b.title));
+      return { collections: books.length, searched, missing, message: null };
     },
   };
   search.addSource(source);
