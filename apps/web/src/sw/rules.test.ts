@@ -65,6 +65,12 @@ describe("what the service worker does with a request", () => {
     expect(handling(get("/map-assets/sprites/v4/light.json"))).toBe("kept");
   });
 
+  it("never answers with a kept file when it is opened as a page: an upload must not run in the app's origin", () => {
+    expect(handling(pageLoad("/api/attachments/a1"))).toBe("none");
+    expect(handling(get("/api/attachments/a1", { mode: "navigate", destination: "iframe" }))).toBe("none");
+    expect(handling(pageLoad("/map-assets/sprites/v4/light.json"))).toBe("none");
+  });
+
   it("lets the request that fetches a tile in order to keep it through to the server", () => {
     expect(handling(get("/api/maps/tiles/12/2003/1332.mvt?raw=1"))).toBe("none");
   });

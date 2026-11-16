@@ -267,6 +267,22 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 - Moving a saved place straight from the map (press and hold, the map's menu, or the
   list), by pointer or keyboard, with the new position confirmed before it is kept.
 
+#### On a phone, out of reach of the server
+
+- The web app keeps itself in the browser with a service worker, so it opens when the
+  phone cannot reach the server, and has a web app manifest and icons so it can be
+  added to the Home Screen. Needs HTTPS; over plain HTTP the app says so and points to
+  the HTTPS settings.
+- "Keep on this phone" on a page of notes (the pages inside it come too, with their
+  pictures), on a route, on the saved places as a set, and on the part of the map in
+  view, which is measured by the server before anything is fetched.
+- "On this phone": what is kept, with sizes and dates, removing copies, the room the
+  browser reports, and asking the browser to keep the data.
+- Out of reach the app is read-only and says so in one line; a page or screen that was
+  not kept says so instead of loading. Back in reach, kept copies are replaced by the
+  server's versions. A new build replaces the kept app.
+- `GET /api/maps/area-size`, and `?raw=1` on map tiles.
+
 #### Portable drives
 
 - Writing a standalone Outpost to a folder on a removable drive: the app, a

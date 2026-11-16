@@ -518,6 +518,15 @@ matches, by population, and by distance from a point when one is given
 - No reverse look-up from a position to a place name.
 - Only installed datasets are searched. Without any, typing a coordinate still works.
 
+## Keeping a map area on a phone
+
+A phone that leaves the house cannot reach the server, and so cannot ask it for tiles.
+The part of the map in view can be kept in the phone's browser, with routes and saved
+places, from "Map areas on this phone" in the **Offline maps** tab. The tiles are
+copied from the regions installed here, so download the region first. How it works,
+its limits and what browsers do with the kept data are in
+[offline.md](offline.md#a-phone-out-of-reach-of-the-server).
+
 ## What is not included
 
 - **Surveyed contours and other topographic detail.** Contour lines are traced from

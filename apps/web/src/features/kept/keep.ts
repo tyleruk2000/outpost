@@ -49,6 +49,19 @@ export function attachmentsOf(note: Pick<NoteDetail, "content" | "coverUrl">): s
   return [...found];
 }
 
+/**
+ * The headers a kept file is filed with. The server sends uploads with a sandbox, so that an uploaded
+ * HTML or SVG file can never run script in Outpost's origin; the kept copy carries the same headers.
+ */
+function guardedHeaders(response: Response): Record<string, string> {
+  const headers: Record<string, string> = { "Content-Type": response.headers.get("Content-Type") ?? "application/octet-stream" };
+  for (const name of ["Content-Security-Policy", "X-Content-Type-Options", "Content-Disposition"]) {
+    const value = response.headers.get(name);
+    if (value) headers[name] = value;
+  }
+  return headers;
+}
+
 type Tree = NoteTreeResponse["notes"];
 
 /** The pages inside `rootId`, from the flat tree the sidebar uses. */
@@ -154,9 +167,7 @@ export async function keepNote(id: string, tree?: Tree): Promise<KeptNote> {
       }
       wanted.add(address);
       files += 1;
-      bytes += await putKeptBytes(cache, address, body, {
-        "Content-Type": response.headers.get("Content-Type") ?? "application/octet-stream",
-      });
+      bytes += await putKeptBytes(cache, address, body, guardedHeaders(response));
     }
   }
   // A sub-page moved away or a picture taken out since the last copy: its kept answer goes too.

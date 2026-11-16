@@ -208,6 +208,41 @@ the best archive holding each tile, so regions join seamlessly and a world overv
 fills in when zoomed out. Styles, fonts and sprites are served by Outpost. Place-name
 search uses GeoNames data loaded into FTS5.
 
+### A phone out of reach: a kept app and chosen copies, not a second library
+
+Outpost is used from a phone that leaves the house. The server stays behind, so the
+web app keeps itself in the browser with a service worker and lets a person keep
+chosen things there: a page of notes with the pages inside it, a route, the saved
+places, a box of the map. Out of reach the app shows those, read-only. It is not a
+sync: a kept copy is only ever replaced by the server's version, never sent back, so
+there is no queue of changes and no conflict to settle. Editing away from the server
+would need the editor to keep a history of edits, the same thing live co-editing and
+merging inside a page would need.
+
+- **The worker is hand-written, about 150 lines** (`apps/web/src/sw/`). Workbox was
+  looked at on 16 November 2026 (`workbox-build` 7.4.1 and `vite-plugin-pwa` 2.0.0,
+  both MIT and maintained). What Outpost needs is narrow and unusual: pages always
+  from the server first, a short fixed list of API addresses answered from a cache
+  only for things a person kept, tiles stored gzipped and unpacked on the way out,
+  "no tile here" for a map tile outside a kept area. A library's defaults would have
+  to be switched off one by one to get there, and a worker that goes wrong strands
+  people on an old app, so it is better read whole. Its decisions are plain functions
+  in `rules.ts`, tested without a browser.
+- **What is kept of the app is worked out at build time** (`apps/web/sw-plugin.ts`):
+  the entry, everything the out-of-reach screens load, styles, fonts and the world
+  outline, 4.5 MB of the 11 MB of scripts. The build's name and a hash of those files
+  are written into the worker, so any change to them is a new worker.
+- **Kept things are files in Cache Storage under the addresses they came from**, one
+  cache per thing. The map code is unchanged: it asks for the same tile addresses and
+  the worker answers. The server's part is two small additions: it measures a box from
+  its archives' directories, and it can give a tile still gzipped
+  (`modules/maps/kept-area.ts`).
+- **Reach is asked, not assumed.** The browser's own "online" flag says nothing about
+  a server on a home network, so the app asks `/api/health` with a four-second limit.
+
+The limits a browser puts on stored data, and what was not tested, are in
+[offline.md](offline.md#a-phone-out-of-reach-of-the-server).
+
 ### Security posture
 
 - There are no accounts: whoever can reach Outpost can use all of it. What is
@@ -291,6 +326,7 @@ These are deliberate, and stated so nobody has to discover them.
 | Portable drives | A drive is a copy, not a live sync partner. Changes made on it come home only when a person plugs it in and brings them back, one drive at a time, after reading a preview. Conflicts are settled per item, as whole pages: text is not merged line by line. Settings, the order of pages among their siblings, and the favourite mark on existing pages are not brought back. | Deliberate: nothing is overwritten that a person has not seen. Merging inside a page would need the editor to keep a history of edits (a CRDT), as live co-editing would. |
 | Bringing a drive back | Tested with two real libraries on one computer, with the drive as a folder. Not tried with a physical USB drive carried to a second computer and back, nor with a drive written by a genuinely older release (there is none yet; the tests strip the record from a drive to stand in for one). A drive is read up to 100,000 pages, 100,000 documents, 100,000 saved places, 20,000 tracks and a 32 GB database. A document removed at home because it was ticked in a merge cannot be brought back by undo. | A manual pass with a real drive. The limits are constants in `modules/merge/fingerprint.ts` and `drive.ts`. |
 | Windows without Docker | Untried. Nobody has run the server tests or the packaged app on Windows. | A manual pass on a Windows machine. |
+| A phone out of reach | Read-only, and only what was kept on purpose: pages of notes, routes, saved places, map areas. No documents, reference collections or search. Needs HTTPS. The browser decides how long kept data lives: Safari deletes it after seven days of Safari use without a visit unless Outpost is on the Home Screen. Tested in Chromium only, never on a phone. | Editing out of reach needs a sync design. Documents could be kept the same way notes are. See offline.md. |
 | Access | No accounts and no per-person permissions: everyone who can reach Outpost can read, add, change and delete everything. | Outpost is for one household or one trusted network. Anything wider needs an authenticating proxy in front of it. |
 
 ## Dependency licences
@@ -310,6 +346,7 @@ written by `scripts/build-app.mjs` from the installed packages.
 | all-MiniLM-L6-v2 (embedding model) | Apache-2.0 | Bundled, for semantic search; fetched at build time from Hugging Face at a pinned revision and checked against checksums, never committed. Trained by the Sentence Transformers project; the files are the 8-bit ONNX conversion published as `Xenova/all-MiniLM-L6-v2`. Its model card lists training data with terms of their own (MS MARCO, Reddit comments and others); the weights are released under Apache-2.0. Hugging Face's terms of service, read on 2026-11-15, say that content in a public repository stays under the licence its owner gave it. Notice and licence text: `server/embed/all-MiniLM-L6-v2/`. |
 | ONNX Runtime (`onnxruntime-web`), `@huggingface/tokenizers` | MIT, Apache-2.0 | Bundled; they run the embedding model. The runtime is the project's own WebAssembly build. The npm package carries no licence file, so the build takes the licence and third-party notices from the project's repository at the release's commit: `server/embed/LICENSE-onnxruntime.txt`, `ThirdPartyNotices-onnxruntime.txt`. |
 | BlockNote | MPL-2.0, with GPL add-ons | Not used. The editor is Tiptap (MIT) with Outpost's own blocks. |
+| Workbox (`workbox-build`, `workbox-window`), `vite-plugin-pwa` | MIT | Not used. The service worker is Outpost's own (`apps/web/src/sw/`); see "A phone out of reach" above. No dependency was added for it. |
 | `saxes`, `sax` (streaming XML parsers) | ISC; BlueOak-1.0.0 | Not used. GPX is read by Outpost's own small XML reader (`apps/server/src/modules/maps/gpx-xml.ts`). Looked at on 16 November 2026: `saxes` is strict but its repository is archived; `sax` is maintained but accepts XML that is not well-formed, and its licence is not one of the four above. `@tmcw/togeojson` and `@xmldom/xmldom`, which read GPX before, are no longer shipped; `@xmldom/xmldom` (MIT) remains for one test. |
 | Atkinson Hyperlegible, Literata, Noto Sans | OFL-1.1 | Bundled fonts. |
 | Protomaps basemap styles | BSD-3-Clause (design CC0) | Bundled. |

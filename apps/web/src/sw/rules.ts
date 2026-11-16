@@ -71,6 +71,9 @@ export function handlingOf(request: RequestFacts, origin: string, precached: Rea
   const path = url.pathname;
 
   if (KEPT_PATHS.some((prefix) => path.startsWith(prefix))) {
+    // A kept copy is a picture in a page or a tile on a map, never a document to open: an uploaded
+    // file opened as a page is the server's to answer, with the sandbox the server puts on it.
+    if (request.mode === "navigate") return "none";
     // The request that fetches a tile in order to keep it must reach the server itself.
     return url.searchParams.get("raw") === "1" ? "none" : "kept";
   }

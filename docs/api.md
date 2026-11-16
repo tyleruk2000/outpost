@@ -476,8 +476,14 @@ Types: `packages/shared/src/maps.ts`. See [maps.md](maps.md).
 | `POST /api/maps/import` | Registers a `.pmtiles` file already on a storage location. Body: `locationId`, `relPath`, `name`, `tileType?`. `{ collection }`. |
 | `GET /api/maps/overview` | Installed regions, place-name datasets and counts (`MapOverview`). |
 | `GET /api/maps/sources` | The parts of a MapLibre style that depend on what is installed: tile addresses, bounds, zoom range, glyph and sprite addresses, attribution (`MapSources`). |
-| `GET /api/maps/tiles/:z/:x/:y.mvt` | A vector tile from the best installed region. `204` when no region has it. |
+| `GET /api/maps/tiles/:z/:x/:y.mvt` | A vector tile from the best installed region. `204` when no region has it. With `?raw=1` a gzipped tile is sent as stored: no `Content-Encoding`, `X-Outpost-Tile-Encoding: gzip` instead, and `Cache-Control: no-store`. That is for a browser keeping the tile itself; see below. |
 | `GET /api/maps/terrain/:z/:x/:y.webp` (or `.png`) | A terrain tile. |
+| `GET /api/maps/area-size?bbox=west,south,east,north&maxZoom=14&terrain=1` | What keeping that box on a phone would fetch, read from the installed archives' directories without reading a tile (`MapAreaSize`): per layer the number of tiles the installed maps hold in the box, their bytes as stored, and the zoom range, which stops at the deepest zoom installed. `map` is `null` when no detailed map is installed; `terrain` is `null` unless asked for and installed. `400` for a box that is not one; `413` (`too_large`) past 12,000 tile positions in one layer. Changes nothing. |
+
+The last two exist for [keeping a map area on a phone](offline.md#a-phone-out-of-reach-of-the-server).
+The server only measures and serves; the browser fetches each tile and stores it. The
+arithmetic both sides share (which tiles a box touches, the limits) is in
+`packages/shared/src/kept.ts`.
 
 ### Places
 

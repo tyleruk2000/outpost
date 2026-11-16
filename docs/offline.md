@@ -6,6 +6,11 @@ keeps itself from reaching out, and what to check before you leave a connection 
 "Offline" here means the Outpost server has no route to the internet. Your browser
 still needs to reach the Outpost server, on the same computer or over your own network.
 
+There is one exception, and it is a different thing with its own words. A phone carried
+out of the house cannot reach the server at all. Outpost calls that **out of reach**,
+and can keep chosen pages, routes and map areas on the phone for it. That is described
+under [A phone out of reach of the server](#a-phone-out-of-reach-of-the-server).
+
 ## What works with no internet
 
 Everything you have already installed or written:
@@ -118,7 +123,214 @@ internet either.
   note says which source is missing and why.
 
 If the browser cannot reach the Outpost server itself, the status line reads "Server
-not responding", and notes you are editing wait and retry saving.
+not responding", and notes you are editing wait and retry saving. Where the app is kept
+on the device (see the next section), a line above the screen also says the server is
+out of reach, and the next screen you open comes from what is kept on the device.
+
+## A phone out of reach of the server
+
+Outpost runs on a computer at home and is used from a phone. In the field the phone
+cannot reach it. Two things make the phone still useful there:
+
+- **The app keeps itself.** A service worker stores the app's own files in the browser
+  the first time the phone opens Outpost over HTTPS, so the app opens anywhere. In the
+  build this was written against that is 88 files and 4.5 MB: the app's entry, the
+  notes reader, the map engine, styles, fonts and the outline of the world. The PDF
+  viewer, the diagram renderer and the screens that only talk to the server are not
+  kept, because out of reach there is nothing for them to show.
+- **You choose what it can show.** Nothing of your library is copied to the phone until
+  you ask. What can be kept:
+
+| What | Where to keep it | What comes with it |
+| --- | --- | --- |
+| A page of notes | The page's menu (the three dots), **Keep on this phone** | Every page inside it, however deep, and the pictures and attached files those pages hold. At most 300 pages as one; a file over 50 MB is left out and counted. |
+| A route or recorded track | Its panel on the map, **Keep on this phone** | Its line, heights and waypoints. |
+| Saved places | Under the list of places, **Keep on this phone** | All of them, as a set. |
+| An area of the map | Maps, **Offline maps**, "Map areas on this phone" | Every tile of the part of the map in view, from the coarsest zoom to the one you choose, the lettering those tiles use, the map's icons, and terrain if you tick it. |
+
+The words follow the device: on a tablet the button reads "Keep on this tablet", on a
+laptop "Keep on this computer".
+
+**On this phone** (in the sidebar, and in the phone's More sheet) lists what is kept,
+with the size and date of each copy, and removes copies. Removing a copy never touches
+the server.
+
+### A map area
+
+The map is drawn from tiles the server cuts out of its installed regions. Keeping an
+area copies the tiles for a box from the server to the phone: nothing is downloaded
+from the internet, and an area can only be as detailed as the region installed on the
+server.
+
+1. Move the map so the area is in view. Open **Offline maps** and find "Map areas on
+   this phone".
+2. Choose the detail, and whether terrain comes too. Press **Measure the area in
+   view**. The server adds up the tiles from its archives' own indexes and answers
+   with the exact number of tiles and bytes. Tiles are stored on the phone still
+   compressed, as the archive holds them, so the size shown is the size stored, plus up
+   to about 2 MB of lettering and icons.
+3. Press **Keep this area**. The phone fetches the tiles six at a time. Keep Outpost
+   open until it says the area is kept. If it is interrupted, "On this phone" shows
+   the area as not finished and offers **Carry on**, which fetches only what is missing.
+
+One area holds at most 12,000 map tiles and 12,000 terrain tiles, and at most 400 MB.
+Past that the box is refused with a message; zoom in, or choose less detail. An area is
+also refused if the browser reports less room than it needs.
+
+Outside a kept area the map still draws, from the coarse tiles that came along (every
+zoom from 0 up covers the box, and the low zooms cover a great deal around it) and from
+the outline of the world that is part of the app. Contour lines and hill shading work
+in a kept area if terrain was kept: they are drawn on the phone from the terrain tiles,
+as they are at home. The phone's own position works, because it comes from the phone.
+
+If the regions installed on the server change after an area was kept, "On this phone"
+says so and offers **Fetch again**. Areas are not fetched again by themselves: they are
+large.
+
+### What out of reach looks like
+
+- A line across the top: "The server is out of reach. Showing what is kept on this
+  phone, for reading only." It has a **Try again** button; the app also asks the server
+  again every ten seconds, when the phone reports a network, and when the app comes
+  back to the front, and returns to normal by itself.
+- The navigation holds only what works: **On this phone**, **Maps**, and the kept pages.
+- A kept page opens as it is at home, with writing switched off. A page that was not
+  kept says "This page is not kept on this phone". A screen that lives on the server
+  (Library, Search, Settings and the rest) says it needs the server. Nothing spins and
+  nothing shows an error for being out of reach.
+- **Nothing can be changed.** There is no editing out of reach in this version. A kept
+  copy is only ever replaced by the server's version; it is never sent back, so a stale
+  copy cannot overwrite a page. Documents and reference collections cannot be kept.
+
+If the server goes out of reach while a screen is open, that screen is left exactly as
+it is, because you may be half-way through writing. The notes editor holds unsaved
+changes until the server answers, as it always has. The kept copies take over from the
+next screen you open.
+
+### Keeping copies up to date
+
+Kept pages, routes and places are compared with the server whenever the phone has
+Outpost open within reach of it: when the app starts, when the server comes back, and
+a few seconds after anything changes. Only what changed is fetched. A phone that is not
+running Outpost learns nothing, so **open Outpost on the phone once before you leave**.
+Each copy shows its date.
+
+If a kept page or route has since been deleted at home, the copy stays on the phone,
+marked "No longer on the server", until you remove it.
+
+### Updates to Outpost
+
+A phone must never be left on an old copy of the app. Three rules see to that
+(`apps/web/src/sw/rules.ts`):
+
+- A page of the app is always asked of the server first. The kept copy of the app is
+  used only when the server does not answer within four seconds (a second and a half
+  if it did not answer a moment ago). So within reach, a reload always gets the build
+  the server is serving, whatever the phone holds.
+- A new build is a different service worker script, served with `Cache-Control:
+  no-cache`. The browser installs it beside the old one. As soon as a page running the
+  new build is open, that page tells the new worker to take over, and the old copy of
+  the app is deleted. A tab still running the old build keeps its files until it is
+  reloaded; the "Outpost has been updated" notice asks for that.
+- Nothing under `/api/` or `/kiwix/` is ever stored by the worker or answered from a
+  cache, except the pictures of kept pages and the tiles and lettering of kept map
+  areas, and for those the server is still asked first.
+
+### It needs HTTPS
+
+Browsers allow service workers, their caches and installing only on a secure origin:
+HTTPS, or `localhost` on the computer itself (MDN, "Service Worker API", read
+16 November 2026: "Service workers are only available in secure contexts"). A phone
+opening `http://192.168.1.20:8080` is not one. Over plain HTTP Outpost works as before
+while the server is in reach, "On this phone" explains why nothing can be kept, and
+points to **Settings → HTTPS on your network**.
+
+We found no browser documentation that says whether a service worker registers on an
+HTTPS address whose certificate the phone does not trust, after the warning has been
+clicked through. Do not count on it: make the phone trust the certificate.
+
+### What the browser may do with kept copies
+
+Kept copies live in the browser's own storage (Cache Storage), in the browser's own
+profile on the phone. They are not encrypted beyond what the phone does for all its
+storage, and anyone who can open that browser can read them. Outpost has no accounts,
+so there is nothing private per person on the server either; the difference is only
+that the copies leave the house with the phone.
+
+The browser, not Outpost, decides how much may be stored and when it is cleared. What
+follows was read from the browsers' own documentation on 16 November 2026. It was not
+tested on devices.
+
+**Safari on iPhone and iPad**
+
+- *Seven days.* With cross-site tracking prevention on (the default), Safari deletes
+  everything a site has stored from script, service worker and caches included, "after
+  seven days of Safari use without user interaction on the site". The days are days on
+  which Safari is used, not calendar days. (WebKit blog, "Full Third-Party Cookie
+  Blocking and More", 24 March 2020; still described on webkit.org/tracking-prevention
+  and by MDN, "Storage quotas and eviction criteria", modified 5 January 2026.) A phone
+  that uses Safari daily for other things and does not open Outpost for a week loses
+  the kept app and every kept copy.
+- *The Home Screen changes that.* A site added to the Home Screen "is exempt from ITP's
+  7-day cap on all script-writeable storage", and its days of use count only when the
+  Home Screen app itself is used (same sources). **For anything you rely on, add
+  Outpost to the Home Screen** (Share, then Add to Home Screen).
+- *The Home Screen app has storage of its own.* Its website data "is kept isolated from
+  Safari" (webkit.org/tracking-prevention); only cookies are copied when it is added
+  (WebKit blog, "WebKit Features in Safari 17.2", 11 December 2023). What you kept in a
+  Safari tab is not in the Home Screen app. Keep things from the Home Screen app.
+- *How much.* From Safari 17, one site may use up to about 60% of the disk in a browser
+  and in a Home Screen app alike, and a write past the limit fails (WebKit blog,
+  "Updates to Storage Policy", 10 August 2023). Before Safari 17 a site started with a
+  limit of 1 GB.
+- *Short of room.* WebKit may delete whole sites, least recently used first, when the
+  device is under storage pressure; a site whose storage is in persistent mode "might
+  be excluded" (same post). WebKit grants that mode by itself, "based on heuristics
+  like whether the website is opened as a Home Screen Web App". The button "Ask the
+  browser to keep this data" on "On this phone" makes the request and reports the answer.
+- Other browsers on iPhone use the same engine and the same rules, except in the EU
+  where a browser may bring its own (MDN, as above).
+
+**Chrome on Android**
+
+- One site may use up to 60% of the disk (web.dev, "Storage for the web", updated
+  23 September 2024).
+- Chrome clears data only when the device runs out of room: whole sites, least recently
+  used first, skipping sites it has granted persistent storage. It grants that without
+  asking, to sites it judges important: much used, installed or bookmarked, or allowed
+  to send notifications (web.dev, "Persistent storage", 12 May 2020).
+- Installing (the menu, then Add to Home screen or Install app) needs HTTPS and the
+  manifest Outpost ships. We found no documentation that installing changes how much
+  may be stored; it is one of the things that makes Chrome willing to keep the data.
+
+**Firefox**
+
+- A site may use the smaller of 10% of the disk and 10 GiB; with persistent storage,
+  up to half the disk. Firefox asks the person before granting persistent storage, and
+  otherwise clears least recently used sites when the disk fills (MDN, as above).
+- On Android, Firefox adds a shortcut that opens the site in Firefox with the same
+  storage, not a separate app (MDN, "Making PWAs installable", modified 6 October
+  2026). We could not confirm this from a Mozilla page.
+
+In every browser the figures that "On this phone" shows for room in use and room
+allowed are the browser's own estimates, rounded and deliberately imprecise. The limit
+is an upper bound, not room that is promised.
+
+### What has and has not been tested
+
+Tested, in Chromium, by `e2e/tests/kept.mobile.spec.ts`, which stops the server process
+to take it out of reach: keeping a page with a page inside it, a route, saved places
+and a small map area; opening all of them with the server gone; a page that was not
+kept saying so; a changed page replacing its kept copy when the server returns; a new
+build replacing the kept app; removing a kept area.
+
+Not tested: a real iPhone or Android phone; adding to the Home Screen on any device;
+Safari and Firefox at all; what any browser does with the storage over days; a phone
+that has a network but no route to the server (the test server refuses connections at
+once, where a phone on mobile data may wait; the four-second limit is there for that
+case and no test exercises it); areas of thousands of tiles;
+Safari older than 16.4, which cannot unpack compressed tiles and is given unpacked
+ones instead, two to three times the size the server measured.
 
 ## Before you leave: a checklist
 
@@ -137,8 +349,11 @@ not responding", and notes you are editing wait and retry saving.
    starts without a connection.
 7. **If you will make portable drives while away,** make one now for each kind of
    computer, so the programs are cached.
-8. **Save a backup** (Settings → Backup) and keep it somewhere other than this device.
-9. **Charge and pack the drives**, and eject them properly before unplugging.
+8. **If you will be out of reach of the server,** keep what you need on the phone
+   (see [above](#a-phone-out-of-reach-of-the-server)), then open "On this phone" and
+   check the dates. On an iPhone, do this from the Home Screen app.
+9. **Save a backup** (Settings → Backup) and keep it somewhere other than this device.
+10. **Charge and pack the drives**, and eject them properly before unplugging.
 
 See also [maps.md](maps.md), [portable.md](portable.md) and
 [troubleshooting.md](troubleshooting.md).

@@ -83,7 +83,12 @@ function fakeServer() {
       const file = state.files.get(path);
       if (file) {
         return new Response(new Uint8Array(Math.min(file.bytes, 64)), {
-          headers: { "Content-Type": file.type, "Content-Length": String(file.bytes) },
+          headers: {
+            "Content-Type": file.type,
+            "Content-Length": String(file.bytes),
+            "Content-Security-Policy": "sandbox; default-src 'none'",
+            "X-Content-Type-Options": "nosniff",
+          },
         });
       }
       return missing();
@@ -160,6 +165,14 @@ describe("keeping a page", () => {
     expect(await listKept()).toHaveLength(1);
     // Opening a page was not counted as a view on the server.
     expect(server.asked.every((path) => !path.includes("view"))).toBe(true);
+  });
+
+  it("files a kept upload with the sandbox the server put on it, so it can never run in the app's origin", async () => {
+    await keepNote("plan");
+    const copy = await (await caches.open("outpost-kept:note:plan")).match("/api/attachments/photo");
+    expect(copy?.headers.get("Content-Type")).toBe("image/png");
+    expect(copy?.headers.get("Content-Security-Policy")).toBe("sandbox; default-src 'none'");
+    expect(copy?.headers.get("X-Content-Type-Options")).toBe("nosniff");
   });
 
   it("finds a page inside a kept page, and says nothing is kept for a page that was left behind", async () => {

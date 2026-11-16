@@ -53,6 +53,10 @@ public internet and must not be exposed to it.
   local programs.
 - **Physical access to an unencrypted drive.** The database, attachments, documents
   and portable drives are stored unencrypted. Anyone holding the disk can read them.
+- **A phone that holds kept copies.** Pages, routes, places and map areas a person
+  chose to keep on a phone sit in that phone's browser storage, protected only by the
+  phone's own lock and encryption. Anyone who can open that browser can read them, with
+  or without the server. See [What is kept in the browser](#what-is-kept-in-the-browser).
 - **An untrusted network.** On its own Outpost speaks plain HTTP. On a network you do
   not trust, content (and a share password as it is typed) can be observed and altered.
 - **A compromised helper.** Outpost trusts the kiwix-serve program, the embedding
@@ -107,6 +111,41 @@ frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-
 
 The browser itself then refuses to load code from, or send data to, anywhere else.
 Code: `APP_CSP` in `apps/server/src/app.ts`.
+
+### What is kept in the browser
+
+Over HTTPS (or on the computer itself) the app registers a service worker, `/sw.js`,
+so that it opens when the server is out of reach, and lets a person keep chosen things
+in the browser. The reasons and the behaviour are in
+[offline.md](offline.md#a-phone-out-of-reach-of-the-server); what matters here:
+
+- **What the worker may answer for is a short, fixed list**, in
+  `apps/web/src/sw/rules.ts`, with tests beside it. A page of the app is always asked
+  of the server first. The app's own fingerprinted files are answered from the copy
+  installed with the build. Under `/api/` only three kinds of address are ever answered
+  from a cache, and only when a person kept the thing and the server does not answer:
+  `/api/attachments/…`, `/api/maps/tiles/…` and `/api/maps/terrain/…`. Nothing under
+  `/kiwix/` is touched, so reference content never enters the app's origin through a
+  cache. Requests that change anything are never touched.
+- **The worker never writes to a cache after it is installed.** Kept copies are written
+  by the page, from answers the server gave to ordinary same-origin `GET` requests, and
+  only when a person pressed "Keep" or a kept copy is being brought up to date.
+- **A kept copy is never sent back.** Out of reach the app is read-only. There is no
+  queue of changes and no sync, so a stale copy on a phone cannot overwrite anything.
+- **The worker script is served with its own policy,** `default-src 'self';
+  connect-src 'self'`, and `Cache-Control: no-cache` (`apps/server/src/app.ts`). It can
+  reach nothing but this server, and a browser always sees a new one.
+- **Kept copies are as private as the phone.** They are stored unencrypted in the
+  browser's profile. They hold what the person chose: the text and pictures of the
+  pages, the lines of the routes, the saved places with their notes. There are no
+  accounts, so nothing on the phone is any more private than it is on the server; it
+  has simply left the house. "On this phone" says this where things are listed, and
+  removes copies.
+- **A kept upload cannot run in the app's origin.** Attachments are files people
+  uploaded, and the server sends them with `Content-Security-Policy: sandbox`. A kept
+  copy is filed with the same headers, and the worker never answers with a kept copy
+  when the address is opened as a page or in a frame: only as a picture or a file
+  inside a page that is already drawn.
 
 ### Files people upload
 

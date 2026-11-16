@@ -134,6 +134,11 @@ There is no live co-editing; see
 If the server cannot be reached, unsaved changes are kept and retried until it
 answers.
 
+A page can also be kept on a phone, from its menu, to be read where the server cannot
+be reached at all. The pages inside it come too. A kept page cannot be edited there,
+and the copy is never sent back, so it cannot overwrite the page: see
+[offline.md](offline.md#a-phone-out-of-reach-of-the-server).
+
 Pages do not keep a history of their versions. The one place an earlier version is
 kept is the record of a merge from a portable drive, for the pages that merge updated;
 see [Notes written on a portable drive](#notes-written-on-a-portable-drive).
