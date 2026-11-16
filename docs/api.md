@@ -673,19 +673,19 @@ arithmetic both sides share (which tiles a box touches, the limits) is in
 | Method and path | Purpose |
 | --- | --- |
 | `GET /api/maps/markers` | `{ markers }` (`MarkerDto[]`). |
-| `POST /api/maps/markers` | Body: `name`, `lat`, `lon`, `note?`, `color?`, `isFavorite?`, `noteId?`. |
+| `POST /api/maps/markers` | Body: `name`, `lat`, `lon`, `note?`, `color?`, `icon?` (one of `MARKER_ICONS`: `pin`, `home`, `shelter`, `tent`, `parking`, `water`, `food`, `first-aid`, `fuel`, `summit`, `viewpoint`, `mast`, `meeting`, `danger`, `star`, `flag`; `pin` when left out), `isFavorite?`, `noteId?`. `400` for any other icon. |
 | `PATCH /api/maps/markers/:id` | Any of the same fields. |
 | `DELETE /api/maps/markers/:id` | |
 | `GET /api/maps/tracks` | `{ tracks }` (`TrackDto[]`). |
 | `POST /api/maps/tracks` | Saves a route drawn on the map: straight lines between the points sent. Body: `name`, `points` (at least two of `{ lat, lon }`), `description?`, `color?`. Answers `{ track, elevation }` (`RouteSaveResponse`). |
 | `PUT /api/maps/tracks/:id/points` | Replaces a track's lines with one drawn through `points`. Its waypoints are kept. Answers `{ track, elevation }`. |
-| `POST /api/maps/tracks/import` | One GPX file as `multipart/form-data` (at most 20 MB). Optional fields: `name`, `color`, `importWaypointsAsMarkers`. Answers `{ track, markers }`. |
+| `POST /api/maps/tracks/import` | One GPX file as `multipart/form-data` (at most 20 MB). Optional fields: `name`, `color`, `importWaypointsAsMarkers`. Answers `{ track, markers }`. A waypoint saved as a marker takes the icon its `<sym>` stands for, when it is a known one. |
 | `PUT /api/maps/recordings/:id` | Saves a track recorded on the map. `:id` is 26 characters chosen by the device (digits and lower-case letters, without `i`, `l`, `o`, `u`), and becomes the track's id. Body: `multipart/form-data` with `name`, `color?` and one GPX file (at most 20 MB) holding tracks only, with a time at every point and at most 150,000 points. Answers `{ track, alreadySaved }`; sent again with the same id, it answers with the track already there and writes nothing. See [maps.md](maps.md#recording-a-track). |
 | `GET /api/maps/tracks/:id` | One track with its geometry as GeoJSON. |
 | `PATCH /api/maps/tracks/:id` | Body: `name?`, `description?`, `color?`. |
 | `DELETE /api/maps/tracks/:id` | |
 | `GET /api/maps/tracks/:id/export.gpx` | One track as GPX. |
-| `GET /api/maps/export.gpx` | A selection as one GPX file. Query: `markers=1`, `tracks=<id>,<id>`. |
+| `GET /api/maps/export.gpx` | A selection as one GPX file. Query: `markers=1`, `tracks=<id>,<id>`. A marker with an icon is written with the Garmin symbol name for it as `<sym>`, where there is one; see [maps.md](maps.md#icons-and-gpx). |
 
 ## Contacts
 ### Finding a route

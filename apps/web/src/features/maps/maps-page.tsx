@@ -47,6 +47,7 @@ import { type ContourReach, contourReach, contoursSupported } from "./lib/contou
 import { formatPosition, isReadoutFormat, type ReadoutFormat } from "./lib/coords";
 import { formatDistance, type LatLon } from "./lib/geo";
 import { MARKER_HEX } from "./lib/palette";
+import { iconOf, pinGlyphOf } from "./lib/place-icons";
 import {
   addPoint,
   insertPoint,
@@ -379,7 +380,7 @@ export default function MapsPage() {
       setMoving(null);
       setContextMenu(null);
       setTool("browse");
-      setDraft({ name, note: "", color: "teal", isFavorite: false, lat: position.lat, lon: position.lon });
+      setDraft({ name, note: "", color: "teal", icon: "pin", isFavorite: false, lat: position.lat, lon: position.lon });
       showPanel("places");
     },
     [showPanel],
@@ -580,6 +581,7 @@ export default function MapsPage() {
       engine.setPin({
         position: { lat: moving.lat, lon: moving.lon },
         color: MARKER_HEX[movingMarker.color],
+        glyph: pinGlyphOf(iconOf(movingMarker), movingMarker.color),
         draggable: true,
         label: `${movingMarker.name}. ${howToMove} Enter saves the new position.`,
       });
@@ -587,6 +589,7 @@ export default function MapsPage() {
       engine.setPin({
         position: { lat: draft.lat, lon: draft.lon },
         color: MARKER_HEX[draft.color],
+        glyph: pinGlyphOf(draft.icon, draft.color),
         draggable: true,
         label: `${draft.name || "New place"}. ${howToMove}`,
       });
@@ -690,7 +693,9 @@ export default function MapsPage() {
     // and under the readout, while the sheet is lowered, the line with today's sunrise and sunset.
     const sheet = isDesktop ? 0 : detentHeight(detent === "peek" ? "peek" : "half", height, peekHeight) + 88 + (detent === "peek" ? 44 : 0);
     // A short screen (a phone on its side) keeps some map clear whatever lies over it.
-    engine.setPadding({ top, right: isDesktop ? 56 : 0, bottom: Math.max(0, Math.min(sheet, height - top - 96)), left: 0 });
+    // A phone's sheet covers the lower part of the map, so there the camera keeps the space all the time and the
+    // centre of the map is the middle of what shows. On a wide screen nothing lies over the middle of the map.
+    engine.setPadding({ top, right: isDesktop ? 56 : 0, bottom: Math.max(0, Math.min(sheet, height - top - 96)), left: 0 }, !isDesktop);
   }, [engine, isDesktop, detent, peekHeight]);
 
   // ── What the person does on the map ──
@@ -898,6 +903,7 @@ export default function MapsPage() {
         name: draft.name.trim(),
         note: draft.note,
         color: draft.color,
+        icon: draft.icon,
         isFavorite: draft.isFavorite,
         lat: draft.lat,
         lon: draft.lon,

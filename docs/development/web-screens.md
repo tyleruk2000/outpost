@@ -135,6 +135,14 @@ goes through `ConfirmDialog`, which names what will be removed.
 - Layout is mobile-first and must hold from 320 px wide. The sidebar becomes a bottom
   bar under `md`, so leave the bottom padding `Page` provides. Touch targets are at
   least 44 px on small screens (the `ui` controls already grow under `md`).
+- **A screen that fills the height leaves room for the whole bottom bar.** The bar is
+  taller by `env(safe-area-inset-bottom)` on a phone with a home indicator, so the
+  room to leave is `pb-[calc(3.5rem+env(safe-area-inset-bottom))]`, not `pb-14`: with
+  the latter, the foot of the screen (on Maps it was the sheet's row of tab names) is
+  under the bar on such a phone. Heights are in `dvh`, never `vh`.
+- **A row of names never scrolls sideways without saying so.** With larger text, or a
+  zoomed page, a row that fitted no longer does; let it wrap, so the last name is not
+  off the edge. Check a phone layout with the root font size at 20 and 24 px.
 - Body text contrast is at least 4.5:1. `text-ink-faint` is for placeholders and
   disabled text only.
 

@@ -29,8 +29,8 @@ import { markers, tracks } from "../../db/schema.ts";
 import { buildDrawnLine, type DrawnLine, routePointsSchema } from "./drawn-route.ts";
 import type { ElevationSampler } from "./elevation.ts";
 import { buildGpx, type GpxDocument, type GpxWaypoint, parseGpxSafely, splitCollection, type TrackCollection, trackStats } from "./gpx.ts";
-import { gpxCredit } from "./route-finder/credit.ts";
 import { GPX_LIMITS } from "./gpx-reader.ts";
+import { gpxCredit } from "./route-finder/credit.ts";
 import { iconForSymbol, symbolForPlace } from "./waypoint-symbols.ts";
 
 type MarkerRow = typeof markers.$inferSelect;

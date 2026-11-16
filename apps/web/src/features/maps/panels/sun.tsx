@@ -122,7 +122,7 @@ function Figure({ row, size }: { row: SunRow; size: "large" | "medium" }) {
  */
 function Figures({ rows, size }: { rows: SunRow[]; size: "large" | "medium" }) {
   return (
-    <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] gap-x-4 gap-y-2">
+    <dl className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] gap-x-4 gap-y-2">
       {rows.map((row) => (
         <div key={row.key} className="row-span-2 grid grid-rows-subgrid gap-y-0">
           <dt className="self-end text-small text-ink-muted">{row.label}</dt>
@@ -131,7 +131,7 @@ function Figures({ rows, size }: { rows: SunRow[]; size: "large" | "medium" }) {
           </dd>
         </div>
       ))}
-    </div>
+    </dl>
   );
 }
 
@@ -161,13 +161,11 @@ function SunBody({
         </p>
       ) : null}
 
-      <dl className="grid gap-3">
-        <div className="grid gap-1">
-          <p className="text-small font-medium text-ink">{dayCaption(date, today)}</p>
-          <Figures rows={layout.main} size="large" />
-        </div>
-        {layout.light.length > 0 ? <Figures rows={layout.light} size="medium" /> : null}
-      </dl>
+      <div className="grid gap-1">
+        <p className="text-small font-medium text-ink">{dayCaption(date, today)}</p>
+        <Figures rows={layout.main} size="large" />
+      </div>
+      {layout.light.length > 0 ? <Figures rows={layout.light} size="medium" /> : null}
 
       <div className="flex flex-wrap items-center gap-1.5">
         <Button variant="ghost" size="icon" aria-label="The day before" onClick={() => choose(addDays(date, -1))}>

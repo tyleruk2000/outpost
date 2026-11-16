@@ -4,7 +4,7 @@
  * person's own saved places and routes.
  */
 import type { MarkerDto, TrackDto } from "@outpost/shared";
-import { Crosshair, MapPin, Route, Search, Star, X } from "lucide-react";
+import { Crosshair, MapPin, Route, Search, X } from "lucide-react";
 import { type KeyboardEvent, type ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
 import { Spinner } from "@/components/ui/misc";
 import { errorMessage } from "@/lib/api";
@@ -12,8 +12,9 @@ import { cn } from "@/lib/utils";
 import { usePlaceSearch } from "./data";
 import { useDebounced } from "./hooks";
 import { formatDistance, type LatLon } from "./lib/geo";
+import { iconOf } from "./lib/place-icons";
 import { buildSearchResults, type SearchResult } from "./lib/search";
-import { mapSurface } from "./ui";
+import { mapSurface, PlaceMark } from "./ui";
 
 const icons: Record<SearchResult["kind"], typeof MapPin> = { coordinate: Crosshair, marker: MapPin, track: Route, place: MapPin };
 
@@ -147,7 +148,7 @@ export function SearchBox({
         <div className={cn(mapSurface, "scroll-quiet absolute inset-x-0 top-full mt-1.5 max-h-[min(60dvh,26rem)] overflow-y-auto p-1")}>
           <div id={listId} role="listbox" aria-label="Search results">
             {results.map((result, index) => {
-              const Icon = result.kind === "marker" && result.marker.isFavorite ? Star : icons[result.kind];
+              const Icon = icons[result.kind];
               return (
                 // biome-ignore lint/a11y/useFocusableInteractive: focus stays in the field; the list is driven through aria-activedescendant
                 // biome-ignore lint/a11y/useKeyWithClickEvents: arrow keys and Enter are handled by the field
@@ -165,13 +166,12 @@ export function SearchBox({
                     index === active && "bg-surface-strong",
                   )}
                 >
-                  <Icon
-                    aria-hidden
-                    className={cn(
-                      "mt-0.5 size-4 shrink-0",
-                      result.kind === "marker" && result.marker.isFavorite ? "fill-lamp text-lamp" : "text-ink-muted",
-                    )}
-                  />
+                  {result.kind === "marker" ? (
+                    // A saved place as it is on the map: its icon, in its colour. That it is a favourite is in the words under its name.
+                    <PlaceMark color={result.marker.color} icon={iconOf(result.marker)} className="-mx-[3px] -mt-px" />
+                  ) : (
+                    <Icon aria-hidden className="mt-0.5 size-4 shrink-0 text-ink-muted" />
+                  )}
                   <span className="min-w-0 flex-1">
                     <span
                       className={cn("block truncate text-ink", result.kind === "coordinate" ? "font-mono text-[0.8125rem]" : "font-medium")}

@@ -51,6 +51,7 @@ import {
   overlayLayers,
   overlaySources,
 } from "./overlays";
+import { providePlaceImages } from "./place-images";
 
 setWorkerUrl(workerUrl);
 addProtocol(
@@ -164,6 +165,33 @@ export interface PinState {
   color: string;
   draggable: boolean;
   label: string;
+  /**
+   * An icon drawn in the pin's head in place of its dot, for a saved place that has one:
+   * strokes and filled shapes on a 24 × 24 grid, the colour to draw them in, and a name
+   * that changes when any of that does.
+   */
+  glyph?: { id: string; strokes: string[]; fills?: string[]; color: string };
+}
+
+const SVG = "http://www.w3.org/2000/svg";
+
+/** The icon of a pin's head, as SVG built piece by piece: nothing here is ever parsed from text. */
+function pinGlyph(glyph: NonNullable<PinState["glyph"]>): SVGSVGElement {
+  const svg = document.createElementNS(SVG, "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("aria-hidden", "true");
+  const path = (d: string, filled: boolean) => {
+    const element = document.createElementNS(SVG, "path");
+    element.setAttribute("d", d);
+    element.setAttribute("fill", filled ? glyph.color : "none");
+    element.setAttribute("stroke", filled ? "none" : glyph.color);
+    element.setAttribute("stroke-width", "2.4");
+    element.setAttribute("stroke-linecap", "round");
+    element.setAttribute("stroke-linejoin", "round");
+    return element;
+  };
+  svg.append(...glyph.strokes.map((d) => path(d, false)), ...(glyph.fills ?? []).map((d) => path(d, true)));
+  return svg;
 }
 
 const lngLatOf = (position: LngLat): LatLon => ({ lat: position.lat, lon: wrapLongitude(position.lng) });
@@ -231,6 +259,7 @@ export class MapEngine {
       throw error instanceof Error && /webgl/i.test(error.message) ? new MapUnsupportedError() : error;
     }
     container.dataset.mapIdle = "false";
+    providePlaceImages(this.map);
     this.bind();
     void this.loadCountryLabels();
   }
@@ -510,18 +539,21 @@ export class MapEngine {
   }
 
   /**
-   * Space the floating chrome takes at each edge. The camera keeps it: the map's centre is
-   * the middle of the part that is clear, so the point the readout and the Sun tab read is
-   * one a person can see, and "fit" and "fly" land there too. When the space changes (the
-   * sheet on a phone is raised) the same point stays the centre and the map slides to keep
-   * it in view.
+   * Space the floating chrome takes at each edge, so "fit" and "fly" land in the clear part of the map.
+   *
+   * With `hold`, the camera keeps that space all the time, not only while it flies: the map's centre is then
+   * always the middle of the part that is clear. A phone asks for this, because its sheet covers the lower part
+   * of the map and the centre would otherwise be behind it. When the space changes (the sheet is raised) the
+   * same point stays the centre and the map slides to keep it in view.
    */
-  setPadding(padding: { top: number; right: number; bottom: number; left: number }): void {
-    const first = !this.paddingApplied;
+  setPadding(padding: { top: number; right: number; bottom: number; left: number }, hold = false): void {
     this.padding = padding;
+    this.holdPadding = hold;
+    if (!hold) return;
+    const first = !this.paddingHeld;
     const apply = () => {
-      if (this.destroyed || this.padding !== padding) return;
-      this.paddingApplied = true;
+      if (this.destroyed || this.padding !== padding || !this.holdPadding) return;
+      this.paddingHeld = true;
       // The centre is named, so that it is the same point afterwards to the last digit, not one worked back from the screen.
       const center = this.map.getCenter();
       if (first || prefersReducedMotion()) this.map.jumpTo({ padding, center });
@@ -532,7 +564,8 @@ export class MapEngine {
     else apply();
   }
   private padding = { top: 0, right: 0, bottom: 0, left: 0 };
-  private paddingApplied = false;
+  private holdPadding = false;
+  private paddingHeld = false;
 
   /** Where the centre of the map is on screen, relative to the map's top-left corner: the point `getCenter` names. */
   centrePoint(): { x: number; y: number } {
@@ -565,9 +598,10 @@ export class MapEngine {
         [bbox[2], bbox[3]],
       ],
       {
-        // In place of the space the camera already keeps, not on top of it: counted twice, a phone has no room left to fit anything in.
         padding: { top: top + pad, right: right + pad, bottom: bottom + pad, left: left + pad },
-        absolutePadding: true,
+        // Where the camera already keeps that space, this is in place of it, not on top of it: counted twice, a
+        // phone has no room left to fit anything in.
+        absolutePadding: this.holdPadding,
         maxZoom: options.maxZoom ?? 15,
         animate: options.animate ?? true,
       },
@@ -728,6 +762,14 @@ export class MapEngine {
     const element = this.pin.getElement();
     element.style.setProperty("--pin-color", state.color);
     element.setAttribute("aria-label", state.label);
+    const head = element.firstElementChild as HTMLElement;
+    if ((head.dataset.glyph ?? "") !== (state.glyph?.id ?? "")) {
+      head.replaceChildren();
+      if (state.glyph) {
+        head.dataset.glyph = state.glyph.id;
+        head.append(pinGlyph(state.glyph));
+      } else delete head.dataset.glyph;
+    }
     element.dataset.draggable = String(state.draggable);
     // A pin that can be moved can be moved from the keyboard, so it takes focus; one that only marks a spot does not.
     if (state.draggable) {

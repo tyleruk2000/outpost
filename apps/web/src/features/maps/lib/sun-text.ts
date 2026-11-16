@@ -286,7 +286,9 @@ export function sunLayout(rows: SunRow[]): SunLayout {
     if (MAIN_KEYS.has(row.key)) {
       const { detail, ...plain } = row;
       layout.main.push(plain);
-      if (detail) bearings.push({ key: `${row.key}-bearing`, label: `${row.label} bearing`, value: detail });
+      // Named so that the row reads as a sentence: "Rises towards 49° NE".
+      if (detail)
+        bearings.push({ key: `${row.key}-bearing`, label: row.key === "sunrise" ? "Rises towards" : "Sets towards", value: detail });
     } else if (LIGHT_KEYS.has(row.key)) layout.light.push(row);
     else layout.rest.push(row);
   }

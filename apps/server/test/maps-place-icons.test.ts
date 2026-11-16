@@ -50,7 +50,10 @@ const symbolsIn = (gpx: string): Record<string, string | undefined> =>
 
 const waypoints = (points: Array<{ name: string; sym?: string }>) =>
   `<?xml version="1.0"?><gpx version="1.1" creator="test" xmlns="http://www.topografix.com/GPX/1/1">${points
-    .map((point, index) => `<wpt lat="${54 + index / 100}" lon="-3"><name>${point.name}</name>${point.sym ? `<sym>${escapeXml(point.sym)}</sym>` : ""}</wpt>`)
+    .map(
+      (point, index) =>
+        `<wpt lat="${54 + index / 100}" lon="-3"><name>${point.name}</name>${point.sym ? `<sym>${escapeXml(point.sym)}</sym>` : ""}</wpt>`,
+    )
     .join("")}</gpx>`;
 
 describe("a saved place's icon", () => {
@@ -290,7 +293,13 @@ describe("saved places in a GPX file", () => {
   });
 
   it("keep their icons when chosen in Outpost, exported, and brought into another Outpost", async () => {
-    await app.api("POST", "/api/maps/markers", { name: "Esk Hause shelter", note: "Cross walls", lat: 54.461, lon: -3.184, icon: "shelter" });
+    await app.api("POST", "/api/maps/markers", {
+      name: "Esk Hause shelter",
+      note: "Cross walls",
+      lat: 54.461,
+      lon: -3.184,
+      icon: "shelter",
+    });
     await app.api("POST", "/api/maps/markers", { name: "Spring", lat: 54.47, lon: -3.19, icon: "water", color: "blue" });
     await app.api("POST", "/api/maps/markers", { name: "Meet here", lat: 54.48, lon: -3.2, icon: "meeting" });
     const gpx = await exportGpx();
@@ -304,7 +313,11 @@ describe("saved places in a GPX file", () => {
         // No symbol stands for a meeting point, so the file cannot say: it arrives as a plain pin.
         "Meet here": "pin",
       });
-      expect(markers.find((marker) => marker.name === "Esk Hause shelter")).toMatchObject({ note: "Cross walls", lat: 54.461, lon: -3.184 });
+      expect(markers.find((marker) => marker.name === "Esk Hause shelter")).toMatchObject({
+        note: "Cross walls",
+        lat: 54.461,
+        lon: -3.184,
+      });
     } finally {
       await other.close();
     }

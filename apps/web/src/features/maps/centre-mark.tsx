@@ -3,10 +3,11 @@
  * the bottom gives while it says "Centre", the one the Sun tab works its times out for,
  * and where a route's next point goes when it is placed from the keyboard.
  *
- * That point is not always the middle of the map's rectangle. The camera keeps clear of
- * what lies over the map (the search box, the controls, the sheet on a phone), so the
- * centre is the middle of the part still in view. The cross is put where the map itself
- * says the centre is, so the mark and the coordinates cannot disagree.
+ * That point is not always the middle of the map's rectangle. On a phone the camera keeps
+ * clear of the sheet and what else lies over the map, so the centre is the middle of the
+ * part still in view; on any screen, a map that has flown to a place has made room for the
+ * controls, and its centre is a little off the middle from then on. The cross is put where
+ * the map itself says the centre is, so the mark and the coordinates cannot disagree.
  *
  * It follows the camera frame by frame, so it writes to the page directly instead of
  * going through React state.

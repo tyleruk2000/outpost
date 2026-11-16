@@ -55,6 +55,13 @@ async function hold(page: Page, at: { x: number; y: number }, ms: number): Promi
 
 const overflow = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
 
+/** One of the day's times in the Sun tab or section, by the name written over or beside it. */
+const time = (page: Page, label: string) =>
+  page
+    .locator("dl > div")
+    .filter({ has: page.getByText(label, { exact: true }) })
+    .locator("dd");
+
 test.describe("sun times on a phone, with no saved places", () => {
   test.beforeEach(async ({ page }) => {
     await page.clock.setFixedTime(new Date("2026-06-21T09:00:00Z"));
@@ -79,10 +86,15 @@ test.describe("sun times on a phone, with no saved places", () => {
     await expect(page.getByRole("heading", { name: "Sun at the centre of the map" })).toBeVisible();
     // The same point, in the same words, as the readout at the bottom of the map.
     await expect(page.getByRole("button", { name: "Copy coordinates 51.4800, 0.0000" })).toBeVisible();
-    // The answer is on the screen without scrolling the sheet, and so is the date it is for.
+    // The answer is on the screen without scrolling the sheet: the two times, large, and the date they are for.
+    await expect(time(page, "Sunrise")).toHaveText("04:43");
+    await expect(time(page, "Sunset")).toHaveText("21:21");
+    await expectInReach(page, time(page, "Sunrise"));
+    await expectInReach(page, time(page, "Sunset"));
+    await expectInReach(page, page.getByText("Today, Sunday 21 June", { exact: true }));
+    // The same in one line, for a screen reader, which is told when the map moves.
     const summary = page.getByText("Sunrise 04:43, sunset 21:21", { exact: true });
-    await expect(summary).toBeVisible();
-    await expectInReach(page, summary);
+    await expect(summary).toBeAttached();
     const date = page.getByLabel("Date", { exact: true });
     await expect(date).toHaveValue("2026-06-21");
     await expectInReach(page, date);
@@ -95,9 +107,12 @@ test.describe("sun times on a phone, with no saved places", () => {
     expect((await next.boundingBox())!.width).toBeGreaterThanOrEqual(44);
     await next.tap();
     await expect(date).toHaveValue("2026-06-22");
-    await expect(page.getByText(/^22 Jun: Sunrise 04:4\d, sunset 21:2\d$/)).toBeVisible();
+    await expect(page.getByText(/^22 Jun: Sunrise 04:4\d, sunset 21:2\d$/)).toBeAttached();
+    // The day is said over the times, so they are never read as today's.
+    await expectInReach(page, page.getByText("Monday 22 June 2026", { exact: true }));
     await page.getByRole("button", { name: "Today" }).tap();
-    await expect(summary).toBeVisible();
+    await expect(summary).toBeAttached();
+    await expect(time(page, "Sunrise")).toHaveText("04:43");
 
     // The map is moved with a finger, and the times are then for where its centre has come to rest.
     const map = (await page.locator("canvas").first().boundingBox())!;
@@ -106,7 +121,8 @@ test.describe("sun times on a phone, with no saved places", () => {
     await drag(page, from, { x: from.x + 90, y: from.y + 60 });
     const coordinates = page.getByRole("button", { name: /^Copy coordinates / });
     await expect(coordinates).not.toHaveAccessibleName("Copy coordinates 51.4800, 0.0000");
-    await expect(page.getByText(/^Sunrise 04:\d\d, sunset 21:\d\d$/)).toBeVisible();
+    await expect(page.getByText(/^Sunrise 04:\d\d, sunset 21:\d\d$/)).toBeAttached();
+    await expect(time(page, "Sunrise")).toHaveText(/^04:\d\d$/);
     // Still the readout's own point, once the map has stopped.
     await expect(async () => {
       const shown = (await coordinates.textContent())!.trim();
@@ -118,7 +134,8 @@ test.describe("sun times on a phone, with no saved places", () => {
     await expect(page.locator("canvas").first()).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole("tab", { name: "Sun" })).toHaveAttribute("aria-selected", "true");
     await page.getByRole("tab", { name: "Sun" }).tap();
-    await expect(page.getByText(/^Sunrise 04:\d\d, sunset 21:\d\d$/)).toBeVisible();
+    await expect(time(page, "Sunrise")).toHaveText(/^04:\d\d$/);
+    await expectInReach(page, time(page, "Sunset"));
     expect(errors).toEqual([]);
   });
 
@@ -164,7 +181,8 @@ test.describe("sun times on a phone, with no saved places", () => {
     await page.getByRole("tab", { name: "Sun" }).tap();
 
     // The centre of the map still has its times.
-    await expect(page.getByText("Sunrise 04:43, sunset 21:21", { exact: true })).toBeVisible();
+    await expect(time(page, "Sunrise")).toHaveText("04:43");
+    await expect(time(page, "Sunset")).toHaveText("21:21");
     const here = page.getByRole("heading", { name: "Where you are" });
     await here.scrollIntoViewIfNeeded();
     await expect(page.getByText(/This page was opened over plain HTTP, so Outpost cannot find where you are\./)).toBeVisible();
@@ -189,9 +207,9 @@ test.describe("sun times on a phone, with no saved places", () => {
       await expectInReach(page, page.getByRole("tab", { name }), String(name));
     }
     await page.getByRole("tab", { name: "Sun" }).tap();
-    const summary = page.getByText("Sunrise 04:43, sunset 21:21", { exact: true });
-    await expect(summary).toBeVisible();
-    await expectInReach(page, summary);
+    await expect(time(page, "Sunrise")).toHaveText("04:43");
+    await expectInReach(page, time(page, "Sunrise"));
+    await expectInReach(page, time(page, "Sunset"));
     expect(await overflow(page)).toBeLessThanOrEqual(1);
     expect(errors).toEqual([]);
   });
@@ -204,9 +222,10 @@ test.describe("sun times on a phone, with no saved places", () => {
       await page.goto(GREENWICH);
       await expect(page.locator("canvas").first()).toBeVisible({ timeout: 15_000 });
       await page.getByRole("tab", { name: "Sun" }).tap();
-      const summary = page.getByText("Sunrise 4:43 am, sunset 9:21 pm", { exact: true });
-      await expect(summary).toBeVisible();
-      await expectInReach(page, summary);
+      await expect(page.getByText("Sunrise 4:43 am, sunset 9:21 pm", { exact: true })).toBeAttached();
+      await expect(time(page, "Sunrise")).toHaveText("4:43 am");
+      await expectInReach(page, time(page, "Sunrise"));
+      await expectInReach(page, time(page, "Sunset"));
 
       // All of it, with the sheet raised.
       await page.getByRole("button", { name: /^Panel height: half/ }).tap();
@@ -239,7 +258,7 @@ test.describe("sun times on a phone, with no saved places", () => {
     await page.goto(GREENWICH);
     await expect(page.locator("canvas").first()).toBeVisible({ timeout: 15_000 });
     await page.getByRole("tab", { name: "Sun" }).tap();
-    await expect(page.getByText("Sunrise 04:43, sunset 21:21", { exact: true })).toBeVisible();
+    await expect(time(page, "Sunrise")).toHaveText("04:43");
 
     const settings = page.getByRole("link", { name: "Settings → Appearance" });
     await settings.scrollIntoViewIfNeeded();
@@ -260,7 +279,8 @@ test.describe("sun times on a phone, with no saved places", () => {
     await page.goBack();
     await expect(page.locator("canvas").first()).toBeVisible({ timeout: 15_000 });
     await page.getByRole("tab", { name: "Sun" }).tap();
-    await expect(page.getByText(/^Sunrise 4:\d\d am, sunset 9:\d\d pm$/)).toBeVisible();
+    await expect(page.getByText(/^Sunrise 4:\d\d am, sunset 9:\d\d pm$/)).toBeAttached();
+    await expect(time(page, "Sunrise")).toHaveText(/^4:\d\d am$/);
     await expect(page.getByText(/For the 24-hour clock, see/)).toBeAttached();
     expect(errors).toEqual([]);
   });

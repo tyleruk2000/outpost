@@ -303,8 +303,8 @@ describe("the times laid out to be read at arm's length", () => {
     ]);
     expect(layout.rest.map((row) => row.label)).toEqual([
       "Solar noon",
-      "Sunrise bearing",
-      "Sunset bearing",
+      "Rises towards",
+      "Sets towards",
       "Day length",
       "Nautical twilight",
       "Moon",

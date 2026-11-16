@@ -8,6 +8,7 @@ import type {
   MapSources,
   MarkerColor,
   MarkerDto,
+  MarkerIcon,
   PlaceSearchResponse,
   PlacesDataset,
   RoutePoint,
@@ -87,6 +88,7 @@ export interface MarkerInput {
   lat: number;
   lon: number;
   color: MarkerColor;
+  icon: MarkerIcon;
   isFavorite: boolean;
 }
 

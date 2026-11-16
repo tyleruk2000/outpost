@@ -46,8 +46,8 @@ describe("the Sun section of a place", () => {
     expect(row("Sunrise")).toHaveTextContent("04:43");
     // The bearings are rows of their own, in the quieter list, so that the two large times stand alone.
     expect(row("Sunrise")).not.toHaveTextContent("NE");
-    expect(row("Sunrise bearing")).toHaveTextContent("49° NE");
-    expect(row("Sunset bearing")).toHaveTextContent("311° NW");
+    expect(row("Rises towards")).toHaveTextContent("49° NE");
+    expect(row("Sets towards")).toHaveTextContent("311° NW");
     expect(row("Solar noon")).toHaveTextContent("13:02");
     expect(row("Solar noon")).toHaveTextContent("sun 62° up");
     expect(row("Sunset")).toHaveTextContent("21:21");
@@ -240,8 +240,8 @@ describe("the Sun section of a place", () => {
       "First light (civil dawn)",
       "Last light (civil dusk)",
       "Solar noon",
-      "Sunrise bearing",
-      "Sunset bearing",
+      "Rises towards",
+      "Sets towards",
       "Day length",
       "Nautical twilight",
       "Moon",

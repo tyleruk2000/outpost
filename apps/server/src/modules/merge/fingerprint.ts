@@ -216,7 +216,8 @@ export const documentHash = (
  * `BASELINE_VERSION` did not have to change.
  */
 export const placeHash = (
-  place: Pick<PlaceState, "name" | "note" | "lat" | "lon" | "color" | "isFavorite" | "noteId"> & Partial<Pick<PlaceState, "icon" | "gpxSym">>,
+  place: Pick<PlaceState, "name" | "note" | "lat" | "lon" | "color" | "isFavorite" | "noteId"> &
+    Partial<Pick<PlaceState, "icon" | "gpxSym">>,
 ): string => {
   const icon = place.icon && place.icon !== "pin" ? place.icon : null;
   const sym = place.gpxSym || null;

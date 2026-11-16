@@ -16,13 +16,14 @@ import { Skeleton } from "@/components/ui/misc";
 import { useGeolocation, useIsDesktop, useMapTheme, useStoredState } from "@/features/maps/hooks";
 import { formatPosition, isReadoutFormat, type ReadoutFormat } from "@/features/maps/lib/coords";
 import { bboxUnion, formatDistance } from "@/features/maps/lib/geo";
+import { iconOf } from "@/features/maps/lib/place-icons";
 import type { StyleInput } from "@/features/maps/lib/style";
 import { DEFAULT_VIEW, readStored, STORAGE_KEYS } from "@/features/maps/lib/view";
 import type { MapEngine } from "@/features/maps/map/engine";
 import { coverageData, locationData, markersData, tracksData } from "@/features/maps/map/overlays";
 import { creditsFor, MapFooter } from "@/features/maps/map-footer";
 import { type Detent, MobileSheet } from "@/features/maps/side-panel";
-import { ColorDot, ControlButton, ControlGroup, PanelHeading } from "@/features/maps/ui";
+import { ColorDot, ControlButton, ControlGroup, PanelHeading, PlaceMark } from "@/features/maps/ui";
 import { errorMessage } from "@/lib/api";
 import { plural } from "@/lib/utils";
 import { DEVICE } from "./device";
@@ -210,7 +211,10 @@ export default function KeptMapScreen() {
       ) : null}
       {chosenMarker ? (
         <section className="px-4" aria-label="Chosen place">
-          <h3 className="font-title text-lead text-ink">{chosenMarker.name}</h3>
+          <h3 className="flex items-start gap-2.5 font-title text-lead text-ink">
+            <PlaceMark color={chosenMarker.color} icon={iconOf(chosenMarker)} className="mt-0.5" />
+            <span className="min-w-0">{chosenMarker.name}</span>
+          </h3>
           <p className="tabular mt-0.5 font-mono text-[0.8125rem] text-ink-muted">
             {formatPosition(chosenMarker.lat, chosenMarker.lon, format).text}
           </p>
@@ -268,7 +272,8 @@ export default function KeptMapScreen() {
                   engine?.flyTo({ lat: marker.lat, lon: marker.lon });
                 }}
               >
-                <ColorDot color={marker.color} className="mt-1.5" />
+                {/* A copy kept before places had icons has none: it is shown as the plain pin it was. */}
+                <PlaceMark color={marker.color} icon={iconOf(marker)} />
                 <span className="min-w-0">
                   <span className="block truncate text-small font-medium text-ink">{marker.name}</span>
                   {marker.note ? <span className="block truncate text-small text-ink-muted">{marker.note.split("\n")[0]}</span> : null}

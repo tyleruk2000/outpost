@@ -402,6 +402,28 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   network.
 - The Sun line of a saved place sits straight under the place's name, so it is on
   screen on a phone as soon as the place is opened; opening it raises the sheet.
+- Sun times that can be found and read on a phone: today's sunrise and sunset in words
+  under the centre readout whenever the sheet is lowered; sunrise and sunset set large,
+  first and last light under them, and the rest in a quieter list; nothing cut off at
+  320 px wide, in either clock or in UTC.
+- The sheet's row of tab names is clear of the bar at the bottom of the screen on a
+  phone with a home indicator, where it had been under it, and takes a second line
+  when the text is too large for one, where its last name, Sun, had run off the edge.
+- A cross marks the centre of the map wherever something reads it (the readout while it
+  says "Centre", the Sun tab), on any size of screen. On a phone the centre is now the
+  middle of the part of the map in view, so it is never behind the sheet, and raising
+  the sheet slides the map to keep it there. The cross is on the point the coordinates
+  give, which it was not after the map had flown somewhere.
+- Icons for saved places: sixteen, beside the colour, chosen in the place editor by
+  touch or keyboard and shown on the map, in the lists, on the pin while a place is
+  edited, in the map's search and on a printed map. Existing places stay plain pins.
+  Where places crowd together an icon is drawn only where it has room, which keeps a
+  map of thousands of places as light as before. A database migration adds the
+  columns (`0012_place_icons`).
+- Saved places are exported to GPX with the Garmin symbol name for their icon, and a
+  waypoint's symbol is read as an icon when it is a known one; the file's own symbol
+  is kept, so a round trip loses nothing. An icon given on a portable drive comes home
+  with the place.
 - The menu of a point pressed and held with a finger stays open when the finger is
   lifted, wherever on the map it was pressed.
 - A card for where you are while the map follows the device: its position to copy or

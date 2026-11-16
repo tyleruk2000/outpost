@@ -2,8 +2,8 @@
 
 This page covers downloading map regions and choosing where they are kept, hill
 shading and contour lines, printing part of the map as a one-page PDF, where the map
-data comes from and how it must be credited, using your own map source, markers and
-moving them, sunrise and sunset for a place, drawing routes, finding a known route by
+data comes from and how it must be credited, using your own map source, markers, their
+icons and moving them, sunrise and sunset, the centre of the map, drawing routes, finding a known route by
 name, recording a track as you walk, importing GPX tracks, coordinate formats,
 Maidenhead locators, checking line of sight between two points, repeaters on the map,
 and offline place search.
@@ -21,7 +21,8 @@ The map fills the screen, with a panel beside it (a sheet you can drag up on a p
 that has four tabs.
 
 - **Places** lists your saved places. **Save a place** drops a pin you can drag; give
-  it a name, a note, a colour, and mark it a favourite to keep it named on the map.
+  it a name, a note, a colour and an icon (see [Markers](#markers)), and mark it a
+  favourite to keep it named on the map.
   A saved place can be moved without opening it (see
   [Moving a saved place](#moving-a-saved-place)).
 - **Routes** lists routes you have drawn and GPX tracks you have imported. Open one
@@ -61,6 +62,12 @@ On the map itself:
   [Printing a map](#printing-a-map)).
 - The readout at the bottom shows the centre of the map; choose decimal degrees,
   degrees-minutes-seconds, British National Grid or Maidenhead locator, and copy it.
+  With a mouse over the map it gives the pointer's position instead, and says which.
+- **A cross marks the centre of the map** whenever something is reading it: the readout
+  while it says "Centre", the Sun tab, and a route drawn from the keyboard. See
+  [The centre of the map](#the-centre-of-the-map).
+- On a phone, **today's sunrise and sunset** for the centre are written under the
+  readout while the sheet is lowered; touch the line for the rest of the day.
 - Right-click (or press and hold) for the position and its locator, "Save a place here",
   "Measure from here", "Draw a route from here", "Sun times here" and "Copy coordinates".
 - A place, a found position and where you are each have a **Sun** line of their own:
@@ -490,8 +497,114 @@ curl -X POST "http://localhost:8080/api/maps/import" \
 ## Markers
 
 A marker is a named point with an optional note, one of seven colours (teal, amber,
-red, green, blue, violet, slate), a favourite flag, and optionally a link to one of
-your note pages. Markers are found by the app-wide search.
+red, green, blue, violet, slate), one of sixteen icons, a favourite flag, and optionally
+a link to one of your note pages. Markers are found by the app-wide search.
+
+### Icons
+
+| Icon | Meant for | Written to GPX as |
+| --- | --- | --- |
+| Pin | Anything. The plain dot: what a place is until an icon is chosen, and what every place was before there were icons | no symbol |
+| Home | Home, a base | `Residence` |
+| Shelter or hut | A bothy, a mountain hut, an open shelter | `Lodge` |
+| Camp | A place to pitch | `Campground` |
+| Car park | Where the car is left | `Parking Area` |
+| Water | A spring, a tap, a stream to fill up at | `Drinking Water` |
+| Food | A shop, a pub, a cache of food | `Restaurant` |
+| First aid | A first-aid box, a doctor, a hospital | `Medical Facility` |
+| Fuel | A filling station, a fuel store | `Gas Station` |
+| Summit | A top | `Summit` |
+| Viewpoint | Somewhere to look from | `Scenic Area` |
+| Radio mast | A mast, a repeater site | `Tall Tower` |
+| Meeting point | Where to meet | no symbol |
+| Danger | Somewhere to keep away from | `Danger Area` |
+| Star | Anything worth a star | no symbol |
+| Flag | Anything worth a flag | `Flag, Blue` |
+
+- **Choosing one.** The place editor has the icons under the colours, each drawn on the
+  colour chosen. The chosen one has a ring and its name is written under the set. With
+  the keyboard, Tab reaches the set and the arrow keys move through it; each icon is
+  named for a screen reader. On a phone each is 44 px to touch.
+- **Where it shows.** On the map, in the list of places (and its name is read out after
+  the place's), on the heading of an opened place, on the pin while the place is being
+  edited or moved, in the results of the map's own search box, on a printed map, and in
+  the map kept on a phone. The search across everything shows every saved place with
+  the same pin, as before: its index does not hold the icon.
+- **On the map** a place with an icon is a disc of its colour, 22 px across inside a
+  ring of the page colour, with the icon on it in white (near-black on amber, where
+  white is too faint). The icon is about 15 px across. It is drawn the same on the
+  light and the dark map and over hill shading, because the disc is its own
+  background. A plain pin is the dot it always was.
+- **Where places crowd together** an icon is drawn only where it does not lie over
+  another: the other place stays a dot of its colour until the map is zoomed in far
+  enough for both. Favourites are always drawn whole, as their names are always
+  written. This is what keeps a map with thousands of places as light as it was; see
+  below.
+- **The drawings** are part of the app (`apps/web/src/features/maps/lib/place-icons.ts`):
+  a few strokes each, in the line style of the icons the rest of the interface uses,
+  drawn for this size rather than taken from that set. The map is handed them as small
+  pictures made in the browser when it first asks for one
+  (`map/place-images.ts`). Nothing is fetched and nothing is added to the map assets.
+- **Existing places** are plain pins. The database gains two columns
+  (`0012_place_icons`), and nothing else about a place changes.
+
+**How heavy it is, measured.** 5,000 places in an area 60 km by 45 km, all in view at
+zoom 9.2, on a 412 × 839 screen at 2.6 device pixels each, in headless Chromium on a
+Mac with other work running (16 November 2026). The map was dragged for 90 steps and
+zoomed in and out by 24 notches while the time between frames was recorded. Headless
+Chromium draws without a graphics card, so the figures are far slower than a phone's;
+what they are good for is the comparison.
+
+__PERF_TABLE__
+
+Not measured: a real phone.
+
+### Icons and GPX
+
+GPX has no list of symbols: a waypoint's `<sym>` is free text, and each program writes
+its own names. The nearest thing to a common vocabulary is Garmin's, so those are the
+names Outpost writes, where there is an obvious one (the table above). **Every name was
+checked against the table of Garmin symbol names in GPSBabel**
+([`garmin_icon_tables.h`](https://github.com/GPSBabel/gpsbabel/blob/master/garmin_icon_tables.h),
+read on 16 November 2026), and none is written that was not found there. Only the
+names are used.
+
+- **Export.** A place is written with the symbol for its icon. A plain pin, a meeting
+  point and a star have no obvious Garmin symbol and are written with no `<sym>`, which
+  every program reads as its own default.
+- **Import.** When waypoints are saved as places, a symbol Outpost knows becomes its
+  icon: the names in the table, and also `Lodging` (shelter or hut), `Water Source`
+  (water), `Fast Food` (food), `Short Tower` and `Radio Beacon` (radio mast), `Skull
+  and Crossbones` (danger), and `Flag`, `Flag, Red` and `Flag, Green` (flag). Capitals
+  and spacing are not held against a file. Any other symbol, and none, is a plain pin.
+- **Nothing is lost on a round trip.** The symbol a place had in the file it came from
+  is kept, word for word, and written again on export for as long as the place's icon
+  is the one that symbol was read as: `Geocache` goes out as `Geocache` on a plain pin,
+  and `Lodging` as `Lodging`, not `Lodge`. Once you give the place another icon, the
+  file says what the map shows.
+- **What a round trip through another Outpost cannot carry.** A meeting point and a
+  star are written with no symbol, so they arrive as plain pins. The colour and the
+  favourite flag are not part of GPX either.
+- The limit of 5,000 waypoints saved as places from one file is unchanged.
+- **Not tried:** opening an exported file in Garmin's own programs or on a Garmin unit.
+
+### Icons elsewhere
+
+- **Printing.** A printed map draws saved places with the same layers as the screen, so
+  places have their icons, on the light map's colours. The pictures are drawn at four
+  device pixels to the map's pixel, which is more than the 300 dots per inch a page is
+  made at.
+- **A map kept on a phone.** The kept copy of your places is the server's own answer,
+  so it carries the icon. A copy kept before this version has none and is shown with
+  plain pins until it is kept again.
+- **Portable drives.** A drive's database is a copy of the home one, so it has the
+  icons. Brought back, an icon given on the drive comes home with the place, as does
+  the symbol a place had in a GPX file. A drive written by an Outpost from before there
+  were icons is still read place for place: a plain pin has the fingerprint it had
+  then, so nothing is listed that did not change, and bringing a change home from such
+  a drive leaves the icons home has alone.
+- **Backups** are the whole database, so they hold the icons. **Erase everything**
+  removes places one at a time through the same service as before, icon and all.
 
 ### Moving a saved place
 
@@ -521,19 +634,60 @@ undone from the message that confirms it.
 **Sun times are worked out on your device from the position and the date.** Nothing is
 looked up and nothing needs a connection.
 
-The quickest way to them is the **Sun** tab of the panel, which is on screen whenever
-the map is: on a phone it is one of the four names on the sheet at the bottom. It
-gives the times for **the centre of the map**, the same point the readout at the
-bottom of the map gives and, on a touch screen with the sheet lowered, the one the
-cross marks. The day's sunrise and sunset come first, with everything else under them.
-Move the map and the times follow, once it has come to rest. Nothing has to be saved,
-searched for, or pressed and held.
+**On a phone, today's sunrise and sunset are on the screen as soon as Maps opens**: a
+line under the coordinates of the centre, just above the lowered sheet ("Sunrise 04:43
+Sunset 21:21"). Touch it and the Sun tab opens with the rest of the day. Nothing has to
+be found first. The line steps aside while the sheet is raised, when the tab itself is
+in view.
 
-**On a phone, with the sheet raised, the centre of the map is behind the sheet's top
-edge**, not in the middle of the part of the map still showing. The tab gives the
-coordinates the times are for; to aim, lower the sheet, put the cross on the place, and
-choose the tab again. Zoomed in far enough to pick out a town the difference is a
-minute or less; looking at a whole country it can be many minutes.
+The **Sun** tab of the panel gives the whole day for **the centre of the map**: the
+same point the readout at the bottom of the map gives, and the one the cross on the map
+marks (see [The centre of the map](#the-centre-of-the-map)). Move the map and the times
+follow, once it has come to rest. Nothing has to be saved, searched for, or pressed and
+held. An empty Places tab says so too, with a button that opens the Sun tab, for
+someone who looks for sun times among their places.
+
+The times are laid out to be read on a phone held at arm's length:
+
+- **Sunrise and sunset**, side by side at the top, in figures 34 px high, under the day
+  they are for ("Today, Sunday 21 June").
+- **First light and last light** under them, at 23 px.
+- The date, with an arrow either side to step a day.
+- Then, quieter, a list: solar noon and the height of the sun then, the bearings the
+  sun rises and sets towards, the length of the day, nautical twilight, and the moon.
+
+"am" and "pm", "UTC", and the date of a time that falls on another day are set small
+beside or under the figures, so the figures stay large at 320 px wide. A day with no
+sunrise or sunset is said in words at reading size. Where the text is too large for
+two times side by side they go one under the other; nothing is cut off.
+
+### The centre of the map
+
+**On a phone, the centre of the map is the middle of the part of the map you can
+see**, not the middle of the map's rectangle. The camera keeps clear of what lies over
+the map: the search box, and the sheet with the readout above it. So the centre is
+never behind the sheet. When the sheet is raised or lowered, the same point on the
+ground stays the centre and the map slides to keep it in view. On a wide screen nothing
+lies over the middle of the map, and the centre is the middle of it until the map
+flies to a place or a search result, which lands a little to the left to keep clear of
+the column of controls; the centre is there from then on.
+
+**A cross marks it**, on any size of screen, whenever something on screen is reading
+the centre:
+
+- the readout at the bottom of the map, while it says "Centre". On a laptop the readout
+  gives the pointer's position while the pointer is over the map, and says "Pointer";
+  the cross is put away for as long as it does, so it is never taken for the point the
+  readout is giving;
+- the Sun tab, which says "Sun at the centre of the map" and gives the coordinates it
+  is using. While it is open the cross stays whatever the pointer is doing;
+- a route being drawn from the keyboard, where the centre is where the next point goes.
+
+The cross is put where the map itself says its centre is, so the mark, the readout and
+the Sun tab cannot disagree. Before this, the centre drifted from the middle of the
+screen after the map had flown to a search result or a place (by 28 px on a laptop and
+53 px on a phone), and the cross a phone drew in the middle of the screen was then not
+on the point the readout gave.
 
 The Sun tab also has a part headed **Where you are**. Where the browser will share the
 device's position it offers **Show where I am**, which moves the map there, so that the
@@ -559,13 +713,15 @@ A **Sun** line is also part of:
   it, and its sun times. The card can be put away; it comes back the next time the
   position is asked for.
 
-Folded, it is one line with the day's sunrise and sunset. Opened, it shows:
+Folded, it is one line with the day's sunrise and sunset, at reading size. Opened, it
+is laid out as the Sun tab is, and shows:
 
 | Row | What it is |
 | --- | --- |
 | First light, last light | The start and end of civil twilight: the centre of the sun 6° below the horizon. In clear weather there is enough light to see by between them. |
-| Sunrise, sunset | The upper edge of the sun on the horizon, each with the true bearing of the point on the horizon where it happens, written as the ruler writes bearings ("49° NE"). The bearing is from true north, not magnetic north. |
+| Sunrise, sunset | The upper edge of the sun on the horizon. |
 | Solar noon | The sun at its highest, due south or due north, and how high its centre is then. |
+| Rises towards, sets towards | The true bearing of the point on the horizon where the sun rises and where it sets, written as the ruler writes bearings ("49° NE"). From true north, not magnetic north. |
 | Day length | Sunrise to sunset, and how much longer or shorter that is than the day before. |
 | Nautical twilight | The sun less than 12° below the horizon. |
 | Moon | The phase by name and the percentage of the face that is lit, at the place's solar noon. |
@@ -574,6 +730,14 @@ It opens on today's date as this device has it. The date can be typed or picked,
 arrows beside it step a day either way, and **Today** comes back. Dates from 1900 to
 2100 are taken. Whether the section was left open, and which clock was chosen, are
 remembered in the browser.
+
+**On a phone: what was checked, and what was not.** The sheet's four names, the line
+under the readout and the two large times were checked in Chromium at 320, 375 and 390
+px wide; with the text enlarged (the root font size at 20 and 24 px, where the names
+take a second line rather than run off the edge); and with the 34 px inset at the
+bottom of the screen that a phone with a home indicator reports, which the Maps screen
+now leaves room for. **None of this was tried on a real iPhone**, in Safari or opened
+from the Home Screen.
 
 On a phone, "Sun times here" and a found position put their card over the map, and the
 opened section scrolls inside the card. The card covers the search box and the map's
@@ -1173,7 +1337,8 @@ In the API: `GET /api/maps/route-sources`, `POST /api/maps/route-search`,
 - **What is read.** GPX 1.0 and 1.1. From a track or a route: its name, its description
   (or its comment, when it has no description) and its points with their heights; from
   a track, the time of each point too, when every point of a segment has one. From a
-  waypoint: name, description, time, symbol and height. The file's own name is the one
+  waypoint: name, description, time, symbol and height (what a symbol becomes when the
+  waypoint is saved as a place is under [Icons and GPX](#icons-and-gpx)). The file's own name is the one
   in its `<metadata>`, or the `<name>` directly under `<gpx>` where GPX 1.0 keeps it,
   or failing both the name of its first track. Each of these is read only from where
   GPX puts it. Everything else is passed over, extensions above all (heart rate,
