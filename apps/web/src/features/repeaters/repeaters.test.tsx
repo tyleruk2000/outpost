@@ -99,7 +99,7 @@ describe("how repeaters are described", () => {
     // The name the line-of-sight check shows for that end carries the warning with it.
     expect(sightEndOf(blurred)).toEqual({
       position: { lat: 54.6, lon: -2.9 },
-      name: "QZ3AB: approximate listed position, to within about 5.56 km",
+      name: "QZ3AB: listed only to about 5.56 km",
     });
     expect(sightEndOf(repeater())?.name).toBe("QZ3AB: listed position");
     expect(sightEndOf(repeater({ lat: null, lon: null }))).toBeNull();

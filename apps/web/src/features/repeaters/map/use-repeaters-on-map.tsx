@@ -48,11 +48,11 @@ export interface RepeatersOnMap {
 /** The end of a line-of-sight path that a repeater makes, named so that the check says what its position is worth. */
 export function sightEndOf(repeater: RepeaterDetailResponse["repeater"]): SightEnd | null {
   if (repeater.lat === null || repeater.lon === null) return null;
-  const precision = precisionText(repeater);
+  // Short enough to be read whole in the panel, which gives an end's name one line.
   return {
     position: { lat: repeater.lat, lon: repeater.lon },
     name: isApproximate(repeater)
-      ? `${repeater.callsign}: approximate listed position, ${precision}`
+      ? `${repeater.callsign}: listed only to about ${formatDistance(repeater.positionPrecisionMeters ?? 0)}`
       : `${repeater.callsign}: listed position`,
   };
 }
