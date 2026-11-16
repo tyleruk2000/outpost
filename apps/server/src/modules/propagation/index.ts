@@ -16,86 +16,23 @@ import { desc, eq } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
-import { badRequest, notFound } from "../../core/errors.ts";
+import { notFound } from "../../core/errors.ts";
 import { newId } from "../../core/ids.ts";
 import { toJobDto } from "../../core/jobs.ts";
 import { propagationSaved } from "../../db/schema.ts";
+import { type CoverageService, registerCoverage } from "./coverage.ts";
 import { createDatasetsService, type DatasetsService } from "./datasets.ts";
 import { EngineUnavailable } from "./engine.ts";
 import { createEngineHost } from "./host.ts";
 import { createProfilesService, type ProfilesService } from "./profiles.ts";
-import { createPropagationService, modeLine, type PropagationService } from "./service.ts";
+import { createPropagationService, type PropagationService } from "./service.ts";
+import { antenna, checked, modes, power } from "./shapes.ts";
 import { readEngineManifest, voacapPaths } from "./voacap/files.ts";
 
 declare module "../../core/context.ts" {
   interface Services {
-    propagation: PropagationService & { profiles: ProfilesService; datasets: DatasetsService };
+    propagation: PropagationService & { profiles: ProfilesService; datasets: DatasetsService; coverage: CoverageService };
   }
-}
-
-// ── What a request may hold ─────────────────────────────────────────────────
-
-const site = z.object({ name: z.string().max(60).default(""), lat: z.number().min(-90).max(90), lon: z.number().min(-180).max(180) });
-const noise = z.enum(["city", "residential", "rural", "remote"]);
-const modes = z.enum(["ssb", "cw", "ft8", "js8", "digital"]);
-const power = z.number().min(0.1, "The engine works in tenths of a watt: give at least 0.1 W.").max(500_000);
-
-const antenna = z
-  .object({
-    kind: z.enum(["isotropic", "horizontal-dipole", "inverted-v", "end-fed-half-wave", "vertical-monopole"]),
-    heightM: z.number().min(0).max(200),
-    ground: z.enum(["poor", "average", "good", "sea"]),
-    broadsideDeg: z.number().min(0).max(360).nullable(),
-    gainDb: z.number().min(-40).max(30),
-    feedlineLossDb: z.number().min(0).max(40),
-  })
-  .refine((value) => value.kind === "isotropic" || value.kind === "vertical-monopole" || value.heightM >= 0.5, {
-    message: "Give the height of a horizontal antenna above the ground: at least 0.5 m.",
-    path: ["heightM"],
-  });
-
-const isDate = (value: string) => {
-  const time = Date.parse(`${value}T00:00:00Z`);
-  return Number.isFinite(time) && new Date(time).toISOString().slice(0, 10) === value;
-};
-
-const prediction = z.object({
-  tx: site,
-  rx: site,
-  date: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, "Give the date as YYYY-MM-DD.")
-    .refine(isDate, "That date does not exist.")
-    .refine((value) => value >= "1950-01-01" && value <= "2100-12-31", "Give a date between 1950 and 2100."),
-  powerWatts: power,
-  txAntenna: antenna,
-  rxAntenna: antenna,
-  noise,
-  frequencyMhz: z
-    .number()
-    .min(HF_MIN_MHZ, `The engine covers ${HF_MIN_MHZ} to ${HF_MAX_MHZ} MHz. Give a frequency in that range.`)
-    .max(HF_MAX_MHZ, `The engine covers ${HF_MIN_MHZ} to ${HF_MAX_MHZ} MHz. Give a frequency in that range.`),
-  mode: modes,
-  requiredSnrDb: z.number().min(-60).max(99).optional(),
-  referenceBandwidthHz: z.number().min(1).max(100_000).optional(),
-  solar: z.discriminatedUnion("source", [
-    z.object({ source: z.literal("table") }),
-    z.object({ source: z.literal("manual"), ssn: z.number().min(0).max(300) }),
-    z.object({ source: z.literal("fof2"), fof2Mhz: z.number().min(0.5).max(25), utcHour: z.number().int().min(1).max(24) }),
-  ]),
-  reply: z.object({ powerWatts: power, noise }).optional(),
-});
-
-/** The engine's card takes the requirement as a figure between -30 and 99.9 dB in 1 Hz. */
-function checked(body: unknown): PredictionRequest {
-  const request = prediction.parse(body) as PredictionRequest;
-  const line = modeLine(request.mode, request.requiredSnrDb, request.referenceBandwidthHz);
-  if (line.requiredSnrDbHz !== null && (line.requiredSnrDbHz < -30 || line.requiredSnrDbHz > 99.9)) {
-    throw badRequest(
-      `That requirement is ${line.requiredSnrDbHz} dB in a 1 Hz bandwidth, which is outside what the engine takes (-30 to 99.9). Check the signal-to-noise ratio and its bandwidth.`,
-    );
-  }
-  return request;
 }
 
 const range = { minMhz: z.number().min(0.1).max(1000), maxMhz: z.number().min(0.1).max(1000) };
@@ -126,13 +63,14 @@ export async function registerPropagation(app: FastifyInstance, ctx: AppContext)
   const profiles = createProfilesService(ctx);
   const datasets = createDatasetsService(ctx, paths);
   const service = createPropagationService(ctx, host);
-  ctx.services.propagation = { ...service, profiles, datasets };
+  const coverage = registerCoverage(app, ctx, service);
+  ctx.services.propagation = { ...service, profiles, datasets, coverage };
   ctx.services.downloads.registerInstaller("dataset", datasets.installer);
 
   // A day on one path is a twentieth of a second and is answered directly. Anything
-  // that is many paths (a coverage grid, a plan across several places) is a job: it
-  // shows on the Downloads screen's list of work, can be cancelled, and leaves its
-  // answer under a key to be fetched.
+  // that is many paths (a coverage grid in coverage.ts, a plan across several places in
+  // plans.ts) is a job: it shows on the Downloads screen's list of work, can be
+  // cancelled, and leaves its answer under a key to be fetched.
   ctx.jobs.register<{ kind: "point" | "compare"; request: Record<string, unknown> }>("propagation.predict", {
     queue: "propagation",
     async run({ payload, signal, progress }) {

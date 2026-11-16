@@ -7,11 +7,12 @@
  * It runs the acceptance path (London to Birmingham) and prints, in milliseconds, how
  * long the engine takes to load, to work out a day on every band, to work out
  * everything one screen of the planner asks for, and to work out one day at one
- * frequency, which is the unit a coverage map is made of. Nothing is written.
+ * frequency, which is the unit a coverage map is made of, and then a whole coverage grid
+ * at each of the three resolutions offered. Nothing is written.
  */
 import os from "node:os";
 import path from "node:path";
-import { ANTENNA_PRESETS, HF_BANDS } from "@outpost/shared";
+import { ANTENNA_PRESETS, COVERAGE_MAX_CELLS, COVERAGE_RESOLUTIONS, coverageCellCentre, coverageGrid, HF_BANDS } from "@outpost/shared";
 import type { CircuitRequest } from "../modules/propagation/engine.ts";
 import { createVoacapEngine } from "../modules/propagation/voacap/engine.ts";
 import { voacapPaths } from "../modules/propagation/voacap/files.ts";
@@ -75,4 +76,27 @@ const cell = time(200, (run) =>
   engine.circuit({ ...base, frequenciesMhz: [7.1], rx: { name: "", lat: 45 + (run % 20), lon: -10 + (run % 17) * 2 } }),
 );
 show("One day at one frequency to one place (a coverage cell)", cell);
-console.log(`A coverage grid of 30 x 30 places at that rate: about ${((cell.median * 900) / 1000).toFixed(1)} s on one core.`);
+
+// The three grids a coverage map is offered in, over Britain and Ireland from London:
+// every cell is one run of the engine, as the coverage job makes it.
+const britain = { west: -11, south: 49, east: 3, north: 59 };
+for (const resolution of COVERAGE_RESOLUTIONS) {
+  const grid = coverageGrid(britain, resolution.id);
+  const cells = grid.columns * grid.rows;
+  const start = performance.now();
+  for (let index = 0; index < cells; index++) {
+    const centre = coverageCellCentre(grid, index);
+    engine.circuit({
+      ...base,
+      frequenciesMhz: [7.1],
+      rx: { name: "", lat: Number(centre.lat.toFixed(2)), lon: Number(centre.lon.toFixed(2)) },
+    });
+  }
+  const seconds = (performance.now() - start) / 1000;
+  console.log(
+    `${`A ${resolution.label.toLowerCase()} coverage grid, ${grid.columns} x ${grid.rows} = ${cells} cells`.padEnd(58)}        ${seconds.toFixed(1).padStart(7)} s    (${((seconds * 1000) / cells).toFixed(2)} ms a cell)`,
+  );
+}
+console.log(
+  `The largest grid a request may ask for is ${COVERAGE_MAX_CELLS} cells: about ${((cell.median * COVERAGE_MAX_CELLS) / 1000).toFixed(1)} s at the rate of one cell above.`,
+);
