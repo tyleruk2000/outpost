@@ -41,6 +41,7 @@ import {
   imports as importsTable,
   jobs as jobsTable,
   notes as notesTable,
+  pgpKeys,
   settings as settingsTable,
 } from "../../db/schema.ts";
 import { type Entry, fileOf, type Inventory } from "./inventory.ts";
@@ -537,6 +538,8 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
       // Records of drive merges hold earlier versions of pages: they are the person's own words too.
       db.delete(driveMergesTable).run();
       db.delete(downloadsTable).run();
+      // Keys, and any protected private key kept here, are the person's own too.
+      db.delete(pgpKeys).run();
       db.delete(embeddings).run();
       db.delete(embeddingModels).run();
       sqlite

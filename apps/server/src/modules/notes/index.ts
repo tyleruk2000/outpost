@@ -44,6 +44,7 @@ const updateBody = z.object({
   coverAttachmentId: id.nullable().optional(),
   isTemplate: z.boolean().optional(),
   baseUpdatedAt: z.number().optional(),
+  removeEncryption: z.boolean().optional(),
 });
 
 const moveBody = z.object({ parentId: id.nullable(), afterId: id.nullable().optional() });
@@ -107,7 +108,7 @@ export async function registerNotes(app: FastifyInstance, ctx: AppContext): Prom
 
   app.patch("/api/notes/:id", async (request) => {
     const params = idParams.parse(request.params);
-    return { note: notes.update(params.id, updateBody.parse(request.body ?? {})) };
+    return { note: notes.update(params.id, { ...updateBody.parse(request.body ?? {}), guardEncryption: true }) };
   });
 
   app.post("/api/notes/:id/move", async (request) => {

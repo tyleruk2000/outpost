@@ -12,6 +12,7 @@ import { registerCatalog } from "./catalog/index.ts";
 import { registerCollections } from "./collections/index.ts";
 import { registerDocuments } from "./documents/index.ts";
 import { registerDownloads } from "./downloads/index.ts";
+import { registerEncryption } from "./encryption/index.ts";
 import { registerImports } from "./imports/index.ts";
 import { registerKiwix } from "./kiwix/index.ts";
 import { registerLinks } from "./links/index.ts";
@@ -41,6 +42,7 @@ export const modules: ModuleRegister[] = [
   registerLinks,
   registerCatalog,
   registerMaps,
+  registerEncryption,
   registerBackup,
   registerPortable,
   registerMerge,

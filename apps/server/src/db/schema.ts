@@ -518,6 +518,25 @@ export const tracks = sqliteTable("tracks", {
   updatedAt: updatedAt(),
 });
 
+// ── Encryption ──────────────────────────────────────────────────────────────
+
+/**
+ * OpenPGP keys people keep here. The server cannot use them: all cryptography is done
+ * in the browser. A public key is anyone's to read. A private key is stored only in the
+ * form its passphrase protects, which `modules/encryption/packets.ts` checks on the way
+ * in, and only when a person asks for it to be kept here as well as on their device.
+ */
+export const pgpKeys = sqliteTable("pgp_keys", {
+  /** Lower-case hex, worked out by the server from the key itself. */
+  fingerprint: text("fingerprint").primaryKey(),
+  publicArmored: text("public_armored").notNull(),
+  privateArmored: text("private_armored"),
+  /** Listed under "My keys" rather than with other people's. */
+  mine: integer("mine", { mode: "boolean" }).notNull().default(false),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+});
+
 // ── Portable drives: bringing changes back ──────────────────────────────────
 
 /**

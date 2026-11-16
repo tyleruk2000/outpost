@@ -215,6 +215,12 @@ export interface NoteTreeItem extends NoteRef {
 export interface NoteDetail extends NoteRef {
   parentId: string | null;
   content: NoteDoc;
+  /**
+   * True when the content is one armoured OpenPGP message and nothing else (see
+   * `encryptedNoteArmor` in encryption.ts). The title, icon, tags and cover of such a
+   * page are still plain.
+   */
+  encrypted: boolean;
   tags: string[];
   isFavorite: boolean;
   isTemplate: boolean;
@@ -290,6 +296,8 @@ export interface UpdateNoteBody {
   isFavorite?: boolean;
   coverAttachmentId?: string | null;
   isTemplate?: boolean;
+  /** Needed to replace an encrypted page's content with content that is not encrypted. */
+  removeEncryption?: boolean;
   /**
    * The `updatedAt` this edit was based on. When the stored page is newer the save is
    * refused with 409 `conflict` and `details.current`, so nothing is overwritten.
