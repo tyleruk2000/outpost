@@ -377,6 +377,12 @@ const FORMATS: Array<{ value: ReferenceImportFormat; label: string; about: strin
     label: "OpenStreetMap extract (.osm.pbf)",
     about: "A Geofabrik extract you downloaded. Over 32 MB, put it in a storage location first.",
   },
+  {
+    value: "worldpop-tif",
+    label: "Population grid from WorldPop (GeoTIFF)",
+    about:
+      "WorldPop's 2020 population counts at 1 km, unconstrained and UN-adjusted, as downloaded from its site (named like gbr_ppp_2020_1km_Aggregated_UNadj.tif). Credited with WorldPop's citation, CC BY 4.0. Another product is refused rather than credited wrongly.",
+  },
 ];
 
 function ImportDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
@@ -493,7 +499,15 @@ function ImportDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (op
                   <Input
                     {...ids}
                     type="file"
-                    accept={format === "geojson" ? ".geojson,.json" : format === "osm-pbf" ? ".pbf" : ".csv,.txt"}
+                    accept={
+                      format === "geojson"
+                        ? ".geojson,.json"
+                        : format === "osm-pbf"
+                          ? ".pbf"
+                          : format === "worldpop-tif"
+                            ? ".tif,.tiff"
+                            : ".csv,.txt"
+                    }
                     onChange={(event) => setFile(event.target.files?.[0] ?? null)}
                   />
                 )}
@@ -551,7 +565,13 @@ function ImportDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (op
                   )}
                 </>
               ) : null}
-              {format === "osm-pbf" ? text("country", "Country code", "Two letters, such as LI.") : null}
+              {format === "osm-pbf" || format === "worldpop-tif"
+                ? text(
+                    "country",
+                    "Country code",
+                    format === "osm-pbf" ? "Two letters, such as LI." : "Two letters, such as GB: the country the grid is for.",
+                  )
+                : null}
             </>
           )}
         </DialogBody>

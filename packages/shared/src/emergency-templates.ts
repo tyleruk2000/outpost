@@ -17,6 +17,7 @@
 import type { EmergencyPlanInput, PlanKind, PlanPhase, PlanStep } from "./emergency-plans.ts";
 import { DEFAULT_REVIEW_DAYS, emptyPlanBody } from "./emergency-plans.ts";
 import { EMERGENCY_NUMBERS_DATA, PLAN_SOURCES_DATA, PLAN_TEMPLATES_DATA, SOURCE_TERMS_DATA } from "./emergency-templates-data.ts";
+import { RADIATION_SOURCE_TERMS, RADIATION_SOURCES, RADIATION_TEMPLATE } from "./emergency-templates-radiation.ts";
 import type { SupplyCategory } from "./supplies.ts";
 
 export interface PlanSource {
@@ -124,10 +125,11 @@ export interface EmergencyNumber {
   quote: string;
 }
 
-export const SOURCE_TERMS: SourceTerms[] = SOURCE_TERMS_DATA;
-export const PLAN_SOURCES: PlanSource[] = PLAN_SOURCES_DATA;
+// The radiation emergency template (nuclear preparedness) keeps its words and sources in a file of its own.
+export const SOURCE_TERMS: SourceTerms[] = [...SOURCE_TERMS_DATA, ...RADIATION_SOURCE_TERMS];
+export const PLAN_SOURCES: PlanSource[] = [...PLAN_SOURCES_DATA, ...RADIATION_SOURCES];
 export const EMERGENCY_NUMBERS: EmergencyNumber[] = EMERGENCY_NUMBERS_DATA;
-export const PLAN_TEMPLATES: PlanTemplate[] = PLAN_TEMPLATES_DATA;
+export const PLAN_TEMPLATES: PlanTemplate[] = [...PLAN_TEMPLATES_DATA, RADIATION_TEMPLATE];
 
 export const sourceById = (id: string | null | undefined): PlanSource | undefined =>
   id ? PLAN_SOURCES.find((source) => source.id === id) : undefined;

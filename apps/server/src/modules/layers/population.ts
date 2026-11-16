@@ -452,6 +452,7 @@ export function createPopulationService(
         people: used.length === 0 ? null : roundPeople(people),
         covered: Math.round(covered * 100) / 100,
         sets: setsOf(used),
+        cellKm2: used.length === 0 ? null : Math.round(cellAreaKm2(lat, Math.min(...used.map((grid) => grid.pixel))) * 1000) / 1000,
         note:
           used.length === 0
             ? away.some((grid) => grid.bbox[0] < box[2] && grid.bbox[2] > box[0] && grid.bbox[1] < box[3] && grid.bbox[3] > box[1])

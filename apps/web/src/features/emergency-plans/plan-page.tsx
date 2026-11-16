@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
 import { Select, Skeleton } from "@/components/ui/misc";
+import { PlanIllustrations } from "@/features/nuclear/plan-illustrations";
 import { formatDate, timeAgo } from "@/lib/utils";
 import { inputOf, usePlan, usePlanAction, useRemovePlan, useSavePlan } from "./data";
 import { TemplateLicences } from "./licences";
@@ -306,6 +307,7 @@ export default function EmergencyPlanPage() {
       <PowerSection powerPlanId={body.powerPlanId} onChange={(powerPlanId) => setBody({ powerPlanId })} />
       <WhereSection where={body.where} templateId={draft.templateId} onChange={(where) => setBody({ where })} />
       <NotesSection body={body} resolved={resolved} onChange={(patch) => setBody(patch)} />
+      <PlanIllustrations links={body.links} resolved={resolved} onChange={(links) => setBody({ links })} />
       <Sources templateId={draft.templateId} />
 
       <Section title="This plan">

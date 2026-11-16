@@ -16,6 +16,8 @@ import type {
   CountryFigureDto,
   FeatureProvenance,
   HistoricalRecordDto,
+  HistoricalRecordRow,
+  HistoricalRecordsResponse,
   HistoricalRecordType,
   LayerSearchHit,
   ReferenceCell,
@@ -261,6 +263,8 @@ export interface ReferenceStore {
   summary(providerNames: Map<string, string>): ReferenceLayerSummary[];
   countsOf(collectionId: string): { records: number; duplicates: number; figures: number; layers: ReferenceLayerId[] };
   figures(country?: string): CountryFigureDto[];
+  /** Historical records for the records browser, by period and then name. */
+  historical(query: { recordType: HistoricalRecordType | null; limit: number; offset: number }): HistoricalRecordsResponse;
   owners(): string[];
   total(): number;
 }
@@ -867,6 +871,31 @@ export function createReferenceStore(ctx: AppContext, providerName: (id: string)
         )
         .all(...(country ? [country] : [])) as CountryFigureDto[];
       return rows;
+    },
+
+    historical({ recordType, limit, offset }) {
+      const where = `f.duplicate_of IS NULL AND f.collection_id NOT LIKE 'pending:%' ${recordType ? "AND h.record_type = ?" : ""}`;
+      const args = recordType ? [recordType] : [];
+      const from =
+        "FROM historical_records h JOIN reference_features f ON f.id = h.feature_id LEFT JOIN documents d ON d.id = h.library_document_id";
+      const total = (sqlite.prepare(`SELECT count(*) AS n ${from} WHERE ${where}`).get(...args) as { n: number }).n;
+      const rows = sqlite
+        .prepare(
+          `SELECT f.id AS id, f.name AS name, f.provenance AS provenance, h.record_type AS recordType, h.period AS period,
+             f.country AS country, f.lat AS lat, f.lon AS lon, h.location_text AS locationText, h.document_title AS documentTitle,
+             h.document_date AS documentDate, h.document_url AS documentUrl, d.id AS documentId, d.title AS documentName
+           ${from} WHERE ${where} ORDER BY h.period, f.name, f.id LIMIT ? OFFSET ?`,
+        )
+        .all(...args, limit, offset) as Array<
+        Omit<HistoricalRecordRow, "libraryDocument"> & { documentId: string | null; documentName: string | null }
+      >;
+      return {
+        total,
+        records: rows.map(({ documentId, documentName, ...row }) => ({
+          ...row,
+          libraryDocument: documentId ? { id: documentId, title: documentName ?? "" } : null,
+        })),
+      };
     },
 
     owners() {

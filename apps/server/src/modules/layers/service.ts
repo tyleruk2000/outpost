@@ -37,7 +37,7 @@ import { createOurAirportsAdapter } from "./adapters/ourairports.ts";
 import { createOverpassAdapter } from "./adapters/overpass.ts";
 import { createWikidataAdapter } from "./adapters/wikidata.ts";
 import { createWorldPopAdapter } from "./adapters/worldpop.ts";
-import { COUNTRIES } from "./countries.ts";
+import { COUNTRIES, countryOf } from "./countries.ts";
 import { createPopulationService, type PopulationMeta, type PopulationService } from "./population.ts";
 import { LINKED, PROVIDERS } from "./providers.ts";
 import { createReferenceStore, type ReferenceStore } from "./store.ts";
@@ -192,6 +192,58 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
           other.origin === "download" && other.provider === meta.provider && other.key === meta.key && other.scope === scopeOf(meta),
       )
       .map(({ row }) => row.id);
+  }
+
+  /**
+   * A WorldPop grid a person downloaded from WorldPop's site and brings as a file: read as
+   * the download would be. Only the product Outpost credits (2020, 1 km, unconstrained,
+   * UN-adjusted) is read, told by WorldPop's own file name, so that it is never credited
+   * as something it is not.
+   */
+  async function importWorldPop(
+    input: ImportInput,
+    filePath: string,
+    sizeBytes: number,
+    signal: AbortSignal,
+    progress: (current: number, total: number | null, message: string) => void,
+  ) {
+    const country = countryOf((input.options.country ?? "").toUpperCase());
+    if (!country) throw badRequest("Say which country the grid is for, as two letters (GB, LU).");
+    const expectedName = `${country.iso3.toLowerCase()}_ppp_2020_1km_aggregated_unadj`;
+    if (!path.basename(input.relPath).toLowerCase().includes(expectedName))
+      throw badRequest(
+        `Outpost reads WorldPop's 2020 population counts at 1 km, unconstrained and UN-adjusted, whose file for ${country.name} is named ${country.iso3.toLowerCase()}_ppp_2020_1km_Aggregated_UNadj.tif. Another product would be credited wrongly, so it is not read.`,
+      );
+    const adapter = adapters.get("worldpop");
+    if (!adapter) throw badRequest("WorldPop's grids cannot be read here.");
+    const meta: ReferenceMeta = {
+      provider: "worldpop",
+      key: `worldpop:${country.code}`,
+      title: input.title,
+      layers: [],
+      request: null,
+      countries: [country.code],
+      bbox: country.bbox,
+      sourceUrl: "https://hub.worldpop.org/geodata/summary?id=37315",
+      format: input.format,
+      options: { iso3: country.iso3, country: country.name, ...(input.replaces ? { replaces: input.replaces } : {}) },
+      origin: "import",
+    };
+    const { collection, meta: packMeta } = await ingest({
+      adapter,
+      owner: `pending:import-${newId()}`,
+      meta,
+      title: input.title,
+      filePath,
+      locationId: input.locationId,
+      relPath: input.relPath,
+      sizeBytes,
+      sha256: null,
+      sourceDate: null,
+      signal,
+      progress,
+    });
+    return { pack: toPack(collection, packMeta), imported: 0, skipped: 0, duplicates: 0, problems: [] };
   }
 
   /** Reads a file into a pack: the one way every pack is installed. */
@@ -453,9 +505,11 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
         "country-figures-csv": [".csv", ".txt"],
         geojson: [".geojson", ".json"],
         "osm-pbf": [".pbf"],
+        "worldpop-tif": [".tif", ".tiff"],
       };
       if (!expected[input.format].includes(extension))
         throw badRequest(`A ${input.format} import is a ${expected[input.format].join(" or ")} file.`);
+      if (input.format === "worldpop-tif") return importWorldPop(input, filePath, stat.size, signal, progress);
       const layers: ReferenceLayerId[] =
         input.format === "historical-csv"
           ? ["historical"]

@@ -140,8 +140,13 @@ export interface PlanWhere {
   origin: string | null;
 }
 
+/**
+ * A link to a note, a document, a saved place, or a saved nuclear effects scenario. A
+ * scenario is held as an illustration only (docs/nuclear-preparedness.md): the plan shows
+ * its picture with its caveat, and none of the plan's steps change with it.
+ */
 export interface EmergencyPlanLink {
-  kind: "note" | "document" | "place";
+  kind: "note" | "document" | "place" | "scenario";
   id: string;
 }
 
@@ -224,6 +229,10 @@ export interface EmergencyPlanSummary {
   name: string;
   kind: PlanKind;
   kindText: string;
+  /** The template it was started from, or null. */
+  templateId: string | null;
+  /** Saved nuclear effects scenarios linked to it as illustrations. */
+  scenarios: string[];
   steps: number;
   ticked: number;
   startedAt: number | null;

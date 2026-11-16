@@ -55,7 +55,7 @@ export function checkWords(check: SupplyCheck): string {
 }
 
 /** Days held against days wanted, for food and for water. */
-function DaysHeld({ days }: { days: number | null }) {
+export function DaysHeld({ days }: { days: number | null }) {
   const outlook = useOutlook();
   if (outlook.isPending) return <Skeleton className="h-12" />;
   if (outlook.isError) return <p className="text-small text-danger">The supplies could not be read. {errorMessage(outlook.error)}</p>;

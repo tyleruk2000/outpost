@@ -455,31 +455,34 @@ export function NotesSection({
           <Textarea {...ids} rows={4} value={body.notes} maxLength={20_000} onChange={(event) => onChange({ notes: event.target.value })} />
         )}
       </Field>
-      {resolved.links.length > 0 ? (
+      {/* A scenario is shown as an illustration in a section of its own (features/nuclear/plan-illustrations.tsx). */}
+      {resolved.links.some((link) => link.kind !== "scenario") ? (
         <ul className="mt-4 divide-y divide-border border-y border-border">
-          {resolved.links.map((link) => (
-            <li key={`${link.kind}:${link.id}`} className="flex items-center justify-between gap-3 py-2">
-              <span className="min-w-0">
-                {link.title === null ? (
-                  <span className="text-warning">A {link.kind === "place" ? "saved place" : link.kind} that is no longer in Outpost</span>
-                ) : (
-                  <Link to={linkPath(link)} className="text-primary underline underline-offset-2">
-                    {link.title}
-                  </Link>
-                )}
-                <span className="ml-2 text-small text-ink-muted">
-                  {link.kind === "note" ? "Note" : link.kind === "document" ? "Document" : "Map"}
+          {resolved.links
+            .filter((link) => link.kind !== "scenario")
+            .map((link) => (
+              <li key={`${link.kind}:${link.id}`} className="flex items-center justify-between gap-3 py-2">
+                <span className="min-w-0">
+                  {link.title === null ? (
+                    <span className="text-warning">A {link.kind === "place" ? "saved place" : link.kind} that is no longer in Outpost</span>
+                  ) : (
+                    <Link to={linkPath(link)} className="text-primary underline underline-offset-2">
+                      {link.title}
+                    </Link>
+                  )}
+                  <span className="ml-2 text-small text-ink-muted">
+                    {link.kind === "note" ? "Note" : link.kind === "document" ? "Document" : "Map"}
+                  </span>
                 </span>
-              </span>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => onChange({ links: body.links.filter((each) => !(each.kind === link.kind && each.id === link.id)) })}
-              >
-                Unlink
-              </Button>
-            </li>
-          ))}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => onChange({ links: body.links.filter((each) => !(each.kind === link.kind && each.id === link.id)) })}
+                >
+                  Unlink
+                </Button>
+              </li>
+            ))}
         </ul>
       ) : null}
       <form
