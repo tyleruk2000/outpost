@@ -105,7 +105,7 @@ describe("the headline for a frequency on which the level wire is approximate", 
     // The heat map marks the whole megahertz the wire is approximate on, in words in its reading.
     expect(screen.getByText(/A row marked ≈ in a dashed frame has approximate figures/)).toBeTruthy();
     const sweep = screen.getByRole("region", { name: /from 2 to 30 MHz by hour/ });
-    expect(sweep.querySelectorAll("rect[data-approximate]")).toHaveLength(14);
+    expect(sweep.querySelectorAll("g[data-approximate]")).toHaveLength(14);
     expect(sweep.querySelectorAll("rect[data-not-modelled]")).toHaveLength(12);
   });
 
@@ -305,7 +305,7 @@ describe("a plan with an approximate band", () => {
     );
     expect(screen.getByText(/^Approximate on 15 m\./)).toBeTruthy();
     const grid = screen.getByRole("region", { name: /Two-way reliability between Home and Rome/ });
-    expect(grid.querySelectorAll("rect[data-approximate]")).toHaveLength(1);
+    expect(grid.querySelectorAll("g[data-approximate]")).toHaveLength(1);
     expect(grid.querySelectorAll("rect[data-not-modelled]")).toHaveLength(1);
     expect(within(grid).getByText("15 m ≈")).toBeTruthy();
     const table = screen.getByRole("table", { name: /share of days/ });

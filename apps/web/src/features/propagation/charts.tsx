@@ -190,7 +190,18 @@ export function HourGrid({
   const hatchId = useId();
   const anyNotModelled = rows.some((row) => row.notModelled);
   const anyApproximate = rows.some((row) => row.approximate && !row.notModelled);
-  const left = 46;
+  // Rows of approximate figures that lie together are framed once, as one block. A frame to each row put a
+  // dashed line between every pair of rows, and an antenna that is approximate on most of the range (a sloping
+  // wire is, from its half-wave up) turned the whole chart into stripes with the shades lost behind them.
+  const approximateRuns: Array<{ from: number; rows: number }> = [];
+  rows.forEach((row, index) => {
+    if (!row.approximate || row.notModelled) return;
+    const last = approximateRuns[approximateRuns.length - 1];
+    if (last && last.from + last.rows === index) last.rows += 1;
+    else approximateRuns.push({ from: index, rows: 1 });
+  });
+  // Room for the longest label: "29 MHz" alone, or with the sign after it.
+  const left = anyApproximate ? 62 : 46;
   const right = 6;
   const top = 6;
   const bottom = 20;
@@ -269,7 +280,7 @@ export function HourGrid({
             </defs>
           ) : null}
           {rows.map((row, rowIndex) => (
-            <g key={row.label}>
+            <g key={row.label} data-approximate={row.approximate && !row.notModelled ? "" : undefined}>
               {row.marked ||
               (rowIndex % labelEvery === 0 && !(labelEvery > 1 && (rows[rowIndex - 1]?.marked || rows[rowIndex + 1]?.marked))) ? (
                 <text
@@ -293,36 +304,35 @@ export function HourGrid({
                   fill={`url(#${hatchId})`}
                 />
               ) : (
-                <>
-                  {HOURS.map((h) => (
-                    <rect
-                      key={h}
-                      x={x(h) + 0.5}
-                      y={y(rowIndex) + 0.5}
-                      width={Math.max(1, cellWidth - 1)}
-                      height={rowHeight - 1}
-                      rx={1.5}
-                      style={{ fill: shareFill(row.values[h - 1] ?? null) }}
-                    />
-                  ))}
-                  {row.approximate ? (
-                    // A dashed frame round the whole day: the shades are figures, and approximate ones.
-                    <rect
-                      data-approximate
-                      x={x(1) + 0.5}
-                      y={y(rowIndex) + 0.5}
-                      width={Math.max(1, cellWidth * 24 - 1)}
-                      height={rowHeight - 1}
-                      rx={1.5}
-                      fill="none"
-                      className="stroke-ink"
-                      strokeWidth={1.25}
-                      strokeDasharray="4 3"
-                    />
-                  ) : null}
-                </>
+                HOURS.map((h) => (
+                  <rect
+                    key={h}
+                    x={x(h) + 0.5}
+                    y={y(rowIndex) + 0.5}
+                    width={Math.max(1, cellWidth - 1)}
+                    height={rowHeight - 1}
+                    rx={1.5}
+                    style={{ fill: shareFill(row.values[h - 1] ?? null) }}
+                  />
+                ))
               )}
             </g>
+          ))}
+          {approximateRuns.map((run) => (
+            // One dashed frame round each block of approximate rows: the shades inside are figures, and approximate ones.
+            <rect
+              key={run.from}
+              data-approximate-frame
+              x={x(1) - 1}
+              y={y(run.from) - 1}
+              width={Math.max(1, cellWidth * 24 + 2)}
+              height={run.rows * rowHeight + 2}
+              rx={2.5}
+              fill="none"
+              className="stroke-ink"
+              strokeWidth={1.25}
+              strokeDasharray="4 3"
+            />
           ))}
           {line && points ? (
             <polyline

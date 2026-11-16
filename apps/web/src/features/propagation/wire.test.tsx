@@ -501,7 +501,7 @@ describe("a prediction on a frequency the wire is not modelled on", () => {
     );
     const grid = screen.getByRole("region", { name: /Reliability of SSB voice on each band by hour/ });
     expect(grid.querySelectorAll("rect[data-not-modelled]")).toHaveLength(4);
-    expect(grid.querySelectorAll("rect[data-approximate]")).toHaveLength(4);
+    expect(grid.querySelectorAll("g[data-approximate]")).toHaveLength(4);
     expect(within(grid).getByText("15 m ≈")).toBeTruthy();
     // The legend names all three: the shades, the approximate frame and the hatching.
     const legends = screen.getAllByRole("list", { name: "What the shades mean" }).map((item) => item.textContent);
@@ -543,7 +543,12 @@ describe("a prediction on a frequency the wire is not modelled on", () => {
     const sweep = screen.getByRole("region", { name: /Reliability of SSB voice from 2 to 30 MHz by hour/ });
     // 14, 15 and 16 MHz have the dipole's figures; 17 to 30 approximate ones, framed; 2 to 13 none.
     expect(sweep.querySelectorAll("rect[data-not-modelled]")).toHaveLength(12);
-    expect(sweep.querySelectorAll("rect[data-approximate]")).toHaveLength(14);
+    expect(sweep.querySelectorAll("g[data-approximate]")).toHaveLength(14);
+    // The fourteen lie together and are framed once: a frame to each row hid the shades behind stripes.
+    expect(sweep.querySelectorAll("rect[data-approximate-frame]")).toHaveLength(1);
+    // The longest label, with its sign, is inside the picture and not cut off at its left edge.
+    const longest = [...sweep.querySelectorAll("svg text")].find((label) => label.textContent?.endsWith("MHz ≈"))!;
+    expect(Number(longest.getAttribute("x"))).toBeGreaterThanOrEqual(54);
     expect(screen.getByText(/A hatched row is a frequency an antenna is not modelled on/)).toBeTruthy();
     expect(screen.getAllByText("not modelled for this antenna: no figure").length).toBeGreaterThan(0);
     expect(screen.getByText(/LUF not given: an antenna is modelled on only part of the range/)).toBeTruthy();
