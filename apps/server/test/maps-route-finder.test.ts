@@ -721,10 +721,40 @@ describe("finding a route and adding it", () => {
     const found = await app.api("GET", "/api/search?q=Kestrel");
     expect(JSON.stringify(found.body)).toContain(added.body.track.id);
 
-    // The same preview cannot be added twice.
-    const again = await app.api("POST", "/api/maps/route-search/add", { token: preview.body.token });
-    expect(again.status).toBe(409);
-    expect(again.body.error.message).toBe("That preview is no longer held. Choose the route again to fetch it afresh, then add it.");
+    // The same preview cannot be added twice: asking again gives the route that was made, not a second one.
+    const again = await app.api<RouteSaveResponse>("POST", "/api/maps/route-search/add", { token: preview.body.token });
+    expect(again.status).toBe(200);
+    expect(again.body.track.id).toBe(added.body.track.id);
+    expect((await app.api("GET", "/api/maps/tracks")).body.tracks).toHaveLength(1);
+  });
+
+  it("makes one route when the same preview is added twice at once, and gives both the same route", async () => {
+    const preview = await app.api<RoutePreview>("POST", "/api/maps/route-search/preview", { ref: { type: "relation", id: ROUTE_ID } });
+    // A double click, or a retry while a long route's heights are still being read.
+    const [first, second] = await Promise.all([
+      app.api<RouteSaveResponse>("POST", "/api/maps/route-search/add", { token: preview.body.token, includeAlternatives: true }),
+      app.api<RouteSaveResponse>("POST", "/api/maps/route-search/add", { token: preview.body.token, includeAlternatives: true }),
+    ]);
+    expect([first.status, second.status]).toEqual([200, 200]);
+    expect(second.body.track.id).toBe(first.body.track.id);
+    const list = await app.api<{ tracks: Array<{ id: string }> }>("GET", "/api/maps/tracks");
+    expect(list.body.tracks.map((track) => track.id)).toEqual([first.body.track.id]);
+
+    // Asked again after it is done (the first answer was lost on the way), it is the same route still, as it is now.
+    await app.api("PATCH", `/api/maps/tracks/${first.body.track.id}`, { name: "Renamed since" });
+    const later = await app.api<RouteSaveResponse>("POST", "/api/maps/route-search/add", { token: preview.body.token });
+    expect(later.status).toBe(200);
+    expect(later.body.track).toMatchObject({ id: first.body.track.id, name: "Renamed since" });
+    expect(later.body.elevation).toBe(first.body.elevation);
+    expect((await app.api("GET", "/api/maps/tracks")).body.tracks).toHaveLength(1);
+    expect(standIn.requests).toHaveLength(1);
+
+    // Once that route has been removed there is nothing to give, and nothing is made in its place.
+    expect((await app.api("DELETE", `/api/maps/tracks/${first.body.track.id}`)).status).toBeLessThan(300);
+    const gone = await app.api("POST", "/api/maps/route-search/add", { token: preview.body.token });
+    expect(gone.status).toBe(409);
+    expect(gone.body.error.message).toBe("That preview is no longer held. Choose the route again to fetch it afresh, then add it.");
+    expect((await app.api("GET", "/api/maps/tracks")).body.tracks).toEqual([]);
   });
 
   it("writes the credit into the GPX export in the fields GPX has for it", async () => {
@@ -1213,6 +1243,35 @@ describe("heights for a found route", () => {
     const stored = await app.api<{ track: TrackWithGeometryDto }>("GET", `/api/maps/tracks/${id}`);
     return (stored.body.track.geojson as unknown as TrackCollection).features.filter((feature) => feature.geometry.type === "LineString");
   };
+
+  it("makes one route when the same preview is added again while the first is still reading heights", async () => {
+    const app = await createTestApp();
+    try {
+      let release = () => {};
+      const terrainRead = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let reads = 0;
+      const finder = finderOver(app, async (positions) => {
+        reads += 1;
+        await terrainRead;
+        return positions.map(() => 321);
+      });
+      const preview = await finder.preview({ ref: { type: "relation", id: ROUTE_ID } });
+      // A double click, a second tab, or a retry on a long route: both arrive before the first has finished.
+      const first = finder.add({ token: preview.token, includeAlternatives: true });
+      const second = finder.add({ token: preview.token, includeAlternatives: true });
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      release();
+      const [one, two] = await Promise.all([first, second]);
+      expect(two.track.id).toBe(one.track.id);
+      expect((await app.api("GET", "/api/maps/tracks")).body.tracks).toHaveLength(1);
+      // Terrain was read for one of them only: the main line, then the alternative leg.
+      expect(reads).toBe(2);
+    } finally {
+      await app.close();
+    }
+  });
 
   it("does not write over a route that was redrawn while its heights were being read", async () => {
     const app = await createTestApp();

@@ -81,6 +81,7 @@ const PREVIEW_HOLD_MS = 15 * 60_000;
 /** Heights are read at about this spacing on a long route, so it never touches thousands of terrain tiles. */
 const HEIGHT_SAMPLES = 20_000;
 
+const NOT_HELD = "That preview is no longer held. Choose the route again to fetch it afresh, then add it.";
 const TOO_LARGE_SEARCH =
   "That search matched more than Outpost will read in one go. Add more of the name, or zoom in and search the map view.";
 const tooLargeRoute = (name: string) =>
@@ -232,6 +233,12 @@ interface HeldPreview {
   lines: Point[][];
   alternatives: Point[][];
   credit: TrackSource;
+  /**
+   * Set when "Add" is first asked for with this preview's token, before anything is
+   * waited for. A second request with the same token (a double click, a retry while a
+   * long route's heights are read) is given the route this one makes, not another.
+   */
+  adding?: Promise<RouteSaveResponse>;
 }
 
 export interface RouteFinderService {
@@ -325,6 +332,40 @@ export function createRouteFinder(deps: RouteFinderDeps): RouteFinderService {
     const token = randomUUID();
     held.set(token, preview);
     return token;
+  }
+
+  async function save(preview: HeldPreview, input: z.infer<typeof routeAddSchema>): Promise<RouteSaveResponse> {
+    const main = await withHeights(preview.lines, deps.elevation);
+    const side = input.includeAlternatives
+      ? await withHeights(preview.alternatives, deps.elevation)
+      : { lines: [], elevation: "none" as const };
+    const elevation: RouteElevation =
+      side.lines.length === 0 || side.elevation === main.elevation
+        ? main.elevation
+        : main.elevation === "none" && side.elevation === "none"
+          ? "none"
+          : "partial";
+    const feature = (coordinates: Position[], name?: string): TrackFeature => ({
+      type: "Feature",
+      properties: { _gpxType: "trk", ...(name ? { name } : {}) },
+      geometry: { type: "LineString", coordinates },
+    });
+    const collection: TrackCollection = {
+      type: "FeatureCollection",
+      features: [
+        ...main.lines.map((line) => feature(line)),
+        ...side.lines.map((line, index) => feature(line, side.lines.length > 1 ? `Alternative leg ${index + 1}` : "Alternative leg")),
+      ],
+      source: preview.credit,
+    };
+    return deps.annotations.createFromCollection({
+      name: (input.name ?? preview.name).slice(0, 200),
+      // Every program that reads GPX keeps a description, so the credit is written there too.
+      description: creditLine(preview.credit),
+      color: input.color,
+      collection,
+      elevation,
+    });
   }
 
   return {
@@ -505,43 +546,31 @@ export function createRouteFinder(deps: RouteFinderDeps): RouteFinderService {
 
     async add(input) {
       const preview = held.get(input.token);
-      if (!preview || preview.expiresAt <= now()) {
+      const notHeld = () => {
         held.delete(input.token);
-        throw new AppError("conflict", "That preview is no longer held. Choose the route again to fetch it afresh, then add it.");
-      }
-      const main = await withHeights(preview.lines, deps.elevation);
-      const side = input.includeAlternatives
-        ? await withHeights(preview.alternatives, deps.elevation)
-        : { lines: [], elevation: "none" as const };
-      const elevation: RouteElevation =
-        side.lines.length === 0 || side.elevation === main.elevation
-          ? main.elevation
-          : main.elevation === "none" && side.elevation === "none"
-            ? "none"
-            : "partial";
-      const feature = (coordinates: Position[], name?: string): TrackFeature => ({
-        type: "Feature",
-        properties: { _gpxType: "trk", ...(name ? { name } : {}) },
-        geometry: { type: "LineString", coordinates },
-      });
-      const collection: TrackCollection = {
-        type: "FeatureCollection",
-        features: [
-          ...main.lines.map((line) => feature(line)),
-          ...side.lines.map((line, index) => feature(line, side.lines.length > 1 ? `Alternative leg ${index + 1}` : "Alternative leg")),
-        ],
-        source: preview.credit,
+        return new AppError("conflict", NOT_HELD);
       };
-      const saved = deps.annotations.createFromCollection({
-        name: (input.name ?? preview.name).slice(0, 200),
-        // Every program that reads GPX keeps a description, so the credit is written there too.
-        description: creditLine(preview.credit),
-        color: input.color,
-        collection,
-        elevation,
-      });
-      held.delete(input.token);
-      return saved;
+      if (!preview || preview.expiresAt <= now()) throw notHeld();
+      if (preview.adding) {
+        const made = await preview.adding;
+        // The route as it is now: it may have been renamed since. If it has been removed, there is nothing to give.
+        const track = deps.annotations.listTracks().find((candidate) => candidate.id === made.track.id);
+        if (!track) throw notHeld();
+        return { track, elevation: made.elevation };
+      }
+      // Claimed here, before the first wait: heights for a long route take seconds, and a second request may arrive in them.
+      preview.adding = save(preview, input);
+      try {
+        const saved = await preview.adding;
+        // The points are in the route now. The token is kept, so that asking again answers with that route.
+        preview.lines = [];
+        preview.alternatives = [];
+        return saved;
+      } catch (error) {
+        // Nothing was made, so the preview can be added again.
+        preview.adding = undefined;
+        throw error;
+      }
     },
 
     async fillHeights(trackId) {

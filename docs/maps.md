@@ -1161,6 +1161,9 @@ with the route on it, the credit must be on it.**
 - It does not keep results, refresh a route you added, or fetch anything in the
   background. A preview is held in the server's memory for up to fifteen minutes so
   that adding it does not ask the source again, and is then forgotten.
+- It does not add the same preview twice. If "Add" arrives twice for one preview (a
+  double click, or a retry while a long route's heights are being read), one route is
+  made and both are answered with it.
 - One search runs at a time. A second one started meanwhile, from this or another
   device, is asked to wait. After a server says it is busy, Outpost does not ask it
   again for 30 seconds.
