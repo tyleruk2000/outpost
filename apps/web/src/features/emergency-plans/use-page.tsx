@@ -16,6 +16,7 @@ import { formatTimeOfDay } from "@/lib/clock";
 import { cn, formatDate, plural } from "@/lib/utils";
 import { usePlan, usePlanAction, useTick } from "./data";
 import { type ReadNumber, readableOf } from "./printable";
+import { HomeWarningLine } from "./warning-line";
 
 function Dial({ number, label, big }: { number: ReadNumber; label: string; big?: boolean }) {
   const content = (
@@ -91,6 +92,7 @@ export default function UsePlanPage() {
           ? `In use since ${formatDate(plan.use.startedAt)}, ${formatTimeOfDay(plan.use.startedAt)}. ${done} of ${plural(readable.steps.length, "step")} done.`
           : `${plural(readable.steps.length, "step")}. Not in use.`}
       </p>
+      <HomeWarningLine className="mt-3" />
       {plan.use.startedAt === null ? (
         <Button variant="primary" size="lg" className="mt-3" loading={start.isPending} onClick={() => start.mutate()}>
           Start using this plan

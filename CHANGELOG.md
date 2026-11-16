@@ -909,6 +909,10 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   fold marks; a fridge sheet on one page; a grab list. Names in other scripts are drawn
   as pictures with the words kept for search. Migration 0018. See
   [docs/emergency-plans.md](docs/emergency-plans.md).
+- The list of plans and "Use now" show one line when Outpost holds a Met Office or
+  Environment Agency warning for the home place, in the publisher's words, with its
+  age and a link to Weather and hazards; nothing when there is none or the copy is more
+  than a day (flood: twelve hours) old.
 
 #### On a phone, out of reach of the server
 

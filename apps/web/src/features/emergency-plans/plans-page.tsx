@@ -16,6 +16,7 @@ import { errorMessage } from "@/lib/api";
 import { formatDate, localId, plural } from "@/lib/utils";
 import { useCreatePlan, usePlans } from "./data";
 import { TemplateLicences, templateSources } from "./licences";
+import { HomeWarningLine } from "./warning-line";
 import { blankPlan, guessEmergencyNumber, planFrom } from "./words";
 
 function PlanRow({ plan }: { plan: EmergencyPlanSummary }) {
@@ -153,6 +154,7 @@ export default function EmergencyPlansPage() {
         description="What your household will do in a power cut, a flood, a storm or when the phones are down: written ahead, read on the day."
         actions={plans.data && plans.data.length > 0 ? start : undefined}
       />
+      <HomeWarningLine className="mb-4 max-w-[65ch]" />
       {plans.isPending ? (
         <div className="grid gap-3" aria-busy>
           <Skeleton className="h-16" />

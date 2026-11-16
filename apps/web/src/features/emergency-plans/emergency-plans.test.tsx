@@ -4,6 +4,7 @@ import {
   type EmergencyPlanResponse,
   type EmergencyPlanSummary,
   emptyPlanBody,
+  type HomeWarningsResponse,
   PLAN_TEMPLATES,
   type PlanResolved,
   planFromTemplate,
@@ -23,6 +24,7 @@ import PlanPage from "./plan-page";
 import PlansPage from "./plans-page";
 import { readableOf } from "./printable";
 import UsePlanPage from "./use-page";
+import { warningLineOf } from "./warning-line";
 import { guessEmergencyNumber } from "./words";
 
 afterEach(() => {
@@ -382,5 +384,96 @@ describe("a plan in use", () => {
     });
     show("/prepare/plans/p1/use", <UsePlanPage />, "/prepare/plans/:id/use");
     expect(await screen.findByText(/0 steps\. Not in use\./)).toBeInTheDocument();
+  });
+});
+
+describe("the line about warnings held for the home place", () => {
+  const NOW = Date.UTC(2026, 10, 16, 15);
+  const HOUR = 3_600_000;
+  const held = (over: Partial<HomeWarningsResponse> = {}): HomeWarningsResponse => ({
+    place: { id: "w1", name: "Home", region: "London & South East England" },
+    homeMarker: { id: "m1", name: "Home" },
+    fetchedAt: NOW - 3 * HOUR,
+    weather: [
+      {
+        id: "1",
+        title: "Yellow warning of wind affecting London & South East England",
+        description: "Strong winds may cause some disruption.",
+        link: "https://www.metoffice.gov.uk/",
+        level: "yellow",
+        region: "London & South East England",
+        validFrom: NOW - HOUR,
+        validUntil: NOW + 10 * HOUR,
+      },
+    ],
+    flood: [],
+    floodFetchedAt: null,
+    stale: true,
+    note: "",
+    now: NOW,
+    ...over,
+  });
+
+  it("names the warning in the publisher's words, with its age", () => {
+    expect(warningLineOf(held(), NOW)).toEqual({
+      words: "“Yellow warning of wind affecting London & South East England”",
+      age: "3 hours ago",
+      more: 0,
+    });
+  });
+
+  it("says nothing with no home, no warning, or a copy too old to be of use", () => {
+    expect(warningLineOf(held({ place: null }), NOW)).toBeNull();
+    expect(warningLineOf(held({ weather: [] }), NOW)).toBeNull();
+    expect(warningLineOf(held({ fetchedAt: NOW - 25 * HOUR }), NOW)).toBeNull();
+    expect(warningLineOf(undefined, NOW)).toBeNull();
+  });
+
+  it("names the most severe and counts the rest, flood warnings included", () => {
+    const line = warningLineOf(
+      held({
+        flood: [
+          {
+            id: "f",
+            area: "River Ouse at Bedford",
+            county: "",
+            riverOrSea: "River Great Ouse",
+            severity: "Flood warning",
+            severityLevel: 2,
+            message: "",
+            isTidal: false,
+            raisedAt: null,
+            changedAt: null,
+          },
+        ],
+        floodFetchedAt: NOW - 2 * HOUR,
+      }),
+      NOW,
+    );
+    expect(line).toEqual({ words: "The Environment Agency’s “Flood warning” for River Ouse at Bedford", age: "2 hours ago", more: 1 });
+    expect(warningLineOf(held({ weather: [], flood: held().flood, floodFetchedAt: NOW - 13 * HOUR }), NOW)).toBeNull();
+  });
+
+  it("shows on the list of plans and on Use now, linking to Weather and hazards, and not at all when there is none", async () => {
+    serve({
+      "/api/emergency-plans": { plans: [summary()] },
+      "/api/weather/home-warnings": held({ now: Date.now(), fetchedAt: Date.now() - 3 * HOUR }),
+    });
+    show("/prepare/plans", <PlansPage />, "/prepare/plans");
+    const line = await screen.findByTestId("home-warning-line");
+    expect(line).toHaveTextContent(
+      "“Yellow warning of wind affecting London & South East England” was in force for your area when Outpost last checked, 3 hours ago: open Weather and hazards",
+    );
+    expect(within(line).getByRole("link", { name: "open Weather and hazards" })).toHaveAttribute("href", "/prepare/weather?view=warnings");
+  });
+
+  it("shows on Use now", async () => {
+    serve({
+      "/api/emergency-plans/p1": answer(),
+      "POST /api/emergency-plans/p1/opened": answer(),
+      "/api/weather/home-warnings": held({ now: Date.now(), fetchedAt: Date.now() - HOUR }),
+    });
+    show("/prepare/plans/p1/use", <UsePlanPage />, "/prepare/plans/:id/use");
+    expect(await screen.findByTestId("home-warning-line")).toHaveTextContent(/when Outpost last checked, 1 hour ago/);
   });
 });

@@ -294,6 +294,25 @@ It needs Outpost's server and nothing beyond it. Reading a plan with the server 
 reach is the job of **Keep on this phone** ([offline.md](offline.md)), which needs a
 secure page; this screen keeps nothing in the browser.
 
+### Warnings held for the home place
+
+The list of plans and **Use now** show one line when Outpost holds a warning for the
+home place (the saved place with the home icon; see [weather.md](weather.md#places)):
+
+> “Yellow warning of wind affecting London & South East England” was in force for your
+> area when Outpost last checked, 3 hours ago: open Weather and hazards
+
+The quoted words are the publisher's own (the Met Office's title; for a flood warning,
+the Environment Agency's severity and the area it names), the age is from when the copy
+was fetched, and the link opens Weather and hazards. With several, the most severe is
+named and the rest counted. It reads `GET /api/weather/home-warnings`, which fetches
+nothing; it says nothing when no warning is held, when there is no home place, when the
+server cannot be reached, or when the copy is too old to be worth a line: Met Office
+warnings fetched more than 24 hours ago, flood warnings more than 12 hours ago (both
+Outpost's choices; a Met Office warning whose own stated period has ended is never
+shown). It reports what was held, in the past tense, and never says what to do: the
+plan's own steps and the emergency services do that. (`warning-line.tsx`.)
+
 ## Cards to print
 
 **Cards to print** (`/prepare/plans/:id/cards`) makes, on the device, as a PDF:
