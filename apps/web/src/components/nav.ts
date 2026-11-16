@@ -8,6 +8,7 @@ import {
   HardDrive,
   Home,
   ListChecks,
+  ListTree,
   LockKeyhole,
   type LucideIcon,
   Map as MapIcon,
@@ -72,5 +73,6 @@ export const tuckedAwayNav: Array<Omit<NavItem, "key">> = [
   // The radio tools, in the order the Radio screen lists them.
   { to: "/radio/propagation", label: "HF propagation", icon: Waves },
   { to: "/radio/coverage", label: "HF coverage", icon: Grid3x3 },
+  { to: "/radio/plans", label: "Communication plans", icon: ListTree },
   { to: "/radio/repeaters", label: "Repeaters", icon: RadioReceiver },
 ];

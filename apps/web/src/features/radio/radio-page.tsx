@@ -17,6 +17,12 @@ const TOOLS = [
       "Where one transmitter is predicted to be heard, as a layer over the offline map: the engine asked about every cell of a grid, hour by hour.",
   },
   {
+    to: "/radio/plans",
+    name: "Communication plans",
+    about:
+      "Several stations, and for each pair of them which band is predicted to serve at which hour, with a primary and an alternate. Written out as a PDF or as Markdown to print and carry.",
+  },
+  {
     to: "/radio/repeaters",
     name: "Repeaters",
     about:

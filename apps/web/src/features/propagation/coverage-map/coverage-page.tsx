@@ -748,7 +748,7 @@ export default function CoveragePage() {
                   </dd>
                   <dt className="text-ink-muted">Engine</dt>
                   <dd className="text-ink">
-                    {result.engine.name} {result.engine.model}, run by {result.engine.implementation}
+                    {result.engine.model}, run by {result.engine.implementation}
                   </dd>
                   <dt className="text-ink-muted">Data</dt>
                   <dd className="font-mono text-ink">{result.datasets.map((item) => `${item.id} ${item.version}`).join("; ")}</dd>

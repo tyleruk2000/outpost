@@ -24,6 +24,7 @@ import { type CoverageService, registerCoverage } from "./coverage.ts";
 import { createDatasetsService, type DatasetsService } from "./datasets.ts";
 import { EngineUnavailable } from "./engine.ts";
 import { createEngineHost } from "./host.ts";
+import { type PlansService, registerPlans } from "./plans.ts";
 import { createProfilesService, type ProfilesService } from "./profiles.ts";
 import { createPropagationService, type PropagationService } from "./service.ts";
 import { antenna, checked, modes, power } from "./shapes.ts";
@@ -31,7 +32,12 @@ import { readEngineManifest, voacapPaths } from "./voacap/files.ts";
 
 declare module "../../core/context.ts" {
   interface Services {
-    propagation: PropagationService & { profiles: ProfilesService; datasets: DatasetsService; coverage: CoverageService };
+    propagation: PropagationService & {
+      profiles: ProfilesService;
+      datasets: DatasetsService;
+      coverage: CoverageService;
+      plans: PlansService;
+    };
   }
 }
 
@@ -64,13 +70,14 @@ export async function registerPropagation(app: FastifyInstance, ctx: AppContext)
   const datasets = createDatasetsService(ctx, paths);
   const service = createPropagationService(ctx, host);
   const coverage = registerCoverage(app, ctx, service);
-  ctx.services.propagation = { ...service, profiles, datasets, coverage };
+  const plans = registerPlans(app, ctx, service);
+  ctx.services.propagation = { ...service, profiles, datasets, coverage, plans };
   ctx.services.downloads.registerInstaller("dataset", datasets.installer);
 
   // A day on one path is a twentieth of a second and is answered directly. Anything
-  // that is many paths (a coverage grid in coverage.ts, a plan across several places in
-  // plans.ts) is a job: it shows on the Downloads screen's list of work, can be
-  // cancelled, and leaves its answer under a key to be fetched.
+  // that is thousands of paths (a coverage grid, in coverage.ts) is a job: it shows on
+  // the Downloads screen's list of work, can be cancelled, and leaves its answer under a
+  // key to be fetched. A plan (plans.ts) is at most 56 paths and is answered directly.
   ctx.jobs.register<{ kind: "point" | "compare"; request: Record<string, unknown> }>("propagation.predict", {
     queue: "propagation",
     async run({ payload, signal, progress }) {
