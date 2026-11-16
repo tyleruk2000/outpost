@@ -599,6 +599,9 @@ cannot be downloaded again.
 - Leaves alone, and says where they are: any file outside the folders Outpost made (an
   archive of your own that you pointed Outpost at), and everything on a location that
   is not connected. Outpost forgets them; delete them by hand if you want them gone.
+- Does not delete backups kept on a storage location by automatic backups. They hold
+  the notes that are being erased; delete them from **Settings → Automatic backups**
+  first, or by hand from the `outpost-backups` folder, if you want them gone.
 - Needs the words "erase everything" typed, and offers a backup first. A backup holds
   notes, attachments, saved places, routes and settings. It does **not** hold the files
   of documents you added: copy those from the `documents` folder of each storage
@@ -628,10 +631,77 @@ implements them.
 text and your own catalogue manifests. It does not include documents, collections or
 maps: those stay on their storage locations, and the backup records where.
 
+A backup is not encrypted. It holds your notes, saved places and settings as they are,
+and anyone who can open the file can read them. Keep it on storage you trust, and on an
+encrypted disk if it leaves the house.
+
 Restoring replaces the database, attachments and extracted text after a restart. The
 data they replace is kept in the data directory in a folder named
 `before-restore-<time>`. After a restore, add the same storage locations again (their
 marker files are recognised) to bring the content back.
+
+Restoring can only be done on the computer Outpost runs on, unless Outpost was started
+with `OUTPOST_ALLOW_REMOTE_ERASE=true`: it replaces everything at once, as erasing
+does. From another device the screen says so and does not offer it. See
+[security.md](security.md#backup-and-restore).
+
+### Automatic backups
+
+**Settings → Automatic backups** makes the same backup on a schedule and keeps it on a
+storage location. It is off until you choose a location.
+
+- **Where.** Any storage location that is connected, a network share included. Backups
+  go into a folder named `outpost-backups` at the top of that location, and nowhere
+  else. The files are named
+  `outpost-backup-<date and time, UTC>-scheduled.zip` (or `-manual.zip` for one started
+  with **Back up now**). Outpost writes through the folder the location is mounted at;
+  it does not read or store anything about a share's sign-in for this.
+- **When.** Every day, or every week on a day you choose, at a time you choose, by the
+  clock of the computer Outpost runs on. The first one is made at the next such time
+  after you choose, not at once. **Back up now** makes one whenever you like and does
+  not change the schedule.
+- **How it is made.** Each backup is a job (it shows under Downloads with the other
+  background work). The database is copied with SQLite's online backup, which gives one
+  consistent state even while notes are being saved. The file is written as
+  `<name>.zip.part`, flushed to the disk, and renamed when complete. Then it is read
+  back from the location from start to finish: every file in it must match the checksum
+  the archive recorded, and the database inside must pass SQLite's integrity check.
+  Only then is it recorded as verified, in a small file beside it,
+  `<name>.verified.json`.
+- **If the check fails.** The job fails and says why, the screen reports it, and the
+  file is kept, shown as **Not verified**. It is never counted towards the number to
+  keep and never replaces a good backup. A scheduled backup that failed is tried again
+  after an hour.
+- **If the location is not connected.** The backup is skipped. Nothing is written
+  anywhere else: not to another location, not to the data directory. The screen says
+  when the last backup was, which one is owed, and that the location is not connected.
+  The backup is made as soon as the location is seen again, or when the server next
+  starts and finds it. However many times were missed, one backup is made.
+- **How many are kept.** Seven by default. The newest seven scheduled backups and the
+  newest seven started by hand are kept, counted separately, so that pressing **Back up
+  now** several times cannot push the scheduled ones out. Older ones are deleted after
+  each successful backup. Outpost deletes a file only if it has the name Outpost gives
+  its backups, is an ordinary file (not a link), sits directly in `outpost-backups`,
+  and still reads as an Outpost backup when it is opened. Anything else in the folder
+  is left alone, and the newest verified backup is never deleted this way.
+- **The list.** Each stored backup is shown with its date, size, the version of Outpost
+  that made it, and whether it verified. From there you can download one, restore one
+  (**Restore this one** checks it again and stages it, exactly as an uploaded backup
+  is), or delete one after confirming.
+- **Who may do what.** Any device that can reach Outpost can choose a location, change
+  the schedule, start a backup and download one. Restoring, deleting a stored backup
+  and lowering the number to keep (which deletes older ones at the next backup) can
+  only be done on the computer Outpost runs on, unless Outpost was started with
+  `OUTPOST_ALLOW_REMOTE_ERASE=true`.
+
+Switching automatic backups off, removing the location from Outpost, or **Erase
+everything** does not delete the backups already made: they stay in `outpost-backups`
+until you delete them. "Erase everything" resets settings, so it also switches
+automatic backups off. The schedule is not copied to a portable drive.
+
+Not tried: a share that drops part-way through a write on a real NAS. The tests stand
+in for it with a folder that is moved away and an empty folder left in its place, which
+is what an unmounted share looks like on Linux.
 
 Three things a restore deliberately does not carry over:
 

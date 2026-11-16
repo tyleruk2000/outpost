@@ -458,6 +458,38 @@ After the restart, the data that was replaced is in the data directory in a fold
 named `before-restore-<time>`. Delete it yourself when you are sure you do not need
 it.
 
+### "Restoring a backup can only be done on the computer Outpost runs on."
+
+Restoring replaces everything at once, and Outpost has no accounts, so it is tied to
+where the request comes from, as erasing everything is. The same goes for deleting a
+stored backup and for keeping fewer of them. Open Outpost on the computer it runs on,
+or start it with `OUTPOST_ALLOW_REMOTE_ERASE=true`. In Docker with
+`OUTPOST_LAN_ACCESS=true`, or behind a reverse proxy, no request looks local, so the
+option is the only way. See [security.md](security.md#backup-and-restore).
+
+### "The backup due … has not been made"
+
+The storage location chosen for automatic backups was not connected when the backup was
+due. Nothing was written anywhere else. Connect the drive or the share (**Storage →
+Check drives** looks at once); the backup is made as soon as Outpost sees the location,
+and one backup covers however many were missed. If the location is gone for good,
+choose another in **Settings → Automatic backups**.
+
+### A backup is shown as "Not verified"
+
+It was written, but there is no record that it read back correctly: the check failed
+(the job's message under Downloads says how), the server stopped before the check
+finished, or the file has changed size since. It is not counted towards the number to
+keep. The next backup does not depend on it. If it keeps happening on one location,
+the disk or the network connection to it is the first thing to suspect.
+
+### A file in `outpost-backups` is not in the list, or is never removed
+
+Outpost lists and removes only files it named itself
+(`outpost-backup-<time>-scheduled.zip` or `-manual.zip`) that read as its backups.
+A backup you downloaded from Settings and copied there has a different name, so it is
+left alone; restore it with **Choose backup** instead.
+
 ### "That backup was made by a newer Outpost (…). Update Outpost, then restore it."
 
 A backup can be restored into the same or a newer version, not an older one.

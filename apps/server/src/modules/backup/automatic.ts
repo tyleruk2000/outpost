@@ -253,6 +253,19 @@ export function registerAutomaticBackups(app: FastifyInstance, ctx: AppContext, 
     }
   }
 
+  /** Asks the system to put the file on the disk or the server now. Some network filesystems cannot; the read-back still checks it. */
+  async function flushToDisk(file: string): Promise<void> {
+    const handle = await fs.promises.open(file, "r+");
+    try {
+      await handle.sync();
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code !== "ENOTSUP" && code !== "EINVAL" && code !== "ENOSYS") throw error;
+    } finally {
+      await handle.close();
+    }
+  }
+
   async function writeBackup(kind: StoredBackupKind, run: JobRun<RunPayload>, now: number): Promise<Record<string, unknown>> {
     const settings = readSettings();
     if (!settings.locationId) throw new PermanentJobError("Automatic backups were switched off before this backup started.");
@@ -276,7 +289,8 @@ export function registerAutomaticBackups(app: FastifyInstance, ctx: AppContext, 
     try {
       run.progress({ message: `Writing the backup to ${location.name}` });
       // Under a temporary name until it is whole, and flushed to the disk before it is renamed.
-      await pipeline(backup.archive, fs.createWriteStream(part, { flags: "wx", flush: true }), { signal: run.signal });
+      await pipeline(backup.archive, fs.createWriteStream(part, { flags: "wx" }), { signal: run.signal });
+      await flushToDisk(part);
       // The same folder must still be the location: a share can go away part-way through.
       const still = await connectedLocation(location.id).catch(() => undefined);
       if (!still || storage.resolve(still.id, BACKUP_FOLDER) !== folder) {
@@ -331,7 +345,9 @@ export function registerAutomaticBackups(app: FastifyInstance, ctx: AppContext, 
         if (!run.signal.aborted) {
           const known = error instanceof AppError || error instanceof PermanentJobError;
           const message = known ? messageOf(error) : `The backup could not be written: ${messageOf(error)}`;
-          writeState({ ...readState(), failure: { at: clock(), message, dueAt: kind === "scheduled" ? (dueAt ?? null) : null } });
+          // A location that went away is not held to the hour's wait: the backup is made as soon as it is back.
+          const away = error instanceof AppError && error.code === "storage_unavailable";
+          writeState({ ...readState(), failure: { at: clock(), message, dueAt: kind === "scheduled" && !away ? (dueAt ?? null) : null } });
           changed();
           if (!known) throw new PermanentJobError(message);
         }

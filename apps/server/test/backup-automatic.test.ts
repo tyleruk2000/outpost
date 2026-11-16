@@ -238,6 +238,26 @@ describe("a location that goes away and comes back", () => {
     expect((await w.schedule()).lastFailure).toMatchObject({ message: job.error });
   });
 
+  it("does not make a scheduled backup wait an hour when it failed only because the location had just gone", async () => {
+    const w = await world();
+    await choose(w);
+    const unplugged = path.join(w.app.dir, "unplugged");
+    fs.renameSync(w.nas.path, unplugged);
+    fs.mkdirSync(w.nas.path);
+    // The record still says connected, so the schedule starts the job; the job looks again and stops.
+    await w.goTo(at(1, 3));
+    expect(backupJobs(w).map((job) => job.state)).toEqual(["failed"]);
+    expect((await w.schedule()).waiting).toMatchObject({ reason: "not_connected", dueAt: at(1, 3) });
+    expect(fs.readdirSync(w.nas.path)).toEqual([]);
+
+    fs.rmdirSync(w.nas.path);
+    fs.renameSync(unplugged, w.nas.path);
+    w.clock.now = at(1, 3, 5);
+    await w.app.ctx.services.storage.refresh();
+    await w.app.ctx.jobs.whenIdle();
+    expect(backupJobs(w).map((job) => job.state)).toEqual(["failed", "succeeded"]);
+  });
+
   it("tries a failed scheduled backup again after an hour, not every minute", async () => {
     const w = await world();
     await choose(w);

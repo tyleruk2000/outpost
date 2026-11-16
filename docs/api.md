@@ -51,11 +51,12 @@ Who can reach the server in the first place is decided when it starts: only the
 computer it runs on, unless `OUTPOST_LAN_ACCESS` is on, in which case every device on
 the network can. Both rules are in `apps/server/src/core/guard.ts`.
 
-There is one exception. `POST /api/manage/cleanup/everything`, which erases a person's
-own notes and documents, is accepted only from the computer the server runs on, unless
-the server was started with `OUTPOST_ALLOW_REMOTE_ERASE=true`. That is a rule about
-where a request comes from, not who sent it; see
-[security.md](security.md#erasing-everything).
+There is one kind of exception. `POST /api/manage/cleanup/everything`, which erases a
+person's own notes and documents, is accepted only from the computer the server runs
+on, unless the server was started with `OUTPOST_ALLOW_REMOTE_ERASE=true`. The same
+holds for restoring a backup, deleting a stored one and lowering how many are kept (see
+[Backup](#backup)). That is a rule about where a request comes from, not who sent it;
+see [security.md](security.md#erasing-everything).
 
 ### Request and response bodies
 
@@ -508,14 +509,30 @@ Types: `packages/shared/src/maps.ts`. See [maps.md](maps.md).
 
 ## Backup
 
-Types: `BackupStatus` in `packages/shared/src/semantic.ts`.
+Types: `packages/shared/src/backup.ts`.
+
+"Local only" below means `403 forbidden` unless the request comes from the computer
+Outpost runs on or the server was started with `OUTPOST_ALLOW_REMOTE_ERASE=true`. The
+`right` in the status and schedule says whether this request has that right:
+`{ allowed, reason: "local" | "option" | "remote", option }`.
 
 | Method and path | Purpose |
 | --- | --- |
-| `GET /api/backup/status` | `{ restorePending, previousData, supervised }`. |
+| `GET /api/backup/status` | `{ restorePending, previousData, supervised, right }`. |
 | `GET /api/backup/download` | Streams a backup `.zip`: the database, attachments, extracted text and your own catalogue manifests. Refuses a request that another site caused the browser to make. |
-| `POST /api/backup/restore` | Body: the backup file itself, with `Content-Type: application/zip`. Checks it and stages it for the next start. `{ staged, createdAt, appVersion, supervised }`. When applied, the database, attachments and extracted text are replaced; catalogue manifests in the backup are not put back; unfinished jobs are dropped, downloads that were under way are marked cancelled, and unfinished imports are discarded. |
+| `POST /api/backup/restore` | Local only, refused before the body is read. Body: the backup file itself, with `Content-Type: application/zip`. Checks it and stages it for the next start. `{ staged, createdAt, appVersion, supervised }`. When applied, the database, attachments and extracted text are replaced; catalogue manifests in the backup are not put back; unfinished jobs are dropped, downloads that were under way are marked cancelled, and unfinished imports are discarded. |
 | `DELETE /api/backup/restore` | Drops a staged restore. |
+| `GET /api/backup/schedule` | `BackupSchedule`: the settings (`locationId`, `frequency`, `time`, `weekday`, `keep`), the folder name, the location and whether it is connected, `lastBackupAt`, `nextRunAt`, `waiting` (a scheduled backup that is due and has not been made, with `reason` `not_connected`, `location_removed` or `failed` and a message), `lastFailure`, the `active` job, and `right`. |
+| `PATCH /api/backup/schedule` | Body: any of `locationId` (a connected location, or `null` for off), `frequency` (`daily`, `weekly`), `time` (`HH:MM`, the server's clock), `weekday` (0 is Sunday), `keep` (1 to 60). A lower `keep` is local only. Returns the schedule. |
+| `POST /api/backup/run` | "Back up now": a `backup.run` job. `409` when no location is chosen or a backup is already under way; `503 storage_unavailable` when the location is not connected. |
+| `GET /api/backup/stored` | `{ available, reason, backups }`: Outpost's own backups on the chosen location, newest first, each with `name`, `kind` (`scheduled`, `manual`), `createdAt`, `sizeBytes`, `appVersion` and `check` (`verified`, `unverified`, `unreadable`). |
+| `GET /api/backup/stored/:name/download` | The file. Refuses a request that another site caused the browser to make. |
+| `POST /api/backup/stored/:name/restore` | Local only. Checks that backup and stages it, exactly as an upload is. `{ staged, createdAt, appVersion, supervised }`. |
+| `DELETE /api/backup/stored/:name` | Local only. Deletes that backup and the record of its check. |
+
+`:name` must be a file name Outpost gives its backups; anything else is `404`. The
+server publishes `backup.changed` on the event stream when the schedule, a backup or
+the list changes.
 
 ## Managing and cleaning up
 

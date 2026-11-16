@@ -213,9 +213,10 @@ search uses GeoNames data loaded into FTS5.
 - There are no accounts: whoever can reach Outpost can use all of it. What is
   controlled is who can reach it, and what a browser can be tricked into doing. The
   rules are in `core/guard.ts`.
-- One action asks where a request came from: erasing a person's own notes and
-  documents is accepted only from the computer Outpost runs on, unless a start-up
-  option says otherwise (`core/local.ts`).
+- A few actions ask where a request came from: erasing a person's own notes and
+  documents, restoring a backup over them, and deleting stored backups are accepted
+  only from the computer Outpost runs on, unless a start-up option says otherwise
+  (`core/local.ts`).
 - Binds to localhost by default. Sharing it on the network is a start-up setting
   (`OUTPOST_LAN_ACCESS`), never changeable from the browser, and the server refuses to
   start on an address other devices can reach without it.

@@ -22,6 +22,7 @@ export const FORMAT = "outpost-backup";
 export const DATA_FOLDERS = ["attachments", "extracted", "catalog"];
 /** The manifest is a few lines of JSON; anything much larger is not one. */
 const MAX_MANIFEST_BYTES = 64 * 1024;
+const MANIFEST_WITHIN = 8;
 
 export interface BackupManifest {
   format: typeof FORMAT;
@@ -133,8 +134,13 @@ async function readSmallEntry(zip: yauzl.ZipFile, entry: yauzl.Entry): Promise<s
 export async function readManifest(file: string): Promise<BackupManifest> {
   let manifest: BackupManifest | undefined;
   const found = new Error("found");
+  let seen = 0;
   try {
     await eachEntry(file, async (zip, entry) => {
+      seen += 1;
+      // Outpost writes the manifest first. A file that does not have it near the start
+      // is not one of its backups, and is not read through to find out.
+      if (seen > MANIFEST_WITHIN) throw found;
       if (entry.fileName !== "manifest.json") return;
       manifest = parseManifest(await readSmallEntry(zip, entry));
       // Nothing after the manifest is needed.

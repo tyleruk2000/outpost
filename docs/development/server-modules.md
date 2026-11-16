@@ -60,7 +60,8 @@ before it. Use `ctx.onClose.push(fn)` for cleanup.
 
 Queues in use: `download` (network transfers), `index` (text extraction, embeddings),
 `ocr` (reading scanned pages, always one at a time), `transfer` (moving and verifying
-files), `import`, `manage` (bulk removal and clean-ups, one at a time). Handlers
+files), `import`, `manage` (bulk removal and clean-ups, one at a time), `backup`
+(scheduled and hand-started backups, one at a time). Handlers
 receive an `AbortSignal`
 and must stop promptly when it fires (pause, cancel, shutdown). Report progress with
 `run.progress({ current, total, message })`. Throw `PermanentJobError` for failures
@@ -106,9 +107,10 @@ ctx.services.search.upsert({
    request to the Host check, and every request that is not a `GET`, `HEAD` or
    `OPTIONS` to the `X-Outpost-Request` header and the same origin. That protection
    covers only those methods: a `GET` must never change anything.
-   The one route that asks where a request came from is "erase everything", which uses
-   `isLocalRequest` from `core/local.ts`; that is not a permission, and nothing else
-   should lean on it without a reason as strong.
+   The routes that ask where a request came from are "erase everything" and the ones
+   that restore a backup, delete a stored one or keep fewer (`modules/backup/right.ts`).
+   They use `isLocalRequest` from `core/local.ts`; that is not a permission, and nothing
+   else should lean on it without a reason as strong.
 8. **Messages are for people.** Say what happened and what to do next, in plain words.
 
 ## Schema changes
