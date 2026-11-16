@@ -42,5 +42,6 @@ export * from "./semantic.ts";
 export * from "./setup-guide.ts";
 export * from "./shares.ts";
 export * from "./storage.ts";
+export * from "./supplies.ts";
 export * from "./system.ts";
 export * from "./webpages.ts";

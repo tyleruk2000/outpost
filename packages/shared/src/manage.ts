@@ -118,6 +118,8 @@ export interface CleanupPlan {
     repeaterLists: number;
     /** What the HF planner keeps for a person; see `RadioKept`. Absent from a plan made before it was counted. */
     radio?: RadioKept;
+    /** Supplies and the household they are for; see `SuppliesKept`. Absent from a plan made before it was counted. */
+    supplies?: SuppliesKept;
     settings: number;
     vectors: number;
     /** Copies of the database and attachments that a restore set aside. */
@@ -135,6 +137,18 @@ export interface RadioKept {
   equipment: number;
   /** Saved predictions and saved coverage maps. */
   saved: number;
+}
+
+/** The person's own things under Preparedness, Supplies: all of it goes with "erase everything". */
+export interface SuppliesKept {
+  /** Rows of stock. */
+  items: number;
+  /** People and pets of the household. */
+  members: number;
+  /** Lines of the shopping list. */
+  shopping: number;
+  /** Barcodes remembered after their items were used up or removed. */
+  barcodes: number;
 }
 
 // ── What a clean-up did ─────────────────────────────────────────────────────
@@ -173,6 +187,7 @@ export interface CleanupResult extends Record<string, unknown> {
     repeaters: number;
     repeaterLists: number;
     radio?: RadioKept;
+    supplies?: SuppliesKept;
     settings: number;
   };
 }

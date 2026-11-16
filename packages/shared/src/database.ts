@@ -22,10 +22,11 @@ export type DatabaseCountId =
   | "plans"
   | "observations"
   | "equipment"
-  | "predictions";
+  | "predictions"
+  | "supplies";
 
 /** Where the bytes go, in a few plain groups of tables. */
-export type DatabaseGroupId = "search" | "meaning" | "library" | "notes" | "maps" | "radio" | "other";
+export type DatabaseGroupId = "search" | "meaning" | "library" | "notes" | "maps" | "radio" | "prepare" | "other";
 
 /**
  * What is in the database, worked out on a connection of its own away from the server's

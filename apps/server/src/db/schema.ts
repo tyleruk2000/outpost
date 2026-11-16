@@ -1031,4 +1031,102 @@ export const radioObservations = sqliteTable(
   ],
 );
 
+// ── Supplies (Preparedness) ─────────────────────────────────────────────────
+
+/**
+ * Stored supplies: food, water and the rest, one row to a batch (the same tins bought on
+ * another day, with another date, are another row). Quantities are of `unit`; dates are
+ * calendar days as the label prints them ("2027-03-31"), with what kind of date it is.
+ */
+export const supplyItems = sqliteTable(
+  "supply_items",
+  {
+    id: id(),
+    name: text("name").notNull(),
+    category: text("category").notNull(),
+    quantity: real("quantity").notNull().default(0),
+    unit: text("unit").notNull().default(""),
+    location: text("location").notNull().default(""),
+    /** "use-by" (safety) or "best-before" (quality); null with no date. */
+    dateKind: text("date_kind"),
+    date: text("date"),
+    /** Energy of one unit, as the label gives it per pack, or per 100 g with the weight of a unit. */
+    kcalPerUnit: real("kcal_per_unit"),
+    kcalPer100g: real("kcal_per_100g"),
+    gramsPerUnit: real("grams_per_unit"),
+    /** For water: litres in one unit. */
+    litresPerUnit: real("litres_per_unit"),
+    /** Fewer than this of the product, and it goes on the shopping list. */
+    minimum: real("minimum"),
+    /** As scanned or typed; `barcodeKey` is the form it is matched by (a GTIN as 14 digits). */
+    barcode: text("barcode"),
+    barcodeKey: text("barcode_key"),
+    notes: text("notes").notNull().default(""),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (table) => [index("supply_items_barcode_idx").on(table.barcodeKey), index("supply_items_date_idx").on(table.date)],
+);
+
+/** Barcodes the inventory has been told about, kept after the last of the product is used up or removed. */
+export const supplyProducts = sqliteTable("supply_products", {
+  barcodeKey: text("barcode_key").primaryKey(),
+  barcode: text("barcode").notNull(),
+  name: text("name").notNull(),
+  category: text("category").notNull(),
+  unit: text("unit").notNull().default(""),
+  kcalPerUnit: real("kcal_per_unit"),
+  kcalPer100g: real("kcal_per_100g"),
+  gramsPerUnit: real("grams_per_unit"),
+  litresPerUnit: real("litres_per_unit"),
+  updatedAt: updatedAt(),
+});
+
+/** Who the supplies are for, and how long they should last. One row, id "household". */
+export const supplyHousehold = sqliteTable("supply_household", {
+  id: id(),
+  daysWanted: integer("days_wanted").notNull(),
+  drinkingLitres: real("drinking_litres").notNull(),
+  allUsesLitres: real("all_uses_litres").notNull(),
+  /** Which of the two water figures the days and the shopping list are worked to. */
+  waterBasis: text("water_basis").notNull(),
+  /** When the shopping list was last worked out, and when anything it is worked from last changed. */
+  shoppingWorkedAt: integer("shopping_worked_at"),
+  stockChangedAt: integer("stock_changed_at").notNull(),
+  updatedAt: updatedAt(),
+});
+
+export const supplyMembers = sqliteTable("supply_members", {
+  id: id(),
+  position: integer("position").notNull(),
+  kind: text("kind").notNull(),
+  name: text("name").notNull().default(""),
+  /** An age band of the planning table, for a person. */
+  band: text("band"),
+  sex: text("sex"),
+  /** A stated need, in place of the table's. */
+  kcalPerDay: real("kcal_per_day"),
+  drinkingLitres: real("drinking_litres"),
+  allUsesLitres: real("all_uses_litres"),
+  note: text("note").notNull().default(""),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+});
+
+/** The shopping list: lines worked out from the stock, and lines a person added. */
+export const supplyShopping = sqliteTable("supply_shopping", {
+  id: id(),
+  position: integer("position").notNull(),
+  source: text("source").notNull(),
+  /** The stock row the line buys more of, when there is one. */
+  itemId: text("item_id"),
+  name: text("name").notNull(),
+  quantity: real("quantity"),
+  unit: text("unit").notNull().default(""),
+  reasons: json<string[]>("reasons").notNull(),
+  note: text("note").notNull().default(""),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+});
+
 export const nowMs = sql`(unixepoch('subsec') * 1000)`;
