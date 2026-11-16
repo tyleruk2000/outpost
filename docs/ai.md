@@ -556,7 +556,7 @@ as links, and its pictures are never fetched.
 | Chat needs a language model on your own computer | No model server is set up. | Install one, fetch a model, then **Look for Ollama on this computer** or **Open the setting**. |
 | The model server is not answering | Its list of models could not be read. | Start it, check the address in Settings, **Look again**. |
 | This model is not on the model server | The conversation names a model the server does not list. | Choose another in the picker, or fetch it with the server's own tool. |
-| Waiting for … to start writing, N seconds so far | The model is loading, or reading the prompt. | Wait; or **Stop**. Outpost gives up after 3 minutes without a sign of life. |
+| Waiting for the model to start writing, N seconds so far | The model is loading, or reading the prompt. | Wait; or **Stop**. Outpost gives up after 3 minutes without a sign of life. |
 | The model reached its length limit | The reply was cut off at 1,024 tokens. | **Ask it to continue**. |
 | Stopped. This reply is unfinished. | You pressed Stop. | **Try again**, or carry on. |
 | The model server stopped part-way through | The connection dropped while it was writing. What was written is kept. | **Try again**. |

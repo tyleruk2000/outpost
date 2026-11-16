@@ -39,10 +39,17 @@ export function tookWords(ms: number): string {
   return plural(Math.round(seconds / 60), "minute");
 }
 
-/** The lamp: something is alive right now. */
+/**
+ * The lamp: something is alive right now. Steady, with the halo the lamp at the foot of the
+ * spine has while work is running; the one thing that moves is the mark at the end of the words.
+ */
 function Lamp({ className }: { className?: string }) {
-  return <span aria-hidden className={cn("inline-block size-2 shrink-0 rounded-[2px] bg-lamp motion-safe:animate-pulse", className)} />;
+  return <span aria-hidden className={cn("chat-lamp", className)} />;
 }
+
+/** Controls are a full finger wide and tall on a phone. */
+const TOUCH = "max-md:h-11";
+const DISCLOSE = "max-md:inline-flex max-md:min-h-11 max-md:items-center";
 
 export interface TranscriptActions {
   /** Throw the last reply away and write it again. */
@@ -76,15 +83,22 @@ function PersonTurn({ message, editable, onEdit }: { message: ChatMessage; edita
     <article aria-label="You said" className={TURN} data-role="user">
       <Margin>
         <span className="font-medium">You</span>
-        <time dateTime={new Date(message.createdAt).toISOString()} className="tabular text-micro md:mt-0.5 md:block">
-          {whenWords(message.createdAt)}
-        </time>
-        {editable ? (
-          // In the margin, beside who said it: the words themselves stay clear of controls.
-          <Button variant="ghost" size="sm" className="-my-1.5 ml-auto md:mt-1 md:-ml-2.5 md:h-7" onClick={onEdit}>
-            <Pencil aria-hidden /> Edit
-          </Button>
-        ) : null}
+        <span className="flex flex-1 items-center gap-x-2 md:mt-0.5">
+          <time dateTime={new Date(message.createdAt).toISOString()} className="tabular text-micro">
+            {whenWords(message.createdAt)}
+          </time>
+          {editable ? (
+            // In the margin, on the line that says when: the words stay clear of controls, and every turn is as tall as the next.
+            <Button
+              variant="ghost"
+              size="sm"
+              className={cn(TOUCH, "-my-2 ml-auto md:-my-1.5 md:ml-0 md:h-6 md:gap-1 md:px-1.5 md:text-micro md:[&_svg]:size-3")}
+              onClick={onEdit}
+            >
+              <Pencil aria-hidden /> Edit
+            </Button>
+          ) : null}
+        </span>
       </Margin>
       <div className="min-w-0">
         <p
@@ -99,7 +113,10 @@ function PersonTurn({ message, editable, onEdit }: { message: ChatMessage; edita
             aria-expanded={open}
             aria-controls={id}
             onClick={() => setOpen((value) => !value)}
-            className="-ml-1.5 mt-1 rounded-control px-1.5 py-0.5 text-small font-medium text-primary hover:bg-surface-strong max-md:py-2"
+            className={cn(
+              "-ml-1.5 mt-1 rounded-control px-1.5 py-0.5 text-small font-medium text-primary hover:bg-surface-strong",
+              DISCLOSE,
+            )}
           >
             {open ? "Show less" : "Show all of it"}
           </button>
@@ -149,7 +166,7 @@ function SourceRow({ source, cited, startOpen }: { source: AnswerSource; cited: 
           aria-expanded={open}
           aria-controls={id}
           onClick={() => setOpen((value) => !value)}
-          className="-ml-1.5 rounded-control px-1.5 py-0.5 text-small font-medium text-primary hover:bg-surface-strong max-md:py-2"
+          className={cn("-ml-1.5 rounded-control px-1.5 py-0.5 text-small font-medium text-primary hover:bg-surface-strong", DISCLOSE)}
         >
           {open ? "Hide the passage" : "Show the passage"}
         </button>
@@ -177,7 +194,7 @@ function Sources({ message, sources, settled, last }: { message: ChatMessage; so
         aria-expanded={open}
         aria-controls={id}
         onClick={() => setOpen((value) => !value)}
-        className="-ml-1.5 flex items-center gap-1 rounded-control px-1.5 py-0.5 text-left text-small font-semibold text-ink hover:bg-surface-strong max-md:py-2"
+        className="-ml-1.5 flex items-center gap-1 rounded-control px-1.5 py-0.5 text-left text-small font-semibold text-ink hover:bg-surface-strong max-md:min-h-11"
       >
         <ChevronDown aria-hidden className={cn("size-4 text-ink-muted transition-transform duration-150", !open && "-rotate-90")} />
         Written from {plural(sources.length, "passage")} of your library
@@ -206,20 +223,15 @@ function Sources({ message, sources, settled, last }: { message: ChatMessage; so
 }
 
 /** What a reply is doing before it has any words. The count of seconds is there so that a slow start never looks frozen. */
-function Waiting({ live, model }: { live: LiveReply | null; model: string }) {
+function Waiting({ live }: { live: LiveReply | null }) {
   const seconds = useElapsedSeconds(live?.since ?? null, true);
   const finding = live?.phase === "finding";
   return (
     <div className="text-ink" data-testid="reply-waiting">
       <p>
         <span>
-          {finding ? (
-            "Finding passages in your library"
-          ) : (
-            <>
-              Waiting for <span className="font-mono text-[0.875rem]">{model}</span> to start writing
-            </>
-          )}
+          {/* The margin already names the model. */}
+          {finding ? "Finding passages in your library" : "Waiting for the model to start writing"}
           {seconds >= 3 ? <span className="tabular text-ink-muted">, {plural(seconds, "second")} so far</span> : null}
         </span>
       </p>
@@ -250,18 +262,18 @@ function ReplyActions({
   return (
     <div className="mt-2 -ml-2.5 flex flex-wrap items-center gap-x-0.5">
       {hasWords ? (
-        <Button variant="ghost" size="sm" onClick={() => void copy(message.text)}>
+        <Button variant="ghost" size="sm" className={TOUCH} onClick={() => void copy(message.text)}>
           {copied ? <Check aria-hidden /> : <Copy aria-hidden />}
           <span aria-live="polite">{copied ? "Copied" : "Copy"}</span>
         </Button>
       ) : null}
       {last ? (
-        <Button variant="ghost" size="sm" disabled={busy} onClick={actions.regenerate}>
+        <Button variant="ghost" size="sm" className={TOUCH} disabled={busy} onClick={actions.regenerate}>
           <RotateCw aria-hidden /> {message.state === "complete" || message.state === "cut-short" ? "Regenerate" : "Try again"}
         </Button>
       ) : null}
       {hasWords ? (
-        <Button variant="ghost" size="sm" onClick={() => actions.saveAsNote(message)}>
+        <Button variant="ghost" size="sm" className={TOUCH} onClick={() => actions.saveAsNote(message)}>
           <FilePlus2 aria-hidden /> Save as a note
         </Button>
       ) : null}
@@ -302,9 +314,10 @@ function ReplyTurn({
       data-role="assistant"
       data-state={message.state}
     >
-      <Margin>
-        <span className="flex min-w-0 items-baseline gap-1.5">
-          {writing ? <Lamp className="translate-y-px" /> : null}
+      <Margin className="relative">
+        <span className="flex min-w-0 items-baseline gap-2">
+          {/* Hung outside the margin on a wide screen, so the model's name stays where it is when the reply settles. */}
+          {writing ? <Lamp className="translate-y-px md:absolute md:top-[0.5rem] md:-left-4 md:translate-y-0" /> : null}
           <span className="font-mono text-[0.8125rem] [overflow-wrap:anywhere]">{model || "The model"}</span>
         </span>
         {message.state === "nothing-found" ? (
@@ -340,7 +353,7 @@ function ReplyTurn({
           </Notice>
         ) : null}
 
-        {writing && blocks.length === 0 ? <Waiting live={live} model={model} /> : null}
+        {writing && blocks.length === 0 ? <Waiting live={live} /> : null}
         {blocks.length > 0 ? <ReplyBody blocks={blocks} sources={sources} writing={writing} /> : null}
 
         {message.state === "nothing-found" ? (
@@ -350,7 +363,7 @@ function ReplyTurn({
               {message.notice?.split(". ").slice(1).join(". ")} Reference collections such as Wikipedia are not read.
             </p>
             {last && !scoped ? (
-              <Button size="sm" className="mt-3" disabled={busy} onClick={actions.askWithoutLibrary}>
+              <Button size="sm" className={cn("mt-3", TOUCH)} disabled={busy} onClick={actions.askWithoutLibrary}>
                 Ask without my library
               </Button>
             ) : null}
@@ -363,7 +376,13 @@ function ReplyTurn({
           <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-small text-ink-muted">
             {message.notice}
             {last ? (
-              <Button variant="link" size="sm" disabled={busy} onClick={() => actions.say("Please continue from where you stopped.")}>
+              <Button
+                variant="link"
+                size="sm"
+                className="max-md:min-h-11"
+                disabled={busy}
+                onClick={() => actions.say("Please continue from where you stopped.")}
+              >
                 Ask it to continue
               </Button>
             ) : null}

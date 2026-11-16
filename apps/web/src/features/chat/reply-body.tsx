@@ -139,7 +139,7 @@ function CodeBlock({ lang, code }: { lang?: string; code: string }) {
     <figure className="chat-code">
       <figcaption>
         <span>{lang || "code"}</span>
-        <Button variant="ghost" size="sm" className="font-sans" onClick={() => void copy(code)}>
+        <Button variant="ghost" size="sm" className="font-sans max-md:h-11" onClick={() => void copy(code)}>
           {copied ? <Check aria-hidden /> : <Copy aria-hidden />}
           <span aria-live="polite">{copied ? "Copied" : "Copy code"}</span>
         </Button>

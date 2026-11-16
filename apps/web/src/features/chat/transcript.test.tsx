@@ -229,7 +229,7 @@ describe("a conversation as it reads", () => {
     show([said("u1", "Hello"), reply("a1", "", { state: "writing", tookMs: null })], { live, busy: true });
     const theirs = screen.getByRole("article", { name: "Reply from llama3.2:3b" });
     expect(theirs).toHaveAttribute("aria-busy", "true");
-    expect(within(theirs).getByTestId("reply-waiting")).toHaveTextContent("Waiting for llama3.2:3b to start writing, 12 seconds so far");
+    expect(within(theirs).getByTestId("reply-waiting")).toHaveTextContent("Waiting for the model to start writing, 12 seconds so far");
     expect(within(theirs).getByText(/A model is loaded into memory the first time it is used/)).toBeVisible();
     expect(within(theirs).queryByRole("button")).toBeNull();
     expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();

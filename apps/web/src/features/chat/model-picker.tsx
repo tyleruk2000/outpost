@@ -60,7 +60,7 @@ export function ModelPicker({
           variant="ghost"
           size="sm"
           aria-label={current ? `Model: ${current}. Choose another.` : "Choose a model"}
-          className={cn("max-w-[min(16rem,46vw)] gap-1.5 px-2", !current && "text-ink", className)}
+          className={cn("max-w-[min(16rem,46vw)] gap-1.5 px-2 max-md:h-11", !current && "text-ink", className)}
         >
           <span className={cn("truncate", current && "font-mono text-[0.8125rem] text-ink")}>{current || "Choose a model"}</span>
           <ChevronDown aria-hidden className="text-ink-muted" />

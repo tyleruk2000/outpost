@@ -127,7 +127,13 @@ export function Composer({
           <p className="flex items-center gap-2 border-b border-border py-1 pr-1 pl-3.5 text-small text-ink-muted">
             <Pencil aria-hidden className="size-3.5 shrink-0" />
             <span className="min-w-0 flex-1">Writing your last message again. Sending replaces it and its reply.</span>
-            <Button variant="ghost" size="icon-sm" aria-label="Keep the message as it was" onClick={onCancelEdit}>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="max-md:size-11"
+              aria-label="Keep the message as it was"
+              onClick={onCancelEdit}
+            >
               <X />
             </Button>
           </p>
@@ -165,11 +171,11 @@ export function Composer({
               </span>
             )}
             {writing ? (
-              <Button size="sm" onClick={onStop}>
+              <Button size="sm" className="max-md:h-11" onClick={onStop}>
                 <Square aria-hidden /> Stop
               </Button>
             ) : (
-              <Button type="submit" variant="primary" size="sm" disabled={!canSend} loading={sending}>
+              <Button type="submit" variant="primary" size="sm" className="max-md:h-11" disabled={!canSend} loading={sending}>
                 {sending ? null : <ArrowUp aria-hidden />} {editing ? "Send again" : "Send"}
               </Button>
             )}

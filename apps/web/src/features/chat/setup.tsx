@@ -77,7 +77,7 @@ export function ChatSetup({ status }: { status: ChatStatus }) {
         The usual way is Ollama, a free program from <span className="font-mono text-[0.875rem] text-ink">ollama.com</span>. Install it,
         fetch a model with{" "}
         <code className="rounded-[3px] bg-surface-strong px-1.5 py-0.5 font-mono text-[0.8125rem] text-ink">ollama pull llama3.2:3b</code>{" "}
-        (2.0 GB), then come back here.
+        (2.0{"\u00a0"}GB), then come back here.
       </p>
       {refused ? (
         <Notice tone="warning" className="mt-4" title="The address in Settings cannot be used">

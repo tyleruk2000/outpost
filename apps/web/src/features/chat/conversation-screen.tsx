@@ -106,7 +106,7 @@ function Title({
         }}
         maxLength={200}
         aria-label="Name of this conversation"
-        className="-mx-1.5 block w-[calc(100%+0.75rem)] resize-none overflow-hidden rounded-control bg-transparent px-1.5 font-title text-title text-ink outline-none hover:bg-surface focus-visible:bg-surface focus-visible:ring-2 focus-visible:ring-focus/40"
+        className="-mx-1.5 block w-[calc(100%+0.75rem)] resize-none overflow-hidden rounded-control bg-transparent px-1.5 font-title text-title text-ink max-md:min-h-11 max-md:py-1 outline-none hover:bg-surface focus-visible:bg-surface focus-visible:ring-2 focus-visible:ring-focus/40"
       />
     </h1>
   );
@@ -245,12 +245,8 @@ function Loaded({ detail }: { detail: ChatConversationDetail }) {
     // Shown at once, as it will be stored; the server's version replaces it a moment later.
     const before = client.getQueryData<ChatConversationDetail>(chatKeys.detail(id));
     if (before) {
-      const kept = replaceLast
-        ? before.messages.slice(
-            0,
-            before.messages.findLastIndex((entry) => entry.role === "user"),
-          )
-        : before.messages;
+      const lastMine = before.messages.findLastIndex((entry) => entry.role === "user");
+      const kept = replaceLast && lastMine >= 0 ? before.messages.slice(0, lastMine) : before.messages;
       const mine: ChatMessage = {
         id: "sending",
         role: "user",
@@ -350,7 +346,7 @@ function Loaded({ detail }: { detail: ChatConversationDetail }) {
         <nav aria-label="Where this conversation is" className="flex min-w-0 flex-1 items-center gap-1.5 text-small">
           <Link
             to="/chat"
-            className="-ml-1 flex h-10 shrink-0 items-center gap-1 rounded-control px-1 text-ink-muted hover:text-ink md:h-8"
+            className="-ml-1 flex h-11 min-w-11 shrink-0 items-center gap-1 rounded-control px-1 text-ink-muted hover:text-ink md:h-8 md:min-w-0"
           >
             <ChevronLeft aria-hidden className="size-4 md:hidden" />
             Chat
@@ -431,10 +427,10 @@ function Loaded({ detail }: { detail: ChatConversationDetail }) {
 
       <div className="relative shrink-0 border-t border-border bg-page">
         {away ? (
-          <div className="pointer-events-none absolute inset-x-0 -top-12 flex justify-center">
+          <div className="pointer-events-none absolute inset-x-0 -top-12 flex justify-center max-md:-top-14">
             <Button
               size="sm"
-              className="pointer-events-auto shadow-float"
+              className="pointer-events-auto shadow-float max-md:h-11"
               onClick={() => {
                 pinned.current = true;
                 setAway(false);

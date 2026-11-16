@@ -23,6 +23,7 @@ import { chatApi, chatKeys, SETTINGS_MODEL, storeDetail, useChatModels, useChatS
 import { Composer } from "./composer";
 import { isMissing, ModelPicker } from "./model-picker";
 import { ChatSetup } from "./setup";
+import "./chat.css";
 
 const ABOUT = /^(document|note):([0-9A-Za-z]{1,40})$/;
 
@@ -33,7 +34,7 @@ export function readAbout(value: string | null): { kind: "document" | "note"; id
 }
 
 function Lamp() {
-  return <span aria-hidden className="inline-block size-2 shrink-0 rounded-[2px] bg-lamp motion-safe:animate-pulse" />;
+  return <span aria-hidden className="chat-lamp mr-1" />;
 }
 
 function RenameDialog({ conversation, onClose }: { conversation: ChatConversationSummary | null; onClose(): void }) {
@@ -298,6 +299,7 @@ function NewConversation() {
             <Button
               variant="ghost"
               size="icon-sm"
+              className="max-md:size-11"
               aria-label="Not about this item after all"
               onClick={() => {
                 params.delete("about");

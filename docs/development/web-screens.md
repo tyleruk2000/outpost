@@ -44,7 +44,8 @@ tone before inventing anything.
 - **Structure from hairlines and the two neutrals**, not shadows. Shadows are for
   things that float (menus, dialogs, toasts) and come from the `ui` components.
 - **Radii by role:** `rounded-control` for controls, `rounded-panel` for panels.
-- **The amber `lamp` colour means "alive right now"** (a running download, indexing)
+- **The amber `lamp` colour means "alive right now"** (a running download, indexing,
+  a reply being written)
   or a favourite. Nothing else. Primary (verdigris) is for the main action, the current
   selection and links.
 - **No side-stripe accents** (a thick coloured left border), no gradient text, no

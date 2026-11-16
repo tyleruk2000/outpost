@@ -77,7 +77,20 @@
   scrollbar-color: var(--border-strong) transparent;
 }
 
-/* The lamp at the end of a reply that is still being written. */
+/*
+ * The lamp. In the margin and in a list it is steady, with the halo the lamp at the foot
+ * of the spine has while work is running. At the end of a reply that is still being
+ * written it is the one thing that moves: it marks where the next word will land.
+ */
+.chat-lamp {
+  display: inline-block;
+  flex: none;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 2px;
+  background: var(--lamp);
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--lamp) 28%, transparent);
+}
 .prose-reply[data-writing="true"] > :is(p, h2, h3, h4):last-child::after,
 .prose-reply[data-writing="true"] > :is(ul, ol):last-child > li:last-child::after {
   content: "";
@@ -93,6 +106,31 @@
 @keyframes chat-lamp {
   50% {
     opacity: 0.3;
+  }
+}
+
+/*
+ * A table in a reply, on a phone. A document's table keeps its own width and scrolls
+ * inside its box; a reply's is usually three or four short columns, and cutting the last
+ * one off at the edge of the screen with nothing to say so reads as a mistake. So it is
+ * fitted to the screen and its cells wrap; it scrolls only when it truly cannot fit.
+ */
+@media (max-width: 47.99rem) {
+  .prose.prose-reply .doc-table {
+    width: 100%;
+  }
+  .prose.prose-reply .doc-table table {
+    width: 100%;
+    min-width: 0;
+  }
+  .prose.prose-reply .doc-table :is(th, td),
+  .prose.prose-reply .doc-table td:last-child:not(:first-child) {
+    min-width: 0;
+    max-width: none;
+    padding-inline: 0.6em;
+  }
+  .prose.prose-reply .doc-table th {
+    white-space: normal;
   }
 }
 
