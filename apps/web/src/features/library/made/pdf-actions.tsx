@@ -14,7 +14,7 @@
  */
 import { formatBytes } from "@outpost/shared";
 import { Check, CircleAlert, Download, Files, LibraryBig, Share2 } from "lucide-react";
-import { type FormEvent, type ReactNode, useCallback, useEffect, useId, useRef, useState } from "react";
+import { type FormEvent, type ReactNode, useCallback, useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import { Link } from "react-router";
 import { toast } from "sonner";
 import { Notice } from "@/components/page";
@@ -33,6 +33,7 @@ import {
   type MadePdf,
   madeCategory,
   type SendUpload,
+  watchMadeCategory,
 } from "./made-pdf";
 
 export type AddState = { status: "idle" } | { status: "adding"; progress: number } | AddOutcome;
@@ -62,7 +63,7 @@ const warnBeforeLeaving = (event: BeforeUnloadEvent) => event.preventDefault();
 export function useMadePdf(pdf: MadePdf | null, options: { send?: SendUpload } = {}): MadePdfHandle {
   const file = pdf?.file ?? null;
   const [state, setState] = useState<AddState>({ status: "idle" });
-  const [category, setCategoryState] = useState(madeCategory);
+  const category = useSyncExternalStore(watchMadeCategory, madeCategory, madeCategory);
   const [url, setUrl] = useState<string>();
   const sending = useRef<AbortController | null>(null);
   const send = options.send;
@@ -128,7 +129,7 @@ export function useMadePdf(pdf: MadePdf | null, options: { send?: SendUpload } =
     setState({ status: "cancelled" });
   }, []);
 
-  const setCategory = useCallback((next: string) => setCategoryState(chooseMadeCategory(next)), []);
+  const setCategory = useCallback((next: string) => void chooseMadeCategory(next), []);
 
   const canShare = file !== null && typeof navigator.canShare === "function" && navigator.canShare({ files: [file] });
   const share = useCallback(() => {

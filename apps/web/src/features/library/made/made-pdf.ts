@@ -94,6 +94,13 @@ export function madeCategory(): string {
   }
 }
 
+const categoryWatchers = new Set<() => void>();
+/** Told when the category is changed, so that two sets of buttons on one screen never say different things. */
+export function watchMadeCategory(listener: () => void): () => void {
+  categoryWatchers.add(listener);
+  return () => categoryWatchers.delete(listener);
+}
+
 /** Remembers a category for next time; an empty one goes back to the usual. Returns what will be used. */
 export function chooseMadeCategory(category: string): string {
   const chosen = category.replace(/\s+/g, " ").trim().slice(0, CATEGORY_MAX);
@@ -101,9 +108,10 @@ export function chooseMadeCategory(category: string): string {
     if (!chosen || chosen === MADE_CATEGORY) localStorage.removeItem(CATEGORY_KEY);
     else localStorage.setItem(CATEGORY_KEY, chosen);
   } catch {
-    // Not remembered; it is still used this once.
+    // Not remembered where storage is switched off: the usual category is used.
   }
-  return chosen || MADE_CATEGORY;
+  for (const listener of categoryWatchers) listener();
+  return madeCategory();
 }
 
 // ── Adding it ───────────────────────────────────────────────────────────────
