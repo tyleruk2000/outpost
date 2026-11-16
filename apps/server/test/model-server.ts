@@ -91,6 +91,8 @@ export interface StandInOptions {
   chunkDelayMs?: number;
   /** Pause between pieces for `stand-in-long`. */
   longChunkDelayMs?: number;
+  /** Pieces of `stand-in-long` written together before each pause, so that they reach the reader in one read, as they do on a busy machine. */
+  longPiecesPerWrite?: number;
   /** How long `stand-in-slow-start` waits before answering. */
   slowMs?: number;
   /** The context size, in tokens (characters ÷ 4 here), of the llama-server flavour, and of the Ollama flavour when it is not asked for one. */
@@ -296,6 +298,7 @@ const pieces = (text: string) => text.match(/\s*\S{1,6}|\s+/g) ?? [];
 export async function startModelServer(options: StandInOptions = {}): Promise<StandIn> {
   const chunkDelayMs = options.chunkDelayMs ?? 4;
   const longChunkDelayMs = options.longChunkDelayMs ?? 25;
+  const longPiecesPerWrite = options.longPiecesPerWrite ?? 1;
   const slowMs = options.slowMs ?? 30_000;
   const contextTokens = options.contextTokens ?? 4096;
   const ollamaApi = options.ollamaApi ?? true;
@@ -702,7 +705,7 @@ export async function startModelServer(options: StandInOptions = {}): Promise<St
       if (protocol === "ollama" && input.shift === false && promptTokens + written >= context) return end("length");
       write(piece);
       written += 1;
-      await sleep(delay);
+      if (model !== "stand-in-long" || written % longPiecesPerWrite === 0) await sleep(delay);
     }
     end("stop");
   }

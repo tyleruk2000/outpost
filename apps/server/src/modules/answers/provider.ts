@@ -357,6 +357,8 @@ export function openAiChatProvider(
             const line = rest.slice(0, newline).replace(/\r$/, "");
             rest = rest.slice(newline + 1);
             newline = rest.indexOf("\n");
+            // Several lines can arrive in one read. Once whoever is reading has stopped, the rest are not handed on.
+            outer?.throwIfAborted();
             yield line;
           }
         }

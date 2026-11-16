@@ -372,8 +372,10 @@ describe.each([
     expect(finish).toBe("length");
   });
 
-  it("stops the model when whoever is reading stops", async () => {
-    const server = await standIn({ longChunkDelayMs: 20 });
+  // On a busy machine several pieces reach the reader in one read. Reading must still stop at the piece where
+  // the reader stopped, not run on through the rest of what had already arrived.
+  it.each([1, 4])("stops the model when whoever is reading stops (%i pieces to a write)", async (longPiecesPerWrite) => {
+    const server = await standIn({ longChunkDelayMs: 20, longPiecesPerWrite });
     const controller = new AbortController();
     let read = 0;
     await expect(
