@@ -24,6 +24,27 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 - The packaged app and the Docker image include `THIRD-PARTY-LICENSES.txt`, the licences
   of the projects bundled into them.
 
+#### Contacts
+
+- A Contacts screen for the people and places to reach when the phone network and the
+  internet are down: names, labelled phone numbers, email addresses and addresses, a
+  note, tags, a mark for an emergency that lists those first, a radio callsign with
+  frequencies to try, and links to a saved place on the map and to pages of notes.
+- Found as you type by name, part of a number, place, tag or callsign; call, text,
+  email and copy in one touch; a large-type view of one contact; and an emergency sheet
+  of the marked contacts that prints on its own.
+- Contacts brought in from a phone as a vCard file (versions 2.1, 3.0 and 4.0, read by
+  Outpost's own reader), or picked on the phone in Chrome on Android over https. The
+  file is read into a preview first; a contact that looks like one already here is
+  shown beside it and merged, replaced or added only when chosen. Photos are left out.
+- Contacts exported as vCard 3.0 or 4.0.
+- An address book phones can subscribe to (CardDAV): off until turned on, read-only, so
+  contacts travel from Outpost to the phone and never back, with no password to keep.
+  Tested with a client library and a sync program, not with a phone.
+- Contacts are in backups, are counted and removed by "erase everything", are in the
+  search index, and travel on a portable drive unless left off.
+- A database migration adds the tables (`0007_contacts`).
+
 #### Storage
 
 - Storage locations on any mounted folder: internal disks, external drives, network

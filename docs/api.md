@@ -193,6 +193,7 @@ Settings and their defaults are defined in
 | `answers.model` | empty | The model's name as the server knows it |
 | `answers.temperature` | 0.2 | 0 to 2 |
 | `answers.contextChars` | 6000 | 1000 to 60000 characters of quoted passages per question |
+| `contacts.carddav` | false | Let phones and computers on the network subscribe to the contacts, read-only. See [Contacts](#contacts) |
 | `https.enabled` | false | Serve Outpost over HTTPS as well, on `OUTPOST_HTTPS_PORT`. See [HTTPS](#https) |
 | `https.names` | empty | Other names and addresses for the certificate to list, separated by commas or spaces; at most 20. Each must be a host name or an IP address, without `http://` or a port |
 | `maps.tileSource` | empty (newest daily build) | an address |
@@ -565,6 +566,40 @@ arithmetic both sides share (which tiles a box touches, the limits) is in
 | `DELETE /api/maps/tracks/:id` | |
 | `GET /api/maps/tracks/:id/export.gpx` | One track as GPX. |
 | `GET /api/maps/export.gpx` | A selection as one GPX file. Query: `markers=1`, `tracks=<id>,<id>`. |
+
+## Contacts
+
+Types: `packages/shared/src/contacts.ts`. See [contacts.md](contacts.md).
+
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/contacts` | The list (`ContactListResponse`): the marked contacts first, then by family name. Query: `q` (words, or part of a number), `tag`, `emergency=1`, `limit` (at most 1,000; 300 if not given), `offset`. `total` counts what matches, `all` every contact, `emergency` the marked ones, `tags` each tag with how many carry it. |
+| `POST /api/contacts` | Makes a contact. Body: any of the fields of `ContactFields`, with `markerId?` (a saved place) and `pageIds?` (pages of notes). `{ contact }` (`ContactDto`). `400` when it has no name, number or address, or a field is longer than is kept; `409` at 20,000 contacts. |
+| `GET /api/contacts/:id` | `{ contact }`, with the saved place and pages it links to (those that still exist) and `otherFields`, the lines kept from a phone that have no field. |
+| `PATCH /api/contacts/:id` | Any of the same fields; what is left out stays. With `baseUpdatedAt` (the `updatedAt` that was read), `409` if the contact has changed since, and nothing is saved. |
+| `DELETE /api/contacts/:id` | Removes it. |
+| `GET /api/contacts/emergency` | `{ contacts }`: the marked contacts, whole, for the emergency sheet. |
+| `GET /api/contacts/export.vcf` | A vCard file, as an attachment. Query: `version` (`3.0`, the default, or `4.0`), and to narrow it `ids` (comma-separated), `tag`, `emergency=1`. `404` when nothing matches. |
+| `POST /api/contacts/import/preview` | Reads contacts and changes nothing. Either a `multipart/form-data` upload with one vCard file (at most 50 MB), or JSON `{ picked }` from the browser's contact picker (`PickedContact[]`). Answers a `ContactImportPreview`: `token`, `fresh`, `alreadyHere`, `repeated`, `duplicates` (each with the contact it looks like, why, the two side by side as `lines`, and what merging would add), `unreadable` (with reasons), `photosLeftOut`, `room`. The token is good for half an hour and does not survive a restart. |
+| `POST /api/contacts/import/apply` | Body: `{ token, choices?, leaveOut? }`. `choices` maps a duplicate's card index to `keep` (the default), `merge`, `replace` or `both`; `leaveOut` lists card indexes of new contacts not to bring in. Answers a `ContactImportResult`. `409` when the token is no longer waiting. |
+| `DELETE /api/contacts/import/:token` | Forgets a file that was read and not brought in. |
+| `GET /api/contacts/phones` | `ContactsPhoneStatus`: whether the address book for phones is on, why it is not offered (`unavailable: "portable"`), the user name to type and the path to give a phone. It is turned on with the `contacts.carddav` setting. |
+
+### The address book for phones (CardDAV)
+
+Not under `/api/`, and not for the web app: these are for contacts apps, and answer
+only while `contacts.carddav` is on (`404` otherwise). No header, user name or password
+is needed. See [contacts.md](contacts.md#keeping-a-copy-on-a-phone-carddav) and
+[security.md](security.md#the-address-book-for-phones-carddav).
+
+| Method and path | Purpose |
+| --- | --- |
+| `GET`, `PROPFIND /.well-known/carddav` | `301` to `/dav/` (RFC 6764). |
+| `OPTIONS /dav/…` | `DAV: 1, 3, addressbook`. |
+| `PROPFIND /dav/`, `/dav/principal/`, `/dav/addressbooks/`, `/dav/addressbooks/contacts/` | Properties of the root, the principal, the home and the one address book (`Depth: 0` or `1`), as a `207` multistatus. The address book has `getctag`, `supported-report-set` and a read-only `current-user-privilege-set`. |
+| `REPORT /dav/addressbooks/contacts/` | `addressbook-multiget` and `addressbook-query` (RFC 6352). `sync-collection` is answered `403` with `supported-report`. |
+| `GET`, `HEAD /dav/addressbooks/contacts/<id>.vcf` | One contact as vCard 3.0, with its `ETag`. |
+| Anything that writes | `403` with `need-privileges`. Nothing is changed. |
 
 ## Backup
 

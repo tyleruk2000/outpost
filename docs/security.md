@@ -53,6 +53,10 @@ public internet and must not be exposed to it.
   [Backup and restore](#backup-and-restore)).
   There are no permissions, no per-person views and no audit log. Share it only with a
   network where you trust everyone.
+- **Reading other people's details.** Contacts are information about other people, and
+  they are no more private than anything else here: everyone who can open Outpost can
+  read, change and export every contact, in a browser or, if that is turned on, in a
+  contacts app. See [Contacts](#contacts).
 - **Other programs or people on the same computer.** Anything that can connect to
   `127.0.0.1:8080` has the same access. The cross-site protections stop browsers, not
   local programs.
@@ -169,6 +173,9 @@ Outpost's permission (a CORS preflight), and Outpost never grants it: it sends n
 headers at all. With no sign-in, this is the whole of what stands between a page you
 visit and your library, which is why it applies to every changing request without
 exception, however its address is written. A `GET` never changes anything.
+The one set of routes outside `/api/` that is not the web app's own files is the
+address book for phones, which cannot change anything by any method; see
+[Contacts](#the-address-book-for-phones-carddav).
 Code: the `onRequest` hook in `apps/server/src/core/guard.ts`.
 
 Every response also carries `X-Content-Type-Options: nosniff`,
@@ -405,6 +412,92 @@ nesting. Code: `apps/server/src/modules/notes/content/`.
 Search snippets and reference-collection snippets reach the browser as plain text
 segments with "matched" flags, never as HTML.
 
+### Contacts
+
+Contacts are the one kind of content here that is mostly about people other than the
+person keeping it. Nothing about how they are held is different from notes, and that is
+the point to be clear about.
+
+**Who can read them.** Everyone who can open Outpost: there are no accounts, so there
+is no per-person privacy and no "private" contact. The Contacts screen says this once,
+above the list. With LAN access on that is every person and device on the network, who
+can also change, delete and export them all as one file (`GET /api/contacts/export.vcf`).
+
+**Where they travel.**
+
+- **Backups** hold them all, unencrypted, like the rest of the database.
+- **Portable drives** carry them unless the person turns Contacts off when making the
+  drive; a drive is unencrypted. The setting that shares the address book with phones is
+  never copied to a drive.
+- **Search.** Names, numbers, addresses and notes of contacts are in the search index
+  with everything else. If search by meaning is on and set to an embedding server the
+  person runs, that text is sent to that server as any other passage is. Contacts are
+  **not** among the passages given to a language model for answers: retrieval offers
+  only documents and notes.
+- **The browser.** A `tel:`, `sms:` or `mailto:` link hands a number or address to
+  whatever app the device uses for it. A link kept with a contact opens only if it is a
+  web address (`http` or `https`), in a new tab that is told nothing about where it came
+  from; anything else a card called a link (`javascript:`, `data:`, `file:`) is shown as
+  the text it is.
+- **Paper.** The emergency sheet is a list of people and numbers that whoever finds it
+  can read.
+- **Erasing.** "Erase everything" removes every contact with its tags, links and place
+  in search, and compacts the database so that they are not left readable in the file.
+
+**Files from a phone** are untrusted text. The vCard reader
+(`apps/server/src/modules/contacts/vcard.ts`) is Outpost's own; it runs nothing,
+fetches nothing and follows nothing in a card. Limits: a file of 50 MB and 20,000
+cards, 500 properties and 400,000 characters a card, 100,000 characters a line; past a
+limit a card is listed as unreadable, or the file is refused, never read in part.
+Embedded pictures, sounds and keys are passed over without being decoded. Every value
+is kept and shown as text: React escapes it on the screen, and nothing from a contact
+is ever written into HTML, a file name on disk or a database statement as text.
+A card whose field is longer than Outpost keeps is left out whole and listed, not cut.
+A file is read into a preview that changes nothing; the preview is held in memory for
+half an hour, at most four at a time, and is gone after a restart.
+
+**Nothing changes a contact but a person.** A change names the version it was made
+from and is refused if the contact has changed since. A file adds what is new and
+leaves every other contact alone unless the person chooses, contact by contact, to
+merge or replace it after seeing the two side by side.
+
+#### The address book for phones (CardDAV)
+
+Off by default. Turned on (`contacts.carddav`, an ordinary setting), Outpost answers
+CardDAV clients under `/dav/` and at `/.well-known/carddav`. It is never offered from a
+portable drive. Code: `apps/server/src/modules/contacts/dav.ts`.
+
+- **It can be read and cannot be written.** `PUT`, `DELETE`, `POST`, `PATCH`,
+  `PROPPATCH`, `MKCOL`, `MOVE` and `COPY` are answered `403` and change nothing. There
+  is no code path from these routes to anything that writes. That is what lets them sit
+  outside `/api/` without the `X-Outpost-Request` header that every changing request
+  under `/api/` must carry: a contacts app cannot send that header, and here there is
+  nothing for a page on another site to make a browser change. Such a page cannot read
+  the answers either: `PROPFIND` and `REPORT` need a CORS preflight that is never
+  approved, and the answer to a plain `GET` is opaque to it.
+- **The Host check applies** as everywhere, so a rebinding page's own domain is refused.
+- **No user name or password is checked, and none is stored.** A password would protect
+  nothing: the same devices can read the same contacts in a browser with none. It would
+  only add a secret that a phone might send in the clear over `http`, and a hash to
+  keep. A client insists on a user name, so one is given to type (`outpost`); whatever
+  is sent in an `Authorization` header is ignored and never written anywhere. The server
+  never answers `401`, so a client that behaves never sends a password at all. This is
+  not a back door to accounts: there is no credential, so there is nothing to reuse
+  elsewhere in the app. The cost is stated on the screen: turning this on lets any
+  device that can reach Outpost fetch every contact with a contacts app, which it could
+  already do with a browser.
+- **Over plain http the contacts cross the network unencrypted,** exactly as they do
+  when the Contacts screen is opened at an `http` address. Apple's devices are reported
+  to refuse a CardDAV account without TLS; the screen lists `https` addresses first.
+- **Request bodies** are read as XML by the strict reader the GPX import uses
+  (`maps/gpx-xml.ts`): a DOCTYPE is an error, so no entity is ever declared, expanded
+  or fetched, and a body may be at most 2 MB. Addresses of cards in a request are
+  matched against one fixed pattern and never used as paths.
+- **What is served** is generated from the database for each request. ETags and the
+  CTag are hashes of the cards themselves.
+- **Not tested with a phone.** It has been tested with a client library (tsdav) and a
+  sync program (vdirsyncer) on a computer; see [contacts.md](contacts.md#what-has-been-tested-and-what-has-not).
+
 ### Answers from a language model
 
 **Answer from my library** sends text out of Outpost, to a model server the person
@@ -609,7 +702,7 @@ anything else. What they can and cannot touch:
 
 Removing downloaded content loses nothing that cannot be fetched again, so, like
 removing items one at a time, any device that can reach Outpost may do it. **Erase
-everything** destroys notes and documents, and Outpost has no accounts to ask "who is
+everything** destroys notes, contacts and documents, and Outpost has no accounts to ask "who is
 this?". It asks "where from?" instead:
 
 - The request must come from **the computer Outpost runs on**. It counts as local when

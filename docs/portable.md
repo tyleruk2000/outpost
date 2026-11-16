@@ -29,8 +29,13 @@ What travels:
 - **Always:** all your notes with their attachments, tags, map markers and tracks,
   settings, and the search index, with its vectors for search by meaning if you built
   them.
-- **Your choice:** all documents or none; and any installed collections and maps you
-  tick.
+- **Your choice:** all documents or none; your contacts or not; and any installed
+  collections and maps you tick.
+- **Contacts travel unless you turn them off.** They are on by default, as notes are,
+  because a list of who to reach is the thing to have on a drive. They are also other
+  people's names, numbers and addresses, and a drive is not encrypted: turn **Contacts**
+  off in step 2 for a drive you will hand to someone else. The setting that shares
+  contacts with phones is never copied to a drive, and a drive does not offer it.
 - **Web pages you saved are documents.** If you copy documents to a drive, every page
   you saved from the web goes with them, pictures included. They are copies made for
   your own reading of pages that belong to whoever published them. A drive you keep is
@@ -270,6 +275,12 @@ are shown side by side as text, with the lines that differ marked.
   missing.
 - **Collections and maps** you tick are copied into the default storage location and
   checked against their checksum.
+- **Contacts are not brought across.** Bringing changes back compares pages, documents,
+  saved places and tracks; it does not look at contacts, so one added or changed on the
+  drive stays on the drive and is not listed in the preview. To bring them home: on the
+  drive, **Contacts → ⋯ → Export all as a vCard file**; at home, **Contacts → ⋯ → Bring
+  in from a phone or a file**, which shows any that differ from home's beside home's
+  own before changing anything ([contacts.md](contacts.md#contacts-that-look-like-one-already-here)).
 - **Not brought across:** settings (home keeps its own), the favourite star on pages
   that already exist at home, the order of pages among their siblings, the search
   index (home builds its own), and anything in the drive's trash.
@@ -374,7 +385,7 @@ After an undo, the drive's changes are offered again the next time you look at i
 - **Local only.** From a drive, Outpost listens on `127.0.0.1`: only the computer the
   drive is plugged into can open it.
 - **The drive is not encrypted.** Anyone who has the drive can read everything on it:
-  your notes, your settings, and the documents and collections you copied, web pages
+  your notes, your contacts (unless you left them off), your settings, and the documents and collections you copied, web pages
   you saved among them, each with the address it came from and the date. If that
   matters, use an encrypted drive (BitLocker, FileVault, LUKS or VeraCrypt) and unlock
   it before starting Outpost.

@@ -107,7 +107,10 @@ ctx.services.search.upsert({
    the server, so a route has no permission check to make. `core/guard.ts` holds every
    request to the Host check, and every request that is not a `GET`, `HEAD` or
    `OPTIONS` to the `X-Outpost-Request` header and the same origin. That protection
-   covers only those methods: a `GET` must never change anything.
+   covers only those methods: a `GET` must never change anything. It also covers only
+   routes under `/api/`. The one module with routes elsewhere is contacts (`/dav/`, for
+   contacts apps, which cannot send the header); nothing under it can change anything
+   by any method, and a route outside `/api/` that could would need a defence of its own.
    The routes that ask where a request came from are "erase everything", the ones
    that restore a backup, delete a stored one or keep fewer (`modules/backup/right.ts`),
    and replacing or deleting the HTTPS certificate authority (`modules/https`). They
