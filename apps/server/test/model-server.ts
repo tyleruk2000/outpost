@@ -45,8 +45,10 @@
  * answers "ok", and `/stats` says how many chat requests have arrived, how many are being
  * answered, and how many were abandoned by their caller.
  */
+import fs from "node:fs";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
+import { pathToFileURL } from "node:url";
 
 export interface StandInOptions {
   port?: number;
@@ -426,7 +428,8 @@ export async function startModelServer(options: StandInOptions = {}): Promise<St
   };
 }
 
-if (import.meta.main) {
+// Run directly (not imported by a test). Written this way because `import.meta.main` is newer than Node 24.0.
+if (process.argv[1] && import.meta.url === pathToFileURL(fs.realpathSync(process.argv[1])).href) {
   const standIn = await startModelServer({
     port: Number(process.argv[2] ?? 8485),
     longChunkDelayMs: Number(process.env.STAND_IN_LONG_DELAY_MS ?? 25),
