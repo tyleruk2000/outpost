@@ -1,0 +1,77 @@
+The HF propagation engine in Outpost
+====================================
+
+Outpost's HF propagation planner does not contain a propagation model of its own. It
+runs VOACAP, the Voice of America Coverage Analysis Program, through these parts:
+
+1. hfcast (engine/voacap.wasm)
+   A translation of VOACAP into Rust by Jonathan McSweet, Apache License 2.0.
+   https://github.com/jonathanmcsweet/hfcast-engine at the commit named in
+   engine/engine.json. Its licence and notice are in engine/LICENSE-hfcast.txt and
+   engine/NOTICE-hfcast.txt. Outpost builds it unchanged except for wasm.patch, which
+   lets a test harness that Outpost never calls compile where there are no symbolic
+   links. Outpost's own bridge to it (wrapper/) is MIT, with Outpost.
+
+2. VOACAP
+   Developed by the Institute for Telecommunication Sciences (ITS), National
+   Telecommunications and Information Administration (NTIA), United States Department
+   of Commerce. The distribution's own notice reads:
+
+     The software contained within was developed by an agency of the U.S. Government.
+     NTIA/ITS has no objection to the use of this software for any purpose since it is
+     not subject to copyright protection in the U.S.
+
+     No warranty, expressed or implied, is made by NTIA/ITS or the U.S. Government as
+     to the accuracy, suitability and functioning of the program and related material,
+     nor shall the fact of distribution constitute any endorsement by the U.S.
+     Government.
+
+   The page ITS publishes the software from
+   (https://its.ntia.gov/software/high-frequency/high-frequency-propagation-models/,
+   read on 16 November 2026) asks that this text be kept in any copy or derivative work:
+
+     Disclaimer: The downloads made available through links on this page contain
+     software developed by NTIA. NTIA does not make any warranty of any kind, express,
+     implied or statutory, including, without limitation, the implied warranty of
+     merchantability, fitness for a particular purpose, non-infringement and data
+     accuracy. NTIA does not warrant or make any representations regarding the use of
+     the software or the results thereof, including but not limited to the correctness,
+     accuracy, reliability or usefulness of the software or the results. You can use,
+     copy, modify, and redistribute the NTIA-developed software upon your acceptance of
+     these terms and conditions and upon your express agreement to provide appropriate
+     acknowledgments of NTIA's ownership of and development of the software by keeping
+     this exact text present in any copied or derivative works.
+
+3. voacapl
+   The Unix build of VOACAP by J.A. Watson, whose changes to the original are released
+   under CC0 1.0 Universal. https://github.com/jawatson/voacapl. Its two GPL programs
+   (dst2csv, dst2ascii) are not used and not included.
+
+4. The data files (data/itshfbc/)
+   Copied unchanged from the hfcast repository's embedded/ folder; data/dataset.json
+   lists every file with its checksum. They are not covered by any of the licences
+   above and keep their own status:
+
+   - antennas/ and database/ (about 16 KB) and roughly 195 KB of coeffs/ (sporadic E, E
+     and F1 maps, the F2 height ratio, the solar index table, prediction error
+     statistics): part of the VOACAP distribution, NTIA/ITS work, under the notices in 2.
+   - roughly 216 KB of coeffs/: atmospheric radio noise from CCIR Report 322.
+   - roughly 134 KB of coeffs/: the foF2 and M(3000)F2 maps from CCIR Report 340.
+
+   The split is the hfcast project's own measurement (engine/NOTICE-hfcast.txt). The
+   CCIR data is published by the ITU itself in the reference software of ITU-R Study
+   Group 3 (https://github.com/ITU-R-Study-Group-3/ITU-R-HF, read on 16 November 2026)
+   with this statement:
+
+     The ITURHFProp, P533 and P372 software has been developed collaboratively by
+     participants in ITU-R Study Group 3. It may be used by implementers in their
+     implementation of the Recommendation as well as in revisions of the specific
+     original Recommendation and in other ITU Recommendations, free from any copyright
+     assertions.
+
+   That statement is worded for implementations of ITU Recommendations, and VOACAP is
+   not one. Outpost's own licence policy (MIT, ISC, BSD, Apache-2.0) does not cover
+   these files; docs/hf-propagation.md says what that means and what the alternative is.
+
+No endorsement of Outpost by NTIA/ITS, the United States Government, the ITU or the
+authors of hfcast or voacapl is implied.

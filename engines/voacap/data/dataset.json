@@ -1,0 +1,248 @@
+{
+  "id": "voacap-coefficients",
+  "version": "hfcast-bf34e8f9f375",
+  "source": {
+    "repository": "https://github.com/jonathanmcsweet/hfcast-engine",
+    "commit": "bf34e8f9f375e190ed43fcac19f25d800992e0e6",
+    "path": "embedded/",
+    "committed": "2026-10-27T20:46:07Z"
+  },
+  "groups": [
+    {
+      "id": "coefficients",
+      "title": "Ionospheric and noise coefficients",
+      "description": "Monthly maps of foF2 and M(3000)F2 (CCIR Report 340), atmospheric radio noise (CCIR Report 322), and the E, F1 and sporadic-E maps, F2 height ratio and prediction-error tables of NTIA/ITS, in the binary form VOACAP reads.",
+      "bytes": 557472,
+      "files": [
+        {
+          "path": "coeffs/coeff01w.bin",
+          "bytes": 38552,
+          "sha256": "ac032273a96d3c6d70b9df85162d8b59519a8b2a653349062509b68ce51067fc"
+        },
+        {
+          "path": "coeffs/coeff02w.bin",
+          "bytes": 38552,
+          "sha256": "c9fc358e9870299fc2ab7f1bc5151c15f0f2e98e94a7e1895abba67d48059a57"
+        },
+        {
+          "path": "coeffs/coeff03w.bin",
+          "bytes": 38552,
+          "sha256": "1993d8d6fd42cefba4cd5d2bb6a7c5df28f29551b0cbb4dd8002d0e5ff023070"
+        },
+        {
+          "path": "coeffs/coeff04w.bin",
+          "bytes": 38552,
+          "sha256": "c65322e7302a7b52015233ea05e39c88f0e6efddade679a25926d3b8609710d3"
+        },
+        {
+          "path": "coeffs/coeff05w.bin",
+          "bytes": 38552,
+          "sha256": "165d025bcd7345de6b954c3eeacb5aa5aadffcf02105b4dbbb15ba64f992818f"
+        },
+        {
+          "path": "coeffs/coeff06w.bin",
+          "bytes": 38552,
+          "sha256": "5f8b6439b5e0db94437817da06895cbe45cefa346461d4b9d3db8a9749d9aa85"
+        },
+        {
+          "path": "coeffs/coeff07w.bin",
+          "bytes": 38552,
+          "sha256": "5b69867018897ed9be26ec48615174cfd0c76dc8927d5ebc868273537a7b0da3"
+        },
+        {
+          "path": "coeffs/coeff08w.bin",
+          "bytes": 38552,
+          "sha256": "104ea8c5707f281afceec169d08bf4b804fdbbba8b2b44cdae1b63a350ec2e60"
+        },
+        {
+          "path": "coeffs/coeff09w.bin",
+          "bytes": 38552,
+          "sha256": "97ea78f802896bd033c0b563c11cc550b304c498a8689d351e824e5033db9801"
+        },
+        {
+          "path": "coeffs/coeff10w.bin",
+          "bytes": 38552,
+          "sha256": "7a7557c1c8100c2842c8c30dd83844d80ea958cf4cd080ccbbe56eadbfb91abc"
+        },
+        {
+          "path": "coeffs/coeff11w.bin",
+          "bytes": 38552,
+          "sha256": "144e0e4fbdeff474ce1feb65fffebe48b639435c99db939421814a1c9a4354ab"
+        },
+        {
+          "path": "coeffs/coeff12w.bin",
+          "bytes": 38552,
+          "sha256": "b78e44b1b13c557f7f43d48d48a24a13a6f05388a81647890857ff632d1e4d7c"
+        },
+        {
+          "path": "coeffs/fof2CCIR.daw",
+          "bytes": 94848,
+          "sha256": "bd78d04018c07996b0427b2da60b5a95471f74c832862fed93ebddee10437f7f"
+        }
+      ]
+    },
+    {
+      "id": "antennas",
+      "title": "Antenna definitions and the version file",
+      "description": "The antenna definition files of the VOACAP distribution (NTIA/ITS) and its version string.",
+      "bytes": 16412,
+      "files": [
+        {
+          "path": "antennas/default/ccir.000",
+          "bytes": 91,
+          "sha256": "b18cbf626853802c332d81db5a97c1121b7b091d9004d430289ce569ed926f27"
+        },
+        {
+          "path": "antennas/default/ccir.001",
+          "bytes": 695,
+          "sha256": "229e27305d04f7cbcaf81184e633ba322f7f4235257dd36aaca3dba74b185b14"
+        },
+        {
+          "path": "antennas/default/ccir.002",
+          "bytes": 561,
+          "sha256": "7155feef76730b68f6b9304d31c32fb72cbd0f7fc0f947c4ce1f4e624bd6fbc6"
+        },
+        {
+          "path": "antennas/default/ccir.003",
+          "bytes": 561,
+          "sha256": "daba55cac853da796456d42bf322a6179ca594d353726e5457d35ae6941efb6a"
+        },
+        {
+          "path": "antennas/default/ccir.004",
+          "bytes": 561,
+          "sha256": "9fdddad08bb95f25f1073fc0044a7a2a9386e9f404c65d91f22e61606cd7ab12"
+        },
+        {
+          "path": "antennas/default/ccir.005",
+          "bytes": 561,
+          "sha256": "650ee58fbca1574e04c3151979c1d3d8893ba501679b9d937c6d2e4fe860043f"
+        },
+        {
+          "path": "antennas/default/ccir.006",
+          "bytes": 561,
+          "sha256": "3b68b67ba1f99ae51d2afa4509ec0d1a2e35958be03f38b87d072fb2b38e4a7e"
+        },
+        {
+          "path": "antennas/default/ccir.007",
+          "bytes": 561,
+          "sha256": "88930372315e28f493693732925b2a41a8e6045c5a9ee3be7d9ea0be4d855e78"
+        },
+        {
+          "path": "antennas/default/ccir.008",
+          "bytes": 561,
+          "sha256": "8153a8988cd7013313740b17eb4a83e424d4144177583530e3d7c3592d91b194"
+        },
+        {
+          "path": "antennas/default/ccir.009",
+          "bytes": 561,
+          "sha256": "d3fa24654bdc176272f79c0f8f7d18788357cddbd08b555ff34933963afddbfd"
+        },
+        {
+          "path": "antennas/default/ccir.010",
+          "bytes": 561,
+          "sha256": "27121611bc121aa44c78bcf66865b591a21ab26d3b28da61e9aff5a93380ac39"
+        },
+        {
+          "path": "antennas/default/ccir.011",
+          "bytes": 561,
+          "sha256": "ca66182bf7abef52b225972def9e9cd2b8c2a16a7f8d12b365587533a6cdef83"
+        },
+        {
+          "path": "antennas/default/ccir.012",
+          "bytes": 561,
+          "sha256": "4479cdfd04fd2c8dff6aae28909b5d3642daef0ac2a17b24047ef2a6b38c5ca1"
+        },
+        {
+          "path": "antennas/default/ccir.013",
+          "bytes": 561,
+          "sha256": "572522d3c00ceb22ebbb88ae862054dbd9f6a6a31edde9d03275116ca8a4d601"
+        },
+        {
+          "path": "antennas/default/ccir.014",
+          "bytes": 561,
+          "sha256": "5cfa2544958cc190ed5e61a31483aa494ab8f33442b93ad2b873b2464c3a0547"
+        },
+        {
+          "path": "antennas/default/ccir.015",
+          "bytes": 561,
+          "sha256": "e1d7a2156c81c7ef9ea5d7f7010b177216c175b53b01b25ae1a785a76b92e6f9"
+        },
+        {
+          "path": "antennas/default/ccir.016",
+          "bytes": 561,
+          "sha256": "2a909605dfb972ed3a7d231541beca6bafda9b681278a7d665e65206ab4789b5"
+        },
+        {
+          "path": "antennas/default/ccir.017",
+          "bytes": 561,
+          "sha256": "8733aafeafc5a96ec92e36ba32c712f28aa21af83ea11b7fbd9d81f0bf525d65"
+        },
+        {
+          "path": "antennas/default/ccir.018",
+          "bytes": 561,
+          "sha256": "35f416aa5abd6d54fce8a25466fc38693c1cf251ec3501d9efa62526723c2856"
+        },
+        {
+          "path": "antennas/default/ccir.019",
+          "bytes": 471,
+          "sha256": "6c836eb5aa6d815b72e22d237f23b8af39c73326759a2eeed2243a901d3f7d9c"
+        },
+        {
+          "path": "antennas/default/ccir.020",
+          "bytes": 471,
+          "sha256": "23d2b045c8c7a846ae55b658d3811670bef5f8de91a59c3537af579352ba935e"
+        },
+        {
+          "path": "antennas/default/ccir.021",
+          "bytes": 471,
+          "sha256": "250c76c3714d45a0b63ef80a044b74f9608e3e821aa959156d3a68aaf6f6dc6d"
+        },
+        {
+          "path": "antennas/default/ccir.022",
+          "bytes": 471,
+          "sha256": "c9d000132dd06b83cd74820712ee982c2cf69c61f0c3dcfaf7f0a4a55d335779"
+        },
+        {
+          "path": "antennas/default/ccir.023",
+          "bytes": 471,
+          "sha256": "87f88e5833d041d8c38c3fccdc327172d12bf269ca47a94bf062c2505a32ed61"
+        },
+        {
+          "path": "antennas/default/ccir.024",
+          "bytes": 471,
+          "sha256": "644c886fb86a94ee984be8ad0f869b000a352ea08bb58a1588be44059e830a5e"
+        },
+        {
+          "path": "antennas/default/ccir.025",
+          "bytes": 351,
+          "sha256": "5b1a616bc5c275dda74f00a9d564d57908233f33f22246e183fb00a2e13bc913"
+        },
+        {
+          "path": "antennas/default/ccir.026",
+          "bytes": 921,
+          "sha256": "66fc1af210d28793b3c2b56639b13433e5c6a01d376ce818dab7bcc2fe6f0637"
+        },
+        {
+          "path": "antennas/default/const17.voa",
+          "bytes": 940,
+          "sha256": "a701626c38f66c1953ecff7f47b9389b284d1f90b056e4be15c86ad22ba620ee"
+        },
+        {
+          "path": "antennas/default/isotrope",
+          "bytes": 91,
+          "sha256": "b18cbf626853802c332d81db5a97c1121b7b091d9004d430289ce569ed926f27"
+        },
+        {
+          "path": "antennas/default/swwhip.voa",
+          "bytes": 943,
+          "sha256": "beac38ebff6c9f8e27d26264d430fd1926c122996900b150f534bd2e88e118dc"
+        },
+        {
+          "path": "database/version.w32",
+          "bytes": 17,
+          "sha256": "9bbeb3cd59663c52c0a74a8043480455255e875dcf639893db8b40447136a01f"
+        }
+      ]
+    }
+  ]
+}
