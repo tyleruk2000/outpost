@@ -62,10 +62,13 @@ export interface LocatorSquare {
 
 /**
  * Reads a locator of 2, 4, 6 or 8 characters, in either case, with or without spaces
- * between the pairs. Null for anything else.
+ * between the pairs. Null for anything else. A space anywhere but between two pairs
+ * means the text is something else: "CB1 2AB" is a postcode, not the locator CB12AB.
  */
 export function parseMaidenhead(input: string): LocatorSquare | null {
-  const text = input.replace(/\s+/g, "").toUpperCase();
+  const parts = input.trim().split(/\s+/);
+  if (parts.some((part) => part.length % 2 !== 0)) return null;
+  const text = parts.join("").toUpperCase();
   if (!/^[A-R]{2}(?:\d{2}(?:[A-X]{2}(?:\d{2})?)?)?$/.test(text)) return null;
   const length = text.length as LocatorLength;
   const value = (index: number) => {

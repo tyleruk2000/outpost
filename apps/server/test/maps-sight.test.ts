@@ -118,6 +118,17 @@ describe("Maidenhead locators", () => {
     }
   });
 
+  it("is not what a postcode is: a space anywhere but between two pairs means it is something else", () => {
+    for (const postcode of ["CB1 2AB", "CM1 1AA", "NG1 5AB", "EH1 1AA", "SW1A 1AA", "M1 1AE", "cb1 2ab"]) {
+      expect(parseMaidenhead(postcode), postcode).toBeNull();
+      expect(parseCoordinateReadings(postcode), postcode).toEqual([]);
+    }
+    // Spaces between the pairs are still how a locator may be written.
+    expect(parseMaidenhead("IO83 QM")!.locator).toBe("IO83QM");
+    expect(parseMaidenhead("IO 83 QM 27")!.locator).toBe("IO83QM27");
+    expect(parseMaidenhead("IO8 3QM")).toBeNull();
+  });
+
   it("is found by the map's search as a position: the middle of the square, with the square named", () => {
     expect(parseCoordinates("IO83")).toEqual({ lat: 53.5, lon: -3, format: "maidenhead", locator: "IO83" });
     const six = parseCoordinates("io83qm")!;
