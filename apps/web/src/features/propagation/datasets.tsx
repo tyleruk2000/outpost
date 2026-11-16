@@ -1,6 +1,7 @@
 /**
- * The engine and the data a prediction rests on: what is installed, how old it is,
- * whether it still matches its checksums, and fetching a newer solar cycle table.
+ * The engine and the data a prediction rests on: what is installed, where it came from
+ * and when, whether it still matches its checksums, fetching VOACAP's coefficients
+ * (which Outpost does not ship) or removing them, and fetching a newer solar cycle table.
  */
 import { formatBytes, type PropagationDataset } from "@outpost/shared";
 import { useState } from "react";
@@ -9,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge, Select, Skeleton } from "@/components/ui/misc";
 import { useStorage } from "@/lib/queries";
 import { useDatasets, useDownloadSolar, useEngines } from "./data";
+import { EngineDataLine, RemoveEngineData } from "./engine-data";
 
 function DatasetRow({ dataset, action }: { dataset: PropagationDataset; action?: React.ReactNode }) {
   return (
@@ -18,7 +20,7 @@ function DatasetRow({ dataset, action }: { dataset: PropagationDataset; action?:
           <p className="flex flex-wrap items-center gap-2 text-ink">
             {dataset.title}
             <Badge tone={dataset.verified === false || !dataset.installed ? "danger" : "neutral"}>
-              {!dataset.installed ? "Missing" : dataset.verified === false ? "Damaged" : dataset.where}
+              {dataset.verified === false ? "Damaged" : !dataset.installed ? "Missing" : dataset.where}
             </Badge>
           </p>
           <p className="mt-0.5 text-small text-ink-muted">{dataset.description}</p>
@@ -92,15 +94,20 @@ export function Datasets() {
 
       <Section
         title="Data"
-        description="Both sets ship with Outpost, so predictions need no download. Only the solar table goes out of date."
+        description="The solar table ships with Outpost and goes out of date. VOACAP's coefficients do not ship: they are downloaded once, and never go out of date."
       >
+        {engine?.data && !engine.data.installed ? <EngineDataLine data={engine.data} className="mb-4" /> : null}
         <Rows className="border-y border-border">
           {datasets.data.datasets.map((dataset) => (
             <DatasetRow
               key={dataset.id}
               dataset={dataset}
               action={
-                dataset.downloadable ? (
+                dataset.id === "voacap-coefficients" ? (
+                  engine?.data?.installed ? (
+                    <RemoveEngineData data={engine.data} />
+                  ) : undefined
+                ) : dataset.downloadable ? (
                   <div className="grid w-full gap-2 sm:w-64">
                     {available.length > 1 ? (
                       <Select

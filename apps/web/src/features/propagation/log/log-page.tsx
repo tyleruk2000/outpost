@@ -33,6 +33,7 @@ import { Progress, Select, Skeleton } from "@/components/ui/misc";
 import { errorMessage } from "@/lib/api";
 import { formatNumber, plural } from "@/lib/utils";
 import { antennaOf, type PlaceField, useEngines, usePlaces, useProfiles } from "../data";
+import { EngineNotReady } from "../engine-data";
 import { PlaceInput } from "../place-field";
 import {
   logKeys,
@@ -657,11 +658,7 @@ export default function LogPage() {
             title="Compare with predictions"
             description="Each entry that can be compared is put to the engine as a path, at its own month, hour and frequency. The log does not say what antenna or noise the other stations had, so those are assumed, the same for all."
           >
-            {engine && !engine.ready ? (
-              <Notice tone="danger" title="The propagation engine cannot run, so nothing can be compared" className="mb-4">
-                {engine.problem}
-              </Notice>
-            ) : null}
+            <EngineNotReady engine={engine} title="The propagation engine cannot run, so nothing can be compared" className="mb-4" />
             <div className="grid gap-x-8 gap-y-4 md:grid-cols-2">
               <Field label="Your antenna">
                 {(ids) => <Select {...ids} value={myAntenna} onChange={setMyAntenna} options={antennaOptions} />}
