@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { setClockChoice } from "@/lib/clock";
 import {
   agoLabel,
   aheadLabel,
@@ -58,6 +59,19 @@ describe("clock times", () => {
     expect(clockTime(at(15, 14, 32))).toBe("14:32");
     expect(clockTime(at(15, 9, 5))).toBe("09:05");
     expect(clockTimeWithSeconds(at(15, 9, 5, 7))).toBe("09:05:07");
+  });
+
+  it("writes the 12-hour clock where that is chosen, in sentences and on axes alike", () => {
+    setClockChoice("12");
+    expect(clockTime(at(15, 14, 32))).toBe("2:32 pm");
+    expect(clockTime(at(15, 0, 5))).toBe("12:05 am");
+    expect(clockTimeWithSeconds(at(15, 12, 5, 7))).toBe("12:05:07 pm");
+    const now = at(15, 14, 0);
+    expect(clockAt(at(16, 2, 10), now)).toBe("tomorrow at 2:10 am");
+    expect(atClock(at(15, 15, 10), now)).toBe("at 3:10 pm");
+    expect(atClock(at(17, 2, 10), now)).toBe("on Tue 17 Nov at 2:10 am");
+    expect(clockTicks(at(15, 18, 38), at(15, 18, 52), 4).map((tick) => tick.label)).toEqual(["6:40 pm", "6:45 pm", "6:50 pm"]);
+    setClockChoice("device");
   });
 
   it("says the day only when it is not today", () => {

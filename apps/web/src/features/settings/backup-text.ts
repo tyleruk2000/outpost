@@ -1,10 +1,12 @@
 /** The words the Backup settings use for a schedule and for the backups kept under it. */
 import { type BackupSchedule, type StoredBackup, weekdayName } from "@outpost/shared";
+import { formatStoredTime } from "@/lib/clock";
 import { formatDateTime, timeAgo } from "@/lib/utils";
 
-/** "Every day at 03:00" / "Every Sunday at 03:00". */
+/** "Every day at 03:00" / "Every Sunday at 03:00", or "at 3:00 am" where the 12-hour clock is in use. */
 export function scheduleText(settings: BackupSchedule["settings"]): string {
-  return settings.frequency === "weekly" ? `Every ${weekdayName(settings.weekday)} at ${settings.time}` : `Every day at ${settings.time}`;
+  const time = formatStoredTime(settings.time);
+  return settings.frequency === "weekly" ? `Every ${weekdayName(settings.weekday)} at ${time}` : `Every day at ${time}`;
 }
 
 /**

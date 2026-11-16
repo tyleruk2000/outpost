@@ -17,7 +17,7 @@ disk.
 ## The Maps screen
 
 The map fills the screen, with a panel beside it (a sheet you can drag up on a phone)
-that has three tabs.
+that has four tabs.
 
 - **Places** lists your saved places. **Save a place** drops a pin you can drag; give
   it a name, a note, a colour, and mark it a favourite to keep it named on the map.
@@ -32,6 +32,9 @@ that has three tabs.
   ready-made region, or draw a box on the map (or use the current view), choose how
   much detail and which storage location it goes to, and see the exact size before
   anything is fetched.
+- **Sun** gives sunrise, sunset, twilight and the moon's phase for the centre of the
+  map, for any date, with nothing saved and nothing searched for (see
+  [Sunrise and sunset](#sunrise-and-sunset)).
 
 On the map itself:
 
@@ -57,9 +60,8 @@ On the map itself:
   degrees-minutes-seconds, British National Grid or Maidenhead locator, and copy it.
 - Right-click (or press and hold) for the position and its locator, "Save a place here",
   "Measure from here", "Draw a route from here", "Sun times here" and "Copy coordinates".
-- A place, a found position and where you are each have a **Sun** line: sunrise,
-  sunset, twilight and the moon's phase for any date (see
-  [Sunrise and sunset](#sunrise-and-sunset)).
+- A place, a found position and where you are each have a **Sun** line of their own:
+  the same times, for that position.
 - The address bar always holds the current view, so a link to it can be saved in a
   note.
 
@@ -514,13 +516,39 @@ undone from the message that confirms it.
 **Sun times are worked out on your device from the position and the date.** Nothing is
 looked up and nothing needs a connection.
 
-A **Sun** line is part of:
+The quickest way to them is the **Sun** tab of the panel, which is on screen whenever
+the map is: on a phone it is one of the four names on the sheet at the bottom. It
+gives the times for **the centre of the map**, the same point the readout at the
+bottom of the map gives and, on a touch screen with the sheet lowered, the one the
+cross marks. The day's sunrise and sunset come first, with everything else under them.
+Move the map and the times follow, once it has come to rest. Nothing has to be saved,
+searched for, or pressed and held.
 
-- a saved place when it is opened, and a new one while it is being saved;
+**On a phone, with the sheet raised, the centre of the map is behind the sheet's top
+edge**, not in the middle of the part of the map still showing. The tab gives the
+coordinates the times are for; to aim, lower the sheet, put the cross on the place, and
+choose the tab again. Zoomed in far enough to pick out a town the difference is a
+minute or less; looking at a whole country it can be many minutes.
+
+The Sun tab also has a part headed **Where you are**. Where the browser will share the
+device's position it offers **Show where I am**, which moves the map there, so that the
+times are then for where you are. Over a plain `http://` address a browser refuses, and
+the tab says so in that place, with a link to **Settings → HTTPS on your network**;
+until that is set up, move the map until its centre is where you are.
+
+A **Sun** line is also part of:
+
+- a saved place when it is opened, and a new one while it is being saved. It sits
+  straight under the place's name, so that on a phone it is on screen as soon as the
+  place is opened; opening it there raises the sheet to make room, and **Save** stays
+  where it was;
 - the card of a position that was found: a search result, typed coordinates, a grid
   reference;
 - any point on the map: right-click it (or press and hold) and choose **Sun times
-  here**, which drops a pin there with its sun times open;
+  here**, which drops a pin there with its sun times open. The menu stays when the
+  finger is lifted. (Pressing and holding was tried with touches made by a test
+  browser, in which the map times the press itself, as it has to on an iPhone. It was
+  not tried on a real phone.);
 - where you are: while **Show where I am** is following the device (which needs
   HTTPS, as above), a card gives its position, how closely the device claims to know
   it, and its sun times. The card can be put away; it comes back the next time the
@@ -541,6 +569,10 @@ It opens on today's date as this device has it. The date can be typed or picked,
 arrows beside it step a day either way, and **Today** comes back. Dates from 1900 to
 2100 are taken. Whether the section was left open, and which clock was chosen, are
 remembered in the browser.
+
+On a phone, "Sun times here" and a found position put their card over the map, and the
+opened section scrolls inside the card. The card covers the search box and the map's
+controls while it is up; the Sun tab does not.
 
 ### The far north and south
 
@@ -564,8 +596,12 @@ not guess. Time zone boundaries are a large dataset that changes, and none is bu
   offset on that date ("Europe/London (UTC+1)"). Summer time is handled by the
   browser.
 - **UTC** shows the same times in UTC, for a radio log or to agree a time with someone
-  elsewhere.
-- The clock is always a 24-hour one.
+  elsewhere. UTC is always written on the 24-hour clock, and each time is marked:
+  "03:43 UTC".
+- Times on the device's clock are written **on the 24-hour clock or the 12-hour one**
+  ("21:21" or "9:21 pm"), whichever Outpost is set to use: see
+  [The 12-hour and 24-hour clock](#the-12-hour-and-24-hour-clock). A line under the
+  times links to the setting.
 - **The date is the date at the place**: the day whose midday is nearest to the sun
   crossing the place's own meridian. For a place far to the east or west a time can
   fall on the day before or after on the clock being shown; the day is then written
@@ -576,6 +612,31 @@ not guess. Time zone boundaries are a large dataset that changes, and none is bu
   differently." **A place one zone over gets no such line.** Zones are drawn too
   generously for longitude to tell them apart (Spain keeps Berlin's time), so nearer
   than two hours nothing is said. Read the zone that is named.
+
+### The 12-hour and 24-hour clock
+
+**Settings → Appearance → Clock** chooses how times of day are written, here and
+everywhere else in Outpost: **As this device**, **24-hour** or **12-hour**.
+
+- It starts on **As this device**: the clock the browser reports for the device's
+  language and region. A phone set to United States English gets "9:21 pm"; one set to
+  British English gets "21:21". The setting says which it found. **This was tried in
+  Chromium with its language set each way, not on a real phone.** A browser may not pass
+  on a 12-hour or 24-hour switch made in the device's own settings, so where it has it
+  wrong, choose one.
+- The choice is **kept in the browser**, like the theme, so a phone and a desktop can
+  differ. It is not sent to the server.
+- It applies to every time of day the app writes: sun times, when a download finished
+  or is expected to, when a backup was made and when the next is due, when a recording
+  started, when a page was saved. One screen never shows both styles.
+- **UTC is the exception**: it is always 24-hour and marked "UTC".
+- On the 12-hour clock the hour after midnight is written "12:07 am" and the hour after
+  noon "12:07 pm". Lengths of time ("16 h 38 min") are not clock times and do not
+  change.
+- One thing does not follow it: **the field where a backup's time of day is typed**
+  (Settings → Automatic backups) is the browser's own time control, which the browser
+  draws in the device's style whatever is chosen here. The sentence beside it follows
+  the choice.
 
 ### How accurate it is
 

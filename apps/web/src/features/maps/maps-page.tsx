@@ -68,6 +68,7 @@ import { type OfflineIntent, OfflinePanel } from "./panels/offline";
 import { draftOf, type PlaceDraft, PlaceEditor, PlacesList } from "./panels/places";
 import { hasUnsavedWork, type RouteDraft, RouteEditor } from "./panels/route-editor";
 import { ImportGpxDialog, RouteDetail, RoutesList } from "./panels/routes";
+import { SunPanel } from "./panels/sun-panel";
 import { locatorOf } from "./radio/locator";
 import { SightCard } from "./radio/sight-card";
 import { SightPanel } from "./radio/sight-panel";
@@ -832,6 +833,11 @@ export default function MapsPage() {
   useEffect(() => {
     engine?.setOverlay("o-location", locationData(locate.fix));
   }, [engine, locate.fix]);
+  const toggleLocate = () => {
+    setHereDismissed(false);
+    if (locate.state === "off") locate.start();
+    else locate.stop();
+  };
 
   const chooseResult = (result: SearchResult) => {
     setContextMenu(null);
@@ -977,6 +983,7 @@ export default function MapsPage() {
             onSave={saveDraft}
             onClose={() => setDraft(null)}
             onDelete={() => draft.id && deleteMarker.mutate(draft.id, { onSuccess: () => setDraft(null) })}
+            onNeedRoom={raiseSheet}
           />
         ) : (
           <PlacesList
@@ -1048,6 +1055,7 @@ export default function MapsPage() {
             onNeedRoom={raiseSheet}
           />
         ),
+        sun: <SunPanel engine={engine} format={format} locate={locate.supported ? locate.state : undefined} onLocate={toggleLocate} />,
       }}
     </PanelTabs>
   );
@@ -1256,11 +1264,7 @@ export default function MapsPage() {
             rotated={rotated}
             onResetNorth={() => engine?.resetNorth()}
             locate={locate.supported ? locate.state : undefined}
-            onLocate={() => {
-              setHereDismissed(false);
-              if (locate.state === "off") locate.start();
-              else locate.stop();
-            }}
+            onLocate={toggleLocate}
             hillshade={sources.data?.hasTerrain ? hillshade : undefined}
             onHillshadeChange={setHillshade}
             contours={contours}

@@ -18,7 +18,8 @@ apps/web/src/
   lib/api.ts             the only way to call the server (`api.get/post/patch/delete/upload`)
   lib/events.tsx         live updates; maps server events to query keys to refresh
   lib/queries.ts         shared data hooks (system, storage, jobs, settings)
-  lib/utils.ts           cn, timeAgo, formatDate, plural, modKey
+  lib/utils.ts           cn, timeAgo, formatDate, formatDateTime, plural, modKey
+  lib/clock.ts           the 12-hour or 24-hour choice, and the one way to write a time of day
   features/<name>/       one folder per screen or feature
   features/kept/         what is kept in the browser for when the server is out of reach,
                          and the app as it is then (see docs/offline.md)
@@ -56,6 +57,14 @@ tone before inventing anything.
   tiles. State is always text, optionally with an icon; colour only supports it.
 - **Numbers people compare** (sizes, counts, progress) get the `tabular` class and come
   from `formatBytes` / `formatNumber` / `plural`.
+- **A time of day is never formatted by hand.** Use `formatDateTime` (`lib/utils.ts`),
+  or `formatTimeOfDay`, `formatStoredTime` and `clockText` (`lib/clock.ts`). They write
+  it on the 24-hour or the 12-hour clock as chosen under Settings → Appearance, so that
+  one screen never shows both. A component that shows a time and stays on screen while
+  the choice could change calls `useClockStyle()`. UTC is the exception: always
+  24-hour, marked "UTC". The web tests and the end-to-end suite run as a device on the
+  24-hour clock (`test-setup.ts`, `locale` in `e2e/playwright.config.ts`); a test of
+  the 12-hour clock says so itself.
 - **Motion is 120–200 ms on state changes only.** No entrance animations on page load.
 - **Icons are Lucide**, `strokeWidth` 1.6 in navigation, default in controls.
 

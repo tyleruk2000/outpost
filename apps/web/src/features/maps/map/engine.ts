@@ -196,6 +196,8 @@ export class MapEngine {
   private drawing = false;
   private rotated = false;
   private longPress: number | undefined;
+  /** The finger whose long press was timed here is still down. */
+  private longPressed = false;
   private lastContextAt = 0;
   private route: DrawState | null = null;
   private held: HeldHandle | undefined;
@@ -343,6 +345,7 @@ export class MapEngine {
 
     map.on("touchstart", (event: MapTouchEvent) => {
       this.cancelLongPress();
+      this.longPressed = false;
       if (event.points.length !== 1) {
         // A second finger means a pinch: whatever was held is let go where it is.
         this.releasePlace();
@@ -370,6 +373,7 @@ export class MapEngine {
       // iOS has no long-press "contextmenu" event, so the press is timed here.
       this.longPress = window.setTimeout(() => {
         this.longPress = undefined;
+        this.longPressed = true;
         this.emitContext(position, point);
       }, 600);
     });
@@ -390,12 +394,19 @@ export class MapEngine {
     });
     map.on("touchend", (event) => {
       this.cancelLongPress();
+      if (this.longPressed) {
+        this.longPressed = false;
+        // Lifting the finger that was held is not also a press on the map: where the browser makes a click of it,
+        // that click would close the menu the hold has just opened, unless the menu happened to be under the finger.
+        this.ignoreClickUntil = performance.now() + 350;
+      }
       this.finishDraw(lngLatOf(event.lngLat));
       this.releaseHandle();
       this.releasePlace();
     });
     map.on("touchcancel", () => {
       this.cancelLongPress();
+      this.longPressed = false;
       this.drawStart = undefined;
       this.dropHandle();
       this.releasePlace();

@@ -64,6 +64,7 @@ export function PlaceEditor({
   onSave,
   onClose,
   onDelete,
+  onNeedRoom,
 }: {
   draft: PlaceDraft;
   /** The place as it is stored, when changing an existing one. */
@@ -77,6 +78,8 @@ export function PlaceEditor({
   onSave: () => void;
   onClose: () => void;
   onDelete: () => void;
+  /** The sun times were opened: on a phone the sheet is raised to hold them. */
+  onNeedRoom?: () => void;
 }) {
   const favouriteId = useId();
   const [confirming, setConfirming] = useState(false);
@@ -98,7 +101,11 @@ export function PlaceEditor({
         </Button>
       </div>
       <div className="scroll-quiet grid min-h-0 flex-1 content-start gap-4 overflow-y-auto px-4 py-4">
-        <h3 className="font-title text-lead text-ink">{saved ? saved.name : "New place"}</h3>
+        {/* The Sun line sits straight under the name: on a phone the sheet shows little more than this at first. */}
+        <div className="grid gap-1">
+          <h3 className="font-title text-lead text-ink">{saved ? saved.name : "New place"}</h3>
+          <SunSection position={{ lat: draft.lat, lon: draft.lon }} onOpen={onNeedRoom} className="border-b border-border pb-1" />
+        </div>
         <Field label="Name">
           {(ids) => (
             <Input
@@ -170,7 +177,6 @@ export function PlaceEditor({
             </p>
           ) : null}
         </div>
-        <SunSection position={{ lat: draft.lat, lon: draft.lon }} className="border-t border-border pt-2" />
       </div>
       <footer className="flex flex-wrap items-center gap-2 border-t border-border px-4 py-3">
         <Button type="submit" variant="primary" loading={saving} disabled={!draft.name.trim() || !changed}>

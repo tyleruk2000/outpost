@@ -1,4 +1,5 @@
-/** Ticks and labels for axes that count time from now, and clock times for forecasts. Pure. */
+/** Ticks and labels for axes that count time from now, and clock times for forecasts. Pure, but for the clock style in use. */
+import { formatTimeOfDay } from "@/lib/clock";
 
 const MINUTE = 60;
 const HOUR = 3600;
@@ -68,19 +69,11 @@ export function agoLabel(seconds: number): string {
   return Math.round(seconds) <= 0 ? "now" : `${parts(seconds)} ago`;
 }
 
-const two = (value: number) => String(value).padStart(2, "0");
-
-/** "14:32" on the 24-hour clock, in the device's own time zone. */
-export function clockTime(at: number | Date): string {
-  const date = new Date(at);
-  return `${two(date.getHours())}:${two(date.getMinutes())}`;
-}
+/** "14:32" in the device's own time zone, or "2:32 pm" where the 12-hour clock is in use. */
+export const clockTime = (at: number | Date): string => formatTimeOfDay(at);
 
 /** "14:32:07", for readings a second apart. */
-export function clockTimeWithSeconds(at: number | Date): string {
-  const date = new Date(at);
-  return `${clockTime(date)}:${two(date.getSeconds())}`;
-}
+export const clockTimeWithSeconds = (at: number | Date): string => formatTimeOfDay(at, { seconds: true });
 
 const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];

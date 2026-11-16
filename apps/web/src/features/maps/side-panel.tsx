@@ -1,6 +1,6 @@
 /**
  * The panel beside the map (desktop) or the sheet over its lower edge (phones). Both
- * hold the same three tabs; only the container differs.
+ * hold the same four tabs; only the container differs.
  */
 import { PanelLeftClose } from "lucide-react";
 import { type KeyboardEvent, type PointerEvent, type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -8,10 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger, Tooltip } from "@/components/ui/misc";
 import { cn } from "@/lib/utils";
 
-export const PANEL_TABS = ["places", "routes", "offline"] as const;
+export const PANEL_TABS = ["places", "routes", "offline", "sun"] as const;
 export type PanelTab = (typeof PANEL_TABS)[number];
 
-const TAB_LABELS: Record<PanelTab, string> = { places: "Places", routes: "Routes", offline: "Offline maps" };
+const TAB_LABELS: Record<PanelTab, string> = { places: "Places", routes: "Routes", offline: "Offline maps", sun: "Sun" };
 
 export function PanelTabs({
   tab,
@@ -29,7 +29,8 @@ export function PanelTabs({
 }) {
   return (
     <Tabs value={tab} onValueChange={(next) => onTabChange(next as PanelTab)} className="flex min-h-0 flex-1 flex-col">
-      <TabsList className="shrink-0 px-4">
+      {/* Four names and two counts have to fit across a 320 px phone. */}
+      <TabsList className="shrink-0 px-4 max-[23rem]:gap-3.5 max-[23rem]:px-3">
         {PANEL_TABS.map((item) => (
           <TabsTrigger key={item} value={item} onClick={onTabPress} className="max-md:min-h-11">
             {TAB_LABELS[item]}

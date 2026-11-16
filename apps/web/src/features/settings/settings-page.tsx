@@ -4,11 +4,13 @@ import { type ReactNode, useEffect } from "react";
 import { Link, useLocation } from "react-router";
 import { ErrorState, Page, PageHeader } from "@/components/page";
 import { Segmented, Skeleton, Switch } from "@/components/ui/misc";
+import { useClockStyle } from "@/lib/clock";
 import { useSettings, useSystem, useUpdateSettings } from "@/lib/queries";
 import { useTheme } from "@/lib/theme";
 import { cn, plural } from "@/lib/utils";
 import { AnswersSection } from "./answers-section";
 import { BackupSection } from "./backup-section";
+import { ClockSetting } from "./clock-setting";
 import { HttpsSection } from "./https-section";
 import { NumberSetting, SettingRow, SettingsSection, TextSetting } from "./parts";
 import { SemanticSection } from "./semantic-section";
@@ -27,6 +29,8 @@ export default function SettingsPage({ extraSections }: { extraSections?: ReactN
   const system = useSystem();
   const update = useUpdateSettings();
   const { theme, setTheme, reading, setReading } = useTheme();
+  // Read here so that the whole screen, the backups and their times included, is drawn again when the clock is changed.
+  useClockStyle();
   const disabled = update.isPending;
   const save = <K extends keyof Settings>(key: K, value: Settings[K]) => update.mutate({ [key]: value } as Partial<Settings>);
   const s = settings.data;
@@ -75,6 +79,7 @@ export default function SettingsPage({ extraSections }: { extraSections?: ReactN
             />
           }
         />
+        <ClockSetting />
       </SettingsSection>
 
       {settings.isPending ? (

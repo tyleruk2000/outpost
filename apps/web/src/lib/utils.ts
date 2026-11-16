@@ -1,5 +1,6 @@
 import { type ClassValue, clsx } from "clsx";
 import { extendTailwindMerge } from "tailwind-merge";
+import { formatTimeOfDay } from "./clock";
 
 /**
  * tailwind-merge has to be told about the project's own scale names. Without this it
@@ -22,13 +23,6 @@ export function cn(...inputs: ClassValue[]): string {
 
 const relative = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
 const dateFormat = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" });
-const dateTimeFormat = new Intl.DateTimeFormat("en-GB", {
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-});
 
 /** "3 minutes ago", "yesterday", or a date once it is more than a week old. */
 export function timeAgo(timestamp: number | null | undefined): string {
@@ -43,7 +37,8 @@ export function timeAgo(timestamp: number | null | undefined): string {
 }
 
 export const formatDate = (timestamp: number) => dateFormat.format(timestamp);
-export const formatDateTime = (timestamp: number) => dateTimeFormat.format(timestamp);
+/** "17 Nov 2026, 14:32", or "17 Nov 2026, 2:32 pm" where the 12-hour clock is in use (see `clock.ts`). */
+export const formatDateTime = (timestamp: number) => `${dateFormat.format(timestamp)}, ${formatTimeOfDay(timestamp)}`;
 
 const numberFormat = new Intl.NumberFormat("en-GB");
 export const formatNumber = (value: number) => numberFormat.format(value);
