@@ -1048,6 +1048,24 @@ export const powerPlans = sqliteTable("power_plans", {
   updatedAt: updatedAt(),
 });
 
+/** A person's own devices for the battery calculators: a name, its figure, and where the figure came from. */
+export const powerDevices = sqliteTable("power_devices", {
+  id: id(),
+  name: text("name").notNull(),
+  /** "run", "charge" or "radio". */
+  kind: text("kind").notNull(),
+  /** "dc", "usb" or "ac". */
+  supply: text("supply").notNull(),
+  watts: real("watts"),
+  wattHours: real("watt_hours"),
+  receiveW: real("receive_w"),
+  transmitW: real("transmit_w"),
+  standbyW: real("standby_w"),
+  note: text("note").notNull().default(""),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+});
+
 // ── Supplies (Preparedness) ─────────────────────────────────────────────────
 
 /**

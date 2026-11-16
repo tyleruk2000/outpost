@@ -121,6 +121,8 @@ export interface CleanupPlan {
     radio?: RadioKept;
     /** Power plans (Tools → Power and batteries). Absent from a plan made before they were counted. */
     powerPlans?: number;
+    /** A person's own devices for the battery calculators (Tools → Power and batteries). Absent from a plan made before they were counted. */
+    powerDevices?: number;
     /** Supplies and the household they are for; see `SuppliesKept`. Absent from a plan made before it was counted. */
     supplies?: SuppliesKept;
     /** Scenarios saved in the nuclear effects simulator. Absent from a plan made before they were counted. */
@@ -199,6 +201,7 @@ export interface CleanupResult extends Record<string, unknown> {
     repeaterLists: number;
     radio?: RadioKept;
     powerPlans?: number;
+    powerDevices?: number;
     supplies?: SuppliesKept;
     nuclearScenarios?: number;
     networkDevices?: number;

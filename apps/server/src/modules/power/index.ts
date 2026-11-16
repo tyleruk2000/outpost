@@ -18,6 +18,7 @@ import type { AppContext } from "../../core/context.ts";
 import { notFound } from "../../core/errors.ts";
 import { newId } from "../../core/ids.ts";
 import { powerPlans } from "../../db/schema.ts";
+import { registerPowerDevices } from "./devices.ts";
 
 export interface PowerService {
   list(): PowerPlan[];
@@ -43,12 +44,26 @@ const hour = z.number().int().min(0).max(23);
 const amps = z.number().positive().max(100_000).nullable();
 const name = z.string().trim().min(1, "Give it a name.").max(120);
 
+// Where a load's figures came from: an entry in the library of common devices, or one of the person's own. Older loads have none.
+const origin = z
+  .object({
+    library: z.enum(["common", "own"]),
+    id: z.string().min(1).max(64),
+    name: z.string().max(120),
+    state: z.string().max(64).nullable(),
+    figures: z.record(z.string().max(32), z.number().min(0).max(10_000_000)).refine((figures) => Object.keys(figures).length <= 12),
+  })
+  .strict()
+  .nullable()
+  .optional();
+
 const loadBase = {
   id: z.string().min(1).max(64),
   name,
-  supply: z.enum(["dc", "ac"]),
+  supply: z.enum(["dc", "usb", "ac"]),
   quantity: z.number().int().min(1).max(1000),
   startHour: hour,
+  origin,
 };
 const load = z.discriminatedUnion("kind", [
   z.object({ ...loadBase, kind: z.literal("device"), watts, hoursPerDay: hours }),
@@ -69,6 +84,14 @@ const load = z.discriminatedUnion("kind", [
       message: "A radio's hours on the air and on standby add up to more than a day.",
       path: ["standbyHours"],
     }),
+  z.object({
+    ...loadBase,
+    kind: z.literal("charge"),
+    wattHours: z.number().gt(0).max(10_000_000),
+    chargesPerDay: z.number().min(0).max(100),
+    chargeEfficiency: z.number().gt(0).max(1),
+    chargeHours: z.number().gt(0).max(24),
+  }),
 ]);
 const percent = z.number().min(0).max(100);
 
@@ -88,6 +111,8 @@ const planInput = z.object({
   }),
   loads: z.array(load).max(POWER_PLAN_MAX_LOADS),
   inverter: z.object({ efficiency: z.number().gt(0).max(1), idleW: watts, hoursOn: hours }),
+  // The converter from the battery to USB; plans from before it have none.
+  usb: z.object({ efficiency: z.number().gt(0).max(1) }).strict().optional(),
   solar: z.object({
     arrayWatts: watts,
     controller: z.enum(["mppt", "pwm"]),
@@ -198,6 +223,7 @@ export async function registerPower(app: FastifyInstance, ctx: AppContext): Prom
     },
   };
   ctx.services.power = service;
+  registerPowerDevices(app, ctx);
 
   type IdParams = { Params: { id: string } };
   app.get("/api/power/plans", async () => ({ plans: service.list() }));

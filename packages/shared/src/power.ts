@@ -105,8 +105,30 @@ export interface PowerBattery {
 
 // ── Loads ───────────────────────────────────────────────────────────────────
 
-/** How a load is supplied: straight from the battery (DC), or through the inverter (AC). */
-export type PowerSupply = "dc" | "ac";
+/**
+ * How a load is supplied: straight from the battery (DC), through a converter to USB, or
+ * through the inverter (AC). Plans from before USB was a choice have only the first and
+ * the last.
+ */
+export type PowerSupply = "dc" | "usb" | "ac";
+
+/**
+ * Where a load's figures came from: an entry in the library of common devices
+ * (`COMMON_DEVICES`), or one of the person's own devices, with the figures it was given
+ * then, so that the screen and the PDF can cite the source and say when the person has
+ * since changed a figure. Loads typed by hand, and loads from before this, have none.
+ */
+export interface LoadOrigin {
+  library: "common" | "own";
+  /** The entry's id. */
+  id: string;
+  /** Its name when the load was made from it (an own device may later be renamed or removed). */
+  name: string;
+  /** For a common device that runs: which of its states; for a radio, the transmit output in watts as a string. */
+  state: string | null;
+  /** The figures the load was given from it, by the load's field name (watts, transmitW, wattHours...). */
+  figures: Record<string, number>;
+}
 
 interface LoadBase {
   id: string;
@@ -116,6 +138,8 @@ interface LoadBase {
   quantity: number;
   /** The hour of the day it is first on, 0 to 23, for the hour-by-hour chart. */
   startHour: number;
+  /** Where its figures came from; absent or null when typed by hand. */
+  origin?: LoadOrigin | null;
 }
 
 /** Anything with one power figure: on for so many hours a day at that power. */
@@ -149,7 +173,23 @@ export interface RadioLoad extends LoadBase {
   mode: RadioModeId;
 }
 
-export type PowerLoad = DeviceLoad | RadioLoad;
+/**
+ * Something charged rather than run (a phone, a power bank): so many charges a day of a
+ * battery of so many watt-hours, each taking the battery's energy ÷ the charging
+ * efficiency from the supply. Spread over `chargeHours` from its start hour, for the
+ * hour-by-hour chart and the peak current only: the day's energy does not depend on it.
+ */
+export interface ChargeLoad extends LoadBase {
+  kind: "charge";
+  /** The battery's energy, watt-hours (the label's mAh × its nominal volts ÷ 1000). */
+  wattHours: number;
+  chargesPerDay: number;
+  /** Energy into the battery over energy from the supply, 0 to 1. */
+  chargeEfficiency: number;
+  chargeHours: number;
+}
+
+export type PowerLoad = DeviceLoad | RadioLoad | ChargeLoad;
 
 export type RadioModeId = "ssb" | "ssb-processed" | "cw" | "ft8" | "fm" | "custom";
 
@@ -223,6 +263,12 @@ export interface PowerInverter {
   idleW: number;
   /** Hours a day it is switched on. Used only when the plan has an AC load. */
   hoursOn: number;
+}
+
+/** The converter from the battery to USB (a "car charger" or a DC-DC converter). Plans from before it have none. */
+export interface PowerUsbConverter {
+  /** USB power out over power from the battery, 0 to 1. */
+  efficiency: number;
 }
 
 // ── Charging ────────────────────────────────────────────────────────────────
@@ -345,6 +391,8 @@ export interface PowerPlanInput {
   battery: PowerBattery;
   loads: PowerLoad[];
   inverter: PowerInverter;
+  /** Used only by USB loads; absent from plans made before USB was a choice. */
+  usb?: PowerUsbConverter;
   solar: PowerSolar;
   charger: PowerCharger;
   /** The cable from the battery: its rated current, amps, from the maker's data or the wiring regulations. Null: not given. */

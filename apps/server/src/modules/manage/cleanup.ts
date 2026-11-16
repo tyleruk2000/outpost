@@ -260,6 +260,7 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
         repeaterLists: ctx.services.repeaters.count().lists,
         radio: ctx.services.propagation.kept.count(),
         powerPlans: ctx.services.power.kept.count(),
+        powerDevices: ctx.services.powerDevices.count(),
         supplies: ctx.services.supplies.count(),
         nuclearScenarios: ctx.services.nuclear.count(),
         networkDevices: ctx.services.network.count(),
@@ -520,6 +521,7 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
       repeaterLists: 0,
       radio: { plans: 0, observations: 0, equipment: 0, saved: 0 },
       powerPlans: 0,
+      powerDevices: 0,
       supplies: { items: 0, members: 0, shopping: 0, barcodes: 0 },
       nuclearScenarios: 0,
       networkDevices: 0,
@@ -566,6 +568,8 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
     personal.radio = ctx.services.propagation.kept.eraseAll();
     // Power plans: batteries, loads and charging a person described.
     personal.powerPlans = ctx.services.power.kept.eraseAll();
+    // Devices of a person's own for the battery calculators: names and figures they typed.
+    personal.powerDevices = ctx.services.powerDevices.eraseAll();
     // Stored supplies, the household they are for, the shopping list and the barcodes remembered.
     personal.supplies = ctx.services.supplies.eraseAll();
     // Scenarios saved in the nuclear effects simulator: the places and notes are the person's own.
@@ -641,7 +645,7 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
         // From here on nothing can be stopped half-way in a state worth keeping.
         run.progress({
           message:
-            "Erasing notes, places, routes, contacts, conversations, repeaters, radio plans and logs, power plans, supplies, emergency plans, and settings",
+            "Erasing notes, places, routes, contacts, conversations, repeaters, radio plans and logs, power plans and devices, supplies, emergency plans, and settings",
         });
         await erasePersonal(result);
         await eraseDataFolders(result);

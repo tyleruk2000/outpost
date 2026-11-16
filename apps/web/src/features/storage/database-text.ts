@@ -20,6 +20,7 @@ const COUNT_WORDS: Record<DatabaseCountId, [string, string]> = {
   equipment: ["radio or antenna profile", "radio and antenna profiles"],
   predictions: ["saved prediction or coverage map", "saved predictions and coverage maps"],
   powerPlans: ["power plan", "power plans"],
+  powerDevices: ["device of your own for the battery calculators", "devices of your own for the battery calculators"],
   supplies: ["row of supplies", "rows of supplies"],
   scenarios: ["saved nuclear effects scenario", "saved nuclear effects scenarios"],
   networkDevices: ["device found on the network", "devices found on the network"],
