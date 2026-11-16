@@ -10,6 +10,7 @@ import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
 import { AppError } from "../../core/errors.ts";
 import { safeFileName } from "../../core/fs-safe.ts";
+import { registerEpubReader } from "./epub-reader.ts";
 import { DOCUMENT_TYPES, formatForExt, servedAs } from "./file-types.ts";
 import { contentDisposition, matchesEtag, parseRange } from "./http.ts";
 import { type LinkResolver, readMarkdownBlocks } from "./markdown-view.ts";
@@ -73,6 +74,7 @@ export async function registerDocuments(app: FastifyInstance, ctx: AppContext): 
   ctx.services.documents = service;
 
   registerDocumentMoves(app, ctx);
+  registerEpubReader(app, ctx, service);
 
   // Another module may have registered the multipart parser already; twice is an error.
   // Limits are passed with each request, so it does not matter whose registration won.

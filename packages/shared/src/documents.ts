@@ -222,9 +222,9 @@ export interface MarkdownRef {
 }
 
 /**
- * A run of text inside a Markdown block. This is what the server keeps of a Markdown
- * file's formatting: enough to read it as written, and nothing that could act in a
- * browser. A link is present only when its address is a web or mail address; a "jump"
+ * A run of text inside a Markdown block (a chapter of an EPUB book is sent as the same
+ * blocks and runs). This is what the server keeps of a file's formatting: enough to
+ * read it as written, and nothing that could act in a browser. A link is present only when its address is a web or mail address; a "jump"
  * goes to a heading of the same document; a "ref" goes to something inside Outpost.
  * Nothing here carries an address a file chose, other than those web and mail links.
  */
@@ -232,13 +232,28 @@ export type MarkdownInline =
   | { t: "text"; v: string }
   | { t: "code"; v: string }
   | { t: "break" }
-  | { t: "strong" | "em" | "del"; c: MarkdownInline[] }
+  | { t: "strong" | "em" | "del" | "sup" | "sub"; c: MarkdownInline[] }
   | { t: "link"; href: string; c: MarkdownInline[] }
   /** A picture, which is not shown: only the description and caption its author gave it. */
   | { t: "image"; alt: string; caption?: string }
-  /** `to` is the id of a heading in this document. */
+  /** `to` is the id of a heading, or of an anchor, in this document. */
   | { t: "jump"; to: string; c: MarkdownInline[] }
-  | MarkdownRef;
+  | MarkdownRef
+  | EpubInline;
+
+/**
+ * What a chapter of an EPUB book adds to the runs above. A Markdown file never produces
+ * these. None of them carries an address: a picture is named by its path inside the
+ * book's own archive, which the server found there, and a link to another chapter by
+ * that chapter's place in the reading order.
+ */
+export type EpubInline =
+  /** A place a link can land on: an element of the chapter that had an id. It shows nothing. */
+  | { t: "anchor"; id: string }
+  /** A picture from inside the book. `src` is its path in the archive. */
+  | { t: "picture"; src: string; alt: string }
+  /** A link to another chapter of the same book, counted from 1; 0 is the book's contents. */
+  | { t: "chapter"; chapter: number; anchor?: string; c: MarkdownInline[] };
 
 export interface MarkdownListItem {
   /** Set for a task-list item: whether its box is ticked. */
@@ -255,16 +270,67 @@ export type MarkdownBlock =
   | { t: "heading"; depth: number; id?: string; c: MarkdownInline[] }
   | { t: "paragraph"; c: MarkdownInline[] }
   | { t: "list"; ordered: boolean; start?: number; items: MarkdownListItem[] }
-  | { t: "quote"; c: MarkdownBlock[] }
+  /** `kind` is set for a footnote or an aside in a book, which is set apart but is not a quotation. */
+  | { t: "quote"; kind?: "note"; c: MarkdownBlock[] }
   /** `lang` is the word after the opening fence, lower case: "mermaid", "viz", "json". */
   | { t: "code"; lang?: string; v: string }
-  /** The first row is the header. Every row has the same number of cells. */
-  | { t: "table"; rows: MarkdownInline[][][] }
-  | { t: "rule" };
+  /** The first row is the header, unless `plain` says the table has none. Every row has the same number of cells. */
+  | { t: "table"; plain?: true; rows: MarkdownInline[][][] }
+  | { t: "rule" }
+  /** A picture from inside an EPUB book, standing on its own. `src` is its path in the archive. */
+  | { t: "figure"; src: string; alt: string; caption?: MarkdownInline[] };
 
 export interface DocumentMarkdownResponse {
   documentId: string;
   blocks: MarkdownBlock[];
+}
+
+/** One document of an EPUB's reading order: usually a chapter, sometimes a cover or a title page. */
+export interface EpubChapterDto {
+  /** Counted from 1, in reading order. */
+  position: number;
+  /** From the book's table of contents; otherwise its first heading, or "Section 3". */
+  title: string;
+  /** The heading search results know this chapter by, when its text has been read. */
+  heading: string | null;
+}
+
+/** A line of an EPUB's table of contents. */
+export interface EpubContentsEntry {
+  title: string;
+  /** The chapter it opens, counted from 1. Null for a line that only names a part of the book. */
+  chapter: number | null;
+  /** A place inside that chapter (see `EpubInline` anchors). */
+  anchor?: string;
+  /** 0 for a top-level line, 1 for one beneath it, and so on. */
+  depth: number;
+}
+
+/** `GET /api/documents/:id/epub`: what an EPUB book says about itself, and what is in it. */
+export interface DocumentEpubResponse {
+  documentId: string;
+  /** From the book's own package file, not from the library record. */
+  title: string | null;
+  author: string | null;
+  language: string | null;
+  /** Path of the cover picture inside the archive, when the book names one. */
+  cover: string | null;
+  chapters: EpubChapterDto[];
+  /** The table of contents as the book gives it. Empty when it has none; the chapters are then the contents. */
+  contents: EpubContentsEntry[];
+  /** Sentences for people: what Outpost does not do for this book. */
+  notes: string[];
+}
+
+/** `GET /api/documents/:id/epub/chapters/:position`: one chapter, as plain values the web app draws. */
+export interface DocumentEpubChapterResponse {
+  documentId: string;
+  position: number;
+  total: number;
+  title: string;
+  blocks: MarkdownBlock[];
+  /** Sentences for people: what was left out of this chapter. */
+  notes: string[];
 }
 
 export interface TagDto {
