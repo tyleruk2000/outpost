@@ -12,6 +12,9 @@ import type { Rgb, Sheet, SheetItem } from "./sheet";
 /** Helvetica, or what each system draws in its place with the same widths (Arial, Liberation Sans). */
 const SHEET_FONT = "Helvetica, Arial, 'Liberation Sans', sans-serif";
 
+/** Courier, or what stands in for it; whichever it is, every character is the same width. */
+const SHEET_MONO = "Courier, 'Courier New', 'Liberation Mono', monospace";
+
 const css = (color: Rgb) => `rgb(${color.map((part) => Math.round(part * 255)).join(" ")})`;
 
 function Item({ item, pictures }: { item: SheetItem; pictures: Readonly<Record<string, string | undefined>> }) {
@@ -35,6 +38,7 @@ function Item({ item, pictures }: { item: SheetItem; pictures: Readonly<Record<s
           fill={item.fill ? css(item.fill) : "none"}
           stroke={item.stroke ? css(item.stroke) : undefined}
           strokeWidth={item.stroke ? (item.lineWidth ?? 0.5) : undefined}
+          strokeDasharray={item.stroke && item.dash ? item.dash.join(" ") : undefined}
         />
       );
     case "line":
@@ -47,6 +51,7 @@ function Item({ item, pictures }: { item: SheetItem; pictures: Readonly<Record<s
           x={item.x}
           y={item.y}
           fontSize={item.size}
+          fontFamily={item.mono ? SHEET_MONO : undefined}
           fontWeight={item.bold ? 700 : 400}
           fill={css(item.color)}
           textAnchor={item.anchor ?? "start"}

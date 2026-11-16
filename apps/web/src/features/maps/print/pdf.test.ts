@@ -1,9 +1,10 @@
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { describe, expect, it } from "vitest";
+import { monoWidth } from "./courier";
 import { graticule } from "./graticule";
 import { encodeWinAnsi, fitText, textWidth, wrapText } from "./helvetica";
 import { pageGeometry } from "./paper";
-import { pdfFileName, writePdf } from "./pdf";
+import { pdfFileName, writePdf, writePdfPages } from "./pdf";
 import { boxAtScale } from "./scale";
 import { layoutSheet, sheetBottom, sheetWords } from "./sheet";
 
@@ -212,6 +213,83 @@ describe("the PDF", () => {
     expect(made).toContain("(Peak \\(north\\) \\\\ ridge) Tj");
     // "Ż" is U+017B.
     expect(made).toContain("/Title <FEFF017B");
+  });
+
+  it("names no typeface the page does not use: the map's file has Helvetica alone", () => {
+    expect(text).toContain("/Font << /F1 5 0 R /F2 6 0 R >>");
+    expect(text).not.toContain("Courier");
+  });
+
+  it("writes several sheets as several pages, each its own size, with Courier where it is asked for", async () => {
+    const black = [0, 0, 0] as const;
+    const made = writePdfPages({
+      pages: [
+        {
+          width: 595.28,
+          height: 841.89,
+          items: [
+            { kind: "image", id: "map", x: 40, y: 40, width: 80, height: 40 },
+            { kind: "text", x: 300, y: 100, text: "ABCDE FGHIJ", size: 10, mono: true, color: black, anchor: "end" },
+            { kind: "text", x: 300, y: 120, text: "KLMNO", size: 10, mono: true, bold: true, color: black, anchor: "middle" },
+            { kind: "rect", x: 20, y: 20, width: 200, height: 100, stroke: black, lineWidth: 0.5, dash: [3, 2] },
+            { kind: "rect", x: 20, y: 200, width: 200, height: 100, stroke: black },
+          ],
+        },
+        { width: 612, height: 792, items: [{ kind: "text", x: 72, y: 72, text: "Second page", size: 12, color: black }] },
+        { width: 612, height: 792, items: [{ kind: "text", x: 72, y: 72, text: "Third page", size: 12, bold: true, color: black }] },
+      ],
+      pictures: new Map([["map", { jpeg: JPEG, width: 8, height: 4 }]]),
+      title: "Three pages",
+      created: new Date(0),
+    });
+    const written = latin1(made);
+    // The first page keeps its place among the fixed objects; the picture is 8, Courier 9 and 10, then a page and its drawing twice.
+    expect(written).toContain("/Type /Pages /Kids [3 0 R 11 0 R 13 0 R] /Count 3");
+    expect(written).toContain("/Font << /F1 5 0 R /F2 6 0 R /F3 9 0 R /F4 10 0 R >>");
+    expect(written).toContain("9 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Courier /Encoding /WinAnsiEncoding >>");
+    expect(written).toContain("10 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Courier-Bold /Encoding /WinAnsiEncoding >>");
+    expect(written).toContain("11 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792]");
+    expect(written).toContain("/Contents 12 0 R");
+    expect(written).toContain("/Contents 14 0 R");
+    // Every character of Courier is 6 points wide at 10 points: eleven of them end at 300, five are centred on it.
+    expect(monoWidth("ABCDE FGHIJ", 10)).toBe(66);
+    expect(written).toContain("BT /F3 10 Tf 0 0 0 rg 1 0 0 1 234 741.89 Tm (ABCDE FGHIJ) Tj ET");
+    expect(written).toContain("BT /F4 10 Tf 0 0 0 rg 1 0 0 1 285 721.89 Tm (KLMNO) Tj ET");
+    // A broken outline, and a solid line again for whatever is drawn next.
+    expect(written).toContain("0 0 0 RG 0.5 w [3 2] 0 d 20 721.89 200 100 re S [] 0 d");
+    expect(written).toContain("0 0 0 RG 0.5 w 20 541.89 200 100 re S\n");
+    const start = Number(/startxref\n(\d+)\n%%EOF\n$/.exec(written)![1]);
+    const entries = [...written.slice(start).matchAll(/^(\d{10}) 00000 n $/gm)].map((match) => Number(match[1]));
+    expect(entries).toHaveLength(14);
+    for (const [index, offset] of entries.entries())
+      expect(written.slice(offset, offset + `${index + 1} 0 obj`.length)).toBe(`${index + 1} 0 obj`);
+
+    const reading = getDocument({
+      data: made.slice(),
+      useSystemFonts: false,
+      disableFontFace: true,
+      standardFontDataUrl: `${process.cwd()}/node_modules/pdfjs-dist/standard_fonts/`,
+    });
+    const document = await reading.promise;
+    expect(document.numPages).toBe(3);
+    const sizes: number[][] = [];
+    const words: string[] = [];
+    for (let number = 1; number <= 3; number += 1) {
+      const one = await document.getPage(number);
+      const view = one.getViewport({ scale: 1 });
+      sizes.push([Math.round(view.width), Math.round(view.height)]);
+      words.push(((await one.getTextContent()).items as Array<{ str: string }>).map((item) => item.str).join(" "));
+    }
+    expect(sizes).toEqual([
+      [595, 842],
+      [612, 792],
+      [612, 792],
+    ]);
+    expect(words[0]).toContain("ABCDE FGHIJ");
+    expect(words[1]).toBe("Second page");
+    expect(words[2]).toBe("Third page");
+    await reading.destroy();
+    expect(() => writePdfPages({ pages: [], title: "", created: new Date(0) })).toThrow(/at least one page/);
   });
 
   it("refuses a page that refers to a picture it was not given", () => {

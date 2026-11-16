@@ -1,15 +1,34 @@
 /*
- * Printing the paper aids (a Vigenère square, one-time pad sheets).
+ * The paper aids (a Vigenère square, one-time pad sheets) as paper.
  *
- * The sheet to print is put straight under <body>, outside the app, by `PrintSheet`.
- * On screen it is not shown. On paper it is the only thing shown: black on white
- * whatever the theme, in the mono face so that letters line up in columns.
+ * The sheet is shown by `PrintView`, which fills the screen and is a child of <body>,
+ * outside the app. On screen it is a sheet of white paper, as wide as A4 and drawn
+ * smaller where the screen is narrower, under a bar of the ways to print it. On paper
+ * the sheet is the only thing there: the bar, the notes and the app behind are gone.
+ * Either way it is black on white whatever the theme, in the mono face so that letters
+ * line up in columns; a picture of a piece of paper takes its colours from paper, not
+ * from the design tokens.
  *
  * These rules are outside every cascade layer, so they win over the app's own styles
  * (which are all in layers) without needing to shout.
  */
-.print-sheet {
-  display: none;
+.print-sheet .print-paper {
+  box-sizing: border-box;
+  width: 210mm;
+  padding: 12mm;
+  zoom: var(--sheet-zoom, 1);
+  border: 1px solid var(--border-strong);
+  background: white;
+  color: black;
+  font-family: var(--font-mono);
+  font-size: 10pt;
+  line-height: 1.35;
+}
+
+.print-sheet .print-paper * {
+  color: black;
+  border-color: black;
+  background: transparent;
 }
 
 @media print {
@@ -21,31 +40,44 @@
     background: white;
   }
 
+  /* The view stops filling the screen and becomes ordinary text that runs on from page to page. */
   .print-sheet {
     display: block;
+    position: static;
+    inset: auto;
+    height: auto;
+    padding: 0;
+    overflow: visible;
     background: white;
-    color: black;
-    font-family: var(--font-mono);
-    font-size: 10pt;
-    line-height: 1.35;
+    animation: none;
   }
 
-  .print-sheet * {
-    color: black;
-    border-color: black;
-    background: transparent;
+  .print-sheet .print-chrome {
+    display: none;
+  }
+
+  .print-sheet .print-scroll {
+    display: block;
+    height: auto;
+    padding: 0;
+    overflow: visible;
+  }
+
+  .print-sheet .print-room {
+    max-width: none;
+    margin: 0;
+  }
+
+  /* The paper's edge and margin are the printer's now. */
+  .print-sheet .print-paper {
+    width: auto;
+    padding: 0;
+    zoom: 1;
+    border: 0;
   }
 
   .print-sheet .sheet-part {
     break-inside: avoid;
-  }
-
-  .print-sheet .sheet-page {
-    break-after: page;
-  }
-
-  .print-sheet .sheet-page:last-child {
-    break-after: auto;
   }
 
   @page {

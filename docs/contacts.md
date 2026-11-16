@@ -61,7 +61,13 @@ contact is left out when the contact comes in, and the import says how many were
   page: names, the emergency line, numbers, callsign and frequencies, addresses, and the
   position of a linked saved place. **Print** uses the browser's own print, and only the
   sheet is on the paper. A printed sheet can be read by whoever finds it and does not
-  change when a contact does.
+  change when a contact does. A phone's browser does not always print from a button:
+  where the browser has no print the button is left out, and where a press is followed by
+  no sign of printing, or Outpost was opened from the Home Screen, the screen says to use
+  the browser's own Share menu, then Print, or to take a screenshot of the sheet (see
+  [encryption.md](encryption.md#printing-from-a-phone) for what is known about each
+  browser). The sheet cannot yet be saved as a PDF, as the map's page and the one-time
+  pads can.
 - **Changes are explicit.** Nothing is saved until **Save contact**. If the contact was
   changed somewhere else after you opened it, your change is refused and nothing is
   overwritten.

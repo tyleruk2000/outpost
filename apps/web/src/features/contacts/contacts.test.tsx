@@ -405,6 +405,34 @@ describe("the emergency sheet", () => {
     );
   });
 
+  it("has no Print button where the browser cannot print, and says how to print the sheet all the same", async () => {
+    fakeApi({ ...system, "GET /api/contacts/emergency": { contacts: [contact({ isEmergency: true })] } });
+    vi.stubGlobal("print", undefined);
+    show("/contacts/emergency");
+    const sheet = await screen.findByTestId("sheet-preview");
+    expect(within(sheet).getByText("Maya Okafor")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Print" })).not.toBeInTheDocument();
+    const notice = screen.getByText("This browser cannot print from a page").closest('[role="status"]')!;
+    expect(notice).toHaveTextContent("Use the browser’s own Share menu, then Print, or take a screenshot of the sheet below.");
+    // The copy that the browser's own Print prints is there whether or not the button is.
+    expect(document.body.querySelector(":scope > .outpost-contacts-print")).toHaveTextContent("Maya Okafor");
+    expect(screen.getByRole("link", { name: "Save these as a vCard file" })).toBeInTheDocument();
+  });
+
+  it("says that Print may not start where the app was opened from the Home Screen", async () => {
+    fakeApi({ ...system, "GET /api/contacts/emergency": { contacts: [contact({ isEmergency: true })] } });
+    vi.stubGlobal("print", vi.fn());
+    Object.defineProperty(navigator, "standalone", { value: true, configurable: true });
+    try {
+      show("/contacts/emergency");
+      await screen.findByTestId("sheet-preview");
+      expect(screen.getByRole("button", { name: "Print" })).toBeInTheDocument();
+      expect(screen.getByText("Opened from the Home Screen, a phone does not always print from a button")).toBeInTheDocument();
+    } finally {
+      Object.defineProperty(navigator, "standalone", { value: undefined, configurable: true });
+    }
+  });
+
   it("says how to mark someone when nobody is", async () => {
     fakeApi({ ...system, "GET /api/contacts/emergency": { contacts: [] } });
     show("/contacts/emergency");

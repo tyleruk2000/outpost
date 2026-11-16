@@ -452,12 +452,89 @@ Pad letters come from the browser's cryptographic random source
 (`crypto.getRandomValues`). A byte of 234 or more is thrown away and drawn again, so
 that what is left divides evenly among 26 letters and none is favoured; a test checks
 this. The letters are held only in the page, are never stored or sent, and are gone when
-you leave the screen. Only the pads are printed: the rest of the app is hidden on paper.
+you leave the screen.
 
 A pad made on a computer is only as secret as that computer, its printer and the route
 the paper takes to the other person. Typing a pad into the tool to encipher leaves it in
 the browser too. The strict way is dice, a pencil, and the sums done on paper; the tool
 shows the sums.
+
+### Getting them onto paper
+
+**Print pads** and **Print a Vigenère square** open the sheet over the whole screen, as
+it will print: white paper, black letters in the mono face, each pad twice. Nothing is
+printed by opening it. Above the sheet are two ways to paper, and the sheet being on the
+screen is a third:
+
+- **Print** asks the browser to print. Only the sheet is printed: the bar, the notes and
+  the app behind it are left off the paper, and the sheet runs on from page to page with
+  no pad copy split between two.
+- **Save as PDF** makes the same sheets as a PDF file and hands it to the browser to
+  save: `one-time-pads.pdf` or `vigenere-square.pdf`, A4 or US Letter (US Letter to
+  start with where the device is set to a country that uses it; the choice is
+  remembered). Any phone can open, share and print a PDF. Where the browser can share a
+  file (which needs HTTPS), **Share the PDF** is offered as well.
+- **The browser's own Share menu, then Print**, prints the sheet too, since the same
+  rules apply however printing is started. A screenshot keeps it.
+
+The PDF is written by Outpost's own small writer, the one the map uses
+(`apps/web/src/features/maps/print/pdf.ts`), with no library. The words are in
+Helvetica and the letters in Courier, two of the typefaces every PDF reader supplies
+itself, so the file carries no font, its letters are real text, and two pads make a file
+of about 7 kB. Pad copies are laid out in the order they were made, the sender's copy
+then the receiver's, as many to a page as fit, and none is split between pages: three
+copies of 500 letters fit on a page of A4.
+
+**The file is made in the page and sent nowhere.** Outpost keeps nothing of it once the
+view is closed or the screen is left: the only thing remembered is which paper was
+chosen. But a PDF you save is **a third copy of the pads**, on this device and anywhere
+it is then shared, synced or backed up. The screen says so beside the button. Print it,
+then delete it everywhere, as you would burn the paper. A screenshot is a copy too.
+
+### Printing from a phone
+
+A Print button on a web page calls `window.print()`, and that does not do the same
+thing in every browser. None of them reports failure, so the screen cannot know that a
+press did nothing; it can only look for signs. What was found, on 16 November 2026:
+
+| Where | What `window.print()` does | Source |
+| --- | --- | --- |
+| Desktop browsers | Opens the print dialogue; the page waits until it closes. | MDN, [Window: print()](https://developer.mozilla.org/en-US/docs/Web/API/Window/print): "This method will block while the print dialog is open." |
+| Safari on iPhone and iPad | Supported. The page is not held while the print sheet is open: `afterprint` fires before the sheet is closed. | WebKit [bug 245171](https://bugs.webkit.org/show_bug.cgi?id=245171) (open since 2022, reported on iOS 15.6 and 16) |
+| Any other app on iOS that shows a page in a web view (other browsers, in-app browsers) | Nothing, unless the app has arranged for printing itself. WebKit passes the call to the app through a private hook; if the app has none, the call returns with no dialogue and no error. | WebKit source, [`UIDelegate.mm`, `UIClient::printFrame`](https://github.com/WebKit/WebKit/blob/main/Source/WebKit/UIProcess/Cocoa/UIDelegate.mm) |
+| Chrome on iOS | Has arranged it: it replaces `window.print` with its own function, which asks the app to print. | Chromium source, [`ios/chrome/browser/web/model/print/resources/print.ts`](https://github.com/chromium/chromium/blob/main/ios/chrome/browser/web/model/print/resources/print.ts) |
+| Firefox on iOS | Arranged the same way in 2016 (the bug is marked for version 4.0). The current source was not found to confirm it is still there. | Mozilla [bug 1247848](https://bugzilla.mozilla.org/show_bug.cgi?id=1247848), "Support window.print()", fixed |
+| A site opened from the Home Screen on iOS (an app of its own, with no browser toolbar) | **Not established.** Apple does not say. The app that shows such a site is not part of open-source WebKit, so whether it answers the call cannot be read. The reports found say it does not work: on iOS 9 the dialogue opened with no preview and no printer to choose; in November 2026 the owner of another project reported that Print did nothing on an iPhone from the Home Screen. | Apple Developer Forums, [thread 22911](https://developer.apple.com/forums/thread/22911) (2015); [kylehoehns/benchcard issue 500](https://github.com/kylehoehns/benchcard/issues/500) (2026, no iOS version given) |
+| Firefox on Android | Supported since version 114. | MDN [browser-compat-data](https://github.com/mdn/browser-compat-data/blob/main/api/Window.json), `api.Window.print` |
+| Chrome on Android | Listed as supported, like desktop Chrome. Not checked further. | The same data |
+
+Two more things bear on it. Since iOS 26, a site added to the Home Screen opens as an
+app of its own by default ([firt.dev, "iOS PWA Compatibility"](https://firt.dev/notes/pwa-ios/),
+updated 13 October 2026), and Outpost's manifest asks for that in any case; so anyone
+who put Outpost on their Home Screen is in the row of the table that is not established.
+And saving a file from a Home Screen app has its own history: a link with the
+`download` attribute did nothing there on iOS 13 and was working by iOS 14.3
+(WebKit [bug 209407](https://bugs.webkit.org/show_bug.cgi?id=209407)); on iOS 17 it
+opens a preview of the file, with the share button, where Safari would ask whether to
+download it (WebKit [bug 275288](https://bugs.webkit.org/show_bug.cgi?id=275288)).
+
+So the screen does three things, and so do the emergency sheet in Contacts and the map's
+"Print or save as PDF" (`apps/web/src/lib/printing.ts`):
+
+- **Where the browser has no `window.print`**, there is no Print button. The screen says
+  the browser cannot print from a page and what to do instead.
+- **Where Outpost was opened from the Home Screen** (`navigator.standalone`, or the
+  `display-mode: standalone` media query), the other way is put first: Save as PDF leads,
+  Print stands second, and a line says that a phone does not always print from there.
+- **After Print is pressed**, the screen waits a second and a half for a sign that
+  printing began: the `beforeprint` event, or the page being laid out for paper. If
+  neither comes, it says "If no print dialogue opened, this browser does not print from
+  a button", and what to do instead. The words are conditional because the sign is not
+  proof either way on a browser that was not tested.
+
+What to do instead is the PDF, for pads, the square and the map. The emergency sheet has
+no PDF yet: its sheet is already on the screen as it prints, so the screen points to
+the browser's own Share menu, then Print, and to a screenshot.
 
 ### Amateur radio
 
@@ -497,10 +574,21 @@ replaced. You may put another build of OpenPGP.js in its place.
 - **Any browser but Chromium.** The unit tests run in Node; the end-to-end tests and
   every measurement here used Chromium. Firefox and Safari were not opened.
 - **A real phone.** Phone width was tested in Chromium's emulation.
+- **Printing or saving a PDF on an iPhone, in any browser or from the Home Screen.**
+  The print view, the PDF and the fallbacks were tested in Chromium at a phone's size,
+  with `window.print` removed, made to do nothing, and with the Home Screen sign set by
+  hand. What Safari, Chrome and Firefox on iOS, and a Home Screen app, do with the Print
+  button, with the "Save as PDF" link and with a PDF of Courier text is taken from the
+  sources under "Printing from a phone", not from a device. Whether the `beforeprint`
+  sign arrives on iOS when the print sheet opens is not known; if it does not, the
+  "If no print dialogue opened" line appears beside a print sheet that did open.
+- **The PDF in a reader other than pdf.js and macOS Preview's renderer.** The tests read
+  it back with pdf.js; it was looked at once as rendered by `pdftoppm` and by macOS.
 - **Real HTTPS on a home network.** The secure-origin behaviour was tested on
   `localhost`; the setting that turns HTTPS on is another piece of work.
-- **Printing on paper.** The print layout was checked in the browser's print rendering,
-  not on a printer.
+- **Printing on paper.** The print layout was checked in Chromium's print rendering
+  (sixteen pad copies run on over six pages of A4, with nothing else on them), not on a
+  printer.
 - **A page of notes larger than a few thousand words**, for how long each encrypted save
   takes on a slow device.
 - **Any OpenPGP program other than GnuPG 2.5.18.**
@@ -513,6 +601,8 @@ replaced. You may put another build of OpenPGP.js in its place.
 | Keys in the browser, the unlock session, passphrase rules | `device-keys.ts`, `session.ts`, `passphrase.ts` |
 | The screen | `encryption-page.tsx`, `keys-tab.tsx`, `text-tab.tsx`, `files-tab.tsx`, `hand-tab.tsx` |
 | Ciphers | `ciphers.ts` |
+| Paper aids: their words and PDF pages, and the view that prints them | `paper-aids.ts`, `print-view.tsx`, `encryption.css`; the PDF writer in `apps/web/src/features/maps/print/pdf.ts`, `courier.ts` |
+| Asking the browser to print, and saying when it will not | `apps/web/src/lib/printing.ts`, `apps/web/src/components/print-notice.tsx` |
 | Encrypted pages | `pages.ts`; `apps/web/src/features/notes/encrypt-page-dialog.tsx`, `encrypted-note.tsx`; `packages/shared/src/encryption.ts` |
 | The key shelf on the server | `apps/server/src/modules/encryption/` |
 | Encrypted pages on the server | `apps/server/src/modules/notes/service.ts` (`encryptedNoteArmor`), `apps/server/src/modules/search/service.ts` (`scrubbing`) |

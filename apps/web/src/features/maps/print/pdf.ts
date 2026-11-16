@@ -1,5 +1,6 @@
 /**
- * Writes a sheet (see sheet.ts) as a PDF file of one page.
+ * Writes a sheet (see sheet.ts) as a PDF file of one page, or several sheets as a file
+ * of several pages.
  *
  * Why this is written here and not taken from a library. What the page needs from the
  * format is small: a page of a stated size, pictures that are already JPEG (a PDF
@@ -22,6 +23,7 @@
  *
  * Nothing here touches the page or the network: sheet in, bytes out.
  */
+import { monoWidth } from "./courier";
 import { encodeWinAnsi, textWidth } from "./helvetica";
 import type { Rgb, Sheet, SheetItem } from "./sheet";
 
@@ -38,6 +40,15 @@ export interface PdfInput {
   /** The pictures the sheet refers to, by id. */
   pictures: ReadonlyMap<string, PdfPicture>;
   /** For the file's own record of what it is; shown by readers as the document's title. */
+  title: string;
+  created: Date;
+}
+
+export interface PdfPagesInput {
+  /** One sheet to a page, in order. Each page is the size of its own sheet. */
+  pages: readonly Sheet[];
+  /** The pictures the sheets refer to, by id. A file of text alone has none. */
+  pictures?: ReadonlyMap<string, PdfPicture>;
   title: string;
   created: Date;
 }
@@ -93,7 +104,11 @@ function content(sheet: Sheet, names: ReadonlyMap<string, string>): string {
       case "rect": {
         const box = `${n(item.x)} ${n(up(item.y + item.height))} ${n(item.width)} ${n(item.height)} re`;
         if (item.fill) lines.push(`${rgb(item.fill)} rg ${box} f`);
-        if (item.stroke) lines.push(`${rgb(item.stroke)} RG ${n(item.lineWidth ?? 0.5)} w ${box} S`);
+        if (item.stroke) {
+          const pen = `${rgb(item.stroke)} RG ${n(item.lineWidth ?? 0.5)} w`;
+          // The pattern of dashes stays set until it is changed, so it is put back to a solid line at once.
+          lines.push(item.dash ? `${pen} [${item.dash.map(n).join(" ")}] 0 d ${box} S [] 0 d` : `${pen} ${box} S`);
+        }
         break;
       }
       case "line":
@@ -106,10 +121,11 @@ function content(sheet: Sheet, names: ReadonlyMap<string, string>): string {
       }
       case "text": {
         // PDF has no centred or right-aligned text: the start is worked out from the width.
-        const width = textWidth(item.text, item.size, item.bold);
+        const width = item.mono ? monoWidth(item.text, item.size) : textWidth(item.text, item.size, item.bold);
         const back = item.anchor === "end" ? width : item.anchor === "middle" ? width / 2 : 0;
         const matrix = item.upward ? `0 1 -1 0 ${n(item.x)} ${n(up(item.y) - back)}` : `1 0 0 1 ${n(item.x - back)} ${n(up(item.y))}`;
-        lines.push(`BT /${item.bold ? "F2" : "F1"} ${n(item.size)} Tf ${rgb(item.color)} rg ${matrix} Tm ${pdfString(item.text)} Tj ET`);
+        const face = item.mono ? (item.bold ? "F4" : "F3") : item.bold ? "F2" : "F1";
+        lines.push(`BT /${face} ${n(item.size)} Tf ${rgb(item.color)} rg ${matrix} Tm ${pdfString(item.text)} Tj ET`);
         break;
       }
     }
@@ -124,27 +140,44 @@ const ascii = (text: string) => {
   return bytes;
 };
 
+/** One page: the layout the map's page has always had. */
 export function writePdf(input: PdfInput): Uint8Array {
-  const { sheet } = input;
-  const pictures = [...input.pictures.entries()];
-  const names = new Map(pictures.map(([id], index) => [id, `Im${index + 1}`]));
-  const stream = content(sheet, names);
+  return writePdfPages({ pages: [input.sheet], pictures: input.pictures, title: input.title, created: input.created });
+}
 
-  // Objects 1 to 7 are fixed; the pictures follow.
+export function writePdfPages(input: PdfPagesInput): Uint8Array {
+  const [first, ...rest] = input.pages;
+  if (!first) throw new Error("A PDF needs at least one page.");
+  const pictures = [...(input.pictures ?? new Map<string, PdfPicture>()).entries()];
+  const names = new Map(pictures.map(([id], index) => [id, `Im${index + 1}`]));
+  // Courier is named in the file only when a page is lettered in it.
+  const mono = input.pages.some((page) => page.items.some((item) => item.kind === "text" && item.mono));
+
+  // Objects 1 to 7 are fixed, with the first page among them; then the pictures, then
+  // Courier if it is used, then each further page and its drawing instructions.
   const firstPicture = 8;
+  const firstMono = firstPicture + pictures.length;
+  const firstLaterPage = firstMono + (mono ? 2 : 0);
+  const pageObject = (index: number) => (index === 0 ? 3 : firstLaterPage + (index - 1) * 2);
   const resources = [
-    "/Font << /F1 5 0 R /F2 6 0 R >>",
+    `/Font << /F1 5 0 R /F2 6 0 R${mono ? ` /F3 ${firstMono} 0 R /F4 ${firstMono + 1} 0 R` : ""} >>`,
     pictures.length ? `/XObject << ${pictures.map((_, index) => `/Im${index + 1} ${firstPicture + index} 0 R`).join(" ")} >>` : "",
     "/ProcSet [/PDF /Text /ImageC]",
   ]
     .filter(Boolean)
     .join(" ");
   const font = (name: string) => `<< /Type /Font /Subtype /Type1 /BaseFont /${name} /Encoding /WinAnsiEncoding >>`;
+  const page = (sheet: Sheet, contents: number) =>
+    `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${n(sheet.width)} ${n(sheet.height)}] /Resources << ${resources} >> /Contents ${contents} 0 R >>`;
+  const drawing = (sheet: Sheet) => {
+    const stream = content(sheet, names);
+    return [`<< /Length ${stream.length} >>\nstream\n`, stream, "\nendstream"];
+  };
   const objects: Array<Array<string | Uint8Array>> = [
     ["<< /Type /Catalog /Pages 2 0 R /ViewerPreferences << /PrintScaling /None >> >>"],
-    ["<< /Type /Pages /Kids [3 0 R] /Count 1 >>"],
-    [`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${n(sheet.width)} ${n(sheet.height)}] /Resources << ${resources} >> /Contents 4 0 R >>`],
-    [`<< /Length ${stream.length} >>\nstream\n`, stream, "\nendstream"],
+    [`<< /Type /Pages /Kids [${input.pages.map((_, index) => `${pageObject(index)} 0 R`).join(" ")}] /Count ${input.pages.length} >>`],
+    [page(first, 4)],
+    drawing(first),
     [font("Helvetica")],
     [font("Helvetica-Bold")],
     [
@@ -155,6 +188,8 @@ export function writePdf(input: PdfInput): Uint8Array {
       picture.jpeg,
       "\nendstream",
     ]),
+    ...(mono ? [[font("Courier")], [font("Courier-Bold")]] : []),
+    ...rest.flatMap((sheet, index) => [[page(sheet, pageObject(index + 1) + 1)], drawing(sheet)]),
   ];
 
   const parts: Uint8Array[] = [];
