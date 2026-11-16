@@ -80,7 +80,10 @@ test.describe("The contact log", () => {
     await what.focus();
     await page.keyboard.press("Enter");
     await expect(page.getByRole("listbox")).toBeVisible();
+    // The list opens with the focus on the one chosen, a moment after it appears; the arrows move from there.
+    await expect(page.getByRole("option", { name: "Called, not heard" })).toBeFocused();
     await page.keyboard.press("ArrowUp");
+    await expect(page.getByRole("option", { name: "Heard, no contact" })).toBeFocused();
     await page.keyboard.press("Enter");
     await expect(what).toHaveText("Heard, no contact");
     await expect(page.getByRole("listbox")).toHaveCount(0);
