@@ -159,6 +159,8 @@ test.describe("on a phone", () => {
     await next.click();
     await expect(page.getByRole("heading", { level: 1, name: "Fog" })).toBeVisible();
     expect(errors).toEqual([]);
+  });
+
   test("records a track with the card folded out of the map's way, and saves it", async ({ page, context }) => {
     await context.grantPermissions(["geolocation"]);
     await context.setGeolocation({ latitude: 54.46, longitude: -3.09, accuracy: 6 });
