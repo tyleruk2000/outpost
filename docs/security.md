@@ -250,9 +250,10 @@ exposed than it already is.
 
 #### What is kept
 
-Nothing. The question, the passages sent and the answer are not written to the
-database, a file or the log; the log records only that an answer failed and the kind
-of failure. The web app holds the current answer in memory, not in the browser's
+Of an answer, nothing (a conversation in Chat is kept: see
+[Conversations](#conversations)). The question, the passages sent and the answer are
+not written to the database, a file or the log; the log records only that an answer
+failed and the kind of failure. The web app holds the current answer in memory, not in the browser's
 storage. A test checks the database for the question after an answer has been
 written.
 

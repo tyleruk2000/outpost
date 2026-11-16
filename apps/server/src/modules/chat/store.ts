@@ -22,7 +22,7 @@ import { notFound } from "../../core/errors.ts";
 import { newId } from "../../core/ids.ts";
 import { chatConversations, chatMessages } from "../../db/schema.ts";
 import { markdownBlocks } from "../documents/markdown-view.ts";
-import { checkCitations } from "../retrieval/index.ts";
+import { CITATION_MARKER } from "../retrieval/index.ts";
 import { excerptOf } from "./context.ts";
 
 type ConversationRow = typeof chatConversations.$inferSelect;
@@ -42,6 +42,13 @@ export function replyBlocks(text: string): MarkdownBlock[] {
     // The reader does not fail on real text; if it ever does, the words are still shown.
     return [{ t: "paragraph", c: [{ t: "text", v: text }] }];
   }
+}
+
+/** The citation markers a reply uses, by the same rule as `checkCitations`, in order. */
+function markersIn(text: string): number[] {
+  const found = new Set<number>();
+  for (const match of text.matchAll(CITATION_MARKER)) for (const number of match[1]?.split(/[,;]/) ?? []) found.add(Number(number));
+  return [...found].sort((a, b) => a - b);
 }
 
 const routeOf = (kind: "document" | "note", id: string) => (kind === "note" ? `/notes/${id}` : `/library/documents/${id}`);
@@ -79,13 +86,7 @@ export function toMessage(row: MessageRow, blocks?: MarkdownBlock[]): ChatMessag
     sources,
     searchedFor: row.searchedFor,
     // Markers are judged once the reply is whole; half a reply has not cited anything wrongly yet.
-    unsupported:
-      row.grounded && settled
-        ? checkCitations(
-            row.text,
-            sources.map((source) => ({ marker: source.marker }) as never),
-          ).unsupported
-        : [],
+    unsupported: row.grounded && settled ? markersIn(row.text).filter((marker) => !sources.some((source) => source.marker === marker)) : [],
     omitted: row.omitted,
     tookMs: row.tookMs,
     createdAt: row.createdAt,

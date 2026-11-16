@@ -380,8 +380,9 @@ which kind of failure). The web app holds the one current answer in memory, so t
 you can open a source and come back to it; it is not put in the browser's storage,
 and it goes when the tab is closed or reloaded. Asking again replaces it.
 
-There is deliberately no history. If you want to keep an answer, copy it into a note,
-with its sources.
+There is deliberately no history of answers. If you want to keep one, copy it into a
+note, with its sources. (Conversations in Chat are another matter: they are kept, and
+[that section](#what-is-kept-for-a-conversation) says where.)
 
 ## The answer on screen
 
