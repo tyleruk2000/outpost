@@ -26,7 +26,7 @@ import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
 import { AppError, messageOf } from "../../core/errors.ts";
-import { isLocalRequest } from "../../core/local.ts";
+import { localBy } from "../../core/local.ts";
 import { settings as settingsTable } from "../../db/schema.ts";
 import { assertBackupRight } from "./right.ts";
 import {
@@ -151,7 +151,8 @@ export function settleStagedProtection(staged: Database.Database, current: Prote
  * network in the clear: this computer itself, or another device over HTTPS.
  */
 export function passphraseRight(request: FastifyRequest, ctx: AppContext): BackupPassphraseRight {
-  if (isLocalRequest(request, ctx.config)) return { allowed: true, reason: "local" };
+  const by = localBy(request, ctx.config);
+  if (by) return { allowed: true, reason: "local", localBy: by };
   if (!ctx.config.allowRemoteErase) return { allowed: false, reason: "remote" };
   const overHttps = (request.raw.socket as Partial<TLSSocket>).encrypted === true;
   return overHttps ? { allowed: true, reason: "https" } : { allowed: false, reason: "insecure" };

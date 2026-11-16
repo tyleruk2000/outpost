@@ -736,7 +736,11 @@ describe("HTTPS with a certificate of your own", () => {
     expect(await w.status()).toMatchObject({ enabled: false, source: "outpost" });
 
     // At the computer itself it is accepted.
-    expect((await w.status()).own.keyRight).toEqual({ allowed: true, reason: "local" });
+    expect((await w.status()).own.keyRight).toEqual({
+      allowed: true,
+      reason: "local",
+      localBy: { rule: "loopback", address: "127.0.0.1" },
+    });
     const first = await w.give([chainOf(mine), mine.keyPem]);
     expect(first.status).toBe(200);
 

@@ -8,7 +8,7 @@
  * Outpost found in it, how long it has left, what it does not cover, and who has to
  * trust what.
  */
-import { type HttpsOwnCertificate, type HttpsStatus, PLAIN_HTTP_ACCEPTED_FIELD } from "@outpost/shared";
+import { type HttpsOwnCertificate, type HttpsStatus, localByReason, PLAIN_HTTP_ACCEPTED_FIELD } from "@outpost/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ChevronRight, CircleAlert, FileUp } from "lucide-react";
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
@@ -320,7 +320,7 @@ function GiveFiles({ data, secure, onDone }: { data: HttpsStatus; secure: Secure
           {data.own.keyRight.reason === "https"
             ? "Offered here because this page is open over HTTPS."
             : data.own.keyRight.reason === "local"
-              ? "Offered here because you are at the computer Outpost runs on."
+              ? `Offered here because ${localByReason(data.own.keyRight.localBy)}.`
               : "Sent over plain http only once you have ticked the box above."}
         </p>
       </div>

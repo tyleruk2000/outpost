@@ -69,3 +69,23 @@ export function formatDuration(seconds: number): string {
 export function ownValue<T>(table: Readonly<Record<string, T>>, key: string): T | undefined {
   return Object.hasOwn(table, key) ? table[key] : undefined;
 }
+
+/**
+ * Which rule made Outpost take a request as coming from the computer it runs on, so a
+ * screen that says "you are at the computer Outpost runs on" can say why, and a wrong
+ * answer is seen: the loopback address, one of the computer's own network addresses,
+ * or Outpost not being open to the network at all.
+ */
+export type LocalBy = { rule: "loopback" | "own-address"; address: string } | { rule: "not-on-network"; address: null };
+
+/**
+ * Why a screen takes this device for the computer Outpost runs on, to follow "Offered
+ * here because": "this is the computer Outpost runs on: you are connected from its own
+ * address 192.168.1.232". Without a rule (an older server), the plain claim.
+ */
+export function localByReason(by: LocalBy | undefined): string {
+  if (!by) return "you are at the computer Outpost runs on";
+  if (by.rule === "loopback") return `this is the computer Outpost runs on: you are connected from its loopback address ${by.address}`;
+  if (by.rule === "own-address") return `this is the computer Outpost runs on: you are connected from its own address ${by.address}`;
+  return "this is the computer Outpost runs on: Outpost is not open to the network, so nothing else can reach it";
+}

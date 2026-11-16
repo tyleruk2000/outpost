@@ -3,7 +3,7 @@
  * Each says exactly what it removes and what it keeps, shows the real figures, and
  * waits for a confirmation that repeats them.
  */
-import { type CleanupStatus, type DerivedStep, ERASE_CONFIRMATION, formatBytes } from "@outpost/shared";
+import { type CleanupStatus, type DerivedStep, ERASE_CONFIRMATION, formatBytes, localByReason } from "@outpost/shared";
 import { CircleAlert, MonitorSmartphone } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { Notice } from "@/components/page";
@@ -418,7 +418,7 @@ export default function CleanupView({ status, loading }: { status: CleanupStatus
             <p className="mt-2 text-small text-ink-muted">
               {status.erase.reason === "option"
                 ? `Offered on every device because Outpost was started with ${status.erase.option}=true.`
-                : "Offered here because you are at the computer Outpost runs on."}{" "}
+                : `Offered here because ${localByReason(status.erase.localBy)}.`}{" "}
               Asks you to type a phrase, and offers a backup first.
             </p>
           </div>

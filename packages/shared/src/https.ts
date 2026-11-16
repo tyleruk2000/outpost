@@ -2,6 +2,7 @@
  * HTTPS on the home network: a second listener, with a certificate this server makes
  * for itself or one the person brought.
  */
+import type { LocalBy } from "./common.ts";
 
 /** One way of opening Outpost over HTTPS. */
 export interface HttpsAddress {
@@ -32,6 +33,8 @@ export interface HttpsAuthorityRight {
   allowed: boolean;
   /** `local`: asked from the computer Outpost runs on. `option`: allowed everywhere by a start-up option. */
   reason: "local" | "option" | "remote";
+  /** With `local`: which rule made it so. */
+  localBy?: LocalBy;
   /** The start-up option that allows it from every device. */
   option: string;
 }
@@ -47,6 +50,8 @@ export interface HttpsKeyRight {
    * own statement that they accept the key being readable on the way.
    */
   reason: "local" | "https" | "remote";
+  /** With `local`: which rule made it so. */
+  localBy?: LocalBy;
 }
 
 /**

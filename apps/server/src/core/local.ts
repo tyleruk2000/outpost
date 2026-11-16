@@ -35,11 +35,15 @@
  *    which was already there, and has the same answer: a relay must send a forwarding
  *    header.
  *  - Inside a container. Its own addresses are the container's, and connections from
- *    the computer it runs on and from other devices are carried in by Docker's port
- *    publishing (or its user-land proxy, which connects from the bridge's gateway).
- *    None of that is in the container's own interface list, but nothing in Docker's
- *    documentation promises it either, so in a container the rule is not used at all:
- *    only loopback (and LAN access off) count, as before.
+ *    the computer it runs on and from other devices are carried in by the engine's port
+ *    publishing (or a user-land proxy, which connects from the bridge's gateway, or
+ *    from inside the container's own network namespace, as Podman's rootless network
+ *    can). Nothing in any engine's documentation promises which, so in a container the
+ *    rule is not used at all: only loopback (and LAN access off) count. What is taken
+ *    as a sign of a container is in `containerReason`.
+ *  - A set-up where something on this computer forwards connections without adding a
+ *    forwarding header. Whoever starts Outpost can turn the rule off for that:
+ *    OUTPOST_OWN_ADDRESS_IS_LOCAL=false.
  *  - Link-local addresses (`fe80::/10`, `169.254.0.0/16`). They are unique only per
  *    network link, and some are shared on purpose: macOS gives its loopback interface
  *    `fe80::1`, which is also what many routers use on the home network. They are never
@@ -51,6 +55,7 @@
 import fs from "node:fs";
 import type { IncomingHttpHeaders } from "node:http";
 import os from "node:os";
+import type { LocalBy } from "@outpost/shared";
 
 const FORWARDING_HEADERS = ["forwarded", "x-forwarded-for", "x-forwarded-host", "x-real-ip"];
 
@@ -105,17 +110,78 @@ export interface Machine {
 const truthy = (value: string | undefined) => ["1", "true", "yes", "on"].includes((value ?? "").toLowerCase());
 const REREAD_MS = 5000;
 
+/** The files `containerReason` looks at; tests give a made-up file system. */
+export interface FileProbe {
+  exists(file: string): boolean;
+  /** The file's text, or null when it cannot be read. */
+  read(file: string): string | null;
+}
+
+const realFiles: FileProbe = {
+  exists: (file) => fs.existsSync(file),
+  read: (file) => {
+    try {
+      return fs.readFileSync(file, "utf8").slice(0, 256 * 1024);
+    } catch {
+      return null;
+    }
+  },
+};
+
+/** Control-group paths that container engines and Kubernetes give their containers (cgroup v1, and v2 where the path is visible). */
+const CONTAINER_CGROUP =
+  /(?:^|[/:])(?:docker|kubepods|containerd|libpod|lxc|garden|buildkit)(?:[-/.]|$)|\/docker-[0-9a-f]{12,}\.scope|\/libpod-[0-9a-f]{12,}\.scope|\/crio-[0-9a-f]{12,}\.scope/m;
+/** Root file systems that live in a container engine's own storage. */
+const CONTAINER_ROOT = /\/var\/lib\/(?:docker|containers\/storage|containerd|kubelet|rancher|lxc|lxd)\//;
+
 /**
- * The computer Outpost runs on. The container test is the one `detectHost` makes
- * (`modules/storage/shares/host.ts`): the variable the Compose file sets, or Docker's
- * marker file.
+ * Why Outpost thinks it runs in a container, or null. Each sign is what an engine
+ * documents, or has made for years, for programs inside to find:
+ *
+ *  - `OUTPOST_IN_CONTAINER`: set by this repository's Dockerfile and Compose file.
+ *  - `/.dockerenv`: the file Docker puts at the root of every container it starts
+ *    (long-standing; Docker's documentation does not promise it).
+ *  - `/run/.containerenv`: the file Podman puts in every container (podman-run(1):
+ *    "Podman … creates /run/.containerenv in the container"), also made by Buildah.
+ *  - The `container` variable: systemd's Container Interface asks every container
+ *    manager to set it ("container=docker", "podman", "lxc", "systemd-nspawn"…;
+ *    systemd.io/CONTAINER_INTERFACE), and Podman sets it for the program it runs.
+ *  - `KUBERNETES_SERVICE_HOST`: Kubernetes gives every container in a pod the address
+ *    of the cluster's API service this way ("Services: Environment variables" in the
+ *    Kubernetes documentation), whatever runtime it uses.
+ *  - A control group under a container engine's or Kubernetes's own path in
+ *    `/proc/self/cgroup` (cgroups(7); "docker", "kubepods", "libpod-…", "lxc").
+ *  - A root file system that is kept in an engine's own storage (`/var/lib/docker/`,
+ *    `/var/lib/containers/storage/`, …) as `/proc/self/mountinfo` shows it
+ *    (proc_pid_mountinfo(5)). An overlay root alone is not taken as a sign: Raspberry
+ *    Pi OS makes one for its read-only mode.
+ *
+ * Mistaking a computer for a container only takes away the own-address rule, so a
+ * browser there has to use localhost. Missing a container could give every device on
+ * the network the computer's rights, so any one sign is enough.
  */
+export function containerReason(env: NodeJS.ProcessEnv = process.env, files: FileProbe = realFiles): string | null {
+  if (truthy(env.OUTPOST_IN_CONTAINER)) return "OUTPOST_IN_CONTAINER is set";
+  if (env.container) return `container=${env.container.slice(0, 40)} is set`;
+  if (env.KUBERNETES_SERVICE_HOST) return "KUBERNETES_SERVICE_HOST is set (Kubernetes)";
+  if (files.exists("/.dockerenv")) return "/.dockerenv is there (Docker)";
+  if (files.exists("/run/.containerenv")) return "/run/.containerenv is there (Podman)";
+  const cgroup = files.read("/proc/self/cgroup");
+  if (cgroup && CONTAINER_CGROUP.test(cgroup)) return "its control group is a container's (/proc/self/cgroup)";
+  const mounts = files.read("/proc/self/mountinfo");
+  const root = mounts?.split("\n").find((line) => line.split(" ")[4] === "/");
+  if (root && CONTAINER_ROOT.test(root)) return "its root file system is a container engine's mount (/proc/self/mountinfo)";
+  return null;
+}
+
+/** The computer Outpost runs on. */
 export function thisMachine(
   env: NodeJS.ProcessEnv = process.env,
   read: () => Interfaces = () => os.networkInterfaces(),
   now: () => number = Date.now,
+  files: FileProbe = realFiles,
 ): Machine {
-  const inContainer = truthy(env.OUTPOST_IN_CONTAINER) || (process.platform === "linux" && fs.existsSync("/.dockerenv"));
+  const inContainer = containerReason(env, files) !== null;
   let cached: { at: number; addresses: Set<string> } | null = null;
   return {
     inContainer,
@@ -154,7 +220,28 @@ export interface RequestOrigin {
   socket: { remoteAddress?: string };
 }
 
-export function isLocalRequest(request: RequestOrigin, config: { lanAccess: boolean }, on: Machine = defaultMachine()): boolean {
-  if (FORWARDING_HEADERS.some((name) => request.headers[name] !== undefined)) return false;
-  return !config.lanAccess || isOwnAddress(request.socket.remoteAddress, on);
+/** What decides whether a request is this computer's: LAN access, and whether the own-address rule is on. */
+export interface LocalConfig {
+  lanAccess: boolean;
+  /** OUTPOST_OWN_ADDRESS_IS_LOCAL; on unless turned off. */
+  ownAddressIsLocal?: boolean;
+}
+
+/**
+ * Which rule made a request this computer's, so that a screen can say so and a wrong
+ * answer is seen: the loopback address it came from, this computer's own network
+ * address, or LAN access being off. Null for any other device.
+ */
+
+export function localBy(request: RequestOrigin, config: LocalConfig, on: Machine = defaultMachine()): LocalBy | null {
+  if (FORWARDING_HEADERS.some((name) => request.headers[name] !== undefined)) return null;
+  const address = request.socket.remoteAddress;
+  if (address && isLoopbackAddress(address)) return { rule: "loopback", address: plain(address) };
+  if (!config.lanAccess) return { rule: "not-on-network", address: null };
+  if (config.ownAddressIsLocal === false || !address) return null;
+  return isOwnAddress(address, on) ? { rule: "own-address", address: plain(address) } : null;
+}
+
+export function isLocalRequest(request: RequestOrigin, config: LocalConfig, on: Machine = defaultMachine()): boolean {
+  return localBy(request, config, on) !== null;
 }

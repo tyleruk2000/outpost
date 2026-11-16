@@ -171,6 +171,24 @@ describe("the Database section", () => {
     expect(await screen.findByText(/once this has finished, or been paused: Back up to NAS/)).toBeTruthy();
   });
 
+  it("says which rule made it take this device for the computer Outpost runs on", async () => {
+    serve(
+      status({
+        reclaim: { ...status().reclaim, right: { ...local, localBy: { rule: "own-address", address: "192.168.1.232" } } },
+      }),
+    );
+    show();
+    expect(
+      await screen.findByText(
+        "Offered here because this is the computer Outpost runs on: you are connected from its own address 192.168.1.232.",
+      ),
+    ).toBeTruthy();
+    vi.unstubAllGlobals();
+    serve(status({ reclaim: { ...status().reclaim, right: { ...local, localBy: { rule: "loopback", address: "127.0.0.1" } } } }));
+    show();
+    expect(await screen.findByText(/you are connected from its loopback address 127\.0\.0\.1\./)).toBeTruthy();
+  });
+
   it("checks the database, and reports what a check found wrong", async () => {
     const running = status({
       active: { id: "j1", type: "database.check", title: "Check the database", state: "running" } as DatabaseStatus["active"],

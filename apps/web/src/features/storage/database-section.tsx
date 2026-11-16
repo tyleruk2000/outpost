@@ -2,7 +2,7 @@
  * The database on the Storage screen: where Outpost's one SQLite file is, what is in it,
  * the state it is in, and the two ways of looking after it. See modules/database.
  */
-import { type DatabaseJobResponse, type DatabaseStatus, formatBytes } from "@outpost/shared";
+import { type DatabaseJobResponse, type DatabaseStatus, formatBytes, localByReason } from "@outpost/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CircleAlert, CircleCheck, RefreshCw } from "lucide-react";
 import { type ReactNode, useState } from "react";
@@ -219,9 +219,14 @@ function ReclaimRow({ status }: { status: DatabaseStatus }) {
       ) : blocked ? (
         <p className="max-w-[70ch] text-ink">{blocked}</p>
       ) : (
-        <Button onClick={() => setConfirming(true)} disabled={status.active !== null}>
-          Reclaim unused space
-        </Button>
+        <div>
+          <Button onClick={() => setConfirming(true)} disabled={status.active !== null}>
+            Reclaim unused space
+          </Button>
+          {status.reclaim.right.reason === "local" ? (
+            <p className="mt-2 text-small text-ink-muted">Offered here because {localByReason(status.reclaim.right.localBy)}.</p>
+          ) : null}
+        </div>
       )}
       {status.lastVacuum && !running ? (
         <p>
