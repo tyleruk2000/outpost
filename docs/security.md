@@ -647,7 +647,10 @@ checked. Keep a copy of any private key that matters.
 - **"Checked" marks.**
 - **Unlocked keys and decrypted text**: in memory only, never in storage. An unlocked
   key is forgotten 5 minutes after its last use, on leaving the screen, and when the tab
-  goes away; an open encrypted page locks itself after 5 idle minutes. JavaScript cannot
+  goes away; an open encrypted page locks itself after 5 idle minutes. A key press or a
+  pointer press on a page opened with a key counts as use of that key, so the key is
+  held for as long as the page is in use. A page with changes it cannot save does not
+  lock, and keeps its key, until they are saved or the page is left. JavaScript cannot
   guarantee that memory is wiped, and cannot overwrite a passphrase that was typed.
 
 A person at an unlocked device, or an extension that can read the page, sees whatever is

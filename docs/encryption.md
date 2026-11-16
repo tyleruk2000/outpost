@@ -135,6 +135,11 @@ Outpost drops every reference to it. A browser gives a page no way to be certain
 memory is erased, and a passphrase typed into a field is a string that cannot be
 overwritten; both are simply released.
 
+Reading or typing on a page of notes that was opened with a key counts as use of that
+key: every save of the page needs it, to check what was encrypted. So the key's 5
+minutes and the page's are the same 5 minutes, and both start again at each key press
+and each press of a pointer on the page.
+
 ### Other people's keys
 
 **Add a key** takes a public key as pasted text or a file. Nothing is looked up on the
@@ -308,9 +313,23 @@ passphrase. Then:
   "Encrypting and saving…" and "Not saved yet" in place of "Saved". If a save fails, the
   changes stay on screen and nothing is stored in their place.
 - **Done** saves and returns to reading. **Lock** saves, then forgets the text and the
-  passphrase. So do **5 minutes** without a key or a pointer (unless something is
-  unsaved), leaving the page, and closing the tab. Leaving with something unsaved saves
-  it on the way out; closing the tab asks first.
+  passphrase. So do **5 minutes** without a key or a pointer, leaving the page, and
+  closing the tab.
+- Leaving the page for another screen with something unsaved saves it on the way out,
+  including anything typed while an earlier save was still under way, and a save that
+  is under way is allowed to finish before the key is forgotten. If that last save
+  fails, a message says the last changes were not saved; they are gone, because an
+  encrypted page keeps no draft. Closing or reloading the tab while something is
+  unsaved or being saved makes the browser ask first.
+- If something is still unsaved when the 5 minutes run out (a save failed and nobody
+  pressed **Try again**), the page tries once more to save it, and locks only if that
+  works. Otherwise it stays open with the changes on screen and tries again every 5
+  minutes. A page that cannot be saved is never locked, because locking would drop
+  what was typed.
+- A page opened with a key is saved with that key. If a save finds the key locked, the
+  page says so, keeps the changes on screen, and asks for the key's passphrase; **Unlock
+  and save** then saves them. (A key is not forgotten while its page is in use, so this
+  should not happen in ordinary use.)
 - The decrypted text is never written to the browser's storage. An encrypted page keeps
   no draft.
 - **Remove encryption…** stores the text in the clear again, after asking.
