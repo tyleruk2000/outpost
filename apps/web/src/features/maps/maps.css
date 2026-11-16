@@ -151,3 +151,115 @@
     break-inside: avoid;
   }
 }
+
+/*
+ * On a phone, everything that is pressed on a screen with a map is at least 44 px each way: one rule here,
+ * for the screen that carries `outpost-touch`, rather than a size on each button. The app's small buttons are
+ * 40 px on a phone elsewhere. A control that has to stay small to look at (a tick box) reaches out to 44 px
+ * with an empty box of its own instead; a mark on the map has its own rules above.
+ *
+ * The 44 is in pixels, not rem, here and on the controls that hold no words (the sheet's handle, the icons of
+ * the tools): a finger is the same size whatever size the text is, and on a small phone with large text the
+ * room those would take growing with the text is room the map does not have.
+ */
+@media (max-width: 47.99rem) {
+  .outpost-touch
+    :is(button, a[role="button"], [role="tab"], [role="radio"], [role="combobox"]):not(
+      [role="checkbox"],
+      [role="switch"],
+      input,
+      .outpost-pin,
+      .outpost-box-handle
+    ) {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .outpost-touch :is([role="checkbox"], [role="switch"]) {
+    position: relative;
+  }
+  .outpost-touch :is([role="checkbox"], [role="switch"])::after {
+    content: "";
+    position: absolute;
+    inset: calc((100% - 44px) / 2);
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+/* On a phone, a button in a card over the map may take a second line rather than be wider than the card. */
+@media (max-width: 47.99rem) {
+  .outpost-map-card :is(button, a) {
+    max-width: 100%;
+    height: auto;
+    white-space: normal;
+    text-align: start;
+  }
+  .outpost-map-card {
+    overflow-wrap: anywhere;
+  }
+}
+
+/*
+ * The sheet on a phone. A panel in it is a head, a body that scrolls, and often a foot. Where the sheet is too
+ * short for all three (half raised on a small phone, larger text) the body keeps 6rem and the whole panel scrolls
+ * instead: nothing in a panel is ever below the edge of the sheet with no way to reach it.
+ */
+.outpost-sheet [role="tabpanel"],
+.outpost-sheet:not([data-detent="peek"]) section[aria-label="Line of sight"] {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.outpost-sheet[data-detent="peek"] section[aria-label="Line of sight"] {
+  overflow: hidden;
+}
+.outpost-sheet .scroll-quiet.flex-1.overflow-y-auto {
+  min-height: 6rem;
+}
+
+/*
+ * What lies over the map on a phone (map-furniture.tsx). The column of things between the
+ * top of the map and the top of the sheet knows how tall it is, and the clear part of the
+ * map in the middle of it knows how tall that is, so what is in them can give way by rule.
+ * The sizes are in rem: with larger text everything here is larger, and gives way sooner.
+ */
+.outpost-furniture {
+  container: furniture / size;
+}
+.outpost-furniture-clear {
+  container: clear-map / size;
+}
+/* The cards have the lower three fifths of the clear map, less a margin. The centre of the map is kept two
+   fifths of the way down it (maps-page.tsx), so a card never reaches the cross that marks the centre. On a
+   screen so short that three fifths is no use, they have 6rem of it or all there is, and may then reach the cross. */
+.outpost-furniture-cards {
+  max-height: max(calc(60cqh - 1rem), min(100cqh, 6rem));
+}
+/* Giving way, first to last. How much there is room for is measured (map-furniture.tsx) and said in `data-room`:
+   the coordinates of the centre and the scale go first, then the line of sun times under them. The coordinates
+   are still in the Sun tab, and those of any point under a long press; the sun times are one touch away. */
+.outpost-furniture[data-room="sun"] :is(.outpost-readout-coords, .outpost-scale),
+.outpost-furniture[data-room="none"] .outpost-readout-row {
+  display: none;
+}
+/* With nothing left on screen that reads the centre, and no clear map to put it on, the cross goes too. */
+.outpost-touch:has(.outpost-furniture[data-room="none"]) .outpost-centre-mark-yields {
+  display: none;
+}
+/* The scale bar needs the width beside the readout. */
+@container furniture (max-width: 17rem) {
+  .outpost-scale {
+    display: none;
+  }
+}
+/* A map set into another screen has no column to measure it: its readout goes where the frame is short. */
+@container furniture (max-height: 14rem) {
+  .outpost-furniture:not([data-room]) .outpost-readout-row {
+    display: none;
+  }
+}
+/* A map set into another screen (the radio planner's): its two zoom buttons lie side by side where it is short. */
+@container furniture (max-height: 16rem) {
+  .outpost-furniture-zoom {
+    flex-direction: row;
+  }
+}

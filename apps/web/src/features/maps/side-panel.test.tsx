@@ -31,6 +31,6 @@ describe("the tab names", () => {
     expect(list).not.toHaveClass("overflow-x-auto");
     expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Places128", "Routes14", "Offline maps", "Sun"]);
     // Each is tall enough to touch on a phone.
-    for (const tab of screen.getAllByRole("tab")) expect(tab).toHaveClass("max-md:min-h-11");
+    for (const tab of screen.getAllByRole("tab")) expect(tab).toHaveClass("max-md:min-h-[44px]", "max-md:min-w-[44px]");
   });
 });

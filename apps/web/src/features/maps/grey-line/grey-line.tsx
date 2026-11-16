@@ -230,7 +230,11 @@ export function GreyLineLegend({
  * The grey line's state on the Maps screen: switched on or off, kept drawn for the moment
  * shown, and the legend to put over the map while it is on.
  */
-export function useGreyLine(engine: MapEngine | null): { on: boolean; setOn: (on: boolean) => void; legend: ReactNode } {
+export function useGreyLine(
+  engine: MapEngine | null,
+  /** "over": laid over the map under the search box (a wide screen). "flow": one of the things in the phone's column, which places it. */
+  placed: "over" | "flow" = "over",
+): { on: boolean; setOn: (on: boolean) => void; legend: ReactNode } {
   const [on, setOn] = useStoredState(KEY, isBoolean, false);
   const [chosen, setChosen] = useMapMoment();
   const now = useMinute(on && chosen === null);
@@ -247,7 +251,7 @@ export function useGreyLine(engine: MapEngine | null): { on: boolean; setOn: (on
       at={at}
       isNow={chosen === null}
       onChoose={setChosen}
-      className="absolute top-[4.25rem] left-3 z-10 w-[min(24rem,calc(100%-1.5rem))] max-md:top-[4rem] max-md:w-auto max-md:right-[7.5rem]"
+      className={placed === "flow" ? "w-full" : "absolute top-[4.25rem] left-3 z-10 w-[min(24rem,calc(100%-1.5rem))]"}
     />
   ) : null;
   return { on, setOn, legend };

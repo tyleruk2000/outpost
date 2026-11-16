@@ -31,6 +31,7 @@ export function SightCard({
   onUseCentre,
   onShowDetails,
   onDone,
+  untitled,
 }: {
   sight: Sight;
   /** Puts the end being chosen at the middle of the map: the way to choose one without a pointer. */
@@ -38,11 +39,16 @@ export function SightCard({
   /** Brings the panel with the whole answer into view. */
   onShowDetails: () => void;
   onDone: () => void;
+  /**
+   * On a phone the lowered sheet under this card already says "Line of sight" and has the button that
+   * puts the tool down, so the card does not say or offer either again.
+   */
+  untitled?: boolean;
 }) {
   const { picking, reading, profile } = sight;
   const Icon = reading ? SIGHT_ICONS[reading.tone] : CircleQuestionMark;
   return (
-    <MapCard title="Line of sight" onClose={onDone} closeLabel="Stop checking line of sight">
+    <MapCard title="Line of sight" titleHidden={untitled} onClose={untitled ? undefined : onDone} closeLabel="Stop checking line of sight">
       {picking ? (
         <div aria-live="polite">
           <p className="mt-1 text-small text-ink-muted">

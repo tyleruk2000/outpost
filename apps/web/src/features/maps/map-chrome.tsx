@@ -2,6 +2,7 @@
 import {
   Compass,
   Crosshair,
+  EllipsisVertical,
   Grid3x3,
   LocateFixed,
   Minus,
@@ -17,9 +18,10 @@ import {
   Undo2,
   X,
 } from "lucide-react";
-import { type ReactNode, useEffect, useRef } from "react";
+import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Menu, MenuCheckItem, MenuContent, MenuItem, MenuLabel, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
 import { Spinner } from "@/components/ui/misc";
 import { cn } from "@/lib/utils";
 import { copyText, type LocateState } from "./hooks";
@@ -31,7 +33,7 @@ import { canRedo, canUndo, isFull, type RouteEdit } from "./lib/route-edit";
 import { STRAIGHT_LINES } from "./panels/route-editor";
 import { SunSection } from "./panels/sun";
 import { Locator, PathLocators } from "./radio/locator";
-import { ControlButton, ControlGroup, mapSurface } from "./ui";
+import { ControlButton, ControlGroup, mapCard, mapCardHeader, mapSurface } from "./ui";
 
 export type Tool = "browse" | "measure" | "add-place" | "draw" | "sight" | "print";
 
@@ -74,34 +76,30 @@ export const CONTOUR_NOTES: Record<Exclude<ContourReach, "drawn">, { label: stri
   },
 };
 
-export function MapControls({
-  tool,
-  onToolChange,
-  onZoomIn,
-  onZoomOut,
-  rotated,
-  onResetNorth,
-  locate,
-  onLocate,
-  hillshade,
-  onHillshadeChange,
-  contours,
-  contourReach,
-  onContoursChange,
-  locatorGrid,
-  onLocatorGridChange,
-  repeaters,
-  onRepeatersChange,
-  greyLine,
-  onGreyLineChange,
-  record,
-  disabled,
-  className,
-}: {
+/**
+ * One thing the map's controls offer: a tool taken in hand, a layer switched on or off, or
+ * something done once. Every place the controls are shown (the column beside the map, the
+ * menu at the end of the search box on a phone) is drawn from one list of these, so a tool
+ * added to the list is in all of them.
+ */
+export interface MapTool {
+  id: string;
+  /** Its name: the button's accessible name, its tooltip, and the words in the menu. */
+  label: string;
+  icon: ReactNode;
+  /** In hand, or switched on. Left out for a thing that is only done (North up). */
+  pressed?: boolean;
+  onPress: () => void;
+  disabled?: boolean;
+  /** Which block of the column it stands in on a wide screen. */
+  group: "view" | "record" | "tools" | "radio";
+  /** A layer drawn over the map rather than a tool: listed under "Shown on the map" in the menu. */
+  layer?: boolean;
+}
+
+export interface MapToolsInput {
   tool: Tool;
   onToolChange: (tool: Tool) => void;
-  onZoomIn: () => void;
-  onZoomOut: () => void;
   rotated: boolean;
   onResetNorth: () => void;
   /** Undefined when the browser has no geolocation at all. */
@@ -124,16 +122,164 @@ export function MapControls({
   /** Whether day and night are drawn over the map; see grey-line/. Left out, there is no button. */
   greyLine?: boolean;
   onGreyLineChange?: (on: boolean) => void;
-  /** The button that records a track as it is walked; see recording/record-ui.tsx. */
-  record?: ReactNode;
-  /** The map could not be drawn; the controls that move it have nothing to act on. */
+  /** Recording a track as it is walked; see recording/record-ui.tsx. Null where the browser cannot record at all. */
+  record?: MapTool | null;
+  /** The map could not be drawn; the controls that act on it have nothing to act on. */
   disabled: boolean;
+}
+
+/**
+ * The map's tools and layers, in the order they are shown. The order is also the order
+ * of giving way: where there is not room for all of them in the column on a phone, the
+ * last ones are left to the menu.
+ */
+export function mapTools({
+  tool,
+  onToolChange,
+  rotated,
+  onResetNorth,
+  locate,
+  onLocate,
+  hillshade,
+  onHillshadeChange,
+  contours,
+  contourReach,
+  onContoursChange,
+  locatorGrid,
+  onLocatorGridChange,
+  repeaters,
+  onRepeatersChange,
+  greyLine,
+  onGreyLineChange,
+  record,
+  disabled,
+}: MapToolsInput): MapTool[] {
+  const take = (id: Exclude<Tool, "browse">, label: string, icon: ReactNode, group: MapTool["group"]): MapTool => ({
+    id,
+    label,
+    icon,
+    group,
+    pressed: tool === id,
+    onPress: () => onToolChange(tool === id ? "browse" : id),
+    disabled,
+  });
+  const tools: MapTool[] = [];
+  if (rotated) tools.push({ id: "north", label: "North up", icon: <Compass />, group: "view", onPress: onResetNorth });
+  if (locate !== undefined) {
+    tools.push({
+      id: "locate",
+      label: locate === "off" ? "Show where I am" : locate === "waiting" ? "Finding your position. Stop" : "Stop showing where I am",
+      icon: locate === "waiting" ? <Spinner className="text-current" label="Finding your position" /> : <LocateFixed />,
+      group: "view",
+      pressed: locate !== "off",
+      onPress: onLocate,
+      disabled,
+    });
+  }
+  if (record) tools.push(record);
+  tools.push(
+    take("measure", "Measure a distance", <Ruler />, "tools"),
+    take("draw", "Draw a route", <PenLine />, "tools"),
+    take("add-place", "Save a place: then click the map", <PinPlus />, "tools"),
+  );
+  if (hillshade !== undefined) {
+    tools.push({
+      id: "hillshade",
+      label: "Hill shading",
+      icon: <Mountain />,
+      group: "tools",
+      layer: true,
+      pressed: hillshade,
+      onPress: () => onHillshadeChange(!hillshade),
+      disabled,
+    });
+  }
+  // Always offered, terrain or not: pressed without any, it says what it needs.
+  tools.push({
+    id: "contours",
+    label: contours && contourReach !== "drawn" ? CONTOUR_NOTES[contourReach].label : "Contour lines",
+    icon: <ContourRings />,
+    group: "tools",
+    layer: true,
+    pressed: contours,
+    onPress: () => onContoursChange(!contours),
+    disabled,
+  });
+  // A paper map of part of this one; the tool itself is in print/.
+  tools.push(take("print", "Print or save as PDF", <Printer />, "tools"));
+  // Radio: the locator grid, the repeaters, and whether two points can see each other.
+  tools.push({
+    id: "locator-grid",
+    label: "Maidenhead locator grid",
+    icon: <Grid3x3 />,
+    group: "radio",
+    layer: true,
+    pressed: locatorGrid,
+    onPress: () => onLocatorGridChange(!locatorGrid),
+    disabled,
+  });
+  if (onGreyLineChange) {
+    tools.push({
+      id: "grey-line",
+      label: "Grey line (day and night)",
+      icon: <SunMoon />,
+      group: "radio",
+      layer: true,
+      pressed: greyLine ?? false,
+      onPress: () => onGreyLineChange(!greyLine),
+      disabled,
+    });
+  }
+  if (onRepeatersChange) {
+    tools.push({
+      id: "repeaters",
+      label: "Repeaters",
+      icon: <RadioReceiver />,
+      group: "radio",
+      layer: true,
+      pressed: repeaters ?? false,
+      onPress: () => onRepeatersChange(!repeaters),
+      disabled,
+    });
+  }
+  tools.push(take("sight", "Line of sight between two points", <RadioTower />, "radio"));
+  return tools;
+}
+
+function ToolButton({ tool }: { tool: MapTool }) {
+  return (
+    <ControlButton label={tool.label} pressed={tool.pressed} onClick={tool.onPress} disabled={tool.disabled}>
+      {tool.icon}
+    </ControlButton>
+  );
+}
+
+/** The column of controls beside the map on a wide screen: zoom, then the tools in their blocks. */
+export function MapControls({
+  onZoomIn,
+  onZoomOut,
+  className,
+  ...input
+}: MapToolsInput & {
+  onZoomIn: () => void;
+  onZoomOut: () => void;
   className?: string;
 }) {
+  const tools = mapTools(input);
+  const { disabled } = input;
+  const block = (group: MapTool["group"]) => {
+    const members = tools.filter((tool) => tool.group === group);
+    return members.length > 0 ? (
+      <ControlGroup>
+        {members.map((tool) => (
+          <ToolButton key={tool.id} tool={tool} />
+        ))}
+      </ControlGroup>
+    ) : null;
+  };
   return (
     <div className={cn("relative flex flex-col gap-2", className)}>
-      {/* Touch screens zoom by pinching; the buttons are for pointers and keyboards. */}
-      <ControlGroup className="max-md:hidden">
+      <ControlGroup>
         <ControlButton label="Zoom in" onClick={onZoomIn} disabled={disabled}>
           <Plus />
         </ControlButton>
@@ -141,134 +287,132 @@ export function MapControls({
           <Minus />
         </ControlButton>
       </ControlGroup>
-      {rotated || locate !== undefined ? (
-        <ControlGroup>
-          {rotated ? (
-            <ControlButton label="North up" onClick={onResetNorth}>
-              <Compass />
-            </ControlButton>
-          ) : null}
-          {locate !== undefined ? (
-            <ControlButton
-              label={
-                locate === "off" ? "Show where I am" : locate === "waiting" ? "Finding your position. Stop" : "Stop showing where I am"
-              }
-              pressed={locate !== "off"}
-              onClick={onLocate}
-              disabled={disabled}
-            >
-              {locate === "waiting" ? <Spinner className="text-current" label="Finding your position" /> : <LocateFixed />}
-            </ControlButton>
-          ) : null}
-        </ControlGroup>
-      ) : null}
-      {record}
-      <ControlGroup>
-        <ControlButton
-          label="Measure a distance"
-          pressed={tool === "measure"}
-          onClick={() => onToolChange(tool === "measure" ? "browse" : "measure")}
-          disabled={disabled}
-        >
-          <Ruler />
-        </ControlButton>
-        <ControlButton
-          label="Draw a route"
-          pressed={tool === "draw"}
-          onClick={() => onToolChange(tool === "draw" ? "browse" : "draw")}
-          disabled={disabled}
-        >
-          <PenLine />
-        </ControlButton>
-        <ControlButton
-          label="Save a place: then click the map"
-          pressed={tool === "add-place"}
-          onClick={() => onToolChange(tool === "add-place" ? "browse" : "add-place")}
-          disabled={disabled}
-        >
-          <PinPlus />
-        </ControlButton>
-        {hillshade !== undefined ? (
-          <ControlButton label="Hill shading" pressed={hillshade} onClick={() => onHillshadeChange(!hillshade)} disabled={disabled}>
-            <Mountain />
-          </ControlButton>
-        ) : null}
-        {/* Always offered, terrain or not: pressed without any, it says what it needs. */}
-        <ControlButton
-          label={contours && contourReach !== "drawn" ? CONTOUR_NOTES[contourReach].label : "Contour lines"}
-          pressed={contours}
-          onClick={() => onContoursChange(!contours)}
-          disabled={disabled}
-        >
-          <ContourRings />
-        </ControlButton>
-        {/* A paper map of part of this one; the tool itself is in print/. */}
-        <ControlButton
-          label="Print or save as PDF"
-          pressed={tool === "print"}
-          onClick={() => onToolChange(tool === "print" ? "browse" : "print")}
-          disabled={disabled}
-        >
-          <Printer />
-        </ControlButton>
-      </ControlGroup>
-      {/* Radio: the locator grid, and whether two points can see each other. On a phone the column is
-          already as long as the map is tall once a card is up, so these two stand beside its top. */}
-      <ControlGroup className="max-md:absolute max-md:top-0 max-md:right-[calc(100%+0.5rem)]">
-        <ControlButton
-          label="Maidenhead locator grid"
-          pressed={locatorGrid}
-          onClick={() => onLocatorGridChange(!locatorGrid)}
-          disabled={disabled}
-        >
-          <Grid3x3 />
-        </ControlButton>
-        {onGreyLineChange ? (
-          <ControlButton
-            label="Grey line (day and night)"
-            pressed={greyLine ?? false}
-            onClick={() => onGreyLineChange(!greyLine)}
-            disabled={disabled}
-          >
-            <SunMoon />
-          </ControlButton>
-        ) : null}
-        {onRepeatersChange ? (
-          <ControlButton label="Repeaters" pressed={repeaters ?? false} onClick={() => onRepeatersChange(!repeaters)} disabled={disabled}>
-            <RadioReceiver />
-          </ControlButton>
-        ) : null}
-        <ControlButton
-          label="Line of sight between two points"
-          pressed={tool === "sight"}
-          onClick={() => onToolChange(tool === "sight" ? "browse" : "sight")}
-          disabled={disabled}
-        >
-          <RadioTower />
-        </ControlButton>
-      </ControlGroup>
+      {block("view")}
+      {block("record")}
+      {block("tools")}
+      {block("radio")}
     </div>
   );
 }
 
-/** A card that floats above the bottom of the map: one at a time, for the tool or thing in hand. */
+/**
+ * The same tools on a phone: one column under the end of the search box, holding as many
+ * as there is room for and no more. It never runs into what is below it (a card, the
+ * readout, the sheet): the tools that do not fit are in the menu, where all of them
+ * always are. Touch screens zoom by pinching, so there are no zoom buttons here.
+ */
+export function MapToolColumn({ tools }: { tools: MapTool[] }) {
+  const area = useRef<HTMLDivElement>(null);
+  const [room, setRoom] = useState(tools.length);
+  useLayoutEffect(() => {
+    const element = area.current;
+    // Not laid out (a test without a browser): show them all.
+    if (!element || element.offsetParent === null || typeof ResizeObserver === "undefined") return;
+    const measure = () => {
+      // A button is 44 px and a hairline; the group has a border of its own.
+      setRoom(Math.max(0, Math.floor((element.clientHeight - 1) / 45)));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+  const shown = tools.slice(0, room);
+  return (
+    <div ref={area} className="flex min-h-0 flex-1 items-start justify-end">
+      {shown.length > 0 ? (
+        <ControlGroup className="pointer-events-auto">
+          {shown.map((tool) => (
+            <ToolButton key={tool.id} tool={tool} />
+          ))}
+        </ControlGroup>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Every tool and layer of the map by name, behind one button at the end of the search
+ * box on a phone. An icon in the column says nothing to a finger that cannot hover over
+ * it; this says what each one is, and holds the ones the column has no room for.
+ */
+export function MapMenu({ tools }: { tools: MapTool[] }) {
+  const entry = (tool: MapTool) => {
+    const words = (
+      <span className="flex items-center gap-2.5">
+        {tool.icon}
+        {tool.label}
+      </span>
+    );
+    return tool.pressed === undefined ? (
+      <MenuItem key={tool.id} disabled={tool.disabled} onSelect={tool.onPress} className="max-md:min-h-11">
+        {words}
+      </MenuItem>
+    ) : (
+      <MenuCheckItem
+        key={tool.id}
+        checked={tool.pressed}
+        disabled={tool.disabled}
+        onCheckedChange={tool.onPress}
+        className="max-md:min-h-11"
+      >
+        {words}
+      </MenuCheckItem>
+    );
+  };
+  const layers = tools.filter((tool) => tool.layer);
+  return (
+    <Menu>
+      <MenuTrigger asChild>
+        <Button variant="ghost" size="icon" aria-label="All map tools" className="shrink-0 rounded-l-none text-ink max-md:size-[44px]">
+          <EllipsisVertical />
+        </Button>
+      </MenuTrigger>
+      <MenuContent
+        align="end"
+        className="scroll-quiet max-h-(--radix-dropdown-menu-content-available-height) w-[min(19rem,calc(100vw-1.5rem))] overflow-y-auto"
+      >
+        <MenuLabel className="text-ink-muted">Tools</MenuLabel>
+        {tools.filter((tool) => !tool.layer).map(entry)}
+        {layers.length > 0 ? (
+          <>
+            <MenuSeparator />
+            <MenuLabel className="text-ink-muted">Shown on the map</MenuLabel>
+            {layers.map(entry)}
+          </>
+        ) : null}
+      </MenuContent>
+    </Menu>
+  );
+}
+
+/**
+ * A card that floats above the bottom of the map, for the tool or thing in hand. Where
+ * it sits and how tall it may be are not its own business: see `MapFurniture`.
+ */
 export function MapCard({
   title,
+  titleHidden,
   onClose,
   closeLabel,
   children,
   className,
 }: {
   title: ReactNode;
+  /**
+   * The title is said to a screen reader but not written: for the card of a tool that has taken
+   * over the sheet on a phone, where the sheet's own first line is the tool's title. One title, not two.
+   */
+  titleHidden?: boolean;
   onClose?: () => void;
   closeLabel?: string;
   children: ReactNode;
   className?: string;
 }) {
   return (
-    <section className={cn(mapSurface, "pointer-events-auto w-full max-w-[26rem] p-3.5", className)}>
-      <div className="flex items-start justify-between gap-3">
-        <h2 className="min-w-0 text-body font-semibold text-ink">{title}</h2>
+    <section className={cn(mapCard, className)}>
+      <div className={mapCardHeader}>
+        <h2 className={cn("min-w-0 text-body font-semibold text-ink", titleHidden && "sr-only")}>{title}</h2>
         {onClose ? (
           <Button variant="ghost" size="icon-sm" aria-label={closeLabel ?? "Close"} onClick={onClose} className="-mt-1 -mr-1.5">
             <X />
@@ -410,8 +554,8 @@ export function DrawCard({
           </p>
         </>
       )}
-      {/* One row at any width: on a phone this card shares the screen with the map being drawn on. */}
-      <div className="mt-3 flex items-center gap-2">
+      {/* One row wherever it fits: on a phone this card shares the screen with the map being drawn on. */}
+      <div className="mt-3 flex flex-wrap items-center gap-2">
         <Button size="icon" aria-label="Undo" title="Undo" onClick={onUndo} disabled={!canUndo(edit)}>
           <Undo2 />
         </Button>

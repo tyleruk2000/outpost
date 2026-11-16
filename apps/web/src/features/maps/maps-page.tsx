@@ -27,7 +27,7 @@ import { Skeleton, Tooltip } from "@/components/ui/misc";
 import { useDownloads } from "@/features/downloads/use-downloads";
 import { type SightStart, useRepeatersOnMap } from "@/features/repeaters/map/use-repeaters-on-map";
 import { errorMessage } from "@/lib/api";
-import { cn, plural } from "@/lib/utils";
+import { plural } from "@/lib/utils";
 import { CentreMark } from "./centre-mark";
 import {
   useDeleteMarker,
@@ -76,8 +76,22 @@ import {
 } from "./lib/view";
 import type { MapEngine, MapHit } from "./map/engine";
 import { coverageData, EMPTY, locationData, markersData, measureData, pointData, tracksData } from "./map/overlays";
-import { CONTOUR_NOTES, ContextMenu, DrawCard, MapCard, MapControls, MeasureCard, MoveCard, PinCard, type Tool } from "./map-chrome";
+import {
+  CONTOUR_NOTES,
+  ContextMenu,
+  DrawCard,
+  MapCard,
+  MapControls,
+  MapMenu,
+  MapToolColumn,
+  MeasureCard,
+  MoveCard,
+  mapTools,
+  PinCard,
+  type Tool,
+} from "./map-chrome";
 import { creditsFor, MapFooter } from "./map-footer";
+import { type ClearSpace, MapFurniture } from "./map-furniture";
 import { type OfflineIntent, OfflinePanel } from "./panels/offline";
 import { draftOf, type PlaceDraft, PlaceEditor, PlacesList } from "./panels/places";
 import { hasUnsavedWork, type RouteDraft, RouteEditor } from "./panels/route-editor";
@@ -89,7 +103,7 @@ import { SightCard } from "./radio/sight-card";
 import { SightPanel } from "./radio/sight-panel";
 import { useLocatorGrid } from "./radio/use-locator-grid";
 import { useSight } from "./radio/use-sight";
-import { RecordButton, TrackRecording } from "./recording/record-ui";
+import { foldRecordingCard, TrackRecording, useRecordTool } from "./recording/record-ui";
 import { SearchBox } from "./search-box";
 import { DesktopPanel, type Detent, detentHeight, MobileSheet, PANEL_TABS, type PanelTab, PanelTabs, PEEK_HEIGHT } from "./side-panel";
 
@@ -184,6 +198,7 @@ export default function MapsPage() {
   const markers = useMarkers();
   const tracks = useTracks();
   const downloads = useDownloads();
+  const recordTool = useRecordTool();
   const saveMarker = useSaveMarker();
   const deleteMarker = useDeleteMarker();
   const saveRoute = useSaveRoute();
@@ -196,6 +211,23 @@ export default function MapsPage() {
   const [detent, setDetent] = useState<Detent>("peek");
   /** How tall the lowered sheet is: its handle and the whole row of tab names, as the sheet measured them. */
   const [peekHeight, setPeekHeight] = useState(PEEK_HEIGHT);
+  /** On a phone: how much of the map the search box and the readout take, as `MapFurniture` measured them. */
+  const [clear, setClear] = useState<ClearSpace & { held: number }>({ top: 64, bottom: 98, held: 98 });
+  /** Something is in hand on the map (a tool, a found point, a place being moved): set further down, read when a measurement arrives. */
+  const inHand = useRef(false);
+  const onClear = useCallback(
+    (next: ClearSpace) =>
+      setClear((current) => {
+        // While something is in hand, the room the camera keeps at the foot may only grow, not shrink. What steps
+        // aside for a tool (the line of sun times) would otherwise let the centre of the map slide down towards
+        // the tool's card as it came up, and the map would move under the finger about to touch it.
+        const held = inHand.current ? Math.max(next.bottom, current.held) : next.bottom;
+        // A few pixels more or less (a credit that takes a second line) are not worth sliding the map for.
+        const near = (a: number, b: number) => Math.abs(a - b) < 12;
+        return near(current.top, next.top) && near(current.bottom, next.bottom) && near(current.held, held) ? current : { ...next, held };
+      }),
+    [],
+  );
 
   const [restoredDraft] = useState(restoreRouteDraft);
   const [routeDraft, setRouteDraft] = useState<RouteDraft | null>(restoredDraft);
@@ -234,7 +266,7 @@ export default function MapsPage() {
   const container = useRef<HTMLDivElement>(null);
   const [engine, setEngine] = useState<MapEngine | null>(null);
   const [locatorGrid, setLocatorGrid] = useLocatorGrid(engine);
-  const greyLine = useGreyLine(engine);
+  const greyLine = useGreyLine(engine, isDesktop ? "over" : "flow");
   const sight = useSight({ engine, active: tool === "sight", markers: markers.data ?? [], start: sightStart });
   const [mapStatus, setMapStatus] = useState<MapStatus>("loading");
   const [mapError, setMapError] = useState<string>();
@@ -692,21 +724,30 @@ export default function MapsPage() {
    * room and has the person's attention (and a found point's card has sun times of its own).
    */
   const sunLine = !isDesktop && detent === "peek" && tool === "browse" && !pin && !moving;
+  inHand.current = tool !== "browse" || Boolean(pin) || Boolean(moving);
 
   // "Fit" and "fly" should land in the part of the map that is not under the chrome.
   useEffect(() => {
     if (!engine) return;
-    const top = isDesktop ? 16 : 64;
+    // On a phone the search box is across the top; what it takes is measured, as larger text makes it taller.
+    const top = isDesktop ? 16 : clear.top;
     const height = area.current?.clientHeight ?? 0;
-    // On a phone: the sheet (at most half the height, as "full" hides the map anyway), the readout above it,
-    // and under the readout, while the sheet is lowered, the line with today's sunrise and sunset.
-    const sheet = isDesktop ? 0 : detentHeight(detent === "peek" ? "peek" : "half", height, peekHeight) + 88 + (sunLine ? 44 : 0);
+    // On a phone: the sheet (at most half the height, as "full" hides the map anyway) and, above it, the readout
+    // with whatever is written under it (while the sheet is lowered, today's sunrise and sunset) and the credits.
+    const under = isDesktop ? 0 : detentHeight(detent === "peek" ? "peek" : "half", height, peekHeight) + clear.held;
+    // The centre is kept two fifths of the way down the clear part of the map, not half way: a card that comes up
+    // from the foot of it (which may take three fifths, less a margin; see maps.css) then never covers the centre,
+    // and the map does not have to move when a card appears or grows.
+    const fifth = isDesktop ? 0 : Math.max(0, height - top - under) * 0.2;
+    const sheet = under + fifth;
+    // Room kept at the foot that nothing lies over: the fifth for a card, and what is held while something is in hand.
+    const spare = fifth + (clear.held - clear.bottom);
     // A short screen (a phone on its side) keeps some map clear whatever lies over it.
     const bottom = Math.max(0, Math.min(sheet, height - top - 96));
     // A phone's sheet covers the lower part of the map, so there the camera keeps the space all the time and the
-    // centre of the map is the middle of what shows. On a wide screen nothing lies over the middle of the map.
-    engine.setPadding({ top, right: isDesktop ? 56 : 0, bottom, left: 0 }, !isDesktop);
-  }, [engine, isDesktop, detent, peekHeight, sunLine]);
+    // centre of the map is in the part that shows. On a wide screen nothing lies over the middle of the map.
+    engine.setPadding({ top, right: isDesktop ? 56 : 0, bottom, left: 0 }, !isDesktop, spare);
+  }, [engine, isDesktop, detent, peekHeight, clear]);
 
   // ── What the person does on the map ──
 
@@ -1134,6 +1175,11 @@ export default function MapsPage() {
   );
 
   const panelVisible = isDesktop ? panel.open : detent !== "peek";
+  // On a phone the sheet would cover the map a point is about to be chosen on, and says the same as the card does.
+  const pickingSight = tool === "sight" && Boolean(sight.picking);
+  useEffect(() => {
+    if (!isDesktop && pickingSight) setDetent("peek");
+  }, [isDesktop, pickingSight]);
   /** What the panel beside the map holds: its three tabs, or the tool that has taken it over. */
   const panelBody =
     tool === "sight" ? (
@@ -1168,9 +1214,11 @@ export default function MapsPage() {
       />
     ) : tool === "sight" ? (
       // The whole answer is in the panel; the card stands in for it while a point is chosen and while the panel is out of sight.
-      sight.picking || !panelVisible ? (
+      // On a phone the panel is the sheet, which says what the card would while it is raised, and gives the tool its title when lowered.
+      (isDesktop && sight.picking) || !panelVisible ? (
         <SightCard
           sight={sight}
+          untitled={!isDesktop}
           onUseCentre={engine ? () => sight.place({ position: engine.getCenter() }) : undefined}
           onShowDetails={() => {
             setPanel((current) => ({ ...current, open: true }));
@@ -1247,6 +1295,62 @@ export default function MapsPage() {
       </MapCard>
     ) : null);
 
+  // Every place the map's tools are shown is drawn from this one list.
+  const toolsInput = {
+    tool,
+    onToolChange: changeTool,
+    rotated,
+    onResetNorth: () => engine?.resetNorth(),
+    locate: locate.supported ? locate.state : undefined,
+    onLocate: toggleLocate,
+    hillshade: sources.data?.hasTerrain ? hillshade : undefined,
+    onHillshadeChange: setHillshade,
+    contours,
+    contourReach: reach,
+    onContoursChange: changeContours,
+    locatorGrid,
+    onLocatorGridChange: setLocatorGrid,
+    greyLine: greyLine.on,
+    onGreyLineChange: greyLine.setOn,
+    repeaters: repeaters.on,
+    onRepeatersChange: repeaters.setOn,
+    record: recordTool,
+    disabled: !engine,
+  };
+  const tools = mapTools(toolsInput);
+
+  const mapNotice =
+    loadError || sources.isError ? (
+      <Notice
+        tone="warning"
+        icon={<CircleAlert />}
+        className="pointer-events-auto max-w-lg shadow-float"
+        action={
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => {
+              setLoadError(undefined);
+              void sources.refetch();
+              void overview.refetch();
+            }}
+          >
+            Try again
+          </Button>
+        }
+      >
+        {sources.isError
+          ? `What is installed could not be read, so only the outline map is shown. ${errorMessage(sources.error)}`
+          : "Part of the map could not be loaded. If its files are on an external drive, check that the drive is connected."}
+      </Notice>
+    ) : undefined;
+
+  // On a phone, a recording's open card gives way to the card of whatever is taken up next, by folding to its one line.
+  const cardUp = Boolean(card);
+  useEffect(() => {
+    if (cardUp && !isDesktop) foldRecordingCard();
+  }, [cardUp, isDesktop]);
+
   return (
     <div className="relative isolate flex h-dvh overflow-hidden max-md:h-[calc(100dvh-3.25rem)] max-md:pb-[calc(3.5rem+env(safe-area-inset-bottom))]">
       {isDesktop && panel.open ? (
@@ -1256,7 +1360,7 @@ export default function MapsPage() {
       {/* biome-ignore lint/a11y/noStaticElementInteractions: a place to drop files, not a control; the same import is a button in the Routes tab */}
       <div
         ref={area}
-        className="relative min-w-0 flex-1 bg-surface"
+        className="outpost-touch relative min-w-0 flex-1 bg-surface"
         onDragEnter={(event) => hasFiles(event) && setDropping(true)}
         onDragOver={(event) => hasFiles(event) && event.preventDefault()}
         onDragLeave={(event) => !event.currentTarget.contains(event.relatedTarget as Node | null) && setDropping(false)}
@@ -1299,103 +1403,80 @@ export default function MapsPage() {
           />
         ) : null}
 
-        <div className="pointer-events-none absolute inset-x-3 top-3 z-10 flex items-start gap-2 max-md:flex-col max-md:items-stretch">
-          <SearchBox
-            className="pointer-events-auto w-full md:max-w-[24rem]"
-            markers={markers.data ?? []}
-            tracks={allTracks}
-            placesInstalled={(overview.data?.places.length ?? 0) > 0}
-            getCenter={() => engine?.getCenter() ?? null}
-            onChoose={chooseResult}
-            onAddPlaceNames={() => openOffline({ type: "places" })}
-            leading={
-              isDesktop && !panel.open ? (
-                <Tooltip label="Show places, routes and offline maps" side="bottom">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label="Show places, routes and offline maps"
-                    onClick={() => setPanel((current) => ({ ...current, open: true }))}
-                  >
-                    <PanelLeftOpen />
-                  </Button>
-                </Tooltip>
-              ) : undefined
-            }
-          />
-          <MapControls
-            className="pointer-events-auto md:ml-auto max-md:self-end"
-            tool={tool}
-            onToolChange={changeTool}
-            onZoomIn={() => engine?.zoomIn()}
-            onZoomOut={() => engine?.zoomOut()}
-            rotated={rotated}
-            onResetNorth={() => engine?.resetNorth()}
-            locate={locate.supported ? locate.state : undefined}
-            onLocate={toggleLocate}
-            hillshade={sources.data?.hasTerrain ? hillshade : undefined}
-            onHillshadeChange={setHillshade}
-            contours={contours}
-            contourReach={reach}
-            onContoursChange={changeContours}
-            locatorGrid={locatorGrid}
-            onLocatorGridChange={setLocatorGrid}
-            greyLine={greyLine.on}
-            onGreyLineChange={greyLine.setOn}
-            repeaters={repeaters.on}
-            onRepeatersChange={repeaters.setOn}
-            record={<RecordButton />}
-            disabled={!engine}
-          />
-        </div>
-
-        {greyLine.legend}
-
-        {loadError || sources.isError ? (
-          <div className="absolute inset-x-3 top-[4.25rem] z-10 flex justify-center max-md:top-[7.5rem] max-md:justify-start max-md:pr-14">
-            <Notice
-              tone="warning"
-              icon={<CircleAlert />}
-              className="max-w-lg shadow-float"
-              action={
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => {
-                    setLoadError(undefined);
-                    void sources.refetch();
-                    void overview.refetch();
-                  }}
-                >
-                  Try again
-                </Button>
+        <MapFurniture
+          phone={!isDesktop}
+          covered={!isDesktop && detent === "full"}
+          onClear={onClear}
+          search={
+            <SearchBox
+              className="pointer-events-auto w-full md:max-w-[24rem]"
+              markers={markers.data ?? []}
+              tracks={allTracks}
+              placesInstalled={(overview.data?.places.length ?? 0) > 0}
+              getCenter={() => engine?.getCenter() ?? null}
+              onChoose={chooseResult}
+              onAddPlaceNames={() => openOffline({ type: "places" })}
+              leading={
+                isDesktop && !panel.open ? (
+                  <Tooltip label="Show places, routes and offline maps" side="bottom">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Show places, routes and offline maps"
+                      onClick={() => setPanel((current) => ({ ...current, open: true }))}
+                    >
+                      <PanelLeftOpen />
+                    </Button>
+                  </Tooltip>
+                ) : undefined
               }
-            >
-              {sources.isError
-                ? `What is installed could not be read, so only the outline map is shown. ${errorMessage(sources.error)}`
-                : "Part of the map could not be loaded. If its files are on an external drive, check that the drive is connected."}
-            </Notice>
-          </div>
-        ) : null}
+              trailing={isDesktop ? undefined : <MapMenu tools={tools} />}
+            />
+          }
+          tools={
+            isDesktop ? (
+              <MapControls
+                className="pointer-events-auto ml-auto"
+                {...toolsInput}
+                onZoomIn={() => engine?.zoomIn()}
+                onZoomOut={() => engine?.zoomOut()}
+              />
+            ) : (
+              <MapToolColumn tools={tools} />
+            )
+          }
+          notice={
+            // On a phone the grey line's legend is one of the things in the column, under the search box, so that
+            // nothing lies over it; on a wide screen it is laid over the map (below).
+            mapNotice || (!isDesktop && greyLine.legend) ? (
+              <>
+                {mapNotice}
+                {isDesktop ? null : greyLine.legend}
+              </>
+            ) : undefined
+          }
+          cards={
+            <>
+              <TrackRecording engine={engine} onShowTrack={(track) => openTrack(track, false)} />
+              {card}
+            </>
+          }
+          footer={
+            // No map drawn, nothing to credit.
+            <MapFooter
+              engine={engine}
+              format={format}
+              onFormatChange={setFormat}
+              credits={engine ? credits : []}
+              underReadout={sunLine && engine ? <SunGlance engine={engine} onOpen={showSun} /> : undefined}
+              // On a phone the credits always have a line of their own under the readout, never the space beside it:
+              // what the readout has room for is worked out from their height, which must not depend on the answer.
+              className="w-full max-md:flex-col max-md:flex-nowrap max-md:items-stretch"
+            />
+          }
+        />
 
-        <div
-          className={cn(
-            "pointer-events-none absolute inset-x-3 bottom-[calc(var(--sheet-height,0px)+0.625rem)] z-10 flex flex-col items-center gap-2",
-            !isDesktop && detent === "full" && "hidden",
-          )}
-        >
-          <TrackRecording engine={engine} onShowTrack={(track) => openTrack(track, false)} />
-          {card}
-          {/* No map drawn, nothing to credit. */}
-          <MapFooter
-            engine={engine}
-            format={format}
-            onFormatChange={setFormat}
-            credits={engine ? credits : []}
-            underReadout={sunLine && engine ? <SunGlance engine={engine} onOpen={showSun} /> : undefined}
-            className="w-full"
-          />
-        </div>
+        {isDesktop ? greyLine.legend : null}
 
         {contextMenu && area.current ? (
           <ContextMenu
@@ -1433,7 +1514,7 @@ export default function MapsPage() {
         ) : null}
 
         {!isDesktop ? (
-          <MobileSheet detent={detent} onDetentChange={setDetent} onPeekHeight={setPeekHeight}>
+          <MobileSheet detent={detent} onDetentChange={setDetent} onPeekHeight={setPeekHeight} first={tool === "sight" ? "sight" : "tabs"}>
             {panelBody}
           </MobileSheet>
         ) : null}

@@ -130,14 +130,18 @@ export default function PrintTool({
 
   /** Puts a new box on the map and brings all of it into view, clear of this card, which lies over the foot of the map. */
   const card = useRef<HTMLDivElement>(null);
+  // The handles on the box's lower edge reach 7 px below it, so the room kept is the card's height and a little more.
+  const clearOfCard = () => (card.current?.offsetHeight ?? 0) + 20;
   const place = (next: Bbox) => {
     setBox(next);
-    engine.fitBounds(next, { maxZoom: 17, clearBottom: (card.current?.offsetHeight ?? 0) + 8 });
+    engine.fitBounds(next, { maxZoom: 17, clearBottom: clearOfCard() });
   };
-  // The box it starts with was fitted to the whole map; once the card has a height, make room for that too.
+  // The box it starts with was fitted to the whole map; once the card has its height (a frame on, when what
+  // gives way to a card on a phone has done so), make room for that too.
   // biome-ignore lint/correctness/useExhaustiveDependencies: once, when the tool is taken up
   useEffect(() => {
-    engine.fitBounds(box, { maxZoom: 17, clearBottom: (card.current?.offsetHeight ?? 0) + 8 });
+    const frame = requestAnimationFrame(() => engine.fitBounds(box, { maxZoom: 17, clearBottom: clearOfCard() }));
+    return () => cancelAnimationFrame(frame);
   }, [engine]);
 
   const repaper = (change: Partial<Pick<Prefs, "paper" | "orientation">>) => {
@@ -156,7 +160,7 @@ export default function PrintTool({
 
   return (
     <>
-      <div ref={card} className="pointer-events-none flex w-full justify-center">
+      <div ref={card} className="pointer-events-none flex w-full justify-center max-md:min-h-[52px] max-md:shrink">
         <MapCard title="Print or save as PDF" onClose={onClose} closeLabel="Stop: put the page away">
           {/* Left out on a phone, where this card shares a small screen with the box it is about. */}
           <p className="mt-1 text-small text-ink-muted max-md:hidden">

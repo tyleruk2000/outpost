@@ -26,6 +26,7 @@ export function SearchBox({
   onChoose,
   onAddPlaceNames,
   leading,
+  trailing,
   className,
 }: {
   markers: MarkerDto[];
@@ -39,6 +40,8 @@ export function SearchBox({
   onAddPlaceNames: () => void;
   /** A control shown inside the field's left edge (the panel toggle). */
   leading?: ReactNode;
+  /** A control shown inside the field's right edge (on a phone, the menu of the map's tools). */
+  trailing?: ReactNode;
   className?: string;
 }) {
   const listId = useId();
@@ -103,7 +106,10 @@ export function SearchBox({
 
   return (
     <div className={cn("relative", className)}>
-      <div className={cn(mapSurface, "flex h-11 items-center gap-1 pr-1", leading ? "pl-1" : "pl-3")}>
+      {/* Tall enough that the field inside its border is the 44 px a finger needs. */}
+      <div
+        className={cn(mapSurface, "flex h-11 items-center gap-1 max-md:h-[46px]", trailing ? "pr-0" : "pr-1", leading ? "pl-1" : "pl-3")}
+      >
         {leading}
         <Search aria-hidden className={cn("size-4 shrink-0 text-ink-muted", leading && "ml-1")} />
         <input
@@ -137,11 +143,12 @@ export function SearchBox({
               setText("");
               inputRef.current?.focus();
             }}
-            className="grid size-9 shrink-0 place-content-center rounded-control text-ink-muted hover:bg-surface-strong hover:text-ink"
+            className="grid size-9 shrink-0 place-content-center rounded-control text-ink-muted hover:bg-surface-strong hover:text-ink max-md:size-[44px]"
           >
             <X className="size-4" />
           </button>
         ) : null}
+        {trailing ? <div className="-my-px flex shrink-0 self-stretch border-l border-border">{trailing}</div> : null}
       </div>
 
       {showList ? (

@@ -14,7 +14,7 @@
  * a quiet list below, so that nothing crowds the two times most people came for.
  */
 import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
-import { type ReactNode, useId, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
 import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,11 +45,11 @@ const OPEN_KEY = "outpost.maps.sun.open";
 const isBoolean = (value: unknown): value is boolean => typeof value === "boolean";
 
 /**
- * In a card over the map the opened section takes what height the screen can spare and scrolls
- * inside it: the card's own title, its close button and the bar across the top of the screen
- * stay in view on a short phone. 32rem is what the rest of the screen needs there.
+ * In a card over the map on a wide screen the opened section takes what height the screen can
+ * spare and scrolls inside it. On a phone the card itself is given its greatest height and
+ * scrolls (see `mapCard`), and a second place to scroll inside it would only be in the way.
  */
-const CONTAINED = "scroll-quiet max-h-[min(24rem,max(8rem,calc(100dvh-32rem)))] overflow-y-auto pr-1";
+const CONTAINED = "scroll-quiet md:max-h-[min(24rem,max(8rem,calc(100dvh-32rem)))] md:overflow-y-auto md:pr-1";
 
 /** The years the method is good for; see `lib/sun`. */
 const FIRST_DATE = "1900-01-01";
@@ -290,9 +290,16 @@ export function SunSection({
     setOpen(!open);
     if (!open) onOpen?.();
   };
+  // In a card that scrolls, the times that were asked for are brought to the top of what shows, under the card's title.
+  const section = useRef<HTMLElement>(null);
+  const wasOpen = useRef(open);
+  useEffect(() => {
+    if (contained && open && !wasOpen.current) section.current?.scrollIntoView?.({ block: "start", behavior: "auto" });
+    wasOpen.current = open;
+  }, [contained, open]);
 
   return (
-    <section className={cn("grid", className)}>
+    <section ref={section} className={cn("grid scroll-mt-12", className)}>
       <button
         type="button"
         aria-expanded={open}

@@ -30,10 +30,16 @@ export function PanelTabs({
   return (
     <Tabs value={tab} onValueChange={(next) => onTabChange(next as PanelTab)} className="flex min-h-0 flex-1 flex-col">
       {/* Four names and two counts fit across a 320 px phone. Where they do not (larger text, a zoomed page, counts in the
-          hundreds) the row takes a second line: a name that had slid off the edge of a row that scrolls was a tab nobody found. */}
-      <TabsList className="shrink-0 flex-wrap overflow-x-visible px-4 max-[23rem]:gap-x-3.5 max-[23rem]:px-3">
+          hundreds) the row takes a second line: a name that had slid off the edge of a row that scrolls was a tab nobody found.
+          The two lines sit close: each name has its own height to touch, and the map has little enough room there. */}
+      <TabsList className="shrink-0 flex-wrap gap-y-0 overflow-x-visible px-4 max-[23rem]:gap-x-3.5 max-[23rem]:px-3">
         {PANEL_TABS.map((item) => (
-          <TabsTrigger key={item} value={item} onClick={onTabPress} className="max-md:min-h-11">
+          <TabsTrigger
+            key={item}
+            value={item}
+            onClick={onTabPress}
+            className="max-md:min-h-[44px] max-md:min-w-[44px] max-md:justify-center"
+          >
             {TAB_LABELS[item]}
             {counts[item] ? <span className="tabular text-micro font-normal text-ink-muted">{counts[item]}</span> : null}
           </TabsTrigger>
@@ -99,11 +105,13 @@ export function nearestDetent(height: number, areaHeight: number, peek = PEEK_HE
  * measured from the page: the names are the only way into the panel, so none of them may
  * end up below the edge of the sheet whatever size the text is.
  */
-function usePeekHeight(sheet: RefObject<HTMLElement | null>): number {
+function usePeekHeight(sheet: RefObject<HTMLElement | null>, first: string): number {
   const [peek, setPeek] = useState(PEEK_HEIGHT);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `first` is here so that a new first line is found and measured
   useLayoutEffect(() => {
     const element = sheet.current;
-    const tabs = element?.querySelector<HTMLElement>('[role="tablist"]');
+    // The row of tab names, or the first line of a tool that has taken the sheet over (its title and its close button).
+    const tabs = element?.querySelector<HTMLElement>('[data-sheet-peek], [role="tablist"]');
     if (!element || !tabs || typeof ResizeObserver === "undefined") return;
     const measure = () => {
       // From the top of the sheet to the foot of the row, whatever height the sheet itself has just now.
@@ -114,7 +122,7 @@ function usePeekHeight(sheet: RefObject<HTMLElement | null>): number {
     const observer = new ResizeObserver(measure);
     observer.observe(tabs);
     return () => observer.disconnect();
-  }, [sheet]);
+  }, [sheet, first]);
   return peek;
 }
 
@@ -128,16 +136,19 @@ export function MobileSheet({
   detent,
   onDetentChange,
   onPeekHeight,
+  first = "tabs",
   children,
 }: {
   detent: Detent;
   onDetentChange: (detent: Detent) => void;
   /** Told how tall the lowered sheet is, once that has been measured. */
   onPeekHeight?: (height: number) => void;
+  /** What the sheet's first line is just now (the tabs, or a tool's name): when it changes, the lowered height is measured again. */
+  first?: string;
   children: ReactNode;
 }) {
   const sheet = useRef<HTMLElement>(null);
-  const peek = usePeekHeight(sheet);
+  const peek = usePeekHeight(sheet, first);
   useEffect(() => onPeekHeight?.(peek), [peek, onPeekHeight]);
   const [areaHeight, setAreaHeight] = useState(600);
   const [dragHeight, setDragHeight] = useState<number | null>(null);
@@ -193,8 +204,9 @@ export function MobileSheet({
     <section
       ref={sheet}
       aria-label="Places, routes and offline maps"
+      data-detent={detent}
       className={cn(
-        "absolute inset-x-0 bottom-0 z-20 flex flex-col rounded-t-[14px] border-t border-border bg-page shadow-float",
+        "outpost-sheet absolute inset-x-0 bottom-0 z-20 flex flex-col rounded-t-[14px] border-t border-border bg-page shadow-float",
         dragHeight === null && "transition-[height] duration-200 ease-out",
       )}
       style={{ height }}
@@ -210,11 +222,13 @@ export function MobileSheet({
           setDragHeight(null);
         }}
         onKeyDown={onKeyDown}
-        className="grid h-11 w-full shrink-0 touch-none place-content-center rounded-t-[14px] focus-visible:-outline-offset-4"
+        // 44 px to take hold of, 36 of them inside the sheet: the rest reaches up over the gap above it, so that
+        // the handle and the first row of the sheet are never under the same finger.
+        className="-mt-[8px] grid h-[44px] w-full shrink-0 touch-none place-content-center rounded-t-[14px] pt-[8px] focus-visible:-outline-offset-4"
       >
         <span aria-hidden className="h-1 w-10 rounded-full bg-border-strong" />
       </button>
-      <div className="-mt-2 flex min-h-0 flex-1 flex-col">{children}</div>
+      <div className="flex min-h-0 flex-1 flex-col">{children}</div>
     </section>
   );
 }
