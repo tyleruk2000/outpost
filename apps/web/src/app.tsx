@@ -42,6 +42,7 @@ const PowerPage = lazy(() => import("./features/power/power-page"));
 const PowerPlanPage = lazy(() => import("./features/power/plan-page"));
 const SuppliesPage = lazy(() => import("./features/supplies/supplies-page"));
 const SupplyItemPage = lazy(() => import("./features/supplies/item-page"));
+const WeatherPage = lazy(() => import("./features/weather/weather-page"));
 const WaterToolsPage = lazy(() => import("./features/tools/water/water-page"));
 const OutdoorsToolsPage = lazy(() => import("./features/tools/outdoors/outdoors-page"));
 const RadioToolsPage = lazy(() => import("./features/tools/radio/radio-tools-page"));
@@ -136,6 +137,7 @@ export function App() {
           <Route path="tools/power/plans/:id" element={<PowerPlanPage />} />
           <Route path="prepare/supplies" element={<SuppliesPage />} />
           <Route path="prepare/supplies/items/:id" element={<SupplyItemPage />} />
+          <Route path="prepare/weather" element={<WeatherPage />} />
           <Route path="radio/propagation" element={<PropagationPage />} />
           <Route path="radio/coverage" element={<CoveragePage />} />
           <Route path="radio/log" element={<LogPage />} />
