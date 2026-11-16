@@ -28,8 +28,9 @@ import { formatBytes } from "@outpost/shared";
 import { messageOf } from "../../core/errors.ts";
 import { resolveInside } from "../../core/fs-safe.ts";
 import { sha256Hex } from "../../core/ids.ts";
-import { docToText } from "../notes/content/index.ts";
-import { type ConvertedPage, convertPage, kindOfWarning, type ResolveLink, scanConstructs } from "./convert.ts";
+import { docToText, type InAppTarget } from "../notes/content/index.ts";
+import { type ConvertedPage, kindOfWarning } from "./convert.ts";
+import { convertPageInWorker } from "./convert-host.ts";
 import {
   type CsvTable,
   countCsvRows,
@@ -102,7 +103,15 @@ export interface PlanDeps {
 // ── Rendering one item (shared with the commit) ─────────────────────────────
 
 export interface RenderOptions extends TableDocOptions {
-  resolve?: ResolveLink;
+  /** What each address in the file points to inside Outpost, for the ones that point to anything. */
+  links?: Record<string, InAppTarget>;
+  /** Also count what the source holds that a page cannot. */
+  scan?: boolean;
+  /**
+   * Stops a conversion that is under way when the job is stopped. Given while an import is
+   * being read; a commit finishes the page it is on, as it always has, and stops before the next.
+   */
+  signal?: AbortSignal;
 }
 
 export interface RenderedItem {
@@ -111,15 +120,19 @@ export interface RenderedItem {
   tags: string[];
   /** Present for Markdown, HTML and text sources. */
   converted?: ConvertedPage;
-  /** The unread source text, for looking at what it contains. */
-  raw?: string;
+  /** What the source holds that a page cannot, counted when asked for. */
+  constructs?: Partial<Record<ImportConstructKind, number>>;
   /** Present for CSV sources. */
   table?: CsvTable;
 }
 
 type Renderable = Pick<ImportItem, "path" | "title" | "format" | "source">;
 
-/** Reads an item's source file and converts it to a page. `item.title` is used when the file names no title. */
+/**
+ * Reads an item's source file and converts it to a page. `item.title` is used when the
+ * file names no title. Markdown, HTML and text are converted in a worker thread
+ * (`convert-host.ts`); a table is small enough by its limits to be read here.
+ */
 export async function renderItem(treeDir: string, item: Renderable, options: RenderOptions = {}): Promise<RenderedItem> {
   const format = item.format ?? "folder";
   if (format === "folder") {
@@ -131,8 +144,12 @@ export async function renderItem(treeDir: string, item: Renderable, options: Ren
     return { title: item.title, doc: tableDoc(table, options), tags: [], table };
   }
   const raw = await fs.promises.readFile(file, "utf8");
-  const converted = convertPage(format, raw, options.resolve);
-  return { title: converted.title ?? item.title, doc: converted.doc, tags: converted.tags, converted, raw };
+  const { page: converted, constructs } = await convertPageInWorker(format, raw, {
+    links: options.links,
+    scan: options.scan,
+    signal: options.signal,
+  });
+  return { title: converted.title ?? item.title, doc: converted.doc, tags: converted.tags, converted, constructs };
 }
 
 // ── The folder structure ────────────────────────────────────────────────────
@@ -426,8 +443,10 @@ export async function buildPlan(input: PlanInput, deps: PlanDeps): Promise<Impor
 
     let rendered: RenderedItem;
     try {
-      rendered = await renderItem(treeDir, item);
+      rendered = await renderItem(treeDir, item, { scan: true, signal: deps.signal });
     } catch (error) {
+      // Stopped, not unreadable.
+      deps.signal?.throwIfAborted();
       // The page stays in the tree so that what is under it keeps its place; it will be an empty page.
       item.format = "folder";
       item.warnings.push(
@@ -447,13 +466,13 @@ export async function buildPlan(input: PlanInput, deps: PlanDeps): Promise<Impor
     }
 
     const targets = new Map<string, string>();
-    if (rendered.converted && rendered.raw !== undefined) {
+    if (rendered.converted) {
       const { converted } = rendered;
       for (const warning of converted.warnings) {
         item.warnings.push(warning);
         constructs.add(kindOfWarning(warning), 1, item.path);
       }
-      for (const [kind, count] of Object.entries(scanConstructs(draft.format, rendered.raw))) {
+      for (const [kind, count] of Object.entries(rendered.constructs ?? {})) {
         constructs.add(kind as ImportConstructKind, count, item.path);
       }
       if (converted.externalImages > 0) {

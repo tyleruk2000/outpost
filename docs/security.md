@@ -465,6 +465,22 @@ links may only use `http`, `https`, `mailto` or a relative address. `javascript:
 Imported HTML is cleaned before conversion. A page is limited to 5 MB and 40 levels of
 nesting. Code: `apps/server/src/modules/notes/content/`.
 
+What converting an imported file costs is bounded in two ways. The shapes the HTML
+converter is slow at are taken out of the tree before it runs, in one walk
+(`html-prepare.ts`, shared with saving a web page): elements with nothing in them, and
+text in many separate pieces, each of which it handled in time growing with the square
+of their number. Measured on 16 November 2026 (Node 24.15, an Apple M-series laptop):
+4,000 empty `<i>` in a 28 kB file took 16.0 seconds and now take 15 ms; 80,000
+`<span>x</span>` (1.1 MB) took 4.4 seconds and now take 0.2. And every conversion of an
+imported Markdown, HTML or text file runs in a worker thread (`imports/convert-host.ts`),
+because not every slow shape can be taken out: the Markdown parser itself takes 14
+seconds over `*x*` written 40,000 times (120 kB), and a 4 MB file of ordinary writing
+takes seconds and around a gigabyte of memory however it is written. The worker is
+given one file at a time, a minute for each and a heap of 1 GB; a file that runs out of
+either is stopped and imported as an empty page that says so. While the slowest of
+those files was being converted, the longest the server's own thread was held was 2 ms.
+Tests: `apps/server/test/imports-conversion.test.ts`.
+
 Search snippets and reference-collection snippets reach the browser as plain text
 segments with "matched" flags, never as HTML.
 
