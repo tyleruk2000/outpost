@@ -27,14 +27,16 @@ const style: Omit<StyleInput, "overlays"> = {
   cacheKey: "",
 };
 
-function fakeEngine() {
+/** A map showing `VIEW`. Its centre is the middle of that unless it is put elsewhere, as a phone's is by its sheet. */
+function fakeEngine(start: { lat: number; lon: number } = { lat: 53.07, lon: -4.075 }) {
+  let centre = start;
   const listeners = new Map<string, (payload: unknown) => void>();
   const setBox = vi.fn<(bbox: Bbox | null, handles: boolean) => void>();
   const setBoxShape = vi.fn<(shape: ((bbox: Bbox, handle: "se") => Bbox) | null) => void>();
   const fitBounds = vi.fn<(bbox: Bbox, options: { clearBottom?: number }) => void>();
   const engine = {
     getBounds: () => VIEW,
-    getCenter: () => ({ lat: 53.1, lon: -4 }),
+    getCenter: () => centre,
     setBox,
     setBoxShape,
     fitBounds,
@@ -43,7 +45,17 @@ function fakeEngine() {
       return () => listeners.delete(type);
     },
   } as unknown as MapEngine;
-  return { engine, setBox, setBoxShape, fitBounds, emit: (type: string, payload: unknown) => act(() => listeners.get(type)?.(payload)) };
+  return {
+    engine,
+    setBox,
+    setBoxShape,
+    fitBounds,
+    /** The map is moved: its centre is somewhere else. */
+    moveTo(position: { lat: number; lon: number }) {
+      centre = position;
+    },
+    emit: (type: string, payload: unknown) => act(() => listeners.get(type)?.(payload)),
+  };
 }
 
 const lastBox = (setBox: ReturnType<typeof fakeEngine>["setBox"]) => setBox.mock.calls[setBox.mock.calls.length - 1]![0]!;
@@ -93,6 +105,19 @@ describe("laying out a page on the map", () => {
     });
   });
 
+  it("starts the box about the map's own centre, which on a phone is the middle of what the sheet leaves in view", () => {
+    // The centre is north of the middle of the rectangle the map is drawn in: the sheet covers the lower part.
+    const fake = fakeEngine({ lat: 53.09, lon: -4.075 });
+    render(<PrintTool engine={fake.engine} style={style} format="decimal" onClose={() => {}} />);
+    const box = lastBox(fake.setBox);
+    // To a few metres: the box is shaped on the map's projection, where the middle of a span of latitude is not its mean.
+    expect(frameOfBox(box, portrait).center.lat).toBeCloseTo(53.09, 3);
+    // Not the middle of the rectangle, which is 53.07.
+    expect(frameOfBox(box, portrait).center.lat).toBeGreaterThan(53.085);
+    expect((box[0] + box[2]) / 2).toBeCloseTo(-4.075, 6);
+    expect(shape(box)).toBeCloseTo(portrait.width / portrait.height, 9);
+  });
+
   it("takes the scale from the box when a handle is moved, and moves the box to the middle of the map when asked", async () => {
     const fake = fakeEngine();
     render(<PrintTool engine={fake.engine} style={style} format="decimal" onClose={() => {}} />);
@@ -104,6 +129,7 @@ describe("laying out a page on the map", () => {
     expect(scaleOfBox(grown, portrait) / scaleOfBox(first, portrait)).toBeGreaterThan(1.9);
     expect(screen.getByRole("combobox", { name: "Scale" })).toHaveTextContent(/^Fit the box: 1:/);
 
+    fake.moveTo({ lat: 53.1, lon: -4 });
     await userEvent.click(screen.getByRole("button", { name: "Centre the box here" }));
     const centred = frameOfBox(lastBox(fake.setBox), portrait);
     expect(centred.center.lat).toBeCloseTo(53.1, 9);
