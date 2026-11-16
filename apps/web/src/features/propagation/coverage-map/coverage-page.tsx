@@ -38,6 +38,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog, Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
 import { Progress, Segmented, Select, Skeleton } from "@/components/ui/misc";
+import { CoverageGreyLine, coverageMoment, useCoverageGreyLine } from "@/features/maps/grey-line/coverage";
 import { errorMessage } from "@/lib/api";
 import { formatDateTime, formatNumber } from "@/lib/utils";
 import { antennaOf, formOf, rememberForm, useEngines, usePlaces, useProfiles } from "../data";
@@ -246,6 +247,7 @@ export default function CoveragePage() {
   const [removing, setRemoving] = useState<{ id: string; name: string } | null>(null);
   const [opening, setOpening] = useState<string | null>(null);
 
+  const [greyLine, setGreyLine] = useCoverageGreyLine();
   const engines = useEngines();
   const profiles = useProfiles();
   const places = usePlaces();
@@ -661,6 +663,7 @@ export default function CoveragePage() {
                   <ChevronRight />
                 </Button>
               </div>
+              <CoverageGreyLine on={greyLine} onChange={setGreyLine} date={result.request.date} utcHour={utcHour} />
             </div>
           ) : null}
 
@@ -669,6 +672,7 @@ export default function CoveragePage() {
               label={result ? "HF coverage over the offline map" : "The offline map: the area it shows is the area a grid is laid over"}
               className="mt-3 h-[min(56dvh,34rem)] lg:h-[min(70dvh,34rem)]"
               data={data}
+              greyLineAt={result && greyLine ? coverageMoment(result.request.date, utcHour) : null}
               fit={fit}
               onReady={setMap}
               onMoved={setShown}

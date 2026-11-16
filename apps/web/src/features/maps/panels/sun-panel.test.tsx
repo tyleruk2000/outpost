@@ -4,6 +4,7 @@ import type { ReactElement } from "react";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { setClockChoice } from "@/lib/clock";
+import { setMapMoment } from "../grey-line/time";
 import type { CameraView } from "../lib/view";
 import type { MapEngine } from "../map/engine";
 import { SunPanel } from "./sun-panel";
@@ -41,6 +42,8 @@ describe("the Sun tab of the map's panel", () => {
   const before = Object.getOwnPropertyDescriptor(window, "isSecureContext");
   beforeEach(() => {
     localStorage.clear();
+    // The day the tab shows is the map's moment, which outlives a test; each starts from now.
+    setMapMoment(null);
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-06-21T09:00:00Z"));
     secure(true);

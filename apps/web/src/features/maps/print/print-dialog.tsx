@@ -257,7 +257,7 @@ export function PrintDialog({
 
   const date = DATE.format(new Date());
   const sheetOf = (pictures: Array<{ id: string; x: number; y: number; width: number; height: number }>) =>
-    layoutSheet({ geometry, bbox, scale, title: shownTitle, date, credits, graticule: ticks, pictures });
+    layoutSheet({ geometry, bbox, scale, title: shownTitle, date, credits, notes: printed?.notes, graticule: ticks, pictures });
   const sheet = sheetOf(made.status === "ready" ? made.pictures : [{ id: "preview", x: 0, y: 0, ...pixels }]);
   const pictureUrls =
     made.status === "ready"

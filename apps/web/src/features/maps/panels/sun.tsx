@@ -21,10 +21,10 @@ import { Input } from "@/components/ui/input";
 import { Segmented } from "@/components/ui/misc";
 import { useClockStyle } from "@/lib/clock";
 import { cn } from "@/lib/utils";
-import { useStoredState } from "../hooks";
+import { useMapMoment, useSunClock } from "../grey-line/time";
 import type { LatLon } from "../lib/geo";
 import { moonPhase } from "../lib/moon";
-import { addDays, dayLengthChange, type IsoDate, isIsoDate, sunDay } from "../lib/sun";
+import { addDays, dateToUtc, dayLengthChange, type IsoDate, isIsoDate, sunDay } from "../lib/sun";
 import {
   type ClockWriting,
   dateIn,
@@ -42,10 +42,6 @@ import { readStored, writeStored } from "../lib/view";
 import { Fact } from "../ui";
 
 const OPEN_KEY = "outpost.maps.sun.open";
-const CLOCK_KEY = "outpost.maps.sun.clock";
-
-type Clock = "device" | "utc";
-const isClock = (value: unknown): value is Clock => value === "device" || value === "utc";
 const isBoolean = (value: unknown): value is boolean => typeof value === "boolean";
 
 /**
@@ -61,13 +57,27 @@ const LAST_DATE = "2100-12-31";
 
 const link = "text-primary underline decoration-1 underline-offset-2 hover:decoration-2";
 
-/** The day's sun at a position, and everything the two layouts below share. */
-function useSun(position: LatLon, zone: string | undefined) {
+/**
+ * The day's sun at a position, and everything the two layouts below share. `shared`: the
+ * date is the day of the moment the map's sun is shown for (grey-line/time.ts), so that the
+ * Sun tab and the grey line on the map are always about the same day.
+ */
+function useSun(position: LatLon, zone: string | undefined, shared = false) {
   const device = useMemo(() => zone ?? deviceZone(), [zone]);
   const style = useClockStyle();
-  const [clock, setClock] = useStoredState<Clock>(CLOCK_KEY, isClock, "device");
+  const [clock, setClock] = useSunClock();
   const [today] = useState(() => dateIn(device, Date.now()));
-  const [date, setDate] = useState<IsoDate>(today);
+  const [ownDate, setOwnDate] = useState<IsoDate>(today);
+  const [moment, setMoment] = useMapMoment();
+  const date = shared ? (moment === null ? today : dateIn(device, moment)) : ownDate;
+  /** Another day, at the same time of day: the moment moves by whole days. */
+  const setDate = (next: IsoDate) => {
+    if (!shared) return setOwnDate(next);
+    if (next === date) return;
+    setMoment((moment ?? Date.now()) + dateToUtc(next) - dateToUtc(date));
+  };
+  /** Back to today: for the shared moment, back to now. */
+  const goToday = () => (shared ? setMoment(null) : setOwnDate(today));
 
   const { lat, lon } = position;
   const utc = clock === "utc";
@@ -82,7 +92,20 @@ function useSun(position: LatLon, zone: string | undefined) {
   const choose = (next: string) => {
     if (isIsoDate(next) && next >= FIRST_DATE && next <= LAST_DATE) setDate(next);
   };
-  return { device, style, clock, setClock, today, date, setDate, choose, day, rows, summary, far: hoursFromZone(lon, device, day.noon) };
+  return {
+    device,
+    style,
+    clock,
+    setClock,
+    today,
+    date,
+    goToday,
+    choose,
+    day,
+    rows,
+    summary,
+    far: hoursFromZone(lon, device, day.noon),
+  };
 }
 
 const dayParts = new Intl.DateTimeFormat("en-GB", { timeZone: "UTC", weekday: "long", day: "numeric", month: "long", year: "numeric" });
@@ -148,7 +171,7 @@ function SunBody({
   children?: ReactNode;
   className?: string;
 }) {
-  const { device, style, clock, setClock, today, date, setDate, choose, day, rows, far } = sun;
+  const { device, style, clock, setClock, today, date, goToday, choose, day, rows, far } = sun;
   const layout = useMemo(() => sunLayout(rows), [rows]);
   return (
     <div id={id} className={cn("grid gap-3", className)}>
@@ -186,7 +209,7 @@ function SunBody({
           <ChevronRight />
         </Button>
         {date !== today ? (
-          <Button variant="link" size="sm" onClick={() => setDate(today)}>
+          <Button variant="link" size="sm" onClick={goToday}>
             Today
           </Button>
         ) : null}
@@ -298,16 +321,19 @@ export function SunSection({
 export function SunTimes({
   position,
   zone,
+  shared = false,
   children,
   className,
 }: {
   position: LatLon;
   zone?: string;
+  /** The day is the one the map's sun is shown for, which the grey line is drawn for too. */
+  shared?: boolean;
   /** Said between the times and the quieter list: which point the times are for. */
   children?: ReactNode;
   className?: string;
 }) {
-  const sun = useSun(position, zone);
+  const sun = useSun(position, zone, shared);
   return (
     <div className={cn("grid", className)}>
       <p className="sr-only" aria-live="polite" aria-atomic>

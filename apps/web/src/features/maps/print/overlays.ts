@@ -26,6 +26,9 @@
  */
 import type { Bbox, InstalledRegion, MapSources, MarkerDto, TrackDto, TrackWithGeometryDto } from "@outpost/shared";
 import { plural } from "@/lib/utils";
+import { greyLineData } from "../grey-line/geometry";
+import { greyLineShown, momentText } from "../grey-line/grey-line";
+import { mapMoment } from "../grey-line/time";
 import { CONTOUR_MIN_ZOOM, contourInterval, contourReach } from "../lib/contours";
 import { buildStyle, MAP_FONTS, type MapTheme, SOURCE_IDS } from "../lib/style";
 import type { LayerSpecification, SourceSpecification, StyleSpecification } from "../lib/style-types";
@@ -68,6 +71,8 @@ export interface PrintDraft {
   /** Sources and layers of an overlay's own, drawn above everything else in the order added. */
   sources: Record<string, SourceSpecification>;
   layers: LayerSpecification[];
+  /** Sentences for the strip under the map, about what an overlay drew: the time the grey line is for. */
+  notes: string[];
 }
 
 export interface PrintOverlayPart {
@@ -216,7 +221,26 @@ export const PRINT_OVERLAYS: PrintOverlay[] = [
       draft.data["o-grid"] = locatorGrid(context.bbox, context.zoom);
     },
   },
+  {
+    id: "grey-line",
+    label: "Grey line (day and night)",
+    hint: () => `Night shaded and the line where the Sun rises and sets, for ${momentText(greyLineMoment(), "utc", "UTC", "24")}.`,
+    initially: () => greyLineShown(),
+    apply: (draft) => {
+      const at = greyLineMoment();
+      draft.data["o-grey-line"] = greyLineData(at);
+      draft.notes.push(
+        `Day and night are drawn for ${momentText(at, "utc", "UTC", "24")}. The line is where the Sun rises or sets; the shading deepens at 6°, 12° and 18° below the horizon.`,
+      );
+    },
+  },
 ];
+
+/** The moment the grey line on the map on screen is drawn for, to the minute: now, unless another was chosen. */
+function greyLineMoment(): number {
+  const at = mapMoment() ?? Date.now();
+  return Math.floor(at / 60_000) * 60_000;
+}
 
 const LOCATOR_CELLS = { 2: "Fields", 4: "Squares", 6: "Subsquares", 8: "Extended squares" } as const;
 
@@ -292,6 +316,8 @@ function edgeGuard(bbox: Bbox, zoom: number): { source: SourceSpecification; lay
 
 export interface PrintStyle {
   style: StyleSpecification;
+  /** Sentences for the strip under the map from what is drawn on it; see `PrintDraft.notes`. */
+  notes: string[];
   /** Whether anything on the page is drawn from the installed terrain. */
   usesTerrain: boolean;
 }
@@ -306,7 +332,7 @@ export function printStyle(
   overlays: PrintOverlay[],
   base: { origin: string; cacheKey: string },
 ): PrintStyle {
-  const draft: PrintDraft = { hillshade: false, contours: false, names: false, data: {}, sources: {}, layers: [] };
+  const draft: PrintDraft = { hillshade: false, contours: false, names: false, data: {}, sources: {}, layers: [], notes: [] };
   let usesTerrain = false;
   for (const overlay of overlays) {
     if (!overlayOn(overlay, context, selection)) continue;
@@ -335,5 +361,5 @@ export function printStyle(
   const edge = edgeGuard(context.bbox, context.zoom);
   style.sources[EDGE_SOURCE] = edge.source;
   style.layers.push(edge.layer);
-  return { style, usesTerrain: usesTerrain && Boolean(context.sources?.hasTerrain) };
+  return { style, notes: draft.notes, usesTerrain: usesTerrain && Boolean(context.sources?.hasTerrain) };
 }
