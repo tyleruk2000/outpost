@@ -328,7 +328,7 @@ function judgeKey(key: KeyObject): { text: string; refusal?: string; warning?: s
     if (curve === "secp521r1") {
       return {
         text,
-        warning: "Its key is ECDSA P-521, which some browsers do not accept (Chrome and Edge among them). P-256 and P-384 work everywhere.",
+        warning: "Its key is ECDSA P-521, which Chrome does not accept. P-256 and P-384 work everywhere.",
       };
     }
     return {

@@ -113,8 +113,12 @@ accounts: everyone who can reach Outpost can still use all of it, over either ad
 | The authority is limited | Critical name constraints permit only private and loopback address blocks, names under `local`, `lan`, `home`, `internal`, `home.arpa` and `localhost`, and the one-word host names known when it was made. Path length 0: it cannot make further authorities. Key usage is certificate signing only; extended key usage is server authentication only. Outpost itself refuses to sign for anything outside the limits. | `PRIVATE_BLOCKS`, `PRIVATE_SUFFIXES` in `modules/https/names.ts`; `permitsName` |
 | The server certificate | ECDSA P-256, signed with SHA-256, 398 days from start to end, a new key each time. The names are in the subject alternative name; it carries the server-authentication usage. That meets Apple's published requirements for certificates from a root a person adds (SHA-2, names in the SAN, the `serverAuth` usage, 825 days or fewer; RSA keys of 2048 bits or more). Re-issued when the server's addresses change or 30 days before it runs out. | `issueServerCertificate`; `ensureCertificates` in `service.ts` |
 | Where the keys are | `tls/` in the data directory, mode `0700`, with `ca.key` and `server.key` at `0600` (on Windows these modes mean nothing; protect the folder yourself). They are not encrypted: the server has to sign a new certificate unattended when its address changes. The folder is not one of those a backup, a portable drive or erase-everything touches. | `modules/https/store.ts` |
-| No route serves a key | The only thing read from `tls/` for a browser is the authority's public certificate (`GET /api/https/outpost-authority.crt`). A test asks for the keys by a list of guessed addresses over both listeners, and checks the backup archive. | `modules/https/index.ts`, `apps/server/test/https.test.ts` |
+| No route serves a key | The only things read from `tls/` for a browser are public certificates: the authority's (`GET /api/https/outpost-authority.crt`, `.pem`) and, for a certificate the person brought, the root it chains to when they gave it (`GET /api/https/own-root.crt`, `.pem`). Tests ask for the keys by a list of guessed addresses over both listeners, and check the backup archive. | `modules/https/index.ts`, `apps/server/test/https.test.ts`, `https-own.test.ts` |
 | Certificates are checked before use | Outpost lays certificates out itself (Node cannot write one) and has Node sign them. Each one is then read back by Node and its signature, issuer and kind verified before it is saved or served. | `certificates.ts` |
+| A certificate of the person's own | The listener can present a certificate and key the person brought instead of one from Outpost's authority (`https.certificate` is `own`). They live in `tls/own/` as `fullchain.pem` and `privkey.pem`: written at `0600` in a `0700` folder when given in Settings, left with the person's own permissions when put there by hand (a key other accounts can read is reported, not changed). The key is kept unencrypted, for the same reason as Outpost's own; it is never served, never logged, and not in a backup or on a portable drive. Outpost never writes through a symbolic link in that folder. | `modules/https/store.ts`, `own.ts` |
+| Who may hand over a key | Choosing which certificate is presented, and taking up files already in the folder, are open to every device: no secret moves, and either can be put back. **Uploading a key** is accepted only when the request is local (`isLocalRequest`) or itself arrived over the HTTPS listener (`socket.encrypted`); from anywhere else it would cross the network in the clear, and is refused with the reason and the folder to use instead. `OUTPOST_ALLOW_REMOTE_ERASE` does not widen this: no option makes plain HTTP private. A password for a PKCS#12 file travels in the same request, is used once and is not stored. **Deleting** the person's certificate and key follows the rule for deleting the authority, since HTTPS could not then be put back from another device. | `keyRight` in `modules/https/index.ts` |
+| What is checked before it is used | The key belongs to the certificate; the chain is put in order; dates; names (a subject alternative name is required); key kind and size; signature hash; purpose; and Node is asked to build a TLS context from it. What cannot work is refused and nothing of it is kept. | `inspectOwn` in `modules/https/own.ts` |
+| Outpost never changes certificate by itself | A certificate of the person's own that expires goes on being served, and one whose files become unusable is replaced by nothing (the pair read before is served until a restart; after one, HTTPS does not start). Outpost does not fall back to its own authority: that would present an identity the person's devices were never told to trust, and would make a certificate authority nobody asked for. Plain HTTP is unaffected throughout. | `sync`, `takeUpOwn` in `modules/https/service.ts` |
 | Who may do what | Turning HTTPS on or off and listing another name are ordinary settings, open to every device: neither breaks anything that cannot be put back. Replacing or deleting the authority stops every device that trusted it from trusting Outpost, so those two are accepted only from the computer Outpost runs on, on the same terms as [erasing everything](#erasing-everything), including the `OUTPOST_ALLOW_REMOTE_ERASE` option. An authority that cannot be read is reported, never silently replaced. | `authorityRight` in `modules/https/index.ts`, `core/local.ts` |
 
 #### What trusting the certificate means
@@ -142,6 +146,29 @@ authority, a copied key is good for any site, to someone in a position to interc
 that phone's traffic. The answer in both cases is the same: keep the data directory
 private, and if the key may have been copied, make a new authority (Settings, at the
 computer Outpost runs on) and remove the old certificate from each device.
+
+With a certificate of your own, none of the above about Outpost's authority applies to
+it. What devices trust is then a public authority, or your own, and the key that
+matters is yours:
+
+- **A copied `privkey.pem` lets its holder pass as this server** to every device that
+  accepts the certificate, until the certificate expires or is revoked. That is the
+  same exposure as the certificate has wherever else it is kept. It is the reason an
+  upload is refused over plain HTTP, and the reason to keep the data directory private.
+- **An upload over HTTPS is only as private as that connection.** If the browser was
+  told to go on past a certificate warning, the key may be going to someone else.
+  Outpost cannot see that; hand a key over at the computer itself, or by the folder,
+  when in doubt.
+- **"Public" is Outpost's reading, not a guarantee.** It compares the chain with the
+  list of public authorities inside Node and makes no request to check revocation or
+  anything else. A device may trust more, or less.
+- **Reading PKCS#12** is done by Outpost's own reader (`modules/https/pkcs12.ts`,
+  bounded: files over 256 KB and key derivations over ten million rounds are refused)
+  on a file that only someone already allowed to hand over a key can send. The key
+  inside is decrypted by Node; the certificates by Node's PBKDF2, AES and triple DES.
+- **The Host check is unchanged.** A certificate for a public name does not make
+  Outpost answer to that name; `OUTPOST_ALLOWED_HOSTS` still decides, where Outpost is
+  started.
 
 Other things to know:
 
@@ -1058,7 +1085,8 @@ readable only by you. See [storage.md](storage.md#connecting-a-network-share).
    drives (BitLocker, FileVault, LUKS, VeraCrypt). Outpost does not encrypt anything
    at rest.
 5. **Protect the data directory.** It holds the database and, once HTTPS has been
-   turned on, the key of a certificate authority your devices trust (`tls/`). On a
+   turned on, the key of a certificate authority your devices trust, or the key of a
+   certificate of your own (`tls/`). On a
    shared computer, make it readable only by the account that runs Outpost.
 6. **Keep Outpost updated**, and keep kiwix-serve at the version in `compose.yaml`.
 7. **Add catalogue manifests only from people you trust.** A manifest decides which

@@ -55,9 +55,11 @@ There is one kind of exception. `POST /api/manage/cleanup/everything`, which era
 person's own notes and documents, is accepted only from the computer the server runs
 on, unless the server was started with `OUTPOST_ALLOW_REMOTE_ERASE=true`. The same
 holds for restoring a backup, deleting a stored one and lowering how many are kept (see
-[Backup](#backup)), and for `POST /api/https/authority/replace` and
-`DELETE /api/https/authority`, which would stop every device that trusted Outpost's
-HTTPS certificate from trusting it. That is a rule about where a request comes from,
+[Backup](#backup)), and for `POST /api/https/authority/replace`,
+`DELETE /api/https/authority` and `DELETE /api/https/own`, which would stop every device
+that trusted Outpost's HTTPS certificate from trusting it, or leave HTTPS impossible to
+put back from another device. `POST /api/https/own`, which carries a private key, has a
+rule of its own: local, or over HTTPS. That is a rule about where a request comes from,
 not who sent it; see [security.md](security.md#erasing-everything).
 
 ### Request and response bodies
@@ -114,7 +116,7 @@ a name and a JSON `data` of the form `{ "id": …, "data": … }`; both parts ar
 | `imports.changed` | An import changes state | import id |
 | `semantic.changed` | Vectors are built, loaded or removed | |
 | `portable.changed` | A portable drive or runtime download finishes | |
-| `https.changed` | The HTTPS listener starts or stops, its certificate is re-issued, or the certificate authority is replaced or deleted | |
+| `https.changed` | The HTTPS listener starts or stops, its certificate is re-issued or replaced, the certificate authority is replaced or deleted, or a certificate of the person's own nears its end, expires, or has its files changed | |
 | `merge.changed` | A merge of a drive's changes moves to another state | merge id |
 | `chat.changed` | A conversation is started, added to, renamed or deleted, or a reply finishes | conversation id |
 | `encryption.changed` | A key is added to, changed on or removed from the key shelf | fingerprint |
@@ -198,6 +200,7 @@ Settings and their defaults are defined in
 | `answers.contextChars` | 6000 | 1000 to 60000 characters of quoted passages per question |
 | `contacts.carddav` | false | Let phones and computers on the network subscribe to the contacts, read-only. See [Contacts](#contacts) |
 | `https.enabled` | false | Serve Outpost over HTTPS as well, on `OUTPOST_HTTPS_PORT`. See [HTTPS](#https) |
+| `https.certificate` | `outpost` | Whose certificate the HTTPS listener presents: `outpost` (made and signed by Outpost's own authority) or `own` (the two files in `tls/own`). Setting it to `own` with no usable files leaves HTTPS not running, with the reason in `problem`; `POST /api/https/own/use` checks first |
 | `https.names` | empty | Other names and addresses for the certificate to list, separated by commas or spaces; at most 20. Each must be a host name or an IP address, without `http://` or a port |
 | `maps.tileSource` | empty (newest daily build) | an address |
 | `maps.terrainSource` | `https://download.mapterhorn.com/planet.pmtiles` | an address |
@@ -209,15 +212,21 @@ Settings and their defaults are defined in
 Types: `packages/shared/src/https.ts`. See
 [deployment.md](deployment.md#https-on-your-network) and
 [security.md](security.md#https-on-the-home-network). HTTPS is turned on and off with
-the `https.enabled` setting; these routes report on it and manage the certificate
-authority.
+the `https.enabled` setting, and `https.certificate` says whose certificate it
+presents; these routes report on it, manage Outpost's certificate authority, and take
+a certificate of the person's own.
 
 | Method and path | Purpose |
 | --- | --- |
-| `GET /api/https` | `HttpsStatus`: `enabled` (the setting), `listening`, `port`, `httpPort`, `problem` (why it could not start, in words, or null), `addresses` (`{ url, name, kind }`, where `kind` is `address`, `name` or `this-computer`), `names` on the server certificate, `leftOut` (`{ name, reason }` for listed names the authority may not sign), `authority` (`name`, `fingerprint`, `createdAt`, `expiresAt`, `permittedNames`, `permittedBlocks`, or null before HTTPS has ever been on), `certificateExpiresAt`, `unavailable` (`portable` or null), `inContainer`, `lanAccess`, and `authorityRight` (`{ allowed, reason, option }`: whether this request may replace or delete the authority). Nothing secret is in it. |
+| `GET /api/https` | `HttpsStatus`: `enabled` and `source` (the two settings; `source` is `outpost` or `own`), `listening`, `port`, `httpPort`, `problem` (why it could not start, in words, or null), `addresses` (`{ url, name, kind }`, where `kind` is `address`, `name` or `this-computer`), `names` on the certificate being served, `leftOut` (`{ name, reason }` for listed names Outpost's authority may not sign), `authority` (`name`, `fingerprint`, `createdAt`, `expiresAt`, `permittedNames`, `permittedBlocks`, or null while Outpost has none), `certificateExpiresAt`, `unavailable` (`portable` or null), `inContainer`, `lanAccess`, `authorityRight` (`{ allowed, reason, option }`: whether this request may replace or delete the authority, or delete the person's certificate), and `own`. `own` is `folder` (the path of `tls/own` on the server), `files` (`{ certificate: "fullchain.pem", key: "privkey.pem" }`), `inFolder` (whether each is there), `keyRight` (`{ allowed, reason }`, `reason` being `local`, `https` or `remote`: whether this request may upload a key), `expiry` (`ok`, `soon`, `expired` or null), `problem` (why the files in the folder cannot be used as they are, or null) and `certificate`: null unless `source` is `own` and Outpost holds one, else `name`, `issuer`, `fingerprint`, `validFrom`, `expiresAt`, `key` (such as `ECDSA P-256`), `names`, `chain`, `trust` (`public`, `private` or `self-signed`, as far as Outpost can tell), `anchor` (`{ name, fingerprint, held }`: what a device has to trust, and whether Outpost can offer it), `covered` and `notCovered` (of the addresses the server is reached by), `notAnswered` (names on it that the Host check refuses), `warnings` and `notes`. Nothing secret is in it. |
 | `GET /api/https/outpost-authority.crt` | The certificate authority's public certificate, DER, as `application/x-x509-ca-cert` with no `Content-Disposition` (the form Apple's example of delivering a root certificate to an iPhone uses): what a device installs. `?format=pem` gives PEM (`outpost-authority.pem`), for `curl --cacert` and the like. `404` until HTTPS has been turned on once. No route serves a private key. |
 | `POST /api/https/authority/replace` | Deletes the authority and makes a new one, with a new server certificate. Answers `HttpsStatus`. Only from the computer Outpost runs on, or from anywhere when started with `OUTPOST_ALLOW_REMOTE_ERASE=true`; otherwise `403`. `409` on a portable drive. |
-| `DELETE /api/https/authority` | Turns HTTPS off and deletes the authority, the server certificate and their keys. Answers `HttpsStatus`. Same restriction. |
+| `DELETE /api/https/authority` | Deletes the authority, the server certificate and their keys, and turns HTTPS off unless it is presenting a certificate of the person's own. Answers `HttpsStatus`. Same restriction. |
+| `GET /api/https/outpost-authority.pem` | The same certificate as PEM (the form Linux trust stores and `curl --cacert` want), as an attachment. |
+| `POST /api/https/own` | Gives Outpost a certificate and its key: `multipart/form-data` with one to three files of at most 256 KB each (the certificate, the key, the chain, in any order and under any field names; PEM or DER; or one PKCS#12 file) and, for PKCS#12, a `password` field. Outpost checks them, writes `fullchain.pem` and `privkey.pem` to `tls/own`, sets `https.certificate` to `own` and `https.enabled` to true, and answers `HttpsStatus`. `403` unless the request is from the computer Outpost runs on or arrived over HTTPS (a key must not cross the network in the clear; `OUTPOST_ALLOW_REMOTE_ERASE` does not change this). `400` with the reason for anything that cannot work (a key that is not the certificate's, a passphrase on the key, an expired certificate, no names, a key browsers refuse, a wrong password); nothing is kept then. `409` on a portable drive, when the clock is plainly wrong, or when the folder holds links to files kept elsewhere. `413` for a file over the limit. |
+| `POST /api/https/own/use` | The same for the two files already in `tls/own`, which are left as they are. No key crosses the network, so any device may ask. `409` when a file is missing or unreadable, `400` with the reason when they cannot work; the certificate in use, if any, carries on. |
+| `DELETE /api/https/own` | Deletes the two files from `tls/own`. If HTTPS was presenting them, turns it off and sets `https.certificate` back to `outpost`; it does not start HTTPS with Outpost's own certificate. Answers `HttpsStatus`. Restricted like `DELETE /api/https/authority`. |
+| `GET /api/https/own-root.crt`, `GET /api/https/own-root.pem` | The certificate devices have to trust for the person's own certificate, when Outpost holds it: the root of their authority if it was among the files they gave, or a self-signed certificate itself. DER and PEM, sent as the authority's are. `404` otherwise, including for a certificate from a public authority. |
 
 ## Storage
 

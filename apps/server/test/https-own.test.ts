@@ -265,7 +265,7 @@ describe("reading a certificate of your own", () => {
     expect([p384.refusals, p384.report.warnings]).toEqual([[], []]);
     const p521 = check(make({ name: "nas.lan", issuer: house.intermediate, names: ["nas.lan"], key: "p521" }));
     expect(p521.refusals).toEqual([]);
-    expect(p521.report.warnings).toEqual([expect.stringMatching(/P-521, which some browsers do not accept/)]);
+    expect(p521.report.warnings).toEqual([expect.stringMatching(/P-521, which Chrome does not accept/)]);
 
     const rsaRoot = make({ name: "Old Root", authority: true, key: "rsa2048" });
     const sha1 = check(make({ name: "nas.lan", issuer: rsaRoot, names: ["nas.lan"], hash: "sha1" }));

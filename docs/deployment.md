@@ -116,19 +116,23 @@ sent, so a device that does not trust the certificate can always use the `http` 
 ### What each way of running Outpost needs
 
 HTTPS is always switched on in Settings. What differs is whether anything has to be
-done first so that its port can be reached.
+done first so that its port can be reached, and how a
+[certificate of your own](#using-a-certificate-of-your-own) gets to Outpost if you
+have one. Most people do not, and need only the middle column.
 
-| How Outpost runs | Before turning it on in Settings |
-| --- | --- |
-| From source (`pnpm start`) or the packaged app | Nothing. The listener opens on port 8443 (`OUTPOST_HTTPS_PORT`) beside the HTTP one. If a firewall is on, allow that port as you allowed 8080. |
-| Docker Compose | Publish the port: uncomment the HTTPS line under `ports:` in `compose.yaml`, or put it in a `compose.override.yaml`, then `docker compose up -d`. Then name the address in Settings, because a container cannot see the computer's addresses. See [Docker](#docker) below. |
-| A Raspberry Pi set up with `deploy/pi/install.sh` | Run the script with `--https` (with `--lan`): it writes a `compose.override.yaml` that publishes the port. Then as for Docker. |
-| The Pi's own Wi-Fi network (`deploy/pi/hotspot.sh`) | As above, and add `10.42.0.1` and `outpost.home.arpa` under **Other names and addresses** in Settings, so the certificate covers the addresses phones on that network use: `https://10.42.0.1:8443`. |
-| Behind a reverse proxy with its own certificate | Leave Outpost's HTTPS off; the proxy provides it. See [Behind a reverse proxy](#behind-a-reverse-proxy). |
-| A portable drive | Not offered: a drive moves between computers, and each would need its own authority trusted by each device. |
+| How Outpost runs | Before turning it on in Settings | If you bring a certificate of your own |
+| --- | --- | --- |
+| From source (`pnpm start`) or the packaged app | Nothing. The listener opens on port 8443 (`OUTPOST_HTTPS_PORT`) beside the HTTP one. If a firewall is on, allow that port as you allowed 8080. | Choose the two files in Settings, in a browser on that computer. Or put them in `tls/own` of the data directory and press **Use them** from any device. |
+| Docker Compose | Publish the port: uncomment the HTTPS line under `ports:` in `compose.yaml`, or put it in a `compose.override.yaml`, then `docker compose up -d`. Then name the address in Settings, because a container cannot see the computer's addresses. See [Docker](#docker) below. | Put the two files in `/data/tls/own` of the `outpost-data` volume ([how](#docker)) and press **Use them**. Choosing files in Settings is offered only at an `https` address, because no request looks local to a container. |
+| A Raspberry Pi set up with `deploy/pi/install.sh` | Run the script with `--https` (with `--lan`): it writes a `compose.override.yaml` that publishes the port. Then as for Docker. | As for Docker. |
+| The Pi's own Wi-Fi network (`deploy/pi/hotspot.sh`) | As above, and add `10.42.0.1` and `outpost.home.arpa` under **Other names and addresses** in Settings, so the certificate covers the addresses phones on that network use: `https://10.42.0.1:8443`. | It must cover `10.42.0.1` or `outpost.home.arpa`, which no public authority will sign. Only one from an authority of your own can. |
+| Behind a reverse proxy with its own certificate | Leave Outpost's HTTPS off; the proxy provides it. See [Behind a reverse proxy](#behind-a-reverse-proxy). | Give it to the proxy, not to Outpost. |
+| A portable drive | Not offered: a drive moves between computers, and each would need its own authority trusted by each device. | Not offered. |
 
-In every case, each phone and computer then has to be told once to trust Outpost's
-certificate ([steps below](#trusting-the-certificate-on-a-device)).
+With Outpost's own certificate, each phone and computer then has to be told once to
+trust it ([steps below](#trusting-the-certificate-on-a-device)). With a certificate of
+your own from a public authority, devices need nothing; from an authority of your own,
+they need that authority's root, by the same steps.
 
 ### Turning it on
 
@@ -176,8 +180,9 @@ path length of 0, and server authentication as its only purpose):
   one-word names listed at that moment.
 
 A public address or a name such as `outpost.example.net` cannot go on the certificate;
-Settings says so next to the name. For a public name, use a certificate from a public
-authority on a [reverse proxy](#behind-a-reverse-proxy) instead. A one-word name that
+Settings says so next to the name. For a public name, give Outpost
+[a certificate of your own](#using-a-certificate-of-your-own) from a public authority,
+or put one on a [reverse proxy](#behind-a-reverse-proxy). A one-word name that
 appears later (a renamed computer) needs either its `.local` form or a new authority.
 
 Which devices hold the authority to those limits is in
@@ -186,103 +191,487 @@ browsers do, Android does not.
 
 ### Trusting the certificate on a device
 
-The **Download certificate** button gives `outpost-authority.crt`, the authority's public
-certificate in DER form (`GET /api/https/outpost-authority.crt`). Settings shows its name and its
-SHA-256 fingerprint; compare the fingerprint with what the device shows where it shows
-one, because the download itself travels over plain HTTP.
+A device accepts the `https` address once it trusts the certificate authority. That is
+done once per device, on the device. Settings has the steps for each kind of device
+straight after the list of addresses, opens the ones for the device in hand, and gives
+the address at which a phone can open that same page.
 
-The steps below are also in Settings, which opens the ones for the device in hand. The
-menu names are the vendors' own, read in November 2026 from the sources listed.
-**None of them has been tried on a real iPhone, iPad, Android phone or Windows
-computer.** Only macOS was at hand (see [What was tested](#what-was-tested)).
+The authority's public certificate comes in two forms, and each set of steps links the
+one that kind of device wants:
 
-**iPhone and iPad**
+| File | Form | Address | For |
+| --- | --- | --- | --- |
+| `outpost-authority.crt` | DER (binary) | `GET /api/https/outpost-authority.crt` | iPhone, iPad, Android, Mac, Windows, Firefox |
+| `outpost-authority.pem` | PEM (text) | `GET /api/https/outpost-authority.pem` | Linux, and commands such as `curl --cacert` |
 
-1. Open the Settings page in Safari, tap **Download certificate**, and allow the download.
+Settings shows the authority's name and SHA-256 fingerprint. Compare the fingerprint
+with what the device shows where it shows one, because the download itself travels over
+plain HTTP.
+
+**No configuration profile (`.mobileconfig`) is offered for Apple devices**, because it
+would not shorten anything. Apple: "If you manually install a profile that contains a
+certificate payload in iOS, iPadOS, and visionOS, that certificate isn't automatically
+trusted for SSL"
+([102390](https://support.apple.com/en-us/102390)), and "On a Mac with macOS 13 or
+later, by default, macOS doesn't mark root certificates that you manually install with
+a configuration profile as trusted for TLS"
+([Apple Platform Deployment](https://support.apple.com/guide/deployment/depb5eff8914/web)).
+The trust step is the same either way, and an unsigned profile adds a warning of its
+own.
+
+**What was tried, and what was not.** Every menu name and command below was read in
+November 2026 from the source given beside it; nothing was written from memory. Where
+a label comes from the words in a program's source and not from a help page, that is
+said. On a Mac (macOS 15.6.1) both downloads were added to a keychain made for the
+purpose with `security add-certificates`, found there under the name and fingerprint
+Settings shows, and deleted again by name and by fingerprint; `security verify-cert`,
+`curl --cacert` and `openssl s_client -CAfile` were run against a running Outpost.
+**Not tried:** marking the certificate as trusted in a real keychain (`security
+add-trusted-cert`, or Keychain Access), since that changes the settings of the Mac it is
+run on; and anything at all on an iPhone, an iPad, an Android phone, a Windows computer
+or a Linux computer. Menus move between versions.
+
+The same steps serve a [certificate of your own](#using-a-certificate-of-your-own)
+from a private authority: there the file is your authority's root, not Outpost's.
+
+#### iPhone and iPad
+
+1. Open the Settings page in Safari on the device and tap **Download the certificate**
+   (`outpost-authority.crt`). Allow the download.
 2. Open the Settings app and tap **Profile Downloaded**.
 3. Tap **Install** in the upper-right corner and follow the instructions.
 4. Go to **Settings › General › About › Certificate Trust Settings** and, under **Enable
    full trust for root certificates**, turn on trust for the certificate.
 
-A downloaded profile that is not installed within 8 minutes is discarded. With Stolen
-Device Protection on, away from a familiar place, iOS will not install a profile until
-that protection is turned off. To remove the certificate: **Settings › General › VPN &
-Device Management**, select the profile, **Delete Profile**.
-Sources: Apple, [Install a configuration profile](https://support.apple.com/en-us/102400),
-[Trust manually installed certificate profiles](https://support.apple.com/en-us/102390),
-[Review and delete configuration profiles](https://support.apple.com/guide/personal-safety/review-and-delete-configuration-profiles-ips327569a75/web).
-Not confirmed from Apple's pages: the wording of Safari's download prompt, and whether a
-browser other than Safari offers the profile.
+- **Check:** open the `https` address in Safari. The page opens with no warning, and
+  the section in Settings says "This browser is using the HTTPS address, and trusts the
+  certificate."
+- **Remove:** **Settings › General › VPN & Device Management**, select the profile, tap
+  **Delete Profile**.
+- A downloaded profile that is not installed within 8 minutes is discarded. With Stolen
+  Device Protection on, away from a familiar place, iOS will not install a profile until
+  that protection is turned off.
+- Sources: Apple, [Install a configuration profile](https://support.apple.com/en-us/102400)
+  (published April 2026), [Trust manually installed certificate profiles](https://support.apple.com/en-us/102390),
+  [Review and delete configuration profiles](https://support.apple.com/guide/personal-safety/ips327569a75/web).
+  Not confirmed from Apple's pages: that the download has to be made in Safari (Apple
+  says only "from a website or an email message"), and the wording of Safari's prompt.
 
-**Android** (names as on a Pixel with Android 14 or later)
+#### Android (names as on a Pixel with Android 14 or later)
 
-1. Tap **Download certificate**. Opening the downloaded file does not install it: since
-   Android 11 a CA certificate can only be installed from Settings.
+1. Tap **Download the certificate** (`outpost-authority.crt`). Opening the downloaded
+   file does not install it: since Android 11 a CA certificate can only be installed
+   from Settings.
 2. Open Settings and tap **Security & privacy › More security settings › Encryption &
-   credentials**.
-3. Tap **Install a certificate**, then **CA certificate**, read the warning ("Your data
-   won't be private"), and tap **Install anyway**.
-4. Choose `outpost-authority.crt`.
+   credentials**. (Android's source also has **More security & privacy** for the middle
+   one; which a given phone shows is not settled by the sources.)
+3. Tap **Install a certificate**, then **CA certificate**. Android warns "Your data
+   won't be private"; tap **Install anyway**.
+4. Choose the file. If the phone has no PIN, pattern or password, Android asks for one
+   to be set first.
 
-Chrome uses the certificate once it is installed. Firefox for Android uses it only when
-**Use third party CA certificates** is on in its hidden settings (Mozilla's help page
-says it is used by default; Firefox's source says the setting is off by default). Other
-apps do not use certificates a person installs. To remove it: on the same screen,
-**Trusted credentials › User**, select the certificate, **Uninstall**.
-Sources: Google, [Add & remove certificates](https://support.google.com/pixelphone/answer/2844832)
-(the path to the screen; it no longer describes the CA certificate option);
-[Android 11 for enterprise](https://developer.android.com/work/versions/android-11) (CA
-certificates only from Settings); the labels **CA certificate**, **Install anyway**,
-**Trusted credentials**, **User** and **Uninstall** are from the
-[Android Settings source](https://android.googlesource.com/platform/packages/apps/Settings/+/refs/heads/main/res/values/strings.xml),
-not from a help page. Other makers' phones name these screens differently.
+- **Check:** open the `https` address in Chrome; no warning.
+- **Remove:** on the same screen, **Trusted credentials › User**, tap the certificate,
+  **Uninstall**.
+- Chrome uses the certificate once it is installed. Firefox for Android uses it only
+  when **Use third party CA certificates** is on in its **Secret Settings** (Mozilla's
+  help page says user certificates are used by default on Android; the switch in
+  Firefox's source says otherwise, and no Mozilla page explains how to reach it). Other
+  apps do not use certificates a person installs.
+- Sources: Google, [Add & remove certificates](https://support.google.com/pixelphone/answer/2844832)
+  ("Android 14 and up"; it gives the path to the screen and describes only the **Wi-Fi
+  certificate** choice); [Android 11 for enterprise](https://developer.android.com/work/versions/android-11)
+  ("users must manually install CA certificates in Settings"). The labels **CA
+  certificate**, **Install anyway**, **Trusted credentials**, **User** and **Uninstall**
+  are from the
+  [Android Settings source](https://android.googlesource.com/platform/packages/apps/Settings/+/refs/heads/main/res/values/strings.xml),
+  the same from Android 14 to 16; no help page gives them, and the order of taps for
+  removing is not written anywhere. Other makers' phones name these screens differently.
 
-**Mac**
+#### Mac
 
-1. Click **Download certificate**.
-2. Open Keychain Access (search for it in Spotlight). Select the **login** keychain, for
-   you alone, or **System**, for everyone on the Mac, and drag the file onto the window.
-3. Double-click the certificate, click the arrow next to **Trust**, and for **Secure
+1. Click **Download the certificate** (`outpost-authority.crt`).
+2. Open Keychain Access: search for it in Spotlight, then press Return. Select the
+   **login** keychain, for you alone, or **System**, for everyone on the Mac, and drag
+   the file onto the Keychain Access window.
+3. Double-click the certificate. Next to **Trust**, click the arrow, and for **Secure
    Sockets Layer (SSL)** choose **Always Trust**. macOS may ask for your password.
 
-Safari and Chrome use this setting; so does Firefox (120 and later) unless that has been
-turned off. To remove it: set the trust back to **Use System Defaults**, or delete the
-certificate in Keychain Access.
-Sources: Apple, Keychain Access User Guide:
-[Add certificates to a keychain](https://support.apple.com/guide/keychain-access/add-certificates-to-a-keychain-kyca2431/mac),
-[Change the trust settings of a certificate](https://support.apple.com/guide/keychain-access/change-the-trust-settings-of-a-certificate-kyca11871/mac).
-Apple's guide has no page on deleting a certificate, and does not mention the password
-prompt.
+With a command instead (macOS asks for your password; `-p ssl` trusts it for web sites
+and nothing else):
 
-**Windows 10 and 11**
+```bash
+# for you alone
+security add-trusted-cert -r trustRoot -p ssl -k ~/Library/Keychains/login.keychain-db ~/Downloads/outpost-authority.crt
+# for everyone who uses this Mac
+sudo security add-trusted-cert -d -r trustRoot -p ssl -k /Library/Keychains/System.keychain ~/Downloads/outpost-authority.crt
+```
 
-1. Download the certificate, open the file, and choose **Install Certificate…**
-2. Leave the store location as **Current User** and select **Next**.
+- **Check:** open the `https` address in Safari or Chrome; no warning. Or
+  `security verify-cert https://192.168.1.20:8443`, which prints
+  `...certificate verification successful.` when the Mac trusts the server, and
+  `Cert Verify Result: CSSMERR_TP_NOT_TRUSTED` when it does not. Its lines about
+  Certificate Transparency concern public authorities and can be ignored.
+- **Remove:** in Keychain Access, set the trust back to **Use System Defaults**, or
+  delete the certificate. Or `security remove-trusted-cert ~/Downloads/outpost-authority.crt`
+  (with `sudo` and `-d` if it was trusted for everyone), then
+  `security delete-certificate -c "<the name Settings shows>"`.
+- Safari and Chrome use this setting (Chrome: "Any certificate where the 'Secure
+  Sockets Layer (SSL)' flag is set to 'Always Trust'"). Firefox 120 and later imports
+  "roots found in the macOS system keychain": if you chose **login** and Firefox still
+  warns, use **System** or the steps for Firefox.
+- Sources: Apple, Keychain Access User Guide:
+  [Add certificates to a keychain](https://support.apple.com/guide/keychain-access/add-certificates-to-a-keychain-kyca2431/mac),
+  [Change the trust settings of a certificate](https://support.apple.com/guide/keychain-access/change-the-trust-settings-of-a-certificate-kyca11871/mac),
+  [trust policies](https://support.apple.com/guide/keychain-access/change-certificate-trust-policies-on-mac-mchlp2824/mac);
+  the commands are from the `security` tool's own usage text on macOS 15.6.1
+  (`security help add-trusted-cert`); Chrome's behaviour from the
+  [Chrome Root Store FAQ](https://chromium.googlesource.com/chromium/src/+/main/net/data/ssl/chrome_root_store/faq.md).
+  Apple's guide has no page on deleting a certificate and does not mention the password
+  prompt. The success line of `verify-cert` was seen with the root named on the command
+  line (`-r`), not with the root trusted in a keychain.
+
+#### Windows computers (Windows 10 and 11)
+
+1. Click **Download the certificate**, open the file, and choose **Install
+   Certificate…**
+2. Leave the store location as **Current User** (or choose **Local Machine**, for
+   everyone who uses the computer) and select **Next**.
 3. Choose **Place all certificates in the following store**, select **Trusted Root
    Certification Authorities**, and finish the wizard.
 4. On the security warning, select **Yes**.
 
-Edge and Chrome use this store; so does Firefox unless that has been turned off. To
-remove it: run `certmgr.msc` and delete the certificate under **Certificates - Current
-User › Trusted Root Certification Authorities › Certificates**.
-Sources: Microsoft has no single page for this; the steps are pieced together from
-[Installing the trusted root certificate](https://learn.microsoft.com/en-us/skype-sdk/sdn/articles/installing-the-trusted-root-certificate),
-[Install client certificates](https://learn.microsoft.com/en-us/azure/vpn-gateway/point-to-site-how-to-vpn-client-install-azure-cert)
-(Current User, the security warning) and
-[View certificates with the MMC snap-in](https://learn.microsoft.com/en-us/dotnet/framework/wcf/feature-details/how-to-view-certificates-with-the-mmc-snap-in)
-(`certmgr.msc`).
+With a command instead:
 
-**Firefox on a computer**
+```bat
+:: for your account
+certutil -user -addstore Root "%USERPROFILE%\Downloads\outpost-authority.crt"
+:: for everyone, in a Command Prompt opened as administrator
+certutil -addstore Root "%USERPROFILE%\Downloads\outpost-authority.crt"
+```
 
-On Windows and macOS, Firefox 120 and later uses certificates trusted in the system, so
-the steps above are enough. On Linux, or where that has been turned off: **Settings ›
-Privacy and security › Certificates › Manage certificates › Authorities › Import…**,
-choose the file, and tick **Trust this CA to identify websites**. To remove it: the same
-tab, select the certificate, **Delete or Distrust…**
-Sources: Mozilla, [Automatically trust third-party certificates](https://support.mozilla.org/en-US/kb/automatically-trust-third-party-certificates)
-(read from an archived copy); the button names are from Firefox 160's own interface text,
-because Mozilla has no help page for importing by hand. Chrome on Linux keeps its own
-list (`chrome://certificate-manager`) and is not covered here.
+```powershell
+Import-Certificate -FilePath "$HOME\Downloads\outpost-authority.crt" -CertStoreLocation Cert:\CurrentUser\Root
+```
+
+- **Check:** open the `https` address in Edge or Chrome; no warning. Or list it:
+  `certutil -user -store Root "<the name Settings shows>"`.
+- **Remove:** run `certmgr.msc` and delete the certificate under **Certificates - Current
+  User › Trusted Root Certification Authorities › Certificates**, or
+  `certutil -user -delstore Root "<the name Settings shows>"`.
+- Chrome uses these stores, the current user's and the computer's (its FAQ names both);
+  Edge is built on the same code. Firefox's documentation names only the computer's
+  store: if Firefox still warns, install it for everyone or use the steps for Firefox.
+- Sources: Microsoft, [certutil](https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/certutil)
+  (`certutil [options] -addstore CertificateStoreName InFile`; "`-user`: Use the
+  HKEY_CURRENT_USER keys or certificate store"; store names "My, CA (default), Root");
+  [Import-Certificate](https://learn.microsoft.com/en-us/powershell/module/pki/import-certificate)
+  (its first example imports "into the root store of the current user");
+  [Manage certificate stores](https://learn.microsoft.com/en-us/windows-server/identity/ad-cs/inspect-certificates-manage-certificate-stores)
+  (`certmgr.msc`). The wizard's steps are pieced together from
+  [Installing the trusted root certificate](https://learn.microsoft.com/en-us/skype-sdk/sdn/articles/installing-the-trusted-root-certificate)
+  (2018, the only Microsoft page found with **Install Certificate…**) and
+  [a Visual Studio troubleshooting page](https://learn.microsoft.com/en-us/troubleshoot/developer/visualstudio/installation/warnings-untrusted-certificate)
+  (the warning and **Yes**). Not confirmed from Microsoft's pages: the label **Current
+  User** in the wizard, the exact command lines above (they follow from the documented
+  syntax and options, and are not printed whole anywhere), which file forms `certutil`
+  accepts, and whether adding to the user's root store asks for confirmation.
+
+#### Linux
+
+Linux wants the text form. Download `outpost-authority.pem`, then add it to the
+system's list:
+
+```bash
+# Debian, Ubuntu: the copy must be PEM and have a name ending in .crt
+sudo cp ~/Downloads/outpost-authority.pem /usr/local/share/ca-certificates/outpost-authority.crt
+sudo update-ca-certificates
+
+# Fedora, RHEL, CentOS
+sudo cp ~/Downloads/outpost-authority.pem /etc/pki/ca-trust/source/anchors/
+sudo update-ca-trust
+
+# Arch
+sudo trust anchor ~/Downloads/outpost-authority.pem
+sudo update-ca-trust
+
+# openSUSE
+sudo cp ~/Downloads/outpost-authority.pem /etc/pki/trust/anchors/
+sudo update-ca-certificates
+```
+
+That covers command-line tools and most programs. **Browsers may keep a list of their
+own.** In Chrome and browsers built on it (version 134 and later), open
+`chrome://certificate-manager`, choose **Local certificates**, and under **Custom**
+open **Installed by you** and **Import** the file as one of the **Trusted
+Certificates**. Or from a terminal, with `certutil` from `libnss3-tools` (Debian),
+`nss-tools` (Fedora) or `mozilla-nss-tools` (openSUSE):
+
+```bash
+certutil -d sql:$HOME/.local/share/pki/nssdb -A -t "C,," -n outpost-authority -i ~/Downloads/outpost-authority.pem
+```
+
+(Before Chromium 146, or if the folder already exists, the database is
+`sql:$HOME/.pki/nssdb`.) Firefox has its own steps, below. A browser installed as a snap
+may not see the system's list at all.
+
+- **Check:** `curl https://192.168.1.20:8443/api/health` answers without complaint. Before
+  installing anything, the file alone can be tried:
+  `curl --cacert ~/Downloads/outpost-authority.pem https://192.168.1.20:8443/api/health`,
+  or `openssl s_client -connect 192.168.1.20:8443 -CAfile ~/Downloads/outpost-authority.pem -verify_return_error -verify_ip 192.168.1.20 </dev/null`,
+  which prints `Verify return code: 0 (ok)`.
+- **Remove:** delete the file you copied and run the update command again; on Debian
+  and Ubuntu `sudo update-ca-certificates --fresh`. On Arch,
+  `sudo trust anchor --remove ~/Downloads/outpost-authority.pem`. In Chromium,
+  `certutil -d sql:$HOME/.local/share/pki/nssdb -D -n outpost-authority`.
+- Sources: Ubuntu, [Install a root CA certificate in the trust store](https://documentation.ubuntu.com/server/how-to/security/install-a-root-ca-certificate-in-the-trust-store/)
+  ("it must be in PEM format"; "It is important that the certificate file has the .crt
+  extension"; removal with `--fresh`; the note on snaps), and Debian's
+  [update-ca-certificates(8)](https://manpages.debian.org/trixie/ca-certificates/update-ca-certificates.8.en.html);
+  Fedora, [Using Shared System Certificates](https://docs.fedoraproject.org/en-US/quick-docs/using-shared-system-certificates/)
+  (read from an archived copy of 30 December 2025: "in the PEM or DER file format to the
+  /etc/pki/ca-trust/source/anchors/ directory") and
+  [update-ca-trust(8)](https://src.fedoraproject.org/rpms/ca-certificates/raw/rawhide/f/update-ca-trust.8.txt);
+  Arch, [Transport Layer Security](https://wiki.archlinux.org/title/Transport_Layer_Security)
+  and [trust(1)](https://man.archlinux.org/man/trust.1.en); SUSE,
+  [TLS certificates](https://documentation.suse.com/smart/security/html/tls-certificates/index.html)
+  (for SUSE Linux Enterprise 15 SP6) and openSUSE's
+  [update-ca-certificates(8)](https://manpages.opensuse.org/Tumbleweed/ca-certificates/update-ca-certificates.8.en.html);
+  Chromium, [Linux cert management](https://chromium.googlesource.com/chromium/src/+/main/docs/linux/cert_management.md)
+  (the `certutil` lines and the move of the database in 146) and the
+  [Chrome Root Store FAQ](https://chromium.googlesource.com/chromium/src/+/main/net/data/ssl/chrome_root_store/faq.md)
+  (the certificate manager, "on Chrome 134 and up"); curl,
+  [SSL certificate verification](https://curl.se/docs/sslcerts.html); OpenSSL,
+  [s_client](https://docs.openssl.org/master/man1/openssl-s_client/). The labels in
+  Chrome's certificate manager are from
+  [its source](https://chromium.googlesource.com/chromium/src/+/main/chrome/app/certificate_manager.grdp);
+  no help page gives the order of clicks. Not confirmed: explicit removal steps for
+  Fedora and openSUSE, whether openSUSE accepts DER, and whether Chrome on Linux sees
+  the system's list through any route (its source consults its own database).
+  `Verify return code: 0 (ok)` is not in OpenSSL's documentation; it is what OpenSSL 3.6
+  printed here.
+
+#### Firefox, on any computer
+
+On Windows and macOS, Firefox 120 and later uses certificates trusted in the system
+(**Settings › Privacy and security › Certificates › Allow Firefox to automatically trust
+third-party root certificates you install**), so the steps above are usually enough. On
+Linux, or when Firefox still warns:
+
+1. Download the certificate.
+2. Open **Settings**, choose **Privacy and security**, and under **Certificates** click
+   **Manage certificates**. (Before Firefox 149, and in ESR 140, the button reads **View
+   Certificates…**, and before 151 the pane is **Privacy & Security**.)
+3. On the **Authorities** tab click **Import…**, choose the file, tick **Trust this CA
+   to identify websites.** and confirm.
+
+- **Check:** open the `https` address in Firefox; no warning.
+- **Remove:** the same tab, select the certificate, **Delete or Distrust…**
+- Sources: Mozilla, [Set up Certificate Authorities in Firefox](https://support.mozilla.org/en-US/kb/setting-certificate-authorities-firefox)
+  and [Automatically trust third-party root certificates](https://support.mozilla.org/en-US/kb/automatically-trust-third-party-certificates)
+  (both read from archived copies, of December 2025 and April 2026; Mozilla's site
+  refused a direct read), and the
+  [Firefox 120 release notes](https://www.mozilla.org/en-US/firefox/120.0/releasenotes/).
+  No Mozilla help page walks through importing by hand: the labels are from Firefox
+  160's own interface text (`preferences.ftl`, `certManager.ftl`, `pippki.ftl`).
+
+### Using a certificate of your own
+
+Some people already have a certificate for the server: from a public authority for a
+name they own (often by a DNS challenge, for a name that points at a private address),
+from an authority they or their organisation run, or from a tool such as
+[mkcert](https://github.com/FiloSottile/mkcert). Outpost's HTTPS listener can present
+that certificate in place of the one from its own authority. It is a separate choice,
+under **Use a certificate of your own instead** in the same section of Settings, and
+nobody who is content with Outpost's own certificate needs to read this.
+
+#### What to give Outpost
+
+The server's certificate, the certificates of the authorities between it and the root
+(the chain), and the private key it was made with.
+
+- **PEM files**, as most tools write them: `fullchain.pem` and `privkey.pem`
+  (Certbot's names for "all certificates, including server certificate" and the
+  "private key for the certificate"), or `something.crt` and `something.key`, with the
+  chain in the certificate file or in a file of its own. DER files are read too.
+- **One PKCS#12 file** (`.pfx`, `.p12`) and its password, as Windows and many
+  appliances export.
+
+Outpost does not mind which file holds what, or in what order: it finds the server's
+certificate by its key and puts the chain in order.
+
+#### Two ways to hand it over
+
+**In Settings.** Open **Use a certificate of your own instead**, choose the
+certificate file and the key file (and the chain, if it is separate; or the one `.pfx`
+file and its password), and press **Use this certificate**. Outpost checks it, keeps it,
+and turns HTTPS on with it.
+
+A private key is a secret, Outpost has no accounts, and most people reach it over plain
+HTTP, where anyone on the network could read an upload. So **a key is accepted by
+upload only from the computer Outpost runs on, or over an address that already begins
+`https`**. Anywhere else, Settings says why and points to the folder. The option
+`OUTPOST_ALLOW_REMOTE_ERASE` does not change this: it is about who may destroy
+something, not about a secret crossing the network in the clear.
+
+**In a folder on the server.** Put the two files, in PEM form, in the `tls/own` folder
+of the data directory, under exactly these names:
+
+```
+<data directory>/tls/own/fullchain.pem    the server's certificate, then its chain
+<data directory>/tls/own/privkey.pem      the private key, without a passphrase
+```
+
+Make the folder if it is not there (`mkdir -p <data directory>/tls/own`), then press
+**Use them** in Settings; Settings shows the full path and whether each file is there.
+Nothing crosses the network this way, so the button works from any device. It is the
+way for Docker, for a Raspberry Pi, and for a script that renews the certificate. The
+files may be links to files kept elsewhere; Outpost reads through them and never writes
+through them.
+
+A certificate chosen in Settings is written to the same two files, so there is one
+place to look whichever way it arrived. `privkey.pem` is written with permissions `600`
+in a folder with `700`, beside Outpost's own keys. Files you put there yourself keep
+the permissions you gave them; if other accounts on the computer can read the key,
+Settings says so and gives the `chmod` to run. The key is not encrypted on disk (the
+server has to start HTTPS unattended), no route serves it, it is not written to the
+log, and it is not in a backup or on a portable drive.
+
+#### What Outpost checks first
+
+It refuses, with a sentence saying why, what cannot work:
+
+- a key that is not the certificate's own;
+- a key protected by a passphrase (see below);
+- a certificate that has expired, or is not valid yet;
+- a certificate with no names in its subject alternative name (browsers have not read
+  the common name for years);
+- an RSA key shorter than 2048 bits, or a key that is neither RSA nor ECDSA P-256, P-384
+  or P-521; a certificate signed with SHA-1 or MD5; one issued for a purpose other than
+  identifying a web server;
+- a file that is something else: a certificate request, an SSH key, a public key, a
+  PKCS#7 bundle (with the command that converts it).
+
+It warns, and goes on, about what will work only for some people:
+
+- **addresses it does not cover.** The names on the certificate are set against the
+  addresses this server is actually reached by, and Settings says plainly which of
+  those it does not cover. A certificate for `outpost.example.net` does nothing for
+  `https://192.168.1.20:8443`: at the address, browsers will warn that the certificate
+  is for another site;
+- **names Outpost does not answer to.** Outpost refuses a request addressed to a name it
+  was not told is its own (that is what stops a hostile web page pointing its own name
+  at your server). A public name has to be listed where Outpost is started:
+  `OUTPOST_ALLOWED_HOSTS=outpost.example.net`, then restart. Settings says so when it
+  applies. The name also has to resolve, on your network, to this server's address,
+  which Outpost cannot check;
+- a chain that is probably incomplete (the certificate alone, `cert.pem`, where
+  `fullchain.pem` was wanted);
+- a lifetime over 825 days on a certificate that is not from a public authority, which
+  iPhone, iPad and Mac refuse ([Apple, 103769](https://support.apple.com/en-us/103769));
+- an ECDSA P-521 key, which Chrome does not accept (its
+  [list of signature algorithms](https://chromium.googlesource.com/chromium/src/+/main/net/socket/ssl_client_socket_impl.cc)
+  has P-256 and P-384 only; Firefox's has P-521; nothing was found for Safari);
+- a key file other accounts on the computer can read.
+
+A chain given out of order is put in order and said to have been, and a certificate in
+the file that is not part of the chain is left out and named.
+
+**A key with a passphrase cannot be used.** Outpost starts HTTPS with nobody there to
+type it, and it does not store passphrases. Take the passphrase off with your own
+tools, then give Outpost the new file and keep it private:
+
+```bash
+openssl pkey -in privkey.pem -out privkey-open.pem   # asks for the passphrase once
+```
+
+(Run here with OpenSSL 3.6 and with the LibreSSL 3.3 that macOS ships, the passphrase
+supplied by `-passin`.) A PKCS#12 file is different: its password is used once, to open
+the file, and is not kept; what Outpost keeps is the key itself.
+
+**PKCS#12, exactly.** Node can load such a file into a listener but will not hand the
+key back, so Outpost reads the container itself (`modules/https/pkcs12.ts`) and leaves
+the decrypting of the key to Node. It reads files as OpenSSL 3 writes them by default
+(AES with PBKDF2) and the older triple-DES form. It does not read files whose
+certificates are encrypted with RC2 (the default of old tools) or files written in BER
+rather than DER; it says so and gives the command that converts them
+(`openssl pkcs12 -in file.pfx -nodes -out pair.pem`, with `-legacy` for the old kind).
+Tested with files made by OpenSSL 3.6. **Not tested with a file exported by Windows, by
+macOS's Keychain Access, by Firefox or by any appliance.**
+
+#### Whether devices will trust it
+
+Settings says which of three cases it is, **as far as Outpost can tell**. It judges by
+the list of public authorities that comes inside Node (Mozilla's, as it stood when that
+version of Node was made), with no request to anywhere. It cannot see what any phone or
+computer trusts, and says so.
+
+| It finds | It says | Devices need |
+| --- | --- | --- |
+| The chain ends at an authority on that list | Issued by a public authority | Nothing. No steps are shown. |
+| The chain ends anywhere else | A private authority: yours, or your organisation's | To trust **your authority's root**, not Outpost's, by the [steps above](#trusting-the-certificate-on-a-device). If the root was in the files you gave, Settings offers it for download (`GET /api/https/own-root.crt` and `.pem`) with its fingerprint. If not, it has to come from whoever runs the authority; for mkcert it is "the `rootCA.pem` file in the folder printed by `mkcert -CAROOT`". |
+| The certificate signed itself | A self-signed certificate | To trust that very certificate, by the same steps. |
+
+#### Renewal
+
+A certificate from a public authority lasts 90 days or less (Let's Encrypt: 90 days
+today, 45 days by 2028, and six days for those who ask) and is replaced by a script.
+**The script only has to replace the two files in `tls/own`.** Every 30 seconds Outpost
+looks at the folder, and takes up a new certificate and key without a restart and
+without closing the port. For example, after each renewal:
+
+```bash
+install -m 644 /etc/letsencrypt/live/outpost.example.net/fullchain.pem /srv/outpost/data/tls/own/fullchain.pem
+install -m 600 /etc/letsencrypt/live/outpost.example.net/privkey.pem   /srv/outpost/data/tls/own/privkey.pem
+```
+
+(An example, not run here. The files must end up readable by the account Outpost runs
+as; in Docker that is uid 1000.) A renewal by hand is the same, or give the new files
+in Settings.
+
+- Files that changed less than three seconds ago are left for the next look, so a pair
+  caught half replaced is not judged.
+- If the new files cannot be used (a key that does not match, a damaged file, a
+  certificate already out of date), Outpost **goes on serving the certificate it read
+  before** and Settings says what is wrong with the new ones.
+- Settings shows the date the certificate runs out and the days left, and warns when
+  under 14 days remain (or under a fifth of its life, for a certificate that lives only
+  days).
+
+#### If it expires, or the files become unusable
+
+**Outpost keeps serving the expired certificate, and Settings says so.** It does not
+fall back to its own authority. The reasons:
+
+- The browser's own warning, "this certificate has expired", is the true one, and it
+  tells the person exactly what to fix. Swapping in Outpost's certificate would replace
+  it with "unknown authority" and, for a public name, "wrong site" as well, since
+  Outpost's authority cannot sign for a public name at all.
+- Devices were told to trust your authority, or a public one. Outpost's is one they
+  were never asked about, and quietly making a certificate authority nobody asked for is
+  not something a server should do by itself.
+- Nothing is locked: the `http` address is never redirected and no
+  `Strict-Transport-Security` header is sent, so Outpost stays usable while the
+  certificate is renewed.
+
+After a restart with files that cannot be used at all (a key that does not match, a
+file missing), there is nothing good to serve, so **HTTPS does not start**; Settings
+says why and what is missing, the `http` address works, and the half-minute check
+starts HTTPS as soon as the files are put right.
+
+#### Going back, and deleting
+
+**Go back to Outpost's own certificate** is one press, from any device, and loses
+nothing: your two files stay in the folder, Outpost's authority is exactly as it was,
+and devices that trusted it have nothing to do. (If Outpost never had an authority, it
+makes one then, and Settings says so before you press.) **Use them** goes the other
+way again.
+
+**Delete your certificate from this server** removes the two files. If HTTPS was using
+them it is turned off; Outpost does not switch certificates by itself. Since HTTPS
+cannot then be put back from another device over plain HTTP, deleting is offered only
+at the computer Outpost runs on, or everywhere with `OUTPOST_ALLOW_REMOTE_ERASE=true`.
+Deleting Outpost's own authority does not touch your files, and the other way about.
 
 ### Docker
 
@@ -299,20 +688,44 @@ own host name is the container's. Two things are needed besides the switch:
 
 With LAN access on, no request looks local to a container, so **Make a new certificate
 authority** and **Turn HTTPS off and delete it** are not offered. Either start Outpost
-with `OUTPOST_ALLOW_REMOTE_ERASE=true` for the occasion, or stop it and delete the `tls`
-folder from the data volume by hand.
+with `OUTPOST_ALLOW_REMOTE_ERASE=true` for the occasion, or stop it and delete `ca.crt`,
+`ca.key`, `server.crt` and `server.key` from the `tls` folder of the data volume by hand.
+
+**A certificate of your own in Docker** goes in `/data/tls/own` of the `outpost-data`
+volume, as `fullchain.pem` and `privkey.pem`. For the same reason as above, choosing
+the files in Settings is offered only once the page is open at an `https` address, so
+the folder is the usual way. One way to put the files there as the user the server
+runs as, so that it can read them (not run here; the port and volume are as in
+`compose.yaml`):
+
+```bash
+docker compose exec -T outpost sh -c 'mkdir -p /data/tls/own && chmod 700 /data/tls /data/tls/own'
+docker compose exec -T outpost sh -c 'cat > /data/tls/own/fullchain.pem' < fullchain.pem
+docker compose exec -T outpost sh -c 'umask 077 && cat > /data/tls/own/privkey.pem' < privkey.pem
+```
+
+Then press **Use them** in Settings. A renewal runs the last two lines again; Outpost
+takes the new files up within half a minute. A bind mount of a folder a renewal tool
+writes to works as well, as long as uid 1000 can read both files. The path Settings
+shows is the one inside the container.
 
 ### Backups, moving house, and starting again
 
 - **The `tls` folder is not in a backup download**, and a portable drive does not carry
-  it. A key that devices trust should exist in one place. The setting itself (on or off,
+  it: neither Outpost's own keys nor a certificate and key of your own in `tls/own`. A
+  key that devices trust should exist in one place. The setting itself (on or off,
   and the names you listed) is in the database, so it is in the backup.
 - Restoring a backup onto the same data directory leaves `tls` alone. Restoring onto a
   new machine with HTTPS switched on in the backup makes a **new** authority there, which
   every device must be told to trust. To keep the old one, copy the `tls` folder across
-  yourself, with Outpost stopped, and keep its permissions.
-- **Erase everything** resets settings, so HTTPS goes off; the authority is kept, and
-  turning HTTPS on again asks nothing of any device.
+  yourself, with Outpost stopped, and keep its permissions. If the backup was set to
+  use a certificate of your own, HTTPS does not start on the new machine until its two
+  files are in `tls/own` there; Settings says so, and Outpost makes no authority in the
+  meantime.
+- **Erase everything** resets settings, so HTTPS goes off and is set back to Outpost's
+  own certificate; the authority is kept, and turning HTTPS on again asks nothing of any
+  device. A certificate of your own stays in its folder, unused until you press **Use
+  them** again.
 - **Make a new certificate authority** deletes the old key and certificate and makes new
   ones. Every device that trusted the old one must trust the new one. It and **Turn
   HTTPS off and delete it** are offered only at the computer Outpost runs on, or
@@ -333,6 +746,18 @@ folder from the data volume by hand.
 - **A server whose clock is wrong** issues certificates other devices see as not yet
   valid or expired. Server certificates start a day early and last 397 days to allow for
   a clock that is a little off, not for one that is far off.
+- **With a certificate of your own, "This address is not one Outpost answers to"**: the
+  certificate is fine, but Outpost was not told the name is its own. Start it with
+  `OUTPOST_ALLOWED_HOSTS=<the name>`.
+- **With a certificate of your own, the browser says the certificate is for another
+  site**: the address in the address bar is not a name on the certificate. Use the name
+  it was issued for; Settings lists which addresses it covers and which it does not.
+- **"Outpost is not allowed to read …/tls/own/privkey.pem"**: the file belongs to another
+  account. Make it readable by the account Outpost runs as (uid 1000 in Docker), and by
+  no other.
+- **"… is a link to somewhere else, and Outpost does not write through links"**: the
+  folder holds links to files a renewal tool keeps. Replace the files where they are
+  kept; Outpost takes them up from there.
 
 ### What was tested
 
@@ -349,13 +774,39 @@ On macOS 15.6 with Node 24 and OpenSSL 3.6, by the test suite
 - re-issue on a changed address, a changed list and nearing expiry; the keys'
   permissions; that no address serves a key and no backup contains one.
 
+For a certificate of your own (`apps/server/test/https-own.test.ts`, with certificates
+the tests make themselves, and `e2e/tests/https.spec.ts` for the flow in Settings):
+
+- the checks: matching and mismatched keys; RSA and ECDSA; a chain out of order, with a
+  stray certificate, incomplete; expired, not yet valid, an expired intermediate; names
+  set against the server's addresses, wildcards included; no subject alternative name;
+  a key with a passphrase (and that the command given removes it); short RSA, Ed25519,
+  P-521, SHA-1, the wrong purpose; public, private and self-signed; PKCS#12 with AES,
+  with triple DES, without a password, with the wrong password, and with RC2;
+- the listener serving the imported certificate with a chain Node verifies against the
+  person's root and nothing else; that an upload is refused from another device over
+  plain HTTP and accepted at the computer and over HTTPS; the folder route; a renewal
+  taken up without a restart; a pair caught half written; expiry (still served, said
+  so, no authority made); unusable files at start-up; going back with the authority and
+  the files as they were; deleting; that no address serves the key, no backup holds it,
+  and neither it nor a password reaches the log.
+
 The packaged app was also run once by hand in the Linux Docker image, which has no
 `openssl` program, with the port published: the keys were made and `curl --cacert`
 accepted the address.
 
+Tried by hand on the same Mac: the Settings section in Chromium at desktop and phone
+widths; both downloads added to, found in and deleted from a keychain made for the
+purpose; `security verify-cert`, `curl --cacert` and `openssl s_client` against a
+running Outpost with Outpost's own certificate and with a certificate from a test
+authority given in Settings.
+
 Not tested: installing and trusting the certificate on any real iPhone, iPad, Android
-phone or Windows computer, or in Safari, Chrome, Edge or Firefox with the certificate
-actually trusted. Playwright cannot add a certificate authority to its browser, so the
+phone, Windows or Linux computer, or in Safari, Chrome, Edge or Firefox with the
+certificate actually trusted; marking it trusted in a real macOS keychain; a
+certificate from a real public authority (the tests stand one in by telling the checker
+that a test root is public); a PKCS#12 file made by anything but OpenSSL; a certificate
+of your own in Docker; a real renewal by Certbot or any other tool. Playwright cannot add a certificate authority to its browser, so the
 end-to-end test tells Chromium to accept the exact key the server presents, and leaves
 verifying the chain to Node. Whether iOS accepts the certificate when installed as a
 profile rests on Apple's documentation, not on a device.

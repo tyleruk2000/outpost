@@ -118,7 +118,9 @@ table; see `modules/repeaters/index.ts`.
    by any method, and a route outside `/api/` that could would need a defence of its own.
    The routes that ask where a request came from are "erase everything", the ones
    that restore a backup, delete a stored one or keep fewer (`modules/backup/right.ts`),
-   and replacing or deleting the HTTPS certificate authority (`modules/https`). They
+   and, in `modules/https`, replacing or deleting the certificate authority, deleting a
+   certificate the person brought, and uploading a private key (which is also accepted
+   over a connection that is already HTTPS). They
    use `isLocalRequest` from `core/local.ts`; that is not a permission, and nothing
    else should lean on it without a reason as strong.
 8. **Messages are for people.** Say what happened and what to do next, in plain words.

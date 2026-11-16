@@ -591,6 +591,25 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   each kind of device. Replacing or deleting the authority is accepted only from the
   computer Outpost runs on. Tested with Node, OpenSSL, curl and macOS; not on a real
   iPhone, Android phone or Windows computer.
+- A certificate of your own for that listener, as a separate choice in the same section:
+  one from a public authority for a name you own, from an authority of your own, or from
+  a tool such as mkcert. It is given in Settings (PEM or DER files in any order, or one
+  PKCS#12 file with its password) or put in `tls/own` of the data directory as
+  `fullchain.pem` and `privkey.pem`, and is checked first: what cannot work is refused
+  with the reason, and Settings says which of the server's addresses it does not cover
+  and whether devices need anything installed. A key is accepted by upload only at the
+  computer Outpost runs on or over HTTPS. The folder is looked at every half minute, so
+  a renewal is taken up without a restart; an expired certificate goes on being served
+  and Outpost never switches to its own authority by itself. Going back is one press.
+  Not tried with a certificate from a real public authority, a PKCS#12 file made by
+  anything but OpenSSL, or in Docker.
+- The steps for trusting a certificate now come straight after the list of addresses
+  and cover Linux, Firefox on any computer and the command line on each system, each
+  with the download in the form that system wants (`.crt` or `.pem`), how to check it
+  worked and how to remove it. Every step is cited to its maker's documentation in
+  `docs/deployment.md`. On a Mac the downloads were added to and removed from a
+  keychain made for the purpose; nothing was tried on a real iPhone, Android phone,
+  Windows or Linux computer.
 
 #### Deployment
 
