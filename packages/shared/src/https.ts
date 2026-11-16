@@ -42,10 +42,19 @@ export interface HttpsKeyRight {
   /**
    * `local`: asked from the computer Outpost runs on. `https`: the request itself came
    * over HTTPS, so the key is not readable on the way. `remote`: neither, so the key
-   * would cross the network in the clear.
+   * would cross the network in the clear. Then `allowed` is false and an upload is
+   * still taken if it carries `PLAIN_HTTP_ACCEPTED_FIELD` set to `"yes"`: the person's
+   * own statement that they accept the key being readable on the way.
    */
   reason: "local" | "https" | "remote";
 }
+
+/**
+ * The form field with which an upload of a key from another device over plain http
+ * says that the person accepts the key crossing the network unencrypted. Its value must
+ * be exactly `"yes"`; anything else, or its absence, is a refusal.
+ */
+export const PLAIN_HTTP_ACCEPTED_FIELD = "acceptKeyOverPlainHttp";
 
 /** What Outpost found in a certificate the person brought. Only public facts. */
 export interface HttpsOwnCertificate {

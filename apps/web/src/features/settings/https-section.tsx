@@ -86,6 +86,11 @@ export function HttpsSection({
   const plainAddress = data ? `http://${window.location.hostname}:${data.httpPort}` : "";
   const usingOwn = data?.source === "own";
   const refresh = () => void status.refetch();
+  // The better ways to give a key, for a device on plain http: this page over HTTPS, or HTTPS turned on.
+  const secure = {
+    open: enabled && data?.listening && here && !overHttps ? `${here.url}/settings#https` : null,
+    turnOn: !enabled && data && !data.unavailable && data.source === "outpost" && !disabled ? () => save("https.enabled", true) : null,
+  };
   // An address of this server for the commands in the steps: one on the network if there is one.
   const exampleAddress = network[0]?.url ?? own?.url ?? `https://localhost:${data?.port ?? 8443}`;
   /**
@@ -247,6 +252,7 @@ export function HttpsSection({
               data={data}
               disabled={disabled}
               address={exampleAddress}
+              secure={secure}
               refresh={refresh}
               goBack={() => save("https.certificate", "outpost")}
             />
@@ -357,7 +363,7 @@ export function HttpsSection({
             </>
           ) : null}
 
-          {!data.unavailable && !usingOwn ? <OwnCertificateChoice data={data} refresh={refresh} /> : null}
+          {!data.unavailable && !usingOwn ? <OwnCertificateChoice data={data} secure={secure} refresh={refresh} /> : null}
 
           {data.authority && !usingOwn ? (
             <div className="grid gap-3 border-t border-border pt-5">

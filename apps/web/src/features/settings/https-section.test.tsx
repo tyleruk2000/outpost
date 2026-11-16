@@ -1,4 +1,4 @@
-import type { HttpsOwnCertificate, HttpsStatus, Settings } from "@outpost/shared";
+import { type HttpsOwnCertificate, type HttpsStatus, PLAIN_HTTP_ACCEPTED_FIELD, type Settings } from "@outpost/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -512,23 +512,71 @@ describe("a certificate of your own, in Settings", () => {
     expect(screen.queryByRole("heading", { name: "Your certificate" })).not.toBeInTheDocument();
   });
 
-  it("does not offer an upload over plain http from another device, says why, and offers the folder", async () => {
+  it("offers the upload with no warning on the computer Outpost runs on, opened at its network address", async () => {
+    // The server decides: a browser on the computer itself, at 192.168.1.20, arrives from that address and counts as local.
+    at("http://192.168.1.20:8080/settings");
+    serve({ status: running() });
+    show(on);
+    const choice = await open();
+    expect(choice).toHaveTextContent("Offered here because you are at the computer Outpost runs on");
+    expect(within(choice).queryByText("This page is open over plain http")).not.toBeInTheDocument();
+    expect(within(choice).queryByRole("checkbox")).not.toBeInTheDocument();
+    await userEvent.upload(within(choice).getByLabelText("Certificate file"), file("fullchain.pem"));
+    expect(within(choice).getByRole("button", { name: "Use this certificate" })).toBeEnabled();
+  });
+
+  it("on another device over plain http, says what sending the key gives away, and sends only once the box is ticked", async () => {
+    at("http://192.168.1.77:8080/settings");
+    const sent: Array<[string, string]> = [];
+    const remote = { ...noOwn, keyRight: { allowed: false, reason: "remote" } as const, inFolder: { certificate: true, key: false } };
+    const calls = serve({ status: status({ own: remote }), give: runningOwn({}, { keyRight: remote.keyRight }), sent });
+    const save = show(off);
+    const choice = await open();
+    const warning = within(choice).getByText("This page is open over plain http").closest("[role=status]") as HTMLElement;
+    expect(warning).toHaveTextContent("the private key crosses your network unencrypted, and so does the password of a .pfx or .p12 file");
+    expect(warning).toHaveTextContent("pass off another server as this Outpost to every device that trusts the certificate");
+    // The two better ways, each one press or one line away.
+    await userEvent.click(within(warning).getByRole("button", { name: "Turn on HTTPS" }));
+    expect(save).toHaveBeenCalledWith("https.enabled", true);
+    expect(warning).toHaveTextContent("Put the two files in /srv/outpost/data/tls/own on the computer Outpost runs on");
+
+    const use = within(choice).getByRole("button", { name: "Use this certificate" });
+    await userEvent.upload(within(choice).getByLabelText("Certificate file"), file("fullchain.pem"));
+    await userEvent.upload(within(choice).getByLabelText("Key file"), file("privkey.pem"));
+    expect(use).toBeDisabled();
+    const tick = within(choice).getByRole("checkbox", { name: /I accept that my private key.*will cross my network unencrypted/ });
+    await userEvent.click(tick);
+    expect(use).toBeEnabled();
+    await userEvent.click(use);
+    await waitFor(() => expect(calls).toContain("POST /api/https/own"));
+    expect(sent).toEqual([
+      [PLAIN_HTTP_ACCEPTED_FIELD, "yes"],
+      ["certificate", "fullchain.pem"],
+      ["key", "privkey.pem"],
+    ]);
+    expect(await screen.findByRole("heading", { name: "Your certificate" })).toBeInTheDocument();
+  });
+
+  it("on another device over plain http with HTTPS running, links to this page over HTTPS, and still offers the folder", async () => {
+    at("http://192.168.1.20:8080/settings");
     const remote = { ...noOwn, keyRight: { allowed: false, reason: "remote" } as const, inFolder: { certificate: true, key: false } };
     const calls = serve({
-      status: status({ own: remote }),
+      status: running({ own: remote }),
       give: { error: "Outpost looked in /srv/outpost/data/tls/own and did not find privkey.pem." },
     });
-    show(off);
+    show(on);
     const choice = await open();
-    const notice = within(choice)
-      .getByText("Choosing the files here is not offered on this device")
-      .closest("[role=status]") as HTMLElement;
-    expect(notice).toHaveTextContent("a private key sent from here would cross your network unencrypted");
-    expect(within(choice).queryByRole("button", { name: "Use this certificate" })).not.toBeInTheDocument();
-    expect(within(choice).queryByLabelText("Key file")).not.toBeInTheDocument();
+    const warning = within(choice).getByText("This page is open over plain http").closest("[role=status]") as HTMLElement;
+    expect(within(warning).getByRole("link", { name: "Open this page over HTTPS" })).toHaveAttribute(
+      "href",
+      "https://192.168.1.20:8443/settings#https",
+    );
+    expect(within(warning).queryByRole("button", { name: "Turn on HTTPS" })).not.toBeInTheDocument();
 
     // The folder, with its exact file names, and which of the two is there.
-    const rows = within(choice).getAllByRole("listitem");
+    const rows = within(choice)
+      .getAllByRole("listitem")
+      .filter((row) => row.textContent?.includes("/srv/outpost/data/tls/own/"));
     expect(rows[0]).toHaveTextContent("/srv/outpost/data/tls/own/fullchain.pem");
     expect(rows[0]).toHaveTextContent("There");
     expect(rows[1]).toHaveTextContent("/srv/outpost/data/tls/own/privkey.pem");
@@ -539,13 +587,16 @@ describe("a certificate of your own, in Settings", () => {
     expect(await within(choice).findByRole("alert")).toHaveTextContent("did not find privkey.pem");
   });
 
-  it("says upload is allowed over HTTPS, and that the folder path is the container's in Docker", async () => {
+  it("says upload is allowed over HTTPS, with no warning, and that the folder path is the container's in Docker", async () => {
+    at("https://192.168.1.77:8443/settings");
     serve({
       status: status({ inContainer: true, own: { ...noOwn, folder: "/data/tls/own", keyRight: { allowed: true, reason: "https" } } }),
     });
     show(off);
     const choice = await open();
     expect(choice).toHaveTextContent("Offered here because this page is open over HTTPS");
+    expect(within(choice).queryByText("This page is open over plain http")).not.toBeInTheDocument();
+    expect(within(choice).queryByRole("checkbox")).not.toBeInTheDocument();
     expect(choice).toHaveTextContent("That is the path inside the container");
   });
 

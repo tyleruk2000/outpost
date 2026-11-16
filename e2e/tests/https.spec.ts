@@ -256,4 +256,64 @@ test.describe("HTTPS on your network", () => {
     expect(fs.existsSync(path.join(folder, "privkey.pem"))).toBe(true);
     expect(errors.filter((error) => !/Failed to load resource/.test(error))).toEqual([]);
   });
+
+  test("from another device over plain http, takes the key only once the person ticks that they accept it", async ({
+    browser,
+    baseURL,
+  }) => {
+    const house = makeAuthority("Hill House Root");
+    const mine = make({ name: "localhost", issuer: house.intermediate, names: ["localhost", "127.0.0.1"], until: 90 });
+    const pick = (name: string, text: string) => ({ name, mimeType: "application/x-pem-file", buffer: Buffer.from(text) });
+    // A phone. The test's browser runs on the server's own computer, so the header a proxy would add is
+    // what makes the server see another device (`core/local.ts`); TEST-NET-1 is never a real device.
+    const context = await browser.newContext({
+      baseURL,
+      viewport: { width: 390, height: 844 },
+      extraHTTPHeaders: { "X-Forwarded-For": "192.0.2.50" },
+    });
+    const page = await context.newPage();
+    try {
+      const errors = watchForErrors(page);
+      await page.goto("/settings#https");
+      const section = page.locator("#https");
+      const choice = section.locator("details", { has: page.locator("summary", { hasText: "Use a certificate of your own instead" }) });
+      await choice.locator("summary").click();
+
+      // The trade, before any file is chosen, and the two better ways.
+      const warning = choice.getByRole("status").filter({ hasText: "This page is open over plain http" });
+      await expect(warning).toBeVisible();
+      await expect(warning).toContainText("Anyone able to listen on this network could copy the key");
+      await expect(warning).toContainText("so does the password of a .pfx or .p12 file");
+      await expect(warning).toContainText("on the computer Outpost runs on");
+      const folder = (await api<HttpsStatus>(page, "GET", "/api/https")).own.folder;
+      await expect(warning).toContainText(folder);
+
+      await choice.getByLabel("Certificate file").setInputFiles(pick("fullchain.pem", mine.pem + house.intermediate.pem + house.root.pem));
+      await choice.getByLabel("Key file").setInputFiles(pick("privkey.pem", mine.keyPem));
+      const use = choice.getByRole("button", { name: "Use this certificate" });
+      await expect(use).toBeDisabled();
+      // Without the box ticked the server refuses too, whatever a page sends.
+      const bare = await page.evaluate(async () => {
+        const form = new FormData();
+        form.append("certificate", new Blob(["x"]), "fullchain.pem");
+        return (await fetch("/api/https/own", { method: "POST", headers: { "X-Outpost-Request": "1" }, body: form })).status;
+      });
+      expect(bare).toBe(403);
+
+      const tick = choice.getByRole("checkbox", { name: /I accept that my private key/ });
+      const box = await choice.locator("label", { hasText: "I accept that my private key" }).boundingBox();
+      expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
+      await tick.click();
+      await expect(use).toBeEnabled();
+      await use.click();
+      await expect(section.getByRole("heading", { name: "Your certificate" })).toBeVisible({ timeout: 30_000 });
+      await expect(section.getByText(mine.certificate.fingerprint256)).toBeVisible();
+      expect((await presented(house.root.pem)).fingerprint256).toBe(mine.certificate.fingerprint256);
+      // Nothing wider than the phone.
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+      expect(errors.filter((error) => !/Failed to load resource/.test(error))).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
 });

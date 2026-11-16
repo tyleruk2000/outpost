@@ -748,6 +748,16 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   and Outpost never switches to its own authority by itself. Going back is one press.
   Not tried with a certificate from a real public authority, a PKCS#12 file made by
   anything but OpenSSL, or in Docker.
+- The computer Outpost runs on is recognised at its own network address as well as at
+  `localhost`: a browser on it opening `http://192.168.1.20:8080` may now erase
+  everything, restore and delete backups, restart, set the backup passphrase and give
+  an HTTPS key, as it could at `localhost`. Not in a container, and never for a
+  link-local address; why it is sound is in `docs/security.md`.
+- A certificate and key can be given in Settings from another device over plain http,
+  once the page has said that the key (and a `.pfx` password) would cross the network
+  unencrypted, offered HTTPS or the folder instead, and the person has ticked that they
+  accept it. The server needs `acceptKeyOverPlainHttp=yes` in the upload for that, and
+  logs the address it came from.
 - The steps for trusting a certificate now come straight after the list of addresses
   and cover Linux, Firefox on any computer and the command line on each system, each
   with the download in the form that system wants (`.crt` or `.pem`), how to check it

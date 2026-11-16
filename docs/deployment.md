@@ -508,11 +508,25 @@ file and its password), and press **Use this certificate**. Outpost checks it, k
 and turns HTTPS on with it.
 
 A private key is a secret, Outpost has no accounts, and most people reach it over plain
-HTTP, where anyone on the network could read an upload. So **a key is accepted by
-upload only from the computer Outpost runs on, or over an address that already begins
-`https`**. Anywhere else, Settings says why and points to the folder. The option
-`OUTPOST_ALLOW_REMOTE_ERASE` does not change this: it is about who may destroy
-something, not about a secret crossing the network in the clear.
+HTTP, where anyone on the network could read an upload. So:
+
+- **At the computer Outpost runs on**, or over an address that already begins `https`,
+  the files are simply taken. The computer counts whether its browser opens Outpost at
+  `localhost` or at the computer's own network address (`http://192.168.1.20:8080`):
+  a connection to its own address never leaves the computer.
+- **From another device over plain http**, Settings first says what that gives away:
+  the key (and the password of a `.pfx` file) crosses your network unencrypted, anyone
+  able to listen on it could copy the key, and with it later pass off another server as
+  this Outpost to every device that trusts the certificate. It offers the two ways that
+  keep the key private: **Turn on HTTPS** (or **Open this page over HTTPS** once it is
+  on) and give the files there, or put them in the folder below. If you still want to
+  send them from here, tick **I accept that my private key … will cross my network
+  unencrypted**; only then is **Use this certificate** offered. Outpost writes a line to
+  its log saying a key was accepted over plain http, and from which address (not the
+  key).
+
+The option `OUTPOST_ALLOW_REMOTE_ERASE` does not change any of this: it is about who
+may destroy something, not about a secret crossing the network in the clear.
 
 **In a folder on the server.** Put the two files, in PEM form, in the `tls/own` folder
 of the data directory, under exactly these names:
@@ -787,7 +801,8 @@ the tests make themselves, and `e2e/tests/https.spec.ts` for the flow in Setting
   with triple DES, without a password, with the wrong password, and with RC2;
 - the listener serving the imported certificate with a chain Node verifies against the
   person's root and nothing else; that an upload is refused from another device over
-  plain HTTP and accepted at the computer and over HTTPS; the folder route; a renewal
+  plain HTTP unless it carries the person's acceptance (and logged when it does), and
+  accepted at the computer and over HTTPS; the folder route; a renewal
   taken up without a restart; a pair caught half written; expiry (still served, said
   so, no authority made); unusable files at start-up; going back with the authority and
   the files as they were; deleting; that no address serves the key, no backup holds it,
