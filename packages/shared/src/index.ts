@@ -24,6 +24,7 @@ export * from "./locator.ts";
 export * from "./manage.ts";
 export * from "./maps.ts";
 export * from "./merge.ts";
+export * from "./network.ts";
 export * from "./model-choice.ts";
 export * from "./notes.ts";
 export * from "./portable.ts";

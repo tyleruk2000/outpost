@@ -63,6 +63,11 @@ const envSchema = z.object({
   OUTPOST_IMAGERY_SENTINEL_HOST: z.string().optional(),
   OUTPOST_IMAGERY_WORLD_URL: z.string().url().optional(),
   OUTPOST_IMAGERY_WORLD_BYTES: z.coerce.number().int().positive().optional(),
+  // Devices on this network: a made-up machine in place of this one, and a stand-in for the IEEE's registry (docs/tools-qr-and-network.md).
+  OUTPOST_NETWORK_STAND_IN: z.string().optional(),
+  OUTPOST_IEEE_OUI_URL: z.string().url().optional(),
+  // Set in a container run with host networking, which then sees the computer's own network.
+  OUTPOST_HOST_NETWORK: z.string().optional(),
   OUTPOST_LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).optional(),
 });
 
@@ -122,6 +127,15 @@ export interface Config {
   nodeDistUrl?: string;
   /** Where kiwix-serve for portable drives is fetched from. Defaults to download.kiwix.org. */
   kiwixDistUrl?: string;
+  /** Devices on this network (modules/network). */
+  network: {
+    /** For tests only: a file describing a made-up machine and its network, used in place of this one. Nothing is sent. */
+    standIn: string | null;
+    /** Where the IEEE's registry of hardware-address prefixes is fetched from, when a person asks. */
+    makersUrl: string;
+    /** A container told that it shares the computer's own network (host networking). */
+    hostNetwork: boolean;
+  };
   /** Stand-ins for satellite imagery's publishers, for tests; unset in use. */
   imagery?: {
     endpoints?: { stacSearchUrl?: string; sentinelHost?: string; nasaHost?: string };
@@ -209,6 +223,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     appBundleDir: parsed.OUTPOST_APP_DIR ? path.resolve(parsed.OUTPOST_APP_DIR) : isBundled ? appRoot : path.join(appRoot, "dist/app"),
     nodeDistUrl: parsed.OUTPOST_NODE_DIST_URL,
     kiwixDistUrl: parsed.OUTPOST_KIWIX_DIST_URL,
+    network: {
+      standIn: parsed.OUTPOST_NETWORK_STAND_IN ? path.resolve(parsed.OUTPOST_NETWORK_STAND_IN) : null,
+      makersUrl: parsed.OUTPOST_IEEE_OUI_URL ?? "https://standards-oui.ieee.org/oui/oui.csv",
+      hostNetwork: ["1", "true", "yes", "on"].includes((parsed.OUTPOST_HOST_NETWORK ?? "").toLowerCase()),
+    },
     imagery: imageryStandIns(parsed),
   };
 }

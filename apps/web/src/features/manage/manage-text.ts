@@ -254,6 +254,7 @@ export function personalWords(personal: NonNullable<CleanupPlan["personal"]>): s
   if (personal.repeaters > 0 || personal.repeaterLists > 0) parts.push(repeaterWords(personal.repeaters, personal.repeaterLists));
   const radio = radioWords(personal.radio);
   if (radio) parts.push(radio);
+  if (personal.networkDevices) parts.push(plural(personal.networkDevices, "device found on the network", "devices found on the network"));
   if (personal.settings > 0) parts.push(plural(personal.settings, "changed setting"));
   if (personal.vectors > 0) parts.push(plural(personal.vectors, "semantic vector"));
   parts.push("the history of downloads and other work");

@@ -259,6 +259,7 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
         repeaters: ctx.services.repeaters.count().repeaters,
         repeaterLists: ctx.services.repeaters.count().lists,
         radio: ctx.services.propagation.kept.count(),
+        networkDevices: ctx.services.network.count(),
         settings: count("SELECT count(*) AS n FROM settings"),
         vectors: count("SELECT count(*) AS n FROM embeddings"),
         previous: previousData(),
@@ -513,6 +514,7 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
       repeaters: 0,
       repeaterLists: 0,
       radio: { plans: 0, observations: 0, equipment: 0, saved: 0 },
+      networkDevices: 0,
       settings: 0,
     };
     personal.attachments = (sqlite.prepare("SELECT count(*) AS n FROM attachments").get() as { n: number }).n;
@@ -552,6 +554,8 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
     personal.repeaterLists = repeaters.lists;
     // Communication plans, the contact log, equipment profiles, and saved predictions and coverage maps.
     personal.radio = ctx.services.propagation.kept.eraseAll();
+    // Devices found on the network, with the names and notes given them: names there can be people's names.
+    personal.networkDevices = ctx.services.network.eraseAll();
 
     // Whatever is left belongs to records that no longer exist: attachments no page
     // used, import reports, history, vectors, and the settings.
@@ -635,6 +639,7 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
           "chat.changed",
           "repeaters.changed",
           "propagation.changed",
+          "network.changed",
           "documents.changed",
           "collections.changed",
           "semantic.changed",

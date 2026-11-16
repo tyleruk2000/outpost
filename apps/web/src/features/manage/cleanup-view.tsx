@@ -368,7 +368,7 @@ export default function CleanupView({ status, loading }: { status: CleanupStatus
           "Downloads still under way or left unfinished, with their partial files",
         ]}
         keeps={[
-          "Documents you added, your notes, saved places, routes, contacts, chat conversations, repeaters, and radio plans and logged contacts",
+          "Documents you added, your notes, saved places, routes, contacts, chat conversations, repeaters, radio plans and logged contacts, and the devices found on your network",
           "Archives and maps of your own that you pointed Outpost at",
           "Settings, storage locations and network shares",
         ]}

@@ -118,6 +118,8 @@ export interface CleanupPlan {
     repeaterLists: number;
     /** What the HF planner keeps for a person; see `RadioKept`. Absent from a plan made before it was counted. */
     radio?: RadioKept;
+    /** Devices found on the network, with any names and notes given them. Absent from a plan made before it was counted. */
+    networkDevices?: number;
     settings: number;
     vectors: number;
     /** Copies of the database and attachments that a restore set aside. */
@@ -173,6 +175,7 @@ export interface CleanupResult extends Record<string, unknown> {
     repeaters: number;
     repeaterLists: number;
     radio?: RadioKept;
+    networkDevices?: number;
     settings: number;
   };
 }
