@@ -330,7 +330,9 @@ export function resultSentences(result: CleanupResult): string[] {
       repeaters > 0 || repeaterLists > 0 ? repeaterWords(repeaters, repeaterLists) : null,
       radioWords(radio),
       (powerPlans ?? 0) > 0 ? plural(powerPlans ?? 0, "power plan") : null,
-      (result.personal.powerDevices ?? 0) > 0 ? plural(result.personal.powerDevices ?? 0, "device of your own", "devices of your own") : null,
+      (result.personal.powerDevices ?? 0) > 0
+        ? plural(result.personal.powerDevices ?? 0, "device of your own", "devices of your own")
+        : null,
       suppliesWords(supplies),
       (nuclearScenarios ?? 0) > 0 ? plural(nuclearScenarios!, "saved nuclear effects scenario") : null,
       weatherWords(weather),

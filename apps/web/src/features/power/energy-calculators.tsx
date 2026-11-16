@@ -2,7 +2,16 @@
  * The quick calculators for batteries, solar, cable and generators. Nothing typed here
  * is kept. Each says its formula and its source behind "How this is worked out".
  */
-import { CHEMISTRIES, type ChemistryFacts, chemistryById, LOSS_LABELS, PVWATTS_LOSSES, type SolarLosses } from "@outpost/shared";
+import {
+  CHARGING_SAFETY,
+  CHEMISTRIES,
+  type ChemistryFacts,
+  chemistryById,
+  LOSS_LABELS,
+  PVWATTS_LOSSES,
+  readOn,
+  type SolarLosses,
+} from "@outpost/shared";
 import { useState } from "react";
 import { Notice } from "@/components/page";
 import { Segmented } from "@/components/ui/misc";
@@ -34,6 +43,7 @@ import {
   nextSizes,
   voltageDrop,
 } from "./calc/wire";
+import { DeviceMix } from "./device-mix";
 import { Answer, Answers, Basis, ChoiceField, Fields, figure, NumberField, PercentField } from "./inputs";
 
 const hoursWords = (hours: number) =>
@@ -43,8 +53,9 @@ export const PVGIS_URL = "https://re.jrc.ec.europa.eu/pvg_tools/en/";
 
 // ── Battery runtime ─────────────────────────────────────────────────────────
 
-export function RuntimeCalculator() {
+export function RuntimeCalculator({ onSolar }: { onSolar?: (dailyWh: number) => void } = {}) {
   const [by, setBy] = useState<"ah" | "wh">("ah");
+  const [what, setWhat] = useState<"devices" | "watts">("devices");
   const [ah, setAh] = useState<number | null>(100);
   const [wh, setWh] = useState<number | null>(1280);
   const [volts, setVolts] = useState<number | null>(12.8);
@@ -79,47 +90,95 @@ export function RuntimeCalculator() {
           min={0}
           hint="Nominal: 12.8 V for a “12 V” LiFePO4, 12 V for lead acid."
         />
-        <NumberField label="Load" unit="W" value={load} onChange={setLoad} min={0} />
         <PercentField
           label="Usable share of the capacity"
           value={usable}
           onChange={setUsable}
           hint="Starting figures: 80% for LiFePO4, 50% for lead acid (see below). Your battery's data sheet is better."
         />
-        <PercentField
-          label="Efficiency between battery and load"
-          value={efficiency}
-          onChange={setEfficiency}
-          hint="100% for a DC load on the battery. For an AC load, your inverter's efficiency from its data sheet."
-        />
       </Fields>
-      <Answers missing={run ? null : "Give the capacity, the voltage and the load to see how long it runs."}>
-        {run ? (
-          <>
-            <Answer label="Runs for" detail="An estimate: a battery gives less when cold, old or discharged fast.">
-              {hoursWords(run.hours)}
-            </Answer>
-            <Answer label="Energy taken out">{figure(run.deliveredWh, 0)} Wh</Answer>
-            <Answer
-              label="Current from the battery"
-              detail={`${figure(run.cRate, 3)} C. Lead-acid capacity is rated at the 20-hour rate (${figure((energy ?? 0) / (volts ?? 1) / 20, 1)} A for this one); at higher currents it gives noticeably less.`}
-            >
-              {figure(run.amps, 2)} A
-            </Answer>
-          </>
-        ) : null}
-      </Answers>
-      <Basis>
-        <p>
-          Hours = capacity (Wh) × usable share × efficiency ÷ load (W). Watt-hours = amp-hours × volts. Current = load ÷ efficiency ÷ volts.
-        </p>
+      <h4 className="mt-5 mb-2 text-small font-semibold text-ink">What it runs</h4>
+      <Segmented
+        label="What it runs"
+        value={what}
+        onChange={setWhat}
+        options={[
+          { value: "devices", label: "Devices" },
+          { value: "watts", label: "A load in watts" },
+        ]}
+        className="mb-4"
+      />
+      {what === "devices" ? (
+        <DeviceMix
+          battery={energy !== null && energy > 0 && volts && usable ? { wattHours: energy, volts, usable } : null}
+          onSolar={onSolar}
+        />
+      ) : (
+        <>
+          <Fields>
+            <NumberField label="Load" unit="W" value={load} onChange={setLoad} min={0} />
+            <PercentField
+              label="Efficiency between battery and load"
+              value={efficiency}
+              onChange={setEfficiency}
+              hint="100% for a DC load on the battery. For an AC load, your inverter's efficiency from its data sheet."
+            />
+          </Fields>
+          <Answers missing={run ? null : "Give the capacity, the voltage and the load to see how long it runs."}>
+            {run ? (
+              <>
+                <Answer label="Runs for" detail="An estimate: a battery gives less when cold, old or discharged fast.">
+                  {hoursWords(run.hours)}
+                </Answer>
+                <Answer label="Energy taken out">{figure(run.deliveredWh, 0)} Wh</Answer>
+                <Answer
+                  label="Current from the battery"
+                  detail={`${figure(run.cRate, 3)} C. Lead-acid capacity is rated at the 20-hour rate (${figure((energy ?? 0) / (volts ?? 1) / 20, 1)} A for this one); at higher currents it gives noticeably less.`}
+                >
+                  {figure(run.amps, 2)} A
+                </Answer>
+              </>
+            ) : null}
+          </Answers>
+          <Basis>
+            <p>
+              Hours = capacity (Wh) × usable share × efficiency ÷ load (W). Watt-hours = amp-hours × volts. Current = load ÷ efficiency ÷
+              volts.
+            </p>
+            <p>
+              Left out: the battery's voltage falling as it empties, the loss of capacity in the cold and with age, and Peukert's effect
+              (lead acid gives fewer amp-hours at higher currents).
+            </p>
+          </Basis>
+        </>
+      )}
+      <Basis summary="The battery's starting figures">
         <ChemistryNotes />
-        <p>
-          Left out: the battery's voltage falling as it empties, the loss of capacity in the cold and with age, and Peukert's effect (lead
-          acid gives fewer amp-hours at higher currents).
-        </p>
       </Basis>
+      <ChargingSafety />
     </div>
+  );
+}
+
+/**
+ * Official guidance where the calculator touches safety: charging lithium batteries, and
+ * generators. Quoted, with whose it is and when it was read; nothing of Outpost's own.
+ */
+function ChargingSafety() {
+  return (
+    <Basis summary="Charging safely, and generators">
+      <ul className="grid gap-2">
+        {CHARGING_SAFETY.map((item) => (
+          <li key={item.quote}>
+            “{item.quote}”{" "}
+            <span className="text-ink-muted">
+              ({item.who}, read {readOn(item.read)})
+            </span>
+          </li>
+        ))}
+      </ul>
+      <p className="text-ink-muted">General information from the bodies named; it is theirs, not Outpost's.</p>
+    </Basis>
   );
 }
 
@@ -155,7 +214,13 @@ export function LossFields({ losses, onChange }: { losses: SolarLosses; onChange
   );
 }
 
-export function SolarCalculator() {
+/** The day's energy carried from the battery runtime calculator, and when, so that a second press carries it again. */
+export interface CarriedEnergy {
+  dailyWh: number;
+  at: number;
+}
+
+export function SolarCalculator({ carried }: { carried?: CarriedEnergy | null } = {}) {
   const [watts, setWatts] = useState<number | null>(100);
   const [sun, setSun] = useState<number | null>(null);
   const [losses, setLosses] = useState<SolarLosses>({ ...PVWATTS_LOSSES });
@@ -166,7 +231,12 @@ export function SolarCalculator() {
   const [vmp, setVmp] = useState<number | null>(18);
   const [refill, setRefill] = useState<number | null>(1024);
   const [roundTrip, setRoundTrip] = useState<number | null>(0.92);
-  const [dailyLoad, setDailyLoad] = useState<number | null>(0);
+  const [dailyLoad, setDailyLoad] = useState<number | null>(carried ? Math.round(carried.dailyWh) : 0);
+  const [carriedAt, setCarriedAt] = useState(carried?.at ?? 0);
+  if (carried && carried.at !== carriedAt) {
+    setCarriedAt(carried.at);
+    setDailyLoad(Math.round(carried.dailyWh));
+  }
   const loss = combinedLoss(Object.values(losses));
   const factor = controllerFactor(controller, mppt ?? 0, batteryV ?? 0, vmp ?? 0);
   const daily = watts !== null && sun !== null ? solarDailyWh(watts, sun, loss, factor, temperatureFactor(cell ?? 25)) : null;
@@ -242,7 +312,14 @@ export function SolarCalculator() {
           hint="What was taken out of the battery."
         />
         <PercentField label="Battery round-trip efficiency" value={roundTrip} onChange={setRoundTrip} hint="92% LiFePO4, 80% lead acid." />
-        <NumberField label="Used meanwhile each day" unit="Wh" value={dailyLoad} onChange={setDailyLoad} min={0} />
+        <NumberField
+          label="Used meanwhile each day"
+          unit="Wh"
+          value={dailyLoad}
+          onChange={setDailyLoad}
+          min={0}
+          hint={carried ? "Carried from the battery runtime calculator: what the devices there use in a day." : undefined}
+        />
       </Fields>
       <Answers missing={daily === null ? "Give the panels' watts and the peak sun hours." : null}>
         {daily !== null ? (
@@ -250,6 +327,14 @@ export function SolarCalculator() {
             <Answer label="Made in a day" detail={`${figure(loss * 100, 2)}% losses, ${figure(factor * 100, 1)}% through the controller.`}>
               {figure(daily, 0)} Wh
             </Answer>
+            {dailyLoad && watts && daily > 0 && roundTrip ? (
+              <Answer
+                label="Panels to keep up"
+                detail={`To make the ${figure(dailyLoad, 0)} Wh used each day, all of it passed through the battery: ${figure(dailyLoad, 0)} Wh ÷ (${figure(daily / watts, 2)} Wh a day for each panel watt × ${figure(roundTrip * 100, 0)}% round trip).`}
+              >
+                {figure(dailyLoad / ((daily / watts) * roundTrip), 0)} W
+              </Answer>
+            ) : null}
             {time ? (
               <Answer
                 label="Days to charge"

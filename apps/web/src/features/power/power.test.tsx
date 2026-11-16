@@ -46,10 +46,11 @@ function planOf(patch: Partial<PowerPlan> = {}): PowerPlan {
 interface Server {
   put: PowerPlanInput[];
   posted: unknown[];
+  devices: unknown[];
 }
 
 function show(path: string, options: { plans?: PowerPlan[] | "fails" | "never"; plan?: PowerPlan; weather?: unknown } = {}): Server {
-  const server: Server = { put: [], posted: [] };
+  const server: Server = { put: [], posted: [], devices: [] };
   let plan = options.plan ?? planOf();
   vi.stubGlobal(
     "fetch",
@@ -73,6 +74,15 @@ function show(path: string, options: { plans?: PowerPlan[] | "fails" | "never"; 
         return json({ plan });
       }
       if (pathname === "/api/power/plans/p1") return json({ plan });
+      if (pathname === "/api/power/devices" && init?.method === "POST") {
+        const body = JSON.parse(String(init.body)) as Record<string, unknown>;
+        server.devices.push(body);
+        return json({ device: { ...body, id: `d${server.devices.length}`, createdAt: 1, updatedAt: 1 } });
+      }
+      if (pathname === "/api/power/devices")
+        return json({
+          devices: server.devices.map((body, index) => ({ ...(body as object), id: `d${index + 1}`, createdAt: 1, updatedAt: 1 })),
+        });
       if (pathname === "/api/radio/profiles") return json({ radios: [], antennas: [] });
       if (pathname === "/api/weather")
         return json(options.weather ?? { places: [], kept: [], sources: [], updateOnOpen: false, now: Date.now() });
@@ -104,6 +114,7 @@ describe("the Power and batteries screen", () => {
     show("/tools/power", { plans: [] });
     expect(await screen.findByText("No power plans yet")).toBeInTheDocument();
     fireEvent.click(screen.getByText("Battery runtime"));
+    fireEvent.click(screen.getByRole("radio", { name: "A load in watts" }));
     // 100 Ah × 12.8 V × 80% ÷ 20 W = 51.2 hours.
     expect(await screen.findByText("51.2 hours (2.1 days)")).toBeInTheDocument();
   });
@@ -154,19 +165,33 @@ describe("a power plan", () => {
   it("adds a load and saves the plan a moment later", async () => {
     const server = show("/tools/power/plans/p1");
     fireEvent.click(await screen.findByRole("button", { name: "Add a load" }));
+    const picker = screen.getByRole("dialog", { name: "Add a load" });
+    fireEvent.change(within(picker).getByLabelText("Find a device"), { target: { value: "pi 5" } });
+    fireEvent.click(within(picker).getByRole("button", { name: /^Raspberry Pi 5:/ }));
     const dialog = screen.getByRole("dialog", { name: "Add a load" });
-    expect(within(dialog).getByText(/the supply Raspberry Pi recommends/)).toBeInTheDocument();
+    expect(within(dialog).getByText(/From the library: Raspberry Pi 5, the maker's typical figure/)).toBeInTheDocument();
     fireEvent.click(within(dialog).getByRole("button", { name: "Add load" }));
     await waitFor(() => expect(server.put).toHaveLength(1), { timeout: 3000 });
     expect(server.put[0]!.loads).toHaveLength(3);
-    expect(server.put[0]!.loads[2]).toMatchObject({ kind: "device", name: "Raspberry Pi 4 running Outpost", watts: 15, hoursPerDay: 24 });
+    // 800 mA at 5.1 V, around the clock, over USB.
+    expect(server.put[0]!.loads[2]).toMatchObject({
+      kind: "device",
+      name: "Raspberry Pi 5",
+      watts: 4.08,
+      hoursPerDay: 24,
+      supply: "usb",
+      origin: { library: "common", id: "raspberry-pi-5", state: "typical", figures: { watts: 4.08 } },
+    });
   });
 
   it("refuses a load with a figure missing, saying which", async () => {
     show("/tools/power/plans/p1");
     fireEvent.click(await screen.findByRole("button", { name: "Add a load" }));
+    fireEvent.click(within(screen.getByRole("dialog", { name: "Add a load" })).getByRole("button", { name: /type its watts/ }));
     const dialog = screen.getByRole("dialog", { name: "Add a load" });
-    fireEvent.change(within(dialog).getByLabelText("Power while on"), { target: { value: "" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Add load" }));
+    expect(await within(dialog).findByText("Give it a name.")).toBeInTheDocument();
+    fireEvent.change(within(dialog).getByLabelText("Name"), { target: { value: "Lamp" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Add load" }));
     expect(await within(dialog).findByText("Give its power in watts.")).toBeInTheDocument();
   });

@@ -14,6 +14,8 @@
  * devices, which the server keeps (apps/server/src/modules/power/devices.ts).
  */
 
+import type { RadioModeId } from "./power.ts";
+
 // ── Where a figure came from ────────────────────────────────────────────────
 
 export interface DeviceSource {
@@ -114,10 +116,12 @@ export interface RadioEntry extends EntryBase {
   kind: "radio";
   receive: PublishedFigure;
   standby?: PublishedFigure;
-  /** Highest output first. */
-  transmit: Array<{ outputW: number; figure: PublishedFigure }>;
+  /** Each published transmit figure, highest output first. `label` names the band where the maker gives more than one. */
+  transmit: Array<{ id: string; label: string; outputW: number; figure: PublishedFigure }>;
   /** Said when the maker gives transmit current at full power only. */
   fullPowerOnly?: boolean;
+  /** The mode it starts in: SSB for an HF set, FM for VHF/UHF, and so on; the person changes it. */
+  mode: RadioModeId;
 }
 
 /** No figure to give: the person types it from the label (an unnamed phone, a medical device's charger). */
@@ -179,20 +183,7 @@ export const OWN_DEVICES_MAX = 500;
 /** "16 November 2026" from "2026-11-16". */
 export function readOn(day: string): string {
   const [year, month, date] = day.split("-").map(Number);
-  const months = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-  ];
+  const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
   return `${date} ${months[(month ?? 1) - 1]} ${year}`;
 }
 

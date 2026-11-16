@@ -8,6 +8,7 @@ import { writePdfPages } from "@/features/maps/print/pdf";
 import { INK, MUTED, type SheetItem } from "@/features/maps/print/sheet";
 import { type Block, toSheets } from "@/features/propagation/plans/document";
 import { assumptions, loadDailyWh, type PlanAnswers, radioDuty, simulate } from "./calc/plan";
+import { MAKER_SENTENCE, originSentence } from "./device-text";
 import { figure } from "./inputs";
 
 const longDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric" });
@@ -111,14 +112,22 @@ export function planBlocks(plan: PowerPlanInput, answers: PlanAnswers, written: 
           right: [3],
           rows: plan.loads.map((load) => [
             `${load.name}${load.quantity > 1 ? ` x ${load.quantity}` : ""}`,
-            load.supply === "ac" ? "AC" : "DC",
+            load.supply === "ac" ? "AC" : load.supply === "usb" ? "USB" : "DC",
             load.kind === "device"
               ? `${figure(load.watts, 1)} W, ${figure(load.hoursPerDay, 1)} h`
-              : `TX ${figure(load.transmitW, 1)} W, RX ${figure(load.receiveW, 1)} W, duty ${figure(radioDuty(load) * 100, 1)}%`,
+              : load.kind === "charge"
+                ? `${figure(load.wattHours, 1)} Wh battery, ${figure(load.chargesPerDay, 1)} a day`
+                : `TX ${figure(load.transmitW, 1)} W, RX ${figure(load.receiveW, 1)} W, duty ${figure(radioDuty(load) * 100, 1)}%`,
             figure(loadDailyWh(load), 0),
           ]),
         },
   );
+  // Where each load's figures came from, for loads made from the library or a person's own device.
+  const cited = plan.loads.map(originSentence).filter((line): line is string => line !== null);
+  if (cited.length > 0) {
+    blocks.push({ kind: "heading", text: "Where the figures come from" });
+    blocks.push({ kind: "list", items: [...cited, MAKER_SENTENCE] });
+  }
   blocks.push({ kind: "heading", text: "Assumptions" }, { kind: "list", items: assumptions(plan, answers) });
   if (plan.notes.trim()) {
     blocks.push({ kind: "heading", text: "Notes" });

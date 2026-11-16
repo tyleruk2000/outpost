@@ -11,7 +11,7 @@ import { asc, eq } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
-import { AppError, notFound } from "../../core/errors.ts";
+import { badRequest, notFound } from "../../core/errors.ts";
 import { newId } from "../../core/ids.ts";
 import { powerDevices } from "../../db/schema.ts";
 
@@ -100,7 +100,7 @@ export function registerPowerDevices(app: FastifyInstance, ctx: AppContext): voi
     },
     create(input) {
       if (service.count() >= OWN_DEVICES_MAX)
-        throw new AppError(400, "too_many", `There are already ${OWN_DEVICES_MAX} devices of your own. Remove one first.`);
+        throw badRequest(`There are already ${OWN_DEVICES_MAX} devices of your own. Remove one first.`);
       const now = Date.now();
       const id = newId();
       db.insert(powerDevices)

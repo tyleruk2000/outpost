@@ -112,7 +112,10 @@ const planInput = z.object({
   loads: z.array(load).max(POWER_PLAN_MAX_LOADS),
   inverter: z.object({ efficiency: z.number().gt(0).max(1), idleW: watts, hoursOn: hours }),
   // The converter from the battery to USB; plans from before it have none.
-  usb: z.object({ efficiency: z.number().gt(0).max(1) }).strict().optional(),
+  usb: z
+    .object({ efficiency: z.number().gt(0).max(1) })
+    .strict()
+    .optional(),
   solar: z.object({
     arrayWatts: watts,
     controller: z.enum(["mppt", "pwm"]),
