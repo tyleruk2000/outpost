@@ -15,7 +15,7 @@ import {
   sourcesOfPlan,
   templateById,
 } from "@outpost/shared";
-import { ArrowLeft, Copy, Printer, Siren } from "lucide-react";
+import { ArrowLeft, Copy, ListChecks, Printer } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { ErrorState, Notice, Page, PageHeader, Section } from "@/components/page";
@@ -194,7 +194,7 @@ export default function EmergencyPlanPage() {
           <>
             <Button asChild variant="primary">
               <Link to={`/prepare/plans/${id}/use`} onClick={() => void flush()}>
-                <Siren aria-hidden /> Use now
+                <ListChecks aria-hidden /> Use now
               </Link>
             </Button>
             <Button asChild>

@@ -320,8 +320,8 @@ export function SuppliesSection({
         </Link>
       </div>
       <p className="mt-2 max-w-[65ch] text-small text-ink-muted">
-        A thing counts as held when a row in Supplies has every word of its name, in its category if one is chosen, and in the same unit.
-        Anything past its use-by is not counted.
+        A thing counts as held when a row in Supplies has every word of what it names (the words before any bracket, comma, “and” or “or”),
+        in its category if one is chosen, and in the same unit. Anything past its use-by is not counted.
       </p>
     </Section>
   );

@@ -287,21 +287,8 @@ export function resultSentences(result: CleanupResult): string[] {
   const lines: string[] = [];
   if (result.scope === "derived") return (result.steps ?? []).map((step) => step.message);
   if (result.scope === "everything" && result.personal) {
-    const {
-      pages,
-      places,
-      routes,
-      contacts,
-      conversations,
-      repeaters,
-      repeaterLists,
-      radio,
-      powerPlans,
-      supplies,
-      emergencyPlans,
-      attachments,
-      settings,
-    } = result.personal;
+    const { pages, places, routes, contacts, conversations, repeaters, repeaterLists, radio, powerPlans, supplies, attachments, settings } =
+      result.personal;
     const erased = [
       pages > 0 ? `${plural(pages, "page")} of notes${attachments > 0 ? ` with ${plural(attachments, "attachment")}` : ""}` : null,
       places > 0 ? plural(places, "saved place") : null,
@@ -312,7 +299,7 @@ export function resultSentences(result: CleanupResult): string[] {
       radioWords(radio),
       (powerPlans ?? 0) > 0 ? plural(powerPlans ?? 0, "power plan") : null,
       suppliesWords(supplies),
-      (emergencyPlans ?? 0) > 0 ? plural(emergencyPlans ?? 0, "emergency plan") : null,
+      (result.personal.emergencyPlans ?? 0) > 0 ? plural(result.personal.emergencyPlans ?? 0, "emergency plan") : null,
       settings > 0 ? plural(settings, "changed setting") : null,
       "the history",
     ].filter((part): part is string => part !== null);

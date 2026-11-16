@@ -19,6 +19,7 @@ import {
   sameThing,
   stepStanding,
   stepsTakenOut,
+  thingOf,
 } from "@outpost/shared";
 import { describe, expect, it } from "vitest";
 
@@ -145,6 +146,20 @@ describe("a plan's supplies against the inventory, worked by hand", () => {
     expect(checks[3]).toMatchObject({ standing: "missing", needed: null, short: null });
     // Candles past their use-by: missing, all 6 to buy.
     expect(checks[4]).toMatchObject({ standing: "missing", needed: 6, short: 6 });
+  });
+
+  it("looks for the thing a line names, not the rest of its words", () => {
+    expect(thingOf("Torch (battery or wind-up) and spare batteries")).toBe("Torch");
+    expect(thingOf("Non-perishable food that needs no cooking")).toBe("Non-perishable food");
+    expect(thingOf("Blankets, warm clothing and extra layers")).toBe("Blankets");
+    expect(thingOf("Bottled water")).toBe("Bottled water");
+    const [torch] = compareSupplies(
+      [supply({ name: "Torch (battery or wind-up) and spare batteries" })],
+      [row({ name: "LED torch", quantity: 2 })],
+      1,
+      null,
+    );
+    expect(torch!.standing).toBe("in-stock");
   });
 
   it("matches by every word of the plan's name, and nothing less", () => {

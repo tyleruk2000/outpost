@@ -85,12 +85,15 @@ test.describe("Emergency plans on a phone", () => {
     await page.getByRole("button", { name: "Start using this plan" }).tap();
     await expect(page.getByText(/In use since/)).toBeVisible();
     const during = page.locator("section", { has: page.getByRole("heading", { name: "During" }) });
-    const steps = during.getByRole("checkbox");
-    await steps.nth(0).check({ force: true });
-    await steps.nth(1).check({ force: true });
+    // A finger presses the whole row, which is the checkbox's label.
+    const rows = during.locator("label");
+    await rows.nth(0).tap();
+    await expect(during.getByRole("checkbox").nth(0)).toBeChecked();
+    await rows.nth(1).tap();
+    await expect(during.getByRole("checkbox").nth(1)).toBeChecked();
     await expect(page.getByText(/2 of \d+ steps done/)).toBeVisible();
     await expect(during.getByText(/^Done at \d\d:\d\d$/)).toHaveCount(2);
-    const target = (await during.locator("label").first().boundingBox())!;
+    const target = (await rows.first().boundingBox())!;
     expect(target.height).toBeGreaterThanOrEqual(44);
     expect(await overflow(), "sideways overflow in use").toBeLessThanOrEqual(0);
     // Kept on the server: a reload shows the same.

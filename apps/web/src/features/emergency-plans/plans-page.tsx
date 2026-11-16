@@ -4,7 +4,7 @@
  * blank.
  */
 import { type EmergencyPlanSummary, PLAN_TEMPLATES, type PlanTemplate, planKindLabel, reviewDue } from "@outpost/shared";
-import { ChevronRight, Siren } from "lucide-react";
+import { ChevronRight, ListChecks } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { EmptyState, ErrorState, Page, PageHeader, Rows } from "@/components/page";
@@ -38,7 +38,7 @@ function PlanRow({ plan }: { plan: EmergencyPlanSummary }) {
       <div className="flex items-center gap-2">
         <Button asChild variant={plan.startedAt !== null ? "primary" : "secondary"}>
           <Link to={`/prepare/plans/${plan.id}/use`} aria-label={`Use now: ${plan.name}`}>
-            <Siren aria-hidden /> Use now
+            <ListChecks aria-hidden /> Use now
           </Link>
         </Button>
         <Link to={`/prepare/plans/${plan.id}`} aria-label={`Open ${plan.name}`} className="grid size-11 place-items-center text-ink-faint">

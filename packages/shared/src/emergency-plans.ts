@@ -319,6 +319,16 @@ const words = (text: string) =>
     .filter(Boolean)
     .map(singular);
 
+/**
+ * The words of a plan's line that name the thing itself: those before its first
+ * bracket, comma, "and", "or", "that", "with" or "for". "Torch (battery or wind-up)
+ * and spare batteries" is looked for as "Torch"; "Bottled water" as itself.
+ */
+export function thingOf(name: string): string {
+  const head = name.split(/\s*[(,;:]|\s+(?:and|or|that|with|for)\s+/i)[0] ?? name;
+  return head.trim() || name.trim();
+}
+
 /** Whether an inventory row is the thing a plan names: every word of the plan's name is in the row's name, plurals aside. */
 export function sameThing(planName: string, rowName: string): boolean {
   const wanted = words(planName);
@@ -361,7 +371,7 @@ export function compareSupplies(supplies: PlanSupply[], held: HeldRow[], people:
         !row.expired &&
         row.quantity > 0 &&
         (supply.category === null || row.category === supply.category) &&
-        sameThing(supply.name, row.name),
+        sameThing(thingOf(supply.name), row.name),
     );
     const counted = matched.filter((row) => sameUnit(row.unit, supply.unit) || (!row.unit.trim() && !supply.unit.trim()));
     const other = matched.filter((row) => !counted.includes(row));

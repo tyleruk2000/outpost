@@ -200,8 +200,11 @@ The plan's supplies are set beside **Supplies** (`/prepare/supplies`):
   this plan wants. These are Supplies' figures for its own household, which the screen
   says.
 - **Each thing listed**, against the rows of the inventory: a row matches when it is in
-  the line's category (if one is chosen) and its name has every word of the line's
-  name, plurals aside ("AA batteries" matches "AA Batteries (Duracell)"). Its amount
+  the line's category (if one is chosen) and its name has every word of the thing the
+  line names, plurals aside: the words before the line's first bracket, comma, "and",
+  "or", "that", "with" or "for" ("Torch (battery or wind-up) and spare batteries" is
+  looked for as "Torch", and "LED torch" matches; "AA batteries" matches "AA Batteries
+  (Duracell)"). Its amount
   counts when its unit is the line's (or neither has one). A row past its use-by is
   not counted. The amount wanted is the line's quantity, times the people in the plan
   if "each person", times the days if "each day". Then: **in stock** (held at least
