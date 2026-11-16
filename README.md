@@ -110,7 +110,7 @@ in full, including what it does not do.
 | Line of sight | Whether two points can see each other over the installed terrain. | [Maps](docs/maps.md#line-of-sight) |
 | Satellite imagery | The whole world from NASA's Blue Marble, or a chosen area at 10 m from Sentinel-2, downloaded and kept on disk. | [Maps](docs/maps.md#satellite-imagery) |
 | Aerial photographs | National aerial photographs for an area in New Zealand (LINZ) and the lower 48 United States (NAIP), 5 cm to 1 m a pixel. | [Maps](docs/maps.md#aerial-photographs) |
-| Reference layers | Boundaries, populated places, airports, publicly mapped facilities, hospitals and emergency services, shelters and meeting points, population density and historical records, each pack downloaded on a press or imported, every record with its source and licence. | [Reference layers](docs/reference-layers.md) |
+| Reference layers | Boundaries, populated places, airports, publicly mapped facilities, hospitals and emergency services, shelters and meeting points, population density and historical records, each pack downloaded on a press or imported, every record with its source and licence. For England, the Environment Agency's planning flood zones 2 and 3 for the area on screen, with the Agency's own definitions and its caveat that the map is not for judging one property. | [Reference layers](docs/reference-layers.md) |
 | Printing | A one-page map at a stated scale, with scale bars, north, a grid of latitude and longitude, and the credits, made on your device as a PDF. | [Maps](docs/maps.md#printing-a-map) |
 
 ![The map with saved places, a route and its elevation profile](docs/screenshots/maps.webp)
@@ -178,9 +178,9 @@ language model, and a real model's answers read differently.*
 | Radio calculators | Antenna lengths, free-space path loss, the radio horizon, cable loss, watts, dBm and S-units, battery life on a duty cycle. | [Tools](docs/tools.md#radio-calculators) |
 | Building | Concrete and mortar, area and volume, roof pitch, a cutting list, U-values and heat loss, sheets and fixings. | [Tools](docs/tools.md#building) |
 | Cooking | Roasting times and safe temperatures from UK food-safety guidance, a timer, boiling at altitude, conversions, scaling a recipe. | [Tools](docs/tools.md#cooking) |
-| Power and batteries | Quick calculators (battery runtime, solar, cable size and voltage drop, series and parallel, generator fuel, small electronics), and power plans: a battery system kept by name, worked out into how long it runs and how much solar it needs. | [Power](docs/tools-power.md) |
+| Power and batteries | Quick calculators (battery runtime, solar, cable size and voltage drop, series and parallel, generator fuel, small electronics), and power plans: a battery system kept by name, worked out into how long it runs and how much solar it needs. Monthly sun hours can be filled in from figures already fetched on Weather and hazards, and the plan says where they came from. | [Power](docs/tools-power.md) |
 | QR codes | Makes a code from text, a web address, a Wi-Fi network, a contact or a saved place, on the device; nothing typed is sent anywhere. | [QR codes](docs/tools-qr-and-network.md#qr-codes-toolsqr) |
-| Devices on this network | Lists what answers on the network the computer running Outpost is on: a NAS, a printer, a Raspberry Pi whose address you have forgotten. Never put in search. | [Network](docs/tools-qr-and-network.md#devices-on-this-network-toolsnetwork) |
+| Devices on this network | Lists what answers on the network the computer running Outpost is on: a NAS, a printer, a Raspberry Pi whose address you have forgotten. Never put in search. A start-up option limits starting a scan to the computer itself. | [Network](docs/tools-qr-and-network.md#devices-on-this-network-toolsnetwork) |
 
 Every calculator shows its answer as you type and says, under **How this is worked
 out**, the formula, its source with the date it was read, and the range it holds for.
@@ -205,7 +205,7 @@ real network's devices are shown.*
 
 | Feature | What it does | Docs |
 | --- | --- | --- |
-| Emergency plans | A household's plans for a power cut, flooding, no phone or internet, severe weather, sheltering at home or leaving at short notice, started from templates drawn from official guidance, each step saying whose words it is. **Use now** shows the steps in large type with ticks; wallet cards, a fridge sheet and a grab list print as PDF. | [Emergency plans](docs/emergency-plans.md) |
+| Emergency plans | A household's plans for a power cut, flooding, no phone or internet, severe weather, sheltering at home or leaving at short notice, started from templates drawn from official guidance, each step saying whose words it is. **Use now** shows the steps in large type with ticks; wallet cards, a fridge sheet and a grab list print as PDF. Over HTTPS a plan can be kept on a phone and used, ticks and all, with the server out of reach. A warning held for your home place is shown as one line, with its age. | [Emergency plans](docs/emergency-plans.md) |
 | Supplies | Food, water and kit kept at home: how many days they last for your household, what to use first, and what to buy. Find items by barcode (typed, from a photo, or with the live camera on an `https` page). | [Supplies](docs/supplies.md) |
 | Weather and hazards | Forecasts, UK severe-weather and flood warnings, river levels and climate averages for places you choose, fetched when you press and kept with their age; a log of your own barometer readings. | [Weather](docs/weather.md) |
 | Nuclear preparedness | An offline map workspace with an educational effects simulator: what Glasstone and Dolan's published model says a detonation of a stated size does at a distance, for an idealised case, with every figure cited. Scenarios are saved, compared two at a time and written out as PDF or Markdown. It covers effects, preparedness and published history only. | [Nuclear preparedness](docs/nuclear-preparedness.md) |
@@ -246,7 +246,7 @@ made-up map, with the model's rings and idealised fallout pattern.*
 | Manage and clean up | One screen that lists everything installed, removes what you no longer want, clears leftovers, checks the database, and can erase everything. | [Storage](docs/storage.md#managing-and-cleaning-up) |
 | Backups | A backup file of the database, attachments and extracted text, by hand or on a schedule to a storage location, optionally encrypted with a passphrase. | [Storage](docs/storage.md#backing-up) |
 | Portable drives | A USB drive holding Outpost and part of your library, which starts with a double-click on another Mac, Windows or Linux computer with nothing installed; what was written on it is brought back home with a preview. | [Portable drives](docs/portable.md) |
-| On this phone | Over HTTPS the app keeps itself on a phone, and chosen pages of notes, routes, saved places and map areas are kept there to read where the server cannot be reached. | [Offline](docs/offline.md#a-phone-out-of-reach-of-the-server) |
+| On this phone | Over HTTPS the app keeps itself on a phone, and chosen pages of notes, routes, saved places, map areas and emergency plans are kept there to read where the server cannot be reached. | [Offline](docs/offline.md#a-phone-out-of-reach-of-the-server) |
 | HTTPS on your network | An `https` address on your own network with no domain and no internet, with a certificate Outpost makes or one of your own. Location, the camera, recording a track and keeping things on a phone need it. | [Deployment](docs/deployment.md#https-on-your-network) |
 | Settings | Appearance (including the 12- or 24-hour clock), downloads, reading documents, search by meaning, answers, maps, who can use this library, backups and HTTPS. | [Deployment](docs/deployment.md#environment-variables) |
 
@@ -507,7 +507,7 @@ is in [docs/sources.md](docs/sources.md). In short:
 | VOACAP (NTIA/ITS) via hfcast-engine | HF propagation | Engine Apache-2.0; its CCIR coefficients not shipped |
 | ITU-R Study Group 3 (ITURHFProp) | The optional second HF model | No open licence; nothing shipped |
 | Open-Meteo (Met Office models), Met Office, Environment Agency, NASA POWER, PVGIS | Weather and hazards | CC BY 4.0; Crown copyright; OGL; credit to NASA; credit to the JRC |
-| OurAirports, Wikidata, WorldPop, BABS | Reference layers | Public domain; CC0; CC BY 4.0; open use with source |
+| OurAirports, Wikidata, WorldPop, BABS, Environment Agency (flood zones) | Reference layers | Public domain; CC0; CC BY 4.0; open use with source; OGL |
 | UK Government (Be Ready, GOV.UK), Met Office, Ofcom and others | Emergency plan templates | OGL v3 and others, quoted only where their terms allow |
 | Glasstone and Dolan, *The Effects of Nuclear Weapons* (1977) | The effects simulator | A US Government work |
 | IEEE Registration Authority | Device makers, on a press | Not bundled |
