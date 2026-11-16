@@ -409,7 +409,7 @@ describe("an archive that lists documents", () => {
       title: "Boiling water to make it safe",
       description: "Water: how long to boil",
       author: "Outpost tests",
-      files: [{ name: "Water (1).pdf", path: "files/Water (1).pdf", kind: "pdf", documentId: null }],
+      files: [{ name: "Water (1).pdf", path: "files/Water (1).pdf", kind: "pdf", documentId: null, adding: null, problem: null }],
     });
     expect(body.list.documents[1]).toMatchObject({ title: "A camper's rocket stove", files: [{ path: "files/stoves/rocket stove.pdf" }] });
     expect(body.list.documents[2]).toMatchObject({

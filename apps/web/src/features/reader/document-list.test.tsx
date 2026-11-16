@@ -19,14 +19,14 @@ const documents: ArchiveDocument[] = [
     title: "Boiling water to make it safe",
     description: "Water: how long to boil",
     author: "A. Writer",
-    files: [{ name: "Water (1).pdf", path: "files/Water (1).pdf", kind: "pdf", documentId: null }],
+    files: [{ name: "Water (1).pdf", path: "files/Water (1).pdf", kind: "pdf", documentId: null, adding: null, problem: null }],
   },
   {
     id: "1",
     title: "<img src=x onerror=alert(1)> & <b>bold</b>",
     description: "<script>alert(2)</script>",
     author: "",
-    files: [{ name: "odd #1?.pdf", path: "files/odd #1?.pdf", kind: "pdf", documentId: "doc9" }],
+    files: [{ name: "odd #1?.pdf", path: "files/odd #1?.pdf", kind: "pdf", documentId: "doc9", adding: null, problem: null }],
   },
   {
     id: "2",
@@ -34,9 +34,9 @@ const documents: ArchiveDocument[] = [
     description: "",
     author: "Outpost tests",
     files: [
-      { name: "Radio check.pdf", path: "files/Radio check.pdf", kind: "pdf", documentId: null },
-      { name: "Radio check.wav", path: "files/Radio check.wav", kind: "audio", documentId: null },
-      { name: "notes.docx", path: "files/notes.docx", kind: "other", documentId: null },
+      { name: "Radio check.pdf", path: "files/Radio check.pdf", kind: "pdf", documentId: null, adding: null, problem: null },
+      { name: "Radio check.wav", path: "files/Radio check.wav", kind: "audio", documentId: null, adding: null, problem: null },
+      { name: "notes.docx", path: "files/notes.docx", kind: "other", documentId: null, adding: null, problem: null },
     ],
   },
   {
@@ -44,7 +44,7 @@ const documents: ArchiveDocument[] = [
     title: "Kit list",
     description: "Kit list",
     author: "",
-    files: [{ name: "kit list.ods", path: "files/sheets/kit list.ods", kind: "other", documentId: null }],
+    files: [{ name: "kit list.ods", path: "files/sheets/kit list.ods", kind: "other", documentId: null, adding: null, problem: null }],
   },
 ];
 
@@ -145,7 +145,7 @@ describe("the list of a collection's documents", () => {
       "href",
       "/library/documents/doc1",
     );
-    const post = fetched.mock.calls.find(([, init]) => init?.method === "POST")!;
+    const post = fetched.mock.calls.find(([input, init]) => init?.method === "POST" && String(input).endsWith("/files/save"))!;
     expect(JSON.parse(String(post[1]!.body))).toEqual({ path: "files/Water (1).pdf", title: "Boiling water to make it safe" });
     expect(server.calls).toContain("POST /api/kiwix/books/c1/files/save");
   });
@@ -193,7 +193,7 @@ describe("the list of a collection's documents", () => {
         title: `Document ${index + 1}`,
         description: "",
         author: "",
-        files: [{ name: `${index}.pdf`, path: `files/${index}.pdf`, kind: "pdf", documentId: null }],
+        files: [{ name: `${index}.pdf`, path: `files/${index}.pdf`, kind: "pdf", documentId: null, adding: null, problem: null }],
       }),
     );
     const server = fakeServer({

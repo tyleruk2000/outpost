@@ -4,13 +4,13 @@
  * A PDF opens in Outpost's own viewer, read straight out of the archive. Any file shown
  * here can be added to the document library, where it is searchable page by page.
  */
-import type { ArchiveFileState, SaveArchiveFileResponse } from "@outpost/shared";
+import { type ArchiveFileState, formatBytes, type SaveArchiveFileResponse } from "@outpost/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, BookOpen, Check, LibraryBig } from "lucide-react";
+import { ArrowLeft, BookOpen, Check, LibraryBig, RotateCw } from "lucide-react";
 import { lazy, Suspense, useRef, useState } from "react";
 import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/misc";
+import { Skeleton, Tooltip } from "@/components/ui/misc";
 import { api, errorMessage } from "@/lib/api";
 import { ViewerToolbar } from "../library/document-toolbar";
 import type { ViewerControls, ViewerState } from "../library/document-viewer";
@@ -52,6 +52,8 @@ export function ArchiveFile({
     queryKey: ["links", "archive", collectionId, [path]],
     queryFn: () => api.post<{ files: ArchiveFileState[] }>(`/api/kiwix/books/${collectionId}/files/check`, { paths: [path] }),
     select: (data) => data.files[0],
+    // An "add all" may be copying this very file; ask again until it has.
+    refetchInterval: (query) => (query.state.data?.files[0]?.state === "adding" ? 1500 : false),
   });
   const save = useMutation({
     mutationFn: () =>
@@ -84,13 +86,37 @@ export function ArchiveFile({
             </Link>
           </Button>
         ) : (
-          <Button size="sm" variant="primary" loading={save.isPending} disabled={kept.isPending} onClick={() => save.mutate()}>
-            <LibraryBig /> Add to library
-          </Button>
+          <Tooltip label="Copied from this collection; nothing is downloaded">
+            <Button
+              size="sm"
+              variant="primary"
+              loading={save.isPending || kept.data?.state === "adding"}
+              disabled={kept.isPending}
+              onClick={() => save.mutate()}
+            >
+              {save.isError ? (
+                <>
+                  <RotateCw /> Try again
+                </>
+              ) : (
+                <>
+                  <LibraryBig /> Add to library
+                </>
+              )}
+            </Button>
+          </Tooltip>
         )}
       </div>
       {save.isError ? (
-        <p className="border-b border-border bg-danger-soft px-4 py-2 text-small text-danger">{errorMessage(save.error)}</p>
+        <p role="alert" className="border-b border-border bg-danger-soft px-4 py-2 text-small text-danger">
+          Not added. {errorMessage(save.error)}
+        </p>
+      ) : null}
+      {save.data?.status === "created" ? (
+        <p role="status" className="border-b border-border bg-surface px-4 py-2 text-small text-ink-muted">
+          Copied out of this collection into your library ({formatBytes(save.data.document.sizeBytes)}); nothing was downloaded. Its text is
+          being read so that search can find it.
+        </p>
       ) : null}
       {save.data?.status === "duplicate" ? (
         <p className="border-b border-border bg-surface px-4 py-2 text-small text-ink-muted">

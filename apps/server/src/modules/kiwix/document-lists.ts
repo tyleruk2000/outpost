@@ -17,6 +17,7 @@ import {
   type ArchiveDocumentList,
   type ArchiveDocumentsResponse,
   type ArchiveFileKind,
+  type ArchiveFileTurn,
   archiveFileKind,
 } from "@outpost/shared";
 import type { FastifyInstance } from "fastify";
@@ -70,12 +71,27 @@ export interface ListedHit {
   url: string;
 }
 
+/** A file of a listed document that the library can keep, with what the list says about it. */
+export interface ListedFile {
+  path: string;
+  /** The title the document gets: the list's title when the document is this one file, otherwise left to the file. */
+  title: string | undefined;
+  /** What to call it when speaking of it: the document's title, with the file's name when there are several. */
+  label: string;
+}
+
 export interface DocumentLists {
   /** Reads the archive's list in the background, so that search can find its documents without waiting. */
   warm(row: CollectionRow): void;
   forget(collectionId: string): void;
   /** Documents of an archive whose list has already been read that match these words. Never waits. */
   hits(row: CollectionRow, q: string, limit: number): ListedHit[];
+  /**
+   * The files of an archive's list that the library can keep, those of documents matching
+   * `q` when words are given, in the list's order. Undefined when the archive has no list,
+   * or it cannot be read now.
+   */
+  keepable(row: CollectionRow, q: string): Promise<ListedFile[] | undefined>;
 }
 
 export interface DocumentListsOptions {
@@ -87,6 +103,10 @@ export interface DocumentListsOptions {
   /** Whether kiwix-serve can be asked for this book now. */
   isReady(row: CollectionRow): Promise<boolean>;
   savedDocuments(row: CollectionRow, paths: string[]): Map<string, string>;
+  /** A file's place in the adding that is under way, if it has one. */
+  turnOf(row: CollectionRow, path: string): ArchiveFileTurn | null;
+  /** Files the last "add all" could not add, each with the reason. */
+  problems(row: CollectionRow): Map<string, string>;
   readerUrl(collectionId: string, articlePath: string): string;
 }
 
@@ -138,6 +158,8 @@ function matching(list: HeldList, q: string, everywhere: boolean): HeldDocument[
 }
 
 const VIEWABLE: ReadonlySet<ArchiveFileKind> = new Set(["pdf", "epub", "audio", "video"]);
+/** The kinds the reader offers to add to the library. */
+const KEPT: ReadonlySet<ArchiveFileKind> = new Set(["pdf", "epub"]);
 
 export function registerDocumentLists(app: FastifyInstance, ctx: AppContext, options: DocumentListsOptions): DocumentLists {
   const { log } = ctx;
@@ -292,17 +314,23 @@ export function registerDocumentLists(app: FastifyInstance, ctx: AppContext, opt
         row,
         page.flatMap((document) => document.files.map((file) => file.path)),
       );
+      const problems = page.length > 0 ? options.problems(row) : new Map<string, string>();
       const documents: ArchiveDocument[] = page.map((document) => ({
         id: String(document.index),
         title: document.title,
         description: document.description,
         author: document.author,
-        files: document.files.map((file) => ({
-          name: file.name,
-          path: file.path,
-          kind: archiveFileKind(file.path),
-          documentId: saved.get(file.path) ?? null,
-        })),
+        files: document.files.map((file) => {
+          const documentId = saved.get(file.path) ?? null;
+          return {
+            name: file.name,
+            path: file.path,
+            kind: archiveFileKind(file.path),
+            documentId,
+            adding: documentId ? null : options.turnOf(row, file.path),
+            problem: documentId ? null : (problems.get(file.path) ?? null),
+          };
+        }),
       }));
       const answer: ArchiveDocumentList = {
         home: list.home,
@@ -321,6 +349,26 @@ export function registerDocumentLists(app: FastifyInstance, ctx: AppContext, opt
     warm: (row) => warm(row),
     forget(collectionId) {
       known.delete(collectionId);
+    },
+    async keepable(row, q) {
+      if (!(await options.isReady(row))) return undefined;
+      const reading = await read(row);
+      if (reading.kind !== "list") return undefined;
+      const files: ListedFile[] = [];
+      const seen = new Set<string>();
+      for (const document of matching(reading.list, q, true)) {
+        const alone = document.files.length === 1;
+        for (const file of document.files) {
+          if (!KEPT.has(archiveFileKind(file.path)) || seen.has(file.path)) continue;
+          seen.add(file.path);
+          files.push({
+            path: file.path,
+            title: alone ? document.title : undefined,
+            label: alone ? document.title : `${document.title}: ${file.name}`,
+          });
+        }
+      }
+      return files;
     },
     hits(row, q, limit) {
       const reading = recall(row);

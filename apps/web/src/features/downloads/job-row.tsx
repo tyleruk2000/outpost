@@ -8,6 +8,8 @@ import { api, errorMessage } from "@/lib/api";
 
 /** Jobs whose progress counts bytes; the rest count items, which only mean something as a share. */
 const countsBytes = new Set(["collection.verify", "portable.build"]);
+/** Jobs that work through a number of things one at a time, where "12 of 108" says more than a share. */
+const countsThings = new Set(["kiwix.add-files"]);
 /** Reading one document is short and stopping it leaves that document without its text. */
 const notCancellable = new Set(["document.extract"]);
 
@@ -16,6 +18,7 @@ export function jobProgressText(job: Pick<JobDto, "type" | "progress">): string 
   const { current, total } = job.progress;
   if (!total || total <= 0) return null;
   if (countsBytes.has(job.type)) return `${formatBytes(Math.min(current, total))} of ${formatBytes(total)}`;
+  if (countsThings.has(job.type)) return `${Math.min(current, total)} of ${total}`;
   return `${Math.round(Math.min(1, current / total) * 100)}%`;
 }
 

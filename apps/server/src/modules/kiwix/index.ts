@@ -23,8 +23,9 @@ import type { AppContext } from "../../core/context.ts";
 import { AppError, badRequest, notFound } from "../../core/errors.ts";
 import type { CollectionRow } from "../collections/service.ts";
 import { gatherParts, referenceBudgets, type SearchSource } from "../search/service.ts";
+import { type ArchiveAdding, registerArchiveAdding } from "./add-files.ts";
 import { type DocumentLists, registerDocumentLists } from "./document-lists.ts";
-import { registerArchiveFiles } from "./files.ts";
+import { type ArchiveFilesService, registerArchiveFiles } from "./files.ts";
 import { bookNameOf, decodeEntities, type LibraryBook, readZimUuid, writeLibrary } from "./library.ts";
 import { createSearchQueue } from "./search-queue.ts";
 import { createKiwixConnection, type KiwixConnection } from "./server.ts";
@@ -270,8 +271,10 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
     await sync();
   }
 
-  // Set further down, once the routes it needs exist; nothing is installed or removed before then.
+  // Set further down, once the routes they need exist; nothing is installed or removed before then.
   let lists: DocumentLists | undefined;
+  let files: ArchiveFilesService | undefined;
+  let adding: ArchiveAdding | undefined;
   collections.onInstalled(async (row) => {
     if (row.kind !== "zim") return;
     await sync();
@@ -282,6 +285,9 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
   collections.onRemoved(async (row) => {
     // Runs before the file is deleted, so kiwix-serve lets go of it first.
     if (row.kind !== "zim") return;
+    // Documents already added from it are the library's own and stay; only the adding stops.
+    adding?.cancel(row.id);
+    files?.forget(row.id);
     lists?.forget(row.id);
     const remaining = zimCollections().filter((other) => other.id !== row.id && servable(other));
     await writeLibrary(config.kiwix.libraryPath, remaining.map(toLibraryBook));
@@ -578,16 +584,26 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
     return { collection: collections.toDto(row) };
   });
 
-  const files = registerArchiveFiles(app, ctx, { upstream, requireBook, bookNameOf: (row) => zimOf(row)!.bookName });
+  const isReady = async (row: CollectionRow) => servable(row) && (await connection.isUp());
+  const archiveFiles = registerArchiveFiles(app, ctx, {
+    upstream,
+    requireBook,
+    bookNameOf: (row) => zimOf(row)!.bookName,
+    uuidOf: (row) => zimOf(row)?.uuid,
+  });
+  files = archiveFiles;
   lists = registerDocumentLists(app, ctx, {
     upstream,
     requireBook,
     bookNameOf: (row) => zimOf(row)!.bookName,
     uuidOf: (row) => zimOf(row)?.uuid,
-    isReady: async (row) => servable(row) && (await connection.isUp()),
-    savedDocuments: files.savedDocuments,
+    isReady,
+    savedDocuments: archiveFiles.savedDocuments,
+    turnOf: archiveFiles.turnOf,
+    problems: (row) => adding?.problems(row) ?? new Map(),
     readerUrl,
   });
+  adding = registerArchiveAdding(app, ctx, { files: archiveFiles, lists, requireBook, isReady });
   // Read each archive's list once now, so that search finds its documents before anyone has opened it.
   for (const row of zimCollections()) if (servable(row) && zimOf(row)?.bookName) lists.warm(row);
 

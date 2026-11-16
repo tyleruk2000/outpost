@@ -12,6 +12,24 @@ import { api, expect, test, watchForErrors } from "./fixtures";
 const BOOK = "field-library_en_2026-11";
 const UUID = "5d1c0b6e-2f3a-4c7d-9e8f-0a1b2c3d4e5f";
 const headers = { "X-Outpost-Request": "1" };
+/** The stand-in archive itself, for making its files slow to arrive or one of them absent. */
+const ARCHIVE = process.env.OUTPOST_E2E_KIWIX_URL!;
+const archiveAs = (how = "") => fetch(`${ARCHIVE}/control${how}`);
+
+/** Takes the documents added from the archive out of the library again, and puts away any "add all" that is still going. */
+async function removeAdded(request: APIRequestContext, id?: string): Promise<void> {
+  if (id) {
+    const { job } = await (await request.get(`/api/kiwix/books/${id}/files/add-all`)).json();
+    if (job && ["queued", "running", "paused"].includes(job.state)) await request.post(`/api/jobs/${job.id}/cancel`, { headers });
+    await expect
+      .poll(async () => (await (await request.get(`/api/kiwix/books/${id}/files/add-all`)).json()).job?.state ?? "none")
+      .not.toMatch(/queued|running|paused/);
+  }
+  const { documents } = await (await request.get("/api/documents?limit=200")).json();
+  for (const document of documents.filter((candidate: { source: string | null }) => candidate.source?.startsWith("Field library: "))) {
+    await request.delete(`/api/documents/${document.id}`, { headers });
+  }
+}
 
 /** Puts the archive in the library, as if it had been downloaded, and waits until it can be read. */
 async function addArchive(request: APIRequestContext): Promise<string> {
@@ -42,10 +60,8 @@ async function addArchive(request: APIRequestContext): Promise<string> {
 
 async function removeArchive(request: APIRequestContext): Promise<void> {
   // Other tests search the same library, so nothing of this one may stay behind.
-  const { documents } = await (await request.get("/api/documents?limit=200")).json();
-  for (const document of documents.filter((candidate: { source: string | null }) => candidate.source?.startsWith("Field library: "))) {
-    await request.delete(`/api/documents/${document.id}`, { headers });
-  }
+  await archiveAs();
+  await removeAdded(request);
   const { collections } = await (await request.get("/api/collections")).json();
   for (const collection of collections.filter((candidate: { title: string }) => candidate.title === "Field library")) {
     await request.delete(`/api/collections/${collection.id}?deleteFiles=true`, { headers });
@@ -179,6 +195,202 @@ test.describe("a collection that is a list of documents", () => {
       await expect(page.getByRole("button", { name: "Back to the list" })).toBeVisible();
       await expect(page.locator("canvas").first()).toBeVisible({ timeout: 15_000 });
       expect(errors).toEqual([]);
+    });
+  });
+  // The tests from here on add documents in bulk. How that turned out stays on the list for a while,
+  // so they come after the tests that read the list as it is before anything was added to it.
+  test.describe("adding every document to the library", () => {
+    test.afterEach(async ({ request }) => {
+      await archiveAs();
+      await removeAdded(request, id);
+    });
+
+    test("says what adding does, and adds them all as a job that goes on when the page is left", async ({ page }) => {
+      const errors = watchForErrors(page);
+      await removeAdded(page.request, id);
+      await api(page, "POST", `/api/kiwix/books/${id}/files/save`, { path: "files/grain.pdf", title: "Storing grain for a year" });
+      // Each file takes a while to arrive, and one of them is not in the collection after all.
+      await archiveAs("?delay=1200&missing=north.pdf");
+      await page.goto(`/library/read/${id}/`);
+
+      // What "Add to library" does is said where the choice is made: a copy, where to, nothing from the internet, how much room.
+      const words = page.getByText(/copies a document out of this collection into your library/);
+      await expect(words).toContainText("on “Internal storage”");
+      await expect(words).toContainText("Nothing is downloaded from the internet.");
+      await expect(words).toContainText(/The collection keeps its copy, so adding the other 7 uses [\d.]+ kB more \([\d.]+ [GT]B free\)\./);
+      // Each line says how large its file is.
+      await expect(page.getByRole("listitem").filter({ hasText: "Boiling water to make it safe" })).toContainText(/PDF\s*\/\s*\d+ bytes/);
+
+      await page.getByRole("button", { name: "Add the other 7 to library" }).click();
+      const dialog = page.getByRole("dialog", { name: "Add 7 documents to your library?" });
+      await expect(dialog).toContainText(
+        /They are copied out of this collection onto “Internal storage”: [\d.]+ kB, of [\d.]+ [GT]B free\./,
+      );
+      await expect(dialog).toContainText(
+        "Nothing is downloaded from the internet. The collection keeps its own copy, so this space is used a second time.",
+      );
+      await expect(dialog).toContainText("1 document is in your library already and will be left alone.");
+      await expect(dialog).toContainText("What has been added stays in your library, also if this collection is removed later.");
+      await dialog.getByRole("button", { name: "Add 7 documents" }).click();
+      await expect(dialog).toHaveCount(0);
+
+      // It counts as it goes, and the lines of the list say which is being added and which are waiting.
+      const going = page.getByRole("region", { name: "Adding to your library" });
+      await expect(going).toContainText(/[1-5] of 7/, { timeout: 20_000 });
+      await expect(page.getByText("Waiting its turn").first()).toBeVisible();
+      await expect(page.getByRole("list", { name: "Documents" }).getByText("Adding…")).toHaveCount(1);
+      await expect(page.getByRole("button", { name: /to library$/ })).toHaveCount(0);
+
+      // Leaving the page does not stop it: Downloads shows it, counted the same way.
+      await page.goto("/downloads");
+      const row = page.getByRole("listitem").filter({ hasText: "Adding documents from “Field library” to your library" });
+      await expect(row).toContainText(/[1-6] of 7/);
+      await expect(row.getByRole("button", { name: /^Cancel: Adding documents/ })).toBeVisible();
+
+      await page.goto(`/library/read/${id}/`);
+      // How it turned out: how many were added, and which one was not, and why.
+      const outcome = page.getByRole("status").filter({ hasText: "could not be added" });
+      await expect(outcome).toContainText("Added 6 documents to your library; 1 could not be added", { timeout: 30_000 });
+      await expect(outcome).toContainText("They are on “Internal storage”");
+      await expect(outcome).toContainText("stay there if this collection is removed");
+      await expect(outcome.getByRole("list", { name: "Could not be added" })).toContainText(
+        'Finding north without a compass: "north.pdf" is not in this collection.',
+      );
+      const north = page.getByRole("listitem").filter({ hasText: "Finding north without a compass" }).last();
+      await expect(north.getByRole("alert")).toContainText('Not added. "north.pdf" is not in this collection.');
+      await expect(page.getByRole("link", { name: /^In your library: / })).toHaveCount(7);
+
+      // The one that failed can be tried again, on its own line, once the file is there.
+      await archiveAs();
+      await north.getByRole("button", { name: "Try again: Finding north without a compass" }).click();
+      await expect(page.getByRole("link", { name: "In your library: Finding north without a compass" })).toBeVisible();
+      await expect(page.getByText(/All 8 here are in your library, and stay there if this collection is removed\./)).toBeVisible();
+      await expect(page.getByRole("button", { name: /to library$/ })).toHaveCount(0);
+
+      const { documents } = await api(page, "GET", "/api/documents?limit=200");
+      const added = documents.filter((document: { source: string | null }) => document.source?.startsWith("Field library: "));
+      expect(added).toHaveLength(8);
+      // Their text is read, so that search finds them to the page. (Other tests' documents share this library.)
+      await expect
+        .poll(
+          async () =>
+            (await api(page, "GET", "/api/documents?limit=200")).documents
+              .filter((d: { source: string | null }) => d.source?.startsWith("Field library: "))
+              .map((d: { extraction: string }) => d.extraction),
+          { timeout: 30_000 },
+        )
+        .toEqual(Array(8).fill("done"));
+      expect(errors).toEqual([]);
+    });
+
+    test("adds only what a search is showing, and can be stopped part of the way", async ({ page }) => {
+      const errors = watchForErrors(page);
+      await removeAdded(page.request, id);
+      await page.goto(`/library/read/${id}/`);
+      await page.getByRole("searchbox").fill("water");
+      await page.getByRole("button", { name: "Add these 2 to library" }).click();
+      await page
+        .getByRole("dialog", { name: "Add these 2 documents to your library?" })
+        .getByRole("button", { name: "Add 2 documents" })
+        .click();
+      await expect(page.getByRole("status").filter({ hasText: "Added 2 documents to your library" })).toBeVisible({ timeout: 20_000 });
+      await expect(page.getByRole("link", { name: /^In your library: / })).toHaveCount(2);
+
+      // The rest, slowly, and stopped before the end.
+      await archiveAs("?delay=900");
+      await page.getByRole("searchbox").fill("");
+      await page.getByRole("button", { name: "Add the other 6 to library" }).click();
+      await page.getByRole("dialog").getByRole("button", { name: "Add 6 documents" }).click();
+      const going = page.getByRole("region", { name: "Adding to your library" });
+      await expect(going).toContainText(/[1-4] of 6/, { timeout: 20_000 });
+      await going.getByRole("button", { name: "Stop" }).click();
+      const stopped = page.getByRole("status").filter({ hasText: "Stopped after" });
+      await expect(stopped).toContainText(/Stopped after [1-5] of 6 documents/, { timeout: 15_000 });
+      await expect(stopped).toContainText(/[1-5] documents? (was|were) not reached\./);
+      // What was added stays, and what is left is offered again.
+      await expect(page.getByRole("button", { name: /^Add the other (one|[2-5]) to library$/ })).toBeVisible();
+      const { documents } = await api(page, "GET", "/api/documents?limit=200");
+      const added = documents.filter((document: { source: string | null }) => document.source?.startsWith("Field library: ")).length;
+      expect(added).toBeGreaterThanOrEqual(3);
+      expect(added).toBeLessThan(8);
+      expect(errors).toEqual([]);
+    });
+
+    test("adds the files an ordinary page links to by the same job", async ({ page }) => {
+      const errors = watchForErrors(page);
+      await removeAdded(page.request, id);
+      await page.goto(`/library/read/${id}/guide`);
+      await expect(page.frameLocator("iframe").getByRole("heading", { name: "Where to start" })).toBeVisible();
+      await expect(page.getByText("This page links to 3 files.")).toBeVisible();
+      await page.getByRole("button", { name: "Add them to your library" }).click();
+      const dialog = page.getByRole("dialog", { name: "Files this page links to" });
+      await expect(dialog).toContainText("adding one copies it out into your library, and nothing is downloaded from the internet");
+      await expect(dialog).toContainText(/3 files are copied onto “Internal storage”: [\d.]+ kB, of [\d.]+ [GT]B free\./);
+      await expect(dialog.getByRole("listitem").filter({ hasText: "Splinting a forearm" })).toContainText(/In this collection, \d+ bytes/);
+      // One of the three is left out.
+      await dialog.getByRole("checkbox", { name: "Storing grain for a year" }).uncheck();
+      await dialog.getByRole("button", { name: "Add 2 files" }).click();
+      await expect(dialog.getByRole("status").filter({ hasText: "Added 2 files to your library" })).toBeVisible({ timeout: 20_000 });
+      await expect(dialog.getByRole("link", { name: "In your library" })).toHaveCount(2);
+      await dialog.getByRole("button", { name: "Keep reading" }).click();
+      await expect(page.getByText("This page links to 3 files; 2 already in your library.")).toBeVisible();
+      const { documents } = await api(page, "GET", "/api/documents?limit=200");
+      expect(
+        documents
+          .filter((document: { source: string | null }) => document.source?.startsWith("Field library: "))
+          .map((document: { title: string }) => document.title)
+          .sort(),
+      ).toEqual(["Finding north without a compass", "Splinting a forearm"]);
+      expect(errors).toEqual([]);
+    });
+
+    test.describe("on a phone", () => {
+      test.use({ viewport: { width: 390, height: 780 }, hasTouch: true, isMobile: true });
+
+      test("the words, the dialog and the progress fit the screen and can be pressed", async ({ page }) => {
+        const errors = watchForErrors(page);
+        await removeAdded(page.request, id);
+        const fits = () => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth);
+        await page.goto(`/library/read/${id}/`);
+        const words = page.getByText(/copies a document out of this collection into your library/);
+        await expect(words).toContainText(/so adding all 8 uses [\d.]+ kB more/);
+        const text = (await words.boundingBox())!;
+        expect(text.x).toBeGreaterThanOrEqual(0);
+        expect(text.x + text.width).toBeLessThanOrEqual(390);
+        expect(await fits()).toBe(true);
+
+        const all = page.getByRole("button", { name: "Add all 8 to library" });
+        expect((await all.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+        await all.tap();
+        const dialog = page.getByRole("dialog", { name: "Add 8 documents to your library?" });
+        await expect(dialog).toContainText("Nothing is downloaded from the internet.");
+        const frame = (await dialog.boundingBox())!;
+        expect(frame.x).toBeGreaterThanOrEqual(0);
+        expect(frame.x + frame.width).toBeLessThanOrEqual(390);
+        expect(frame.y + frame.height).toBeLessThanOrEqual(780);
+        for (const name of ["Cancel", "Add 8 documents"]) {
+          // The dialog grows to its size as it opens; measured once it has.
+          await expect
+            .poll(async () => (await dialog.getByRole("button", { name }).boundingBox())!.height, name)
+            .toBeGreaterThanOrEqual(44);
+        }
+        await archiveAs("?delay=600");
+        await dialog.getByRole("button", { name: "Add 8 documents" }).tap();
+        const going = page.getByRole("region", { name: "Adding to your library" });
+        await expect(going).toContainText(/[1-6] of 8/, { timeout: 20_000 });
+        expect((await going.getByRole("button", { name: "Stop" }).boundingBox())!.height).toBeGreaterThanOrEqual(44);
+        expect(
+          (await page
+            .getByRole("link", { name: /^In your library: / })
+            .first()
+            .boundingBox())!.height,
+        ).toBeGreaterThanOrEqual(44);
+        expect(await fits()).toBe(true);
+        await archiveAs();
+        await expect(page.getByRole("status").filter({ hasText: "Added 8 documents to your library" })).toBeVisible({ timeout: 30_000 });
+        expect(await fits()).toBe(true);
+        expect(errors).toEqual([]);
+      });
     });
   });
 });
