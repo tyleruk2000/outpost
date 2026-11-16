@@ -313,6 +313,7 @@ The plan lists these before you commit, with a count and an example file:
 | Embedded media (`<iframe>`, `<video>`, `<audio>`, `<embed>`, `<object>`) | Left out |
 | HTML the page model cannot hold | The tags are removed and the words kept |
 | HTML comments | Left out |
+| Elements that hold only white space | One space, so the words either side stay apart. Inside a block of code (`<pre>`) the white space comes through exactly as written: a highlighter puts a line's indent, and sometimes the line end, in an element of its own |
 | Notion columns (in an HTML export) | Their content follows one after another |
 | Footnotes | Kept as ordinary paragraphs |
 | `[[Wiki links]]` | Kept as text |

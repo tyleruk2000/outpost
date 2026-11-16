@@ -50,6 +50,9 @@ before it. Use `ctx.onClose.push(fn)` for cleanup.
 | Safe paths and names | `resolveInside`, `safeFileName` from `core/fs-safe.ts` |
 | Hashing large files | `sha256File` from `core/hashing.ts` |
 | Long-running work | `ctx.jobs.register(type, { queue, run })` and `ctx.jobs.enqueue(type, payload, { title })` |
+| Finding your own jobs | `ctx.jobs.list({ states, types: [MY_JOB] })`. Always with `types`: the list is the newest jobs first up to a limit, and without it a few hundred newer jobs of another kind hide yours |
+| Looking up from long work on the server's thread | `await yieldToEventLoop()` from `core/event-loop.ts`, between batches |
+| Taking an uploaded file | `await registerMultipart(app)` from `core/multipart.ts`, and `limits: { fileSize, … }` of your own on every `request.parts(...)`. The parser's own limit is a megabyte whoever registers it first |
 | Telling the browser something changed | `ctx.events.publish({ type: "documents.changed", id })` |
 | Outbound HTTP | `createHttpClient({ allowPrivate: ctx.config.allowPrivateDownloads })` from `core/http.ts` |
 | Search | `ctx.services.search.upsert({...})` and `.remove(kind, entityId)` |

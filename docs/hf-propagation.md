@@ -370,7 +370,13 @@ heard, and calls that got no answer.
 - **Log an entry** takes the date and time (UTC), what happened, the frequency, the
   mode, the two stations (callsign and place; either may be left empty), the
   transmitter power, the antenna, the reports sent and received, and notes.
-- **Import an ADIF file** reads the log your logging program exports.
+- **Import an ADIF file** reads the log your logging program exports. A small file is
+  in the log when the request is answered. A file over 128 kB is brought in by a job:
+  the screen shows how much of it has been read and a **Stop** button, and the job is
+  also on the Downloads screen's list of work. None of a large file is in the log, in
+  the counts or in a comparison until all of it is; stopped, refused or failed part of
+  the way through, what was written is taken out again. One file is brought in at a
+  time. Opened part of the way through, the screen picks the import up.
 
 ### Reading ADIF
 
@@ -411,6 +417,51 @@ Every other field is ignored.
   The reader counts bytes, which is the same thing for ASCII, and reads a value as
   UTF-8 when it is valid UTF-8 and as Latin-1 otherwise.
 - A file of more than 64 MB or 200,000 records is refused; export it in parts.
+- **The header.** The specification's words (IV.A.3) are that "A Header begins with any
+  character other than < and terminates with a case-insensitive End-Of-Header tag" and
+  that "If the first character in an ADI file is <, it contains no Header". Programs
+  put a UTF-8 byte-order mark at the start of a file and people leave a blank line
+  there; read strictly, either makes a header of a file that has none. So where a mark
+  or white space comes before the first `<`, the fields that follow are the header's if
+  an `<EOH>` ends them and the first contact's if an `<EOR>` does. Words before the
+  first `<` with no `<EOH>` anywhere are a header that never ends: nothing says where
+  its fields stop and the first contact's begin, so nothing is read from the file.
+- **A file with nothing in it to read is refused, in words.** A header that never ends,
+  a header with no contacts after it, a file that stops in the middle of its first
+  contact, or `<EOR>` tags with no fields before them: each is said, and no import is
+  recorded. (A file whose contacts were all read and all left out, or all already in
+  the log, is recorded, with the reasons and counts.)
+
+#### How long an import holds the server
+
+The server answers every request on one thread, so what matters is the longest piece
+of work an import does without looking up. Measured on the machine this was written on
+(an Apple M-series laptop, other work running), with a log of about 290 bytes a contact:
+
+| Contacts | File | Before: in the request, in one piece | Now: longest piece | Now: whole import |
+| --- | --- | --- | --- | --- |
+| 1,000 | 0.3 MB | 0.2 s | 16 to 28 ms | 0.04 to 0.1 s |
+| 20,000 | 5.8 MB | 3.1 s | 10 to 16 ms | 0.4 to 0.9 s |
+| 200,000 | 58 MB | 28 s | 27 to 49 ms | 7.5 to 13.7 s |
+
+"Before" read the whole file into text twice, looked each contact up in the log with a
+query of its own, and wrote everything in one transaction. Now the file is read from
+its bytes 200 contacts at a time, each batch is written as it is read, a duplicate is
+left to the unique index on what makes two entries the same contact, and the server
+looks up between batches. A file refused for holding more than 200,000 contacts has had
+200,000 written by then; taking them out again is batched too (longest piece 36 ms,
+about 14 seconds in all).
+
+The line between "at once" and "a job" is 128 kB. Reading and writing a contact takes
+about 17 millionths of a second, measured in one piece: 2 ms for 100 contacts, 3.5 ms
+for 200, 8 ms for 500, 16 ms for 1,000, 33 ms for 2,000, 86 ms for 5,000. At the usual
+300 bytes a contact 128 kB is some 450 contacts and 8 ms; a file of the barest contacts
+(70 bytes) is about 1,800 and 25 ms.
+
+The file of a job is held in memory (64 MB at most, one at a time), not written to
+disk. So an import does not outlast the server: if Outpost is restarted part of the way
+through, the job runs again, finds no file, takes out what had been written and fails
+saying so. Nothing of the file is in the log; import it again.
 
 No ADIF file from a real logging program was available here. The reader was tested
 against files written for the tests from the specification.
@@ -695,6 +746,21 @@ Coverage maps and plans' matrices are kept the same way, under keys made the sam
 and counted apart: they are large (a fine coverage map is about a megabyte) and few.
 The eight most recently used are kept beyond those a person saved by name and those
 that belong to a plan, which are never dropped while the saved map or the plan exists.
+The eight are counted among the ones nothing pins: however many maps are saved and
+plans worked out, a map just made is still there to be saved.
+
+Reading an answer because someone asked for it counts as a use of it. Listing does
+not: the list of saved maps and the list of plans read no stored result and write
+nothing. A plan's "worked out" is whether its key is there. A saved map's three figures
+(when it was worked out, its sunspot number, its cells) are read out of the stored
+result by SQLite the first time a list wants them, about 4 ms for a fine map, and
+remembered while the server runs. Ten saved fine maps (684 kB each) took 88 ms and ten
+writes every time the list was fetched; now 41 ms for the first list after a start and
+0.6 ms after, with no writes.
+
+At most three coverage maps wait or run at once, and the same map asked for twice is
+one job. Both are found by asking the queue for coverage jobs by type, so they hold
+however much other work has been queued since.
 
 The sunspot number found from a measured foF2 is part of that key, and finding it is a
 search: ten or eleven questions to the engine. The number is remembered, while the
