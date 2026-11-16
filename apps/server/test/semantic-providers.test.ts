@@ -1,9 +1,7 @@
 import http from "node:http";
 import type { AddressInfo } from "node:net";
-import os from "node:os";
-import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { openAiCompatibleProvider, providerFromSettings, transformersProvider } from "../src/modules/semantic/providers.ts";
+import { openAiCompatibleProvider, providerFromSettings } from "../src/modules/semantic/providers.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
 
 const cleanups: Array<() => Promise<void> | void> = [];
@@ -63,22 +61,21 @@ describe("embedding providers", () => {
     expect(failed.ok === false && failed.reason).toMatch(/answered 500/);
   });
 
-  it("says what is missing when the optional in-process package or the model is absent", async () => {
-    const provider = transformersProvider(path.join(os.tmpdir(), "outpost-no-models"), "Xenova/all-MiniLM-L6-v2");
-    const result = await provider.check();
-    expect(result.ok).toBe(false);
-    expect(result.ok === false && result.reason).toMatch(/optional @huggingface\/transformers package|is not in the models folder/);
-  });
-
   it("is chosen by settings", () => {
+    const builtIn = { modelId: "built-in:stand-in" } as never;
     const base = { "search.semantic.model": "m", "search.semantic.endpoint": "http://127.0.0.1:1/v1" };
-    expect(providerFromSettings({ ...base, "search.semantic.provider": "none" } as never, "/models")).toBeUndefined();
-    expect(providerFromSettings({ ...base, "search.semantic.provider": "openai-compatible" } as never, "/models")?.modelId).toBe(
+    expect(providerFromSettings({ ...base, "search.semantic.provider": "none" } as never, builtIn)).toBeUndefined();
+    expect(providerFromSettings({ ...base, "search.semantic.provider": "openai-compatible" } as never, builtIn)?.modelId).toBe(
       "openai-compatible:m",
     );
-    expect(providerFromSettings({ ...base, "search.semantic.provider": "transformers" } as never, "/models")?.modelId).toBe(
-      "transformers:m",
+    // A local server needs the name of its model; the built-in model has only the one.
+    expect(
+      providerFromSettings({ ...base, "search.semantic.model": " ", "search.semantic.provider": "openai-compatible" } as never, builtIn),
+    ).toBeUndefined();
+    expect(providerFromSettings({ ...base, "search.semantic.model": "", "search.semantic.provider": "built-in" } as never, builtIn)).toBe(
+      builtIn,
     );
+    expect(providerFromSettings({ ...base, "search.semantic.provider": "demo" } as never, builtIn)?.modelId).toBe("demo:word-counts");
   });
 });
 

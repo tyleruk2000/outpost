@@ -58,7 +58,7 @@ export function VectorNotice({ source, className }: { source: ExplainVectorSourc
             vectors, but those vectors are made from word counts, not by a language model. They only know that two texts are alike when they
             share words.{" "}
             <Link to={SETTINGS_MEANING} className="font-medium text-primary underline decoration-1 underline-offset-[0.2em]">
-              Choose a real model in Settings
+              Choose the built-in model in Settings
             </Link>{" "}
             to see meaning matched without shared words.
           </>
@@ -89,8 +89,8 @@ export function VectorNotice({ source, className }: { source: ExplainVectorSourc
         <Link to={SETTINGS_MEANING} className="font-medium text-primary underline decoration-1 underline-offset-[0.2em]">
           Set up search by meaning in Settings
         </Link>
-        . Choosing “Demonstration” there switches the whole pipeline on with nothing to install; choosing a local model gives you the real
-        thing.
+        . Outpost has a small model built in, with nothing to install: switching search by meaning on there and building the index gives you
+        the real thing.
       </p>
     </Notice>
   );
