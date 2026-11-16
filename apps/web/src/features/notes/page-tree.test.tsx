@@ -6,7 +6,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import { installBrowserStubs, renderScreen } from "../downloads/test-support";
 import { LONG_PRESS_MS, PageTree } from "./page-tree";
 import { buildTreeIndex } from "./tree-model";
-import { edgeSpeed, WINDOW_FROM, windowRange } from "./tree-window";
+import { edgeSpeed, treeContinues, WINDOW_FROM, windowRange } from "./tree-window";
 
 vi.mock("sonner", () => ({ toast: Object.assign(vi.fn(), { error: vi.fn() }) }));
 
@@ -140,6 +140,21 @@ describe("windowRange", () => {
     expect(windowRange(1000, 31, 50_000, 50_768, 10)).toEqual({ start: 1000, end: 1000 });
     expect(windowRange(1000, 31, -5000, -4232, 10)).toEqual({ start: 0, end: 0 });
     expect(windowRange(0, 31, 0, 768, 10)).toEqual({ start: 0, end: 0 });
+  });
+});
+
+describe("treeContinues", () => {
+  const view = { top: 0, bottom: 500, isWindow: false };
+  it("allows scrolling only towards rows that are out of sight, never past either end of the tree", () => {
+    // The tree runs off the bottom: dragging down may scroll, dragging up may not (its top is in view).
+    expect(treeContinues({ top: 100, bottom: 900 }, view, 8)).toBe(true);
+    expect(treeContinues({ top: 100, bottom: 900 }, view, -8)).toBe(false);
+    // Its end is on screen, with other things below it: a drag at the bottom edge scrolls nothing.
+    expect(treeContinues({ top: -400, bottom: 460 }, view, 8)).toBe(false);
+    expect(treeContinues({ top: -400, bottom: 460 }, view, -8)).toBe(true);
+    // All of it in view.
+    expect(treeContinues({ top: 40, bottom: 300 }, view, 8)).toBe(false);
+    expect(treeContinues({ top: 40, bottom: 300 }, view, -8)).toBe(false);
   });
 });
 

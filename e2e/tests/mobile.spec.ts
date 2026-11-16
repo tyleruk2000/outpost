@@ -135,7 +135,17 @@ test.describe("on a phone", () => {
     await page.goto("/notes");
     const tree = page.getByRole("main").getByRole("tree", { name: "Pages" });
     const row = (name: string) => tree.getByRole("treeitem", { name, exact: true });
+    // The lists above the tree arrive after it and push it down; measure only once it has stopped moving.
+    await page.waitForLoadState("networkidle");
     await row("Ropes").scrollIntoViewIfNeeded();
+    await expect
+      .poll(async () => {
+        const first = await row("Ropes").boundingBox();
+        await page.waitForTimeout(150);
+        const second = await row("Ropes").boundingBox();
+        return first !== null && second !== null && first.y === second.y;
+      })
+      .toBe(true);
     const from = (await row("Ropes").boundingBox())!;
     const onto = (await row("Kit").boundingBox())!;
 

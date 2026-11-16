@@ -45,7 +45,7 @@ import {
   type TreeRow,
   visibleRows,
 } from "./tree-model";
-import { edgeSpeed, scrollByY, useTreeWindow, viewOf } from "./tree-window";
+import { edgeSpeed, scrollByY, treeContinues, useTreeWindow, viewOf } from "./tree-window";
 
 export type TreeTone = "spine" | "page";
 
@@ -461,6 +461,8 @@ export function PageTree({
   /** Where the drag began, and whether the page has been carried away from there yet. */
   const origin = useRef<{ x: number; y: number } | null>(null);
   const carried = useRef(false);
+  /** Which ways the page has been carried from where it was picked up; an edge scrolls only that way. */
+  const carriedTowards = useRef({ up: false, down: false });
   /** A finger resting on a row, and whether it has picked the page up yet. */
   const press = useRef<{ pointerId: number; id: string; x: number; y: number; timer: number; lifted: boolean } | null>(null);
   const chipRef = useRef<HTMLDivElement>(null);
@@ -503,14 +505,22 @@ export function PageTree({
       // A page picked up near an edge does not scroll the list until it has been carried a little.
       origin.current ??= { x, y };
       if (!carried.current) carried.current = Math.hypot(x - origin.current.x, y - origin.current.y) > CARRY_SLOP;
+      // A page lifted near the bottom edge and carried upwards is going away from that edge:
+      // scrolling would only pull the rows out from under the finger.
+      if (y - origin.current.y > CARRY_SLOP) carriedTowards.current.down = true;
+      if (origin.current.y - y > CARRY_SLOP) carriedTowards.current.up = true;
       if (carried.current && scrolling.current === null) {
         scrolling.current = requestAnimationFrame(() => {
           scrolling.current = null;
           const at = pointer.current;
           if (!at || !dragging.current) return;
           const scroller = live.current.scroller();
-          const speed = edgeSpeed(at.y, viewOf(scroller));
-          if (speed === 0) return;
+          const view = viewOf(scroller);
+          const speed = edgeSpeed(at.y, view);
+          const box = treeRef.current?.getBoundingClientRect();
+          // Only towards rows that are out of sight; never on past the end of the tree.
+          const towards = speed > 0 ? carriedTowards.current.down : carriedTowards.current.up;
+          if (speed === 0 || !towards || !box || !treeContinues(box, view, speed)) return;
           scrollByY(scroller, speed);
           // The tree moved under a still pointer: aim again, which also keeps this going.
           aim(at.x, at.y);
@@ -529,6 +539,7 @@ export function PageTree({
     pointer.current = null;
     origin.current = null;
     carried.current = false;
+    carriedTowards.current = { up: false, down: false };
     setDragId(null);
     setDrop(null);
     setLifted(null);

@@ -88,6 +88,22 @@ export function edgeSpeed(y: number, view: { top: number; bottom: number; isWind
   return y < top + zone ? -speed : speed;
 }
 
+/**
+ * Whether scrolling that way would bring more of the tree into view. A drag near the
+ * bottom of the screen must not scroll the page on past the end of the tree: the rows
+ * would slide out from under the finger, towards whatever the screen shows below them.
+ */
+export function treeContinues(
+  tree: { top: number; bottom: number },
+  view: { top: number; bottom: number; isWindow: boolean },
+  direction: number,
+): boolean {
+  const inset = view.isWindow && narrow() ? WINDOW_INSET : { top: 0, bottom: 0 };
+  if (direction > 0) return tree.bottom > view.bottom - inset.bottom + 1;
+  if (direction < 0) return tree.top < view.top + inset.top - 1;
+  return false;
+}
+
 const narrow = () => typeof window !== "undefined" && window.matchMedia("(max-width: 47.99rem)").matches;
 /** Row height plus the one-pixel gap, before the first row can be measured. */
 const guessStride = () => (narrow() ? 45 : 31);
