@@ -1,15 +1,18 @@
 /**
  * The address of the model server, and what Outpost will and will not do with it.
  *
- * The rule is the one the embedding "local server" follows: the address is a setting,
- * a person typed it, and Outpost talks to that address and to nothing else. There is
- * no list of allowed hosts and no check that the address is private, because a model
- * on another machine of your own (a desktop with a graphics card, a box reached over a
- * VPN) is a legitimate thing to point at, and Outpost cannot tell "yours" from "not
- * yours" by looking at a number.
+ * The address is a setting, a person typed it, and Outpost talks to that address and to
+ * nothing else. There is no list of allowed hosts: a model on another machine of your
+ * own (a desktop with a graphics card, a box reached over a private network) is a
+ * legitimate thing to point at.
  *
  * What is checked, here and in the provider:
  *
+ *  - the server is on this computer or a private network, unless whoever starts Outpost
+ *    set `OUTPOST_ALLOW_REMOTE_MODEL_SERVER`. Outpost has no accounts, so anyone who can
+ *    open it can change a setting; without this rule that is enough to have passages
+ *    from the library sent to a server on the internet. A name is looked up just before
+ *    each use, so one that sounds local and resolves elsewhere is caught too;
  *  - only `http` and `https`;
  *  - no user name or password in the address (it would end up in messages and logs);
  *  - no query string or fragment;
@@ -20,6 +23,7 @@
  * network, somewhere else), so that pointing it somewhere else is something they can
  * see they have done.
  */
+import dns from "node:dns";
 import net from "node:net";
 import type { ModelServerPlace } from "@outpost/shared";
 import { AppError } from "../../core/errors.ts";
@@ -87,4 +91,33 @@ export function parseModelServerAddress(value: string): ModelServerAddress {
   // address typed without a path means that.
   const path = url.pathname.replace(/\/+$/, "") || "/v1";
   return { base: `${url.origin}${path}`, host: url.host, place: placeOf(url.hostname) };
+}
+
+export const REMOTE_MODEL_SERVER_OPTION = "OUTPOST_ALLOW_REMOTE_MODEL_SERVER";
+
+const notYourNetwork = (host: string) =>
+  `The model server's address, ${host}, is on the internet, not on this computer or your own network. Outpost sends your question and passages from your library only to a machine on your own network. If this server is yours, whoever starts Outpost can allow it with ${REMOTE_MODEL_SERVER_OPTION}=true.`;
+
+/** Why this address may not be used, judged from its spelling; null when it may. */
+export function placeRefusal(address: ModelServerAddress, allowRemote: boolean): string | null {
+  return !allowRemote && address.place === "elsewhere" ? notYourNetwork(address.host) : null;
+}
+
+type Lookup = (hostname: string) => Promise<Array<{ address: string }>>;
+const systemLookup: Lookup = (hostname) => dns.promises.lookup(hostname, { all: true });
+
+/**
+ * Called just before every request to the model server. Throws when the address is on
+ * the internet and that has not been allowed, looking a name up so that the answer does
+ * not depend on how it is spelt. A name that cannot be looked up is left for the request
+ * itself to report as unreachable.
+ */
+export async function assertOwnNetwork(address: ModelServerAddress, allowRemote: boolean, lookup: Lookup = systemLookup): Promise<void> {
+  if (allowRemote) return;
+  const refusal = placeRefusal(address, allowRemote);
+  if (refusal) throw new AppError("forbidden", refusal);
+  const hostname = new URL(address.base).hostname.replace(/^\[|\]$/g, "");
+  if (net.isIP(hostname)) return;
+  const found = await lookup(hostname).catch(() => []);
+  if (found.some((entry) => placeOf(entry.address) === "elsewhere")) throw new AppError("forbidden", notYourNetwork(address.host));
 }

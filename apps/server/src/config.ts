@@ -46,6 +46,7 @@ const envSchema = z.object({
   OUTPOST_MAX_UPLOAD_MB: z.coerce.number().int().min(1).default(2048),
   OUTPOST_ALLOW_PRIVATE_DOWNLOADS: bool(false),
   OUTPOST_ALLOW_REMOTE_ERASE: bool(false),
+  OUTPOST_ALLOW_REMOTE_MODEL_SERVER: bool(false),
   OUTPOST_DOWNLOAD_HOSTS: list,
   OUTPOST_PORTABLE: bool(false),
   OUTPOST_APP_DIR: z.string().optional(),
@@ -85,6 +86,8 @@ export interface Config {
    * it, only a request from this computer may erase the person's own things.
    */
   allowRemoteErase: boolean;
+  /** Let answers be written by a model server on the internet, not only one on this computer or the local network. */
+  allowRemoteModelServer: boolean;
   logLevel: string;
   /** Running from a portable drive: paths are relative to the drive, nothing is assumed about the host. */
   portable: boolean;
@@ -156,6 +159,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     allowPrivateDownloads: parsed.OUTPOST_ALLOW_PRIVATE_DOWNLOADS,
     extraDownloadHosts: parsed.OUTPOST_DOWNLOAD_HOSTS.map((host) => host.toLowerCase()),
     allowRemoteErase: parsed.OUTPOST_ALLOW_REMOTE_ERASE,
+    allowRemoteModelServer: parsed.OUTPOST_ALLOW_REMOTE_MODEL_SERVER,
     // A portable drive runs in a window a person is looking at: keep it quiet.
     logLevel: parsed.OUTPOST_LOG_LEVEL ?? (parsed.NODE_ENV === "test" ? "silent" : parsed.OUTPOST_PORTABLE ? "warn" : "info"),
     portable: parsed.OUTPOST_PORTABLE,

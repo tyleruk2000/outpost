@@ -24,7 +24,7 @@ import type { AppContext } from "../../core/context.ts";
 import { AppError, messageOf } from "../../core/errors.ts";
 import { checkCitations, isSafetyCritical } from "../retrieval/index.ts";
 import { buildAnswerPrompt } from "../retrieval/prompt.ts";
-import { type ModelServerAddress, parseModelServerAddress } from "./address.ts";
+import { assertOwnNetwork, type ModelServerAddress, parseModelServerAddress, placeRefusal } from "./address.ts";
 import {
   type ChatModelProvider,
   DEFAULT_TIMEOUTS,
@@ -94,6 +94,8 @@ export async function registerAnswers(app: FastifyInstance, ctx: AppContext): Pr
   /** The answer being written now, if there is one. Set and cleared synchronously, so two requests cannot both take it. */
   let writing: AbortController | undefined;
 
+  const guardFor = (address: ModelServerAddress) => () => assertOwnNetwork(address, ctx.config.allowRemoteModelServer);
+
   function configured(): { address?: ModelServerAddress; model: string; reason: string | null } {
     const all = settings.all();
     const model = all["answers.model"].trim();
@@ -105,6 +107,8 @@ export async function registerAnswers(app: FastifyInstance, ctx: AppContext): Pr
     } catch (error) {
       return { model, reason: messageOf(error) };
     }
+    const refusal = placeRefusal(address, ctx.config.allowRemoteModelServer);
+    if (refusal) return { address, model, reason: refusal };
     if (!model) return { address, model, reason: "Choose which model writes the answers, in Settings." };
     return { address, model, reason: null };
   }
@@ -114,7 +118,7 @@ export async function registerAnswers(app: FastifyInstance, ctx: AppContext): Pr
     if (!address || reason) return undefined;
     const key = `${address.base}|${model}`;
     if (cached?.key !== key) {
-      cached = { key, provider: openAiChatProvider(address, model, timeouts) };
+      cached = { key, provider: openAiChatProvider(address, model, timeouts, guardFor(address)) };
       // The declared registry of model providers holds the one that is set up.
       retrieval.models.clear();
       retrieval.models.set(cached.provider.id, cached.provider);
@@ -165,7 +169,10 @@ export async function registerAnswers(app: FastifyInstance, ctx: AppContext): Pr
     if (!all["answers.enabled"]) return { models: [], message: "Answers are turned off." };
     try {
       const address = parseModelServerAddress(all["answers.endpoint"]);
-      return { models: await openAiChatProvider(address, all["answers.model"].trim(), timeouts).listModels(), message: null };
+      return {
+        models: await openAiChatProvider(address, all["answers.model"].trim(), timeouts, guardFor(address)).listModels(),
+        message: null,
+      };
     } catch (error) {
       if (error instanceof AppError) return { models: [], message: error.message };
       throw error;
@@ -176,9 +183,15 @@ export async function registerAnswers(app: FastifyInstance, ctx: AppContext): Pr
   app.post("/api/answers/test", async (): Promise<AnswerTestResult> => {
     const { address, model, reason } = configured();
     if (!address) return { ok: false, failure: "address", message: reason ?? "No address is set.", models: [], reply: null, tookMs: 0 };
+    // An address that may not be contacted is an answer in itself; nothing is sent to find out more.
+    try {
+      await guardFor(address)();
+    } catch (error) {
+      return { ok: false, failure: "address", message: messageOf(error), models: [], reply: null, tookMs: 0 };
+    }
     if (!model) {
       // No model yet: the useful answer is whether the server is there and what it has.
-      const probe = openAiChatProvider(address, "", timeouts);
+      const probe = openAiChatProvider(address, "", timeouts, guardFor(address));
       try {
         const models = await probe.listModels();
         return {
@@ -216,7 +229,7 @@ export async function registerAnswers(app: FastifyInstance, ctx: AppContext): Pr
         tookMs: 0,
       };
     }
-    return openAiChatProvider(address, model, timeouts).test();
+    return openAiChatProvider(address, model, timeouts, guardFor(address)).test();
   });
 
   const body = z.object({

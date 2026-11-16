@@ -5,7 +5,7 @@
 import type { AddressInfo } from "node:net";
 import type { AnswerEvent, AnswerTestResult } from "@outpost/shared";
 import { afterEach, describe, expect, it } from "vitest";
-import { parseModelServerAddress, placeOf } from "../src/modules/answers/address.ts";
+import { assertOwnNetwork, parseModelServerAddress, placeOf } from "../src/modules/answers/address.ts";
 import { subjectOf } from "../src/modules/answers/index.ts";
 import { ModelServerError, openAiChatProvider, withoutThinking } from "../src/modules/answers/provider.ts";
 import { checkCitations, contextAssembler } from "../src/modules/retrieval/index.ts";
@@ -71,6 +71,80 @@ describe("the model server's address", () => {
     for (const host of ["192.168.1.20", "10.0.0.4", "172.20.1.1", "100.100.4.2", "[fd12::1]", "nas", "desktop.local", "box.home.arpa"])
       expect(placeOf(host), host).toBe("local-network");
     for (const host of ["8.8.8.8", "api.example.com", "172.32.0.1", "[2606:4700::1]"]) expect(placeOf(host), host).toBe("elsewhere");
+  });
+});
+
+describe("a model server on the internet", () => {
+  const names: Record<string, string[]> = {
+    "desktop.lan": ["192.168.1.40"],
+    "sounds-local.lan": ["203.0.113.9"],
+    "both.example": ["10.0.0.4", "203.0.113.9"],
+  };
+  const lookup = async (hostname: string) => {
+    const found = names[hostname];
+    if (!found) throw new Error("ENOTFOUND");
+    return found.map((address) => ({ address }));
+  };
+  const check = (address: string, allowRemote = false) => assertOwnNetwork(parseModelServerAddress(address), allowRemote, lookup);
+
+  it("is refused unless the person starting Outpost allowed it, however the address is spelt", async () => {
+    for (const fine of ["http://127.0.0.1:11434/v1", "http://[::1]:8080/v1", "http://192.168.1.20:1234/v1", "http://desktop.lan:11434"]) {
+      await expect(check(fine), fine).resolves.toBeUndefined();
+    }
+    for (const refused of ["http://203.0.113.9:11434/v1", "https://api.example.com/v1", "http://[2606:4700::1]/v1"]) {
+      await expect(check(refused), refused).rejects.toThrow(/on the internet.*OUTPOST_ALLOW_REMOTE_MODEL_SERVER=true/);
+    }
+    // A name that sounds like the home network and resolves to the internet, wholly or in part.
+    await expect(check("http://sounds-local.lan:11434/v1")).rejects.toThrow(/on the internet/);
+    await expect(check("http://both.example/v1", false)).rejects.toThrow(/on the internet/);
+    // A name that cannot be looked up is the request's to report, as unreachable.
+    await expect(check("http://nowhere.lan/v1")).resolves.toBeUndefined();
+    // Allowed at start-up: nothing is refused, and nothing is looked up.
+    await expect(check("https://api.example.com/v1", true)).resolves.toBeUndefined();
+    await expect(check("http://sounds-local.lan/v1", true)).resolves.toBeUndefined();
+  });
+
+  it("is told so before anything is sent, not reported as a server that did not answer", async () => {
+    const server = await standIn();
+    const refuse = async () => {
+      await check("http://sounds-local.lan/v1");
+    };
+    const provider = openAiChatProvider(parseModelServerAddress(`${server.url}/v1`), "stand-in", undefined, refuse);
+    await expect(collect(provider.generate({ system: "s", prompt: "p" }))).rejects.toThrow(/on the internet/);
+    await expect(provider.listModels()).rejects.toThrow(/on the internet/);
+    expect(server.requests).toHaveLength(0);
+  });
+
+  it("leaves answers not ready, says why, and asks nothing of the server", async () => {
+    const app = await createTestApp();
+    cleanups.push(() => app.close());
+    // 203.0.113.0/24 is set aside for documentation; nothing is ever sent to it here.
+    const saved = await app.api("PATCH", "/api/settings", {
+      "answers.enabled": true,
+      "answers.endpoint": "http://203.0.113.9:11434/v1",
+      "answers.model": "llama3.2:3b",
+    });
+    expect(saved.status).toBe(200);
+    const status = (await app.api("GET", "/api/answers/status")).body;
+    expect(status).toMatchObject({ enabled: true, ready: false, place: "elsewhere" });
+    expect(status.reason).toMatch(/on the internet.*OUTPOST_ALLOW_REMOTE_MODEL_SERVER/);
+    expect(app.ctx.services.answers.provider()).toBeUndefined();
+    const asked = await app.api("POST", "/api/answers", { question: "boil water" });
+    expect(asked.status).toBe(409);
+    expect(asked.body.error.message).toMatch(/on the internet/);
+    expect((await app.api("GET", "/api/answers/models")).body.message).toMatch(/on the internet/);
+    expect(((await app.api("POST", "/api/answers/test")).body as AnswerTestResult).ok).toBe(false);
+  });
+
+  it("is accepted when Outpost was started with the option", async () => {
+    const app = await createTestApp({ OUTPOST_ALLOW_REMOTE_MODEL_SERVER: "true" });
+    cleanups.push(() => app.close());
+    await app.api("PATCH", "/api/settings", {
+      "answers.enabled": true,
+      "answers.endpoint": "http://203.0.113.9:11434/v1",
+      "answers.model": "llama3.2:3b",
+    });
+    expect((await app.api("GET", "/api/answers/status")).body).toMatchObject({ ready: true, reason: null, place: "elsewhere" });
   });
 });
 

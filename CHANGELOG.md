@@ -158,6 +158,9 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 - Tested against a stand-in server that speaks the protocol
   (`apps/server/test/model-server.ts`), checked against the Ollama and llama.cpp
   documentation of 2026-11-15. **Not yet run against a real model.**
+- A model server must be on this computer or a private network: an address on the public
+  internet is refused, by spelling and by looking the name up before each request,
+  unless Outpost is started with `OUTPOST_ALLOW_REMOTE_MODEL_SERVER=true`.
 
 #### Reference collections
 

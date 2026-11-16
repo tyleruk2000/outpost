@@ -79,11 +79,20 @@ describe("Answers from your library, in Settings", () => {
     );
   });
 
-  it("warns when the address is not on this computer or the home network", async () => {
-    serve({ status: status({ server: "models.example.com", place: "elsewhere" }) });
+  it("warns when a server outside the home network has been allowed at start-up", async () => {
+    serve({ status: status({ server: "models.example.com", place: "elsewhere", ready: true, reason: null }) });
     show({ ...base, "answers.endpoint": "https://models.example.com/v1" });
     const notice = await screen.findByText(/an address that is not on this computer or your home network/);
     expect(notice).toHaveTextContent("Use this only if that machine is yours.");
+  });
+
+  it("says why a server outside the home network is refused, in the server's own words", async () => {
+    const reason =
+      "The model server's address, models.example.com, is on the internet, not on this computer or your own network. If this server is yours, whoever starts Outpost can allow it with OUTPOST_ALLOW_REMOTE_MODEL_SERVER=true.";
+    serve({ status: status({ server: "models.example.com", place: "elsewhere", ready: false, reason }) });
+    show({ ...base, "answers.endpoint": "https://models.example.com/v1" });
+    expect(await screen.findByText(reason)).toBeInTheDocument();
+    expect(screen.queryByText(/They are sent nowhere else/)).not.toBeInTheDocument();
   });
 
   it("offers the models the server reports", async () => {

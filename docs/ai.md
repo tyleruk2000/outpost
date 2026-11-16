@@ -338,11 +338,16 @@ What is shown: Settings says in words where the address is, judged from its spel
 alone: "this computer" (`127.x.x.x`, `::1`, `localhost`, `host.docker.internal`), "a
 machine on your network" (the private ranges, `100.64.0.0/10`, a bare name, or a name
 ending in `.local`, `.lan`, `.home`, `.internal` or `.home.arpa`), or, with a warning,
-"an address that is not on this computer or your home network". Names are not looked
-up, so a name in the second group that in fact leads elsewhere is not detected.
+"an address that is not on this computer or your home network".
 
-Anyone who can open Outpost can change this setting, like every other. See
-[security.md](security.md#the-threat-model-in-plain-words).
+An address in that last group is refused: answers are not offered and nothing is sent.
+The description above is from the spelling alone, but before every request Outpost also
+looks the name up and refuses it if it leads to the public internet. If your model
+server really is reached over the internet (a machine of your own somewhere else),
+start Outpost with `OUTPOST_ALLOW_REMOTE_MODEL_SERVER=true`.
+
+Anyone who can open Outpost can change this setting, like every other, which is why the
+rule exists. See [security.md](security.md#the-threat-model-in-plain-words).
 
 Code: `apps/server/src/modules/answers/address.ts`.
 

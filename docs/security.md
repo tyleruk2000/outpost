@@ -219,13 +219,14 @@ set up, and brings text back that a program wrote. Both directions have rules.
 | Where | The one address in the `answers.endpoint` setting. The default is `http://127.0.0.1:11434/v1`, a program on the same machine. |
 | How | Plain HTTP unless the address is `https`. No API key or other credential is sent. |
 
-The address is a setting, as the embedding server's is: Outpost talks to the address
-a person typed and to nothing else. It is not limited to private addresses, because a
-model on another machine of your own is a legitimate choice and a number cannot say
-whose a machine is. What is enforced instead:
+The address is a setting: Outpost talks to the address a person typed and to nothing
+else. Because Outpost has no accounts, anyone who can open it can change a setting, so
+the address is limited to this computer and private networks unless whoever starts
+Outpost says otherwise. What is enforced:
 
 | Control | Detail | Code |
 | --- | --- | --- |
+| Your own network only | An address on the public internet is refused: answers are not offered, and nothing is sent. This covers the private ranges, link-local, `100.64.0.0/10` (where Tailscale and similar put machines) and loopback. A name is looked up just before every request, and refused if any address it resolves to is public, so a name that merely sounds local does not pass. Starting Outpost with `OUTPOST_ALLOW_REMOTE_MODEL_SERVER=true` lifts the rule, for a server of your own that is reached over the internet. The embedding server's address (`search.semantic.endpoint`) does not have this rule yet. | `placeRefusal`, `assertOwnNetwork` in `answers/address.ts` |
 | Only `http` and `https` | Anything else is refused when the setting is saved. | `parseModelServerAddress` in `apps/server/src/modules/answers/address.ts` |
 | No credentials in the address | An address with a user name or password is refused, and is not repeated in the refusal, so it cannot end up in a message or a log. | same |
 | No redirects | Every request to the model server is made with redirects refused. The server that was named cannot hand the question on to one that was not. | `apps/server/src/modules/answers/provider.ts` |

@@ -120,9 +120,16 @@ export function openAiChatProvider(
   address: ModelServerAddress,
   model: string,
   timeouts: ModelTimeouts = DEFAULT_TIMEOUTS,
+  /** Run before every request; throws when the address may not be contacted. */
+  guard: () => Promise<void> = async () => {},
 ): ChatModelProvider {
   const { base, host } = address;
   const chatUrl = `${base}/chat/completions`;
+  // The one way out of this module to the network.
+  const fetch: typeof globalThis.fetch = async (input, init) => {
+    await guard();
+    return globalThis.fetch(input, init);
+  };
 
   const unreachable = () =>
     new ModelServerError(
@@ -226,6 +233,8 @@ export function openAiChatProvider(
           redirect: "error",
         });
       } catch (error) {
+        // Refused before anything was sent: say why, not that the server did not answer.
+        if (error instanceof AppError && !(error instanceof ModelServerError)) throw error;
         if (outer?.aborted) throw error;
         if (gaveUp) throw tooSlow();
         throw unreachable();
@@ -343,6 +352,8 @@ export function openAiChatProvider(
         redirect: "error",
       });
     } catch (error) {
+      // Refused before anything was sent: say why, not that the server did not answer.
+      if (error instanceof AppError && !(error instanceof ModelServerError)) throw error;
       if (signal?.aborted) throw error;
       throw unreachable();
     }
@@ -412,6 +423,8 @@ export function openAiChatProvider(
         redirect: "error",
       });
     } catch (error) {
+      // Refused before anything was sent: say why, not that the server did not answer.
+      if (error instanceof AppError && !(error instanceof ModelServerError)) throw error;
       if (signal?.aborted) throw error;
       if (error instanceof Error && error.name === "TimeoutError") {
         return result(

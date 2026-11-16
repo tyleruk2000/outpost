@@ -91,7 +91,12 @@ export function AnswersSection({
               />
             }
           />
-          {server && place ? (
+          {server && place === "elsewhere" && status.data?.reason && !status.data.ready ? (
+            // Refused: the server says why, and names the start-up option that allows it.
+            <Notice tone="warning" icon={<CircleAlert aria-hidden />}>
+              {status.data.reason}
+            </Notice>
+          ) : server && place ? (
             <Notice
               tone={place === "elsewhere" ? "warning" : "info"}
               icon={place === "elsewhere" ? <CircleAlert aria-hidden /> : undefined}
