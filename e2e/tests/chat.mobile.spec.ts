@@ -37,7 +37,9 @@ test.describe("chat, on a phone", () => {
     await send.click();
 
     const reply = page.getByRole("article", { name: /^Reply from/ }).last();
-    await expect(reply.getByTestId("reply-text")).toContainText("Paragraph 6");
+    // The stand-in writes at its own pace, a piece every 40 ms, and a busy machine draws it more slowly than that:
+    // this waits for a reply long enough to fill the screen, however long it takes to come (it has 24 paragraphs).
+    await expect(reply.getByTestId("reply-text")).toContainText("Paragraph 6", { timeout: 30_000 });
     const overflow = () => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(await overflow()).toBeLessThanOrEqual(1);
 
