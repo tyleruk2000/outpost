@@ -268,11 +268,13 @@ was checked should not arrive silently.
 
 - **What was asked for.** More sources worth having offline, each one fetched and
   checked the same day, and nothing listed whose licence statement could not be read
-  at the publisher. 75 entries were added: 48 PDFs and 27 Kiwix archives.
+  at the publisher. 75 entries were added: 48 PDFs and 27 Kiwix archives. One of them,
+  U.S. Chart No. 1, rests on being a work of the US Government with no separate
+  statement read; its entry says so.
 - **Direct entries.** Each file was downloaded once from the address in the manifest
   with Outpost's own client name, confirmed to be a real PDF, measured and hashed; the
-  title, page count and edition were read from the file, and every claim in a
-  description was checked against the file's text or the publisher's page. About
+  title, page count and edition were read from the file, and what each description
+  says the document covers was checked against the file's text or the publisher's page. About
   770 MB was downloaded in 58 requests for files; the large ones were deleted once
   hashed. Forty-eight became entries and ten were left out, for the reasons given in
   the tables above.
@@ -307,17 +309,17 @@ The online check asks each address with `HEAD`, and falls back to asking for the
 byte only when the answer is an error other than "not found". Two publishers answer
 `HEAD` with "404 Not Found" for a file they serve normally:
 
-- **nvlpubs.nist.gov** (NIST's publications server) does so every time. NIST Special
+- **nvlpubs.nist.gov** (NIST's publications server) did so both times it was asked. NIST Special
   Publications 330 and 811 were downloaded, hashed and their terms read
   ([NIST's statement](https://www.nist.gov/open/copyright-fair-use-and-licensing-statements-srd-data-software-and-technical-series-publications)
   says works by its employees are not subject to copyright in the United States and
   grants a worldwide right to reprint them), and they are not listed.
 - **The Met Office's file service** does so for the Thunderstorms factsheet until an
-  ordinary request has put the file in its cache, then answers "200" for about ten
+  ordinary request has put the file in its cache, then answers "200" for some
   minutes. The other eight factsheets answered `HEAD` correctly from cold.
 
-A download in the app is an ordinary request and would succeed for all three. They were
-left out rather than listed with a check that fails. Treating "not found" on `HEAD` as
+An ordinary request for each of the three succeeds. They were left out rather than
+listed with a check that fails. Treating "not found" on `HEAD` as
 a reason to ask for the first byte would admit them; that is a change to the server's
 code and was not made here.
 
