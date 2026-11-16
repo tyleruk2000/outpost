@@ -27,19 +27,20 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
 import { AppError, badRequest } from "../../core/errors.ts";
-import { createHttpClient } from "../../core/http.ts";
+import { createHttpClient, USER_AGENT } from "../../core/http.ts";
 import { registerMultipart } from "../../core/multipart.ts";
-import { VERSION } from "../system/index.ts";
 import { createRepeaterFetchClient } from "./fetch.ts";
 import { createRepeatersService, type ImportOptions, type RepeatersService, type RepeaterUpload } from "./service.ts";
 import { loadRepeaterSources } from "./sources.ts";
 
 /**
- * How Outpost names itself to a publisher it fetches a list from: what it is, its
- * version and where the project is. Nothing about the person, their library or this
- * installation is sent.
+ * How Outpost names itself to a publisher it fetches a list from: the plain name it uses
+ * for every other download, which says what kind of program is asking and nothing more.
+ * No version, no project address, and nothing about the person, their library or this
+ * installation. (The owner chose the plain name here on 16 November 2026: no repeater
+ * publisher's terms ask for more.)
  */
-export const REPEATER_FETCH_USER_AGENT = `Outpost/${VERSION} (self-hosted offline library; +https://github.com/tyleruk2000/outpost)`;
+export const REPEATER_FETCH_USER_AGENT = USER_AGENT;
 
 /** Fires when the browser that asked has gone away, so the request to the publisher is dropped too. */
 function goneSignal(reply: FastifyReply): AbortSignal {

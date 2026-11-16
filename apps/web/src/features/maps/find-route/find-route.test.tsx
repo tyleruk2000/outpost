@@ -93,6 +93,7 @@ const preview = (change: Partial<RoutePreview> = {}): RoutePreview => ({
 const sources: RouteSourcesResponse = {
   defaultId: "example",
   problems: [],
+  clientName: "Outpost/0.1.0 (self-hosted offline library; +https://example.org/outpost)",
   sources: [
     {
       id: "example",
@@ -288,7 +289,7 @@ describe("finding a route", () => {
     show();
     const note = await screen.findByText(/Search sends this name and the edges of the map view to/);
     expect(note).toHaveTextContent(
-      "Search sends this name and the edges of the map view to routes.example.org (an example association), which answers from OpenStreetMap. It needs the internet. A route you add is kept here and works offline.",
+      "Search sends this name and the edges of the map view to routes.example.org (an example association), which answers from OpenStreetMap. With it goes the name the server's operator asks programs to give, Outpost/0.1.0 (self-hosted offline library; +https://example.org/outpost): the same for every copy of Outpost, and nothing about you or this installation. It needs the internet. A route you add is kept here and works offline.",
     );
     expect(screen.getByRole("link", { name: "The server's terms" })).toHaveAttribute("href", "https://routes.example.org/terms");
     await userEvent.type(screen.getByLabelText("Name of the route"), "Kestrel");
@@ -306,7 +307,7 @@ describe("finding a route", () => {
       coverage: "Europe only",
       bbox: [-11, 36, 32, 71.5] as Bbox,
     };
-    declared = { sources: [world, europe], defaultId: null, problems: [] };
+    declared = { sources: [world, europe], defaultId: null, problems: [], clientName: sources.clientName };
     serve({});
     const inEurope = show();
     expect(await screen.findByText(/Search sends this name and the edges of the map view to/)).toHaveTextContent(

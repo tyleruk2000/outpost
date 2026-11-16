@@ -8,6 +8,7 @@
  * "link": the source is linked, and nothing is fetched or imported from it as data.
  */
 import type { ReferenceCatalogueResponse, ReferenceProviderDto } from "@outpost/shared";
+import { PROJECT_CLIENT_NAME } from "../../core/client-name.ts";
 
 const READ = "2026-11-16";
 
@@ -72,6 +73,7 @@ export const PROVIDERS: ReferenceProviderDto[] = [
     importFormats: [],
     caution: MILITARY_CAUTION,
     incremental: "No: a pack is asked for again whole. Overpass can say what changed, but not what was deleted.",
+    clientName: PROJECT_CLIENT_NAME,
   },
   {
     id: "osm-extract",
@@ -104,12 +106,13 @@ export const PROVIDERS: ReferenceProviderDto[] = [
       "Licensing: “All structured data (i.e. the main, Property, Lexeme, and EntitySchema namespaces) is released into the public domain” (CC0). Query service: a 60-second limit per query, five queries at once per address; “Scripts should use an informative User-Agent string with contact information, or they may be blocked without notice.”",
     termsRead: READ,
     verdict: "fetch",
-    why: "One query per press, for nuclear power stations and research reactors that have a position, sent with Outpost's name and address.",
+    why: "One query per press, for nuclear power stations and research reactors that have a position, sent with a client name that gives the project's web address, which the query service requires and the person agrees to first.",
     layers: ["nuclear"],
     scopes: ["world", "country"],
     importFormats: [],
     caution: null,
     incremental: "No: each fetch asks again; the answer is small.",
+    clientName: PROJECT_CLIENT_NAME,
   },
   {
     id: "worldpop",

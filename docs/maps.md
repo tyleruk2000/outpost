@@ -1366,8 +1366,10 @@ kept on your device and works offline from then on, like any other.
 Before you search, the view names the server the search goes to. What is sent is the
 name you typed, the edges of the map view (to five decimal places) when you search the
 view, and a client name that says "Outpost" with its version and the project's
-address. Nothing about you, your library or this installation is sent, and nothing is
-sent while you type.
+web address, which the servers' operators ask programs to give. The view shows that
+name, word for word, in the same sentence as the server, before you search: it is the
+same for every copy of Outpost. Nothing about you, your library or this installation is
+sent, and nothing is sent while you type.
 
 The servers are declared in one file, `catalog/route-sources.json`; a search goes to
 the host of one of them and to no other, and a redirect is refused rather than

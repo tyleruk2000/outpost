@@ -404,6 +404,11 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
     async estimate(request, signal) {
       const adapter = adapters.get(request.provider);
       if (!adapter?.estimate) throw badRequest("That source is not one Outpost downloads from.");
+      // The first contact with the source. Where it is told how to reach the project, the person has to have agreed to that.
+      if (adapter.provider.clientName && request.clientNameAgreed !== true)
+        throw badRequest(
+          `Asking ${adapter.provider.name} sends the name “${adapter.provider.clientName}”, which gives the project's web address. Tick the box to say it may be sent, or leave this source alone: nothing has been asked.`,
+        );
       const { items, notes } = await adapter.estimate(request, signal);
       const packs = installedPacks();
       for (const item of items) {

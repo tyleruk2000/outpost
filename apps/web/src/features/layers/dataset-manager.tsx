@@ -184,7 +184,8 @@ function EstimateResult({ estimate, onDone }: { estimate: ReferenceEstimate; onD
   );
 }
 
-function GetDialog({
+/** The dialog that asks a source for its size and then downloads: exported for its tests. */
+export function GetDialog({
   open,
   onOpenChange,
   engine,
@@ -205,12 +206,20 @@ function GetDialog({
   const [layers, setLayers] = useState<ReferenceLayerId[]>(initial?.layers ?? []);
   const estimate = useEstimate();
   const provider: ReferenceProviderDto | undefined = providers.find((entry) => entry.id === providerId);
+  // Whether the person has ticked that this source may be told how to reach the project. Asked again each time the
+  // dialog is opened or the source changes: it is a thing to agree to when it happens, not a setting to forget about.
+  const [agreedFor, setAgreedFor] = useState<string | null>(null);
+  const agreed = agreedFor === providerId;
+  const setAgreed = (on: boolean) => setAgreedFor(on ? providerId : null);
+  const needsAgreement = Boolean(provider?.clientName);
 
   const { mutate } = estimate;
-  // An update is estimated as the dialog opens for it.
+  // An update is estimated as the dialog opens for it, unless asking the source sends the project's name:
+  // then nothing is asked until the person has seen that and ticked, like a first download.
+  const initialNeedsAgreement = Boolean(initial && providers.find((entry) => entry.id === initial.provider)?.clientName);
   useEffect(() => {
-    if (open && initial) mutate(initial);
-  }, [open, initial, mutate]);
+    if (open && initial && providers.length > 0 && !initialNeedsAgreement) mutate(initial);
+  }, [open, initial, mutate, providers.length, initialNeedsAgreement]);
   useEffect(() => {
     if (provider && !provider.scopes.includes(scope))
       setScope(provider.scopes[0] === "world" && provider.scopes.includes("country") ? "country" : (provider.scopes[0] as typeof scope));
@@ -220,6 +229,7 @@ function GetDialog({
     provider: providerId,
     scope: scope === "country" ? { countries: [country] } : scope === "bbox" && engine ? { bbox: engine.getBounds() } : {},
     ...(layers.length > 0 ? { layers } : {}),
+    ...(needsAgreement ? { clientNameAgreed: agreed } : {}),
   });
   const countries = catalogue.data?.countries ?? [];
 
@@ -227,7 +237,10 @@ function GetDialog({
     <Dialog
       open={open}
       onOpenChange={(next) => {
-        if (!next) estimate.reset();
+        if (!next) {
+          estimate.reset();
+          setAgreedFor(null);
+        }
         onOpenChange(next);
       }}
     >
@@ -327,11 +340,35 @@ function GetDialog({
                   {provider.caution}
                 </Notice>
               ) : null}
+              {provider?.clientName ? (
+                <div className="grid gap-2 rounded-control border border-border-strong px-3 py-3">
+                  <p className="text-small font-semibold text-ink">This source is told what is asking</p>
+                  <p className="text-small text-ink">
+                    {provider.name} asks programs to say what they are and how their makers can be reached. So with each request Outpost
+                    sends this name, which gives the project's web address:
+                  </p>
+                  <p className="rounded-control bg-surface px-2 py-1.5 font-mono text-[0.8125rem] break-words text-ink">
+                    {provider.clientName}
+                  </p>
+                  <p className="text-small text-ink-muted">
+                    It is the same for every copy of Outpost and says nothing about you, your library or this installation. As with any site
+                    you visit, the source also sees the internet address the request comes from, and what is asked for: the area and the
+                    kinds of place. If you would rather it were not sent, leave this source alone: nothing is asked until you tick the box
+                    and press Show the size.
+                  </p>
+                  <div className="flex min-h-11 items-center gap-2 md:min-h-8">
+                    <Checkbox id="get-client-name" checked={agreed} onCheckedChange={(on) => setAgreed(on === true)} />
+                    <label htmlFor="get-client-name" className="text-small text-ink">
+                      Send this name to {provider.name}
+                    </label>
+                  </div>
+                </div>
+              ) : null}
               <div>
                 <Button
                   onClick={() => estimate.mutate(request())}
                   loading={estimate.isPending}
-                  disabled={!provider || (scope === "bbox" && !engine)}
+                  disabled={!provider || (scope === "bbox" && !engine) || (needsAgreement && !agreed)}
                 >
                   Show the size
                 </Button>

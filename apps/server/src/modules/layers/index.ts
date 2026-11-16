@@ -91,6 +91,7 @@ const estimateSchema = z
     provider: z.string().min(1).max(40),
     scope: scopeSchema,
     layers: z.array(z.enum(REFERENCE_LAYERS)).max(20).optional(),
+    clientNameAgreed: z.boolean().optional(),
   })
   .superRefine((request, issues) => {
     // A request for nothing in particular is the whole world: only a source that is published for the whole world as one can answer it.

@@ -468,8 +468,15 @@ export function FindRoutePanel({
               <p id={noteId} className="text-small text-ink-muted">
                 Search sends {scope === "view" ? "this name and the edges of the map view" : "this name"} to{" "}
                 <span className="font-mono text-[0.8125rem] break-words text-ink">{source.host}</span> ({source.operator}), which answers
-                from {source.data.name}. {source.bbox ? `It knows: ${source.coverage}. ` : ""}It needs the internet. A route you add is kept
-                here and works offline.{" "}
+                from {source.data.name}. {source.bbox ? `It knows: ${source.coverage}. ` : ""}
+                {sources.data?.clientName ? (
+                  <>
+                    With it goes the name the server's operator asks programs to give,{" "}
+                    <span className="font-mono text-[0.8125rem] break-words text-ink">{sources.data.clientName}</span>: the same for every
+                    copy of Outpost, and nothing about you or this installation.{" "}
+                  </>
+                ) : null}
+                It needs the internet. A route you add is kept here and works offline.{" "}
                 <a href={source.termsUrl} target="_blank" rel="noopener noreferrer" className={link}>
                   The server's terms
                 </a>

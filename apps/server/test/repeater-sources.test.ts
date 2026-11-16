@@ -490,7 +490,8 @@ describe("fetching a list from a source", () => {
     // The publisher's own date for the file, where it gives one.
     expect(new Date(got.lastModified!).toISOString()).toBe("2026-10-01T09:00:00.000Z");
     expect(standIn.requests).toEqual([{ path: "/repeater-lists/north.csv", userAgent: REPEATER_FETCH_USER_AGENT, cookie: undefined }]);
-    expect(REPEATER_FETCH_USER_AGENT).toMatch(/^Outpost\/\d+\.\d+\.\d+ \(self-hosted offline library; \+https:\/\/github\.com\//);
+    // The plain name every other download uses: no version, no project address, nothing about the installation.
+    expect(REPEATER_FETCH_USER_AGENT).toBe("Outpost (self-hosted offline library)");
     await http.close();
   });
 

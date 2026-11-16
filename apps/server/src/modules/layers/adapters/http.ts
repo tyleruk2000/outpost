@@ -3,7 +3,7 @@ import { AppError, classifyNetworkError } from "../../../core/errors.ts";
 import type { HttpClient } from "../../../core/http.ts";
 
 /** Outpost's name to sources that ask for one with a way to find the project (Wikimedia, Overpass). */
-export { ROUTE_FINDER_USER_AGENT as REFERENCE_USER_AGENT } from "../../maps/route-finder/index.ts";
+export { PROJECT_CLIENT_NAME as REFERENCE_USER_AGENT } from "../../../core/client-name.ts";
 
 function unreachable(host: string, error: unknown): AppError {
   if (error instanceof AppError) return error;

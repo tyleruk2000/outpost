@@ -3,6 +3,12 @@
  * for with one query on a press. CC0. The query service asks for a User-Agent with a way
  * to reach the project, and allows a minute of work a minute; one small query is far
  * inside that.
+ *
+ * That User-Agent is `PROJECT_CLIENT_NAME`: the application, its version and the
+ * project's web address. The owner agreed to it being sent on 16 November 2026 on the
+ * condition that it is clear to the person first, since not everyone will be comfortable
+ * with it: the provider carries the name (`clientName`), the screen shows it and asks for
+ * a tick, and the service refuses an estimate (the first contact) without that agreement.
  */
 
 import fs from "node:fs";
@@ -20,17 +26,6 @@ import { cleanText } from "./osm-tags.ts";
 
 export const WIKIDATA_SPARQL = "https://query.wikidata.org/sparql";
 
-/**
- * Whether Outpost asks Wikidata's query service at all. Its policy requires a client
- * name that says how to reach the project, which here would be the project's address
- * (`REFERENCE_USER_AGENT`). The owner agreed to that name being sent to the Overpass
- * servers for route searches; sending it to Wikidata has been put to them and not yet
- * answered. Until it is, nothing is asked: a file a person fetched themselves can still
- * be imported and read.
- */
-export const WIKIDATA_QUERIES_AGREED = false;
-const WIKIDATA_NOT_ASKED =
-  "Wikidata is not asked in this version of Outpost: its query service requires a client name that says how to reach the project, and sending one has not been agreed yet. Nuclear power stations mapped in OpenStreetMap are in the OpenStreetMap layer; Wikidata's own list is at query.wikidata.org.";
 /** Nuclear power plant, research reactor; verified on wikidata.org on 16 November 2026. */
 const CLASSES: Array<[string, string]> = [
   ["Q134447", "wikidata:nuclear-power-plant"],
@@ -79,7 +74,6 @@ export function createWikidataAdapter({ client }: AdapterDeps): ReferenceAdapter
   return {
     provider,
     async estimate(request, signal) {
-      if (!WIKIDATA_QUERIES_AGREED) return { items: [], notes: [WIKIDATA_NOT_ASKED] };
       const countries = request.scope.countries ?? [];
       const text = await fetchText(client, urlOf(wikidataCountQuery(countries)), {
         max: 64_000,

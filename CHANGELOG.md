@@ -1320,6 +1320,20 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   only use figures already fetched on the other screen, and offered no choice at all
   when one place had them.
 
+### Who is told what is asking
+
+- **Wikidata is asked, once the person agrees.** Its query service requires a client
+  name that says how to reach the project. A source that is sent that name (Wikidata,
+  and OpenStreetMap by Overpass) now shows it word for word in "Get reference data",
+  with what it does and does not reveal, and "Show the size" stays off until "Send this
+  name to …" is ticked. The server refuses an estimate for such a source without the
+  agreement, and an update of an installed pack waits for it too. Before, Wikidata was
+  switched off altogether and the Overpass source sent the name without saying so.
+- **Finding a known route** shows the same name beside the server a search goes to.
+- **Repeater lists are fetched under the plain name** every other download uses,
+  "Outpost (self-hosted offline library)", with no version and no project address.
+- The name has one home, `core/client-name.ts`, and the version one, `core/version.ts`.
+
 ## Known limitations
 
 These are deliberate or known, and are explained in

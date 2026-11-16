@@ -199,6 +199,13 @@ export interface ReferenceProviderDto {
   /** Said before anything is fetched or shown (the legal caution about mapping military sites, for one). */
   caution: string | null;
   incremental: string;
+  /**
+   * The name Outpost gives this source when it asks, where the source's policy wants one that says how to reach
+   * the project: the application, its version and the project's web address. Shown before anything is asked, and
+   * the person agrees to it being sent (`ReferenceEstimateRequest.clientNameAgreed`). Absent or null for a source
+   * asked under Outpost's plain name.
+   */
+  clientName?: string | null;
 }
 
 export const REFERENCE_IMPORT_FORMATS = [
@@ -222,6 +229,8 @@ export interface ReferenceEstimateRequest {
   provider: string;
   scope: ReferenceScope;
   layers?: ReferenceLayerId[];
+  /** True when the person has ticked that the source's `clientName` may be sent. Refused without it where the source has one. */
+  clientNameAgreed?: boolean;
 }
 
 export interface ReferenceEstimateItem {

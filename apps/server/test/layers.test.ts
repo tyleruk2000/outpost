@@ -684,6 +684,7 @@ describe("downloading through the download manager from an Overpass server", () 
     questions = [];
     const estimate = await app.api("POST", "/api/reference/estimate", {
       provider: "osm",
+      clientNameAgreed: true,
       scope: { countries: ["BE"] },
       layers: ["military"],
     });
@@ -702,10 +703,36 @@ describe("downloading through the download manager from an Overpass server", () 
     expect(view.points.map((point) => point.name)).toEqual(["Test barracks"]);
   });
 
+  it("asks a source that is told how to reach the project only once the person has agreed to that", async () => {
+    declare("local-test");
+    questions = [];
+    for (const provider of ["osm", "wikidata"]) {
+      for (const agreed of [undefined, false]) {
+        const refused = await app.api("POST", "/api/reference/estimate", {
+          provider,
+          scope: { countries: ["BE"] },
+          layers: ["nuclear"],
+          ...(agreed === undefined ? {} : { clientNameAgreed: agreed }),
+        });
+        expect(refused.status, provider).toBe(400);
+        // The refusal quotes the name that would be sent, so nobody agrees to something unseen.
+        expect(JSON.stringify(refused.body), provider).toMatch(
+          /sends the name .Outpost\/\d+\.\d+\.\d+ \(self-hosted offline library; \+https:/,
+        );
+        expect(JSON.stringify(refused.body), provider).toMatch(/nothing has been asked/);
+      }
+    }
+    expect(questions).toEqual([]);
+    // The catalogue tells the screen which sources these are, and the name itself; the others carry none.
+    const catalogue = await app.api<{ providers: Array<{ id: string; clientName?: string | null }> }>("GET", "/api/reference/catalogue");
+    expect(catalogue.body.providers.filter((entry) => entry.clientName).map((entry) => entry.id)).toEqual(["osm", "wikidata"]);
+  });
+
   it("does not ask a server whose terms rule out military applications", async () => {
     declare("private-coffee");
     const estimate = await app.api("POST", "/api/reference/estimate", {
       provider: "osm",
+      clientNameAgreed: true,
       scope: { countries: ["BE"] },
       layers: ["military"],
     });
@@ -733,6 +760,7 @@ describe("downloading through the download manager from an Overpass server", () 
       declare("local-test");
       const estimate = await app.api("POST", "/api/reference/estimate", {
         provider: "osm",
+        clientNameAgreed: true,
         scope: { countries: ["LU"] },
         layers: ["military"],
       });

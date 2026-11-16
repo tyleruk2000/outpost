@@ -6,9 +6,9 @@
  * and only a request from Outpost's own pages may cause that (see `core/guard.ts`).
  */
 import type { FastifyInstance, FastifyReply } from "fastify";
+import { PROJECT_CLIENT_NAME } from "../../../core/client-name.ts";
 import type { AppContext } from "../../../core/context.ts";
 import type { HttpClient } from "../../../core/http.ts";
-import { VERSION } from "../../system/index.ts";
 import type { AnnotationsService } from "../annotations.ts";
 import type { ElevationSampler } from "../elevation.ts";
 import { createOverpassClient } from "./overpass.ts";
@@ -20,7 +20,7 @@ import { loadRouteSources } from "./sources.ts";
  * servers ask for a client name that identifies the application and a way to find the
  * project. Nothing about the person, their library or this installation is sent.
  */
-export const ROUTE_FINDER_USER_AGENT = `Outpost/${VERSION} (self-hosted offline library; +https://github.com/tyleruk2000/outpost)`;
+export const ROUTE_FINDER_USER_AGENT = PROJECT_CLIENT_NAME;
 
 /** Fires when the browser that asked has gone away, so the question to the source is dropped too. */
 function goneSignal(reply: FastifyReply): AbortSignal {

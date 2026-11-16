@@ -390,7 +390,12 @@ export function createRouteFinder(deps: RouteFinderDeps): RouteFinderService {
 
   return {
     sources() {
-      return { sources: deps.loaded.sources.map(toSourceDto), defaultId: deps.loaded.defaultId, problems: deps.loaded.problems };
+      return {
+        sources: deps.loaded.sources.map(toSourceDto),
+        defaultId: deps.loaded.defaultId,
+        problems: deps.loaded.problems,
+        clientName: deps.userAgent,
+      };
     },
 
     async search(input, signal) {

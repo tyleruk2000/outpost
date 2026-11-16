@@ -758,7 +758,9 @@ The second sitting, for the sources by country.
   request per file)". Eleven answered with rules, four sites have none (HTTP 404), one
   redirected and was not followed, and one connection failed (the ACMA's). The project
   is not named in that client name; what Outpost itself sends when it fetches a list
-  is "Outpost/&lt;version&gt;" with the project's address.
+  is the plain name it uses for every download, "Outpost (self-hosted offline library)",
+  with no version and no project address (the owner's choice, 16 November 2026: no
+  repeater publisher's terms ask for more).
 - **ukrepeater.net was asked twice and refused twice**, as its row says. It was not
   asked a third time, and nothing was tried to get past the refusal: no other client
   name, no browser.

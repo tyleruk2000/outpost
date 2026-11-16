@@ -9,11 +9,12 @@ import type { AppContext } from "../../core/context.ts";
 import { notFound } from "../../core/errors.ts";
 import { toJobDto } from "../../core/jobs.ts";
 import { isBundled } from "../../core/paths.ts";
+import { VERSION } from "../../core/version.ts";
 import { jobs } from "../../db/schema.ts";
 import type { Settings } from "../settings/service.ts";
 import { detectHost } from "../storage/shares/host.ts";
 
-export const VERSION = "0.1.0";
+export { VERSION };
 
 export async function registerSystem(app: FastifyInstance, ctx: AppContext): Promise<void> {
   const { settings } = ctx.services;

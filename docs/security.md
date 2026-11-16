@@ -502,7 +502,7 @@ about OpenStreetMap, and reads what comes back.
 | Where a search may go | Only to the host of a source declared in `catalog/route-sources.json` or in the administrator's own `<data directory>/catalog/routes/route-sources.json`. Shipped sources must be `https`. The request goes through the guarded client, so rule 2 applies: a source on this computer or a private network is refused unless the server was started with `OUTPOST_ALLOW_PRIVATE_DOWNLOADS=true`. | `modules/maps/route-finder/sources.ts`, `overpass.ts` |
 | No redirects | The question is a `POST`. A redirect is refused, not followed, so what a person typed goes to the host that was named and to no other. | `core/http.ts` |
 | Who may cause a search | Searching and previewing are `POST` routes, so they are held to the cross-site rules above: a page on another site cannot make Outpost question a route source. Only listing the declared sources is a `GET`, and it contacts nobody. | `modules/maps/route-finder/index.ts` |
-| What is sent | The name typed, the edges of the map view to five decimal places, and a client name: "Outpost", its version and the project's address, as the servers' operators ask. No cookie, no referrer, nothing about the person, the library or the installation. | `ROUTE_FINDER_USER_AGENT` in `route-finder/index.ts` |
+| What is sent | The name typed, the edges of the map view to five decimal places, and a client name: "Outpost", its version and the project's address, as the servers' operators ask. No cookie, no referrer, nothing about the person, the library or the installation. The name is shown word for word beside the Search button (`GET /api/maps/route-sources` gives it as `clientName`). | `PROJECT_CLIENT_NAME` in `core/client-name.ts` |
 | What is typed cannot change the question | The name becomes a pattern in which letters, digits, spaces, apostrophes and hyphens stand for themselves and every other character becomes "any one character". Nothing typed can close the quoted string or add a statement to the query. Route and way numbers must be positive whole numbers. | `namePattern` in `route-finder/overpass.ts` |
 | The answer is untrusted | It is read through a counter that stops at 6 MB for a search and 24 MB for a route, before it is parsed. Then every element is checked: an id must be a positive whole number; a position must be a finite latitude and longitude on Earth, and a way with a bad point in it is split there, never bridged; only a handful of tag keys are read, each cut to 200 characters and stripped of control characters and of the characters that reverse the direction of text; anything that is not a route, a way or a length is passed over. One route may hold 10,000 ways and 200,000 points; a search 41 routes and 400 ways. Over a limit, the whole answer is refused. | `readAnswer` in `route-finder/overpass.ts`, limits in `service.ts` |
 | Names are text | A route's name reaches the page through React, which writes it as text, and a GPX file through the same escaping as every other name. The links shown with a found route are built from a relation number by Outpost, or are fixed addresses. A stored credit is checked again when it is read back, because a route can arrive on a drive that has been elsewhere: its links can only be OpenStreetMap's copyright page, the licence's own page and a relation's page on openstreetmap.org, and a credit with anything else in their place is not shown as a credit. | `readTrackSource` in `packages/shared/src/route-finder.ts` |
@@ -545,13 +545,24 @@ manager, and only from these hosts, each named in code:
 | `davidmegginson.github.io` | OurAirports' `airports.csv` | Public domain |
 | `ovp.dresel.systems`, or a server the person declares in their route source file | One Overpass question per layer and country | The operator's terms; private.coffee is excluded for this use |
 | `download.geofabrik.de` | The index, a country's `.osm.pbf` and its `.md5` | ODbL, fetched once per press |
-| `query.wikidata.org` | One count and one query | CC0; within the service's limits, with a contact address |
+| `query.wikidata.org` | One count and one query, once the person has agreed to the client name being sent | CC0; within the service's limits, with the project's address as the contact the service asks for |
 | `data.worldpop.org` | One country's population GeoTIFF | CC BY 4.0 |
 | `data.geo.admin.ch` | The Swiss emergency meeting points | Open use with the source given |
 | `environment.data.gov.uk` | The Environment Agency's flood zones for a box at most about 20 km across: a count (`limit=1`), then the areas in one answer | Open Government Licence; one box per press |
 
-Every request names Outpost and its project address, carries nothing about the person,
-and must land on a public address (rule 2 above). A redirect off the named host is
+Every request carries nothing about the person and must land on a public address (rule
+2 above). Two of these sources ask a program to say what it is and how its makers can be
+reached: the public Overpass servers and Wikidata's query service. To those two Outpost
+sends `PROJECT_CLIENT_NAME` (`core/client-name.ts`): "Outpost", its version and the
+project's web address, the same for every copy. Because not everyone will be
+comfortable with the software they run being named to a third party, the screen shows
+that name word for word before anything is asked, and "Show the size" (the first
+contact) stays switched off until the person ticks "Send this name to …"; the server
+refuses an estimate for such a source without that agreement
+(`clientNameAgreed`), so the rule does not depend on the screen. The agreement is asked
+each time the dialog is opened, and an update of an installed pack waits for it like a
+first download. The other sources are asked under the plain name every download uses,
+`Outpost (self-hosted offline library)`. A redirect off the named host is
 refused for HEAD requests and checksums (`everyHop`). Answers are capped in size before
 they are read (an Overpass answer at 96 MB, a Wikidata answer at 32 MB, a GeoJSON file
 at 160 MB, an upload at 32 MB), and every position is checked to be on Earth and in

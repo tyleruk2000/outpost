@@ -58,6 +58,8 @@ export interface RouteSourcesResponse {
   defaultId: string | null;
   /** What was wrong with a route source file, in words, when one could not be read. */
   problems: string[];
+  /** The name Outpost gives a route source when it searches: the application, its version and the project's web address. */
+  clientName: string;
 }
 
 /**

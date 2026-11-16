@@ -83,7 +83,7 @@ with the rest of Outpost's sources.
 | OurAirports | Airports, airfields, heliports, seaplane bases, with their own `type` | ourairports.com could not be read: its certificate expired on 6 November 2026. The data repository's [licence](https://github.com/davidmegginson/ourairports-data/blob/main/LICENSE): "This is free and unencumbered software released into the public domain." Its README: "Open-data downloads for OurAirports, updated daily." | **Fetched on a press**: `airports.csv` (12.8 MB) from `davidmegginson.github.io`, the chosen countries or box kept. There is no field that says an airfield is military, and none is guessed from names. |
 | OpenStreetMap by Overpass | Military sites, nuclear facilities, hospitals, police, fire and ambulance stations, shelters | [Copyright](https://www.openstreetmap.org/copyright): "If you alter or build upon our data, you may distribute the result only under the same license." [Overpass manual](https://dev.overpass-api.de/overpass-doc/en/preface/commons.html): users "keep their download volume below about 1 GB per day"; problematic is "Setting up an app for more than just OSM mappers and relying on the public instances as backend". [Wiki list of servers](https://wiki.openstreetmap.org/wiki/Overpass_API#Public_Overpass_API_instances) for dresel.systems: "Free to use, no API key. Limit of 4 parallel queries per IP address", "Please send a User-Agent or Referer that identifies your app." Private.coffee's own terms exclude "projects related to warfare, military applications". | **Fetched on a press**, one layer of one country (or a box up to about 20° by 20°) per question, one question at a time to a host with two seconds between and a minute after it says it is busy, from the servers of `catalog/route-sources.json` that hold the area (dresel.systems, Europe and North America) or from one the person declares. **Private.coffee is not used** for reference layers, because of its terms; overpass-api.de is not listed at all (see sources.md, T4). Elsewhere: a Geofabrik extract. |
 | OpenStreetMap from Geofabrik | The same five layers, from a country's `.osm.pbf` | [download.geofabrik.de](https://download.geofabrik.de/): "License: ODbL 1.0", "Data processed by Geofabrik GmbH and created by OpenStreetMap Contributors". [Download responsibly!](https://blog.geofabrik.de/index.php/2025/09/10/download-responsibly/) (10 September 2025): "There's a limit to the outgoing network bandwidth"; "monitor what your script is doing or build in appropriate catches". | **Fetched on a press**, one file per country, at most three per estimate, with the MD5 Geofabrik publishes beside it checked before reading; never retried in a loop beyond the download manager's own retries. Or imported from a file the person downloaded. |
-| Wikidata | Nuclear power stations (Q134447) and research reactors (Q1438105) with a position | [Licensing](https://www.wikidata.org/wiki/Wikidata:Licensing): "All structured data … is released into the public domain" (CC0). [Query service](https://www.mediawiki.org/wiki/Wikidata_Query_Service/User_Manual#Query_limits): 60 seconds a query, five at once per address. [User-Agent policy](https://foundation.wikimedia.org/wiki/Policy:Wikimedia_Foundation_User-Agent_Policy): "Scripts should use an informative User-Agent string with contact information, or they may be blocked without notice." | **Fetched on a press**: one count and one query, with Outpost's name and project address. |
+| Wikidata | Nuclear power stations (Q134447) and research reactors (Q1438105) with a position | [Licensing](https://www.wikidata.org/wiki/Wikidata:Licensing): "All structured data … is released into the public domain" (CC0). [Query service](https://www.mediawiki.org/wiki/Wikidata_Query_Service/User_Manual#Query_limits): 60 seconds a query, five at once per address. [User-Agent policy](https://foundation.wikimedia.org/wiki/Policy:Wikimedia_Foundation_User-Agent_Policy): "Scripts should use an informative User-Agent string with contact information, or they may be blocked without notice." | **Fetched on a press**, once the person has ticked that the name may be sent: one count and one query, with Outpost's name and the project's web address, which the policy requires. See [The name a source is given](#the-name-a-source-is-given). |
 | WorldPop | Population counts, 2020, 30 arc-seconds (about 1 km), unconstrained, UN-adjusted (DOI 10.5258/SOTON/WP00671) | [Licence](https://hub.worldpop.org/data/licence.txt): "WorldPop datasets are licensed under the Creative Commons Attribution 4.0 International License". | **Fetched on a press**, one GeoTIFF per country (Luxembourg: 23.7 kB). No checksum is published. The citation WorldPop asks for is kept with the grid and shown. The newer R2025A product is constrained and published as an "alpha version … and may change"; the 2020 release was chosen as fixed. |
 | BABS (Switzerland) | Emergency meeting points (Notfalltreffpunkte) | [Federal geodata terms](https://www.geo.admin.ch/en/general-terms-of-use-fsdi): "Obtaining and using the data and services is free-of-charge, subject to the provisions on fair use"; "Automatic parsing of geoservices via bots with high query intensities is to be avoided." The dataset is listed under opendata.swiss's "terms_by" licence (open use, source to be given); the opendata.swiss terms page itself refused to be read. | **Fetched on a press**: one GeoJSON file, 1.5 MB, in the Swiss grid (LV95), converted. |
 | FAS Nuclear Notebook, Status of World Nuclear Forces | Country-level estimates | FAS pages carry "Federation of American Scientists © 2026" and no licence; the Bulletin of the Atomic Scientists' [terms](https://thebulletin.org/terms-of-use/): "You should assume that everything you see or read on the Website is copyrighted", and no "robot, spider, scraper, crawler, or other automated means to access, extract, harvest" data "regardless of whether the data is publicly accessible". | **Linked.** A figure can be typed into a country figures file with its citation and imported. |
@@ -214,6 +214,37 @@ publish their own maps, which Outpost does not fetch.
   described above (a count and one box); the full flow through Outpost was tested against
   a local stand-in, not the live service (`OUTPOST_FLOOD_ZONES_URL` puts one in the
   Agency's place for tests), and there is no end-to-end test of it in a browser.
+
+
+### The name a source is given
+
+Most sources are asked under the plain name Outpost uses for every download,
+`Outpost (self-hosted offline library)`. Two ask for more: the public Overpass servers
+and Wikidata's query service both tell programs to give a name that says what they are
+and how their makers can be reached, and may block one that does not. To those two
+Outpost sends "Outpost", its version and the project's web address
+(`Outpost/0.1.0 (self-hosted offline library; +https://github.com/tyleruk2000/outpost)`).
+It is the same for every copy of Outpost and says nothing about the person, their
+library or the installation; the source also sees, as any site does, the address the
+request comes from and what was asked for.
+
+Some people will not want the software they run named to a third party, so this is
+never done quietly:
+
+- When one of these sources is chosen in "Get reference data", a panel headed "This
+  source is told what is asking" shows the name word for word, says what it does and
+  does not reveal, and says that leaving the source alone asks nothing.
+- "Show the size", which is the first contact with the source, is switched off until
+  the box "Send this name to …" is ticked. The tick is asked for each time the dialog
+  is opened and again when the source is changed; it is not kept as a setting.
+- Updating an installed pack from such a source opens the same dialog and waits for
+  the same tick: no update is estimated by itself, as it is for other sources.
+- The server refuses an estimate for such a source unless the request says the person
+  agreed (`clientNameAgreed: true`), quoting the name in the refusal, so nothing is sent
+  by a client that skips the screen. A download can only follow an estimate.
+
+The catalogue (`GET /api/reference/catalogue`) gives each such provider's `clientName`;
+the others have none.
 
 ## OpenStreetMap: which tags, and what the licence asks
 
