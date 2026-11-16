@@ -1,0 +1,375 @@
+/** Emergency plans: the cards as PDFs, and the screens' states. Every person here is made up. */
+import {
+  type EmergencyPlan,
+  type EmergencyPlanResponse,
+  type EmergencyPlanSummary,
+  emptyPlanBody,
+  PLAN_TEMPLATES,
+  type PlanResolved,
+  planFromTemplate,
+} from "@outpost/shared";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
+import type { ReactNode } from "react";
+import { MemoryRouter, Route, Routes } from "react-router";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { textWidth } from "@/features/maps/print/helvetica";
+import { type DrawLine, writeLettered } from "@/features/maps/print/lettering";
+import type { Sheet } from "@/features/maps/print/sheet";
+import { fridgeSheets, grabSheets, walletSheets } from "./cards";
+import PlanPage from "./plan-page";
+import PlansPage from "./plans-page";
+import { readableOf } from "./printable";
+import UsePlanPage from "./use-page";
+import { guessEmergencyNumber } from "./words";
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
+
+const MADE = new Date(2026, 10, 16, 14, 5);
+
+function plan(over: Partial<EmergencyPlan> = {}): EmergencyPlan {
+  const template = PLAN_TEMPLATES.find((each) => each.id === "power-cut")!;
+  let n = 0;
+  const input = planFromTemplate(template, () => `s${++n}`);
+  return {
+    ...input,
+    id: "p1",
+    use: { startedAt: null, ticks: {} },
+    reviewedAt: MADE.getTime(),
+    openedAt: null,
+    createdAt: MADE.getTime(),
+    updatedAt: MADE.getTime(),
+    ...over,
+    body: {
+      ...input.body,
+      people: [
+        { id: "a", name: "Maya Okafor", remember: "Fetch Sam", medical: "Penicillin allergy", contactId: null },
+        { id: "b", name: "Ελένη Παπαδοπούλου", remember: "", medical: "", contactId: null },
+      ],
+      contacts: [
+        { id: "c1", contactId: "k1", name: "Ana Silva", phone: "", note: "Has a key", outOfArea: false },
+        { id: "c2", contactId: null, name: "王小明", phone: "+44 7700 900123", note: "", outOfArea: true },
+        { id: "c3", contactId: "gone", name: "Old neighbour", phone: "", note: "", outOfArea: false },
+      ],
+      places: [
+        { id: "m1", role: "near", markerId: "hall", name: "Village hall", note: "Side door" },
+        { id: "m2", role: "away", markerId: "lost", name: "Church", note: "" },
+      ],
+      ...over.body,
+    },
+  };
+}
+const resolved: PlanResolved = {
+  contacts: { k1: { displayName: "Ana Silva", phones: [{ value: "+44 (0)1632 960 188", label: "home" }], callsign: "" }, gone: null },
+  places: { hall: { name: "Village hall", lat: 54.3, lon: -2.2 }, lost: null },
+  commPlan: undefined,
+  powerPlan: undefined,
+  links: [],
+};
+
+/** A device that draws a line as a picture the width the typeface would give it. */
+const draws: DrawLine = async (item) => ({
+  picture: { jpeg: Uint8Array.from([0xff, 0xd8, 0xff, 0xd9]), width: 10, height: 4 },
+  width: textWidth(item.text, item.size, item.bold) * 1.1,
+  height: item.size * 1.5,
+  baseline: item.size * 1.1,
+});
+
+async function readPdf(bytes: Uint8Array): Promise<string> {
+  const reading = getDocument({
+    data: bytes.slice(),
+    useSystemFonts: false,
+    disableFontFace: true,
+    standardFontDataUrl: `${process.cwd()}/node_modules/pdfjs-dist/standard_fonts/`,
+  });
+  const document = await reading.promise;
+  const out: string[] = [];
+  for (let number = 1; number <= document.numPages; number += 1)
+    out.push(...((await (await document.getPage(number)).getTextContent()).items as Array<{ str: string }>).map((item) => item.str));
+  await reading.destroy();
+  return out.join("\n");
+}
+
+const texts = (pages: Sheet[]) =>
+  pages.flatMap((page) => page.items.flatMap((item) => (item.kind === "text" && !item.hidden ? [item.text] : [])));
+
+describe("a plan as it is read", () => {
+  it("puts in linked contacts and places as they are now, and keeps missing ones, said to be missing", () => {
+    const read = readableOf(plan(), resolved);
+    expect(read.contacts.map((contact) => [contact.name, contact.numbers.map((number) => number.value), contact.missing])).toEqual([
+      ["Ana Silva", ["+44 (0)1632 960 188"], false],
+      ["王小明", ["+44 7700 900123"], false],
+      ["Old neighbour", [], true],
+    ]);
+    expect(read.contacts[0]!.numbers[0]!.dial).toBe("+4401632960188");
+    expect(read.places.map((place) => [place.name, place.mapPath, place.missing])).toEqual([
+      ["Village hall", "/maps?lat=54.30000&lon=-2.20000&z=15", false],
+      ["Church", null, true],
+    ]);
+    // Water for the 2 people in the plan for its 3 days: 3 × 2 × 3 = 18 litres.
+    expect(read.supplies.find((supply) => supply.name === "Bottled water")?.amount).toBe("18 litre");
+  });
+
+  it("offers the number for the device's country first, and the UK's otherwise", () => {
+    expect(guessEmergencyNumber("en-GB")).toBe("999");
+    expect(guessEmergencyNumber("en-US")).toBe("911");
+    expect(guessEmergencyNumber("de-DE")).toBe("112");
+    expect(guessEmergencyNumber("en-NZ")).toBe("111");
+    expect(guessEmergencyNumber("en")).toBe("999");
+  });
+});
+
+describe("the cards", () => {
+  const read = readableOf(plan(), resolved);
+
+  it("gives each person a wallet card, numbers whole on one line, four to a sheet", () => {
+    const { pages, cards } = walletSheets(read, read.people, { made: MADE, paper: "a4" });
+    expect(pages).toHaveLength(1);
+    expect(cards.map((card) => card.overflow)).toEqual([false, false]);
+    const words = texts(pages);
+    // Each number is one piece of text, exactly as kept: never broken across lines.
+    expect(words).toContain("+44 (0)1632 960 188");
+    expect(words).toContain("+44 7700 900123");
+    expect(words).toContain("999");
+    // Medical words only on the person's own card.
+    expect(texts([{ ...pages[0]!, items: cards[0]!.front }])).toContain("Penicillin allergy");
+    expect(texts([{ ...pages[0]!, items: cards[1]!.front }])).not.toContain("Penicillin allergy");
+    expect(words.filter((word) => word === "Penicillin allergy")).toHaveLength(1);
+    // The out-of-area contact, and the places to meet, but not the one missing from the map.
+    expect(words).toContain("Out-of-area contact");
+    expect(words.join(" ")).toContain("Village hall");
+    expect(words.join(" ")).not.toContain("Church");
+  });
+
+  it("says when a card has too much on it", () => {
+    // 600 characters, the most a medical note may have, fit in the smallest type; more than that does not.
+    const long = { ...read.people[0]!, medical: "Takes many medicines. ".repeat(80) };
+    expect(walletSheets(read, [long], { made: MADE, paper: "letter" }).cards[0]!.overflow).toBe(true);
+  });
+
+  it("puts the fridge sheet on one page, with the steps for during and after, the numbers and the places", () => {
+    const pages = fridgeSheets(read, { made: MADE, paper: "a4" });
+    expect(pages).toHaveLength(1);
+    const words = texts(pages).join("\n");
+    expect(words).toContain("During");
+    expect(words).toContain("After");
+    expect(words).not.toContain("\nBefore\n");
+    expect(words).toContain("+44 7700 900123");
+    expect(words).toContain("Old neighbour: no longer in Contacts");
+    expect(words).toContain("Church (no longer on the map)");
+    expect(words).toContain("In a real emergency, follow the emergency services and official warnings.");
+  });
+
+  it("writes a PDF whose text has every number exactly, and names in other scripts found by search", async () => {
+    const written = await writeLettered(fridgeSheets(read, { made: MADE, paper: "a4" }), "Fridge sheet", MADE, draws);
+    expect(written.drawn).toBeGreaterThan(0);
+    const text = await readPdf(written.bytes);
+    expect(text).toContain("+44 7700 900123");
+    expect(text).toContain("+44 (0)1632 960 188");
+    expect(text).toContain("王小明");
+
+    const wallet = await writeLettered(walletSheets(read, read.people, { made: MADE, paper: "a4" }).pages, "Wallet cards", MADE, draws);
+    const cardText = await readPdf(wallet.bytes);
+    expect(cardText).toContain("Ελένη Παπαδοπούλου");
+    expect(cardText).toContain("+44 7700 900123");
+  });
+
+  it("lists what to take on the grab list, with the amount for the household", () => {
+    const words = texts(grabSheets(read, { made: MADE, paper: "a4" }));
+    expect(words).toContain("Bottled water");
+    expect(words).toContain("18 litre");
+  });
+});
+
+// ── The screens ──────────────────────────────────────────────────────────────
+
+interface Server {
+  posted: Array<{ path: string; body: unknown }>;
+}
+
+function serve(routes: Record<string, unknown | (() => Response | Promise<Response>)>): Server {
+  const server: Server = { posted: [] };
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const { pathname } = new URL(String(input), "http://outpost.test");
+      const json = (body: unknown, status = 200) =>
+        new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+      const method = init?.method ?? "GET";
+      if (method !== "GET") server.posted.push({ path: `${method} ${pathname}`, body: init?.body ? JSON.parse(String(init.body)) : null });
+      const answer = routes[`${method} ${pathname}`] ?? routes[pathname];
+      if (typeof answer === "function") return (answer as () => Response)();
+      if (answer !== undefined) return json(answer);
+      if (method !== "GET") return json(routes["POST *"] ?? { ok: true });
+      return json({ error: { code: "not_found", message: "Not here." } }, 404);
+    }),
+  );
+  return server;
+}
+
+function show(path: string, element: ReactNode, route: string) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(
+    <QueryClientProvider client={client}>
+      <MemoryRouter initialEntries={[path]}>
+        <Routes>
+          <Route path={route} element={element} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+}
+
+const summary = (over: Partial<EmergencyPlanSummary> = {}): EmergencyPlanSummary => ({
+  id: "p1",
+  name: "Power cut",
+  kind: "power-cut",
+  kindText: "",
+  steps: 29,
+  ticked: 0,
+  startedAt: null,
+  reviewedAt: Date.now(),
+  reviewEveryDays: 180,
+  openedAt: null,
+  missing: 0,
+  updatedAt: Date.now(),
+  ...over,
+});
+
+describe("the list of plans", () => {
+  it("invites the first plan when there are none", async () => {
+    serve({ "/api/emergency-plans": { plans: [] } });
+    show("/prepare/plans", <PlansPage />, "/prepare/plans");
+    expect(await screen.findByText("No emergency plans yet")).toBeInTheDocument();
+  });
+
+  it("lists plans with what is missing and what is due, each a press from use", async () => {
+    serve({
+      "/api/emergency-plans": {
+        plans: [summary({ missing: 2, reviewedAt: 0 }), summary({ id: "p2", name: "Flood", startedAt: Date.now(), ticked: 3, steps: 10 })],
+      },
+    });
+    show("/prepare/plans", <PlansPage />, "/prepare/plans");
+    expect(await screen.findByText(/2 linked contacts or places missing/)).toBeInTheDocument();
+    expect(screen.getByText(/Due for a look over/)).toBeInTheDocument();
+    expect(screen.getByText(/3 of 10 steps done/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Use now: Flood" })).toHaveAttribute("href", "/prepare/plans/p2/use");
+  });
+
+  it("says when the plans could not be loaded", async () => {
+    serve({
+      "/api/emergency-plans": () => new Response(JSON.stringify({ error: { code: "internal", message: "Busy." } }), { status: 500 }),
+    });
+    show("/prepare/plans", <PlansPage />, "/prepare/plans");
+    expect(await screen.findByText("This could not be loaded")).toBeInTheDocument();
+  });
+
+  it("starts a plan from a template", async () => {
+    const server = serve({ "/api/emergency-plans": { plans: [] }, "POST /api/emergency-plans": { plan: plan(), resolved } });
+    show("/prepare/plans", <PlansPage />, "/prepare/plans");
+    await userEvent.click(await screen.findByRole("button", { name: "New plan" }));
+    await userEvent.click(screen.getByRole("radio", { name: /^Power cut/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Make the plan" }));
+    await waitFor(() => expect(server.posted.some((post) => post.path === "POST /api/emergency-plans")).toBe(true));
+    const sent = server.posted.find((post) => post.path === "POST /api/emergency-plans")!.body as EmergencyPlan;
+    expect(sent.templateId).toBe("power-cut");
+    expect(sent.body.steps.every((step) => step.origin?.startsWith("power-cut."))).toBe(true);
+  });
+});
+
+const answer = (over: Partial<EmergencyPlan> = {}): EmergencyPlanResponse => ({ plan: plan(over), resolved });
+
+describe("a plan", () => {
+  const others = {
+    "/api/supplies": {
+      items: [],
+      household: { daysWanted: 3, drinkingLitres: 3, allUsesLitres: 7.5, waterBasis: "drinking", members: [], updatedAt: 0 },
+      locations: [],
+    },
+    "/api/supplies/outlook": () => new Promise<Response>(() => {}),
+    "/api/power/plans": { plans: [] },
+    "/api/radio/communication-plans": { plans: [] },
+    "/api/maps/markers": { markers: [] },
+  };
+
+  it("says whose words each step is, and shows a deleted contact or place as missing", async () => {
+    serve({ "/api/emergency-plans/p1": answer(), "POST /api/emergency-plans/p1/opened": answer(), ...others });
+    show("/prepare/plans/p1", <PlanPage />, "/prepare/plans/:id");
+    expect(await screen.findByRole("heading", { level: 1, name: "Power cut" })).toBeInTheDocument();
+    expect(
+      screen.getAllByText((_, element) => element?.tagName === "SUMMARY" && element.textContent!.startsWith("From ")).length,
+    ).toBeGreaterThan(5);
+    expect(screen.getByText(/Old neighbour: no longer in Contacts/)).toBeInTheDocument();
+    expect(screen.getByText(/Church: no longer on the map/)).toBeInTheDocument();
+    expect(screen.getAllByText(/In a real emergency, follow the emergency services/).length).toBeGreaterThan(0);
+    // Nothing in Supplies: each listed thing is missing, and can go on the shopping list.
+    await waitFor(() => expect(screen.getAllByTestId("supply-standing")[0]).toHaveTextContent("Missing"));
+    expect(screen.getByRole("button", { name: /Add 10 missing or low things to the shopping list/ })).toBeEnabled();
+  });
+
+  it("asks for a review when one is due", async () => {
+    serve({
+      "/api/emergency-plans/p1": answer({ reviewedAt: 0 }),
+      "POST /api/emergency-plans/p1/opened": answer({ reviewedAt: 0 }),
+      ...others,
+    });
+    show("/prepare/plans/p1", <PlanPage />, "/prepare/plans/:id");
+    expect(await screen.findByText("Time to look this plan over")).toBeInTheDocument();
+  });
+});
+
+describe("a plan in use", () => {
+  it("is only the steps, the numbers and the places, and a tick is sent with the step", async () => {
+    const server = serve({
+      "/api/emergency-plans/p1": answer(),
+      "POST /api/emergency-plans/p1/opened": answer(),
+      "POST /api/emergency-plans/p1/ticks": () => {
+        const ticked = answer();
+        const first = ticked.plan.body.steps[0]!.id;
+        ticked.plan.use = { startedAt: MADE.getTime(), ticks: { [first]: MADE.getTime() } };
+        return new Response(JSON.stringify(ticked), { headers: { "content-type": "application/json" } });
+      },
+    });
+    show("/prepare/plans/p1/use", <UsePlanPage />, "/prepare/plans/:id/use");
+    expect(await screen.findByRole("link", { name: "Call the emergency services: 999" })).toHaveAttribute("href", "tel:999");
+    expect(screen.getByRole("link", { name: "Call 王小明: +44 7700 900123" })).toHaveAttribute("href", "tel:+447700900123");
+    expect(screen.getByRole("link", { name: /Village hall/ })).toHaveAttribute("href", "/maps?lat=54.30000&lon=-2.20000&z=15");
+    expect(screen.getByText("No longer in Contacts: no number to call.")).toBeInTheDocument();
+
+    const during = screen.getByRole("heading", { name: "During" }).closest("section")!;
+    const boxes = within(screen.getByRole("heading", { name: "Before" }).closest("section")!).getAllByRole("checkbox");
+    expect(within(during).getAllByRole("checkbox").length).toBeGreaterThan(0);
+    await userEvent.click(boxes[0]!);
+    await waitFor(() =>
+      expect(server.posted.find((post) => post.path === "POST /api/emergency-plans/p1/ticks")?.body).toMatchObject({ done: true }),
+    );
+    expect(await screen.findByText(/Done at 14:05/)).toBeInTheDocument();
+  });
+
+  it("resets for next time after asking", async () => {
+    const server = serve({
+      "/api/emergency-plans/p1": answer({ use: { startedAt: MADE.getTime(), ticks: {} } }),
+      "POST /api/emergency-plans/p1/opened": answer({ use: { startedAt: MADE.getTime(), ticks: {} } }),
+      "POST /api/emergency-plans/p1/reset": answer(),
+    });
+    show("/prepare/plans/p1/use", <UsePlanPage />, "/prepare/plans/:id/use");
+    await userEvent.click(await screen.findByRole("button", { name: "Reset for next time" }));
+    await userEvent.click(screen.getByRole("button", { name: "Reset" }));
+    await waitFor(() => expect(server.posted.some((post) => post.path === "POST /api/emergency-plans/p1/reset")).toBe(true));
+    expect(await screen.findByRole("button", { name: "Start using this plan" })).toBeInTheDocument();
+  });
+
+  it("starts from blank with nothing in it but the caveat", async () => {
+    serve({
+      "/api/emergency-plans/p1": { plan: { ...plan(), body: emptyPlanBody() }, resolved },
+      "POST /api/emergency-plans/p1/opened": { plan: { ...plan(), body: emptyPlanBody() }, resolved },
+    });
+    show("/prepare/plans/p1/use", <UsePlanPage />, "/prepare/plans/:id/use");
+    expect(await screen.findByText(/0 steps\. Not in use\./)).toBeInTheDocument();
+  });
+});

@@ -37,6 +37,12 @@ const shortDate = (date: Date) => new Intl.DateTimeFormat("en-GB", { day: "numer
 export const cardTitle = (kind: Kind, plan: Pick<EmergencyPlan, "name" | "updatedAt">) =>
   `${KINDS.find((each) => each.value === kind)!.what}, ${plan.name}, ${shortDate(new Date(plan.updatedAt))}`;
 
+/** " (Storm)", or nothing when the name already says what kind of plan it is. */
+const kindAside = (plan: EmergencyPlan) => {
+  const kind = plan.kindText || planKindLabel(plan.kind);
+  return plan.name.toLowerCase().includes(kind.toLowerCase()) ? "" : ` (${kind})`;
+};
+
 export function sheetsOf(kind: Kind, readable: Readable, made: Date, paper: CardPaper): { pages: Sheet[]; overflow: string[] } {
   if (kind === "wallet") {
     const { pages, cards } = walletSheets(readable, readable.people, { made, paper });
@@ -178,7 +184,7 @@ export default function CardsPage() {
         title="Cards to print"
         description={
           response.data
-            ? `For “${response.data.plan.name}” (${response.data.plan.kindText || planKindLabel(response.data.plan.kind)}). Black on white, so a grey copy reads the same. Print at actual size.`
+            ? `For “${response.data.plan.name}”${kindAside(response.data.plan)}. Black on white, so a grey copy reads the same. Print at actual size.`
             : undefined
         }
       />

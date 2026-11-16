@@ -126,7 +126,7 @@ export function walletCard(plan: Readable, person: ReadPerson, made: Date): Wall
   const pad = 9;
   const width = CARD_WIDTH - 2 * pad;
   // Tried at a size, then smaller, until it fits.
-  for (const size of [8, 7.5, 7, 6.5, 6]) {
+  for (const size of [10, 9, 8, 7.5, 7, 6.5, 6]) {
     const front = new Column(pad, pad - 2, width, CARD_HEIGHT - pad);
     front.text("In an emergency", size + 3, { bold: true });
     front.text(person.name || "Name not given", size + 1.5, { bold: true, gap: 2 });

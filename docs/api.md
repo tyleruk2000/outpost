@@ -1068,6 +1068,32 @@ computer's.
 | `POST /api/supplies/import/preview` | Body: `text` (the file, at most 2 MB). Reads it and says what each row is (`ImportPreview`), and which are already in the supplies. Changes nothing. |
 | `POST /api/supplies/import/apply` | Body: `rows`, each `{ action: "add" \| "update" \| "skip", id?, item }`. All or nothing. Answers `ImportResult`. |
 
+## Emergency plans
+
+Types: `packages/shared/src/emergency-plans.ts`; templates and their sources in
+`emergency-templates.ts`. See [emergency-plans.md](emergency-plans.md). A plan's own
+fields are `name`, `kind` (`power-cut`, `flooding`, `comms-failure`, `severe-weather`,
+`shelter-at-home`, `evacuate`, `other`), `kindText`, `templateId`, `emergencyNumber`,
+`reviewEveryDays` (null for never) and `body` (`PlanBody`: `steps`, `people`,
+`contacts`, `places`, `comms`, `days`, `supplies`, `powerPlanId`, `where`, `notes`,
+`links`). Every answer for one plan is `EmergencyPlanResponse`: `plan` and `resolved`,
+what each linked contact, saved place, communication plan, power plan, note and
+document is now, `null` for one deleted since.
+
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/emergency-plans` | Every plan, in short (`EmergencyPlanSummary`): steps, ticks, when started, when reviewed, and how many linked contacts or places are missing. |
+| `POST /api/emergency-plans` | Make a plan (`EmergencyPlanInput`). Ids within each list must differ. At most 200 plans. |
+| `GET /api/emergency-plans/:id` | One plan. Changes nothing. |
+| `PUT /api/emergency-plans/:id` | Replace what the plan says. Ticks are kept, except for steps no longer in it. |
+| `DELETE /api/emergency-plans/:id` | Delete a plan. What it links to is not touched. |
+| `POST /api/emergency-plans/:id/copy` | A copy, named "(copy)", not in use. |
+| `POST /api/emergency-plans/:id/ticks` | Body: `stepId`, `done`. Ticks a step now (keeping the first time it was ticked) or unticks it; starts the plan if it was not started. Does not change `updatedAt`. |
+| `POST /api/emergency-plans/:id/start` | Start using the plan. |
+| `POST /api/emergency-plans/:id/reset` | Clear the ticks and the start. |
+| `POST /api/emergency-plans/:id/reviewed` | Mark it looked over now. |
+| `POST /api/emergency-plans/:id/opened` | Record that it was opened now (sent by the screens when a person opens one). |
+
 ## Everything else
 
 Any other `GET` address without a file extension returns the web app, so that in-app

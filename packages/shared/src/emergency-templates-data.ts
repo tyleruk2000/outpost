@@ -737,7 +737,7 @@ export const PLAN_TEMPLATES_DATA: PlanTemplate[] = [
     },
     prompts: [
       "Who in the household needs power for medical equipment or medicines kept cold, and what will you do for them? No UK government page found says.",
-      "Will you use a generator, and where? No UK official guidance on household generators was found; do not run one indoors without checking the manufacturer's instructions.",
+      "Will you use a generator, and where? No UK official guidance on household generators was found.",
     ],
   },
   {

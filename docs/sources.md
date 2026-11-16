@@ -677,3 +677,28 @@ Outpost uses data that has already been through that step:
 If you already make your own tiles from a Geofabrik extract, you can point Outpost at
 any PMTiles archive that follows the Protomaps basemap schema. See
 [maps.md](maps.md) for regions, credits and using your own map source.
+
+## Emergency plan templates: what is quoted, and on what terms (read 2026-11-16)
+
+The emergency plan templates ([emergency-plans.md](emergency-plans.md)) carry short
+quotations from official pages, each with its publisher, title, address and date, in
+`packages/shared/src/emergency-templates-data.ts`. No page or document is bundled or
+fetched by Outpost; the sources were read by hand once. The terms as the pages state
+them in their footers on 16 November 2026:
+
+- **GOV.UK and Be Ready** (beready.campaign.gov.uk): "All content is available under the
+  Open Government Licence v3.0, except where otherwise stated". The OGL allows copying
+  and adapting with attribution.
+- **Met Office, NHS website**: "© Crown copyright"; no open licence is stated in the
+  footer of the pages read.
+- **Ofcom**: "© Ofcom 2026", with a page of its own on re-use that was not read.
+- **British Red Cross**: "©2026 British Red Cross"; no licence for re-use was found.
+- **Ready.gov and FEMA** (United States): no notice in the footer of the pages read.
+- **European Commission (112), Queensland Government, New Zealand Police**: quoted for
+  the emergency number only.
+
+Each step quotes one sentence or less, names its source beside it, and is there to
+point the household at the source. Whether that use of the Crown copyright, Ofcom and
+Red Cross wording needs permission has not been settled with anyone, and is for the
+maintainer to decide; replacing a quotation with a link alone is a change to the data
+file only.
