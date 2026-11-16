@@ -97,7 +97,14 @@ test.describe("printing the map", () => {
     page.on("request", (request) => asked.push({ method: request.method(), url: request.url() }));
     const file = await makeAndSave(page, dialog);
     expect(asked.filter((request) => request.method !== "GET")).toEqual([]);
-    const paths = asked.filter((request) => !request.url.startsWith("blob:")).map((request) => new URL(request.url).pathname);
+    // Two reads the app makes whatever is on screen are not the making's: the server's state every 15 seconds,
+    // and the storage locations once 30 seconds old. On a busy machine the making takes long enough for them to
+    // fall inside it (seen: /api/storage/locations), so they are left out here, and only they are.
+    const ownReads = new Set(["/api/system", "/api/storage/locations"]);
+    const paths = asked
+      .filter((request) => !request.url.startsWith("blob:"))
+      .map((request) => new URL(request.url).pathname)
+      .filter((path) => !ownReads.has(path));
     expect(paths.length).toBeGreaterThan(0);
     for (const path of paths) expect(path).toMatch(/^\/(api\/maps\/(tiles|terrain)\/|map-assets\/|world\/)/);
 
