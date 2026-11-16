@@ -29,6 +29,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
 import { AppError, conflict } from "../../core/errors.ts";
+import { parseModelServerAddress } from "../answers/address.ts";
 import { planHistory, titleFrom } from "./context.ts";
 import { chatModels, lookForOllama, OLLAMA_DEFAULT_ADDRESSES } from "./models.ts";
 import { replyAsNote } from "./note.ts";
@@ -59,6 +60,10 @@ export async function registerChat(app: FastifyInstance, ctx: AppContext): Promi
   const store = createChatStore(ctx);
   const runner = createRunner(ctx, store);
   let ollamaAddresses: readonly string[] = OLLAMA_DEFAULT_ADDRESSES;
+  if (ctx.config.ollamaAddresses.length > 0) {
+    // Named by whoever started Outpost. One that cannot be read as an address stops the start, with the reason.
+    ollamaAddresses = ctx.config.ollamaAddresses.map((address) => parseModelServerAddress(address).base);
+  }
 
   // A server that stopped in the middle of a reply left it marked as being written.
   const abandoned = store.settleAbandoned();

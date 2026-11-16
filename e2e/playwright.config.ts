@@ -53,6 +53,13 @@ if (work !== inherited) {
   }
 }
 
+// No server under test may reach a real Ollama on this machine. Each is started with a guard that
+// refuses the port Ollama listens on and writes the attempt down (tools/no-ollama.mjs), and is told
+// that "where Ollama listens" is a port nothing uses. A test fails if anything was written (fixtures.ts).
+process.env.OUTPOST_E2E_OLLAMA_ATTEMPTS = path.join(work, "ollama-attempts.txt");
+process.env.OUTPOST_E2E_SERVER_NODE_OPTIONS = `--import=${path.join(import.meta.dirname, "tools/no-ollama.mjs")}`;
+process.env.OUTPOST_OLLAMA_ADDRESSES = "http://127.0.0.1:9/v1";
+
 function server(name: string, port: number, env: Record<string, string>) {
   const dir = path.join(work, name);
   return {
@@ -66,6 +73,7 @@ function server(name: string, port: number, env: Record<string, string>) {
       OUTPOST_DATA_DIR: path.join(dir, "data"),
       OUTPOST_STORAGE_ROOTS: path.join(dir, "storage"),
       OUTPOST_LOG_LEVEL: "warn",
+      NODE_OPTIONS: process.env.OUTPOST_E2E_SERVER_NODE_OPTIONS!,
       ...(fromSource ? { OUTPOST_WEB_DIR: path.join(root, "apps/web/dist") } : {}),
       ...env,
     },

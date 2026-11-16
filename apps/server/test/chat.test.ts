@@ -20,7 +20,7 @@ import { replyAsNote } from "../src/modules/chat/note.ts";
 import { historyBudget, turnBudget } from "../src/modules/chat/run.ts";
 import { replyBlocks } from "../src/modules/chat/store.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
-import { MARKDOWN_REPLY, type StandIn, type StandInOptions, startModelServer } from "./model-server.ts";
+import { isChatPath, MARKDOWN_REPLY, type StandIn, type StandInOptions, startModelServer } from "./model-server.ts";
 
 const cleanups: Array<() => Promise<void> | void> = [];
 afterEach(async () => {
@@ -133,8 +133,7 @@ async function station(
 }
 
 const wordsOf = (blocks: MarkdownBlock[]): string => JSON.stringify(blocks);
-const chatBodies = (model: StandIn) =>
-  model.requests.filter((request) => request.path.endsWith("/chat/completions")).map((request) => request.body);
+const chatBodies = (model: StandIn) => model.requests.filter((request) => isChatPath(request.path)).map((request) => request.body);
 
 // ── What is sent, and what is not ──────────────────────────────────────────
 
@@ -291,8 +290,8 @@ describe("conversations", () => {
     expect(last.messages[0].content).toMatch(/plain conversation: you cannot search the internet, open files or read the person's library/);
     expect(last.messages[1].content).toBe("My stove is a Primus.");
     expect(last.messages[3].content).toBe("How do I light it?");
-    // Only the fields every server documents.
-    expect(Object.keys(last).sort()).toEqual(["max_tokens", "messages", "model", "stream", "temperature"]);
+    // The stand-in answers as Ollama does, so it was asked in Ollama's own way, with only the fields that takes.
+    expect(Object.keys(last).sort()).toEqual(["messages", "model", "options", "shift", "stream", "truncate"]);
   });
 
   it("refuses a message it cannot use, and changes nothing when it refuses", async () => {
@@ -532,6 +531,23 @@ describe("a conversation longer than the model can read", () => {
       /^This turn was too long for the model\. They came to \d+ tokens and the model is set up to read 120 at once\. Shorten your message/,
     );
   });
+
+  it("is refused by Ollama too, which is asked for a context size and told not to cut the turn down", async () => {
+    const { app, model, open, exchange } = await station();
+    // More than the 4,096 tokens that are asked for with the settings a new Outpost has (the stand-in counts four characters to a token).
+    const reply = await exchange(await open(), "kettle ".repeat(2280));
+    expect(reply).toMatchObject({ state: "failed", failure: "context-too-long", text: "" });
+    expect(reply.notice).toMatch(/They came to \d+ tokens and the model is set up to read 4096 at once/);
+    const sent = chatBodies(model).at(-1);
+    expect(sent).toMatchObject({ truncate: false, shift: false, options: { num_ctx: 4096, num_predict: 1024 } });
+    // Nothing was cut down behind Outpost's back.
+    expect(model.truncated()).toBe(0);
+    // A larger context budget in Settings asks for a larger context, and then the same turn is read.
+    await app.api("PATCH", "/api/settings", { "answers.contextChars": 12_000 });
+    const second = await exchange(await open(), "kettle ".repeat(2280));
+    expect(second.state).toBe("complete");
+    expect(chatBodies(model).at(-1).options.num_ctx).toBe(8192);
+  });
 });
 
 // ── Using the library ──────────────────────────────────────────────────────
@@ -770,9 +786,11 @@ describe("the model server", () => {
     await app.api("PATCH", "/api/settings", { "answers.endpoint": `${model.url}/moved/v1` });
     const reply = await exchange(await open(), "Hello");
     expect(reply).toMatchObject({ state: "failed", failure: "unreachable" });
-    expect(model.requests.filter((request) => request.path.endsWith("/chat/completions")).map((request) => request.path)).toEqual([
+    expect(model.requests.filter((request) => isChatPath(request.path)).map((request) => request.path)).toEqual([
       "/moved/v1/chat/completions",
     ]);
+    // Nothing was asked of the place the redirect points at.
+    expect(model.requests.every((request) => request.path.startsWith("/moved/"))).toBe(true);
   });
 
   it("can be looked for at the address Ollama listens on, only when asked, and saves nothing", async () => {
@@ -790,7 +808,7 @@ describe("the model server", () => {
     app.ctx.services.chat.setOllamaAddresses(["http://127.0.0.1:9/v1"]);
     const missing = (await app.api("POST", "/api/chat/look-for-ollama")).body as ChatLookResult;
     expect(missing).toMatchObject({ found: false, address: null, models: [] });
-    expect(missing.message).toMatch(/Nothing answered at 127\.0\.0\.1:11434/);
+    expect(missing.message).toMatch(/Nothing answered at 127\.0\.0\.1:9, which is where Ollama listens/);
   });
 });
 

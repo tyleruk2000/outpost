@@ -45,6 +45,8 @@ export interface RetrievalRequest {
   limit?: number;
   kinds?: string[];
   mode?: "keyword" | "semantic" | "hybrid";
+  /** Only passages of this one item. */
+  within?: { kind: string; entityId: string };
   signal?: AbortSignal;
 }
 
@@ -102,13 +104,20 @@ export interface GenerationRequest {
   history?: Array<{ role: "user" | "assistant"; content: string }>;
   maxTokens?: number;
   temperature?: number;
+  /**
+   * How many tokens the model should be set up to read at once, for a server that can
+   * be asked (Ollama). The prompt and the reply must both fit in it. Other servers have
+   * their context fixed when they start, and ignore this.
+   */
+  contextTokens?: number;
   signal?: AbortSignal;
   /**
    * Called once when the model ends the answer itself, with why it stopped:
    * "stop" (it had finished), "length" (it reached `maxTokens`), or null when the
-   * server did not say. Not called when generation fails or is cancelled.
+   * server did not say; and how many tokens the prompt came to, when the server says.
+   * Not called when generation fails or is cancelled.
    */
-  onFinish?: (info: { finishReason: string | null }) => void;
+  onFinish?: (info: { finishReason: string | null; promptTokens?: number | null }) => void;
 }
 
 /** A locally hosted language model. Implemented for OpenAI-compatible servers in `modules/answers/provider.ts`. */

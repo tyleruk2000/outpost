@@ -271,6 +271,12 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
       return Boolean(provider && index.count(provider.modelId) > 0);
     },
     weight: () => settings.get("search.hybrid.semanticWeight"),
+    async searchPassages({ q, kinds, limit, within, signal }) {
+      const provider = currentProvider();
+      if (!provider) return [];
+      const [vector] = await provider.embed([q], "query", signal);
+      return index.query(provider.modelId, vector!, limit, kinds, within).map((hit) => ({ chunkId: hit.chunkId, similarity: hit.score }));
+    },
     async search({ q, kinds, limit, signal }) {
       const provider = currentProvider();
       if (!provider) return [];

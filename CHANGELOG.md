@@ -310,6 +310,23 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 - A model server must be on this computer or a private network: an address on the public
   internet is refused, by spelling and by looking the name up before each request,
   unless Outpost is started with `OUTPOST_ALLOW_REMOTE_MODEL_SERVER=true`.
+- **Measured with two small real models.** A fixed set of 45 questions over a small
+  test library (`apps/server/test/eval/`), asked through Outpost of `llama3.2:3b` and
+  `llama3.2:1b` on Ollama 0.40.16, with a script that counts right answers, rightly
+  declined questions, made-up answers, citation faults and times. The figures before
+  and after the changes below are in `docs/ai.md`. It is run by hand; the test suites
+  never contact a real model server and fail if a test tries to.
+- **Passages for an answer are chosen one by one**, by words and by meaning together,
+  five at most, where there used to be up to three from each of the best documents and
+  eight in all. A passage that only shares a common word with the question is no
+  longer handed to the model, and a question the library plainly does not cover finds
+  nothing, so the model is not asked.
+- **Ollama is asked for a context size, and not to cut a prompt down.** Left to itself
+  it answered a prompt that was too long from half of it, without saying so. Outpost
+  now uses Ollama's own chat endpoint, asks for a context that holds what the context
+  budget allows, and passes on a refusal as "too long for the model".
+- `OUTPOST_OLLAMA_ADDRESSES` names where "Look for Ollama on this computer" looks, for
+  an Ollama on another port.
 
 #### Chat
 

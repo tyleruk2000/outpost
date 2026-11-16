@@ -390,7 +390,8 @@ export function AnswerArea({
           <p className="min-w-56 flex-1 text-small text-ink-muted">
             <span className="font-mono text-[0.8125rem] [overflow-wrap:anywhere] text-ink">{status.model}</span>, a language model{" "}
             {placeWords(status.place, status.server)}, writes a short answer from passages of your documents, notes and books, and cites
-            them.
+            them. A small model is sometimes wrong, and can say the passages hold no answer when they do: the passages are listed with the
+            answer so that you can check.
             {status.place === "elsewhere" ? " The question and those passages are sent to that address." : ""}
           </p>
         </div>

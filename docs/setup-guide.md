@@ -102,8 +102,8 @@ On a Raspberry Pi, use the terminal window from step 1.
 
 | Model | Download | Memory once loaded | Smallest computer | What to expect |
 | --- | --- | --- | --- | --- |
-| `llama3.2:3b` | 2.0 GB | about 2.3 GB (measured) | 8 GB of memory | Its maker says it is good at following instructions and summarising. In a short trial with Outpost it answered in a sentence and named its sources. |
-| `llama3.2:1b` | 1.3 GB | about 1.5 GB (measured) | 4 GB of memory | Lighter, for a computer with 4 GB of memory. In a short trial with Outpost it copied passages out instead of answering, so expect less of it. |
+| `llama3.2:3b` | 2.0 GB | about 2.3 GB (measured) | 8 GB of memory | Its maker says it is good at following instructions and summarising. Asked 45 test questions through Outpost, it answered about nine in ten of those the test library held, citing the right passage, and declined all of those it did not hold. |
+| `llama3.2:1b` | 1.3 GB | about 1.5 GB (measured) | 4 GB of memory | Lighter, for a computer with 4 GB of memory, and not reliable for answers from your library. Asked the same 45 test questions, it got about one in five of the answerable ones wrong or said the passages held no answer when they did, made up an answer to between a quarter and a half of those the library did not hold, and numbered its sentences as if the numbers were sources. |
 | `gemma3:1b` | 806 MB | about 1.1 GB (estimated) | 4 GB of memory | The smallest here, for when memory is very short; expect short, plain answers and more mistakes. |
 | `phi4-mini` | 2.5 GB | about 2.8 GB (estimated) | 8 GB of memory | About the size of llama3.2:3b; its maker describes it as stronger at reasoning, mathematics and languages other than English. |
 | `gemma3:4b` | 3.4 GB | about 3.7 GB (estimated) | 8 GB of memory | The largest here and the slowest on a small computer; its family is trained on over 140 languages. |

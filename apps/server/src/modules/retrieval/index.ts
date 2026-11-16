@@ -115,26 +115,14 @@ export async function registerRetrieval(app: FastifyInstance, ctx: AppContext): 
 
   const retriever: Retriever = {
     id: "outpost-hybrid",
-    async retrieve({ query, limit = 8, kinds, mode, signal }) {
+    async retrieve({ query, limit = 8, kinds, mode, within, signal }) {
       // Reference articles served by Kiwix are not chunked in Outpost's index, so
       // retrieval covers documents, notes and other locally indexed text.
-      const response = await search.search({
-        q: query,
-        kinds: kinds ?? ["document", "note"],
-        mode,
-        limit: Math.min(limit * 2, 50),
-        signal,
-      });
-      const wanted: Array<{ chunkId: number; score: number; sources: string[] }> = [];
-      for (const result of response.results) {
-        for (const passage of result.passages) {
-          if (passage.chunkId !== null) wanted.push({ chunkId: passage.chunkId, score: result.score, sources: result.sources });
-        }
-      }
-      const records = new Map(search.getChunks(wanted.map((item) => item.chunkId)).map((record) => [record.chunkId, record]));
+      const found = await search.searchPassages({ q: query, kinds: kinds ?? ["document", "note"], mode, limit, within, signal });
+      const records = new Map(search.getChunks(found.hits.map((hit) => hit.chunkId)).map((record) => [record.chunkId, record]));
       const passages: RetrievedPassage[] = [];
-      for (const item of wanted) {
-        const record = records.get(item.chunkId);
+      for (const hit of found.hits) {
+        const record = records.get(hit.chunkId);
         if (!record?.text) continue;
         passages.push({
           chunkId: record.chunkId,
@@ -151,10 +139,11 @@ export async function registerRetrieval(app: FastifyInstance, ctx: AppContext): 
           text: record.text,
           contentHash: record.contentHash,
           indexVersion: record.indexVersion,
-          score: item.score,
-          retrievedBy: item.sources,
+          score: hit.score,
+          retrievedBy: [hit.keywordRank !== null ? "keyword" : null, hit.semanticRank !== null ? "semantic" : null].filter(
+            (layer): layer is string => layer !== null,
+          ),
         });
-        if (passages.length >= limit) break;
       }
       return passages;
     },

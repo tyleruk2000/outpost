@@ -11,8 +11,9 @@
  *    states them (ollama.com/library/<model>/tags) on the day in RECOMMENDED_MODELS_CHECKED;
  *  - what it is good at only as far as the publisher's page says, as far as its size
  *    implies, or as far as it was seen to do when tried. Nothing here is a benchmark.
- *    The two llama3.2 models were each asked a few questions through Outpost on
- *    2026-11-16 (docs/ai.md, "Tried with a real model"); the others have not been run.
+ *    The two llama3.2 models were each asked a fixed set of 45 questions over a small
+ *    test library through Outpost on 2026-11-16 (docs/ai.md, "Measured with a real
+ *    model"); what is said of them here is what that counted. The others have not been run.
  *
  * Memory: `memoryGb` is what Ollama reported holding for the model once loaded (its
  * `/api/ps`, which is what `ollama ps` shows) with its default 4,096-token context,
@@ -57,7 +58,7 @@ export const RECOMMENDED_MODELS: readonly RecommendedModel[] = [
     memoryMeasured: true,
     fits: "8 GB",
     suits:
-      "Its maker says it is good at following instructions and summarising. In a short trial with Outpost it answered in a sentence and named its sources.",
+      "Its maker says it is good at following instructions and summarising. Asked 45 test questions through Outpost, it answered about nine in ten of those the test library held, citing the right passage, and declined all of those it did not hold.",
     start: true,
     page: "https://ollama.com/library/llama3.2",
   },
@@ -68,7 +69,7 @@ export const RECOMMENDED_MODELS: readonly RecommendedModel[] = [
     memoryMeasured: true,
     fits: "4 GB",
     suits:
-      "Lighter, for a computer with 4 GB of memory. In a short trial with Outpost it copied passages out instead of answering, so expect less of it.",
+      "Lighter, for a computer with 4 GB of memory, and not reliable for answers from your library. Asked the same 45 test questions, it got about one in five of the answerable ones wrong or said the passages held no answer when they did, made up an answer to between a quarter and a half of those the library did not hold, and numbered its sentences as if the numbers were sources.",
     start: false,
     page: "https://ollama.com/library/llama3.2",
   },

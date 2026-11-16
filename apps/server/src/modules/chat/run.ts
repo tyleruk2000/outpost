@@ -18,7 +18,8 @@
 import type { AnswerFailure, AnswerSource, ChatMessage, ChatPhase, ChatStreamEvent, MarkdownBlock } from "@outpost/shared";
 import type { AppContext } from "../../core/context.ts";
 import { AppError } from "../../core/errors.ts";
-import { namesNoSubject, subjectOf } from "../answers/index.ts";
+import { contextTokensFor } from "../answers/fit.ts";
+import { ANSWER_PASSAGES, namesNoSubject, subjectOf } from "../answers/index.ts";
 import { type ChatModelProvider, ModelServerError, withoutThinking } from "../answers/provider.ts";
 import { isSafetyCritical } from "../retrieval/index.ts";
 import { buildAnswerPrompt } from "../retrieval/prompt.ts";
@@ -27,7 +28,7 @@ import { PLAIN_SYSTEM, planHistory, type Turn } from "./context.ts";
 import { type ChatStore, replyBlocks, toMessage } from "./store.ts";
 
 /** Most passages handed to the model for one question, as for an answer. */
-export const CHAT_PASSAGES = 8;
+export const CHAT_PASSAGES = ANSWER_PASSAGES;
 /** The longest reply asked for, in tokens (about 750 words). A model that reaches it is reported as cut short. */
 export const CHAT_MAX_TOKENS = 1024;
 /** The longest reply accepted, in characters, whatever the server does with the limit above. */
@@ -148,9 +149,9 @@ export function createRunner(ctx: AppContext, store: ChatStore) {
     if (request.scope) {
       const whole = passagesOfItem(request.scope.kind, request.scope.entityId);
       const wanted = new Set(whole.map((passage) => passage.chunkId));
-      const matching = (await retrieval.retriever.retrieve({ query: searchedFor, limit: 30, kinds: [request.scope.kind], signal })).filter(
-        (passage) => wanted.has(passage.chunkId),
-      );
+      const matching = (
+        await retrieval.retriever.retrieve({ query: searchedFor, limit: 30, kinds: [request.scope.kind], within: request.scope, signal })
+      ).filter((passage) => wanted.has(passage.chunkId));
       const seen = new Set(matching.map((passage) => passage.chunkId));
       passages = [...matching, ...whole.filter((passage) => !seen.has(passage.chunkId))];
     } else {
@@ -306,6 +307,8 @@ export function createRunner(ctx: AppContext, store: ChatStore) {
         history: planned.sent.map(({ role, text: content }) => ({ role, content })),
         temperature: settings.get("answers.temperature"),
         maxTokens: CHAT_MAX_TOKENS,
+        // The same size an answer asks for, so that Ollama does not load the model afresh between the two.
+        contextTokens: contextTokensFor(settings.get("answers.contextChars"), CHAT_MAX_TOKENS),
         signal: controller.signal,
         onFinish: (info) => {
           finishReason = info.finishReason;

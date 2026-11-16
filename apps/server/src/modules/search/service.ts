@@ -91,6 +91,67 @@ export interface SearchResponse {
   tookMs: number;
 }
 
+/** One passage found for a question, with how it was found. See `searchPassages`. */
+export interface PassageHit {
+  chunkId: number;
+  /** Place among the passages found by their words, best first from 1. Null when the words did not find it. */
+  keywordRank: number | null;
+  /** Place among the passages found by meaning. Null when meaning did not find it, or is not in use. */
+  semanticRank: number | null;
+  /** Cosine similarity to the question, when it was found by meaning. */
+  similarity: number | null;
+  /**
+   * The share of the question's words this passage holds, each word counted by how rare
+   * it is in the library, 0 to 1. Null when the passage was found by meaning alone.
+   */
+  coverage: number | null;
+  /** 0–1, relative to the best passage of this search. */
+  score: number;
+}
+
+export interface PassageSearchParams {
+  q: string;
+  kinds?: string[];
+  mode?: "keyword" | "semantic" | "hybrid";
+  /** Most passages to return. */
+  limit?: number;
+  /** Only passages of this one item. */
+  within?: { kind: string; entityId: string };
+  /** Most passages taken from any one item. No limit unless given, and none when `within` is. */
+  perItem?: number;
+  signal?: AbortSignal;
+}
+
+export interface PassageSearchResponse {
+  mode: "keyword" | "semantic" | "hybrid";
+  /** True when no passage held every word and the search fell back to passages holding enough of them. */
+  relaxed: boolean;
+  hits: PassageHit[];
+}
+
+/**
+ * When no passage holds every word of a question, a passage is kept only if it holds at
+ * least this share of the words, each weighed by how rare it is in the library. A
+ * passage that shares one common word with the question ("code", "water") is not about
+ * the question, and a model handed it will often answer from it all the same.
+ */
+export const RELAXED_COVERAGE = 0.5;
+
+/**
+ * A passage found by meaning alone is kept only when it is at least this similar to the
+ * question. The model that comes with Outpost scores unrelated text at about 0.1 to 0.3
+ * and a passage on the subject at 0.4 and more, with exceptions both ways; this cuts the
+ * clearly unrelated and no more.
+ */
+export const SIMILARITY_FLOOR = 0.3;
+
+/**
+ * A passage found by meaning alone is also dropped when it is this much less similar to
+ * the question than the nearest passage is: when one passage is clearly the one, the
+ * also-rans are left out, and a small model reads less that is beside the point.
+ */
+export const SIMILARITY_WINDOW = 0.2;
+
 export interface SearchSource {
   id: string;
   /**
@@ -105,6 +166,17 @@ export interface SearchSource {
   isAvailable(): boolean;
   weight(): number;
   search(params: { q: string; kinds?: string[]; limit: number; signal?: AbortSignal }): Promise<SearchResult[]>;
+  /**
+   * For a semantic source: the passages nearest the question, best first, each with its
+   * similarity. Used where passages matter and not the items they belong to.
+   */
+  searchPassages?(params: {
+    q: string;
+    kinds?: string[];
+    limit: number;
+    within?: { kind: string; entityId: string };
+    signal?: AbortSignal;
+  }): Promise<Array<{ chunkId: number; similarity: number }>>;
   /**
    * For a source made of collections that answer at different times: the same search,
    * handing over each collection's results as soon as that collection has answered.
@@ -216,6 +288,13 @@ export interface SearchService {
   upsert(entity: IndexEntity): { chunks: number; changed: boolean };
   remove(kind: string, entityId: string): void;
   search(params: SearchParams): Promise<SearchResponse>;
+  /**
+   * The passages that best match a question, whichever items they belong to. `search`
+   * ranks items and shows a few passages of each; this ranks the passages themselves,
+   * which is what a language model is given. Words and meaning are fused passage by
+   * passage, so a passage both found ranks above one only either found.
+   */
+  searchPassages(params: PassageSearchParams): Promise<PassageSearchResponse>;
   /**
    * Searches reference collections on their own, a collection at a time. This is the
    * second part of a search asked with `reference: "later"`.
@@ -458,7 +537,166 @@ export function createSearchService(ctx: AppContext): SearchService {
     return { results: results.map(({ best: _best, ...result }) => result), relaxed, facets };
   }
 
+  /** The passages whose words match, best first, with the share of the question's words each holds. */
+  function keywordPassages(
+    params: PassageSearchParams,
+    pool: number,
+    /** With this many passages holding every word, no others are looked for. */
+    enough: number,
+  ): { rows: Array<{ chunkId: number; entityRowId: number; contentHash: string; coverage: number }>; relaxed: boolean } {
+    const parsed = parseQuery(params.q);
+    const all = toFtsQuery(parsed, "all");
+    if (!all) return { rows: [], relaxed: false };
+    const kinds = params.kinds?.length ? params.kinds : undefined;
+    const filters = [
+      kinds ? `AND e.kind IN (${kinds.map(() => "?").join(",")})` : "",
+      params.within ? "AND e.kind = ? AND e.entity_id = ?" : "",
+    ].join(" ");
+    const bound = [...(kinds ?? []), ...(params.within ? [params.within.kind, params.within.entityId] : [])];
+    const statement = sqlite.prepare(
+      `SELECT c.id AS chunkId, c.entity_row_id AS entityRowId, c.content_hash AS contentHash
+       FROM chunks_fts
+       JOIN chunks c ON c.id = chunks_fts.rowid
+       JOIN search_entities e ON e.id = c.entity_row_id
+       WHERE chunks_fts MATCH ? AND c.text <> '' ${filters}
+       ORDER BY bm25(chunks_fts, 8.0, 3.0, 1.0, 4.0)
+       LIMIT ?`,
+    );
+    type Row = { chunkId: number; entityRowId: number; contentHash: string };
+    const strict = (statement.all(all, ...bound, pool) as Row[]).map((row) => ({ ...row, coverage: 1 }));
+    if (strict.length >= enough || parsed.required.length < 2) return { rows: strict, relaxed: false };
+
+    // Too few passages hold every word. Passages holding any of them are candidates, and each is
+    // weighed: which of the words does it hold, and how much do those words say?
+    const taken = new Set(strict.map((row) => row.chunkId));
+    const candidates = (statement.all(toFtsQuery(parsed, "any")!, ...bound, pool) as Row[]).filter((row) => !taken.has(row.chunkId));
+    if (candidates.length === 0) return { rows: strict, relaxed: false };
+    const total = (sqlite.prepare("SELECT count(*) AS n FROM chunks_fts").get() as { n: number }).n;
+    const ids = candidates.map((row) => row.chunkId);
+    const held = new Map<number, number>(ids.map((id) => [id, 0]));
+    let whole = 0;
+    parsed.required.forEach((term, index) => {
+      const single = toFtsQuery({
+        required: [term],
+        excluded: [],
+        prefixLast: parsed.prefixLast && index === parsed.required.length - 1,
+      })!;
+      const containing = (sqlite.prepare("SELECT count(*) AS n FROM chunks_fts WHERE chunks_fts MATCH ?").get(single) as { n: number }).n;
+      // The index's own measure of how much a word says: a word in few passages says a lot. A word the
+      // library does not hold at all counts as one found in a single passage: as much as a word can say,
+      // though no passage can earn it. (Counted by the formula alone it would outweigh everything in a
+      // library of a few pages, and a question with one unknown word in it would find nothing.)
+      const weight = Math.max(0.05, Math.log((total - Math.max(containing, 1) + 0.5) / (Math.max(containing, 1) + 0.5)));
+      whole += weight;
+      if (containing === 0) return;
+      const with_ = sqlite
+        .prepare(`SELECT rowid AS id FROM chunks_fts WHERE chunks_fts MATCH ? AND rowid IN (${ids.map(() => "?").join(",")})`)
+        .all(single, ...ids) as Array<{ id: number }>;
+      for (const { id } of with_) held.set(id, (held.get(id) ?? 0) + weight);
+    });
+    const partial = candidates
+      .map((row) => ({ ...row, coverage: whole > 0 ? (held.get(row.chunkId) ?? 0) / whole : 0 }))
+      .filter((row) => row.coverage >= RELAXED_COVERAGE);
+    // Those that hold every word first, in the index's order; then the others, in theirs.
+    return { rows: [...strict, ...partial], relaxed: strict.length === 0 && partial.length > 0 };
+  }
+
+  async function searchPassages(params: PassageSearchParams): Promise<PassageSearchResponse> {
+    const limit = Math.min(Math.max(params.limit ?? 8, 1), 100);
+    const q = params.q.trim();
+    const semantic = sources.find((source) => source.layer === "semantic" && source.searchPassages && source.isAvailable());
+    let mode = params.mode ?? (semantic ? "hybrid" : "keyword");
+    if (mode !== "keyword" && !semantic) mode = "keyword";
+    if (!q) return { mode, relaxed: false, hits: [] };
+    // More than is wanted is fetched from each side: fusion, the limit on passages from one item and
+    // the removal of repeated text all take some away.
+    const pool = Math.max(limit * 4, 24);
+
+    // Passages holding every word are topped up, to `limit`, with ones that hold most of them.
+    const keyword = mode === "semantic" ? { rows: [], relaxed: false } : keywordPassages({ ...params, q }, pool, limit);
+    const byWords = new Set(keyword.rows.map((row) => row.chunkId));
+    const strict = keyword.rows.filter((row) => row.coverage === 1);
+    const partial = keyword.rows.filter((row) => row.coverage < 1);
+    const nearest =
+      mode === "keyword" || !semantic
+        ? []
+        : await semantic.searchPassages!({ q, kinds: params.kinds, limit: pool, within: params.within, signal: params.signal });
+    const closest = nearest[0]?.similarity ?? 0;
+    // A passage found by meaning alone must be on the subject, and not far behind the nearest one.
+    const near = nearest.filter(
+      (hit) => byWords.has(hit.chunkId) || (hit.similarity >= SIMILARITY_FLOOR && hit.similarity >= closest - SIMILARITY_WINDOW),
+    );
+
+    const coverage = new Map(keyword.rows.map((row) => [row.chunkId, row.coverage]));
+    const similarity = new Map(near.map((hit) => [hit.chunkId, hit.similarity]));
+    // Fused passage by passage: those holding every word, and those near in meaning. A passage holding
+    // only some of the words is weak evidence, so it does not count as found by words here; it stays in
+    // only if meaning found it too, and such passages are otherwise used when there is nothing better.
+    const useMeaning = mode !== "keyword" && Boolean(semantic);
+    let fused = reciprocalRankFusion(
+      [
+        {
+          weight: ctx.services.settings.get("search.hybrid.keywordWeight"),
+          items: (useMeaning ? strict : keyword.rows).map((row) => row.chunkId),
+        },
+        { weight: useMeaning ? semantic!.weight() : 0, items: near.map((hit) => hit.chunkId) },
+      ],
+      (chunkId) => String(chunkId),
+      ctx.services.settings.get("search.hybrid.rrfK"),
+    );
+    if (useMeaning && fused.length === 0 && partial.length > 0) {
+      fused = reciprocalRankFusion(
+        [
+          { weight: 1, items: partial.map((row) => row.chunkId) },
+          { weight: 0, items: [] },
+        ],
+        String,
+      );
+    }
+
+    // Which item each passage belongs to, and the fingerprint of its text.
+    const owner = new Map<number, { entityRowId: number; contentHash: string }>();
+    const ids = fused.map((entry) => entry.item);
+    if (ids.length > 0) {
+      const rows = sqlite
+        .prepare(
+          `SELECT id AS chunkId, entity_row_id AS entityRowId, content_hash AS contentHash FROM chunks WHERE id IN (${ids.map(() => "?").join(",")})`,
+        )
+        .all(...ids) as Array<{ chunkId: number; entityRowId: number; contentHash: string }>;
+      for (const row of rows) owner.set(row.chunkId, row);
+    }
+
+    const perItem = params.within || !params.perItem ? Number.POSITIVE_INFINITY : Math.max(1, params.perItem);
+    const fromItem = new Map<number, number>();
+    const seenText = new Set<string>();
+    const top = fused[0]?.score ?? 1;
+    const hits: PassageHit[] = [];
+    for (const entry of fused) {
+      if (hits.length >= limit) break;
+      const row = owner.get(entry.item);
+      if (!row) continue;
+      // The same text twice (a file kept in two places) tells a model nothing the first copy did not.
+      if (row.contentHash && seenText.has(row.contentHash)) continue;
+      const taken = fromItem.get(row.entityRowId) ?? 0;
+      if (taken >= perItem) continue;
+      fromItem.set(row.entityRowId, taken + 1);
+      if (row.contentHash) seenText.add(row.contentHash);
+      const [keywordRank, semanticRank] = entry.ranks as [number | null, number | null];
+      hits.push({
+        chunkId: entry.item,
+        keywordRank,
+        semanticRank,
+        similarity: similarity.get(entry.item) ?? null,
+        coverage: coverage.get(entry.item) ?? null,
+        score: top > 0 ? entry.score / top : 0,
+      });
+    }
+    return { mode, relaxed: keyword.relaxed, hits };
+  }
+
   const service: SearchService = {
+    searchPassages,
+
     upsert(entity) {
       const { rowId, ...outcome } = upsert(entity);
       if (outcome.changed) for (const listener of chunkListeners) listener(rowId);
