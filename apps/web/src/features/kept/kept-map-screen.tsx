@@ -226,6 +226,7 @@ export default function KeptMapScreen() {
                 <span className="tabular block text-small text-ink-muted">
                   Detailed to zoom {area.maxZoom}
                   {area.complete ? "" : ", not finished"}
+                  {area.mixed ? ", some of it newer than the rest" : ""}
                 </span>
               </span>
             </button>

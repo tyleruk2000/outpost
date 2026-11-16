@@ -127,6 +127,34 @@ describe("the address book for phones", () => {
     expect(book.body).not.toContain("sync-collection");
   });
 
+  it("still lists and exports the whole address book when one contact has a label named like something every object has", async () => {
+    await create({ ...named("Sam", "Whitlock") });
+    const maya = await create({
+      ...named("Maya", "Okafor"),
+      phones: [{ value: "07700 900123", label: "constructor" }],
+      emails: [{ value: "maya@example.org", label: "__proto__" }],
+      addresses: [{ label: "constructor", street: "1 Shore Road", locality: "Portree", region: "", postcode: "", country: "" }],
+    });
+    await turnOn();
+
+    const listing = await dav("PROPFIND", BOOK, { body: propfind("<d:getetag/>"), depth: "1" });
+    expect(listing.status).toBe(207);
+    expect([...listing.body.matchAll(/\.vcf<\/D:href>/g)]).toHaveLength(2);
+    const card = await dav("GET", `${BOOK}${maya.id}.vcf`);
+    expect(card.status).toBe(200);
+    expect(card.body).toContain("X-ABLabel:constructor");
+    expect(card.body).toContain("X-ABLabel:__proto__");
+    const exported = await app.app.inject({ method: "GET", url: "/api/contacts/export.vcf", headers: { host: "localhost" } });
+    expect(exported.statusCode).toBe(200);
+    expect(exported.body.match(/BEGIN:VCARD/g)).toHaveLength(2);
+
+    // A property asked for in a namespace of that name is answered as not found, in well-formed XML.
+    const odd = await dav("PROPFIND", BOOK, { body: propfind('<x:colour xmlns:x="constructor"/>'), depth: "0" });
+    expect(odd.status).toBe(207);
+    expect(odd.body).toContain('<x:colour xmlns:x="constructor"/>');
+    expect(odd.body).not.toContain("native code");
+  });
+
   it("lists the cards with fingerprints that change when a card does, and at no other time", async () => {
     const maya = await create({ ...named("Maya", "Okafor"), phones: [{ value: "07700 900123", label: "mobile" }] });
     const sam = await create(named("Sam", "Whitlock"));

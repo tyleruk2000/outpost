@@ -162,7 +162,7 @@ function wordsOf(node: Nodes): string {
   if (node.type === "text") return node.value;
   if (!isElement(node)) return "children" in node ? node.children.map(wordsOf).join("") : "";
   if (node.tagName === "br") return "\n";
-  if (node.tagName in DROPPED) return "";
+  if (Object.hasOwn(DROPPED, node.tagName)) return "";
   if (node.tagName === "img") return attribute(node, "alt") ?? "";
   return node.children.map(wordsOf).join("");
 }
@@ -218,7 +218,7 @@ function inline(node: Nodes, context: Context): MarkdownInline[] {
   if (node.type === "text") return text(collapse(node.value));
   if (!isElement(node)) return [];
   const tag = node.tagName;
-  if (tag in DROPPED) {
+  if (Object.hasOwn(DROPPED, tag)) {
     const what = DROPPED[tag];
     if (what) context.leftOut.add(what);
     return [];

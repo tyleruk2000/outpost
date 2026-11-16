@@ -318,6 +318,9 @@ describe("choosing which GeoNames features to keep", () => {
     expect(kindLabelOf("P", "PPL", 900)).toBe("Village");
     expect(kindLabelOf("P", "PPL", 0)).toBe("Place");
     expect(kindLabelOf("T", "MT", 0)).toBe("Mountain");
+    // Codes a damaged file could hold are not looked up in what every object inherits.
+    expect(kindLabelOf("T", "constructor", 0)).toBe("Landform");
+    expect(kindLabelOf("constructor", null, 0)).toBe("Place");
     expect(kindLabelOf("H", "LK", 0)).toBe("Lake");
     expect(kindLabelOf("S", "HUT", 0)).toBe("Hut");
     expect(kindLabelOf("T", "XYZ", 0)).toBe("Landform");
@@ -629,5 +632,11 @@ describe("searching places", () => {
     expect((await search("geo:47.3667,8.55")).coordinate).toMatchObject({ lat: 47.3667, lon: 8.55, format: "geo" });
     // A name is still a name.
     expect((await search("Wales")).coordinate).toBeNull();
+    // A postcode is not a locator: nothing is offered as a position, and its words go to the name search.
+    expect(await search("CB1 2AB")).toEqual({ query: "CB1 2AB", coordinate: null, places: [] });
+    expect((await search("SW1A 1AA")).coordinate).toBeNull();
+    // Written with no space it has the shape of one, so the locator is offered and names are looked for as well.
+    expect((await search("CB12AB")).coordinate).toMatchObject({ format: "maidenhead", locator: "CB12AB" });
+    expect((await search("IO83 QM")).coordinate).toMatchObject({ format: "maidenhead", locator: "IO83QM" });
   });
 });

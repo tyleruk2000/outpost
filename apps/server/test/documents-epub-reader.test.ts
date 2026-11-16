@@ -719,6 +719,10 @@ describe("the pieces", () => {
     const lookups = { link: () => null, picture: () => null };
     const blocks = (body: string): MarkdownBlock[] => chapterBlocks(`<html><body>${body}</body></html>`, lookups).blocks;
     const text = (v: string) => ({ t: "text", v });
+    // An element of no kind HTML knows is read for its words, whatever it is called.
+    expect(blocks("<p>The <constructor>builder</constructor> runs first.</p>")).toEqual([
+      { t: "paragraph", c: [text("The builder runs first.")] },
+    ]);
     expect(blocks("<p>He said <q>go</q>, <del>stay</del>, <code>x = 1</code>, 10<sup>3</sup>.</p>")).toEqual([
       {
         t: "paragraph",

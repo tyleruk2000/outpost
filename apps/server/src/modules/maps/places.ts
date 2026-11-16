@@ -19,7 +19,7 @@
  *   V  forests
  */
 import type { PlaceDto, PlaceSearchResponse, PlacesDataset } from "@outpost/shared";
-import { haversineMeters, parseCoordinateReadings } from "@outpost/shared";
+import { haversineMeters, ownValue, parseCoordinateReadings } from "@outpost/shared";
 import { sql } from "drizzle-orm";
 import yauzl from "yauzl";
 import { z } from "zod";
@@ -229,14 +229,15 @@ const LABELS: Record<string, string> = {
 const CLASS_LABELS: Record<string, string> = { P: "Place", T: "Landform", H: "Water", L: "Area", S: "Landmark", A: "Region", V: "Forest" };
 
 export function kindLabelOf(featureClass: string | null, featureCode: string | null, population: number): string {
-  if (featureCode && LABELS[featureCode]) return LABELS[featureCode]!;
+  const named = featureCode ? ownValue(LABELS, featureCode) : undefined;
+  if (named) return named;
   if (featureClass === "P") {
     if (population >= 100_000) return "City";
     if (population >= 10_000) return "Town";
     if (population > 0) return "Village";
     return "Place";
   }
-  return (featureClass && CLASS_LABELS[featureClass]) || "Place";
+  return (featureClass && ownValue(CLASS_LABELS, featureClass)) || "Place";
 }
 
 export const datasetSchema = z
@@ -531,10 +532,17 @@ export function createPlacesService(ctx: AppContext, options: { baseUrl?: string
   function search(query: string, searchOptions: { limit?: number; near?: { lat: number; lon: number } } = {}): PlaceSearchResponse {
     const text = query.trim().slice(0, 200);
     // Nearly always one reading or none; a few four-character texts are both a grid reference and a locator.
-    const [coordinate, ...otherReadings] = parseCoordinateReadings(text);
-    if (coordinate) return { query: text, coordinate, ...(otherReadings.length > 0 ? { otherReadings } : {}), places: [] };
+    const [reading, ...otherReadings] = parseCoordinateReadings(text);
+    // Coordinates and grid references are never the name of a place. A locator can be:
+    // six characters such as "CB12AB" are also a postcode written without its space, and
+    // four such as "IO83" could begin a name. So a locator is offered, and names are
+    // looked for as well.
+    if (reading && reading.format !== "maidenhead") {
+      return { query: text, coordinate: reading, ...(otherReadings.length > 0 ? { otherReadings } : {}), places: [] };
+    }
+    const coordinate = reading ?? null;
     const tokens = searchTokens(text).map(fold).filter(Boolean);
-    if (tokens.length === 0) return { query: text, coordinate: null, places: [] };
+    if (tokens.length === 0) return { query: text, coordinate, places: [] };
 
     const limit = Math.min(50, Math.max(1, searchOptions.limit ?? 10));
     // Every word must be there; the last may still be being typed, so all match as prefixes.
@@ -564,7 +572,7 @@ export function createPlacesService(ctx: AppContext, options: { baseUrl?: string
       results.push(toDto(row));
       if (results.length === limit) break;
     }
-    return { query: text, coordinate: null, places: results };
+    return { query: text, coordinate, places: results };
   }
 
   function datasetsOf(): PlacesDataset[] {

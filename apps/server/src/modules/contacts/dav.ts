@@ -32,6 +32,7 @@
  * It has been tested with a CardDAV client library (see test/contacts-dav.test.ts),
  * not with a phone.
  */
+import { ownValue } from "@outpost/shared";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { AppContext } from "../../core/context.ts";
 import { sha256Hex } from "../../core/ids.ts";
@@ -131,7 +132,7 @@ const key = (name: PropName) => `${name.ns}|${name.local}`;
 const prop = (ns: string, local: string, value: string): [string, string] => [`${ns}|${local}`, value];
 
 function element(name: PropName, inner: string | null): string {
-  const prefix = PREFIX[name.ns];
+  const prefix = ownValue(PREFIX, name.ns);
   // A name is only ever echoed from a request the XML reader accepted, so it is a legal name.
   const open = prefix ? `${prefix}:${name.local}` : `x:${name.local} xmlns:x="${escapeXml(name.ns)}"`;
   const close = prefix ? `${prefix}:${name.local}` : `x:${name.local}`;

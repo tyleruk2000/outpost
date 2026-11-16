@@ -75,6 +75,11 @@ function KeptRow({ item, outOfReach, onRemove }: { item: KeptItem; outOfReach: b
                 <CircleAlert aria-hidden /> The server's maps have changed since
               </Badge>
             ) : null}
+            {item.kind === "area" && item.mixed && work?.state !== "running" ? (
+              <Badge tone="warning">
+                <CircleAlert aria-hidden /> Fetching it again stopped part of the way: the area is whole, with some tiles newer than others
+              </Badge>
+            ) : null}
             {unfinished && work?.state !== "running" ? (
               <Badge tone="warning">
                 <CircleAlert aria-hidden /> Not finished: {formatNumber(item.done)} of {formatNumber(item.positions)} tiles looked at
@@ -99,7 +104,7 @@ function KeptRow({ item, outOfReach, onRemove }: { item: KeptItem; outOfReach: b
                 <Button size="sm" onClick={() => void continueArea(item.id).catch((error) => toast.error(errorMessage(error)))}>
                   Carry on
                 </Button>
-              ) : item.stale ? (
+              ) : item.stale || item.mixed ? (
                 <Button size="sm" onClick={() => void continueArea(item.id, true).catch((error) => toast.error(errorMessage(error)))}>
                   Fetch again
                 </Button>

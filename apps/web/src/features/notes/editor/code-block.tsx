@@ -1,4 +1,5 @@
 /** Code blocks, highlighted with lowlight's common languages, with a language picker on the block. */
+import { ownValue } from "@outpost/shared";
 import { CodeBlockLowlight } from "@tiptap/extension-code-block-lowlight";
 import { NodeViewContent, NodeViewWrapper, type ReactNodeViewProps, ReactNodeViewRenderer } from "@tiptap/react";
 import { common, createLowlight } from "lowlight";
@@ -73,7 +74,7 @@ function CodeBlockView({ node, editor, updateAttributes }: ReactNodeViewProps) {
         </select>
       ) : language ? (
         <span className="note-code-language" contentEditable={false}>
-          {NAMES[language] ?? language}
+          {ownValue(NAMES, language) ?? language}
         </span>
       ) : null}
       <pre>

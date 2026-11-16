@@ -109,6 +109,11 @@ export interface CleanupPlan {
     places: number;
     routes: number;
     contacts: number;
+    /** Chat conversations, each with its messages. */
+    conversations: number;
+    /** Repeaters in imported lists and ones the person added, and how many lists hold them. */
+    repeaters: number;
+    repeaterLists: number;
     settings: number;
     vectors: number;
     /** Copies of the database and attachments that a restore set aside. */
@@ -142,7 +147,17 @@ export interface CleanupResult extends Record<string, unknown> {
   /** For "derived": what each step did. */
   steps?: Array<{ step: DerivedStep; message: string }>;
   /** For "everything": the rest of what went. */
-  personal?: { pages: number; attachments: number; places: number; routes: number; contacts: number; settings: number };
+  personal?: {
+    pages: number;
+    attachments: number;
+    places: number;
+    routes: number;
+    contacts: number;
+    conversations: number;
+    repeaters: number;
+    repeaterLists: number;
+    settings: number;
+  };
 }
 
 export interface ManageMoveResponse {

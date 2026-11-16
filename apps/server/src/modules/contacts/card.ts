@@ -16,7 +16,14 @@
  */
 
 import { randomUUID } from "node:crypto";
-import { type ContactAddress, type ContactFields, contactDisplayName, emptyContactFields, type PickedContact } from "@outpost/shared";
+import {
+  type ContactAddress,
+  type ContactFields,
+  contactDisplayName,
+  emptyContactFields,
+  ownValue,
+  type PickedContact,
+} from "@outpost/shared";
 import { fold } from "./compare.ts";
 import {
   escapeText,
@@ -53,7 +60,7 @@ function readLabel(raw: string): string {
   const builtIn = /^_\$!<(.+)>!\$_$/.exec(text);
   if (!builtIn) return text;
   const word = builtIn[1]!.toLowerCase();
-  return APPLE_LABELS[word] ?? word;
+  return ownValue(APPLE_LABELS, word) ?? word;
 }
 
 /** The TYPE values of a property, upper case, without the ones that say nothing about what the number is for. */
@@ -103,7 +110,7 @@ function labelFrom(property: VcardProperty, groupLabel: string | undefined, tabl
   if (groupLabel !== undefined && groupLabel !== "") return groupLabel;
   const types = typesOf(property);
   if (types.length === 0) return "";
-  return table[types.join("+")] ?? types.map((type) => type.toLowerCase()).join(" ");
+  return ownValue(table, types.join("+")) ?? types.map((type) => type.toLowerCase()).join(" ");
 }
 
 // ── Reading ─────────────────────────────────────────────────────────────────
@@ -342,7 +349,8 @@ export function cardLines(contact: CardContact & { updatedAt: number }, version:
     if (used) group = Math.max(group, Number(used[1]));
   }
   const labelled = (property: string, value: string, label: string, table: Record<string, string[]>, always: string[] = []) => {
-    const types = table[label.trim().toLowerCase()];
+    // A label is whatever a person typed or a file said: "constructor" is a label like any other.
+    const types = ownValue(table, label.trim().toLowerCase());
     if (types || !label.trim()) {
       const all = [...always, ...(types ?? [])].map((type) => (version === "4.0" ? type.toLowerCase() : type));
       lines.push(`${property}${all.length > 0 ? `;TYPE=${all.join(",")}` : ""}:${value}`);
@@ -423,7 +431,7 @@ export function otherFieldsOf(extra: string[]): string[] {
     if (!property || NOT_SHOWN.has(property.name)) continue;
     const value = unescapeText(property.value).replace(/\s+/g, " ").trim();
     if (!value) continue;
-    const name = OTHER_NAMES[property.name] ?? property.written;
+    const name = ownValue(OTHER_NAMES, property.name) ?? property.written;
     shown.push(`${name}: ${value.length > 200 ? `${value.slice(0, 200)}…` : value}`);
   }
   return shown;

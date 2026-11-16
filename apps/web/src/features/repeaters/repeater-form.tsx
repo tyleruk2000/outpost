@@ -1,7 +1,9 @@
 /** Adding a repeater by hand, or changing one. Frequencies are typed in megahertz, a position as coordinates or a locator. */
 import {
+  type CoordinateFormat,
   formatDecimal,
   formatMHz,
+  type ParsedCoordinate,
   parseCoordinateReadings,
   REPEATER_MODES,
   REPEATER_STATUS_NAMES,
@@ -16,7 +18,7 @@ import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input, Textarea } from "@/components/ui/input";
-import { Checkbox, Select } from "@/components/ui/misc";
+import { Checkbox, Segmented, Select } from "@/components/ui/misc";
 import { type RepeaterInput, useSaveRepeater } from "./data";
 import { isApproximate } from "./words";
 
@@ -35,10 +37,25 @@ interface Draft {
   region: string;
   country: string;
   position: string;
+  /** Which reading of the position is meant, where what was typed has more than one. */
+  positionReading: string;
   antenna: string;
   keeper: string;
   status: RepeaterStatus;
   notes: string;
+}
+
+/** What a reading is called where the person chooses between two. */
+const READING_NAMES: Partial<Record<CoordinateFormat, string>> = { osgb: "British grid reference", maidenhead: "Maidenhead locator" };
+
+/** The ways the position typed can be read. One, nearly always: "NO14" is a grid square in Fife and a locator in Siberia. */
+export function positionReadings(position: string): Array<{ id: string; name: string; where: string; reading: ParsedCoordinate }> {
+  return parseCoordinateReadings(position.trim()).map((reading) => ({
+    id: reading.format,
+    name: READING_NAMES[reading.format] ?? "Coordinates",
+    where: formatDecimal(reading.lat, reading.lon, 2),
+    reading,
+  }));
 }
 
 /** A position as the form shows it: the locator where that is all the list knew, otherwise the coordinates. */
@@ -63,6 +80,7 @@ const draftOf = (repeater: RepeaterDto | null): Draft => ({
   region: repeater?.region ?? "",
   country: repeater?.country ?? "",
   position: repeater ? positionText(repeater) : "",
+  positionReading: "",
   antenna: repeater && repeater.antennaMeters !== null ? String(repeater.antennaMeters) : "",
   keeper: repeater?.keeper ?? "",
   status: repeater?.status ?? "unknown",
@@ -136,10 +154,21 @@ export function readDraft(draft: Draft, original: RepeaterDto | null): { input: 
   if (!original || position !== positionText(original)) {
     if (!position) Object.assign(input, { lat: null, lon: null, locator: "" });
     else {
-      const reading = parseCoordinateReadings(position)[0];
-      if (!reading) problems.position = "Coordinates such as 54.46, -3.09, a grid reference, or a locator such as IO84KM.";
+      const readings = positionReadings(position);
+      // Text with two readings is never settled by guessing: the person says which is meant.
+      const reading = (readings.length > 1 ? readings.find((item) => item.id === draft.positionReading) : readings[0])?.reading;
+      if (readings.length === 0) problems.position = "Coordinates such as 54.46, -3.09, a grid reference, or a locator such as IO84KM.";
+      else if (!reading) problems.position = "This can be read two ways. Choose which it is.";
       else if (reading.locator) Object.assign(input, { lat: null, lon: null, locator: reading.locator });
-      else Object.assign(input, { lat: Number(reading.lat.toFixed(6)), lon: Number(reading.lon.toFixed(6)), locator: "" });
+      else {
+        Object.assign(input, {
+          lat: Number(reading.lat.toFixed(6)),
+          lon: Number(reading.lon.toFixed(6)),
+          locator: "",
+          // A grid reference names a square, and the position is only as good as the square is small.
+          positionPrecisionMeters: reading.precisionMeters ?? 0,
+        });
+      }
     }
   }
   return { input, problems };
@@ -175,6 +204,7 @@ export function RepeaterFormDialog({
 
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) => setDraft((current) => ({ ...current, [key]: value }));
   const { input, problems } = readDraft(draft, original);
+  const readings = positionReadings(draft.position);
   const shown: Problems = tried ? problems : {};
   const text =
     (key: keyof Draft, props: { maxLength?: number; placeholder?: string; mono?: boolean; inputMode?: "decimal" | "numeric" } = {}) =>
@@ -288,6 +318,15 @@ export function RepeaterFormDialog({
               >
                 {text("position", { placeholder: "54.46, -3.09 or IO84KM", mono: true })}
               </Field>
+              {readings.length > 1 ? (
+                <Segmented
+                  label="Which this position is"
+                  value={draft.positionReading}
+                  onChange={(value) => set("positionReading", value)}
+                  options={readings.map((item) => ({ value: item.id, label: `${item.name}, near ${item.where}` }))}
+                  className="flex-wrap sm:col-span-3"
+                />
+              ) : null}
               <Field label="Aerial above ground, m" error={shown.antenna}>
                 {text("antenna", { mono: true, inputMode: "decimal" })}
               </Field>

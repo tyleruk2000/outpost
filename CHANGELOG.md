@@ -44,6 +44,9 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 - An address book phones can subscribe to (CardDAV): off until turned on, read-only, so
   contacts travel from Outpost to the phone and never back, with no password to keep.
   Tested with a client library and a sync program, not with a phone.
+- A label that is also the name of something every JavaScript object has ("constructor",
+  "__proto__") is a label like any other: it no longer stops the address book being
+  listed for phones or exported.
 - Contacts are in backups, are counted and removed by "erase everything", are in the
   search index, and travel on a portable drive unless left off.
 - A database migration adds the tables (`0007_contacts`).
@@ -82,6 +85,8 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   own on a storage location, off until a location is chosen. Each is a job: a
   consistent copy of the database, written under a temporary name, renamed, then read
   back and checked. One that fails the check is kept, marked, not counted and reported.
+- Only the newest two backups that failed their check are kept, and a scheduled backup
+  that goes on failing is tried after one hour, then two, four, eight, up to a day.
 - A location that is not connected is skipped, never replaced by another place; the
   screen says so, and the backup is made when the location or the server comes back.
 - The newest seven scheduled and seven hand-started backups are kept by default. Only
@@ -292,6 +297,8 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 - Plain words for each way it can go wrong: no model server set up (with "Look for
   Ollama on this computer"), a server that is not answering, a model that is not
   installed, a model still loading, a reply cut off, a reply stopped.
+- Conversations are counted and removed by "erase everything", which stops a reply
+  being written first.
 
 #### Reference collections
 
@@ -436,6 +443,12 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 - Every screen says where an entry came from and the date of its data, marks a list by
   its age, says that a status is what the list said then, and marks a position the
   list wrote roughly as approximate.
+- Repeaters, imported and entered by hand, are counted and removed by "erase
+  everything".
+- A frequency in an imported list is read in the unit its column's heading names, and
+  the bands run to 1 mm (250 GHz), so 24, 47 and 76 GHz given in megahertz are no longer
+  read a thousand times too low. A number that could be two frequencies, with nothing
+  to say which, is left out with the reason in the preview.
 
 #### On a phone, out of reach of the server
 
@@ -451,6 +464,9 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 - Out of reach the app is read-only and says so in one line; a page or screen that was
   not kept says so instead of loading. Back in reach, kept copies are replaced by the
   server's versions. A new build replaces the kept app.
+- Fetching a kept map area again replaces each tile as it arrives and removes nothing
+  until every tile has: an interrupted refresh leaves a whole area, part of it newer,
+  and says so.
 - `GET /api/maps/area-size`, and `?raw=1` on map tiles.
 - Print or save as PDF: a box the shape of the paper chooses part of the map, and one
   page is made on the device from the installed maps (A4, A3 or US Letter, either way

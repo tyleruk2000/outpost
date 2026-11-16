@@ -20,6 +20,10 @@
  * label for a frequency, taken from the widest of the United Kingdom, United States and
  * international ranges in the bundled band sheets. It says nothing about who may
  * transmit where: that is in the sheets, and in the licence.
+ *
+ * The importer also leans on this table to read a number that comes with no unit (see
+ * `readFrequency` in the server's repeaters module): no number may be in a band both as
+ * megahertz and as kilohertz, or as kilohertz and as hertz. A test holds that true.
  */
 export const REPEATER_BANDS = [
   { id: "10m", name: "10 m", fromMHz: 28, toMHz: 29.7 },
@@ -34,6 +38,12 @@ export const REPEATER_BANDS = [
   { id: "9cm", name: "9 cm", fromMHz: 3300, toMHz: 3500 },
   { id: "5cm", name: "5 cm", fromMHz: 5650, toMHz: 5925 },
   { id: "3cm", name: "3 cm", fromMHz: 10_000, toMHz: 10_500 },
+  { id: "1.2cm", name: "1.2 cm", fromMHz: 24_000, toMHz: 24_250 },
+  { id: "6mm", name: "6 mm", fromMHz: 47_000, toMHz: 47_200 },
+  { id: "4mm", name: "4 mm", fromMHz: 75_500, toMHz: 81_000 },
+  { id: "2.5mm", name: "2.5 mm", fromMHz: 122_250, toMHz: 123_000 },
+  { id: "2mm", name: "2 mm", fromMHz: 134_000, toMHz: 141_000 },
+  { id: "1mm", name: "1 mm", fromMHz: 241_000, toMHz: 250_000 },
 ] as const;
 
 export type RepeaterBand = (typeof REPEATER_BANDS)[number]["id"] | "other";

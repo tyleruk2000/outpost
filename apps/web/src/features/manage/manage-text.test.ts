@@ -89,12 +89,15 @@ describe("what a removal says before it happens", () => {
       places: 1,
       routes: 0,
       contacts: 2,
+      conversations: 4,
+      repeaters: 340,
+      repeaterLists: 2,
       settings: 0,
       vectors: 0,
       previous: { count: 1, bytes: 6_400_000 },
     });
     expect(words).toBe(
-      "Also erased: 3 pages of notes with 2 attachments (1.50 MB), 1 saved place, 2 contacts, the history of downloads and other work and 1 copy of earlier data set aside by a restore (6.40 MB).",
+      "Also erased: 3 pages of notes with 2 attachments (1.50 MB), 1 saved place, 2 contacts, 4 chat conversations, 340 repeaters in 2 lists, the history of downloads and other work and 1 copy of earlier data set aside by a restore (6.40 MB).",
     );
     expect(words).not.toMatch(/\b0 (routes|changed|semantic)/);
     expect(
@@ -104,6 +107,9 @@ describe("what a removal says before it happens", () => {
         places: 0,
         routes: 0,
         contacts: 0,
+        conversations: 0,
+        repeaters: 0,
+        repeaterLists: 0,
         settings: 0,
         vectors: 0,
         previous: { count: 0, bytes: 0 },
@@ -144,6 +150,16 @@ describe("the account of a clean-up", () => {
       "Left 2 items exactly as they were, on a location that is not connected.",
       "2 items could not be removed and were not changed.",
     ]);
+  });
+
+  it("names the conversations and repeaters an erase took, and repeaters entered by hand with no list", () => {
+    const personal = { pages: 0, attachments: 0, places: 0, routes: 0, contacts: 0, settings: 0 };
+    expect(
+      resultSentences(result({ scope: "everything", personal: { ...personal, conversations: 1, repeaters: 12, repeaterLists: 1 } }))[0],
+    ).toBe("Erased 1 chat conversation, 12 repeaters in 1 list and the history.");
+    expect(
+      resultSentences(result({ scope: "everything", personal: { ...personal, conversations: 0, repeaters: 1, repeaterLists: 0 } }))[0],
+    ).toBe("Erased 1 repeater and the history.");
   });
 
   it("says when it was stopped and how much it had not reached, and when there was nothing to do", () => {

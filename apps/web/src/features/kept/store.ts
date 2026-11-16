@@ -78,6 +78,12 @@ export interface KeptArea extends KeptBase {
   regionsKey: string;
   /** Set when the server's maps have changed since the tiles were fetched. */
   stale?: boolean;
+  /**
+   * Set while a whole area is being fetched again, and left set if that stopped part of
+   * the way: every tile is there, but some are from the newer maps and the rest from the
+   * copy that was here before.
+   */
+  mixed?: boolean;
 }
 
 export type KeptItem = KeptNote | KeptTrack | KeptPlaces | KeptArea;

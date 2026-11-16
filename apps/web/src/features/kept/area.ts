@@ -11,6 +11,12 @@
  * before starting is the size that is stored: tiles are kept gzipped, as the archive
  * holds them. Fetching runs in this tab and can take minutes; it survives moving
  * between screens, and one that was interrupted can be carried on from where it stopped.
+ *
+ * Fetching a finished area again never takes the working copy away first. Each tile
+ * replaces the one kept under its address as it arrives, and what the area no longer
+ * holds is removed only once every tile has arrived. Until then the record is the
+ * earlier one, marked as mixed, so an interrupted refresh leaves a whole area that
+ * draws, part of it newer than the rest.
  */
 import {
   type Bbox,
@@ -201,10 +207,26 @@ export async function continueArea(id: string, again = false): Promise<void> {
   if (!area || work.get(id)?.state === "running") return;
   if (!again) return void runArea(area, false);
   const [sources, overview] = await Promise.all([api.get<MapSources>("/api/maps/sources"), api.get<MapOverview>("/api/maps/overview")]);
-  void runArea({ ...area, sources, regionsKey: regionsCacheKey(overview.regions), stale: false }, true);
+  void runArea({ ...area, sources, regionsKey: regionsCacheKey(overview.regions), stale: false }, area);
 }
 
-async function runArea(start: KeptArea, again: boolean): Promise<void> {
+/** Thrown when a fresh copy was asked for and the server holds no map tile of the area any more. */
+class NothingToFetch extends Error {}
+
+/** What is in a kept thing's cache, counted as it is stored. */
+async function bytesIn(cache: Cache): Promise<number> {
+  let bytes = 0;
+  for (const request of await cache.keys()) bytes += (await (await cache.match(request))?.blob())?.size ?? 0;
+  return bytes;
+}
+
+/**
+ * Fetches the tiles of `start`. `earlier` is given when a finished area is being fetched
+ * again: it is the record of the copy already here, which stays the record until every
+ * tile has been replaced.
+ */
+async function runArea(start: KeptArea, earlier: KeptArea | false): Promise<void> {
+  const again = earlier !== false;
   const abort = new AbortController();
   const positions = areaPositions(start);
   const entry: AreaWork & { abort: AbortController } = {
@@ -222,12 +244,11 @@ async function runArea(start: KeptArea, again: boolean): Promise<void> {
   let area: KeptArea = { ...start, positions: positions.length, complete: false };
   const cache = await openKept("area", start.id);
   // What is already here from an earlier run is not asked for twice, unless this is a fresh copy.
+  // A fresh copy asks for everything, and leaves what is here in place until its replacement has arrived.
   const have = new Map<string, number>();
-  if (again) {
-    for (const request of await cache.keys()) await cache.delete(request);
-  } else {
-    for (const request of await cache.keys()) have.set(new URL(request.url).pathname, 0);
-  }
+  if (!again) for (const request of await cache.keys()) have.set(new URL(request.url).pathname, 0);
+  /** For a fresh copy: every address written by this run. Anything else in the cache is the earlier copy's. */
+  const fresh = new Set<string>();
   const ranges = new Set<number>(BASE_GLYPH_RANGES);
   let stored = 0;
   let bytes = again ? 0 : start.bytes;
@@ -235,9 +256,17 @@ async function runArea(start: KeptArea, again: boolean): Promise<void> {
 
   const record = async (complete: boolean) => {
     if (removed.has(start.id)) return;
+    if (earlier && !complete) {
+      // Not finished: the copy is still the earlier one, whole, with some of its tiles replaced.
+      // It is drawn as the earlier copy was, and is still offered to be fetched again.
+      await putKept({ ...earlier, stale: true, mixed: true, bytes: fresh.size > 0 ? await bytesIn(cache) : earlier.bytes });
+      return;
+    }
     area = { ...area, tiles: stored, done: entry.done, bytes, complete, refreshedAt: complete ? Date.now() : area.refreshedAt };
     await putKept(area);
   };
+  // Said before the first tile is replaced, so that a tab closed part of the way through leaves a true record.
+  if (earlier) await record(false);
 
   const fetchTile = async (position: Position): Promise<void> => {
     if (have.has(position.path)) {
@@ -260,7 +289,10 @@ async function runArea(start: KeptArea, again: boolean): Promise<void> {
     const headers: Record<string, string> = { "Content-Type": response.headers.get("Content-Type") ?? "application/octet-stream" };
     const encoding = response.headers.get(TILE_ENCODING_HEADER);
     if (encoding) headers[TILE_ENCODING_HEADER] = encoding;
-    bytes += await putKeptBytes(cache, position.path, body, headers);
+    // Not `bytes += await …`: that reads the total before waiting, and tiles stored meanwhile would go uncounted.
+    const size = await putKeptBytes(cache, position.path, body, headers);
+    bytes += size;
+    fresh.add(position.path);
     stored += 1;
     if (position.vector) collectGlyphRanges(encoding === "gzip" ? await gunzip(body) : new Uint8Array(body), ranges);
   };
@@ -279,12 +311,15 @@ async function runArea(start: KeptArea, again: boolean): Promise<void> {
       entry.done += 1;
       entry.bytes = bytes;
       if (entry.done % 25 === 0) publish();
-      if (entry.done % RECORD_EVERY === 0) await record(false);
+      // A fresh copy has said what it is already; an unfinished one records how far it has come.
+      if (!again && entry.done % RECORD_EVERY === 0) await record(false);
     }
   };
 
   try {
     await Promise.all(Array.from({ length: PARALLEL }, worker));
+    // The server's map for this area has gone. An empty area in place of the one that was kept would be no refresh.
+    if (earlier && stored === 0 && earlier.tiles > 0) throw new NothingToFetch();
     // Lettering and icons: small, and fetched whole each time so a fresh copy is complete.
     const furniture = [
       ...[...ranges].flatMap((range) => GLYPH_FONTS.map((font) => glyphPath(font, range))),
@@ -298,6 +333,14 @@ async function runArea(start: KeptArea, again: boolean): Promise<void> {
       bytes += await putKeptBytes(cache, path, await response.arrayBuffer(), {
         "Content-Type": response.headers.get("Content-Type") ?? "application/octet-stream",
       });
+      fresh.add(new URL(path, window.location.origin).pathname);
+    }
+    if (again) {
+      // Everything of the new copy is here. What is left of the earlier one is no longer part of the area.
+      for (const request of await cache.keys()) {
+        if (!fresh.has(new URL(request.url).pathname)) await cache.delete(request);
+      }
+      area = { ...area, mixed: false };
     }
     await record(true);
     work.delete(start.id);
@@ -311,8 +354,12 @@ async function runArea(start: KeptArea, again: boolean): Promise<void> {
     entry.message =
       entry.state === "stopped"
         ? undefined
-        : (outOfRoomMessage(error) ??
-          "The server stopped answering part of the way through. What was fetched is kept; carry on when it is back in reach.");
+        : error instanceof NothingToFetch
+          ? "The server has no map for this area now, so the copy that was here is kept as it was."
+          : (outOfRoomMessage(error) ??
+            (again
+              ? "The server stopped answering part of the way through. The area is still whole: the tiles that arrived are new and the rest are the copy that was here. Fetch it again when the server is back in reach."
+              : "The server stopped answering part of the way through. What was fetched is kept; carry on when it is back in reach."));
     if (entry.message) toast.error(`“${start.title}” was not finished. ${entry.message}`);
   }
   publish();

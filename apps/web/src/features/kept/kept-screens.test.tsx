@@ -113,6 +113,33 @@ describe("the screen of what is kept", () => {
     await waitFor(() => expect(document.body).toHaveTextContent("What you have kept takes 2.55 kB."));
   });
 
+  it("says of a map area whose fetching again stopped part of the way that it is whole and partly newer, and offers to fetch it again", async () => {
+    await putKept({
+      kind: "area",
+      id: "fells",
+      title: "The fells",
+      bbox: [-3.4, 54.3, -2.8, 54.7],
+      maxZoom: 9,
+      terrainMaxZoom: null,
+      tiles: 15,
+      done: 15,
+      positions: 15,
+      complete: true,
+      sources: { hasTiles: true, hasTerrain: false, sources: {}, sprites: {} } as never,
+      regionsKey: "earlier",
+      stale: true,
+      mixed: true,
+      bytes: 700,
+      keptAt: 1,
+      refreshedAt: 1,
+    });
+    showKeptPage();
+    const area = (await screen.findByRole("link", { name: "The fells" })).closest("li")!;
+    expect(area).toHaveTextContent("Fetching it again stopped part of the way: the area is whole, with some tiles newer than others");
+    expect(area).not.toHaveTextContent("Not finished");
+    expect(within(area).getByRole("button", { name: "Fetch again" })).toBeVisible();
+  });
+
   it("removes a kept thing from the device only after saying what will go, and removes all of it", async () => {
     const user = userEvent.setup();
     await putKept(note);

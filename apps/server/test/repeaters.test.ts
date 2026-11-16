@@ -5,6 +5,7 @@ import {
   formatAge,
   formatMHz,
   formatShift,
+  REPEATER_BANDS,
   type RepeaterDetailResponse,
   type RepeaterDto,
   type RepeaterImportPreview,
@@ -24,7 +25,9 @@ import {
   parseModes,
   parseStatus,
   type ReadRow,
+  readFrequency,
   readTable,
+  unitOfHeading,
 } from "../src/modules/repeaters/formats.ts";
 import { tokensOf } from "../src/modules/repeaters/service.ts";
 import { multipart } from "./fixtures/documents/builders.ts";
@@ -188,11 +191,101 @@ describe("reading a file of repeaters", () => {
     expect(parseFrequencyHz("0.1")).toBeNull();
   });
 
+  it("takes the unit a column's heading names, and reads the microwave bands in megahertz", async () => {
+    // What the column says wins over any guess from the size of the number.
+    expect(parseFrequencyHz("24048.9", "mhz")).toBe(24_048_900_000);
+    expect(parseFrequencyHz("47088", "mhz")).toBe(47_088_000_000);
+    expect(parseFrequencyHz("7100", "khz")).toBe(7_100_000);
+    expect(parseFrequencyHz("24.0489", "ghz")).toBe(24_048_900_000);
+    expect(parseFrequencyHz("145662500", "hz")).toBe(145_662_500);
+    // What is written after the number wins over the column.
+    expect(parseFrequencyHz("145662.5 kHz", "mhz")).toBe(145_662_500);
+    expect(parseFrequencyHz("10.368 GHz")).toBe(10_368_000_000);
+    // In the column's unit it is outside what a frequency can be: not guessed at.
+    expect(parseFrequencyHz("145662500", "mhz")).toBeNull();
+    expect(unitOfHeading("TX MHz")).toBe("mhz");
+    expect(unitOfHeading("output_mhz")).toBe("mhz");
+    expect(unitOfHeading("RXMHz")).toBe("mhz");
+    expect(unitOfHeading("Frequency (kHz)")).toBe("khz");
+    expect(unitOfHeading("Freq GHz")).toBe("ghz");
+    expect(unitOfHeading("Output Hz")).toBe("hz");
+    expect(unitOfHeading("Frequency")).toBeNull();
+    expect(unitOfHeading("Kilohertz? No: Shiftzhz")).toBeNull();
+
+    // With no unit anywhere, the amateur band a reading falls in decides, up to 250 GHz.
+    expect(parseFrequencyHz("24048.9")).toBe(24_048_900_000);
+    expect(parseFrequencyHz("47088.1")).toBe(47_088_100_000);
+    expect(parseFrequencyHz("76032.5")).toBe(76_032_500_000);
+    expect(parseFrequencyHz("122250.5")).toBe(122_250_500_000);
+    expect(parseFrequencyHz("134928")).toBe(134_928_000_000);
+    expect(parseFrequencyHz("241920")).toBe(241_920_000_000);
+    expect(bandOfHz(24_048_900_000)).toBe("1.2cm");
+    expect(bandOfHz(47_088_000_000)).toBe("6mm");
+    expect(bandOfHz(76_032_000_000)).toBe("4mm");
+    // Only one reading is a frequency at all: no band is needed to tell.
+    expect(parseFrequencyHz("462.5625")).toBe(462_562_500);
+    expect(parseFrequencyHz("27.185")).toBe(27_185_000);
+    expect(parseFrequencyHz("462562.5")).toBe(462_562_500);
+    expect(parseFrequencyHz("462562500")).toBe(462_562_500);
+    // Two readings are frequencies and neither is in an amateur band: not stored as a guess.
+    expect(parseFrequencyHz("7100")).toBeNull();
+    expect(parseFrequencyHz("156800")).toBeNull();
+    expect(parseFrequencyHz("156800000")).toBeNull();
+    expect(readFrequency("7100")).toEqual({ hz: null, readings: [7_100_000_000, 7_100_000] });
+    expect(readFrequency("RV53")).toEqual({ hz: null, readings: [] });
+
+    const file = [
+      "Callsign,TX MHz,RX MHz,Mode",
+      "QZ3MWA,24048.9,24048.9,FM",
+      "QZ3MWB,47088.2,47088.2,FM",
+      "QZ3MWC,76032.5,76032.5,FM",
+      "QZ3UHF,433.375,434.975,FM",
+    ].join("\n");
+    const { rows, reasons } = await rowsOf(file);
+    expect(reasons).toEqual([]);
+    expect(rows.map((row) => [row.callsign, row.outputHz, row.inputHz, row.band])).toEqual([
+      ["QZ3MWA", 24_048_900_000, 24_048_900_000, "1.2cm"],
+      ["QZ3MWB", 47_088_200_000, 47_088_200_000, "6mm"],
+      ["QZ3MWC", 76_032_500_000, 76_032_500_000, "4mm"],
+      ["QZ3UHF", 433_375_000, 434_975_000, "70cm"],
+    ]);
+
+    // A column that names kilohertz, and one that names nothing where a row cannot be told apart.
+    // (Headings Outpost does not match by name: the person matches them in the import dialog.)
+    const inKilohertz = await rowsOf(["Callsign,Output kHz,Shift kHz", "QZ3HF,29650,-100", "QZ3VHF,145662.5,-600"].join("\n"), {
+      callsign: "Callsign",
+      output: "Output kHz",
+      offset: "Shift kHz",
+    });
+    expect(inKilohertz.rows.map((row) => [row.outputHz, row.inputHz])).toEqual([
+      [29_650_000, 29_550_000],
+      [145_662_500, 145_062_500],
+    ]);
+    const unsaid = await rowsOf(["Callsign,Frequency", "QZ3HF,7100", "QZ3VHF,145.6625"].join("\n"));
+    expect(unsaid.rows.map((row) => row.outputHz)).toEqual([145_662_500]);
+    expect(unsaid.reasons).toEqual([
+      "2: The output frequency “7100” could be 7100.0000 MHz or 7.1000 MHz, and nothing says which. Name the unit in the column's heading (such as “Output MHz”) or after the number.",
+    ]);
+  });
+
+  it("has no number that is in an amateur band both as megahertz and as kilohertz, or as kilohertz and as hertz", () => {
+    // The guess for a number with no unit rests on this: a band may be added only if it keeps it true.
+    const megahertz = REPEATER_BANDS.map((band) => [band.fromMHz, band.toMHz] as const);
+    const overlap = (a: readonly [number, number], b: readonly [number, number]) => a[0] <= b[1] && b[0] <= a[1];
+    for (const a of megahertz) {
+      for (const b of megahertz) {
+        expect(overlap(a, [b[0] * 1e3, b[1] * 1e3]), `${a} MHz against ${b} MHz written in kHz`).toBe(false);
+        expect(overlap(a, [b[0] * 1e6, b[1] * 1e6]), `${a} MHz against ${b} MHz written in Hz`).toBe(false);
+      }
+    }
+  });
+
   it("reads modes and statuses as lists write them", () => {
     expect(parseModes("ADF", "etcc-letters")).toEqual(["fm", "dstar", "fusion"]);
     expect(parseModes("M:1", "etcc-letters")).toEqual(["dmr"]);
     expect(parseModes("FM / D-STAR, C4FM", "words")).toEqual(["fm", "dstar", "fusion"]);
     expect(parseModes("USB", "words")).toEqual([]);
+    expect(parseModes("constructor __proto__ fm", "words")).toEqual(["fm"]);
     expect(parseStatus("OPERATIONAL")).toBe("operational");
     expect(parseStatus("Not operational")).toBe("off-air");
     expect(parseStatus("REDUCED OUTPUT")).toBe("reduced");
@@ -427,6 +520,59 @@ describe("repeaters API", () => {
     expect((await list("?near=54.5,-3.1&withinKm=500")).total).toBe(6);
   });
 
+  it("leaves a list exactly as it was when bringing it up to date cannot be finished", async () => {
+    // Three thousand entries, so that the update is written in several steps.
+    const heading = '"callsign","TX MHz","RX MHz","where","lat","lon","status",';
+    const row = (n: number, place: string, status = "OPERATIONAL") =>
+      `QZ${String(n).padStart(4, "0")},${(430 + n / 1000).toFixed(6)},${(437.6 + n / 1000).toFixed(6)},${place},${(50 + n / 1000).toFixed(3)},-3.1,${status},`;
+    const file = (place: (n: number) => string, count = 3000) =>
+      [heading, ...Array.from({ length: count }, (_, index) => row(index + 1, place(index + 1)))].join("\n");
+    const first = await importFile(
+      "big.csv",
+      file(() => "OLDTOWN"),
+      { name: "Big list", dataDate: "2026-09-01" },
+    );
+    expect(first.status).toBe(200);
+    expect(first.body.added).toBe(3000);
+    const listId = first.body.list.id;
+    // One the person changed, and one they removed: both must come through untouched.
+    const edited = await find("QZ0007");
+    await app.api("PATCH", `/api/repeaters/${edited.id}`, { notes: "Mine" });
+    await app.api("DELETE", `/api/repeaters/${(await find("QZ0008")).id}`);
+
+    const snapshot = () => ({
+      list: app.ctx.sqlite.prepare("SELECT * FROM repeater_lists WHERE id = ?").get(listId),
+      rows: app.ctx.sqlite.prepare("SELECT * FROM repeaters WHERE list_id = ? ORDER BY id").all(listId),
+    });
+    const before = snapshot();
+    expect(before.rows).toHaveLength(3000);
+
+    // A newer copy changes every entry, drops the last five hundred and adds one. Writing
+    // entry 1,800 fails, as a full disk would make it: after a thousand and more are in.
+    app.ctx.sqlite.exec(
+      "CREATE TRIGGER fail_part_way BEFORE UPDATE ON repeaters WHEN NEW.place = 'FAULTLINE' BEGIN SELECT RAISE(ABORT, 'disk full'); END",
+    );
+    const newer = `${file((n) => (n === 1800 ? "FAULTLINE" : "NEWTOWN"), 2500)}\n${row(9999, "ADDED")}`;
+    const failed = await importFile("big-newer.csv", newer, { listId, dataDate: "2026-11-01" });
+    expect(failed.status).toBeGreaterThanOrEqual(400);
+
+    // Nothing of it stayed: not the new date or file name, not one changed entry, none added, none gone.
+    expect(snapshot()).toEqual(before);
+    expect((await find("QZ0007")).notes).toBe("Mine");
+    expect(await calls("?q=QZ0008")).toEqual([]);
+    expect(await calls("?q=QZ9999")).toEqual([]);
+    expect(app.ctx.sqlite.prepare("SELECT count(*) AS n FROM repeaters WHERE place = 'NEWTOWN'").get()).toEqual({ n: 0 });
+
+    // With the fault gone the same file goes in whole, and another import is not locked out by the failure.
+    app.ctx.sqlite.exec("DROP TRIGGER fail_part_way");
+    const again = await importFile("big-newer.csv", newer, { listId, dataDate: "2026-11-01" });
+    expect(again.status).toBe(200);
+    expect(again.body).toMatchObject({ added: 1, removed: 500 });
+    expect(app.ctx.sqlite.prepare("SELECT count(*) AS n FROM repeaters WHERE place = 'NEWTOWN' AND removed_at IS NULL").get()).toEqual({
+      n: 2497,
+    });
+  });
+
   it("brings a list up to date without overwriting what the person changed or bringing back what they removed", async () => {
     const first = await importStatus();
     const listId = first.body.list.id;
@@ -549,6 +695,26 @@ describe("repeaters API", () => {
     });
     expect((await app.api("PATCH", `/api/repeaters/lists/${listId}`, { name: "  " })).status).toBe(400);
     expect((await app.api("PATCH", `/api/repeaters/lists/${listId}`, { sourceUrl: "javascript:alert(1)" })).status).toBe(400);
+  });
+
+  it("takes coordinates as exact unless told how roughly they are known", async () => {
+    const add = (extra: object) =>
+      app.api<{ repeater: RepeaterDto }>("POST", "/api/repeaters", {
+        callsign: "QZ3SQ",
+        outputHz: 145_725_000,
+        lat: 56.31,
+        lon: -3.39,
+        ...extra,
+      });
+    // Typed coordinates: exact.
+    expect((await add({})).body.repeater.positionPrecisionMeters).toBe(0);
+    // The middle of a 10 km grid square: known to 10 km, and said to be.
+    const square = (await add({ positionPrecisionMeters: 10_000 })).body.repeater;
+    expect(square).toMatchObject({ lat: 56.31, lon: -3.39, positionPrecisionMeters: 10_000 });
+    // Moving it to typed coordinates makes it exact again.
+    const moved = await app.api<{ repeater: RepeaterDto }>("PATCH", `/api/repeaters/${square.id}`, { lat: 56.3201, lon: -3.4012 });
+    expect(moved.body.repeater.positionPrecisionMeters).toBe(0);
+    expect((await add({ positionPrecisionMeters: -5 })).status).toBe(400);
   });
 
   it("adds, changes and removes an entry made by hand", async () => {

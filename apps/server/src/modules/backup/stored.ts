@@ -10,6 +10,11 @@
  * `<name>.verified.json`, so that the record travels with the backup and survives a
  * restore of the database. A backup with no such record, or whose size no longer
  * matches it, is shown as not verified.
+ *
+ * A run whose backup did not pass its check leaves a different record beside it,
+ * `<name>.failed.json`. That is how the archives of failed runs are told from every
+ * other file that is not verified (a backup a person copied here without its record,
+ * say): only the newest few with such a record are kept, see `setAsideFailed`.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -21,7 +26,10 @@ export const BACKUP_FOLDER = "outpost-backups";
 
 const NAME = /^outpost-backup-(\d{4})-(\d{2})-(\d{2})T(\d{2})-(\d{2})-(\d{2})-(\d{3})Z-(scheduled|manual)\.zip$/;
 const CHECK_FORMAT = "outpost-backup-check";
+const FAILED_FORMAT = "outpost-backup-failed-check";
 const MAX_RECORD_BYTES = 16 * 1024;
+/** How many archives of runs that failed their check are kept, across both kinds. */
+export const FAILED_KEPT = 2;
 /** A part file this old belongs to a run that was cut off, not to one under way. */
 const STALE_PART_MS = 24 * 60 * 60 * 1000;
 
@@ -51,6 +59,7 @@ export function parseBackupName(name: string): { createdAt: number; kind: Stored
 
 export const isBackupName = (name: string): boolean => parseBackupName(name) !== undefined;
 export const recordName = (name: string): string => name.replace(/\.zip$/, ".verified.json");
+export const failedRecordName = (name: string): string => name.replace(/\.zip$/, ".failed.json");
 export const partName = (name: string): string => `${name}.part`;
 
 async function isOrdinaryFile(file: string): Promise<fs.Stats | undefined> {
@@ -154,9 +163,83 @@ export async function deleteStored(folder: string, name: string): Promise<boolea
   const file = path.join(folder, name);
   if (!(await isOrdinaryFile(file))) return false;
   await fs.promises.rm(file);
-  const record = path.join(folder, recordName(name));
-  if (await isOrdinaryFile(record)) await fs.promises.rm(record, { force: true });
+  for (const beside of [recordName(name), failedRecordName(name)]) {
+    const record = path.join(folder, beside);
+    if (await isOrdinaryFile(record)) await fs.promises.rm(record, { force: true });
+  }
   return true;
+}
+
+interface FailedRecord {
+  format: typeof FAILED_FORMAT;
+  version: 1;
+  file: string;
+  bytes: number;
+  failedAt: number;
+}
+
+/** The size of the archive a failed run wrote under this name, if a record of one is there. */
+async function failedBytes(folder: string, name: string): Promise<number | undefined> {
+  const file = path.join(folder, failedRecordName(name));
+  const stat = await isOrdinaryFile(file);
+  if (!stat || stat.size > MAX_RECORD_BYTES) return undefined;
+  try {
+    const record = JSON.parse(await fs.promises.readFile(file, "utf8")) as Partial<FailedRecord>;
+    if (record.format !== FAILED_FORMAT || record.version !== 1 || record.file !== name) return undefined;
+    return typeof record.bytes === "number" ? record.bytes : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Called for the archive a run has just written when its check did not pass. The
+ * archive is kept, since the fault may be in the checking and not in the file, but
+ * only the newest `keep` such archives are: older ones are removed, oldest first, so
+ * that a fault that lasts cannot fill the location.
+ *
+ * What is removed is only ever a file that a failed run of this Outpost recorded
+ * writing, still the size it was written at, with no record of having passed. An
+ * archive that damage has made unreadable cannot be recognised by its contents, so the
+ * record and the size are what identify it. A verified backup, a backup with no
+ * record of failing, and anything not named as a backup are never candidates.
+ *
+ * Returns whether the new archive was kept, and the names removed. If its record
+ * cannot be written the archive is removed instead: unrecorded, it could never be cleared.
+ */
+export async function setAsideFailed(
+  folder: string,
+  name: string,
+  bytes: number,
+  failedAt: number,
+  keep = FAILED_KEPT,
+): Promise<{ kept: boolean; removed: string[] }> {
+  if (!isBackupName(name)) return { kept: true, removed: [] };
+  const record: FailedRecord = { format: FAILED_FORMAT, version: 1, file: name, bytes, failedAt };
+  try {
+    await fs.promises.writeFile(path.join(folder, failedRecordName(name)), `${JSON.stringify(record, null, 2)}\n`, { flag: "wx" });
+  } catch {
+    const stat = await isOrdinaryFile(path.join(folder, name));
+    if (stat?.size === bytes) await fs.promises.rm(path.join(folder, name), { force: true }).catch(() => undefined);
+    return { kept: false, removed: [] };
+  }
+
+  const failed: Array<{ name: string; createdAt: number }> = [];
+  for (const other of await fs.promises.readdir(folder).catch(() => [] as string[])) {
+    const parsed = parseBackupName(other);
+    if (!parsed) continue;
+    const stat = await isOrdinaryFile(path.join(folder, other));
+    if (!stat || (await failedBytes(folder, other)) !== stat.size) continue;
+    // A record of passing wins: that file is a backup, whatever else is written beside it.
+    if ((await readRecord(folder, other))?.bytes === stat.size) continue;
+    failed.push({ name: other, createdAt: parsed.createdAt });
+  }
+  failed.sort((a, b) => b.createdAt - a.createdAt || b.name.localeCompare(a.name));
+  const removed: string[] = [];
+  for (const old of failed.slice(Math.max(1, Math.floor(keep)))) {
+    if (old.name !== name && (await deleteStored(folder, old.name).catch(() => false))) removed.push(old.name);
+  }
+  return { kept: true, removed };
 }
 
 /**

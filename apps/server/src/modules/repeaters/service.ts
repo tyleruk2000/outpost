@@ -70,6 +70,8 @@ import {
 
 /** Rows written per transaction during an import, with a pause between so that requests are answered. */
 const WRITE_BATCH = 1000;
+/** Where a list is set aside while it is brought up to date. One import runs at a time, so one name is enough. */
+const ASIDE = "repeaters_set_aside";
 const MAX_PAGE = 200;
 const SAMPLE_ROWS = 8;
 const SKIPPED_SHOWN = 20;
@@ -218,6 +220,11 @@ export interface RepeaterInput {
   lat?: number | null;
   lon?: number | null;
   locator?: string;
+  /**
+   * How closely `lat` and `lon` are known, in metres, when they are not exact: a grid
+   * reference for a 10 km square gives 10,000. Left out, coordinates given are exact.
+   */
+  positionPrecisionMeters?: number | null;
   antennaMeters?: number | null;
   keeper?: string;
   status?: RepeaterStatus;
@@ -243,6 +250,10 @@ export interface RepeatersService {
   exportFile(query: RepeaterQuery & { format: RepeaterExportFormat }): { filename: string; body: string; count: number };
   /** For the search across everything. */
   search(q: string, limit: number): SearchResult[];
+  /** How many entries there are to see, a list's and the person's own, and how many lists. */
+  count(): { repeaters: number; lists: number };
+  /** Removes every list and every entry, the person's own included. Only "erase everything" calls it. */
+  eraseAll(): Promise<{ repeaters: number; lists: number }>;
 }
 
 /** One word of what was typed: a frequency to match by range, or text to find in an entry's words. */
@@ -318,6 +329,31 @@ export function createRepeatersService(ctx: AppContext): RepeatersService {
   };
 
   const listRows = () => sqlite.prepare(`SELECT ${LIST_COLUMNS} FROM repeater_lists l ORDER BY l.name COLLATE NOCASE`).all() as ListRow[];
+
+  /**
+   * Sets a list and its entries aside, exactly as they are, so that an update that
+   * cannot be finished can be undone. `putBack` restores them in one step; `discard`
+   * forgets the copy. The copy does not outlast the server: if the process is stopped
+   * part-way through an update, what was written by then stays, and bringing the same
+   * file in again completes it.
+   */
+  function setAside(listId: string): { putBack(): void; discard(): void } {
+    sqlite.exec(`DROP TABLE IF EXISTS temp.${ASIDE}`);
+    sqlite.prepare(`CREATE TEMP TABLE ${ASIDE} AS SELECT * FROM repeaters WHERE list_id = ?`).run(listId);
+    const list = sqlite.prepare("SELECT * FROM repeater_lists WHERE id = ?").get(listId) as Record<string, unknown>;
+    const columns = Object.keys(list).filter((column) => column !== "id");
+    return {
+      putBack: sqlite.transaction(() => {
+        sqlite.prepare("DELETE FROM repeaters WHERE list_id = ?").run(listId);
+        sqlite.prepare(`INSERT INTO repeaters SELECT * FROM temp.${ASIDE}`).run();
+        // Changed where it stands: replacing the row would take its entries with it.
+        sqlite
+          .prepare(`UPDATE repeater_lists SET ${columns.map((column) => `"${column}" = @${column}`).join(", ")} WHERE id = @id`)
+          .run(list);
+      }),
+      discard: () => sqlite.exec(`DROP TABLE IF EXISTS temp.${ASIDE}`),
+    };
+  }
 
   function listRow(id: string): ListRow {
     const row = sqlite.prepare(`SELECT ${LIST_COLUMNS} FROM repeater_lists l WHERE l.id = ?`).get(id) as ListRow | undefined;
@@ -562,7 +598,7 @@ export function createRepeatersService(ctx: AppContext): RepeatersService {
       next.lat = lat;
       next.lon = lon;
       if (lat === null) next.positionPrecisionMeters = null;
-      else if (moved) next.positionPrecisionMeters = 0;
+      else if (moved) next.positionPrecisionMeters = Math.max(0, Math.round(patch.positionPrecisionMeters ?? 0));
     }
     // A new locator with no coordinates beside it is the person saying where it is.
     if (square && !givesPosition && square.locator !== current.locator) next.lat = null;
@@ -932,6 +968,13 @@ export function createRepeatersService(ctx: AppContext): RepeatersService {
         const listId = existingList?.id ?? newId();
         const mappingText = JSON.stringify(reading.mapping);
 
+        // An update is written a thousand rows at a time, so that a long list does not hold
+        // up everything else the server is doing. If it cannot be finished, a list half
+        // old and half new under the new date would be worse than either. So the list as
+        // it is now is set aside first, in a table that lasts only as long as this
+        // connection, and put back whole if anything below fails.
+        const before = existingList ? setAside(listId) : null;
+
         if (existingList) {
           sqlite
             .prepare(
@@ -1039,9 +1082,13 @@ export function createRepeatersService(ctx: AppContext): RepeatersService {
             await yieldToEventLoop();
           }
         } catch (error) {
-          // A new list that could not be written whole is not left half there.
-          if (!existingList) sqlite.prepare("DELETE FROM repeater_lists WHERE id = ?").run(listId);
+          // A new list that could not be written whole is not left half there, and one
+          // that was being brought up to date is put back as it was, its date included.
+          if (before) before.putBack();
+          else sqlite.prepare("DELETE FROM repeater_lists WHERE id = ?").run(listId);
           throw error;
+        } finally {
+          before?.discard();
         }
         changed();
         return { list: toListDto(listRow(listId)), ...result, skipped: reading.skippedCount };
@@ -1140,6 +1187,27 @@ export function createRepeatersService(ctx: AppContext): RepeatersService {
           sources: ["keyword"],
         } satisfies SearchResult;
       });
+    },
+
+    count() {
+      const one = (sql: string) => (sqlite.prepare(sql).get() as { n: number }).n;
+      return {
+        repeaters: one("SELECT count(*) AS n FROM repeaters WHERE removed_at IS NULL"),
+        lists: one("SELECT count(*) AS n FROM repeater_lists"),
+      };
+    },
+
+    async eraseAll() {
+      // A file being brought in is let finish first, so that it does not write into a list that has gone.
+      for (let waited = 0; importing && waited < 600; waited += 1) await new Promise((resolve) => setTimeout(resolve, 100));
+      const erased = service.count();
+      sqlite.transaction(() => {
+        // Marks of removal go too: they are rows of the same table.
+        sqlite.prepare("DELETE FROM repeaters").run();
+        sqlite.prepare("DELETE FROM repeater_lists").run();
+      })();
+      changed();
+      return erased;
     },
   };
 

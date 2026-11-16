@@ -3,6 +3,7 @@
  * only what can be true without a server. Kept things open; everything else says where
  * it is instead of trying to load.
  */
+import { ownValue } from "@outpost/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Map as MapIcon, RefreshCw, WifiOff } from "lucide-react";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -49,7 +50,7 @@ const SCREENS: Record<string, string> = {
 
 function NeedsServer() {
   const { pathname } = useLocation();
-  const screen = SCREENS[pathname.split("/")[1] ?? ""] ?? "This screen";
+  const screen = ownValue(SCREENS, pathname.split("/")[1] ?? "") ?? "This screen";
   return (
     <Page width="reading">
       <h1 className="font-title text-title text-ink">{screen} needs the server</h1>

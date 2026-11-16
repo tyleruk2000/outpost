@@ -562,8 +562,9 @@ download and can be fetched again.
 - Removes: reference archives, maps, terrain, place names, catalogue sheets and books
   (with the documents they are in your library), and downloads still under way or left
   unfinished, with their partial files.
-- Keeps: documents you added, notes, contacts, saved places and routes, archives and maps of your
-  own that you pointed Outpost at, settings, storage locations and network shares.
+- Keeps: documents you added, notes, contacts, chat conversations, repeaters, saved places and
+  routes, archives and maps of your own that you pointed Outpost at, settings, storage
+  locations and network shares.
 - Content on a location that is not connected is left behind and stays in your
   library. The summary lists it; tick **Forget them as well** to remove Outpost's
   records and leave the files on the drive.
@@ -588,9 +589,11 @@ it is rebuilt from the extracted text, which the second option does.
 cannot be downloaded again.
 
 - Removes: everything the first clean-up removes; documents you added, files and all;
-  notes and their attachments; saved places and routes; contacts; settings; search data; the
-  history of downloads and other work; and the copies of earlier data that a restore
-  set aside (they hold the same notes).
+  notes and their attachments; saved places and routes; contacts; every chat conversation
+  with its messages; every repeater, both the lists you imported and the entries you
+  added or changed; settings; search data; the history of downloads and other work; and
+  the copies of earlier data that a restore set aside (they hold the same notes). The
+  summary shown before it starts counts each of these.
 - Keeps: storage locations and their marker files; network shares and any password
   remembered in the Keychain; catalogue manifests of your own; programs fetched for
   portable drives and search model files (clear those from Leftovers); the catalogue's
@@ -603,7 +606,8 @@ cannot be downloaded again.
   the notes that are being erased; delete them from **Settings → Automatic backups**
   first, or by hand from the `outpost-backups` folder, if you want them gone.
 - Needs the words "erase everything" typed, and offers a backup first. A backup holds
-  notes, attachments, saved places, routes, contacts and settings. It does **not** hold the files
+  notes, attachments, saved places, routes, contacts, chat conversations, repeaters and
+  settings. It does **not** hold the files
   of documents you added: copy those from the `documents` folder of each storage
   location if you want to keep them.
 - Can only be started on the computer Outpost runs on, unless Outpost was started with
@@ -671,7 +675,16 @@ storage location. It is off until you choose a location.
 - **If the check fails.** The job fails and says why, the screen reports it, and the
   file is kept, shown as **Not verified**. It is never counted towards the number to
   keep and never replaces a good backup. A scheduled backup that failed is tried again
-  after an hour.
+  after an hour, then after two, four and eight, the wait doubling up to a day until
+  one succeeds; the screen says when the next try is. The next scheduled time is always
+  tried when it comes.
+- **Backups that failed their check do not pile up.** Outpost keeps the newest two
+  archives whose check failed or was cut short (the fault may be in the checking, not
+  in the file) and removes older ones as each new one is written. It tells them by a
+  small file it writes beside each, `<name>.failed.json`, and removes one only while it
+  is still the size that run wrote. A verified backup, a backup with no such file
+  beside it (one you copied in by hand, say) and anything that is not Outpost's are
+  never removed this way.
 - **If the location is not connected.** The backup is skipped. Nothing is written
   anywhere else: not to another location, not to the data directory. The screen says
   when the last backup was, which one is owed, and that the location is not connected.

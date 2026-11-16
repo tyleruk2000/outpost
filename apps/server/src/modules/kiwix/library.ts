@@ -9,6 +9,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
+import { ownValue } from "@outpost/shared";
 
 export interface LibraryBook {
   /** UUID from the archive's header. */
@@ -117,6 +118,6 @@ export function decodeEntities(value: string): string {
   return value.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (whole, code: string) => {
     if (code.startsWith("#x") || code.startsWith("#X")) return String.fromCodePoint(Number.parseInt(code.slice(2), 16));
     if (code.startsWith("#")) return String.fromCodePoint(Number.parseInt(code.slice(1), 10));
-    return entities[code.toLowerCase()] ?? whole;
+    return ownValue(entities, code.toLowerCase()) ?? whole;
   });
 }

@@ -101,8 +101,16 @@ until you have seen how it was read:
   frequency the repeater transmits on, which is the one you listen on.
 - **How the columns are read**, column by column, which you can change. A list read
   by its headings is shown with this open.
+- **Which unit a frequency is in.** A unit written after the number ("145.6625 MHz")
+  comes first, then the unit the column's heading names ("TX MHz", "Frequency (kHz)",
+  "Freq GHz"); the layouts Outpost knows by name are all in megahertz. A number with
+  no unit anywhere is read as megahertz, kilohertz and hertz, and kept when only one
+  of those is a frequency between 1 MHz and 250 GHz, or only one falls in an amateur
+  band (10 m to 1 mm). When nothing tells the readings apart ("7100" could be 7100 MHz
+  or 7.1 MHz) the row is not kept and the preview says so: name the unit in the
+  heading, or after the number.
 - **The rows that cannot be kept**, each with its line and the reason: no callsign,
-  a frequency that is not one, a position that is not on Earth.
+  a frequency that is not one or that could be two, a position that is not on Earth.
 - **What is rough about it**: how many entries have no position, how many positions
   are approximate.
 
@@ -203,6 +211,9 @@ where the file is offered. The CHIRP layout was taken from CHIRP's own source on
   carries the database, but bringing a drive's changes home covers pages, documents,
   saved places and routes only.
 - **Backups hold them**, as part of the database.
+- **"Erase everything" removes them**: every list you imported, every entry you added
+  or changed, and the marks of entries you removed. The summary shown before it starts
+  says how many repeaters in how many lists.
 
 ## Where to find the sheets
 

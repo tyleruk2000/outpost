@@ -419,6 +419,61 @@ describe("writing", () => {
   });
 });
 
+describe("a label that is also the name of something every object has", () => {
+  const AWKWARD = ["constructor", "__proto__", "toString", "valueOf", "hasOwnProperty"];
+
+  it("is written as the label it is, and read back, for a phone, an email, an address and a link", async () => {
+    for (const label of AWKWARD) {
+      const contact = {
+        uid: "awkward",
+        extra: [],
+        updatedAt: Date.UTC(2026, 10, 16),
+        fields: {
+          ...emptyContactFields(),
+          name: { prefix: "", given: "Maya", additional: "", family: "Okafor", suffix: "" },
+          phones: [{ value: "07700 900123", label }],
+          emails: [{ value: "maya@example.org", label }],
+          addresses: [{ label, street: "1 Shore Road", locality: "Portree", region: "", postcode: "", country: "" }],
+          links: [{ value: "https://example.org/", label }],
+        },
+      };
+      for (const version of ["3.0", "4.0"] as const) {
+        const card = vcardOf(contact, version);
+        expect(card, label).toContain(`X-ABLabel:${label}`);
+        expect(card, label).not.toMatch(/native code|\[object/);
+        const [back] = await read(Buffer.from(card));
+        expect(back!.fields.phones, label).toEqual([{ value: "07700 900123", label }]);
+        expect(back!.fields.emails, label).toEqual([{ value: "maya@example.org", label }]);
+        expect(back!.fields.addresses[0]!.label, label).toBe(label);
+      }
+    }
+  });
+
+  it("is read as text when a file gives it as one of Apple's built-in labels, a type, or a property", async () => {
+    const file = [
+      "BEGIN:VCARD",
+      "VERSION:3.0",
+      "FN:Sam Whitlock",
+      "N:Whitlock;Sam;;;",
+      "item1.TEL:01632 960111",
+      "item1.X-ABLabel:_$!<constructor>!$_",
+      "item2.EMAIL:sam@example.org",
+      "item2.X-ABLabel:_$!<__proto__>!$_",
+      "TEL;TYPE=constructor:01632 960222",
+      "CONSTRUCTOR:kept as it is",
+      "END:VCARD",
+      "",
+    ].join("\r\n");
+    const [sam] = await read(Buffer.from(file));
+    expect(sam!.fields.phones).toEqual([
+      { value: "01632 960111", label: "constructor" },
+      { value: "01632 960222", label: "constructor" },
+    ]);
+    expect(sam!.fields.emails).toEqual([{ value: "sam@example.org", label: "__proto__" }]);
+    expect(otherFieldsOf(sam!.extra)).toEqual(["CONSTRUCTOR: kept as it is"]);
+  });
+});
+
 describe("the phone's contact picker", () => {
   it("makes a contact from what the picker gives", () => {
     const { fields } = contactFromPicked({

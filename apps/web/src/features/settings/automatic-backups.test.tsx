@@ -172,11 +172,13 @@ describe("automatic backups in Settings", () => {
   it("reports a backup that failed its check", async () => {
     const message =
       'The backup was written to "NAS" but did not read back correctly. It is kept, shown as not verified, and is not counted as a backup.';
-    serve({ schedule: schedule({ waiting: { dueAt: NEWER, reason: "failed", message }, lastFailure: { at: NEWER, message } }) });
+    const retryAt = NEWER + 4 * HOUR;
+    serve({ schedule: schedule({ waiting: { dueAt: NEWER, reason: "failed", message, retryAt }, lastFailure: { at: NEWER, message } }) });
     const section = await show()();
     const alert = await within(section).findByRole("alert");
     expect(within(alert).getByText(`The backup due ${formatDateTime(NEWER)} failed`)).toBeVisible();
-    expect(alert).toHaveTextContent(`${message} It will be tried again within the hour.`);
+    // The wait grows with each failure, so the screen gives the time and does not promise "within the hour".
+    expect(alert).toHaveTextContent(`${message} It will be tried again ${formatDateTime(retryAt)}, and less often each time it fails.`);
   });
 
   it("lists what is stored, and restores or deletes one only after asking", async () => {
