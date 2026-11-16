@@ -962,6 +962,41 @@ describe("sources and duplicates through the API", () => {
     expect(await find("QZ3AB")).toHaveLength(3);
   });
 
+  it("sees, when a list is brought up to date, a new row that repeats an entry the list already has", async () => {
+    const first = ["callsign,frequency,lat,lon", "QZ3AB,145.6625,54.521,-3.123", "QZ9ZZ,433.05,54.9,-3.4"].join("\n");
+    const { body: made } = await importFile("club.csv", first, { name: "Club list", dataDate: "2026-10-01" });
+    expect(made).toMatchObject({ added: 2 });
+    // The next copy lists QZ3AB a second time, and once more under another spelling ahead of the row that has not changed.
+    const next = [
+      "callsign,frequency,lat,lon",
+      "QZ-3AB,145.6625,54.521,-3.123",
+      "QZ3AB,145.6625,54.521,-3.123",
+      "QZ9ZZ,433.05,54.9,-3.4",
+      "QZ3AB,145.6625,54.521,-3.123",
+    ].join("\n");
+    const asked = await preview("club.csv", next, { listId: made.list.id });
+    expect(asked.body.update).toMatchObject({ added: 2, unchanged: 2 });
+    expect(asked.body.duplicates).toMatchObject({ held: 0, withinFile: 2 });
+    expect(asked.body.duplicates.examples.filter((pair) => pair.against === "file")).toHaveLength(2);
+
+    // As a list of its own the same file sets the two repeats aside; brought up to date it does the same.
+    const { body: updated } = await importFile("club.csv", next, { listId: made.list.id, duplicates: "skip" });
+    expect(updated).toMatchObject({ added: 0, unchanged: 2, duplicatesSetAside: 2 });
+    expect(updated.list).toMatchObject({ count: 2, setAsideCount: 2 });
+    expect(await shown()).toEqual(["QZ3AB 145662500", "QZ9ZZ 433050000"]);
+    const [kept] = await find("QZ3AB");
+    expect((await detail(kept!.id)).merged).toHaveLength(2);
+  });
+
+  it("does the same when the newer data is preferred: an entry of the list itself is not displaced by its own repeat", async () => {
+    const first = ["callsign,frequency,lat,lon", "QZ3AB,145.6625,54.521,-3.123"].join("\n");
+    const { body: made } = await importFile("club.csv", first, { name: "Club list", dataDate: "2026-10-01" });
+    const next = `${first}\nQZ3AB,145.6625,54.521,-3.123`;
+    const { body: updated } = await importFile("club.csv", next, { listId: made.list.id, duplicates: "prefer-newer" });
+    expect(updated).toMatchObject({ added: 0, unchanged: 1, duplicatesSetAside: 1, heldSetAside: 0 });
+    expect(await shown()).toEqual(["QZ3AB 145662500"]);
+  });
+
   it("prefers the newer data when asked, and carries over what the person typed or changed", async () => {
     const north = await importNorth();
     // The person corrects a tone in the list, and has an entry of their own for another repeater.

@@ -817,8 +817,8 @@ export function createRepeatersService(ctx: AppContext, deps: RepeaterServiceDep
   type Step =
     | { kind: "add"; row: ReadRow; id: string }
     | { kind: "change"; row: ReadRow; id: string }
-    | { kind: "same"; id: string }
-    | { kind: "edited-same"; id: string }
+    | { kind: "same"; row: ReadRow; id: string }
+    | { kind: "edited-same"; row: ReadRow; id: string }
     | { kind: "edited-differs"; row: ReadRow; existing: Existing }
     | { kind: "removed"; row: ReadRow; id: string; setAside: boolean };
 
@@ -838,8 +838,8 @@ export function createRepeatersService(ctx: AppContext, deps: RepeaterServiceDep
       const same = before !== null && sameFields(before, row);
       if (current.removedAt !== null) steps.push({ kind: "removed", row, id: current.id, setAside: current.mergedInto !== null });
       else if (current.editedAt !== null) {
-        steps.push(same ? { kind: "edited-same", id: current.id } : { kind: "edited-differs", row, existing: current });
-      } else steps.push(same ? { kind: "same", id: current.id } : { kind: "change", row, id: current.id });
+        steps.push(same ? { kind: "edited-same", row, id: current.id } : { kind: "edited-differs", row, existing: current });
+      } else steps.push(same ? { kind: "same", row, id: current.id } : { kind: "change", row, id: current.id });
     }
     return { steps, gone: existing.filter((item) => !met.has(item.id)) };
   }
@@ -968,21 +968,28 @@ export function createRepeatersService(ctx: AppContext, deps: RepeaterServiceDep
     // The person's own first, then the newest data.
     const preferred = (a: Held, b: Held) =>
       Number(b.listId === null || b.editedAt !== null) - Number(a.listId === null || a.editedAt !== null) || dateOf(b) - dateOf(a);
-    /** Rows of the file read so far, each with the id of its entry. */
+    /**
+     * Rows of the file a new row may repeat, each with the id of its entry. First every row
+     * that is an entry of the list already and is shown, changed in this copy or not:
+     * `heldEntries` leaves the list being brought up to date out, so this is the only place
+     * they are seen, and they are there wherever in the file the new row comes. Then the
+     * new rows read so far.
+     */
     const inFile = createMatchIndex<Matchable & { id: string; row: ReadRow | null }>();
+    for (const step of steps) {
+      if (step.kind === "add" || step.kind === "removed") continue;
+      inFile.add({ ...matchable(step.row), id: step.kind === "edited-differs" ? step.existing.id : step.id, row: step.row });
+    }
     const matches = new Map<string, Match>();
     for (const step of steps) {
-      if (step.kind === "add") {
-        const earlier = inFile.same(step.row)[0];
-        const same = index.same(step.row).sort(preferred);
-        const possible = !earlier && same.length === 0 ? index.possible(step.row)[0] : undefined;
-        if (earlier || same.length > 0 || possible) {
-          matches.set(step.id, { earlier: earlier ? { id: earlier.id, row: earlier.row } : undefined, held: same, possible });
-        }
-        inFile.add({ ...matchable(step.row), id: step.id, row: step.row });
-      } else if (step.kind === "change" || step.kind === "edited-differs") {
-        inFile.add({ ...matchable(step.row), id: step.kind === "change" ? step.id : step.existing.id, row: step.row });
+      if (step.kind !== "add") continue;
+      const earlier = inFile.same(step.row)[0];
+      const same = index.same(step.row).sort(preferred);
+      const possible = !earlier && same.length === 0 ? index.possible(step.row)[0] : undefined;
+      if (earlier || same.length > 0 || possible) {
+        matches.set(step.id, { earlier: earlier ? { id: earlier.id, row: earlier.row } : undefined, held: same, possible });
       }
+      inFile.add({ ...matchable(step.row), id: step.id, row: step.row });
     }
     return matches;
   }
