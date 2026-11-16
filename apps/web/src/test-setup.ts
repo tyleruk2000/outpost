@@ -4,8 +4,12 @@ import { afterEach } from "vitest";
 
 afterEach(() => cleanup());
 
+// A test file that asks for the plain Node environment (`// @vitest-environment node`,
+// for code that needs Node's own streams and cryptography) has no window to prepare.
+const inBrowserLikeEnvironment = typeof window !== "undefined";
+
 // jsdom has no matchMedia; components only need it to exist.
-if (!window.matchMedia) {
+if (inBrowserLikeEnvironment && !window.matchMedia) {
   window.matchMedia = (query: string) =>
     ({
       matches: false,
@@ -20,14 +24,16 @@ if (!window.matchMedia) {
 }
 
 // Radix components measure and scroll; jsdom does neither.
-if (!("ResizeObserver" in window)) {
+if (inBrowserLikeEnvironment && !("ResizeObserver" in window)) {
   (window as unknown as { ResizeObserver: unknown }).ResizeObserver = class {
     observe() {}
     unobserve() {}
     disconnect() {}
   };
 }
-Element.prototype.scrollIntoView ??= () => {};
-Element.prototype.hasPointerCapture ??= () => false;
-Element.prototype.setPointerCapture ??= () => {};
-Element.prototype.releasePointerCapture ??= () => {};
+if (inBrowserLikeEnvironment) {
+  Element.prototype.scrollIntoView ??= () => {};
+  Element.prototype.hasPointerCapture ??= () => false;
+  Element.prototype.setPointerCapture ??= () => {};
+  Element.prototype.releasePointerCapture ??= () => {};
+}
