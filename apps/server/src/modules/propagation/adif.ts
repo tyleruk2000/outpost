@@ -14,7 +14,7 @@
  * - Date is 8 digits, YYYYMMDD, UTC. Time is 6 digits HHMMSS or 4 digits HHMM, UTC.
  * - Location is 11 characters, `XDDD MM.MMM`, X one of N, S, E, W.
  * - GridSquare is a 2, 4, 6 or 8 character Maidenhead locator; characters 9 and 10 of
- *   a longer one are in the `_EXT` field.
+ *   a longer one are in the `_EXT` field, which is not read here.
  *
  * The specification says ADI data is ASCII. Real files hold other characters, and
  * programs disagree on whether L then counts characters or bytes. This reader counts

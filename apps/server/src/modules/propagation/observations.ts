@@ -170,7 +170,7 @@ const comparison = z.object({
 /** A stated position from a pair of ADIF location fields, or from a locator of four characters or more. */
 function statedPosition(
   fields: Map<string, string>,
-  names: { lat: string; lon: string; grid: string; ext: string },
+  names: { lat: string; lon: string; grid: string },
   notes: Map<string, number>,
   whose: string,
 ): { lat: number | null; lon: number | null; from: string } {
@@ -183,7 +183,7 @@ function statedPosition(
   }
   const grid = (fields.get(names.grid) ?? "").toUpperCase();
   if (grid) {
-    // Characters 9 and 10 of a longer locator would narrow the square further; the first eight are already within 500 m.
+    // Characters 9 and 10 of a longer locator (the _EXT fields) are not read: the first eight are already within 500 m.
     const square = grid.length >= 4 ? parseMaidenhead(grid.slice(0, 8)) : null;
     if (square) return { lat: Number(square.lat.toFixed(5)), lon: Number(square.lon.toFixed(5)), from: `locator ${square.locator}` };
     bump(
@@ -285,13 +285,13 @@ export async function registerObservations(
       const submode = get("SUBMODE").toUpperCase();
       const mine = statedPosition(
         fields,
-        { lat: "MY_LAT", lon: "MY_LON", grid: "MY_GRIDSQUARE", ext: "MY_GRIDSQUARE_EXT" },
+        { lat: "MY_LAT", lon: "MY_LON", grid: "MY_GRIDSQUARE" },
         notes,
         "The logging station's",
       );
       const theirs = statedPosition(
         fields,
-        { lat: "LAT", lon: "LON", grid: "GRIDSQUARE", ext: "GRIDSQUARE_EXT" },
+        { lat: "LAT", lon: "LON", grid: "GRIDSQUARE" },
         notes,
         "The contacted station's",
       );
