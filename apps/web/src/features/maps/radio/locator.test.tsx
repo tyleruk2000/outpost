@@ -39,6 +39,7 @@ describe("a position's locator, wherever coordinates are shown", () => {
         onSave={() => {}}
         onMeasure={() => {}}
         onDraw={() => {}}
+        onSun={() => {}}
         onClose={() => {}}
       />,
     );
