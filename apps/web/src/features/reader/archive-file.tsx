@@ -23,6 +23,8 @@ export function ArchiveFile({
   url,
   path,
   label,
+  title,
+  backLabel = "Back to the page",
   onClose,
 }: {
   collectionId: string;
@@ -31,6 +33,9 @@ export function ArchiveFile({
   /** Path of the file inside the book. */
   path: string;
   label: string;
+  /** The title to give the document when it is added, where the collection's own list names it. */
+  title?: string;
+  backLabel?: string;
   onClose(): void;
 }) {
   const client = useQueryClient();
@@ -52,10 +57,12 @@ export function ArchiveFile({
     mutationFn: () =>
       api.post<SaveArchiveFileResponse>(`/api/kiwix/books/${collectionId}/files/save`, {
         path,
-        title: fileTitle({ kind: "archive", path, text: label }),
+        title: title ?? fileTitle({ kind: "archive", path, text: label }),
       }),
     onSuccess: () => {
       for (const key of ["links", "documents"]) void client.invalidateQueries({ queryKey: [key] });
+      // A collection's own list of documents says which of them are in the library.
+      void client.invalidateQueries({ queryKey: ["kiwix", "documents", collectionId] });
     },
   });
   const documentId = save.data?.document.id ?? (kept.data?.state === "saved" ? kept.data.documentId : undefined);
@@ -64,7 +71,7 @@ export function ArchiveFile({
     <div className="absolute inset-0 flex flex-col bg-page">
       <div className="flex min-h-12 shrink-0 flex-wrap items-center gap-x-2 gap-y-1 border-b border-border px-2 py-1.5 md:px-3">
         <Button variant="ghost" size="sm" onClick={onClose}>
-          <ArrowLeft /> Back to the page
+          <ArrowLeft /> {backLabel}
         </Button>
         <h2 className="min-w-0 flex-1 truncate text-small font-medium text-ink" title={label}>
           {label}

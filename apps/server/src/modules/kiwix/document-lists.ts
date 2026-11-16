@@ -31,8 +31,11 @@ import { fold, isNautilusHome, NAUTILUS_DATABASE, type NautilusDocument, readNau
 const MAX_HOME_BYTES = 2 * 1024 * 1024;
 /** The list itself. The one archive measured holds 108 documents in 17.6 kB. */
 const MAX_DATABASE_BYTES = DEFAULT_LITERAL_LIMITS.maxLength;
-/** Lists kept in memory at once. The one read longest ago goes first, and is read again when asked for. */
-const MAX_HELD = 32;
+/**
+ * How many documents are kept in memory across all lists: about 32 MB at the measured 0.64 kB
+ * a document. Past that, the list used longest ago is let go, and read again when asked for.
+ */
+const MAX_HELD_DOCUMENTS = 50_000;
 
 interface HeldDocument extends NautilusDocument {
   index: number;
@@ -205,12 +208,14 @@ export function registerDocumentLists(app: FastifyInstance, ctx: AppContext, opt
     if (reading.kind === "unknown") return;
     known.delete(row.id);
     known.set(row.id, { uuid: options.uuidOf(row), reading });
-    let held = [...known.values()].filter((entry) => entry.reading.kind === "list").length;
+    const size = (entry: { reading: Reading }) => (entry.reading.kind === "list" ? entry.reading.list.documents.length : 0);
+    let held = [...known.values()].reduce((sum, entry) => sum + size(entry), 0);
+    // A Map keeps the order things were put in, so the first list met is the one used longest ago.
     for (const [id, entry] of known) {
-      if (held <= MAX_HELD) break;
+      if (held <= MAX_HELD_DOCUMENTS) break;
       if (entry.reading.kind !== "list" || id === row.id) continue;
       known.delete(id);
-      held -= 1;
+      held -= size(entry);
     }
   }
 
