@@ -9,6 +9,7 @@ import { repeaterLayers } from "@/features/repeaters/map/layers";
 import { bboxRing, circleRing, formatDistance, type LatLon, metersPerPixel } from "../lib/geo";
 import { measure } from "../lib/measure";
 import { MARKER_HEX } from "../lib/palette";
+import { BADGE, iconOf, isDrawn, PLACE_IMAGE_PREFIX, pageKey } from "../lib/place-icons";
 import { trackEnds, trackLines } from "../lib/profile";
 import { midpoints } from "../lib/route-edit";
 import { MAP_FONTS, type MapTheme } from "../lib/style";
@@ -35,6 +36,9 @@ export type OverlaySource = (typeof OVERLAY_SOURCES)[number];
 
 export const OVERLAY_LAYERS = {
   markers: "o-markers",
+  markerIcons: "o-markers-icon",
+  /** The names of favourites, and the icons of those that have one. */
+  favourites: "o-markers-favourite-label",
   tracks: "o-tracks-line",
   tracksHit: "o-tracks-hit",
   drawPoints: "o-draw-points",
@@ -62,9 +66,36 @@ export function overlaySources(data: Partial<Record<OverlaySource, FeatureCollec
   return sources;
 }
 
+/** The name of the picture drawn for a place with an icon, worked out by the map from the place and the theme. */
+const placeImage = (theme: MapTheme): ["concat", string, ["get", string], string, ["get", string], string, string] => [
+  "concat",
+  PLACE_IMAGE_PREFIX,
+  ["get", "icon"],
+  "-",
+  ["get", "tint"],
+  "-",
+  pageKey(theme.page),
+];
+
 export function overlayLayers(theme: MapTheme): LayerSpecification[] {
   const label = { "text-font": [MAP_FONTS.medium] as string[], "text-size": 12.5 };
   const halo = { "text-color": theme.ink, "text-halo-color": theme.page, "text-halo-width": 1.6 } as const;
+  /**
+   * A place's name, under its marker and clear of it. The marker is larger when it carries an icon, and the name
+   * has to start below the whole picture, or the map takes the two to overlap and leaves the name out.
+   */
+  const placeName = {
+    ...label,
+    "text-field": ["get", "name"] as ["get", string],
+    "text-anchor": "top",
+    "text-offset": ["case", ["has", "icon"], ["literal", [0, 1.45]], ["literal", [0, 0.9]]] as [
+      "case",
+      ["has", string],
+      ["literal", [number, number]],
+      ["literal", [number, number]],
+    ],
+    "text-max-width": 9,
+  } as const;
   return [
     // The Maidenhead locator grid, when it is switched on.
     ...gridLayers(theme),
@@ -188,33 +219,65 @@ export function overlayLayers(theme: MapTheme): LayerSpecification[] {
       filter: ["==", ["geometry-type"], "Point"],
       paint: { "circle-radius": 7, "circle-color": theme.primary, "circle-stroke-color": theme.page, "circle-stroke-width": 3 },
     },
-    // Saved places. Favourites carry a ring in the lamp colour and keep their name at every zoom.
+    // Saved places. Favourites carry a ring in the lamp colour and keep their name at every zoom. A plain pin is
+    // the dot every place was before there were icons. A place with an icon is that same dot with a picture of
+    // its marker over it: a larger disc of its colour with the icon on it (see map/place-images.ts).
     {
       id: "o-markers-favourite",
       type: "circle",
       source: "o-markers",
       filter: ["==", ["get", "favourite"], true],
-      paint: { "circle-radius": 11, "circle-color": theme.lamp, "circle-stroke-color": theme.page, "circle-stroke-width": 1.5 },
+      paint: {
+        // Outside the larger disc of a favourite that has an icon.
+        "circle-radius": ["case", ["has", "icon"], BADGE.radius + BADGE.ring + 2.5, 11],
+        "circle-color": theme.lamp,
+        "circle-stroke-color": theme.page,
+        "circle-stroke-width": 1.5,
+      },
     },
+    // Every place is a dot here, with or without an icon: it is what a press on a place lands on, and what
+    // shows where an icon has no room or its picture could not be drawn.
     {
       id: OVERLAY_LAYERS.markers,
       type: "circle",
       source: "o-markers",
       paint: { "circle-radius": 6.5, "circle-color": ["get", "color"], "circle-stroke-color": theme.page, "circle-stroke-width": 2.5 },
     },
+    // Names and icons, in three layers. The map gives room to what is in a higher layer first, so the order
+    // here is who gives way to whom: the names of ordinary places to every icon, and everything to a favourite.
+    //
+    // The names of places that are not favourites, from zoom 9.
     {
       id: "o-markers-label",
       type: "symbol",
       source: "o-markers",
-      filter: ["any", ["==", ["get", "favourite"], true], [">=", ["zoom"], 9]],
+      filter: ["all", ["!=", ["get", "favourite"], true], [">=", ["zoom"], 9]],
+      layout: { ...placeName, "text-optional": true },
+      paint: halo,
+    },
+    // Their icons. One picture a place. Where two would lie over each other only one is drawn and the other
+    // place stays a dot, which is what keeps a map with thousands of places light: zoomed out over all of
+    // them it draws a screenful of pictures at most, not one for every place. Zoomed in to where they stand
+    // apart, every place has its icon.
+    {
+      id: OVERLAY_LAYERS.markerIcons,
+      type: "symbol",
+      source: "o-markers",
+      filter: ["all", ["has", "icon"], ["!=", ["get", "favourite"], true]],
+      layout: { "icon-image": placeImage(theme), "icon-padding": 0 },
+    },
+    // Favourites: named at every zoom, as before, and their icons always drawn whole. They are few.
+    {
+      id: OVERLAY_LAYERS.favourites,
+      type: "symbol",
+      source: "o-markers",
+      filter: ["==", ["get", "favourite"], true],
       layout: {
-        ...label,
-        "text-field": ["get", "name"],
-        "text-anchor": "top",
-        "text-offset": [0, 0.9],
-        "text-max-width": 9,
+        ...placeName,
         "text-optional": true,
-        "symbol-sort-key": ["case", ["get", "favourite"], 0, 1],
+        "icon-image": ["case", ["has", "icon"], placeImage(theme), ""],
+        "icon-padding": 0,
+        "icon-allow-overlap": true,
       },
       paint: halo,
     },
@@ -292,17 +355,30 @@ export function overlayLayers(theme: MapTheme): LayerSpecification[] {
 
 const point = (lon: number, lat: number) => ({ type: "Point", coordinates: [lon, lat] });
 
-/** Saved places as points. The one being edited is left out: it is shown as a pin that can be dragged. */
+/**
+ * Saved places as points. The one being edited is left out: it is shown as a pin that can be dragged.
+ * A place with an icon says which, and the name of its colour, which together name the picture drawn
+ * for it; a plain pin says neither, and is drawn exactly as places were before there were icons.
+ */
 export function markersData(markers: MarkerDto[], editingId: string | null): FeatureCollection {
   return {
     type: "FeatureCollection",
     features: markers
       .filter((marker) => marker.id !== editingId)
-      .map((marker) => ({
-        type: "Feature",
-        properties: { id: marker.id, name: marker.name, color: colorOf(marker.color), favourite: marker.isFavorite },
-        geometry: point(marker.lon, marker.lat),
-      })),
+      .map((marker) => {
+        const icon = iconOf(marker);
+        const properties: FeatureCollection["features"][number]["properties"] = {
+          id: marker.id,
+          name: marker.name,
+          color: colorOf(marker.color),
+          favourite: marker.isFavorite,
+        };
+        if (isDrawn(icon)) {
+          properties.icon = icon;
+          properties.tint = marker.color in MARKER_HEX ? marker.color : "teal";
+        }
+        return { type: "Feature", properties, geometry: point(marker.lon, marker.lat) };
+      }),
   };
 }
 

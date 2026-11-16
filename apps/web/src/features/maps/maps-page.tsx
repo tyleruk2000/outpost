@@ -28,6 +28,7 @@ import { useDownloads } from "@/features/downloads/use-downloads";
 import { type SightStart, useRepeatersOnMap } from "@/features/repeaters/map/use-repeaters-on-map";
 import { errorMessage } from "@/lib/api";
 import { cn, plural } from "@/lib/utils";
+import { CentreMark } from "./centre-mark";
 import {
   useDeleteMarker,
   useMapOverview,
@@ -46,6 +47,7 @@ import { type ContourReach, contourReach, contoursSupported } from "./lib/contou
 import { formatPosition, isReadoutFormat, type ReadoutFormat } from "./lib/coords";
 import { formatDistance, type LatLon } from "./lib/geo";
 import { MARKER_HEX } from "./lib/palette";
+import { iconOf, pinGlyphOf } from "./lib/place-icons";
 import {
   addPoint,
   insertPoint,
@@ -79,6 +81,7 @@ import { type OfflineIntent, OfflinePanel } from "./panels/offline";
 import { draftOf, type PlaceDraft, PlaceEditor, PlacesList } from "./panels/places";
 import { hasUnsavedWork, type RouteDraft, RouteEditor } from "./panels/route-editor";
 import { ImportGpxDialog, RouteDetail, RoutesList } from "./panels/routes";
+import { SunGlance } from "./panels/sun-glance";
 import { SunPanel } from "./panels/sun-panel";
 import { locatorOf } from "./radio/locator";
 import { SightCard } from "./radio/sight-card";
@@ -87,7 +90,7 @@ import { useLocatorGrid } from "./radio/use-locator-grid";
 import { useSight } from "./radio/use-sight";
 import { RecordButton, TrackRecording } from "./recording/record-ui";
 import { SearchBox } from "./search-box";
-import { DesktopPanel, type Detent, detentHeight, MobileSheet, PANEL_TABS, type PanelTab, PanelTabs } from "./side-panel";
+import { DesktopPanel, type Detent, detentHeight, MobileSheet, PANEL_TABS, type PanelTab, PanelTabs, PEEK_HEIGHT } from "./side-panel";
 
 /** "Print or save as PDF", fetched when it is first asked for. */
 const PrintTool = lazy(() => import("./print/print-tool"));
@@ -190,6 +193,8 @@ export default function MapsPage() {
   const [hiddenTracks, setHiddenTracks] = useStoredState(STORAGE_KEYS.hiddenTracks, isStringArray, []);
   const [panel, setPanel] = useStoredState<PanelState>(STORAGE_KEYS.panel, isPanelState, { open: true, tab: "places" });
   const [detent, setDetent] = useState<Detent>("peek");
+  /** How tall the lowered sheet is: its handle and the whole row of tab names, as the sheet measured them. */
+  const [peekHeight, setPeekHeight] = useState(PEEK_HEIGHT);
 
   const [restoredDraft] = useState(restoreRouteDraft);
   const [routeDraft, setRouteDraft] = useState<RouteDraft | null>(restoredDraft);
@@ -375,7 +380,7 @@ export default function MapsPage() {
       setMoving(null);
       setContextMenu(null);
       setTool("browse");
-      setDraft({ name, note: "", color: "teal", isFavorite: false, lat: position.lat, lon: position.lon });
+      setDraft({ name, note: "", color: "teal", icon: "pin", isFavorite: false, lat: position.lat, lon: position.lon });
       showPanel("places");
     },
     [showPanel],
@@ -576,6 +581,7 @@ export default function MapsPage() {
       engine.setPin({
         position: { lat: moving.lat, lon: moving.lon },
         color: MARKER_HEX[movingMarker.color],
+        glyph: pinGlyphOf(iconOf(movingMarker), movingMarker.color),
         draggable: true,
         label: `${movingMarker.name}. ${howToMove} Enter saves the new position.`,
       });
@@ -583,6 +589,7 @@ export default function MapsPage() {
       engine.setPin({
         position: { lat: draft.lat, lon: draft.lon },
         color: MARKER_HEX[draft.color],
+        glyph: pinGlyphOf(draft.icon, draft.color),
         draggable: true,
         label: `${draft.name || "New place"}. ${howToMove}`,
       });
@@ -677,13 +684,27 @@ export default function MapsPage() {
     engine?.setCursor(tool === "browse" || tool === "print" ? "" : "crosshair");
   }, [engine, tool]);
 
+  /**
+   * On a phone, today's sunrise and sunset are written under the readout while the sheet is lowered and nothing
+   * is being done on the map: a tool's card, or the card of a point that was found or is being moved, needs the
+   * room and has the person's attention (and a found point's card has sun times of its own).
+   */
+  const sunLine = !isDesktop && detent === "peek" && tool === "browse" && !pin && !moving;
+
   // "Fit" and "fly" should land in the part of the map that is not under the chrome.
   useEffect(() => {
     if (!engine) return;
-    // On a phone: the sheet (at most half the height, as "full" hides the map anyway) and the readout above it.
-    const sheet = isDesktop ? 0 : detentHeight(detent === "peek" ? "peek" : "half", area.current?.clientHeight ?? 0) + 88;
-    engine.setPadding({ top: isDesktop ? 16 : 64, right: isDesktop ? 56 : 0, bottom: sheet, left: 0 });
-  }, [engine, isDesktop, detent]);
+    const top = isDesktop ? 16 : 64;
+    const height = area.current?.clientHeight ?? 0;
+    // On a phone: the sheet (at most half the height, as "full" hides the map anyway), the readout above it,
+    // and under the readout, while the sheet is lowered, the line with today's sunrise and sunset.
+    const sheet = isDesktop ? 0 : detentHeight(detent === "peek" ? "peek" : "half", height, peekHeight) + 88 + (sunLine ? 44 : 0);
+    // A short screen (a phone on its side) keeps some map clear whatever lies over it.
+    const bottom = Math.max(0, Math.min(sheet, height - top - 96));
+    // A phone's sheet covers the lower part of the map, so there the camera keeps the space all the time and the
+    // centre of the map is the middle of what shows. On a wide screen nothing lies over the middle of the map.
+    engine.setPadding({ top, right: isDesktop ? 56 : 0, bottom, left: 0 }, !isDesktop);
+  }, [engine, isDesktop, detent, peekHeight, sunLine]);
 
   // ── What the person does on the map ──
 
@@ -890,6 +911,7 @@ export default function MapsPage() {
         name: draft.name.trim(),
         note: draft.note,
         color: draft.color,
+        icon: draft.icon,
         isFavorite: draft.isFavorite,
         lat: draft.lat,
         lon: draft.lon,
@@ -982,6 +1004,11 @@ export default function MapsPage() {
   };
   const lowerSheet = useCallback(() => setDetent("peek"), []);
   const raiseSheet = useCallback(() => setDetent("full"), []);
+  /** Opens the Sun tab: from the line under the readout on a phone, and from the Places tab. */
+  const showSun = useCallback(() => {
+    setPanel({ open: true, tab: "sun" });
+    setDetent((current) => (current === "peek" ? "half" : current));
+  }, [setPanel]);
   const terrainBounds = sources.data?.sources.terrain?.bounds ?? null;
   /** Whether the drawing tool's panel is on screen; when it is not, a card over the map stands in for it. */
   const editorVisible = panel.tab === "routes" && (isDesktop ? panel.open : detent !== "peek");
@@ -1023,6 +1050,7 @@ export default function MapsPage() {
             onMove={engine ? moveFromList : undefined}
             onAdd={() => changeTool("add-place")}
             canAddOnMap={Boolean(engine)}
+            onShowSun={showSun}
           />
         ),
         routes: routeDraft ? (
@@ -1218,7 +1246,7 @@ export default function MapsPage() {
     ) : null);
 
   return (
-    <div className="relative isolate flex h-dvh overflow-hidden max-md:h-[calc(100dvh-3.25rem)] max-md:pb-14">
+    <div className="relative isolate flex h-dvh overflow-hidden max-md:h-[calc(100dvh-3.25rem)] max-md:pb-[calc(3.5rem+env(safe-area-inset-bottom))]">
       {isDesktop && panel.open ? (
         <DesktopPanel onCollapse={() => setPanel((current) => ({ ...current, open: false }))}>{panelBody}</DesktopPanel>
       ) : null}
@@ -1260,19 +1288,13 @@ export default function MapsPage() {
           </div>
         ) : null}
 
-        {/* Middle of the map on touch screens, where there is no pointer to read a position from, and while
-            drawing from the keyboard, where it is where the next point will go. */}
-        {engine && (detent === "peek" || (tool === "draw" && mapHasKeyboard)) ? (
-          <div
-            aria-hidden
-            className={cn(
-              "pointer-events-none absolute top-1/2 left-1/2 size-5 -translate-x-1/2 -translate-y-1/2",
-              tool === "draw" && mapHasKeyboard ? "block" : "hidden [@media(pointer:coarse)]:block",
-            )}
-          >
-            <span className="absolute top-1/2 left-0 h-0.5 w-full -translate-y-1/2 bg-ink shadow-[0_0_0_1px_var(--page)]" />
-            <span className="absolute top-0 left-1/2 h-full w-0.5 -translate-x-1/2 bg-ink shadow-[0_0_0_1px_var(--page)]" />
-          </div>
+        {/* The point "the centre of the map" means, wherever something on screen is reading it: the readout while it
+            says "Centre", the Sun tab, and a route drawn from the keyboard, where it is where the next point will go. */}
+        {engine && (isDesktop || detent !== "full") ? (
+          <CentreMark
+            engine={engine}
+            always={(panel.tab === "sun" && (isDesktop ? panel.open : detent !== "peek")) || (tool === "draw" && mapHasKeyboard)}
+          />
         ) : null}
 
         <div className="pointer-events-none absolute inset-x-3 top-3 z-10 flex items-start gap-2 max-md:flex-col max-md:items-stretch">
@@ -1359,7 +1381,14 @@ export default function MapsPage() {
           <TrackRecording engine={engine} onShowTrack={(track) => openTrack(track, false)} />
           {card}
           {/* No map drawn, nothing to credit. */}
-          <MapFooter engine={engine} format={format} onFormatChange={setFormat} credits={engine ? credits : []} className="w-full" />
+          <MapFooter
+            engine={engine}
+            format={format}
+            onFormatChange={setFormat}
+            credits={engine ? credits : []}
+            underReadout={sunLine && engine ? <SunGlance engine={engine} onOpen={showSun} /> : undefined}
+            className="w-full"
+          />
         </div>
 
         {contextMenu && area.current ? (
@@ -1398,7 +1427,7 @@ export default function MapsPage() {
         ) : null}
 
         {!isDesktop ? (
-          <MobileSheet detent={detent} onDetentChange={setDetent}>
+          <MobileSheet detent={detent} onDetentChange={setDetent} onPeekHeight={setPeekHeight}>
             {panelBody}
           </MobileSheet>
         ) : null}

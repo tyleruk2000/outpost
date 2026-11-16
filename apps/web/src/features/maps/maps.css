@@ -49,6 +49,15 @@
   border-radius: 50%;
   background: var(--page);
 }
+/* A saved place with an icon: the icon is in the pin's head in place of the dot, upright although the head is turned. */
+.outpost-pin > span[data-glyph]::after {
+  display: none;
+}
+.outpost-pin > span > svg {
+  position: absolute;
+  inset: 2.5px;
+  transform: rotate(45deg);
+}
 
 /* A pin that has the keyboard: the ring follows the pin's own shape rather than its square target. */
 .outpost-pin:focus-visible {

@@ -15,6 +15,39 @@ export type MapTileType = "vector" | "terrain";
 export const MARKER_COLORS = ["teal", "amber", "red", "green", "blue", "violet", "slate"] as const;
 export type MarkerColor = (typeof MARKER_COLORS)[number];
 
+/**
+ * The icons a saved place can carry, beside its colour. A small fixed set for what the
+ * map is used for: where to sleep, park, drink, eat and get help, what to head for and
+ * what to keep away from. "pin" is the plain dot every place had before there were
+ * icons, and what a place has until one is chosen. The drawings are in the web app
+ * (`features/maps/lib/place-icons.ts`); the names GPX files use for them are in the
+ * server (`modules/maps/waypoint-symbols.ts`).
+ */
+export const MARKER_ICONS = [
+  "pin",
+  "home",
+  "shelter",
+  "tent",
+  "parking",
+  "water",
+  "food",
+  "first-aid",
+  "fuel",
+  "summit",
+  "viewpoint",
+  "mast",
+  "meeting",
+  "danger",
+  "star",
+  "flag",
+] as const;
+export type MarkerIcon = (typeof MARKER_ICONS)[number];
+export const DEFAULT_MARKER_ICON: MarkerIcon = "pin";
+
+/** A stored or received icon name as one of the icons: anything else (a name from a newer Outpost, say) is the plain pin. */
+export const asMarkerIcon = (value: unknown): MarkerIcon =>
+  typeof value === "string" && (MARKER_ICONS as readonly string[]).includes(value) ? (value as MarkerIcon) : DEFAULT_MARKER_ICON;
+
 /** A ready-made area someone can download with one click. */
 export interface MapRegionPreset {
   id: string;
@@ -146,6 +179,7 @@ export interface MarkerDto {
   lat: number;
   lon: number;
   color: MarkerColor;
+  icon: MarkerIcon;
   isFavorite: boolean;
   noteId: string | null;
   createdAt: number;

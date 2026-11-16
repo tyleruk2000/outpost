@@ -1,5 +1,5 @@
 /** The Places tab: the list of saved places, and the form for adding or changing one. */
-import { haversineMeters, type MarkerColor, type MarkerDto } from "@outpost/shared";
+import { haversineMeters, type MarkerColor, type MarkerDto, type MarkerIcon } from "@outpost/shared";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { ArrowLeft, Copy, Move, Search, Star, Trash2, Undo2 } from "lucide-react";
 import { useId, useMemo, useState } from "react";
@@ -14,9 +14,10 @@ import { cn, plural } from "@/lib/utils";
 import { copyText } from "../hooks";
 import { formatPosition, type ReadoutFormat } from "../lib/coords";
 import { formatDistance } from "../lib/geo";
+import { iconOf, isDrawn, PLACE_ICON_NAMES } from "../lib/place-icons";
 import { fold } from "../lib/search";
 import { Locator } from "../radio/locator";
-import { ColorDot, ColorPicker } from "../ui";
+import { ColorPicker, IconPicker, PlaceMark } from "../ui";
 import { SunSection } from "./sun";
 
 /** A place as it is being added or changed, before it is saved. */
@@ -26,6 +27,7 @@ export interface PlaceDraft {
   name: string;
   note: string;
   color: MarkerColor;
+  icon: MarkerIcon;
   isFavorite: boolean;
   lat: number;
   lon: number;
@@ -36,6 +38,7 @@ export const draftOf = (marker: MarkerDto): PlaceDraft => ({
   name: marker.name,
   note: marker.note,
   color: marker.color,
+  icon: iconOf(marker),
   isFavorite: marker.isFavorite,
   lat: marker.lat,
   lon: marker.lon,
@@ -47,6 +50,7 @@ export function isDraftChanged(draft: PlaceDraft, saved: MarkerDto | undefined):
     draft.name.trim() !== saved.name ||
     draft.note !== saved.note ||
     draft.color !== saved.color ||
+    draft.icon !== iconOf(saved) ||
     draft.isFavorite !== saved.isFavorite ||
     draft.lat !== saved.lat ||
     draft.lon !== saved.lon
@@ -103,7 +107,11 @@ export function PlaceEditor({
       <div className="scroll-quiet grid min-h-0 flex-1 content-start gap-4 overflow-y-auto px-4 py-4">
         {/* The Sun line sits straight under the name: on a phone the sheet shows little more than this at first. */}
         <div className="grid gap-1">
-          <h3 className="font-title text-lead text-ink">{saved ? saved.name : "New place"}</h3>
+          <h3 className="flex items-start gap-2.5 font-title text-lead text-ink">
+            {/* As it is on the map, and as it will be once a change of colour or icon is saved. */}
+            <PlaceMark color={draft.color} icon={draft.icon} className="mt-0.5" />
+            <span className="min-w-0">{saved ? saved.name : "New place"}</span>
+          </h3>
           <SunSection position={{ lat: draft.lat, lon: draft.lon }} onOpen={onNeedRoom} className="border-b border-border pb-1" />
         </div>
         <Field label="Name">
@@ -132,6 +140,10 @@ export function PlaceEditor({
         <div className="grid gap-1.5">
           <span className="text-small font-medium text-ink">Colour</span>
           <ColorPicker label="Colour" value={draft.color} onChange={(color) => onChange({ ...draft, color })} />
+        </div>
+        <div className="grid gap-1.5">
+          <span className="text-small font-medium text-ink">Icon</span>
+          <IconPicker label="Icon" value={draft.icon} color={draft.color} onChange={(icon) => onChange({ ...draft, icon })} />
         </div>
         <div className="flex items-start gap-3">
           <Switch id={favouriteId} checked={draft.isFavorite} onCheckedChange={(checked) => onChange({ ...draft, isFavorite: checked })} />
@@ -211,6 +223,7 @@ export function PlacesList({
   onMove,
   onAdd,
   canAddOnMap,
+  onShowSun,
 }: {
   markers: UseQueryResult<MarkerDto[]>;
   onOpen: (marker: MarkerDto) => void;
@@ -220,6 +233,8 @@ export function PlacesList({
   /** Starts the "click the map to save a place" tool. */
   onAdd: () => void;
   canAddOnMap: boolean;
+  /** Opens the Sun tab. Sun times do not need a saved place, and someone looking for them here is told so. */
+  onShowSun?: () => void;
 }) {
   const [filter, setFilter] = useState("");
   const all = markers.data ?? [];
@@ -260,6 +275,14 @@ export function PlacesList({
             Save a place
           </Button>
         ) : null}
+        {onShowSun ? (
+          <p className="mt-5 border-t border-border pt-4 text-small text-ink-muted">
+            Sunrise and sunset do not need a saved place. The Sun tab gives them for the centre of the map.{" "}
+            <Button variant="link" size="sm" onClick={onShowSun}>
+              Show sun times
+            </Button>
+          </p>
+        ) : null}
       </div>
     );
   }
@@ -297,9 +320,12 @@ export function PlacesList({
                 onClick={() => onOpen(marker)}
                 className="flex min-w-0 flex-1 items-start gap-3 py-2.5 pr-1 pl-4 text-left hover:bg-surface focus-visible:-outline-offset-2 max-md:py-3"
               >
-                <ColorDot color={marker.color} className="mt-1.5" />
+                <PlaceMark color={marker.color} icon={iconOf(marker)} />
                 <span className="min-w-0">
-                  <span className="block truncate text-small font-medium text-ink">{marker.name}</span>
+                  <span className="block truncate text-small font-medium text-ink">
+                    {marker.name}
+                    {isDrawn(iconOf(marker)) ? <span className="sr-only">, {PLACE_ICON_NAMES[iconOf(marker)]}</span> : null}
+                  </span>
                   {marker.note ? <span className="block truncate text-small text-ink-muted">{marker.note.split("\n")[0]}</span> : null}
                 </span>
               </button>

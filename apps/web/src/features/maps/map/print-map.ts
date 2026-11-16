@@ -16,6 +16,7 @@ import { Map as MapLibreMap } from "maplibre-gl";
 import type { LatLon } from "../lib/geo";
 import { countryLabelPoints, SOURCE_IDS } from "../lib/style";
 import type { StyleSpecification } from "../lib/style-types";
+import { providePlaceImages } from "./place-images";
 
 export type PrintMapFailure =
   /** The browser took the graphics context away, as it does when memory runs short. */
@@ -122,6 +123,8 @@ export class PrintMap {
       this.host.remove();
       throw new PrintMapError("too-large", error instanceof Error ? error.message : "The map for the page could not be started.");
     }
+    // Saved places with an icon are pictures the map asks for by name; drawn sharply enough for paper.
+    providePlaceImages(this.map, 4);
     this.map.on("error", (event) => {
       const error = event.error as { message?: string; status?: number } | undefined;
       // A tile that does not exist is how the edge of a region is found; the map draws the coarser one instead.

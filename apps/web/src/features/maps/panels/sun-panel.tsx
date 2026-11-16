@@ -17,13 +17,12 @@ import { formatPosition, type ReadoutFormat } from "../lib/coords";
 import type { CameraView } from "../lib/view";
 import type { MapEngine } from "../map/engine";
 import { Locator } from "../radio/locator";
-import { PanelHeading } from "../ui";
 import { SunTimes } from "./sun";
 
 const link = "text-primary underline decoration-1 underline-offset-2 hover:decoration-2";
 
 /** Where the map is looking, once it has come to rest. */
-function useRestingView(engine: MapEngine | null): CameraView | null {
+export function useRestingView(engine: MapEngine | null): CameraView | null {
   const [view, setView] = useState<CameraView | null>(() => engine?.getView() ?? null);
   useEffect(() => {
     if (!engine) return setView(null);
@@ -88,38 +87,36 @@ export function SunPanel({
   const coordinates = view ? formatPosition(view.lat, view.lon, format, view.zoom).text : "";
 
   return (
-    <div className="scroll-quiet grid min-h-0 flex-1 content-start gap-4 overflow-y-auto px-4 py-4">
+    <div className="scroll-quiet grid min-h-0 flex-1 content-start gap-4 overflow-y-auto px-4 pt-3 pb-4">
       {view ? (
         <>
-          {/* Kept short: on a small phone the half-raised sheet has to show the line with sunrise and sunset under it. */}
-          <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-            <PanelHeading className="w-full">Sun at the centre of the map</PanelHeading>
-            <button
-              type="button"
-              onClick={async () => {
-                if (await copyText(coordinates)) toast.success(`Copied ${coordinates}`);
-              }}
-              title="Copy"
-              aria-label={`Copy coordinates ${coordinates}`}
-              className="tabular rounded-[3px] font-mono text-[0.8125rem] text-ink underline decoration-border-strong decoration-dotted underline-offset-4 hover:decoration-ink"
-            >
-              {coordinates}
-            </button>
-            {/* Already the locator when that is the format coordinates are shown in. */}
-            {format === "maidenhead" ? null : <Locator position={view} />}
+          {/* Kept short: on a small phone the half-raised sheet has to show sunrise and sunset under it. */}
+          <div className="grid gap-1.5">
+            <h3 className="text-small font-semibold text-ink">Sun at the centre of the map</h3>
+            <SunTimes position={view} zone={zone}>
+              {/* Which point the times are for: the one the cross on the map marks, in the readout's own words. */}
+              <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-small text-ink-muted">
+                <span>Centre of the map, marked with a cross:</span>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (await copyText(coordinates)) toast.success(`Copied ${coordinates}`);
+                  }}
+                  title="Copy"
+                  aria-label={`Copy coordinates ${coordinates}`}
+                  className="tabular rounded-[3px] font-mono text-[0.8125rem] text-ink underline decoration-border-strong decoration-dotted underline-offset-4 hover:decoration-ink"
+                >
+                  {coordinates}
+                </button>
+                {/* Already the locator when that is the format coordinates are shown in. */}
+                {format === "maidenhead" ? null : <Locator position={view} />}
+              </p>
+            </SunTimes>
           </div>
-          <SunTimes position={view} zone={zone} />
           {locate === undefined ? null : <WhereYouAre locate={locate} onLocate={onLocate} />}
           <p className="border-t border-border pt-3 text-small text-ink-muted">
-            Move the map and the times follow its centre.
-            {/* The cross is drawn for touch screens only, and on a phone only while the sheet is out of its way. */}
-            <span className="hidden [@media(pointer:coarse)]:inline">
-              {" "}
-              <span className="md:hidden">With this panel lowered, a cross marks the centre.</span>
-              <span className="max-md:hidden">A cross marks the centre.</span>
-            </span>{" "}
-            A saved place and a search result each have a Sun line of their own, and a right-click on the map, or a press held on it, offers
-            “Sun times here”.
+            Move the map and the times follow its centre, which a cross on the map marks. A saved place and a search result each have a Sun
+            line of their own, and a right-click on the map, or a press held on it, offers “Sun times here”.
           </p>
         </>
       ) : (

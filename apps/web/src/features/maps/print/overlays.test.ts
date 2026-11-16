@@ -77,6 +77,7 @@ const marker = (id: string, lat: number, lon: number): MarkerDto => ({
   lat,
   lon,
   color: "teal",
+  icon: "pin",
   isFavorite: false,
   noteId: null,
   createdAt: 0,

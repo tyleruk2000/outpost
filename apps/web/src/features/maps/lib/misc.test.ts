@@ -146,6 +146,7 @@ const marker = (id: string, name: string, extra: Partial<MarkerDto> = {}): Marke
   lat: 53.07,
   lon: -4.08,
   color: "teal",
+  icon: "pin",
   isFavorite: false,
   noteId: null,
   createdAt: 1,

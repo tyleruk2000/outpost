@@ -1,6 +1,6 @@
 /** Small pieces of chrome the maps screen uses in several places. */
-import type { MarkerColor } from "@outpost/shared";
-import { MARKER_COLORS } from "@outpost/shared";
+import type { MarkerColor, MarkerIcon } from "@outpost/shared";
+import { MARKER_COLORS, MARKER_ICONS } from "@outpost/shared";
 import { Check } from "lucide-react";
 import { RadioGroup } from "radix-ui";
 import type { ComponentProps, ReactNode } from "react";
@@ -9,6 +9,7 @@ import { floating } from "@/components/ui/menu";
 import { Tooltip } from "@/components/ui/misc";
 import { cn } from "@/lib/utils";
 import { MARKER_COLOR_NAMES, MARKER_HEX } from "./lib/palette";
+import { BADGE, type DrawnIcon, GLYPH_ON, isDrawn, PLACE_GLYPHS, PLACE_ICON_NAMES } from "./lib/place-icons";
 
 /** The project's floating surface, for things that sit over the map. */
 export const mapSurface = cn(floating, "z-auto min-w-0 p-0");
@@ -93,6 +94,95 @@ export function ColorPicker({ value, onChange, label }: { value: MarkerColor; on
         ))}
       </RadioGroup.Root>
       <span className="text-small text-ink-muted">{MARKER_COLOR_NAMES[value]}</span>
+    </div>
+  );
+}
+
+/** The strokes of a place's icon, in the colour of the text around it. Decorative: its name is always written or spoken beside it. */
+export function PlaceGlyph({ icon, className }: { icon: DrawnIcon; className?: string }) {
+  const glyph = PLACE_GLYPHS[icon];
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={BADGE.strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={cn("size-[0.9375rem] shrink-0", className)}
+    >
+      {glyph.strokes.map((path) => (
+        <path key={path} d={path} />
+      ))}
+      {glyph.fills?.map((path) => (
+        <path key={path} d={path} fill="currentColor" stroke="none" />
+      ))}
+    </svg>
+  );
+}
+
+/**
+ * A saved place's marker as the lists show it, the same as on the map: the dot of a plain
+ * pin, or the icon on a disc of the place's colour. It takes the same room either way, so
+ * the names in a list line up. Decorative: the place's name is beside it, and its icon's
+ * name is given to screen readers by whatever shows it.
+ */
+export function PlaceMark({ color, icon, className }: { color: MarkerColor; icon: MarkerIcon; className?: string }) {
+  return (
+    <span aria-hidden data-place-icon={icon} className={cn("grid size-[1.375rem] shrink-0 place-content-center", className)}>
+      {isDrawn(icon) ? (
+        <span
+          className="grid size-[1.375rem] place-content-center rounded-full border border-page"
+          style={{ background: MARKER_HEX[color], color: GLYPH_ON[color] }}
+        >
+          <PlaceGlyph icon={icon} />
+        </span>
+      ) : (
+        <ColorDot color={color} />
+      )}
+    </span>
+  );
+}
+
+/**
+ * Choose a place's icon. Each is shown as it will be on the map, in the place's colour, and is
+ * named for a screen reader; the chosen one carries a ring and its name is written beside the set.
+ * The arrow keys move through them, as through any group of radio buttons.
+ */
+export function IconPicker({
+  value,
+  color,
+  onChange,
+  label,
+}: {
+  value: MarkerIcon;
+  /** The place's colour: the icons are drawn on it. */
+  color: MarkerColor;
+  onChange: (icon: MarkerIcon) => void;
+  label: string;
+}) {
+  return (
+    <div className="grid gap-1.5">
+      <RadioGroup.Root
+        aria-label={label}
+        value={value}
+        onValueChange={(next) => onChange(next as MarkerIcon)}
+        className="-m-1 flex flex-wrap"
+      >
+        {MARKER_ICONS.map((icon) => (
+          <RadioGroup.Item
+            key={icon}
+            value={icon}
+            aria-label={PLACE_ICON_NAMES[icon]}
+            title={PLACE_ICON_NAMES[icon]}
+            className="grid size-9 place-content-center rounded-control hover:bg-surface-strong data-[state=checked]:bg-surface-strong data-[state=checked]:shadow-[inset_0_0_0_2px_var(--ink)] max-md:size-11"
+          >
+            <PlaceMark color={color} icon={icon} />
+          </RadioGroup.Item>
+        ))}
+      </RadioGroup.Root>
+      <span className="text-small text-ink-muted">{PLACE_ICON_NAMES[value]}</span>
     </div>
   );
 }

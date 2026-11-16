@@ -117,4 +117,80 @@ describe("database migrations", () => {
       sqlite.close();
     }
   });
+
+  it("gives places saved before there were icons the plain pin, and loses none of them", () => {
+    // An installation as it was before 0012: every migration before it applied by hand, with places in it.
+    const file = tempDb();
+    const raw = new Database(file);
+    const journal = JSON.parse(fs.readFileSync(path.join(migrationsDir, "meta/_journal.json"), "utf8")) as {
+      entries: Array<{ tag: string; when: number }>;
+    };
+    const before = journal.entries.filter((entry) => entry.tag < "0013_place_icons");
+    expect(before).toHaveLength(12);
+    expect(journal.entries.map((entry) => entry.tag)).toContain("0013_place_icons");
+    raw.exec("CREATE TABLE __drizzle_migrations (id SERIAL PRIMARY KEY, hash text NOT NULL, created_at numeric)");
+    for (const entry of before) {
+      const sql = fs.readFileSync(path.join(migrationsDir, `${entry.tag}.sql`), "utf8");
+      for (const statement of sql.split("--> statement-breakpoint")) raw.exec(statement);
+      raw
+        .prepare("INSERT INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)")
+        .run(createHash("sha256").update(sql).digest("hex"), entry.when);
+    }
+    const columnsOf = (db: InstanceType<typeof Database>) =>
+      (db.prepare("SELECT name FROM pragma_table_info('markers')").all() as Array<{ name: string }>).map((column) => column.name);
+    expect(columnsOf(raw)).not.toContain("icon");
+    const insert = raw.prepare(
+      "INSERT INTO markers (id, name, note, lat, lon, color, is_favorite, note_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    );
+    insert.run("m1", "Cairn", "On the col", 54.45, -3.21, "amber", 1, null, 10, 20);
+    insert.run("m2", "Bothy", "", 57.05, -3.65, "green", 0, null, 30, 40);
+    raw.close();
+
+    const { sqlite } = openDatabase(file);
+    try {
+      expect(columnsOf(sqlite)).toEqual(expect.arrayContaining(["icon", "gpx_sym"]));
+      expect(sqlite.prepare("SELECT * FROM markers ORDER BY id").all()).toEqual([
+        {
+          id: "m1",
+          name: "Cairn",
+          note: "On the col",
+          lat: 54.45,
+          lon: -3.21,
+          color: "amber",
+          is_favorite: 1,
+          note_id: null,
+          created_at: 10,
+          updated_at: 20,
+          icon: "pin",
+          gpx_sym: null,
+        },
+        {
+          id: "m2",
+          name: "Bothy",
+          note: "",
+          lat: 57.05,
+          lon: -3.65,
+          color: "green",
+          is_favorite: 0,
+          note_id: null,
+          created_at: 30,
+          updated_at: 40,
+          icon: "pin",
+          gpx_sym: null,
+        },
+      ]);
+      expect((sqlite.prepare("SELECT count(*) AS n FROM __drizzle_migrations").get() as { n: number }).n).toBe(migrationFiles().length);
+      // A place can be given an icon straight away, and one saved without is a pin.
+      sqlite.prepare("UPDATE markers SET icon = 'shelter' WHERE id = 'm2'").run();
+      sqlite.prepare("INSERT INTO markers (id, name, lat, lon, created_at, updated_at) VALUES ('m3', 'New', 1, 2, 3, 4)").run();
+      expect(sqlite.prepare("SELECT id, icon FROM markers ORDER BY id").all()).toEqual([
+        { id: "m1", icon: "pin" },
+        { id: "m2", icon: "shelter" },
+        { id: "m3", icon: "pin" },
+      ]);
+      expect(sqlite.pragma("integrity_check", { simple: true })).toBe("ok");
+    } finally {
+      sqlite.close();
+    }
+  });
 });

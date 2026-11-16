@@ -1220,3 +1220,82 @@ describe("the comparison itself", () => {
     expect(() => cleanTrack("not json")).toThrow(/could not be read/);
   });
 });
+
+describe("the icons of saved places, brought home from a drive", () => {
+  const placesOf = (world: World) =>
+    Object.fromEntries(world.home.ctx.services.maps.annotations.listMarkers().map((marker) => [marker.name, marker.icon]));
+  const symbolOf = (app: Pick<BuiltApp, "ctx">, id: string) =>
+    (app.ctx.sqlite.prepare("SELECT gpx_sym FROM markers WHERE id = ?").get(id) as { gpx_sym: string | null }).gpx_sym;
+
+  it("come with the place: one given on the drive, one on a new place, and the symbol a place had in a GPX file", async () => {
+    const world = await makeWorld();
+    const { ids, home } = world;
+    await world.travel(async (away) => {
+      const { annotations } = away.ctx.services.maps;
+      // The drive was written with home's places, and they are plain pins on it too.
+      expect(annotations.listMarkers().map((marker) => marker.icon)).toEqual(["pin", "pin", "pin"]);
+      annotations.updateMarker(ids.harbour!, { icon: "fuel" });
+      ids.cove = annotations.createMarker({ name: "Cove", lat: 54.4, lon: -3.5, icon: "tent", color: "green" }).id;
+      const imported = await annotations.importTrack({
+        source: '<gpx><wpt lat="54.6" lon="-3.6"><name>Cache</name><sym>Geocache</sym></wpt></gpx>',
+        importWaypointsAsMarkers: true,
+      });
+      ids.cache = imported.markers[0]!.id;
+    });
+    const before = fingerprintOf(world.drive);
+
+    const merge = await preview(world);
+    // Giving a place an icon is a change to it; the two places nobody touched are not listed.
+    expect(summary(merge)).toEqual(["place added: Cache", "place added: Cove", "place edited: Harbour"]);
+    expect(merge.analysis!.unchanged.places).toBe(2);
+    const merged = await commit(world, merge);
+    expect(merged.state).toBe("completed");
+    expect(placesOf(world)).toEqual({ Harbour: "fuel", Anchorage: "pin", Wreck: "pin", Cove: "tent", Cache: "pin" });
+    const cache = home.ctx.services.maps.annotations.listMarkers().find((marker) => marker.name === "Cache")!;
+    expect(symbolOf(home, cache.id)).toBe("Geocache");
+    expect(home.ctx.services.maps.annotations.exportSelection({ markers: true, trackIds: [] }).gpx).toContain("<sym>Geocache</sym>");
+    expect(fingerprintOf(world.drive)).toEqual(before);
+
+    // Nothing is offered again, and undoing puts the pin back.
+    expect(itemsOf(await preview(world))).toEqual([]);
+    const undone = (await home.api("POST", `/api/merge/${merged.id}/undo`, {})).body.merge as MergeDto;
+    expect(undone.undoneAt).not.toBeNull();
+    expect(placesOf(world)).toEqual({ Harbour: "pin", Anchorage: "pin", Wreck: "pin" });
+  });
+
+  it("are left alone by a drive written before places had icons, which is still read place for place", async () => {
+    const world = await makeWorld();
+    const { ids, home } = world;
+    await world.travel(async (away) => {
+      away.ctx.services.maps.annotations.updateMarker(ids.harbour!, { note: "Fuel berth; closed on Sundays" });
+      away.ctx.services.maps.annotations.updateMarker(ids.wreck!, { name: "Wreck (dries)" });
+    });
+    // The drive as an Outpost from before migration 0012 would have left it: no icon columns, and one migration fewer.
+    const db = new Database(path.join(world.drive, "data/outpost.db"));
+    db.exec(
+      "ALTER TABLE markers DROP COLUMN icon; ALTER TABLE markers DROP COLUMN gpx_sym; DELETE FROM __drizzle_migrations WHERE created_at = (SELECT max(created_at) FROM __drizzle_migrations);",
+    );
+    db.close();
+    // Meanwhile, at home, on the Outpost that has icons: two places are given one.
+    const { annotations } = home.ctx.services.maps;
+    annotations.updateMarker(ids.anchorage!, { icon: "tent" });
+    annotations.updateMarker(ids.harbour!, { icon: "fuel" });
+    const before = fingerprintOf(world.drive);
+
+    const merge = await preview(world);
+    expect(merge.state, merge.error ?? "").not.toBe("failed");
+    // The drive's record of what everything was still matches: only what really changed is listed, and the place
+    // given an icon at home alone is home's change, not a difference to settle.
+    expect(summary(merge)).toEqual(["place conflict: Harbour", "place edited: Wreck"]);
+    expect(merge.analysis!.baseline).toBe("recorded");
+    const merged = await commit(world, merge, { [find(merge, "place", "conflict").key]: "drive" });
+    expect(merged.state).toBe("completed");
+    const places = annotations.listMarkers();
+    // The drive's words arrive; the icons, which that drive knows nothing about, stay as home has them.
+    expect(places.find((marker) => marker.id === ids.harbour)).toMatchObject({ note: "Fuel berth; closed on Sundays", icon: "fuel" });
+    expect(places.find((marker) => marker.id === ids.anchorage)).toMatchObject({ name: "Anchorage", icon: "tent" });
+    expect(places.find((marker) => marker.id === ids.wreck)).toMatchObject({ name: "Wreck (dries)", icon: "pin" });
+    expect(fingerprintOf(world.drive)).toEqual(before);
+    expect(itemsOf(await preview(world))).toEqual([]);
+  });
+});

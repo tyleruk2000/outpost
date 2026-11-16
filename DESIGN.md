@@ -74,7 +74,7 @@ All three are bundled and served locally. Fixed rem scale, ratio about 1.2:
 
 | Token | Size / line | Use |
 | --- | --- | --- |
-| `display` | 2.125rem / 2.5rem | Home title |
+| `display` | 2.125rem / 2.5rem | Home title; sunrise and sunset on the map, read at arm's length |
 | `title` | 1.75rem / 2.125rem | Screen titles |
 | `heading` | 1.4375rem / 1.875rem | Empty-state and section titles in serif |
 | `lead` | 1.1875rem / 1.625rem | Section headings, row titles |
@@ -100,7 +100,9 @@ All three are bundled and served locally. Fixed rem scale, ratio about 1.2:
 - Radii by role: controls 5px, panels and dialogs 8px, pills full.
 - Structure comes from hairlines and the two neutrals. Shadows appear only on things
   that float.
-- Icons are Lucide, stroke 1.6 in navigation.
+- Icons are Lucide, stroke 1.6 in navigation. The icons of saved places on the map are
+  drawn for the size of a marker, in the same line style
+  (`apps/web/src/features/maps/lib/place-icons.ts`).
 - No side-stripe accents, gradient text, glass, or icon-in-a-tinted-square tiles.
 
 ## Layout

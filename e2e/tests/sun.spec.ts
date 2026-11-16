@@ -50,7 +50,9 @@ test.describe("sun times for a place", () => {
     await sun.click();
     await expect(row(page, "First light (civil dawn)")).toHaveText("03:55");
     await expect(row(page, "Sunrise")).toContainText("04:43");
-    await expect(row(page, "Sunrise")).toContainText("49° NE");
+    // The bearing has a row of its own, under the times, so that the two large times stand alone.
+    await expect(row(page, "Rises towards")).toHaveText("49° NE");
+    await expect(row(page, "Sets towards")).toHaveText("311° NW");
     await expect(row(page, "Solar noon")).toContainText("13:02");
     await expect(row(page, "Sunset")).toContainText("21:21");
     await expect(row(page, "Last light (civil dusk)")).toHaveText("22:09");

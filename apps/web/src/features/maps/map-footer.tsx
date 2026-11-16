@@ -7,7 +7,7 @@
  */
 import type { MapAttribution } from "@outpost/shared";
 import { ChevronUp, Copy } from "lucide-react";
-import { Fragment, useEffect, useRef } from "react";
+import { Fragment, type ReactNode, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { Menu, MenuCheckItem, MenuContent, MenuLabel, MenuTrigger } from "@/components/ui/menu";
 import { cn } from "@/lib/utils";
@@ -45,10 +45,13 @@ function CoordinateReadout({
   engine,
   format,
   onFormatChange,
+  below,
 }: {
   engine: MapEngine;
   format: ReadoutFormat;
   onFormatChange: (format: ReadoutFormat) => void;
+  /** A line about the same point, under the coordinates on the same surface. */
+  below?: ReactNode;
 }) {
   const text = useRef<HTMLSpanElement>(null);
   const source = useRef<HTMLSpanElement>(null);
@@ -85,37 +88,40 @@ function CoordinateReadout({
   };
 
   return (
-    <div className={cn(mapSurface, "flex items-stretch")}>
-      <button
-        type="button"
-        onClick={copy}
-        aria-label="Copy these coordinates"
-        title="Copy"
-        className="group flex min-h-9 items-center gap-2 rounded-l-panel px-2.5 text-left max-md:min-h-11"
-      >
-        <span className="grid">
-          <span ref={source} className="text-[0.6875rem] leading-tight text-ink-muted" />
-          <span ref={text} className="tabular font-mono text-[0.8125rem] leading-tight text-ink" />
-        </span>
-        <Copy aria-hidden className="size-3.5 shrink-0 text-ink-faint group-hover:text-ink" />
-      </button>
-      <Menu>
-        <MenuTrigger
-          aria-label={`Coordinate format: ${READOUT_LABELS[format]}. Change`}
-          title="Coordinate format"
-          className="grid w-8 place-content-center rounded-r-panel border-l border-border text-ink-muted hover:bg-surface-strong hover:text-ink max-md:w-11"
+    <div className={cn(mapSurface, "flex flex-col divide-y divide-border overflow-hidden")}>
+      <div className="flex items-stretch">
+        <button
+          type="button"
+          onClick={copy}
+          aria-label="Copy these coordinates"
+          title="Copy"
+          className="group flex min-h-9 min-w-0 flex-1 items-center gap-2 px-2.5 text-left focus-visible:-outline-offset-2 max-md:min-h-11"
         >
-          <ChevronUp className="size-4" />
-        </MenuTrigger>
-        <MenuContent side="top" align="start">
-          <MenuLabel>Show coordinates as</MenuLabel>
-          {READOUT_FORMATS.map((option) => (
-            <MenuCheckItem key={option} checked={format === option} onCheckedChange={() => onFormatChange(option)}>
-              {READOUT_LABELS[option]}
-            </MenuCheckItem>
-          ))}
-        </MenuContent>
-      </Menu>
+          <span className="grid">
+            <span ref={source} className="text-[0.6875rem] leading-tight text-ink-muted" />
+            <span ref={text} className="tabular font-mono text-[0.8125rem] leading-tight text-ink" />
+          </span>
+          <Copy aria-hidden className="size-3.5 shrink-0 text-ink-faint group-hover:text-ink" />
+        </button>
+        <Menu>
+          <MenuTrigger
+            aria-label={`Coordinate format: ${READOUT_LABELS[format]}. Change`}
+            title="Coordinate format"
+            className="grid w-8 place-content-center border-l border-border text-ink-muted hover:bg-surface-strong hover:text-ink focus-visible:-outline-offset-2 max-md:w-11"
+          >
+            <ChevronUp className="size-4" />
+          </MenuTrigger>
+          <MenuContent side="top" align="start">
+            <MenuLabel>Show coordinates as</MenuLabel>
+            {READOUT_FORMATS.map((option) => (
+              <MenuCheckItem key={option} checked={format === option} onCheckedChange={() => onFormatChange(option)}>
+                {READOUT_LABELS[option]}
+              </MenuCheckItem>
+            ))}
+          </MenuContent>
+        </Menu>
+      </div>
+      {below}
     </div>
   );
 }
@@ -174,12 +180,15 @@ export function MapFooter({
   format,
   onFormatChange,
   credits,
+  underReadout,
   className,
 }: {
   engine: MapEngine | null;
   format: ReadoutFormat;
   onFormatChange: (format: ReadoutFormat) => void;
   credits: Credit[];
+  /** A line about the centre of the map, shown under its coordinates (on a phone, today's sunrise and sunset). */
+  underReadout?: ReactNode;
   className?: string;
 }) {
   return (
@@ -187,8 +196,8 @@ export function MapFooter({
       <div className="flex items-end gap-3">
         {engine ? (
           <>
-            <div className="pointer-events-auto">
-              <CoordinateReadout engine={engine} format={format} onFormatChange={onFormatChange} />
+            <div className="pointer-events-auto min-w-0">
+              <CoordinateReadout engine={engine} format={format} onFormatChange={onFormatChange} below={underReadout} />
             </div>
             <ScaleBar engine={engine} />
           </>

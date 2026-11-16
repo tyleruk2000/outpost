@@ -92,6 +92,13 @@
       "when": 1794819529961,
       "tag": "0012_repeater_sources_and_duplicates",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1794824141952,
+      "tag": "0013_place_icons",
+      "breakpoints": true
     }
   ]
 }
