@@ -22,6 +22,7 @@ import { ApiError, errorMessage } from "@/lib/api";
 import { cn, formatDate, plural } from "@/lib/utils";
 import { chatApi, chatKeys, SETTINGS_MODEL, storeDetail, useChatModels, useChatStatus, useConversation, useLiveReply } from "./chat-data";
 import { Composer, type ComposerHandle } from "./composer";
+import { createEndFollower } from "./follow-end";
 import { isMissing, ModelPicker, modelFacts } from "./model-picker";
 import { Transcript, type TranscriptActions, TURN } from "./transcript";
 import { useKeyboardInset } from "./use-keyboard-inset";
@@ -184,37 +185,36 @@ function Loaded({ detail }: { detail: ChatConversationDetail }) {
 
   // ── Keeping the newest words in view, without taking the page from someone reading further up ──
   const scroller = useRef<HTMLDivElement>(null);
-  const pinned = useRef(true);
+  const [follower] = useState(createEndFollower);
   const [away, setAway] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const toEnd = useCallback(() => {
-    const element = scroller.current;
-    if (element) element.scrollTop = element.scrollHeight;
-  }, []);
+    if (scroller.current) follower.toEnd(scroller.current);
+  }, [follower]);
+  const follow = useCallback(() => {
+    if (scroller.current) follower.follow(scroller.current);
+  }, [follower]);
   const onScroll = () => {
     const element = scroller.current;
     if (!element) return;
-    const fromEnd = element.scrollHeight - element.scrollTop - element.clientHeight;
-    pinned.current = fromEnd < 72;
+    const fromEnd = follower.scrolled(element);
     setAway(fromEnd > 240);
     setScrolled(element.scrollTop > 4);
   };
   // biome-ignore lint/correctness/useExhaustiveDependencies: runs whenever what is on screen grows
   useLayoutEffect(() => {
-    if (pinned.current) toEnd();
-  }, [messages.length, live?.blocks, live?.phase, last?.state, toEnd]);
+    follow();
+  }, [messages.length, live?.blocks, live?.phase, last?.state, follow]);
   // What is on screen also grows for reasons of its own (a face that loads late, a table that settles, the
   // box getting taller as it is typed in): the end is kept in view through those too.
   const content = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const observed = [content.current, scroller.current].filter((element) => element !== null);
     if (observed.length === 0 || typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(() => {
-      if (pinned.current) toEnd();
-    });
+    const observer = new ResizeObserver(follow);
     for (const element of observed) observer.observe(element);
     return () => observer.disconnect();
-  }, [toEnd]);
+  }, [follow]);
 
   const model = conversation.model || status?.defaultModel || "";
   const modelInfo = models?.models.find((entry) => entry.id === model || entry.id === `${model}:latest`);
@@ -241,7 +241,7 @@ function Loaded({ detail }: { detail: ChatConversationDetail }) {
     if (!said || sending) return;
     setSending(true);
     setRefusal(null);
-    pinned.current = true;
+    follower.pin();
     // Shown at once, as it will be stored; the server's version replaces it a moment later.
     const before = client.getQueryData<ChatConversationDetail>(chatKeys.detail(id));
     if (before) {
@@ -298,7 +298,7 @@ function Loaded({ detail }: { detail: ChatConversationDetail }) {
 
   const actions: TranscriptActions = {
     regenerate: () => {
-      pinned.current = true;
+      follower.pin();
       void run(() => chatApi.regenerate(id));
     },
     edit: (message) => {
@@ -436,7 +436,7 @@ function Loaded({ detail }: { detail: ChatConversationDetail }) {
               size="sm"
               className="pointer-events-auto shadow-float max-md:h-11"
               onClick={() => {
-                pinned.current = true;
+                follower.pin();
                 setAway(false);
                 toEnd();
               }}
