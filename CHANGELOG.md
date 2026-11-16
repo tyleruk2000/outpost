@@ -445,6 +445,10 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   list wrote roughly as approximate.
 - Repeaters, imported and entered by hand, are counted and removed by "erase
   everything".
+- A frequency in an imported list is read in the unit its column's heading names, and
+  the bands run to 1 mm (250 GHz), so 24, 47 and 76 GHz given in megahertz are no longer
+  read a thousand times too low. A number that could be two frequencies, with nothing
+  to say which, is left out with the reason in the preview.
 
 #### On a phone, out of reach of the server
 

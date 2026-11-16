@@ -16,6 +16,7 @@
  */
 import {
   bandOfHz,
+  formatMHz,
   MAX_REPEATER_ROWS,
   ownValue,
   parseBand,
@@ -351,37 +352,71 @@ const numberOf = (text: string): number | null => {
   const tidy = text
     .trim()
     .replace(/^(\d+),(\d+)$/, "$1.$2")
-    .replace(/\s*(mhz|khz|hz|m|w|dbw)$/i, "");
+    .replace(/\s*(ghz|mhz|khz|hz|m|w|dbw)$/i, "");
   if (!/^[+-]?(\d+\.?\d*|\.\d+)$/.test(tidy)) return null;
   const value = Number(tidy);
   return Number.isFinite(value) ? value : null;
 };
 
+export type FrequencyUnit = "hz" | "khz" | "mhz" | "ghz";
+const UNIT_HZ: Record<FrequencyUnit, number> = { hz: 1, khz: 1e3, mhz: 1e6, ghz: 1e9 };
+/** What is kept as a frequency: 1 MHz to 250 GHz, the top of the highest band in the table. */
+const LOWEST_HZ = 1e6;
+const HIGHEST_HZ = 250e9;
+
+/** The unit written after a number ("145.5 MHz"), if one is. */
+const unitWritten = (text: string): FrequencyUnit | null =>
+  (/(ghz|mhz|khz|hz)\s*$/i.exec(text)?.[1]?.toLowerCase() as FrequencyUnit | undefined) ?? null;
+
+/** The unit a column's heading names: "TX MHz", "Frequency (kHz)", "output_mhz", "RXMHz". Null when it names none. */
+export function unitOfHeading(heading: string): FrequencyUnit | null {
+  // No word ends in "mhz", "khz" or "ghz" by chance; a bare "hz" has to stand by itself.
+  const match = /(ghz|mhz|khz)(?![a-z])/i.exec(heading) ?? /(?<![a-z])(hz)(?![a-z])/i.exec(heading);
+  return match ? (match[1]!.toLowerCase() as FrequencyUnit) : null;
+}
+
+/** A frequency in hertz, or why there is none: `readings` holds what it could be when it cannot be told apart. */
+export type FrequencyReading = { hz: number } | { hz: null; readings: number[] };
+
 /**
- * A frequency as lists write it, in hertz. Nearly every list gives megahertz; a few
- * give kilohertz or hertz, which are told apart by size: a number that is in an amateur
- * band as megahertz is megahertz.
+ * A frequency as lists write it, in hertz.
+ *
+ * The unit is taken, in this order, from what is written after the number, from
+ * `unit` (what the column's heading or the file's layout says), and only then from
+ * the number itself. Without a unit a number is read as megahertz, kilohertz and
+ * hertz; readings outside 1 MHz to 250 GHz are dropped. If one is left, that is it.
+ * If more than one is left, the one that falls in an amateur band is it (the band
+ * table is built so that there is never more than one). Otherwise nothing tells them
+ * apart, and no frequency is returned: a wrong one a thousand times out would look
+ * as sound in the list as a right one.
  */
-export function parseFrequencyHz(text: string): number | null {
+export function readFrequency(text: string, unit: FrequencyUnit | null = null): FrequencyReading {
   const value = numberOf(text);
-  if (value === null || value <= 0) return null;
-  const unit = /khz\s*$/i.test(text) ? 1e3 : /mhz\s*$/i.test(text) ? 1e6 : /hz\s*$/i.test(text) ? 1 : null;
-  let hz: number;
-  if (unit) hz = value * unit;
-  else if (bandOfHz(value * 1e6) !== "other") hz = value * 1e6;
-  else if (value >= 2e7) hz = value;
-  else if (value >= 20_000) hz = value * 1e3;
-  else hz = value * 1e6;
-  hz = Math.round(hz);
-  return hz >= 1e6 && hz <= 250e9 ? hz : null;
+  if (value === null || value <= 0) return { hz: null, readings: [] };
+  const kept = (hz: number) => hz >= LOWEST_HZ && hz <= HIGHEST_HZ;
+  const said = unitWritten(text) ?? unit;
+  if (said) {
+    const hz = Math.round(value * UNIT_HZ[said]);
+    return kept(hz) ? { hz } : { hz: null, readings: [] };
+  }
+  const readings = [1e6, 1e3, 1].map((scale) => Math.round(value * scale)).filter(kept);
+  if (readings.length === 1) return { hz: readings[0]! };
+  const inBand = readings.filter((hz) => bandOfHz(hz) !== "other");
+  return inBand.length === 1 ? { hz: inBand[0]! } : { hz: null, readings };
+}
+
+/** `readFrequency`, for when why there is no frequency does not matter. */
+export function parseFrequencyHz(text: string, unit: FrequencyUnit | null = null): number | null {
+  return readFrequency(text, unit).hz;
 }
 
 /** A shift between output and input, in hertz, without its sign: megahertz unless the number is too large to be. */
-function parseShiftHz(text: string): number | null {
+function parseShiftHz(text: string, columnUnit: FrequencyUnit | null = null): number | null {
   const value = numberOf(text.replace(/^[+-]/, ""));
   if (value === null) return null;
   const size = Math.abs(value);
-  const unit = /khz\s*$/i.test(text) ? 1e3 : /mhz\s*$/i.test(text) ? 1e6 : null;
+  const said = unitWritten(text) ?? columnUnit;
+  const unit = said ? UNIT_HZ[said] : null;
   if (unit) return Math.round(size * unit);
   if (size < 100) return Math.round(size * 1e6);
   if (size < 100_000) return Math.round(size * 1e3);
@@ -515,6 +550,19 @@ export function createRowReader(columns: string[], mapping: RepeaterColumnMap, f
       ? "No column is set as the output frequency. Choose which column holds it."
       : null;
 
+  // What says which unit a frequency column is in: its own heading first, then the layout.
+  // Every layout Outpost knows by name writes megahertz; a file it does not know says so in a heading or not at all.
+  const units = new Map<RepeaterColumnField, FrequencyUnit | null>();
+  for (const field of ["output", "input", "offset"] as const) {
+    const column = mapping[field];
+    units.set(field, (column === undefined ? null : unitOfHeading(column)) ?? (format === "csv" ? null : "mhz"));
+  }
+  const unitOf = (field: "output" | "input" | "offset") => units.get(field) ?? null;
+  const notAFrequency = (which: string, text: string, readings: number[]) =>
+    readings.length > 1
+      ? `The ${which} frequency “${clip(text, 30)}” could be ${readings.map((hz) => `${formatMHz(hz)} MHz`).join(" or ")}, and nothing says which. Name the unit in the column's heading (such as “Output MHz”) or after the number.`
+      : `The ${which} frequency “${clip(text, 30)}” is not a frequency.`;
+
   return {
     problem,
     read({ line, cells }) {
@@ -532,26 +580,27 @@ export function createRowReader(columns: string[], mapping: RepeaterColumnMap, f
       const callsign = clip(looksLikeCallsign(name) ? name.toUpperCase() : name, 40);
 
       const outputText = get("output");
-      const outputHz = parseFrequencyHz(outputText);
-      if (outputHz === null) {
-        return skip(outputText ? `The output frequency “${clip(outputText, 30)}” is not a frequency.` : "No output frequency.");
-      }
+      const output = readFrequency(outputText, unitOf("output"));
+      if (output.hz === null) return skip(outputText ? notAFrequency("output", outputText, output.readings) : "No output frequency.");
+      const outputHz = output.hz;
 
       // The input: given outright, or as a shift with its direction.
       let inputHz: number | null = null;
       const inputText = get("input");
       if (inputText) {
-        inputHz = parseFrequencyHz(inputText);
-        if (inputHz === null) return skip(`The input frequency “${clip(inputText, 30)}” is not a frequency.`);
+        const input = readFrequency(inputText, unitOf("input"));
+        if (input.hz === null) return skip(notAFrequency("input", inputText, input.readings));
+        inputHz = input.hz;
       } else if (mapping.offset || mapping.duplex) {
         const offsetText = get("offset");
         const duplex = get("duplex").toLowerCase();
         if (mapping.duplex) {
           if (duplex === "split") {
-            inputHz = parseFrequencyHz(offsetText);
-            if (inputHz === null) return skip(`The transmit frequency “${clip(offsetText, 30)}” is not a frequency.`);
+            const transmit = readFrequency(offsetText, unitOf("offset"));
+            if (transmit.hz === null) return skip(notAFrequency("transmit", offsetText, transmit.readings));
+            inputHz = transmit.hz;
           } else if (duplex === "+" || duplex === "-") {
-            const shift = parseShiftHz(offsetText);
+            const shift = parseShiftHz(offsetText, unitOf("offset"));
             if (shift === null) return skip(`The shift “${clip(offsetText, 30)}” is not a number.`);
             inputHz = outputHz + (duplex === "+" ? shift : -shift);
           } else if (duplex === "" || duplex === "off" || duplex === "simplex" || duplex === "none") {
@@ -561,7 +610,7 @@ export function createRowReader(columns: string[], mapping: RepeaterColumnMap, f
             return skip(`The shift direction “${clip(duplex, 20)}” is not +, - or split.`);
           }
         } else if (offsetText) {
-          const shift = parseShiftHz(offsetText);
+          const shift = parseShiftHz(offsetText, unitOf("offset"));
           if (shift === null) return skip(`The shift “${clip(offsetText, 30)}” is not a number.`);
           inputHz = outputHz + (offsetText.trim().startsWith("-") ? -shift : shift);
         }

@@ -5,6 +5,7 @@ import {
   formatAge,
   formatMHz,
   formatShift,
+  REPEATER_BANDS,
   type RepeaterDetailResponse,
   type RepeaterDto,
   type RepeaterImportPreview,
@@ -24,7 +25,9 @@ import {
   parseModes,
   parseStatus,
   type ReadRow,
+  readFrequency,
   readTable,
+  unitOfHeading,
 } from "../src/modules/repeaters/formats.ts";
 import { tokensOf } from "../src/modules/repeaters/service.ts";
 import { multipart } from "./fixtures/documents/builders.ts";
@@ -186,6 +189,95 @@ describe("reading a file of repeaters", () => {
     expect(parseFrequencyHz("RV53")).toBeNull();
     expect(parseFrequencyHz("-145.5")).toBeNull();
     expect(parseFrequencyHz("0.1")).toBeNull();
+  });
+
+  it("takes the unit a column's heading names, and reads the microwave bands in megahertz", async () => {
+    // What the column says wins over any guess from the size of the number.
+    expect(parseFrequencyHz("24048.9", "mhz")).toBe(24_048_900_000);
+    expect(parseFrequencyHz("47088", "mhz")).toBe(47_088_000_000);
+    expect(parseFrequencyHz("7100", "khz")).toBe(7_100_000);
+    expect(parseFrequencyHz("24.0489", "ghz")).toBe(24_048_900_000);
+    expect(parseFrequencyHz("145662500", "hz")).toBe(145_662_500);
+    // What is written after the number wins over the column.
+    expect(parseFrequencyHz("145662.5 kHz", "mhz")).toBe(145_662_500);
+    expect(parseFrequencyHz("10.368 GHz")).toBe(10_368_000_000);
+    // In the column's unit it is outside what a frequency can be: not guessed at.
+    expect(parseFrequencyHz("145662500", "mhz")).toBeNull();
+    expect(unitOfHeading("TX MHz")).toBe("mhz");
+    expect(unitOfHeading("output_mhz")).toBe("mhz");
+    expect(unitOfHeading("RXMHz")).toBe("mhz");
+    expect(unitOfHeading("Frequency (kHz)")).toBe("khz");
+    expect(unitOfHeading("Freq GHz")).toBe("ghz");
+    expect(unitOfHeading("Output Hz")).toBe("hz");
+    expect(unitOfHeading("Frequency")).toBeNull();
+    expect(unitOfHeading("Kilohertz? No: Shiftzhz")).toBeNull();
+
+    // With no unit anywhere, the amateur band a reading falls in decides, up to 250 GHz.
+    expect(parseFrequencyHz("24048.9")).toBe(24_048_900_000);
+    expect(parseFrequencyHz("47088.1")).toBe(47_088_100_000);
+    expect(parseFrequencyHz("76032.5")).toBe(76_032_500_000);
+    expect(parseFrequencyHz("122250.5")).toBe(122_250_500_000);
+    expect(parseFrequencyHz("134928")).toBe(134_928_000_000);
+    expect(parseFrequencyHz("241920")).toBe(241_920_000_000);
+    expect(bandOfHz(24_048_900_000)).toBe("1.2cm");
+    expect(bandOfHz(47_088_000_000)).toBe("6mm");
+    expect(bandOfHz(76_032_000_000)).toBe("4mm");
+    // Only one reading is a frequency at all: no band is needed to tell.
+    expect(parseFrequencyHz("462.5625")).toBe(462_562_500);
+    expect(parseFrequencyHz("27.185")).toBe(27_185_000);
+    expect(parseFrequencyHz("462562.5")).toBe(462_562_500);
+    expect(parseFrequencyHz("462562500")).toBe(462_562_500);
+    // Two readings are frequencies and neither is in an amateur band: not stored as a guess.
+    expect(parseFrequencyHz("7100")).toBeNull();
+    expect(parseFrequencyHz("156800")).toBeNull();
+    expect(parseFrequencyHz("156800000")).toBeNull();
+    expect(readFrequency("7100")).toEqual({ hz: null, readings: [7_100_000_000, 7_100_000] });
+    expect(readFrequency("RV53")).toEqual({ hz: null, readings: [] });
+
+    const file = [
+      "Callsign,TX MHz,RX MHz,Mode",
+      "QZ3MWA,24048.9,24048.9,FM",
+      "QZ3MWB,47088.2,47088.2,FM",
+      "QZ3MWC,76032.5,76032.5,FM",
+      "QZ3UHF,433.375,434.975,FM",
+    ].join("\n");
+    const { rows, reasons } = await rowsOf(file);
+    expect(reasons).toEqual([]);
+    expect(rows.map((row) => [row.callsign, row.outputHz, row.inputHz, row.band])).toEqual([
+      ["QZ3MWA", 24_048_900_000, 24_048_900_000, "1.2cm"],
+      ["QZ3MWB", 47_088_200_000, 47_088_200_000, "6mm"],
+      ["QZ3MWC", 76_032_500_000, 76_032_500_000, "4mm"],
+      ["QZ3UHF", 433_375_000, 434_975_000, "70cm"],
+    ]);
+
+    // A column that names kilohertz, and one that names nothing where a row cannot be told apart.
+    // (Headings Outpost does not match by name: the person matches them in the import dialog.)
+    const inKilohertz = await rowsOf(["Callsign,Output kHz,Shift kHz", "QZ3HF,29650,-100", "QZ3VHF,145662.5,-600"].join("\n"), {
+      callsign: "Callsign",
+      output: "Output kHz",
+      offset: "Shift kHz",
+    });
+    expect(inKilohertz.rows.map((row) => [row.outputHz, row.inputHz])).toEqual([
+      [29_650_000, 29_550_000],
+      [145_662_500, 145_062_500],
+    ]);
+    const unsaid = await rowsOf(["Callsign,Frequency", "QZ3HF,7100", "QZ3VHF,145.6625"].join("\n"));
+    expect(unsaid.rows.map((row) => row.outputHz)).toEqual([145_662_500]);
+    expect(unsaid.reasons).toEqual([
+      "2: The output frequency “7100” could be 7100.0000 MHz or 7.1000 MHz, and nothing says which. Name the unit in the column's heading (such as “Output MHz”) or after the number.",
+    ]);
+  });
+
+  it("has no number that is in an amateur band both as megahertz and as kilohertz, or as kilohertz and as hertz", () => {
+    // The guess for a number with no unit rests on this: a band may be added only if it keeps it true.
+    const megahertz = REPEATER_BANDS.map((band) => [band.fromMHz, band.toMHz] as const);
+    const overlap = (a: readonly [number, number], b: readonly [number, number]) => a[0] <= b[1] && b[0] <= a[1];
+    for (const a of megahertz) {
+      for (const b of megahertz) {
+        expect(overlap(a, [b[0] * 1e3, b[1] * 1e3]), `${a} MHz against ${b} MHz written in kHz`).toBe(false);
+        expect(overlap(a, [b[0] * 1e6, b[1] * 1e6]), `${a} MHz against ${b} MHz written in Hz`).toBe(false);
+      }
+    }
   });
 
   it("reads modes and statuses as lists write them", () => {
