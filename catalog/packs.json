@@ -15,6 +15,7 @@
         "kiwix.zimgit-water-en",
         "kiwix.nhs.uk-en-medicines",
         "usgs.finding-your-way-with-map-and-compass",
+        "ordnance-survey.map-reading-made-easy",
         "kiwix.wikipedia-en-knots-maxi",
         "mca.life-saving-signals",
         "outpost.radio.emergency-frequencies",
@@ -93,6 +94,8 @@
       "description": "For walking, camping and the mountains: map and compass, grid references, map symbols, the Countryside Code, weather charts and weather signs, knots, water, altitude, distress signals, and answers from people who spend their time outside. Pair it with a map region from the Maps screen.",
       "entries": [
         "usgs.finding-your-way-with-map-and-compass",
+        "ordnance-survey.map-reading",
+        "ordnance-survey.using-the-national-grid",
         "usgs.topographic-map-symbols",
         "usgs.the-universal-transverse-mercator-grid",
         "natural-england.countryside-code",
