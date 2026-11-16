@@ -66,11 +66,13 @@ Outpost's own database on your machine. It holds what you put in it and nothing 
 
 Read these before relying on it:
 
-- **Outpost downloads no repeater list.** Each publisher's terms were read on
-  16 November 2026 and none gives an application leave to fetch its list and keep a
-  copy; the largest directory forbids it in so many words. The findings, source by
-  source, are in [sources.md](sources.md#repeater-lists). A list arrives as a file you
-  obtained yourself, on terms you are content with.
+- **Outpost fetches a list only where its publisher allows a program to, and only
+  when you press the button.** Each publisher's terms were read on 16 November 2026.
+  Two lists can be fetched; the rest, the United Kingdom's and the largest worldwide
+  directory among them, are downloaded by hand, and the screen gives the page and the
+  steps. Outpost does not read a list out of a web page, sign in, or get round a check
+  for a browser. The findings, source by source, are in
+  [sources.md](sources.md#repeater-lists).
 - **A list is right for its date, and Outpost has no way to know what is on the air
   now.** Every screen says where an entry came from and the date of its data. A list
   over six months old is marked with its age, and one over a year old with a warning.
@@ -91,16 +93,66 @@ Read these before relying on it:
   Both documents are in Explore under Radio communications. Other countries have their
   own rules. This is not legal advice.
 
+### Where to get a list
+
+**Get a list**, below the lists you hold, sets out the sources by country. The country
+your map was last looking at comes first, or failing that the one most of your saved
+places are in; Outpost does not ask where you are. Each source is one of three kinds:
+
+- **Outpost can get this list.** **Get the list** has the server fetch the one file
+  from the publisher, once. That is the only moment that needs the internet. What
+  comes back is shown exactly as an imported file is, and nothing is kept until you
+  import it; if you close the box instead, the file is forgotten. The list then says
+  where it was fetched from and when, and on which terms as they were read, and
+  **Get it again** on the source (or **Bring up to date** on the list) fetches a newer
+  copy into the same list.
+- **To be downloaded by hand.** The publisher's page opens in your browser, the steps
+  are written out, and **Import the file** takes what you saved.
+- **Nothing usable here.** Said so that nobody looks twice.
+
+Under each is **Why, and its terms as read**: the reason it is that kind, what the
+publisher's terms say and where and when they were read. As shipped:
+
+| Country | List | Kind |
+| --- | --- | --- |
+| United Kingdom | RSGB ETCC, ukrepeater.net | By hand: its server turns a program away |
+| Ireland | IRTS voice repeaters (CHIRP file, no positions) | Outpost can get it |
+| Worldwide | Hearham, about 23,000 repeaters with approximate positions, about 2,400 of them in or near the United Kingdom and Ireland | Outpost can get it |
+| Worldwide | RepeaterBook | By hand: its terms forbid a program |
+| Worldwide | Open Repeater | By hand |
+| Australia | WIA repeater directory (no positions) | By hand: all rights reserved |
+| Australia | ACMA register | Nothing Outpost can read |
+| Finland | SRAL automatic stations | By hand, for now |
+| Europe | przemienniki.net and repeate.rs | Nothing usable: maps only |
+
+Things to know about fetching:
+
+- **The file cannot be checked against a checksum**, as a catalogue download is,
+  because its publisher makes it afresh each time it is asked for. The preview is the
+  check: look at how it was read before you keep it.
+- **Outpost leaves a publisher alone between requests**: ten seconds at least, a
+  minute for Hearham, and for as long as the publisher says if it answers that it is
+  busy. A second press too soon is refused with the number of seconds left.
+- **If the publisher's server sends a web page in place of the file, refuses, or wants
+  a browser**, Outpost says so and stops. It does not try another way. Download the
+  file yourself from the page the source names.
+- **The date of the data** is the publisher's own date for the file where its server
+  gives one, and otherwise the moment it was fetched.
+- **An administrator can change any of this**: which sources there are and what
+  Outpost does with each is one file. See [Changing the sources](#changing-the-sources).
+
 ### Getting a list in
 
-**Import a list** takes one CSV file, up to 16 MB and 100,000 rows. Nothing is kept
-until you have seen how it was read:
+**Import a list** takes one file, up to 16 MB and 100,000 rows: a CSV, or a JSON file
+that is a list of records. Nothing is kept until you have seen how it was read:
 
 - **What it was read as.** Three layouts the RSGB's ETCC offers on ukrepeater.net are
   recognised by their headings (voice repeaters; voice repeaters and gateways with
-  status; all modes), as are CHIRP's CSV and Outpost's own export. Any other CSV with
-  a row of headings is read by matching its headings to what they usually mean
-  ("Freq", "Shift", "Grid", "Town").
+  status; all modes), as are CHIRP's CSV, the Wireless Institute of Australia's
+  directory, Hearham's JSON list and Outpost's own export. Any other CSV with a row of
+  headings, or JSON list, is read by matching its headings or field names to what they
+  usually mean ("Freq", "Shift", "Grid", "Town"). In a CHIRP file a channel named with
+  a callsign and then a town ("EI2ABC Somewhere") is read as both.
 - **The first rows as they would be kept**, so that you can see the output and the
   shift are the right way round. In every list Outpost keeps the **output** as the
   frequency the repeater transmits on, which is the one you listen on.
@@ -118,6 +170,7 @@ until you have seen how it was read:
   a frequency that is not one or that could be two, a position that is not on Earth.
 - **What is rough about it**: how many entries have no position, how many positions
   are approximate.
+- **Which of them you already hold**: see [The same repeater twice](#the-same-repeater-twice).
 
 You then give the list a name, say who publishes it, and give **the date of its
 data**: the day the file was made or fetched from its publisher, not the day you
@@ -156,6 +209,64 @@ frequency. Removing a list removes its entries, your changes to them included, a
 saying so; entries from other lists and your own are not touched. The file itself is
 never kept by Outpost.
 
+### The same repeater twice
+
+A repeater is often in more than one list (a national list and a worldwide one, or a
+list and an entry you made), and sometimes twice in one file. Outpost takes two
+entries to be **the same repeater** when their callsigns are the same, whatever the
+case, spaces or hyphens, and their output frequencies are within 3 kHz of each other.
+Lists round a frequency to the kilohertz, and the closest channels are 6.25 kHz apart,
+so that never joins neighbours.
+
+Two entries on one frequency at nearly one place with **different callsigns** (within
+2 km, or closer than their listed positions can be told apart, and never more than
+15 km) **may be** the same repeater spelt two ways. Outpost shows these and never acts
+on them by itself: they can also be a repeater and a gateway that share a site.
+
+**When you import**, the preview says how many rows are already held in another list
+or by hand, how many of those you typed or changed, how many repeat an earlier row of
+the file, and how many may be one you hold under another callsign. A few of each are
+shown side by side: one column each, a row for each part in which they differ. You
+choose, for that import:
+
+- **Keep both** (the default). Every row is brought in and nothing you hold is
+  touched. The repeaters are then listed twice until you merge them.
+- **Leave what I hold as it is.** The incoming ones are set aside. Each repeater is
+  shown once, as you hold it now.
+- **Show the newer data.** Whichever has the later date of data is shown and the
+  other is set aside. Anything you typed or changed by hand is carried onto the one
+  that is shown: your tone, your notes, your position. That entry is then marked
+  "Changed by you", with what its list says beside it, like any entry you change.
+
+**Find duplicates**, beside the lists, does the same for what is already held. Each
+group is shown side by side, with the entry Outpost would keep already chosen: the
+one from the list with the newest data. You can choose another and merge that group,
+or **Merge all** the certain ones at once. The possible ones are merged only one pair
+at a time, when you say so of that pair.
+
+What merging does, and does not do:
+
+- **Nothing is deleted.** The other entries are set aside, not removed. The entry
+  that is kept says so on its own screen, under **Held more than once**, and
+  **Separate them** brings them back.
+- **What you typed is carried over.** Every part you typed on an entry made by hand,
+  and every part you changed on an entry of a list, goes onto the entry that is kept,
+  unless you had typed that part there too. Notes you wrote on both are joined.
+- **Gaps are filled, in a merge you ask for.** A part the kept entry leaves empty is
+  taken from another that has it, and modes are joined: one list saying FM and
+  another FM and DMR is a repeater with both. An import does not do this: a new row is
+  not filled in from another list.
+- **A list is still a whole list.** An entry set aside stays in its list, so bringing
+  that list up to date does not bring it back as new, and does not ask again.
+- **Removing a list shows its repeaters from the other list again.** If the entry
+  that was kept goes, because its list was removed or it left its list in an update,
+  whatever was set aside for it comes back.
+- **Removing a repeater removes it**, not one of its listings: what was set aside for
+  it stays out of sight.
+
+The list, the map, the counts, the search across everything and an export all show a
+merged repeater once.
+
 ### Using it
 
 - **The list** filters by band, by mode, and by distance from a place: a saved
@@ -193,13 +304,78 @@ where the file is offered. The CHIRP layout was taken from CHIRP's own source on
 16 November 2026 and tested by reading Outpost's files back with Outpost's own reader;
 **it has not been loaded into CHIRP or into a radio.**
 
+### Changing the sources
+
+The sources are declared in one file, `catalog/repeater-sources.json`, in the way the
+catalogue's manifests declare download hosts: Outpost fetches a list from the address
+a source of kind `fetch` names and from nowhere else. To change what Outpost does with
+a publisher, or to add a source of your own, write a file of the same format at
+`<data directory>/catalog/repeaters/repeater-sources.json` and restart:
+
+```json
+{
+  "schemaVersion": 1,
+  "regions": [{ "id": "valley", "name": "Our valley", "bbox": [-3.4, 54.3, -2.9, 54.7] }],
+  "sources": [
+    {
+      "id": "club-list",
+      "region": "valley",
+      "publisher": "Fell Radio Club",
+      "name": "Club repeater list",
+      "covers": "The club's own repeaters.",
+      "pageUrl": "https://club.example.org/repeaters",
+      "kind": "fetch",
+      "why": "It is our own list.",
+      "termsUrl": "https://club.example.org/repeaters",
+      "termsNote": "Ours to use.",
+      "termsRead": "2026-11-16",
+      "fetch": { "url": "https://club.example.org/repeaters.csv", "waitSeconds": 10 }
+    }
+  ]
+}
+```
+
+- A source with the `id` of a shipped one takes its place. That is how to make the
+  IRTS's list a `link`, or to make a `link` a `fetch` once its publisher has told you
+  that a program may fetch it. The decision and the terms are then yours to record in
+  `why`, `termsNote` and `termsRead`.
+- `"replaceShipped": true` leaves out every shipped source.
+- `kind` is `fetch` (needs `fetch.url`), `link` (needs `steps`) or `none`.
+- A shipped source must be `https` and leave at least ten seconds between requests. A
+  file of your own may name an `http` address and a shorter wait, for a server of
+  your own. A source on this computer or a private network is refused unless the
+  server was started with `OUTPOST_ALLOW_PRIVATE_DOWNLOADS=true`.
+- A file that cannot be read is reported in the server's log and on the screen, and
+  none of it is used. `pnpm catalog:validate` checks the shipped file.
+
 ### Limits
 
-- **No list comes with Outpost and none is fetched**, for the reasons above. There is
-  no "update" that reaches out: bringing a list up to date means importing a newer
-  file.
-- **Lists are CSV.** KML, GPX, ADIF, a radio's own memory image and the programming
-  files of particular radios other than CHIRP's CSV are not read.
+- **No list comes with Outpost.** Two can be fetched when you ask; the rest arrive as
+  a file you downloaded. Nothing is fetched on a timer: a list is brought up to date
+  when you press the button.
+- **A country not in the list of sources was not looked at**, or was looked for and
+  nothing was found: see [sources.md](sources.md#repeater-lists). The worldwide
+  sources cover it as far as they go.
+- **The fetch was tested against a stand-in, not a publisher.** The tests fetch
+  made-up lists from a server of their own. Hearham's list and the IRTS's file were
+  each fetched once by hand on 16 November 2026 and read by Outpost's reader
+  (22,816 of 22,947 rows, and 45 of 45), as was the WIA's file (914 repeaters from
+  1,023 rows); **"Get the list" itself has not been pressed against either site.**
+- **Hearham's list holds many repeaters twice**: 1,454 of its rows repeat an earlier
+  row by callsign and frequency. Choose **Leave what I hold as it is** or **Show the
+  newer data** when importing it, or use **Find duplicates** afterwards. Measured with
+  that list on an Apple M2 Max while other work was running: the preview half a
+  second, the import four seconds, **Find duplicates** over the 21,362 it leaves
+  0.7 seconds. The server answers little else while each of those is worked out.
+- **Positions are missing from the IRTS's and the WIA's files**, which give none, so
+  those entries are listed and are not on the map.
+- **The steps for RepeaterBook and for the Finnish site were not walked through in a
+  browser.**
+- **Possible duplicates cannot be dismissed.** A pair that is offered as possibly the
+  same, and is not, is offered again each time.
+- **Lists are CSV, or JSON lists of records.** KML, GPX, ADIF, spreadsheets, a radio's
+  own memory image and the programming files of particular radios other than CHIRP's
+  CSV are not read.
 - **Tested with made-up stations**, in the layouts described. No real list is in the
   repository, and none was run through the tests.
 - **Fifty thousand entries were measured on an Apple M2 Max, not on a Raspberry Pi**:

@@ -424,11 +424,26 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 #### Repeaters
 
 - A repeater database of your own, kept in Outpost's database and used with no
-  connection. Outpost ships with no repeaters and downloads none: no publisher whose
-  terms were read gives leave for that (docs/sources.md). A list is imported from a
-  CSV file you obtained (three layouts of the RSGB ETCC's lists, CHIRP's, Outpost's own
-  export, or any CSV with headings), shown before it is kept, and entries can be added
-  and changed by hand.
+  connection. Outpost ships with no repeaters. A list is imported from a file you
+  obtained (three layouts of the RSGB ETCC's lists, CHIRP's, the WIA's directory,
+  Hearham's JSON list, Outpost's own export, or any CSV with headings or JSON list of
+  records), shown before it is kept, and entries can be added and changed by hand.
+- Sources of repeater lists by country, on the Repeaters screen, with the country the
+  map was last looking at first. Each says whether Outpost can get the list (the
+  IRTS's and Hearham's, fetched once when you press **Get the list**, through the
+  guarded download client), how to get it by hand (the publisher's page and the
+  steps: the RSGB ETCC's, RepeaterBook's, Open Repeater's, the WIA's, the SRAL's), or
+  that there is nothing usable, with the reason and the publisher's terms as read on
+  16 November 2026 (docs/sources.md). Outpost reads no list out of a web page and
+  gets round no sign-in, rate limit or check for a browser. The sources are declared
+  in `catalog/repeater-sources.json`, which an administrator can add to or override.
+  The fetch was tested against a stand-in publisher, not pressed against a real one.
+- One repeater shown once. An import says how many of its rows are already held or
+  repeat within the file, shows them side by side, and asks what to do: keep both
+  (the default), leave what is held as it is, or show the newer data with anything
+  you typed or changed carried onto it. **Find duplicates** does the same for what
+  is already held. Nothing is deleted by a merge: the entries not kept are set aside,
+  can be separated again, and come back if the entry kept goes with its list.
 - Bringing a list up to date from a newer file leaves alone the entries you changed or
   removed unless you say otherwise, having been shown how many there are.
 - A list filtered by band, mode and distance from a saved place, the middle of the
