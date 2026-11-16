@@ -494,6 +494,19 @@ describe("fetching a list from a source", () => {
     await http.close();
   });
 
+  it("keeps a file whose name in the address cannot be decoded, under the name as it is written", async () => {
+    const { http, fetcher } = client();
+    // "%E9" is é in Latin-1 and not UTF-8 at all: decoding it as an address part throws.
+    const got = await fetcher.get(source("r%E9p.csv"));
+    expect(got.text).toBe(fixture("etcc-status.csv"));
+    expect(got.fileName).toBe("r_E9p.csv");
+    expect(standIn.requests.map((request) => request.path)).toEqual(["/repeater-lists/r%E9p.csv"]);
+    // One that can be decoded still is.
+    clock += 60_000;
+    expect((await fetcher.get(source("north.csv"))).fileName).toBe("north.csv");
+    await http.close();
+  });
+
   it("leaves a host alone for as long as its source asks, and says how long is left", async () => {
     const { http, fetcher } = client();
     await fetcher.get(source("north.csv", 10));

@@ -33,6 +33,9 @@ export function createRepeaterSourceStandIn(options: { elsewhere?: string } = {}
       switch (url.pathname) {
         case "/repeater-lists/north.csv":
           return send(200, "text/csv", standIn.north, { "last-modified": "Thu, 01 Oct 2026 09:00:00 GMT" });
+        case "/repeater-lists/r%E9p.csv":
+          // A name with an accent written as one Latin-1 byte: an escape that is not UTF-8.
+          return send(200, "text/csv", standIn.north);
         case "/repeater-lists/world.json":
           return send(200, "application/json", fixture("hearham.json"));
         case "/repeater-lists/busy":
