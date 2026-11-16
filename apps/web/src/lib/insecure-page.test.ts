@@ -39,7 +39,8 @@ describe("features that only a secure page has", () => {
   // crypto.subtle is not here: only OpenPGP.js uses it, loaded after cryptoAvailable() in encryption/engine.ts,
   // and encryption-page.test.tsx checks what the screen says without it.
   const SECURE_ONLY: Array<{ what: string; use: RegExp; guard: RegExp }> = [
-    { what: "the clipboard", use: /navigator\.clipboard\.\w+\(/, guard: /if \(navigator\.clipboard\b/ },
+    // The QR screen copies a picture, which needs more than the clipboard being there: it asks canCopyPicture().
+    { what: "the clipboard", use: /navigator\.clipboard\.\w+\(/, guard: /if \(navigator\.clipboard\b|if \(!canCopyPicture\(\)\)/ },
     { what: "sharing", use: /navigator\.share\(/, guard: /typeof navigator\.canShare === "function"/ },
     { what: "the device's location", use: /\.geolocation\.(getCurrentPosition|watchPosition)\(/, guard: /isSecureContext|secure\(\)/ },
     { what: "a service worker", use: /navigator\.serviceWorker\s*(\/\/[^\n]*\n\s*)*\.register\(/, guard: /isSecureContext/ },
@@ -78,6 +79,7 @@ describe("features that only a secure page has", () => {
       "a service worker",
       "Cache Storage",
       "the browser's storage manager",
+      "the camera or microphone",
       "a wake lock",
       "web locks",
     ]);

@@ -175,6 +175,10 @@ export function QrOutput({
   const label = `QR code: ${described.heading}`;
 
   const copyPicture = async () => {
+    if (!canCopyPicture()) {
+      toast.error("A picture can be copied only at an HTTPS address. Save it as a file instead.");
+      return;
+    }
     try {
       const blob = await pngBlob(code);
       await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
