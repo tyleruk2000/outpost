@@ -14,7 +14,7 @@
  * Every file added queues the reading of its text. A hundred of those at once would
  * keep everything else a person adds waiting behind them, so a file is copied only
  * when the reading has nearly caught up: at most one document more than are read at a
- * time (Settings, "Documents read at once") is ever waiting.
+ * time (Settings, "Documents processed at once") is ever waiting.
  */
 import {
   ARCHIVE_ADD_JOB,
@@ -115,7 +115,10 @@ export function registerArchiveAdding(app: FastifyInstance, ctx: AppContext, opt
   }
 
   const unreadable = () =>
-    new AppError("upstream", "This collection cannot be read right now, so nothing can be added from it. Try again when it opens in the reader.");
+    new AppError(
+      "upstream",
+      "This collection cannot be read right now, so nothing can be added from it. Try again when it opens in the reader.",
+    );
 
   async function plan(row: CollectionRow, scope: ArchiveAddScope): Promise<{ plan: ArchiveAddPlan; todo: ListedFile[] }> {
     const wanted = (await options.isReady(row)) ? await resolve(row, scope) : undefined;
@@ -137,12 +140,7 @@ export function registerArchiveAdding(app: FastifyInstance, ctx: AppContext, opt
     try {
       location = await files.destination();
       if (todo.length > 0 && location.freeBytes !== null && location.freeBytes < bytes + SPACE_RESERVE_BYTES) {
-        refusal = noRoomMessage(
-          location.name,
-          todo.length === 1 ? "this file" : `these ${todo.length} files`,
-          bytes,
-          location.freeBytes,
-        );
+        refusal = noRoomMessage(location.name, todo.length === 1 ? "this file" : `these ${todo.length} files`, bytes, location.freeBytes);
       }
     } catch (error) {
       if (!(error instanceof AppError)) throw error;
@@ -239,7 +237,8 @@ export function registerArchiveAdding(app: FastifyInstance, ctx: AppContext, opt
         result.added += 1;
         result.addedBytes += fact.sizeBytes;
       }
-      const report = (update: JobProgress = {}) => progress({ current: result.wanted - result.notReached, total: result.wanted, ...update });
+      const report = (update: JobProgress = {}) =>
+        progress({ current: result.wanted - result.notReached, total: result.wanted, ...update });
 
       files.setWaiting(
         row.id,
@@ -298,10 +297,13 @@ export function registerArchiveAdding(app: FastifyInstance, ctx: AppContext, opt
 
   let problemsOf: { jobId: string; byPath: Map<string, string> } | undefined;
 
-  app.post<{ Params: { collectionId: string } }>("/api/kiwix/books/:collectionId/files/add-all/plan", async (request): Promise<ArchiveAddPlan> => {
-    const row = options.requireBook(request.params.collectionId);
-    return (await plan(row, scopeBody.parse(request.body))).plan;
-  });
+  app.post<{ Params: { collectionId: string } }>(
+    "/api/kiwix/books/:collectionId/files/add-all/plan",
+    async (request): Promise<ArchiveAddPlan> => {
+      const row = options.requireBook(request.params.collectionId);
+      return (await plan(row, scopeBody.parse(request.body))).plan;
+    },
+  );
 
   app.post<{ Params: { collectionId: string } }>(
     "/api/kiwix/books/:collectionId/files/add-all",
@@ -331,12 +333,15 @@ export function registerArchiveAdding(app: FastifyInstance, ctx: AppContext, opt
     },
   );
 
-  app.get<{ Params: { collectionId: string } }>("/api/kiwix/books/:collectionId/files/add-all", async (request): Promise<ArchiveAddStatus> => {
-    const row = options.requireBook(request.params.collectionId);
-    const all = jobsOf(row.id);
-    const job = all.find((candidate) => ACTIVE.has(candidate.state)) ?? all.at(-1);
-    return { job: job ? toJobDto(job) : null };
-  });
+  app.get<{ Params: { collectionId: string } }>(
+    "/api/kiwix/books/:collectionId/files/add-all",
+    async (request): Promise<ArchiveAddStatus> => {
+      const row = options.requireBook(request.params.collectionId);
+      const all = jobsOf(row.id);
+      const job = all.find((candidate) => ACTIVE.has(candidate.state)) ?? all.at(-1);
+      return { job: job ? toJobDto(job) : null };
+    },
+  );
 
   return {
     problems(row) {

@@ -13,6 +13,9 @@
  *   /content/<book>/database.js  `var DATABASE = [ … ];`, each entry written the way Python
  *                              prints a dictionary, which is how nautilus writes it
  *   /content/<book>/files/…    the files the list names
+ *   /content/<book>/guide      an ordinary page that links to three of those files, as a page of an
+ *                              archive made from a web site does. nautilus writes no such page; it is
+ *                              here so that one stand-in serves the tests of both kinds of archive
  *
  * Nothing here is copied from nautilus or from any archive: the page, the script, the
  * documents and their words were written for these tests.
@@ -145,6 +148,29 @@ const HOME = `<!DOCTYPE html>
     <ul id="doc-list"></ul>
     <p id="loader">Loading…</p>
     <script src="nautilus.js"></script>
+  </body>
+</html>
+`;
+
+/** The files the ordinary page links to, with the words of each link. */
+export const GUIDE_LINKS: Array<{ file: string; text: string }> = [
+  { file: "north.pdf", text: "Finding north without a compass" },
+  { file: "grain.pdf", text: "Storing grain for a year" },
+  { file: "first aid/splint.pdf", text: "Splinting a forearm" },
+];
+
+const GUIDE = `<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Where to start</title>
+  </head>
+  <body>
+    <h1>Where to start</h1>
+    <p>Three things to read first.</p>
+    <ul>
+${GUIDE_LINKS.map((link) => `      <li><a href="files/${link.file.split("/").map(encodeURIComponent).join("/")}">${link.text}</a></li>`).join("\n")}
+    </ul>
   </body>
 </html>
 `;
@@ -299,6 +325,7 @@ export async function startNautilusArchive(options: { port?: number } = {}): Pro
       return missing();
     }
     if (inside === "home") return send("text/html; charset=utf-8", archive.home);
+    if (inside === "guide") return send("text/html; charset=utf-8", GUIDE);
     if (inside === "nautilus.js") return send("text/javascript", SCRIPT);
     if (inside === "database.js") return archive.database === undefined ? missing() : send("text/javascript", archive.database);
     const name = inside.startsWith("files/") ? inside.slice("files/".length) : "";

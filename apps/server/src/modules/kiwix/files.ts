@@ -203,7 +203,12 @@ export function registerArchiveFiles(app: FastifyInstance, ctx: AppContext, opti
   const waiting = new Map<string, Set<string>>();
   const keyOf = (collectionId: string, filePath: string) => `${collectionId}\n${filePath}`;
 
-  async function copy(row: CollectionRow, file: ArchiveFile, title: string | undefined, outer: AbortSignal | undefined): Promise<SaveOutcome> {
+  async function copy(
+    row: CollectionRow,
+    file: ArchiveFile,
+    title: string | undefined,
+    outer: AbortSignal | undefined,
+  ): Promise<SaveOutcome> {
     const source = sourceOfArchiveFile(row.title, file.path);
     const known = savedAs([source]).get(source);
     if (known) return { status: "already", document: documents.get(known) };
@@ -296,7 +301,12 @@ export function registerArchiveFiles(app: FastifyInstance, ctx: AppContext, opti
     }
   }
 
-  function save(row: CollectionRow, file: ArchiveFile, title: string | undefined, saving: { signal?: AbortSignal } = {}): Promise<SaveOutcome> {
+  function save(
+    row: CollectionRow,
+    file: ArchiveFile,
+    title: string | undefined,
+    saving: { signal?: AbortSignal } = {},
+  ): Promise<SaveOutcome> {
     const key = keyOf(row.id, file.path);
     const before = copying.get(key);
     if (before) return before;
@@ -418,12 +428,15 @@ export function registerArchiveFiles(app: FastifyInstance, ctx: AppContext, opti
   });
 
   // How large these files are, so that a person can see what adding them will take. Changes nothing.
-  app.post<{ Params: { collectionId: string } }>("/api/kiwix/books/:collectionId/files/sizes", async (request): Promise<ArchiveFileSizes> => {
-    const row = options.requireBook(request.params.collectionId);
-    const { paths } = checkBody.parse(request.body);
-    const found = await sizes(row, paths);
-    return { files: paths.map((raw) => ({ path: raw, sizeBytes: found.get(raw) ?? null })) };
-  });
+  app.post<{ Params: { collectionId: string } }>(
+    "/api/kiwix/books/:collectionId/files/sizes",
+    async (request): Promise<ArchiveFileSizes> => {
+      const row = options.requireBook(request.params.collectionId);
+      const { paths } = checkBody.parse(request.body);
+      const found = await sizes(row, paths);
+      return { files: paths.map((raw) => ({ path: raw, sizeBytes: found.get(raw) ?? null })) };
+    },
+  );
 
   return {
     savedDocuments,

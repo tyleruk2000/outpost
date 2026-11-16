@@ -361,7 +361,11 @@ export function registerDocumentLists(app: FastifyInstance, ctx: AppContext, opt
         for (const file of document.files) {
           if (!KEPT.has(archiveFileKind(file.path)) || seen.has(file.path)) continue;
           seen.add(file.path);
-          files.push({ path: file.path, title: alone ? document.title : undefined, label: alone ? document.title : `${document.title}: ${file.name}` });
+          files.push({
+            path: file.path,
+            title: alone ? document.title : undefined,
+            label: alone ? document.title : `${document.title}: ${file.name}`,
+          });
         }
       }
       return files;

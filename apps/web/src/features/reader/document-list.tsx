@@ -7,15 +7,36 @@
  * it: every title is plain text, a PDF or e-book opens in Outpost's viewer, a recording
  * in a player, and anything else is handed to the browser.
  */
-import type { ArchiveDocument, ArchiveDocumentFile, ArchiveDocumentsResponse, SaveArchiveFileResponse } from "@outpost/shared";
+import {
+  type ArchiveDocument,
+  type ArchiveDocumentFile,
+  type ArchiveDocumentsResponse,
+  formatBytes,
+  type SaveArchiveFileResponse,
+} from "@outpost/shared";
 import { keepPreviousData, useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { AudioLines, BookOpen, Check, File, Files, FileText, Film, LibraryBig, type LucideIcon, X } from "lucide-react";
+import {
+  AudioLines,
+  BookOpen,
+  Check,
+  File,
+  Files,
+  FileText,
+  Film,
+  Hourglass,
+  LibraryBig,
+  type LucideIcon,
+  RotateCw,
+  X,
+} from "lucide-react";
+import { useMemo } from "react";
 import { Link } from "react-router";
 import { ErrorState, Page } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/misc";
 import { api, errorMessage } from "@/lib/api";
 import { formatNumber, plural } from "@/lib/utils";
+import { AddToLibraryPanel, useFileSizes } from "./add-all";
 
 /** How many documents are asked for at a time. */
 export const DOCUMENTS_PER_PAGE = 100;
@@ -69,7 +90,10 @@ const Slash = () => (
   </span>
 );
 
-/** "Add to library", or where the file is once it has been added. */
+/**
+ * "Add to library" for one file, and what has become of it: being copied, waiting its
+ * turn in an "add all", in the library, or not added, with the reason and a way to try again.
+ */
 function KeepFile({
   collectionId,
   file,
@@ -99,14 +123,43 @@ function KeepFile({
       </Button>
     );
   }
+  if (file.adding === "waiting" && !save.isPending) {
+    return (
+      <p className="flex h-8 items-center gap-2 px-2.5 text-small text-ink-muted max-md:h-10">
+        <Hourglass aria-hidden className="size-4 shrink-0" />
+        <span>
+          Waiting its turn<span className="sr-only">: {named}</span>
+        </span>
+      </p>
+    );
+  }
+  const adding = save.isPending || file.adding === "now";
+  // What the person just tried counts for more than what an earlier "add all" ran into.
+  const problem = save.isError ? errorMessage(save.error) : save.isPending ? null : file.problem;
   return (
     <div className="flex flex-col items-end gap-1 max-md:items-start">
-      <Button size="sm" variant="ghost" loading={save.isPending} onClick={() => save.mutate()} aria-label={`Add to library: ${named}`}>
-        <LibraryBig /> Add to library
+      <Button
+        size="sm"
+        variant="ghost"
+        loading={adding}
+        onClick={() => save.mutate()}
+        aria-label={`${adding ? "Adding to library" : problem ? "Try again" : "Add to library"}: ${named}`}
+      >
+        {adding ? (
+          "Adding…"
+        ) : problem ? (
+          <>
+            <RotateCw /> Try again
+          </>
+        ) : (
+          <>
+            <LibraryBig /> Add to library
+          </>
+        )}
       </Button>
-      {save.isError ? (
-        <p role="alert" className="max-w-[22rem] text-small text-danger">
-          {errorMessage(save.error)}
+      {problem ? (
+        <p role="alert" className="max-w-[22rem] text-small text-danger max-md:px-2.5">
+          Not added. {problem}
         </p>
       ) : null}
     </div>
@@ -121,11 +174,14 @@ function DocumentRow({
   collectionId,
   contentBase,
   document,
+  sizes,
   onOpen,
 }: {
   collectionId: string;
   contentBase: string;
   document: ArchiveDocument;
+  /** How large each file is, by its path, where the collection has said. */
+  sizes: Map<string, number>;
   onOpen(file: ArchiveDocumentFile, document: ArchiveDocument): void;
 }) {
   const only = document.files.length === 1 ? document.files[0] : undefined;
@@ -155,6 +211,12 @@ function DocumentRow({
         </h2>
         <p className="mt-0.5 text-small text-ink-muted">
           {only ? fileKindLabel(only) : plural(document.files.length, "file")}
+          {only && sizes.has(only.path) ? (
+            <>
+              <Slash />
+              <span className="tabular">{formatBytes(sizes.get(only.path))}</span>
+            </>
+          ) : null}
           {document.author ? (
             <>
               <Slash />
@@ -184,6 +246,7 @@ function DocumentRow({
                 )}
                 <span className="text-micro text-ink-muted">
                   {fileKindLabel(file)}
+                  {sizes.has(file.path) ? <span className="tabular">, {formatBytes(sizes.get(file.path))}</span> : null}
                   {opensInReader(file) ? "" : ", opens in a new tab"}
                 </span>
                 {canBeKept(file) ? (
@@ -232,6 +295,16 @@ export function DocumentList({
   const first = found.data?.pages[0]?.list;
   const documents = found.data?.pages.flatMap((page) => page.list?.documents ?? []) ?? [];
   const remaining = first ? first.matched - documents.length : 0;
+  // Sizes are asked for a part of the list at a time, as the list itself is, and only for what can be added.
+  const pages = found.data?.pages;
+  const keepable = useMemo(
+    () =>
+      (pages ?? []).map((page) =>
+        (page.list?.documents ?? []).flatMap((document) => document.files.filter(canBeKept).map((file) => file.path)).slice(0, 500),
+      ),
+    [pages],
+  );
+  const sizes = useFileSizes(collectionId, keepable);
 
   return (
     <div className="absolute inset-0 overflow-y-auto bg-page" inert={covered}>
@@ -269,14 +342,16 @@ export function DocumentList({
                     : `${formatNumber(first.matched)} of ${plural(first.total, "document")}`
                   : plural(first.total, "document")}
             </p>
+            {first.total > 0 ? <AddToLibraryPanel collectionId={collectionId} query={query} /> : null}
             {documents.length > 0 ? (
-              <ul className="mt-3 divide-y divide-border border-t border-border" aria-label="Documents">
+              <ul className="mt-4 divide-y divide-border border-t border-border" aria-label="Documents">
                 {documents.map((document) => (
                   <DocumentRow
                     key={document.id}
                     collectionId={collectionId}
                     contentBase={contentBase}
                     document={document}
+                    sizes={sizes}
                     onOpen={onOpen}
                   />
                 ))}

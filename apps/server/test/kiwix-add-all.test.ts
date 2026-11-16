@@ -83,7 +83,9 @@ async function setup(prepare?: (archive: NautilusArchive) => void, more: Record<
         }>
       ).flatMap((document) => document.files),
     titles: async (on: TestApp) =>
-      ((await on.api("GET", "/api/documents?limit=200&sort=title")).body.documents as Array<{ title: string }>).map((document) => document.title),
+      ((await on.api("GET", "/api/documents?limit=200&sort=title")).body.documents as Array<{ title: string }>).map(
+        (document) => document.title,
+      ),
     /** Nothing half-copied is left where files wait on their way in. */
     leftovers: () => {
       const saved = path.join(location.path, "documents", "saved");
@@ -100,7 +102,14 @@ describe("adding every document of a collection to the library", () => {
     const { app, archive, id, plan, location } = await setup();
     const { status, body } = await plan(app);
     expect(status).toBe(200);
-    expect(body).toMatchObject({ count: 8, already: 0, unsized: 0, refusal: null, ocrAuto: false, location: { id: location.id, name: location.name } });
+    expect(body).toMatchObject({
+      count: 8,
+      already: 0,
+      unsized: 0,
+      refusal: null,
+      ocrAuto: false,
+      location: { id: location.id, name: location.name },
+    });
     expect(body.bytes).toBeGreaterThan(8 * 300);
     expect(body.location!.freeBytes).toBeGreaterThan(0);
     // Each PDF was asked how large it is, and nothing was read: no file was fetched, and nothing is in the library.
@@ -186,7 +195,10 @@ describe("adding every document of a collection to the library", () => {
     // Each file was fetched once, from the archive.
     for (const file of PDFS) {
       const address = `/content/${NAUTILUS_BOOK}/${file.split("/").map(encodeURIComponent).join("/")}`;
-      expect(archive.requests.filter((url) => url === address), file).toHaveLength(1);
+      expect(
+        archive.requests.filter((url) => url === address),
+        file,
+      ).toHaveLength(1);
     }
     // A document that is one file takes the title the collection gives it; a file among several keeps its own name.
     expect(await titles(app)).toEqual([
@@ -206,7 +218,10 @@ describe("adding every document of a collection to the library", () => {
 
     // Their text is read, so search finds them to the page.
     await app.ctx.jobs.whenIdle();
-    expect((await app.api("GET", "/api/search?q=bricks")).body.results[0]).toMatchObject({ kind: "document", title: "A camper's rocket stove" });
+    expect((await app.api("GET", "/api/search?q=bricks")).body.results[0]).toMatchObject({
+      kind: "document",
+      title: "A camper's rocket stove",
+    });
 
     // Done twice, it adds nothing twice.
     const twice = await start(app);
@@ -221,7 +236,10 @@ describe("adding every document of a collection to the library", () => {
 
   it("leaves out what is already in the library, and adds only what a search is showing", async () => {
     const { app, id, plan, start, status, titles } = await setup();
-    const one = await app.api("POST", `/api/kiwix/books/${id}/files/save`, { path: "files/Water (1).pdf", title: "Boiling water to make it safe" });
+    const one = await app.api("POST", `/api/kiwix/books/${id}/files/save`, {
+      path: "files/Water (1).pdf",
+      title: "Boiling water to make it safe",
+    });
     expect(one.body.status).toBe("created");
     expect((await plan(app, { kind: "list", q: "water" })).body).toMatchObject({ count: 1, already: 1 });
 
@@ -370,11 +388,7 @@ describe("adding every document of a collection to the library", () => {
     const { app, id, plan, start, status, titles } = await setup();
     const scope = {
       kind: "files",
-      files: [
-        { path: "files/north.pdf", title: "North without a compass" },
-        { path: "files/grain.pdf" },
-        { path: "files/grain.pdf" },
-      ],
+      files: [{ path: "files/north.pdf", title: "North without a compass" }, { path: "files/grain.pdf" }, { path: "files/grain.pdf" }],
     };
     expect((await plan(app, scope)).body).toMatchObject({ count: 2, already: 0, unsized: 0, refusal: null });
     expect((await start(app, scope)).status).toBe(200);
@@ -392,7 +406,9 @@ describe("adding every document of a collection to the library", () => {
     for (const bad of ["../../etc/passwd", "files/kit list.ods", "https://example.org/a.pdf"]) {
       expect((await start(app, { kind: "files", files: [{ path: bad }] })).status, bad).toBe(400);
     }
-    expect((await start(app, { kind: "files", files: Array.from({ length: 301 }, (_, n) => ({ path: `files/${n}.pdf` })) })).status).toBe(400);
+    expect((await start(app, { kind: "files", files: Array.from({ length: 301 }, (_, n) => ({ path: `files/${n}.pdf` })) })).status).toBe(
+      400,
+    );
   }, 60_000);
 
   it("copies a file once when it is asked for twice at the same moment", async () => {

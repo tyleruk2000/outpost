@@ -4,28 +4,31 @@
  * An archive made from a web site often holds PDFs as well as pages, and a page may
  * also point at files the archive never captured. Either way a person should be able to
  * keep such a file as a document of their own. A file inside the archive is copied out
- * of it, with no connection needed. A file that is only on the internet is fetched
- * through the download manager.
+ * of it, with no connection needed: one from the viewer it opens in, several by the same
+ * job that adds every document of a collection that lists them (add-all.tsx). A file that
+ * is only on the internet is fetched through the download manager.
  */
 import {
+  type ArchiveAddScope,
   type ArchiveFileState,
+  formatBytes,
   isSavableLink,
   type LinkState,
   type PageFile,
-  type SaveArchiveFileResponse,
   type SaveLinkResponse,
   type SaveLinksResponse,
 } from "@outpost/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Download, ExternalLink, FileDown, LibraryBig, X } from "lucide-react";
+import { Check, Download, ExternalLink, FileDown, Hourglass, LibraryBig, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
-import { Checkbox, Progress, Skeleton } from "@/components/ui/misc";
+import { Checkbox, Skeleton } from "@/components/ui/misc";
 import { api, errorMessage } from "@/lib/api";
 import { plural } from "@/lib/utils";
+import { type AddAll, AddAllStatus, planSize, useAddAll, useAddPlan, useFileSizes } from "./add-all";
 
 export const fileKey = (file: PageFile) => (file.kind === "archive" ? `archive:${file.path}` : file.href);
 
@@ -68,7 +71,13 @@ export function hostsOf(files: PageFile[]): string {
   return hosts.size === 1 && only ? only : plural(hosts.size, "website");
 }
 
-type FileStatus = { state: "new" } | { state: "saved"; documentId: string } | { state: "saving"; downloadId: string };
+type FileStatus =
+  | { state: "new" }
+  | { state: "saved"; documentId: string }
+  /** On its way from the internet. */
+  | { state: "saving"; downloadId: string }
+  /** Being copied out of the collection, or waiting its turn to be. */
+  | { state: "adding"; turn: "now" | "waiting" };
 
 /** Which of a page's files are already documents, or on their way. */
 export function useFileStatus(collectionId: string, files: PageFile[]) {
@@ -89,6 +98,7 @@ export function useFileStatus(collectionId: string, files: PageFile[]) {
     const map = new Map<string, FileStatus>();
     for (const item of inside.data?.files ?? []) {
       if (item.state === "saved") map.set(`archive:${item.path}`, { state: "saved", documentId: item.documentId });
+      else if (item.state === "adding") map.set(`archive:${item.path}`, { state: "adding", turn: item.turn });
     }
     for (const item of outside.data?.links ?? []) {
       if (item.state === "saved") map.set(item.url, { state: "saved", documentId: item.documentId });
@@ -170,19 +180,27 @@ export function ExternalLinkNotice({ href, foundIn, onDismiss }: { href: string;
 export function LinkedFiles({ collectionId, files, foundIn }: { collectionId: string; files: PageFile[]; foundIn: string }) {
   const [open, setOpen] = useState(false);
   const { statusOf, loading } = useFileStatus(collectionId, files);
+  const addAll = useAddAll(collectionId, "files");
   if (files.length === 0) return null;
 
   const fresh = files.filter((file) => statusOf(file).state === "new");
-  const kept = files.length - fresh.length;
+  const kept = files.filter((file) => statusOf(file).state === "saved").length;
+  const progress = addAll.active ? addAll.job?.progress : undefined;
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-border bg-surface px-3 py-2 text-small text-ink-muted md:px-4">
       <FileDown aria-hidden className="size-4 shrink-0" />
       <p className="min-w-0 flex-1">
         This page links to {plural(files.length, "file")}
         {!loading && kept > 0 ? `; ${kept === files.length ? "all" : kept} already in your library` : ""}.
+        {progress?.total ? (
+          <span className="tabular">
+            {" "}
+            Adding {Math.min(progress.current, progress.total)} of {progress.total} now.
+          </span>
+        ) : null}
       </p>
       <Button size="sm" variant="secondary" onClick={() => setOpen(true)}>
-        {loading || fresh.length > 0 ? "Add them to your library" : "See them"}
+        {addAll.active ? "See how it is going" : loading || fresh.length > 0 ? "Add them to your library" : "See them"}
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         {open ? (
@@ -192,6 +210,7 @@ export function LinkedFiles({ collectionId, files, foundIn }: { collectionId: st
             statusOf={statusOf}
             loading={loading}
             foundIn={foundIn}
+            addAll={addAll}
             onClose={() => setOpen(false)}
           />
         ) : null}
@@ -201,7 +220,9 @@ export function LinkedFiles({ collectionId, files, foundIn }: { collectionId: st
 }
 
 interface Outcome {
-  added: number;
+  /** Files in the collection handed to the job that copies them. */
+  started: number;
+  /** Files on the internet handed to the download manager. */
   queued: number;
   already: number;
   problems: Array<{ name: string; reason: string }>;
@@ -213,6 +234,7 @@ function SaveFilesDialog({
   statusOf,
   loading,
   foundIn,
+  addAll,
   onClose,
 }: {
   collectionId: string;
@@ -220,37 +242,44 @@ function SaveFilesDialog({
   statusOf(file: PageFile): FileStatus;
   loading: boolean;
   foundIn: string;
+  addAll: AddAll;
   onClose(): void;
 }) {
   const client = useQueryClient();
   const fresh = files.filter((file) => statusOf(file).state === "new");
   const [skipped, setSkipped] = useState<Set<string>>(new Set());
-  const [progress, setProgress] = useState<{ done: number; total: number; name: string }>();
   const chosen = fresh.filter((file) => !skipped.has(fileKey(file)));
   const inside = chosen.filter((file) => file.kind === "archive");
   const outside = chosen.filter((file) => file.kind === "internet");
   const anyOutside = files.some((file) => file.kind === "internet");
   const anyInside = files.some((file) => file.kind === "archive");
 
+  // Files inside the collection are copied by a job on the server, so closing this page does not stop them.
+  // The paths say which files are meant; the array holding them is new on every render.
+  const insideKey = inside.map(fileKey).join("\n");
+  // biome-ignore lint/correctness/useExhaustiveDependencies: see above
+  const scope = useMemo<ArchiveAddScope | null>(() => {
+    const named = inside.flatMap((file) => (file.kind === "archive" ? [{ path: file.path, title: fileTitle(file) }] : []));
+    return named.length > 0 ? { kind: "files", files: named } : null;
+  }, [insideKey]);
+  const plan = useAddPlan(collectionId, scope, ["chosen", scope?.kind === "files" ? scope.files.map((file) => file.path) : null], {
+    enabled: !addAll.active,
+  });
+  const insidePaths = useMemo(() => [files.flatMap((file) => (file.kind === "archive" ? [file.path] : [])).slice(0, 500)], [files]);
+  const sizes = useFileSizes(collectionId, insidePaths);
+
   const save = useMutation({
     mutationFn: async (): Promise<Outcome> => {
-      const outcome: Outcome = { added: 0, queued: 0, already: 0, problems: [] };
-      // Files in the archive are copied out one at a time: each is quick, and the count is honest.
-      for (const [index, file] of inside.entries()) {
-        if (file.kind !== "archive") continue;
-        setProgress({ done: index, total: inside.length, name: fileLabel(file) });
+      const outcome: Outcome = { started: 0, queued: 0, already: 0, problems: [] };
+      if (scope) {
         try {
-          const result = await api.post<SaveArchiveFileResponse>(`/api/kiwix/books/${collectionId}/files/save`, {
-            path: file.path,
-            title: fileTitle(file),
-          });
-          if (result.status === "created") outcome.added += 1;
-          else outcome.already += 1;
+          const result = await addAll.start.mutateAsync(scope);
+          // One was under way already: these wait for another press when it has finished.
+          if (!result.already) outcome.started = inside.length;
         } catch (error) {
-          outcome.problems.push({ name: fileLabel(file), reason: errorMessage(error) });
+          outcome.problems.push({ name: `${plural(inside.length, "file")} in this collection`, reason: errorMessage(error) });
         }
       }
-      setProgress(undefined);
       if (outside.length > 0) {
         const links = outside.flatMap((file) => (file.kind === "internet" ? [{ url: file.href, title: fileTitle(file) }] : []));
         try {
@@ -276,64 +305,16 @@ function SaveFilesDialog({
       return next;
     });
 
-  if (save.data) {
-    const { added, queued, already, problems } = save.data;
-    return (
-      <DialogContent title={added + queued > 0 ? "Added to your library" : "Nothing was added"}>
-        <DialogBody className="space-y-3 text-small">
-          {added > 0 ? (
-            <p>
-              {plural(added, "file")} {added === 1 ? "is" : "are"} now in your library, under Documents. Their text is being read so that
-              search can find it; long files take a minute or two.
-            </p>
-          ) : null}
-          {queued > 0 ? (
-            <p>
-              {plural(queued, "file")} {queued === 1 ? "is" : "are"} being fetched from the internet and will appear in your library as each
-              one finishes.
-            </p>
-          ) : null}
-          {already > 0 ? <p className="text-ink-muted">{plural(already, "file")} had been added before.</p> : null}
-          {problems.length > 0 ? (
-            <div>
-              <p className="font-medium text-ink">{plural(problems.length, "file")} could not be added</p>
-              <ul className="mt-1 space-y-1 text-ink-muted">
-                {problems.map((item) => (
-                  <li key={item.name}>
-                    <span className="break-all text-ink">{item.name}</span>: {item.reason}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-        </DialogBody>
-        <DialogFooter>
-          <Button variant="secondary" onClick={onClose}>
-            Keep reading
-          </Button>
-          {queued > 0 ? (
-            <Button asChild variant="secondary">
-              <Link to="/downloads">See the downloads</Link>
-            </Button>
-          ) : null}
-          {added > 0 ? (
-            <Button asChild variant="primary">
-              <Link to="/library">
-                <LibraryBig /> Open your documents
-              </Link>
-            </Button>
-          ) : null}
-        </DialogFooter>
-      </DialogContent>
-    );
-  }
-
   const where =
     anyInside && anyOutside
-      ? `Some are inside this collection and can be added with no connection. Others are on the internet, at ${hostsOf(files)}, and are fetched from there.`
+      ? `Some are inside this collection: adding one copies it out, with nothing downloaded. Others are on the internet, at ${hostsOf(files)}, and are fetched from there.`
       : anyOutside
         ? `They are on the internet, at ${hostsOf(files)}, not in this collection. Adding one fetches it from there.`
-        : "They are inside this collection, so adding them needs no connection.";
+        : "They are inside this collection: adding one copies it out into your library, and nothing is downloaded from the internet.";
+  const size = plan.data ? planSize(plan.data) : null;
+  const place = plan.data?.location;
+  const refusal = plan.data?.refusal ?? null;
+  const busy = save.isPending || (addAll.active && inside.length > 0);
   return (
     <DialogContent
       size="lg"
@@ -341,6 +322,38 @@ function SaveFilesDialog({
       description={`${where} In your library each one opens in the document viewer and can be searched page by page.`}
     >
       <DialogBody className="px-0 py-0">
+        {addAll.job || save.data ? (
+          <div className="space-y-3 border-b border-border px-5 py-4 text-small">
+            <AddAllStatus addAll={addAll} noun="file" />
+            {save.data && save.data.queued > 0 ? (
+              <p>
+                {plural(save.data.queued, "file")} {save.data.queued === 1 ? "is" : "are"} being fetched from the internet and will appear
+                in your library as each one finishes.{" "}
+                <Link
+                  to="/downloads"
+                  className="font-medium text-primary underline decoration-1 underline-offset-[0.2em] hover:decoration-2"
+                >
+                  See the downloads
+                </Link>
+              </p>
+            ) : null}
+            {save.data && save.data.already > 0 ? (
+              <p className="text-ink-muted">{plural(save.data.already, "file")} had been added before.</p>
+            ) : null}
+            {save.data && save.data.problems.length > 0 ? (
+              <div role="alert">
+                <p className="font-medium text-ink">Not everything could be added</p>
+                <ul className="mt-1 space-y-1 text-ink-muted">
+                  {save.data.problems.map((item) => (
+                    <li key={item.name}>
+                      <span className="break-all text-ink">{item.name}</span>: {item.reason}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
         {loading ? (
           <div className="space-y-3 px-5 py-4">
             <Skeleton className="h-5 w-2/3" />
@@ -353,6 +366,7 @@ function SaveFilesDialog({
               const key = fileKey(file);
               const status = statusOf(file);
               const id = `file-${key}`;
+              const bytes = file.kind === "archive" ? sizes.get(file.path) : undefined;
               return (
                 <li key={key} className="flex items-start gap-3 px-5 py-3 max-md:py-3.5">
                   {status.state === "new" ? (
@@ -363,15 +377,21 @@ function SaveFilesDialog({
                       disabled={save.isPending}
                       onCheckedChange={(on) => toggle(key, on === true)}
                     />
-                  ) : (
+                  ) : status.state === "saved" ? (
                     <Check aria-hidden className="mt-0.5 size-4 shrink-0 text-success" />
+                  ) : (
+                    <Hourglass aria-hidden className="mt-0.5 size-4 shrink-0 text-ink-muted" />
                   )}
                   <div className="min-w-0 flex-1">
                     <label htmlFor={status.state === "new" ? id : undefined} className="block text-small font-medium text-ink">
                       {fileLabel(file)}
                     </label>
                     <p className="mt-0.5 text-micro break-all text-ink-muted">
-                      {file.kind === "archive" ? "In this collection" : <span className="font-mono">{file.href}</span>}
+                      {file.kind === "archive" ? (
+                        <>In this collection{bytes !== undefined ? <span className="tabular">, {formatBytes(bytes)}</span> : null}</>
+                      ) : (
+                        <span className="font-mono">{file.href}</span>
+                      )}
                     </p>
                   </div>
                   {status.state === "saved" ? (
@@ -385,6 +405,8 @@ function SaveFilesDialog({
                     <Link to={`/downloads/${status.downloadId}`} className="shrink-0 text-small text-primary underline underline-offset-2">
                       On its way
                     </Link>
+                  ) : status.state === "adding" ? (
+                    <span className="shrink-0 text-small text-ink-muted">{status.turn === "now" ? "Being added" : "Waiting its turn"}</span>
                   ) : null}
                 </li>
               );
@@ -394,24 +416,37 @@ function SaveFilesDialog({
       </DialogBody>
       <DialogFooter className="justify-between">
         <div className="min-w-0 flex-1 text-small text-ink-muted max-md:basis-full">
-          {progress ? (
-            <div>
-              <p className="truncate">
-                Adding {progress.done + 1} of {progress.total}: {progress.name}
-              </p>
-              <Progress value={progress.done / progress.total} className="mt-1.5" label="Files added" />
-            </div>
+          {refusal ? (
+            <p role="alert" className="text-danger">
+              {refusal}
+            </p>
+          ) : addAll.active && inside.length > 0 ? (
+            "The rest can be added when the adding that is under way has finished."
           ) : fresh.length === 0 && !loading ? (
-            "All of these are already in your library."
-          ) : outside.length > 0 ? (
-            `${plural(outside.length, "file")} will be fetched from the internet.`
+            files.some((file) => statusOf(file).state !== "saved") ? (
+              "The others are on their way into your library."
+            ) : (
+              "All of these are already in your library."
+            )
+          ) : chosen.length > 0 ? (
+            <p className="tabular">
+              {inside.length > 0 && place
+                ? `${plural(inside.length, "file")} ${inside.length === 1 ? "is" : "are"} copied onto “${place.name}”${size ? `: ${size}` : ""}${place.freeBytes !== null ? `, of ${formatBytes(place.freeBytes)} free` : ""}. `
+                : ""}
+              {outside.length > 0 ? `${plural(outside.length, "file")} will be fetched from the internet.` : ""}
+            </p>
           ) : null}
         </div>
         <Button variant="secondary" onClick={onClose}>
-          {save.isPending ? "Close" : "Cancel"}
+          {save.data || addAll.job ? "Keep reading" : "Cancel"}
         </Button>
-        <Button variant="primary" disabled={chosen.length === 0 || loading} loading={save.isPending} onClick={() => save.mutate()}>
-          <LibraryBig /> Add {plural(chosen.length, "file")}
+        <Button
+          variant="primary"
+          disabled={chosen.length === 0 || loading || Boolean(refusal) || (busy && !save.isPending)}
+          loading={save.isPending}
+          onClick={() => save.mutate()}
+        >
+          <LibraryBig /> {chosen.length > 0 ? `Add ${plural(chosen.length, "file")}` : "Add files"}
         </Button>
       </DialogFooter>
     </DialogContent>
