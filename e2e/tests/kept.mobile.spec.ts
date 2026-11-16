@@ -322,7 +322,7 @@ test("keeps a page, a route and a map area on a phone, and opens them with the s
     })
     .toEqual([expect.stringContaining(nextEntry)]);
   // What was kept on purpose is untouched by the change of build.
-  expect((await cacheNames(page)).filter((name) => name.startsWith("outpost-kept:")).length).toBe(4);
+  expect((await cacheNames(page)).filter((name) => name.startsWith("outpost-kept:")).length).toBe(5);
 
   // The server goes while the app is open: the screen that is open stays, and says what will happen next.
   await stopServer();
