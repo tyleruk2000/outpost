@@ -249,6 +249,55 @@ Linux on x86-64, not an Intel Mac, not Windows, not a Raspberry Pi, not a NAS.
 - Building a semantic index on a Pi is slow. You can build it on a faster computer and
   load it on the Pi; see [search.md](search.md#moving-vectors-between-installations).
 
+#### A box you can carry: the install script and a Wi-Fi network of the Pi's own
+
+Two scripts in `deploy/pi/` set a Pi up to be carried somewhere with no router and no
+internet, and reached from phones over a Wi-Fi network the Pi itself provides.
+
+**Neither script has been run on a Raspberry Pi.** They were written from Docker's
+installation page and from NetworkManager's documentation and source on 16 November
+2026, and checked only for syntax and with `--dry-run` on a Mac. Read them before you
+run them, run each with `--dry-run` first, and expect to adjust them. Reports of what
+happened on real hardware are welcome.
+
+```bash
+git clone https://github.com/tyleruk2000/outpost.git
+cd outpost
+./deploy/pi/install.sh --dry-run                 # see what it would do
+./deploy/pi/install.sh --install-docker --lan    # needs the internet this once
+sudo ./deploy/pi/hotspot.sh on --ssid "Outpost"  # asks for a password
+```
+
+- `install.sh` checks for a 64-bit Raspberry Pi OS, installs Docker Engine and the
+  Compose plugin from Docker's apt repository if you pass `--install-docker` (the steps
+  on <https://docs.docker.com/engine/install/debian/>, which lists Debian 12 and 13 on
+  arm64), makes `.env` from `.env.example` if there is none, and with `--lan` sets
+  `OUTPOST_LAN_ACCESS=true` and `OUTPOST_BIND=0.0.0.0` in it, keeping the file as it
+  was beside it. Then it builds and starts the stack and waits for it to answer. The
+  build fetches map fonts and the search model, so the Pi needs the internet for it.
+- `hotspot.sh on` makes a NetworkManager connection called `outpost-hotspot`: a WPA2
+  access point on `wlan0` with the Pi at `10.42.0.1`, started by itself at boot. Phones
+  that join open `http://10.42.0.1:8080`, or `http://outpost.home.arpa:8080` (the
+  script gives NetworkManager's own DHCP and DNS server that name to hand out).
+  `hotspot.sh off` removes the connection and the name and nothing else;
+  `hotspot.sh status` says which it is.
+
+Things to know before relying on it:
+
+- The Pi's one Wi-Fi radio cannot be a hotspot and be on your home Wi-Fi at once.
+  Turning the hotspot on over an SSH session that runs over that Wi-Fi cuts you off;
+  use a screen and keyboard or Ethernet.
+- The Wi-Fi password is the only thing between that network and Outpost, which has no
+  accounts. The script writes the password nowhere; NetworkManager keeps it in its own
+  connection file, readable by root only.
+- If the Pi has internet over Ethernet, NetworkManager shares it with whoever joins.
+  With no internet, a phone will say so and may ask whether to stay on the network.
+- "Erase everything" is accepted only from the computer Outpost runs on, and in Docker
+  nothing looks local to the container, so it is not available from a phone on the
+  hotspot unless you set `OUTPOST_ALLOW_REMOTE_ERASE=true`.
+- Location on the map, recording a track and keeping things on the phone need an
+  `https` address; see [HTTPS on your network](#https-on-your-network).
+
 ### NAS and home servers that run containers
 
 Any NAS or home server that offers Docker Compose (or can import a Compose file) and
