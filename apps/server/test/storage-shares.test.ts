@@ -483,6 +483,11 @@ describe("the helper program", () => {
       "19:55:45.000  Rmv        0  14 local.               _smb._tcp.           Gone",
     ].join("\n");
     expect(parseBrowse(browse)).toEqual(["Felicity’s MacBook Pro", "WORKSHOP-NAS"]);
+    // A name is passed to dns-sd as an argument: one that would be read as an option is left out.
+    expect(parseBrowse(`${browse}\n19:55:44.511  Add        2  14 local.               _smb._tcp.           -i en0`)).toEqual([
+      "Felicity’s MacBook Pro",
+      "WORKSHOP-NAS",
+    ]);
     expect(parseResolve("19:55:50.283  WORKSHOP-NAS._smb._tcp.local. can be reached at WORKSHOP-NAS.local.:445 (interface 14)")).toEqual({
       host: "workshop-nas.local",
       port: 445,

@@ -183,7 +183,8 @@ export function parseBrowse(output: string): string[] {
   const names = new Set<string>();
   for (const line of output.split("\n")) {
     const match = /^\S+\s+Add\s+\d+\s+\d+\s+\S+\s+_smb\._tcp\.\s+(.+?)\s*$/.exec(line);
-    if (match) names.add(match[1]!);
+    // A name is handed to `dns-sd -L` as an argument: one starting with a hyphen would be read as an option.
+    if (match && !match[1]!.startsWith("-")) names.add(match[1]!);
   }
   return [...names];
 }

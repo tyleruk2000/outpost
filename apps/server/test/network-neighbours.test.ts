@@ -125,6 +125,15 @@ Timestamp     A/R    Flags  if Domain               Service Type         Instanc
     expect(parseInstances(output, "_smb._tcp")).toEqual(["Shed NAS", "Workshop  Pi"]);
   });
 
+  it("leaves out a name that a command would read as an option", () => {
+    const output = `Browsing for _smb._tcp.local.
+16:06:52.005  Add        3  14 local.               _smb._tcp.           -timeout
+16:06:52.005  Add        3  14 local.               _smb._tcp.           --help
+16:06:52.005  Add        2  14 local.               _smb._tcp.           Shed-NAS
+`;
+    expect(parseInstances(output, "_smb._tcp")).toEqual(["Shed-NAS"]);
+  });
+
   it("reads Avahi's parsable output, resolved lines only, with its escapes", () => {
     const output = `+;wlan0;IPv4;Shed\\032NAS;_smb._tcp;local
 =;wlan0;IPv4;Shed\\032NAS;_smb._tcp;local;shed-nas.local;192.168.77.12;445;

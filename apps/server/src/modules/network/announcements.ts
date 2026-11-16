@@ -100,6 +100,15 @@ export function parseServiceTypes(output: string): string[] {
   return [...types];
 }
 
+/**
+ * A name a device announced, as it may be handed to a command as one of its arguments. A device chooses its
+ * own name, and one starting with a hyphen would be read by the command as an option, not a name: such a
+ * name is left out (the device is still found by its address; only what it announces is not asked about).
+ */
+export function usableAsArgument(name: string): boolean {
+  return name.length > 0 && name.length <= 255 && !name.startsWith("-") && !/[\u0000-\u001f\u007f]/.test(name);
+}
+
 /** Instances of one kind from `dns-sd -B _smb._tcp local.`: "… Add 2 14 local. _smb._tcp. Workshop NAS". */
 export function parseInstances(output: string, type: string): string[] {
   const names = new Set<string>();
@@ -107,7 +116,7 @@ export function parseInstances(output: string, type: string): string[] {
   const pattern = new RegExp(`^\\S+\\s+Add\\s+\\d+\\s+\\d+\\s+\\S+\\s+${escaped}\\.\\s+(.+?)\\s*$`);
   for (const line of output.split("\n")) {
     const match = pattern.exec(line);
-    if (match) names.add(match[1]!);
+    if (match && usableAsArgument(match[1]!)) names.add(match[1]!);
   }
   return [...names];
 }

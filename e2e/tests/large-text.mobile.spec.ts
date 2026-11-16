@@ -71,9 +71,18 @@ for (const size of [
     test("the radio screens fit the width, and so do a dialog's buttons and its Close", async ({ page }) => {
       test.setTimeout(120_000);
       const errors = watchForErrors(page);
+      // With a saved place there is a chooser beside "Choose on the map", which once held the page wider than the screen.
+      const saved = await page.request.post("/api/maps/markers", {
+        headers: { "X-Outpost-Request": "1" },
+        data: { name: "Fellside village hall car park", lat: CENTRE.lat, lon: CENTRE.lon },
+      });
+      expect(saved.ok()).toBe(true);
+      const { marker } = await saved.json();
       await page.goto("/radio/coverage");
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+      await expect(page.getByRole("combobox", { name: /choose a saved place/ }).first()).toBeVisible();
       await expect.poll(() => tooWide(page)).toEqual([]);
+      await page.request.delete(`/api/maps/markers/${marker.id}`, { headers: { "X-Outpost-Request": "1" } });
 
       await page.goto("/radio/plans");
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible();

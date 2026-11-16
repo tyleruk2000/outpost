@@ -137,7 +137,9 @@ export function PlaceInput({
   return (
     <Field label={label} hint={hint} error={error}>
       {(ids) => (
-        <div className="grid gap-2">
+        // One column that may be narrower than what is in it: a saved place's chooser asks for 12rem, which at
+        // large text is wider than a small phone, and an automatic column would grow to that and take the page with it.
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-2">
           <Input
             {...ids}
             value={value.text}
@@ -154,7 +156,7 @@ export function PlaceInput({
                 aria-label={`${label}: choose a saved place`}
                 value={undefined}
                 placeholder="Or choose a saved place"
-                className="min-w-0 flex-1 basis-48"
+                className="min-w-0 flex-1 basis-[min(12rem,100%)]"
                 onChange={(id) => {
                   const place = places.find((item) => item.id === id);
                   if (place) onChange({ text: `${place.lat.toFixed(5)}, ${place.lon.toFixed(5)}`, name: place.name });
