@@ -1,7 +1,8 @@
 # Offline maps
 
 This page covers downloading map regions and choosing where they are kept, hill
-shading and contour lines, where the map data comes from and how it must be credited,
+shading and contour lines, printing part of the map as a one-page PDF, where the map
+data comes from and how it must be credited,
 using your own map source, markers and moving them, drawing routes and importing GPX
 tracks, coordinate formats, and offline place search.
 
@@ -41,6 +42,8 @@ On the map itself:
 - **Hill shading** appears as a button once terrain is installed.
 - **Contour lines** is the button below it (see [Contour lines](#contour-lines)). It
   is always there: pressed where there is nothing to draw them from, it says so.
+- **Print or save as PDF** is the last button in that column (see
+  [Printing a map](#printing-a-map)).
 - The readout at the bottom shows the centre of the map; choose decimal degrees,
   degrees-minutes-seconds or British National Grid, and copy it.
 - Right-click (or press and hold) for "Save a place here", "Measure from here", "Draw
@@ -207,6 +210,184 @@ The height between lines follows the zoom, in metres:
 The tracing is done by [maplibre-contour](https://github.com/onthegomap/maplibre-contour)
 (BSD-3-Clause), built into Outpost and served from it like the rest of the app.
 
+## Printing a map
+
+**Print or save as PDF** makes a paper map of part of the map: one page, with a title,
+the date, scale bars, north, latitude and longitude round the edge, and the credits.
+It is made on your device from the maps already installed. Nothing is fetched from the
+internet and nothing is sent to the Outpost server; the file exists only in the browser
+until you save or share it.
+
+### Making a page
+
+1. Press **Print or save as PDF** in the column of map tools. A box appears on the map:
+   **the box is the page.** It is the same box, with the same handles and keys, as the
+   one for [downloading a region](#your-own-box), but it keeps the shape of the paper
+   as you drag it. **Centre the box here** moves it to the middle of the map.
+2. Choose the paper (A4, A3 or US Letter), which way up, and the scale: **Fit the box**
+   takes whatever scale your box comes to, rounded to three figures, or pick 1:10,000,
+   1:25,000, 1:50,000, 1:100,000 or 1:250,000 and the box takes that size.
+3. **Preview the page** shows the sheet as it will be made. Give it a title, and tick
+   what goes on the map:
+
+   | | Starts ticked when | Notes |
+   | --- | --- | --- |
+   | Names of places, roads and water | always | Unticked, the map is drawn without lettering, for writing on. |
+   | Contour lines | the map on screen shows them | Need terrain for the area; not drawn at scales smaller than about 1:420,000 (the figure depends on latitude). |
+   | Hill shading | the map on screen shows it | Needs terrain for the area. |
+   | Routes and tracks | any route showing on the map crosses the page | Each route that crosses the page can be ticked by itself. |
+   | Saved places | any are on the page | Favourites are named; the others are named when the page is at zoom 9 or closer, as on screen. |
+   | Lines of latitude and longitude | never | The figures round the edge are printed either way; this draws the lines across the map as well. |
+
+4. **Make the PDF**, then **Save the PDF**, **Share** (where the browser can share
+   files, which needs HTTPS) or **Print**. The file is named after the title:
+   “Helvellyn from Glenridding” becomes `helvellyn-from-glenridding.pdf`.
+
+The map on each paper, inside a 10 mm margin and above the strip of lettering:
+
+| Paper | Map | At 1:25,000 | At 1:50,000 |
+| --- | --- | --- | --- |
+| A4 portrait | 190 × 251 mm | 4.7 × 6.3 km | 9.5 × 12.6 km |
+| A4 landscape | 277 × 164 mm | 6.9 × 4.1 km | 13.8 × 8.2 km |
+| A3 portrait | 277 × 374 mm | 6.9 × 9.4 km | 13.8 × 18.7 km |
+| A3 landscape | 400 × 251 mm | 10.0 × 6.3 km | 20.0 × 12.6 km |
+| US Letter portrait | 196 × 234 mm | 4.9 × 5.8 km | 9.8 × 11.7 km |
+| US Letter landscape | 259 × 170 mm | 6.5 × 4.3 km | 13.0 × 8.5 km |
+
+### Scale, and how far to trust it
+
+- **Print at 100% ("actual size"), not "fit to page".** The PDF's page is the size of
+  the paper and the map is placed on it at its true size, so at 100% the scale holds.
+  The file asks the print dialogue to start at 100%, but a reader may ignore that. The
+  page says how long its scale bar should be ("the 1 km bar is 40 mm long"): measure
+  it once. The scale bars themselves stay right however the page is scaled.
+- **The stated scale is exact along the middle of the sheet only.** The map is in the
+  Web Mercator projection, which stretches towards the poles: at latitude φ the scale
+  is the stated one × cos φ ÷ cos φ₀, where φ₀ is the latitude of the middle of the
+  sheet. The page prints the scale along its top and bottom edges. On A4 at 1:25,000
+  at 54.5°N that is 1:24,983 and 1:25,017, a difference of 0.07%; on a sheet from 50°N
+  to 60°N it is up to 13%, and a ruler is no use on such a sheet away from its middle.
+- **The ground is measured on a sphere**, as the scale bar and the measuring tool on
+  screen measure it. On the real, slightly flattened Earth, east–west and north–south
+  distances differ from that by up to 0.7%. Together with the point above: good to
+  about 1% on a walking map, which is under a millimetre across a scale bar.
+- **North.** True north is straight up everywhere on the sheet: in this projection
+  every meridian is a vertical line. Magnetic north is not shown, because Outpost has
+  no model of it; set a compass's declination from another source.
+- The figures round the edge are latitude and longitude, in decimal degrees or in
+  degrees, minutes and seconds, following the format chosen for the readout on the
+  map. Opposite ticks are the two ends of one line, so a ruler laid between them gives
+  a position anywhere on the sheet. British National Grid lines are not drawn: they do
+  not run straight on this projection.
+- The arithmetic is checked against values worked out by hand
+  (`apps/web/src/features/maps/print/scale.test.ts`), and an end-to-end test prints a
+  test map holding a lake exactly 1,000 m wide and measures it in the PDF: 472 pixels
+  at 300 to the inch, as 40 mm should be.
+
+### Print quality, and what a device can draw
+
+The map is drawn off screen with 2.5 device pixels to each pixel of the map's own
+layout, which is **300 dots to the inch** of paper; names and line widths are laid out
+as on screen and drawn larger, at 120 of the map's pixels to the inch, so a 12.5 pixel
+name is 7.5 point type. **Draft** is 150 dots to the inch: quicker, and about a
+quarter of the size. Nothing is captured until MapLibre reports the view complete:
+every tile arrived and laid out (with the glyphs and icons its names need), every name
+placed, nothing left to redraw. A tile that fails to load stops the page with a
+message instead of leaving a hole.
+
+A browser limits how large a canvas may be, and the limits were looked up on
+16 November 2026:
+
+- **iPhone and iPad.** WebKit allows a canvas of at most 4,096 × 4,096 pixels in area
+  on iOS, raised to 8,192 × 8,192 by a change made in March 2024; a canvas over the
+  limit does not fail, it stays blank. Sources: `maxCanvasArea()` in WebKit's
+  `Source/WebCore/html/CanvasBase.cpp`, [WebKit bug 271002](https://bugs.webkit.org/show_bug.cgi?id=271002),
+  and "Maximum canvas size" on [MDN's page for the canvas element](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/canvas).
+  iOS also limits the memory of all canvases on a page together, by an amount that is
+  not documented ([WebKit bug 195325](https://bugs.webkit.org/show_bug.cgi?id=195325)
+  has reports of 224 MB to 384 MB).
+- **MapLibre** keeps its own canvas within 4,096 × 4,096 unless told otherwise, and
+  quietly draws at a lower resolution when asked for more.
+
+So Outpost never asks for a canvas over 4,096 pixels on a side or 16.8 million in
+area, and on a phone or tablet (a device whose main pointer is a finger) keeps each to
+about 4.2 million. A page that does not fit is **drawn in pieces** set side by side in
+the PDF: each piece is drawn 128 pixels larger than it is used where it meets another,
+so that a name lying across the join is laid out the same way in both pieces. A4 and
+US Letter at 300 dots to the inch are one piece on a computer and two on a phone; A3 is
+two on a computer and six on a phone. If a device loses its graphics context or hands
+back a blank picture all the same, smaller pieces are tried, and only if no arrangement
+of pieces fits is the resolution lowered. **You are told** beside the finished file
+when it was drawn in pieces or at a lower resolution than asked for.
+
+### What is installed, and what is not
+
+A page at 1:25,000 is drawn from zoom 13 tiles. The preview says, before anything is
+made, when the installed maps do not hold the page at the zoom it needs: how much of
+it will show only the outline of the world, and how much will be drawn from a coarser
+region (still crisp, but with simpler outlines and fewer paths and names), with the
+zoom that region goes to. It is a warning, not a refusal, and it is worked out from
+the boxes of the installed regions. Terrain for only part of the page is said too.
+
+### What is in the file
+
+- One page (PDF 1.6), its size the paper's: 595.28 × 841.89 points for A4.
+- The map as one JPEG picture, or several where it was drawn in pieces. The map is a
+  picture, not shapes: it cannot be enlarged past its resolution.
+- Everything round the map as real text and lines: the title, date, scale, notes,
+  graticule figures and credits can be selected and searched, and are sharp at any
+  size. They are set in Helvetica, which every PDF reader supplies, so no font is
+  carried in the file. Helvetica as a PDF addresses it has western European letters
+  only; a title with other letters in it (Polish, Greek, Cyrillic, Chinese) is put in
+  the file as a small picture instead, and the dialog says so.
+- **No name is cut by the edge of the map.** A name that would cross the border is
+  left out, as it would be if another name were in its way.
+- **The credits**, exactly those the map on screen shows for what is drawn (so terrain
+  is credited when contour lines or hill shading are on the page), each followed by
+  the address to look it up at: for example “Protomaps © OpenStreetMap,
+  openstreetmap.org/copyright”. The OpenStreetMap Foundation's
+  [attribution guidelines](https://osmfoundation.org/wiki/Licence/Attribution_Guidelines)
+  ask for that address to be printed on a printed map, beside the map.
+
+The file is written by Outpost's own small PDF writer
+(`apps/web/src/features/maps/print/pdf.ts`), not a library: a page of one or a few
+JPEG pictures and some text needs eight kinds of object, and JPEG data goes into a PDF
+as it stands.
+
+### The browser's own Print
+
+While the page is open, the browser's Print (Ctrl or ⌘ P, or the **Print** button once
+the PDF is made) prints the sheet alone, at the size of the paper chosen. Before the
+PDF is made the map in it is the preview's, at 120 dots to the inch; after, it is the
+full-resolution one. The PDF is the dependable way: a browser adds its own margins and
+headers unless told not to, and not every browser honours a page size set by a page.
+
+### Limits, and what has not been tried
+
+- **Not printed on paper.** No page from this was put through a printer; the scale was
+  checked in the file, where the map is 40 mm to the kilometre at 1:25,000 by its own
+  page size and by measurement of the picture.
+- **Not tried on an iPhone, an iPad or any Safari.** It was built and tested in
+  Chromium, on a computer and with a phone's screen size and touch input. The canvas
+  limits above come from WebKit's source and bug tracker, not from a device.
+- Read back with pdf.js (the document library's reader), Poppler and macOS's own PDF
+  code. Poppler drew the bold lines (title and scale) in a regular weight on the
+  machine used; the other two drew them bold.
+- The area cannot cross the 180° meridian, and the map ends at about 85° north and
+  south, as for a downloaded region.
+- One page. There is no atlas of several sheets.
+- A paper map is fixed on the day it is made, and is only as good as the map installed
+  and, for contour lines, the terrain: see [Contour lines](#contour-lines) for what
+  they do not show.
+
+### Adding to what can be printed (for developers)
+
+What can be ticked is a list, `PRINT_OVERLAYS` in
+`apps/web/src/features/maps/print/overlays.ts`. An entry has a name, says whether it
+starts ticked, and has an `apply` that switches it on in the off-screen map by adding
+a source and layers to a draft of its style. The file's first comment is the
+contract.
+
 ## Where the data comes from
 
 | Data | Source | Licence | Credit shown |
@@ -231,8 +412,12 @@ CC BY 4.0. Both require credit wherever the data is shown.
 - Outpost supplies the credits with the map sources (`GET /api/maps/sources`,
   fields `attribution` and `attributions`) for the map's attribution control. Do not
   hide or remove them.
-- If you publish screenshots or printed maps, include "© OpenStreetMap contributors"
-  and, where terrain or place names appear, the Mapterhorn and GeoNames credits.
+- A page made with **Print or save as PDF** carries the credits itself, with the
+  address for each written out (see [Printing a map](#printing-a-map)). Do not crop
+  them off.
+- If you publish screenshots or maps printed some other way, include "© OpenStreetMap
+  contributors" and, where terrain or place names appear, the Mapterhorn and GeoNames
+  credits.
 - An imported archive that Outpost did not download is shown with the usual credit.
   If it comes from somewhere else, you are responsible for crediting it correctly.
 

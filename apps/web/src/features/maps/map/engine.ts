@@ -1,7 +1,8 @@
 /**
- * The only module that talks to MapLibre. The rest of the maps screen describes what
- * should be on the map (a style, overlay data, a camera) and listens for what the
- * person did; this turns that into MapLibre calls and back.
+ * The only module that talks to MapLibre for the map on screen. The rest of the maps
+ * screen describes what should be on the map (a style, overlay data, a camera) and
+ * listens for what the person did; this turns that into MapLibre calls and back.
+ * (`print-map.ts`, beside it, draws the off-screen map a printed page is made from.)
  *
  * It is loaded on demand, so the rest of the app never pays for the map library.
  */
@@ -510,9 +511,11 @@ export class MapEngine {
     this.map.jumpTo({ center: [view.lon, view.lat], zoom: view.zoom });
   }
 
-  fitBounds(bbox: Bbox, options: { maxZoom?: number; animate?: boolean } = {}): void {
+  /** `clearBottom` keeps that many more pixels at the foot of the map free, for a card that lies over it. */
+  fitBounds(bbox: Bbox, options: { maxZoom?: number; animate?: boolean; clearBottom?: number } = {}): void {
     const pad = 48;
-    const { top, right, bottom, left } = this.padding;
+    const { top, right, left } = this.padding;
+    const bottom = this.padding.bottom + (options.clearBottom ?? 0);
     this.map.fitBounds(
       [
         [bbox[0], bbox[1]],

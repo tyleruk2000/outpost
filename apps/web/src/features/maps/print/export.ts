@@ -23,7 +23,7 @@ import {
 import { type Frame, latitudeAt, longitudeAt, mercatorX, mercatorY, type PixelSize } from "./scale";
 import type { Sheet, SheetItem, SheetText } from "./sheet";
 
-/** JPEG quality for the map. At 300 to the inch nothing of the compression can be seen in print, and the file is a few megabytes, not tens. */
+/** JPEG quality for the map: high enough that at 300 to the inch the compression does not show, and far smaller than the same picture kept exactly. */
 const JPEG_QUALITY = 0.92;
 
 /**

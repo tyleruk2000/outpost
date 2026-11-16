@@ -266,6 +266,14 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   pointer or the arrow keys.
 - Moving a saved place straight from the map (press and hold, the map's menu, or the
   list), by pointer or keyboard, with the new position confirmed before it is kept.
+- Print or save as PDF: a box the shape of the paper chooses part of the map, and one
+  page is made on the device from the installed maps (A4, A3 or US Letter, either way
+  up; fit the box or a round scale such as 1:25,000), with a title, the date, scale
+  bars in kilometres and miles, north, latitude and longitude round the edge, and the
+  map's credits with their addresses. Contour lines, hill shading, routes, saved
+  places and names can each be left on or off. The map is drawn at 300 or 150 dots to
+  the inch, in pieces where a canvas could not hold it, and the page states how the
+  scale varies across the sheet. Nothing is sent to the server.
 
 #### Portable drives
 

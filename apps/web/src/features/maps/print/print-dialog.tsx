@@ -486,7 +486,7 @@ export function PrintDialog({
           </div>
         </DialogBody>
 
-        <DialogFooter className="justify-between">
+        <DialogFooter className="justify-between max-md:flex-col max-md:items-stretch max-md:gap-3">
           {made.status === "making" ? (
             <div className="grid min-w-0 flex-1 gap-1.5" role="status">
               <Progress value={made.of ? made.done / made.of : null} tone="lamp" label="Drawing the page" />
@@ -522,7 +522,7 @@ export function PrintDialog({
               Made on this device from the maps installed here. Nothing is sent anywhere.
             </p>
           )}
-          <div className="flex flex-wrap items-center justify-end gap-2">
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
             {made.status === "making" ? (
               <Button
                 onClick={() => {
@@ -551,7 +551,8 @@ export function PrintDialog({
             ) : (
               <>
                 <Button onClick={onBack}>Change the area</Button>
-                <Button variant="primary" onClick={make} disabled={!printed || preview.status === "error"}>
+                {/* Not before the preview is there to be seen: the page is made from what it shows. */}
+                <Button variant="primary" onClick={make} disabled={!printed || preview.status !== "ready"}>
                   {made.status === "error" ? "Try again" : "Make the PDF"}
                 </Button>
               </>

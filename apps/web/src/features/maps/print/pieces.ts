@@ -15,7 +15,8 @@
  * - MapLibre keeps its canvas within 4,096 × 4,096 unless told otherwise, lowering the
  *   resolution without saying so when asked for more, and no side may exceed what the
  *   graphics hardware allows (`MAX_RENDERBUFFER_SIZE`, `MAX_VIEWPORT_DIMS`).
- * - Desktop browsers allow far more (hundreds of megapixels), and are not the constraint.
+ * - Elsewhere the limits are higher (MDN: "in most cases the maximum dimensions exceed
+ *   10,000 x 10,000 pixels") and are not what constrains a page.
  *
  * So a page that fits is drawn in one go, and one that does not is drawn in pieces:
  * a grid of smaller pictures, each within the limits, set side by side in the PDF. A

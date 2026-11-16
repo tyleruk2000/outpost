@@ -11,7 +11,7 @@
  * Loaded when the tool is first taken up, so the rest of the maps screen does not carry it.
  */
 import type { Bbox } from "@outpost/shared";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Segmented, Select } from "@/components/ui/misc";
@@ -123,11 +123,17 @@ export default function PrintTool({
     [engine, pixels],
   );
 
-  /** Puts a new box on the map and brings all of it into view. */
+  /** Puts a new box on the map and brings all of it into view, clear of this card, which lies over the foot of the map. */
+  const card = useRef<HTMLDivElement>(null);
   const place = (next: Bbox) => {
     setBox(next);
-    engine.fitBounds(next, { maxZoom: 17 });
+    engine.fitBounds(next, { maxZoom: 17, clearBottom: (card.current?.offsetHeight ?? 0) + 8 });
   };
+  // The box it starts with was fitted to the whole map; once the card has a height, make room for that too.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once, when the tool is taken up
+  useEffect(() => {
+    engine.fitBounds(box, { maxZoom: 17, clearBottom: (card.current?.offsetHeight ?? 0) + 8 });
+  }, [engine]);
 
   const repaper = (change: Partial<Pick<Prefs, "paper" | "orientation">>) => {
     const next = { ...prefs, ...change };
@@ -145,53 +151,57 @@ export default function PrintTool({
 
   return (
     <>
-      <MapCard title="Print or save as PDF" onClose={onClose} closeLabel="Stop: put the page away">
-        <p className="mt-1 text-small text-ink-muted">
-          The box is the page. Drag its corners and edges, or move the map and choose “Centre the box here”.
-        </p>
-        <div className="mt-3 grid gap-2">
-          <div className="flex flex-wrap items-center gap-2">
+      <div ref={card} className="pointer-events-none flex w-full justify-center">
+        <MapCard title="Print or save as PDF" onClose={onClose} closeLabel="Stop: put the page away">
+          {/* Left out on a phone, where this card shares a small screen with the box it is about. */}
+          <p className="mt-1 text-small text-ink-muted max-md:hidden">
+            The box is the page. Drag its corners and edges, or move the map and choose “Centre the box here”.
+          </p>
+          <div className="mt-3 grid gap-2 max-md:mt-1.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <Select
+                aria-label="Paper"
+                value={prefs.paper}
+                onChange={(paper) => repaper({ paper })}
+                options={PAPER_IDS.map((id) => ({ value: id, label: PAPERS[id].label, description: PAPERS[id].millimetres }))}
+                className="w-auto min-w-[7.5rem] flex-1"
+              />
+              <Segmented
+                label="Which way up"
+                value={prefs.orientation}
+                onChange={(orientation) => repaper({ orientation })}
+                options={[
+                  { value: "portrait", label: "Portrait" },
+                  { value: "landscape", label: "Landscape" },
+                ]}
+              />
+            </div>
             <Select
-              aria-label="Paper"
-              value={prefs.paper}
-              onChange={(paper) => repaper({ paper })}
-              options={PAPER_IDS.map((id) => ({ value: id, label: PAPERS[id].label, description: PAPERS[id].millimetres }))}
-              className="w-auto min-w-[7.5rem] flex-1"
-            />
-            <Segmented
-              label="Which way up"
-              value={prefs.orientation}
-              onChange={(orientation) => repaper({ orientation })}
+              aria-label="Scale"
+              value={held === null ? "fit" : String(held)}
+              onChange={rescale}
               options={[
-                { value: "portrait", label: "Portrait" },
-                { value: "landscape", label: "Landscape" },
+                {
+                  value: "fit",
+                  label: held === null ? `Fit the box: ${formatScale(scale)}` : "Fit the box",
+                  description: "Whatever scale the box you draw comes to",
+                },
+                ...ROUND_SCALES.map((value) => ({ value: String(value), label: formatScale(value), description: SCALE_USES[value] })),
               ]}
             />
           </div>
-          <Select
-            aria-label="Scale"
-            value={held === null ? "fit" : String(held)}
-            onChange={rescale}
-            options={[
-              {
-                value: "fit",
-                label: held === null ? `Fit the box: ${formatScale(scale)}` : "Fit the box",
-                description: "Whatever scale the box you draw comes to",
-              },
-              ...ROUND_SCALES.map((value) => ({ value: String(value), label: formatScale(value), description: SCALE_USES[value] })),
-            ]}
-          />
-        </div>
-        <p className="tabular mt-2 text-small text-ink" aria-live="polite">
-          {formatBboxSize(box)} on {paperName(prefs.paper, prefs.orientation)} at {formatScale(scale)}
-        </p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <Button variant="primary" onClick={() => setStep("page")}>
-            Preview the page
-          </Button>
-          <Button onClick={() => place(boxAtScale(engine.getCenter(), scale, pixels))}>Centre the box here</Button>
-        </div>
-      </MapCard>
+          <p className="tabular mt-2 text-small text-ink" aria-live="polite">
+            <span className="md:hidden">The box is the page: </span>
+            {formatBboxSize(box)} on {paperName(prefs.paper, prefs.orientation)} at {formatScale(scale)}
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2 max-md:mt-2">
+            <Button variant="primary" onClick={() => setStep("page")}>
+              Preview the page
+            </Button>
+            <Button onClick={() => place(boxAtScale(engine.getCenter(), scale, pixels))}>Centre the box here</Button>
+          </div>
+        </MapCard>
+      </div>
 
       {step === "page" ? (
         <PrintDialog

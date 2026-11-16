@@ -27,12 +27,12 @@
 import type { Bbox, InstalledRegion, MapSources, MarkerDto, TrackDto, TrackWithGeometryDto } from "@outpost/shared";
 import { plural } from "@/lib/utils";
 import { CONTOUR_MIN_ZOOM, contourInterval, contourReach } from "../lib/contours";
-import { buildStyle, type MapTheme, SOURCE_IDS } from "../lib/style";
+import { buildStyle, MAP_FONTS, type MapTheme, SOURCE_IDS } from "../lib/style";
 import type { LayerSpecification, SourceSpecification, StyleSpecification } from "../lib/style-types";
 import { type FeatureCollection, markersData, type OverlaySource, overlayLayers, overlaySources, tracksData } from "../map/overlays";
 import { readable } from "./coverage";
 import { type Graticule, graticuleLines } from "./graticule";
-import { formatScale, scaleForZoom } from "./scale";
+import { formatScale, latitudeAt, longitudeAt, mercatorX, mercatorY, scaleForZoom } from "./scale";
 
 /** What an overlay may know about the page being made. */
 export interface PrintContext {
@@ -223,6 +223,58 @@ export function partsOn(overlay: PrintOverlay, context: PrintContext, selection:
   return new Set((overlay.parts?.(context) ?? []).filter((part) => chosen[part.id] ?? part.initially).map((part) => part.id));
 }
 
+const EDGE_SOURCE = "print-edge";
+
+/**
+ * Keeps names whole. MapLibre will happily draw a name that runs off the edge of the
+ * picture, and on paper that is a word cut in half at the border. So the border is
+ * lined, just outside the map, with a row of invisible marks that are placed before
+ * anything else: a name that would cross the border collides with them and is left
+ * out, as it would be if another name were in its way. Only the outside of the page is
+ * lined, never the joins between pieces.
+ */
+function edgeGuard(bbox: Bbox, zoom: number): { source: SourceSpecification; layer: LayerSpecification } {
+  const world = 512 * 2 ** zoom;
+  const left = mercatorX(bbox[0]) * world;
+  const right = mercatorX(bbox[2]) * world;
+  const top = mercatorY(bbox[3]) * world;
+  const bottom = mercatorY(bbox[1]) * world;
+  // Each mark keeps clear a box about 24 px wide and 33 px high around itself; set this far out, the box
+  // reaches a pixel or two inside the border and no further.
+  const [aside, above, apart] = [11, 15, 12];
+  const points: Array<[number, number]> = [];
+  for (let x = left - aside; x <= right + aside + apart; x += apart) points.push([x, top - above], [x, bottom + above]);
+  for (let y = top; y <= bottom + apart; y += apart) points.push([left - aside, y], [right + aside, y]);
+  return {
+    source: {
+      type: "geojson",
+      data: {
+        type: "FeatureCollection",
+        features: points.map(([x, y]) => ({
+          type: "Feature",
+          properties: {},
+          geometry: { type: "Point", coordinates: [longitudeAt(x / world), latitudeAt(y / world)] },
+        })),
+      } as never,
+    },
+    layer: {
+      id: EDGE_SOURCE,
+      type: "symbol",
+      source: EDGE_SOURCE,
+      layout: {
+        "text-field": "0",
+        "text-font": [MAP_FONTS.regular],
+        "text-size": 14,
+        "text-padding": 8,
+        // Every mark is placed, whatever is near it, and everything placed after it has to keep clear.
+        "text-allow-overlap": true,
+        "text-ignore-placement": false,
+      },
+      paint: { "text-opacity": 0 },
+    },
+  };
+}
+
 export interface PrintStyle {
   style: StyleSpecification;
   /** Whether anything on the page is drawn from the installed terrain. */
@@ -264,5 +316,9 @@ export function printStyle(
     const named: string[] = [SOURCE_IDS.basemap, SOURCE_IDS.countryLabels];
     style.layers = style.layers.filter((layer) => !(layer.type === "symbol" && named.includes(layer.source)));
   }
+  // Last, so above everything: MapLibre places names from the top layer down.
+  const edge = edgeGuard(context.bbox, context.zoom);
+  style.sources[EDGE_SOURCE] = edge.source;
+  style.layers.push(edge.layer);
   return { style, usesTerrain: usesTerrain && Boolean(context.sources?.hasTerrain) };
 }

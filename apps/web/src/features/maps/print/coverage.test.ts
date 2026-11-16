@@ -43,7 +43,7 @@ describe("what the installed maps cover of a page", () => {
     expect(coverage.none).toBeCloseTo(0, 6);
     expect(coverage.coarserZoom).toBe(6);
     const warning = coverageWarning(coverage, true)!;
-    expect(warning.title).toBe("Part of this page will not be sharp");
+    expect(warning.title).toBe("Part of this page will lack detail");
     expect(warning.detail).toMatch(/About 50% of this area is installed only to zoom 6, where this scale needs zoom 13/);
   });
 

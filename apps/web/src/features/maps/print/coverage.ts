@@ -2,8 +2,10 @@
  * How much of the area on the page the installed maps cover at the detail the page
  * needs. A sheet at 1:25,000 is drawn from zoom 13 tiles; where only a country-wide
  * region to zoom 10 is installed, the map is still drawn, but from coarser data
- * stretched to fit, and where nothing is installed only the outline of the world is.
- * Neither should come out of a printer as a surprise, so the preview says so first.
+ * stretched to fit (still crisp, since the map is drawn from shapes, but with simpler
+ * outlines and fewer paths and names), and where nothing is installed only the outline
+ * of the world is. Neither should come out of a printer as a surprise, so the preview
+ * says so first.
  *
  * Worked out from the boxes of the installed regions, with nothing fetched.
  */
@@ -99,5 +101,5 @@ export function coverageWarning(coverage: Coverage, hasTiles: boolean): { title:
   }
   if (parts.length === 0) return null;
   const sentence = `${parts.join("; ")}.`;
-  return { title: "Part of this page will not be sharp", detail: `${sentence.charAt(0).toUpperCase()}${sentence.slice(1)} ${fix}` };
+  return { title: "Part of this page will lack detail", detail: `${sentence.charAt(0).toUpperCase()}${sentence.slice(1)} ${fix}` };
 }
