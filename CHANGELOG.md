@@ -618,6 +618,32 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 - On a wide screen, opening a route after the map has flown somewhere fits it in the
   middle of the clear part of the map; it used to land 28 px to the left.
 
+#### Reference layers for the map
+
+- A Layers tab on the Maps screen: published data drawn over the map, each layer
+  switched on by itself, with a legend that tells a published record (a filled dot), a
+  historical document (a ring marked H) and anything unverified (a ring marked ?) apart
+  without colour; population density in people per square kilometre; filters by
+  country, source and kind; a search of the records by name, also from the search across
+  everything. A pressed record shows its publisher, dates, licence, accuracy and a link
+  to it at its source. See [reference-layers.md](docs/reference-layers.md).
+- Sources, each fetched only on a press after its size is shown: Natural Earth (countries,
+  regions, populated places), OurAirports, OpenStreetMap (military sites, nuclear
+  facilities, hospitals, emergency services, shelters) by Overpass question or from a
+  Geofabrik extract read by Outpost's own `.osm.pbf` reader, Wikidata (nuclear power
+  stations and research reactors), WorldPop (population, 2020, 1 km) and Switzerland's
+  emergency meeting points. FAS, SIPRI, NTI, the IAEA and the historical archives are
+  linked, with why.
+- Imports of files a person obtains: places (CSV), points, lines and areas (GeoJSON, such
+  as an emergency planning zone), historical records with every field the specification
+  asks and which of three kinds of record each is, and country-level figures with their
+  citations. British National Grid, Swiss and Web Mercator coordinates are converted;
+  other systems are refused.
+- A store in SQLite with a spatial index (R*Tree) and full-text names (migration 0016),
+  duplicates across sources found and kept with both sources, packs replaced only when
+  their successor is in, and records kept on the map while the drive holding a pack is
+  away. The GeoTIFF reader learns LZW and 32-bit floating point.
+
 #### Repeaters
 
 - A repeater database of your own, kept in Outpost's database and used with no

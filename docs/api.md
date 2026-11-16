@@ -711,6 +711,34 @@ move, check and remove it through the collections API.
 `GET /api/maps/sources` lists installed sets for the map's style under `imagery`,
 coarsest first.
 
+### Reference layers
+
+Types: `packages/shared/src/reference-layers.ts`. See [reference-layers.md](reference-layers.md).
+A pack is a collection (`kind: "dataset"`, `meta.reference`): move and check it through
+the collections API. Estimating and downloading are `POST`, as they make Outpost ask a
+server on the internet.
+
+| Method and path | Purpose |
+| --- | --- |
+| `GET /api/reference/catalogue` | The providers with licence, terms quoted, the date read and the verdict; the sources that are only linked; the countries to choose from. Contacts nobody. |
+| `POST /api/reference/estimate` | Body: `provider`, `scope` (`countries?`, `bbox?`), `layers?`. Asks the source what it would send and answers each item with its size, whether that size is the publisher's, how it was worked out, the host and what it would replace; the total, an allowance for the database and notes (the caution about mapping military sites among them). `estimateId` is kept for half an hour. Needs a connection. |
+| `POST /api/reference/downloads` | Body: `estimateId`, `keys`, `locationId?`. Starts the chosen items through the download manager. `{ downloads }`. `409` for an estimate that is gone. |
+| `GET /api/reference/packs` | Installed packs (`ReferencePackDto`): source, layers, countries, version, dates, records, duplicates, size, licence, location and whether it is connected, and the request to update from. |
+| `DELETE /api/reference/packs/:id` | Removes a pack and its records. `?deleteFiles=1` deletes its file too. |
+| `POST /api/reference/imports` | Multipart: `format` (`features-csv`, `geojson`, `historical-csv`, `country-figures-csv`, `osm-pbf`), `title`, `options` (JSON: `layer`, `provenance`, `publisher`, `license`, `accuracy`, `sourceUrl`, `publishedAt`, `crs`, `country`), `replaces?`, and the file (at most 32 MB). The file is kept in the default location under `collections/reference/imports/` and read by a job: `{ jobId }`. The job's result has `imported`, `skipped`, `duplicates` and up to twenty `problems`. |
+| `POST /api/reference/imports/from-storage` | The same for a file already in a storage location. Body: `format`, `locationId`, `relPath`, `title`, `options`, `replaces?`. The file is left where it is. |
+| `GET /api/reference/templates/:format.csv` | The columns of a CSV form, as a file. |
+| `GET /api/reference/layers` | What is installed by layer (counts, countries, sources, kinds, provenance), the population grids, and the credits. |
+| `GET /api/reference/features` | Query: `bbox` (`west,south,east,north`), `zoom`, `layers`, `countries?`, `providers?`, `kinds?`. The view: up to 1,500 `points`, or `cells` counted per layer and provenance; `shapes` for areas. |
+| `GET /api/reference/at` | Query: `lat`, `lon`, `layers`, filters. Areas that contain the point, smallest first. |
+| `GET /api/reference/features/:id` | One record with its source, other sources of the same thing, and its historical record if it is one. `404` once its pack is gone. |
+| `GET /api/reference/search` | Query: `q`, `layers?`, filters, `limit` (at most 100). Records by name. |
+| `GET /api/reference/figures` | Query: `country?`. Country figures with their citations. |
+| `GET /api/reference/population/grid` | Query: `bbox`, `zoom`. Cells with people per km² and the legend's classes. |
+| `GET /api/reference/population/sum` | Query: `lat`, `lon`, `radiusKm` (at most 300). About how many people lived in the cells whose middle is inside the circle, to two significant figures, the share of the circle covered, and what it is. |
+
+The live event `layers.changed` is published when a pack is installed, updated or removed.
+
 ### Places
 
 | Method and path | Purpose |

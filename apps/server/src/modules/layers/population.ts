@@ -250,7 +250,7 @@ export function createPopulationService(
       fs.rmSync(sidecarPath(key), { force: true });
     },
 
-    async install(filePath, key, meta, signal, progress) {
+    async install(filePath, key, _meta, signal, progress) {
       const { cog, source } = await openPopulationTiff(filePath);
       try {
         const image = cog.images[0]!;
@@ -324,7 +324,6 @@ export function createPopulationService(
         );
         fs.renameSync(temporary, sidecarPath(key));
         grids.delete(key);
-        void meta;
         const bbox: Bbox = [cog.geo.originX, cog.geo.originY - height * pixel, cog.geo.originX + width * pixel, cog.geo.originY];
         return { bbox, total };
       } finally {
@@ -347,7 +346,7 @@ export function createPopulationService(
       });
     },
 
-    async grid(view, zoom) {
+    async grid(view, _zoom) {
       const list = current();
       const cells: PopulationCell[] = [];
       const used: Grid[] = [];
@@ -366,7 +365,6 @@ export function createPopulationService(
           factor = candidate;
           if ((across / candidate) * (down / candidate) <= CELL_BUDGET / Math.max(1, list.length)) break;
         }
-        void zoom;
         const size = grid.pixel * factor;
         const x0 = Math.max(0, Math.floor((west - grid.originX) / size));
         const x1 = Math.min(Math.ceil(grid.width / factor), Math.ceil((east - grid.originX) / size));
@@ -420,7 +418,6 @@ export function createPopulationService(
       const used: Grid[] = [];
       // Counted on the finest grid installed: each cell whose middle is inside the circle, once.
       const pixel = list.length > 0 ? Math.min(...list.map((grid) => grid.pixel)) : 1 / 120;
-      const seen = new Set<string>();
       for (let y = Math.floor(box[1] / pixel); y <= Math.ceil(box[3] / pixel); y += 1) {
         for (let x = Math.floor(box[0] / pixel); x <= Math.ceil(box[2] / pixel); x += 1) {
           const cy = (y + 0.5) * pixel;
@@ -428,7 +425,6 @@ export function createPopulationService(
           if (haversineMeters(lat, lon, cy, cx) > radius) continue;
           insideCells += 1;
           if (list.some((grid) => cx >= grid.bbox[0] && cx < grid.bbox[2] && cy > grid.bbox[1] && cy <= grid.bbox[3])) coveredCells += 1;
-          seen.add(`${x}:${y}`);
         }
       }
       const away = list.filter((grid) => !grid.filePath);
@@ -451,7 +447,6 @@ export function createPopulationService(
           }
         }
       }
-      void seen;
       const covered = insideCells === 0 ? 0 : coveredCells / insideCells;
       return {
         people: used.length === 0 ? null : roundPeople(people),

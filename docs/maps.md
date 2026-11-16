@@ -563,6 +563,17 @@ starts ticked, and has an `apply` that switches it on in the off-screen map by a
 a source and layers to a draft of its style. The file's first comment is the
 contract.
 
+## Reference layers
+
+The **Layers** tab draws published data over the map: boundaries, populated places,
+airports, publicly mapped military sites and nuclear facilities, hospitals and
+emergency services, shelters, emergency planning zones, population density and
+historical records, each downloaded by country or imported, each record with its source,
+dates, licence and accuracy, and its class told by its mark. Reference data is managed
+under **Offline maps → Reference data for the map**. The whole of it, the sources and
+their terms, the data model and what was measured, is in
+[reference-layers.md](reference-layers.md).
+
 ## Where the data comes from
 
 | Data | Source | Licence | Credit shown |
