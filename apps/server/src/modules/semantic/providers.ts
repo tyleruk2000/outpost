@@ -12,6 +12,7 @@
  * demonstration.
  */
 import { AppError } from "../../core/errors.ts";
+import { assertOwnNetwork, parseModelServerAddress } from "../answers/address.ts";
 import type { Settings } from "../settings/service.ts";
 
 export interface EmbeddingProvider {
@@ -38,22 +39,32 @@ export function normalise(vector: Float32Array): Float32Array {
 
 /**
  * Any server that speaks the OpenAI embeddings API: Ollama, llama.cpp's server,
- * LocalAI, text-embeddings-inference. The address is whatever the administrator set,
- * normally on this machine or the local network; nothing is sent anywhere else.
+ * LocalAI, text-embeddings-inference. The address is a setting; the caller's `guard`
+ * holds it to this machine or a private network, and nothing is sent anywhere else.
  */
-export function openAiCompatibleProvider(endpoint: string, model: string): EmbeddingProvider {
+export function openAiCompatibleProvider(
+  endpoint: string,
+  model: string,
+  /** Run before every request; throws when the address may not be contacted. */
+  guard: () => Promise<void> = async () => {},
+): EmbeddingProvider {
   const base = endpoint.replace(/\/+$/, "");
   async function call(texts: string[], signal?: AbortSignal): Promise<Float32Array[]> {
     let response: Response;
     try {
+      await guard();
       response = await fetch(`${base}/embeddings`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ model, input: texts }),
         signal: signal ?? AbortSignal.timeout(120_000),
+        // Passages go to the server that was named, and to no other.
+        redirect: "error",
       });
     } catch (error) {
       if (signal?.aborted) throw error;
+      // Refused before anything was sent: say why, not that the server did not answer.
+      if (error instanceof AppError) throw error;
       throw new AppError("upstream", `The embedding server at ${base} is not reachable. Check that it is running.`);
     }
     if (!response.ok) {
@@ -148,7 +159,11 @@ export function demoProvider(): EmbeddingProvider {
  * The provider the settings ask for. `builtIn` is the one built-in embedder of this
  * server: it owns a worker thread, so it is made once and handed in.
  */
-export function providerFromSettings(settings: Settings, builtIn: EmbeddingProvider): EmbeddingProvider | undefined {
+export function providerFromSettings(
+  settings: Settings,
+  builtIn: EmbeddingProvider,
+  options: { allowRemote: boolean } = { allowRemote: false },
+): EmbeddingProvider | undefined {
   switch (settings["search.semantic.provider"]) {
     case "built-in":
       return builtIn;
@@ -156,7 +171,14 @@ export function providerFromSettings(settings: Settings, builtIn: EmbeddingProvi
       return demoProvider();
     case "openai-compatible": {
       const model = settings["search.semantic.model"].trim();
-      return model ? openAiCompatibleProvider(settings["search.semantic.endpoint"], model) : undefined;
+      if (!model) return undefined;
+      const endpoint = settings["search.semantic.endpoint"];
+      // The same rule as the server that writes answers: every passage in the library is
+      // sent here, so it must be on this computer or a private network unless whoever
+      // started Outpost allowed otherwise. See answers/address.ts.
+      return openAiCompatibleProvider(endpoint, model, async () =>
+        assertOwnNetwork(parseModelServerAddress(endpoint), options.allowRemote),
+      );
     }
     default:
       return undefined;

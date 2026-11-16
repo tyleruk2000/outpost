@@ -93,7 +93,8 @@ export async function registerSemantic(app: FastifyInstance, ctx: AppContext): P
     const all = settings.all();
     if (!all["search.semantic.enabled"]) return undefined;
     const key = `${all["search.semantic.provider"]}|${all["search.semantic.model"]}|${all["search.semantic.endpoint"]}`;
-    if (cached?.key !== key) cached = { key, provider: providerFromSettings(all, builtIn) };
+    if (cached?.key !== key)
+      cached = { key, provider: providerFromSettings(all, builtIn, { allowRemote: ctx.config.allowRemoteModelServer }) };
     return cached.provider;
   }
 

@@ -393,6 +393,10 @@ Outpost sends `POST <server address>/embeddings` with
 `{"model": "...", "input": ["..."]}`. No API key is sent, so the server must accept
 requests without one.
 
+The server must be on this computer or a private network. Every passage in your library
+is sent to it when the index is built, so an address on the public internet is refused
+unless Outpost was started with `OUTPOST_ALLOW_REMOTE_MODEL_SERVER=true`.
+
 A minimal example with Ollama on the same machine. The model name is an example; use
 any embedding model your server offers. (The test suite exercises this provider
 against a stand-in server that speaks the same format, not against Ollama itself.)

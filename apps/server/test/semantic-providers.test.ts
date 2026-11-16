@@ -1,7 +1,8 @@
 import http from "node:http";
 import type { AddressInfo } from "node:net";
 import { afterEach, describe, expect, it } from "vitest";
-import { openAiCompatibleProvider, providerFromSettings } from "../src/modules/semantic/providers.ts";
+import { demoProvider, openAiCompatibleProvider, providerFromSettings } from "../src/modules/semantic/providers.ts";
+import type { Settings } from "../src/modules/settings/service.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
 
 const cleanups: Array<() => Promise<void> | void> = [];
@@ -49,6 +50,26 @@ describe("embedding providers", () => {
     expect(water![0]).toBeGreaterThan(0.9);
     expect(rope![1]).toBeGreaterThan(0.9);
     for (const vector of [water!, rope!]) expect(Math.hypot(...vector)).toBeCloseTo(1, 5);
+  });
+
+  it("will not send passages to an embedding server on the internet unless that was allowed at start-up", async () => {
+    const settings = { "search.semantic.provider": "openai-compatible", "search.semantic.model": "nomic-embed-text" } as Settings;
+    const builtIn = demoProvider();
+    // 203.0.113.0/24 is set aside for documentation; nothing is ever sent to it here.
+    const refused = providerFromSettings({ ...settings, "search.semantic.endpoint": "http://203.0.113.9:11434/v1" }, builtIn)!;
+    const checked = await refused.check();
+    expect(checked.ok === false && checked.reason).toMatch(/on the internet.*OUTPOST_ALLOW_REMOTE_MODEL_SERVER/);
+    await expect(refused.embed(["boil water"], "passage")).rejects.toThrow(/on the internet/);
+
+    // On this computer it is used as before, and the rule can be lifted by whoever starts Outpost.
+    const server = await embeddingServer();
+    const local = providerFromSettings({ ...settings, "search.semantic.endpoint": server.endpoint }, builtIn)!;
+    expect(await local.check()).toEqual({ ok: true, dimensions: 3 });
+    // Allowed: the rule passes it. The request is cancelled before it starts, so nothing leaves this machine.
+    const allowed = providerFromSettings({ ...settings, "search.semantic.endpoint": "http://203.0.113.9:9/v1" }, builtIn, {
+      allowRemote: true,
+    })!;
+    await expect(allowed.embed(["boil water"], "passage", AbortSignal.abort())).rejects.not.toThrow(/on the internet/);
   });
 
   it("explains an unreachable or failing server instead of throwing something obscure", async () => {
