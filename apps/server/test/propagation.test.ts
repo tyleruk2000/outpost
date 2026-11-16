@@ -142,6 +142,38 @@ describe("the acceptance path", () => {
     expect(given.body.hours[11]!.asked.reliability).toBeGreaterThan(0);
   });
 
+  it("takes a bandwidth given on its own with the mode's own figure", async () => {
+    // CW is taken to need 24 dB in 1 Hz. Asked for in 500 Hz instead, with the figure left alone, the
+    // requirement in 1 Hz is 24 + 10·log10(500) = 24 + 26.99 = 50.99 dB, which is 51.0 to the tenth the engine reads.
+    const plain = (await predict({ mode: "cw" })).body;
+    const narrow = (await predict({ mode: "cw", referenceBandwidthHz: 500 })).body;
+    expect(plain.mode).toMatchObject({ requiredSnrDb: 24, referenceBandwidthHz: 1, requiredSnrDbHz: 24 });
+    expect(narrow.mode).toMatchObject({ requiredSnrDb: 24, referenceBandwidthHz: 500, requiredSnrDbHz: 51 });
+    expect(narrow.key).not.toBe(plain.key);
+    // The engine was run at 51, not 24: the same signal, a higher bar, and the answer 51 dB in 1 Hz gets when asked for outright.
+    const outright = (await predict({ mode: "cw", requiredSnrDb: 51, referenceBandwidthHz: 1 })).body;
+    const reliability = (result: PredictionResult) => result.hours.map((hour) => hour.asked.reliability);
+    expect(narrow.hours[11]!.asked.snrDbHz).toBe(plain.hours[11]!.asked.snrDbHz);
+    expect(narrow.hours[11]!.asked.reliability).toBeLessThan(plain.hours[11]!.asked.reliability);
+    expect(reliability(narrow)).toEqual(reliability(outright));
+    expect(narrow.hours.map((hour) => hour.lufMhz)).toEqual(outright.hours.map((hour) => hour.lufMhz));
+    const cw = narrow.modes.findIndex((mode) => mode.id === "cw");
+    expect(narrow.modes[cw]).toEqual(narrow.mode);
+    expect(narrow.hours.map((hour) => hour.modeReliability[cw])).toEqual(reliability(narrow));
+    // 24 dB in 500 Hz is not what the guide published, and is not put down to it.
+    expect(plain.mode.source).toContain("Setting up input values for VOACAP");
+    expect(narrow.mode.source).toBe(`Your own bandwidth, with the figure published for 1 Hz (${plain.mode.source})`);
+    // The mode's own bandwidth typed out is the published figure still.
+    expect((await predict({ mode: "cw", referenceBandwidthHz: 1 })).body.mode).toEqual(plain.mode);
+    // The comparisons and the printed page are run at the same requirement.
+    const compared = await app.api<CompareResult>("POST", "/api/radio/propagation/compare", {
+      base: { ...acceptance, mode: "cw", referenceBandwidthHz: 500 },
+      what: "power",
+    });
+    expect(compared.body.mode.requiredSnrDbHz).toBe(51);
+    expect(compared.body.series[1]!.reliability).toEqual(reliability(narrow));
+  });
+
   it("answers for the reply as well when asked, and the two directions differ", async () => {
     const { body } = await predict({ reply: { powerWatts: 100, noise: "rural" } });
     const noon = body.hours[11]!;

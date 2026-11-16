@@ -289,16 +289,22 @@ export function requestOf(
     mode: form.mode,
     solar: { source: "table" },
   };
+  // Each of the two is sent whenever it is filled in. A bandwidth on its own goes with
+  // the mode's own figure, which the server has: what the form shows is what is asked.
   if (form.requiredSnrDb.trim() !== "") {
     const snr = number(form.requiredSnrDb);
-    const bandwidth = form.referenceBandwidthHz.trim() === "" ? undefined : number(form.referenceBandwidthHz);
-    if (!Number.isFinite(snr) || (bandwidth !== undefined && !(bandwidth >= 1)))
-      return {
-        field: "requiredSnrDb",
-        problem: "Give the signal-to-noise ratio the mode needs as a number of decibels, and its bandwidth in hertz.",
-      };
+    if (!Number.isFinite(snr))
+      return { field: "requiredSnrDb", problem: "Give the signal-to-noise ratio the mode needs as a number of decibels." };
     request.requiredSnrDb = snr;
-    if (bandwidth !== undefined) request.referenceBandwidthHz = bandwidth;
+  }
+  if (form.referenceBandwidthHz.trim() !== "") {
+    const bandwidth = number(form.referenceBandwidthHz);
+    if (!(bandwidth >= 1))
+      return {
+        field: "referenceBandwidthHz",
+        problem: "Give the bandwidth the figure is measured in as a number of hertz, at least 1.",
+      };
+    request.referenceBandwidthHz = bandwidth;
   }
   if (form.solar === "manual") {
     const ssn = number(form.ssn);

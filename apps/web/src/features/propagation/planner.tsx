@@ -340,7 +340,11 @@ export function Planner() {
                 />
               )}
             </Field>
-            <Field label="Measured in, Hz" hint={`Leave empty for ${mode.referenceBandwidthHz} Hz.`}>
+            <Field
+              label="Measured in, Hz"
+              hint={`Leave empty for ${mode.referenceBandwidthHz} Hz.`}
+              error={fieldError("referenceBandwidthHz")}
+            >
               {(ids) => (
                 <Input
                   {...ids}

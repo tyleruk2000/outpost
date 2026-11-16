@@ -93,16 +93,21 @@ export function normalise(request: PredictionRequest): PredictionRequest {
 
 export function modeLine(id: PredictionRequest["mode"], requiredSnrDb?: number, referenceBandwidthHz?: number): ModeLine {
   const mode = modeById(id);
-  const changed = requiredSnrDb !== undefined;
   const snr = requiredSnrDb ?? mode.requiredSnrDb;
   const bandwidth = referenceBandwidthHz ?? mode.referenceBandwidthHz;
+  // A bandwidth given on its own is applied to the mode's figure. That is no longer what
+  // the figure's publisher stated, so it is not put down to the publisher alone.
+  let source = mode.source;
+  if (requiredSnrDb !== undefined) source = "Your own figure";
+  else if (snr !== null && bandwidth !== mode.referenceBandwidthHz)
+    source = `Your own bandwidth, with the figure published for ${mode.referenceBandwidthHz} Hz (${mode.source})`;
   return {
     id: mode.id,
     label: mode.label,
     requiredSnrDb: snr,
     referenceBandwidthHz: bandwidth,
     requiredSnrDbHz: snr === null ? null : Number(snrInOneHertz(snr, bandwidth).toFixed(1)),
-    source: changed ? "Your own figure" : mode.source,
+    source,
   };
 }
 

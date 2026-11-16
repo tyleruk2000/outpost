@@ -103,6 +103,22 @@ describe("the form", () => {
     });
   });
 
+  it("asks in the bandwidth the form shows when only the bandwidth is filled in", () => {
+    // CW with "Needs, dB" left empty, as its hint invites, and 500 typed in "Measured in, Hz".
+    const built = requestOf({ ...exampleForm(), mode: "cw", referenceBandwidthHz: "500" }, []);
+    if (!("request" in built)) throw new Error("expected a request");
+    expect(built.request.referenceBandwidthHz).toBe(500);
+    // The figure itself is left to the server, which has the mode's published one.
+    expect("requiredSnrDb" in built.request).toBe(false);
+    expect(requestOf(formOf(built.request, "40m", []), [])).toEqual(built);
+    for (const referenceBandwidthHz of ["wide", "0", "-3"]) {
+      expect(requestOf({ ...exampleForm(), mode: "cw", referenceBandwidthHz }, [])).toMatchObject({ field: "referenceBandwidthHz" });
+    }
+    expect(requestOf({ ...exampleForm(), mode: "cw", requiredSnrDb: "loud", referenceBandwidthHz: "500" }, [])).toMatchObject({
+      field: "requiredSnrDb",
+    });
+  });
+
   it("opens a saved request as the form that asks it again", () => {
     const built = requestOf({ ...exampleForm(), date: "2026-11-16", solar: "manual", ssn: "60" }, []);
     if (!("request" in built)) throw new Error("expected a request");

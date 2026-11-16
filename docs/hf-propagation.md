@@ -118,6 +118,13 @@ basis, and the planner says so.
 
 All four were read on 16 November 2026.
 
+**Needs, dB** and **Measured in, Hz** are each used whenever they are filled in. A
+bandwidth typed on its own is applied to the mode's starting figure: CW with 500 in
+**Measured in, Hz** and **Needs, dB** left empty is asked as 24 dB in 500 Hz, which is
+24 + 10·log10(500) = 51 dB in 1 Hz. The answer then lists the mode as your own
+bandwidth with the published figure, because 24 dB in 500 Hz is not what the guide
+states.
+
 Hearing a station is not a contact. With **The reply** filled in, both directions are
 predicted, and the planner says a contact can be expected on *no more than* the weaker
 direction's share of days. It does not multiply the two: the same days tend to be bad
