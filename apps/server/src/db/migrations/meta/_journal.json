@@ -176,6 +176,13 @@
       "when": 1794853613150,
       "tag": "0024_nuclear_scenario_sets",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "6",
+      "when": 1794859204756,
+      "tag": "0025_power_devices",
+      "breakpoints": true
     }
   ]
 }

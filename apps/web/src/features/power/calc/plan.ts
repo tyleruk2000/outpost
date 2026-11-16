@@ -8,8 +8,11 @@
  * - A device draws its power for its hours a day. A radio on the air draws
  *   duty × transmit + (1 − duty) × receive, where duty = share of time transmitting ×
  *   the mode's factor, and its standby power for its standby hours.
+ * - A charge (a phone, a power bank) takes its battery's watt-hours ÷ the charging
+ *   efficiency for each charge.
  * - An AC load draws its power ÷ the inverter's efficiency from the battery, and the
- *   inverter draws its idle power for the hours it is on, spread evenly over the day.
+ *   inverter draws its idle power for the hours it is on, spread evenly over the day. A
+ *   USB load draws its power ÷ the USB converter's efficiency.
  * - The battery gives out the usable share of its rated energy. Round-trip efficiency is
  *   split evenly between charging and discharging (HOMER's convention).
  * - Solar makes array W × peak sun hours × (1 − losses) × controller a day, spread over
@@ -22,9 +25,11 @@ import {
   MONTHS,
   type PowerLoad,
   type PowerPlanInput,
+  type PowerSupply,
   type RadioLoad,
   radioModeById,
   type SolarLosses,
+  USB_CONVERTER,
 } from "@outpost/shared";
 import { bank, combinedLoss, controllerFactor, oneWay, solarDailyWh } from "./energy";
 
@@ -34,15 +39,34 @@ export const radioDuty = (radio: Pick<RadioLoad, "transmitShare" | "modeFactor">
 /** Average draw while on the air, watts at the radio's terminals. */
 export const radioOnAirW = (radio: RadioLoad): number => radioDuty(radio) * radio.transmitW + (1 - radioDuty(radio)) * radio.receiveW;
 
-/** Energy a load uses in a day where it is supplied (at the plug for AC), watt-hours. */
+/** Energy a load uses in a day where it is supplied (at the plug for AC, at the USB socket for USB), watt-hours. */
 export function loadDailyWh(load: PowerLoad): number {
   const one =
-    load.kind === "device" ? load.watts * load.hoursPerDay : radioOnAirW(load) * load.onAirHours + load.standbyW * load.standbyHours;
+    load.kind === "device"
+      ? load.watts * load.hoursPerDay
+      : load.kind === "charge"
+        ? (load.wattHours * load.chargesPerDay) / load.chargeEfficiency
+        : radioOnAirW(load) * load.onAirHours + load.standbyW * load.standbyHours;
   return one * load.quantity;
 }
 
-/** The most a load draws at once, watts where it is supplied: a radio key down at full output. */
-export const loadPeakW = (load: PowerLoad): number => (load.kind === "device" ? load.watts : load.transmitW) * load.quantity;
+/** A charge's average draw while charging, watts where it is supplied: its energy spread over the hours it takes. */
+export const chargingW = (load: Extract<PowerLoad, { kind: "charge" }>): number =>
+  load.wattHours / load.chargeEfficiency / load.chargeHours;
+
+/** The most a load draws at once, watts where it is supplied: a radio key down at full output; a charge, its average while charging. */
+export const loadPeakW = (load: PowerLoad): number =>
+  (load.kind === "device" ? load.watts : load.kind === "charge" ? chargingW(load) : load.transmitW) * load.quantity;
+
+/** The USB converter's efficiency: the plan's, or the starting figure for plans from before it. */
+export const usbEfficiency = (plan: Pick<PowerPlanInput, "usb">): number => plan.usb?.efficiency ?? USB_CONVERTER.share;
+
+/** What one watt at a load's supply takes from the battery: 1 for DC, more through the USB converter or the inverter. */
+export function supplyFactor(plan: Pick<PowerPlanInput, "usb" | "inverter">, supply: PowerSupply): number {
+  if (supply === "ac") return 1 / plan.inverter.efficiency;
+  if (supply === "usb") return 1 / usbEfficiency(plan);
+  return 1;
+}
 
 /** Watts a load draws in each hour of the day (0 to 23), averaged over the hour, where it is supplied. */
 export function loadByHour(load: PowerLoad): number[] {
@@ -58,7 +82,10 @@ export function loadByHour(load: PowerLoad): number[] {
     }
   };
   if (load.kind === "device") lay(load.startHour, load.hoursPerDay, load.watts * load.quantity);
-  else {
+  else if (load.kind === "charge") {
+    const hours = Math.min(24, load.chargeHours * load.chargesPerDay);
+    if (hours > 0) lay(load.startHour, hours, loadDailyWh(load) / hours);
+  } else {
     lay(load.startHour, load.onAirHours, radioOnAirW(load) * load.quantity);
     lay(load.startHour + Math.ceil(load.onAirHours), load.standbyHours, load.standbyW * load.quantity);
   }
@@ -101,6 +128,8 @@ export interface PlanAnswers {
   dailyUseWh: number;
   /** Of that, the AC loads' share (after the inverter's losses) and the inverter's idle draw. */
   acWh: number;
+  /** The USB loads' share, after the converter's losses. */
+  usbWh: number;
   inverterIdleWh: number;
   /** Average draw from the battery, watts. */
   averageW: number;
@@ -171,7 +200,7 @@ export function demandByHour(plan: PowerPlanInput): number[] {
   const hasAc = plan.loads.some((load) => load.supply === "ac");
   for (const load of plan.loads) {
     const byHour = loadByHour(load);
-    const factor = load.supply === "ac" ? 1 / plan.inverter.efficiency : 1;
+    const factor = supplyFactor(plan, load.supply);
     for (let hour = 0; hour < 24; hour += 1) hours[hour]! += byHour[hour]! * factor;
   }
   if (hasAc) for (let hour = 0; hour < 24; hour += 1) hours[hour]! += (plan.inverter.idleW * plan.inverter.hoursOn) / 24;
@@ -201,8 +230,9 @@ export function workOut(plan: PowerPlanInput): PlanAnswers {
   const acWh =
     plan.loads.filter((load) => load.supply === "ac").reduce((sum, load) => sum + loadDailyWh(load), 0) / plan.inverter.efficiency;
   const dcWh = plan.loads.filter((load) => load.supply === "dc").reduce((sum, load) => sum + loadDailyWh(load), 0);
+  const usbWh = plan.loads.filter((load) => load.supply === "usb").reduce((sum, load) => sum + loadDailyWh(load), 0) / usbEfficiency(plan);
   const inverterIdleWh = hasAc ? plan.inverter.idleW * plan.inverter.hoursOn : 0;
-  const dailyUseWh = dcWh + acWh + inverterIdleWh;
+  const dailyUseWh = dcWh + usbWh + acWh + inverterIdleWh;
   const loss = solarLoss(solar.losses);
   const controller = controllerFactor(solar.controller, solar.mpptEfficiency, solar.pwmBatteryVolts, solar.pwmPanelVmp);
   const chargerWh = plan.charger.enabled ? plan.charger.watts * plan.charger.hoursPerDay : 0;
@@ -225,8 +255,7 @@ export function workOut(plan: PowerPlanInput): PlanAnswers {
   const perArrayWatt = worst ? solarDailyWh(1, worst.sunHours!, loss, controller) * battery.roundTrip : 0;
 
   const peakDemandW =
-    plan.loads.reduce((sum, load) => sum + loadPeakW(load) / (load.supply === "ac" ? plan.inverter.efficiency : 1), 0) +
-    (hasAc ? plan.inverter.idleW : 0);
+    plan.loads.reduce((sum, load) => sum + loadPeakW(load) * supplyFactor(plan, load.supply), 0) + (hasAc ? plan.inverter.idleW : 0);
   const dischargeA = sizes.volts > 0 ? peakDemandW / sizes.volts : 0;
   const chargeA = sizes.volts > 0 ? (solar.arrayWatts * controller + (plan.charger.enabled ? plan.charger.watts : 0)) / sizes.volts : 0;
   const check = (limit: number | null, amps: number) => ({ limit, over: limit === null ? null : amps > limit });
@@ -235,6 +264,7 @@ export function workOut(plan: PowerPlanInput): PlanAnswers {
     bank: { volts: sizes.volts, ampHours: sizes.ampHours, wattHours: sizes.wattHours, usableWh, deliveredWh },
     dailyUseWh,
     acWh,
+    usbWh,
     inverterIdleWh,
     averageW: dailyUseWh / 24,
     runtimeHours: dailyUseWh > 0 ? deliveredWh / (dailyUseWh / 24) : null,
@@ -268,8 +298,17 @@ export function assumptions(plan: PowerPlanInput, answers: PlanAnswers): string[
     "The rated capacity is taken as delivered. Real batteries give less when cold, when old, and when discharged fast; lead acid in particular is rated at its 20-hour rate and gives less at higher currents.",
   ];
   for (const load of plan.loads) {
-    const where = load.supply === "ac" ? "through the inverter" : "from the battery directly";
-    if (load.kind === "device") {
+    const where =
+      load.supply === "ac"
+        ? "through the inverter"
+        : load.supply === "usb"
+          ? "over USB, through the converter"
+          : "from the battery directly";
+    if (load.kind === "charge") {
+      lines.push(
+        `${load.name}${load.quantity > 1 ? ` × ${load.quantity}` : ""}: a ${round(load.wattHours)} Wh battery charged ${round(load.chargesPerDay)} times a day from ${String(load.startHour).padStart(2, "0")}:00, ${where}, ${pct(load.chargeEfficiency)} of the energy reaching the battery. The hours it takes (${round(load.chargeHours)} h a charge) decide only when in the day it draws.`,
+      );
+    } else if (load.kind === "device") {
       lines.push(
         `${load.name}${load.quantity > 1 ? ` × ${load.quantity}` : ""}: ${round(load.watts)} W for ${round(load.hoursPerDay)} h a day from ${String(load.startHour).padStart(2, "0")}:00, ${where}.`,
       );
@@ -280,6 +319,8 @@ export function assumptions(plan: PowerPlanInput, answers: PlanAnswers): string[
       );
     }
   }
+  if (plan.loads.some((load) => load.supply === "usb"))
+    lines.push(`USB converter: ${pct(usbEfficiency(plan))} efficient. ${USB_CONVERTER.basis}`);
   if (plan.loads.some((load) => load.supply === "ac"))
     lines.push(
       `Inverter: ${pct(inverter.efficiency)} efficient under load, drawing ${round(inverter.idleW)} W of its own for ${round(inverter.hoursOn)} h a day, spread evenly over the day. Outpost's starting figures are 88% and 8 W: use your inverter's data sheet.`,

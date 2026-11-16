@@ -30,9 +30,9 @@ test.describe("Power and batteries on a phone", () => {
 
     await page.getByRole("button", { name: "Add a load" }).click();
     const dialog = page.getByRole("dialog", { name: "Add a load" });
-    // Drop-downs inside the dialog: the kind of load, then the mode.
-    await dialog.getByLabel("Start from").click();
-    await page.getByRole("option", { name: "Radio transceiver" }).click();
+    // Typed by hand, from the picker; then a drop-down inside the dialog: the mode.
+    await dialog.getByRole("button", { name: /A radio: type its draw/ }).click();
+    await dialog.getByLabel("Name").fill("Radio");
     await dialog.getByLabel("Draw transmitting at full output").fill("25");
     await dialog.getByLabel("Draw receiving").fill("5");
     await dialog.getByLabel("Mode", { exact: true }).click();

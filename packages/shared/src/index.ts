@@ -34,6 +34,8 @@ export * from "./nuclear.ts";
 export * from "./nuclear-effects.ts";
 export * from "./portable.ts";
 export * from "./power.ts";
+export * from "./power-devices.ts";
+export * from "./power-devices-data.ts";
 export * from "./propagation.ts";
 export * from "./propagation-coverage.ts";
 export * from "./propagation-p533.ts";

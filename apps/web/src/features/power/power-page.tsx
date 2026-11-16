@@ -17,22 +17,17 @@ import { type PlanAnswers, workOut } from "./calc/plan";
 import { inputOf, useCreatePowerPlan, usePowerPlans } from "./data";
 import { hoursText } from "./document";
 import { ColourCodeCalculator, CombineCalculator, DividerCalculator, LedCalculator, OhmCalculator } from "./electronics-calculators";
-import { BankCalculator, GeneratorCalculator, RuntimeCalculator, SolarCalculator, WireCalculator } from "./energy-calculators";
+import {
+  BankCalculator,
+  type CarriedEnergy,
+  GeneratorCalculator,
+  RuntimeCalculator,
+  SolarCalculator,
+  WireCalculator,
+} from "./energy-calculators";
 import { CalculatorGroup, figure } from "./inputs";
 
 const POWER_CALCULATORS = [
-  {
-    id: "runtime",
-    title: "Battery runtime",
-    about: "How long a battery runs a load, from its capacity in Wh or Ah.",
-    body: RuntimeCalculator,
-  },
-  {
-    id: "solar",
-    title: "Solar output and charging",
-    about: "What panels make in a day, and how long they take to refill a battery.",
-    body: SolarCalculator,
-  },
   {
     id: "cable",
     title: "Cable size and voltage drop",
@@ -132,6 +127,7 @@ export default function PowerPage() {
   const create = useCreatePowerPlan();
   const navigate = useNavigate();
   const [name, setName] = useState<string | null>(null);
+  const [carried, setCarried] = useState<CarriedEnergy | null>(null);
   const worked = useMemo(() => (plans.data ?? []).map((plan) => ({ plan, answers: workOut(inputOf(plan)) })), [plans.data]);
 
   const start = (
@@ -195,6 +191,29 @@ export default function PowerPage() {
 
       <Section title="Batteries, solar and power" description="Nothing typed into these is kept.">
         <Rows>
+          <CalculatorGroup
+            id="calc-runtime"
+            title="Battery runtime"
+            about="How long a battery runs your things: a Raspberry Pi, phones to charge, a radio. Or one load in watts."
+          >
+            <RuntimeCalculator
+              onSolar={(dailyWh) => {
+                setCarried({ dailyWh, at: Date.now() });
+                const solar = document.getElementById("calc-solar") as HTMLDetailsElement | null;
+                if (solar) {
+                  solar.open = true;
+                  solar.scrollIntoView?.({ block: "start", behavior: "smooth" });
+                }
+              }}
+            />
+          </CalculatorGroup>
+          <CalculatorGroup
+            id="calc-solar"
+            title="Solar output and charging"
+            about="What panels make in a day, and how long they take to refill a battery."
+          >
+            <SolarCalculator carried={carried} />
+          </CalculatorGroup>
           {POWER_CALCULATORS.map((item) => (
             <CalculatorGroup key={item.id} id={`calc-${item.id}`} title={item.title} about={item.about}>
               <item.body />

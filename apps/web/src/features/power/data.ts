@@ -1,5 +1,5 @@
 /** What the power screens ask the server for. */
-import { newPowerPlan, type PowerPlan, type PowerPlanInput, type RadioProfile } from "@outpost/shared";
+import { newPowerPlan, type OwnDevice, type OwnDeviceInput, type PowerPlan, type PowerPlanInput, type RadioProfile } from "@outpost/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api, errorMessage } from "@/lib/api";
@@ -7,6 +7,7 @@ import { api, errorMessage } from "@/lib/api";
 export const powerKeys = {
   all: ["power", "plans"] as const,
   one: (id: string) => ["power", "plans", id] as const,
+  devices: ["power", "devices"] as const,
 };
 
 export const usePowerPlans = () =>
@@ -31,7 +32,9 @@ export function inputOf(plan: PowerPlan): PowerPlanInput {
 export function useCreatePowerPlan() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (name: string) => api.post<{ plan: PowerPlan }>("/api/power/plans", newPowerPlan(name)).then((data) => data.plan),
+    /** A name for a new, empty plan, or a whole plan (one made from the quick calculator's devices). */
+    mutationFn: (plan: string | PowerPlanInput) =>
+      api.post<{ plan: PowerPlan }>("/api/power/plans", typeof plan === "string" ? newPowerPlan(plan) : plan).then((data) => data.plan),
     onSuccess: () => void client.invalidateQueries({ queryKey: powerKeys.all, exact: true }),
   });
 }
@@ -73,3 +76,32 @@ export const useRadioProfiles = () =>
     queryFn: () => api.get<{ radios: RadioProfile[] }>("/api/radio/profiles"),
     select: (data) => data.radios,
   });
+
+/** A person's own devices, kept on the server. */
+export const useOwnDevices = () =>
+  useQuery({
+    queryKey: powerKeys.devices,
+    queryFn: () => api.get<{ devices: OwnDevice[] }>("/api/power/devices"),
+    select: (data) => data.devices,
+  });
+
+export function useSaveOwnDevice() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string | null; input: OwnDeviceInput }) =>
+      (id
+        ? api.put<{ device: OwnDevice }>(`/api/power/devices/${id}`, input)
+        : api.post<{ device: OwnDevice }>("/api/power/devices", input)
+      ).then((data) => data.device),
+    onSuccess: () => void client.invalidateQueries({ queryKey: powerKeys.devices }),
+  });
+}
+
+export function useRemoveOwnDevice() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`/api/power/devices/${id}`),
+    onSuccess: () => void client.invalidateQueries({ queryKey: powerKeys.devices }),
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+}

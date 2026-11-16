@@ -25,6 +25,7 @@ export type DatabaseCountId =
   | "equipment"
   | "predictions"
   | "powerPlans"
+  | "powerDevices"
   | "supplies"
   | "scenarios"
   | "pressureReadings"

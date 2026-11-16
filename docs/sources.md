@@ -797,6 +797,22 @@ Not catalogue entries: figures that Preparedness → Supplies works with, each q
 | FEMA, [ready.gov/water](https://www.ready.gov/water) (updated 22 February 2021) | One US gallon a day for drinking and sanitation; needs can double in heat | US government work |
 | GOV.UK, [Best before and use-by dates](https://www.gov.uk/understanding-food-labelling/best-before-and-use-by-dates) (updated 25 June 2026) | Use-by is safety, best before is quality | Open Government Licence v3.0 |
 | Open Food Facts, [data](https://world.openfoodfacts.org/data) | Nothing used. What it would allow is in supplies.md | ODbL (database), DbCL (contents), CC BY-SA (images) |
+## Device figures for the battery calculators, read on 2026-11-16
+
+Not catalogue entries: the published power figures of common devices (Raspberry Pi
+boards, phones, radios, routers, NAS boxes, lamps, a cool box) that Tools → Power and
+batteries offers, each quoted with its publisher, document, URL and date in
+[tools-power.md](tools-power.md#common-devices) and in
+`packages/shared/src/power-devices-data.ts`. Nothing is fetched from any of them: the
+figures were read once, by hand-run fetches of the makers' own pages and manuals, and
+are bundled as data. Each figure is a short factual quotation (a current, a voltage, a
+capacity) with its source; no document is copied. Read the same way, and quoted on the
+screen: GOV.UK (OPSS and the UK Chief Medical Officers, Open Government Licence v3.0),
+the London Fire Brigade and Electrical Safety First on charging, extension leads and
+generators; Battery University (BU-303, BU-808c) for a lithium-ion cell's nominal voltage
+and energy efficiency; MEAN WELL's SD-25 specification for a 12 V to 5 V converter's
+efficiency.
+
 ## The IEEE's registry of device makers, read on 2026-11-16
 
 "Devices on this network" can show who made a device from the first half of its

@@ -280,6 +280,7 @@ export function personalWords(personal: NonNullable<CleanupPlan["personal"]>): s
   const radio = radioWords(personal.radio);
   if (radio) parts.push(radio);
   if ((personal.powerPlans ?? 0) > 0) parts.push(plural(personal.powerPlans ?? 0, "power plan"));
+  if ((personal.powerDevices ?? 0) > 0) parts.push(plural(personal.powerDevices ?? 0, "device of your own", "devices of your own"));
   const supplies = suppliesWords(personal.supplies);
   if (supplies) parts.push(supplies);
   if ((personal.nuclearScenarios ?? 0) > 0)
@@ -330,6 +331,9 @@ export function resultSentences(result: CleanupResult): string[] {
       repeaters > 0 || repeaterLists > 0 ? repeaterWords(repeaters, repeaterLists) : null,
       radioWords(radio),
       (powerPlans ?? 0) > 0 ? plural(powerPlans ?? 0, "power plan") : null,
+      (result.personal.powerDevices ?? 0) > 0
+        ? plural(result.personal.powerDevices ?? 0, "device of your own", "devices of your own")
+        : null,
       suppliesWords(supplies),
       (nuclearScenarios ?? 0) > 0
         ? plural(nuclearScenarios!, "saved nuclear effects scenario or set", "saved nuclear effects scenarios and sets")

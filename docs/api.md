@@ -966,9 +966,11 @@ Types: `packages/shared/src/power.ts`. The server keeps plans and works nothing 
 
 | Route | What it does |
 | --- | --- |
-| `GET` / `POST /api/power/plans` | Power plans, by name. `POST` body: `name`, `notes`, `battery`, `loads` (up to 60, each a `device` or a `radio`), `inverter`, `solar` (with `sunHours`, twelve numbers or `null`, and `sunHoursSource`: `null`, left out, or where they were filled in from, a `PowerSunSource`), `charger`, `cableRatingA`. Returns `{ plan }`. `400` with the reason for figures out of range, or a radio's hours adding up to more than a day. |
+| `GET` / `POST /api/power/plans` | Power plans, by name. `POST` body: `name`, `notes`, `battery`, `loads` (up to 60, each a `device`, a `radio` or a `charge`, supplied `dc`, `usb` or `ac`, each with an optional `origin`: the library entry or own device its figures came from), `usb` (optional: `{ efficiency }`, the converter to USB), `inverter`, `solar` (with `sunHours`, twelve numbers or `null`, and `sunHoursSource`: `null`, left out, or where they were filled in from, a `PowerSunSource`), `charger`, `cableRatingA`. Returns `{ plan }`. `400` with the reason for figures out of range, or a radio's hours adding up to more than a day. |
 | `GET` / `PUT` / `DELETE /api/power/plans/:id` | One plan. `PUT` takes the whole plan, as `POST` does. |
 | `POST /api/power/plans/:id/copy` | A copy under the name "… (copy)". Returns `{ plan }`. |
+| `GET` / `POST /api/power/devices` | A person's own devices for the battery calculators, by name. `POST` body: `name`, `kind` (`run`, `charge`, `radio`), `supply` (`dc`, `usb`, `ac`), `watts`, `wattHours`, `receiveW`, `transmitW`, `standbyW` (each a number or `null`; the one its kind needs is required, the others are kept as `null`), `note`. Returns `{ device }`. `400` with the reason when the figure its kind needs is missing, or past 500 devices. |
+| `PUT` / `DELETE /api/power/devices/:id` | One device. `PUT` takes the whole device, as `POST` does. Loads already made from it keep their figures. |
 ## Nuclear preparedness
 
 Scenarios saved in the effects simulator (Preparedness → Nuclear preparedness). Only

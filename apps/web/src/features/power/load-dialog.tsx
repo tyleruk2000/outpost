@@ -1,23 +1,37 @@
 /**
- * Adding or changing one load of a power plan: a device with one power figure, or a
- * transceiver with transmit, receive and standby power and a duty cycle. Starts from a
- * kind of thing (with the figures that have a source filled in, and the rest left for
- * the person's own), from a radio saved for the HF planner, or from nothing.
+ * Adding or changing one load of a power plan. A new load starts from the library of
+ * common devices (with its makers' figures and their sources), from one of the person's
+ * own devices, from a radio saved for the HF planner, or from nothing; then its figures
+ * and how it is used can be changed. A load made from the library keeps a record of
+ * where its figures came from, so that the plan can cite it and say when one has been
+ * changed by hand.
  */
-import { type PowerLoad, type PowerSupply, RADIO_MODES, type RadioModeId, radioModeById } from "@outpost/shared";
+import {
+  type LoadOrigin,
+  type PowerLoad,
+  type PowerSupply,
+  RADIO_MODES,
+  type RadioModeId,
+  radioModeById,
+  USB_CHARGING,
+} from "@outpost/shared";
 import { useState } from "react";
 import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
 import { localId } from "@/lib/utils";
+import { changedSince, loadFromEntry, loadFromOwn } from "./calc/devices";
 import { loadDailyWh, radioDuty } from "./calc/plan";
 import { useRadioProfiles } from "./data";
+import { DevicePicker, type PickerChoice } from "./device-picker";
+import { FigureSources } from "./device-rows";
+import { kindWords } from "./device-text";
 import { ChoiceField, Fields, figure, NumberField, PercentField } from "./inputs";
 
 /** A load being typed: numbers may still be missing. */
 interface Draft {
-  kind: "device" | "radio";
+  kind: "device" | "radio" | "charge";
   name: string;
   supply: PowerSupply;
   quantity: number | null;
@@ -32,7 +46,12 @@ interface Draft {
   transmitShare: number | null;
   modeFactor: number | null;
   mode: RadioModeId;
-  /** Where the starting figures came from, said under the form. */
+  wattHours: number | null;
+  chargesPerDay: number | null;
+  chargeEfficiency: number | null;
+  chargeHours: number | null;
+  origin: LoadOrigin | null;
+  /** Where the starting figures came from, said under the form when there is no record to cite. */
   note: string | null;
 }
 
@@ -52,75 +71,26 @@ const blank: Draft = {
   transmitShare: 0.5,
   modeFactor: 0.2,
   mode: "ssb",
+  wattHours: null,
+  chargesPerDay: 1,
+  chargeEfficiency: USB_CHARGING.share,
+  chargeHours: 2,
+  origin: null,
   note: null,
 };
 
-/**
- * Kinds of thing to start from. Only the Raspberry Pi has a figure filled in, and that
- * is the supply Raspberry Pi recommends for it (Raspberry Pi documentation, "Power
- * supply"): the most it should draw, so a plan built on it errs on the safe side.
- */
-export const LOAD_STARTS: Array<{ id: string; label: string; draft: Partial<Draft> }> = [
-  {
-    id: "pi4",
-    label: "Raspberry Pi 4 running Outpost",
-    draft: {
-      name: "Raspberry Pi 4 running Outpost",
-      watts: 15,
-      hoursPerDay: 24,
-      startHour: 0,
-      note: '15 W is the supply Raspberry Pi recommends, 3 A at 5 V: the most it should draw with its USB devices. The bare board typically draws 600 mA, 3 W (Raspberry Pi documentation, "Power supply"); a drive adds to that. A USB power meter gives yours.',
-    },
-  },
-  {
-    id: "pi5",
-    label: "Raspberry Pi 5 running Outpost",
-    draft: {
-      name: "Raspberry Pi 5 running Outpost",
-      watts: 25,
-      hoursPerDay: 24,
-      startHour: 0,
-      note: '25 W is the supply Raspberry Pi recommends, 5 A at 5 V: the most it should draw with its USB devices. The bare board typically draws 800 mA, 4 W (Raspberry Pi documentation, "Power supply"); a drive adds to that. A USB power meter gives yours.',
-    },
-  },
-  { id: "radio", label: "Radio transceiver", draft: { kind: "radio", name: "Radio", startHour: 18, note: null } },
-  {
-    id: "lights",
-    label: "Lights",
-    draft: {
-      name: "Lights",
-      hoursPerDay: 5,
-      startHour: 18,
-      note: "Type the watts on the lamp or its label. LED lamps say their watts on the base.",
-    },
-  },
-  {
-    id: "phone",
-    label: "Phone charger",
-    draft: {
-      name: "Phone charger",
-      hoursPerDay: 2,
-      startHour: 20,
-      note: "A charger's label gives its output: 5 V at 2 A is 10 W, the most it draws. A phone draws less as it fills.",
-    },
-  },
-  {
-    id: "laptop",
-    label: "Laptop",
-    draft: {
-      name: "Laptop",
-      supply: "ac",
-      hoursPerDay: 3,
-      startHour: 9,
-      note: "Its charger's label gives the most it draws (often 45 to 100 W). On battery and charged, a laptop draws much less. A USB-C laptop can charge from the battery through a DC charger instead, without the inverter.",
-    },
-  },
-  { id: "other", label: "Something else", draft: { name: "", note: null } },
-];
+const draftOf = (load: PowerLoad): Draft => ({ ...blank, ...load, origin: load.origin ?? null, note: null });
 
-function draftOf(load: PowerLoad): Draft {
-  return load.kind === "device" ? { ...blank, ...load, note: null } : { ...blank, ...load, watts: null, hoursPerDay: null, note: null };
-}
+/** The ways to start that are not a device: a radio saved for the HF planner, or typing the figures. */
+const TYPE_IT = [
+  { id: "type:device", label: "Something that runs: type its watts", draft: { kind: "device" } as Partial<Draft> },
+  { id: "type:radio", label: "A radio: type its draw", draft: { kind: "radio" } as Partial<Draft> },
+  {
+    id: "type:charge",
+    label: "Something charged: type its battery",
+    draft: { kind: "charge", supply: "usb", startHour: 20 } as Partial<Draft>,
+  },
+];
 
 /** The load the draft makes, or what is missing. */
 function finish(draft: Draft, id: string): PowerLoad | string {
@@ -132,11 +102,29 @@ function finish(draft: Draft, id: string): PowerLoad | string {
     supply: draft.supply,
     quantity: Math.max(1, Math.round(draft.quantity ?? 1)),
     startHour: Math.round(draft.startHour ?? 0),
+    ...(draft.origin ? { origin: draft.origin } : {}),
   };
   if (draft.kind === "device") {
     const missing = need(draft.watts, "Give its power in watts.") ?? need(draft.hoursPerDay, "Give the hours a day it is on.");
     if (missing) return missing;
     return { ...base, kind: "device", watts: draft.watts!, hoursPerDay: draft.hoursPerDay! };
+  }
+  if (draft.kind === "charge") {
+    const missing =
+      need(draft.wattHours, "Give its battery's watt-hours.") ??
+      need(draft.chargesPerDay, "Give the charges a day.") ??
+      need(draft.chargeEfficiency, "Give the charging efficiency.");
+    if (missing) return missing;
+    if ((draft.chargeEfficiency ?? 0) <= 0) return "The charging efficiency must be more than nothing.";
+    if ((draft.wattHours ?? 0) <= 0) return "Give its battery's watt-hours.";
+    return {
+      ...base,
+      kind: "charge",
+      wattHours: draft.wattHours!,
+      chargesPerDay: draft.chargesPerDay!,
+      chargeEfficiency: draft.chargeEfficiency!,
+      chargeHours: draft.chargeHours && draft.chargeHours > 0 ? draft.chargeHours : 2,
+    };
   }
   const missing =
     need(draft.transmitW, "Give the power it draws transmitting.") ??
@@ -161,24 +149,50 @@ function finish(draft: Draft, id: string): PowerLoad | string {
 const HOURS = Array.from({ length: 24 }, (_, hour) => ({ value: String(hour), label: `${String(hour).padStart(2, "0")}:00` }));
 
 export function LoadDialog({ load, onSave, onClose }: { load: PowerLoad | null; onSave: (load: PowerLoad) => void; onClose: () => void }) {
-  const [start, setStart] = useState<string>(load ? "kept" : "pi4");
-  const [draft, setDraft] = useState<Draft>(load ? draftOf(load) : { ...blank, ...LOAD_STARTS[0]!.draft });
+  const [picking, setPicking] = useState(load === null);
+  const [draft, setDraft] = useState<Draft>(load ? draftOf(load) : blank);
   const [problem, setProblem] = useState<string | null>(null);
+  const [said, setSaid] = useState<string | null>(null);
   const radios = useRadioProfiles();
   const set = (patch: Partial<Draft>) => {
     setProblem(null);
     setDraft((current) => ({ ...current, ...patch }));
   };
-  const choose = (value: string) => {
-    setStart(value);
+
+  const pick = (choice: PickerChoice) => {
     setProblem(null);
-    const preset = LOAD_STARTS.find((item) => item.id === value);
-    if (preset) {
-      setDraft({ ...blank, ...preset.draft });
+    setSaid(null);
+    if (choice.kind === "common" && (choice.entry.kind === "label" || choice.entry.kind === "guide")) {
+      if (choice.entry.kind === "guide") {
+        // No figure, by design: say what the maker's guide says and stay on the list.
+        setSaid(choice.entry.text);
+        return;
+      }
+      setDraft({
+        ...blank,
+        ...(choice.entry.unit === "Wh" ? { kind: "charge", supply: "usb", startHour: 20 } : { kind: "device" }),
+        name: choice.entry.name,
+        note: choice.entry.hint,
+      });
+      setPicking(false);
       return;
     }
-    const radio = radios.data?.find((item) => `radio:${item.id}` === value);
-    if (radio)
+    if (choice.kind === "common" || choice.kind === "own") {
+      const made = choice.kind === "common" ? loadFromEntry(choice.entry, "draft") : loadFromOwn(choice.device, "draft");
+      if (made) {
+        setDraft(draftOf(made));
+        setPicking(false);
+      }
+      return;
+    }
+    const typed = TYPE_IT.find((item) => item.id === choice.id);
+    if (typed) {
+      setDraft({ ...blank, ...typed.draft });
+      setPicking(false);
+      return;
+    }
+    const radio = radios.data?.find((item) => `radio:${item.id}` === choice.id);
+    if (radio) {
       setDraft({
         ...blank,
         kind: "radio",
@@ -186,18 +200,43 @@ export function LoadDialog({ load, onSave, onClose }: { load: PowerLoad | null; 
         transmitW: radio.powerWatts * 2,
         note: `From the radio “${radio.name}” (${radio.powerWatts} W output). The transmit draw is an estimate, twice the output, as for an amplifier about half efficient: the transmit current in its manual × the supply voltage is better. Type the receive draw from the manual.`,
       });
+      setPicking(false);
+    }
   };
+
   const preview = finish(draft, load?.id ?? "preview");
-  const startOptions = [
-    ...(load ? [{ value: "kept", label: "As it is" }] : []),
-    ...LOAD_STARTS.map((item) => ({ value: item.id, label: item.label })),
-    ...(radios.data ?? []).map((radio) => ({
-      value: `radio:${radio.id}`,
-      label: `Saved radio: ${radio.name}`,
-      description: `${radio.powerWatts} W output`,
-    })),
-  ];
   const mode = radioModeById(draft.mode);
+  const extras = [
+    ...(radios.data ?? []).map((radio) => ({
+      id: `radio:${radio.id}`,
+      label: `Saved radio: ${radio.name}`,
+      description: `${radio.powerWatts} W output, from the HF planner`,
+    })),
+    ...TYPE_IT.map((item) => ({ id: item.id, label: item.label })),
+  ];
+
+  if (picking) {
+    return (
+      <Dialog open onOpenChange={(open) => !open && onClose()}>
+        <DialogContent
+          title="Add a load"
+          description="Choose what draws from the battery: its figures come with it, and can be changed."
+          size="lg"
+        >
+          <DialogBody className="grid gap-4">
+            {said ? <Notice tone="warning">{said}</Notice> : null}
+            <DevicePicker onPick={pick} extras={extras} extrasTitle="Your radios, or type the figures" />
+          </DialogBody>
+          <DialogFooter>
+            <Button onClick={onClose}>Cancel</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  const previewLoad = typeof preview !== "string" ? preview : null;
+  const words = previewLoad ? kindWords(previewLoad) : null;
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent title={load ? `Change ${load.name}` : "Add a load"} description="Something that draws from the battery." size="lg">
@@ -212,7 +251,21 @@ export function LoadDialog({ load, onSave, onClose }: { load: PowerLoad | null; 
           }}
         >
           <DialogBody className="grid gap-4">
-            <ChoiceField label="Start from" value={start} onChange={choose} options={startOptions} />
+            {!load ? (
+              <div>
+                <Button variant="link" onClick={() => setPicking(true)}>
+                  Choose another device
+                </Button>
+              </div>
+            ) : null}
+            {draft.origin && previewLoad ? (
+              <div className="text-small text-ink-muted">
+                {draft.origin.library === "own" ? `From your own device “${draft.origin.name}”` : `From the library: ${draft.origin.name}`}
+                {words ? `, ${words}` : ""}.
+                {changedSince(previewLoad) ? " A figure has been changed, so it is yours; where the rest came from is kept." : ""}
+                <FigureSources load={previewLoad} />
+              </div>
+            ) : null}
             {draft.note ? <p className="text-small text-ink-muted">{draft.note}</p> : null}
             <Fields>
               <Field label="Name">
@@ -224,6 +277,7 @@ export function LoadDialog({ load, onSave, onClose }: { load: PowerLoad | null; 
                 onChange={(supply) => set({ supply })}
                 options={[
                   { value: "dc", label: "From the battery (DC)" },
+                  { value: "usb", label: "Over USB, through the converter" },
                   { value: "ac", label: "Through the inverter (AC)" },
                 ]}
               />
@@ -244,7 +298,7 @@ export function LoadDialog({ load, onSave, onClose }: { load: PowerLoad | null; 
                   value={draft.watts}
                   onChange={(watts) => set({ watts })}
                   min={0}
-                  hint={draft.supply === "ac" ? "At the plug." : undefined}
+                  hint={draft.supply === "ac" ? "At the plug." : draft.supply === "usb" ? "At the USB socket." : undefined}
                 />
                 <NumberField
                   label="Hours a day"
@@ -253,6 +307,39 @@ export function LoadDialog({ load, onSave, onClose }: { load: PowerLoad | null; 
                   onChange={(hoursPerDay) => set({ hoursPerDay })}
                   min={0}
                   max={24}
+                />
+              </Fields>
+            ) : draft.kind === "charge" ? (
+              <Fields>
+                <NumberField
+                  label="Its battery"
+                  unit="Wh"
+                  value={draft.wattHours}
+                  onChange={(wattHours) => set({ wattHours })}
+                  min={0}
+                  hint="mAh × volts ÷ 1000."
+                />
+                <NumberField
+                  label="Charges a day"
+                  value={draft.chargesPerDay}
+                  onChange={(chargesPerDay) => set({ chargesPerDay })}
+                  min={0}
+                  max={100}
+                />
+                <PercentField
+                  label="Charging efficiency"
+                  value={draft.chargeEfficiency}
+                  onChange={(chargeEfficiency) => set({ chargeEfficiency })}
+                  hint={USB_CHARGING.basis}
+                />
+                <NumberField
+                  label="Hours a charge takes"
+                  unit="h"
+                  value={draft.chargeHours}
+                  onChange={(chargeHours) => set({ chargeHours })}
+                  min={0}
+                  max={24}
+                  hint="For the hour-by-hour chart only."
                 />
               </Fields>
             ) : (
@@ -313,10 +400,15 @@ export function LoadDialog({ load, onSave, onClose }: { load: PowerLoad | null; 
                 </p>
               </>
             )}
-            {typeof preview !== "string" ? (
+            {previewLoad ? (
               <p className="tabular text-small text-ink">
-                Uses {figure(loadDailyWh(preview), 0)} Wh a day
-                {preview.supply === "ac" ? " at the plug, more from the battery through the inverter" : ""}.
+                Uses {figure(loadDailyWh(previewLoad), 0)} Wh a day
+                {previewLoad.supply === "ac"
+                  ? " at the plug, more from the battery through the inverter"
+                  : previewLoad.supply === "usb"
+                    ? " at the USB socket, more from the battery through the converter"
+                    : ""}
+                .
               </p>
             ) : null}
             {problem ? <Notice tone="danger">{problem}</Notice> : null}

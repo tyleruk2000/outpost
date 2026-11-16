@@ -13,6 +13,7 @@ import {
   type PowerPlan,
   type PowerPlanInput,
   sunSourceText,
+  USB_CONVERTER,
 } from "@outpost/shared";
 import { Copy } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -26,8 +27,10 @@ import { madePdf } from "@/features/library/made/made-pdf";
 import { PdfButtons, PdfStatus, useMadePdf } from "@/features/library/made/pdf-actions";
 import { errorMessage } from "@/lib/api";
 import { plural } from "@/lib/utils";
-import { assumptions, loadDailyWh, radioDuty, simulate, workOut } from "./calc/plan";
+import { assumptions, loadDailyWh, radioDuty, simulate, usbEfficiency, workOut } from "./calc/plan";
 import { inputOf, useCopyPowerPlan, usePowerPlan, useRemovePowerPlan, useSavePowerPlan } from "./data";
+import { FigureSources } from "./device-rows";
+import { kindWords } from "./device-text";
 import { chartMonth, ESTIMATE, hoursText, planPdf } from "./document";
 import { LossFields, PVGIS_URL } from "./energy-calculators";
 import { Answer, Answers, Basis, ChoiceField, Fields, figure, NumberField, PercentField } from "./inputs";
@@ -436,32 +439,52 @@ export default function PowerPlanPage() {
         ) : (
           <Rows>
             {draft.loads.map((load) => (
-              <li key={load.id} className="flex flex-wrap items-center justify-between gap-3 py-2.5">
-                <span className="min-w-0">
-                  <span className="block truncate text-ink">
-                    {load.name}
-                    {load.quantity > 1 ? ` × ${load.quantity}` : ""}
+              <li key={load.id} className="py-2.5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <span className="block truncate text-ink">
+                      {load.name}
+                      {load.quantity > 1 ? ` × ${load.quantity}` : ""}
+                    </span>
+                    <span className="tabular block text-small text-ink-muted">
+                      {load.kind === "device"
+                        ? `${figure(load.watts, 1)} W for ${figure(load.hoursPerDay, 1)} h`
+                        : load.kind === "charge"
+                          ? `${figure(load.chargesPerDay, 1)} ${load.chargesPerDay === 1 ? "charge" : "charges"} a day of ${figure(load.wattHours, 1)} Wh`
+                          : `${figure(load.transmitW, 1)} W transmitting, ${figure(load.receiveW, 1)} W receiving, ${figure(load.onAirHours, 1)} h on the air, duty ${figure(radioDuty(load) * 100, 1)}%`}{" "}
+                      · {load.supply === "ac" ? "AC, through the inverter" : load.supply === "usb" ? "USB, through the converter" : "DC"} ·{" "}
+                      {figure(loadDailyWh(load), 0)} Wh a day
+                    </span>
+                  </div>
+                  <span className="flex gap-2">
+                    <Button size="sm" onClick={() => setEditing(load)} aria-label={`Change ${load.name}`}>
+                      Change
+                    </Button>
+                    <Button size="sm" variant="danger-ghost" onClick={() => setRemoving(load)} aria-label={`Remove ${load.name}`}>
+                      Remove
+                    </Button>
                   </span>
-                  <span className="tabular block text-small text-ink-muted">
-                    {load.kind === "device"
-                      ? `${figure(load.watts, 1)} W for ${figure(load.hoursPerDay, 1)} h`
-                      : `${figure(load.transmitW, 1)} W transmitting, ${figure(load.receiveW, 1)} W receiving, ${figure(load.onAirHours, 1)} h on the air, duty ${figure(radioDuty(load) * 100, 1)}%`}{" "}
-                    · {load.supply === "ac" ? "AC, through the inverter" : "DC"} · {figure(loadDailyWh(load), 0)} Wh a day
-                  </span>
-                </span>
-                <span className="flex gap-2">
-                  <Button size="sm" onClick={() => setEditing(load)} aria-label={`Change ${load.name}`}>
-                    Change
-                  </Button>
-                  <Button size="sm" variant="danger-ghost" onClick={() => setRemoving(load)} aria-label={`Remove ${load.name}`}>
-                    Remove
-                  </Button>
-                </span>
+                </div>
+                {load.origin ? <LoadOrigin load={load} /> : null}
               </li>
             ))}
           </Rows>
         )}
       </Section>
+
+      {draft.loads.some((load) => load.supply === "usb") ? (
+        <Section title="USB converter" description="USB loads are supplied through it, from the battery.">
+          <Fields>
+            <PercentField
+              label="Efficiency"
+              value={usbEfficiency(draft)}
+              onChange={(value) => keep(value, (efficiency) => efficiency > 0 && set({ usb: { efficiency } }))}
+              hint="From its data sheet, or the car charger's."
+            />
+          </Fields>
+          <p className="mt-2 text-small text-ink-muted">{USB_CONVERTER.basis}</p>
+        </Section>
+      ) : null}
 
       <Section title="Inverter" description={hasAc ? "AC loads go through it." : "Used only by AC loads; this plan has none."}>
         <Fields>
@@ -679,5 +702,17 @@ export default function PowerPlanPage() {
       />
       {remove.isError ? <Notice tone="danger">{errorMessage(remove.error)}</Notice> : null}
     </Page>
+  );
+}
+
+/** Where a load's figures came from: a few words, and the sources behind one disclosure. */
+function LoadOrigin({ load }: { load: PowerLoad }) {
+  const words = kindWords(load);
+  return (
+    <div className="mt-1 text-small text-ink-muted">
+      {load.origin?.library === "own" ? `From your own device “${load.origin.name}”` : `From the library: ${load.origin?.name}`}
+      {words ? `, ${words}` : ""}.
+      <FigureSources load={load} />
+    </div>
   );
 }
