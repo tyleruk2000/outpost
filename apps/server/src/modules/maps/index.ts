@@ -8,7 +8,7 @@
  * never needs the network.
  */
 import fastifyMultipart from "@fastify/multipart";
-import { MARKER_COLORS, type MapOverview, type MarkerColor } from "@outpost/shared";
+import { MARKER_COLORS, type MapOverview, type MarkerColor, RECORDING_ID_PATTERN } from "@outpost/shared";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
@@ -297,6 +297,17 @@ export async function registerMaps(app: FastifyInstance, ctx: AppContext): Promi
         importWaypointsAsMarkers: fields.importWaypointsAsMarkers,
       });
     return annotations.importTrack({ source, filename, ...options });
+  });
+
+  // A track recorded on the map as its maker walked. The device builds the GPX and names
+  // the recording; it is read with the same reader, and the same limits, as an import.
+  app.put<IdParams>("/api/maps/recordings/:id", async (request) => {
+    const id = z.string().regex(RECORDING_ID_PATTERN, "That is not the id of a recording.").parse(request.params.id);
+    const { source, fields } = await receiveGpx(request);
+    const options = z
+      .object({ name: z.string().trim().min(1, "Give the recording a name.").max(200), color: z.enum(MARKER_COLORS).optional() })
+      .parse({ name: fields.name ?? "", color: fields.color as MarkerColor | undefined });
+    return annotations.saveRecording({ id, source, ...options });
   });
 
   app.get("/api/maps/tracks", async () => {

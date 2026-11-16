@@ -10,15 +10,13 @@
  */
 import { Worker } from "node:worker_threads";
 import type { Bbox, RouteElevation } from "@outpost/shared";
-import { haversineMeters } from "@outpost/shared";
+import { ASCENT_THRESHOLD_METERS, haversineMeters } from "@outpost/shared";
 import type { Feature, FeatureCollection, LineString, MultiLineString, Point, Position } from "geojson";
 import { AppError, badRequest, conflict } from "../../core/errors.ts";
 import { workerUrl } from "../../core/paths.ts";
 import { readGpx } from "./gpx-reader.ts";
 
 export const MAX_GPX_BYTES = 20 * 1024 * 1024;
-/** Elevation has to change by this much before it counts as climbing, to ignore GPS jitter. */
-const ASCENT_THRESHOLD_METERS = 3;
 
 export type TrackFeature = Feature<LineString | MultiLineString | Point, TrackProperties>;
 export type TrackCollection = FeatureCollection<LineString | MultiLineString | Point, TrackProperties>;
@@ -35,6 +33,8 @@ export interface TrackProperties {
   coordinateProperties?: { times?: Array<string | null> | Array<Array<string | null>> };
   /** Set on a line that was drawn on the map rather than imported. See `drawn-route.ts`. */
   _drawn?: true;
+  /** Set on a line that was recorded on the map as its maker walked it, rather than imported from a file. */
+  _recorded?: true;
   /** For a drawn line: whether its heights could be read from installed terrain. */
   _elevation?: RouteElevation;
   /** For a drawn line: the line sampled between its points, with heights. Never exported. */
