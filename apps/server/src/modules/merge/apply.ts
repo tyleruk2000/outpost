@@ -15,7 +15,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { pipeline } from "node:stream/promises";
 import type { MergeAnalysis, MergeChoice, MergeItem, NoteNodeJson } from "@outpost/shared";
-import { MARKER_COLORS, type MarkerColor } from "@outpost/shared";
+import { asMarkerIcon, MARKER_COLORS, type MarkerColor } from "@outpost/shared";
 import { and, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
@@ -716,14 +716,28 @@ export async function applyMerge(ctx: AppContext, input: ApplyInput): Promise<vo
       lat: place.lat,
       lon: place.lon,
       color: asColor(place.color),
+      // A drive from before places had icons says nothing about them: what home has is then left as it is.
+      ...(place.icon === null ? {} : { icon: asMarkerIcon(place.icon), gpxSym: place.gpxSym }),
       isFavorite: place.isFavorite,
       noteId: place.noteId ? (resolvePage(place.noteId) ?? null) : null,
     });
     const placeNow = (id: string) =>
       sqlite
-        .prepare("SELECT name, note, lat, lon, color, is_favorite AS isFavorite, note_id AS noteId FROM markers WHERE id = ?")
+        .prepare(
+          "SELECT name, note, lat, lon, color, icon, gpx_sym AS gpxSym, is_favorite AS isFavorite, note_id AS noteId FROM markers WHERE id = ?",
+        )
         .get(id) as
-        | { name: string; note: string; lat: number; lon: number; color: string; isFavorite: number; noteId: string | null }
+        | {
+            name: string;
+            note: string;
+            lat: number;
+            lon: number;
+            color: string;
+            icon: string;
+            gpxSym: string | null;
+            isFavorite: number;
+            noteId: string | null;
+          }
         | undefined;
 
     function drivePlace(item: MergeItem): PlaceState {
@@ -1320,6 +1334,9 @@ export async function undoMerge(ctx: AppContext, merge: MergeRow, options: { rem
         lat: value.lat as number,
         lon: value.lon as number,
         color: asColor(String(value.color)),
+        // A record made before places had icons has neither: the place goes back to a plain pin, which is what it was.
+        icon: asMarkerIcon(value.icon),
+        gpxSym: typeof value.gpxSym === "string" ? value.gpxSym : null,
         isFavorite: value.isFavorite === true,
         noteId: typeof value.noteId === "string" && pageRow(value.noteId) ? value.noteId : null,
       });

@@ -34,7 +34,7 @@ import { driveMergeActions, driveMerges } from "../../db/schema.ts";
 import { applyMerge, driveIsThere, type MergeRow, undoMerge } from "./apply.ts";
 import { diffLibraries, type MemoryEntry, toAnalysis } from "./diff.ts";
 import { fileInside, inspectDrive, openStaged, sourceFolderOf, stageDatabase } from "./drive.ts";
-import { LIMITS, readBaseline, readSnapshot, TooManyRows } from "./fingerprint.ts";
+import { hasColumn, LIMITS, readBaseline, readSnapshot, TooManyRows } from "./fingerprint.ts";
 
 type ActionRow = typeof driveMergeActions.$inferSelect;
 
@@ -532,7 +532,9 @@ export function createMergeService(ctx: AppContext): MergeService {
       }
       if (item.kind === "place") {
         const place = database
-          .prepare("SELECT name, note, lat, lon, color, updated_at AS updatedAt FROM markers WHERE id = ?")
+          .prepare(
+            `SELECT name, note, lat, lon, color, ${hasColumn(database, "markers", "icon") ? "icon" : "NULL AS icon"}, updated_at AS updatedAt FROM markers WHERE id = ?`,
+          )
           .get(itemId) as Record<string, unknown> | undefined;
         if (!place) return null;
         return {
@@ -541,6 +543,8 @@ export function createMergeService(ctx: AppContext): MergeService {
           fields: [
             { label: "Position", value: `${Number(place.lat).toFixed(5)}, ${Number(place.lon).toFixed(5)}` },
             { label: "Colour", value: words(place.color, 32) },
+            // Left out for a plain pin, and for a drive from before places had icons.
+            ...(typeof place.icon === "string" && place.icon !== "pin" ? [{ label: "Icon", value: words(place.icon, 32) }] : []),
           ],
           ...clip(words(place.note, 20_000)),
         };

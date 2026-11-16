@@ -33,6 +33,8 @@ export const LIMITS = {
   trackBytes: 20 * 1024 * 1024,
   title: 300,
   text: 20_000,
+  /** The symbol a place had in a GPX file; the same limit the GPX reader has. */
+  symbol: 2000,
 } as const;
 
 const ID_ONLY = /^[A-Za-z0-9_-]{1,64}$/;
@@ -81,6 +83,10 @@ export interface PlaceState {
   lat: number;
   lon: number;
   color: string;
+  /** Null when the database has no icons at all: a drive written before places had them. */
+  icon: string | null;
+  /** The symbol the place had in the GPX file it came from, if it came from one. */
+  gpxSym: string | null;
   isFavorite: boolean;
   noteId: string | null;
   createdAt: number;
@@ -202,8 +208,35 @@ export const documentHash = (
     sortedTagKeys(document.tags),
   ]);
 
-export const placeHash = (place: Pick<PlaceState, "name" | "note" | "lat" | "lon" | "color" | "isFavorite" | "noteId">): string =>
-  fingerprint(["place", place.name, place.note, place.lat, place.lon, place.color, place.isFavorite ? 1 : 0, place.noteId]);
+/**
+ * A place's icon, and the symbol it had in a GPX file, are part of its fingerprint only
+ * when there is something to say: a plain pin with no symbol has the fingerprint it had
+ * before places had icons. So a drive written by an Outpost from before then still
+ * compares equal, place for place, with a home that has since been updated, and
+ * `BASELINE_VERSION` did not have to change.
+ */
+export const placeHash = (
+  place: Pick<PlaceState, "name" | "note" | "lat" | "lon" | "color" | "isFavorite" | "noteId"> & Partial<Pick<PlaceState, "icon" | "gpxSym">>,
+): string => {
+  const icon = place.icon && place.icon !== "pin" ? place.icon : null;
+  const sym = place.gpxSym || null;
+  const parts: unknown[] = ["place", place.name, place.note, place.lat, place.lon, place.color, place.isFavorite ? 1 : 0, place.noteId];
+  if (icon || sym) parts.push(icon, sym);
+  return fingerprint(parts);
+};
+
+/** Whether a table has a plain stored column of this name. A generated column is an expression the database chose, and is not read. */
+export const hasColumn = (db: Sqlite, table: "markers", column: string): boolean =>
+  (db.prepare(`SELECT name, hidden FROM pragma_table_xinfo('${table}')`).all() as Array<{ name: unknown; hidden: unknown }>).some(
+    (entry) => entry.name === column && entry.hidden === 0,
+  );
+
+/**
+ * The columns of a place that came after the first drives were written, as SQL: the
+ * column where the database has it, and a null in its place where it does not.
+ */
+const placeExtras = (db: Sqlite): string =>
+  `${hasColumn(db, "markers", "icon") ? "icon" : "NULL AS icon"}, ${hasColumn(db, "markers", "gpx_sym") ? "gpx_sym" : "NULL AS gpx_sym"}`;
 
 export const trackHash = (track: Pick<TrackState, "name" | "description" | "color">, geojson: string): string =>
   fingerprint(["track", track.name, track.description, track.color, sha256Hex(geojson)]);
@@ -351,7 +384,7 @@ export async function readSnapshot(db: Sqlite, signal?: AbortSignal): Promise<Sn
   await walk(
     db,
     "markers",
-    "id, name, note, lat, lon, color, is_favorite, note_id, created_at, updated_at",
+    `id, name, note, lat, lon, color, is_favorite, note_id, created_at, updated_at, ${placeExtras(db)}`,
     LIMITS.places,
     "saved places",
     (row) => {
@@ -362,6 +395,8 @@ export async function readSnapshot(db: Sqlite, signal?: AbortSignal): Promise<Sn
         lat: real(row.lat),
         lon: real(row.lon),
         color: text(row.color, 32),
+        icon: optionalText(row.icon, 32),
+        gpxSym: optionalText(row.gpx_sym, LIMITS.symbol),
         isFavorite: flag(row.is_favorite),
         noteId: optionalId(row.note_id),
         createdAt: integer(row.created_at),
@@ -494,11 +529,21 @@ export function currentDocumentHash(db: Sqlite, id: string): string | null {
 
 export function currentPlaceHash(db: Sqlite, id: string): string | null {
   const row = db
-    .prepare("SELECT name, note, lat, lon, color, is_favorite AS favorite, note_id AS noteId FROM markers WHERE id = ?")
+    .prepare(`SELECT name, note, lat, lon, color, is_favorite AS favorite, note_id AS noteId, ${placeExtras(db)} FROM markers WHERE id = ?`)
     .get(id) as
-    | { name: string; note: string; lat: number; lon: number; color: string; favorite: number; noteId: string | null }
+    | {
+        name: string;
+        note: string;
+        lat: number;
+        lon: number;
+        color: string;
+        favorite: number;
+        noteId: string | null;
+        icon: string | null;
+        gpx_sym: string | null;
+      }
     | undefined;
-  return row ? placeHash({ ...row, isFavorite: flag(row.favorite) }) : null;
+  return row ? placeHash({ ...row, gpxSym: row.gpx_sym, isFavorite: flag(row.favorite) }) : null;
 }
 
 export function currentTrackHash(db: Sqlite, id: string): string | null {
@@ -583,13 +628,15 @@ export function writeBaseline(db: Sqlite, header: { madeFrom: string; writtenAt:
     insert.run("document", row.id, hash, null, 0);
   });
 
-  each("markers", "id, name, note, lat, lon, color, is_favorite, note_id", (row) => {
+  each("markers", `id, name, note, lat, lon, color, is_favorite, note_id, ${placeExtras(db)}`, (row) => {
     const hash = placeHash({
       name: String(row.name).slice(0, 200),
       note: String(row.note).slice(0, LIMITS.text),
       lat: row.lat as number,
       lon: row.lon as number,
       color: String(row.color).slice(0, 32),
+      icon: optionalText(row.icon, 32),
+      gpxSym: optionalText(row.gpx_sym, LIMITS.symbol),
       isFavorite: flag(row.is_favorite),
       noteId: optionalId(row.note_id),
     });

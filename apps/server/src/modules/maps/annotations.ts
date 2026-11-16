@@ -4,9 +4,11 @@
  * indexed for the app-wide search.
  */
 import {
+  asMarkerIcon,
   type Bbox,
   formatDecimal,
   MARKER_COLORS,
+  MARKER_ICONS,
   MAX_RECORDING_POINTS,
   type MarkerColor,
   type MarkerDto,
@@ -28,11 +30,14 @@ import { buildDrawnLine, type DrawnLine, routePointsSchema } from "./drawn-route
 import type { ElevationSampler } from "./elevation.ts";
 import { buildGpx, type GpxDocument, type GpxWaypoint, parseGpxSafely, splitCollection, type TrackCollection, trackStats } from "./gpx.ts";
 import { gpxCredit } from "./route-finder/credit.ts";
+import { GPX_LIMITS } from "./gpx-reader.ts";
+import { iconForSymbol, symbolForPlace } from "./waypoint-symbols.ts";
 
 type MarkerRow = typeof markers.$inferSelect;
 type TrackRow = typeof tracks.$inferSelect;
 
 const color = z.enum(MARKER_COLORS, { error: `Choose one of the marker colours: ${MARKER_COLORS.join(", ")}.` });
+const icon = z.enum(MARKER_ICONS, { error: `Choose one of the place icons: ${MARKER_ICONS.join(", ")}.` });
 const latitude = z.number().finite().min(-90, "Latitude must be between -90 and 90.").max(90, "Latitude must be between -90 and 90.");
 const longitude = z
   .number()
@@ -46,10 +51,18 @@ export const markerCreateSchema = z.object({
   lat: latitude,
   lon: longitude,
   color: color.optional(),
+  icon: icon.optional(),
   isFavorite: z.boolean().optional(),
   noteId: z.string().min(1).max(64).nullish(),
 });
 export const markerPatchSchema = markerCreateSchema.partial();
+
+/**
+ * A place as the service takes it. Beyond what a request may say, the server's own
+ * callers (a GPX import, a merge from a drive) may give the `<sym>` the place had in
+ * the file it came from. It is kept as written and never shown; see `symbolForPlace`.
+ */
+export type MarkerInput = z.infer<typeof markerCreateSchema> & { gpxSym?: string | null };
 
 export const trackPatchSchema = z.object({
   name: z.string().trim().min(1, "Give the track a name.").max(200).optional(),
@@ -122,8 +135,8 @@ function recordedLines(collection: TrackCollection): TrackCollection["features"]
 
 export interface AnnotationsService {
   listMarkers(): MarkerDto[];
-  createMarker(input: z.infer<typeof markerCreateSchema>): MarkerDto;
-  updateMarker(id: string, patch: z.infer<typeof markerPatchSchema>): MarkerDto;
+  createMarker(input: MarkerInput): MarkerDto;
+  updateMarker(id: string, patch: Partial<MarkerInput>): MarkerDto;
   removeMarker(id: string): void;
   listTracks(): TrackDto[];
   getTrack(id: string): TrackWithGeometryDto;
@@ -164,6 +177,9 @@ export interface AnnotationsService {
  */
 export const MAX_WAYPOINTS_AS_MARKERS = 5000;
 
+/** Characters kept of the symbol a place had in a GPX file: as many as the reader keeps of one. */
+const GPX_SYM_LENGTH = GPX_LIMITS.textLength;
+
 const asColor = (value: string): MarkerColor => ((MARKER_COLORS as readonly string[]).includes(value) ? (value as MarkerColor) : "teal");
 
 const toMarkerDto = (row: MarkerRow): MarkerDto => ({
@@ -173,6 +189,7 @@ const toMarkerDto = (row: MarkerRow): MarkerDto => ({
   lat: row.lat,
   lon: row.lon,
   color: asColor(row.color),
+  icon: asMarkerIcon(row.icon),
   isFavorite: row.isFavorite,
   noteId: row.noteId,
   createdAt: row.createdAt,
@@ -251,7 +268,7 @@ export function createAnnotationsService(ctx: AppContext, deps: { elevation: Ele
     });
   }
 
-  function insertMarker(input: z.infer<typeof markerCreateSchema>): MarkerRow {
+  function insertMarker(input: MarkerInput): MarkerRow {
     const now = Date.now();
     const id = newId();
     db.insert(markers)
@@ -262,6 +279,8 @@ export function createAnnotationsService(ctx: AppContext, deps: { elevation: Ele
         lat: input.lat,
         lon: input.lon,
         color: input.color ?? "teal",
+        icon: input.icon ?? "pin",
+        gpxSym: input.gpxSym?.slice(0, GPX_SYM_LENGTH) || null,
         isFavorite: input.isFavorite ?? false,
         noteId: input.noteId ?? null,
         createdAt: now,
@@ -329,6 +348,7 @@ export function createAnnotationsService(ctx: AppContext, deps: { elevation: Ele
         lat: row.lat,
         lon: row.lon,
         time: new Date(row.createdAt).toISOString(),
+        sym: symbolForPlace(asMarkerIcon(row.icon), row.gpxSym),
       }));
 
   return {
@@ -350,6 +370,8 @@ export function createAnnotationsService(ctx: AppContext, deps: { elevation: Ele
       if (patch.lat !== undefined) set.lat = patch.lat;
       if (patch.lon !== undefined) set.lon = patch.lon;
       if (patch.color !== undefined) set.color = patch.color;
+      if (patch.icon !== undefined) set.icon = patch.icon;
+      if (patch.gpxSym !== undefined) set.gpxSym = patch.gpxSym?.slice(0, GPX_SYM_LENGTH) || null;
       if (patch.isFavorite !== undefined) set.isFavorite = patch.isFavorite;
       if (patch.noteId !== undefined) set.noteId = patch.noteId;
       db.update(markers).set(set).where(eq(markers.id, id)).run();
@@ -404,6 +426,9 @@ export function createAnnotationsService(ctx: AppContext, deps: { elevation: Ele
                 lat,
                 lon,
                 color: input.color,
+                // A symbol Outpost knows becomes its icon; any other stays a plain pin. Either way the file's own word is kept.
+                icon: iconForSymbol(waypoint.properties.sym),
+                gpxSym: waypoint.properties.sym,
               }),
             );
           }

@@ -496,6 +496,10 @@ export const markers = sqliteTable("markers", {
   lat: real("lat").notNull(),
   lon: real("lon").notNull(),
   color: text("color").notNull().default("teal"),
+  /** One of `MARKER_ICONS`; "pin" is the plain dot. */
+  icon: text("icon").notNull().default("pin"),
+  /** The `<sym>` the place had in the GPX file it came from, as written there, so that exporting it again loses nothing. */
+  gpxSym: text("gpx_sym"),
   isFavorite: integer("is_favorite", { mode: "boolean" }).notNull().default(false),
   noteId: text("note_id"),
   createdAt: createdAt(),
