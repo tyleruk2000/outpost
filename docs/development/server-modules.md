@@ -106,9 +106,10 @@ ctx.services.search.upsert({
    request to the Host check, and every request that is not a `GET`, `HEAD` or
    `OPTIONS` to the `X-Outpost-Request` header and the same origin. That protection
    covers only those methods: a `GET` must never change anything.
-   The one route that asks where a request came from is "erase everything", which uses
-   `isLocalRequest` from `core/local.ts`; that is not a permission, and nothing else
-   should lean on it without a reason as strong.
+   The routes that ask where a request came from are "erase everything" and replacing
+   or deleting the HTTPS certificate authority, which use `isLocalRequest` from
+   `core/local.ts`; that is not a permission, and nothing else should lean on it
+   without a reason as strong.
 8. **Messages are for people.** Say what happened and what to do next, in plain words.
 
 ## Schema changes

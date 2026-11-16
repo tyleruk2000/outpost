@@ -208,12 +208,14 @@ export function createHttpsService(app: FastifyInstance, ctx: AppContext): Https
     }
   }
 
+  const signedBy = (current: ServerCertificate, from: Authority): boolean =>
+    current.certificate.checkIssued(from.certificate) && current.certificate.verify(from.certificate.publicKey);
+
   /** Whether the certificate in hand is still the right one: signed by this authority, for these names, with time left. */
   function stillGood(current: ServerCertificate, from: Authority, names: ServerName[]): boolean {
     const now = Date.now();
     return (
-      current.certificate.checkIssued(from.certificate) &&
-      current.certificate.verify(from.certificate.publicKey) &&
+      signedBy(current, from) &&
       current.certificate.validFromDate.getTime() <= now &&
       current.certificate.validToDate.getTime() - now > RENEW_BEFORE &&
       sameNames(
@@ -225,13 +227,17 @@ export function createHttpsService(app: FastifyInstance, ctx: AppContext): Https
 
   /** Makes sure there is an authority and a current server certificate. Returns whether the certificate is new. */
   async function ensureCertificates(): Promise<boolean> {
-    assertClock();
     authority ??= loadAuthority() ?? (await newAuthority());
+    server ??= loadServerCertificate();
+    // A computer that has lost track of the date cannot judge a certificate's dates, and
+    // must not date a new one. What it issued while its clock was right is still good to
+    // the phones, whose clocks are right, so it goes on serving that.
+    if (Date.now() < EARLIEST_CLOCK && server && signedBy(server, authority)) return false;
+    assertClock();
     if (authority.certificate.validToDate.getTime() <= Date.now()) {
       throw conflict("The certificate authority has expired. Make a new one from Settings, then trust it on each device again.");
     }
     const { names } = wantedNames(authority.permits);
-    server ??= loadServerCertificate();
     if (server && stillGood(server, authority, names)) return false;
     const issued = issueServerCertificate(authority, names);
     store.write("serverKey", issued.keyPem);
@@ -312,13 +318,15 @@ export function createHttpsService(app: FastifyInstance, ctx: AppContext): Https
       problem = null;
     } catch (error) {
       const code = (error as NodeJS.ErrnoException).code;
+      const said = problem;
       problem =
         error instanceof AppError
           ? error.message
           : code
             ? listenProblem(error as NodeJS.ErrnoException)
             : `HTTPS could not start: ${messageOf(error)}`;
-      ctx.log.warn(`HTTPS: ${problem}`);
+      // It is tried again every half minute; the log hears about it once.
+      if (problem !== said) ctx.log.warn(`HTTPS: ${problem}`);
     }
     watch(true);
   }
@@ -341,7 +349,7 @@ export function createHttpsService(app: FastifyInstance, ctx: AppContext): Https
       const before = `${server?.certificate.fingerprint256}|${Boolean(listener)}|${problem}`;
       await sync();
       if (always || before !== `${server?.certificate.fingerprint256}|${Boolean(listener)}|${problem}`) announce();
-    });
+    }).catch((error) => ctx.log.error({ err: error }, "HTTPS could not be brought into line with its setting"));
   }
 
   // ── Wiring ──
@@ -355,7 +363,8 @@ export function createHttpsService(app: FastifyInstance, ctx: AppContext): Https
   settings.onChange(() => void check(true));
   app.addHook("onListen", async () => {
     started = true;
-    await check();
+    // Not waited for: making keys the first time must not hold up plain HTTP.
+    void check();
   });
   ctx.onClose.push(async () => {
     started = false;

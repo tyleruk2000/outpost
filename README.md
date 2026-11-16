@@ -128,6 +128,11 @@ where you trust everyone, such as your home. Never forward the port to the inter
 and do not put Outpost behind a public reverse proxy unless the proxy itself asks
 people to authenticate.
 
+Browsers give a page a device's location, and a few other things, only at an `https`
+address. Outpost can provide one on your own network, with a certificate it makes for
+itself and each device is told once to trust: see
+[HTTPS on your network](docs/deployment.md#https-on-your-network).
+
 See [docs/deployment.md](docs/deployment.md) for every platform, for running without
 Docker, and for all settings.
 

@@ -55,6 +55,9 @@ public internet and must not be exposed to it.
   and portable drives are stored unencrypted. Anyone holding the disk can read them.
 - **An untrusted network.** On its own Outpost speaks plain HTTP. On a network you do
   not trust, content (and a share password as it is typed) can be observed and altered.
+  [HTTPS on the home network](#https-on-the-home-network) protects a device that
+  trusts Outpost's certificate and uses the `https` address; the `http` address stays
+  open beside it.
 - **A compromised helper.** Outpost trusts the kiwix-serve program, the embedding
   server and the model server you point it at. Whatever runs at the model server's
   address is sent your questions and passages of your documents.
@@ -74,6 +77,74 @@ public internet and must not be exposed to it.
 | LAN access is a start-up decision | `OUTPOST_LAN_ACCESS` cannot be changed from the browser. Without it the server refuses to start on an address other devices can reach (and, in a container, unless told its port is published on `127.0.0.1` only). | `apps/server/src/config.ts` |
 | Host allow-list | Requests whose `Host` header is not a name this server answers to are refused. This defeats DNS rebinding, where a hostile site points its own name at your machine. | `isAllowedHost` in `apps/server/src/core/guard.ts` |
 | kiwix-serve is never exposed | The browser reaches it only through Outpost's proxy. In Compose it has no published port. | `apps/server/src/modules/kiwix/`, `compose.yaml` |
+
+### HTTPS on the home network
+
+Optional, off by default, turned on in **Settings → HTTPS on your network**. Its
+purpose is to give a home network a secure address, which browsers require for
+location, service workers and the like, without a public domain or the internet. How to
+use it is in [deployment.md](deployment.md#https-on-your-network). It does not add
+accounts: everyone who can reach Outpost can still use all of it, over either address.
+
+| Control | Detail | Code |
+| --- | --- | --- |
+| A second listener, the same handler | HTTPS answers on its own port (`OUTPOST_HTTPS_PORT`, 8443) on the address the HTTP server listens on. Each request is handed to the HTTP server's own handler, so the Host check, the `X-Outpost-Request` rule, the origin checks, the security headers and the Content Security Policy are the same code on both. TLS 1.2 or later; HTTP/1.1 only. | `startListener` in `apps/server/src/modules/https/service.ts` |
+| No lock-in | Nothing redirects HTTP to HTTPS and no `Strict-Transport-Security` header is sent, so a device that does not trust the certificate, or a day when the certificate is wrong, never locks anyone out of the `http` address. A test asserts the header is absent on both. | `apps/server/test/https.test.ts` |
+| An authority of its own, per installation | Made on this server the first time HTTPS is turned on: RSA 3072, SHA-256, valid ten years. Nothing is shared between installations and nothing is fetched. | `createAuthority` in `modules/https/certificates.ts` |
+| The authority is limited | Critical name constraints permit only private and loopback address blocks, names under `local`, `lan`, `home`, `internal`, `home.arpa` and `localhost`, and the one-word host names known when it was made. Path length 0: it cannot make further authorities. Key usage is certificate signing only; extended key usage is server authentication only. Outpost itself refuses to sign for anything outside the limits. | `PRIVATE_BLOCKS`, `PRIVATE_SUFFIXES` in `modules/https/names.ts`; `permitsName` |
+| The server certificate | ECDSA P-256, signed with SHA-256, 398 days from start to end, a new key each time. The names are in the subject alternative name; it carries the server-authentication usage. That meets Apple's published requirements for certificates from a root a person adds (SHA-2, names in the SAN, the `serverAuth` usage, 825 days or fewer; RSA keys of 2048 bits or more). Re-issued when the server's addresses change or 30 days before it runs out. | `issueServerCertificate`; `ensureCertificates` in `service.ts` |
+| Where the keys are | `tls/` in the data directory, mode `0700`, with `ca.key` and `server.key` at `0600` (on Windows these modes mean nothing; protect the folder yourself). They are not encrypted: the server has to sign a new certificate unattended when its address changes. The folder is not one of those a backup, a portable drive or erase-everything touches. | `modules/https/store.ts` |
+| No route serves a key | The only thing read from `tls/` for a browser is the authority's public certificate (`GET /api/https/outpost-authority.crt`). A test asks for the keys by a list of guessed addresses over both listeners, and checks the backup archive. | `modules/https/index.ts`, `apps/server/test/https.test.ts` |
+| Certificates are checked before use | Outpost lays certificates out itself (Node cannot write one) and has Node sign them. Each one is then read back by Node and its signature, issuer and kind verified before it is saved or served. | `certificates.ts` |
+| Who may do what | Turning HTTPS on or off and listing another name are ordinary settings, open to every device: neither breaks anything that cannot be put back. Replacing or deleting the authority stops every device that trusted it from trusting Outpost, so those two are accepted only from the computer Outpost runs on, on the same terms as [erasing everything](#erasing-everything), including the `OUTPOST_ALLOW_REMOTE_ERASE` option. An authority that cannot be read is reported, never silently replaced. | `authorityRight` in `modules/https/index.ts`, `core/local.ts` |
+
+#### What trusting the certificate means
+
+A device that trusts the authority will believe any server holding a certificate the
+authority signed. Only this server has the authority's key, so in practice that is this
+Outpost. The risk is the key being copied: by someone with access to the data
+directory, or from a disk that leaves the house. Whoever has it can sign certificates
+of their own, and what those are good for depends on whether the device holds the
+authority to the limits written into it:
+
+| Where | Holds the authority to its limits? | How this is known |
+| --- | --- | --- |
+| iPhone, iPad, Mac (Safari and apps using the system's TLS; macOS 10.15 onwards by Apple's source, and by inference the iOS of the same year, iOS 13) | Yes | Apple's published source sets the permitted names from a trusted root's own constraints ([`SecPolicyServer.c`](https://github.com/apple-oss-distributions/Security/blob/main/trust/trustd/SecPolicyServer.c)). Checked here on macOS 15.6: `security verify-cert` accepts Outpost's chain and refuses a certificate for `www.example.com` or `8.8.8.8` signed by the same key. Not tried on an iPhone or iPad. |
+| Chrome and Edge on Windows, macOS and Linux, version 112 onwards | Yes | Chromium's policy note for [EnforceLocalAnchorConstraintsEnabled](https://chromium.googlesource.com/chromium/src/+/main/components/policy/resources/templates/policy_definitions/Miscellaneous/EnforceLocalAnchorConstraintsEnabled.yaml): "Starting in Google Chrome 112, such constraints in certificates loaded from the platform certificate store will now be enforced." Microsoft says the same of [Edge 112](https://learn.microsoft.com/en-us/deployedge/microsoft-edge-policies/enforcelocalanchorconstraintsenabled). Not tried. |
+| Firefox on a computer | Yes | Its certificate code checks the name constraints of every issuer, roots included (`pkixbuild.cpp`); an [independent test](https://alexsci.com/blog/name-non-constraint/) found the same on Firefox 108. Not tried. |
+| Chrome on Android | No | Chromium's source adds roots a person installed on Android as plain trust anchors, without the flag that enforces constraints (`net/cert/internal/trust_store_android.cc`). Read from source, not tried. |
+| Android itself (other apps that opt in to user certificates) | No | Conscrypt builds its trust anchors with no name constraints (`new TrustAnchor(cert, null)`), and Chromium's own tests expect Android to accept a certificate outside a root's constraints. Read from source, not tried. |
+| Windows itself (programs other than Edge and Chrome), Firefox for Android | Not known | No primary source found. |
+
+So on Apple devices and in desktop browsers, a copied key is good only for addresses on
+a private network and local names: someone already on your network could pass off
+another device on it, or this Outpost, as genuine. On an Android phone that trusts the
+authority, a copied key is good for any site, to someone in a position to intercept
+that phone's traffic. The answer in both cases is the same: keep the data directory
+private, and if the key may have been copied, make a new authority (Settings, at the
+computer Outpost runs on) and remove the old certificate from each device.
+
+Other things to know:
+
+- **The certificate is fetched over plain HTTP** the first time, on the network you are
+  trying to protect. Someone on that network at that moment could hand over a
+  certificate of their own. Settings shows the authority's SHA-256 fingerprint so it can
+  be compared with what the device shows before trusting it; download it at the
+  computer Outpost runs on and carry it over if you cannot trust the network even once.
+- **Browsers apply fewer rules to a root a person adds** than to public ones: Chrome
+  does not ask for Certificate Transparency or apply its lifetime limits
+  ([Chromium, certificate lifetimes](https://chromium.googlesource.com/chromium/src/+/main/net/docs/certificate_lifetimes.md)),
+  and Apple's 398-day limit "will not affect certificates issued from user-added or
+  administrator-added Root CAs" ([Apple, 102028](https://support.apple.com/en-us/102028)),
+  while its 825-day limit and the rest of
+  [its requirements](https://support.apple.com/en-us/103769) apply.
+- **The purpose limit on the authority** (server authentication only) is honoured by
+  Chrome, Edge and Firefox and ignored by Apple devices and Android, by the same
+  sources as above.
+- **Apple's documentation names RSA keys** for a certificate a person installs, and no
+  iPhone was available to try another kind, which is why the authority's key is RSA.
+- **HTTPS does not hide Outpost.** The plain address answers as before, to everyone who
+  could reach it before.
 
 ### Requests from other sites
 
@@ -463,8 +534,9 @@ readable only by you. See [storage.md](storage.md#connecting-a-network-share).
 4. **Encrypt drives that leave the house**: laptops, external disks and portable
    drives (BitLocker, FileVault, LUKS, VeraCrypt). Outpost does not encrypt anything
    at rest.
-5. **Protect the data directory.** It holds the database. On a shared computer, make
-   it readable only by the account that runs Outpost.
+5. **Protect the data directory.** It holds the database and, once HTTPS has been
+   turned on, the key of a certificate authority your devices trust (`tls/`). On a
+   shared computer, make it readable only by the account that runs Outpost.
 6. **Keep Outpost updated**, and keep kiwix-serve at the version in `compose.yaml`.
 7. **Add catalogue manifests only from people you trust.** A manifest decides which
    hosts downloads may start from.

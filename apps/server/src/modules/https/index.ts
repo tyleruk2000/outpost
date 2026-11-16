@@ -35,11 +35,8 @@ export async function registerHttps(app: FastifyInstance, ctx: AppContext): Prom
   /** Whether this request may replace or delete the certificate authority. */
   function authorityRight(request: FastifyRequest): HttpsAuthorityRight {
     if (ctx.config.allowRemoteErase) return { allowed: true, reason: "option", option: REMOTE_OPTION };
-    return {
-      allowed: isLocalRequest(request.raw, ctx.config),
-      reason: isLocalRequest(request.raw, ctx.config) ? "local" : "remote",
-      option: REMOTE_OPTION,
-    };
+    const local = isLocalRequest(request.raw, ctx.config);
+    return { allowed: local, reason: local ? "local" : "remote", option: REMOTE_OPTION };
   }
 
   function assertAuthorityRight(request: FastifyRequest): void {
@@ -56,8 +53,13 @@ export async function registerHttps(app: FastifyInstance, ctx: AppContext): Prom
   /**
    * The authority's public certificate, for a device to install and trust. DER is what
    * every device's installer reads; PEM (`?format=pem`) is for tools such as curl.
+   *
+   * The DER form is sent the way Apple's own example of handing an iPhone a root
+   * certificate sends it: this content type and no Content-Disposition, so that Safari
+   * treats it as a certificate to install and not as a file to put away. The address
+   * ends in the file's name, which is what other browsers save it as.
    */
-  app.get("/api/https/authority.crt", async (request, reply) => {
+  app.get("/api/https/outpost-authority.crt", async (request, reply) => {
     const { format } = z.object({ format: z.enum(["der", "pem"]).default("der") }).parse(request.query);
     const certificate = service.authorityCertificate();
     if (!certificate) throw notFound("The certificate authority (turn HTTPS on in Settings to make one)");
@@ -67,10 +69,7 @@ export async function registerHttps(app: FastifyInstance, ctx: AppContext): Prom
         .header("Content-Disposition", 'attachment; filename="outpost-authority.pem"')
         .send(certificate.pem);
     }
-    return reply
-      .header("Content-Type", "application/x-x509-ca-cert")
-      .header("Content-Disposition", 'attachment; filename="outpost-authority.crt"')
-      .send(certificate.der);
+    return reply.header("Content-Type", "application/x-x509-ca-cert").send(certificate.der);
   });
 
   app.post("/api/https/authority/replace", async (request) => {

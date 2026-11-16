@@ -318,6 +318,16 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   sources are fenced as data in the prompt, and an answer is drawn as words only, with
   no links but the citation markers Outpost builds.
 
+- HTTPS on the home network, optional and off by default (Settings → HTTPS on your
+  network): a second listener on port 8443 with a certificate from an authority Outpost
+  makes for itself, limited to private addresses and local names, so that phones get the
+  secure address browsers require for location and the like without a domain name or
+  the internet. Plain HTTP keeps working and nothing is redirected. Settings gives the
+  addresses, the certificate to download, and steps for trusting and removing it on
+  each kind of device. Replacing or deleting the authority is accepted only from the
+  computer Outpost runs on. Tested with Node, OpenSSL, curl and macOS; not on a real
+  iPhone, Android phone or Windows computer.
+
 #### Deployment
 
 - A Dockerfile for `linux/amd64` and `linux/arm64`, and a Compose stack that builds the

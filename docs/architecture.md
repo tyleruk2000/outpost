@@ -213,9 +213,13 @@ search uses GeoNames data loaded into FTS5.
 - There are no accounts: whoever can reach Outpost can use all of it. What is
   controlled is who can reach it, and what a browser can be tricked into doing. The
   rules are in `core/guard.ts`.
-- One action asks where a request came from: erasing a person's own notes and
-  documents is accepted only from the computer Outpost runs on, unless a start-up
-  option says otherwise (`core/local.ts`).
+- Two actions ask where a request came from: erasing a person's own notes and
+  documents, and replacing or deleting the HTTPS certificate authority, are accepted
+  only from the computer Outpost runs on, unless a start-up option says otherwise
+  (`core/local.ts`).
+- HTTPS for the home network is optional and off by default: a second listener with a
+  certificate from an authority Outpost makes for itself, limited to private addresses
+  and local names. The same request handler serves both listeners (`modules/https`).
 - Binds to localhost by default. Sharing it on the network is a start-up setting
   (`OUTPOST_LAN_ACCESS`), never changeable from the browser, and the server refuses to
   start on an address other devices can reach without it.
@@ -269,7 +273,7 @@ e2e/                 Playwright tests against the packaged app
 ```
 
 Modules, in registration order: search, semantic, retrieval, answers, documents, notes, imports,
-collections, books, kiwix, downloads, links, catalog, maps, backup, portable, merge, manage. A module may use the
+collections, books, kiwix, downloads, links, catalog, maps, backup, portable, merge, manage, https. A module may use the
 services of those before it. [development/server-modules.md](development/server-modules.md)
 is the contract a module works to.
 
@@ -291,6 +295,7 @@ These are deliberate, and stated so nobody has to discover them.
 | Portable drives | A drive is a copy, not a live sync partner. Changes made on it come home only when a person plugs it in and brings them back, one drive at a time, after reading a preview. Conflicts are settled per item, as whole pages: text is not merged line by line. Settings, the order of pages among their siblings, and the favourite mark on existing pages are not brought back. | Deliberate: nothing is overwritten that a person has not seen. Merging inside a page would need the editor to keep a history of edits (a CRDT), as live co-editing would. |
 | Bringing a drive back | Tested with two real libraries on one computer, with the drive as a folder. Not tried with a physical USB drive carried to a second computer and back, nor with a drive written by a genuinely older release (there is none yet; the tests strip the record from a drive to stand in for one). A drive is read up to 100,000 pages, 100,000 documents, 100,000 saved places, 20,000 tracks and a 32 GB database. A document removed at home because it was ticked in a merge cannot be brought back by undo. | A manual pass with a real drive. The limits are constants in `modules/merge/fingerprint.ts` and `drive.ts`. |
 | Windows without Docker | Untried. Nobody has run the server tests or the packaged app on Windows. | A manual pass on a Windows machine. |
+| HTTPS on the home network | Each device has to be told by hand to trust Outpost's certificate. Tested with Node, OpenSSL, curl and macOS's trust evaluation; never installed on a real iPhone, iPad, Android phone or Windows computer, nor trusted in a real browser. Android does not hold the certificate authority to its limits. In Docker a person has to publish the port and name the host's address. | A certificate browsers trust unaided needs a public domain name and the internet, which is what this avoids. A manual pass on real devices. See deployment.md and security.md. |
 | Access | No accounts and no per-person permissions: everyone who can reach Outpost can read, add, change and delete everything. | Outpost is for one household or one trusted network. Anything wider needs an authenticating proxy in front of it. |
 
 ## Dependency licences
@@ -311,6 +316,7 @@ written by `scripts/build-app.mjs` from the installed packages.
 | ONNX Runtime (`onnxruntime-web`), `@huggingface/tokenizers` | MIT, Apache-2.0 | Bundled; they run the embedding model. The runtime is the project's own WebAssembly build. The npm package carries no licence file, so the build takes the licence and third-party notices from the project's repository at the release's commit: `server/embed/LICENSE-onnxruntime.txt`, `ThirdPartyNotices-onnxruntime.txt`. |
 | BlockNote | MPL-2.0, with GPL add-ons | Not used. The editor is Tiptap (MIT) with Outpost's own blocks. |
 | `saxes`, `sax` (streaming XML parsers) | ISC; BlueOak-1.0.0 | Not used. GPX is read by Outpost's own small XML reader (`apps/server/src/modules/maps/gpx-xml.ts`). Looked at on 16 November 2026: `saxes` is strict but its repository is archived; `sax` is maintained but accepts XML that is not well-formed, and its licence is not one of the four above. `@tmcw/togeojson` and `@xmldom/xmldom`, which read GPX before, are no longer shipped; `@xmldom/xmldom` (MIT) remains for one test. |
+| `@peculiar/x509`, `selfsigned`, `node-forge` (X.509 certificate libraries) | MIT; MIT; BSD-3-Clause or GPL-2.0 | Not used. Node writes no certificates, so the HTTPS module lays them out itself (`apps/server/src/modules/https/der.ts`, `certificates.ts`: about 400 lines) and leaves keys, signing and reading back to Node. Looked at on 16 November 2026: `@peculiar/x509` 3.1.0 is maintained and MIT but brings nine direct dependencies, among them `tsyringe`, which needs `tslib` (0BSD, not one of the four licences above); `selfsigned` 5.5.0 wraps `@peculiar/x509` and `pkijs`; `node-forge` 1.4.3 carries its own cryptography in JavaScript. The `openssl` program is not used either: the Docker image does not have it. |
 | Atkinson Hyperlegible, Literata, Noto Sans | OFL-1.1 | Bundled fonts. |
 | Protomaps basemap styles | BSD-3-Clause (design CC0) | Bundled. |
 | maplibre-contour | BSD-3-Clause (includes code adapted from d3-contour, ISC, and vt-pbf, MIT) | Bundled in the web app. Traces contour lines in the browser from installed terrain. |

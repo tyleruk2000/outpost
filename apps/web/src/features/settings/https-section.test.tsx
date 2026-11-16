@@ -185,8 +185,9 @@ describe("HTTPS on your network, in Settings", () => {
     serve({ status: running() });
     show(on);
     const download = await screen.findByRole("link", { name: /Download certificate/ });
-    expect(download).toHaveAttribute("href", "/api/https/authority.crt");
-    expect(download).toHaveAttribute("download", "outpost-authority.crt");
+    expect(download).toHaveAttribute("href", "/api/https/outpost-authority.crt");
+    // An ordinary link, not a forced download: an iPhone has to see a certificate arrive to offer to install it.
+    expect(download).not.toHaveAttribute("download");
     expect(screen.getByText("Outpost on kitchen-pi (2026-11-16)")).toBeInTheDocument();
     expect(screen.getByText(authority?.fingerprint ?? "")).toBeInTheDocument();
     const meaning = screen.getByText(/Trusting it tells the device to believe a server that holds the matching key/);

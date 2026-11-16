@@ -51,8 +51,9 @@ On the map itself:
 Before any region is installed the map shows a plain outline of the world, which
 ships with Outpost, and offers the world overview as a first download.
 
-Not there yet: "locate me" needs HTTPS, which browsers require for location, so it
-explains this on a plain `http://` LAN address.
+"Locate me" needs a secure address, which browsers require for location. On a plain
+`http://` LAN address it says so and points to **Settings → HTTPS on your network**
+(see [deployment.md](deployment.md#https-on-your-network)).
 
 ## How regions work
 

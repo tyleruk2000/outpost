@@ -255,7 +255,7 @@ export function HttpsSection({
                 </p>
                 <div className="flex flex-wrap items-start gap-x-6 gap-y-3">
                   <Button asChild>
-                    <a href="/api/https/authority.crt" download={CERTIFICATE_FILE}>
+                    <a href="/api/https/outpost-authority.crt">
                       <Download /> Download certificate
                     </a>
                   </Button>

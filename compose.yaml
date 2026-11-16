@@ -26,6 +26,8 @@ services:
       # that it can refuse to be reachable from the network unless you chose that.
       OUTPOST_PUBLISHED_ADDRESS: ${OUTPOST_BIND:-127.0.0.1}
       OUTPOST_ALLOWED_HOSTS: ${OUTPOST_ALLOWED_HOSTS:-}
+      # The port HTTPS uses once it is turned on in Settings (see "ports" below).
+      OUTPOST_HTTPS_PORT: ${OUTPOST_HTTPS_PORT:-8443}
       OUTPOST_MAX_UPLOAD_MB: ${OUTPOST_MAX_UPLOAD_MB:-2048}
       OUTPOST_DOWNLOAD_HOSTS: ${OUTPOST_DOWNLOAD_HOSTS:-}
       OUTPOST_ALLOW_PRIVATE_DOWNLOADS: ${OUTPOST_ALLOW_PRIVATE_DOWNLOADS:-false}
@@ -36,6 +38,10 @@ services:
       # 127.0.0.1 keeps the port private to this machine. Set OUTPOST_BIND=0.0.0.0
       # together with OUTPOST_LAN_ACCESS=true to share it with everyone on your network.
       - "${OUTPOST_BIND:-127.0.0.1}:${OUTPOST_PORT:-8080}:8080"
+      # HTTPS, for after it is turned on in Settings → HTTPS on your network. Uncomment
+      # to publish it. The number is the same inside and outside the container, so that
+      # the addresses Settings shows are the ones to use. See docs/deployment.md.
+      # - "${OUTPOST_BIND:-127.0.0.1}:${OUTPOST_HTTPS_PORT:-8443}:${OUTPOST_HTTPS_PORT:-8443}"
     volumes:
       - outpost-data:/data
       - outpost-library:/storage/internal

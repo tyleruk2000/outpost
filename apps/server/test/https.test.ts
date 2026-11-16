@@ -415,11 +415,20 @@ async function start(env: Record<string, string> = {}, existing?: string): Promi
       return status();
     },
     async ca() {
-      const response = await app.api("GET", "/api/https/authority.crt?format=pem");
+      const response = await app.api("GET", "/api/https/outpost-authority.crt?format=pem");
       expect(response.status).toBe(200);
       return response.body as unknown as string;
     },
   };
+}
+
+/**
+ * A plain HTTP GET, read to the end. An answer left unread keeps its connection busy,
+ * and a server that is closing waits for busy connections.
+ */
+async function plain(url: string): Promise<{ status: number; headers: Headers; body: string }> {
+  const response = await fetch(url);
+  return { status: response.status, headers: response.headers, body: await response.text() };
 }
 
 const tls = (dir: string, name = "") => path.join(dir, "data", "tls", name);
@@ -439,7 +448,7 @@ describe("HTTPS on the home network", () => {
     const status = await w.status();
     expect(status).toMatchObject({ enabled: false, listening: false, problem: null, addresses: [], authority: null, unavailable: null });
     expect(fs.existsSync(tls(w.dir))).toBe(false);
-    const download = await w.app.api("GET", "/api/https/authority.crt");
+    const download = await w.app.api("GET", "/api/https/outpost-authority.crt");
     expect(download.status).toBe(404);
     expect(download.body.error.message).toMatch(/turn HTTPS on in Settings/);
   });
@@ -481,8 +490,8 @@ describe("HTTPS on the home network", () => {
       code: "UNABLE_TO_VERIFY_LEAF_SIGNATURE",
     });
     // Plain HTTP is untouched.
-    expect((await fetch(`${w.http}/api/health`)).status).toBe(200);
-    expect(await (await fetch(`${w.http}/settings`)).text()).toContain("<title>Outpost</title>");
+    expect((await plain(`${w.http}/api/health`)).status).toBe(200);
+    expect((await plain(`${w.http}/settings`)).body).toContain("<title>Outpost</title>");
   });
 
   it("holds HTTPS requests to the same guard as HTTP, and sends the same headers and no HSTS", async () => {
@@ -529,7 +538,7 @@ describe("HTTPS on the home network", () => {
     // The same headers on both, and nothing that would pin a browser to HTTPS.
     for (const route of ["/api/health", "/settings"]) {
       const overHttps = await secure(`${base}${route}`, ca);
-      const overHttp = await fetch(`${w.http}${route}`);
+      const overHttp = await plain(`${w.http}${route}`);
       const names = (headers: Iterable<[string, unknown]> | http.IncomingHttpHeaders) =>
         (Symbol.iterator in headers ? [...(headers as Iterable<[string, unknown]>)].map(([name]) => name) : Object.keys(headers))
           .filter((name) => !["date", "connection", "keep-alive"].includes(name))
@@ -648,8 +657,8 @@ describe("HTTPS on the home network", () => {
       "/server.key",
       "/api/https/ca.key",
       "/api/https/authority.key",
-      "/api/https/authority.crt/../ca.key",
-      "/api/https/authority.crt?format=key",
+      "/api/https/outpost-authority.crt/../ca.key",
+      "/api/https/outpost-authority.crt?format=key",
       "/api/https/server.key",
       "/assets/../../data/tls/ca.key",
       "/assets/%2e%2e/%2e%2e/data/tls/ca.key",
@@ -665,15 +674,16 @@ describe("HTTPS on the home network", () => {
     }
 
     // The two forms of the download hold the public certificate and nothing else.
-    const pem = await w.app.api("GET", "/api/https/authority.crt?format=pem");
+    const pem = await w.app.api("GET", "/api/https/outpost-authority.crt?format=pem");
     expect(pem.headers["content-type"]).toBe("application/x-pem-file");
     expect((pem.body as unknown as string).match(/-----BEGIN [A-Z ]+-----/g)).toEqual(["-----BEGIN CERTIFICATE-----"]);
-    const der = await w.app.app.inject({ method: "GET", url: "/api/https/authority.crt", headers: { host: "localhost" } });
+    const der = await w.app.app.inject({ method: "GET", url: "/api/https/outpost-authority.crt", headers: { host: "localhost" } });
     expect(der.headers["content-type"]).toBe("application/x-x509-ca-cert");
-    expect(der.headers["content-disposition"]).toBe('attachment; filename="outpost-authority.crt"');
+    // Sent as a certificate to install, not as a file to put away: that is what an iPhone acts on.
+    expect(der.headers["content-disposition"]).toBeUndefined();
     expect(new X509Certificate(der.rawPayload).fingerprint256).toBe(new X509Certificate(ca).fingerprint256);
     expect(der.rawPayload.equals(new X509Certificate(ca).raw)).toBe(true);
-    expect((await w.app.api("GET", "/api/https/authority.crt?format=key")).status).toBe(400);
+    expect((await w.app.api("GET", "/api/https/outpost-authority.crt?format=key")).status).toBe(400);
     // The status says only public things.
     expect(leaks(JSON.stringify(await w.status()))).toBe(false);
 
@@ -818,10 +828,18 @@ describe("HTTPS on the home network", () => {
     expect(await refused(before.port)).toBe(true);
     // The authority stays, so that turning it on again asks nothing of any device.
     expect(off.authority?.fingerprint).toBe(before.authority?.fingerprint);
-    expect((await w.app.api("GET", "/api/https/authority.crt")).status).toBe(200);
-    expect((await fetch(`${w.http}/api/health`)).status).toBe(200);
+    expect((await w.app.api("GET", "/api/https/outpost-authority.crt")).status).toBe(200);
+    expect((await plain(`${w.http}/api/health`)).status).toBe(200);
     const again = await w.on();
     expect((await secure(`https://127.0.0.1:${again.port}/api/health`, ca)).status).toBe(200);
+
+    // "Erase everything" puts settings back to their defaults: HTTPS goes off, the authority stays.
+    w.app.ctx.services.settings.reset();
+    await w.app.ctx.services.https.whenSettled();
+    const reset = await w.status();
+    expect(reset).toMatchObject({ enabled: false, listening: false });
+    expect(reset.authority?.fingerprint).toBe(before.authority?.fingerprint);
+    expect(fs.existsSync(tls(w.dir, "ca.key"))).toBe(true);
   });
 
   it("lets only the computer Outpost runs on replace or delete the authority", async () => {
@@ -850,7 +868,7 @@ describe("HTTPS on the home network", () => {
     }
     expect((await w.status()).authority?.fingerprint).toBe(before.authority?.fingerprint);
     // The phone may still turn HTTPS on and off and download the certificate: none of that breaks anything.
-    expect((await w.app.api("GET", "/api/https/authority.crt", undefined, phone)).status).toBe(200);
+    expect((await w.app.api("GET", "/api/https/outpost-authority.crt", undefined, phone)).status).toBe(200);
 
     // At the computer itself: a new authority, a new certificate, the same port.
     expect((await w.status()).authorityRight).toEqual({ allowed: true, reason: "local", option: "OUTPOST_ALLOW_REMOTE_ERASE" });
@@ -870,7 +888,7 @@ describe("HTTPS on the home network", () => {
     expect(fs.existsSync(tls(w.dir))).toBe(false);
     expect(await refused(before.port)).toBe(true);
     expect(w.app.ctx.services.settings.get("https.enabled")).toBe(false);
-    expect((await w.app.api("GET", "/api/https/authority.crt")).status).toBe(404);
+    expect((await w.app.api("GET", "/api/https/outpost-authority.crt")).status).toBe(404);
   });
 
   it("allows replacing from any device when the start-up option says so", async () => {
@@ -896,7 +914,7 @@ describe("HTTPS on the home network", () => {
     expect(status).toMatchObject({ enabled: true, listening: false, addresses: [] });
     expect(status.problem).toMatch(new RegExp(`Port ${port} is already in use on this computer`));
     expect(status.problem).toMatch(/OUTPOST_HTTPS_PORT/);
-    expect((await fetch(`${w.http}/api/health`)).status).toBe(200);
+    expect((await plain(`${w.http}/api/health`)).status).toBe(200);
   });
 
   it("does not replace an authority it cannot read, and says what to do", async () => {
@@ -923,6 +941,23 @@ describe("HTTPS on the home network", () => {
     expect(status).toMatchObject({ listening: false, authority: null });
     expect(status.problem).toMatch(/clock reads .* which cannot be right/);
     expect(fs.existsSync(tls(w.dir))).toBe(false);
+  });
+
+  it("goes on serving the certificate it has when the clock is lost after a restart", async () => {
+    const first = await start();
+    const before = await first.on();
+    const ca = await first.ca();
+    const served = (await secure(`https://127.0.0.1:${before.port}/api/health`, ca)).certificate.fingerprint256;
+    await first.app.close();
+
+    // A computer with no clock battery, started without a network.
+    const clock = vi.spyOn(Date, "now").mockReturnValue(Date.UTC(2001, 0, 1));
+    const w = await start({}, first.dir);
+    const status = await w.status();
+    expect(status).toMatchObject({ listening: true, problem: null });
+    clock.mockRestore();
+    // A phone, whose clock is right, still accepts it: it is the same certificate.
+    expect((await secure(`https://127.0.0.1:${status.port}/api/health`, ca)).certificate.fingerprint256).toBe(served);
   });
 
   it("is not offered from a portable drive", async () => {
