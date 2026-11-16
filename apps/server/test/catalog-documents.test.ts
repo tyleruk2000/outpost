@@ -78,7 +78,106 @@ async function download(target: TestApp) {
 const entryOf = async (target: TestApp) =>
   (await target.api("GET", "/api/catalog")).body.entries.find((entry: { id: string }) => entry.id === "usda.canning");
 
+/** A second entry whose address has no file name in it, as some publishers' repositories serve a book. */
+function shipNameless(target: TestApp, files: FileServer, pdf: Buffer): void {
+  files.routes.set("/bitstreams/4541/content", { body: pdf });
+  const file = path.join(target.dir, "catalog", "manifests", "publications.json");
+  const manifest = JSON.parse(fs.readFileSync(file, "utf8"));
+  manifest.entries.push({
+    ...manifest.entries[0],
+    id: "fao.garden",
+    name: "A Vegetable Garden: for All?",
+    source: {
+      type: "http",
+      url: files.url("/bitstreams/4541/content"),
+      sha256: createHash("sha256").update(pdf).digest("hex"),
+      sizeBytes: pdf.length,
+      version: "5th edition (2014)",
+    },
+  });
+  fs.writeFileSync(file, JSON.stringify(manifest));
+  target.ctx.services.catalog.reload();
+}
+
 describe("books and papers from the catalogue", () => {
+  it("names a file that came from an address with no file name after its title, so it can be read", async () => {
+    const { app } = await setup();
+    const pdf = buildPdf([["Beds", "Dig the bed twice as deep as the spade."]], { title: "Garden" });
+    shipNameless(app, server!, pdf);
+
+    const started = await app.api("POST", "/api/catalog/entries/fao.garden/download", {});
+    expect(started.status).toBe(200);
+    await waitFor(async () => (await app.api("GET", "/api/documents")).body.total === 1, "the document to appear");
+    await app.ctx.jobs.whenIdle();
+
+    const document = (await app.api("GET", "/api/documents")).body.documents[0];
+    // Named after its title and edition, without the punctuation a file name cannot hold; the entry's format gives the extension.
+    expect(document).toMatchObject({
+      title: "A Vegetable Garden: for All?",
+      type: "pdf",
+      originalName: "A Vegetable Garden for All, 5th edition (2014).pdf",
+      extraction: "done",
+    });
+    const entry = (await app.api("GET", "/api/catalog")).body.entries.find((each: { id: string }) => each.id === "fao.garden");
+    expect(entry).toMatchObject({ status: "installed", documentId: document.id });
+    const collection = (await app.api("GET", `/api/collections/${entry.collectionId}`)).body.collection;
+    expect(collection).toMatchObject({ locationId: document.locationId, relPath: document.relPath });
+    expect((await app.api("GET", "/api/search?q=spade&kinds=document")).body.results[0]).toMatchObject({ entityId: document.id });
+  });
+
+  it("hands over, at the next start, a catalogue document an earlier version left out of the library", async () => {
+    const { app: first } = await setup();
+    const pdf = buildPdf([["Beds", "Dig the bed twice as deep as the spade."]], { title: "Garden" });
+    // As it was left: the file under its nameless name, a collection record, and no document.
+    const location = first.ctx.services.storage.getDefault();
+    const relPath = "collections/files/content_5th edition (2014)";
+    fs.mkdirSync(path.dirname(path.join(location.path, relPath)), { recursive: true });
+    fs.writeFileSync(path.join(location.path, relPath), pdf);
+    const left = await first.ctx.services.collections.create({
+      kind: "file",
+      title: "A Vegetable Garden for All",
+      locationId: location.id,
+      relPath,
+      catalogEntryId: "fao.garden",
+      publisher: "FAO",
+      // No edition recorded: the file keeps the name it has, and the catalogue's title is kept over the PDF's own ("Garden").
+      meta: { format: "pdf", homepage: "https://example.org/garden" },
+    });
+    // And one that is not a document at all: it is left exactly as it is.
+    fs.writeFileSync(path.join(location.path, "collections/files/notes.bin"), "not a document");
+    const other = await first.ctx.services.collections.create({
+      kind: "file",
+      title: "Something else",
+      locationId: location.id,
+      relPath: "collections/files/notes.bin",
+      meta: { format: "other" },
+    });
+    // Stop the server without removing its folder.
+    await first.app.close();
+
+    app = await createTestApp({}, first.dir);
+    const second = app;
+    // The document is made first and then told who published it.
+    await waitFor(async () => (await second.api("GET", "/api/documents")).body.documents[0]?.author === "FAO", "the document to appear");
+    await second.ctx.jobs.whenIdle();
+    const document = (await second.api("GET", "/api/documents")).body.documents[0];
+    expect(document).toMatchObject({
+      title: "A Vegetable Garden for All",
+      type: "pdf",
+      originalName: "content_5th edition (2014).pdf",
+      author: "FAO",
+    });
+    const collection = (await second.api("GET", `/api/collections/${left.id}`)).body.collection;
+    expect(collection).toMatchObject({ status: "installed", relPath: document.relPath });
+    expect(collection.meta.documentId).toBe(document.id);
+    expect(fs.existsSync(path.join(location.path, document.relPath))).toBe(true);
+    expect(fs.existsSync(path.join(location.path, relPath))).toBe(false);
+    expect((await second.api("GET", `/api/collections/${other.id}`)).body.collection).toMatchObject({
+      relPath: "collections/files/notes.bin",
+    });
+    expect(fs.readFileSync(path.join(location.path, "collections/files/notes.bin"), "utf8")).toBe("not a document");
+  });
+
   it("arrive in the document library: searchable by page, with their source recorded", async () => {
     const { app } = await setup();
     await download(app);

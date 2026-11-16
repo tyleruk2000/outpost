@@ -16,8 +16,41 @@ import { CATALOG_CATEGORIES } from "@outpost/shared";
 import { eq } from "drizzle-orm";
 import type { AppContext } from "../../core/context.ts";
 import { collections as collectionsTable } from "../../db/schema.ts";
+import { formatForName } from "../documents/file-types.ts";
 
-const DOCUMENT_FORMATS = new Set(["pdf", "epub", "html", "markdown"]);
+/** Catalogue formats that are documents, and the file extension each is known by. */
+const DOCUMENT_EXTENSIONS: Record<string, string> = { pdf: "pdf", epub: "epub", html: "html", markdown: "md" };
+const DOCUMENT_FORMATS = new Set(Object.keys(DOCUMENT_EXTENSIONS));
+
+/**
+ * The name the document library is given for a catalogue file. Usually the file's own.
+ * Some publishers serve a book from an address with no file name in it (".../content",
+ * ".../4541"), so the downloaded file has no extension and the library could not tell
+ * what it is. The catalogue entry says what it is; such a file is named after its
+ * title and edition, with the extension of the format the entry states. The library
+ * still checks the file's first bytes against that, so a wrong entry is refused, not
+ * believed.
+ */
+export function documentNameFor(fileName: string, entry: { title: string; version?: string | null; format: string }): string {
+  try {
+    if (formatForName(fileName).type === entry.format) return fileName;
+  } catch {
+    // No extension, or one the library does not know.
+  }
+  const ext = DOCUMENT_EXTENSIONS[entry.format];
+  const clean = (text: string) =>
+    text
+      .replace(/[\\/:*?"<>|]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  const title = clean(entry.title).slice(0, 120);
+  const version = clean(entry.version ?? "").slice(0, 60);
+  // A file named exactly as its title looks to the library like one nobody has named,
+  // and the title inside the PDF (often a typist's working name) would replace the
+  // catalogue's. Without an edition to tell them apart, the file keeps its own name.
+  if (!title || !version) return `${clean(fileName) || "document"}.${ext}`;
+  return `${title}, ${version}.${ext}`;
+}
 const labelOf = (slug: string | null) => CATALOG_CATEGORIES.find((category) => category.slug === slug)?.label ?? slug ?? undefined;
 
 export interface DocumentBridge {
@@ -53,7 +86,11 @@ export function registerDocumentBridge(ctx: AppContext): DocumentBridge {
       const filePath = collections.absolutePath(collection.id);
       const outcome = await documents.ingestFile({
         sourcePath: filePath,
-        originalName: path.basename(filePath),
+        originalName: documentNameFor(path.basename(filePath), {
+          title: collection.title,
+          version: collection.version,
+          format: String(collection.meta.format),
+        }),
         title: collection.title,
         category: labelOf(collection.category),
         locationId: collection.locationId,
@@ -144,5 +181,25 @@ export function registerDocumentBridge(ctx: AppContext): DocumentBridge {
       void reconcile().catch((error) => ctx.log.warn({ err: error }, "catalogue documents could not be reconciled"));
   });
   ctx.onClose.push(stop);
+
+  /**
+   * Catalogue documents that were installed but never reached the document library
+   * (an earlier version could not name a file that came without an extension, or the
+   * storage was away at the time) are handed over now. Each is tried once per start.
+   */
+  async function adoptLeftBehind(): Promise<void> {
+    for (const row of collections.list({ kind: "file" })) {
+      if (row.status !== "installed" || documentIdOf(row.meta) || !DOCUMENT_FORMATS.has(String(row.meta.format))) continue;
+      // A book made of chapters is a folder, and the books module keeps it.
+      if (row.meta.book) continue;
+      if (!ctx.services.storage.isAvailable(row.locationId)) continue;
+      await adopt(row.id);
+    }
+  }
+  // After start-up has finished, and never in its way.
+  const later = setTimeout(() => {
+    void adoptLeftBehind().catch((error) => ctx.log.warn({ err: error }, "catalogue documents left behind could not be added"));
+  }, 0);
+  ctx.onClose.push(() => clearTimeout(later));
   return { adopt };
 }
