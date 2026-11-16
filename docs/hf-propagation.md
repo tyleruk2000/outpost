@@ -46,6 +46,19 @@ Read [What it is not](#what-it-is-not) before relying on it.
 Press **Predict**. The first time, **Try London to Birmingham on 40 m** fills the form
 in and runs it.
 
+### Saved predictions
+
+**Save this prediction** keeps the question under a name. **Open** asks that question
+again, with whatever data is installed then, and a notice above the answer names the
+saved prediction and the date it is for, which is the date it was saved with and not
+today's.
+
+An antenna is shown as the generic antenna or the profile that is exactly the antenna
+that was saved. If the profile has been changed or deleted since, the antenna is listed
+as **As saved** and is run as it was saved; another antenna is never put in its place.
+If the form cannot ask exactly what was saved, nothing is predicted and the screen says
+what would not be the same.
+
 ### Reading the answer
 
 - **The notice at the top** says what kind of knowledge the answer rests on and how old
