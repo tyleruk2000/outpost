@@ -5,9 +5,17 @@
  * scripts included, and must not share Outpost's origin. The frame cannot be inspected
  * from here, so a small script the server adds to each page reports which article is
  * showing and hands over links that leave the library.
+ *
+ * A collection that is a set of documents with a list, and not a web site, is shown as
+ * that list, drawn here from what the server read out of it (document-list.tsx): its own
+ * page cannot draw it inside the sandbox.
  */
 import {
   ARCHIVE_FILE,
+  type ArchiveDocument,
+  type ArchiveDocumentFile,
+  type ArchiveDocumentsResponse,
+  archiveFileKind,
   isSavableLink,
   type PageFile,
   type ReferenceBookResponse,
@@ -15,9 +23,9 @@ import {
   type ReferenceSuggestion,
 } from "@outpost/shared";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { ArrowLeft, House, Search, X } from "lucide-react";
+import { ArrowLeft, Files, House, Search, X } from "lucide-react";
 import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useParams, useSearchParams } from "react-router";
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router";
 import { ErrorState, Notice, Page } from "@/components/page";
 import { Highlighted } from "@/components/search-hit";
 import { Button } from "@/components/ui/button";
@@ -25,9 +33,21 @@ import { Skeleton, Tooltip } from "@/components/ui/misc";
 import { api } from "@/lib/api";
 import { cn, formatNumber } from "@/lib/utils";
 import { ArchiveFile } from "./archive-file";
+import { ArchiveMedia } from "./archive-media";
+import { DocumentList } from "./document-list";
 import { ExternalLinkNotice, LinkedFiles } from "./linked-files";
 
 const encodePath = (path: string) => path.split("/").map(encodeURIComponent).join("/");
+
+/** The address's query with a file of the collection open over the page, or with none. */
+const withFile = (path: string | undefined) => (before: URLSearchParams) => {
+  const next = new URLSearchParams(before);
+  if (path === undefined) next.delete("file");
+  else next.set("file", path);
+  return next;
+};
+/** Marks a step in the history as a file opened from the reader, so that closing it can go back one step. */
+const OPENED_HERE = { state: { openedHere: true } };
 
 function useDebounced<T>(value: T, delay: number): T {
   const [debounced, setDebounced] = useState(value);
@@ -41,6 +61,10 @@ function useDebounced<T>(value: T, delay: number): T {
 export default function ReaderPage() {
   const { collectionId = "", "*": routePath = "" } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  // What follows the "?" in the address, for the listener below, which outlives any one value of it.
+  const search = useRef(location.search);
+  search.current = location.search;
   const frameRef = useRef<HTMLIFrameElement>(null);
   /** The article the frame is showing, as last reported by the page itself. */
   const shownPath = useRef<string | null>(null);
@@ -52,7 +76,16 @@ export default function ReaderPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const openFile = searchParams.get("file") ?? undefined;
   const [fileLabels] = useState(() => new Map<string, string>());
-  const [query, setQuery] = useState("");
+  // Titles the collection's own list gives its files, for the document a file becomes when it is added.
+  const [fileTitles] = useState(() => new Map<string, string>());
+  // In a collection that lists documents: ?view=page shows its own page in place of Outpost's list.
+  const ownPage = searchParams.get("view") === "page";
+  // ?q=<words> arrives with a search result that leads to a document in such a list.
+  const asked = searchParams.get("q");
+  const [query, setQuery] = useState(asked ?? "");
+  useEffect(() => {
+    if (asked !== null) setQuery(asked);
+  }, [asked]);
   const [searchFor, setSearchFor] = useState<string>();
   const [focused, setFocused] = useState(false);
   const debounced = useDebounced(query.trim(), 160);
@@ -62,6 +95,21 @@ export default function ReaderPage() {
     queryFn: () => api.get<ReferenceBookResponse>(`/api/kiwix/books/${collectionId}`),
   });
   const contentBase = book.data?.book.contentBase;
+  const ready = book.data?.book.ready === true;
+
+  // Whether this collection is a list of documents. Asked once; the frame waits for the answer,
+  // so that a page which could only stay empty is never loaded just to be covered up.
+  const shape = useQuery({
+    queryKey: ["kiwix", "documents", collectionId, "shape"],
+    queryFn: () => api.get<ArchiveDocumentsResponse>(`/api/kiwix/books/${collectionId}/documents`, { limit: 0 }),
+    enabled: ready,
+    staleTime: Number.POSITIVE_INFINITY,
+  });
+  const list = shape.data?.list ?? null;
+  const deciding = ready && shape.isPending;
+  /** On the page that would have drawn the list, which is where Outpost draws it. */
+  const listMode = list !== null && (routePath === "" || routePath === list.home);
+  const showDocuments = listMode && (!ownPage || query.trim() !== "");
 
   // The frame's address is set once per deliberate navigation (opening the reader, a
   // search result, the home button). Links clicked inside the frame change the frame
@@ -111,7 +159,8 @@ export default function ReaderPage() {
           setPageFiles([]);
           setExternal(undefined);
           shownPath.current = path;
-          navigate(`/library/read/${collectionId}/${encodePath(path)}`, { replace: true });
+          // Only the page changed; what is open over it, and how it is being looked at, stay.
+          navigate({ pathname: `/library/read/${collectionId}/${encodePath(path)}`, search: search.current }, { replace: true });
         }
       } else if (data.type === "outpost:external" && typeof data.href === "string" && /^https?:\/\//.test(data.href)) {
         setExternal(data.href.slice(0, 2000));
@@ -119,7 +168,7 @@ export default function ReaderPage() {
         const path = insidePath(data.path);
         if (!path) return;
         if (typeof data.text === "string" && data.text) fileLabels.set(path, data.text.slice(0, 200));
-        setSearchParams({ file: path });
+        setSearchParams(withFile(path), OPENED_HERE);
       } else if (data.type === "outpost:links" && Array.isArray(data.links)) {
         const found: PageFile[] = [];
         for (const item of data.links.slice(0, 300) as Array<{ href?: unknown; text?: unknown; inside?: unknown }>) {
@@ -139,10 +188,22 @@ export default function ReaderPage() {
     return () => window.removeEventListener("message", onMessage);
   }, [contentBase, collectionId, navigate, setSearchParams, fileLabels]);
 
+  const closeFile = () => {
+    if ((location.state as { openedHere?: boolean } | null)?.openedHere) return navigate(-1);
+    // Arrived at the file directly (a search result, a saved address): there is no step to go back to.
+    setSearchParams(withFile(undefined), { replace: true });
+  };
+  const openListed = (file: ArchiveDocumentFile, document: ArchiveDocument) => {
+    const alone = document.files.length === 1;
+    fileLabels.set(file.path, alone ? document.title : `${document.title}: ${file.name}`);
+    if (alone) fileTitles.set(file.path, document.title);
+    setSearchParams(withFile(file.path), OPENED_HERE);
+  };
+
   const suggestions = useQuery({
     queryKey: ["kiwix", "suggest", collectionId, debounced],
     queryFn: () => api.get<{ suggestions: ReferenceSuggestion[] }>(`/api/kiwix/books/${collectionId}/suggest`, { q: debounced }),
-    enabled: focused && debounced.length > 1 && !searchFor,
+    enabled: focused && debounced.length > 1 && !searchFor && !listMode,
     placeholderData: keepPreviousData,
     select: (data) => data.suggestions,
   });
@@ -161,7 +222,8 @@ export default function ReaderPage() {
   };
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    if (query.trim()) setSearchFor(query.trim());
+    // A list of documents is searched as it is typed into; there is no full text behind it to send the words to.
+    if (query.trim() && !listMode) setSearchFor(query.trim());
   };
 
   const title = book.data?.book.title;
@@ -194,7 +256,16 @@ export default function ReaderPage() {
     );
   }
 
-  const showSuggestions = focused && !searchFor && debounced.length > 1 && (suggestions.data?.length ?? 0) > 0;
+  const showSuggestions = focused && !searchFor && !listMode && debounced.length > 1 && (suggestions.data?.length ?? 0) > 0;
+  const searchLabel = listMode ? `Search the documents in ${title}` : `Search in ${title}`;
+  const openKind = openFile && !openFile.split("/").includes("..") ? archiveFileKind(openFile) : undefined;
+  const openLabel = openFile
+    ? (fileLabels.get(openFile) ??
+      pageFiles.find((file) => file.kind === "archive" && file.path === openFile)?.text ??
+      openFile.split("/").pop() ??
+      openFile)
+    : "";
+  const backLabel = listMode && !ownPage ? "Back to the list" : "Back to the page";
 
   return (
     <div className="flex h-dvh flex-col max-md:h-[calc(100dvh-3.25rem)] max-md:pb-14">
@@ -227,9 +298,9 @@ export default function ReaderPage() {
               setSearchFor(undefined);
               setQuery("");
             }}
-            placeholder={`Search in ${title}`}
-            aria-label={`Search in ${title}`}
-            disabled={!book.data.book.ready}
+            placeholder={listMode ? "Search these documents" : searchLabel}
+            aria-label={searchLabel}
+            disabled={!ready}
             className="h-9 w-full rounded-control border border-border-strong bg-page pr-3 pl-9 text-small text-ink placeholder:text-ink-faint focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus/30 max-md:h-11 [&::-webkit-search-cancel-button]:hidden"
           />
           {showSuggestions ? (
@@ -261,7 +332,24 @@ export default function ReaderPage() {
       </header>
 
       {external ? <ExternalLinkNotice href={external} foundIn={title ?? ""} onDismiss={() => setExternal(undefined)} /> : null}
-      {!external && !openFile && collectionId ? <LinkedFiles collectionId={collectionId} files={pageFiles} foundIn={title ?? ""} /> : null}
+      {!external && !openFile && collectionId && !listMode ? (
+        <LinkedFiles collectionId={collectionId} files={pageFiles} foundIn={title ?? ""} />
+      ) : null}
+      {listMode && ownPage && !showDocuments && !openFile ? (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-border bg-surface px-3 py-2 text-small text-ink-muted md:px-4">
+          <Files aria-hidden className="size-4 shrink-0" />
+          <p className="min-w-0 flex-1">This is the collection's own page. It cannot draw its list of documents here.</p>
+          <Button size="sm" variant="secondary" onClick={() => open("")}>
+            Show the documents
+          </Button>
+        </div>
+      ) : null}
+      {shape.data?.problem && !openFile ? (
+        <div className="flex items-start gap-x-3 border-b border-border bg-surface px-3 py-2 text-small text-ink-muted md:px-4">
+          <Files aria-hidden className="mt-0.5 size-4 shrink-0" />
+          <p className="min-w-0 flex-1">{shape.data.problem} Its own page is shown instead, and its list may stay empty.</p>
+        </div>
+      ) : null}
 
       <div className="relative min-h-0 flex-1">
         {!book.data.book.ready ? (
@@ -270,9 +358,14 @@ export default function ReaderPage() {
               {book.data.reason}
             </Notice>
           </Page>
+        ) : deciding ? (
+          <Page width="reading" aria-busy>
+            <Skeleton className="h-8 w-64" />
+            <Skeleton className="mt-6 h-64" />
+          </Page>
         ) : (
           <>
-            {frameSrc ? (
+            {frameSrc && !(listMode && !ownPage) ? (
               <iframe
                 ref={frameRef}
                 key={collectionId}
@@ -281,22 +374,44 @@ export default function ReaderPage() {
                 // No allow-same-origin: the page gets an origin of its own and cannot reach Outpost.
                 sandbox="allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
                 referrerPolicy="no-referrer"
-                className={cn("size-full border-0 bg-white", searchFor && "invisible")}
+                className={cn("size-full border-0 bg-white", (searchFor || showDocuments) && "invisible")}
               />
             ) : null}
-            {openFile && contentBase && collectionId && ARCHIVE_FILE.test(openFile) && !openFile.split("/").includes("..") ? (
+            {showDocuments && contentBase && collectionId ? (
+              <DocumentList
+                collectionId={collectionId}
+                contentBase={contentBase}
+                description={book.data.book.description}
+                query={debounced}
+                covered={Boolean(openFile)}
+                onClearQuery={() => setQuery("")}
+                onOpen={openListed}
+                onShowOwnPage={() => {
+                  setQuery("");
+                  setSearchParams({ view: "page" });
+                }}
+              />
+            ) : null}
+            {openFile && contentBase && collectionId && (openKind === "pdf" || openKind === "epub") ? (
               <ArchiveFile
                 key={openFile}
                 collectionId={collectionId}
                 url={`${contentBase}${encodePath(openFile)}`}
                 path={openFile}
-                label={
-                  fileLabels.get(openFile) ??
-                  pageFiles.find((file) => file.kind === "archive" && file.path === openFile)?.text ??
-                  openFile.split("/").pop() ??
-                  openFile
-                }
-                onClose={() => navigate(-1)}
+                label={openLabel}
+                title={fileTitles.get(openFile)}
+                backLabel={backLabel}
+                onClose={closeFile}
+              />
+            ) : null}
+            {openFile && contentBase && (openKind === "audio" || openKind === "video") ? (
+              <ArchiveMedia
+                key={openFile}
+                url={`${contentBase}${encodePath(openFile)}`}
+                path={openFile}
+                label={openLabel}
+                backLabel={backLabel}
+                onClose={closeFile}
               />
             ) : null}
             {searchFor ? (

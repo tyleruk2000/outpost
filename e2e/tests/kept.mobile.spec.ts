@@ -19,7 +19,7 @@ import { api, expect, test } from "./fixtures";
 const root = path.resolve(import.meta.dirname, "../..");
 const fromSource = process.env.OUTPOST_E2E_SOURCE === "1";
 const entry = fromSource ? path.join(root, "apps/server/src/index.ts") : path.join(root, "dist/app/server/outpost.mjs");
-const port = Number(process.env.OUTPOST_E2E_KEPT_PORT ?? Number(process.env.OUTPOST_E2E_PORT ?? 8471) + 4);
+const port = Number(process.env.OUTPOST_E2E_KEPT_PORT ?? Number(process.env.OUTPOST_E2E_PORT ?? 8471) + 6);
 const origin = `http://localhost:${port}`;
 const work = path.join(process.env.OUTPOST_E2E_WORK!, "kept");
 const storage = path.join(work, "storage");

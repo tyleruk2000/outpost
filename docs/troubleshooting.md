@@ -292,6 +292,49 @@ growing pauses; the last line the program printed is included in the message.
 - **"This collection is not ready to read yet."** kiwix-serve needs a moment to
   notice a newly installed archive. Wait a few seconds and reload.
 
+### A collection opens as a list of documents
+
+Some collections are not copies of web sites. They are a set of files (PDFs, sound
+recordings, films) with a list of them, made with openZIM's "nautilus" tool; the Post
+Disaster Resource Library is one. Such a collection has a single page of its own,
+which draws the list in the browser from a database the browser keeps for that page.
+Outpost shows every collection's pages in a sandbox where a page has no such storage,
+so that page draws its header and nothing else.
+
+Outpost reads the collection's list itself and shows it in the reader:
+
+- The search box above it looks through titles, authors, descriptions and file names
+  as you type. Each word must start a word: "pur" finds "purification".
+- A PDF or e-book opens over the list, with **Add to library**; the same button is on
+  each line of the list. The document takes the title the collection gives it.
+- A sound recording or a film plays in the browser's own player. Which kinds play is
+  up to the browser; a WAV recording and a WebM film were tried in Chromium. When a
+  file cannot be played, **Open the file** hands it to the browser, which can save it.
+- Any other kind of file (a spreadsheet, an archive) is a link that opens in a new tab.
+- **Show the collection's own page**, under the list, shows the page as the collection
+  made it. It will usually be empty, for the reason above.
+
+If you see a line saying the collection's list could not be read:
+
+- "…from a file that is not where Outpost looks for it." The collection was made with
+  a version of nautilus older than 1.0.8 (October 2022), which laid its files out
+  differently, or with a changed copy of the tool. Outpost has not been tried against
+  one and shows its own page.
+- "…is larger than Outpost reads (4 MB)." About 25,000 documents of ordinary length.
+- "…is not written the way Outpost reads it." The list is a script, and Outpost reads
+  it without running it. Anything in it beyond a plain list is refused whole.
+
+Only the first 20,000 documents of a list are read, and at most 50 files of any one
+document; the list says so when it has been cut short. An entry that names no file
+inside the collection is left out, and counted under the list.
+
+What has been tried: one real collection (Post Disaster Resource Library, May 2024,
+108 PDFs, carrying the same script as nautilus 1.2.1), read through kiwix-serve; and a stand-in of the
+same shape for the tests, with files in folders, several files to a document, a WAV
+recording and names with awkward characters. Film was tried by hand with one WebM
+clip. No collection holding real recordings or films, and none from before October
+2022, was to hand.
+
 ### A link in a reference page shows a notice instead of opening
 
 Pressing a link in a reference page does one of three things:

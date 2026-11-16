@@ -23,6 +23,7 @@ import type { AppContext } from "../../core/context.ts";
 import { AppError, badRequest, notFound } from "../../core/errors.ts";
 import type { CollectionRow } from "../collections/service.ts";
 import type { SearchResult, SearchSource } from "../search/service.ts";
+import { type DocumentLists, registerDocumentLists } from "./document-lists.ts";
 import { registerArchiveFiles } from "./files.ts";
 import { bookNameOf, decodeEntities, type LibraryBook, readZimUuid, writeLibrary } from "./library.ts";
 import { createKiwixConnection, type KiwixConnection } from "./server.ts";
@@ -241,14 +242,19 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
     await sync();
   }
 
+  // Set further down, once the routes it needs exist; nothing is installed or removed before then.
+  let lists: DocumentLists | undefined;
   collections.onInstalled(async (row) => {
     if (row.kind !== "zim") return;
     await sync();
     void enrich(row.id);
+    const fresh = collections.get(row.id);
+    if (fresh) lists?.warm(fresh);
   });
   collections.onRemoved(async (row) => {
     // Runs before the file is deleted, so kiwix-serve lets go of it first.
     if (row.kind !== "zim") return;
+    lists?.forget(row.id);
     const remaining = zimCollections().filter((other) => other.id !== row.id && servable(other));
     await writeLibrary(config.kiwix.libraryPath, remaining.map(toLibraryBook));
   });
@@ -373,25 +379,41 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
       const books = zimCollections().filter(servable).slice(0, 24);
       const perBook = Math.max(3, Math.ceil((limit * 1.5) / Math.max(books.length, 1)));
       const answers = await Promise.allSettled(books.map((row) => searchBook(row, q, 0, perBook, signal)));
+      // A book that is a list of documents has no articles to search; its documents are found by their titles.
+      const found = books.map((row, index) => {
+        const answer = answers[index]!;
+        const listed = (lists?.hits(row, q, perBook) ?? []).map((hit) => ({
+          entityId: hit.entityId,
+          title: hit.title,
+          url: hit.url,
+          segments: hit.description ? [{ text: hit.description, hit: false }] : [],
+        }));
+        const articles = (answer.status === "fulfilled" ? answer.value.hits : []).map((hit) => ({
+          entityId: `${row.id}:${hit.path}`,
+          title: hit.title,
+          url: readerUrl(row.id, hit.path),
+          segments: hit.snippet ? hit.segments : [],
+        }));
+        return [...listed, ...articles];
+      });
       // Each book ranks its own articles; take them in turn so one large book does not crowd out the rest.
       const results: SearchResult[] = [];
       for (let rank = 0; rank < perBook && results.length < limit; rank += 1) {
-        answers.forEach((answer, index) => {
-          if (answer.status !== "fulfilled") return;
-          const hit = answer.value.hits[rank];
+        found.forEach((hits, index) => {
+          const hit = hits[rank];
           const row = books[index]!;
           if (!hit || results.length >= limit) return;
           results.push({
             kind: "reference",
-            entityId: `${row.id}:${hit.path}`,
+            entityId: hit.entityId,
             title: hit.title,
             titleSegments: [{ text: hit.title, hit: false }],
             subtitle: null,
             collection: row.title,
-            url: readerUrl(row.id, hit.path),
+            url: hit.url,
             tags: [],
             score: 1 - rank / perBook,
-            passages: hit.snippet ? [{ chunkId: null, segments: hit.segments, page: null, heading: null }] : [],
+            passages: hit.segments.length > 0 ? [{ chunkId: null, segments: hit.segments, page: null, heading: null }] : [],
             sources: ["reference"],
           });
         });
@@ -489,7 +511,18 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
     return { collection: collections.toDto(row) };
   });
 
-  registerArchiveFiles(app, ctx, { upstream, requireBook, bookNameOf: (row) => zimOf(row)!.bookName });
+  const files = registerArchiveFiles(app, ctx, { upstream, requireBook, bookNameOf: (row) => zimOf(row)!.bookName });
+  lists = registerDocumentLists(app, ctx, {
+    upstream,
+    requireBook,
+    bookNameOf: (row) => zimOf(row)!.bookName,
+    uuidOf: (row) => zimOf(row)?.uuid,
+    isReady: async (row) => servable(row) && (await connection.isUp()),
+    savedDocuments: files.savedDocuments,
+    readerUrl,
+  });
+  // Read each archive's list once now, so that search finds its documents before anyone has opened it.
+  for (const row of zimCollections()) if (servable(row) && zimOf(row)?.bookName) lists.warm(row);
 
   // ── Proxy ──
   app.route<{ Params: { token: string; "*": string } }>({

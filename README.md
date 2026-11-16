@@ -50,7 +50,8 @@ picture, not a surveyed path.
   the US National Weather Service, FAO, WHO, OpenStax and others). Downloads resume,
   retry, can be rate limited, and are checked against a checksum. Read them in the app.
   A PDF inside a collection opens in Outpost's own viewer, and PDFs and e-books in a
-  collection can be added to your document library with no connection. A file that a
+  collection can be added to your document library with no connection. A collection
+  that is a set of documents and not a web site is shown as a list you can search. A file that a
   page links to out on the internet can be fetched into the library while you have one.
 - **Your documents.** Add PDFs, EPUBs, Markdown, HTML, text and images. Text is
   extracted and indexed down to the page; originals are kept untouched. A built-in
