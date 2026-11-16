@@ -36,9 +36,9 @@ export type OverlaySource = (typeof OVERLAY_SOURCES)[number];
 
 export const OVERLAY_LAYERS = {
   markers: "o-markers",
-  /** Names of places, and the icons of those that have one and are not favourites. */
-  markerNames: "o-markers-label",
-  favouriteIcons: "o-markers-icon-favourite",
+  markerIcons: "o-markers-icon",
+  /** The names of favourites, and the icons of those that have one. */
+  favourites: "o-markers-favourite-label",
   tracks: "o-tracks-line",
   tracksHit: "o-tracks-hit",
   drawPoints: "o-draw-points",
@@ -80,6 +80,19 @@ const placeImage = (theme: MapTheme): ["concat", string, ["get", string], string
 export function overlayLayers(theme: MapTheme): LayerSpecification[] {
   const label = { "text-font": [MAP_FONTS.medium] as string[], "text-size": 12.5 };
   const halo = { "text-color": theme.ink, "text-halo-color": theme.page, "text-halo-width": 1.6 } as const;
+  /** A place's name, under its marker and clear of it; the marker is larger when it carries an icon. */
+  const placeName = {
+    ...label,
+    "text-field": ["get", "name"] as ["get", string],
+    "text-anchor": "top",
+    "text-offset": ["case", ["has", "icon"], ["literal", [0, 1.25]], ["literal", [0, 0.9]]] as [
+      "case",
+      ["has", string],
+      ["literal", [number, number]],
+      ["literal", [number, number]],
+    ],
+    "text-max-width": 9,
+  } as const;
   return [
     // The Maidenhead locator grid, when it is switched on.
     ...gridLayers(theme),
@@ -227,41 +240,43 @@ export function overlayLayers(theme: MapTheme): LayerSpecification[] {
       source: "o-markers",
       paint: { "circle-radius": 6.5, "circle-color": ["get", "color"], "circle-stroke-color": theme.page, "circle-stroke-width": 2.5 },
     },
-    // The names and the icons of places, as one layer: a place is laid out once, its picture in the middle of
-    // it and its name under. Names are written for favourites always and for the rest from zoom 9, as before.
-    // An icon is drawn where it does not lie over another; where it would, the place stays a dot. That, and
-    // laying a place out once rather than once for its name and again for its icon, is what keeps a map with
-    // thousands of places as light as it was: zoomed out over all of them it draws a screenful of pictures at
-    // most. Zoomed in to where they stand apart, every place has its icon. Either part gives way without
-    // taking the other with it.
+    // Names and icons, in three layers. The map gives room to what is in a higher layer first, so the order
+    // here is who gives way to whom: the names of ordinary places to every icon, and everything to a favourite.
+    //
+    // The names of places that are not favourites, from zoom 9.
     {
       id: "o-markers-label",
       type: "symbol",
       source: "o-markers",
-      filter: ["any", ["==", ["get", "favourite"], true], [">=", ["zoom"], 9], ["has", "icon"]],
-      layout: {
-        ...label,
-        "text-field": ["step", ["zoom"], ["case", ["==", ["get", "favourite"], true], ["get", "name"], ""], 9, ["get", "name"]],
-        "text-anchor": "top",
-        // Clear of the marker, which is larger when it carries an icon.
-        "text-offset": ["case", ["has", "icon"], ["literal", [0, 1.25]], ["literal", [0, 0.9]]],
-        "text-max-width": 9,
-        "text-optional": true,
-        // A favourite's own picture is in the layer above, where it is always drawn.
-        "icon-image": ["case", ["all", ["has", "icon"], ["!=", ["get", "favourite"], true]], placeImage(theme), ""],
-        "icon-optional": true,
-        "icon-padding": 0,
-        "symbol-sort-key": ["case", ["get", "favourite"], 0, 1],
-      },
+      filter: ["all", ["!=", ["get", "favourite"], true], [">=", ["zoom"], 9]],
+      layout: { ...placeName, "text-optional": true },
       paint: halo,
     },
-    // Favourites are few and are always shown whole, as their names are.
+    // Their icons. One picture a place. Where two would lie over each other only one is drawn and the other
+    // place stays a dot, which is what keeps a map with thousands of places light: zoomed out over all of
+    // them it draws a screenful of pictures at most, not one for every place. Zoomed in to where they stand
+    // apart, every place has its icon.
     {
-      id: OVERLAY_LAYERS.favouriteIcons,
+      id: OVERLAY_LAYERS.markerIcons,
       type: "symbol",
       source: "o-markers",
-      filter: ["all", ["has", "icon"], ["==", ["get", "favourite"], true]],
-      layout: { "icon-image": placeImage(theme), "icon-padding": 0, "icon-allow-overlap": true, "icon-ignore-placement": true },
+      filter: ["all", ["has", "icon"], ["!=", ["get", "favourite"], true]],
+      layout: { "icon-image": placeImage(theme), "icon-padding": 0 },
+    },
+    // Favourites: named at every zoom, as before, and their icons always drawn whole. They are few.
+    {
+      id: OVERLAY_LAYERS.favourites,
+      type: "symbol",
+      source: "o-markers",
+      filter: ["==", ["get", "favourite"], true],
+      layout: {
+        ...placeName,
+        "text-optional": true,
+        "icon-image": ["case", ["has", "icon"], placeImage(theme), ""],
+        "icon-padding": 0,
+        "icon-allow-overlap": true,
+      },
+      paint: halo,
     },
     // The point under the pointer on an elevation profile.
     {

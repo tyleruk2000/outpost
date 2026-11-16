@@ -78,67 +78,60 @@ describe("the layers saved places are drawn with", () => {
     });
   });
 
-  it("lay a place out once, its picture and its name together, over its dot", () => {
+  it("put names and icons in the order of who gives way: ordinary names to every icon, and everything to a favourite", () => {
     const ids = layersOf("light").map((item) => item.id);
-    const [favourite, dots, names, favouriteIcons] = [
-      "o-markers-favourite",
-      OVERLAY_LAYERS.markers,
-      OVERLAY_LAYERS.markerNames,
-      OVERLAY_LAYERS.favouriteIcons,
-    ].map((id) => ids.indexOf(id)) as [number, number, number, number];
-    expect(favourite).toBeGreaterThanOrEqual(0);
-    expect(favourite).toBeLessThan(dots);
-    expect(dots).toBeLessThan(names);
-    expect(names).toBeLessThan(favouriteIcons);
-    // One layer for names and icons: there is no second one that lays every place out again.
+    // The map gives room to a higher layer first.
     expect(ids.filter((id) => id.startsWith("o-markers"))).toEqual([
       "o-markers-favourite",
       OVERLAY_LAYERS.markers,
-      OVERLAY_LAYERS.markerNames,
-      OVERLAY_LAYERS.favouriteIcons,
+      "o-markers-label",
+      OVERLAY_LAYERS.markerIcons,
+      OVERLAY_LAYERS.favourites,
     ]);
-    const both = layer(OVERLAY_LAYERS.markerNames);
-    expect(both.type).toBe("symbol");
-    const picture = ["concat", "place-", ["get", "icon"], "-", ["get", "tint"], "-", "ffffff"];
-    // A place with an icon that is not a favourite has its picture here; any other place has none.
-    expect(both.layout!["icon-image"]).toEqual(["case", ["all", ["has", "icon"], ["!=", ["get", "favourite"], true]], picture, ""]);
   });
 
-  it("leave out a picture that would lie over another, so thousands of places draw a screenful at most", () => {
+  it("draw one picture for a place with an icon, and leave out one that would lie over another", () => {
+    const pictures = layer(OVERLAY_LAYERS.markerIcons);
+    expect(pictures.type).toBe("symbol");
+    expect(pictures.filter).toEqual(["all", ["has", "icon"], ["!=", ["get", "favourite"], true]]);
+    // No lettering in this layer: nothing for the map to lay out but one picture a place.
+    expect(pictures.layout).not.toHaveProperty("text-field");
     // Left to the map's own default, which is to draw only what does not overlap; the place is then its dot.
-    const both = layer(OVERLAY_LAYERS.markerNames);
-    expect(both.layout).not.toHaveProperty("icon-allow-overlap");
-    expect(both.layout).not.toHaveProperty("icon-ignore-placement");
-    expect(both.layout!["icon-padding"]).toBe(0);
-    // Neither part takes the other with it: a name with no room leaves the icon, and an icon with no room leaves the name.
-    expect(both.layout).toMatchObject({ "text-optional": true, "icon-optional": true });
+    // That is what makes thousands of places a screenful of pictures at most.
+    expect(pictures.layout).not.toHaveProperty("icon-allow-overlap");
+    expect(pictures.layout).not.toHaveProperty("icon-ignore-placement");
+    expect(pictures.layout!["icon-padding"]).toBe(0);
   });
 
   it("write names by the rules there were before icons: favourites always, the rest from zoom 9", () => {
-    const both = layer(OVERLAY_LAYERS.markerNames);
-    expect(both.layout!["text-field"]).toEqual([
-      "step",
-      ["zoom"],
-      ["case", ["==", ["get", "favourite"], true], ["get", "name"], ""],
-      9,
-      ["get", "name"],
-    ]);
-    // A place is in the layer when it has a name to write there or a picture to draw.
-    expect(both.filter).toEqual(["any", ["==", ["get", "favourite"], true], [">=", ["zoom"], 9], ["has", "icon"]]);
-    expect(both.layout!["symbol-sort-key"]).toEqual(["case", ["get", "favourite"], 0, 1]);
-    expect(both.layout!["text-max-width"]).toBe(9);
+    const others = layer("o-markers-label");
+    expect(others.filter).toEqual(["all", ["!=", ["get", "favourite"], true], [">=", ["zoom"], 9]]);
+    const favourites = layer(OVERLAY_LAYERS.favourites);
+    expect(favourites.filter).toEqual(["==", ["get", "favourite"], true]);
+    for (const names of [others, favourites]) {
+      expect(names.layout).toMatchObject({
+        "text-field": ["get", "name"],
+        "text-anchor": "top",
+        "text-max-width": 9,
+        "text-optional": true,
+        "text-offset": ["case", ["has", "icon"], ["literal", [0, 1.25]], ["literal", [0, 0.9]]],
+      });
+    }
+    expect(others.layout).not.toHaveProperty("icon-image");
   });
 
   it("always draw a favourite's picture, as its name is always written", () => {
-    const pictures = layer(OVERLAY_LAYERS.favouriteIcons);
-    expect(pictures.filter).toEqual(["all", ["has", "icon"], ["==", ["get", "favourite"], true]]);
-    expect(pictures.layout!["icon-allow-overlap"]).toBe(true);
-    expect(pictures.layout).not.toHaveProperty("text-field");
+    const favourites = layer(OVERLAY_LAYERS.favourites);
+    const picture = ["concat", "place-", ["get", "icon"], "-", ["get", "tint"], "-", "ffffff"];
+    expect(favourites.layout!["icon-image"]).toEqual(["case", ["has", "icon"], picture, ""]);
+    expect(favourites.layout!["icon-allow-overlap"]).toBe(true);
+    // Between them the two layers draw every place with an icon once, from the same picture.
+    expect(layer(OVERLAY_LAYERS.markerIcons).layout!["icon-image"]).toEqual(picture);
   });
 
   it("name the picture from the place and the theme, so each theme gets a ring in its own page colour", () => {
-    const light = layer(OVERLAY_LAYERS.favouriteIcons, "light").layout!["icon-image"] as unknown[];
-    const dark = layer(OVERLAY_LAYERS.favouriteIcons, "dark").layout!["icon-image"] as unknown[];
+    const light = layer(OVERLAY_LAYERS.markerIcons, "light").layout!["icon-image"] as unknown[];
+    const dark = layer(OVERLAY_LAYERS.markerIcons, "dark").layout!["icon-image"] as unknown[];
     expect(light).toEqual(["concat", "place-", ["get", "icon"], "-", ["get", "tint"], "-", "ffffff"]);
     expect(dark.at(-1)).toBe(FALLBACK_THEME.dark.page.slice(1));
     // What the map will ask for, for a green shelter on the dark map, is a name that can be drawn.
@@ -146,14 +139,8 @@ describe("the layers saved places are drawn with", () => {
     expect(parsePlaceImageId(asked)).toEqual({ icon: "shelter", color: "green", page: FALLBACK_THEME.dark.page });
   });
 
-  it("give a favourite its ring outside the larger disc, and put a name clear of it", () => {
+  it("give a favourite its ring outside the larger disc", () => {
     expect(layer("o-markers-favourite").paint!["circle-radius"]).toEqual(["case", ["has", "icon"], 15.5, 11]);
-    expect(layer(OVERLAY_LAYERS.markerNames).layout!["text-offset"]).toEqual([
-      "case",
-      ["has", "icon"],
-      ["literal", [0, 1.25]],
-      ["literal", [0, 0.9]],
-    ]);
   });
 });
 

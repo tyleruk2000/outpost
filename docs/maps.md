@@ -537,9 +537,12 @@ a link to one of your note pages. Markers are found by the app-wide search.
   background. A plain pin is the dot it always was.
 - **Where places crowd together** an icon is drawn only where it does not lie over
   another: the other place stays a dot of its colour until the map is zoomed in far
-  enough for both. Favourites are always drawn whole, as their names are always
-  written. This is what keeps a map with thousands of places as light as it was; see
-  below.
+  enough for both. Room is given in this order: a favourite's name and icon first (a
+  favourite's icon is always drawn whole), then the icons of other places, then their
+  names. So a name never hides an icon, and nothing hides a favourite. This is what
+  keeps a map with thousands of places as light as it was; see below.
+- **Names** are written by the rules there were before: a favourite at every zoom, any
+  other place from zoom 9, where there is room.
 - **The drawings** are part of the app (`apps/web/src/features/maps/lib/place-icons.ts`):
   a few strokes each, in the line style of the icons the rest of the interface uses,
   drawn for this size rather than taken from that set. The map is handed them as small
@@ -555,7 +558,18 @@ zoomed in and out by 24 notches while the time between frames was recorded. Head
 Chromium draws without a graphics card, so the figures are far slower than a phone's;
 what they are good for is the comparison.
 
-__PERF_TABLE__
+| 5,000 places | Dragging: median time between frames | Zooming: median |
+| --- | --- | --- |
+| All plain pins, which is the map as it was | 50 ms, 50 ms | 33 ms, 33 ms |
+| Every place with an icon (13 icons, 7 colours) | 50 ms, 67 ms | 50 ms, 50 ms |
+
+Two runs of each, taken in turn. A third pair was spoiled by other work on the machine
+(200 ms for plain pins, 100 ms with icons), which is the size of the noise: the two
+cannot be told apart by more than a frame or so. Drawing every icon whatever lay under
+it, which was tried first, measured 83 and 117 ms dragging against 50 and 67 ms for
+plain pins in the same runs, and was dropped for that. The first time icons come into
+view there is one pause while their pictures are made: about half a second for all 91
+of that test, a few milliseconds for the handful a real map has.
 
 Not measured: a real phone.
 

@@ -693,9 +693,10 @@ export default function MapsPage() {
     // and under the readout, while the sheet is lowered, the line with today's sunrise and sunset.
     const sheet = isDesktop ? 0 : detentHeight(detent === "peek" ? "peek" : "half", height, peekHeight) + 88 + (detent === "peek" ? 44 : 0);
     // A short screen (a phone on its side) keeps some map clear whatever lies over it.
+    const bottom = Math.max(0, Math.min(sheet, height - top - 96));
     // A phone's sheet covers the lower part of the map, so there the camera keeps the space all the time and the
     // centre of the map is the middle of what shows. On a wide screen nothing lies over the middle of the map.
-    engine.setPadding({ top, right: isDesktop ? 56 : 0, bottom: Math.max(0, Math.min(sheet, height - top - 96)), left: 0 }, !isDesktop);
+    engine.setPadding({ top, right: isDesktop ? 56 : 0, bottom, left: 0 }, !isDesktop);
   }, [engine, isDesktop, detent, peekHeight]);
 
   // ── What the person does on the map ──
