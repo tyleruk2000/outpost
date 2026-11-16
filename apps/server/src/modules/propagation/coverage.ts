@@ -244,7 +244,8 @@ export function registerCoverage(app: FastifyInstance, ctx: AppContext, service:
 
   // ── Routes ────────────────────────────────────────────────────────────────
 
-  const waiting = () => ctx.jobs.list({ states: ["queued", "running", "paused"], limit: 200 }).filter((job) => job.type === COVERAGE_JOB);
+  // Asked for by type: among the newest jobs of every kind, a few hundred of another kind would hide these.
+  const waiting = () => ctx.jobs.list({ states: ["queued", "running", "paused"], types: [COVERAGE_JOB], limit: 200 });
 
   app.post("/api/radio/propagation/coverage", async (request) => {
     const body = checkedCoverage(request.body);

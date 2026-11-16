@@ -19,7 +19,7 @@ import {
   parseShasums,
 } from "../src/modules/portable/runtimes.ts";
 import { extractOneFromTarGz } from "../src/modules/portable/tar.ts";
-import { createTestApp, type TestApp } from "./helpers.ts";
+import { createTestApp, queueWaitingJobs, type TestApp } from "./helpers.ts";
 
 const cleanups: Array<() => Promise<void> | void> = [];
 afterEach(async () => {
@@ -341,6 +341,16 @@ describe("writing a portable drive", () => {
     } finally {
       db.close();
     }
+  });
+
+  it("refuses a second drive while one is waiting to be written, however much other work has been queued since", async () => {
+    const { app, drive } = await setup();
+    queueWaitingJobs(app, "portable.build", 1);
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    queueWaitingJobs(app, "test.other", 150);
+    const second = await app.api("POST", "/api/portable/build", request(drive));
+    expect(second.status).toBe(409);
+    expect(second.body.error.message).toContain("A drive is already being written");
   });
 
   it("starts from the drive as its own installation, wherever the drive is mounted", async () => {

@@ -21,7 +21,7 @@ import {
 } from "@outpost/shared";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { appRoot } from "../src/core/paths.ts";
-import { COVERAGE_JOB, COVERAGE_MAX_WAITING } from "../src/modules/propagation/coverage.ts";
+import { COVERAGE_JOB, COVERAGE_MAX_WAITING, normaliseCoverage } from "../src/modules/propagation/coverage.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
 
 const dipole = ANTENNA_PRESETS.find((preset) => preset.id === "low-dipole")!.spec;
@@ -257,6 +257,37 @@ describe("what a coverage request may ask for", () => {
   });
 });
 
+describe("coverage maps waiting, among a great deal of other work", () => {
+  it("are still found: the same map is one job and the limit of three holds", async () => {
+    const own = await createTestApp();
+    try {
+      own.ctx.jobs.register("test.upload", { queue: "test-upload", run: async () => ({}) });
+      const first = own.ctx.jobs.enqueue(COVERAGE_JOB, { request: strip(53) as never }, { title: "Waiting", paused: true });
+      const { key } = await own.ctx.services.propagation.coverage.find(normaliseCoverage(strip(53)));
+      own.ctx.sqlite.prepare("UPDATE jobs SET subject = ? WHERE id = ?").run(key, first.id);
+      // A bulk upload queues more than two hundred newer jobs of its own.
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      for (let n = 0; n < 205; n++) own.ctx.jobs.enqueue("test.upload", {}, { title: `File ${n}`, paused: true });
+      expect(own.ctx.jobs.list({ states: ["paused"], limit: 200 }).some((job) => job.type === COVERAGE_JOB)).toBe(false);
+      expect(own.ctx.jobs.list({ states: ["paused"], types: [COVERAGE_JOB], limit: 200 }).map((job) => job.id)).toEqual([first.id]);
+      expect(own.ctx.jobs.list({ types: ["test.upload"], limit: 500 })).toHaveLength(205);
+      expect(own.ctx.jobs.list({ types: ["nothing.of.the.kind"] })).toEqual([]);
+
+      const again = await own.api("POST", "/api/radio/propagation/coverage", strip(53));
+      expect(again.status).toBe(200);
+      expect(again.body.job.id).toBe(first.id);
+
+      for (const south of [54, 55])
+        own.ctx.jobs.enqueue(COVERAGE_JOB, { request: strip(south) as never }, { title: "Waiting", paused: true });
+      const fourth = await own.api("POST", "/api/radio/propagation/coverage", strip(56));
+      expect(fourth.status).toBe(409);
+      expect(fourth.body.error.details).toMatchObject({ reason: "coverage-busy" });
+    } finally {
+      await own.close();
+    }
+  });
+});
+
 describe("the job", () => {
   it("reports each cell, and can be stopped without losing the engine", async () => {
     const fine = { ...britain, resolution: "fine" as const, frequencyMhz: 10.12 };
@@ -275,7 +306,8 @@ describe("the job", () => {
     await app.ctx.jobs.whenIdle();
     expect(app.ctx.jobs.get(id)?.state).toBe("cancelled");
     // Nothing of a half-finished grid is kept.
-    const { key } = await app.ctx.services.propagation.coverage.find(fine);
+    const { key } = await app.ctx.services.propagation.coverage.find(normaliseCoverage(fine));
+    expect(app.ctx.jobs.get(id)?.subject).toBe(key);
     expect((await app.api("GET", `/api/radio/propagation/coverage/${key}`)).status).toBe(404);
     // The engine was not ended with it: a prediction is answered straight away.
     expect(app.ctx.services.propagation.internals.host.loaded).toBe(true);

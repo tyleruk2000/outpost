@@ -58,3 +58,21 @@ export async function createTestApp(env: Record<string, string> = {}, existingDi
     },
   };
 }
+
+/**
+ * Puts jobs in the queue that are not due for an hour, so nothing runs them: for tests
+ * of what a module does while work of some kind is waiting. Each is newer than the last.
+ */
+export function queueWaitingJobs(app: TestApp, type: string, count: number): string[] {
+  const insert = app.ctx.sqlite.prepare(
+    "INSERT INTO jobs (id, type, queue, state, title, payload, run_after, created_at, updated_at) VALUES (?, ?, 'test-waiting', 'queued', ?, '{}', ?, ?, ?)",
+  );
+  const ids: string[] = [];
+  const now = Date.now();
+  for (let n = 0; n < count; n++) {
+    const id = `waiting-${type}-${now}-${n}`;
+    insert.run(id, type, `Waiting ${n}`, now + 3_600_000, now + n, now + n);
+    ids.push(id);
+  }
+  return ids;
+}

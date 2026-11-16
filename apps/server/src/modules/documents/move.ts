@@ -140,7 +140,7 @@ export function registerDocumentMoves(app: FastifyInstance, ctx: AppContext): vo
     if (rows.length === 0) {
       throw conflict(body.ids ? `Those documents are already on "${target.name}".` : `Every document is already on "${target.name}".`);
     }
-    if (jobs.list({ states: ["queued", "running"] }).some((job) => job.type === "documents.move")) {
+    if (jobs.list({ states: ["queued", "running"], types: ["documents.move"], limit: 1 }).length > 0) {
       throw conflict("Documents are already being moved. Wait for that to finish, or cancel it on the Downloads screen.");
     }
     await storage.assertSpace(

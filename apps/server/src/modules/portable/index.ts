@@ -621,7 +621,7 @@ export async function registerPortable(app: FastifyInstance, ctx: AppContext): P
         needsConfirmation: true,
       });
     }
-    if (jobs.list({ states: ["queued", "running"] }).some((job) => job.type === "portable.build")) {
+    if (jobs.list({ states: ["queued", "running"], types: ["portable.build"], limit: 1 }).length > 0) {
       throw conflict("A drive is already being written. Wait for it to finish, or cancel it on the Downloads screen.");
     }
     const job = jobs.enqueue("portable.build", body, {
