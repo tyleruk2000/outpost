@@ -461,7 +461,8 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 - Every answer says where its sunspot number came from (NOAA's forecast from a dated
   table, a number you typed, or an foF2 you measured) and is never called live.
 - Radio and antenna profiles, generic antennas that say how they are modelled, and
-  predictions saved by name.
+  predictions saved by name, which open again as the question that was saved, antenna
+  and date included.
 - The engine's data listed with versions, sizes, dates and checksums; a newer solar
   cycle table fetched through the download manager when asked for.
 - Charts drawn by hand from the engine's figures, readable with the keyboard and by a
