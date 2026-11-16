@@ -296,13 +296,31 @@ export function issueServerCertificate(authority: Authority, names: ServerName[]
   return { certificate, pem: toPem(der), keyPem: privateKey.export({ type: "pkcs8", format: "pem" }) as string };
 }
 
-/** The names a certificate carries, in the form `parseName` gives. */
-export function certificateNames(certificate: X509Certificate): string[] {
-  const names: string[] = [];
+/**
+ * The names a certificate carries, as it writes them: DNS names in lower case, wildcards
+ * (`*.example.net`) included, and addresses in the form `parseName` gives.
+ */
+export function certificateNamesAsWritten(certificate: X509Certificate): Array<{ kind: "dns" | "ip"; text: string }> {
+  const names: Array<{ kind: "dns" | "ip"; text: string }> = [];
   const value = dissect(certificate).extensions.get(OID.subjectAltName);
   for (const entry of value ? readChildren(readValue(value).content) : []) {
-    const text = entry.tag === 0x82 ? entry.content.toString("ascii") : entry.tag === 0x87 ? addressText(entry.content) : null;
-    const parsed = text ? parseName(text) : null;
+    if (entry.tag === 0x82) {
+      const text = entry.content.toString("ascii").toLowerCase();
+      // Only what a host name or a wildcard over one can be made of; anything else is not a name a browser would match.
+      if (/^(\*\.)?[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$/.test(text)) names.push({ kind: "dns", text });
+    } else if (entry.tag === 0x87) {
+      const parsed = parseName(addressText(entry.content) ?? "");
+      if (parsed?.kind === "ip") names.push({ kind: "ip", text: parsed.text });
+    }
+  }
+  return names;
+}
+
+/** The names a certificate carries, in the form `parseName` gives. A wildcard is not one of them. */
+export function certificateNames(certificate: X509Certificate): string[] {
+  const names: string[] = [];
+  for (const { text } of certificateNamesAsWritten(certificate)) {
+    const parsed = parseName(text);
     if (parsed) names.push(parsed.text);
   }
   return names;
