@@ -55,9 +55,10 @@ On the map itself:
 - **Hill shading** appears as a button once terrain is installed.
 - **Contour lines** is the button below it (see [Contour lines](#contour-lines)). It
   is always there: pressed where there is nothing to draw them from, it says so.
-- **Maidenhead locator grid** and **Line of sight between two points** are the two
-  buttons below those (beside the top of the column on a phone). See
-  [Maidenhead locators](#maidenhead-locators) and [Line of sight](#line-of-sight).
+- **Maidenhead locator grid**, **Grey line (day and night)** and **Line of sight
+  between two points** are the buttons below those (beside the top of the column on a
+  phone). See [Maidenhead locators](#maidenhead-locators),
+  [The grey line](#the-grey-line-day-and-night) and [Line of sight](#line-of-sight).
 - **Print or save as PDF** is the last button in that column (see
   [Printing a map](#printing-a-map)).
 - The readout at the bottom shows the centre of the map; choose decimal degrees,
@@ -867,8 +868,12 @@ phase is from the same book (`lib/moon.ts`).
 - These were not compared with NOAA's own calculator, which works its answers out in
   the browser and publishes no table to read them from.
 
+The Sun tab's date is shared with the grey line on the map, so the two are always about
+the same day; see [The grey line](#the-grey-line-day-and-night).
+
 Not included: moonrise and moonset (the moon's distance and the place both matter, and
-it is a longer sum), astronomical twilight, bearings from magnetic north, and any
+it is a longer sum), astronomical twilight (the grey line shades it, but the tab gives
+no time for it), bearings from magnetic north, and any
 allowance for the height of the place or the hills around it.
 
 ## Drawing a route
@@ -1601,6 +1606,108 @@ The conversion is checked both ways against published examples: W1AW's locator a
 given by Wikipedia and by the ARRL, and the seven positions in the test table of the
 go-maidenhead library, each at six and eight characters
 (`apps/server/test/maps-sight.test.ts` lists them with where they were read).
+
+## The grey line: day and night
+
+The **Grey line (day and night)** button, beside the Maidenhead grid's, draws over the
+map where it is day and where it is night, for now or for a time you choose. Radio
+amateurs call the band of twilight along the edge between the two the grey line: HF
+signals along it often travel unusually well around dawn and dusk. It is off until it is
+pressed, and the choice is remembered in the browser.
+
+**What is drawn**, worked out on your device from the Sun's position, with no tiles and
+no connection:
+
+- **The line** where the Sun is rising or setting: solid, in the text colour, with a
+  thin casing in the page colour so that it holds over dark ground and hill shading.
+  It is drawn where the centre of the Sun is 0.833° below the horizon, the same rule the
+  Sun tab uses for sunrise and sunset, so a place on the line is at the Sun tab's
+  sunrise or sunset.
+- **Night as a tint that deepens in four steps**: past sunset, then past the end of
+  civil twilight (the Sun 6° below the horizon), of nautical twilight (12°) and of
+  astronomical twilight (18°). Each step is a thin dashed line as well as a shade, so
+  the bands can be told apart without relying on the colour. Full night is 30% of the
+  text colour over the light map and 59% black over the dark one: the map, its roads
+  and its hill shading still show through.
+- **The map's own names are drawn over the tint**, so their contrast is not changed at
+  night. (Under it, they would lose too much: over the dark map the quieter grey of the
+  outline map's country names would drop from 7.4:1 to 3.0:1 against the ground.) What
+  you have put on the map (places, routes, the grid, a measured line) is over the tint
+  as well.
+- **Sun overhead**: a small amber disc and those words where the Sun is straight
+  overhead.
+
+**A legend** sits over the top left of the map while the line is on. It says the time
+the line is drawn for, in words: "Now, 14:32 on Monday 16 November 2026", or "Not now:
+drawn for 03:30 UTC on Sunday 21 June 2026" whenever another time has been chosen, with
+**Back to now** beside it. It names what the shading means, with a sample of each.
+
+**Choosing another time.** The clock button in the legend opens a date and a time.
+They are on the clock the Sun tab's times are on: this device's, or UTC (a link beside
+them switches; the Sun tab's own switch does the same). Times are written on the
+24-hour or 12-hour clock chosen under Settings, except UTC, which is always 24-hour.
+**Now** goes back to the present. A chosen time stays put; "now" is drawn afresh at the
+turn of every minute, and not while the page is out of sight. There is no animation.
+
+**The Sun tab and the line agree.** The Sun tab's date is the date of the moment the
+line is drawn for: step a day in the Sun tab and the line moves a day at the same time
+of day; choose a time on the line that falls on another day and the Sun tab goes to
+that day. **Today** in the Sun tab is "now" for both. A time chosen is kept while you
+are on the Maps screen and forgotten when you leave it, so the map never opens on a
+moment nobody remembers choosing. (The Sun lines of a saved place or a found point keep
+a date of their own, as before.)
+
+**Printing.** When the line is on, **Print or save as PDF** starts with **Grey line (day
+and night)** ticked, draws it on the page for the moment the map shows (to the minute),
+and prints a sentence under the map with that time in UTC: "Day and night are drawn
+for 03:30 UTC on Sunday 21 June 2026." Untick it to leave it off.
+
+**On an HF coverage map** (Radio → HF coverage) the same line can be switched on under
+the hour control; see [radio.md](radio.md#radio-tools-on-the-map).
+
+### How it is worked out, and how accurate it is
+
+The Sun's declination and the equation of time come from the same code as the Sun tab
+(`apps/web/src/features/maps/lib/sun.ts`, Jean Meeus's low-accuracy series). From them,
+the point where the Sun is overhead is at latitude = declination and longitude =
+−15° × (hours since 00:00 UTC − 12) − equation of time ÷ 4 (the equation of time in
+minutes). Everywhere the Sun is below a given height is a circle on the globe round the
+point opposite, of radius 90° plus that height; each is traced every quarter of a
+degree and cut into pieces between −180° and 180° of longitude, closed along a pole
+when it holds one (the polar night). So nothing is stretched across the date line,
+every copy of the world the map shows is drawn the same, and the shapes are right round
+the poles (`apps/web/src/features/maps/grey-line/geometry.ts`).
+
+- **Against the Sun tab**: at the Sun tab's sunrise and sunset for eight places and
+  dates (Greenwich at the March equinox and the June solstice, Quito at the September
+  equinox, Sydney and Reykjavik at the December solstice, Suva and Adak either side of
+  the date line, New York on 29 February 2024), the drawn line passes over the place
+  within 0.3 seconds of the time the tab gives.
+- **Against the US Naval Observatory's published times** (the ones in
+  `lib/sun.test.ts`, read on 16 November 2026): the line passes over each of those
+  places within 27 seconds of the published minute of sunrise and sunset, and the
+  steps of the shading fall within a minute and a half of the published times of civil
+  twilight there and of nautical twilight at Greenwich at the solstices and equinoxes.
+  Astronomical twilight (18°) has no published times in those tests; it is held to the
+  Sun's height worked out directly.
+- **Everywhere at once**: for seven moments (the solstices, the equinoxes, and ordinary
+  times either side of midnight UTC), more than 6,000 points over the whole globe each
+  fall in the band the Sun's height there puts them in, except within 0.05° of a
+  boundary, where a straight piece of the traced circle and the true curve may differ.
+  The poles are in day or night as they should be at the solstices, and places just
+  either side of the 180° meridian always fall in the same band.
+- The method's own accuracy is that of the Sun tab: the Sun's position to about 0.01°,
+  about 2 km on the ground. **The real edge of daylight is not this sharp**: the air,
+  the height of the ground and the hills move it by more than that.
+
+Tests: `grey-line/geometry.test.ts` (the arithmetic and the shapes),
+`grey-line/grey-line.test.tsx` (the button, the legend, the time, the Sun tab, the
+page), and `e2e/tests/grey-line.spec.ts` and `grey-line.mobile.spec.ts`, which read the
+map's own pixels to see that night is drawn and day is not, at desktop width and at
+390 px.
+
+**Not tried on a real phone.** The phone tests run in a desktop browser made the size of
+an iPhone (390 × 844) and pressed with touch events.
 
 ## Line of sight
 

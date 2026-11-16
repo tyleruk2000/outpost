@@ -6,7 +6,10 @@ import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { setClockChoice } from "@/lib/clock";
 import { ThemeProvider } from "@/lib/theme";
+import { FALLBACK_THEME } from "../lib/palette";
+import { buildStyle } from "../lib/style";
 import type { MapEngine } from "../map/engine";
+import { overlayLayers, overlaySources } from "../map/overlays";
 import { MapControls } from "../map-chrome";
 import { SunTimes } from "../panels/sun";
 import { graticule } from "../print/graticule";
@@ -152,6 +155,9 @@ describe("the grey line on the Maps screen", () => {
     act(() => vi.advanceTimersByTime(5 * 60_000));
     expect(stated()).toBe("Not now: drawn for 03:30 UTC on Monday 21 December 2026");
 
+    // Closed, the legend offers the way back; open, it is beside the fields.
+    expect(screen.queryByRole("button", { name: "Back to now" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Choose the time it is drawn for" }));
     fireEvent.click(screen.getByRole("button", { name: "Back to now" }));
     expect(mapMoment()).toBeNull();
     expect(stated()).toBe("Now, 12:05 UTC on Sunday 21 June 2026");
@@ -266,5 +272,25 @@ describe("the grey line on a coverage map", () => {
     expect(onChange).toHaveBeenCalledWith(true);
     rerender(<CoverageGreyLine on onChange={onChange} date="2026-06-03" utcHour={14} />);
     expect(screen.getByText(/^Drawn for 14:00 UTC on about the 15th of June 2026\./)).toBeInTheDocument();
+  });
+});
+
+describe("where the grey line is drawn among the map's layers", () => {
+  it("shades under the map's own names, and draws its line over the coverage cells", () => {
+    const theme = FALLBACK_THEME.light;
+    const style = buildStyle({
+      sources: undefined,
+      flavour: "light",
+      theme,
+      hillshade: false,
+      origin: "http://outpost.test",
+      cacheKey: "k",
+      overlays: { sources: overlaySources({}), layers: overlayLayers(theme) },
+    });
+    const ids = style.layers.map((layer) => layer.id);
+    const firstName = style.layers.findIndex((layer) => layer.type === "symbol");
+    expect(ids.indexOf("o-grey-line-shade")).toBe(firstName - 1);
+    expect(ids.indexOf("o-grey-line-line")).toBeGreaterThan(ids.indexOf("o-propagation-cells"));
+    expect(ids.indexOf("o-grey-line-line")).toBeLessThan(ids.indexOf("o-markers"));
   });
 });

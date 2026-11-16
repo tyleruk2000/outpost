@@ -165,16 +165,20 @@ export function GreyLineLegend({
           {open ? <ChevronDown className="rotate-180" /> : <Clock />}
         </Button>
       </div>
-      {isNow ? null : (
+      {/* While the time is being chosen, "Now" is beside the fields instead. */}
+      {isNow || open ? null : (
         <Button size="md" variant="soft" onClick={() => onChoose(null)} className="justify-self-start">
           Back to now
         </Button>
       )}
-      <Key theme={theme} />
+      {/* On a phone the key gives way to the fields while they are open, so the card stays short. */}
+      <div className={cn(open && "max-md:hidden")}>
+        <Key theme={theme} />
+      </div>
       {open ? (
         <div id={bodyId} className="grid gap-2 border-t border-border pt-2">
-          <div className="flex flex-wrap items-end gap-2">
-            <div className="grid gap-1">
+          <div className="grid grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] gap-2">
+            <div className="grid min-w-0 gap-1">
               <label htmlFor={dateId} className="text-small text-ink-muted">
                 Date<span className="sr-only"> of the grey line</span>
               </label>
@@ -185,10 +189,10 @@ export function GreyLineLegend({
                 min={FIRST_DATE}
                 max={LAST_DATE}
                 onChange={(event) => choose(event.target.value, fields.time)}
-                className="tabular w-auto text-small max-md:h-11"
+                className="tabular w-full min-w-0 px-2 text-small max-md:h-11"
               />
             </div>
-            <div className="grid gap-1">
+            <div className="grid min-w-0 gap-1">
               <label htmlFor={timeId} className="text-small text-ink-muted">
                 {clock === "utc" ? "Time (UTC)" : "Time"}
                 <span className="sr-only"> of the grey line</span>
@@ -198,24 +202,23 @@ export function GreyLineLegend({
                 type="time"
                 value={fields.time}
                 onChange={(event) => choose(fields.date, event.target.value)}
-                className="tabular w-auto text-small max-md:h-11"
+                className="tabular w-full min-w-0 px-2 text-small max-md:h-11"
               />
             </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             {isNow ? null : (
               <Button size="md" onClick={() => onChoose(null)}>
                 Now
               </Button>
             )}
-          </div>
-          <p className="text-small text-ink-muted">
-            {clock === "utc" ? "In UTC. " : `In this device’s time zone, ${device}. `}
-            <Button variant="link" size="sm" onClick={() => setClock(clock === "utc" ? "device" : "utc")} className="max-md:min-h-11">
+            <Button size="md" variant="ghost" onClick={() => setClock(clock === "utc" ? "device" : "utc")} className="px-2 text-primary">
               {clock === "utc" ? "Use this device’s time" : "Use UTC"}
             </Button>
-          </p>
+          </div>
           <p className="text-small text-ink-muted">
-            The Sun tab shows the same day. The shading steps where the Sun is 6°, 12° and 18° below the horizon: the ends of civil,
-            nautical and astronomical twilight.
+            {clock === "utc" ? "In UTC" : `In this device’s time, ${device}`}. The Sun tab shows the same day. The shading steps at 6°, 12°
+            and 18° below the horizon.
           </p>
         </div>
       ) : null}
@@ -244,7 +247,7 @@ export function useGreyLine(engine: MapEngine | null): { on: boolean; setOn: (on
       at={at}
       isNow={chosen === null}
       onChoose={setChosen}
-      className="absolute top-[4.25rem] left-3 z-10 w-[min(24rem,calc(100%-1.5rem))] max-md:top-[4rem] max-md:w-auto max-md:right-[6.75rem]"
+      className="absolute top-[4.25rem] left-3 z-10 w-[min(24rem,calc(100%-1.5rem))] max-md:top-[4rem] max-md:w-auto max-md:right-[7.5rem]"
     />
   ) : null;
   return { on, setOn, legend };

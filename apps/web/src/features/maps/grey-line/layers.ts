@@ -3,16 +3,16 @@
  * then the end of each twilight), the line where the Sun is rising or setting, a fainter
  * broken line at the end of each twilight, and a mark where the Sun is overhead.
  *
- * Night is a tint, never a blanket: at its darkest the ground under it is still read, and
- * names under it keep their contrast (measured in docs/maps.md).
+ * Night is a tint, never a blanket: at its darkest the ground under it is still read. It
+ * is drawn under the map's own names, which keep their contrast (see docs/maps.md).
  * Day and night are not told apart by the tint alone: the line, the broken lines and the
  * legend say where each is.
  *
- * The shades go beneath every other overlay, the coverage cells of an HF map among them,
- * so that a cell's colour is not changed by the night over it; the lines go above those
- * cells and beneath everything a person has placed.
+ * The shades go beneath the map's names and every overlay, the coverage cells of an HF
+ * map among them, so that a cell's colour is not changed by the night over it; the lines
+ * go above those cells and beneath everything a person has placed.
  */
-import { MAP_FONTS, type MapTheme } from "../lib/style";
+import { MAP_FONTS, type MapTheme, UNDER_LABELS } from "../lib/style";
 import type { LayerSpecification } from "../lib/style-types";
 
 export const GREY_LINE_SOURCE = "o-grey-line";
@@ -27,11 +27,11 @@ function isDark(theme: MapTheme): boolean {
 
 /**
  * How dark each of the four shades is. They lie one over another, so night is under all
- * four: about 30% ink on the light map and 45% black on the dark one, which is already
+ * four: about 30% ink on the light map and 59% black on the dark one, which is already
  * dark and needs more to show.
  */
 export function shadeOpacity(theme: MapTheme): number {
-  return isDark(theme) ? 0.14 : 0.085;
+  return isDark(theme) ? 0.2 : 0.085;
 }
 
 const kind = (name: string) => ["==", ["get", "kind"], name] as never;
@@ -44,6 +44,8 @@ export function greyLineShadeLayers(theme: MapTheme): LayerSpecification[] {
       type: "fill",
       source: GREY_LINE_SOURCE,
       filter: kind("shade"),
+      // Under the map's own names: they keep their contrast at night.
+      metadata: UNDER_LABELS,
       // No outline: the pieces of a shade meet at the 180° meridian, and an outline would draw a seam there.
       paint: { "fill-color": isDark(theme) ? "#000000" : theme.ink, "fill-opacity": shadeOpacity(theme), "fill-antialias": false },
     },
