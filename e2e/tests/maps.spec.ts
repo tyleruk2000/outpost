@@ -191,6 +191,12 @@ test.describe("maps", () => {
 
   test("asks where a map download is kept before anything is fetched", async ({ page }) => {
     await page.goto("/maps");
+    // Other tests download maps and pictures of their own; this one must add none to them.
+    const mapDownloads = async () => {
+      const { downloads } = await api<{ downloads: Array<{ id: string; kind: string }> }>(page, "GET", "/api/downloads");
+      return downloads.filter((download) => ["map", "terrain", "places"].includes(download.kind)).map((download) => download.id);
+    };
+    const before = await mapDownloads();
     // The shortcut on the first-use card leads to the choices; it does not start a download.
     await page
       .getByRole("button", { name: /World overview/ })
@@ -213,7 +219,6 @@ test.describe("maps", () => {
       page.getByRole("radiogroup", { name: "Where to keep the place names" }).getByRole("radio", { name: /Internal storage/ }),
     ).toBeChecked();
     // Looking at the choices started nothing.
-    const { downloads } = await api<{ downloads: Array<{ kind: string }> }>(page, "GET", "/api/downloads");
-    expect(downloads.filter((download) => ["map", "terrain", "places"].includes(download.kind))).toEqual([]);
+    expect(await mapDownloads()).toEqual(before);
   });
 });
