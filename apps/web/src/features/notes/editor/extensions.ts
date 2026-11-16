@@ -17,6 +17,7 @@ import { DocumentEmbed } from "./document-embed";
 import type { HostRef } from "./host";
 import { NoteImage } from "./image";
 import { NoteLink } from "./link";
+import { duplicateListItem, listItemDrop, moveListItem, selectedListItem } from "./list-items";
 import { PageLink } from "./page-link";
 import { PageLinkMenu } from "./page-link-menu";
 import { SlashMenu } from "./slash-menu";
@@ -50,11 +51,21 @@ const cellAttributes = () => ({
 const NoteTableCell = TableCell.extend({ addAttributes: cellAttributes });
 const NoteTableHeader = TableHeader.extend({ addAttributes: cellAttributes });
 
+/**
+ * Moving and duplicating from the keyboard. With the cursor in a list item the keys act
+ * on that item, which stops at the ends of its list; anywhere else, or with several
+ * items selected, they act on the whole block. A list of one item moves as a block.
+ */
 const BlockShortcuts = Extension.create({
   name: "blockShortcuts",
 
   addKeyboardShortcuts() {
     const move = (direction: -1 | 1) => () => {
+      const item = selectedListItem(this.editor.state);
+      if (item && !(item.count === 1 && item.topLevel)) {
+        moveListItem(this.editor, item, direction);
+        return true;
+      }
       const block = selectedTopBlock(this.editor);
       return block ? moveBlock(this.editor, block, direction) : false;
     };
@@ -62,10 +73,16 @@ const BlockShortcuts = Extension.create({
       "Alt-Shift-ArrowUp": move(-1),
       "Alt-Shift-ArrowDown": move(1),
       "Mod-Shift-d": () => {
+        const item = selectedListItem(this.editor.state);
+        if (item) return duplicateListItem(this.editor, item);
         const block = selectedTopBlock(this.editor);
         return block ? duplicateBlock(this.editor, block) : false;
       },
     };
+  },
+
+  addProseMirrorPlugins() {
+    return [listItemDrop()];
   },
 });
 

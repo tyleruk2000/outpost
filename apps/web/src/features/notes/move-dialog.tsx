@@ -4,6 +4,7 @@ import { Command } from "cmdk";
 import { CornerLeftUp, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { useIsTouch } from "./editor/use-touch";
 import { displayTitle, useNoteActions } from "./notes-data";
 import { PageIcon } from "./page-bits";
 import { moveDestinations, pathLabel, type TreeIndex } from "./tree-model";
@@ -16,6 +17,7 @@ export const pickerItemClass =
 
 export function MoveDialog({ page, index, onClose }: { page: NoteRef; index: TreeIndex; onClose(): void }) {
   const actions = useNoteActions();
+  const touch = useIsTouch();
   const [query, setQuery] = useState("");
   const destinations = useMemo(
     () => moveDestinations(index, page.id).map((item) => ({ item, path: pathLabel(index, item.id) })),
@@ -31,7 +33,7 @@ export function MoveDialog({ page, index, onClose }: { page: NoteRef; index: Tre
     onClose();
     // Choosing the place the page is already in changes nothing.
     if (target === parentId) return;
-    await actions.move(page.id, { parentId: target });
+    await actions.moveWithUndo(index, page.id, { parentId: target });
   };
 
   return (
@@ -45,7 +47,8 @@ export function MoveDialog({ page, index, onClose }: { page: NoteRef; index: Tre
           <div className="flex items-center gap-3 border-b border-border px-5">
             <Search aria-hidden className="size-4 shrink-0 text-ink-muted" />
             <Command.Input
-              autoFocus
+              // On a touch screen the list comes first: focusing the field would cover half of it with the keyboard.
+              autoFocus={!touch}
               value={query}
               onValueChange={setQuery}
               placeholder="Find a page"
