@@ -292,6 +292,8 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 - Plain words for each way it can go wrong: no model server set up (with "Look for
   Ollama on this computer"), a server that is not answering, a model that is not
   installed, a model still loading, a reply cut off, a reply stopped.
+- Conversations are counted and removed by "erase everything", which stops a reply
+  being written first.
 
 #### Reference collections
 
@@ -436,6 +438,8 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 - Every screen says where an entry came from and the date of its data, marks a list by
   its age, says that a status is what the list said then, and marks a position the
   list wrote roughly as approximate.
+- Repeaters, imported and entered by hand, are counted and removed by "erase
+  everything".
 
 #### On a phone, out of reach of the server
 

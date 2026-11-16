@@ -206,6 +206,11 @@ export function createChatStore(ctx: AppContext) {
       db.delete(chatConversations).where(eq(chatConversations.id, id)).run();
     },
 
+    /** Removes every conversation with its messages. Only "erase everything" calls it. */
+    eraseAll(): number {
+      return db.delete(chatConversations).run().changes;
+    },
+
     /** Names a conversation after its first message, unless a person has named it. */
     nameIfUnnamed(id: string, title: string): void {
       const current = row(id);

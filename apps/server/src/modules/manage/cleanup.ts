@@ -254,6 +254,9 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
         places: count("SELECT count(*) AS n FROM markers"),
         routes: count("SELECT count(*) AS n FROM tracks"),
         contacts: ctx.services.contacts.count(),
+        conversations: count("SELECT count(*) AS n FROM chat_conversations"),
+        repeaters: ctx.services.repeaters.count().repeaters,
+        repeaterLists: ctx.services.repeaters.count().lists,
         settings: count("SELECT count(*) AS n FROM settings"),
         vectors: count("SELECT count(*) AS n FROM embeddings"),
         previous: previousData(),
@@ -498,7 +501,17 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
 
   async function erasePersonal(result: CleanupResult): Promise<void> {
     const { notes, maps } = ctx.services;
-    const personal = { pages: 0, attachments: 0, places: 0, routes: 0, contacts: 0, settings: 0 };
+    const personal = {
+      pages: 0,
+      attachments: 0,
+      places: 0,
+      routes: 0,
+      contacts: 0,
+      conversations: 0,
+      repeaters: 0,
+      repeaterLists: 0,
+      settings: 0,
+    };
     personal.attachments = (sqlite.prepare("SELECT count(*) AS n FROM attachments").get() as { n: number }).n;
 
     // Pages go the way a person deletes them: to the trash, then for good, which takes
@@ -528,6 +541,12 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
     }
     // Contacts are other people's details as well as the person's own: every one goes, with its place in search.
     personal.contacts = ctx.services.contacts.eraseAll();
+    // Conversations with a model are the person's own words, and a reply being written is stopped first.
+    personal.conversations = await ctx.services.chat.eraseAll();
+    // Lists of repeaters a person brought in, and the entries they added or changed themselves.
+    const repeaters = await ctx.services.repeaters.eraseAll();
+    personal.repeaters = repeaters.repeaters;
+    personal.repeaterLists = repeaters.lists;
 
     // Whatever is left belongs to records that no longer exist: attachments no page
     // used, import reports, history, vectors, and the settings.
@@ -589,7 +608,7 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
         checkStop(run, result, 0);
 
         // From here on nothing can be stopped half-way in a state worth keeping.
-        run.progress({ message: "Erasing notes, places, routes, contacts and settings" });
+        run.progress({ message: "Erasing notes, places, routes, contacts, conversations, repeaters and settings" });
         await erasePersonal(result);
         await eraseDataFolders(result);
         db.delete(jobsTable).where(ne(jobsTable.id, run.job.id)).run();
@@ -606,6 +625,8 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
           "notes.changed",
           "maps.changed",
           "contacts.changed",
+          "chat.changed",
+          "repeaters.changed",
           "documents.changed",
           "collections.changed",
           "semantic.changed",

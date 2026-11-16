@@ -243,6 +243,10 @@ export interface RepeatersService {
   exportFile(query: RepeaterQuery & { format: RepeaterExportFormat }): { filename: string; body: string; count: number };
   /** For the search across everything. */
   search(q: string, limit: number): SearchResult[];
+  /** How many entries there are to see, a list's and the person's own, and how many lists. */
+  count(): { repeaters: number; lists: number };
+  /** Removes every list and every entry, the person's own included. Only "erase everything" calls it. */
+  eraseAll(): Promise<{ repeaters: number; lists: number }>;
 }
 
 /** One word of what was typed: a frequency to match by range, or text to find in an entry's words. */
@@ -1140,6 +1144,27 @@ export function createRepeatersService(ctx: AppContext): RepeatersService {
           sources: ["keyword"],
         } satisfies SearchResult;
       });
+    },
+
+    count() {
+      const one = (sql: string) => (sqlite.prepare(sql).get() as { n: number }).n;
+      return {
+        repeaters: one("SELECT count(*) AS n FROM repeaters WHERE removed_at IS NULL"),
+        lists: one("SELECT count(*) AS n FROM repeater_lists"),
+      };
+    },
+
+    async eraseAll() {
+      // A file being brought in is let finish first, so that it does not write into a list that has gone.
+      for (let waited = 0; importing && waited < 600; waited += 1) await new Promise((resolve) => setTimeout(resolve, 100));
+      const erased = service.count();
+      sqlite.transaction(() => {
+        // Marks of removal go too: they are rows of the same table.
+        sqlite.prepare("DELETE FROM repeaters").run();
+        sqlite.prepare("DELETE FROM repeater_lists").run();
+      })();
+      changed();
+      return erased;
     },
   };
 

@@ -539,7 +539,8 @@ Each conversation and every message in it, in the database (`chat_conversations`
 them, how the reply ended, and for a reply from the library the passages it was given
 as they were sent. They are part of a backup. They are **not** copied to a portable
 drive: a drive is made to be handed on, and conversations are not part of the
-library. Nothing of a conversation is written to the log; the log records that a
+library. "Erase everything" counts them in its summary, stops a reply that is being
+written, and removes every conversation with its messages. Nothing of a conversation is written to the log; the log records that a
 reply failed and the kind of failure.
 
 A reply is stored as text. It is turned into what is shown each time it is sent to a

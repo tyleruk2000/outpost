@@ -203,6 +203,9 @@ where the file is offered. The CHIRP layout was taken from CHIRP's own source on
   carries the database, but bringing a drive's changes home covers pages, documents,
   saved places and routes only.
 - **Backups hold them**, as part of the database.
+- **"Erase everything" removes them**: every list you imported, every entry you added
+  or changed, and the marks of entries you removed. The summary shown before it starts
+  says how many repeaters in how many lists.
 
 ## Where to find the sheets
 

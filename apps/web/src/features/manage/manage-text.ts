@@ -219,6 +219,11 @@ export function planSentences(plan: CleanupPlan, options: { files: "delete" | "k
   return lines;
 }
 
+/** "340 repeaters in 2 lists", or without the lists when every one was entered by hand. */
+function repeaterWords(repeaters: number, lists: number): string {
+  return `${plural(repeaters, "repeater")}${lists > 0 ? ` in ${plural(lists, "list")}` : ""}`;
+}
+
 /** The person's own things that "erase everything" takes besides files, leaving out what there is none of. */
 export function personalWords(personal: NonNullable<CleanupPlan["personal"]>): string {
   const parts: string[] = [];
@@ -230,6 +235,8 @@ export function personalWords(personal: NonNullable<CleanupPlan["personal"]>): s
   if (personal.places > 0) parts.push(plural(personal.places, "saved place"));
   if (personal.routes > 0) parts.push(plural(personal.routes, "route"));
   if (personal.contacts > 0) parts.push(plural(personal.contacts, "contact"));
+  if (personal.conversations > 0) parts.push(plural(personal.conversations, "chat conversation"));
+  if (personal.repeaters > 0 || personal.repeaterLists > 0) parts.push(repeaterWords(personal.repeaters, personal.repeaterLists));
   if (personal.settings > 0) parts.push(plural(personal.settings, "changed setting"));
   if (personal.vectors > 0) parts.push(plural(personal.vectors, "semantic vector"));
   parts.push("the history of downloads and other work");
@@ -246,12 +253,14 @@ export function resultSentences(result: CleanupResult): string[] {
   const lines: string[] = [];
   if (result.scope === "derived") return (result.steps ?? []).map((step) => step.message);
   if (result.scope === "everything" && result.personal) {
-    const { pages, places, routes, contacts, attachments, settings } = result.personal;
+    const { pages, places, routes, contacts, conversations, repeaters, repeaterLists, attachments, settings } = result.personal;
     const erased = [
       pages > 0 ? `${plural(pages, "page")} of notes${attachments > 0 ? ` with ${plural(attachments, "attachment")}` : ""}` : null,
       places > 0 ? plural(places, "saved place") : null,
       routes > 0 ? plural(routes, "route") : null,
       contacts > 0 ? plural(contacts, "contact") : null,
+      conversations > 0 ? plural(conversations, "chat conversation") : null,
+      repeaters > 0 || repeaterLists > 0 ? repeaterWords(repeaters, repeaterLists) : null,
       settings > 0 ? plural(settings, "changed setting") : null,
       "the history",
     ].filter((part): part is string => part !== null);

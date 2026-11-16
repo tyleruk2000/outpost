@@ -12,7 +12,7 @@ import type { CleanupPlan, CleanupResult, Leftover, ManagedItem, UsageResponse }
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AppError } from "../src/core/errors.ts";
 import { isLocalRequest, isLoopbackAddress } from "../src/core/local.ts";
-import { buildPdf } from "./fixtures/documents/builders.ts";
+import { buildPdf, multipart } from "./fixtures/documents/builders.ts";
 import { type FileServer, startFileServer, testBytes, waitFor } from "./fixtures/downloads/file-server.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
 
@@ -967,5 +967,35 @@ describe("erase everything", () => {
     expect(added.status).toBe("created");
     await w.app.ctx.jobs.whenIdle();
     expect((await w.app.api("GET", "/api/search?q=starting&kinds=document")).body.results).toHaveLength(1);
+  });
+  it("erases conversations and repeaters, a list's and the person's own, and counts them before and after", async () => {
+    app = await createTestApp();
+    const { chat } = app.ctx.services;
+    const first = chat.store.create({ title: "Water filters" });
+    chat.store.addUserMessage(first.id, "Which filter takes out giardia?");
+    chat.store.addUserMessage(first.id, "And how long does one last?");
+    chat.store.create({ title: "An empty one" });
+    const csv = fs.readFileSync(path.join(import.meta.dirname, "fixtures/repeaters/etcc-status.csv"), "utf8");
+    const upload = multipart({ name: "North list" }, [{ name: "etcc-status.csv", content: csv, type: "text/csv" }]);
+    expect((await app.api("POST", "/api/repeaters/import", upload.payload, { headers: upload.headers })).status).toBe(200);
+    expect((await app.api("POST", "/api/repeaters", { callsign: "QZ3HAND", outputHz: 145_725_000 })).status).toBe(200);
+
+    const plan = (await app.api<CleanupPlan>("POST", "/api/manage/plan", { scope: "everything" })).body;
+    expect(plan.personal).toMatchObject({ conversations: 2, repeaters: 7, repeaterLists: 1 });
+
+    const started = await app.api("POST", "/api/manage/cleanup/everything", { confirm: "erase everything" });
+    expect(started.status).toBe(200);
+    const job = await finished(app, started.body.job.id);
+    expect(job.state).toBe("succeeded");
+    const result = job.result as CleanupResult;
+    expect(result.failed).toEqual([]);
+    expect(result.personal).toMatchObject({ conversations: 2, repeaters: 7, repeaterLists: 1 });
+
+    const count = (table: string) => (app!.ctx.sqlite.prepare(`SELECT count(*) AS n FROM ${table}`).get() as { n: number }).n;
+    for (const table of ["chat_conversations", "chat_messages", "repeater_lists", "repeaters"]) expect(count(table), table).toBe(0);
+    expect((await app.api("GET", "/api/chat/conversations")).body.conversations).toEqual([]);
+    expect((await app.api("GET", `/api/chat/conversations/${first.id}`)).status).toBe(404);
+    expect((await app.api("GET", "/api/repeaters/overview")).body).toMatchObject({ total: 0, ownCount: 0, lists: [] });
+    expect((await app.api("GET", "/api/search?q=QZ3HAND")).body.results).toEqual([]);
   });
 });

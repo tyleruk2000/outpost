@@ -33,6 +33,8 @@ export const CHAT_MESSAGE_MAX = 16_000;
 export interface ChatService {
   store: ChatStore;
   runner: ChatRunner;
+  /** Stops a reply being written, then removes every conversation. Only "erase everything" calls it. */
+  eraseAll(): Promise<number>;
   /** Test seam: where "Look for Ollama" looks. */
   setOllamaAddresses(addresses: readonly string[]): void;
 }
@@ -56,6 +58,13 @@ export async function registerChat(app: FastifyInstance, ctx: AppContext): Promi
   ctx.services.chat = {
     store,
     runner,
+    async eraseAll() {
+      // A reply still being written would be stored into a conversation that is about to go.
+      await runner.close();
+      const removed = store.eraseAll();
+      ctx.events.publish({ type: "chat.changed" });
+      return removed;
+    },
     setOllamaAddresses(addresses) {
       ollamaAddresses = addresses;
     },
