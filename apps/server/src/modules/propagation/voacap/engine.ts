@@ -254,7 +254,8 @@ export function createVoacapEngine(paths: VoacapPaths): PropagationEngine {
         });
         first ??= answer;
         for (const [hour, answered] of answer.hours.entries()) {
-          const row = (cells[hour] ??= []);
+          if (!cells[hour]) cells[hour] = [];
+          const row = cells[hour];
           answered.freqs.forEach((wire, index) => {
             const at = run.at[index]!;
             const [tx, rx] = states[at]!;
