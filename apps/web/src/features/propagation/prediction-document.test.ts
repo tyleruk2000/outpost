@@ -17,18 +17,7 @@ import {
   predictionTitle,
   predictionUnwritable,
 } from "./prediction-document";
-import { noPath, prediction } from "./prediction-fixture";
-
-const wordsOf = (blocks: Block[]): string =>
-  blocks
-    .map((block) =>
-      block.kind === "list"
-        ? block.items.join("\n")
-        : block.kind === "table"
-          ? [block.head, ...block.rows].map((row) => row.join(" | ")).join("\n")
-          : block.text,
-    )
-    .join("\n");
+import { noPath, prediction, wordsOf } from "./prediction-fixture";
 
 const tableAfter = (blocks: Block[], heading: string) => {
   const at = blocks.findIndex((block) => block.kind === "heading" && block.text === heading);

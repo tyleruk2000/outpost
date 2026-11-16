@@ -107,6 +107,9 @@ describe("printing one-time pads", () => {
     expect(within(paper).getAllByText(/Never use any part of this pad for a second message/)).toHaveLength(4);
     // Everything that is not paper is marked to be left off it.
     for (const name of ["Print", "Close"]) expect(within(view).getByRole("button", { name }).closest(".print-chrome")).not.toBeNull();
+    // A pad is never offered to the library, which everyone on the network can read, and the screen says why.
+    expect(within(view).queryByRole("button", { name: "Add to library" })).not.toBeInTheDocument();
+    expect(view).toHaveTextContent("That is why there is no “Add to library” here");
     expect(paper.closest(".print-chrome")).toBeNull();
 
     // Print leads, with the PDF beside it.
@@ -234,6 +237,9 @@ describe("printing a Vigenère square", () => {
     expect(paper.querySelector('[data-sheet="vigenere-square"]')).not.toBeNull();
     expect(paper.querySelectorAll("tbody tr")).toHaveLength(26);
     expect(within(view).queryByText(/another copy of the pads/)).not.toBeInTheDocument();
+    // Nor is the square, from this view; it says how to put it there by hand.
+    expect(within(view).queryByRole("button", { name: "Add to library" })).not.toBeInTheDocument();
+    expect(within(view).getByTestId("no-library")).toHaveTextContent("Paper aids are not added to the library from this screen");
     expect(within(view).getByTestId("pdf-summary")).toHaveTextContent(
       "The PDF is 1 page of US Letter, made on this device and sent nowhere.",
     );

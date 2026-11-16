@@ -3,6 +3,7 @@
  * so that each can be found again in what is made from it.
  */
 import { HF_BANDS, type PredictionCell, type PredictionHour, type PredictionResult } from "@outpost/shared";
+import type { Block } from "./plans/document";
 
 export const cell = (mhz: number, reliability: number, change: Partial<PredictionCell> = {}): PredictionCell => ({
   mhz,
@@ -127,3 +128,17 @@ export function prediction(change: Partial<PredictionResult> = {}): PredictionRe
     ...change,
   };
 }
+
+/** Every word of a document's blocks, a line to a paragraph, list item or table row, cells parted by " | ". */
+export const wordsOf = (blocks: Block[]): string =>
+  blocks
+    .map((block) =>
+      block.kind === "list"
+        ? block.items.join("\n")
+        : block.kind === "table"
+          ? [block.head, ...block.rows].map((row) => row.join(" | ")).join("\n")
+          : block.kind === "drawing"
+            ? (block.words ?? "")
+            : block.text,
+    )
+    .join("\n");

@@ -45,6 +45,8 @@ import { CELL_OPACITY, coverageFeatures } from "../map/layers";
 import type { PlanMapHandle } from "../map/plan-map";
 import { PlaceInput } from "../place-field";
 import { BasisNotice } from "../results";
+import { quantityMeaning } from "./coverage-document";
+import { CoverageExport } from "./coverage-export";
 import {
   areaAround,
   areaOf,
@@ -80,17 +82,6 @@ const areaBox = (area: CoverageArea): Bbox => [area.west, area.south, area.east,
 function gridWords(area: CoverageArea, resolution: CoverageResolution): string {
   const grid = coverageGrid(area, resolution);
   return `${grid.columns} × ${grid.rows} = ${formatNumber(grid.columns * grid.rows)} cells, each about ${km(grid.cellWidthKm)} by ${km(grid.cellHeightKm)}`;
-}
-
-/** Exactly what the number behind a shade is, for the legend. */
-function quantityMeaning(result: CoverageResult, quantity: CoverageQuantity): string {
-  const { mode } = result;
-  const needs = mode.requiredSnrDbHz === null ? "" : `${mode.requiredSnrDbHz} dB in a 1 Hz bandwidth`;
-  if (quantity === "reliability")
-    return `The share of the days of the month on which the signal-to-noise ratio at the cell's centre is predicted to reach what ${mode.label} needs (${needs}). It is the engine's own figure, and it is not the chance of a contact.`;
-  if (quantity === "snr")
-    return `The median signal-to-noise ratio in a 1 Hz bandwidth at the cell's centre, less the ${needs} that ${mode.label} needs. Zero is exactly enough on the median day; on half the days the ratio is lower.`;
-  return "The median signal power at the receiving antenna at the cell's centre, as an S-meter reading by the convention S9 = −73 dBm and 6 dB to the unit. Real S-meters seldom follow it closely.";
 }
 
 function Legend({ result, quantity, utcHour }: { result: CoverageResult; quantity: CoverageQuantity; utcHour: number }) {
@@ -684,6 +675,7 @@ export default function CoveragePage() {
           {result ? (
             <>
               <Legend result={result} quantity={quantity} utcHour={utcHour} />
+              <CoverageExport result={result} quantity={quantity} utcHour={utcHour} />
               <Section
                 title="Read a cell"
                 description="Press a cell on the map, or give a place, to read every figure the map holds for it."

@@ -11,6 +11,12 @@
  * browser's own Share menu prints it, and a screenshot keeps it.
  *
  * The view is a child of the page's body, which is what the print rules look for.
+ *
+ * It does not offer "Add to library", which every other PDF Outpost makes does
+ * (features/library/made). A one-time pad is a secret meant to exist on two sheets of
+ * paper and nowhere else; the library is readable by everyone who can reach Outpost and
+ * is in every backup. The cipher square is not a secret, but it is printed from the
+ * same view, and one button that must never be pressed for a pad is one too many.
  */
 import { Download, Printer, Share2, TriangleAlert, X } from "lucide-react";
 import { Dialog as DialogPrimitive } from "radix-ui";
@@ -187,9 +193,16 @@ export function PrintView({
               {secret ? (
                 <Notice tone="warning" icon={<TriangleAlert />} title="A saved PDF is another copy of the pads">
                   It is made on this device and sent nowhere, and Outpost keeps nothing once this screen is left. The file you save stays:
-                  delete it when it is printed, here and anywhere it was shared or backed up, as you would burn the paper.
+                  delete it when it is printed, here and anywhere it was shared or backed up, as you would burn the paper. That is why there
+                  is no “Add to library” here, as there is for other PDFs Outpost makes: the library can be read by everyone on this network
+                  and is copied into every backup.
                 </Notice>
-              ) : null}
+              ) : (
+                <p className="text-small text-ink-muted" data-testid="no-library">
+                  Paper aids are not added to the library from this screen, so that a pad never is by a slip. The square is no secret: to
+                  keep it in the library, save the PDF and add the file there.
+                </p>
+              )}
             </div>
 
             <div ref={setRoom} className="print-room mx-auto max-w-[210mm]">

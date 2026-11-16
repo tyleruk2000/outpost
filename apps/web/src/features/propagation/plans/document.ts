@@ -32,7 +32,14 @@ export type Block =
   | { kind: "heading"; text: string }
   | { kind: "para"; text: string }
   | { kind: "list"; items: string[] }
-  | { kind: "table"; head: string[]; rows: string[][]; right?: number[] };
+  | { kind: "table"; head: string[]; rows: string[][]; right?: number[] }
+  /**
+   * Something that is not words: a picture with what is drawn over it, a legend's
+   * swatches. `draw` is given the top-left corner of a box as wide as the page's text and
+   * `height` tall, and answers with what goes in it. `words` says the same thing for
+   * Markdown, which has no pictures.
+   */
+  | { kind: "drawing"; height: number; draw: (x: number, y: number, width: number) => SheetItem[]; words?: string };
 
 const longDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 const monthYear = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
@@ -184,7 +191,9 @@ export function toMarkdown(blocks: Block[]): string {
     else if (block.kind === "heading") out.push(`## ${block.text}`, "");
     else if (block.kind === "para") out.push(block.text, "");
     else if (block.kind === "list") out.push(...block.items.map((item) => `- ${item}`), "");
-    else {
+    else if (block.kind === "drawing") {
+      if (block.words) out.push(block.words, "");
+    } else {
       const escaped = { ...block, head: block.head.map(cell), rows: block.rows.map((row) => row.map(cell)) };
       const cols = columns(escaped);
       const line = (cells: string[]) => `| ${cols.map((col, index) => pad(cells[index] ?? "", col.width, col.right)).join(" | ")} |`;
@@ -272,6 +281,10 @@ export function toSheets(blocks: Block[], footer: string, paper: "a4" | "letter"
         y += 2;
       }
       y += 3;
+    } else if (block.kind === "drawing") {
+      room(block.height);
+      page().push(...block.draw(MARGIN, y, inner));
+      y += block.height + 6;
     } else {
       const cols = columns(block);
       const gap = "  ";
@@ -344,6 +357,7 @@ export function unwritable(blocks: Block[]): string[] {
   };
   for (const block of blocks) {
     if (block.kind === "list") block.items.forEach(check);
+    else if (block.kind === "drawing") continue;
     else if (block.kind === "table") [block.head, ...block.rows].flat().forEach(check);
     else check(block.text);
   }

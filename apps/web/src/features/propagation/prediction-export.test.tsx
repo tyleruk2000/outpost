@@ -7,9 +7,8 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { comparisonDocument, comparisonPdf, comparisonTitle } from "./comparison-document";
-import type { Block } from "./plans/document";
 import { ComparisonExport, PredictionExport } from "./prediction-export";
-import { prediction } from "./prediction-fixture";
+import { prediction, wordsOf } from "./prediction-fixture";
 
 const saved: Array<{ name: string; type: string; content: Uint8Array | string }> = [];
 vi.mock("./plans/document", async (original) => ({
@@ -50,17 +49,6 @@ const comparison = (): CompareResult => {
     basis: base.basis,
   };
 };
-
-const wordsOf = (blocks: Block[]): string =>
-  blocks
-    .map((block) =>
-      block.kind === "list"
-        ? block.items.join("\n")
-        : block.kind === "table"
-          ? [block.head, ...block.rows].map((row) => row.join(" | ")).join("\n")
-          : block.text,
-    )
-    .join("\n");
 
 describe("the prediction's PDF on the planner", () => {
   it("offers the PDF to save, to add to the library and as Markdown, on the paper chosen", async () => {

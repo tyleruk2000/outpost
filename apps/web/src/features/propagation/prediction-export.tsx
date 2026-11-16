@@ -34,7 +34,7 @@ import {
 const PLANNER = "/radio/propagation";
 
 /** The paper last chosen for a sheet made for a home printer: the same choice as the paper aids on the Encryption screen. */
-function usePaper(): [PredictionPaper, (paper: PredictionPaper) => void] {
+export function usePaper(): [PredictionPaper, (paper: PredictionPaper) => void] {
   const [paper, setPaper] = useState<PredictionPaper>(() => readStored(AID_PAPER_KEY, isAidPaper, likelyPaper(navigator.language)));
   return [
     paper,
@@ -45,7 +45,7 @@ function usePaper(): [PredictionPaper, (paper: PredictionPaper) => void] {
   ];
 }
 
-function PaperChoice({ paper, onChange }: { paper: PredictionPaper; onChange: (paper: PredictionPaper) => void }) {
+export function PaperChoice({ paper, onChange }: { paper: PredictionPaper; onChange: (paper: PredictionPaper) => void }) {
   return (
     <Segmented<PredictionPaper>
       label="Paper for the PDF"
