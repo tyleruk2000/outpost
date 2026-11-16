@@ -170,6 +170,8 @@ describe("library file", () => {
 
   it("decodes the HTML escaping kiwix-serve uses in its answers", () => {
     expect(decodeEntities("Fireman&apos;s &amp; Bowyer&#39;s &#x26; &lt;b&gt;")).toBe("Fireman's & Bowyer's & <b>");
+    // Not an entity, though every object has something of that name: left as written.
+    expect(decodeEntities("the &constructor; of &valueOf;")).toBe("the &constructor; of &valueOf;");
   });
 });
 

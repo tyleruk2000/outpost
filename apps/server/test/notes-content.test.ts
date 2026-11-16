@@ -163,6 +163,12 @@ describe("Markdown round trips", () => {
     expect(markdownToDoc("> see [!NOTE] below").doc.content[0]!.type).toBe("blockquote");
   });
 
+  it("does not take an HTML tag named like something every object has for formatting", () => {
+    const { doc, warnings } = markdownToDoc("Call the <constructor>builder</constructor> first.");
+    expect(JSON.stringify(doc)).toBe(JSON.stringify(markdownToDoc("Call the builder first.").doc));
+    expect(warnings).toEqual(["Some HTML formatting is not supported and was removed; the text was kept."]);
+  });
+
   it("round-trips a whole page with every kind of block", () => {
     const page = doc(
       h(1, "Trip"),

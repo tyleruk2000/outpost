@@ -318,6 +318,9 @@ describe("choosing which GeoNames features to keep", () => {
     expect(kindLabelOf("P", "PPL", 900)).toBe("Village");
     expect(kindLabelOf("P", "PPL", 0)).toBe("Place");
     expect(kindLabelOf("T", "MT", 0)).toBe("Mountain");
+    // Codes a damaged file could hold are not looked up in what every object inherits.
+    expect(kindLabelOf("T", "constructor", 0)).toBe("Landform");
+    expect(kindLabelOf("constructor", null, 0)).toBe("Place");
     expect(kindLabelOf("H", "LK", 0)).toBe("Lake");
     expect(kindLabelOf("S", "HUT", 0)).toBe("Hut");
     expect(kindLabelOf("T", "XYZ", 0)).toBe("Landform");

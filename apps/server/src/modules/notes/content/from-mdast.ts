@@ -237,7 +237,7 @@ export function mdastToBlocks(root: MdNode, options: LinkResolver = {}): MappedB
     } else if (name === "a") {
       const href = safeUrl(tagAttribute(tag, "href"), "link");
       open.push({ tag: name, mark: href ? { type: "link", attrs: { href } } : null });
-    } else if (TAG_MARKS[name]) {
+    } else if (Object.hasOwn(TAG_MARKS, name) && TAG_MARKS[name]) {
       open.push({ tag: name, mark: { type: TAG_MARKS[name] } });
     } else {
       warnings.add("Some HTML formatting is not supported and was removed; the text was kept.");

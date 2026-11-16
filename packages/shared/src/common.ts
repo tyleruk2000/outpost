@@ -58,3 +58,12 @@ export function formatDuration(seconds: number): string {
   const h = `${hours} hour${hours === 1 ? "" : "s"}`;
   return rest === 0 ? h : `${h} ${rest} minute${rest === 1 ? "" : "s"}`;
 }
+
+/**
+ * What a table holds under a key, and nothing else. `table[key]` on a plain object also
+ * finds what every object inherits ("constructor", "__proto__", "toString"), so a key
+ * that came from a file or from a person is looked up with this.
+ */
+export function ownValue<T>(table: Readonly<Record<string, T>>, key: string): T | undefined {
+  return Object.hasOwn(table, key) ? table[key] : undefined;
+}

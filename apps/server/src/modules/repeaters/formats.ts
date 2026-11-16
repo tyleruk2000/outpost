@@ -17,6 +17,7 @@
 import {
   bandOfHz,
   MAX_REPEATER_ROWS,
+  ownValue,
   parseBand,
   parseMaidenhead,
   REPEATER_COLUMN_FIELDS,
@@ -429,13 +430,13 @@ export function parseModes(text: string, style: "words" | "etcc-letters"): Repea
   if (style === "etcc-letters") {
     // "AF", "ADM", and with an access code after a colon ("M:1").
     for (const letter of text.toUpperCase().replace(/:\d+/g, "").replace(/PX/g, "")) {
-      const mode = ETCC_FLAGS[letter];
+      const mode = ownValue(ETCC_FLAGS, letter);
       if (mode) found.add(mode);
     }
     return inOrder(found);
   }
   for (const word of text.toLowerCase().split(/[\s,;/|+&]+/)) {
-    const mode = MODE_WORDS[word];
+    const mode = ownValue(MODE_WORDS, word);
     if (mode) found.add(mode);
   }
   return inOrder(found);

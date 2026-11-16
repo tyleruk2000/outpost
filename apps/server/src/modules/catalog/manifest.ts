@@ -263,7 +263,7 @@ export function entryProblem(entry: ManifestEntry, manifest: Manifest): string |
   }
   if (entry.source.type === "bundled") {
     const extension = path.extname(entry.source.file ?? "").slice(1);
-    const expected = BUNDLED_FORMATS[extension];
+    const expected = Object.hasOwn(BUNDLED_FORMATS, extension) ? BUNDLED_FORMATS[extension] : undefined;
     if (!expected) return `A bundled file must be Markdown, PDF, EPUB or HTML, but "${entry.source.file}" is none of these.`;
     return entry.format === expected
       ? undefined

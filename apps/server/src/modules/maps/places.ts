@@ -19,7 +19,7 @@
  *   V  forests
  */
 import type { PlaceDto, PlaceSearchResponse, PlacesDataset } from "@outpost/shared";
-import { haversineMeters, parseCoordinateReadings } from "@outpost/shared";
+import { haversineMeters, ownValue, parseCoordinateReadings } from "@outpost/shared";
 import { sql } from "drizzle-orm";
 import yauzl from "yauzl";
 import { z } from "zod";
@@ -229,14 +229,15 @@ const LABELS: Record<string, string> = {
 const CLASS_LABELS: Record<string, string> = { P: "Place", T: "Landform", H: "Water", L: "Area", S: "Landmark", A: "Region", V: "Forest" };
 
 export function kindLabelOf(featureClass: string | null, featureCode: string | null, population: number): string {
-  if (featureCode && LABELS[featureCode]) return LABELS[featureCode]!;
+  const named = featureCode ? ownValue(LABELS, featureCode) : undefined;
+  if (named) return named;
   if (featureClass === "P") {
     if (population >= 100_000) return "City";
     if (population >= 10_000) return "Town";
     if (population > 0) return "Village";
     return "Place";
   }
-  return (featureClass && CLASS_LABELS[featureClass]) || "Place";
+  return (featureClass && ownValue(CLASS_LABELS, featureClass)) || "Place";
 }
 
 export const datasetSchema = z

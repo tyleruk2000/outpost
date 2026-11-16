@@ -193,6 +193,7 @@ describe("reading a file of repeaters", () => {
     expect(parseModes("M:1", "etcc-letters")).toEqual(["dmr"]);
     expect(parseModes("FM / D-STAR, C4FM", "words")).toEqual(["fm", "dstar", "fusion"]);
     expect(parseModes("USB", "words")).toEqual([]);
+    expect(parseModes("constructor __proto__ fm", "words")).toEqual(["fm"]);
     expect(parseStatus("OPERATIONAL")).toBe("operational");
     expect(parseStatus("Not operational")).toBe("off-air");
     expect(parseStatus("REDUCED OUTPUT")).toBe("reduced");

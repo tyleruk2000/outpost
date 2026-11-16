@@ -44,6 +44,9 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 - An address book phones can subscribe to (CardDAV): off until turned on, read-only, so
   contacts travel from Outpost to the phone and never back, with no password to keep.
   Tested with a client library and a sync program, not with a phone.
+- A label that is also the name of something every JavaScript object has ("constructor",
+  "__proto__") is a label like any other: it no longer stops the address book being
+  listed for phones or exported.
 - Contacts are in backups, are counted and removed by "erase everything", are in the
   search index, and travel on a portable drive unless left off.
 - A database migration adds the tables (`0007_contacts`).
