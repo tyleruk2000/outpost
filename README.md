@@ -208,14 +208,7 @@ real network's devices are shown.*
 | Emergency plans | A household's plans for a power cut, flooding, no phone or internet, severe weather, sheltering at home or leaving at short notice, started from templates drawn from official guidance, each step saying whose words it is. **Use now** shows the steps in large type with ticks; wallet cards, a fridge sheet and a grab list print as PDF. Over HTTPS a plan can be kept on a phone and used, ticks and all, with the server out of reach. A warning held for your home place is shown as one line, with its age. | [Emergency plans](docs/emergency-plans.md) |
 | Supplies | Food, water and kit kept at home: how many days they last for your household, what to use first, and what to buy. Find items by barcode (typed, from a photo, or with the live camera on an `https` page). | [Supplies](docs/supplies.md) |
 | Weather and hazards | Forecasts, UK severe-weather and flood warnings, river levels and climate averages for places you choose, fetched when you press and kept with their age; a log of your own barometer readings. | [Weather](docs/weather.md) |
-| Nuclear preparedness | An offline map workspace with an educational effects simulator: what Glasstone and Dolan's published model says a detonation of a stated size does at a distance, for an idealised case, with every figure cited. Scenarios are saved, compared two at a time and written out as PDF or Markdown. It covers effects, preparedness and published history only. | [Nuclear preparedness](docs/nuclear-preparedness.md) |
-
-<!--
-  TO BE SUPPLIED: a short paragraph on the nuclear preparedness module's final
-  sitting (personal planning in the workspace, and people inside a ring), written by
-  the builder finishing it. Describe only what docs/nuclear-preparedness.md then says
-  exists, and add a row or a line to the table above if it needs one.
--->
+| Nuclear preparedness | An educational, offline workspace over the map. An effects simulator draws what Glasstone and Dolan's published model says a detonation of a stated size does at a distance, for an idealised case, with every figure cited: up to six hypothetical scenarios at once, one colour for each kind of effect, and an idealised fallout pattern for a surface burst in a wind you give. Where a WorldPop grid is installed, each ring can say how many people live inside it: a count of residents, never a casualty figure and never a total across scenarios. The published reference layers and a browser of historical records are shown as on Maps, and a Plans tab draws on Emergency plans, with a radiation emergency template quoting the UK Health Security Agency under the Open Government Licence. Mapped infrastructure is never marked, ranked or scored as a target; results are educational estimates, not forecasts or instructions. | [Nuclear preparedness](docs/nuclear-preparedness.md) |
 
 <table>
 <tr>
@@ -591,7 +584,7 @@ reaches the internet or a real model server.
 | [Emergency plans](docs/emergency-plans.md) | Plans, templates and their sources, cards |
 | [Supplies](docs/supplies.md) | Stock, the household, barcodes, CSV |
 | [Weather and hazards](docs/weather.md) | What is fetched, from whom, and how old it is |
-| [Nuclear preparedness](docs/nuclear-preparedness.md) | The workspace and the effects simulator |
+| [Nuclear preparedness](docs/nuclear-preparedness.md) | The workspace, the effects simulator, its rules and its sources |
 | [Sources](docs/sources.md) | Every content source considered, and its terms |
 | [Security](docs/security.md) | Threat model and controls |
 | [API](docs/api.md) | HTTP API reference |
