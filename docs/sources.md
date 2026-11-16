@@ -616,6 +616,20 @@ The second sitting, for the sources by country.
   SRAL's site were written from what their terms and scripts say, not by doing them
   in a browser. The steps for ukrepeater.net and the WIA are from the pages as read.
 
+## The IEEE's registry of device makers, read on 2026-11-16
+
+"Devices on this network" can show who made a device from the first half of its
+hardware address. The list of those prefixes is the IEEE Registration Authority's
+public listing (MA-L), offered as a download at
+<https://standards-oui.ieee.org/oui/oui.csv> from
+<https://standards.ieee.org/products-programs/regauth/>. Those pages state no licence
+and no permission to redistribute the file; the site's footer reads "© Copyright 2026
+IEEE – All rights reserved", and links to the IEEE's site terms, whose text could not
+be fetched. Since the terms do not clearly allow passing the file on, it is not
+bundled: Outpost fetches it from the IEEE when a person presses "Fetch the registry",
+states the size first (3,876,189 bytes on 2026-11-16), and keeps it in that computer's
+data directory. See [tools-qr-and-network.md](tools-qr-and-network.md#who-made-each-device).
+
 ## Sources that are not integrated: what you can do
 
 - **Import a repeater list you obtained.** See [radio.md](radio.md#repeaters). Outpost

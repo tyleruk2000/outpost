@@ -631,6 +631,65 @@ bounded, given that anyone who can reach Outpost can use them:
 - **Places chosen on the map** use the map already installed. Choosing a place fetches
   no tile that the Maps screen would not, and nothing from outside the computer.
 
+### QR codes
+
+The QR code screen makes its codes in the browser. A Wi-Fi password, a contact or
+anything else typed there is not sent to the server, stored, logged, put in the address
+or kept in browser storage; spell checking and autocomplete are off in its fields. An
+end-to-end test makes a Wi-Fi code and asserts that no request left the page. A code's
+own text is not hidden: anyone who scans a printed or shared Wi-Fi code learns the
+password. "Add to library" asks before putting a Wi-Fi or contact code in the library,
+because the library is readable by everyone who can reach Outpost and is in every
+backup; the sheet then carries the password inside the code, and in words too if the
+person asked for that, and the words are found by the library's search. See
+[tools-qr-and-network.md](tools-qr-and-network.md#qr-codes-toolsqr).
+
+### Devices on this network
+
+"Devices on this network" (`modules/network`) has the server look round the networks
+the computer is on. What it may look at is decided on the server from the computer's
+own interfaces: private and link-local networks only, never a public address, never a
+range from the request (the route takes no body), never a network reached through a
+router or a tunnel, and at most a /24 of a large network. What it sends is fixed and
+small: one ping per address, and for an address that does not answer, a connection
+attempt on port 80 and then 443, closed at once; at most 20 a second and 8 at once,
+one scan at a time. No other port, no service probing, no logging in, no vulnerability
+checks, no packet capture, and no special rights. The full account is in
+[tools-qr-and-network.md](tools-qr-and-network.md#devices-on-this-network-toolsnetwork).
+
+**Who may start one.** Outpost has no accounts, so anyone who can reach it can start a
+scan. It was decided not to limit this to the computer itself (`isLocalRequest`, as
+erasing and restoring are): a device on the same network can already find out all of
+this for itself, by doing the same thing (any phone app that lists the devices on a
+Wi-Fi network does), and a scan is slow, bounded and only discovers. The cases where
+that reasoning is weaker:
+
+- Someone who reaches Outpost from **somewhere other than its network** (through a VPN
+  or a tunnel into the home, or from a guest network that is routed to it) can learn
+  the devices on the home network, which they could not see from where they are. If
+  Outpost is reachable like that, the list is one more thing reachable with it, like
+  the notes and contacts.
+- A scan comes **from the computer running Outpost**, so a network's own monitoring
+  sees that computer scanning. On a home network this is rarely noticed; on a managed
+  network (a workplace, a campsite's Wi-Fi) it may be against the rules there.
+
+If either matters, `assertBackupRight` (`modules/backup/right.ts`) is the one line that
+would limit starting a scan to the computer itself.
+
+**What is kept.** Device names can be people's names ("Anna's iPhone"). The list is
+in the database (and so in backups), shown only on its own screen, never put in search,
+never written to the log (a scan logs only its counts), and leaves Outpost only when
+someone presses "Copy the list" or "Save as CSV". "Erase everything" removes it. The
+names and announcements devices send are text from the network: they are stripped of
+control characters, cut to 80 characters and shown as text, never as markup. The link
+to a device's web page is opened by the person's browser in a new tab with
+`noopener noreferrer`; Outpost does not fetch it, and nothing from the device's page
+can reach Outpost's origin.
+
+**The makers' registry** is fetched only on a press, from the IEEE's host only, through
+the guarded HTTP client (every redirect held to the same host), capped at 20 MB, and
+kept only if it reads as the registry.
+
 ### Paths
 
 Content is recorded as *(storage location, relative path)*, and storage locations can

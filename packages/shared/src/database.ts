@@ -20,10 +20,10 @@ export type DatabaseCountId =
   | "conversations"
   | "repeaters"
   | "plans"
+  | "networkDevices"
   | "observations"
   | "equipment"
-  | "predictions"
-  | "networkDevices";
+  | "predictions";
 
 /** Where the bytes go, in a few plain groups of tables. */
 export type DatabaseGroupId = "search" | "meaning" | "library" | "notes" | "maps" | "radio" | "other";
