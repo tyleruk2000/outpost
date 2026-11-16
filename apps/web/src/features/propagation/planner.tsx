@@ -8,15 +8,12 @@ import {
   bandOf,
   HF_BANDS,
   isApproximatedAntenna,
-  type MarkerDto,
   type ModeId,
   modeById,
   NOISE_ENVIRONMENTS,
   type NoiseEnvironment,
   OPERATING_MODES,
   type PredictionResult,
-  parseCoordinates,
-  toMaidenhead,
 } from "@outpost/shared";
 import { useEffect, useId, useState } from "react";
 import { Link } from "react-router";
@@ -33,7 +30,6 @@ import {
   emptyForm,
   exampleForm,
   openSaved,
-  type PlaceField,
   type PlannerForm,
   rememberedForm,
   rememberForm,
@@ -46,56 +42,8 @@ import {
   useSaved,
   useSavePrediction,
 } from "./data";
+import { PlaceInput } from "./place-field";
 import { bestHour, Results } from "./results";
-
-function Place({
-  label,
-  value,
-  onChange,
-  places,
-  error,
-}: {
-  label: string;
-  value: PlaceField;
-  onChange: (value: PlaceField) => void;
-  places: MarkerDto[];
-  error?: string;
-}) {
-  const found = parseCoordinates(value.text);
-  const hint = found
-    ? `${found.lat.toFixed(4)}, ${found.lon.toFixed(4)} · ${toMaidenhead(found.lat, found.lon, 6) ?? ""}${value.name ? ` · ${value.name}` : ""}`
-    : "Coordinates (51.5074, -0.1278), a grid reference or a locator (IO91WM).";
-  return (
-    <Field label={label} hint={hint} error={error}>
-      {(ids) => (
-        <div className="grid gap-2">
-          <Input
-            {...ids}
-            value={value.text}
-            onChange={(event) => onChange({ text: event.target.value, name: "" })}
-            placeholder="51.5074, -0.1278"
-            inputMode="text"
-            autoComplete="off"
-            spellCheck={false}
-            className="font-mono"
-          />
-          {places.length > 0 ? (
-            <Select
-              aria-label={`${label}: choose a saved place`}
-              value={undefined}
-              placeholder="Or choose a saved place"
-              onChange={(id) => {
-                const place = places.find((item) => item.id === id);
-                if (place) onChange({ text: `${place.lat.toFixed(5)}, ${place.lon.toFixed(5)}`, name: place.name });
-              }}
-              options={places.map((place) => ({ value: place.id, label: place.name }))}
-            />
-          ) : null}
-        </div>
-      )}
-    </Field>
-  );
-}
 
 const longDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 
@@ -183,15 +131,17 @@ export function Planner() {
       >
         <fieldset className="grid content-start gap-4">
           <legend className="mb-3 text-lead font-semibold text-ink">Where</legend>
-          <Place
+          <PlaceInput
             label="Transmitter"
+            what="the transmitter"
             value={form.tx}
             onChange={(value) => set("tx", value)}
             places={places.data ?? []}
             error={fieldError("tx")}
           />
-          <Place
+          <PlaceInput
             label="Receiver"
+            what="the receiver"
             value={form.rx}
             onChange={(value) => set("rx", value)}
             places={places.data ?? []}
@@ -202,7 +152,7 @@ export function Planner() {
             <Link to="/maps" className="text-primary underline underline-offset-2">
               map
             </Link>
-            .
+            . A place pressed on the map here is used for this prediction and is not saved.
           </p>
           <Field label="Date (UTC)" hint="The model works by month: every day of a month gets the same answer.">
             {(ids) => (
