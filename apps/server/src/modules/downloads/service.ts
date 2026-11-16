@@ -153,6 +153,8 @@ export function createDownloadsService(ctx: AppContext): DownloadsService {
   const client = createHttpClient({ allowPrivate: ctx.config.allowPrivateDownloads });
   const fetchers = new Map<string, Fetcher>([["http", createHttpFetcher(client)]]);
   const installers = new Map<DownloadKind, Installer>();
+  /** Installers that take only the downloads they recognise, tried before the kind's own installer. */
+  const claimed: Array<{ kind: DownloadKind; owns: (download: DownloadRow) => boolean; installer: Installer }> = [];
   const completedListeners: Array<(download: DownloadRow) => void | Promise<void>> = [];
   const live = new Map<string, Live>();
   const running = new Map<string, ActiveRun>();
@@ -571,7 +573,8 @@ export function createDownloadsService(ctx: AppContext): DownloadsService {
           progress: (current, total, message) =>
             run.progress({ current, message: message ?? "Installing", ...(total === undefined ? {} : { total }) }),
         };
-        const installed = await (installers.get(row.kind) ?? defaultInstaller)(install);
+        const claimant = claimed.find((entry) => entry.kind === row.kind && entry.owns(row));
+        const installed = await (claimant?.installer ?? installers.get(row.kind) ?? defaultInstaller)(install);
         collectionId = installed?.collectionId;
         installMeta = installed?.meta;
       } catch (error) {
@@ -1037,7 +1040,11 @@ export function createDownloadsService(ctx: AppContext): DownloadsService {
       fetchers.set(name, fetcher);
     },
 
-    registerInstaller(kind, installer) {
+    registerInstaller(kind, installer, owns) {
+      if (owns) {
+        claimed.push({ kind, owns, installer });
+        return;
+      }
       if (installers.has(kind)) throw new Error(`An installer for "${kind}" downloads is already registered.`);
       installers.set(kind, installer);
     },

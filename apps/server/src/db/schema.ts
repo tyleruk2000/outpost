@@ -1140,6 +1140,122 @@ export const supplyShopping = sqliteTable("supply_shopping", {
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });
+// ── Reference layers (modules/layers) ───────────────────────────────────────
+
+/**
+ * Features of the reference layers on the map: publicly mapped infrastructure, places and
+ * boundaries from published datasets, and documented historical records. Every row keeps
+ * where it came from, when, how exactly it is placed and under what licence. Rows belong
+ * to the collection (a downloaded or imported pack) they were read from. A spatial index
+ * (`reference_features_rtree`) and a full-text index (`reference_features_fts`) are kept
+ * by triggers written by hand in the migration.
+ */
+export const referenceFeatures = sqliteTable(
+  "reference_features",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    /** The collection of the pack, or "pending:<download id>" while one is being installed. */
+    collectionId: text("collection_id").notNull(),
+    /** The adapter that read it: "natural-earth", "ourairports", "osm", "wikidata", "import". */
+    provider: text("provider").notNull(),
+    /** The record's own id at its source ("node/123", "Q12345", an airport's ident). */
+    sourceId: text("source_id").notNull(),
+    layer: text("layer").notNull(),
+    /** What it is within the layer, in the source's own terms ("military=airfield", "large_airport"). */
+    kind: text("kind").notNull().default(""),
+    name: text("name").notNull().default(""),
+    altNames: text("alt_names").notNull().default(""),
+    /** ISO 3166-1 alpha-2, upper case, when known. */
+    country: text("country"),
+    /** A representative point in WGS 84. Null for a historical record whose place is not documented. */
+    lat: real("lat"),
+    lon: real("lon"),
+    minLon: real("min_lon"),
+    minLat: real("min_lat"),
+    maxLon: real("max_lon"),
+    maxLat: real("max_lat"),
+    /** GeoJSON geometry, for an area or a line; null for a point. */
+    geometry: json<Record<string, unknown>>("geometry"),
+    /** The source's own fields that are kept, as text. */
+    props: json<Record<string, string>>("props").notNull(),
+    provenance: text("provenance", { enum: ["public-infrastructure", "historical", "user", "unverified"] }).notNull(),
+    /** How exactly it is placed, in words, and in metres where that can be said. */
+    accuracy: text("accuracy").notNull(),
+    accuracyMeters: real("accuracy_m"),
+    publisher: text("publisher").notNull(),
+    license: text("license").notNull(),
+    sourceUrl: text("source_url"),
+    /** The date the publisher gives the data, as they write it (a version date, a data timestamp). */
+    publishedAt: text("published_at"),
+    retrievedAt: integer("retrieved_at").notNull(),
+    /** Set when another record describes the same thing: this one is kept for its provenance and not drawn twice. */
+    duplicateOf: integer("duplicate_of"),
+  },
+  (table) => [
+    index("reference_features_collection_idx").on(table.collectionId),
+    index("reference_features_layer_idx").on(table.layer, table.country),
+    index("reference_features_source_idx").on(table.provider, table.sourceId),
+    index("reference_features_duplicate_idx").on(table.duplicateOf),
+  ],
+);
+
+/**
+ * What a historical record says beyond its place: one row for each feature in the
+ * "historical" layer. `recordType` keeps apart an actual historical target list, a
+ * historical assessment of likely targets and an author's speculation; it is required.
+ */
+export const historicalRecords = sqliteTable("historical_records", {
+  featureId: integer("feature_id")
+    .primaryKey()
+    .references(() => referenceFeatures.id, { onDelete: "cascade" }),
+  recordType: text("record_type", { enum: ["target-list", "assessment", "speculation"] }).notNull(),
+  /** "1956", "1959–1962": as the source dates what it describes. */
+  period: text("period").notNull(),
+  locationText: text("location_text").notNull().default(""),
+  documentTitle: text("document_title").notNull(),
+  documentPublisher: text("document_publisher").notNull().default(""),
+  documentDate: text("document_date").notNull().default(""),
+  /** The archive's reference for the document (a record group, a file number, a briefing book number). */
+  archiveRef: text("archive_ref").notNull().default(""),
+  /** The document's original classification or archival context, as the archive gives it. */
+  classification: text("classification").notNull().default(""),
+  targetCategory: text("target_category").notNull().default(""),
+  evidenceQuality: text("evidence_quality").notNull(),
+  geographicPrecision: text("geographic_precision").notNull(),
+  citations: json<string[]>("citations").notNull(),
+  documentUrl: text("document_url"),
+  /** A document in the library that is the source, when the person has it there. */
+  libraryDocumentId: text("library_document_id"),
+  notes: text("notes").notNull().default(""),
+});
+
+/**
+ * Country-level figures from published reports, entered or imported by a person, each
+ * with its citation. Facts about countries only: nothing finer than the source gives.
+ */
+export const countryFigures = sqliteTable(
+  "country_figures",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    collectionId: text("collection_id").notNull(),
+    country: text("country").notNull(),
+    indicator: text("indicator").notNull(),
+    value: real("value"),
+    valueText: text("value_text").notNull().default(""),
+    unit: text("unit").notNull().default(""),
+    /** The year the figure is for. */
+    year: text("year").notNull().default(""),
+    sourceTitle: text("source_title").notNull(),
+    publisher: text("publisher").notNull(),
+    publishedAt: text("published_at").notNull().default(""),
+    url: text("url"),
+    page: text("page").notNull().default(""),
+    license: text("license").notNull().default(""),
+    notes: text("notes").notNull().default(""),
+    retrievedAt: integer("retrieved_at").notNull(),
+  },
+  (table) => [index("country_figures_country_idx").on(table.country), index("country_figures_collection_idx").on(table.collectionId)],
+);
 
 export const nowMs = sql`(unixepoch('subsec') * 1000)`;
 

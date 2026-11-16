@@ -38,6 +38,7 @@ export * from "./propagation-plans.ts";
 export * from "./radio.ts";
 export * from "./radio-observations.ts";
 export * from "./recommended-models.ts";
+export * from "./reference-layers.ts";
 export * from "./repeaters.ts";
 export * from "./retrieval.ts";
 export * from "./route-finder.ts";

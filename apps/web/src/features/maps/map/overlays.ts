@@ -5,6 +5,7 @@
  * MapLibre.
  */
 import { type Bbox, haversineMeters, type InstalledRegion, type MarkerDto, type TrackWithGeometryDto } from "@outpost/shared";
+import { populationLayers, referenceLayers } from "@/features/layers/symbols";
 import { nuclearLayers } from "@/features/nuclear/layers";
 import { propagationLayers } from "@/features/propagation/map/layers";
 import { repeaterLayers } from "@/features/repeaters/map/layers";
@@ -21,6 +22,7 @@ import { gridLayers, sightLayers } from "../radio/layers";
 import { recordingLayers } from "../recording/overlay";
 
 export const OVERLAY_SOURCES = [
+  "o-population",
   "o-grey-line",
   "o-propagation",
   "o-nuclear",
@@ -31,6 +33,7 @@ export const OVERLAY_SOURCES = [
   "o-track-ends",
   "o-measure",
   "o-repeaters",
+  "o-reference",
   "o-sight",
   "o-draw",
   "o-recording",
@@ -103,6 +106,8 @@ export function overlayLayers(theme: MapTheme): LayerSpecification[] {
     "text-max-width": 9,
   } as const;
   return [
+    // Population density, when it is switched on (features/layers): beneath everything else drawn over the map.
+    ...populationLayers(),
     // Day and night, when the grey line is switched on: its shading under everything, its lines over the coverage cells.
     ...greyLineShadeLayers(theme),
     // The cells of an HF coverage map and the place being chosen for the planner, on the maps of that feature.
@@ -212,6 +217,8 @@ export function overlayLayers(theme: MapTheme): LayerSpecification[] {
     },
     // Repeaters, when they are switched on; see features/repeaters/map.
     ...repeaterLayers(theme),
+    // Reference layers (features/layers): publicly mapped places, boundaries and historical records, under saved places.
+    ...referenceLayers(theme),
     // The path of a line-of-sight check.
     ...sightLayers(theme),
     // A track being recorded; see recording/overlay.ts.

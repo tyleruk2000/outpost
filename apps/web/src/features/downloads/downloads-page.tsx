@@ -222,6 +222,11 @@ export default function DownloadsPage() {
                 <Link to="/explore">Find more in Explore</Link>
               </Button>
             )}
+            {nothing ? null : (
+              <Button asChild>
+                <Link to="/maps?reference=manage">Reference data for the map</Link>
+              </Button>
+            )}
           </>
         }
       />
@@ -245,6 +250,9 @@ export default function DownloadsPage() {
               </Button>
               <Button asChild>
                 <Link to="/maps">Download maps</Link>
+              </Button>
+              <Button asChild>
+                <Link to="/maps?reference=manage">Reference data for the map</Link>
               </Button>
             </>
           }

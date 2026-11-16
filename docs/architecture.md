@@ -322,7 +322,7 @@ The limits a browser puts on stored data, and what was not tested, are in
 - No telemetry. The server makes an outbound request only as the direct result of a
   person's action: refreshing the catalogue, starting a download, saving a file from
   a link, saving a web page, estimating or downloading a map region or place names, searching for a route
-  in a route source or choosing one of the results, fetching the runtimes
+  in a route source or choosing one of the results, estimating or downloading reference data for the map, fetching the runtimes
   for a portable drive, or, if they configured one, calling their own embedding server
   or asking their own model server for an answer.
 
@@ -352,6 +352,7 @@ e2e/                 Playwright tests against the packaged app
 
 Modules, in registration order: search, semantic, retrieval, answers, documents, notes, chat, imports,
 collections, books, kiwix, downloads, links, webpages, catalog, maps, repeaters, encryption, backup, portable, merge, manage, https, contacts, propagation, power. A module may use the
+collections, books, kiwix, downloads, links, webpages, catalog, maps, repeaters, encryption, backup, portable, merge, manage, https, contacts, propagation, layers. A module may use the
 services of those before it. [development/server-modules.md](development/server-modules.md)
 is the contract a module works to.
 
@@ -374,6 +375,7 @@ These are deliberate, and stated so nobody has to discover them.
 | Repeaters | None ship with Outpost. Two publishers' lists can be fetched when a person asks (the IRTS's and Hearham's); every other list is a file the person downloaded, or entries typed in. The fetch was tested against a stand-in, not pressed against either publisher. Listed positions are often approximate and are marked so. Fifty thousand entries were measured on a laptop, not on a Raspberry Pi. The CHIRP export has not been loaded into CHIRP or a radio. Not kept on a phone out of reach, not on a printed map, not brought back from a portable drive. | Most publishers whose terms were read do not allow an application to fetch their list, or put a check for a browser in the way (see sources.md). A source becomes one Outpost fetches by a change to `catalog/repeater-sources.json` once its publisher allows it. See radio.md. |
 | Printed maps | One page (A4, A3, US Letter), the map as a picture at 300 or 150 dots to the inch. The scale is exact along the middle of the sheet only. Not put through a printer, and not tried on an iPhone or in Safari. | The map is drawn in Web Mercator, on screen and on paper alike, and a manual pass with a printer and a phone has not been made. See maps.md. |
 | Calculators under Tools | Textbook and published formulas only; health and safety figures quoted from official pages read on one day, and USDA's pages could not be read then, so none of its figures is used. Not tried on a real iPhone. | A calculator that guesses beyond its source would mislead; each says its source, range and limits on screen. See tools.md. |
+| Reference layers | No historical targeting dataset ships: none cleared for redistribution exists as data. OpenStreetMap layers by Overpass only within the boxes of servers whose terms allow it (Europe and North America as shipped), elsewhere from a Geofabrik extract. A first view of the world with a few hundred thousand records takes about a second on a laptop. Not run on a Raspberry Pi. | The adapters are one interface (`modules/layers/types.ts`); a source becomes one Outpost fetches once its terms allow. See reference-layers.md. |
 | Map source | Depends on the Protomaps build host staying available for new downloads. | The source address is a setting; any PMTiles archive with the same schema works, including one you host. |
 | Notes collaboration | Last writer wins, with conflict detection; no live co-editing. | The editor could take a CRDT later; the storage format would need to change. |
 | Portable drives | A drive is a copy, not a live sync partner. Changes made on it come home only when a person plugs it in and brings them back, one drive at a time, after reading a preview. Conflicts are settled per item, as whole pages: text is not merged line by line. Settings, the order of pages among their siblings, and the favourite mark on existing pages are not brought back. | Deliberate: nothing is overwritten that a person has not seen. Merging inside a page would need the editor to keep a history of edits (a CRDT), as live co-editing would. |
@@ -424,7 +426,7 @@ written by `scripts/build-app.mjs` from the installed packages.
 | `@jsquash/webp` 1.5.0 (libwebp 1.0.2 compiled to WebAssembly) | Apache-2.0 (libwebp itself BSD-3-Clause) | Bundled in the server; encodes satellite imagery tiles as WebP. Pinned exactly. Its `.wasm` and loader are copied to `server/imagery/` with its licence (`scripts/build-app.mjs`); only the encoder is used, never libwebp's decoder. Chosen over `sharp` because sharp's prebuilt libvips is LGPL-3.0, and over a JPEG encoder because the edge of an area must be transparent. Runs wherever Node runs, so on macOS arm64, Linux arm64 and Linux amd64 alike with no native build step; tried only on macOS arm64. GeoTIFF reading, reprojection and the PMTiles writer are Outpost's own (`modules/maps/imagery/`), not `geotiff.js`, whose dependency `xml-utils` is CC0. See [maps.md](maps.md#satellite-imagery). |
 | Map data | ODbL (OpenStreetMap) | Downloaded by the user; attribution shown on the map. |
 | GeoNames | CC BY 4.0 | Downloaded by the user; credited where shown. |
-| Natural Earth | Public domain | Bundled world outline. |
+| Natural Earth | Public domain | Bundled world outline; countries, regions and populated places downloaded by the user as reference layers ([reference-layers.md](reference-layers.md)). |
 | Catalogue content | Per collection | Never bundled. Each entry states its licence, and says so when it has not been verified. |
 | Reference sheets (`catalog/bundled/radio/`) | MIT, with the project | Bundled. The project's own compilations of facts from official sources, each listing its sources. |
 | Handbook and radio guides (`catalog/bundled/logbook73/`) | MIT, © 2026 Tyler Allen | Bundled. Written by this project's author for LogBook73 and generated from it; each book's last chapter carries the licence text. See [radio.md](radio.md#the-handbook-and-the-radio-guides). |

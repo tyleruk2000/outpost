@@ -32,6 +32,8 @@ const invalidations: Record<string, string[][]> = {
   "collections.changed": [["collections"], ["catalog"], ["storage"], ["kiwix"], ["maps"], ["manage"]],
   "catalog.changed": [["catalog"]],
   "maps.changed": [["maps"], ["collections"]],
+  // A reference pack was installed, updated or removed (features/layers).
+  "layers.changed": [["layers"], ["collections"], ["manage"], ["search"]],
   "contacts.changed": [["contacts"], ["search"], ["manage"]],
   "repeaters.changed": [["repeaters"], ["search"]],
   "imports.changed": [["imports"]],

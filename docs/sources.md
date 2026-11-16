@@ -206,7 +206,7 @@ preview, which shows how the file was read before anything is kept
 | # | Source | What it is | How Outpost uses it | Licence and terms |
 | --- | --- | --- | --- | --- |
 | 22 | OpenStreetMap | The free, community-made map of the world | **Built in.** The Maps screen downloads regions cut from the Protomaps build of OpenStreetMap data; see [maps.md](maps.md). The OpenStreetMap wiki is also in `kiwix-essentials`. Named routes are fetched from it on request: see [Routes](#routes). | Open Database Licence, per the [copyright page](https://www.openstreetmap.org/copyright). The credit is shown on the map. |
-| 23 | Geofabrik downloads (download.geofabrik.de) | Regional extracts of raw OpenStreetMap data, updated daily | **Not integrated.** The extracts are raw data, not tiles. See [the note below](#geofabrik-extracts-and-what-outpost-uses-instead). | [ODbL 1.0](https://download.geofabrik.de/); the service is offered free of charge by Geofabrik. |
+| 23 | Geofabrik downloads (download.geofabrik.de) | Regional extracts of raw OpenStreetMap data, updated daily | **Not integrated for map tiles.** The extracts are raw data, not tiles. See [the note below](#geofabrik-extracts-and-what-outpost-uses-instead). Since 2026-11-16 they are read for the reference layers (R4). | [ODbL 1.0](https://download.geofabrik.de/); the service is offered free of charge by Geofabrik. |
 | 24–25 | Natural Earth | Public-domain map data at small scales | **Built in.** The 1:110m data draws the simple world outline beneath the map and the boxes of the country presets. | Public domain, as recorded in [maps.md](maps.md). The Natural Earth terms page did not answer on the day (two time-outs), so it was not read again. |
 | 26 | USGS (usgs.gov) | The US Geological Survey | **Direct: 4 entries** (Topographic Map Symbols; Finding Your Way with Map and Compass; Map Projections: A Working Manual; and, added on 2026-11-16, The Universal Transverse Mercator (UTM) Grid). USGS map and elevation data are not integrated. | The Publications Warehouse [says](https://pubs.usgs.gov/documentation/faq) that PDF files of USGS-published reports are in the public domain, though some illustrations are used with permission. The main usgs.gov site returned an empty page to the catalogue check. |
 | 27 | NASA Earthdata Search | A search tool over NASA's Earth-observation datasets | **Not integrated.** It is an interactive search over scientific data files, not a set of documents or map tiles; nothing in it is a single stable file that the library or the map could use as it stands. | NASA's [data use guidance](https://www.earthdata.nasa.gov/engage/open-data-services-software-policies/data-use-guidance) says the data are freely accessible and asks for citation. |
@@ -488,6 +488,30 @@ This is a reading of those texts, not legal advice.
   source from a phone; any source over a slow connection.
 - **Conduct.** A plain client name on every request, nothing personal in any of them,
   no retries beyond those listed, and nothing fetched that was not looked at.
+
+### Reference layers
+
+Added on 2026-11-16 with the map's reference layers ([reference-layers.md](reference-layers.md),
+which quotes each source's terms in full and says how each is used). Every page was
+read on that day; where a page could not be read, that is said. Rows are numbered R1
+onwards.
+
+| # | Source | How Outpost uses it | Licence and the terms that decide it |
+| --- | --- | --- | --- |
+| R1 | Natural Earth: 1:50m countries, 1:10m regions and populated places | **Downloaded on request**, GeoJSON from `raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/`. | Public domain: "All versions of Natural Earth raster + vector map data found on this website are in the public domain." ([terms](https://www.naturalearthdata.com/about/terms-of-use/)). No checksums published. |
+| R2 | OurAirports | **Downloaded on request**: `airports.csv` from `davidmegginson.github.io/ourairports-data/`. | The data repository's licence is the Unlicense ("released into the public domain"). ourairports.com itself could not be read: its certificate expired on 6 November 2026, so its own terms and data dictionary were not read. |
+| R3 | OpenStreetMap by Overpass | **Downloaded on request**, one layer of one country per question, through the servers of the route sources (T3), or one the person declares. | ODbL. **T2 (Private.coffee) is not used for reference layers**: its terms exclude "projects related to warfare, military applications", and these layers include publicly mapped military sites. |
+| R4 | Geofabrik extracts | **Downloaded on request**, one country's `.osm.pbf` with its MD5; or imported. This replaces "not integrated" in row 23 for these layers: Outpost now reads the tags it needs from a `.osm.pbf` itself; it still makes no map tiles from one. | "License: ODbL 1.0"; "Download responsibly!" (10 September 2025). No numeric limit is published. |
+| R5 | Wikidata Query Service | **Asked on request**: nuclear power stations and research reactors with a position. | CC0; 60 seconds a query; an informative User-Agent with contact information. |
+| R6 | WorldPop, population counts 2020, 1 km, UN-adjusted | **Downloaded on request**, by country. | CC BY 4.0 ([licence](https://hub.worldpop.org/data/licence.txt)); the citation WorldPop asks for is shown. |
+| R7 | Swiss emergency meeting points (BABS) | **Downloaded on request**: one GeoJSON file. | opendata.swiss "terms_by" (open use, source to be given) as the dataset lists it; the opendata.swiss terms page refused to be read. |
+| R8 | FAS Nuclear Notebook and Status of World Nuclear Forces | **Linked.** | "Federation of American Scientists © 2026"; the Bulletin of the Atomic Scientists' terms forbid automated extraction "regardless of whether the data is publicly accessible". |
+| R9 | SIPRI Yearbook, World nuclear forces | **Linked.** A person may save the free summary or sample chapter. | Downloading for non-commercial use and single private copies are allowed; reproducing more than 10% of a data set needs permission. |
+| R10 | NTI Index | **Linked.** | Not read (browser check; terms page refused). |
+| R11 | IAEA PRIS | **Linked.** | Not read (402/403 on every terms page). |
+| R12 | GeoNuclearData, WRI Global Power Plant Database, Global Energy Monitor | **Not used.** | Upstream terms unread; unmaintained since 2022; "All Rights Reserved". |
+| R13 | National Security Archive, EBB 538; FEMA NAPB-90 (at FAS); The National Archives, HO 322 | **Linked.** No machine-readable transcription under an open licence exists; Outpost transcribed none. | US government works are public domain; the Archive's pages are its copyright; the UK files are not digitised. |
+| R14 | UK REPPIR zones, US EPZs, Swiss ENSI zone plans, cantonal shelter files, Taiwan and Korea shelter data | **Linked or imported** by the person. | See [reference-layers.md](reference-layers.md#emergency-planning-zones-and-shelters). |
 
 ### Reference software
 

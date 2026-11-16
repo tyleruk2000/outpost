@@ -522,6 +522,34 @@ Three outbound paths do not use this client, because their address is a setting:
 embedding server for semantic search, the model server for answers (see
 [below](#answers-from-a-language-model)), and kiwix-serve.
 
+### Reference layers
+
+The reference layers ([reference-layers.md](reference-layers.md)) fetch only when a
+person presses Show the size or Download, through the guarded client and the download
+manager, and only from these hosts, each named in code:
+
+| Host | What is asked | Why it is allowed |
+| --- | --- | --- |
+| `raw.githubusercontent.com` | Natural Earth's GeoJSON, at release v5.1.2 | Public domain |
+| `davidmegginson.github.io` | OurAirports' `airports.csv` | Public domain |
+| `ovp.dresel.systems`, or a server the person declares in their route source file | One Overpass question per layer and country | The operator's terms; private.coffee is excluded for this use |
+| `download.geofabrik.de` | The index, a country's `.osm.pbf` and its `.md5` | ODbL, fetched once per press |
+| `query.wikidata.org` | One count and one query | CC0; within the service's limits, with a contact address |
+| `data.worldpop.org` | One country's population GeoTIFF | CC BY 4.0 |
+| `data.geo.admin.ch` | The Swiss emergency meeting points | Open use with the source given |
+
+Every request names Outpost and its project address, carries nothing about the person,
+and must land on a public address (rule 2 above). A redirect off the named host is
+refused for HEAD requests and checksums (`everyHop`). Answers are capped in size before
+they are read (an Overpass answer at 96 MB, a Wikidata answer at 32 MB, a GeoJSON file
+at 160 MB, an upload at 32 MB), and every position is checked to be on Earth and in
+WGS 84 before it is stored. Text from a source is stripped of control and direction
+characters and cut to length; it is shown as text, never as HTML. A `.osm.pbf` is read
+by Outpost's own decoder, block by block with a 32 MB limit on each, and memory grows
+with what matched, not with the file. Imports run as jobs on the import queue. Links in
+a record's card open in a new tab with `rel="noreferrer"`; they are the publisher's
+pages, which the browser opens, not Outpost.
+
 ### The HF propagation engine
 
 Predictions are worked out by a third party's program (VOACAP, as the `hfcast`

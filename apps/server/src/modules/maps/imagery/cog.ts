@@ -11,7 +11,9 @@
  * (a strip is read as a tile as wide as the picture), one sample per pixel or several
  * interleaved, 8 or 16 bits unsigned, no compression or Deflate, with or without the
  * horizontal-differencing predictor, and 8-bit colour compressed as WebP (as GDAL writes
- * it, compression 50001). Anything else is refused with a plain message
+ * it, compression 50001). A grid of measurements (WorldPop's population counts) may also
+ * be 32-bit floating point and LZW-compressed; it is read with `decodeFloatTile`.
+ * Anything else is refused with a plain message
  * rather than guessed at. The georeferencing is the pixel scale and tie point (a
  * north-up grid) and the projected EPSG code from the GeoKey directory.
  *
@@ -19,6 +21,7 @@
  * remote file by HTTP range requests in use.
  */
 import zlib from "node:zlib";
+import { lzwDecode } from "./lzw.ts";
 import { decodeWebpSync, loadWebpDecoder } from "./webp.ts";
 
 /** TIFF compression code GDAL uses for WebP. */
@@ -121,6 +124,8 @@ export interface CogImage {
   samplesPerPixel: number;
   compression: number;
   predictor: number;
+  /** 1: unsigned whole numbers; 3: floating point (32-bit only). */
+  sampleFormat: number;
   tileOffsets: number[];
   tileByteCounts: number[];
   /** True for a reduced-resolution copy (an overview). */
@@ -306,15 +311,19 @@ export class Cog {
       const compression = await one(TAG.Compression, 1);
       const predictor = await one(TAG.Predictor, 1);
       const extra = (await values(fields, TAG.ExtraSamples)) ?? [];
-      if (sampleFormat !== 1 || !bits.every((bit) => bit === bits[0]) || (bits[0] !== 8 && bits[0] !== 16)) {
-        throw new CogError("This GeoTIFF holds values Outpost does not read (only 8- and 16-bit unsigned whole numbers).");
+      const wholeNumbers = sampleFormat === 1 && (bits[0] === 8 || bits[0] === 16);
+      const floats = sampleFormat === 3 && bits[0] === 32 && samplesPerPixel === 1;
+      if (!bits.every((bit) => bit === bits[0]) || (!wholeNumbers && !floats)) {
+        throw new CogError(
+          "This GeoTIFF holds values Outpost does not read (only 8- and 16-bit unsigned whole numbers, or one band of 32-bit floating point).",
+        );
       }
       if (planar !== 1 && samplesPerPixel > 1)
         throw new CogError("This GeoTIFF stores its colours in separate planes, which Outpost does not read.");
-      if (compression === WEBP_COMPRESSION && (bits[0] !== 8 || (samplesPerPixel !== 3 && samplesPerPixel !== 4))) {
+      if (compression === WEBP_COMPRESSION && (!wholeNumbers || bits[0] !== 8 || (samplesPerPixel !== 3 && samplesPerPixel !== 4))) {
         throw new CogError("This GeoTIFF holds WebP in a form Outpost does not read (only 8-bit colour).");
       }
-      if (compression !== 1 && compression !== 8 && compression !== 32946 && compression !== WEBP_COMPRESSION) {
+      if (compression !== 1 && compression !== 5 && compression !== 8 && compression !== 32946 && compression !== WEBP_COMPRESSION) {
         throw new CogError(`This GeoTIFF is compressed in a way Outpost does not read (TIFF compression ${compression}).`);
       }
       if (predictor !== 1 && predictor !== 2) throw new CogError("This GeoTIFF uses a predictor Outpost does not read.");
@@ -327,6 +336,7 @@ export class Cog {
         samplesPerPixel,
         compression,
         predictor,
+        sampleFormat,
         tileOffsets,
         tileByteCounts,
         overview: (subfile & 1) === 1,
@@ -390,27 +400,58 @@ export class Cog {
     return refs;
   }
 
+  /** A tile's bytes as stored, decompressed. */
+  private inflate(image: CogImage, bytes: Uint8Array, size: number): Uint8Array {
+    if (bytes.length === 0) {
+      // An empty tile is one GDAL left out because it held nothing: nodata throughout.
+      return new Uint8Array(size);
+    }
+    if (image.compression === 1) return bytes;
+    if (image.compression === 5) return lzwDecode(bytes, size);
+    try {
+      return zlib.inflateSync(bytes);
+    } catch {
+      throw new CogError("A tile of this GeoTIFF could not be decompressed.");
+    }
+  }
+
+  /**
+   * Decodes one tile of a floating-point grid into its values (tileWidth × tileHeight).
+   * The horizontal-differencing predictor is undone on the 32-bit words, as libtiff does.
+   */
+  decodeFloatTile(index: number, bytes: Uint8Array): Float32Array {
+    const image = this.images[index]!;
+    if (image.sampleFormat !== 3) throw new CogError("This GeoTIFF does not hold floating-point values.");
+    const count = image.tileWidth * image.tileHeight;
+    let raw = this.inflate(image, bytes, count * 4);
+    if (raw.length < count * 4 && raw.length > 0 && raw.length % (image.tileWidth * 4) === 0) {
+      // The last strip of a picture may be shorter than the rest.
+      const padded = new Uint8Array(count * 4);
+      padded.set(raw);
+      raw = padded;
+    }
+    if (raw.length < count * 4) throw new CogError("A tile of this GeoTIFF is shorter than it should be.");
+    const view = new DataView(raw.buffer, raw.byteOffset, count * 4);
+    const words = new Uint32Array(count);
+    for (let i = 0; i < count; i += 1) words[i] = view.getUint32(i * 4, this.reader.little);
+    if (image.predictor === 2) {
+      for (let row = 0; row < image.tileHeight; row += 1) {
+        const base = row * image.tileWidth;
+        for (let i = 1; i < image.tileWidth; i += 1) words[base + i] = (words[base + i]! + words[base + i - 1]!) >>> 0;
+      }
+    }
+    return new Float32Array(words.buffer);
+  }
+
   /** Decodes one tile's bytes into its pixels (tileWidth × tileHeight × samples). */
   decodeTile(index: number, bytes: Uint8Array): Uint8Array | Uint16Array {
     const image = this.images[index]!;
+    if (image.sampleFormat !== 1) throw new CogError("This GeoTIFF holds measurements, not a picture.");
     const samples = image.samplesPerPixel;
     const count = image.tileWidth * image.tileHeight * samples;
     const bytesPerSample = image.bitsPerSample / 8;
-    let raw: Uint8Array;
-    if (bytes.length === 0) {
-      // An empty tile is one GDAL left out because it held nothing: nodata throughout.
-      raw = new Uint8Array(count * bytesPerSample);
-    } else if (image.compression === 1) {
-      raw = bytes;
-    } else if (image.compression === WEBP_COMPRESSION) {
-      return webpTile(bytes, image);
-    } else {
-      try {
-        raw = zlib.inflateSync(bytes);
-      } catch {
-        throw new CogError("A tile of this GeoTIFF could not be decompressed.");
-      }
-    }
+    if (image.compression === WEBP_COMPRESSION && bytes.length > 0) return webpTile(bytes, image);
+    let raw = this.inflate(image, bytes, count * bytesPerSample);
     // The last strip of a picture may be shorter than the rest.
     if (raw.length < count * bytesPerSample && raw.length % (image.tileWidth * samples * bytesPerSample) === 0 && raw.length > 0) {
       const padded = new Uint8Array(count * bytesPerSample);
