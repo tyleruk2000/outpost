@@ -68,6 +68,19 @@
   --chart-seq-3: oklch(0.7 0.09 200);
   --chart-seq-4: oklch(0.56 0.1 200);
   --chart-seq-5: oklch(0.4 0.08 200);
+  /*
+   * The kinds of effect the nuclear effects simulator draws (features/nuclear): one hue
+   * each, the same on the map, in its legend, its results and its PDF. Checked with the
+   * data-viz validator for every pair (they can all touch on a map) against the light
+   * map's land and the page: colour-blind separation 12.6, normal vision 15.4, each at
+   * least 3:1 (docs/nuclear-preparedness.md). Never the status colours: no ring is a
+   * line of danger or of safety. Lines are also told apart by dashes, letters and words.
+   */
+  --map-effect-fireball: #888d18;
+  --map-effect-blast: #5373ef;
+  --map-effect-heat: #873d08;
+  --map-effect-radiation: #7343a6;
+  --map-effect-fallout: #b3628c;
 
   --focus: oklch(0.55 0.12 200);
   --shadow-float: 0 1px 2px oklch(0.2 0.02 220 / 0.06), 0 8px 24px -6px oklch(0.2 0.02 220 / 0.16);
@@ -152,6 +165,12 @@
   --chart-seq-3: oklch(0.52 0.08 200);
   --chart-seq-4: oklch(0.66 0.09 198);
   --chart-seq-5: oklch(0.82 0.08 195);
+  /* Checked against the dark map's land and page: colour-blind separation 9.2, normal vision 15.6, each at least 3:1. */
+  --map-effect-fireball: #9a9235;
+  --map-effect-blast: #3f9bcf;
+  --map-effect-heat: #b1530f;
+  --map-effect-radiation: #7260c4;
+  --map-effect-fallout: #e25b95;
 
   --focus: oklch(0.8 0.1 195);
   --shadow-float: 0 1px 2px oklch(0 0 0 / 0.3), 0 8px 24px -6px oklch(0 0 0 / 0.5);

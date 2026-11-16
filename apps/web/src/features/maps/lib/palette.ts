@@ -44,6 +44,7 @@ export const FALLBACK_THEME = {
     primary: "#1c6a70",
     lamp: "#e6a23c",
     contour: "#74532b",
+    effects: { fireball: "#888d18", blast: "#5373ef", heat: "#873d08", radiation: "#7343a6", fallout: "#b3628c" },
   },
   dark: {
     land: "#1c2224",
@@ -58,5 +59,6 @@ export const FALLBACK_THEME = {
     primary: "#6cc3c4",
     lamp: "#edb354",
     contour: "#d2b27e",
+    effects: { fireball: "#9a9235", blast: "#3f9bcf", heat: "#b1530f", radiation: "#7260c4", fallout: "#e25b95" },
   },
 } as const;

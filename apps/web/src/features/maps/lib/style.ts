@@ -42,6 +42,16 @@ export interface MapTheme {
   lamp: string;
   /** Contour lines and the heights written on them: an earth colour that is neither a path nor a stream. */
   contour: string;
+  /** The kinds of effect the nuclear effects simulator draws, one hue each (tokens `--map-effect-*`). */
+  effects: EffectHues;
+}
+
+export interface EffectHues {
+  fireball: string;
+  blast: string;
+  heat: string;
+  radiation: string;
+  fallout: string;
 }
 
 export interface StyleInput {
