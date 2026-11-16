@@ -27,6 +27,7 @@ export * from "./merge.ts";
 export * from "./model-choice.ts";
 export * from "./notes.ts";
 export * from "./portable.ts";
+export * from "./power.ts";
 export * from "./propagation.ts";
 export * from "./propagation-coverage.ts";
 export * from "./propagation-p533.ts";

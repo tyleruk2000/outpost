@@ -1,0 +1,194 @@
+/**
+ * Power plans (Tools → Power and batteries): a battery bank, the loads on it and what
+ * charges it, kept under a name so that a person can come back to it, copy it and
+ * compare it with another.
+ *
+ * The server only keeps them. It checks that what it is given is a plan, within limits
+ * that keep the figures physical, and works nothing out: the answers are arithmetic done
+ * in the browser where they are shown (apps/web/src/features/power/calc). A plan is a
+ * person's own data, so it is counted and erased with the rest of it
+ * (`ctx.services.power.kept`, used by modules/manage), and is in the database a backup
+ * copies.
+ */
+import { POWER_PLAN_MAX_LOADS, type PowerPlan, type PowerPlanInput } from "@outpost/shared";
+import { asc, eq } from "drizzle-orm";
+import type { FastifyInstance } from "fastify";
+import { z } from "zod";
+import type { AppContext } from "../../core/context.ts";
+import { notFound } from "../../core/errors.ts";
+import { newId } from "../../core/ids.ts";
+import { powerPlans } from "../../db/schema.ts";
+
+export interface PowerService {
+  list(): PowerPlan[];
+  get(id: string): PowerPlan;
+  create(input: PowerPlanInput): PowerPlan;
+  update(id: string, input: PowerPlanInput): PowerPlan;
+  copy(id: string): PowerPlan;
+  remove(id: string): void;
+  /** The person's own: counted for "what is stored", and erased with everything else. */
+  kept: { count(): number; eraseAll(): number };
+}
+
+declare module "../../core/context.ts" {
+  interface Services {
+    power: PowerService;
+  }
+}
+
+const share = z.number().min(0).max(1);
+const watts = z.number().min(0).max(1_000_000);
+const hours = z.number().min(0).max(24);
+const hour = z.number().int().min(0).max(23);
+const amps = z.number().positive().max(100_000).nullable();
+const name = z.string().trim().min(1, "Give it a name.").max(120);
+
+const loadBase = {
+  id: z.string().min(1).max(64),
+  name,
+  supply: z.enum(["dc", "ac"]),
+  quantity: z.number().int().min(1).max(1000),
+  startHour: hour,
+};
+const load = z.discriminatedUnion("kind", [
+  z.object({ ...loadBase, kind: z.literal("device"), watts, hoursPerDay: hours }),
+  z
+    .object({
+      ...loadBase,
+      kind: z.literal("radio"),
+      transmitW: watts,
+      receiveW: watts,
+      standbyW: watts,
+      onAirHours: hours,
+      standbyHours: hours,
+      transmitShare: share,
+      modeFactor: share,
+      mode: z.enum(["ssb", "ssb-processed", "cw", "ft8", "fm", "custom"]),
+    })
+    .refine((radio) => radio.onAirHours + radio.standbyHours <= 24, {
+      message: "A radio's hours on the air and on standby add up to more than a day.",
+      path: ["standbyHours"],
+    }),
+]);
+const percent = z.number().min(0).max(100);
+
+const planInput = z.object({
+  name,
+  notes: z.string().max(20_000).default(""),
+  battery: z.object({
+    chemistry: z.enum(["lifepo4", "agm", "flooded", "li-ion"]),
+    volts: z.number().positive().max(1000),
+    ampHours: z.number().positive().max(100_000),
+    series: z.number().int().min(1).max(100),
+    parallel: z.number().int().min(1).max(100),
+    usableDod: z.number().gt(0, "The usable share of the battery must be more than nothing.").max(1),
+    roundTrip: z.number().gt(0).max(1),
+    maxDischargeA: amps,
+    maxChargeA: amps,
+  }),
+  loads: z.array(load).max(POWER_PLAN_MAX_LOADS),
+  inverter: z.object({ efficiency: z.number().gt(0).max(1), idleW: watts, hoursOn: hours }),
+  solar: z.object({
+    arrayWatts: watts,
+    controller: z.enum(["mppt", "pwm"]),
+    mpptEfficiency: z.number().gt(0).max(1),
+    pwmBatteryVolts: z.number().positive().max(1000),
+    pwmPanelVmp: z.number().positive().max(1000),
+    losses: z.object({
+      soiling: percent,
+      shading: percent,
+      snow: percent,
+      mismatch: percent,
+      wiring: percent,
+      connections: percent,
+      lightInducedDegradation: percent,
+      nameplate: percent,
+      age: percent,
+      availability: percent,
+    }),
+    // The most sun any place gets is about 8 kWh/m² a day; 12 leaves room for a figure typed for a tracking array.
+    sunHours: z.array(z.number().min(0).max(12).nullable()).length(12),
+  }),
+  charger: z.object({ enabled: z.boolean(), name: z.string().trim().max(80), watts, hoursPerDay: hours, startHour: hour }),
+  cableRatingA: amps,
+});
+
+type Row = typeof powerPlans.$inferSelect;
+type System = Omit<PowerPlanInput, "name" | "notes">;
+
+export async function registerPower(app: FastifyInstance, ctx: AppContext): Promise<void> {
+  const { db } = ctx;
+  const changed = () => ctx.events.publish({ type: "power.changed" });
+  const toPlan = (row: Row): PowerPlan => ({
+    id: row.id,
+    name: row.name,
+    notes: row.notes,
+    ...(row.system as unknown as System),
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  });
+  const split = ({ name: planName, notes, ...system }: PowerPlanInput) => ({
+    name: planName,
+    notes,
+    system: system as unknown as Record<string, unknown>,
+  });
+
+  const service: PowerService = {
+    list: () => db.select().from(powerPlans).orderBy(asc(powerPlans.name)).all().map(toPlan),
+    get(id) {
+      const row = db.select().from(powerPlans).where(eq(powerPlans.id, id)).get();
+      if (!row) throw notFound("The power plan");
+      return toPlan(row);
+    },
+    create(input) {
+      const now = Date.now();
+      const id = newId();
+      db.insert(powerPlans)
+        .values({ id, ...split(input), createdAt: now, updatedAt: now })
+        .run();
+      changed();
+      return service.get(id);
+    },
+    update(id, input) {
+      service.get(id);
+      db.update(powerPlans)
+        .set({ ...split(input), updatedAt: Date.now() })
+        .where(eq(powerPlans.id, id))
+        .run();
+      changed();
+      return service.get(id);
+    },
+    copy(id) {
+      const { id: _id, createdAt: _createdAt, updatedAt: _updatedAt, ...input } = service.get(id);
+      return service.create({ ...input, name: `${input.name} (copy)`.slice(0, 120) });
+    },
+    remove(id) {
+      service.get(id);
+      db.delete(powerPlans).where(eq(powerPlans.id, id)).run();
+      changed();
+    },
+    kept: {
+      count: () => (ctx.sqlite.prepare("SELECT count(*) AS n FROM power_plans").get() as { n: number }).n,
+      eraseAll() {
+        const had = service.kept.count();
+        ctx.sqlite.prepare("DELETE FROM power_plans").run();
+        changed();
+        return had;
+      },
+    },
+  };
+  ctx.services.power = service;
+
+  type IdParams = { Params: { id: string } };
+  app.get("/api/power/plans", async () => ({ plans: service.list() }));
+  app.post("/api/power/plans", async (request) => ({ plan: service.create(planInput.parse(request.body)) }));
+  app.get<IdParams>("/api/power/plans/:id", async (request) => ({ plan: service.get(request.params.id) }));
+  app.put<IdParams>("/api/power/plans/:id", async (request) => ({
+    plan: service.update(request.params.id, planInput.parse(request.body)),
+  }));
+  app.post<IdParams>("/api/power/plans/:id/copy", async (request) => ({ plan: service.copy(request.params.id) }));
+  app.delete<IdParams>("/api/power/plans/:id", async (request) => {
+    service.remove(request.params.id);
+    return { ok: true };
+  });
+}
