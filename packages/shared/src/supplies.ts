@@ -362,11 +362,13 @@ function stretch(
   const portions: Portion[] = [];
   let counted = 0;
   rows.forEach((item, order) => {
-    if (item.quantity <= 0) return void leftOut.push({ id: item.id, name: item.name, reason: "none-left" });
-    if (pastUseBy(item, today)) return void leftOut.push({ id: item.id, name: item.name, reason: "past-use-by" });
-    const each = amountOf(item);
-    if (each === null) return void leftOut.push({ id: item.id, name: item.name, reason: missing });
-    const amount = each * item.quantity;
+    const reason: LeftOutReason | null =
+      item.quantity <= 0 ? "none-left" : pastUseBy(item, today) ? "past-use-by" : amountOf(item) === null ? missing : null;
+    if (reason) {
+      leftOut.push({ id: item.id, name: item.name, reason });
+      return;
+    }
+    const amount = amountOf(item)! * item.quantity;
     counted += amount;
     const until = item.dateKind === "use-by" && item.date ? daysBetween(today, item.date) + 1 : Number.POSITIVE_INFINITY;
     portions.push({ amount, until, order });
