@@ -138,17 +138,18 @@ describe("comparing with a second model", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Compare with a second model (ITU P.533)" }));
     expect(await screen.findByText("Both models with isotropic antennas, 0 dBi")).toBeTruthy();
     expect(screen.getByText(/Neither model is the right answer/)).toBeTruthy();
-    const hourTable = screen.getByText(/At 12:00 UTC, each model's own figures/).closest("table")!;
+    const hourTable = screen.getByRole("table", { name: "At 12:00 UTC, each model's own figures" });
     // Reliability and P.533's basic circuit reliability are separate columns, never one under the other's name.
     expect(within(hourTable).getByRole("columnheader", { name: "VOACAP reliability" })).toBeTruthy();
     expect(within(hourTable).getByRole("columnheader", { name: "P.533 basic circuit reliability" })).toBeTruthy();
     const asked = within(hourTable).getByRole("rowheader", { name: "7.10 MHz (asked)" }).closest("tr")!;
     expect(asked.textContent).toContain("Open / Shut");
     expect(asked.textContent).toContain("−110.0 / −116.0");
-    expect(asked.textContent).toContain("−6.0");
+    // Open in one model only: no difference of signal is given for that hour.
+    expect(asked.textContent).not.toContain("−6.0");
     expect(asked.textContent).toContain("60% of days");
     expect(asked.textContent).toContain("41%");
-    const grid = screen.getByText(/Open or shut by hour/).closest("table")!;
+    const grid = screen.getByRole("table", { name: /Open or shut by hour/ });
     expect(within(grid).getAllByText("open in VOACAP only").length).toBeGreaterThan(0);
     expect(within(grid).getAllByText("−8.0 to −4.0 dB").length).toBe(1 + HF_BANDS.length);
   });

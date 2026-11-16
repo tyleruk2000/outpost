@@ -94,76 +94,82 @@ function HourTable({ comparison, hour }: { comparison: SecondModelComparison; ho
   const at = comparison.hours[hour - 1]!;
   const required = comparison.requiredSnrDbHz !== null;
   return (
-    <div className="scroll-quiet mt-4 overflow-x-auto">
-      <table className="tabular w-full min-w-max text-small">
-        <caption className="mb-1 text-left font-medium text-ink">
-          At {utcLabel(hour)} UTC, each model's own figures (V: VOACAP, P: P.533). The difference is P.533's less VOACAP's.
-        </caption>
-        <thead>
-          <tr className="border-b border-border text-ink-muted">
-            <th scope="col" className="py-1 pr-3 text-left font-medium">
-              Band
-            </th>
-            <th scope="col" className="px-2 py-1 text-left font-medium">
-              Path, V / P
-            </th>
-            <th scope="col" className="px-2 py-1 text-right font-medium">
-              MUF, MHz, V / P
-            </th>
-            <th scope="col" className="px-2 py-1 text-right font-medium">
-              Signal, dBW, V / P
-            </th>
-            <th scope="col" className="px-2 py-1 text-right font-medium">
-              Difference, dB
-            </th>
-            <th scope="col" className="px-2 py-1 text-right font-medium">
-              SNR in 1 Hz, dB, V / P
-            </th>
-            {required ? (
-              <>
-                <th scope="col" className="px-2 py-1 text-right font-medium">
-                  VOACAP reliability
-                </th>
-                <th scope="col" className="py-1 pl-2 text-right font-medium">
-                  P.533 basic circuit reliability
-                </th>
-              </>
-            ) : null}
-          </tr>
-        </thead>
-        <tbody>
-          {at.cells.map((cell: SecondModelCell, index) => (
-            <tr key={cell.mhz} className="border-b border-border">
-              <th scope="row" className="whitespace-nowrap py-1 pr-3 text-left font-medium text-ink">
-                {comparison.rows[index]!.label}
+    <div className="mt-4">
+      <p className="mb-1 text-small font-medium text-ink">
+        At {utcLabel(hour)} UTC, each model's own figures (V: VOACAP, P: P.533). The difference is P.533's signal less VOACAP's, given only
+        where both have the path open.
+      </p>
+      <div className="scroll-quiet overflow-x-auto">
+        <table className="tabular w-full min-w-max text-small">
+          <caption className="sr-only">At {utcLabel(hour)} UTC, each model's own figures</caption>
+          <thead>
+            <tr className="border-b border-border text-ink-muted">
+              <th scope="col" className="py-1 pr-3 text-left font-medium">
+                Band
               </th>
-              <td className={`px-2 py-1 ${cell.agreeOnOpen ? "text-ink" : "font-semibold text-warning"}`}>
-                {openWord(cell.voacap.open)} / {openWord(cell.p533.open)}
-              </td>
-              <td className="px-2 py-1 text-right text-ink">
-                {one(cell.voacap.mufMhz)} / {one(cell.p533.mufMhz)}
-              </td>
-              <td className="px-2 py-1 text-right text-ink">
-                {one(cell.voacap.signalDbw)} / {one(cell.p533.signalDbw)}
-              </td>
-              <td className="px-2 py-1 text-right text-ink">{signed(cell.difference.signalDb)}</td>
-              <td className="px-2 py-1 text-right text-ink">
-                {one(cell.voacap.snrDbHz)} / {one(cell.p533.snrDbHz)}
-              </td>
+              <th scope="col" className="px-2 py-1 text-left font-medium">
+                Path, V / P
+              </th>
+              <th scope="col" className="px-2 py-1 text-right font-medium">
+                MUF, MHz, V / P
+              </th>
+              <th scope="col" className="px-2 py-1 text-right font-medium">
+                Signal, dBW, V / P
+              </th>
+              <th scope="col" className="px-2 py-1 text-right font-medium">
+                Difference, dB
+              </th>
+              <th scope="col" className="px-2 py-1 text-right font-medium">
+                SNR in 1 Hz, dB, V / P
+              </th>
               {required ? (
                 <>
-                  <td className="px-2 py-1 text-right text-ink">
-                    {cell.voacap.reliability === null ? "–" : `${Math.round(cell.voacap.reliability * 100)}% of days`}
-                  </td>
-                  <td className="py-1 pl-2 text-right text-ink">
-                    {cell.p533.basicCircuitReliabilityPercent === null ? "–" : `${Math.round(cell.p533.basicCircuitReliabilityPercent)}%`}
-                  </td>
+                  <th scope="col" className="px-2 py-1 text-right font-medium">
+                    VOACAP reliability
+                  </th>
+                  <th scope="col" className="py-1 pl-2 text-right font-medium">
+                    P.533 basic circuit reliability
+                  </th>
                 </>
               ) : null}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {at.cells.map((cell: SecondModelCell, index) => (
+              <tr key={cell.mhz} className="border-b border-border">
+                <th scope="row" className="whitespace-nowrap py-1 pr-3 text-left font-medium text-ink">
+                  {comparison.rows[index]!.label}
+                </th>
+                <td className={`px-2 py-1 ${cell.agreeOnOpen ? "text-ink" : "font-semibold text-warning"}`}>
+                  {openWord(cell.voacap.open)} / {openWord(cell.p533.open)}
+                </td>
+                <td className="px-2 py-1 text-right text-ink">
+                  {one(cell.voacap.mufMhz)} / {one(cell.p533.mufMhz)}
+                </td>
+                <td className="px-2 py-1 text-right text-ink">
+                  {one(cell.voacap.signalDbw)} / {one(cell.p533.signalDbw)}
+                </td>
+                <td className="px-2 py-1 text-right text-ink">
+                  {cell.voacap.open && cell.p533.open ? signed(cell.difference.signalDb) : "–"}
+                </td>
+                <td className="px-2 py-1 text-right text-ink">
+                  {one(cell.voacap.snrDbHz)} / {one(cell.p533.snrDbHz)}
+                </td>
+                {required ? (
+                  <>
+                    <td className="px-2 py-1 text-right text-ink">
+                      {cell.voacap.reliability === null ? "–" : `${Math.round(cell.voacap.reliability * 100)}% of days`}
+                    </td>
+                    <td className="py-1 pl-2 text-right text-ink">
+                      {cell.p533.basicCircuitReliabilityPercent === null ? "–" : `${Math.round(cell.p533.basicCircuitReliabilityPercent)}%`}
+                    </td>
+                  </>
+                ) : null}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -175,70 +181,73 @@ function OpenGrid({ comparison, hour, onHour }: { comparison: SecondModelCompari
   const symbol = { both: "●", neither: "·", voacap: "V", p533: "P" } as const;
   const words = { both: "open in both", neither: "shut in both", voacap: "open in VOACAP only", p533: "open in P.533 only" } as const;
   return (
-    <div className="scroll-quiet mt-4 overflow-x-auto">
-      <table className="tabular w-full min-w-max text-small">
-        <caption className="mb-1 text-left text-ink-muted">
-          Open or shut by hour (UTC): ● open in both, · shut in both, V open in VOACAP only, P open in P.533 only. Press an hour to read it.
-        </caption>
-        <thead>
-          <tr className="border-b border-border text-ink-muted">
-            <th scope="col" className="py-1 pr-3 text-left font-medium">
-              Band
-            </th>
-            {comparison.hours.map((item) => (
-              <th key={item.utc} scope="col" className="p-0 text-center font-medium">
-                <button
-                  type="button"
-                  aria-pressed={item.utc === hour}
-                  aria-label={`${utcLabel(item.utc)} UTC`}
-                  onClick={() => onHour(item.utc)}
-                  className={`min-h-11 min-w-7 rounded-control px-0.5 focus-visible:outline-2 focus-visible:outline-focus ${
-                    item.utc === hour ? "bg-surface-strong font-semibold text-ink" : ""
-                  }`}
-                >
-                  {String(item.utc).padStart(2, "0")}
-                </button>
+    <div className="mt-4">
+      <p className="mb-1 text-small text-ink-muted">
+        Open or shut by hour (UTC): ● open in both, · shut in both, V open in VOACAP only, P open in P.533 only. Press an hour to read it.
+      </p>
+      <div className="scroll-quiet overflow-x-auto">
+        <table className="tabular w-full min-w-max text-small">
+          <caption className="sr-only">Open or shut by hour (UTC), each band, both models</caption>
+          <thead>
+            <tr className="border-b border-border text-ink-muted">
+              <th scope="col" className="py-1 pr-3 text-left font-medium">
+                Band
               </th>
-            ))}
-            <th scope="col" className="py-1 pl-3 text-right font-medium">
-              Agree
-            </th>
-            <th scope="col" className="py-1 pl-3 text-right font-medium">
-              P.533 signal less VOACAP's, open in both
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {comparison.rows.map((row, index) => (
-            <tr key={row.mhz} className="border-b border-border">
-              <th scope="row" className="whitespace-nowrap py-1 pr-3 text-left font-medium text-ink">
-                {row.label}
-              </th>
-              {comparison.hours.map((item) => {
-                const kind = mark(item.cells[index]!);
-                return (
-                  <td
-                    key={item.utc}
-                    title={`${row.label} at ${utcLabel(item.utc)}: ${words[kind]}`}
-                    className={`text-center ${kind === "voacap" || kind === "p533" ? "font-semibold text-warning" : "text-ink"} ${item.utc === hour ? "bg-surface-strong" : ""}`}
+              {comparison.hours.map((item) => (
+                <th key={item.utc} scope="col" className="p-0 text-center font-medium">
+                  <button
+                    type="button"
+                    aria-pressed={item.utc === hour}
+                    aria-label={`${utcLabel(item.utc)} UTC`}
+                    onClick={() => onHour(item.utc)}
+                    className={`min-h-11 min-w-7 rounded-control px-0.5 focus-visible:outline-2 focus-visible:outline-focus ${
+                      item.utc === hour ? "bg-surface-strong font-semibold text-ink" : ""
+                    }`}
                   >
-                    <span aria-hidden="true">{symbol[kind]}</span>
-                    <span className="sr-only">{words[kind]}</span>
-                  </td>
-                );
-              })}
-              <td className="py-1 pl-3 text-right text-ink">{row.hoursAgreeOnOpen} of 24 h</td>
-              <td className="py-1 pl-3 text-right text-ink">
-                {row.signalDifferenceDb
-                  ? row.signalDifferenceDb.min === row.signalDifferenceDb.max
-                    ? `${signed(row.signalDifferenceDb.min)} dB`
-                    : `${signed(row.signalDifferenceDb.min)} to ${signed(row.signalDifferenceDb.max)} dB`
-                  : "no hour open in both"}
-              </td>
+                    {String(item.utc).padStart(2, "0")}
+                  </button>
+                </th>
+              ))}
+              <th scope="col" className="py-1 pl-3 text-right font-medium">
+                Agree
+              </th>
+              <th scope="col" className="py-1 pl-3 text-right font-medium">
+                P.533 signal less VOACAP's, open in both
+              </th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {comparison.rows.map((row, index) => (
+              <tr key={row.mhz} className="border-b border-border">
+                <th scope="row" className="whitespace-nowrap py-1 pr-3 text-left font-medium text-ink">
+                  {row.label}
+                </th>
+                {comparison.hours.map((item) => {
+                  const kind = mark(item.cells[index]!);
+                  return (
+                    <td
+                      key={item.utc}
+                      title={`${row.label} at ${utcLabel(item.utc)}: ${words[kind]}`}
+                      className={`text-center ${kind === "voacap" || kind === "p533" ? "font-semibold text-warning" : "text-ink"} ${item.utc === hour ? "bg-surface-strong" : ""}`}
+                    >
+                      <span aria-hidden="true">{symbol[kind]}</span>
+                      <span className="sr-only">{words[kind]}</span>
+                    </td>
+                  );
+                })}
+                <td className="py-1 pl-3 text-right text-ink">{row.hoursAgreeOnOpen} of 24 h</td>
+                <td className="py-1 pl-3 text-right text-ink">
+                  {row.signalDifferenceDb
+                    ? row.signalDifferenceDb.min === row.signalDifferenceDb.max
+                      ? `${signed(row.signalDifferenceDb.min)} dB`
+                      : `${signed(row.signalDifferenceDb.min)} to ${signed(row.signalDifferenceDb.max)} dB`
+                    : "no hour open in both"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
