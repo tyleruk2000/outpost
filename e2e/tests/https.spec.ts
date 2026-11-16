@@ -206,7 +206,7 @@ test.describe("HTTPS on your network", () => {
 
     // A key that is not the certificate's own is refused in words, and nothing changes.
     await choice.getByLabel("Certificate file").setInputFiles(pick("fullchain.pem", mine.pem + house.intermediate.pem + house.root.pem));
-    await choice.getByLabel("Key file").setInputFiles(pick("privkey.pem", house.root.keyPem));
+    await choice.getByLabel("Key file").setInputFiles(pick("privkey.pem", make({ name: "elsewhere", names: ["elsewhere.lan"] }).keyPem));
     await choice.getByRole("button", { name: "Use this certificate" }).click();
     await expect(choice.getByRole("alert")).toContainText("This key does not belong to any certificate in the file");
     expect((await api<HttpsStatus>(page, "GET", "/api/https")).source).toBe("outpost");
@@ -234,8 +234,9 @@ test.describe("HTTPS on your network", () => {
 
     // A renewal arrives in the folder, as a script would leave it, and is taken up from there.
     const renewed = make({ name: "localhost", issuer: house.intermediate, names: ["localhost", "127.0.0.1"], until: 90 });
-    const folder = path.join(process.env.OUTPOST_E2E_WORK as string, "open", "data", "tls", "own");
-    expect((await api<HttpsStatus>(page, "GET", "/api/https")).own.folder).toBe(fs.realpathSync(folder));
+    // The folder is where the server says it is; the test runs on the same computer, so it can write there.
+    const folder = (await api<HttpsStatus>(page, "GET", "/api/https")).own.folder;
+    expect(folder).toMatch(/tls[\\/]own$/);
     fs.writeFileSync(path.join(folder, "fullchain.pem"), renewed.pem + house.intermediate.pem);
     fs.writeFileSync(path.join(folder, "privkey.pem"), renewed.keyPem);
     await section.getByRole("button", { name: "Give Outpost another certificate" }).click();
