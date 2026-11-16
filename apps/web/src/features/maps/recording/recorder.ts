@@ -758,7 +758,7 @@ export class Recorder {
   /** Sends a refused recording again, in case what stopped it has changed. */
   async retryRefused(id: string): Promise<SaveOutcome> {
     const entry = this.snapshot.pending.find((item) => item.id === id);
-    if (!entry || entry.state !== "refused") return { state: "refused", message: "That recording is no longer on this device." };
+    if (entry?.state !== "refused") return { state: "refused", message: "That recording is no longer on this device." };
     this.patchPending(id, { state: "waiting" });
     const outcome = await this.sendOne(id);
     this.scheduleRetry();

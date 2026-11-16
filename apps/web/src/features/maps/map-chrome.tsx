@@ -69,6 +69,7 @@ export function MapControls({
   contours,
   contourReach,
   onContoursChange,
+  record,
   disabled,
   className,
 }: {
@@ -89,6 +90,8 @@ export function MapControls({
   /** Whether they can be drawn in the view on screen, and if not, why. */
   contourReach: ContourReach;
   onContoursChange: (on: boolean) => void;
+  /** The button that records a track as it is walked; see recording/record-ui.tsx. */
+  record?: ReactNode;
   /** The map could not be drawn; the controls that move it have nothing to act on. */
   disabled: boolean;
   className?: string;
@@ -125,6 +128,7 @@ export function MapControls({
           ) : null}
         </ControlGroup>
       ) : null}
+      {record}
       <ControlGroup>
         <ControlButton
           label="Measure a distance"

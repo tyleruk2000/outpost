@@ -12,6 +12,7 @@ import { trackEnds, trackLines } from "../lib/profile";
 import { midpoints } from "../lib/route-edit";
 import { MAP_FONTS, type MapTheme } from "../lib/style";
 import type { LayerSpecification, SourceSpecification } from "../lib/style-types";
+import { recordingLayers } from "../recording/overlay";
 
 export const OVERLAY_SOURCES = [
   "o-coverage",
@@ -20,6 +21,7 @@ export const OVERLAY_SOURCES = [
   "o-track-ends",
   "o-measure",
   "o-draw",
+  "o-recording",
   "o-location",
   "o-markers",
   "o-profile",
@@ -158,6 +160,8 @@ export function overlayLayers(theme: MapTheme): LayerSpecification[] {
       layout: { ...label, "text-field": ["get", "label"], "text-anchor": "bottom", "text-offset": [0, -0.8], "text-allow-overlap": false },
       paint: halo,
     },
+    // A track being recorded; see recording/overlay.ts.
+    ...recordingLayers(theme),
     // The person's own position.
     {
       id: "o-location-accuracy",
