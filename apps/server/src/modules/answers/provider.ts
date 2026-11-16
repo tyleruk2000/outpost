@@ -77,6 +77,37 @@ function readErrorBody(text: string): { message: string; type: string | null; pr
   return { message: "", type: null, promptTokens: null, contextTokens: null };
 }
 
+/** The most that is read of anything a model server sends that is not the answer itself: an error, a list, a test reply. */
+const MOST_BYTES = 256 * 1024;
+/** The longest single line accepted in the answer stream. A real server's are a few hundred bytes. */
+const LONGEST_LINE = 64 * 1024;
+
+/**
+ * A reply's text, up to a limit. Outpost trusts the model server it was pointed at,
+ * but an address can be wrong, and whatever is there should not be able to fill memory.
+ */
+async function readLimited(response: Response, most = MOST_BYTES): Promise<string> {
+  if (!response.body) return "";
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let text = "";
+  let read = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done || !value) break;
+      read += value.byteLength;
+      text += decoder.decode(value, { stream: true });
+      if (read >= most) break;
+    }
+  } catch {
+    // Whatever arrived before the connection failed is all there is.
+  } finally {
+    reader.cancel().catch(() => {});
+  }
+  return text;
+}
+
 /** Text from a server, made safe to put in a sentence: one line, no markup, not too long. */
 const quoteServer = (text: string) =>
   text
@@ -199,13 +230,13 @@ export function openAiChatProvider(
         if (gaveUp) throw tooSlow();
         throw unreachable();
       }
-      if (!response.ok) throw failureOf(response.status, await response.text().catch(() => ""));
+      if (!response.ok) throw failureOf(response.status, await readLimited(response));
       if (!response.body) throw new ModelServerError("other", "The model server sent an empty reply.");
 
       const type = response.headers.get("content-type") ?? "";
       if (!type.includes("text/event-stream")) {
         // A server that ignores `stream` answers in one piece. Anything else is not a model server.
-        const text = await response.text();
+        const text = await readLimited(response);
         let entire: string | undefined;
         try {
           const body = JSON.parse(text) as { choices?: Array<{ message?: { content?: unknown }; finish_reason?: unknown }> };
@@ -246,6 +277,12 @@ export function openAiChatProvider(
           }
           if (chunk.done) break;
           rest += decoder.decode(chunk.value, { stream: true });
+          if (rest.length > LONGEST_LINE && !rest.includes("\n")) {
+            throw new ModelServerError(
+              "other",
+              `Something answered at ${host}, but not in the way a model server does. Check the address in Settings.`,
+            );
+          }
           let newline = rest.indexOf("\n");
           while (newline !== -1) {
             const line = rest.slice(0, newline).replace(/\r$/, "");
@@ -309,7 +346,7 @@ export function openAiChatProvider(
       if (signal?.aborted) throw error;
       throw unreachable();
     }
-    const text = await response.text().catch(() => "");
+    const text = await readLimited(response);
     let names: string[] | undefined;
     if (response.ok) {
       try {
@@ -387,7 +424,7 @@ export function openAiChatProvider(
       }
       return result(false, "unreachable", unreachable().message, models, null);
     }
-    const text = await response.text().catch(() => "");
+    const text = await readLimited(response);
     if (!response.ok) {
       const failure = failureOf(response.status, text);
       const kind: AnswerTestFailure =

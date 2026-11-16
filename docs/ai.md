@@ -157,7 +157,8 @@ it. See [Which addresses are contacted](#which-addresses-are-contacted).
 | `answers.contextChars` | 6000 | 1,000 to 60,000. The most characters of quoted passages sent with one question. About four characters make a token. |
 
 Fixed, not settings: at most 8 passages per question; an answer of at most 1,024
-tokens (about 750 words); and three time limits. Outpost waits 3 minutes for the first
+tokens (about 750 words), and never more than 24,000 characters whatever the server
+does with that limit; and three time limits. Outpost waits 3 minutes for the first
 sign of life from the model, allows 1 minute of silence after that, and stops an answer
 that is still being written after 10 minutes.
 

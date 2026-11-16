@@ -300,8 +300,12 @@ function AnswerPanel({
         {settled && answer.unsupported.length > 0 ? (
           <Notice tone="warning" title={`${invented} ${answer.unsupported.length === 1 ? "refers" : "refer"} to no source`}>
             The model was given {count === 1 ? "one passage, numbered 1" : `${plural(count, "passage")}, numbered 1 to ${count}`}, and cited{" "}
-            {answer.unsupported.length === 1 ? "a number that is not among them" : "numbers that are not among them"}. Whatever{" "}
-            {answer.unsupported.length === 1 ? "that marker is" : "those markers are"} attached to is unsupported.
+            {count === 1
+              ? "a different number"
+              : answer.unsupported.length === 1
+                ? "a number that is not among them"
+                : "numbers that are not among them"}
+            . Whatever {answer.unsupported.length === 1 ? "that marker is" : "those markers are"} attached to is unsupported.
           </Notice>
         ) : null}
         {uncited ? (

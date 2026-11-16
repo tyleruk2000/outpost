@@ -33,6 +33,7 @@
  *   stand-in-stalls      starts, then goes quiet for ever
  *   stand-in-drops       starts, then the connection is cut
  *   stand-in-fails       starts, then fails the way each server reports a failure in mid-stream
+ *   stand-in-endless     never stops writing, whatever limit it was given
  *   embed-only           an embedding model: refuses to chat
  *   anything else        Ollama: 404, no such model. llama-server: answered by the loaded model.
  *
@@ -95,6 +96,7 @@ const MODELS = [
   "stand-in-stalls",
   "stand-in-drops",
   "stand-in-fails",
+  "stand-in-endless",
   "embed-only",
 ];
 
@@ -373,6 +375,14 @@ export async function startModelServer(options: StandInOptions = {}): Promise<St
       }
     }
     if (model === "stand-in-silent") return end("stop");
+    if (model === "stand-in-endless") {
+      const filler = `${"The same sentence, again and again, with no end in sight. ".repeat(4)}\n\n`;
+      while (!gone()) {
+        write(flavour === "ollama" ? { role: "assistant", content: filler } : { content: filler });
+        await sleep(1);
+      }
+      return;
+    }
 
     const all = pieces(answerFor(model, user));
     const delay = model === "stand-in-long" ? longChunkDelayMs : chunkDelayMs;

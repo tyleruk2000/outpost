@@ -625,6 +625,18 @@ describe("answers over HTTP", () => {
     expect(last).toMatchObject({ type: "error", failure: "empty" });
   });
 
+  it("stop a model that will not stop, and say the answer was cut short", async () => {
+    const { ask, model, app } = await listening("stand-in-endless");
+    const { events, text } = await ask("boil water");
+    expect(events.at(-1)).toMatchObject({ type: "done", outcome: "answered", cutShort: true });
+    expect(text.length).toBeGreaterThan(24_000);
+    expect(text.length).toBeLessThan(26_000);
+    // The model was stopped, not merely ignored.
+    await expect.poll(() => model.writing()).toBe(0);
+    expect(model.abandoned()).toBe(1);
+    expect((await app.api("GET", "/api/answers/status")).body.busy).toBe(false);
+  });
+
   it("explain a failure after the answer has begun, keeping what was written", async () => {
     const { ask, app } = await listening("stand-in-drops");
     const { events, text } = await ask("boil water");

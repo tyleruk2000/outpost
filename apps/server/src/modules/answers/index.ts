@@ -38,6 +38,12 @@ import {
 export const ANSWER_PASSAGES = 8;
 /** The longest answer asked for, in tokens (about 750 words). A model that reaches it is reported as cut short. */
 export const ANSWER_MAX_TOKENS = 1024;
+/**
+ * The longest answer accepted, in characters, whatever the server does with the limit
+ * above: several times what 1,024 tokens come to. Past it the model is stopped and the
+ * answer is reported as cut short.
+ */
+export const ANSWER_MAX_CHARS = 24_000;
 
 /**
  * Words that say a sentence is a question without saying what it is about. Search
@@ -345,6 +351,11 @@ export async function registerAnswers(app: FastifyInstance, ctx: AppContext): Pr
       for await (const piece of withoutThinking(pieces)) {
         text += piece;
         send({ type: "delta", text: piece });
+        if (text.length > ANSWER_MAX_CHARS) {
+          // Leaving the loop closes the connection to the model, which stops it.
+          finishReason = "length";
+          break;
+        }
       }
       if (!text.trim()) {
         throw new ModelServerError(
