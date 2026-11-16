@@ -113,6 +113,23 @@ It is off by default and optional. Plain HTTP on the usual port keeps working wh
 it is on or off, nothing is redirected, and no `Strict-Transport-Security` header is
 sent, so a device that does not trust the certificate can always use the `http` address.
 
+### What each way of running Outpost needs
+
+HTTPS is always switched on in Settings. What differs is whether anything has to be
+done first so that its port can be reached.
+
+| How Outpost runs | Before turning it on in Settings |
+| --- | --- |
+| From source (`pnpm start`) or the packaged app | Nothing. The listener opens on port 8443 (`OUTPOST_HTTPS_PORT`) beside the HTTP one. If a firewall is on, allow that port as you allowed 8080. |
+| Docker Compose | Publish the port: uncomment the HTTPS line under `ports:` in `compose.yaml`, or put it in a `compose.override.yaml`, then `docker compose up -d`. Then name the address in Settings, because a container cannot see the computer's addresses. See [Docker](#docker) below. |
+| A Raspberry Pi set up with `deploy/pi/install.sh` | Run the script with `--https` (with `--lan`): it writes a `compose.override.yaml` that publishes the port. Then as for Docker. |
+| The Pi's own Wi-Fi network (`deploy/pi/hotspot.sh`) | As above, and add `10.42.0.1` and `outpost.home.arpa` under **Other names and addresses** in Settings, so the certificate covers the addresses phones on that network use: `https://10.42.0.1:8443`. |
+| Behind a reverse proxy with its own certificate | Leave Outpost's HTTPS off; the proxy provides it. See [Behind a reverse proxy](#behind-a-reverse-proxy). |
+| A portable drive | Not offered: a drive moves between computers, and each would need its own authority trusted by each device. |
+
+In every case, each phone and computer then has to be told once to trust Outpost's
+certificate ([steps below](#trusting-the-certificate-on-a-device)).
+
 ### Turning it on
 
 1. Share Outpost with your network first (see [above](#letting-other-devices-use-it-lan-access)).
@@ -507,8 +524,8 @@ happened on real hardware are welcome.
 git clone https://github.com/tyleruk2000/outpost.git
 cd outpost
 ./deploy/pi/install.sh --dry-run                 # see what it would do
-./deploy/pi/install.sh --install-docker --lan    # needs the internet this once
-sudo ./deploy/pi/hotspot.sh on --ssid "Outpost"  # asks for a password
+./deploy/pi/install.sh --install-docker --lan --https   # needs the internet this once
+sudo ./deploy/pi/hotspot.sh on --ssid "Outpost"         # asks for a password
 ```
 
 - `install.sh` checks for a 64-bit Raspberry Pi OS, installs Docker Engine and the
@@ -516,7 +533,10 @@ sudo ./deploy/pi/hotspot.sh on --ssid "Outpost"  # asks for a password
   on <https://docs.docker.com/engine/install/debian/>, which lists Debian 12 and 13 on
   arm64), makes `.env` from `.env.example` if there is none, and with `--lan` sets
   `OUTPOST_LAN_ACCESS=true` and `OUTPOST_BIND=0.0.0.0` in it, keeping the file as it
-  was beside it. Then it builds and starts the stack and waits for it to answer. The
+  was beside it. With `--https` it writes a `compose.override.yaml` that publishes port
+  8443, which HTTPS uses once you turn it on in Settings (`compose.yaml` itself is not
+  edited, and an override file already there is left alone). Then it builds and starts
+  the stack and waits for it to answer. The
   build fetches map fonts and the search model, so the Pi needs the internet for it.
 - `hotspot.sh on` makes a NetworkManager connection called `outpost-hotspot`: a WPA2
   access point on `wlan0` with the Pi at `10.42.0.1`, started by itself at boot. Phones
@@ -539,7 +559,12 @@ Things to know before relying on it:
   nothing looks local to the container, so it is not available from a phone on the
   hotspot unless you set `OUTPOST_ALLOW_REMOTE_ERASE=true`.
 - Location on the map, recording a track and keeping things on the phone need an
-  `https` address; see [HTTPS on your network](#https-on-your-network).
+  `https` address. Install with `--https`, then from a phone on the Pi's network open
+  `http://10.42.0.1:8080/settings#https`, turn HTTPS on, press the button that adds the
+  address you came by (a container cannot see it for itself), add `outpost.home.arpa`
+  under **Other names and addresses** if you use that name, and trust the certificate on
+  each device. The address is then `https://10.42.0.1:8443`. See
+  [HTTPS on your network](#https-on-your-network).
 
 ### NAS and home servers that run containers
 

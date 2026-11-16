@@ -14,6 +14,11 @@
 #   --lan             Let other devices reach Outpost: sets OUTPOST_LAN_ACCESS=true and
 #                     OUTPOST_BIND=0.0.0.0 in .env. Outpost has no accounts, so everyone
 #                     who can reach it can read, change and delete what is in it.
+#   --https           Publish the port HTTPS uses (8443), so that it can be reached once
+#                     you turn HTTPS on in Settings → HTTPS on your network. Phones need
+#                     an https address for location, recording a track and keeping
+#                     things on the phone. Writes compose.override.yaml; compose.yaml
+#                     itself is not edited.
 #   --dry-run         Print the commands instead of running them.
 #
 # It never deletes anything, and it does not touch an existing .env except, with --lan,
@@ -22,14 +27,16 @@ set -euo pipefail
 
 INSTALL_DOCKER=false
 LAN=false
+HTTPS=false
 DRY_RUN=false
 for arg in "$@"; do
   case "$arg" in
     --install-docker) INSTALL_DOCKER=true ;;
     --lan) LAN=true ;;
+    --https) HTTPS=true ;;
     --dry-run) DRY_RUN=true ;;
     -h | --help)
-      sed -n '2,21p' "$0" | sed 's/^# \{0,1\}//'
+      sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'
       exit 0
       ;;
     *)
@@ -139,6 +146,25 @@ if $LAN; then
   set_env OUTPOST_BIND 0.0.0.0
 fi
 
+# ── HTTPS ────────────────────────────────────────────────────────────────────
+# Docker only lets a port in when it is published. compose.yaml leaves the HTTPS one
+# commented out; a file called compose.override.yaml is read after it by itself.
+if $HTTPS; then
+  override="services:
+  outpost:
+    ports:
+      - \"\${OUTPOST_BIND:-127.0.0.1}:\${OUTPOST_HTTPS_PORT:-8443}:\${OUTPOST_HTTPS_PORT:-8443}\""
+  if [ -f compose.override.yaml ]; then
+    say "compose.override.yaml is already here and was left as it is. Make sure it publishes the HTTPS port (see docs/deployment.md, \"HTTPS on your network\")."
+  elif $DRY_RUN; then
+    printf '  would write compose.override.yaml:\n%s\n' "$override" | sed 's/^/    /'
+  else
+    say "Publishing the HTTPS port (compose.override.yaml)."
+    printf '# Written by deploy/pi/install.sh --https. Publishes the port HTTPS uses.\n%s\n' "$override" >compose.override.yaml
+  fi
+  $LAN || say "Note: without --lan only this Pi can reach Outpost, and it already counts as secure here. HTTPS matters for other devices."
+fi
+
 # ── Build and start ──────────────────────────────────────────────────────────
 say "Building and starting Outpost. The first build downloads map fonts and the search model and can take a long time on a Pi."
 run "${DOCKER[@]}" compose up -d --build
@@ -165,6 +191,13 @@ if $LAN; then
     case "$address" in *:*) ;; *) echo "  On your network:   http://${address}:${port}" ;; esac
   done
   echo "  For a Wi-Fi network of the Pi's own, with no router: sudo ./deploy/pi/hotspot.sh on"
+  if $HTTPS; then
+    echo "  HTTPS: open Settings → HTTPS on your network from a phone or laptop, turn it on,"
+    echo "         press the button that adds the address you came by, then trust the"
+    echo "         certificate on each device. The https address uses port 8443."
+  else
+    echo "  For location and the other things phones only allow over https, run this again with --https."
+  fi
 else
   echo "  Only this Pi can open it. Run again with --lan to share it with your network."
 fi

@@ -37,3 +37,6 @@ apps/server/models/
 
 # Temporary files the tracker writes while exporting
 .beads/.~*
+
+# A local Compose override (for example the HTTPS port published by deploy/pi/install.sh --https)
+compose.override.yaml
