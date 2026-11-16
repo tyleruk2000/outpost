@@ -6,13 +6,14 @@ import type { AddressInfo } from "node:net";
 import type { AnswerEvent, AnswerTestResult } from "@outpost/shared";
 import { afterEach, describe, expect, it } from "vitest";
 import { assertOwnNetwork, parseModelServerAddress, placeOf } from "../src/modules/answers/address.ts";
+import { contextTokensFor } from "../src/modules/answers/fit.ts";
 import { subjectOf } from "../src/modules/answers/index.ts";
-import { ModelServerError, openAiChatProvider, withoutThinking } from "../src/modules/answers/provider.ts";
+import { forgetModelServers, ModelServerError, openAiChatProvider, withoutThinking } from "../src/modules/answers/provider.ts";
 import { checkCitations, contextAssembler } from "../src/modules/retrieval/index.ts";
 import { buildAnswerPrompt } from "../src/modules/retrieval/prompt.ts";
 import type { Citation, RetrievedPassage } from "../src/modules/retrieval/types.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
-import { type StandIn, type StandInOptions, startModelServer } from "./model-server.ts";
+import { isChatPath, type StandIn, type StandInOptions, startModelServer } from "./model-server.ts";
 
 const cleanups: Array<() => Promise<void> | void> = [];
 afterEach(async () => {
@@ -20,6 +21,12 @@ afterEach(async () => {
 });
 
 async function standIn(options: StandInOptions = {}): Promise<StandIn> {
+  return startStandIn(options);
+}
+
+async function startStandIn(options: StandInOptions = {}): Promise<StandIn> {
+  // Which servers are Ollama is remembered by address, and a test's stand-in may be given a port an earlier one had.
+  forgetModelServers();
   const server = await startModelServer(options);
   cleanups.push(() => server.close());
   return server;
@@ -256,11 +263,15 @@ describe("a model's private reasoning", () => {
 });
 
 describe.each([
-  ["Ollama", "/v1"],
-  ["llama-server", "/llamacpp/v1"],
-])("the provider, talking to a server that answers as %s does", (flavour, path) => {
+  // Ollama is asked in its own way (`/api/chat`); the others, and an Ollama that does not say it is one, in the common way.
+  ["Ollama", "/v1", true],
+  ["an Ollama without its own endpoints", "/v1", false],
+  ["llama-server", "/llamacpp/v1", false],
+] as const)("the provider, talking to a server that answers as %s does", (flavour, path, ollamaApi) => {
   const provider = (server: StandIn, model: string, timeouts = QUICK) =>
     openAiChatProvider(parseModelServerAddress(`${server.url}${path}`), model, timeouts);
+  const own = flavour === "Ollama";
+  const standIn = (options: StandInOptions = {}) => startStandIn({ ollamaApi, ...options });
 
   it("sends exactly the documented request and yields the answer as it is written", async () => {
     const server = await standIn();
@@ -281,22 +292,67 @@ describe.each([
     expect(parts.length).toBeGreaterThan(8);
     expect(finish).toBe("stop");
 
-    expect(server.requests).toHaveLength(1);
-    const sent = server.requests[0]!;
-    expect(sent.method).toBe("POST");
-    expect(sent.path).toBe(`${path}/chat/completions`);
+    // An address ending in /v1 is first asked whether it is Ollama; llama-server's is not at such an address here.
+    expect(server.requests.map((request) => `${request.method} ${request.path}`)).toEqual(
+      flavour === "llama-server"
+        ? ["GET /llamacpp/api/version", "POST /llamacpp/v1/chat/completions"]
+        : ["GET /api/version", own ? "POST /api/chat" : "POST /v1/chat/completions"],
+    );
+    const sent = server.requests.at(-1)!;
     expect(sent.headers["content-type"]).toBe("application/json");
     expect(sent.headers.authorization).toBeUndefined();
-    expect(sent.body).toEqual({
-      model: "stand-in",
-      messages: [
-        { role: "system", content: "Rules." },
-        { role: "user", content: SOURCES },
-      ],
-      stream: true,
-      temperature: 0.2,
-      max_tokens: 1024,
-    });
+    const messages = [
+      { role: "system", content: "Rules." },
+      { role: "user", content: SOURCES },
+    ];
+    expect(sent.body).toEqual(
+      own
+        ? // Ollama's own endpoint: a prompt that does not fit is to be refused, and a reply that runs out of room is to stop.
+          { model: "stand-in", messages, stream: true, truncate: false, shift: false, options: { temperature: 0.2, num_predict: 1024 } }
+        : { model: "stand-in", messages, stream: true, temperature: 0.2, max_tokens: 1024 },
+    );
+  });
+
+  it("asks Ollama for a context size, and no other server", async () => {
+    const server = await standIn();
+    let prompt: number | null | undefined;
+    await collect(
+      provider(server, "stand-in").generate({
+        system: "Rules.",
+        prompt: SOURCES,
+        contextTokens: 8192,
+        onFinish: (info) => {
+          prompt = info.promptTokens;
+        },
+      }),
+    );
+    const sent = server.requests.at(-1)!;
+    if (own) {
+      expect(sent.body.options).toEqual({ temperature: 0.2, num_predict: 1024, num_ctx: 8192 });
+      // Ollama says what the prompt came to, and loaded the model for the size asked.
+      expect(prompt).toBe(Math.ceil(("Rules.".length + SOURCES.length) / 4));
+      expect(server.loaded()).toEqual(["stand-in@8192"]);
+    } else {
+      expect(JSON.stringify(sent.body)).not.toContain("8192");
+      expect(prompt ?? null).toBeNull();
+    }
+  });
+
+  it("is told when a prompt is longer than the context, where the server can be made to say", async () => {
+    const server = await standIn({ contextTokens: 40 });
+    const long = `${SOURCES}\n${"More about knots and water. ".repeat(40)}`;
+    const run = () => collect(provider(server, "stand-in").generate({ system: "Rules.", prompt: long }));
+    if (flavour === "an Ollama without its own endpoints") {
+      // Asked the common way, Ollama cuts the prompt down and answers from what is left, without a word.
+      expect(await run()).not.toContain("rolling boil");
+      expect(server.truncated()).toBe(1);
+    } else {
+      const error = await failure(run);
+      expect(error.failure).toBe("context-too-long");
+      expect(error.sizes).toEqual({ promptTokens: Math.ceil(("Rules.".length + long.length) / 4), contextTokens: 40 });
+      expect(error.message).toMatch(/They came to \d+ tokens and the model is set up to read 40 at once/);
+      expect(server.truncated()).toBe(0);
+    }
   });
 
   it("does not pass on reasoning sent in a field of its own", async () => {
@@ -361,8 +417,8 @@ describe.each([
         for await (const piece of provider(server, model).generate({ system: "s", prompt: SOURCES })) parts.push(piece);
       });
       expect(parts.join(""), model).toBe("Bring the water to");
-      if (flavour === "llama-server" && model === "stand-in-fails") {
-        // llama-server says what went wrong, in the stream.
+      if (flavour !== "an Ollama without its own endpoints" && model === "stand-in-fails") {
+        // llama-server says what went wrong, in the stream, and so does Ollama's own endpoint.
         expect(error.failure).toBe("other");
         expect(error.message).toMatch(/ran out of memory/);
       } else {
@@ -375,7 +431,7 @@ describe.each([
   it("lists the models the server reports", async () => {
     const server = await standIn();
     const models = await provider(server, "").listModels();
-    if (flavour === "Ollama") expect(models).toEqual(expect.arrayContaining(["stand-in:latest", "embed-only:latest"]));
+    if (flavour !== "llama-server") expect(models).toEqual(expect.arrayContaining(["stand-in:latest", "embed-only:latest"]));
     else expect(models).toEqual(["stand-in.gguf"]);
   });
 
@@ -465,8 +521,8 @@ describe("what can be wrong with a model server", () => {
     const server = await standIn();
     const error = await ask(`${server.url}/moved/v1`, "stand-in");
     expect(error.failure).toBe("unreachable");
-    // One request, to the address that was named; nothing followed the redirect.
-    expect(server.requests.map((request) => request.path)).toEqual(["/moved/v1/chat/completions"]);
+    // The address that was named was asked whether it is Ollama, then asked the question; nothing followed either redirect.
+    expect(server.requests.map((request) => request.path)).toEqual(["/moved/api/version", "/moved/v1/chat/completions"]);
   });
 });
 
@@ -546,7 +602,7 @@ async function listening(model = "stand-in", options: StandInOptions = {}, flavo
   };
 }
 
-const chatRequests = (server: StandIn) => server.requests.filter((request) => request.path.endsWith("/chat/completions"));
+const chatRequests = (server: StandIn) => server.requests.filter((request) => isChatPath(request.path));
 
 describe("answers over HTTP", () => {
   it("are off until someone sets them up, and contact nothing until then", async () => {
@@ -629,8 +685,12 @@ describe("answers over HTTP", () => {
 
     // What the model server was sent: the standing rules, the fenced sources, the question. Nothing else.
     const [sent] = chatRequests(model);
-    expect(Object.keys(sent!.body).sort()).toEqual(["max_tokens", "messages", "model", "stream", "temperature"]);
-    expect(sent!.body.temperature).toBe(0.2);
+    expect(Object.keys(sent!.body).sort()).toEqual(["messages", "model", "options", "shift", "stream", "truncate"]);
+    // The context asked for is the one the budget in Settings comes to: the smallest, with a new Outpost.
+    expect(sent!.body.options).toEqual({ temperature: 0.2, num_predict: 1024, num_ctx: 4096 });
+    expect(contextTokensFor(6000, 1024)).toBe(4096);
+    expect(contextTokensFor(12_000, 1024)).toBe(8192);
+    expect(contextTokensFor(60_000, 1024)).toBe(32_768);
     const [system, user] = sent!.body.messages;
     expect(system.role).toBe("system");
     expect(system.content).toMatch(/health, safety or preserving food/);
@@ -680,7 +740,28 @@ describe("answers over HTTP", () => {
     expect((await uncited.ask("boil water")).events.at(-1)).toMatchObject({ type: "done", outcome: "answered", used: [], unsupported: [] });
 
     const pairs = await listening("stand-in-pairs");
-    expect((await pairs.ask("boil water bowline")).events.at(-1)).toMatchObject({ type: "done", used: [1, 2], unsupported: [] });
+    expect((await pairs.ask("water")).events.at(-1)).toMatchObject({ type: "done", used: [1, 2], unsupported: [] });
+  });
+
+  it("flag what they can of the faults two real small models showed", async () => {
+    // The right words with a number that was never given: nothing in the answer is then left resting on a source.
+    const misnumbers = await listening("stand-in-misnumbers");
+    const wrong = await misnumbers.ask("water");
+    expect(wrong.text).toMatch(/^Bring the water to a rolling boil for one minute \[8\]\.$/);
+    expect(wrong.events.at(-1)).toMatchObject({ type: "done", outcome: "answered", used: [], unsupported: [8] });
+
+    // The passages copied out, and the numbering carried on past the last of them.
+    const copies = await listening("stand-in-copies");
+    const copied = await copies.ask("water");
+    expect(copied.text).toContain("[1] Bring the water to a rolling boil for one minute.");
+    expect(copied.events.at(-1)).toMatchObject({ type: "done", used: [1, 2], unsupported: [3, 4] });
+
+    // Declining, with markers on the sentence that declines; and citing everything. Neither is told apart from an answer:
+    // the markers are real passages, so they are reported as used. (docs/ai.md says so, under what is not done.)
+    const declines = await listening("stand-in-declines");
+    expect((await declines.ask("water")).events.at(-1)).toMatchObject({ type: "done", outcome: "answered", used: [1, 2], unsupported: [] });
+    const all = await listening("stand-in-cites-all");
+    expect((await all.ask("water")).events.at(-1)).toMatchObject({ type: "done", used: [1, 2], unsupported: [] });
   });
 
   it("leave a model's reasoning out of the answer and out of the citation check", async () => {

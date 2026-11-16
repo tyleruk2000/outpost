@@ -8,6 +8,12 @@
  * document (`model`, `messages`, `stream`, `temperature`, `max_tokens`) and nothing
  * else. See docs/ai.md for what was checked against which server's documentation.
  *
+ * Ollama is asked in its own way when the server turns out to be one (`/api/chat`
+ * beside the `/v1` address), for one reason: its OpenAI-compatible endpoint has no way
+ * to say how much the model should read at once, and cuts a prompt that is too long
+ * without saying so. Its own endpoint can be told the context size, can be told to
+ * refuse a prompt that does not fit, and says how many tokens the prompt came to.
+ *
  * Everything a server can do wrong is turned into a sentence a person can act on:
  * nothing listening, no such model, a model that cannot write text, an address with no
  * chat endpoint, a prompt too long for the model, a model too slow to wait for, and a
@@ -34,12 +40,28 @@ export const DEFAULT_TIMEOUTS: ModelTimeouts = { firstTokenMs: 180_000, idleMs: 
 /** A failure of the model server, with the kind of failure kept so the interface can say what to do. */
 export class ModelServerError extends AppError {
   readonly failure: AnswerFailure;
+  /** For a prompt that was too long, when the server gave the figures: what it came to and what fits. */
+  readonly sizes: { promptTokens: number; contextTokens: number } | null;
 
-  constructor(failure: AnswerFailure, message: string) {
+  constructor(failure: AnswerFailure, message: string, sizes: { promptTokens: number; contextTokens: number } | null = null) {
     super(failure === "context-too-long" ? "too_large" : "upstream", message);
     this.name = "ModelServerError";
     this.failure = failure;
+    this.sizes = sizes;
   }
+}
+
+/**
+ * Which servers have said they are Ollama, by the address that was asked. Remembered for
+ * a few minutes so that every answer does not ask again; a server that did not answer at
+ * all is not remembered, since it may only have been starting.
+ */
+const knownServers = new Map<string, { ollama: boolean; at: number }>();
+const KNOWN_FOR_MS = 5 * 60_000;
+
+/** Test seam: forget which servers are Ollama. */
+export function forgetModelServers(): void {
+  knownServers.clear();
 }
 
 export interface ChatModelProvider extends ModelProvider {
@@ -144,13 +166,22 @@ export function openAiChatProvider(
       type === "exceed_context_size_error" ||
       (status === 400 && /context (size|length|window)|too many tokens|maximum context/i.test(message))
     ) {
-      const sizes =
+      // llama-server gives the two figures as fields; Ollama gives them in its sentence:
+      // "request (13739 tokens) exceeds the available context size (4096 tokens)".
+      const said = /\((\d+) tokens\)[^(]*\((\d+) tokens\)/.exec(message);
+      const figures =
         promptTokens !== null && contextTokens !== null
-          ? ` They came to ${promptTokens} tokens and the model is set up to read ${contextTokens} at once.`
-          : "";
+          ? { promptTokens, contextTokens }
+          : said
+            ? { promptTokens: Number(said[1]), contextTokens: Number(said[2]) }
+            : null;
+      const sizes = figures
+        ? ` They came to ${figures.promptTokens} tokens and the model is set up to read ${figures.contextTokens} at once.`
+        : "";
       return new ModelServerError(
         "context-too-long",
         `The passages and the question were too long for the model.${sizes} Lower the context budget in Settings, or start the model with a larger context.`,
+        figures,
       );
     }
     if (status === 404 && /model\b.*\bnot found|no such model|model .*does not exist/i.test(message)) {
@@ -176,6 +207,39 @@ export function openAiChatProvider(
     }
     const said = quoteServer(message || text);
     return new ModelServerError("other", `The model server answered with an error (${status})${said ? `: ${said}` : "."}`);
+  }
+
+  // Ollama's own endpoints sit beside the OpenAI-compatible ones: http://host:11434/v1 and http://host:11434/api/…
+  const ollamaRoot = base.endsWith("/v1") ? base.slice(0, -"/v1".length) : null;
+
+  /** A small question to the server about itself. Undefined when it did not answer in the way asked. */
+  async function ask(url: string, signal: AbortSignal): Promise<unknown> {
+    try {
+      const response = await fetch(url, {
+        headers: { accept: "application/json" },
+        signal: AbortSignal.any([signal, AbortSignal.timeout(3_000)]),
+        redirect: "error",
+      });
+      const text = await readLimited(response);
+      return response.ok ? (JSON.parse(text) as unknown) : null;
+    } catch (error) {
+      // Refused before anything was sent: that is for the request itself to report.
+      if (error instanceof AppError) throw error;
+      return undefined;
+    }
+  }
+
+  /** Whether the server is Ollama: it says its version at `/api/version`. */
+  async function isOllama(signal: AbortSignal): Promise<boolean> {
+    if (!ollamaRoot) return false;
+    const known = knownServers.get(ollamaRoot);
+    if (known && Date.now() - known.at < KNOWN_FOR_MS) return known.ollama;
+    const answer = await ask(`${ollamaRoot}/api/version`, signal);
+    // No answer at all: not remembered. The request that follows will say the server is not there.
+    if (answer === undefined) return false;
+    const ollama = Boolean(answer && typeof (answer as { version?: unknown }).version === "string");
+    knownServers.set(ollamaRoot, { ollama, at: Date.now() });
+    return ollama;
   }
 
   async function* generate(request: GenerationRequest): AsyncGenerator<string> {
@@ -211,25 +275,29 @@ export function openAiChatProvider(
             ? `The model went quiet for ${minutes(timeouts.idleMs)} part-way through, so Outpost stopped waiting.`
             : `The answer was still being written after ${minutes(timeouts.totalMs)}, so Outpost stopped it.`,
       );
+    const notAModelServer = () =>
+      new ModelServerError(
+        "other",
+        `Something answered at ${host}, but not in the way a model server does. Check the address in Settings.`,
+      );
 
-    try {
+    // One question, or a conversation: the turns that came before go between the instructions and the newest message.
+    const messages = [
+      { role: "system", content: request.system },
+      ...(request.history ?? []).map(({ role, content }) => ({ role, content })),
+      { role: "user", content: request.prompt },
+    ];
+    const temperature = request.temperature ?? 0.2;
+    const maxTokens = request.maxTokens ?? 1024;
+
+    /** Sends the request, and turns a refusal to connect or an error answer into the failure it means. */
+    const post = async (url: string, accept: string, body: unknown): Promise<Response> => {
       let response: Response;
       try {
-        response = await fetch(chatUrl, {
+        response = await fetch(url, {
           method: "POST",
-          headers: { "content-type": "application/json", accept: "text/event-stream" },
-          body: JSON.stringify({
-            model,
-            // One question, or a conversation: the turns that came before go between the instructions and the newest message.
-            messages: [
-              { role: "system", content: request.system },
-              ...(request.history ?? []).map(({ role, content }) => ({ role, content })),
-              { role: "user", content: request.prompt },
-            ],
-            stream: true,
-            temperature: request.temperature ?? 0.2,
-            max_tokens: request.maxTokens ?? 1024,
-          }),
+          headers: { "content-type": "application/json", accept },
+          body: JSON.stringify(body),
           signal: controller.signal,
           // The question goes to the server that was named, and to no other.
           redirect: "error",
@@ -243,7 +311,98 @@ export function openAiChatProvider(
       }
       if (!response.ok) throw failureOf(response.status, await readLimited(response));
       if (!response.body) throw new ModelServerError("other", "The model server sent an empty reply.");
+      return response;
+    };
 
+    /** The lines of a reply as they arrive. Ends when the server closes the stream. */
+    async function* linesOf(response: Response): AsyncGenerator<string> {
+      const decoder = new TextDecoder();
+      let rest = "";
+      const reader = response.body!.getReader();
+      try {
+        for (;;) {
+          let chunk: { done: boolean; value?: Uint8Array };
+          try {
+            chunk = await reader.read();
+          } catch (error) {
+            if (outer?.aborted) throw error;
+            if (gaveUp) throw tooSlow();
+            throw new ModelServerError("interrupted", "The model server stopped part-way through the answer.");
+          }
+          if (chunk.done) break;
+          rest += decoder.decode(chunk.value, { stream: true });
+          if (rest.length > LONGEST_LINE && !rest.includes("\n")) throw notAModelServer();
+          let newline = rest.indexOf("\n");
+          while (newline !== -1) {
+            const line = rest.slice(0, newline).replace(/\r$/, "");
+            rest = rest.slice(newline + 1);
+            newline = rest.indexOf("\n");
+            yield line;
+          }
+        }
+        if (rest.trim()) yield rest;
+      } finally {
+        reader.cancel().catch(() => {});
+      }
+    }
+
+    /** Ollama's own way: one JSON object to a line, the last one saying why it ended and what the prompt came to. */
+    async function* viaOllama(): AsyncGenerator<string> {
+      const response = await post(`${ollamaRoot}/api/chat`, "application/x-ndjson", {
+        model,
+        messages,
+        stream: true,
+        // A prompt that does not fit is refused, not cut down behind Outpost's back; and a reply that runs
+        // out of room stops there, where Ollama would otherwise make room by dropping the start of the prompt.
+        truncate: false,
+        shift: false,
+        options: {
+          temperature,
+          num_predict: maxTokens,
+          ...(request.contextTokens ? { num_ctx: request.contextTokens } : {}),
+        },
+      });
+      let ended = false;
+      for await (const line of linesOf(response)) {
+        if (!line.trim()) continue;
+        let event: {
+          error?: unknown;
+          message?: { content?: unknown };
+          done?: unknown;
+          done_reason?: unknown;
+          prompt_eval_count?: unknown;
+        };
+        try {
+          event = JSON.parse(line);
+        } catch {
+          continue;
+        }
+        if (event.error) throw failureOf(500, JSON.stringify({ error: event.error }));
+        // Any line is a sign of life, including a model's private reasoning (`message.thinking`), which is not shown.
+        waitFor(timeouts.idleMs, "idle");
+        const content = event.message?.content;
+        if (typeof content === "string" && content) yield content;
+        if (event.done === true) {
+          ended = true;
+          request.onFinish?.({
+            finishReason: typeof event.done_reason === "string" ? event.done_reason : null,
+            promptTokens: typeof event.prompt_eval_count === "number" ? event.prompt_eval_count : null,
+          });
+          break;
+        }
+      }
+      if (!ended) throw new ModelServerError("interrupted", "The model server stopped part-way through the answer.");
+    }
+
+    /** The way every supported server speaks: server-sent events, ended by a finish reason and `[DONE]`. */
+    async function* viaOpenAi(): AsyncGenerator<string> {
+      const response = await post(chatUrl, "text/event-stream", {
+        model,
+        messages,
+        stream: true,
+        temperature,
+        max_tokens: maxTokens,
+      });
       const type = response.headers.get("content-type") ?? "";
       if (!type.includes("text/event-stream")) {
         // A server that ignores `stream` answers in one piece. Anything else is not a model server.
@@ -261,72 +420,38 @@ export function openAiChatProvider(
         } catch {
           // Falls through to the error below.
         }
-        if (entire === undefined) {
-          throw new ModelServerError(
-            "other",
-            `Something answered at ${host}, but not in the way a model server does. Check the address in Settings.`,
-          );
-        }
+        if (entire === undefined) throw notAModelServer();
         if (entire) yield entire;
         return;
       }
 
-      const decoder = new TextDecoder();
-      let rest = "";
       let finishReason: string | null = null;
       let sawDone = false;
-      const reader = response.body.getReader();
-      try {
-        read: for (;;) {
-          let chunk: { done: boolean; value?: Uint8Array };
-          try {
-            chunk = await reader.read();
-          } catch (error) {
-            if (outer?.aborted) throw error;
-            if (gaveUp) throw tooSlow();
-            throw new ModelServerError("interrupted", "The model server stopped part-way through the answer.");
-          }
-          if (chunk.done) break;
-          rest += decoder.decode(chunk.value, { stream: true });
-          if (rest.length > LONGEST_LINE && !rest.includes("\n")) {
-            throw new ModelServerError(
-              "other",
-              `Something answered at ${host}, but not in the way a model server does. Check the address in Settings.`,
-            );
-          }
-          let newline = rest.indexOf("\n");
-          while (newline !== -1) {
-            const line = rest.slice(0, newline).replace(/\r$/, "");
-            rest = rest.slice(newline + 1);
-            newline = rest.indexOf("\n");
-            // Blank lines end an event; lines starting with a colon are keep-alive comments.
-            if (!line.startsWith("data:")) continue;
-            const data = line.slice(5).trim();
-            if (data === "[DONE]") {
-              sawDone = true;
-              break read;
-            }
-            let event: {
-              error?: unknown;
-              choices?: Array<{ delta?: { content?: unknown; reasoning?: unknown; reasoning_content?: unknown }; finish_reason?: unknown }>;
-            };
-            try {
-              event = JSON.parse(data);
-            } catch {
-              continue;
-            }
-            // llama.cpp reports a failure in mid-stream as one `data: {"error": …}` line and then closes.
-            if (event.error) throw failureOf(500, JSON.stringify({ error: event.error }));
-            // Any event is a sign of life, including a model's private reasoning, which is not shown.
-            waitFor(timeouts.idleMs, "idle");
-            const choice = event.choices?.[0];
-            if (typeof choice?.finish_reason === "string") finishReason = choice.finish_reason;
-            const content = choice?.delta?.content;
-            if (typeof content === "string" && content) yield content;
-          }
+      for await (const line of linesOf(response)) {
+        // Blank lines end an event; lines starting with a colon are keep-alive comments.
+        if (!line.startsWith("data:")) continue;
+        const data = line.slice(5).trim();
+        if (data === "[DONE]") {
+          sawDone = true;
+          break;
         }
-      } finally {
-        reader.cancel().catch(() => {});
+        let event: {
+          error?: unknown;
+          choices?: Array<{ delta?: { content?: unknown; reasoning?: unknown; reasoning_content?: unknown }; finish_reason?: unknown }>;
+        };
+        try {
+          event = JSON.parse(data);
+        } catch {
+          continue;
+        }
+        // llama.cpp reports a failure in mid-stream as one `data: {"error": …}` line and then closes.
+        if (event.error) throw failureOf(500, JSON.stringify({ error: event.error }));
+        // Any event is a sign of life, including a model's private reasoning, which is not shown.
+        waitFor(timeouts.idleMs, "idle");
+        const choice = event.choices?.[0];
+        if (typeof choice?.finish_reason === "string") finishReason = choice.finish_reason;
+        const content = choice?.delta?.content;
+        if (typeof content === "string" && content) yield content;
       }
       // Both a finish reason and the [DONE] line mean the model ended the answer itself.
       // A stream that simply closes means the server gave up; Ollama loses the reason.
@@ -334,6 +459,17 @@ export function openAiChatProvider(
         throw new ModelServerError("interrupted", "The model server stopped part-way through the answer.");
       }
       request.onFinish?.({ finishReason });
+    }
+
+    try {
+      let ollama: boolean;
+      try {
+        ollama = await isOllama(controller.signal);
+      } catch (error) {
+        if (error instanceof AppError && !(error instanceof ModelServerError)) throw error;
+        ollama = false;
+      }
+      yield* ollama ? viaOllama() : viaOpenAi();
     } finally {
       clearTimeout(silence);
       clearTimeout(whole);

@@ -38,6 +38,30 @@
  *   embed-only           an embedding model: refuses to chat
  *   anything else        Ollama: 404, no such model. llama-server: answered by the loaded model.
  *
+ * And the faults two real small models showed when they were tried (docs/ai.md,
+ * "Measured with a real model"):
+ *
+ *   stand-in-copies         copies the passages out one after another, numbering past the last of them
+ *   stand-in-misnumbers     quotes a passage and cites a number that was never given
+ *   stand-in-declines       says the sources hold no answer, and cites two of them all the same
+ *   stand-in-not-answered   replies with the one sentence it is told to use when the passages hold no answer
+ *   stand-in-cites-all      cites every passage it was given, whichever it used
+ *
+ * The Ollama flavour also speaks Ollama's own protocol beside the OpenAI-compatible one,
+ * as a real Ollama does (read from its API pages on 2026-11-16 and tried against 0.40.16):
+ *
+ *   GET  /api/version   says it is Ollama
+ *   GET  /api/ps        the models in memory, each with the context size it was loaded for
+ *   POST /api/chat      a chat answered a line of JSON at a time, with `options.num_ctx`,
+ *                       `options.num_predict`, and `truncate`
+ *
+ * A prompt longer than the context is handled the way 0.40.16 handled it: asked with
+ * `"truncate": false` it is refused with the two figures in a sentence; asked any other
+ * way (and always on `/v1`) the front of it is dropped without a word, leaving half the
+ * context, and the answer is written from what is left. `truncated()` counts those.
+ * A model that is not in memory, or is there for another context size, is "loaded"
+ * first, which takes `loadMs`.
+ *
  * A request with no fenced sources in its newest message is a plain conversation. The
  * stand-in then repeats what it was told and says how many messages from the person it
  * was sent, so a test can see what of a conversation reached it.
@@ -67,8 +91,12 @@ export interface StandInOptions {
   longChunkDelayMs?: number;
   /** How long `stand-in-slow-start` waits before answering. */
   slowMs?: number;
-  /** The llama-server flavour's context size, in tokens (characters ÷ 4 here). */
+  /** The context size, in tokens (characters ÷ 4 here), of the llama-server flavour, and of the Ollama flavour when it is not asked for one. */
   contextTokens?: number;
+  /** False for an Ollama flavour without Ollama's own endpoints: only the OpenAI-compatible ones answer. */
+  ollamaApi?: boolean;
+  /** How long loading a model into memory takes, the first time it is used or when the context size asked for changes. */
+  loadMs?: number;
 }
 
 export interface RecordedRequest {
@@ -89,8 +117,17 @@ export interface StandIn {
   abandoned(): number;
   /** Chat requests being answered at this moment. */
   writing(): number;
+  /** Chat requests whose prompt was longer than the context and was cut down without a word. */
+  truncated(): number;
+  /** The models in memory, as "name@context". */
+  loaded(): string[];
+  /** Puts every model out of memory, as Ollama does with one that has sat idle. */
+  unload(): void;
   close(): Promise<void>;
 }
+
+/** The chat requests among everything a stand-in received, whichever of the two protocols they came by. */
+export const isChatPath = (path: string) => path.endsWith("/chat/completions") || path === "/api/chat";
 
 const MODELS = [
   "stand-in",
@@ -109,6 +146,11 @@ const MODELS = [
   "stand-in-fails",
   "stand-in-endless",
   "stand-in-markdown",
+  "stand-in-copies",
+  "stand-in-misnumbers",
+  "stand-in-declines",
+  "stand-in-not-answered",
+  "stand-in-cites-all",
   "embed-only",
 ];
 
@@ -140,6 +182,12 @@ export const MARKDOWN_REPLY = [
 
 /** The fields Ollama, llama-server and LM Studio all document for chat completions. */
 const DOCUMENTED_FIELDS = new Set(["model", "messages", "stream", "temperature", "max_tokens", "stop", "seed", "top_p"]);
+/**
+ * What Ollama's own chat endpoint takes. `truncate` and `shift` were not on its API page on 2026-11-16;
+ * Ollama 0.40.16 acted on both when tried, and a version that does not know a field ignores it.
+ */
+const OLLAMA_FIELDS = new Set(["model", "messages", "stream", "options", "truncate", "shift", "keep_alive", "think"]);
+const OLLAMA_OPTIONS = new Set(["temperature", "num_predict", "num_ctx", "stop", "seed", "top_p", "top_k", "min_p"]);
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
@@ -153,7 +201,7 @@ function readSources(prompt: string): Source[] {
   const sources: Source[] = [];
   let current: Source | undefined;
   for (const line of prompt.split("\n")) {
-    if (line.startsWith("=====") || line.startsWith("Question:")) {
+    if (line.startsWith("=====") || line.startsWith("Question:") || line.startsWith("Answer")) {
       current = undefined;
       continue;
     }
@@ -188,10 +236,13 @@ function chatReply(model: string, prompt: string, fromPerson: number): string {
   }
 }
 
+/** Whether a prompt carries passages from the library, between the two marker lines. */
+const hasSources = (prompt: string) => /===== (SOURCES|PASSAGES) /.test(prompt);
+
 function answerFor(model: string, prompt: string, fromPerson = 1): string {
-  if (!prompt.includes("===== SOURCES")) return chatReply(model, prompt, fromPerson);
+  if (!hasSources(prompt)) return chatReply(model, prompt, fromPerson);
   const sources = readSources(prompt);
-  if (sources.length === 0) return "The sources do not answer this.";
+  if (sources.length === 0 || model === "stand-in-not-answered") return "The passages do not answer this.";
   const cited = sources.slice(0, 3).map((source) => `${firstSentence(source.text)} [${source.marker}].`);
   switch (model) {
     case "stand-in-long":
@@ -215,6 +266,23 @@ function answerFor(model: string, prompt: string, fromPerson = 1): string {
     }
     case "stand-in-think-tags":
       return `<think>\nThe user wants a short answer. Source [9] looks useful.\n</think>\n\n${cited.join(" ")}`;
+    case "stand-in-copies":
+      // As llama3.2:1b did: no answer, the passages written out again, and the numbering carried on past the last of them.
+      return [
+        ...sources.map((source) => `[${source.marker}] ${source.text.trim()}`),
+        `[${sources.length + 1}] ${firstSentence(sources[0]!.text)}.`,
+        `[${sources.length + 2}] ${firstSentence(sources.at(-1)!.text)}.`,
+      ].join("\n\n");
+    case "stand-in-misnumbers":
+      // As llama3.2:3b did on a real library: the right words, and "[7]" when five passages had been given.
+      return `${firstSentence(sources[0]!.text)} [${sources.length + 6}].`;
+    case "stand-in-declines":
+      return `There is no information about that in the provided sources. ${sources
+        .slice(0, 2)
+        .map((source) => `[${source.marker}]`)
+        .join("")}`;
+    case "stand-in-cites-all":
+      return `${firstSentence(sources[0]!.text)} ${sources.map((source) => `[${source.marker}]`).join("")}.`;
     default:
       return cited.join(" ");
   }
@@ -228,9 +296,14 @@ export async function startModelServer(options: StandInOptions = {}): Promise<St
   const longChunkDelayMs = options.longChunkDelayMs ?? 25;
   const slowMs = options.slowMs ?? 30_000;
   const contextTokens = options.contextTokens ?? 4096;
+  const ollamaApi = options.ollamaApi ?? true;
+  const loadMs = options.loadMs ?? 0;
   const requests: RecordedRequest[] = [];
   let abandoned = 0;
   let writing = 0;
+  let truncated = 0;
+  /** The models in memory, and the context size each was loaded for. */
+  const loaded = new Map<string, number>();
   const sockets = new Set<import("node:net").Socket>();
 
   const server = http.createServer((request, response) => {
@@ -265,10 +338,17 @@ export async function startModelServer(options: StandInOptions = {}): Promise<St
     // For tests that cannot hold this object: what has been asked of the stand-in so far.
     if (path === "/stats") {
       return json(response, 200, {
-        chats: requests.filter((entry) => entry.path.endsWith("/chat/completions")).length,
+        chats: requests.filter((entry) => isChatPath(entry.path)).length,
         abandoned,
         writing,
+        truncated,
+        loaded: [...loaded].map(([name, context]) => `${name}@${context}`),
       });
+    }
+    // For tests that cannot hold this object: put every model out of memory, as after sitting idle.
+    if (path === "/unload") {
+      loaded.clear();
+      return void response.end("ok");
     }
     if (path.startsWith("/website")) {
       response.writeHead(200, { "Content-Type": "text/html" });
@@ -331,7 +411,34 @@ export async function startModelServer(options: StandInOptions = {}): Promise<St
     }
 
     if (local === "/v1/chat/completions" && request.method === "POST" && flavour !== "embeddings-only") {
-      return chat(flavour, request, response, body);
+      return chat(flavour, "openai", request, response, body);
+    }
+
+    // Ollama's own endpoints, beside its OpenAI-compatible ones. The other servers have nothing at these paths.
+    if (flavour === "ollama" && ollamaApi && !path.startsWith("/v1")) {
+      if (path === "/api/version" && request.method === "GET") return json(response, 200, { version: "0.40.16" });
+      if (path === "/api/ps" && request.method === "GET") {
+        return json(response, 200, {
+          models: [...loaded].map(([name, context]) => ({
+            name,
+            model: name,
+            size: 2343095499,
+            digest: "a80c4f17acd55265feec403c7aef86be0c25983ab279d83f3bcd3abbcb5b8b72",
+            details: {
+              parent_model: "",
+              format: "gguf",
+              family: "llama",
+              families: ["llama"],
+              parameter_size: "3.2B",
+              quantization_level: "Q4_K_M",
+            },
+            expires_at: new Date(Date.now() + 300_000).toISOString(),
+            size_vram: 2343095499,
+            context_length: context,
+          })),
+        });
+      }
+      if (path === "/api/chat" && request.method === "POST") return chat("ollama", "ollama", request, response, body);
     }
 
     // Ollama's router answers an unknown path in plain text.
@@ -341,22 +448,42 @@ export async function startModelServer(options: StandInOptions = {}): Promise<St
 
   async function chat(
     flavour: "ollama" | "llamacpp",
+    /** Which protocol the request came by: the OpenAI-compatible one, or Ollama's own. */
+    protocol: "openai" | "ollama",
     request: http.IncomingMessage,
     response: http.ServerResponse,
     body: unknown,
   ): Promise<void> {
     const refuse = (status: number, message: string, type: string, extra: Record<string, unknown> = {}) =>
-      flavour === "ollama"
-        ? json(response, status, { error: { message, type, param: null, code: null } })
-        : json(response, status, { error: { code: status, message, type, ...extra } });
+      protocol === "ollama"
+        ? // Ollama's own endpoints say what went wrong as one string.
+          json(response, status, { error: message })
+        : flavour === "ollama"
+          ? json(response, status, { error: { message, type, param: null, code: null } })
+          : json(response, status, { error: { code: status, message, type, ...extra } });
 
-    if (!/^application\/json\b/.test(request.headers["content-type"] ?? "") || !body || typeof body !== "object") {
+    if (
+      !body ||
+      typeof body !== "object" ||
+      (protocol === "openai" && !/^application\/json\b/.test(request.headers["content-type"] ?? ""))
+    ) {
       return refuse(400, "invalid request: a JSON body is required", "invalid_request_error");
     }
     const input = body as Record<string, unknown>;
     for (const key of Object.keys(input)) {
-      if (!DOCUMENTED_FIELDS.has(key))
-        return refuse(400, `stand-in: "${key}" is not a field every server documents`, "invalid_request_error");
+      if (!(protocol === "ollama" ? OLLAMA_FIELDS : DOCUMENTED_FIELDS).has(key))
+        return refuse(
+          400,
+          `stand-in: "${key}" is not a field ${protocol === "ollama" ? "Ollama takes" : "every server documents"}`,
+          "invalid_request_error",
+        );
+    }
+    const settings = (protocol === "ollama" && input.options && typeof input.options === "object" ? input.options : {}) as Record<
+      string,
+      unknown
+    >;
+    for (const key of Object.keys(settings)) {
+      if (!OLLAMA_OPTIONS.has(key)) return refuse(400, `stand-in: "${key}" is not an option Ollama documents`, "invalid_request_error");
     }
     const messages = input.messages;
     const valid =
@@ -374,9 +501,15 @@ export async function startModelServer(options: StandInOptions = {}): Promise<St
       ["stream", "boolean"],
       ["temperature", "number"],
       ["max_tokens", "number"],
+      ["truncate", "boolean"],
+      ["shift", "boolean"],
     ] as const) {
       if (key in input && typeof input[key] !== type)
         return refuse(400, `invalid request: ${key} must be a ${type}`, "invalid_request_error");
+    }
+    for (const key of ["temperature", "num_predict", "num_ctx"]) {
+      if (key in settings && typeof settings[key] !== "number")
+        return refuse(400, `invalid request: options.${key} must be a number`, "invalid_request_error");
     }
     if (flavour === "ollama" && (typeof input.model !== "string" || !input.model)) {
       return refuse(400, "model is required", "invalid_request_error");
@@ -392,27 +525,55 @@ export async function startModelServer(options: StandInOptions = {}): Promise<St
       model = "stand-in";
     }
 
-    const list = messages as Array<{ role: string; content: string }>;
+    const list = (messages as Array<{ role: string; content: string }>).map((message) => ({ ...message }));
     const promptChars = list.reduce((sum, message) => sum + message.content.length, 0);
-    const promptTokens = Math.ceil(promptChars / 4);
-    if (flavour === "llamacpp" && promptTokens > contextTokens) {
-      return refuse(
-        400,
-        `request (${promptTokens} tokens) exceeds the available context size (${contextTokens} tokens), try increasing it`,
-        "exceed_context_size_error",
-        { n_prompt_tokens: promptTokens, n_ctx: contextTokens },
-      );
+    let promptTokens = Math.ceil(promptChars / 4);
+    const context = typeof settings.num_ctx === "number" ? settings.num_ctx : contextTokens;
+    if (promptTokens > context) {
+      if (flavour === "llamacpp" || (protocol === "ollama" && input.truncate === false)) {
+        return refuse(
+          400,
+          `request (${promptTokens} tokens) exceeds the available context size (${context} tokens), try increasing it`,
+          "exceed_context_size_error",
+          { n_prompt_tokens: promptTokens, n_ctx: context },
+        );
+      }
+      // Ollama, not told otherwise: the front of the newest message is dropped until half the context is left,
+      // and the answer is written from that. Nothing in the reply says so.
+      truncated += 1;
+      const newest = list.at(-1)!;
+      const others = promptChars - newest.content.length;
+      newest.content = newest.content.slice(-Math.max(0, (context / 2) * 4 - others));
+      promptTokens = Math.ceil((others + newest.content.length) / 4);
     }
-    // (Ollama does not refuse a prompt that is too long: it drops what does not fit and answers anyway.)
 
     const user = [...list].reverse().find((message) => message.role === "user")?.content ?? "";
     const fromPerson = list.filter((message) => message.role === "user").length;
     const id = `chatcmpl-${requests.length}`;
     const created = Math.floor(Date.now() / 1000);
 
+    // A model that is not in memory, or is there for another context size, is loaded before it says anything.
+    const load = async () => {
+      if (flavour !== "ollama") return;
+      if (loaded.get(asked) !== context && loadMs > 0) await sleep(loadMs);
+      loaded.set(asked, context);
+    };
+
     if (input.stream !== true) {
+      await load();
       const content =
         model === "stand-in-silent" ? "" : user.includes("Reply with the one word") ? "ready" : answerFor(model, user, fromPerson);
+      if (protocol === "ollama") {
+        return json(response, 200, {
+          model: asked,
+          created_at: new Date().toISOString(),
+          message: { role: "assistant", content },
+          done: true,
+          done_reason: "stop",
+          prompt_eval_count: promptTokens,
+          eval_count: 3,
+        });
+      }
       return json(response, 200, {
         id,
         object: "chat.completion",
@@ -430,31 +591,74 @@ export async function startModelServer(options: StandInOptions = {}): Promise<St
       if (!finished) abandoned += 1;
     });
     const gone = () => response.destroyed || response.writableEnded;
-    const write = (delta: Record<string, unknown>, finish: string | null = null) =>
+    /** One piece of the reply, in whichever protocol was asked for. `reasoning` is a model's private thinking. */
+    const write = (piece: string | null, kind: "content" | "reasoning" = "content", finish: string | null = null) => {
+      if (protocol === "ollama") {
+        const message: Record<string, unknown> = { role: "assistant", content: kind === "content" ? (piece ?? "") : "" };
+        if (kind === "reasoning") message.thinking = piece;
+        response.write(`${JSON.stringify({ model: asked, created_at: new Date().toISOString(), message, done: false })}\n`);
+        return;
+      }
+      const delta: Record<string, unknown> =
+        kind === "reasoning"
+          ? flavour === "ollama"
+            ? { role: "assistant", reasoning: piece }
+            : { reasoning_content: piece }
+          : flavour === "ollama"
+            ? { role: "assistant", content: piece ?? "" }
+            : piece === null
+              ? {}
+              : { content: piece };
       response.write(
         `data: ${JSON.stringify({ id, object: "chat.completion.chunk", created, model: asked, choices: [{ index: 0, delta, finish_reason: finish }] })}\n\n`,
       );
+    };
     const end = (reason: string) => {
-      // Both servers send the reason on a chunk of its own, then the [DONE] line.
-      write(flavour === "ollama" ? { role: "assistant", content: "" } : {}, reason);
-      response.write("data: [DONE]\n\n");
+      if (protocol === "ollama") {
+        // Ollama's last line says why it ended and what the prompt came to.
+        response.write(
+          `${JSON.stringify({
+            model: asked,
+            created_at: new Date().toISOString(),
+            message: { role: "assistant", content: "" },
+            done: true,
+            done_reason: reason,
+            total_duration: 1_000_000,
+            load_duration: 1_000,
+            prompt_eval_count: promptTokens,
+            eval_count: 3,
+          })}\n`,
+        );
+      } else {
+        // Both servers send the reason on a chunk of its own, then the [DONE] line.
+        write(null, "content", reason);
+        response.write("data: [DONE]\n\n");
+      }
       finished = true;
       response.end();
     };
 
+    await load();
     if (model === "stand-in-slow-start") await sleep(slowMs);
     if (gone()) return;
-    response.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", Connection: "keep-alive" });
+    response.writeHead(
+      200,
+      protocol === "ollama"
+        ? { "Content-Type": "application/x-ndjson" }
+        : { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", Connection: "keep-alive" },
+    );
     // llama-server opens with the role and no content, and sends comment lines to keep the connection alive.
     if (flavour === "llamacpp") {
-      write({ role: "assistant", content: null });
+      response.write(
+        `data: ${JSON.stringify({ id, object: "chat.completion.chunk", created, model: asked, choices: [{ index: 0, delta: { role: "assistant", content: null }, finish_reason: null }] })}\n\n`,
+      );
       response.write(":\n\n");
     }
 
     if (model === "stand-in-thinks") {
       for (const piece of pieces("The user asks about the sources. Source [9] would be ideal but was not given. I will answer briefly.")) {
         if (gone()) return;
-        write(flavour === "ollama" ? { role: "assistant", reasoning: piece } : { reasoning_content: piece });
+        write(piece, "reasoning");
         await sleep(chunkDelayMs);
       }
     }
@@ -462,7 +666,7 @@ export async function startModelServer(options: StandInOptions = {}): Promise<St
     if (model === "stand-in-endless") {
       const filler = `${"The same sentence, again and again, with no end in sight. ".repeat(4)}\n\n`;
       while (!gone()) {
-        write(flavour === "ollama" ? { role: "assistant", content: filler } : { content: filler });
+        write(filler);
         await sleep(1);
       }
       return;
@@ -475,20 +679,23 @@ export async function startModelServer(options: StandInOptions = {}): Promise<St
       if (index === 4 && model === "stand-in-stalls") return;
       if (index === 4 && model === "stand-in-drops") return void response.destroy();
       if (index === 4 && model === "stand-in-fails") {
-        if (flavour === "llamacpp") {
+        if (protocol === "ollama") {
+          // Ollama's own endpoint: one line carrying the error, then the stream closes.
+          response.write(`${JSON.stringify({ error: "the model ran out of memory" })}\n`);
+        } else if (flavour === "llamacpp") {
           // llama-server: one data line carrying the error, then the stream closes without [DONE].
           response.write(
             `data: ${JSON.stringify({ error: { code: 500, message: "the model ran out of memory", type: "server_error" } })}\n\n`,
           );
         } else {
-          // Ollama: the error is lost on this endpoint. An empty piece, then the stream just closes.
-          write({ role: "assistant", content: "" });
+          // Ollama's OpenAI-compatible endpoint: the error is lost. An empty piece, then the stream just closes.
+          write("");
         }
         finished = true;
         return void response.end();
       }
       if (index === 6 && model === "stand-in-length") return end("length");
-      write(flavour === "ollama" ? { role: "assistant", content: piece } : { content: piece });
+      write(piece);
       await sleep(delay);
     }
     end("stop");
@@ -502,6 +709,9 @@ export async function startModelServer(options: StandInOptions = {}): Promise<St
     requests,
     abandoned: () => abandoned,
     writing: () => writing,
+    truncated: () => truncated,
+    loaded: () => [...loaded].map(([name, context]) => `${name}@${context}`),
+    unload: () => loaded.clear(),
     close: () =>
       new Promise<void>((resolve) => {
         for (const socket of sockets) socket.destroy();
@@ -515,6 +725,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(fs.realpathSync(process
   const standIn = await startModelServer({
     port: Number(process.argv[2] ?? 8485),
     longChunkDelayMs: Number(process.env.STAND_IN_LONG_DELAY_MS ?? 25),
+    loadMs: Number(process.env.STAND_IN_LOAD_MS ?? 0),
   });
   console.log(`Stand-in model server (not a language model) on ${standIn.url}/v1 and ${standIn.url}/llamacpp/v1`);
 }

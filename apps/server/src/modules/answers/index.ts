@@ -25,6 +25,7 @@ import { AppError, messageOf } from "../../core/errors.ts";
 import { checkCitations, isSafetyCritical } from "../retrieval/index.ts";
 import { buildAnswerPrompt } from "../retrieval/prompt.ts";
 import { assertOwnNetwork, type ModelServerAddress, parseModelServerAddress, placeRefusal } from "./address.ts";
+import { contextTokensFor } from "./fit.ts";
 import {
   type ChatModelProvider,
   DEFAULT_TIMEOUTS,
@@ -34,8 +35,13 @@ import {
   withoutThinking,
 } from "./provider.ts";
 
-/** Most passages handed to the model for one question. */
-export const ANSWER_PASSAGES = 8;
+/**
+ * Most passages handed to the model for one question. Eight were handed over at first;
+ * with five, chosen passage by passage, both small models that were tried answered more
+ * questions rightly and the smaller one made up fewer answers (docs/ai.md, "Measured
+ * with a real model").
+ */
+export const ANSWER_PASSAGES = 5;
 /** The longest answer asked for, in tokens (about 750 words). A model that reaches it is reported as cut short. */
 export const ANSWER_MAX_TOKENS = 1024;
 /**
@@ -68,7 +74,10 @@ export function subjectOf(question: string): string {
     .replace(/\bhow\s+(long|much|many|often|far|big|old)\b/gi, " ")
     .split(/\s+/)
     .filter(Boolean);
-  const kept = words.filter((word) => !SMALL_WORDS.has(word.toLowerCase().replace(/[^\p{L}\p{N}'’-]/gu, "")));
+  const kept = words
+    .filter((word) => !SMALL_WORDS.has(word.toLowerCase().replace(/[^\p{L}\p{N}'’-]/gu, "")))
+    // "The generator's oil" is about the generator: the index holds no word "generator's".
+    .map((word) => word.replace(/(\p{L})['’]s(?=$|[^\p{L}])/giu, "$1"));
   const subject = kept.join(" ").replace(/[?!.,;:]+$/g, "");
   return subject && subject !== question ? subject : question;
 }
@@ -407,6 +416,7 @@ export async function registerAnswers(app: FastifyInstance, ctx: AppContext): Pr
         prompt: prompt.user,
         temperature: all["answers.temperature"],
         maxTokens: ANSWER_MAX_TOKENS,
+        contextTokens: contextTokensFor(all["answers.contextChars"], ANSWER_MAX_TOKENS),
         signal: controller.signal,
         onFinish: (info) => {
           finishReason = info.finishReason;

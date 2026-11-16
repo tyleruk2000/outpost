@@ -19,8 +19,8 @@ export interface VectorHit {
 
 export interface VectorIndex {
   upsert(modelId: string, items: Array<{ chunkId: number; contentHash: string; vector: Float32Array }>): void;
-  /** Nearest `limit` chunks to `vector`, optionally restricted to some entity kinds. */
-  query(modelId: string, vector: Float32Array, limit: number, kinds?: string[]): VectorHit[];
+  /** Nearest `limit` chunks to `vector`, optionally restricted to some entity kinds, or to the passages of one item. */
+  query(modelId: string, vector: Float32Array, limit: number, kinds?: string[], within?: { kind: string; entityId: string }): VectorHit[];
   count(modelId: string): number;
   removeModel(modelId: string): number;
 }
@@ -50,20 +50,22 @@ export function createFlatVectorIndex(sqlite: Sqlite): VectorIndex {
   return {
     upsert: (modelId, items) => upsertMany(modelId, items),
 
-    query(modelId, vector, limit, kinds) {
+    query(modelId, vector, limit, kinds, within) {
       const kindFilter = kinds?.length ? `AND e.kind IN (${kinds.map(() => "?").join(",")})` : "";
+      const itemFilter = within ? "AND e.kind = ? AND e.entity_id = ?" : "";
+      const bound = [...(kinds ?? []), ...(within ? [within.kind, within.entityId] : [])];
       const statement = sqlite.prepare(
-        kinds?.length
+        bound.length > 0
           ? `SELECT m.chunk_id AS chunkId, m.vector AS vector FROM embeddings m
              JOIN chunks c ON c.id = m.chunk_id JOIN search_entities e ON e.id = c.entity_row_id
-             WHERE m.model_id = ? ${kindFilter}`
+             WHERE m.model_id = ? ${kindFilter} ${itemFilter}`
           : "SELECT chunk_id AS chunkId, vector FROM embeddings WHERE model_id = ?",
       );
       // Keep the best `limit` seen so far in a small sorted array; `limit` is tiny
       // compared with the number of rows, so insertion is cheap.
       const best: VectorHit[] = [];
       let floor = Number.NEGATIVE_INFINITY;
-      for (const row of statement.iterate(modelId, ...(kinds ?? [])) as IterableIterator<{ chunkId: number; vector: Buffer }>) {
+      for (const row of statement.iterate(modelId, ...bound) as IterableIterator<{ chunkId: number; vector: Buffer }>) {
         const stored = new Float32Array(row.vector.buffer, row.vector.byteOffset, row.vector.byteLength / 4);
         if (stored.length !== vector.length) continue;
         let dot = 0;
