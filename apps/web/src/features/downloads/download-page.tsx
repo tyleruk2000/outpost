@@ -34,6 +34,7 @@ const kindWords: Record<DownloadKind, string> = {
   places: "Place names",
   file: "File",
   model: "Search model",
+  dataset: "Radio data",
   document: "Document saved from a link",
 };
 

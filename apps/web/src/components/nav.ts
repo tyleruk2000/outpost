@@ -13,9 +13,11 @@ import {
   MessagesSquare,
   NotebookText,
   RadioReceiver,
+  RadioTower,
   Search,
   Settings,
   Undo2,
+  Waves,
   Waypoints,
 } from "lucide-react";
 import { DeviceIcon, ON_THIS_DEVICE } from "@/features/kept/device";
@@ -40,6 +42,7 @@ export const knowledgeNav: NavItem[] = [
   // "a" for address book: "c" is Chat's.
   { to: "/contacts", label: "Contacts", icon: Contact, key: "a" },
   { to: "/encryption", label: "Encryption", icon: LockKeyhole, key: "k" },
+  { to: "/radio", label: "Radio", icon: RadioTower, key: "r" },
   // Last, so that the tree of pages sits under it in the sidebar.
   { to: "/notes", label: "Notes", icon: NotebookText, key: "n" },
 ];
@@ -64,6 +67,8 @@ export const tuckedAwayNav: Array<Omit<NavItem, "key">> = [
   { to: "/storage/manage", label: "Manage and clean up", icon: ListChecks },
   { to: "/storage/merge", label: "Bring back from a drive", icon: Undo2 },
   { to: "/import", label: "Import files", icon: FolderInput },
-  { to: "/radio/repeaters", label: "Repeaters", icon: RadioReceiver },
   { to: "/search/how-it-works", label: "How search works", icon: Waypoints },
+  // The radio tools, in the order the Radio screen lists them.
+  { to: "/radio/propagation", label: "HF propagation", icon: Waves },
+  { to: "/radio/repeaters", label: "Repeaters", icon: RadioReceiver },
 ];

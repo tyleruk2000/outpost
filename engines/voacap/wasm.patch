@@ -1,0 +1,42 @@
+diff --git a/src/runner.rs b/src/runner.rs
+index 36adac2..ba73b7f 100644
+--- a/src/runner.rs
++++ b/src/runner.rs
+@@ -254,7 +254,7 @@ fn materialize_dir(dir: &Path) -> io::Result<()> {
+     fs::create_dir(dir)?;
+     for entry in fs::read_dir(&target)? {
+         let entry = entry?;
+-        std::os::unix::fs::symlink(entry.path(), dir.join(entry.file_name()))?;
++        symlink(entry.path(), dir.join(entry.file_name()))?;
+     }
+     Ok(())
+ }
+@@ -268,6 +268,19 @@ impl Drop for IsolatedRoot {
+     }
+ }
+ 
++/// A symbolic link, where the platform has them. The harness in this file drives the
++/// Fortran reference and is only ever run on Unix; elsewhere (WebAssembly) it must still
++/// compile, and says so if it is ever called.
++#[cfg(unix)]
++fn symlink<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::Result<()> {
++    std::os::unix::fs::symlink(original, link)
++}
++
++#[cfg(not(unix))]
++fn symlink<P: AsRef<Path>, Q: AsRef<Path>>(_original: P, _link: Q) -> io::Result<()> {
++    Err(io::Error::new(io::ErrorKind::Unsupported, "symbolic links are not available on this platform"))
++}
++
+ /// Copies a tree, keeping symbolic links as links rather than following them.
+ ///
+ /// A stock `itshfbc` is largely a symlink farm pointing into the installed
+@@ -292,7 +305,7 @@ fn copy_dir_all(src: &Path, dst: &Path) -> io::Result<()> {
+                     target = parent.join(target);
+                 }
+             }
+-            std::os::unix::fs::symlink(target, &to)?;
++            symlink(target, &to)?;
+         } else if file_type.is_dir() {
+             copy_dir_all(&from, &to)?;
+         } else {

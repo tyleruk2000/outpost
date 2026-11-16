@@ -8,6 +8,7 @@ export const kindLabels: Record<CollectionKind, string> = {
   places: "Place names",
   file: "File",
   model: "Search model",
+  dataset: "Radio data",
 };
 
 /**
@@ -39,6 +40,7 @@ export const collectionGroups: Array<{ id: string; title: string; holds: (collec
   { id: "places", title: "Place names", holds: (item) => item.kind === "places" },
   { id: "files", title: "Files", holds: (item) => item.kind === "file" && !isBook(item) },
   { id: "models", title: "Search models", holds: (item) => item.kind === "model" },
+  { id: "datasets", title: "Radio data", holds: (item) => item.kind === "dataset" },
 ];
 
 export function groupCollections<T extends Grouped>(collections: T[]): Array<{ id: string; title: string; collections: T[] }> {

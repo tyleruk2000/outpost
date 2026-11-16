@@ -1,0 +1,27 @@
+# Outpost's bridge to the VOACAP engine. It is built to WebAssembly by
+# `node scripts/build-hf-engine.mjs`; the result is committed in ../dist so that
+# running Outpost needs no Rust toolchain. See docs/hf-propagation.md.
+[package]
+name = "outpost-voacap"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+# The engine: a Rust translation of VOACAP (NTIA/ITS), Apache-2.0. Its source is not
+# committed here: `scripts/build-hf-engine.mjs` fetches it at a pinned commit into
+# ../.upstream and applies ../wasm.patch. No feature is turned on: the ionospheric
+# coefficients are not compiled in, they are read from the dataset Outpost hands the
+# engine.
+[dependencies]
+hfcast = { path = "../.upstream" }
+
+[profile.release]
+opt-level = 2
+debug = false
+strip = true
+panic = "abort"
+codegen-units = 1

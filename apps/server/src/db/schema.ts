@@ -125,7 +125,7 @@ export const collections = sqliteTable(
   "collections",
   {
     id: id(),
-    kind: text("kind", { enum: ["zim", "map", "terrain", "places", "file", "model"] }).notNull(),
+    kind: text("kind", { enum: ["zim", "map", "terrain", "places", "file", "model", "dataset"] }).notNull(),
     catalogEntryId: text("catalog_entry_id"),
     title: text("title").notNull(),
     description: text("description"),
@@ -162,7 +162,7 @@ export const downloads = sqliteTable(
     id: id(),
     jobId: text("job_id"),
     /** What kind of thing is being fetched; decides how it is installed afterwards. */
-    kind: text("kind", { enum: ["zim", "map", "terrain", "places", "file", "model", "document"] }).notNull(),
+    kind: text("kind", { enum: ["zim", "map", "terrain", "places", "file", "model", "document", "dataset"] }).notNull(),
     catalogEntryId: text("catalog_entry_id"),
     title: text("title").notNull(),
     url: text("url").notNull(),
@@ -839,5 +839,77 @@ export const repeaters = sqliteTable(
     index("repeaters_search_idx").on(table.searchText, table.removedAt, table.outputHz, table.inputHz, table.id),
   ],
 );
+
+// ── HF propagation ──────────────────────────────────────────────────────────
+
+/** A transmitter a person owns: what a prediction needs to know about it, and their notes. */
+export const radioProfiles = sqliteTable("radio_profiles", {
+  id: id(),
+  name: text("name").notNull(),
+  model: text("model").notNull().default(""),
+  powerWatts: real("power_watts").notNull(),
+  minMhz: real("min_mhz").notNull(),
+  maxMhz: real("max_mhz").notNull(),
+  modes: json<string[]>("modes").notNull(),
+  receiver: text("receiver").notNull().default(""),
+  notes: text("notes").notNull().default(""),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+});
+
+/** An antenna as it is put up: which of the engine's models stands for it, and how. */
+export const antennaProfiles = sqliteTable("antenna_profiles", {
+  id: id(),
+  name: text("name").notNull(),
+  kind: text("kind", { enum: ["isotropic", "horizontal-dipole", "inverted-v", "end-fed-half-wave", "vertical-monopole"] }).notNull(),
+  heightM: real("height_m").notNull().default(0),
+  ground: text("ground", { enum: ["poor", "average", "good", "sea"] })
+    .notNull()
+    .default("average"),
+  /** Compass bearing the broadside faces; null turns it towards the other station. */
+  broadsideDeg: real("broadside_deg"),
+  gainDb: real("gain_db").notNull().default(0),
+  feedlineLossDb: real("feedline_loss_db").notNull().default(0),
+  minMhz: real("min_mhz").notNull(),
+  maxMhz: real("max_mhz").notNull(),
+  notes: text("notes").notNull().default(""),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+});
+
+/**
+ * Answers already worked out, by a key made from the question, the engine and the data
+ * it read. The same key always means the same answer, so a row is never updated, only
+ * read again or dropped when the table is trimmed. `kind` says what was asked: a path
+ * between two points today; a coverage grid or one pair of a communication plan later.
+ */
+export const propagationResults = sqliteTable(
+  "propagation_results",
+  {
+    key: text("key").primaryKey(),
+    kind: text("kind", { enum: ["point", "compare", "coverage"] }).notNull(),
+    engine: text("engine").notNull(),
+    request: json<Record<string, unknown>>("request").notNull(),
+    result: json<Record<string, unknown>>("result").notNull(),
+    createdAt: createdAt(),
+    lastUsedAt: integer("last_used_at").notNull(),
+  },
+  (table) => [index("propagation_results_used_idx").on(table.lastUsedAt)],
+);
+
+/** A question a person chose to keep, by name. The answer is worked out again when it is opened. */
+export const propagationSaved = sqliteTable("propagation_saved", {
+  id: id(),
+  name: text("name").notNull(),
+  kind: text("kind", { enum: ["point", "coverage"] })
+    .notNull()
+    .default("point"),
+  request: json<Record<string, unknown>>("request").notNull(),
+  /** The key of the answer it was saved with, so a changed answer can be noticed. */
+  resultKey: text("result_key"),
+  noteId: text("note_id"),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+});
 
 export const nowMs = sql`(unixepoch('subsec') * 1000)`;

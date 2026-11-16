@@ -449,6 +449,26 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   the bands run to 1 mm (250 GHz), so 24, 47 and 76 GHz given in megahertz are no longer
   read a thousand times too low. A number that could be two frequencies, with nothing
   to say which, is left out with the reason in the preview.
+#### HF propagation
+
+- A planner under **Radio** that predicts how a shortwave signal gets between two
+  places through a day: reliability, signal-to-noise ratio, signal and noise, MUF, FOT,
+  HPF and LUF, the path's hops and take-off angle, every amateur band from 80 m to
+  10 m, SSB, CW, FT8 and JS8Call side by side, and the working for short, steep (NVIS)
+  paths with geometry, signal-to-noise ratio and reliability kept apart.
+- Predictions come from VOACAP, run as WebAssembly in a worker thread with no access to
+  the computer's files. Outpost has no propagation model of its own and predicts
+  nothing when the engine or its data is missing or damaged.
+- Every answer says where its sunspot number came from (NOAA's forecast from a dated
+  table, a number you typed, or an foF2 you measured) and is never called live.
+- Radio and antenna profiles, generic antennas that say how they are modelled, and
+  predictions saved by name.
+- The engine's data listed with versions, sizes, dates and checksums; a newer solar
+  cycle table fetched through the download manager when asked for.
+- Charts drawn by hand from the engine's figures, readable with the keyboard and by a
+  screen reader.
+- Three reference circuits held to the text the Fortran original prints. See
+  [docs/hf-propagation.md](docs/hf-propagation.md).
 
 #### On a phone, out of reach of the server
 

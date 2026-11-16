@@ -44,6 +44,14 @@ export function greatCirclePoint(from: RoutePoint, to: RoutePoint, fraction: num
   return { lat: Math.atan2(z, Math.hypot(x, y)) / DEG, lon: Math.atan2(y, x) / DEG };
 }
 
+/** Compass bearing in degrees (0 to 360) to set out on from the first point towards the second, along the great circle. */
+export function initialBearingDeg(from: { lat: number; lon: number }, to: { lat: number; lon: number }): number {
+  const dLon = (to.lon - from.lon) * DEG;
+  const y = Math.sin(dLon) * Math.cos(to.lat * DEG);
+  const x = Math.cos(from.lat * DEG) * Math.sin(to.lat * DEG) - Math.sin(from.lat * DEG) * Math.cos(to.lat * DEG) * Math.cos(dLon);
+  return (Math.atan2(y, x) / DEG + 360) % 360;
+}
+
 // ── Line of sight ───────────────────────────────────────────────────────────
 
 /** Mean radius of the Earth in metres: the same sphere distances are measured on. */

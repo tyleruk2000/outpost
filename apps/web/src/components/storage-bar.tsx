@@ -10,6 +10,7 @@ export const usageKinds: Array<{ kind: string; label: string; color: string }> =
   { kind: "places", label: "Place names", color: "oklch(0.62 0.1 285)" },
   { kind: "file", label: "Files", color: "oklch(0.6 0.09 30)" },
   { kind: "model", label: "Search models", color: "oklch(0.58 0.07 250)" },
+  { kind: "dataset", label: "Radio data", color: "var(--chart-other)" },
 ];
 
 /**
