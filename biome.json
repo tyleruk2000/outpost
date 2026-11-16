@@ -11,6 +11,7 @@
       "!.claude",
       "!**/*.gen.ts",
       "!catalog/schema",
+      "!engines/solar/predicted-solar-cycle.json",
       "!**/*.md"
     ]
   },

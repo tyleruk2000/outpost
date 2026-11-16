@@ -22,7 +22,7 @@ import { useEffect, useId, useState } from "react";
 import { Link } from "react-router";
 import { EmptyState, Notice, Rows, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
-import { ConfirmDialog } from "@/components/ui/dialog";
+import { ConfirmDialog, Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/input";
 import { Checkbox, Select, Skeleton } from "@/components/ui/misc";
 import { errorMessage } from "@/lib/api";
@@ -445,34 +445,38 @@ export function Planner() {
               Save this prediction
             </Button>
           ) : null}
-          {problem ? (
-            <p role="alert" className="basis-full text-small text-danger">
-              {problem.problem}
-            </p>
-          ) : null}
+          {problem ? <p className="basis-full text-small text-danger">Not sent: one thing above needs putting right.</p> : null}
         </div>
       </form>
 
       {saveName !== null && result ? (
-        <ConfirmDialog
-          open
-          onOpenChange={(open) => !open && setSaveName(null)}
-          title="Save this prediction"
-          description="The question is kept under this name. It is worked out again when you open it, with whatever data is installed then."
-          confirmLabel="Save"
-          confirmVariant="primary"
-          loading={savePrediction.isPending}
-          onConfirm={() =>
-            savePrediction.mutate(
-              { name: saveName.trim() || "Prediction", request: result.request, key: result.key },
-              { onSuccess: () => setSaveName(null) },
-            )
-          }
-        >
-          <Field label="Name">
-            {(ids) => <Input {...ids} value={saveName} onChange={(event) => setSaveName(event.target.value)} maxLength={120} />}
-          </Field>
-        </ConfirmDialog>
+        <Dialog open onOpenChange={(open) => !open && setSaveName(null)}>
+          <DialogContent
+            title="Save this prediction"
+            description="The question is kept under this name. It is worked out again when you open it, with whatever data is installed then."
+          >
+            <DialogBody>
+              <Field label="Name">
+                {(ids) => <Input {...ids} value={saveName} onChange={(event) => setSaveName(event.target.value)} maxLength={120} />}
+              </Field>
+            </DialogBody>
+            <DialogFooter>
+              <Button onClick={() => setSaveName(null)}>Cancel</Button>
+              <Button
+                variant="primary"
+                loading={savePrediction.isPending}
+                onClick={() =>
+                  savePrediction.mutate(
+                    { name: saveName.trim() || "Prediction", request: result.request, key: result.key },
+                    { onSuccess: () => setSaveName(null) },
+                  )
+                }
+              >
+                Save
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       ) : null}
 
       <div className="mt-10" aria-busy={predict.isPending}>

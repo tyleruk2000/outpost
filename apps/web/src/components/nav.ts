@@ -10,10 +10,10 @@ import {
   Map as MapIcon,
   NotebookText,
   RadioTower,
-  Waves,
   Search,
   Settings,
   Undo2,
+  Waves,
   Waypoints,
 } from "lucide-react";
 import { DeviceIcon, ON_THIS_DEVICE } from "@/features/kept/device";

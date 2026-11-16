@@ -30,7 +30,7 @@ test.describe("HF propagation", () => {
     const grid = page.getByRole("region", { name: /Reliability of SSB voice from 2 to 30 MHz by hour/ });
     await grid.focus();
     await expect(page.getByRole("heading", { name: /7\.10 MHz at \d\d:00 UTC/ })).toBeVisible();
-    const lines = page.getByRole("region", { name: /Reliability of 7\.10 MHz by hour/ });
+    const lines = page.getByRole("region", { name: /^Reliability of 7\.10 MHz by hour\./ });
     await lines.focus();
     for (let presses = 0; presses < 24; presses++) await page.keyboard.press("ArrowLeft");
     await expect(page.getByRole("heading", { name: "7.10 MHz at 01:00 UTC" })).toBeVisible();
@@ -50,7 +50,7 @@ test.describe("HF propagation", () => {
     await page.getByRole("dialog").getByRole("button", { name: "Save" }).click();
     await expect(page.getByRole("heading", { name: "Saved predictions" })).toBeVisible();
     await expect(page.getByText("London to Birmingham, 7.1 MHz")).toBeVisible();
-    expect(errors()).toEqual([]);
+    expect(errors).toEqual([]);
   });
 
   test("keeps equipment and shows the data it rests on", async ({ page }) => {
@@ -67,10 +67,10 @@ test.describe("HF propagation", () => {
     await page.getByRole("tab", { name: "Engine and data" }).click();
     await expect(page.getByText("Ionospheric and noise coefficients")).toBeVisible();
     await expect(page.getByText(/44 files · checksums match/)).toBeVisible();
-    await expect(page.getByText("Solar cycle prediction", { exact: true })).toBeVisible();
+    await expect(page.getByText("Solar cycle prediction").first()).toBeVisible();
     await expect(page.getByRole("button", { name: "Download a newer table" })).toBeVisible();
     await expect(page.getByText(/SILSO/).first()).toBeVisible();
-    expect(errors()).toEqual([]);
+    expect(errors).toEqual([]);
   });
 
   test("refuses a frequency the engine does not cover, in words", async ({ page }) => {

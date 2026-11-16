@@ -13,6 +13,6 @@ test.describe("HF propagation on a phone", () => {
     // The button a thumb presses is at least 44 px tall.
     const button = await page.getByRole("button", { name: "Predict", exact: true }).boundingBox();
     expect(button!.height).toBeGreaterThanOrEqual(44);
-    expect(errors()).toEqual([]);
+    expect(errors).toEqual([]);
   });
 });

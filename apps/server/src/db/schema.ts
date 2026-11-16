@@ -639,7 +639,9 @@ export const antennaProfiles = sqliteTable("antenna_profiles", {
   name: text("name").notNull(),
   kind: text("kind", { enum: ["isotropic", "horizontal-dipole", "inverted-v", "end-fed-half-wave", "vertical-monopole"] }).notNull(),
   heightM: real("height_m").notNull().default(0),
-  ground: text("ground", { enum: ["poor", "average", "good", "sea"] }).notNull().default("average"),
+  ground: text("ground", { enum: ["poor", "average", "good", "sea"] })
+    .notNull()
+    .default("average"),
   /** Compass bearing the broadside faces; null turns it towards the other station. */
   broadsideDeg: real("broadside_deg"),
   gainDb: real("gain_db").notNull().default(0),
@@ -675,7 +677,9 @@ export const propagationResults = sqliteTable(
 export const propagationSaved = sqliteTable("propagation_saved", {
   id: id(),
   name: text("name").notNull(),
-  kind: text("kind", { enum: ["point", "coverage"] }).notNull().default("point"),
+  kind: text("kind", { enum: ["point", "coverage"] })
+    .notNull()
+    .default("point"),
   request: json<Record<string, unknown>>("request").notNull(),
   /** The key of the answer it was saved with, so a changed answer can be noticed. */
   resultKey: text("result_key"),

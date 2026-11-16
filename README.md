@@ -43,6 +43,11 @@ picture, not a surveyed path.
   contents page, a document per chapter, links between chapters, and their diagrams
   and signal figures drawn in the app. They are not the manufacturers' manuals; see
   [docs/radio.md](docs/radio.md#the-handbook-and-the-radio-guides).
+- **HF propagation, offline.** Predict how a shortwave signal gets from one place to
+  another, hour by hour and band by band, for your power, antennas and mode, including
+  short, steep (NVIS) paths. Worked out on your own computer by VOACAP, from monthly
+  maps of the ionosphere: a planning aid that always says it is not today's conditions.
+  See [docs/hf-propagation.md](docs/hf-propagation.md).
 - **Reference collections.** Browse a curated catalogue (Wikipedia, medicine and first
   aid, repair guides, food preservation, engineering, and more) and download
   individual collections as [Kiwix](https://kiwix.org) ZIM archives, or official

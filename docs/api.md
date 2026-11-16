@@ -566,6 +566,54 @@ arithmetic both sides share (which tiles a box touches, the limits) is in
 | `GET /api/maps/tracks/:id/export.gpx` | One track as GPX. |
 | `GET /api/maps/export.gpx` | A selection as one GPX file. Query: `markers=1`, `tracks=<id>,<id>`. |
 
+## HF propagation
+
+Predictions are worked out by VOACAP on the server, with no connection. See
+[hf-propagation.md](hf-propagation.md) for what the figures mean.
+
+| Route | What it does |
+| --- | --- |
+| `GET /api/radio/propagation/engines` | The engine: its model, the program that runs it, its checksum, the range it covers, and `ready`. When it cannot run, `problem` says why. |
+| `GET /api/radio/propagation/datasets` | The data installed (versions, sizes, dates, checksums, terms), what was looked at and is not offered, and the solar table in use month by month. |
+| `POST /api/radio/propagation/datasets/solar-cycle/download` | Fetches a newer solar cycle table through the download manager. Body: `{ locationId? }`. Returns `{ download }`. `409` when today's table is already downloaded or on its way. |
+| `POST /api/radio/propagation/predict` | One path for one day. Body below. Returns a `PredictionResult` (`packages/shared/src/propagation.ts`): 24 hours, each with the frequency asked about, every band, a sweep of 2 to 30 MHz, every mode, the ionosphere over the middle of the path, MUF, FOT, HPF and LUF; with the engine, the data versions, the basis of the sunspot number and the answer's key. With `?background=true` it returns `{ job }` and the job's result holds the key. |
+| `POST /api/radio/propagation/compare` | The same path with one thing changed. Body: `{ base, what }`, `what` one of `seasons`, `sunspots`, `power`, `antennas`, `noise`. Returns a series of 24 hours for each variant. |
+| `POST /api/radio/propagation/listing` | The page VOACAP itself prints for the request, as `{ listing }`. |
+| `GET /api/radio/propagation/results/:key` | An answer already worked out. `404` once it has been cleared to make room. |
+| `GET` / `POST /api/radio/propagation/saved`, `DELETE …/saved/:id` | Predictions kept by name. `POST` body: `{ name, request, key? }`. |
+| `GET /api/radio/profiles` | `{ radios, antennas }`. |
+| `POST /api/radio/profiles/radios`, `PATCH` / `DELETE …/radios/:id` | A radio: `name`, `model`, `powerWatts`, `minMhz`, `maxMhz`, `modes`, `receiver`, `notes`. |
+| `POST /api/radio/profiles/antennas`, `PATCH` / `DELETE …/antennas/:id` | An antenna: `name`, `kind`, `heightM`, `ground`, `broadsideDeg`, `gainDb`, `feedlineLossDb`, `minMhz`, `maxMhz`, `notes`. |
+
+A prediction's body:
+
+```json
+{
+  "tx": { "name": "London", "lat": 51.5074, "lon": -0.1278 },
+  "rx": { "name": "Birmingham", "lat": 52.4862, "lon": -1.8904 },
+  "date": "2026-11-16",
+  "powerWatts": 5,
+  "txAntenna": { "kind": "horizontal-dipole", "heightM": 5, "ground": "average", "broadsideDeg": null, "gainDb": 0, "feedlineLossDb": 0 },
+  "rxAntenna": { "kind": "horizontal-dipole", "heightM": 5, "ground": "average", "broadsideDeg": null, "gainDb": 0, "feedlineLossDb": 0 },
+  "noise": "city",
+  "frequencyMhz": 7.1,
+  "mode": "ssb",
+  "solar": { "source": "table" }
+}
+```
+
+`solar` may instead be `{ "source": "manual", "ssn": 60 }` or
+`{ "source": "fof2", "fof2Mhz": 6.4, "utcHour": 12 }`. Optional: `requiredSnrDb` and
+`referenceBandwidthHz` (a person's own figures for the mode), and
+`reply: { powerWatts, noise }` to predict the way back as well.
+
+Limits checked before the engine sees a request: latitude -90 to 90, longitude -180 to
+180, a real date from 1950 to 2100, power 0.1 W to 500 kW, frequency 2 to 30 MHz,
+sunspot number 0 to 300, a horizontal antenna at least 0.5 m up, and a requirement
+between -30 and 99.9 dB once restated in 1 Hz. `400` says which. `415` with
+`details.reason = "engine-unavailable"` means the engine or its data is missing or
+damaged: the message names the file, and nothing is predicted.
+
 ## Backup
 
 Types: `packages/shared/src/backup.ts`.

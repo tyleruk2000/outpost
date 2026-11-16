@@ -15,6 +15,11 @@ and two radio tools on its map:
 - **On the map: Maidenhead locators and a line-of-sight check.** See
   [Radio tools on the map](#radio-tools-on-the-map).
 
+It also has an **HF propagation planner**, which predicts how a shortwave signal gets
+between two places through the day. That has a page of its own:
+[hf-propagation.md](hf-propagation.md). The **Radio** entry in the sidebar lists all of
+these.
+
 ## Radio tools on the map
 
 Both are on the **Maps** screen and work from what is installed, with no connection.

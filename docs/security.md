@@ -371,6 +371,36 @@ Three outbound paths do not use this client, because their address is a setting:
 embedding server for semantic search, the model server for answers (see
 [below](#answers-from-a-language-model)), and kiwix-serve.
 
+### The HF propagation engine
+
+Predictions are worked out by a third party's program (VOACAP, as the `hfcast`
+translation) compiled to WebAssembly, and its inputs come from whoever can reach
+Outpost. It is treated as untrusted code doing arithmetic:
+
+- **It has no access to the computer.** A WebAssembly module can only call what it is
+  handed. Outpost hands it twelve functions (`modules/propagation/voacap/wasi.ts`) that
+  answer from a map of file names to bytes held in memory: the engine's own data files
+  and the two antenna files Outpost writes for a request. There is no path from a
+  request to a real file: a name that climbs out (`../../etc/hosts`) or is absolute is
+  simply not in the map, and nothing can be created or written. Node's own WASI
+  support, which would give the module a real folder, is not used.
+- **It runs in a worker thread** with a memory limit, away from the HTTP server. A trap
+  inside the engine (a Rust panic) ends that copy of it, never the server, and the
+  next request gets a fresh copy. A request that gets no answer in a minute ends the
+  worker.
+- **Its inputs are checked first** (`modules/propagation/index.ts`): positions,
+  dates, power, frequency and every antenna figure are held to ranges by zod, and
+  antenna files are written by Outpost from those numbers, never from text a person
+  supplied. Station names are cut to twenty characters and only ever printed.
+- **Its files are checked every time it is loaded**: the engine and all 44 data files
+  against SHA-256 checksums recorded when they were built. A file that does not match
+  is refused by name and no prediction is made from it.
+- **The one outbound request** is fetching a newer solar cycle table from NOAA
+  (`services.swpc.noaa.gov`), only when a person presses the button, through the
+  download manager and its public-address rule. What arrives is at most 1 MB, parsed as
+  JSON and accepted only if every row is a month with a sunspot number between 0 and
+  500; anything else is discarded and the table already installed stays in use.
+
 ### Paths
 
 Content is recorded as *(storage location, relative path)*, and storage locations can
