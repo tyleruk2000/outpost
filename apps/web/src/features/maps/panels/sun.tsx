@@ -40,6 +40,7 @@ import {
 } from "../lib/sun-text";
 import { readStored, writeStored } from "../lib/view";
 import { Fact } from "../ui";
+import { SunPdf } from "./sun-pdf";
 
 const OPEN_KEY = "outpost.maps.sun.open";
 const isBoolean = (value: unknown): value is boolean => typeof value === "boolean";
@@ -93,6 +94,7 @@ function useSun(position: LatLon, zone: string | undefined, shared = false) {
     if (isIsoDate(next) && next >= FIRST_DATE && next <= LAST_DATE) setDate(next);
   };
   return {
+    position,
     device,
     style,
     clock,
@@ -162,16 +164,19 @@ function Figures({ rows, size }: { rows: SunRow[]; size: "large" | "medium" }) {
 function SunBody({
   sun,
   id,
+  place,
   children,
   className,
 }: {
   sun: ReturnType<typeof useSun>;
   id?: string;
+  /** What the times are for, for the sheet on paper: a saved place's name, the position as the screen writes it. */
+  place?: { name?: string; coordinates?: string };
   /** Said between the times and the quieter list: which point the times are for. */
   children?: ReactNode;
   className?: string;
 }) {
-  const { device, style, clock, setClock, today, date, goToday, choose, day, rows, far } = sun;
+  const { position, device, style, clock, setClock, today, date, goToday, choose, day, rows, far } = sun;
   const layout = useMemo(() => sunLayout(rows), [rows]);
   return (
     <div id={id} className={cn("grid gap-3", className)}>
@@ -258,12 +263,15 @@ function SunBody({
           be several minutes out.
         </p>
       </div>
+
+      <SunPdf place={{ ...place, lat: position.lat, lon: position.lon }} date={date} zone={device} utc={clock === "utc"} style={style} />
     </div>
   );
 }
 
 export function SunSection({
   position,
+  name,
   defaultOpen = false,
   contained = false,
   zone,
@@ -271,6 +279,8 @@ export function SunSection({
   className,
 }: {
   position: LatLon;
+  /** The saved place's name, for the sheet on paper. */
+  name?: string;
   /** Open to begin with, whatever was remembered: the person has just asked for sun times. */
   defaultOpen?: boolean;
   /** Inside a card over the map: the opened section scrolls within itself instead of growing past the screen. */
@@ -315,7 +325,7 @@ export function SunSection({
           className={cn("size-4 shrink-0 text-ink-muted transition-transform duration-150 ease-out", open && "rotate-180")}
         />
       </button>
-      {open ? <SunBody sun={sun} id={bodyId} className={cn("pt-1", contained && CONTAINED)} /> : null}
+      {open ? <SunBody sun={sun} id={bodyId} place={{ name }} className={cn("pt-1", contained && CONTAINED)} /> : null}
     </section>
   );
 }
@@ -329,11 +339,14 @@ export function SunTimes({
   position,
   zone,
   shared = false,
+  coordinates,
   children,
   className,
 }: {
   position: LatLon;
   zone?: string;
+  /** The position as the screen writes it, for the sheet on paper. */
+  coordinates?: string;
   /** The day is the one the map's sun is shown for, which the grey line is drawn for too. */
   shared?: boolean;
   /** Said between the times and the quieter list: which point the times are for. */
@@ -346,7 +359,9 @@ export function SunTimes({
       <p className="sr-only" aria-live="polite" aria-atomic>
         {sun.summary}
       </p>
-      <SunBody sun={sun}>{children}</SunBody>
+      <SunBody sun={sun} place={{ coordinates }}>
+        {children}
+      </SunBody>
     </div>
   );
 }

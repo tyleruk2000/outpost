@@ -21,6 +21,14 @@
  * to start at 100% instead of "fit to page"; readers may ignore it, which is why the
  * page also says how long its scale bar should measure.
  *
+ * Hidden words (text drawn in no ink, for search) may be in any script. The page's
+ * typefaces cannot write those, so such words are written in a font of a third kind:
+ * a Type 3 font whose glyphs draw nothing, with a ToUnicode map (ISO 32000-1, 9.10.3)
+ * that says which character each of its codes stands for. Nothing is drawn with it
+ * and no font is carried, but a reader that extracts text, the library's among them,
+ * reads the words exactly. One such font holds 256 characters; a file that needs more
+ * has more of them.
+ *
  * Nothing here touches the page or the network: sheet in, bytes out.
  */
 import { monoWidth } from "./courier";
@@ -74,6 +82,131 @@ function pdfString(text: string): string {
   return `${out})`;
 }
 
+const RTL = /[֐-ࣿיִ-﷿ﹰ-﻿]/u;
+const LEFT_TO_RIGHT = /[\p{L}\p{N}]/u;
+
+/**
+ * Words in a right-to-left script, put in the order they stand on a page. A PDF holds
+ * its characters in the order they are drawn, left to right, and a reader that takes
+ * the text out of it (pdf.js, which the library uses) turns right-to-left runs back
+ * into reading order with the Unicode bidirectional rules. Written in reading order,
+ * "محمد" would come out backwards. This is the simple part of those rules: a line
+ * mostly in such a script is turned round whole, with its runs of Latin letters and
+ * figures turned back; any other line has only its right-to-left runs turned round.
+ * Exported for its tests.
+ */
+export function visualOrder(text: string): string {
+  const characters = [...text];
+  const rtl = characters.filter((character) => RTL.test(character)).length;
+  if (rtl === 0) return text;
+  const ltr = (character: string) => LEFT_TO_RIGHT.test(character) && !RTL.test(character);
+  // pdf.js reads a line as right-to-left when three in ten of its characters are, or it is very short.
+  const rightToLeft = rtl / text.length >= 0.3 || text.length <= 4;
+  /** Turns round each run of characters that `inRun` takes, with the spaces and signs between two of them. */
+  const turnRuns = (chars: string[], inRun: (character: string) => boolean) => {
+    const out: string[] = [];
+    let index = 0;
+    while (index < chars.length) {
+      if (!inRun(chars[index]!)) {
+        out.push(chars[index]!);
+        index += 1;
+        continue;
+      }
+      let end = index + 1;
+      let last = index;
+      // The run goes on over neutral characters only as far as another of its own.
+      while (end < chars.length && (inRun(chars[end]!) || !(RTL.test(chars[end]!) || ltr(chars[end]!)))) {
+        if (inRun(chars[end]!)) last = end;
+        end += 1;
+      }
+      out.push(...chars.slice(index, last + 1).reverse());
+      index = last + 1;
+    }
+    return out;
+  };
+  if (rightToLeft) return turnRuns([...characters].reverse(), ltr).join("");
+  return turnRuns(characters, (character) => RTL.test(character)).join("");
+}
+
+/** Text as a hexadecimal PDF string of one-byte codes. */
+const hexString = (codes: readonly number[]) => `<${codes.map((code) => code.toString(16).padStart(2, "0").toUpperCase()).join("")}>`;
+
+/**
+ * Codes in the fonts that write hidden words in any script: each character gets a font
+ * (U1, U2, ...) and a code in it, in the order first met.
+ */
+class UnicodeCodes {
+  readonly characters: string[] = [];
+  private readonly index = new Map<string, number>();
+  static readonly PER_FONT = 256;
+
+  /** Hidden words the page's own typefaces cannot write. */
+  static needed(item: SheetItem): boolean {
+    return item.kind === "text" && item.hidden === true && encodeWinAnsi(item.text) === null;
+  }
+
+  add(text: string) {
+    for (const character of text) {
+      if (this.index.has(character)) continue;
+      this.index.set(character, this.characters.length);
+      this.characters.push(character);
+    }
+  }
+
+  get fonts(): number {
+    return Math.ceil(this.characters.length / UnicodeCodes.PER_FONT);
+  }
+
+  /** The text as runs, each in one font: which font, and the codes. */
+  runs(text: string): Array<{ font: number; codes: number[] }> {
+    const runs: Array<{ font: number; codes: number[] }> = [];
+    for (const character of text) {
+      const at = this.index.get(character)!;
+      const font = Math.floor(at / UnicodeCodes.PER_FONT);
+      const code = at % UnicodeCodes.PER_FONT;
+      const last = runs[runs.length - 1];
+      if (last && last.font === font) last.codes.push(code);
+      else runs.push({ font, codes: [code] });
+    }
+    return runs;
+  }
+
+  /** The ToUnicode map of one font: each code to its character, in UTF-16. */
+  toUnicode(font: number): string {
+    const chars = this.characters.slice(font * UnicodeCodes.PER_FONT, (font + 1) * UnicodeCodes.PER_FONT);
+    const utf16 = (character: string) => {
+      let hex = "";
+      for (let index = 0; index < character.length; index += 1)
+        hex += character.charCodeAt(index).toString(16).padStart(4, "0").toUpperCase();
+      return hex;
+    };
+    const blocks: string[] = [];
+    // A map may give at most a hundred codes in one block.
+    for (let start = 0; start < chars.length; start += 100) {
+      const part = chars.slice(start, start + 100);
+      blocks.push(
+        `${part.length} beginbfchar\n${part.map((character, at) => `${hexString([start + at])} <${utf16(character)}>`).join("\n")}\nendbfchar`,
+      );
+    }
+    return [
+      "/CIDInit /ProcSet findresource begin",
+      "12 dict begin",
+      "begincmap",
+      "/CIDSystemInfo << /Registry (Adobe) /Ordering (UCS) /Supplement 0 >> def",
+      `/CMapName /Outpost-Hidden-${font + 1} def`,
+      "/CMapType 2 def",
+      "1 begincodespacerange",
+      "<00> <FF>",
+      "endcodespacerange",
+      ...blocks,
+      "endcmap",
+      "CMapName currentdict /CMap defineresource pop",
+      "end",
+      "end",
+    ].join("\n");
+  }
+}
+
 /** Text for the document's record, where any character is allowed: UTF-16 with a byte-order mark, as hexadecimal. */
 function recordString(text: string): string {
   let hex = "FEFF";
@@ -90,7 +223,7 @@ function pdfDate(date: Date): string {
 }
 
 /** The page's drawing instructions. PDF measures up from the bottom-left corner; the sheet measures down from the top-left. */
-function content(sheet: Sheet, names: ReadonlyMap<string, string>): string {
+function content(sheet: Sheet, names: ReadonlyMap<string, string>, unicode: UnicodeCodes): string {
   const up = (y: number) => sheet.height - y;
   const lines: string[] = [];
   const draw = (item: SheetItem) => {
@@ -124,6 +257,19 @@ function content(sheet: Sheet, names: ReadonlyMap<string, string>): string {
         const width = item.mono ? monoWidth(item.text, item.size) : textWidth(item.text, item.size, item.bold);
         const back = item.anchor === "end" ? width : item.anchor === "middle" ? width / 2 : 0;
         const matrix = item.upward ? `0 1 -1 0 ${n(item.x)} ${n(up(item.y) - back)}` : `1 0 0 1 ${n(item.x - back)} ${n(up(item.y))}`;
+        if (UnicodeCodes.needed(item)) {
+          // Hidden words in another script: each run in the font that has its characters, all in no ink.
+          const shown = unicode
+            .runs(visualOrder(item.text))
+            .map((run) => `/U${run.font + 1} ${n(item.size)} Tf ${hexString(run.codes)} Tj`)
+            .join(" ");
+          // Each blank glyph is half an em wide. A reader leaves out text that runs off the page, so a long line is squeezed to fit what room there is.
+          const natural = ([...item.text].length * item.size) / 2;
+          const room = Math.max(1, item.fit ?? sheet.width - item.x - 4);
+          const squeeze = natural > room ? `${n((100 * room) / natural)} Tz ` : "";
+          lines.push(`BT 3 Tr ${squeeze}${matrix} Tm ${shown} 0 Tr${squeeze ? " 100 Tz" : ""} ET`);
+          break;
+        }
         const face = item.mono ? (item.bold ? "F4" : "F3") : item.bold ? "F2" : "F1";
         // Rendering mode 3 is "neither fill nor stroke": the words are in the file and nothing is drawn. It stays set until changed, like the dashes above.
         const show = item.hidden ? `3 Tr ${pdfString(item.text)} Tj 0 Tr` : `${pdfString(item.text)} Tj`;
@@ -154,15 +300,26 @@ export function writePdfPages(input: PdfPagesInput): Uint8Array {
   const names = new Map(pictures.map(([id], index) => [id, `Im${index + 1}`]));
   // Courier is named in the file only when a page is lettered in it.
   const mono = input.pages.some((page) => page.items.some((item) => item.kind === "text" && item.mono));
+  // Hidden words in scripts the typefaces lack, and the fonts that write them.
+  const unicode = new UnicodeCodes();
+  for (const sheet of input.pages)
+    for (const item of sheet.items) if (item.kind === "text" && UnicodeCodes.needed(item)) unicode.add(item.text);
+  const unicodeFonts = unicode.fonts;
 
   // Objects 1 to 7 are fixed, with the first page among them; then the pictures, then
-  // Courier if it is used, then each further page and its drawing instructions.
+  // Courier if it is used, then the fonts for hidden words in other scripts (each with
+  // its map, and one glyph they all share), then each further page and its drawing instructions.
   const firstPicture = 8;
   const firstMono = firstPicture + pictures.length;
-  const firstLaterPage = firstMono + (mono ? 2 : 0);
+  const firstUnicode = firstMono + (mono ? 2 : 0);
+  const blankGlyph = firstUnicode + 2 * unicodeFonts;
+  const firstLaterPage = blankGlyph + (unicodeFonts > 0 ? 1 : 0);
   const pageObject = (index: number) => (index === 0 ? 3 : firstLaterPage + (index - 1) * 2);
   const resources = [
-    `/Font << /F1 5 0 R /F2 6 0 R${mono ? ` /F3 ${firstMono} 0 R /F4 ${firstMono + 1} 0 R` : ""} >>`,
+    `/Font << /F1 5 0 R /F2 6 0 R${mono ? ` /F3 ${firstMono} 0 R /F4 ${firstMono + 1} 0 R` : ""}${Array.from(
+      { length: unicodeFonts },
+      (_, index) => ` /U${index + 1} ${firstUnicode + 2 * index} 0 R`,
+    ).join("")} >>`,
     pictures.length ? `/XObject << ${pictures.map((_, index) => `/Im${index + 1} ${firstPicture + index} 0 R`).join(" ")} >>` : "",
     "/ProcSet [/PDF /Text /ImageC]",
   ]
@@ -171,8 +328,17 @@ export function writePdfPages(input: PdfPagesInput): Uint8Array {
   const font = (name: string) => `<< /Type /Font /Subtype /Type1 /BaseFont /${name} /Encoding /WinAnsiEncoding >>`;
   const page = (sheet: Sheet, contents: number) =>
     `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${n(sheet.width)} ${n(sheet.height)}] /Resources << ${resources} >> /Contents ${contents} 0 R >>`;
+  /** A font whose every glyph is the same blank, half an em wide, so that a selection of the hidden words has some width. */
+  const hiddenFont = (index: number) => {
+    const count = Math.min(UnicodeCodes.PER_FONT, unicode.characters.length - index * UnicodeCodes.PER_FONT);
+    const glyphs = Array.from({ length: count }, (_, code) => `/g${code}`);
+    return [
+      `<< /Type /Font /Subtype /Type3 /FontBBox [0 0 0 0] /FontMatrix [0.001 0 0 0.001 0 0] /CharProcs << ${glyphs.map((glyph) => `${glyph} ${blankGlyph} 0 R`).join(" ")} >> /Encoding << /Type /Encoding /Differences [0 ${glyphs.join(" ")}] >> /FirstChar 0 /LastChar ${count - 1} /Widths [${Array.from({ length: count }, () => "500").join(" ")}] /Resources << >> /ToUnicode ${firstUnicode + 2 * index + 1} 0 R >>`,
+    ];
+  };
+  const streamOf = (body: string) => [`<< /Length ${body.length} >>\nstream\n`, body, "\nendstream"];
   const drawing = (sheet: Sheet) => {
-    const stream = content(sheet, names);
+    const stream = content(sheet, names, unicode);
     return [`<< /Length ${stream.length} >>\nstream\n`, stream, "\nendstream"];
   };
   const objects: Array<Array<string | Uint8Array>> = [
@@ -191,6 +357,8 @@ export function writePdfPages(input: PdfPagesInput): Uint8Array {
       "\nendstream",
     ]),
     ...(mono ? [[font("Courier")], [font("Courier-Bold")]] : []),
+    ...Array.from({ length: unicodeFonts }, (_, index) => [hiddenFont(index), streamOf(unicode.toUnicode(index))]).flat(),
+    ...(unicodeFonts > 0 ? [streamOf("500 0 d0")] : []),
     ...rest.flatMap((sheet, index) => [[page(sheet, pageObject(index + 1) + 1)], drawing(sheet)]),
   ];
 

@@ -56,6 +56,8 @@ export type SheetItem =
        * a search of the file and for a reader that speaks the page. The preview leaves it out.
        */
       hidden?: boolean;
+      /** The widest the line may be on the page, where it must not run on past something: a line drawn as a picture is made smaller to fit. */
+      fit?: number;
     };
 
 export type SheetText = Extract<SheetItem, { kind: "text" }>;

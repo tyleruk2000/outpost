@@ -93,7 +93,7 @@ export function SunPanel({
           {/* Kept short: on a small phone the half-raised sheet has to show sunrise and sunset under it. */}
           <div className="grid gap-1.5">
             <h3 className="text-small font-semibold text-ink">Sun at the centre of the map</h3>
-            <SunTimes position={view} zone={zone} shared>
+            <SunTimes position={view} zone={zone} shared coordinates={coordinates}>
               {/* Which point the times are for: the one the cross on the map marks, in the readout's own words. */}
               <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-small text-ink-muted">
                 <span>Centre of the map, marked with a cross:</span>
