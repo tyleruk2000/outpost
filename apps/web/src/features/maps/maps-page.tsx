@@ -8,7 +8,7 @@
  * lists in the panel still work.
  */
 import "./maps.css";
-import { ACTIVE_DOWNLOAD_STATES, haversineMeters, type MarkerDto, type TrackDto } from "@outpost/shared";
+import { ACTIVE_DOWNLOAD_STATES, haversineMeters, type MarkerDto, type TrackDto, type TrackWithGeometryDto } from "@outpost/shared";
 import { CircleAlert, FileUp, PanelLeftOpen } from "lucide-react";
 import { type DragEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router";
@@ -30,6 +30,9 @@ import {
   useTrackGeometries,
   useTracks,
 } from "./data";
+import { FindRoutePanel } from "./find-route/find-route-panel";
+import { anyFoundRoute, ROUTE_CREDIT } from "./find-route/source-credit";
+import { PREVIEW_TRACK_ID } from "./find-route/words";
 import { useGeolocation, useIsDesktop, useMapTheme, useStoredState } from "./hooks";
 import { type ContourReach, contourReach, contoursSupported } from "./lib/contours";
 import { formatPosition, isReadoutFormat, type ReadoutFormat } from "./lib/coords";
@@ -186,6 +189,9 @@ export default function MapsPage() {
   const moveReturnFocus = useRef<HTMLElement | null>(null);
   const [pin, setPin] = useState<Pin | null>(null);
   const [trackId, setTrackId] = useState<string | null>(null);
+  /** "Find a route" is open in the Routes tab; `routePreview` is the route it is showing on the map, if any. */
+  const [finding, setFinding] = useState(false);
+  const [routePreview, setRoutePreview] = useState<TrackWithGeometryDto | null>(null);
   const [profilePoint, setProfilePoint] = useState<LatLon | null>(null);
   const [contextMenu, setContextMenu] = useState<{ position: LatLon; point: { x: number; y: number }; hit: MapHit | null } | null>(null);
   const [importFiles, setImportFiles] = useState<File[] | null>(null);
@@ -328,6 +334,7 @@ export default function MapsPage() {
       setMoving(null);
       setPin(null);
       setTrackId(track.id);
+      setFinding(false);
       // Opening a route is asking to see it.
       setHiddenTracks((current) => current.filter((id) => id !== track.id));
       showPanel("routes");
@@ -479,10 +486,11 @@ export default function MapsPage() {
     const current = geometries
       .filter((geometry) => geometry.id !== reshapingId)
       .map((geometry) => ({ ...geometry, ...(tracks.data?.find((track) => track.id === geometry.id) ?? {}) }));
-    const data = tracksData(current, trackId);
+    // A route being previewed in "Find a route" is drawn like a chosen one, though it is not saved yet.
+    const data = tracksData(routePreview ? [...current, routePreview] : current, routePreview ? PREVIEW_TRACK_ID : trackId);
     engine.setOverlay("o-tracks", data.lines);
     engine.setOverlay("o-track-ends", data.ends);
-  }, [engine, geometries, tracks.data, trackId, reshapingId]);
+  }, [engine, geometries, tracks.data, trackId, reshapingId, routePreview]);
 
   const routePoints = routeDraft?.edit.points;
   const routeColor = routeDraft?.color;
@@ -866,12 +874,15 @@ export default function MapsPage() {
   const mapDownloading = (downloads.data ?? []).some(
     (download) => download.kind === "map" && ACTIVE_DOWNLOAD_STATES.includes(download.state),
   );
-  const credits = useMemo(
+  const credits = useMemo(() => {
     // Contour lines are drawn from the same terrain as the hill shading, and credit it the same way.
-    () =>
-      creditsFor(sources.data?.attributions ?? [], { hasTiles, terrain: (hillshade || contours) && (sources.data?.hasTerrain ?? false) }),
-    [sources.data, hasTiles, hillshade, contours],
-  );
+    const base = creditsFor(sources.data?.attributions ?? [], {
+      hasTiles,
+      terrain: (hillshade || contours) && (sources.data?.hasTerrain ?? false),
+    });
+    // A route found in OpenStreetMap is credited while it is on the map, whatever the map beneath it is.
+    return routePreview || anyFoundRoute(geometries) ? [...base, ROUTE_CREDIT] : base;
+  }, [sources.data, hasTiles, hillshade, contours, geometries, routePreview]);
   const firstUse = sources.isSuccess && !hasTiles && !mapDownloading && !firstUseDismissed && !offlineVisible;
   const openOffline = (intent: OfflineIntent) => {
     setOfflineIntent(intent);
@@ -980,6 +991,18 @@ export default function MapsPage() {
             onSave={saveDrawnRoute}
             onClose={() => closeDrawing()}
           />
+        ) : finding ? (
+          <FindRoutePanel
+            engine={engine}
+            terrain={terrainBounds}
+            onClose={() => setFinding(false)}
+            onPreview={setRoutePreview}
+            onAdded={(track) => {
+              setFinding(false);
+              openTrack(track, false);
+            }}
+            onNeedMap={() => setDetent((current) => (current === "full" ? "half" : current))}
+          />
         ) : selectedTrack ? (
           <RouteDetail
             track={selectedTrack}
@@ -1009,6 +1032,7 @@ export default function MapsPage() {
             onOpen={(track) => openTrack(track)}
             onImport={setImportFiles}
             onDraw={() => startDrawing()}
+            onFind={() => setFinding(true)}
             canDraw={Boolean(engine)}
           />
         ),

@@ -96,7 +96,8 @@ async function stream(path: string, body: unknown, signal?: AbortSignal): Promis
 
 export const api = {
   get: <T>(path: string, query?: Query, signal?: AbortSignal) => request<T>("GET", path, { query, signal }),
-  post: <T>(path: string, body?: unknown, query?: Query) => request<T>("POST", path, { body: body ?? {}, query }),
+  post: <T>(path: string, body?: unknown, query?: Query, signal?: AbortSignal) =>
+    request<T>("POST", path, { body: body ?? {}, query, signal }),
   patch: <T>(path: string, body: unknown) => request<T>("PATCH", path, { body }),
   put: <T>(path: string, body: unknown) => request<T>("PUT", path, { body }),
   delete: <T>(path: string, query?: Query) => request<T>("DELETE", path, { query }),
