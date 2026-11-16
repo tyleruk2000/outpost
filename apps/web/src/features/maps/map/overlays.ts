@@ -5,7 +5,7 @@
  * MapLibre.
  */
 import { type Bbox, haversineMeters, type InstalledRegion, type MarkerDto, type TrackWithGeometryDto } from "@outpost/shared";
-import { populationLayers, referenceLayers } from "@/features/layers/symbols";
+import { floodZoneLayers, populationLayers, referenceLayers } from "@/features/layers/symbols";
 import { nuclearLayers } from "@/features/nuclear/layers";
 import { propagationLayers } from "@/features/propagation/map/layers";
 import { repeaterLayers } from "@/features/repeaters/map/layers";
@@ -109,6 +109,8 @@ export function overlayLayers(theme: MapTheme): LayerSpecification[] {
     // Population density, when it is switched on (features/layers): beneath everything else drawn over the map.
     ...populationLayers(),
     // Day and night, when the grey line is switched on: its shading under everything, its lines over the coverage cells.
+    // Flood zones (features/layers), under the names and under the night shading.
+    ...floodZoneLayers(),
     ...greyLineShadeLayers(theme),
     // The cells of an HF coverage map and the place being chosen for the planner, on the maps of that feature.
     ...propagationLayers(theme),

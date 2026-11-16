@@ -71,12 +71,13 @@ export const PROVENANCE_LETTER: Record<FeatureProvenance, string> = {
   unverified: "?",
 };
 
-export function referenceLayers(theme: MapTheme): LayerSpecification[] {
-  const label = { "text-font": [MAP_FONTS.medium] as string[] };
+/**
+ * Flood zones, from the reference source but drawn under the map's names, and under the
+ * grey line's night shading (so they are mounted before it in `overlays.ts`).
+ */
+export function floodZoneLayers(): LayerSpecification[] {
   const isShape: ExpressionSpecification = ["==", ["get", "kind"], "shape"];
-  const ring: ExpressionSpecification = ["!=", ["get", "letter"], ""];
   const isFlood: ExpressionSpecification = ["==", ["get", "layer"], "flood-zones"];
-  const notFlood: ExpressionSpecification = ["!=", ["get", "layer"], "flood-zones"];
   const zone3: ExpressionSpecification = ["==", ["get", "zone"], 3];
   return [
     // Flood zones: under the map's names, told apart by tone and edge, not by colour. Zone 3 is the deeper tone with a
@@ -106,6 +107,15 @@ export function referenceLayers(theme: MapTheme): LayerSpecification[] {
       filter: ["all", isShape, isFlood, ["!", zone3]],
       paint: { "line-color": ["get", "colour"], "line-width": 1, "line-opacity": 0.8, "line-dasharray": [3, 2] },
     },
+  ];
+}
+
+export function referenceLayers(theme: MapTheme): LayerSpecification[] {
+  const label = { "text-font": [MAP_FONTS.medium] as string[] };
+  const isShape: ExpressionSpecification = ["==", ["get", "kind"], "shape"];
+  const ring: ExpressionSpecification = ["!=", ["get", "letter"], ""];
+  const notFlood: ExpressionSpecification = ["!=", ["get", "layer"], "flood-zones"];
+  return [
     {
       id: "o-reference-area-fill",
       type: "fill",
