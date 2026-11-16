@@ -284,6 +284,47 @@ export interface PowerSolar {
   losses: SolarLosses;
   /** Peak sun hours (kWh/m² a day on the panels' plane) for January to December; null for a month not given. */
   sunHours: Array<number | null>;
+  /** Where the sun hours came from: null when typed in; set when filled in from Weather and hazards. Older plans have none. */
+  sunHoursSource?: PowerSunSource | null;
+}
+
+/**
+ * Peak sun hours filled in from a copy Weather and hazards keeps (PVGIS, for one of its
+ * places). Recorded with the plan so that the screen and the PDF can say whose figures
+ * they are; `edited` turns true when a month is typed over afterwards.
+ */
+export interface PowerSunSource {
+  kind: "pvgis";
+  /** The publisher's credit line, as Weather and hazards gives it. */
+  attribution: string;
+  /** The weather place's name and position, as they were. */
+  place: string;
+  lat: number;
+  lon: number;
+  /** Which of PVGIS's two series: a panel facing south at the best tilt, or level ground. */
+  tilt: "optimal" | "level";
+  /** The best tilt, degrees, when `tilt` is optimal and PVGIS gave it. */
+  slope: number | null;
+  firstYear: number;
+  lastYear: number;
+  databases: string;
+  /** When Weather and hazards fetched the copy, and when the plan was filled from it. */
+  fetchedAt: number;
+  filledAt: number;
+  edited: boolean;
+}
+
+const sunDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+
+/** One sentence saying where a plan's peak sun hours came from, for the screen and the PDF. */
+export function sunSourceText(source: PowerSunSource | null | undefined): string {
+  if (!source) return "Peak sun hours typed in.";
+  const tilt =
+    source.tilt === "optimal"
+      ? `a panel facing south at ${source.slope === null ? "the best tilt" : `${source.slope}°, the best tilt`}`
+      : "level ground";
+  const base = `Peak sun hours from PVGIS (European Commission Joint Research Centre) for ${source.place} (${source.lat.toFixed(2)}, ${source.lon.toFixed(2)}), on ${tilt}, averaged over ${source.firstYear} to ${source.lastYear} from ${source.databases}; fetched by Weather and hazards on ${sunDate.format(source.fetchedAt)}. ${source.attribution}.`;
+  return source.edited ? `${base} Some months were changed by hand since.` : base;
 }
 
 /** A generator, or a mains charger when there is mains, charging for some hours a day. */
@@ -361,6 +402,7 @@ export function newPowerPlan(name: string): PowerPlanInput {
       pwmPanelVmp: 18,
       losses: { ...PVWATTS_LOSSES },
       sunHours: Array.from({ length: 12 }, () => null),
+      sunHoursSource: null,
     },
     charger: { enabled: false, name: "Generator", watts: 0, hoursPerDay: 0, startHour: 18 },
     cableRatingA: null,

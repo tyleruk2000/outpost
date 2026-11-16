@@ -121,14 +121,11 @@ house than that.
 ### The power planner
 
 Tools → Power and batteries wants peak sun hours "on the panels' plane" for January to
-December (`PowerSolar.sunHours`), and today asks the person to type them. The figures
-are now kept here, for each place, as the `solar` copy in `GET /api/weather`
-(`kept[].data.optimal`: twelve numbers, kWh/m² a day, null for a month PVGIS gave no
-figure). The power screen could offer "Fill in from Weather and hazards" for a chosen
-place. That would read the copy, put `optimal` into `sunHours`, and say that the
-figures are for a south-facing panel at PVGIS's best tilt. It has not been built here:
-the power screen belongs to another feature, and the person's own figures should not
-be replaced without them choosing to.
+December (`PowerSolar.sunHours`). A power plan reads the `solar` copy kept here
+(`kept[].data.optimal` or `.level`) and offers "Fill in from Weather and hazards" for a
+chosen place, on a press, asking before it replaces figures typed in, and records with
+the plan whose figures they are. It fetches nothing itself. See
+[tools-power.md](tools-power.md#peak-sun-hours-from-weather-and-hazards).
 
 ## Not used, and why
 

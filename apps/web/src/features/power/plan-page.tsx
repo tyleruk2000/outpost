@@ -12,6 +12,7 @@ import {
   type PowerLoad,
   type PowerPlan,
   type PowerPlanInput,
+  sunSourceText,
 } from "@outpost/shared";
 import { Copy } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -32,6 +33,7 @@ import { LossFields, PVGIS_URL } from "./energy-calculators";
 import { Answer, Answers, Basis, ChoiceField, Fields, figure, NumberField, PercentField } from "./inputs";
 import { LoadDialog } from "./load-dialog";
 import { SocChart } from "./soc-chart";
+import { SunFromWeather } from "./sun-from-weather";
 
 const HOURS = Array.from({ length: 24 }, (_, hour) => ({ value: String(hour), label: `${String(hour).padStart(2, "0")}:00` }));
 const SAVE_AFTER_MS = 700;
@@ -547,6 +549,11 @@ export default function PowerPlanPage() {
           , needs the internet: “Monthly data”, in-plane irradiation, divided by the days in the month). Leave a month empty to leave it
           out.
         </p>
+        <SunFromWeather
+          sunHours={draft.solar.sunHours}
+          source={draft.solar.sunHoursSource}
+          onFill={(sunHours, sunHoursSource) => solar({ sunHours, sunHoursSource })}
+        />
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
           {MONTHS.map((name, index) => (
             <NumberField
@@ -556,10 +563,19 @@ export default function PowerPlanPage() {
               min={0}
               max={12}
               value={draft.solar.sunHours[index] ?? null}
-              onChange={(value) => solar({ sunHours: draft.solar.sunHours.map((item, at) => (at === index ? value : item)) })}
+              onChange={(value) =>
+                solar({
+                  sunHours: draft.solar.sunHours.map((item, at) => (at === index ? value : item)),
+                  // Typed over: the figures are no longer only PVGIS's, and the plan says so.
+                  ...(draft.solar.sunHoursSource ? { sunHoursSource: { ...draft.solar.sunHoursSource, edited: true } } : {}),
+                })
+              }
             />
           ))}
         </div>
+        {draft.solar.sunHoursSource ? (
+          <p className="mt-2 max-w-[70ch] text-small text-ink-muted">{sunSourceText(draft.solar.sunHoursSource)}</p>
+        ) : null}
         <Basis summary="Losses (PVWatts' defaults, change any)">
           <LossFields losses={draft.solar.losses} onChange={(losses) => solar({ losses })} />
           <p>Combined as PVWatts does, 1 − Π(1 − lossᵢ): {figure(answers.loss * 100, 2)}% in all.</p>

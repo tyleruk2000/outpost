@@ -108,6 +108,26 @@ const planInput = z.object({
     }),
     // The most sun any place gets is about 8 kWh/m² a day; 12 leaves room for a figure typed for a tracking array.
     sunHours: z.array(z.number().min(0).max(12).nullable()).length(12),
+    // Where the sun hours came from, when filled in from Weather and hazards; older plans and clients send none.
+    sunHoursSource: z
+      .object({
+        kind: z.literal("pvgis"),
+        attribution: z.string().max(200),
+        place: z.string().max(200),
+        lat: z.number().min(-90).max(90),
+        lon: z.number().min(-180).max(180),
+        tilt: z.enum(["optimal", "level"]),
+        slope: z.number().min(0).max(90).nullable(),
+        firstYear: z.number().int().min(1900).max(2200),
+        lastYear: z.number().int().min(1900).max(2200),
+        databases: z.string().max(200),
+        fetchedAt: z.number().int().nonnegative(),
+        filledAt: z.number().int().nonnegative(),
+        edited: z.boolean(),
+      })
+      .strict()
+      .nullable()
+      .default(null),
   }),
   charger: z.object({ enabled: z.boolean(), name: z.string().trim().max(80), watts, hoursPerDay: hours, startHour: hour }),
   cableRatingA: amps,

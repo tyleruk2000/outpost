@@ -1037,6 +1037,10 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   assumption listed. Plans are kept on the server (migration `0016_power_plans`),
   copied, compared, written out as a PDF (Save as PDF, Add to library, Share), counted
   on the Storage screen and erased with everything else.
+- A power plan can fill its peak sun hours from what Weather and hazards has fetched
+  from PVGIS for one of its places (best tilt or level ground), on a press, asking
+  before replacing figures typed in. The plan records whose figures they are, and the
+  PDF says so. Where none have been fetched, the screen says where to fetch them.
 #### Nuclear preparedness
 
 - Preparedness → Nuclear preparedness: a workspace over the offline map (and satellite

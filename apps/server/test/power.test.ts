@@ -53,6 +53,40 @@ describe("power plans", () => {
     expect((await app.api("GET", "/api/power/plans")).body.plans).toHaveLength(1);
   });
 
+  it("keeps where its sun hours came from, and takes a plan from before that was recorded", async () => {
+    const base = shack();
+    const source = {
+      kind: "pvgis" as const,
+      attribution: "PVGIS © European Communities, 2001-2026",
+      place: "Home",
+      lat: 52.13,
+      lon: -0.46,
+      tilt: "optimal" as const,
+      slope: 38,
+      firstYear: 2005,
+      lastYear: 2023,
+      databases: "PVGIS-SARAH3",
+      fetchedAt: 1_763_300_000_000,
+      filledAt: 1_763_310_000_000,
+      edited: false,
+    };
+    const filled = await app.api("POST", "/api/power/plans", {
+      ...base,
+      solar: { ...base.solar, sunHours: [1, 2, 3, 4, 5, 5, 5, 4, 3, 2, 1, 1], sunHoursSource: source },
+    });
+    expect(filled.status).toBe(200);
+    expect(filled.body.plan.solar.sunHoursSource).toEqual(source);
+    const { sunHoursSource: _none, ...older } = base.solar;
+    const old = await app.api("POST", "/api/power/plans", { ...base, solar: older });
+    expect(old.status).toBe(200);
+    expect(old.body.plan.solar.sunHoursSource).toBeNull();
+    expect(
+      (await app.api("POST", "/api/power/plans", { ...base, solar: { ...base.solar, sunHoursSource: { ...source, url: "x" } } })).status,
+    ).toBe(400);
+    await app.api("DELETE", `/api/power/plans/${filled.body.plan.id}`);
+    await app.api("DELETE", `/api/power/plans/${old.body.plan.id}`);
+  });
+
   it("changes a plan", async () => {
     const { id: _id, createdAt: _c, updatedAt: _u, ...input } = plan;
     const changed = await app.api("PUT", `/api/power/plans/${plan.id}`, { ...input, name: "Shack, winter", cableRatingA: 40 });
