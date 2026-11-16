@@ -49,7 +49,9 @@ export const ownAnswer = (results: SearchResult[], over: Partial<SearchResponse>
   relaxed: false,
   total: results.length,
   results,
-  facets: Object.fromEntries([...new Set(results.map((result) => result.kind))].map((kind) => [kind, results.filter((r) => r.kind === kind).length])),
+  facets: Object.fromEntries(
+    [...new Set(results.map((result) => result.kind))].map((kind) => [kind, results.filter((r) => r.kind === kind).length]),
+  ),
   warnings: [],
   referenceToCome: true,
   tookMs: 3,
@@ -123,7 +125,8 @@ export function serveSearch(own: (query: URLSearchParams) => SearchResponse): Se
         });
         return new Response(body, { status: 200, headers: { "content-type": "application/x-ndjson" } });
       }
-      if (url.pathname === "/api/answers/status") return json({ enabled: false, ready: false, reason: "Answers are turned off.", busy: false });
+      if (url.pathname === "/api/answers/status")
+        return json({ enabled: false, ready: false, reason: "Answers are turned off.", busy: false });
       return json({ error: { code: "not_found", message: "Not found" } }, 404);
     }),
   );

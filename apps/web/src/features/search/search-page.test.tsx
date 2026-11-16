@@ -61,7 +61,9 @@ describe("the search page, with reference collections answering later", () => {
     // The very same elements, where they were: nothing was drawn again or reordered.
     expect(screen.getByRole("link", { name: "Water purification" })).toBe(first);
     expect(screen.getByRole("link", { name: "Water kit" })).toBe(second);
-    expect(first.compareDocumentPosition(screen.getByRole("link", { name: "Water filter" })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(
+      first.compareDocumentPosition(screen.getByRole("link", { name: "Water filter" })) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     expect(screen.getAllByRole("status")[0]).toBe(status);
 
     await server.end({ searched: 3 });

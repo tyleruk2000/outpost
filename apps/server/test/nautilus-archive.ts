@@ -29,6 +29,11 @@ import { buildPdf } from "./fixtures/documents/builders.ts";
 export const NAUTILUS_BOOK = "field-library_en_2026-11";
 export const NAUTILUS_UUID = "5d1c0b6e-2f3a-4c7d-9e8f-0a1b2c3d4e5f";
 
+/** Searching the archive for this word takes `SLOW_DELAY_MS` and finds one article; any other word finds nothing at once. */
+export const SLOW_WORD = "slowcoach";
+export const SLOW_ARTICLE = "The slowcoach of the shelf";
+export const SLOW_DELAY_MS = 2500;
+
 export interface ListedDocument {
   title: string;
   description: string;
@@ -243,10 +248,18 @@ export async function startNautilusArchive(options: { port?: number } = {}): Pro
       return value === undefined ? missing() : send("text/plain", value);
     }
     if (url.startsWith("/search?")) {
-      return send(
-        "application/xml",
-        '<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/"><channel><opensearch:totalResults>0</opensearch:totalResults></channel></rss>',
-      );
+      const nothing =
+        '<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/"><channel><opensearch:totalResults>0</opensearch:totalResults></channel></rss>';
+      // One word is found, slowly, as an archive on a network share is: for the tests of search answering in two parts.
+      if (new URL(url, "http://kiwix").searchParams.get("pattern")?.toLowerCase() !== SLOW_WORD) return send("application/xml", nothing);
+      setTimeout(() => {
+        if (response.destroyed) return;
+        send(
+          "application/xml",
+          `<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/"><channel><opensearch:totalResults>1</opensearch:totalResults><item><title>${SLOW_ARTICLE}</title><link>${root}/home</link><description>...kept on a slow shelf, the <b>${SLOW_WORD}</b> arrives late...</description></item></channel></rss>`,
+        );
+      }, SLOW_DELAY_MS);
+      return;
     }
     if (url.startsWith("/suggest?")) return send("application/json", "[]");
     if (url === root || url === `${root}/`) {

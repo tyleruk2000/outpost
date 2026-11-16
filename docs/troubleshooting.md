@@ -388,8 +388,19 @@ from.
 
 ### Search results have no reference articles
 
-A note under the results says why. Either kiwix-serve is not running (see above), or
-**Settings → Search → Search inside reference collections** is off.
+A note under **In reference collections** says why. Either kiwix-serve is not running
+(see above), or **Settings → Search → Search inside reference collections** is off, in
+which case there is no such heading at all.
+
+### Reference articles arrive late, or a note says a collection was not searched in time
+
+Your own results are shown at once; archives are searched after that, three at a time,
+and each collection's articles are added as it answers. On a slow drive or a network
+share the first search of an archive can take several seconds, because kiwix-serve has
+to read its index from the drive. A collection that takes more than 8 seconds, or is
+not reached within 30, is named in a note. Search for the same words again: what was
+being read is kept, so the second time is quick. See
+[search.md](search.md#reference-collections-in-results).
 
 ## Maps
 

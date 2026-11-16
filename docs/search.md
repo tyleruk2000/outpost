@@ -154,14 +154,70 @@ See `GET /api/search` in [api.md](api.md#search).
 ### Reference collections in results
 
 Articles inside ZIM archives are not copied into Outpost's index. When you search,
-Outpost asks kiwix-serve to search up to 24 installed archives, takes each archive's
-best matches in turn so one large archive does not crowd out the rest, and merges them
-with your own results by rank.
+Outpost asks kiwix-serve to search every installed archive, and takes each archive's
+best matches: enough to make about twenty in all, at least three from each and at most
+ten.
+
+**Your own results do not wait for this.** Documents, pages, places, routes, catalogue
+entries and collections are found in Outpost's own index in a few milliseconds and are
+shown at once. Archives are searched by kiwix-serve one after another, and on a slow
+drive or a network share one archive can take seconds. So the search page and the
+palette ask for the two apart:
+
+- On the search page, "Still searching reference collections…" shows under the count of
+  your own results, with how many collections have answered. Each collection's best
+  match is added to **In reference collections**, below your own results, as that
+  collection answers. The **Reference** tab lists every article found, up to the number
+  above from each collection, twenty to a page.
+- In the palette, the first five collections to answer each add their best match in a
+  last group, **In reference collections**.
+- Nothing already on the screen moves when articles arrive. They are only ever added
+  at the end, in the order the collections answered, which is roughly smallest archive
+  first. They are not merged into the ranked list of your own results: a merge would
+  reorder a list you are already reading, and the two cannot be compared anyway (each
+  archive ranks only its own articles).
+- A collection that does not answer within 8 seconds of its turn, and any collection
+  not reached within 30 seconds of the search starting, is left out, and a note names
+  it. Its search is let finish and its answer kept for five minutes, so searching again
+  for the same words has it at once.
+- Typing something else drops the search of collections that have not had their turn.
+
+The counts on the tabs for your own kinds come from Outpost's index and do not change
+when articles arrive. The count on **Reference** is the number of articles found so
+far.
+
+Why it works this way, measured against kiwix-serve 3.8.2:
+
+- kiwix-serve works on four requests at a time and makes the rest wait inside it. It
+  finishes a search even when whoever asked has gone: with one working thread, a small
+  request sent behind a dropped search waited 83 to 89 ms, against 1.5 ms alone. So
+  before this, a search sent 24 archive searches at once, and typing three letters left
+  72 of them queued where they could not be taken back, with anyone reading an article
+  waiting behind them. Outpost now sends three at a time, one fewer than kiwix-serve
+  works on so that reading stays quick, and keeps the rest in a queue of its own, where
+  dropping one costs nothing. On a fast disk this is no slower: 24 searches of real
+  archives took 60 ms sent all at once and 68 ms three at a time.
+- On the installation this was built for (29 archives on a network share, the machine
+  under heavy load), one archive took 1.3 to 7.2 seconds to search the first time and
+  14 to 38 ms once what it read was in memory; asking one archive for ten results
+  instead of one took about four seconds longer the first time. The whole search took
+  7 to 20 seconds and showed nothing until the slowest archive had answered. That is
+  why each archive is asked for few results, and why none holds back another.
+- kiwix-serve can search several archives in one request. It was not faster (67 ms for
+  six archives in one request against 27 ms for six requests), and it gives one answer
+  when the slowest archive is done, so it is not used.
+
+Through the API, `GET /api/search` still answers in one part unless asked otherwise:
+reference articles are merged with your own results by rank, taking each archive's
+best matches in turn so that one large archive does not crowd out the rest. It waits
+at most 10 seconds for archives and names in `warnings` any that are missing. Ask with
+`reference=later` and then `GET /api/search/reference` for the two parts; see
+[api.md](api.md#search).
 
 - Turn this off with **Settings → Search → Search inside reference collections**
   (`search.includeReference`).
-- If kiwix-serve is not running, your own results still appear, with a note saying why
-  reference articles are missing.
+- If kiwix-serve is not running, your own results still appear, with a note under
+  **In reference collections** saying why reference articles are missing.
 - Each reference collection also has its own search box in the reader.
 - A collection that is a set of documents with a list (see
   [troubleshooting.md](troubleshooting.md#a-collection-opens-as-a-list-of-documents))
@@ -551,16 +607,18 @@ How it works, and what follows from it:
 
 ### Hybrid ranking
 
-When semantic search is ready, the default mode is **hybrid**: keyword results,
-semantic results and reference articles are each ranked on their own, then combined
-with reciprocal rank fusion. An item's score is the sum, over the lists it appears in,
+When semantic search is ready, the default mode is **hybrid**: keyword results and
+semantic results are each ranked on their own, then combined with reciprocal rank
+fusion. (Reference articles join that list only when the API is asked for everything in
+one part; on the search page they are a group of their own, as described
+[above](#reference-collections-in-results).) An item's score is the sum, over the lists it appears in,
 of `weight / (k + rank)`. Only positions are used, never raw scores, which is what
 lets results from unrelated systems be combined fairly.
 
 | Setting | Default | Effect |
 | --- | --- | --- |
 | `search.hybrid.rrfK` | 60 | The constant `k`. Larger values flatten the difference between ranks. |
-| `search.hybrid.keywordWeight` | 1 | Weight of the keyword list, and of reference articles. |
+| `search.hybrid.keywordWeight` | 1 | Weight of the keyword list, and of reference articles when the API merges them in. |
 | `search.hybrid.semanticWeight` | 1 | Weight of the semantic list. |
 
 All three are under **Settings → Search**. *How search works* lets you try a change on

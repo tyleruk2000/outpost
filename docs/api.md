@@ -251,12 +251,24 @@ Types: `packages/shared/src/search.ts`. See [search.md](search.md).
 
 | Method and path | Purpose |
 | --- | --- |
-| `GET /api/search` | Unified search (`SearchResponse`). Query: `q` (at most 500 characters), `kinds` (comma separated, for example `document,note`), `tag`, `mode` (`keyword`, `semantic`, `hybrid`), `limit` (1 to 100, default 20), `offset`. |
+| `GET /api/search` | Unified search (`SearchResponse`). Query: `q` (at most 500 characters), `kinds` (comma separated, for example `document,note`), `tag`, `mode` (`keyword`, `semantic`, `hybrid`), `limit` (1 to 100, default 20), `offset`, `reference` (`include`, the default, or `later`). With `reference=later` the answer leaves reference collections out and so never waits for them, and `referenceToCome` says whether `GET /api/search/reference` has any to search. |
+| `GET /api/search/reference` | What reference collections hold, for a search asked with `reference=later`. Query: `q`. The answer is `application/x-ndjson`: one JSON object to a line (`ReferenceSearchEvent`), sent as they happen. First `{"type":"start","collections":n}`; then one `{"type":"collection","collectionId","title","results"}` for each collection as it answers, with that collection's best matches (`SearchResult`, best first, possibly none); last `{"type":"end","searched","missing","message","tookMs"}`, where `missing` lists collections left out (`reason` is `slow` or `failed`) and `message` says why none could be searched at all, or is `null`. `collections` is 0, and nothing follows but `end`, when there are no collections, kiwix-serve is down, or searching inside collections is turned off. Close the connection to stop: collections not yet asked are then not asked. |
 | `GET /api/search/stats` | `{ entities, chunks }`: indexed items per kind and the number of passages. |
 
 Response fields worth knowing: `relaxed` (the search fell back to "any word"),
 `facets` (results per kind), `warnings` (sources that could not answer, with a
 reason), and per result `url` (the in-app route), `passages` and `sources`.
+
+In one part (`reference=include`), `total`, `facets.reference` and the pages count every
+reference article found, and are the same whatever `offset` is. The search waits up to
+10 seconds for reference collections; those that have not answered are named in a
+warning whose `source` is `reference`. In two parts, `total`, `facets` and the pages of
+`GET /api/search` cover Outpost's own results only, and reference articles are not
+paged: every one found is in the lines of `GET /api/search/reference`.
+
+```bash
+curl -N "http://localhost:8080/api/search/reference?q=water"
+```
 
 ## Semantic search
 
