@@ -50,7 +50,8 @@ address and what it was used for) and **Not covered**.
 ## How they were made
 
 - **From primary sources only.** Every frequency, limit and rule was taken from a
-  document or page fetched on 2026-11-15 from the regulator or body responsible:
+  document or page fetched on 2026-11-15 (one, the MCA's guidance note on VHF, on
+  2026-11-16) from the regulator or body responsible:
   Ofcom, the US Code of Federal Regulations as published by the Government Publishing
   Office, the IARU, the MCA, NIST and the others listed in each sheet. Nothing was
   written from memory. Where a channel table could be built by a program straight from
@@ -91,13 +92,21 @@ These are marked in the sheets, or left out and named under "Not covered".
 
 - **The US Coast Guard Navigation Center** refused the automated check, so its marine
   frequency tables and channel lists were not used. Marine frequencies come from Ofcom
-  and 47 CFR Part 80, which give channel numbers only for channels 16, 70 and 9.
-- **CHU (Canada)**: the National Research Council's site refused the check. The row is
-  marked "not verified".
+  and 47 CFR Part 80, which give channel numbers only for channels 16, 70 and 9. On
+  2026-11-16 the MCA's guidance note MGN 324 (M+F) Amendment 2 was read: it names
+  channels 13, 6, 8, 72 and 77 and what each is for, without frequencies, and the
+  emergency frequencies sheet now quotes it.
+- **CHU (Canada)**: the National Research Council's site refused the check, and refused
+  it again on 2026-11-16 (HTTP 403 for the station's page, though its `robots.txt`
+  admits ordinary clients). The row is marked "not verified".
 - **BBC Radio 4 long wave (198 kHz)**: reported closed on 27 June 2026, but only a
   secondary source could be read. The sheet says so and tells the reader not to plan on
   it. The end of the dedicated long wave Shipping Forecast on 31 March 2024 is confirmed
-  by the MCA.
+  by the MCA. The Met Office's factsheet on the Shipping Forecast, read on 2026-11-16,
+  was written in January 2025, before the reported closure, and says only that the
+  forecast can be received on long wave "until the transmitter is switched off". The
+  BBC's own pages were not read: no address for one was found, and the search service
+  used to look for one is refused by the BBC.
 - **The ITU Radio Regulations** were not read directly. International allocations are
   from the IARU's January 2020 summary, so any change made at the 2023 World
   Radiocommunication Conference is not reflected.
@@ -108,8 +117,9 @@ These are marked in the sheets, or left out and named under "Not covered".
   left out.
 - **A slip in a source.** The IARU Region 3 band plan prints the 15 metre WSPR
   frequency as "21.0946 kHz"; the sheet gives 21094.6 kHz and says so.
-- **A 70 cm calling frequency for Region 1**, marine VHF channel numbers other than 16,
-  70 and 9, and which of marine channels 62, 63 and 64 has which frequency.
+- **A 70 cm calling frequency for Region 1**, the frequencies of marine VHF channels
+  other than 16, 70 and 9, the channel numbers of 156.300 and 156.650 MHz, and which of
+  marine channels 62, 63 and 64 has which frequency.
 - **Commonly repeated preparedness conventions with no traceable source** (a CB
   "truckers' channel", particular PMR446 channels in the UK, lists of "prepper" HF
   frequencies) are left out.
