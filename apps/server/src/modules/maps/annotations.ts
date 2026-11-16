@@ -89,6 +89,13 @@ export interface AnnotationsService {
   counts(): { markers: number; tracks: number };
 }
 
+/**
+ * Waypoints one import may turn into markers. Each marker is a row and a search entry
+ * written on the server's own thread, about 0.2 ms apiece, so this many hold everything
+ * else up for about a second. Waypoints kept with their track cost nothing of the kind.
+ */
+export const MAX_WAYPOINTS_AS_MARKERS = 5000;
+
 const asColor = (value: string): MarkerColor => ((MARKER_COLORS as readonly string[]).includes(value) ? (value as MarkerColor) : "teal");
 
 const toMarkerDto = (row: MarkerRow): MarkerDto => ({
@@ -296,6 +303,11 @@ export function createAnnotationsService(ctx: AppContext, deps: { elevation: Ele
         ? parsed.collection.features.filter((feature) => feature.geometry.type !== "Point")
         : parsed.collection.features;
       const waypoints = parsed.collection.features.filter((feature) => feature.geometry.type === "Point");
+      if (asMarkers && waypoints.length > MAX_WAYPOINTS_AS_MARKERS) {
+        throw badRequest(
+          `That file has ${waypoints.length.toLocaleString("en-GB")} waypoints, and Outpost saves at most ${MAX_WAYPOINTS_AS_MARKERS.toLocaleString("en-GB")} as places from one file. Import it with its waypoints kept on the route, or split it into smaller files.`,
+        );
+      }
 
       const result = sqlite.transaction((): { track: TrackRow | null; created: MarkerRow[] } => {
         const created: MarkerRow[] = [];

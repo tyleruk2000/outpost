@@ -6,7 +6,15 @@
  * `fixtures/maps/gpx-corpus.ts`.
  */
 import { describe, expect, it } from "vitest";
-import { type GpxWorkerUsage, parseGpx, parseGpxSafely, trackStats } from "../src/modules/maps/gpx.ts";
+import {
+  GPX_READS_AT_ONCE,
+  GPX_READS_WAITING,
+  type GpxWorkerUsage,
+  gpxReads,
+  parseGpx,
+  parseGpxSafely,
+  trackStats,
+} from "../src/modules/maps/gpx.ts";
 import { GPX_LIMITS, readGpx } from "../src/modules/maps/gpx-reader.ts";
 import { XML_CLOSE, XML_END, XML_OPEN, XML_TEXT, XmlLimitError, XmlSyntaxError, XmlTokenizer } from "../src/modules/maps/gpx-xml.ts";
 import { corpus, READ_DIFFERENTLY, readAsText } from "./fixtures/maps/gpx-corpus.ts";
@@ -128,7 +136,35 @@ describe("the XML reader", () => {
       }
     };
     expect(WELL_FORMED_CASES.length).toBeGreaterThan(80);
-    for (const item of WELL_FORMED_CASES) expect(verdict(item.xml), item.what).toBe(item.wellFormed);
+    for (const item of WELL_FORMED_CASES) expect(verdict(item.xml), item.what).toBe(item.wellFormed || item.readAnyway === true);
+    // The only leniency is the ampersand: nothing well-formed is marked, and each marked case has one.
+    for (const item of WELL_FORMED_CASES.filter((each) => each.readAnyway)) {
+      expect(item.wellFormed, item.what).toBe(false);
+      expect(item.xml, item.what).toContain("&");
+    }
+  });
+
+  it("reads an ampersand that starts no reference as an ampersand, and still refuses a reference XML does not define", () => {
+    expect(events('<gpx><wpt lat="1" lon="2">Fish & chips, R&D &amp; Q&A&</wpt></gpx>')[2]).toBe('text "Fish & chips, R&D & Q&A&"');
+    const reader = new XmlTokenizer('<gpx><link href="https://example.org/?a=1&b=2&amp;c=3&"/></gpx>');
+    reader.next();
+    reader.next();
+    expect(reader.attribute("href")).toBe("https://example.org/?a=1&b=2&c=3&");
+    // An ampersand does not hide what follows it from the other checks.
+    for (const xml of [
+      "<gpx>a & b &nbsp; c</gpx>",
+      "<gpx>a & &#0;</gpx>",
+      "<gpx>a & &#xD800;</gpx>",
+      '<gpx a="a & <"/>',
+      "<gpx>a & ]]></gpx>",
+    ]) {
+      expect(() => events(xml), xml).toThrow(XmlSyntaxError);
+    }
+    // In a file: the name is kept whole.
+    const parsed = parseGpx(
+      '<gpx><trk><name>Tom & Jerry&apos;s loop</name><trkseg><trkpt lat="1" lon="2"/><trkpt lat="1.1" lon="2"/></trkseg></trk></gpx>',
+    );
+    expect(parsed.name).toBe("Tom & Jerry's loop");
   });
 
   it("never reads a DOCTYPE, so nothing can be declared, expanded or fetched", () => {
@@ -328,6 +364,28 @@ describe("reading a GPX file as the server does", () => {
     ]) {
       expect(() => parseGpx(source)).toThrow(/DOCTYPE or entities/);
     }
+  });
+
+  it("reads two files at a time, lets six wait their turn, and turns away the one after that", async () => {
+    const file = '<gpx><wpt lat="1" lon="2"><name>Spring</name></wpt></gpx>';
+    const line = GPX_READS_AT_ONCE + GPX_READS_WAITING;
+    expect(gpxReads()).toEqual({ reading: 0, waiting: 0 });
+    const burst = Array.from({ length: line + 1 }, () => parseGpxSafely(file));
+    expect(gpxReads()).toEqual({ reading: GPX_READS_AT_ONCE, waiting: GPX_READS_WAITING });
+    const settled = await Promise.allSettled(burst);
+    expect(settled.map((result) => result.status)).toEqual([...Array(line).fill("fulfilled"), "rejected"]);
+    expect((settled.at(-1) as PromiseRejectedResult).reason).toMatchObject({
+      code: "conflict",
+      message: expect.stringMatching(/already reading several GPX files/),
+    });
+    expect(gpxReads()).toEqual({ reading: 0, waiting: 0 });
+
+    // A file the reader refuses gives its place back as a file it reads does.
+    const refused = Array.from({ length: line }, () => parseGpxSafely("<gpx></gpx>"));
+    expect(gpxReads()).toEqual({ reading: GPX_READS_AT_ONCE, waiting: GPX_READS_WAITING });
+    expect((await Promise.allSettled(refused)).every((result) => result.status === "rejected")).toBe(true);
+    expect(gpxReads()).toEqual({ reading: 0, waiting: 0 });
+    await expect(parseGpxSafely(file)).resolves.toMatchObject({ waypoints: 1 });
   });
 
   it("gives the same answer from the worker as from the reader, and says what it cost", async () => {

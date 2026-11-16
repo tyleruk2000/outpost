@@ -356,6 +356,25 @@ describe("tracks", () => {
     expect((await app.api<{ tracks: TrackDto[] }>("GET", "/api/maps/tracks")).body.tracks).toEqual([]);
   });
 
+  it("turns at most five thousand waypoints into markers from one file, and says what to do with more", async () => {
+    const many = `<gpx>${Array.from({ length: 5001 }, (_, i) => `<wpt lat="${(50 + i / 10000).toFixed(4)}" lon="-3"><name>P${i}</name></wpt>`).join("")}</gpx>`;
+    const refused = await importGpx(many, "points.gpx", { importWaypointsAsMarkers: "true" });
+    expect(refused.status).toBe(400);
+    expect(refused.body.error).toMatchObject({
+      code: "bad_request",
+      message: expect.stringMatching(/^That file has 5,001 waypoints, and Outpost saves at most 5,000 as places from one file\./),
+    });
+    // Nothing of it was kept.
+    expect((await app.api<{ markers: MarkerDto[] }>("GET", "/api/maps/markers")).body.markers).toEqual([]);
+    expect((await app.api<{ tracks: TrackDto[] }>("GET", "/api/maps/tracks")).body.tracks).toEqual([]);
+    // Kept with their route, the same waypoints are no trouble.
+    const kept = await importGpx(many, "points.gpx");
+    expect(kept.status).toBe(200);
+    expect(kept.body.markers).toEqual([]);
+    const full = await app.api<{ track: TrackWithGeometryDto }>("GET", `/api/maps/tracks/${kept.body.track!.id}`);
+    expect(full.body.track.geojson.features).toHaveLength(5001);
+  });
+
   it("can turn the file's waypoints into markers instead", async () => {
     const imported = await importGpx(FIXTURE, "fairfield.gpx", { importWaypointsAsMarkers: "true", name: "Sunday walk" });
     expect(imported.status).toBe(200);

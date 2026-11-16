@@ -418,13 +418,23 @@ stored to six decimal places, and a point repeated straight after itself is drop
   points that can be written, or about 200,000 with a height and a time each (a
   recording of one point a second for more than two days). A name, description, comment
   or symbol longer than 2,000 characters is cut there; the file is not refused for it.
-  The limit on waypoints is set by what happens next, not by reading them: turning
-  waypoints into markers takes about 0.2 ms each on the server's own thread, so 20,000
-  of them hold everything else up for about four seconds.
-- **What is refused.** A file that is not well-formed XML (an unescaped `&`, a tag left
-  open, an attribute without quotes): it is not repaired. A file with a DOCTYPE or
-  entity declarations. A file saved as UTF-16; save it as UTF-8. XML that is not GPX,
-  and a GPX file with no track, route or waypoint in it. Each gets its own message.
+  Waypoints turned into saved places have a smaller limit of their own, 5,000 from one
+  file, because each place is written on the server's own thread at about 0.2 ms
+  apiece and that many hold everything else up for about a second. A file with more is
+  refused with a message saying so; imported with its waypoints kept on the route, the
+  same file is no trouble.
+- **Several files at once.** Two files are read at a time and up to six more wait
+  their turn; one more than that is turned away with a message asking to try again.
+  A read holds the text of the file and what is kept of it, so a burst of uploads takes
+  turns instead of adding up.
+- **What is refused.** A file that is not well-formed XML (a tag left open, an
+  attribute without quotes, an entity XML does not define such as `&nbsp;`): it is not
+  repaired. A file with a DOCTYPE or entity declarations. A file saved as UTF-16; save
+  it as UTF-8. XML that is not GPX, and a GPX file with no track, route or waypoint in
+  it. Each gets its own message.
+- **The one thing let through.** An ampersand that starts no reference, as in a place
+  called `Fish & chips` or a link ending `?a=1&b=2`, is not XML, but programs write it
+  and it can only mean the ampersand. It is read as one.
 - **How long it takes.** A recording of 150,000 points with heights and times (13 MB)
   is read in about 0.15 seconds and imported in about 0.4, away from the server's own
   thread, which goes on answering (16 November 2026, Node 24.15 on a Mac).

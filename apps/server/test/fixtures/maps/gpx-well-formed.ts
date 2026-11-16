@@ -2,8 +2,8 @@
  * Test-only: small XML documents, and whether each is well-formed.
  *
  * `wellFormed` is what XML 1.0 and "Namespaces in XML" say, and what the GPX reader
- * must decide. Each verdict here was also the verdict of `saxes`, a strict parser, when
- * this table was written.
+ * must decide, except for the few marked `readAnyway`. Each verdict here was also the
+ * verdict of `saxes`, a strict parser, when this table was written.
  *
  * `before` records what the reader before this one did with the same document. It
  * built a tree with `@xmldom/xmldom`, which let through a number of things that are not
@@ -16,6 +16,11 @@ export interface WellFormedCase {
   xml: string;
   wellFormed: boolean;
   before: "read" | "refused";
+  /**
+   * Set on the one thing the reader takes although XML does not: an ampersand that
+   * starts no reference. Real files have them, and it can only mean the character.
+   */
+  readAnyway?: true;
 }
 
 export const WELL_FORMED_CASES: WellFormedCase[] = [
@@ -136,13 +141,23 @@ export const WELL_FORMED_CASES: WellFormedCase[] = [
     xml: '<gpx><wpt lat="1" lon="2"><name>Fish & chips</name></wpt></gpx>',
     wellFormed: false,
     before: "read",
+    readAnyway: true,
   },
-  { what: "& on its own in an attribute", xml: '<gpx a="a & b"/>', wellFormed: false, before: "read" },
+  { what: "& on its own in an attribute", xml: '<gpx a="a & b"/>', wellFormed: false, before: "read", readAnyway: true },
+  {
+    what: "& between the parts of a link, in an attribute",
+    xml: '<gpx><link href="https://example.org/?a=1&b=2&amp;c=3"/></gpx>',
+    wellFormed: false,
+    before: "read",
+    readAnyway: true,
+  },
+  { what: "& at the very end of a text", xml: "<gpx><a>R&</a><b>R&D</b></gpx>", wellFormed: false, before: "read", readAnyway: true },
   {
     what: "an entity without its semicolon",
     xml: '<gpx><wpt lat="1" lon="2"><name>a &amp b</name></wpt></gpx>',
     wellFormed: false,
     before: "refused",
+    readAnyway: true,
   },
   {
     what: "an entity XML does not define",

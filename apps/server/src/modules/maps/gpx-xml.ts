@@ -14,6 +14,11 @@
  * the only entities are the five XML defines (`&amp;` `&lt;` `&gt;` `&quot;` `&apos;`)
  * and numbered characters. A few hard limits stop it early on files no GPX writer makes.
  *
+ * It is lenient in one thing, because real files need it: an ampersand that starts no
+ * reference (`Fish & chips` in a name, `?a=1&b=2` in a link) is read as an ampersand.
+ * Programs write those, the reader before this one took them, and nothing can be made
+ * of one but the character itself.
+ *
  * There was no library to use instead. `saxes` is strict and ISC-licensed but its
  * repository is archived; `sax` is maintained but accepts files that are not
  * well-formed (two root elements, a repeated attribute, `<` inside an attribute) and
@@ -260,6 +265,8 @@ export class XmlTokenizer {
       if (code >= 0x20) {
         if (code === 0x26 && kind !== RAW) {
           const resolved = this.reference(i, end);
+          // An ampersand on its own stays in the text as it is.
+          if (resolved < 0) continue;
           if (want) out += source.slice(from, i) + String.fromCodePoint(resolved);
           i = this.referenceEnd;
           from = i + 1;
@@ -293,7 +300,11 @@ export class XmlTokenizer {
     return from === start ? source.slice(start, end) : out + source.slice(from, end);
   }
 
-  /** The character a reference starting at `at` stands for. Leaves `referenceEnd` on its semicolon. */
+  /**
+   * The character a reference starting at `at` stands for, leaving `referenceEnd` on its
+   * semicolon; or -1 for an ampersand that starts no reference at all (`Fish & chips`,
+   * `?a=1&b=2`), which is read as the ampersand it plainly is.
+   */
   private reference(at: number, end: number): number {
     const source = this.source;
     let i = at + 1;
@@ -334,6 +345,15 @@ export class XmlTokenizer {
       this.referenceEnd = i;
       return value;
     }
+    // Something of the shape `&name;` is a reference and has to be one XML defines.
+    let nameEnd = i;
+    while (nameEnd < end) {
+      const code = source.charCodeAt(nameEnd);
+      const kind = code < 128 ? ASCII[code]! : 0;
+      if (kind === 0 || (nameEnd === i && kind !== NAME_START)) break;
+      nameEnd += 1;
+    }
+    if (nameEnd === i || nameEnd >= end || source.charCodeAt(nameEnd) !== 0x3b) return -1;
     for (const [name, code] of REFERENCES) {
       if (i + name.length <= end && source.startsWith(name, i)) {
         this.referenceEnd = i + name.length - 1;

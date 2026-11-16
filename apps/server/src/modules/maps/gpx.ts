@@ -12,7 +12,7 @@ import { Worker } from "node:worker_threads";
 import type { Bbox, RouteElevation } from "@outpost/shared";
 import { haversineMeters } from "@outpost/shared";
 import type { Feature, FeatureCollection, LineString, MultiLineString, Point, Position } from "geojson";
-import { AppError, badRequest } from "../../core/errors.ts";
+import { AppError, badRequest, conflict } from "../../core/errors.ts";
 import { workerUrl } from "../../core/paths.ts";
 import { readGpx } from "./gpx-reader.ts";
 
@@ -276,6 +276,35 @@ export function splitCollection(collection: TrackCollection): Pick<GpxDocument, 
 const GPX_WORKER_HEAP_MB = 384;
 const GPX_WORKER_TIMEOUT_MS = 30_000;
 const TOO_COMPLEX = "That GPX file is too complex to read. If it holds many routes, export them one at a time and import them separately.";
+/**
+ * Files read at once, and files that may wait behind them. A read holds the text of
+ * the file and what is kept of it, a few hundred megabytes for the largest file there
+ * can be, so a burst of uploads takes turns instead of adding up.
+ */
+export const GPX_READS_AT_ONCE = 2;
+export const GPX_READS_WAITING = 6;
+const BUSY = "Outpost is already reading several GPX files. Wait for those to finish, then import this one again.";
+
+let reading = 0;
+const waiting: Array<() => void> = [];
+
+/** How many files are being read and how many are waiting, for tests and for anyone looking into a slow import. */
+export const gpxReads = () => ({ reading, waiting: waiting.length });
+
+/** Runs `work` when a place is free. Refuses at once, with a `conflict`, when the line is already full. */
+async function inTurn<T>(work: () => Promise<T>): Promise<T> {
+  if (reading < GPX_READS_AT_ONCE) reading += 1;
+  else if (waiting.length >= GPX_READS_WAITING) throw conflict(BUSY);
+  // Whoever finishes hands its place straight to the first in line, so `reading` stays as it is.
+  else await new Promise<void>((resolve) => waiting.push(resolve));
+  try {
+    return await work();
+  } finally {
+    const next = waiting.shift();
+    if (next) next();
+    else reading -= 1;
+  }
+}
 
 /** What one parse cost its worker. */
 export interface GpxWorkerUsage {
@@ -299,8 +328,13 @@ type GpxWorkerMessage = ({ ok: true; parsed: ParsedGpx } | { ok: false; code: st
  * `parseGpx` in a worker thread with limits of its own. Use this for anything that
  * arrives from outside: the server's own thread stays free to answer while a large
  * file is read, and a file that somehow got past the reader's limits costs one worker.
+ * Only `GPX_READS_AT_ONCE` files are read at a time; the rest wait their turn.
  */
 export function parseGpxSafely(source: string, options: GpxWorkerOptions = {}): Promise<ParsedGpx> {
+  return inTurn(() => readInWorker(source, options));
+}
+
+function readInWorker(source: string, options: GpxWorkerOptions): Promise<ParsedGpx> {
   return new Promise((resolve, reject) => {
     const worker = new Worker(workerUrl(new URL("./gpx.worker.ts", import.meta.url), "gpx"), {
       workerData: { source },

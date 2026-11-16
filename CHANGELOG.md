@@ -310,7 +310,8 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
 - GPX files read by a strict XML reader of Outpost's own that never builds a tree of
   the file and never reads a DOCTYPE, so that neither a hostile file nor a long
   recording can exhaust the server's memory. Reading happens in a worker thread; its
-  heap limit is a last line and no longer what the server's safety rests on.
+  heap limit is a last line and no longer what the server's safety rests on. Two files
+  are read at a time, and a file may turn at most 5,000 waypoints into saved places.
 - No telemetry, and no outbound request unless a person asks for one.
 - Answers from a language model: the question and passages go only to the model
   server a person configured (redirects refused, no credentials in the address),
