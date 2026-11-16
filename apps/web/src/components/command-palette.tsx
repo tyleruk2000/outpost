@@ -13,7 +13,7 @@ import { useNavigate } from "react-router";
 import { api } from "@/lib/api";
 import { useTheme } from "@/lib/theme";
 import { allNav } from "./nav";
-import { Highlighted, kindOf } from "./search-hit";
+import { Highlighted, kindOf, resultHref } from "./search-hit";
 import { Kbd, Spinner } from "./ui/misc";
 
 interface PaletteAction {
@@ -175,7 +175,7 @@ export function CommandPalette({
                           <Command.Item
                             key={`${result.kind}:${result.entityId}`}
                             value={`${result.kind}:${result.entityId}`}
-                            onSelect={() => go(result.url)}
+                            onSelect={() => go(resultHref(result))}
                             className={`${itemClass} items-start`}
                           >
                             <kind.icon aria-hidden className="mt-0.5" />

@@ -1,3 +1,4 @@
+import { lampRoomBook } from "./epub";
 import { api, expect, test, watchForErrors } from "./fixtures";
 
 test.describe("on a phone", () => {
@@ -115,6 +116,48 @@ test.describe("on a phone", () => {
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       expect(overflow, `sideways overflow on ${view || "the space view"}`).toBeLessThanOrEqual(1);
     }
+    expect(errors).toEqual([]);
+  });
+
+  test("reads an EPUB book at phone width: nothing spills sideways, and what is pressed is large enough to press", async ({ page }) => {
+    const errors = watchForErrors(page);
+    const upload = await page.request.post("/api/documents", {
+      headers: { "X-Outpost-Request": "1" },
+      multipart: { file: { name: "lamp-room-phone.epub", mimeType: "application/epub+zip", buffer: lampRoomBook() } },
+    });
+    // The other project may have added the same book to this server already; either way it is there.
+    const id = (await upload.json()).results[0].document.id;
+    const sideways = () =>
+      page.evaluate(() => {
+        const region = document.querySelector<HTMLElement>("section[tabindex]");
+        return Math.max(
+          document.documentElement.scrollWidth - document.documentElement.clientWidth,
+          region ? region.scrollWidth - region.clientWidth : 0,
+        );
+      });
+
+    await page.goto(`/library/documents/${id}`);
+    await expect(page.getByRole("heading", { level: 2, name: "The Lamp Room" })).toBeVisible();
+    expect(await sideways()).toBeLessThanOrEqual(1);
+    const start = page.getByRole("link", { name: /Start reading|Continue reading/ });
+    expect((await start.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    for (const line of await page.getByRole("region", { name: "Contents" }).getByRole("link").all()) {
+      expect((await line.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    }
+
+    await page.getByRole("region", { name: "Contents" }).getByRole("link", { name: "The lamp" }).click();
+    await expect(page.getByRole("heading", { level: 1, name: "The lamp" })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Book" })).toContainText("2 of 3");
+    expect(await sideways()).toBeLessThanOrEqual(1);
+    // The text keeps a line a person can read: no wider than the screen, and not squeezed into a column.
+    const line = await page.locator("article p").first().boundingBox();
+    expect(line!.width).toBeGreaterThan(300);
+    expect(line!.width).toBeLessThanOrEqual(page.viewportSize()!.width);
+    const next = page.getByRole("navigation", { name: "Chapters" }).getByRole("link", { name: /Next/ });
+    await next.scrollIntoViewIfNeeded();
+    expect((await next.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    await next.click();
+    await expect(page.getByRole("heading", { level: 1, name: "Fog" })).toBeVisible();
     expect(errors).toEqual([]);
   });
 

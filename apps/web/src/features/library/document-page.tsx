@@ -17,6 +17,8 @@ import { TextViewer } from "./document-text";
 import { ViewerToolbar } from "./document-toolbar";
 import type { ViewerControls, ViewerState } from "./document-viewer";
 import { ViewerMessage } from "./document-viewer-message";
+import { chapterInAddress, useEpubBook } from "./epub-data";
+import { EpubReader } from "./epub-reader";
 
 // pdf.js is large and only PDFs need it.
 const PdfViewer = lazy(() => import("./pdf-viewer"));
@@ -70,13 +72,13 @@ function Frame({ children }: { children: ReactNode }) {
   );
 }
 
-function BackToLibrary({ cameFromLibrary, book }: { cameFromLibrary: boolean; book?: { collectionId: string; bookTitle: string } }) {
+function BackToLibrary({ cameFromLibrary, book }: { cameFromLibrary: boolean; book?: { to: string; title: string } }) {
   const navigate = useNavigate();
   // A chapter belongs to its book: back means the book's contents, wherever the reader came from.
   if (book) {
     return (
       <Button asChild variant="ghost" size="sm" className="shrink-0 max-md:w-10 max-md:px-0">
-        <Link to={`/library/collections/${book.collectionId}`} aria-label={`Back to the contents of ${book.bookTitle}`}>
+        <Link to={book.to} aria-label={`Back to the contents of ${book.title}`}>
           <ArrowLeft /> <span className="max-md:sr-only">Contents</span>
         </Link>
       </Button>
@@ -212,6 +214,8 @@ function Viewer({
         />
       </>
     );
+  // A book is read chapter by chapter, drawn from what the server reads out of it.
+  if (document.type === "epub") return <EpubReader key={document.id} document={document} downloadUrl={downloadUrl} />;
   // Keyed, so that going from one chapter to the next starts at the top of the new one.
   return <TextViewer key={document.id} document={document} downloadUrl={downloadUrl} />;
 }
@@ -233,13 +237,18 @@ export default function DocumentPage() {
   const document = query.data?.document;
   const locationName = storage.data?.locations.find((entry) => entry.id === document?.locationId)?.name ?? "its storage location";
 
+  // Inside an EPUB the screen is named by the chapter being read, as a chapter of a book from the catalogue is.
+  const epubChapter = document?.type === "epub" ? chapterInAddress(params) : null;
+  const epub = useEpubBook(id, epubChapter !== null);
+  const title = (epubChapter !== null ? epub.data?.chapters[epubChapter - 1]?.title : undefined) ?? document?.title;
+
   useEffect(() => {
-    if (!document) return;
-    window.document.title = `${document.title} / Outpost`;
+    if (!title) return;
+    window.document.title = `${title} / Outpost`;
     return () => {
       window.document.title = "Outpost";
     };
-  }, [document]);
+  }, [title]);
 
   // ── The page in the address ──
   // ?page=N opens at that page (search results link this way) and follows the page being read.
@@ -315,6 +324,14 @@ export default function DocumentPage() {
     );
   }
 
+  // Inside a book, back means its contents: the collection of a book from the catalogue, the front page of an EPUB.
+  const chapter = query.data?.chapter;
+  const book = chapter
+    ? { to: `/library/collections/${chapter.collectionId}`, title: chapter.bookTitle }
+    : epubChapter !== null
+      ? { to: `/library/documents/${document.id}`, title: epub.data?.title ?? document.title }
+      : undefined;
+
   const controls: ViewerControls = {
     zoomBy: (direction) => controlsRef.current?.zoomBy(direction),
     fit: () => controlsRef.current?.fit(),
@@ -325,10 +342,10 @@ export default function DocumentPage() {
   return (
     <Frame>
       <header className="flex h-12 shrink-0 items-center gap-1.5 border-b border-border bg-page pr-2 pl-1.5 max-md:h-13 md:pr-3 md:pl-2">
-        <BackToLibrary cameFromLibrary={cameFromLibrary} book={query.data?.chapter} />
+        <BackToLibrary cameFromLibrary={cameFromLibrary} book={book} />
         <span aria-hidden className="h-5 w-px shrink-0 bg-border max-md:hidden" />
-        <h1 className="min-w-0 flex-1 truncate font-title text-lead text-ink md:pl-2" title={document.title}>
-          {document.title}
+        <h1 className="min-w-0 flex-1 truncate font-title text-lead text-ink md:pl-2" title={title}>
+          {title}
         </h1>
         {desktop && viewer ? <ViewerToolbar state={viewer} controls={controls} className="shrink-0" /> : null}
         {desktop && viewer ? <span aria-hidden className="h-5 w-px shrink-0 bg-border" /> : null}

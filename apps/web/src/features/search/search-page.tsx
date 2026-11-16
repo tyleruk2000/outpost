@@ -4,7 +4,7 @@ import { Search as SearchIcon, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { EmptyState, ErrorState, Notice, Page } from "@/components/page";
-import { Highlighted, kindMeta, kindOf } from "@/components/search-hit";
+import { Highlighted, kindMeta, kindOf, resultHref } from "@/components/search-hit";
 import { Button } from "@/components/ui/button";
 import { Segmented, Skeleton } from "@/components/ui/misc";
 import { api } from "@/lib/api";
@@ -38,7 +38,7 @@ function ResultRow({ result }: { result: SearchResult }) {
         </span>
       </div>
       <h2 className="mt-1 font-title text-lead">
-        <Link to={result.url} className="text-ink decoration-primary decoration-1 underline-offset-[0.22em] hover:underline">
+        <Link to={resultHref(result)} className="text-ink decoration-primary decoration-1 underline-offset-[0.22em] hover:underline">
           <Highlighted segments={result.titleSegments.length ? result.titleSegments : [{ text: result.title, hit: false }]} />
         </Link>
       </h2>

@@ -1,6 +1,6 @@
 import type { MarkdownBlock, MarkdownInline, MarkdownListItem, MarkdownRef } from "@outpost/shared";
-import { lazy, type ReactNode, Suspense, useEffect, useRef } from "react";
-import { Link, useLocation } from "react-router";
+import { createContext, lazy, type ReactNode, Suspense, useContext, useEffect, useRef, useState } from "react";
+import { Link, type To, useLocation } from "react-router";
 import { DataTable } from "./document-table";
 import MermaidDiagram from "./figures/mermaid-diagram";
 
@@ -9,8 +9,28 @@ const RadioViz = lazy(() => import("./figures/radio-viz"));
 
 /** The words of a run of text, for a label or a comparison. */
 export function plainText(runs: readonly MarkdownInline[]): string {
-  return runs.map((run) => (run.t === "break" ? " " : run.t === "image" ? run.alt : "v" in run ? run.v : plainText(run.c))).join("");
+  return runs
+    .map((run) => {
+      if (run.t === "break") return " ";
+      if (run.t === "anchor") return "";
+      if (run.t === "image" || run.t === "picture") return run.alt;
+      return "v" in run ? run.v : plainText(run.c);
+    })
+    .join("");
 }
+
+/**
+ * What a book adds to a document: where its pictures are, and its other chapters. The
+ * EPUB reader supplies it. Without it (a Markdown file) a picture is its description
+ * and a link to a chapter is its words.
+ */
+export interface BookLinks {
+  /** The address of a picture inside the book, or null when what the server sent is not a path. */
+  picture(src: string): string | null;
+  /** Where a chapter is, counted from 1; 0 is the contents. */
+  chapter(chapter: number, anchor?: string): To | null;
+}
+export const BookLinksContext = createContext<BookLinks | null>(null);
 
 /**
  * Ids as the server makes them: a document or collection id is letters and digits, a
@@ -75,6 +95,57 @@ function scrollToHeading(root: ParentNode | null, elementId: string): boolean {
   return true;
 }
 
+/** A link to a place in this document. The rest of the address stays as it is, so a chapter of a book stays that chapter. */
+function Jump({ to, children }: { to: string; children: ReactNode }) {
+  const { search } = useLocation();
+  if (!HEADING_ID.test(to)) return children;
+  return (
+    <Link to={{ search, hash: `#${headingElementId(to)}` }} onClick={() => scrollToHeading(null, headingElementId(to))}>
+      {children}
+    </Link>
+  );
+}
+
+/** What stands where a picture cannot be shown: what its author wrote about it. */
+function PictureWords({ alt, caption }: { alt: string; caption?: ReactNode }) {
+  return (
+    <span className="doc-picture">
+      <span className="doc-picture-label">Picture, not shown here. </span>
+      {alt}
+      {caption ? <span className="doc-picture-caption"> {caption}</span> : null}
+    </span>
+  );
+}
+
+/** A picture from inside a book. If it will not load (the file is damaged, or is not a picture after all) its description stands in. */
+function BookPicture({ src, alt, standing }: { src: string; alt: string; standing?: boolean }) {
+  const url = useContext(BookLinksContext)?.picture(src) ?? null;
+  const [failed, setFailed] = useState(false);
+  if (!url || failed) return alt || standing ? <PictureWords alt={alt} /> : null;
+  return (
+    <img
+      src={url}
+      alt={alt}
+      loading="lazy"
+      decoding="async"
+      draggable={false}
+      onError={() => setFailed(true)}
+      className={standing ? "doc-book-picture" : "doc-book-picture doc-book-picture-inline"}
+    />
+  );
+}
+
+/** A link to another chapter of the same book. It stays in this tab: it is part of the book. */
+function ChapterLink({ chapter, anchor, children }: { chapter: number; anchor?: string; children: ReactNode }) {
+  const to = useContext(BookLinksContext)?.chapter(chapter, anchor) ?? null;
+  if (!to) return children;
+  return (
+    <Link to={to} className="[overflow-wrap:anywhere]">
+      {children}
+    </Link>
+  );
+}
+
 function Inline({ runs }: { runs: readonly MarkdownInline[] }): ReactNode {
   return runs.map((run, index) => {
     switch (run.t) {
@@ -107,28 +178,48 @@ function Inline({ runs }: { runs: readonly MarkdownInline[] }): ReactNode {
             <Inline runs={run.c} />
           </del>
         );
-      case "jump":
-        // biome-ignore lint/suspicious/noArrayIndexKey: runs of one paragraph, in order
-        if (!HEADING_ID.test(run.to)) return <Inline key={index} runs={run.c} />;
+      case "sup":
         return (
           // biome-ignore lint/suspicious/noArrayIndexKey: runs of one paragraph, in order
-          <Link key={index} to={{ hash: `#${headingElementId(run.to)}` }} onClick={() => scrollToHeading(null, headingElementId(run.to))}>
+          <sup key={index}>
             <Inline runs={run.c} />
-          </Link>
+          </sup>
+        );
+      case "sub":
+        return (
+          // biome-ignore lint/suspicious/noArrayIndexKey: runs of one paragraph, in order
+          <sub key={index}>
+            <Inline runs={run.c} />
+          </sub>
+        );
+      case "jump":
+        return (
+          // biome-ignore lint/suspicious/noArrayIndexKey: runs of one paragraph, in order
+          <Jump key={index} to={run.to}>
+            <Inline runs={run.c} />
+          </Jump>
+        );
+      case "anchor":
+        // A place a link can land on. It shows nothing and takes no room.
+        // biome-ignore lint/suspicious/noArrayIndexKey: runs of one paragraph, in order
+        return HEADING_ID.test(run.id) ? <span key={index} id={headingElementId(run.id)} className="doc-anchor" /> : null;
+      case "picture":
+        // biome-ignore lint/suspicious/noArrayIndexKey: runs of one paragraph, in order
+        return <BookPicture key={index} src={run.src} alt={run.alt} />;
+      case "chapter":
+        return (
+          // biome-ignore lint/suspicious/noArrayIndexKey: runs of one paragraph, in order
+          <ChapterLink key={index} chapter={run.chapter} anchor={run.anchor}>
+            <Inline runs={run.c} />
+          </ChapterLink>
         );
       case "ref":
         // biome-ignore lint/suspicious/noArrayIndexKey: runs of one paragraph, in order
         return <Ref key={index} run={run} />;
       case "image":
         // The picture is not here; what its author wrote about it is.
-        return (
-          // biome-ignore lint/suspicious/noArrayIndexKey: runs of one paragraph, in order
-          <span key={index} className="doc-picture">
-            <span className="doc-picture-label">Picture, not shown here. </span>
-            {run.alt}
-            {run.caption ? <span className="doc-picture-caption"> {run.caption}</span> : null}
-          </span>
-        );
+        // biome-ignore lint/suspicious/noArrayIndexKey: runs of one paragraph, in order
+        return <PictureWords key={index} alt={run.alt} caption={run.caption} />;
       case "link":
         // The server sends a link only for a web or mail address; it opens away from Outpost.
         return (
@@ -178,6 +269,14 @@ function Block({ block }: { block: MarkdownBlock }): ReactNode {
       );
     }
     case "paragraph":
+      // Places with no words around them: nothing to read, only somewhere for a link to land.
+      if (block.c.length > 0 && block.c.every((run) => run.t === "anchor")) {
+        return (
+          <span className="doc-anchors">
+            <Inline runs={block.c} />
+          </span>
+        );
+      }
       return (
         <p>
           <Inline runs={block.c} />
@@ -192,10 +291,29 @@ function Block({ block }: { block: MarkdownBlock }): ReactNode {
       return <ul data-type={block.items.some((item) => item.checked !== undefined) ? "taskList" : undefined}>{items}</ul>;
     }
     case "quote":
+      // A footnote or a sidebar is set apart like a quotation, but it is the author's own words.
+      if (block.kind === "note") {
+        return (
+          <aside className={`doc-note ${NESTED}`}>
+            <Blocks blocks={block.c} />
+          </aside>
+        );
+      }
       return (
         <blockquote className={NESTED}>
           <Blocks blocks={block.c} />
         </blockquote>
+      );
+    case "figure":
+      return (
+        <figure className="doc-book-figure">
+          <BookPicture src={block.src} alt={block.alt} standing />
+          {block.caption ? (
+            <figcaption>
+              <Inline runs={block.caption} />
+            </figcaption>
+          ) : null}
+        </figure>
       );
     case "code":
       // Two kinds of fenced block describe a picture. The text of either is only ever read as a
@@ -220,12 +338,14 @@ function Block({ block }: { block: MarkdownBlock }): ReactNode {
         </pre>
       );
     case "table": {
-      const [header = [], ...body] = block.rows;
+      const [first = [], ...rest] = block.rows;
       const cell = (runs: MarkdownInline[]) => <Inline runs={runs} />;
+      // A table with no header row is every row a body row; it is still named by what its first row holds.
+      const body = block.plain ? block.rows : rest;
       return (
         <DataTable
-          label={header.map(plainText).filter(Boolean).join(", ")}
-          header={header.map(cell)}
+          label={first.map(plainText).filter(Boolean).join(", ")}
+          header={block.plain ? [] : first.map(cell)}
           body={body.map((row) => row.map(cell))}
         />
       );
@@ -274,6 +394,7 @@ function* runsIn(blocks: readonly MarkdownBlock[]): Generator<MarkdownInline> {
   for (const block of blocks) {
     if (block.t === "heading" || block.t === "paragraph") yield* within(block.c);
     else if (block.t === "quote") yield* runsIn(block.c);
+    else if (block.t === "figure" && block.caption) yield* within(block.caption);
     else if (block.t === "list") for (const item of block.items) yield* runsIn(item.c);
     else if (block.t === "table") for (const row of block.rows) for (const cell of row) yield* within(cell);
   }
@@ -308,8 +429,18 @@ function MissingBooks({ entries }: { entries: Array<{ entryId: string; entryName
   );
 }
 
-/** A Markdown file with its formatting, drawn from the plain values the server sends. */
-export function MarkdownDocument({ blocks, title }: { blocks: readonly MarkdownBlock[]; title: string }) {
+/** A Markdown file, or a chapter of a book, with its formatting, drawn from the plain values the server sends. */
+export function MarkdownDocument({
+  blocks,
+  title,
+  empty = "This document has no text.",
+}: {
+  blocks: readonly MarkdownBlock[];
+  /** The name the page already shows; a first heading that only repeats it is left out. */
+  title: string;
+  /** What to say when there is nothing to draw. */
+  empty?: string;
+}) {
   const sections = sectionsOf(blocks, title);
   const article = useRef<HTMLElement>(null);
   const { hash } = useLocation();
@@ -320,7 +451,7 @@ export function MarkdownDocument({ blocks, title }: { blocks: readonly MarkdownB
     if (hash.startsWith("#h-")) scrollToHeading(article.current, decodeURIComponent(hash.slice(1)));
   }, [hash, blocks]);
 
-  if (sections.length === 0) return <p className="text-ink-muted">This document has no text.</p>;
+  if (sections.length === 0) return <p className="text-ink-muted">{empty}</p>;
   return (
     <article ref={article} className="prose prose-doc">
       <MissingBooks entries={missingRefs(blocks)} />
