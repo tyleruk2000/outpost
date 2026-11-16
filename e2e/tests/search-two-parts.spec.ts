@@ -65,7 +65,9 @@ test.describe("search with a slow reference collection", () => {
   test("the page shows a person's own results at once and adds the collection's article below without moving them", async ({ page }) => {
     const errors = watchForErrors(page);
     await page.goto("/search?q=slowcoach");
-    const own = page.getByRole("link", { name: "Slowcoach checklist" });
+    // The page is also in the sidebar's tree; the result is the one in the content.
+    const content = page.locator("#content");
+    const own = content.getByRole("link", { name: "Slowcoach checklist" });
     await expect(own).toBeVisible();
     // The collection has not answered: the page says so, and its article is not there yet.
     await expect(page.getByText("Still searching reference collections…").first()).toBeVisible();
@@ -83,14 +85,16 @@ test.describe("search with a slow reference collection", () => {
 
     await page.getByRole("tab", { name: /^Reference/ }).click();
     await expect(page.getByRole("link", { name: ARTICLE })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Slowcoach checklist" })).toHaveCount(0);
+    await expect(content.getByRole("link", { name: "Slowcoach checklist" })).toHaveCount(0);
     expect(errors).toEqual([]);
   });
 
   test("the palette lists a person's own match first and the collection's article when it comes", async ({ page }) => {
     await page.goto("/");
-    await page.keyboard.press("ControlOrMeta+k");
+    // The button in the sidebar opens the palette too, and is there only once the app is listening.
+    await page.getByRole("button", { name: "Search everything" }).click();
     const palette = page.getByRole("dialog", { name: "Search and go to" });
+    await expect(palette).toBeVisible();
     // A word of its own, so that nothing is remembered from the test before.
     await palette.getByRole("combobox").fill("Slowcoach");
     const own = palette.getByRole("option", { name: /Slowcoach checklist/ });

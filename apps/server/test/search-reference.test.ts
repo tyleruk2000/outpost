@@ -223,7 +223,8 @@ describe("search in two parts", () => {
     expect(own.body.results.map((result: Line) => result.kind).sort()).toEqual(["document", "note"]);
     expect(own.body).toMatchObject({ total: 2, facets: { document: 1, note: 1 }, warnings: [], referenceToCome: true });
     expect((await app.api("GET", "/api/search?q=water&reference=later&kinds=note")).body.referenceToCome).toBe(true);
-    expect((await app.api("GET", "/api/search?q=water")).body.referenceToCome).toBeUndefined();
+    // Asked in one part, the answer does not carry the field. (Another word: answers are remembered.)
+    expect((await app.api("GET", "/api/search?q=walnut")).body.referenceToCome).toBeUndefined();
     expect(own.body.facets.reference).toBeUndefined();
 
     const lines = await readReference(base, "water");
