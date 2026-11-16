@@ -191,6 +191,22 @@ export function createLeftovers(ctx: AppContext, inventory: Inventory, survey: S
       });
     }
 
+    // Weather and hazard data fetched for offline use: counted from its own records, so listed without a survey.
+    const weather = ctx.services.weather.count();
+    if (weather.copies > 0) {
+      items.push({
+        id: "cache:weather",
+        kind: "cache",
+        title: "Forecasts, warnings and flood data fetched for offline use",
+        detail: "Inside the database",
+        bytes: weather.copyBytes,
+        count: weather.copies,
+        locationName: null,
+        href: "/prepare/weather",
+        what: "weather",
+      });
+    }
+
     if (latest) {
       const cache = (id: string, title: string, bytes: number, detail: string, count: number | null = null) => {
         if (bytes > 0 || (count ?? 0) > 0) {
@@ -352,6 +368,10 @@ export function createLeftovers(ctx: AppContext, inventory: Inventory, survey: S
         found.data.runtimes = 0;
       });
       return { title: "Programs fetched for portable drives", bytes, count: 1 };
+    }
+    if (id === "cache:weather") {
+      const cleared = ctx.services.weather.clearCopies();
+      return { title: "Forecasts, warnings and flood data fetched for offline use", bytes: cleared.bytes, count: cleared.count };
     }
     if (id === "cache:models") {
       await removeDataEntry("models");

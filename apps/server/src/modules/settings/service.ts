@@ -114,6 +114,12 @@ export const settingsSchema = z.object({
    * read the address book and cannot change it. Off until a person turns it on.
    */
   "contacts.carddav": z.boolean().default(false),
+  /**
+   * Fetch forecasts, warnings and flood data each time the Weather and hazards screen is
+   * opened, as well as when "Update now" is pressed. Off until a person ticks it: each
+   * opening is then an outbound request (docs/security.md).
+   */
+  "weather.updateOnOpen": z.boolean().default(false),
   /** Seconds between checks that storage locations are still connected. */
   "storage.checkIntervalSeconds": z.number().int().min(5).max(3600).default(30),
 });

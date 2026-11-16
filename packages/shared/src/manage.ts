@@ -4,6 +4,7 @@
  */
 import type { JobDto } from "./common.ts";
 import type { StorageKind } from "./storage.ts";
+import type { WeatherKept } from "./weather.ts";
 
 /** The phrase a person types before everything is erased. */
 export const ERASE_CONFIRMATION = "erase everything";
@@ -122,6 +123,8 @@ export interface CleanupPlan {
     powerPlans?: number;
     /** Supplies and the household they are for; see `SuppliesKept`. Absent from a plan made before it was counted. */
     supplies?: SuppliesKept;
+    /** Weather places, barometer readings and the copies fetched for them; see `WeatherKept`. Absent from a plan made before it was counted. */
+    weather?: WeatherKept;
     settings: number;
     vectors: number;
     /** Copies of the database and attachments that a restore set aside. */
@@ -191,6 +194,7 @@ export interface CleanupResult extends Record<string, unknown> {
     radio?: RadioKept;
     powerPlans?: number;
     supplies?: SuppliesKept;
+    weather?: WeatherKept;
     settings: number;
   };
 }

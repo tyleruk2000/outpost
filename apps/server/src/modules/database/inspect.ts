@@ -27,7 +27,16 @@ const GROUPS: Record<Exclude<DatabaseGroupId, "other">, string[]> = {
     "observation_imports",
     "radio_observations",
   ],
-  prepare: ["supply_items", "supply_products", "supply_household", "supply_members", "supply_shopping"],
+  prepare: [
+    "supply_items",
+    "supply_products",
+    "supply_household",
+    "supply_members",
+    "supply_shopping",
+    "weather_places",
+    "weather_cache",
+    "weather_readings",
+  ],
 };
 export const GROUP_ORDER: DatabaseGroupId[] = ["search", "meaning", "library", "notes", "maps", "radio", "prepare", "other"];
 
@@ -54,6 +63,7 @@ const COUNTS: Array<{ id: DatabaseCountId; table: string; sql: string }> = [
   { id: "predictions", table: "propagation_saved", sql: "SELECT count(*) AS n FROM propagation_saved" },
   { id: "powerPlans", table: "power_plans", sql: "SELECT count(*) AS n FROM power_plans" },
   { id: "supplies", table: "supply_items", sql: "SELECT count(*) AS n FROM supply_items" },
+  { id: "pressureReadings", table: "weather_readings", sql: "SELECT count(*) AS n FROM weather_readings" },
 ];
 
 function groupOf(table: string): DatabaseGroupId {

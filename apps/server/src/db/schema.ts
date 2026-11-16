@@ -1141,4 +1141,69 @@ export const supplyShopping = sqliteTable("supply_shopping", {
   updatedAt: updatedAt(),
 });
 
+// ── Weather and hazards (Preparedness) ────────────────────────────────────────
+
+/**
+ * The places a person chose to keep forecasts and warnings for: copies of saved places
+ * (`markerId` says which, while it exists), so that the cache stays readable if the
+ * saved place is moved or removed. `region` is the Met Office warnings region the
+ * person chose for it. See modules/weather.
+ */
+export const weatherPlaces = sqliteTable("weather_places", {
+  id: id(),
+  markerId: text("marker_id"),
+  name: text("name").notNull(),
+  lat: real("lat").notNull(),
+  lon: real("lon").notNull(),
+  region: text("region"),
+  position: integer("position").notNull(),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+});
+
+/**
+ * What was fetched, one row for each kind of thing and place: the latest copy only. The
+ * publisher's figures and words are in `data`, as read; `bytes` is what arrived; `sent`
+ * says what was sent to get it.
+ */
+export const weatherCache = sqliteTable(
+  "weather_cache",
+  {
+    id: id(),
+    kind: text("kind").notNull(),
+    source: text("source").notNull(),
+    /** "" for something that is not for one place (the UK's warnings). */
+    placeId: text("place_id").notNull(),
+    fetchedAt: integer("fetched_at").notNull(),
+    validFrom: integer("valid_from"),
+    validUntil: integer("valid_until"),
+    bytes: integer("bytes").notNull(),
+    sent: text("sent").notNull(),
+    data: json<unknown>("data").notNull(),
+  },
+  (table) => [uniqueIndex("weather_cache_kind_place_idx").on(table.kind, table.placeId)],
+);
+
+/** Barometer readings a person typed or brought in from a file. */
+export const weatherReadings = sqliteTable(
+  "weather_readings",
+  {
+    id: id(),
+    takenAt: integer("taken_at").notNull(),
+    /** As given, with its unit ("hPa" or "inHg"). */
+    value: real("value").notNull(),
+    unit: text("unit").notNull(),
+    /** The pressure where it was read, in hPa. */
+    stationHpa: real("station_hpa").notNull(),
+    /** Height above sea level of the barometer, metres. */
+    heightM: real("height_m").notNull(),
+    /** Reduced to sea level by the formula in @outpost/shared weather.ts. */
+    seaLevelHpa: real("sea_level_hpa").notNull(),
+    note: text("note").notNull().default(""),
+    origin: text("origin").notNull(),
+    createdAt: createdAt(),
+  },
+  (table) => [index("weather_readings_taken_idx").on(table.takenAt)],
+);
+
 export const nowMs = sql`(unixepoch('subsec') * 1000)`;

@@ -64,6 +64,8 @@ const envSchema = z.object({
   OUTPOST_IMAGERY_WORLD_URL: z.string().url().optional(),
   OUTPOST_IMAGERY_WORLD_BYTES: z.coerce.number().int().positive().optional(),
   OUTPOST_LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).optional(),
+  // For tests: one local server that stands in for every weather publisher (modules/weather/sources.ts).
+  OUTPOST_WEATHER_STAND_IN: z.string().url().optional(),
 });
 
 export interface Config {
@@ -122,6 +124,8 @@ export interface Config {
   nodeDistUrl?: string;
   /** Where kiwix-serve for portable drives is fetched from. Defaults to download.kiwix.org. */
   kiwixDistUrl?: string;
+  /** For tests: a local server answering for every weather publisher, at /<source id>/<path>; unset in use. */
+  weatherStandIn?: string;
   /** Stand-ins for satellite imagery's publishers, for tests; unset in use. */
   imagery?: {
     endpoints?: { stacSearchUrl?: string; sentinelHost?: string; nasaHost?: string };
@@ -210,6 +214,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     nodeDistUrl: parsed.OUTPOST_NODE_DIST_URL,
     kiwixDistUrl: parsed.OUTPOST_KIWIX_DIST_URL,
     imagery: imageryStandIns(parsed),
+    weatherStandIn: parsed.OUTPOST_WEATHER_STAND_IN,
   };
 }
 
