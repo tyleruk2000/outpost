@@ -31,7 +31,11 @@ test.describe("End-fed wires on the HF planner, on a phone", () => {
     await expect(page.getByText(/^Not modelled: 10 m of wire is 0\.24 wavelengths at 7\.1 MHz, shorter than a half-wave\./)).toBeVisible();
     await predict(page);
     await expect(page.getByText("No figure for 7.10 MHz: an antenna is not modelled there")).toBeVisible();
-    await expect(page.getByText(/The bands below that have figures are 20 m, 17 m \(approximate\), 15 m \(approximate\), 12 m \(approximate\), 10 m \(approximate\)\./)).toBeVisible();
+    await expect(
+      page.getByText(
+        /The bands below that have figures are 20 m, 17 m \(approximate\), 15 m \(approximate\), 12 m \(approximate\), 10 m \(approximate\)\./,
+      ),
+    ).toBeVisible();
     // No figure for 7.1 MHz anywhere: not a nought, and not "no path".
     await expect(page.getByRole("heading", { name: /7\.10 MHz at \d\d:00 UTC/ })).toHaveCount(0);
     // The band table: the four bands below 20 m say they are not modelled; the others have figures.
