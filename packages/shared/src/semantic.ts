@@ -54,11 +54,3 @@ export function vectorBytes(dimensions: number): number {
   const table = row <= 4000 ? page / Math.floor(4000 / row) : Math.ceil(row / page) * page;
   return Math.round(table + 110);
 }
-
-export interface BackupStatus {
-  restorePending: boolean;
-  /** Folders of data kept from before earlier restores. */
-  previousData: string[];
-  /** Outpost can restart itself here (Docker, or the portable launcher). */
-  supervised: boolean;
-}
