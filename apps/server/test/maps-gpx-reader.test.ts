@@ -6,7 +6,7 @@
  * `fixtures/maps/gpx-corpus.ts`.
  */
 import { describe, expect, it } from "vitest";
-import { trackStats } from "../src/modules/maps/gpx.ts";
+import { type GpxWorkerUsage, parseGpx, parseGpxSafely, trackStats } from "../src/modules/maps/gpx.ts";
 import { GPX_LIMITS, readGpx } from "../src/modules/maps/gpx-reader.ts";
 import { XML_CLOSE, XML_END, XML_OPEN, XML_TEXT, XmlLimitError, XmlSyntaxError, XmlTokenizer } from "../src/modules/maps/gpx-xml.ts";
 import { corpus, READ_DIFFERENTLY, readAsText } from "./fixtures/maps/gpx-corpus.ts";
@@ -291,5 +291,65 @@ describe("what a GPX file may hold", () => {
     expect(message("<kml><Placemark/></kml>")).toBe(notGpx);
     // Still XML that is not well-formed, when that is what it is.
     expect(message("<html><body><br></body></html>")).toBe("That file is not well-formed XML, so it cannot be read as GPX.");
+  });
+});
+
+describe("reading a GPX file as the server does", () => {
+  const WAYPOINT = '<gpx><wpt lat="1" lon="2"><name>Here</name></wpt></gpx>';
+
+  it("reads a file that starts with a byte-order mark, as bytes and as text", () => {
+    const bytes = Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from(`<?xml version="1.0" encoding="UTF-8"?>\n${WAYPOINT}`)]);
+    expect(parseGpx(bytes.toString("utf8")).collection.features[0]!.properties.name).toBe("Here");
+    // Only at the very start: anywhere else it is a character like any other.
+    expect(() => parseGpx(`\uFEFF\uFEFF${WAYPOINT}`)).toThrow(/not well-formed XML/);
+    expect(() => parseGpx(` \uFEFF${WAYPOINT}`)).toThrow(/not well-formed XML/);
+  });
+
+  it("says so when a file is saved as UTF-16, which it cannot read", () => {
+    for (const encoded of [
+      Buffer.from(`\uFEFF<?xml version="1.0" encoding="UTF-16"?>${WAYPOINT}`, "utf16le"),
+      Buffer.from(WAYPOINT, "utf16le"),
+      Buffer.from(`\uFEFF${WAYPOINT}`, "utf16le").swap16(),
+      Buffer.from(WAYPOINT, "utf16le").swap16(),
+    ]) {
+      expect(() => parseGpx(encoded.toString("utf8"))).toThrow(
+        "That file is saved as UTF-16 text, which Outpost cannot read. Save or export it as UTF-8 and try again.",
+      );
+    }
+  });
+
+  it("refuses a DOCTYPE wherever and however it is written, before reading anything", () => {
+    for (const source of [
+      `<!DOCTYPE gpx>${WAYPOINT}`,
+      `<?xml version="1.0"?>\n<!doctype gpx [<!ENTITY a "b">]>${WAYPOINT}`,
+      `<gpx><!ENTITY a "b"><wpt lat="1" lon="2"/></gpx>`,
+      // Even inside a comment or CDATA, where it would do nothing: no GPX file needs the words.
+      `<gpx><!-- <!DOCTYPE gpx> --><wpt lat="1" lon="2"/></gpx>`,
+    ]) {
+      expect(() => parseGpx(source)).toThrow(/DOCTYPE or entities/);
+    }
+  });
+
+  it("gives the same answer from the worker as from the reader, and says what it cost", async () => {
+    for (const file of corpus()) {
+      let usage: GpxWorkerUsage | undefined;
+      const parsed = await parseGpxSafely(file.source, {
+        onUsage: (told) => {
+          usage = told;
+        },
+      });
+      expect(JSON.stringify({ ...parsed, stats: trackStats(parsed.collection) }), file.name).toBe(file.expected);
+      expect(usage!.heapBytes).toBeGreaterThan(1_000_000);
+      expect(usage!.heapBytes).toBeLessThan(64 * 1024 * 1024);
+      expect(usage!.milliseconds).toBeLessThan(5000);
+    }
+    await expect(parseGpxSafely("<gpx></gpx>")).rejects.toMatchObject({
+      code: "bad_request",
+      message: "That GPX file has no tracks, routes or waypoints in it.",
+    });
+    await expect(parseGpxSafely(`<gpx>${"<a>".repeat(100)}`)).rejects.toMatchObject({
+      code: "bad_request",
+      message: expect.stringMatching(/nested more than 64 deep/),
+    });
   });
 });

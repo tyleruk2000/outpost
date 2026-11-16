@@ -2,13 +2,15 @@
  * Regression tests for defects found by security review. Each one describes the
  * attack it guards against.
  */
+import { execFile } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { ZipArchive } from "archiver";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { scanConstructs } from "../src/modules/imports/convert.ts";
 import { markdownToDoc } from "../src/modules/notes/content/index.ts";
+import { LARGE_GPX, LONG_TRACK } from "./fixtures/maps/gpx-large.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
 
 let app: TestApp | undefined;
@@ -169,26 +171,157 @@ describe("hostile files cannot freeze or exhaust the server", () => {
     expect(JSON.stringify(doc)).toContain("detailsSummary");
     expect(JSON.stringify(doc)).toContain("Stove and gas.");
   });
+});
 
-  it("refuses a GPX file that would balloon in memory, and keeps answering other requests", async () => {
-    app = await createTestApp();
-    const hostile = `<?xml version="1.0"?><gpx version="1.1" xmlns="http://www.topografix.com/GPX/1/1"><trk><trkseg>${'<a b="1"/>'.repeat(900_000)}</trkseg></trk></gpx>`;
-    const form = new FormData();
-    form.set("file", new Blob([hostile], { type: "application/gpx+xml" }), "bomb.gpx");
-    const encoded = new Response(form);
-    const pending = app.app.inject({
-      method: "POST",
-      url: "/api/maps/tracks/import",
-      headers: { host: "localhost", "x-outpost-request": "1", "content-type": encoded.headers.get("content-type")! },
-      payload: Buffer.from(await encoded.arrayBuffer()),
+/**
+ * A GPX file used to be read into a tree that cost hundreds of bytes for every element,
+ * inside a worker whose heap limit was meant to contain it. It did not: on Node 24 a
+ * worker that reaches its limit sometimes takes the whole process with it, and an
+ * ordinary long recording was enough to reach it.
+ *
+ * The reader now keeps only what is stored, and counts what a file holds. Each file
+ * below is first read in a process of its own, by a worker held to a sixth of the heap
+ * Outpost allows (64 MB against 384 MB; the hostile files need 32 MB, most of which is
+ * the 20 MB of text itself, and the day's recording 40 MB). Only when that has gone
+ * well is the same file given to the server in this process, which has to keep
+ * answering while it reads. So if the reader is ever made hungry again, it is the other
+ * process that dies and this test that fails.
+ */
+describe("a GPX file cannot take the server down, whatever is in it", () => {
+  const CHILD = path.join(import.meta.dirname, "fixtures/maps/gpx-large.child.ts");
+  const MB = 1024 * 1024;
+
+  interface ChildReport {
+    megabytes: number;
+    imported: boolean;
+    message?: string;
+    lines?: number;
+    waypoints?: number;
+    stats?: { distanceMeters: number; ascentMeters: number | null; pointCount: number };
+    usage?: { heapBytes: number; milliseconds: number };
+    peakProcessBytes: number;
+  }
+
+  /** Reads one of the files in a process of its own. Never throws: a crash there is a result here. */
+  const readElsewhere = (name: string) =>
+    new Promise<{ code: number | string | null; signal: string | null; report: ChildReport | undefined; stderr: string }>((resolve) => {
+      execFile(process.execPath, [CHILD, name], { timeout: 60_000 }, (error, stdout, stderr) => {
+        let report: ChildReport | undefined;
+        try {
+          report = JSON.parse(stdout);
+        } catch {
+          // No report: the process died before it could write one.
+        }
+        resolve({ code: error ? (error.code ?? null) : 0, signal: error?.signal ?? null, report, stderr });
+      });
     });
-    // While that file is being chewed on, the server still answers.
-    const started = performance.now();
-    expect((await app.api("GET", "/api/health")).status).toBe(200);
-    expect(performance.now() - started).toBeLessThan(1000);
-    const response = await pending;
-    expect(response.statusCode).toBe(400);
-    expect(response.json().error.message).toMatch(/too complex/);
-    expect((await app.api("GET", "/api/maps/tracks")).body.tracks).toEqual([]);
-  }, 60_000);
+
+  let server: TestApp;
+  beforeAll(async () => {
+    server = await createTestApp();
+  });
+  afterAll(async () => {
+    await server.close();
+  });
+
+  /** Uploads a file and asks after the server's health, over and over, until the upload is answered. */
+  async function importWhileAsking(source: string) {
+    const form = new FormData();
+    form.set("file", new Blob([source], { type: "application/gpx+xml" }), "large.gpx");
+    const encoded = new Response(form);
+    let answered = false;
+    const pending = server.app
+      .inject({
+        method: "POST",
+        url: "/api/maps/tracks/import",
+        headers: { host: "localhost", "x-outpost-request": "1", "content-type": encoded.headers.get("content-type")! },
+        payload: Buffer.from(await encoded.arrayBuffer()),
+      })
+      .finally(() => {
+        answered = true;
+      });
+    let slowest = 0;
+    let asked = 0;
+    do {
+      const started = performance.now();
+      expect((await server.api("GET", "/api/health")).status).toBe(200);
+      slowest = Math.max(slowest, performance.now() - started);
+      asked += 1;
+      await new Promise((resolve) => setTimeout(resolve, 5));
+    } while (!answered);
+    return { response: await pending, slowest, asked };
+  }
+
+  for (const [name, file] of Object.entries(LARGE_GPX)) {
+    it(`${file.refusal ? "refuses" : "imports"} ${file.title}, in a worker held to ${file.heapMb} MB, and keeps answering`, async () => {
+      // First where it can do no harm.
+      const elsewhere = await readElsewhere(name);
+      expect(elsewhere.signal, elsewhere.stderr).toBeNull();
+      expect(elsewhere.code, elsewhere.stderr).toBe(0);
+      const report = elsewhere.report!;
+      expect(report.megabytes).toBeLessThan(21);
+      // The worker reached an answer of its own: its heap limit was never what stopped it.
+      expect(report.message ?? "").not.toMatch(/too complex/);
+      expect(report.usage!.heapBytes).toBeGreaterThan(MB);
+      // All it had claimed when it finished, working room included: still a fraction of what Outpost allows.
+      expect(report.usage!.heapBytes).toBeLessThan(2 * file.heapMb * MB);
+      expect(report.usage!.milliseconds).toBeLessThan(10_000);
+      if (file.refusal) {
+        expect(report.imported).toBe(false);
+        expect(report.message).toMatch(file.refusal);
+      } else {
+        expect(report.imported).toBe(true);
+      }
+
+      // Then here, through the server.
+      const { response, slowest, asked } = await importWhileAsking(file.build());
+      expect(asked).toBeGreaterThan(0);
+      expect(slowest).toBeLessThan(1000);
+      if (file.refusal) {
+        expect(response.statusCode).toBe(400);
+        expect(response.json().error.message).toMatch(file.refusal);
+        expect((await server.api("GET", "/api/maps/tracks")).body.tracks).toEqual([]);
+        return;
+      }
+      expect(response.statusCode).toBe(200);
+      const track = response.json().track;
+      expect(track.pointCount).toBe(report.stats!.pointCount);
+      expect(track.distanceMeters).toBe(report.stats!.distanceMeters);
+      if (name === "longTrack") await expectTheWholeLongTrack(track);
+      expect((await server.api("DELETE", `/api/maps/tracks/${track.id}`)).status).toBe(200);
+    }, 120_000);
+  }
+
+  /** The long recording is all there, and measured right. */
+  async function expectTheWholeLongTrack(track: {
+    id: string;
+    name: string;
+    distanceMeters: number;
+    ascentMeters: number;
+    pointCount: number;
+    bounds: number[];
+  }) {
+    const last = LONG_TRACK.points - 1;
+    // Due north along a meridian, so the length is the arc between the first latitude and the last.
+    const expectedLength = 6_371_008.8 * ((last * LONG_TRACK.step * Math.PI) / 180);
+    // A thousand steps up of 4 m, then a thousand down, 75 times over.
+    const expectedClimb = (LONG_TRACK.points / 2000) * 1000 * LONG_TRACK.rise;
+    expect(expectedClimb).toBe(300_000);
+    expect(track).toMatchObject({ name: "A long day", pointCount: 150_000, ascentMeters: expectedClimb });
+    expect(Math.abs(track.distanceMeters - expectedLength)).toBeLessThan(1);
+    expect(track.bounds).toEqual([LONG_TRACK.lon, LONG_TRACK.startLat, LONG_TRACK.lon, 11.49999]);
+
+    const stored = (await server.api("GET", `/api/maps/tracks/${track.id}`)).body.track.geojson.features;
+    expect(stored).toHaveLength(1);
+    const [line] = stored;
+    expect(line.geometry.type).toBe("LineString");
+    expect(line.geometry.coordinates).toHaveLength(150_000);
+    expect(line.geometry.coordinates[0]).toEqual([20, 10, 500]);
+    expect(line.geometry.coordinates[1000]).toEqual([20, 10.01, 4500]);
+    expect(line.geometry.coordinates[last]).toEqual([20, 11.49999, LONG_TRACK.ele(last)]);
+    expect(line.properties.coordinateProperties.times).toHaveLength(150_000);
+    expect(line.properties.coordinateProperties.times[0]).toBe("2026-06-01T04:00:00Z");
+    expect(line.properties.coordinateProperties.times[last]).toBe(LONG_TRACK.time(last));
+    expect(line.properties.time).toBe("2026-06-01T04:00:00Z");
+  }
 });

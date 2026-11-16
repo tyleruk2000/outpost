@@ -72,9 +72,8 @@ function cleanPosition(lon: number, lat: number, ele: number): Position | undefi
   if (!Number.isFinite(lon) || !Number.isFinite(lat)) return undefined;
   if (Math.abs(lat) > 90 || Math.abs(lon) > 180) return undefined;
   // Six decimals is about ten centimetres: finer than any receiver, and much smaller to store.
-  const cleaned: Position = [round(lon, 6), round(lat, 6)];
-  if (Number.isFinite(ele)) cleaned.push(round(ele, 1));
-  return cleaned;
+  // Written out whole each time: an array that is added to afterwards keeps room for sixteen more numbers.
+  return Number.isFinite(ele) ? [round(lon, 6), round(lat, 6), round(ele, 1)] : [round(lon, 6), round(lat, 6)];
 }
 
 const validTime = (time: string | undefined): string | undefined => (time && !Number.isNaN(Date.parse(time)) ? time : undefined);
