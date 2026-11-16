@@ -404,6 +404,28 @@ describe("a backup that does not read back", () => {
     fs.rmSync(work, { recursive: true, force: true });
   });
 
+  it("is not listed while it is being checked, and is listed as verified once it has been", async () => {
+    const w = await world();
+    await choose(w);
+    let checked = () => {};
+    let checking = (_file: string) => {};
+    const reached = new Promise<string>((resolve) => (checking = resolve));
+    w.app.ctx.services.backups.setBeforeCheck(async (file) => {
+      checking(file);
+      await new Promise<void>((resolve) => (checked = resolve));
+    });
+    const started = await w.app.api("POST", "/api/backup/run");
+    expect(started.status).toBe(200);
+    // Part of the way through its check: whole on the disk, but not yet a backup anyone should be shown.
+    expect(path.basename(await reached)).toMatch(/\.zip\.part$/);
+    expect(await w.stored()).toEqual([]);
+    checked();
+    w.app.ctx.services.backups.setBeforeCheck(undefined);
+    await w.app.ctx.jobs.whenIdle();
+    expect((await w.stored()).map((backup) => backup.check)).toEqual(["verified"]);
+    expect(fs.readdirSync(w.folder).filter((name) => name.endsWith(".part"))).toEqual([]);
+  });
+
   it("is not counted, is reported, and stays out of the way of the next good one", async () => {
     const w = await world();
     await choose(w, { keep: 1 });

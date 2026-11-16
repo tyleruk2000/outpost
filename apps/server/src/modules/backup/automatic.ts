@@ -57,6 +57,7 @@ import {
   isBackupName,
   listStored,
   partName,
+  recordName,
   setAsideFailed,
   writeRecord,
 } from "./stored.ts";
@@ -328,23 +329,27 @@ export function registerAutomaticBackups(
         );
       }
       if (await fs.promises.lstat(file).catch(() => undefined)) throw conflict(`A backup named ${name} is already there.`);
-      await fs.promises.rename(part, file);
     } catch (error) {
       await discard();
       throw error;
     }
 
+    // It is checked under its temporary name, and takes its own only once the record of its check is
+    // written beside it. (Renamed first, it was listed while it was being checked, as "Not verified:
+    // its check did not finish or did not pass", which is not what was happening.)
     run.progress({ message: "Reading the backup back to check it" });
-    const bytes = (await fs.promises.stat(file)).size;
+    const bytes = (await fs.promises.stat(part)).size;
     let check: Awaited<ReturnType<typeof verifyBackupFile>>;
     try {
-      await beforeCheck?.(file);
+      await beforeCheck?.(part);
       // A protected backup is read back with the key of this one file, which this run
       // still holds and which is wiped as soon as the check is over. After that only
       // the passphrase opens it, and the passphrase is not here.
-      check = await verifyBackupFile(file, dataDir, run.signal, backup.fileKey ? { fileKey: backup.fileKey } : undefined);
+      check = await verifyBackupFile(part, dataDir, run.signal, backup.fileKey ? { fileKey: backup.fileKey } : undefined);
     } catch (error) {
       backup.fileKey?.fill(0);
+      // Kept under its own name, as one that did not pass, as it was before the check was made under the temporary one.
+      await fs.promises.rename(part, file).catch(() => fs.promises.rm(part, { force: true }).catch(() => undefined));
       // Whether it failed its check or the check was cut short, this run's archive has not been shown to be good.
       const aside = await setAsideFailed(folder, name, bytes, Date.now()).catch(() => ({ kept: true, removed: [] as string[] }));
       if (aside.removed.length > 0) run.log.info({ removed: aside.removed }, "older backups that failed their check were removed");
@@ -359,7 +364,14 @@ export function registerAutomaticBackups(
       );
     }
     backup.fileKey?.fill(0);
-    await writeRecord(folder, name, bytes, check, Date.now());
+    try {
+      await writeRecord(folder, name, bytes, check, Date.now());
+      await fs.promises.rename(part, file);
+    } catch (error) {
+      await fs.promises.rm(path.join(folder, recordName(name)), { force: true }).catch(() => undefined);
+      await fs.promises.rm(part, { force: true }).catch(() => undefined);
+      throw error;
+    }
 
     const removed = await applyRetention(folder, kind, settings.keep).catch((error) => {
       // The backup itself is made and checked; old ones not being cleared is not its failure.
