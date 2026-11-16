@@ -32,6 +32,22 @@ describe("the scenario form", () => {
     expect(checkForm({ ...filled, windFrom: "90", windSpeed: "3" }).refused[0]).toMatch(/8 to 45/);
   });
 
+  it("leaves an unfinished or refused wind out of what is drawn, without losing the rest, and does not save it", () => {
+    for (const wind of [
+      { windFrom: "90" },
+      { windSpeed: "24" },
+      { windFrom: "west", windSpeed: "24" },
+      { windFrom: "90", windSpeed: "3" },
+    ]) {
+      const checked = checkForm({ ...filled, windFrom: "", windSpeed: "", ...wind });
+      expect(checked.effects, JSON.stringify(wind)).toMatchObject({ yieldKt: expect.any(Number), wind: null });
+      expect(checked.input, JSON.stringify(wind)).toBeNull();
+      expect(checked.problems.wind ?? checked.refused[0], JSON.stringify(wind)).toMatch(/wind/i);
+    }
+    // A refusal that is not about the wind still stops everything.
+    expect(checkForm({ ...filled, yieldValue: "20", yieldUnit: "Mt", windFrom: "90" }).effects).toBeNull();
+  });
+
   it("says what is missing or cannot be read", () => {
     expect(checkForm({ ...filled, where: "" }).problems.where).toMatch(/Choose ground zero/);
     expect(checkForm({ ...filled, where: "somewhere" }).problems.where).toMatch(/not a position/);

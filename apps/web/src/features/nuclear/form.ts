@@ -54,7 +54,10 @@ export type FormField = "where" | "yield" | "height" | "wind" | "name";
 export interface Checked {
   /** The input when every field could be read; null otherwise. */
   input: NuclearScenarioInput | null;
-  /** The effects input, when the parts the model needs could be read (the place and name may still be missing). */
+  /**
+   * The effects input, when the parts the model needs could be read (the place and name may still be missing).
+   * Its wind is null while the wind typed is unfinished or refused: the rings are still worked out and drawn.
+   */
   effects: EffectsInput | null;
   at: { lat: number; lon: number } | null;
   /** Problems by field, in words. */
@@ -92,14 +95,20 @@ export function checkForm(form: ScenarioForm): Checked {
 
   if (!form.name.trim()) problems.name = "Give the scenario a name to save it.";
 
-  const effects = problems.yield || problems.height || problems.wind ? null : { yieldKt, burst, wind };
-  const refused = effects ? effectsProblems(effects) : [];
+  // A wind that is half typed, or one the model refuses, costs the fallout pattern and nothing else: the rings
+  // do not depend on the wind, and taking them off the map while a speed is being typed reads as the whole
+  // scenario having gone. So the wind is judged apart from the rest, and left out of what is drawn until it is right.
+  const base = problems.yield || problems.height ? null : { yieldKt, burst };
+  const baseRefused = base ? effectsProblems({ ...base, wind: null }) : [];
+  const windRefused =
+    base && wind && baseRefused.length === 0 ? effectsProblems({ ...base, wind }).filter((reason) => !baseRefused.includes(reason)) : [];
+  const windRight = !problems.wind && windRefused.length === 0;
+  const effects = base && baseRefused.length === 0 ? { ...base, wind: windRight ? wind : null } : null;
   const at = found ? { lat: found.lat, lon: found.lon } : null;
+  // Saving waits for the wind to be finished or cleared: a scenario is never saved without a wind its form shows.
   const input =
-    effects && at && refused.length === 0 && !problems.name
-      ? { name: form.name.trim(), notes: form.notes, lat: at.lat, lon: at.lon, effects }
-      : null;
-  return { input, effects: refused.length === 0 ? effects : null, at, problems, refused };
+    effects && at && windRight && !problems.name ? { name: form.name.trim(), notes: form.notes, lat: at.lat, lon: at.lon, effects } : null;
+  return { input, effects, at, problems, refused: [...baseRefused, ...windRefused] };
 }
 
 /** A saved scenario back into the form, in the units it is easiest to read in. */

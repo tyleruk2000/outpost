@@ -184,6 +184,27 @@ describe("Nuclear preparedness", () => {
     );
   });
 
+  it("keeps the rings and the results while a wind is half typed or out of range: only the pattern waits", async () => {
+    serve();
+    fireEvent.click(await screen.findByRole("button", { name: "press the map" }));
+    await waitFor(() => expect(screen.getByTestId("drawn")).toHaveTextContent(/A · 5 psi · 1\.1 km/));
+    // The direction alone.
+    fireEvent.change(screen.getByLabelText("Wind from, degrees"), { target: { value: "270" } });
+    await waitFor(() => expect(screen.getByTestId("fallout-state")).toHaveTextContent(/give the wind's speed/));
+    expect(screen.getByTestId("drawn")).toHaveTextContent(/A · 5 psi · 1\.1 km/);
+    expect(screen.getByRole("region", { name: "What the model gives" })).toBeInTheDocument();
+    // The first digit of "24": a speed the model refuses.
+    fireEvent.change(screen.getByLabelText("Wind speed"), { target: { value: "2" } });
+    await waitFor(() => expect(screen.getByTestId("fallout-state")).toHaveTextContent(/13 to 72 km\/h/));
+    expect(screen.getByTestId("drawn")).toHaveTextContent(/A · 5 psi · 1\.1 km/);
+    expect(screen.getByRole("region", { name: "What the model gives" })).toBeInTheDocument();
+    expect(screen.getByTestId("plumes")).toHaveTextContent("0");
+    // Finished: the pattern joins the rings.
+    fireEvent.change(screen.getByLabelText("Wind speed"), { target: { value: "24" } });
+    await waitFor(() => expect(screen.getByTestId("plumes")).toHaveTextContent("4"));
+    expect(screen.getByTestId("drawn")).toHaveTextContent(/A · 5 psi · 1\.1 km/);
+  });
+
   it("draws the fallout plume for a surface burst with a wind", async () => {
     serve();
     fireEvent.click(await screen.findByRole("button", { name: "press the map" }));
