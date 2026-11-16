@@ -26,7 +26,7 @@ test.describe("QR codes on a phone", () => {
     await page.getByLabel("Password", { exact: true }).fill(PASSWORD);
     const code = page.getByRole("img", { name: `QR code: Wi-Fi: ${NETWORK}` });
     await expect(code).toBeVisible();
-    await expect(page.getByText("in the code, not written here")).toBeVisible();
+    await expect(page.getByRole("region", { name: "The code" }).getByText("in the code, not written here")).toBeVisible();
     // The sheet as a PDF is made on the device too: its buttons come alive without asking the server.
     await expect(page.getByRole("button", { name: "Add to library" })).toBeEnabled();
     await page.waitForTimeout(500);
