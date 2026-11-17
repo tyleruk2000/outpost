@@ -13,6 +13,26 @@ import { AutomaticBackups } from "./automatic-backups";
 import { BackupProtectionRow, passphraseHeader, passphraseProblem, RestorePassphrase, startsAsProtected } from "./backup-protection";
 import { SettingRow, SettingsSection } from "./parts";
 
+/**
+ * Reloads the page once the restarted server answers, rather than after a fixed wait that
+ * a slow computer (a Raspberry Pi) can outlast. Asks once a second, for up to two minutes.
+ */
+async function reloadWhenBack(): Promise<void> {
+  const wait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
+  const answers = () =>
+    fetch("/api/health", { cache: "no-store" }).then(
+      (response) => response.ok,
+      () => false,
+    );
+  // The old server takes a moment to stop; until it has, its answer means nothing.
+  for (let tries = 0; tries < 20 && (await answers()); tries++) await wait(500);
+  for (let tries = 0; tries < 120; tries++) {
+    await wait(1000);
+    if (await answers()) return window.location.reload();
+  }
+  toast.error("Outpost has not come back after two minutes. Check the computer it runs on, then reload this page.");
+}
+
 export function BackupSection() {
   const client = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -70,8 +90,8 @@ export function BackupSection() {
   const restart = useMutation({
     mutationFn: () => api.post("/api/system/restart"),
     onSuccess: () => {
-      toast.message("Outpost is restarting. This page will reconnect by itself.");
-      window.setTimeout(() => window.location.reload(), 6000);
+      toast.message("Outpost is restarting. This page will reload by itself once it is back.");
+      void reloadWhenBack();
     },
     onError: (error) => toast.error(errorMessage(error)),
   });

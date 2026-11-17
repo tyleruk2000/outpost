@@ -4,6 +4,8 @@ import type { AppContext } from "../../core/context.ts";
 import { createStorageService, defaultLocationPath, type LocationRow } from "./service.ts";
 import { registerShares } from "./shares/routes.ts";
 
+const SEARCH_EVERY_MS = 10 * 60 * 1000;
+
 const kind = z.enum(["internal", "external", "network", "volume"]);
 
 function toDto(row: LocationRow) {
@@ -36,13 +38,19 @@ export async function registerStorage(app: FastifyInstance, ctx: AppContext): Pr
   // locations back; registerShares re-checks them when it has.
   await registerShares(app, ctx);
 
+  // The regular check notices a drive unplugged or plugged back in. Looking for a missing
+  // location under every root (it may have come back at another path) is a walk of
+  // folders, so the check does that at most every ten minutes; "Check drives" does it now.
   let timer: NodeJS.Timeout | undefined;
+  let searchedAt = Date.now();
   const schedule = () => {
     if (timer) clearInterval(timer);
     timer = setInterval(() => {
       // While space is being reclaimed nothing can be written; the next check sees whatever changed.
       if (ctx.services.database?.busy()) return;
-      storage.refresh().catch((error) => ctx.log.error({ err: error }, "storage check failed"));
+      const search = Date.now() - searchedAt >= SEARCH_EVERY_MS;
+      if (search) searchedAt = Date.now();
+      storage.refresh({ search }).catch((error) => ctx.log.error({ err: error }, "storage check failed"));
     }, settings.get("storage.checkIntervalSeconds") * 1000);
     timer.unref();
   };

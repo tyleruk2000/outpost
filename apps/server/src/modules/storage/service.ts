@@ -91,8 +91,12 @@ export interface StorageService {
   add(input: { name: string; path: string; kind: LocationKind; makeDefault?: boolean }): Promise<LocationRow>;
   update(id: string, patch: { name?: string; kind?: LocationKind; isDefault?: boolean }): LocationRow;
   remove(id: string): void;
-  /** Re-checks every location: availability, capacity, and whether it has moved. */
-  refresh(): Promise<LocationRow[]>;
+  /**
+   * Re-checks every location: availability, capacity, and whether it has moved. With
+   * `search: false` a location that is away is looked for only where it was, not under
+   * every root (the regular check does that at most every few minutes).
+   */
+  refresh(options?: { search?: boolean }): Promise<LocationRow[]>;
   browse(target?: string): Promise<BrowseResult>;
   /** Absolute path for a file in a location. Throws if the location is not connected. */
   resolve(locationId: string, relPath: string): string;
@@ -110,6 +114,17 @@ declare module "../../core/context.ts" {
 
 /** Space always left free on a location, so a full disk never corrupts a transfer. */
 export const SPACE_RESERVE_BYTES = 256 * 1024 * 1024;
+
+/**
+ * Free space moves all the time on a disk in use. A move smaller than this (or than half
+ * a per cent of the disk, if that is more) is not recorded or announced by a check.
+ */
+const FREE_SPACE_STEP_BYTES = 256 * 1024 * 1024;
+
+function freeSpaceMoved(before: number | null, after: number | null, total: number | null): boolean {
+  if (before === null || after === null) return before !== after;
+  return Math.abs(after - before) >= Math.max(FREE_SPACE_STEP_BYTES, (total ?? 0) * 0.005);
+}
 
 async function capacity(dir: string): Promise<{ totalBytes: number; freeBytes: number } | undefined> {
   try {
@@ -213,8 +228,10 @@ export function createStorageService(ctx: AppContext): StorageService {
     db.update(storageLocations).set({ isDefault: true, updatedAt: Date.now() }).where(eq(storageLocations.id, id)).run();
   }
 
-  async function check(row: LocationRow): Promise<boolean> {
-    const before = `${row.status}|${row.path}|${row.freeBytes}|${row.totalBytes}|${row.statusDetail}`;
+  /** When each location was last found where it should be, between writes of it. */
+  const seenAt = new Map<string, number>();
+
+  async function check(row: LocationRow, search: boolean): Promise<boolean> {
     let currentPath = row.path;
     // The storage roots are the boundary set by whoever started the server, and they can
     // change between starts. A folder outside them is not used, even if it is still
@@ -223,7 +240,11 @@ export function createStorageService(ctx: AppContext): StorageService {
     let marker = allowed ? await readMarker(currentPath) : undefined;
     let detail: string | null = null;
 
-    if (marker?.id !== row.id) {
+    if (marker?.id !== row.id && !search && row.status === "unavailable") {
+      // Already away, and the roots were searched for it lately: only where it was is looked at.
+      marker = undefined;
+      detail = row.statusDetail;
+    } else if (marker?.id !== row.id) {
       // Not where it was, or no longer somewhere Outpost may use. Look for the marker
       // under each root before giving up.
       marker = undefined;
@@ -261,11 +282,23 @@ export function createStorageService(ctx: AppContext): StorageService {
       statusDetail: detail,
       totalBytes: space?.totalBytes ?? row.totalBytes,
       freeBytes: marker ? (space?.freeBytes ?? null) : row.freeBytes,
-      lastSeenAt: marker ? Date.now() : row.lastSeenAt,
+      lastSeenAt: marker ? Date.now() : Math.max(row.lastSeenAt ?? 0, seenAt.get(row.id) ?? 0) || row.lastSeenAt,
     };
-    const after = `${patch.status}|${patch.path}|${patch.freeBytes}|${patch.totalBytes}|${patch.statusDetail}`;
-    db.update(storageLocations).set(patch).where(eq(storageLocations.id, row.id)).run();
-    return before !== after;
+    // What a person would call a change: a location going away or coming back, moving, or
+    // a different disk. Only that is announced (as `storage.changed`, which every open
+    // screen acts on). Free space is recorded when it has moved noticeably, for the next
+    // screen that reads the list, but never announced.
+    const changed =
+      patch.status !== row.status ||
+      patch.path !== row.path ||
+      patch.statusDetail !== row.statusDetail ||
+      patch.totalBytes !== row.totalBytes;
+    const spaceMoved = freeSpaceMoved(row.freeBytes, patch.freeBytes, patch.totalBytes);
+    // When it was last seen is held here and written when it goes away (or hourly, for a restart).
+    if (marker) seenAt.set(row.id, patch.lastSeenAt ?? Date.now());
+    const stale = marker !== undefined && Date.now() - (row.lastSeenAt ?? 0) >= 3_600_000;
+    if (changed || spaceMoved || stale) db.update(storageLocations).set(patch).where(eq(storageLocations.id, row.id)).run();
+    return changed;
   }
 
   const service: StorageService = {
@@ -365,9 +398,9 @@ export function createStorageService(ctx: AppContext): StorageService {
       ctx.events.publish({ type: "storage.changed" });
     },
 
-    async refresh() {
+    async refresh(options) {
       let changed = false;
-      for (const row of list()) changed = (await check(row)) || changed;
+      for (const row of list()) changed = (await check(row, options?.search ?? true)) || changed;
       if (changed) ctx.events.publish({ type: "storage.changed" });
       return list();
     },

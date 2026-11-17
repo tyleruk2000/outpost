@@ -96,7 +96,8 @@ const TABLES: Record<string, Decision> = {
   },
   drive_baseline: {
     group: "other",
-    keptByErase: "On a drive, what it held when written: ids and fingerprints, no content. Empty at home.",
+    keptByErase:
+      "Empty at home. On a drive (one with a drive.baseline record) erasing empties it and cuts the drive loose from its library (test/manage.test.ts).",
     // Written afresh for the drive.
     drive: true,
   },

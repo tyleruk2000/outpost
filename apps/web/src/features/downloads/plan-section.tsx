@@ -64,7 +64,7 @@ export const PlanSection = memo(function PlanSection({
       {landing || moving ? (
         <div className="mt-9 grid grid-cols-[minmax(0,1fr)] gap-x-12 gap-y-9 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
           {landing ? <PlanStorage locations={plan.locations} /> : null}
-          {moving ? <PlanThroughput limit={plan.rateLimitBytesPerSecond} /> : null}
+          {moving ? <PlanThroughput limit={plan.rateLimitBytesPerSecond} transferring={plan.counts.active > 0} /> : null}
         </div>
       ) : null}
     </section>

@@ -171,7 +171,8 @@ What happens when you turn it on:
   authority may sign for, and `localhost`.
 - A second listener answers on port 8443 (`OUTPOST_HTTPS_PORT`), on the same address as
   the HTTP one, and serves the same app and API under the same rules.
-- Every 30 seconds Outpost looks at the computer's addresses and the certificate's age.
+- Every five minutes (every 30 seconds while something stands in the way, such as the
+  port being taken) Outpost looks at the computer's addresses and the certificate's age.
   If an address has changed (a router handing out a new one, a different network) or
   the certificate has under 30 days left, a new server certificate is issued and used at
   once. Devices trust the authority, not the server certificate, so they have nothing to
@@ -646,9 +647,9 @@ computer trusts, and says so.
 
 A certificate from a public authority lasts 90 days or less (Let's Encrypt: 90 days
 today, 45 days by 2028, and six days for those who ask) and is replaced by a script.
-**The script only has to replace the two files in `tls/own`.** Every 30 seconds Outpost
-looks at the folder, and takes up a new certificate and key without a restart and
-without closing the port. For example, after each renewal:
+**The script only has to replace the two files in `tls/own`.** Every five minutes (every
+30 seconds while a file there is missing or cannot be used) Outpost looks at the folder,
+and takes up a new certificate and key without a restart and without closing the port. For example, after each renewal:
 
 ```bash
 install -m 644 /etc/letsencrypt/live/outpost.example.net/fullchain.pem /srv/outpost/data/tls/own/fullchain.pem

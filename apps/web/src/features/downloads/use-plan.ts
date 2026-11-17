@@ -17,8 +17,9 @@ export const detailKey = (id: string) => ["downloads", "detail", id] as const;
 const REFRESH_MS = 2500;
 
 /**
- * What the queue will do. Fetched again every few seconds while anything is running or
- * waiting; when everything is paused or done it only changes when a download does.
+ * What the queue will do. Fetched again every few seconds while anything is transferring
+ * (and the page is in view); otherwise it only changes when a download changes state,
+ * which the live events announce.
  */
 export function usePlan(options: { enabled?: boolean } = {}) {
   return useQuery({
@@ -27,19 +28,19 @@ export function usePlan(options: { enabled?: boolean } = {}) {
     enabled: options.enabled ?? true,
     refetchInterval: (query) => {
       const counts = query.state.data?.counts;
-      return counts && counts.active + counts.waiting > 0 ? REFRESH_MS : false;
+      return counts && counts.active > 0 ? REFRESH_MS : false;
     },
   });
 }
 
-/** Everything known about one download; refreshed while it is still on its way. */
+/** Everything known about one download; refreshed while it is transferring or being checked. A queued one changes state by event. */
 export function useDownloadDetail(id: string) {
   return useQuery({
     queryKey: detailKey(id),
     queryFn: () => api.get<DownloadDetail>(`/api/downloads/${encodeURIComponent(id)}`),
     refetchInterval: (query) => {
       const state = query.state.data?.download.state;
-      return state === "running" || state === "verifying" || state === "queued" ? REFRESH_MS : false;
+      return state === "running" || state === "verifying" ? REFRESH_MS : false;
     },
   });
 }
@@ -59,15 +60,27 @@ export function useQueueAction() {
   });
 }
 
-/** The present time, refreshed on an interval, for countdowns and clock times. */
+/** Whether the page is in view: false in a background tab or on a locked phone. */
+export function usePageVisible(): boolean {
+  const [visible, setVisible] = useState(() => document.visibilityState !== "hidden");
+  useEffect(() => {
+    const update = () => setVisible(document.visibilityState !== "hidden");
+    document.addEventListener("visibilitychange", update);
+    return () => document.removeEventListener("visibilitychange", update);
+  }, []);
+  return visible;
+}
+
+/** The present time, refreshed on an interval while the page is in view, for countdowns and clock times. */
 export function useNow(intervalMs: number, enabled = true): number {
   const [now, setNow] = useState(() => Date.now());
+  const visible = usePageVisible();
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled || !visible) return;
     setNow(Date.now());
     const timer = window.setInterval(() => setNow(Date.now()), intervalMs);
     return () => window.clearInterval(timer);
-  }, [intervalMs, enabled]);
+  }, [intervalMs, enabled, visible]);
   return now;
 }
 
@@ -75,18 +88,21 @@ export function useNow(intervalMs: number, enabled = true): number {
 export const THROUGHPUT_WINDOW_SECONDS = 300;
 
 /**
- * Total download speed, sampled once a second for as long as the screen is open. The
- * readings are the sum of what each running download reports, read from the cached list
- * (which live events keep current), so sampling causes no requests and no re-render of
- * anything but its own chart. It starts empty: nothing is known about before the screen opened.
+ * Total download speed, sampled once a second while something is transferring and the
+ * page is in view. The readings are the sum of what each running download reports, read
+ * from the cached list (which live events keep current), so sampling causes no requests
+ * and no re-render of anything but its own chart. When nothing is transferring one last
+ * reading of nothing is taken and sampling stops. It starts empty: nothing is known
+ * about before the screen opened.
  */
-export function useThroughput(): Reading[] {
+export function useThroughput(transferring: boolean): Reading[] {
   const client = useQueryClient();
   // While the server cannot be heard, the cached speeds are old news; nothing is recorded, and the line shows a gap.
   const connected = useServerConnection();
+  const visible = usePageVisible();
   const [readings, setReadings] = useState<Reading[]>([]);
   useEffect(() => {
-    if (!connected) return;
+    if (!connected || !visible) return;
     const sample = () => {
       const list = client.getQueryData<DownloadsResponse>(downloadsKey)?.downloads;
       if (!list) return;
@@ -99,8 +115,9 @@ export function useThroughput(): Reading[] {
       });
     };
     sample();
+    if (!transferring) return;
     const timer = window.setInterval(sample, 1000);
     return () => window.clearInterval(timer);
-  }, [client, connected]);
+  }, [client, connected, visible, transferring]);
   return readings;
 }

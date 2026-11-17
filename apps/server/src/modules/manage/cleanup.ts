@@ -268,6 +268,8 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
         emergencyPlans: ctx.services.emergencyPlans.kept.count(),
         morse: ctx.services.morse.kept.count(),
         games: ctx.services.games.kept.count(),
+        pgpKeys: count("SELECT count(*) AS n FROM pgp_keys"),
+        driveMerges: count("SELECT count(*) AS n FROM drive_merges"),
         settings: count("SELECT count(*) AS n FROM settings"),
         vectors: count("SELECT count(*) AS n FROM embeddings"),
         previous: previousData(),
@@ -531,6 +533,8 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
       emergencyPlans: 0,
       morse: { sessions: 0, progress: 0 },
       games: { saves: 0 },
+      pgpKeys: 0,
+      driveMerges: 0,
       settings: 0,
     };
     personal.attachments = (sqlite.prepare("SELECT count(*) AS n FROM attachments").get() as { n: number }).n;
@@ -598,10 +602,22 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
       if (!pagesLeft) db.delete(attachmentsTable).run();
       db.delete(importsTable).run();
       // Records of drive merges hold earlier versions of pages: they are the person's own words too.
-      db.delete(driveMergesTable).run();
+      personal.driveMerges = db.delete(driveMergesTable).run().changes;
       db.delete(downloadsTable).run();
       // Keys, and any protected private key kept here, are the person's own too.
-      db.delete(pgpKeys).run();
+      personal.pgpKeys = db.delete(pgpKeys).run().changes;
+      // On a portable drive: the record of what it held when it was written. Kept, a merge
+      // home would read everything erased here as removed on the drive and offer to remove
+      // it at home too. Instead the drive stops being a copy of that library: what is made
+      // on it from now on is brought home as new, and nothing is taken as removed.
+      if (sqlite.prepare("SELECT 1 FROM library_meta WHERE key = 'drive.baseline'").get()) {
+        sqlite.prepare("DELETE FROM drive_baseline").run();
+        const meta = sqlite.prepare(
+          "INSERT INTO library_meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        );
+        meta.run("drive.madeFrom", "erased");
+        meta.run("drive.writtenAt", String(Date.now()));
+      }
       db.delete(embeddings).run();
       db.delete(embeddingModels).run();
       sqlite

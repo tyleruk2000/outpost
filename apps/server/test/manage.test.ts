@@ -12,6 +12,7 @@ import type { CleanupPlan, CleanupResult, Leftover, ManagedItem, UsageResponse }
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AppError } from "../src/core/errors.ts";
 import { isLocalRequest, isLoopbackAddress } from "../src/core/local.ts";
+import { readBaseline } from "../src/modules/merge/fingerprint.ts";
 import { buildPdf, multipart } from "./fixtures/documents/builders.ts";
 import { type FileServer, startFileServer, testBytes, waitFor } from "./fixtures/downloads/file-server.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
@@ -1019,5 +1020,65 @@ describe("erase everything", () => {
     expect((await app.api("GET", `/api/chat/conversations/${first.id}`)).status).toBe(404);
     expect((await app.api("GET", "/api/repeaters/overview")).body).toMatchObject({ total: 0, ownCount: 0, lists: [] });
     expect((await app.api("GET", "/api/search?q=QZ3HAND")).body.results).toEqual([]);
+  });
+});
+
+describe("when what is stored is counted again", () => {
+  it("does not walk the folders again just because a screen asked, unless something changed or an hour has gone", async () => {
+    app = await createTestApp();
+    const first = await measured(app);
+    const start = Date.now();
+    const clock = vi.spyOn(Date, "now");
+
+    clock.mockReturnValue(start + 10 * 60_000);
+    expect((await app.api<UsageResponse>("GET", "/api/manage/usage")).body).toMatchObject({
+      measuring: false,
+      measuredAt: first.measuredAt,
+    });
+
+    // Something changed in Outpost: the next look counts again.
+    app.ctx.events.publish({ type: "documents.changed" });
+    expect((await app.api<UsageResponse>("GET", "/api/manage/usage")).body.measuring).toBe(true);
+    clock.mockRestore();
+    const second = await measured(app);
+
+    // Nothing changed, but files may have been changed by hand: an hour later it counts again.
+    vi.spyOn(Date, "now").mockReturnValue(second.measuredAt! + 61 * 60_000);
+    expect((await app.api<UsageResponse>("GET", "/api/manage/usage")).body.measuring).toBe(true);
+  });
+});
+
+describe("erasing everything on a portable drive", () => {
+  it("cuts the drive's tie to the library it was written from, so a merge home cannot read everything as removed", async () => {
+    app = await createTestApp();
+    const db = app.ctx.sqlite;
+    // What writing a drive leaves in its database (merge/fingerprint.ts).
+    db.prepare("INSERT INTO drive_baseline (kind, item_id, hash, parent_id, trashed) VALUES ('page', 'p1', 'h', NULL, 0)").run();
+    const meta = db.prepare("INSERT INTO library_meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value");
+    meta.run("drive.madeFrom", "home-library");
+    meta.run("drive.writtenAt", "1000");
+    meta.run("drive.baseline", "1");
+
+    const started = await app.api("POST", "/api/manage/cleanup/everything", { confirm: "erase everything" });
+    expect(started.status).toBe(200);
+    await waitFor(() => {
+      const job = app!.ctx.jobs.get(started.body.job.id);
+      return job && ["succeeded", "failed"].includes(job.state) ? job : undefined;
+    }, "the erase");
+
+    const recorded = readBaseline(db);
+    expect(recorded?.pages.size).toBe(0);
+    expect(recorded?.madeFrom).toBe("erased");
+    expect(recorded?.writtenAt).toBeGreaterThan(1000);
+  });
+
+  it("leaves a library that was never a drive without any such record", async () => {
+    app = await createTestApp();
+    const started = await app.api("POST", "/api/manage/cleanup/everything", { confirm: "erase everything" });
+    await waitFor(() => {
+      const job = app!.ctx.jobs.get(started.body.job.id);
+      return job && ["succeeded", "failed"].includes(job.state) ? job : undefined;
+    }, "the erase");
+    expect(readBaseline(app.ctx.sqlite)).toBeNull();
   });
 });

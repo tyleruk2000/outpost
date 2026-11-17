@@ -134,14 +134,14 @@ The detail under the location says which case it is.
 
 - **"The folder is not reachable. The drive may be unplugged or the share not
   mounted."** Plug the drive in or mount the share. Outpost notices within about 30
-  seconds, or straight away if you refresh the Storage screen. With Docker, a drive
+  seconds, or straight away if you press **Check drives** on the Storage screen. With Docker, a drive
   that was not mounted when the containers started may need
   `docker compose restart`.
 - **"The folder is there but is not this Outpost location. The drive mounted at this
   path may be a different one."** The marker file `.outpost-location.json` is missing
   or belongs to another location. Check that the right drive is mounted. If the drive
   now appears at a different path inside a storage root, Outpost finds it by itself,
-  up to three folders deep.
+  up to three folders deep, within ten minutes, or at once with **Check drives**.
 
 Nothing is lost while a location is disconnected. See
 [storage.md](storage.md#what-happens-when-a-drive-is-unplugged).

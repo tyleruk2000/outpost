@@ -72,6 +72,10 @@ describe("the database on the Storage screen", () => {
     const now = await measured(app);
     expect(now.contents!.counts.every((entry) => entry.count === 0)).toBe(true);
     expect(now.contents!.counts.map((entry) => entry.id)).toContain("passages");
+    // A person's own lists of repeaters, weather places, keys and reference layers are counted too.
+    expect(now.contents!.counts.map((entry) => entry.id)).toEqual(
+      expect.arrayContaining(["repeaterLists", "weatherPlaces", "pgpKeys", "referenceRecords"]),
+    );
     // Nothing in the answer is a setting's value or a key.
     expect(JSON.stringify(now)).not.toMatch(/passphrase|secret|privateKey/i);
   });

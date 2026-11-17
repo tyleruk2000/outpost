@@ -112,7 +112,7 @@ When the server is stopping it sends `server.stopping` and ends the stream; a br
 | `job.updated` | A background job changes state or progress | job id / the job (`JobDto`) |
 | `download.updated` | A download changes state or progress | download id / the download |
 | `download.removed` | A download is removed from the list | download id |
-| `storage.changed` | A location is added, changed, removed, connected or disconnected | |
+| `storage.changed` | A location is added, changed, removed, connected or disconnected, or found at a new path. Not sent for free space moving. | |
 | `settings.changed` | Settings are saved | |
 | `documents.changed` | A document is added, changed or removed | document id, when one |
 | `notes.changed` | A page is created, changed, moved, trashed or restored | page id; after a save also `data: { updatedAt, origin }` (`NoteChangedEvent`) |
@@ -271,6 +271,9 @@ runs directly on a Mac; `mode` in the first route says which case applies (`maco
 | --- | --- |
 | `GET /api/storage/shares` | `{ mode, shares, hints }` (`NetworkSharesResponse`): the shares Outpost knows, each with its status and the storage locations on it. No response ever contains a password. |
 | `GET /api/storage/shares/discover` | `{ supported, servers }`: file servers that announce themselves on the local network. `supported` is false anywhere but a Mac run directly. |
+| `POST /api/storage/shares/list` | The shared folders a server offers, so one can be picked rather than typed. Body: `server`, `port?`, `userName`, `password`, as for connecting; the password is used for this one question and not kept. `{ shares, unusable }` (`ServerSharesResponse`); `unusable` counts shares whose names have characters Outpost does not accept. |
+| `GET /api/storage/shares/mounted` | `{ mounts }` (`MountedSharesResponse`): network volumes connected on this Mac already, by Outpost or from the Finder, each with whether Outpost can use it and why not. |
+| `POST /api/storage/shares/adopt` | Starts using a volume that is connected already. Body: `mountPath` (where it is mounted, from the list above). Answers as connecting does. |
 | `POST /api/storage/shares` | Connects an SMB share. Body (`ConnectShareRequest`): `server`, `port?`, `share`, `userName`, `password`, `rememberPassword`. Answers `{ share, note? }`. |
 | `POST /api/storage/shares/:id/reconnect` | Body: `password?`, `rememberPassword?`. Without a password, the one remembered in the Keychain is used. |
 | `POST /api/storage/shares/:id/disconnect` | Unmounts the share. Answers `409 conflict` with `details.work` while something is using it, unless the body is `{ "confirm": true }`. |
@@ -315,7 +318,7 @@ Types: `SemanticStatus` in `packages/shared/src/semantic.ts`.
 | Method and path | Purpose |
 | --- | --- |
 | `GET /api/semantic/status` | Whether it is enabled and ready, the model, counts of passages and vectors, other models with stored vectors, whether a build is running, `build` (the latest index build for the current model as a job, in whatever state, or null), `secondsLeft` (what a running build still needs at its own speed, or null), `keptChunks` (passages already embedded for the model that switching on would use, counted whether it is on or off) and `builtIn` (the model that ships with Outpost: whether it is installed, its name, licence, size, dimensions and threads). `?fresh=1` asks the model again now rather than trusting an answer from the last minute. |
-| `POST /api/jobs/:id/pause`, `/cancel` | Pause or stop the build named in `build`. `POST /api/semantic/index` continues a paused one. |
+| `POST /api/jobs/:id/pause`, `POST /api/jobs/:id/cancel` | Pause or stop the build named in `build`. `POST /api/semantic/index` continues a paused one. |
 | `POST /api/semantic/index` | Starts (or continues) building vectors for the current model. `409` if no provider is configured or it does not answer. Answers the status. Not needed in the ordinary way: setting `search.semantic.enabled` to true starts the build, and so does naming another model while it is on. |
 | `POST /api/semantic/use-built-in` | Switches search by meaning on with the model that ships with Outpost, whatever it was pointed at before, and starts the build. Answers the status. `409` when that model is not part of the installation; nothing is changed then. |
 | `POST /api/semantic/test` | Body: `text`. Embeds it once and answers `{ modelId, dimensions, tookMs }`. |
@@ -1076,7 +1079,7 @@ book is one item, keyed by its collection, with its documents listed in `documen
 
 | Method and path | Purpose |
 | --- | --- |
-| `GET /api/manage/usage` | What is taking the space (`UsageResponse`): `rows` by kind, each with `bytes` (null while still being counted), `count`, `basis` (`records`, `disk` or `estimate`), `disconnectedBytes` and `within` (set when the row is part of another, as passages and vectors are part of the database); `locations` with capacity, free space, what Outpost's records say is there and what was measured on disk (null when not connected); `dataDir`; `measuredAt` and `measuring`. Starts a count in the background if the last is more than five minutes old or something has changed. |
+| `GET /api/manage/usage` | What is taking the space (`UsageResponse`): `rows` by kind, each with `bytes` (null while still being counted), `count`, `basis` (`records`, `disk` or `estimate`), `disconnectedBytes` and `within` (set when the row is part of another, as passages and vectors are part of the database); `locations` with capacity, free space, what Outpost's records say is there and what was measured on disk (null when not connected); `dataDir`; `measuredAt` and `measuring`. Starts a count in the background if something has changed in Outpost since the last, or the last is more than an hour old. |
 | `POST /api/manage/measure` | Checks drives and starts a count now. Same answer as above. |
 | `GET /api/manage/items` | Everything installed: `{ items: ManagedItem[] }`, each with `key`, `kind` (`zim`, `map`, `terrain`, `places`, `sheet`, `file`, `model`, `document`), `origin` (`downloaded` or `own`), size, date added, location and whether it is connected, `state` (`ok`, `missing`, `damaged`, `busy`) and `busyReason`. |
 | `POST /api/manage/plan` | What a removal would do, by the rules of the removal itself. Changes nothing. Body: `{ scope: "items", keys, files?, disconnected? }`, `{ scope: "downloaded", disconnected? }` or `{ scope: "everything" }`. Answers a `CleanupPlan`: `changes`, `remove` (count and bytes), `byKind`, `byLocation` (deleted and staying, per location), `own`, `linkedDocuments`, `disconnected` and `outside` (with file paths), `refused` (with reasons), `downloads`, and for `everything` `personal`. |

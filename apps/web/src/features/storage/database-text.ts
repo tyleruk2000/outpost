@@ -28,6 +28,10 @@ const COUNT_WORDS: Record<DatabaseCountId, [string, string]> = {
   emergencyPlans: ["emergency plan", "emergency plans"],
   morseSessions: ["Morse practice session", "Morse practice sessions"],
   gameSaves: ["game kept for the household", "games kept for the household"],
+  repeaterLists: ["list of repeaters", "lists of repeaters"],
+  weatherPlaces: ["weather place", "weather places"],
+  pgpKeys: ["PGP key", "PGP keys"],
+  referenceRecords: ["record in the map's reference layers", "records in the map's reference layers"],
 };
 
 /** "68,600 passages in the search index", for each count above nought. */
@@ -40,13 +44,16 @@ export const GROUP_WORDS: Record<DatabaseGroupId, { label: string; detail: strin
   meaning: { label: "Search by meaning", detail: "A vector for each passage read" },
   library: { label: "Library records", detail: "Documents, collections, downloads" },
   notes: { label: "Notes", detail: "Pages, links, attachment records" },
-  maps: { label: "Maps", detail: "Saved places, routes, place names" },
+  maps: { label: "Maps", detail: "Saved places, routes, place names, reference layers, nuclear effects scenarios" },
   radio: { label: "Radio", detail: "Repeaters, plans, the log, predictions, Morse practice" },
   prepare: {
     label: "Preparedness",
-    detail: "Emergency plans, supplies and the shopping list, weather and barometer readings, saved scenarios",
+    detail: "Emergency plans, supplies and the shopping list, weather places and barometer readings",
   },
-  other: { label: "Everything else", detail: "Contacts, chat, settings, the games, the history of work" },
+  other: {
+    label: "Everything else",
+    detail: "Contacts and PGP keys, chat, power plans, devices on the network, the games, settings, the history of work",
+  },
 };
 
 /** "0.4 seconds", "12 seconds", "3 minutes". */

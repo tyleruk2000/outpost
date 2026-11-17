@@ -557,6 +557,21 @@ describe("a certificate of your own, in Settings", () => {
     expect(await screen.findByRole("heading", { name: "Your certificate" })).toBeInTheDocument();
   });
 
+  it("on another device, says before the press that a pair already in the folder can only be replaced at the computer itself", async () => {
+    at("https://192.168.1.77:8443/settings");
+    serve({
+      status: status({
+        authorityRight: { allowed: false, reason: "remote", option: "OUTPOST_ALLOW_REMOTE_ERASE" },
+        own: { ...noOwn, keyRight: { allowed: true, reason: "https" }, inFolder: { certificate: true, key: true } },
+      }),
+    });
+    show(off);
+    const choice = await open();
+    expect(within(choice).getByText("Only at the computer Outpost runs on")).toBeVisible();
+    await userEvent.upload(within(choice).getByLabelText("Certificate file"), file("fullchain.pem"));
+    expect(within(choice).getByRole("button", { name: "Use this certificate" })).toBeDisabled();
+  });
+
   it("on another device over plain http with HTTPS running, links to this page over HTTPS, and still offers the folder", async () => {
     at("http://192.168.1.20:8080/settings");
     const remote = { ...noOwn, keyRight: { allowed: false, reason: "remote" } as const, inFolder: { certificate: true, key: false } };
@@ -581,7 +596,7 @@ describe("a certificate of your own, in Settings", () => {
     expect(rows[0]).toHaveTextContent("There");
     expect(rows[1]).toHaveTextContent("/srv/outpost/data/tls/own/privkey.pem");
     expect(rows[1]).toHaveTextContent("Not there yet");
-    expect(choice).toHaveTextContent("Outpost looks at the folder every half minute and takes up new files by itself");
+    expect(choice).toHaveTextContent("Outpost looks at the folder every five minutes (every half minute while a file is missing");
     await userEvent.click(within(choice).getByRole("button", { name: "Use them" }));
     await waitFor(() => expect(calls).toContain("POST /api/https/own/use"));
     expect(await within(choice).findByRole("alert")).toHaveTextContent("did not find privkey.pem");

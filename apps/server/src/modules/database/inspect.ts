@@ -102,6 +102,10 @@ const COUNTS: Array<{ id: DatabaseCountId; table: string; sql: string }> = [
   { id: "emergencyPlans", table: "emergency_plans", sql: "SELECT count(*) AS n FROM emergency_plans" },
   { id: "morseSessions", table: "morse_sessions", sql: "SELECT count(*) AS n FROM morse_sessions" },
   { id: "gameSaves", table: "game_saves", sql: "SELECT count(*) AS n FROM game_saves" },
+  { id: "repeaterLists", table: "repeater_lists", sql: "SELECT count(*) AS n FROM repeater_lists" },
+  { id: "weatherPlaces", table: "weather_places", sql: "SELECT count(*) AS n FROM weather_places" },
+  { id: "pgpKeys", table: "pgp_keys", sql: "SELECT count(*) AS n FROM pgp_keys" },
+  { id: "referenceRecords", table: "reference_features", sql: "SELECT count(*) AS n FROM reference_features" },
 ];
 
 /** The group of the Storage screen a table's bytes are counted in. */

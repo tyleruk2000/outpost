@@ -117,6 +117,25 @@ describe("what a removal says before it happens", () => {
     ).toBe("Also erased: the history of downloads and other work.");
   });
 
+  it("names PGP keys and the records of merges from drives among what an erase takes", () => {
+    const none = {
+      pages: 0,
+      attachments: { count: 0, bytes: 0 },
+      places: 0,
+      routes: 0,
+      contacts: 0,
+      conversations: 0,
+      repeaters: 0,
+      repeaterLists: 0,
+      settings: 0,
+      vectors: 0,
+      previous: { count: 0, bytes: 0 },
+    };
+    expect(personalWords({ ...none, pgpKeys: 2, driveMerges: 1 })).toBe(
+      "Also erased: 2 PGP keys, 1 record of a merge from a drive and the history of downloads and other work.",
+    );
+  });
+
   it("counts what the HF planner keeps among the person's own things", () => {
     const none = {
       pages: 0,

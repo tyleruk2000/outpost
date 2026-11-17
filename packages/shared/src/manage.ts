@@ -139,6 +139,10 @@ export interface CleanupPlan {
     morse?: MorseKept;
     /** The games: the allotment's plot and each game's tally, one row each. Absent from a plan made before they were counted. */
     games?: GamesKept;
+    /** PGP keys kept for contacts, any private key of the person's own among them. Absent from a plan made before they were counted. */
+    pgpKeys?: number;
+    /** Records of merges from portable drives, which hold earlier versions of pages. Absent from a plan made before they were counted. */
+    driveMerges?: number;
     settings: number;
     vectors: number;
     /** Copies of the database and attachments that a restore set aside. */
@@ -215,6 +219,8 @@ export interface CleanupResult extends Record<string, unknown> {
     emergencyPlans?: number;
     morse?: MorseKept;
     games?: GamesKept;
+    pgpKeys?: number;
+    driveMerges?: number;
     settings: number;
   };
 }

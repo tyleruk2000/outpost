@@ -74,7 +74,14 @@ const SUBJECT = "backup";
 const SETTING_KEY = "backup.schedule";
 /** What has happened so far. A fact about this library, not a setting, so it is kept with those. */
 const STATE_KEY = "backup.state";
-const TICK_MS = 60_000;
+/**
+ * The longest the schedule sleeps before looking again, even when nothing is due sooner:
+ * a timer counts time passing, and the clock it is set from can be changed meanwhile (a
+ * new time zone, a Raspberry Pi that boots without the time and is told it later).
+ */
+const LONGEST_SLEEP_MS = 6 * 60 * 60 * 1000;
+/** While space is being reclaimed in the database, how soon to look again. */
+const HELD_RETRY_MS = 60_000;
 /** After a scheduled backup fails, how long before it is tried again. Doubled for each failure in a row. */
 export const RETRY_AFTER_FAILURE_MS = 60 * 60 * 1000;
 /** The longest wait between tries, however many have failed. */
@@ -118,8 +125,13 @@ interface RunPayload extends Record<string, unknown> {
 }
 
 export interface BackupsService {
-  /** Starts a scheduled backup if one is due and can be made. Run every minute, at start, and when storage changes. */
+  /**
+   * Starts a scheduled backup if one is due and can be made, then sleeps until the next
+   * time one could be. Run then, at start, when storage changes and when the schedule does.
+   */
   tick(): void;
+  /** When the schedule will next look by itself, or null when nothing is scheduled. For tests. */
+  nextWake(): number | null;
   /** The newest backup that passed its check, how it was started, and whether backups are scheduled. For the Storage screen. */
   last(): { lastAt: number | null; kind: StoredBackupKind | null; scheduled: boolean };
   /** Tests move time: everything the schedule decides is decided by this clock. */
@@ -213,30 +225,55 @@ export function registerAutomaticBackups(
 
   // ── The schedule ──
 
+  let timer: NodeJS.Timeout | undefined;
+  let wakeAt: number | null = null;
+
+  /** Sleeps until `at` (by the schedule's clock), or not at all. */
+  function sleepUntil(at: number | null): void {
+    clearTimeout(timer);
+    timer = undefined;
+    wakeAt = at;
+    if (at === null || closed) return;
+    timer = setTimeout(tick, Math.min(Math.max(at - clock(), 0), LONGEST_SLEEP_MS));
+    timer.unref();
+  }
+
   function tick(): void {
+    if (!closed) sleepUntil(look());
+  }
+
+  /** Starts a backup if one is due and can be made; answers when to look next, or null for never. */
+  function look(): number | null {
     // Space is being reclaimed in the database, which nothing can write to meanwhile. The
-    // backup is made at the next tick after that has finished.
-    if (closed || ctx.jobs.holding) return;
+    // backup is made once that has finished.
+    if (ctx.jobs.holding) return clock() + HELD_RETRY_MS;
     const settings = readSettings();
+    if (!settings.locationId) return null;
     const state = readState();
     const now = clock();
+    const next = nextBackupSlot(settings, now);
     const due = dueSlot(settings, state, now);
-    if (due === null || !settings.locationId) return;
-    if (activeJob()) return;
+    // Nothing owed, or a backup is being made (its end looks again): the next time is next.
+    if (due === null || activeJob()) return next;
     const location = findLocation(settings.locationId);
     if (location?.status !== "available") {
-      // Skipped, not redirected: there is no second place a backup may go.
+      // Skipped, not redirected: there is no second place a backup may go. A location
+      // coming back is a storage change, which looks again.
       const key = `${due}|${location?.id ?? "removed"}`;
       if (announced !== key) {
         announced = key;
         ctx.log.warn({ location: settings.locationId, dueAt: due }, "scheduled backup not made: its storage location is not connected");
         changed();
       }
-      return;
+      return next;
     }
-    if (state.failure?.dueAt === due && now - state.failure.at < retryWaitMs(state.failure.attempts ?? 1)) return;
+    if (state.failure?.dueAt === due) {
+      const retryAt = state.failure.at + retryWaitMs(state.failure.attempts ?? 1);
+      if (now < retryAt) return Math.min(retryAt, next);
+    }
     announced = "";
     ctx.jobs.enqueue<RunPayload>(BACKUP_JOB, { kind: "scheduled", dueAt: due }, { title: `Back up to ${location.name}`, subject: SUBJECT });
+    return next;
   }
 
   // ── One backup ──
@@ -414,17 +451,18 @@ export function registerAutomaticBackups(
     },
   });
 
-  const timer = setInterval(tick, TICK_MS);
-  timer.unref();
   // A location that comes back is a reason to look again straight away.
   const unsubscribe = ctx.events.subscribe((event) => {
     if (event.type === "storage.changed") tick();
+    // A backup has finished, or was stopped: what is owed next follows from how it went.
+    const job = event.type === "job.updated" ? (event.data as { type?: string; state?: string } | undefined) : undefined;
+    if (job?.type === BACKUP_JOB && ["succeeded", "failed", "cancelled"].includes(job.state ?? "")) tick();
   });
   // At start: whatever came due while the server was off is made now, if it can be.
   app.addHook("onReady", async () => tick());
   ctx.onClose.push(() => {
     closed = true;
-    clearInterval(timer);
+    clearTimeout(timer);
     unsubscribe();
   });
 
@@ -438,6 +476,7 @@ export function registerAutomaticBackups(
         scheduled: readSettings().locationId !== null,
       };
     },
+    nextWake: () => wakeAt,
     setClock(now) {
       clock = now;
     },
@@ -513,6 +552,7 @@ export function registerAutomaticBackups(
     writeSettings(next);
     announced = "";
     changed();
+    tick();
     return scheduleFor(request);
   });
 
