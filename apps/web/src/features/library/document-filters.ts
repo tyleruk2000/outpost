@@ -12,7 +12,7 @@ export interface DocumentFilters {
   sort: DocumentSort;
 }
 
-const types: readonly DocumentType[] = ["pdf", "markdown", "text", "html", "epub", "image"];
+const types: readonly DocumentType[] = ["pdf", "markdown", "text", "html", "epub", "image", "audio"];
 const sorts: readonly DocumentSort[] = ["added", "title", "size"];
 
 export const PAGE_SIZE = 50;

@@ -156,6 +156,14 @@ export function formatForName(originalName: string): FileFormat {
   const ext = extensionOf(originalName);
   const format = ext ? byExt.get(ext) : undefined;
   if (format) return format;
+  // A zip is how LibriVox offers a book; it is added whole, as an audiobook, not as one document.
+  if (ext === "zip") {
+    throw new AppError(
+      "unsupported",
+      `"${originalName}" is a zip. To add an audiobook from a zip, use Add audiobook (Library, Type: Audiobooks). Other zips are not stored as documents.`,
+      { ext },
+    );
+  }
   const what = ext
     ? `"${originalName}" is a .${ext} file, which the library cannot store.`
     : `"${originalName}" has no file extension, so Outpost cannot tell what kind of file it is.`;

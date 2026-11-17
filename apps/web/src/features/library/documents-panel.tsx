@@ -1,7 +1,7 @@
 import { type DocumentFacets, type DocumentListResponse, type DocumentSort, type DocumentType, formatBytes } from "@outpost/shared";
 import { keepPreviousData, useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowDownUp, Globe, Plus, Search, Upload, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { EmptyState, ErrorState, Rows } from "@/components/page";
@@ -12,13 +12,16 @@ import { useStorage } from "@/lib/queries";
 import { cn, formatNumber, plural } from "@/lib/utils";
 import { SaveWebPagePanel } from "../webpages/save-page";
 import { useCollections } from "./collection-data";
-import { isBook } from "./collection-meta";
+import { isAudiobook, isBook } from "./collection-meta";
 import { ChoiceMenu } from "./document-filter-menu";
 import { clearFilters, type DocumentFilters, isFiltered, listQuery, PAGE_SIZE, readFilters, writeFilters } from "./document-filters";
 import { ACCEPTED_FILES, documentKeys, SUPPORTED_TYPES, typeLabels } from "./document-meta";
 import { DocumentRow, DocumentRowSkeleton } from "./document-row";
 import { isSettled, uploadQueue, useUploadItems } from "./upload-queue";
 import { UploadTray } from "./upload-tray";
+
+// Audiobooks are listed by their own module: a book of many files is one line there.
+const AudiobookList = lazy(() => import("../audiobooks/audiobook-list"));
 
 const sortChoices: Array<{ value: DocumentSort; label: string }> = [
   { value: "added", label: "Recently added" },
@@ -164,19 +167,41 @@ function summary(filters: DocumentFilters, facets: DocumentFacets | undefined, s
  * chapter in this list. Someone who has just added one should not find this tab
  * saying there is nothing here.
  */
-function BooksPointer() {
-  const books = useCollections().data?.filter(isBook).length ?? 0;
-  if (books === 0) return null;
+function BooksPointer({ onShowAudiobooks }: { onShowAudiobooks: () => void }) {
+  const collections = useCollections().data ?? [];
+  const books = collections.filter((collection) => isBook(collection) && !isAudiobook(collection)).length;
+  const audiobooks = collections.filter(isAudiobook).length;
+  const audio = audiobooks > 0 ? <AudiobooksPointer count={audiobooks} onShow={onShowAudiobooks} /> : null;
+  if (books === 0) return audio;
+  return (
+    <>
+      <p className="mt-3 text-small text-ink-muted">
+        {plural(books, "book")} from the catalogue {books === 1 ? "is" : "are"} kept whole, with {books === 1 ? "its" : "their"} chapters in
+        order.{" "}
+        <Link
+          to="/library?tab=collections"
+          className="font-medium text-primary underline decoration-1 underline-offset-[0.2em] hover:decoration-2"
+        >
+          See your books
+        </Link>
+      </p>
+      {audio}
+    </>
+  );
+}
+
+/** Audiobooks of several files are kept whole too; the Type filter lists them together. */
+function AudiobooksPointer({ count, onShow }: { count: number; onShow: () => void }) {
   return (
     <p className="mt-3 text-small text-ink-muted">
-      {plural(books, "book")} from the catalogue {books === 1 ? "is" : "are"} kept whole, with {books === 1 ? "its" : "their"} chapters in
-      order.{" "}
-      <Link
-        to="/library?tab=collections"
-        className="font-medium text-primary underline decoration-1 underline-offset-[0.2em] hover:decoration-2"
+      {plural(count, "audiobook")} {count === 1 ? "is" : "are"} kept whole, with {count === 1 ? "its" : "their"} chapters in order.{" "}
+      <button
+        type="button"
+        onClick={onShow}
+        className="font-medium text-primary underline decoration-1 underline-offset-[0.2em] hover:decoration-2 max-md:min-h-11"
       >
-        See your books
-      </Link>
+        Show audiobooks
+      </button>
     </p>
   );
 }
@@ -331,7 +356,7 @@ export default function DocumentsPanel() {
 
           <div className="mt-5 flex min-h-8 flex-wrap items-center justify-between gap-x-4 gap-y-1">
             <p className="tabular text-small text-ink-muted" aria-live="polite">
-              {summary(filters, facets.data, total)}
+              {filters.type === "audio" ? "" : summary(filters, facets.data, total)}
               {filtered && documents.length > 0 ? (
                 <button
                   type="button"
@@ -365,9 +390,13 @@ export default function DocumentsPanel() {
         className={libraryEmpty ? "mb-6" : "mt-3"}
       />
 
-      <BooksPointer />
+      {filters.type === "audio" ? null : <BooksPointer onShowAudiobooks={() => setFilters({ type: "audio" })} />}
 
-      {list.isPending || facets.isPending ? (
+      {filters.type === "audio" ? (
+        <Suspense fallback={<p className="mt-3 text-small text-ink-muted">Loading audiobooks…</p>}>
+          <AudiobookList q={filters.q} sort={filters.sort === "title" ? "title" : "added"} />
+        </Suspense>
+      ) : list.isPending || facets.isPending ? (
         <ul className="mt-3 divide-y divide-border border-y border-border" aria-busy aria-label="Loading documents">
           <DocumentRowSkeleton />
           <DocumentRowSkeleton />
