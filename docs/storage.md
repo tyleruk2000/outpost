@@ -969,8 +969,8 @@ storage location. It is off until you choose a location.
   clock of the computer Outpost runs on. The first one is made at the next such time
   after you choose, not at once. **Back up now** makes one whenever you like and does
   not change the schedule. Between backups the schedule sleeps until the next time one
-  is due (or a failed one is to be tried again), looking again at least every six hours
-  in case the computer's clock was changed meanwhile; it does not wake every minute.
+  is due (or a failed one is to be tried again), looking again at least every quarter of an hour
+  in case the computer's clock was changed or it was asleep meanwhile; it does not wake every minute.
 - **How it is made.** Each backup is a job (it shows under Downloads with the other
   background work). The database is copied with SQLite's online backup, which gives one
   consistent state even while notes are being saved. The file is written as

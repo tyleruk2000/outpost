@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { type BackupSchedule, nextBackupSlot, previousBackupSlot, type StoredBackup } from "@outpost/shared";
 import Database from "better-sqlite3";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { JobRow } from "../src/core/jobs.ts";
 import { verifyBackupFile } from "../src/modules/backup/archive.ts";
 import { RETRY_AFTER_FAILURE_MS } from "../src/modules/backup/automatic.ts";
@@ -299,6 +299,24 @@ describe("a location that goes away and comes back", () => {
 
     await w.app.api("PATCH", "/api/backup/schedule", { locationId: null });
     expect(backups.nextWake()).toBeNull();
+  });
+
+  it("makes a backup soon after the computer wakes from sleeping through its time", async () => {
+    const w = await world();
+    await choose(w);
+    // A timer counts only the time the computer is awake: a Mac asleep from late evening
+    // until morning wakes with its timer where it was when the lid was closed.
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      w.app.ctx.services.backups.tick();
+      vi.advanceTimersByTime(60 * MINUTE); // awake for an hour, then asleep through 03:00
+      w.clock.now = at(1, 8); // woken at eight the next morning
+      vi.advanceTimersByTime(20 * MINUTE); // and used for twenty minutes
+    } finally {
+      vi.useRealTimers();
+    }
+    await w.app.ctx.jobs.whenIdle();
+    expect(backupJobs(w).map((job) => job.state)).toEqual(["succeeded"]);
   });
 
   it("will not follow a link named like its folder", async () => {

@@ -77,9 +77,12 @@ const STATE_KEY = "backup.state";
 /**
  * The longest the schedule sleeps before looking again, even when nothing is due sooner:
  * a timer counts time passing, and the clock it is set from can be changed meanwhile (a
- * new time zone, a Raspberry Pi that boots without the time and is told it later).
+ * new time zone, a Raspberry Pi that boots without the time and is told it later). A
+ * timer also counts only the time the computer is awake: a Mac asleep through the time
+ * a backup was due wakes with its timer where it was, so this is short enough that the
+ * backup is made soon after it wakes.
  */
-const LONGEST_SLEEP_MS = 6 * 60 * 60 * 1000;
+const LONGEST_SLEEP_MS = 15 * 60 * 1000;
 /** While space is being reclaimed in the database, how soon to look again. */
 const HELD_RETRY_MS = 60_000;
 /** After a scheduled backup fails, how long before it is tried again. Doubled for each failure in a row. */
