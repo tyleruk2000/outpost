@@ -1,0 +1,7 @@
+CREATE TABLE `game_saves` (
+	`id` text PRIMARY KEY NOT NULL,
+	`state` text NOT NULL,
+	`version` integer DEFAULT 1 NOT NULL,
+	`created_at` integer NOT NULL,
+	`updated_at` integer NOT NULL
+);

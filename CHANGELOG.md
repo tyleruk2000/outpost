@@ -858,6 +858,33 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   (migration `0026_morse_trainer`): counted in Storage → Database and Manage and clean
   up, erased with everything else, in backups, and cleared by Start again.
 
+#### Games
+
+- A **Games** section after Preparedness, for when the internet is out: Allotment,
+  Solitaire, Peg solitaire, Sudoku, Draughts and Pairs, each drawn in code (no image,
+  font or sound files), each its own small chunk, playable by touch, mouse and keyboard
+  with every cell, card or hole a control with a spoken name. See
+  [docs/games.md](docs/games.md).
+- **Allotment**: one plot for the household, kept on the server so every device sees the
+  same, every action applied with the server's clock. Crops grow in real time, from four
+  minutes to three days, a little faster in season (from the real calendar, by
+  hemisphere) and when watered; the stall, more beds, a water butt, compost, hens, a
+  hive, an apple tree and a greenhouse; an almanac and a few milestones. It never
+  punishes: nothing withers or runs out, ripe crops wait for ever, what builds up stops
+  at a small cap, radish seed is free, and after a year away everything is waiting.
+- **Solitaire** (Klondike, also called patience), draw one or three, with undo, tap to
+  send a card where it fits, pick and put, drag, and putting away all that can go.
+  **Peg solitaire** on the English 33-hole board. **Sudoku** made on the device, every
+  puzzle with exactly one answer, three levels, notes, undo and a check. **Draughts**,
+  English rules, against a computer that thinks in a worker, or two at one device.
+  **Pairs**, a memory game for children.
+- One table, `game_saves` (migration `0027_games`), for the allotment and each game's
+  tally (played, won, best time, fewest moves): counted in Storage → Database and Manage
+  and clean up, erased with everything else, in backups. A game in progress of the
+  others stays on the device it is played on, so two people can play at once.
+- The quick search finds a screen by other names it is given (Solitaire by "patience"
+  and "klondike").
+
 #### Frequencies to listen to (Radio)
 
 - Radio → Frequencies to listen to (`/radio/frequencies`): where to tune, with no
@@ -1234,6 +1261,25 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   `docs/deployment.md`. On a Mac the downloads were added to and removed from a
   keychain made for the purpose; nothing was tried on a real iPhone, Android phone,
   Windows or Linux computer.
+
+#### Tools: Solar clock
+
+- Tools → Solar clock (`/tools/solar-clock`), worked out on the device with no internet,
+  for the home place, a saved place or typed coordinates, on this device's time zone or
+  a UTC offset set by hand. Now: the sun's height and bearing, sundial time beside clock
+  time, the equation of time, the longitude correction, solar noon and the sun's path
+  through the day. Clock recovery: the time to set clocks by from a stick's shadow (two
+  equal shadows, the shortest shadow, its length, its compass bearing) or sunrise on a
+  sea horizon, each with a range worked out from the stated measurement error, what a
+  date a few days out does to it, and better sources. Make a sundial: hour lines for the
+  latitude, true north from a shadow, the correction table for the place, a card-and-
+  pencil dial, and a template PDF. Make a nocturnal: how to use one, a template PDF made
+  for the place's longitude and clock, and a star-clock calculator. Northern hemisphere
+  only for the stars, as the screen says.
+- The sun's altitude and azimuth at an instant, NOAA's refraction model and the moment
+  the sun stands at a height, beside `sunDay` in `features/maps/lib/sun.ts`; sidereal time
+  and the positions of Polaris, Dubhe and Kochab in `features/maps/lib/sky.ts`. All held
+  to the US Naval Observatory's published values in tests.
 
 #### Tools: QR codes and devices on this network
 

@@ -984,6 +984,22 @@ copy (there are no accounts); see [morse-trainer.md](morse-trainer.md).
 | `POST /api/morse/sessions` | One finished drill: `kind` (`receive`, `send`, `qso`, `echo`), `accuracy` (0–1), and optionally `charWpm`, `effWpm`, `rhythm`, `lesson`, `misses` and `tries` (character → count, at most 64 characters). A receive drill at 90 % or better raises the best speeds. The oldest go beyond 5,000. Returns `{ session }`. |
 | `DELETE /api/morse` | Forgets the progress, the settings and every session ("Start again" on the Progress tab). Returns `{ removed: { sessions, progress } }`. |
 
+## Games
+
+Types: `packages/shared/src/games.ts`; the allotment's engine is
+`packages/shared/src/games/allotment/`. One row of `game_saves` per game for the whole
+copy (there are no accounts): the allotment's plot, and each other game's tally. An
+unfinished game of Patience, Sudoku, Draughts or Pairs is never sent; see
+[games.md](games.md).
+
+| Route | What it does |
+| --- | --- |
+| `GET /api/games` | `{ tallies, allotmentStarted }`: for `patience`, `sudoku`, `draughts` and `pairs`, a tally for each way of playing it (`{ played, won, bestSeconds, fewestMoves, lastAt }`), and whether the allotment has been started. |
+| `POST /api/games/:game/results` | One finished game of `patience`, `sudoku`, `draughts` or `pairs`: `variant` (`draw-1`, `draw-3`; `gentle`, `steady`, `testing`; `computer`, `two-player`; `small`, `medium`, `large`), `won`, and optionally `seconds` (0–86,400) and `moves` (0–100,000). A best time or fewest moves is kept only from a win. Counts stop at 999,999. Returns `{ tally }`. |
+| `DELETE /api/games/:game` | Forgets a game's tally ("Clear the tally"), or, for `allotment`, the whole plot ("Start again"). Returns `{ removed }`. |
+| `GET /api/games/allotment` | `{ plot, now, hemisphere, hemisphereFrom, season, awayMs, started }`: the household's plot worked out to the server's clock, without writing it (or a new plot, not stored, before the first action); `hemisphereFrom` is `setting`, `home place` or `default`. `409` with `details.damaged` when the stored plot cannot be read; it is not replaced. |
+| `POST /api/games/allotment/actions` | One action, stamped with the server's clock (never earlier than the plot's own): `{ type: "sow", bed, crop }`, `water`, `harvest` (each with `bed`, 0–13), `harvestAll`, `collect` (optional `thing`: `hens`, `beehive`, `appleTree`), `sell` (`item`, `count` 1–9,999 or `"all"`), `sellAll`, `buyBed`, `buy` (`thing`), `setHemisphere` (`auto`, `north`, `south`). Answers as the `GET` does. `409` with the reason for an action that cannot be done ("That bed already has carrots in it."); nothing changes. Publishes `games.changed`. |
+
 ## Nuclear preparedness
 
 Scenarios saved in the effects simulator (Preparedness → Nuclear preparedness). Only

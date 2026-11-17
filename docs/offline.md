@@ -37,7 +37,12 @@ Everything you have already installed or written:
   you press one;
 - the Morse trainer, every tab of it (see [morse-trainer.md](morse-trainer.md)). Its one
   link out, to the Reverse Beacon Network's page, is your browser following a link you
-  pressed; Outpost itself asks the network nothing.
+  pressed; Outpost itself asks the network nothing;
+- the Solar clock under Tools, every tab of it: the sun's place, clock recovery from a
+  shadow, and the sundial and nocturnal templates are all worked out on the device (see
+  [tools-solar-clock.md](tools-solar-clock.md)). Saved places come from the server; typed
+  coordinates need nothing;
+- the games, all six of them (see [games.md](games.md)).
 
 The web app itself is served by Outpost: its scripts, styles, fonts, PDF viewer
 resources, map fonts and map icons are all local files.

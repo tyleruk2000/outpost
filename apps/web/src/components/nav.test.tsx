@@ -193,6 +193,47 @@ describe("the quick search's Go to list", () => {
     expect(screen.getByRole("status", { name: "Address", hidden: true })).toHaveTextContent("/radio/repeaters");
     vi.unstubAllGlobals();
   });
+
+  it("finds a screen by its other names: Solitaire by patience and by klondike", async () => {
+    const user = userEvent.setup();
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify({ results: [], warnings: [] }), { headers: { "Content-Type": "application/json" } })),
+    );
+    render(
+      <QueryClientProvider client={client}>
+        <ThemeProvider>
+          <MemoryRouter>
+            <CommandPalette open onOpenChange={() => {}} onNewPage={() => {}} />
+          </MemoryRouter>
+        </ThemeProvider>
+      </QueryClientProvider>,
+    );
+    const field = screen.getByPlaceholderText(/Search your library/);
+    for (const typed of ["solitaire", "patience", "klondike"]) {
+      await user.clear(field);
+      await user.type(field, typed);
+      expect(within(screen.getByRole("group", { name: "Go to" })).getAllByRole("option")[0]).toHaveTextContent("Games: Solitaire");
+    }
+    vi.unstubAllGlobals();
+  });
+});
+
+describe("the Games section", () => {
+  it("lists its six games under it, in order, each with a quick-search entry", () => {
+    const games = allNav.find((item) => item.to === "/games")!;
+    expect(games.children!.map((child) => [child.label, child.to])).toEqual([
+      ["Allotment", "/games/allotment"],
+      ["Solitaire", "/games/solitaire"],
+      ["Peg solitaire", "/games/peg-solitaire"],
+      ["Sudoku", "/games/sudoku"],
+      ["Draughts", "/games/draughts"],
+      ["Pairs", "/games/pairs"],
+    ]);
+    expect(allNav.map((item) => item.to).indexOf("/games")).toBe(allNav.map((item) => item.to).indexOf("/prepare") + 1);
+    expect(everyScreen.filter((item) => item.parent?.to === "/games")).toHaveLength(6);
+  });
 });
 
 describe("the Radio screen", () => {

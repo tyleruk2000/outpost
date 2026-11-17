@@ -182,6 +182,7 @@ language model, and a real model's answers read differently.*
 | Cooking | Roasting times and safe temperatures from UK food-safety guidance, a timer, boiling at altitude, conversions, scaling a recipe. | [Tools](docs/tools.md#cooking) |
 | Power and batteries | Battery runtime from common devices: pick a Raspberry Pi, phones to charge, radios, a router or a NAS from a library of makers' published figures (each with its source), and see how long the battery runs them, how many charges it holds, and what battery a few days would need; keep your own devices for next time. Quick calculators besides (solar, cable size and voltage drop, series and parallel, generator fuel, small electronics), and power plans: a battery system kept by name, worked out into how long it runs and how much solar it needs. Monthly sun hours can be filled in from figures already fetched on Weather and hazards, and the plan says where they came from. | [Power](docs/tools-power.md) |
 | QR codes | Makes a code from text, a web address, a Wi-Fi network, a contact or a saved place, on the device; nothing typed is sent anywhere. | [QR codes](docs/tools-qr-and-network.md#qr-codes-toolsqr) |
+| Solar clock | Where the sun is now at a place; after a power cut, the time to set your clocks by from a stick's shadow (noon, the shadow's length or bearing, sunrise on the sea), with an honest range; a horizontal sundial and a nocturnal to print. Worked out on the device, no internet. | [Solar clock](docs/tools-solar-clock.md) |
 | Devices on this network | Lists what answers on the network the computer running Outpost is on: a NAS, a printer, a Raspberry Pi whose address you have forgotten. Never put in search. A start-up option limits starting a scan to the computer itself. | [Network](docs/tools-qr-and-network.md#devices-on-this-network-toolsnetwork) |
 
 Every calculator shows its answer as you type and says, under **How this is worked
@@ -224,6 +225,19 @@ real network's devices are shown.*
 </table>
 
 ![An emergency plan's steps, each saying where its words come from](docs/screenshots/emergency-plan.webp)
+
+### Games
+
+Small games for when the internet is out, drawn in code, with no sound and nothing fetched.
+
+| Feature | What it does | Docs |
+| --- | --- | --- |
+| Allotment | One plot for the household, the same on every device: sow, grow in real time, harvest, sell at the stall, and add beds, hens, a hive or a greenhouse. Nothing withers or runs out; left for a year, everything is ripe and waiting. | [Games](docs/games.md#allotment) |
+| Solitaire | The card game also called patience or Klondike: draw one or three, undo, tap a card to send it where it fits. | [Games](docs/games.md#solitaire) |
+| Peg solitaire | The English board of 33 holes: jump pegs until one is left. | [Games](docs/games.md#peg-solitaire) |
+| Sudoku | Puzzles made on the device at three levels, each with exactly one answer; notes, undo and a check. | [Games](docs/games.md#sudoku) |
+| Draughts | English draughts against the computer or two at one device. | [Games](docs/games.md#draughts) |
+| Pairs | A memory game for children, in three sizes. | [Games](docs/games.md#pairs) |
 
 *A plan made from the power cut template: each step says whose words it is.*
 
@@ -584,10 +598,12 @@ reaches the internet or a real model server.
 | [Tools](docs/tools.md) | The calculators, with every formula and source |
 | [Power and batteries](docs/tools-power.md) | Calculators and power plans |
 | [QR codes and devices on this network](docs/tools-qr-and-network.md) | The two network tools |
+| [Solar clock](docs/tools-solar-clock.md) | Time from the sun and stars, its formulas, sources and measured accuracy |
 | [Emergency plans](docs/emergency-plans.md) | Plans, templates and their sources, cards |
 | [Supplies](docs/supplies.md) | Stock, the household, barcodes, CSV |
 | [Weather and hazards](docs/weather.md) | What is fetched, from whom, and how old it is |
 | [Nuclear preparedness](docs/nuclear-preparedness.md) | The workspace, the effects simulator, its rules and its sources |
+| [Games](docs/games.md) | The six games, their rules, and what is kept where |
 | [Sources](docs/sources.md) | Every content source considered, and its terms |
 | [Security](docs/security.md) | Threat model and controls |
 | [API](docs/api.md) | HTTP API reference |

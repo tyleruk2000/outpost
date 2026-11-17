@@ -133,6 +133,8 @@ pages themselves.
   the authority, and the CDC says to follow it.
 - Power and electronics calculators, a power and battery planner, a QR code generator, a
   network scanner and food and water inventory belong to other screens.
+- Telling the time from the sun and stars (clock recovery, sundials, a nocturnal) is its
+  own screen, the Solar clock: [tools-solar-clock.md](tools-solar-clock.md).
 
 ## Not tested
 

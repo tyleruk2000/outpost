@@ -5,6 +5,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./games/allotment": "./src/games/allotment/index.ts",
+    "./games/peg-solitaire": "./src/games/peg-solitaire/index.ts",
     "./radio-frequencies-data": "./src/radio-frequencies-data.ts"
   },
   "scripts": {

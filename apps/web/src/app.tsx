@@ -40,6 +40,13 @@ const KeptPage = lazy(() => import("./features/kept/kept-page"));
 const RadioPage = lazy(() => import("./features/radio/radio-page"));
 const ToolsPage = lazy(() => import("./features/tools/tools-page"));
 const PreparePage = lazy(() => import("./features/prepare/prepare-page"));
+const GamesPage = lazy(() => import("./features/games/games-page"));
+const AllotmentPage = lazy(() => import("./features/games/allotment/allotment-page"));
+const SolitairePage = lazy(() => import("./features/games/solitaire/solitaire-page"));
+const PegSolitairePage = lazy(() => import("./features/games/peg-solitaire/peg-solitaire-page"));
+const SudokuPage = lazy(() => import("./features/games/sudoku/sudoku-page"));
+const DraughtsPage = lazy(() => import("./features/games/draughts/draughts-page"));
+const PairsPage = lazy(() => import("./features/games/pairs/pairs-page"));
 const PowerPage = lazy(() => import("./features/power/power-page"));
 const PowerPlanPage = lazy(() => import("./features/power/plan-page"));
 const SuppliesPage = lazy(() => import("./features/supplies/supplies-page"));
@@ -57,6 +64,7 @@ const CookingToolsPage = lazy(() => import("./features/tools/cooking/cooking-pag
 const NuclearPage = lazy(() => import("./features/nuclear/nuclear-page"));
 const QrPage = lazy(() => import("./features/qr/qr-page"));
 const NetworkPage = lazy(() => import("./features/network/network-page"));
+const SolarClockPage = lazy(() => import("./features/solar-clock/solar-clock-page"));
 const PropagationPage = lazy(() => import("./features/propagation/propagation-page"));
 const PlansPage = lazy(() => import("./features/propagation/plans/plans-page"));
 const PlanPage = lazy(() => import("./features/propagation/plans/plan-page"));
@@ -151,6 +159,7 @@ export function App() {
           <Route path="prepare/nuclear" element={<NuclearPage />} />
           <Route path="tools/qr" element={<QrPage />} />
           <Route path="tools/network" element={<NetworkPage />} />
+          <Route path="tools/solar-clock" element={<SolarClockPage />} />
           <Route path="prepare/weather" element={<WeatherPage />} />
           <Route path="prepare/plans" element={<EmergencyPlansPage />} />
           <Route path="prepare/plans/:id" element={<EmergencyPlanPage />} />
@@ -161,6 +170,13 @@ export function App() {
           <Route path="radio/log" element={<LogPage />} />
           <Route path="radio/plans" element={<PlansPage />} />
           <Route path="radio/plans/:id" element={<PlanPage />} />
+          <Route path="games" element={<GamesPage />} />
+          <Route path="games/allotment" element={<AllotmentPage />} />
+          <Route path="games/solitaire" element={<SolitairePage />} />
+          <Route path="games/peg-solitaire" element={<PegSolitairePage />} />
+          <Route path="games/sudoku" element={<SudokuPage />} />
+          <Route path="games/draughts" element={<DraughtsPage />} />
+          <Route path="games/pairs" element={<PairsPage />} />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
