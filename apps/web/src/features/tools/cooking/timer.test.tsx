@@ -35,8 +35,24 @@ describe("the kitchen timer", () => {
         <TimerPanel />
       </TimerProvider>,
     );
-    expect(shown()).toBe("0:00");
+    expect(shown()).toBe("10:00");
     expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("shows the time typed while it is stopped, so that 0:00 never sits beside 10 minutes", () => {
+    render(
+      <TimerProvider>
+        <TimerPanel />
+      </TimerProvider>,
+    );
+    fireEvent.change(screen.getByLabelText("Minutes"), { target: { value: "2.5" } });
+    expect(shown()).toBe("2:30");
+    fireEvent.change(screen.getByLabelText("Minutes"), { target: { value: "" } });
+    expect(shown()).toBe("0:00");
+    fireEvent.change(screen.getByLabelText("Minutes"), { target: { value: "5" } });
+    fireEvent.click(screen.getByRole("button", { name: "Start" }));
+    fireEvent.click(screen.getByRole("button", { name: "Reset" }));
+    expect(shown()).toBe("5:00");
   });
 
   it("redraws once a second while it runs, never on a faster tick", () => {

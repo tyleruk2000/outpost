@@ -186,13 +186,29 @@ function useSecondTick(endsAt: number | null) {
 export function TimerPanel() {
   const api = useTimer();
   const [minutesText, setMinutesText] = useState("10");
-  useSecondTick(api?.state.endsAt ?? null);
+  // Stopped, it shows what Start would count down from; once a timer has run out it shows 0:00 until the minutes are changed.
+  const [ranOut, setRanOut] = useState(false);
+  const endsAt = api?.state.endsAt ?? null;
+  const remaining = api?.state.remaining ?? 0;
+  const wasRunning = useRef(endsAt !== null);
+  const resetting = useRef(false);
+  useEffect(() => {
+    if (wasRunning.current && endsAt === null && remaining === 0 && !resetting.current) setRanOut(true);
+    if (endsAt !== null) setRanOut(false);
+    wasRunning.current = endsAt !== null;
+    resetting.current = false;
+  }, [endsAt, remaining]);
+  useSecondTick(endsAt);
   if (!api) return null;
   const { state, start } = api;
   const running = state.endsAt !== null;
-  const left = running ? state.endsAt! - Date.now() : state.remaining;
   const minutes = Number(minutesText);
   const valid = minutesText.trim() !== "" && Number.isFinite(minutes) && minutes > 0 && minutes <= 24 * 60;
+  const left = running ? state.endsAt! - Date.now() : state.remaining > 0 ? state.remaining : valid && !ranOut ? minutes * 60_000 : 0;
+  const reset = () => {
+    resetting.current = true;
+    api.reset();
+  };
   return (
     <div className="rounded-panel bg-surface px-4 py-3">
       <p className="text-small text-ink-muted">{state.label ? `Timer: ${state.label}` : "Timer"}</p>
@@ -210,7 +226,7 @@ export function TimerPanel() {
           </Button>
         ) : null}
         {running || state.remaining > 0 ? (
-          <Button variant="ghost" onClick={api.reset}>
+          <Button variant="ghost" onClick={reset}>
             <RotateCcw aria-hidden /> Reset
           </Button>
         ) : (
@@ -220,7 +236,10 @@ export function TimerPanel() {
               <input
                 inputMode="decimal"
                 value={minutesText}
-                onChange={(event) => setMinutesText(event.target.value)}
+                onChange={(event) => {
+                  setMinutesText(event.target.value);
+                  setRanOut(false);
+                }}
                 aria-invalid={!valid || undefined}
                 className="h-9 w-24 rounded-control border border-border-strong bg-page px-3 text-body text-ink tabular focus-visible:border-focus focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus/30 aria-invalid:border-danger max-md:h-11"
               />

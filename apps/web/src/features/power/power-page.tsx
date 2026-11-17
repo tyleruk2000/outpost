@@ -169,7 +169,7 @@ export default function PowerPage() {
                     className="group flex items-center gap-4 py-3.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
                   >
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-lead text-ink group-hover:text-primary">{plan.name}</span>
+                      <span className="block break-words text-lead text-ink group-hover:text-primary">{plan.name}</span>
                       <span className="tabular mt-0.5 block text-small text-ink-muted">
                         {plural(plan.loads.length, "load")}. <PlanSummary answers={answers} />
                       </span>
