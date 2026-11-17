@@ -45,7 +45,8 @@ export function ChoiceList<T extends string>({
               id={id}
               value={choice.value}
               disabled={choice.disabled}
-              className="mt-0.5 grid size-[18px] shrink-0 place-content-center rounded-full border-[1.5px] border-border-strong bg-page transition-colors data-[state=checked]:border-primary disabled:bg-surface-strong"
+              // A plain round radio, as everywhere else; on the Maps screen it reaches out to 44 px without growing (maps.css).
+              className="outpost-radio-dot mt-0.5 grid size-[18px] shrink-0 place-content-center rounded-full border-[1.5px] border-border-strong bg-page transition-colors data-[state=checked]:border-primary disabled:bg-surface-strong"
             >
               <RadioGroup.Indicator className="size-2.5 rounded-full bg-primary" />
             </RadioGroup.Item>

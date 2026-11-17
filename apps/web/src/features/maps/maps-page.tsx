@@ -1342,13 +1342,14 @@ export default function MapsPage() {
           What you see is an outline of the world that comes with Outpost. Detailed maps are downloaded one region at a time, and then work
           with no connection.
         </p>
-        {/* Both lead to the choices before a download, which include where it is kept: nothing starts from here. */}
+        {/* Both lead to the choices before a download, which include where it is kept: nothing starts from here. The
+            person's own area comes first: the world overview is the outline again with a little more in it. */}
         <div className="mt-3 flex flex-wrap gap-2">
-          <Button size="sm" variant="primary" onClick={() => openOffline({ type: "add", presetId: "world" })}>
-            World overview (about 45 MB)
+          <Button size="sm" variant="primary" onClick={() => openOffline({ type: "add" })}>
+            Choose your area
           </Button>
-          <Button size="sm" onClick={() => openOffline({ type: "add" })}>
-            Choose a region
+          <Button size="sm" onClick={() => openOffline({ type: "add", presetId: "world" })}>
+            World overview (about 45 MB)
           </Button>
         </div>
       </MapCard>

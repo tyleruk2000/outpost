@@ -168,16 +168,17 @@
       [role="checkbox"],
       [role="switch"],
       input,
+      .outpost-radio-dot,
       .outpost-pin,
       .outpost-box-handle
     ) {
     min-width: 44px;
     min-height: 44px;
   }
-  .outpost-touch :is([role="checkbox"], [role="switch"]) {
+  .outpost-touch :is([role="checkbox"], [role="switch"], .outpost-radio-dot) {
     position: relative;
   }
-  .outpost-touch :is([role="checkbox"], [role="switch"])::after {
+  .outpost-touch :is([role="checkbox"], [role="switch"], .outpost-radio-dot)::after {
     content: "";
     position: absolute;
     inset: calc((100% - 44px) / 2);
