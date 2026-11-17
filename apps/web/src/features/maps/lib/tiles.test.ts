@@ -28,14 +28,15 @@ describe("tile addresses", () => {
 });
 
 describe("tile loader", () => {
-  it("returns the tile's bytes and caching headers", async () => {
+  it("returns the tile's bytes and no expiry, so the map does not fetch every tile on screen again each hour", async () => {
     const { fetchTile, load } = loaderFor(
       new Response(new Uint8Array([1, 2, 3]), { status: 200, headers: { "Cache-Control": "private, max-age=3600" } }),
     );
     const abort = new AbortController();
     const result = await load({ url: "outpost-tiles://local/api/maps/tiles/12/2003/1332.mvt?v=abc" }, abort);
     expect(new Uint8Array(result.data)).toEqual(new Uint8Array([1, 2, 3]));
-    expect(result.cacheControl).toBe("private, max-age=3600");
+    // The browser's own cache still follows the server's headers; MapLibre, given them, sets a reload timer per tile.
+    expect(result).toEqual({ data: expect.any(ArrayBuffer) });
     expect(fetchTile).toHaveBeenCalledWith("/api/maps/tiles/12/2003/1332.mvt?v=abc", { signal: abort.signal, credentials: "same-origin" });
   });
 

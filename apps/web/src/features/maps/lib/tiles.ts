@@ -31,10 +31,15 @@ export function tilePath(url: string): string | null {
   return path.startsWith("/api/maps/") ? path : null;
 }
 
+/**
+ * What the loader gives MapLibre: the bytes only. Given the server's Cache-Control, MapLibre
+ * sets a timer on every tile it holds and fetches it again when that runs out (an hour), so a
+ * map left open would wake every hour to fetch what cannot have changed: a tile's address
+ * carries `cacheKey`, which changes when the regions do. The browser's own cache still
+ * follows the headers.
+ */
 export interface TileResponse {
   data: ArrayBuffer;
-  cacheControl?: string | null;
-  expires?: string | null;
 }
 
 /**
@@ -49,11 +54,7 @@ export function createTileLoader(fetchTile: typeof fetch, missing: (url: string)
     const response = await fetchTile(path, { signal: abort.signal, credentials: "same-origin" });
     if (response.status === 204 || response.status === 404) throw missing(request.url);
     if (!response.ok) throw new Error(`The map tile could not be loaded (${response.status}).`);
-    return {
-      data: await response.arrayBuffer(),
-      cacheControl: response.headers.get("Cache-Control"),
-      expires: response.headers.get("Expires"),
-    };
+    return { data: await response.arrayBuffer() };
   };
 }
 
