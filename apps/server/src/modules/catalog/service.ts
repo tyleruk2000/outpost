@@ -362,8 +362,12 @@ export function createCatalogService(ctx: AppContext, options: CatalogServiceOpt
     return isNewer(collection.version, knownVersion(entry, cached(entry.id)?.resolved));
   }
 
-  function toDto(entry: LoadedEntry, entryDownloads: DownloadRow[], installed: CollectionRow | undefined): CatalogEntryDto {
-    const cache = cached(entry.id);
+  function toDto(
+    entry: LoadedEntry,
+    cache: { resolved: CachedResolution; resolvedAt: number } | undefined,
+    entryDownloads: DownloadRow[],
+    installed: CollectionRow | undefined,
+  ): CatalogEntryDto {
     const resolution = cache?.resolved;
     const source = entry.source;
     const { sizeBytes: estimate, source: _source, ...manifestFields } = entry;
@@ -472,7 +476,17 @@ export function createCatalogService(ctx: AppContext, options: CatalogServiceOpt
       // collections.list() is newest first: the first one seen is the current install.
       if (row.catalogEntryId && !installedByEntry.has(row.catalogEntryId)) installedByEntry.set(row.catalogEntryId, row);
     }
-    const entries = catalog.entries.map((entry) => toDto(entry, downloadsByEntry.get(entry.id) ?? [], installedByEntry.get(entry.id)));
+    // The whole cache in one read, rather than a query for each of several hundred entries.
+    const cache = new Map(
+      db
+        .select()
+        .from(catalogCache)
+        .all()
+        .map((row) => [row.entryId, { resolved: row.resolved as unknown as CachedResolution, resolvedAt: row.resolvedAt }]),
+    );
+    const entries = catalog.entries.map((entry) =>
+      toDto(entry, cache.get(entry.id), downloadsByEntry.get(entry.id) ?? [], installedByEntry.get(entry.id)),
+    );
     const counts = new Map<string, number>();
     for (const entry of entries) counts.set(entry.category, (counts.get(entry.category) ?? 0) + 1);
     return {
@@ -481,7 +495,7 @@ export function createCatalogService(ctx: AppContext, options: CatalogServiceOpt
       packs: packs.packs,
       manifests: catalog.manifests.map(({ id, name }) => ({ id, name })),
       problems: [...catalog.problems, ...packs.problems],
-      lastRefreshedAt: cached(REFRESH_MARKER)?.resolvedAt ?? null,
+      lastRefreshedAt: cache.get(REFRESH_MARKER)?.resolvedAt ?? null,
     };
   }
 
