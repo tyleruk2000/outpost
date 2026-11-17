@@ -45,7 +45,7 @@
     "@types/geojson": "^7946.0.16",
     "@types/hast": "latest",
     "@types/mdast": "latest",
-    "@types/node": "^24",
+    "@types/node": "^26",
     "@types/yauzl": "^3.4.0",
     "@xmldom/xmldom": "^0.9.12",
     "drizzle-kit": "^0.31.11",
