@@ -58,7 +58,7 @@ test.describe("food and supplies on a phone", () => {
     await expect(page.getByRole("heading", { name: "Nearest drinking water" })).toBeVisible();
     const nearest = page.getByRole("list", { name: "Nearest to the middle of the map" });
     await expect(nearest.getByRole("button")).toHaveCount(1);
-    await expect(nearest.getByRole("button")).toContainText(/\d+ m/);
+    await expect(nearest.getByRole("button")).toContainText(/\d+ m \([\d.]+ mi\)|[\d.]+ km \([\d.]+ mi\)/);
     await expect
       .poll(async () => {
         const view = await api<{ points: Array<{ kind: string }> }>(

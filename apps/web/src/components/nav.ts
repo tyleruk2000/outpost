@@ -90,7 +90,13 @@ export const knowledgeNav: NavItem[] = [
     key: "l",
     keywords: "documents books ebooks pdf files reading audiobooks learning school course lessons progress khan upload",
   },
-  { to: "/maps", label: "Maps", icon: MapIcon, key: "m", keywords: "map offline places routes gps location directions print sun times" },
+  {
+    to: "/maps",
+    label: "Maps",
+    icon: MapIcon,
+    key: "m",
+    keywords: "map offline places routes gps location directions print sun times postcode grid reference",
+  },
   // Importing brings in pages (Markdown, Notion), so it is Notes'.
   {
     to: "/notes",
@@ -229,6 +235,19 @@ export const settingsSections: SettingsSection[] = [
     keywords: "wifi wi-fi network lan phones share sharing household password sign in accounts",
   },
   { id: "about", label: "This installation", inContents: true, keywords: "version update memory processor about" },
+];
+
+/**
+ * Tabs of the Maps screen that the quick search goes to by their own words, each at
+ * /maps?tab=id: "supermarket" is a map layer, not a screen of its own.
+ */
+export const mapSections: Array<{ id: string; label: string; keywords: string }> = [
+  {
+    id: "layers",
+    label: "Layers",
+    keywords:
+      "food shops shop supermarket grocer pharmacy chemist drinking water tap airports airfields population reference layers nearest",
+  },
 ];
 
 /** The screens at the top level, the ones with a shortcut. */

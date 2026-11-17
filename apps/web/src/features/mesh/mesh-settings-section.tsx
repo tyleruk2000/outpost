@@ -22,11 +22,11 @@ import {
   type MeshtasticInput,
   type MeshtasticMode,
 } from "@outpost/shared";
-import { ChevronRight, CircleAlert, ExternalLink, MonitorSmartphone, Plus, RefreshCw, Send, X } from "lucide-react";
+import { CircleAlert, ExternalLink, MonitorSmartphone, Plus, RefreshCw, Send, X } from "lucide-react";
 import { type ReactNode, useEffect, useId, useState } from "react";
 import { Link } from "react-router";
 import { toast } from "sonner";
-import { Notice } from "@/components/page";
+import { Disclosure, Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
 import { Select, Skeleton } from "@/components/ui/misc";
@@ -165,15 +165,16 @@ function StateLine({ words, state, lastHeardAt }: { words: string; state: MeshLi
 
 function SaveRow({ problem, pending, onSave }: { problem: string | null; pending: boolean; onSave: () => void }) {
   return (
-    <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-2">
+    // In the flow of the page: at the left under the fields it saves, as every form's button is.
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+      <Button variant="primary" loading={pending} disabled={problem !== null} onClick={onSave}>
+        Save
+      </Button>
       {problem ? (
         <p role="alert" className="min-w-0 flex-1 text-small text-danger">
           {problem}
         </p>
       ) : null}
-      <Button variant="primary" loading={pending} disabled={problem !== null} onClick={onSave}>
-        Save
-      </Button>
     </div>
   );
 }
@@ -895,12 +896,8 @@ function TestRow({ channel, name }: { channel: MeshChannel; name: string }) {
 
 function MoreAbout() {
   return (
-    <details className="group border-t border-border pt-3">
-      <summary className="flex min-h-11 cursor-default items-center gap-2 py-2 text-small font-medium text-ink marker:content-none hover:text-primary [&::-webkit-details-marker]:hidden">
-        <ChevronRight aria-hidden className="size-4 text-ink-muted transition-transform duration-150 group-open:rotate-90" />
-        What each way in needs, and more
-      </summary>
-      <div className="grid gap-3 pb-2 pl-6 text-small text-ink-muted">
+    <Disclosure summary="What each way in needs, and more" className="border-t border-border pt-3">
+      <div className="grid gap-3 text-ink-muted">
         <p>
           <span className="font-medium text-ink">Outpost is the broker:</span> a Meshtastic radio with Wi-Fi (an ESP32 radio, since JSON
           output is not offered on nRF52 radios) on the same home network, and Outpost shared with that network so the radio can reach the
@@ -932,6 +929,6 @@ function MoreAbout() {
           .
         </p>
       </div>
-    </details>
+    </Disclosure>
   );
 }

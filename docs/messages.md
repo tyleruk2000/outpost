@@ -35,8 +35,8 @@ There are no accounts and no sign-in, and the board does not pretend otherwise.
 At the top of the screen, **Check-ins** lists each person's latest check-in, so that
 "is everyone all right?" is one glance:
 
-- "Sam: safe, gone to Mum's, 14:02 today"
-- "Alex: needs help: car won't start, 09:10 today" (in the danger colour, with an icon)
+- "Sam: safe · gone to Mum's · 14:02 today"
+- "Alex: needs help: car won't start · 09:10 today" (in the danger colour, with an icon)
 - "Jo: no check-in since Tuesday" (the latest is more than a day old)
 - "Nan: no check-in yet" (one of the household who has never checked in)
 
@@ -99,7 +99,7 @@ and are never opened, run or read on the server (see [security.md](security.md#t
   changed.
 - While Outpost is open in a tab, a new message or check-in from someone else shows the
   app's own toast, unless the board is already on screen. A request for help is shown
-  as an error toast.
+  as an error toast, and is read out at once by a screen reader (`notify.error`).
 - **The board does not wake a locked phone.** There are no push notifications: there is
   no internet to send them through and no accounts to send them to. A phone sees new
   messages when Outpost is open on it.

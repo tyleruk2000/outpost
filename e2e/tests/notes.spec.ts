@@ -97,6 +97,8 @@ test.describe("notes", () => {
 
     await page.goto("/notes");
     const tree = page.getByRole("complementary", { name: "Main" }).getByRole("tree", { name: "Pages" });
+    // The tree scrolls with the screens above it, and may start below the fold: a person scrolls to it first.
+    await tree.getByRole("treeitem", { name: "First visit", exact: true }).scrollIntoViewIfNeeded();
     const from = (await tree.getByRole("treeitem", { name: "First visit", exact: true }).boundingBox())!;
     const onto = (await tree.getByRole("treeitem", { name: "Hut log", exact: true }).boundingBox())!;
 

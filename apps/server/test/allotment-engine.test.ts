@@ -122,6 +122,24 @@ describe("a new plot", () => {
 });
 
 describe("the crops and their months", () => {
+  it("says each thing once on a crop's card: no fact names the family the card already names", () => {
+    const familyWords: Record<string, RegExp> = {
+      brassicas: /cabbage family|brassica/i,
+      legumes: /legume|pea and bean family|nitrogen/i,
+      onions: /onion family/i,
+      potatoes: /potato family/i,
+      roots: /root crops/i,
+      anywhere: /rotation/i,
+    };
+    for (const id of CROP_IDS) {
+      const notes = CROP_NOTES[id];
+      for (const fact of notes.facts) expect(fact, id).not.toMatch(familyWords[notes.family]!);
+    }
+    // And the cold line and the facts do not say the same thing twice.
+    expect(CROP_NOTES.garlic.cold).not.toMatch(/needs the cold/);
+    expect(CROP_NOTES.broadBeans.facts.join(" ")).not.toMatch(/hardy kind/i);
+  });
+
   it("has twelve crops, each with its real months and a page they come from", () => {
     expect(CROP_IDS).toHaveLength(12);
     for (const id of CROP_IDS) {

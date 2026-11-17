@@ -13,6 +13,9 @@ test.describe("Devices on this network, on a phone", () => {
     await page.goto("/tools/network");
     await expect(page.getByRole("heading", { level: 1, name: "Devices on this network" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "What a scan does" })).toBeVisible();
+    // Which networks and how many addresses: technical detail, behind a disclosure in a household's words.
+    await expect(page.getByText("192.168.77.0/28")).toBeHidden();
+    await page.getByText("How it asks, step by step").tap();
     await expect(page.getByText("192.168.77.0/28")).toBeVisible();
     await expect(page.getByText(/13 addresses asked/)).toBeVisible();
 

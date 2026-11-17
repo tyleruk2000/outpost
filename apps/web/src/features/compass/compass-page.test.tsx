@@ -2,6 +2,7 @@
 import { compassRule, northsAt } from "@outpost/shared";
 import { act, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { findPlaces, placeName } from "@/components/find-places";
 import { fakeApi, renderScreen } from "../manage/test-support";
 import type { MapEngine } from "../maps/map/engine";
 import { toolScreens } from "../tools/screens";
@@ -47,7 +48,12 @@ describe("the Tools registry", () => {
   it("lists the compass with the words a person would look for it by", () => {
     const entry = toolScreens.find((each) => each.to === "/tools/compass");
     expect(entry?.label).toBe("Compass");
-    for (const word of ["compass", "bearing", "north", "declination", "magnetic"]) expect(entry?.keywords).toContain(word);
+    // Found first by its own name, and by the everyday words; its keywords need not repeat the name.
+    expect(placeName(findPlaces("compass")[0]!)).toBe("Tools: Compass");
+    for (const word of ["bearing", "north", "declination", "magnetic"]) {
+      expect(entry?.keywords).toContain(word);
+      expect(findPlaces(word).map(placeName)).toContain("Tools: Compass");
+    }
   });
 });
 

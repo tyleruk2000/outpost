@@ -513,7 +513,9 @@ test.describe("encryption", () => {
     await expect(sheet.getByText(/Never use any part of this pad for a second message/).first()).toBeVisible();
     await expect(sheet.locator(".print-chrome").first()).toBeHidden();
     await expect(sheet.getByText("A saved PDF is another copy of the pads")).toBeHidden();
-    await expect(sheet.getByText("Save as PDF")).toBeHidden();
+    // Neither the button nor the line under the buttons that says what it does.
+    await expect(sheet.getByRole("link", { name: "Save as PDF" })).toBeHidden();
+    await expect(sheet.getByText(/“Save as PDF” puts/)).toBeHidden();
     await expect(page.locator("#root")).toBeHidden();
     // Back to the page's own media, not to "screen" by force: the print further down has to be laid out for paper.
     await page.emulateMedia({ media: null });

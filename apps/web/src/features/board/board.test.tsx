@@ -36,9 +36,13 @@ describe("the words", () => {
       name: "Sam",
       latest: latest && { id: "c", status: "safe", body: "", place: null, hasPosition: false, createdAt: at(17, 14, 2), ...latest },
     });
-    expect(checkInWords(line({ place: "gone to Mum's" }), NOW)).toBe("safe, gone to Mum's, 14:02 today");
-    expect(checkInWords(line({ status: "help", body: "Car won't start" }), NOW)).toBe("needs help: Car won't start, 14:02 today");
-    expect(checkInWords(line({ status: "other", body: "On the train\nmore" }), NOW)).toBe("On the train, 14:02 today");
+    expect(checkInWords(line({ place: "gone to Mum's" }), NOW)).toBe("safe · gone to Mum's · 14:02 today");
+    expect(checkInWords(line({ status: "help", body: "Car won't start" }), NOW)).toBe("needs help: Car won't start · 14:02 today");
+    // Its own full stop is left off, so that "fine.," never shows.
+    expect(checkInWords(line({ body: "At work, all fine.", place: "Keswick library" }), NOW)).toBe(
+      "safe: At work, all fine · Keswick library · 14:02 today",
+    );
+    expect(checkInWords(line({ status: "other", body: "On the train\nmore" }), NOW)).toBe("On the train · 14:02 today");
     expect(checkInWords(line({ createdAt: at(12, 18) }), NOW)).toBe("no check-in since Thursday");
     expect(checkInWords(line(null), NOW)).toBe("no check-in yet");
   });
@@ -186,7 +190,7 @@ describe("the Messages screen", () => {
       within(strip)
         .getAllByRole("listitem")
         .map((item) => item.textContent),
-    ).toEqual([expect.stringMatching(/^Sam: safe, gone to Mum's, \d\d:\d\d today$/), "Alex: no check-in yet"]);
+    ).toEqual([expect.stringMatching(/^Sam: safe · gone to Mum's · \d\d:\d\d today$/), "Alex: no check-in yet"]);
     await userEvent.type(screen.getByLabelText(/Where you are, in a few words/), "at work");
     await userEvent.click(screen.getByRole("button", { name: /I'm safe/ }));
     await waitFor(() =>

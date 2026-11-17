@@ -57,14 +57,16 @@ export function checkInWords(line: BoardCheckInLine, now = Date.now()): string {
   const latest = line.latest;
   if (!latest) return "no check-in yet";
   if (now - latest.createdAt > STALE_AFTER_MS) return `no check-in since ${sinceDay(latest.createdAt, now)}`;
-  const words = latest.body.split("\n")[0]?.trim() ?? "";
+  // Its own full stop is left off: the place and the time follow it on the same line.
+  const words = (latest.body.split("\n")[0] ?? "").trim().replace(/\.+$/, "");
   const head =
     latest.status === "other"
       ? words || STATUS_WORDS.other
       : words
         ? `${STATUS_WORDS[latest.status]}: ${words}`
         : STATUS_WORDS[latest.status];
-  return [head, latest.place, whenCheckedIn(latest.createdAt, now)].filter(Boolean).join(", ");
+  // Facts about one check-in, joined as every such line is (Joined's " · "): the words may have commas of their own.
+  return [head, latest.place, whenCheckedIn(latest.createdAt, now)].filter(Boolean).join(" · ");
 }
 
 /** Whether the strip should draw a line as needing attention: help asked for, and not since overtaken by a day. */

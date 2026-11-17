@@ -70,6 +70,28 @@ const lands: Array<[string, string | null]> = [
   ["manual", "Help"],
   ["docker", "Help"],
   ["ask a question", "Chat"],
+  // What was added on 17 November.
+  ["message", "Messages"],
+  ["check in", "Messages"],
+  ["audiobook", "Library"],
+  ["postcode", "Maps"],
+  ["river", "Preparedness: Weather and hazards"],
+  ["compass", "Tools: Compass"],
+  ["declination", "Tools: Compass"],
+  ["allotment", "Games: Allotment"],
+  ["mesh", "Settings: Mesh radio"],
+  ["calories", "Preparedness: Supplies"],
+  ["text size", "Settings: Text size"],
+  ["heights", "Settings: Heights in metres or feet"],
+  ["supermarket", "Maps: Layers"],
+  ["shop", "Maps: Layers"],
+  ["pharmacy", "Maps: Layers"],
+  ["drinking water", "Maps: Layers"],
+  // The Help section.
+  // A guide by its own name comes first; Help, with every guide, is offered next (below).
+  ["guide", "Settings: Set-up guide"],
+  ["raspberry pi", "Help"],
+  ["docker", "Help"],
 ];
 
 describe("the quick search's places, for the words people use", () => {
@@ -83,7 +105,7 @@ describe("the quick search's places, for the words people use", () => {
   });
 
   it("offers every section of Settings, each at its own address on the Settings screen", () => {
-    const sections = everyPlace.filter((place) => place.section);
+    const sections = everyPlace.filter((place) => place.section && place.parent?.to === "/settings");
     expect(sections.length).toBeGreaterThanOrEqual(13);
     for (const section of sections) expect(section.to).toMatch(/^\/settings#[a-z-]+$/);
     expect(findPlaces("backup").map((place) => place.to)).toEqual(
@@ -93,6 +115,16 @@ describe("the quick search's places, for the words people use", () => {
 
   it("lists the Settings screen for “settings”, not each of its sections as well", () => {
     expect(findPlaces("settings").map(placeName)).toEqual(["Settings", "Settings: Set-up guide"]);
+  });
+
+  it("offers Help, where every guide is, for “guide”", () => {
+    expect(findPlaces("guide").map(placeName).slice(0, 2)).toEqual(["Settings: Set-up guide", "Help"]);
+  });
+
+  it("opens a tab of Maps by its words, at an address the Maps screen reads", () => {
+    expect(findPlaces("supermarket")[0]?.to).toBe("/maps?tab=layers");
+    // "maps" alone is the Maps screen, not each of its tabs as well.
+    expect(findPlaces("maps").map(placeName)).not.toContain("Maps: Layers");
   });
 
   it("finds a screen by its own name before one that only mentions the word", () => {
