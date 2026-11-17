@@ -1,3 +1,4 @@
+import type { ToolLookup } from "./tools.ts";
 /**
  * Shapes for "Answer from my library": one question, one answer written by a language
  * model the person runs themselves, from passages of their own library, with numbered
@@ -19,6 +20,12 @@ export interface AnswerSource {
   quote: string;
   /** This source is from a field where a wrong paraphrase can hurt someone (medicine, first aid, preserving food). */
   safetyCritical: boolean;
+  /**
+   * Set when this source is not a passage but something the model looked up in Outpost
+   * with a tool (kind `lookup`): `title` names what was looked at, `quote` is the answer
+   * the tool gave, exactly as the model was sent it, and `url` opens the screen it came from.
+   */
+  lookup?: ToolLookup;
 }
 
 /**

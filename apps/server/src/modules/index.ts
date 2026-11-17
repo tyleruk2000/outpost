@@ -42,6 +42,7 @@ import { registerRetrieval } from "./retrieval/index.ts";
 import { registerSearch } from "./search/index.ts";
 import { registerSemantic } from "./semantic/index.ts";
 import { registerSupplies } from "./supplies/index.ts";
+import { registerTools } from "./tools/index.ts";
 import { registerWeather } from "./weather/index.ts";
 import { registerWebPages } from "./webpages/index.ts";
 
@@ -93,4 +94,6 @@ export const modules: ModuleRegister[] = [
   registerLearning,
   // The mesh radio link, after the board it is a transport of, on a line of its own.
   registerMesh,
+  // Tools a language model may call (Chat, and /mcp), last: they read from every module above.
+  registerTools,
 ];
