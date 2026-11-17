@@ -4,7 +4,7 @@ import path from "node:path";
 import type { CatalogEntryDto, CatalogResponse } from "@outpost/shared";
 import { CATALOG_CATEGORIES } from "@outpost/shared";
 import { afterEach, describe, expect, it } from "vitest";
-import { validateCatalog } from "../src/cli/validate-catalog.ts";
+import { entriesToCheck, validateCatalog } from "../src/cli/validate-catalog.ts";
 import { createHttpClient } from "../src/core/http.ts";
 import {
   type KiwixBook,
@@ -915,5 +915,27 @@ describe("downloading from the catalogue", () => {
   it("adds hosts from OUTPOST_DOWNLOAD_HOSTS to the allow-list", async () => {
     app = await createTestApp({ OUTPOST_DOWNLOAD_HOSTS: "Mirror.Lan, files.lan" });
     expect(app.ctx.services.catalog.allowedHosts()).toEqual(["mirror.lan", "files.lan"]);
+  });
+});
+
+describe("the online check's skipped hosts", () => {
+  const loaded = (id: string, source: Record<string, unknown>) => ({ id, source }) as unknown as LoadedEntry;
+  const entries = [
+    loaded("k.book", { type: "kiwix", name: "wikipedia_en_100", flavour: "" }),
+    loaded("h.pdf", { type: "http", url: "https://files.example.org/a.pdf" }),
+    loaded("h.other", { type: "http", url: "https://Other.example.org/b.pdf" }),
+    loaded("b.sheet", { type: "bundled", file: "radio/a.md" }),
+  ];
+
+  it("asks about everything when no host is named", () => {
+    const { check, skipped } = entriesToCheck(entries);
+    expect(check.map((entry) => entry.id)).toEqual(["k.book", "h.pdf", "h.other", "b.sheet"]);
+    expect(skipped).toEqual([]);
+  });
+
+  it("leaves out entries on a named host, a Kiwix book counting as the feed's host", () => {
+    const { check, skipped } = entriesToCheck(entries, ["opds.library.kiwix.org", "OTHER.example.org"]);
+    expect(check.map((entry) => entry.id)).toEqual(["h.pdf", "b.sheet"]);
+    expect(skipped).toEqual(["k.book", "h.other"]);
   });
 });
