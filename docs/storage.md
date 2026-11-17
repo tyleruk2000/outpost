@@ -284,9 +284,13 @@ What has been tried and what has not:
 
 - The Docker SMB volume and service lines were tried with Docker Desktop against a test
   Samba server, with stand-in containers in place of the real services.
-- The Linux `/etc/fstab` lines and both NFS variants were written from the examples
-  below and have **not** been tried on a real system.
-- Nothing here has been tried against a real NAS.
+- An SMB share mounted by the host and handed to both containers, as
+  `deploy/pi/nas-share.sh` sets it up (below), was tried once on a Raspberry Pi 5
+  against a Synology NAS on 17 November 2026: mounted, written to from the container,
+  added as a location, and found again after being unmounted and after a restart of the
+  containers. No collection was read from it and the NAS was not switched off.
+- The share mounted by Docker itself and both NFS variants have **not** been tried
+  against a real NAS.
 
 ## NAS set-up examples
 
@@ -303,7 +307,32 @@ Keep the database off the share (see above). Mount shares for content only.
 
 ### A share mounted by the host, then bind-mounted
 
-Mount the share on the host first.
+On a Raspberry Pi or another Debian-based system, `deploy/pi/nas-share.sh` does all of
+this for an SMB share, and asks for the password at the keyboard instead of having you
+write it into a file (`--help` says what it changes and how to undo it):
+
+```bash
+./deploy/pi/nas-share.sh --server 192.168.1.20 --share docs --folder Outpost --user me
+```
+
+It differs from the lines below in three ways worth copying if you write them yourself:
+
+- It mounts **one folder of the share** (`//192.168.1.20/docs/Outpost`), not the share,
+  so that nothing else in the share can be reached through Outpost's storage screens.
+- The `/etc/fstab` line ends `nofail,_netdev,x-systemd.automount`, so the system mounts
+  the folder when it is first used, starts even when the NAS is off, and mounts it again
+  when something next looks.
+- The containers are given the **folder the share is mounted in** (`/mnt/outpost-nas`
+  as `/storage/nas`), with `bind: propagation: rslave`, in a `compose.nas.yaml` named by
+  `COMPOSE_FILE` in `.env`. Given the mount point itself, a container started while the
+  share was not mounted keeps seeing the empty folder underneath it for as long as it
+  runs; given the folder above with `rslave`, the share appears inside the container
+  whenever it is mounted. The location's folder is then `/storage/nas/<name>`.
+
+It needs Outpost in the system's Docker, not a rootless one: a rootless container's
+user is not uid 1000 outside it, so it could not write to the share.
+
+By hand: mount the share on the host first.
 
 NFS, in `/etc/fstab`:
 

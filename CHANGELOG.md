@@ -1661,6 +1661,28 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   the tools, and `scripts/write-which-model.mjs` writes `docs/which-model.md` from the
   figures.
 
+### Raspberry Pi, first run on real hardware
+
+- `deploy/pi/install.sh` was run on a Raspberry Pi 5 (Raspberry Pi OS, Debian 12) on
+  17 November 2026 and built and started Outpost in about three minutes. What that
+  showed, and what changed:
+  - A Pi can have two Dockers, the system's and a rootless one of the user's, and the
+    script used whichever plain `docker` meant without saying so. It now says when that
+    is the rootless one, and `--sudo` uses the system's.
+  - Raspberry Pi OS starts with memory limits switched off, so Docker does not apply the
+    limits in `compose.yaml`. The script says so, and the deployment page says what the
+    message means.
+  - The addresses printed at the end no longer include Docker's own networks, and an
+    address on Tailscale is labelled as that.
+- `deploy/pi/nas-share.sh`, new: connects one folder of an SMB share on a NAS to Outpost
+  in Docker. The password is asked for at the keyboard and kept in a file only root can
+  read; the folder is mounted by the system when first used; both containers are given
+  it in a way that survives the share being mounted after they start. Tried against a
+  Synology NAS.
+- [docs/deployment.md](docs/deployment.md), [docs/storage.md](docs/storage.md) and
+  [docs/troubleshooting.md](docs/troubleshooting.md) say what was tried on the Pi and
+  what was not, in place of "never run on a Pi".
+
 ### Changed
 
 - **Outpost at rest costs close to nothing.** With nobody using it, the server sets no
@@ -1972,8 +1994,9 @@ These are deliberate or known, and are explained in
   on one computer, not with a physical drive carried to a second one.
 - **Tried on one platform.** Outpost has been run by hand on macOS on Apple Silicon,
   including the Compose stack with the `arm64` image. Linux on x86-64, Intel Macs,
-  Windows, Raspberry Pi hardware and NAS products are untried; the two Raspberry Pi
-  scripts in `deploy/pi/` have never been run on a Pi. Nothing builds or tests it
+  Windows and Outpost on a NAS are untried; one Raspberry Pi 5 has been set up once
+  with `deploy/pi/install.sh` and `nas-share.sh`, and `hotspot.sh` has never been run on
+  a Pi. Nothing builds or tests it
   automatically, and no image is published.
 - **Mesh radio has not been tried with a real radio**, only with stand-ins written for
   the tests. Expect the first real radio to find something.

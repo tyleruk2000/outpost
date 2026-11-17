@@ -11,11 +11,21 @@ fit together.
 
 Read this before relying on any step below. Outpost is developed and used every day on
 a Mac with Apple Silicon, from source, as the packaged app, and as the full Docker
-Compose stack. The test suites are run by hand on that Mac. **Nothing else has been
-tried**: not a Raspberry Pi, not Linux on a PC, not an Intel Mac, not Windows, not a NAS.
-The steps for those were written from their makers' documentation and from what the
-same steps do on the Mac, and each section says so. The two scripts for a Raspberry Pi
-in `deploy/pi/` have been checked only for syntax and with `--dry-run` on a Mac. If a
+Compose stack. The test suites are run by hand on that Mac.
+
+**One Raspberry Pi has been set up, once**, on 17 November 2026: a Raspberry Pi 5 with 8 GB, Raspberry Pi OS (Debian 12), with Docker 27.5 already installed.
+`deploy/pi/install.sh --lan --https --sudo` built and started Outpost there in about
+three minutes, it was opened from a Mac on the same network, and
+`deploy/pi/nas-share.sh` connected a folder on a Synology NAS over SMB, which came back
+by itself after being unmounted and after the containers were restarted. What that run
+did **not** cover: a Pi 4, a board with 4 GB, putting the system on the card (steps 1
+and 2 below), `--install-docker`, `hotspot.sh`, HTTPS from a phone, restoring a backup
+on the Pi, NFS, a collection read from the share, and how the Pi does under a real
+library. Nothing was timed beyond the build.
+
+**Nothing else has been tried**: not Linux on a PC, not an Intel Mac, not Windows, not
+Outpost running on a NAS. The steps for those were written from their makers'
+documentation and from what the same steps do on the Mac, and each section says so. If a
 step does not do what this page says, [troubleshooting.md](troubleshooting.md) has the
 messages Outpost and the scripts print, and what to do about each.
 
@@ -23,8 +33,8 @@ messages Outpost and the scripts print, and what to do about each.
 
 For a person who has Outpost running on a Mac, a Raspberry Pi 5 (or 4) still in its box,
 and has not used Docker before. Each step says what to type, what you should see, and
-what to do if you do not see it. **None of this has been run on a real Pi**: see
-[above](#what-has-been-tried-and-what-has-not). The Pi does the same as any Linux
+what to do if you do not see it. Steps 3 to 5 and the NAS part of step 6 have been done
+on one real Pi; the rest has not: see [above](#what-has-been-tried-and-what-has-not). The Pi does the same as any Linux
 computer would from step 4 on, using the script described under
 [Raspberry Pi 4 and 5](#raspberry-pi-4-and-5).
 
@@ -114,12 +124,33 @@ for an `https` address later. You should see, one after another:
 - `Creating .env from .env.example.`
 - `Letting other devices on the network reach Outpost …`
 - `Publishing the HTTPS port (compose.override.yaml).`
+- `Note: this system has memory limits switched off …` on Raspberry Pi OS as it comes.
+  Nothing is wrong: see [Raspberry Pi 4 and 5](#raspberry-pi-4-and-5).
 - `Building and starting Outpost. The first build downloads map fonts and the search model and can take a long time on a Pi.`
-  This is the slow part. Docker prints a great deal while it builds.
+  This is the slow part. Docker prints a great deal while it builds: about three minutes
+  on a Pi 5 with a good connection. Among it, twice, `Your kernel does not support
+  memory limit capabilities or the cgroup is not mounted. Limitation discarded.`, which
+  is the same note in Docker's words, and appears again every time the containers start.
 - `Waiting for Outpost to answer.`
 - `Fetching VOACAP's coefficients for the HF propagation planner (15 files, 559 kB).`
 - `Outpost is running.`, then the addresses to open it at, one of them
-  `On your network: http://192.168.1.30:8080` with the Pi's own address.
+  `On your network: http://192.168.1.30:8080` with the Pi's own address (one line for
+  each network the Pi is on, and `Over Tailscale:` if it has that).
+
+**If the Pi already has Docker, check which one `docker` means.** Some Pis have two: the
+system's, which needs `sudo` or membership of the `docker` group, and a rootless one
+belonging to your user. `docker context ls` shows a line `rootless *` when plain
+`docker` means the second. The script then says so and carries on into the rootless
+one, where `sudo docker ps` will not show Outpost, where it stops when you sign out
+unless lingering is on, and where a NAS share cannot be connected with the script in
+step 6. To use the system's Docker, add `--sudo`:
+
+```bash
+./deploy/pi/install.sh --lan --https --sudo
+```
+
+and from then on put `sudo` before every `docker` command on this page. (The first real
+run went into a rootless Docker unnoticed, which is why the option exists.)
 
 If it stops with a message instead, [troubleshooting.md](troubleshooting.md#the-raspberry-pi-scripts)
 lists each one. Then check from the Pi itself:
@@ -175,11 +206,27 @@ another device over `https`; restore an unprotected one, or turn HTTPS on first.
 **The files**, depending on where they are now. Open **Storage** on the Mac to see the
 folder of each location.
 
-- **On a NAS.** Mount the same share on the Pi, in both services of `compose.yaml`
-  (examples under [A share mounted by Docker](storage.md#a-share-mounted-by-docker)),
-  run `docker compose up -d`, then in Outpost open **Storage → Add location** and pick
-  the folder. Outpost finds its marker file and the documents and collections in it are
-  available again.
+- **On a NAS (an SMB share).** On the Pi, in the `outpost` folder, with the NAS's
+  address, the share, the folder Outpost's library is in, and the user you sign in to
+  the NAS as:
+
+  ```bash
+  ./deploy/pi/nas-share.sh --dry-run --server 192.168.1.20 --share docs --folder Outpost --user me
+  ./deploy/pi/nas-share.sh --server 192.168.1.20 --share docs --folder Outpost --user me
+  ```
+
+  (add `--sudo` if you installed with it). It asks for the NAS password without showing
+  it and keeps it in a file only root can read; mounts that one folder at
+  `/mnt/outpost-nas/docs`, now and after every restart; gives it to both containers as
+  `/storage/nas/docs`; and restarts Outpost. Run it in a terminal of your own: the
+  password is asked for at the keyboard. Then in Outpost open **Storage → Add location**,
+  choose the folder `/storage/nas/docs` and the kind **Network share**. Outpost finds its
+  marker file and the documents and collections in it are available again. The
+  **Network shares** part of the Storage screen will still say that Docker has to
+  connect a share and offer to write out the lines: that is the same job done by hand,
+  and it does not list what the script connected. What counts is the location under
+  **Storage locations**. [storage.md](storage.md#a-share-mounted-by-the-host-then-bind-mounted)
+  has what the script writes, and NFS, which it does not do.
 - **On the Mac's own disk or a drive plugged into it.** Copy each location's folder,
   whole, onto the SSD for the Pi (Finder's copy keeps the hidden marker file
   `.outpost-location.json`). Plug the SSD into the Pi, mount it at a fixed place and
@@ -1219,7 +1266,15 @@ Linux on x86-64, not an Intel Mac, not Windows, not a Raspberry Pi, not a NAS.
   no 32-bit image.
 - Memory: the Compose file limits the two containers to 1 GB and 512 MB by default
   (`OUTPOST_MEMORY_LIMIT`, `KIWIX_MEMORY_LIMIT`), which fits a 4 GB board for keyword
-  search, reading, notes and maps. The built-in model for semantic search takes about
+  search, reading, notes and maps. **On Raspberry Pi OS as it comes, those limits are
+  not applied**: the system starts with `cgroup_disable=memory` (see `cat /proc/cmdline`),
+  Docker says `Your kernel does not support memory limit capabilities or the cgroup is
+  not mounted. Limitation discarded.` for each container, `docker stats` shows `0B / 0B`
+  for memory, and the containers run without a ceiling. Outpost works the same; what is
+  missing is the guard that stops it taking memory from whatever else the Pi runs.
+  Guides for the Pi give the remedy as adding `cgroup_enable=memory cgroup_memory=1` to
+  the end of the one line in `/boot/firmware/cmdline.txt` and restarting; that was not
+  tried here. The built-in model for semantic search takes about
   300 MB more while it is loaded (the container used 430 MiB during an index build on a
   laptop; a Pi has not been measured), which fits the default. Choose 8 GB if you plan
   to run an embedding server
@@ -1240,11 +1295,13 @@ Linux on x86-64, not an Intel Mac, not Windows, not a Raspberry Pi, not a NAS.
 Two scripts in `deploy/pi/` set a Pi up to be carried somewhere with no router and no
 internet, and reached from phones over a Wi-Fi network the Pi itself provides.
 
-**Neither script has been run on a Raspberry Pi.** They were written from Docker's
-installation page and from NetworkManager's documentation and source on 16 November
-2026, and checked only for syntax and with `--dry-run` on a Mac. Read them before you
-run them, run each with `--dry-run` first, and expect to adjust them. Reports of what
-happened on real hardware are welcome.
+`install.sh` has been run once on a real Pi (see
+[What has been tried](#what-has-been-tried-and-what-has-not)), without
+`--install-docker`, and was changed by what that showed. **`hotspot.sh` has not been run
+on a Raspberry Pi**: it was written from NetworkManager's documentation and source on
+16 November 2026 and checked only for syntax and with `--dry-run` on a Mac. Read both
+before you run them, run each with `--dry-run` first, and expect to adjust them. Reports
+of what happened on real hardware are welcome.
 
 ```bash
 git clone https://github.com/tyleruk2000/outpost.git
@@ -1261,8 +1318,9 @@ sudo ./deploy/pi/hotspot.sh on --ssid "Outpost"         # asks for a password
   `OUTPOST_LAN_ACCESS=true` and `OUTPOST_BIND=0.0.0.0` in it, keeping the file as it
   was beside it. With `--https` it writes a `compose.override.yaml` that publishes port
   8443, which HTTPS uses once you turn it on in Settings (`compose.yaml` itself is not
-  edited, and an override file already there is left alone). Then it builds and starts
-  the stack and waits for it to answer. The
+  edited, and an override file already there is left alone). With `--sudo` it uses the
+  system's Docker through `sudo` even where plain `docker` works, for a Pi that also has
+  a rootless Docker. Then it builds and starts the stack and waits for it to answer. The
   build fetches map fonts and the search model, so the Pi needs the internet for it.
   Last, it fetches VOACAP's coefficients for the HF propagation planner (15 files,
   559 kB) into the data volume, so that the Pi predicts with no internet from then on;

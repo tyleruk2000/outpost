@@ -775,11 +775,45 @@ uses. Everything else works. See
 
 ## The Raspberry Pi scripts
 
-What `deploy/pi/install.sh` and `deploy/pi/hotspot.sh` print when they stop, and what
-to do. Neither script has been run on a real Raspberry Pi
+What `deploy/pi/install.sh`, `deploy/pi/nas-share.sh` and `deploy/pi/hotspot.sh` print
+when they stop, and what to do. The first two have been run on one real Raspberry Pi and
+`hotspot.sh` on none
 ([deployment.md](deployment.md#what-has-been-tried-and-what-has-not)), so a message not
 listed here is possible: the script's own words, and the lines just above them, say
 what it was doing.
+
+### "Your kernel does not support memory limit capabilities or the cgroup is not mounted. Limitation discarded."
+
+Docker's words, once for each container, every time they start. Raspberry Pi OS starts
+with memory limits switched off, so the ceilings in `compose.yaml` are not applied.
+Outpost runs the same. See
+[Raspberry Pi 4 and 5](deployment.md#raspberry-pi-4-and-5).
+
+### Outpost answers, but `sudo docker ps` does not list it (or `docker compose ps` lists nothing)
+
+The Pi has two Dockers, the system's and a rootless one of your own user's, and Outpost
+is in the other one from the command you typed. `docker context ls` shows which plain
+`docker` means. To move it to the system's: in the `outpost` folder, `docker compose
+down` (add `-v` only if nothing in it is worth keeping: that deletes its notes and
+library), then `./deploy/pi/install.sh --lan --https --sudo`.
+
+### "`docker` here is rootless Docker (your own user's). A share mounted by the system cannot be handed to a rootless container …"
+
+From `nas-share.sh`. If Outpost runs in the system's Docker, run it again with `--sudo`.
+If Outpost runs in the rootless one, move it first, as above.
+
+### "… could not be mounted." (from `nas-share.sh`)
+
+The line under it is the system's own reason. A wrong password: run it again with
+`--new-password`. A share or folder that is not there: the folder must exist on the NAS
+already, spelled the same, capitals included. A NAS that wants another SMB version:
+change `vers=3.0` in the line in `/etc/fstab` to `2.1` or `3.1.1`, then
+`sudo systemctl daemon-reload` and run the script again.
+
+### "The password is asked for at the keyboard, and there is none here."
+
+`nas-share.sh` was started by something with no terminal. Run it in a terminal; over
+`ssh`, with `ssh -t`.
 
 ### "A 64-bit system is needed: this one reports armv7l. Install Raspberry Pi OS (64-bit)."
 

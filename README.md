@@ -364,7 +364,7 @@ tried: not Linux on x86-64, not an Intel Mac, not Windows, not a Raspberry Pi, n
 | Platform | How | Status |
 | --- | --- | --- |
 | macOS, Apple Silicon | Docker Desktop, from source, the packaged app, or a portable drive | Developed and tried here by hand |
-| Linux ARM64, Raspberry Pi 4 and 5 (64-bit OS) | Docker Compose; the scripts in `deploy/pi/` | Untried on a Pi; the scripts have never been run on one |
+| Linux ARM64, Raspberry Pi 4 and 5 (64-bit OS) | Docker Compose; the scripts in `deploy/pi/` | Set up once on a Pi 5 with the install and NAS scripts; not used there yet, and the hotspot script is untried |
 | Linux x86-64 | Docker Compose, or the packaged app | Untried |
 | macOS, Intel | Docker Desktop, or the packaged app | Untried |
 | Windows 10 and 11 | Docker Desktop with WSL 2 | Untried |
@@ -447,12 +447,16 @@ A 64-bit operating system is required, and 4 GB of memory fits keyword search,
 reading, notes and maps.
 [From a Mac to a Raspberry Pi, step by step](docs/deployment.md#from-a-mac-to-a-raspberry-pi-step-by-step)
 walks from a Pi still in its box to Outpost open on a phone, with your library brought
-across; it too has not been run on a real Pi. Two scripts in `deploy/pi/` set a Pi up to be carried somewhere
-with no router and no internet, reached from phones over a Wi-Fi network of its own.
+across. Three scripts in `deploy/pi/` install it, connect a folder on a NAS, and set a
+Pi up to be carried somewhere with no router and no internet, reached from phones over a
+Wi-Fi network of its own.
 
-**Neither script has been run on a Raspberry Pi.** They were written from Docker's and
-NetworkManager's documentation and checked only for syntax and with `--dry-run` on a
-Mac. Read them, run each with `--dry-run` first, and expect to adjust them.
+**The install and NAS scripts have been run once, on one Raspberry Pi 5** (17 November
+2026), and were changed by what that showed; the hotspot script has not been run on a
+Pi, and the Pi has not yet been used with a real library. Read them, run each with
+`--dry-run` first, and expect to adjust them.
+[What has been tried](docs/deployment.md#what-has-been-tried-and-what-has-not) says
+exactly what.
 
 ```bash
 ./deploy/pi/install.sh --dry-run                        # see what it would do
@@ -565,8 +569,9 @@ Stated here so nobody has to find them out. Each is taken from the docs page nam
   [audiobooks](docs/library.md#audiobooks),
   [messages](docs/messages.md#what-has-and-has-not-been-tested),
   [games](docs/games.md#not-tested)).
-- **A Raspberry Pi, Windows, Linux on x86-64, an Intel Mac, a NAS.** The Pi scripts and
-  the step-by-step guide from a Mac to a Pi have never been run on a Pi. See
+- **Windows, Linux on x86-64, an Intel Mac, Outpost on a NAS, and most of a Raspberry
+  Pi.** One Pi 5 has been set up once with the install and NAS scripts; a Pi 4, a 4 GB
+  board, the hotspot script, HTTPS from a phone and everyday use on a Pi are untried. See
   [Install and run](#install-and-run).
 - **A printer.** No map page, emergency card, cipher pad, sundial or nocturnal has been
   printed on paper ([maps](docs/maps.md#limits-and-what-has-not-been-tried),

@@ -3,6 +3,7 @@ dist/
 coverage/
 .env
 .env.local
+.env.before-pi-install
 *.log
 .DS_Store
 
