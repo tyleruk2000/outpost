@@ -64,7 +64,7 @@ function sameHost(a: string, b: string): boolean {
   return new URL(a).host.toLowerCase() === new URL(b).host.toLowerCase();
 }
 
-async function attempt(client: HttpClient, context: FetchContext): Promise<Outcome> {
+async function attempt(client: HttpClient, context: FetchContext, stated: number | null): Promise<Outcome> {
   const { download, partPath, signal } = context;
   const have = await sizeOf(partPath);
   context.progress(have, download.totalBytes);
@@ -138,6 +138,8 @@ async function attempt(client: HttpClient, context: FetchContext): Promise<Outco
   });
 
   let received = append ? have : 0;
+  // What the server says is exact. What the download stated (a catalogue's size) may be a little out, so it is given room.
+  const limit = total ?? (stated === null ? null : Math.ceil(stated * 1.1) + 1024 * 1024);
   context.progress(received, total);
   if (response.body) {
     // pipeline() applies backpressure: the socket is only read as fast as the disk writes.
@@ -150,6 +152,10 @@ async function attempt(client: HttpClient, context: FetchContext): Promise<Outco
           // few seconds, and a small file cannot slip through whole.
           for (let offset = 0; offset < chunk.length; offset += THROTTLE_SLICE_BYTES) {
             const slice = chunk.subarray(offset, offset + THROTTLE_SLICE_BYTES);
+            // Stopped as soon as more arrives than the server said, or, when it said nothing, than the download stated.
+            if (limit !== null && received + slice.length > limit) {
+              throw new Error("More data arrived than the server said the file contains. Outpost will start this download again.");
+            }
             // Holding the slice here slows the socket itself: backpressure reaches the server.
             await context.throttle(slice.length);
             received += slice.length;
@@ -182,8 +188,10 @@ export function createHttpFetcher(client: HttpClient): Fetcher {
     if (!context.allowedHosts?.length) {
       throw new PermanentJobError("This download does not say which hosts it may use, so it was not started.", "forbidden");
     }
+    // The size the download stated before any server answered; later answers replace it in the row.
+    const stated = context.download.totalBytes;
     for (let restarts = 0; ; restarts += 1) {
-      if ((await attempt(client, context)) === "done") return;
+      if ((await attempt(client, context, stated)) === "done") return;
       if (restarts >= MAX_RESTARTS) {
         throw new Error("The server kept rejecting the request to continue this download. Outpost will try again.");
       }

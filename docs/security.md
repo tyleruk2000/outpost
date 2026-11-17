@@ -556,7 +556,13 @@ Integrity comes from the publisher's checksum, not from the mirror that served t
 bytes. A Kiwix download without a published SHA-256 is refused; a file that does not
 match is deleted and nothing is installed. Files are written as `<name>.part` and
 renamed only when complete and verified, and an existing file is never overwritten.
-Code: `apps/server/src/modules/downloads/service.ts`.
+A file cannot be larger than stated: the download stops as soon as more arrives than the
+server's `Content-Length`, or, when the server sends none, than the size the download
+stated plus a tenth and 1 MB, so a mirror that goes on sending cannot fill the disk
+before the checksum is checked (`apps/server/test/review2-download-size.test.ts`). A
+download that states no size and is served with no length is bounded only by the room
+on the drive.
+Code: `apps/server/src/modules/downloads/service.ts`, `http-fetcher.ts`.
 
 **Saving a link.** When a reference page links to a file that is not in its archive,
 a person can have Outpost fetch it into the library. This is the one download whose
