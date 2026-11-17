@@ -12,8 +12,9 @@ apps/web/src/
   styles/base.css        Tailwind v4 theme mapped onto the tokens, base rules, utilities
   styles/prose.css       reading and writing surfaces (.prose)
   components/ui/         controls: button, input, dialog, menu, misc (tabs, select, switch,
-                         checkbox, progress, badge, tooltip, popover, segmented, skeleton, kbd)
-  components/page.tsx    Page, PageHeader, Section, EmptyState, Notice, Rows, ErrorState
+                         checkbox, radio, progress, badge, tooltip, popover, segmented, skeleton, kbd)
+  components/page.tsx    Page, PageHeader, Section, EmptyState, Notice, Rows, ErrorState,
+                         BackLink, Joined, JumpLinks, Disclosure
   components/            shell: sidebar, mobile nav, command palette, lamp, contour, storage bar
   lib/api.ts             the only way to call the server (`api.get/post/patch/delete/upload`;
                          `{ keepalive: true }` on `patch` and `put` for the save made as a page closes)
@@ -150,6 +151,8 @@ foot. Look at it at those heights when you add a screen.
 
 - **Loading:** skeletons shaped like the content (`Skeleton`), not a centred spinner.
 - **Empty:** `EmptyState` with a title that says what belongs here and a first action.
+  Inside a section or a dialog it is `compact`, with `level={3}` under the section's title.
+  A filter that matches nothing is not empty: say so in a line, with a way to clear it.
 - **Error:** `ErrorState` (with retry) for a failed load; `Notice tone="danger"` or
   `notify.error(...)` (`lib/notify.tsx`) for a failed action. `notify.error` shows the
   usual toast and also writes the message to an assertive live region, so a screen
@@ -184,6 +187,57 @@ Write for the person using it. Name things as they would ("Add documents", not
 "Upload files to index"). A button says exactly what it does and keeps that name
 through the flow. An error says what happened and what to do next. Deleting anything
 goes through `ConfirmDialog`, which names what will be removed.
+
+## One way everywhere
+
+Outpost is one product, not a set of tools built one at a time. Where screens agree on a
+way of doing something, this is the way; `lib/one-product.test.ts` reads the source and
+fails when a screen goes its own way. Its `KNOWN` lists are the places still to be put
+right: take a line out when you fix one.
+
+- **Buttons in a dialog** are one row at its foot (`DialogFooter`), on the right, the
+  main one last: Cancel, then Save. The row wraps on a narrow phone; it is never a stack
+  of full-width buttons. A bar at the foot of a full-screen form (a contact) is the same.
+  **Buttons in the flow of a page** (under a form's fields, in an empty state, in a card)
+  sit at the left under what they act on, the main one first, where the eye starts.
+  **Buttons in a screen's header** (`PageHeader actions`) put the main one last, at the
+  end of the row, as Storage does.
+- **The way back.** A screen reached from another has a link back above its title: an
+  arrow and the other screen's name, small and muted (`BackLink`). `PageHeader` draws it
+  by itself for a screen under another in the navigation (Water leads back to Tools); a
+  screen of its own (a plan, an item, a contact) passes `back={{ to, label }}`. One glyph,
+  `ArrowLeft`, never a chevron; the slim bars over a page being written or a conversation
+  use the same arrow.
+- **Names.** The place a download is kept is "Where to keep it", everywhere. **Notes** is
+  the place; what is written in it is a **page** ("Save as a page", "a page in Notes",
+  "a page of notes" where it needs saying), never "a note". The fields of a contact or a
+  saved place called "Note" are something else and keep the name.
+- **Dates.** A day a person reads is "17 Nov 2026", through `formatDate`, on the server as
+  in the browser. An edition or a version keeps the publisher's own form ("Version
+  2026-11"). A time of day follows the clock rule above.
+- **Facts about one thing** on one line are joined by a middle dot, " · " (`Joined`,
+  which leaves out empty parts and says a comma to a screen reader). Not a slash, not a
+  full stop between fragments, and not the thing's own name again.
+- **Empty** is `EmptyState`, with the contour drawing and, where there is one, a button
+  for the first thing to do (see the states above). Never a bordered paragraph.
+- **Sections of a screen.** Tabs (`Tabs`) when one section shows at a time (Supplies,
+  Morse, Encryption); links to each section (`JumpLinks`) when the screen shows them all,
+  one after another (Water, the set-up guide).
+- **Radios** are a round mark with a dot (`RadioItem`, or a native radio with
+  `accent-primary`); a touch rule that makes targets 44 px reaches round the mark with an
+  invisible box, as for a tick box, and never grows the mark into a square.
+- **Toasts** are words, with no icon: `toast.success` and `toast` look the same. An error
+  goes through `notify.error` and keeps its icon. An action in a toast (Undo, Open it) is
+  drawn as a secondary button. All of it is set once, on the `Toaster` in `main.tsx`.
+- **Icons** are Lucide line icons. Outpost's own things (its templates, its screens) never
+  use an emoji; an emoji on a page is one a person chose for it.
+- **Household words.** A screen a household reads says what it means in their words
+  ("8 items", not "8 rows"). The technical detail a few want (an ADIF file's field
+  names, the ports and protocols of a network scan) is kept, behind a `Disclosure`
+  whose summary says what is inside.
+- **The answer first.** A screen that works something out shows the answer before what
+  it rests on and before the buttons that keep or print it, and gives a time in the
+  device's own clock as well as UTC where UTC is the engine's ("15:00 UTC (16:00 here)").
 
 ## A screen that makes a PDF
 
