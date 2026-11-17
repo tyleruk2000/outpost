@@ -3,7 +3,7 @@
  * so what is kept is the household's: one row of `game_saves` per game. The allotment
  * keeps its whole plot there (its engine is pure and lives in `./games/allotment/`);
  * Solitaire, Peg solitaire, Sudoku, Draughts and Pairs keep only a tally of games played and won. An
- * unfinished game of those four stays on the device it is being played on, so that two
+ * unfinished game of those five stays on the device it is being played on, so that two
  * people playing at once on two devices never overwrite each other's board.
  */
 

@@ -43,7 +43,9 @@ with **Start again** under its About; both ask first.
 
 The game kept in the browser is read and written inside `try`/`catch` and checked field
 by field when it is read back: in a private window, with site data blocked, or with a
-damaged copy, the game is played the same and simply not kept. It never leaves the
+damaged copy, the game is played the same and simply not kept. It is written a moment
+after a move (a burst of moves is one write), at once when the page is hidden or the
+screen is left, and not at all when nothing has changed. It never leaves the
 device; when a game ends (won, or given up by starting another after a move), only its
 result is sent, once (`POST /api/games/:game/results`). Without the server a game is
 played just the same, and the tally line says it could not be read.
@@ -88,7 +90,11 @@ clamped to the latest the plot has seen, and nothing un-grows). `GET` works the 
 to now without writing it. An action that cannot be done (sowing a bed that has a crop,
 seed you cannot afford) is refused with a message, and nothing changes. After each
 action the server says `games.changed`, and every device showing the plot refreshes;
-between refreshes the screen moves growth on with the device's clock, for display only.
+nothing else asks the server again. Between refreshes the screen moves growth on with
+the device's clock, for display only: it draws the plot again when the next bed ripens
+or the next egg, jar or apple is ready, and otherwise once a minute (for the time left
+on each bed and the light), and not at all while the page is hidden. The season shown
+moves with that clock, so a screen left open over the turn of a season changes with it.
 A stored plot that cannot be read is not replaced: the screen says so and offers Start
 again.
 
@@ -185,7 +191,8 @@ by starting again does not count towards it).
 
 The holes are named like a chessboard, columns a to g from the left and rows 1 to 7 from
 the bottom, so the centre is d4. Tap a peg, then one of the holes it can reach (they are
-marked), or drag it there; tapping the picked peg again puts it down. Once no jump is
+marked), or drag it there; tapping the picked peg again puts it down. The time runs from the first jump, only while
+the board is in view. Once no jump is
 left the game is over and undo is off, since its result has been counted. A test replays
 a full 31-jump solution to one peg in the centre
 (`apps/server/test/peg-solitaire-engine.test.ts`); the engine is in
@@ -228,10 +235,13 @@ English draughts (checkers), the rules shown under the board:
 Against the computer you play dark and move first, or choose light. The computer
 searches 6 plies (3 moves each) with alpha-beta, valuing a man at 100 and a king at 160,
 with a little for advancing, keeping the back row and the centre, and picks among moves
-it values equally from a seed. It runs in a Web Worker so the page never stops; where
-there is none it searches on the page in slices. Its slowest search seen on a Mac was
+it values equally from a seed. It runs in a Web Worker so the page never stops: one is
+started for each reply and ended as soon as it has answered (or the reply is no longer
+wanted); where there is none it searches on the page in slices. It does not think while
+the page is hidden, and replies once it is shown again. Its slowest search seen on a Mac was
 about 20 ms; it waits at least 450 ms before showing its move, so that the move can be
-followed. Undo takes back a whole turn. In two-player mode the board does not turn, and
+followed. Undo takes back a whole turn. The time runs from the first move, only while the
+board is in view. In two-player mode the board does not turn, and
 the line above it says whose turn it is.
 
 ## Pairs

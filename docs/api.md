@@ -989,13 +989,13 @@ copy (there are no accounts); see [morse-trainer.md](morse-trainer.md).
 Types: `packages/shared/src/games.ts`; the allotment's engine is
 `packages/shared/src/games/allotment/`. One row of `game_saves` per game for the whole
 copy (there are no accounts): the allotment's plot, and each other game's tally. An
-unfinished game of Patience, Sudoku, Draughts or Pairs is never sent; see
+unfinished game of Solitaire, Peg solitaire, Sudoku, Draughts or Pairs is never sent; see
 [games.md](games.md).
 
 | Route | What it does |
 | --- | --- |
-| `GET /api/games` | `{ tallies, allotmentStarted }`: for `patience`, `sudoku`, `draughts` and `pairs`, a tally for each way of playing it (`{ played, won, bestSeconds, fewestMoves, lastAt }`), and whether the allotment has been started. |
-| `POST /api/games/:game/results` | One finished game of `patience`, `sudoku`, `draughts` or `pairs`: `variant` (`draw-1`, `draw-3`; `gentle`, `steady`, `testing`; `computer`, `two-player`; `small`, `medium`, `large`), `won`, and optionally `seconds` (0–86,400) and `moves` (0–100,000). A best time or fewest moves is kept only from a win. Counts stop at 999,999. Returns `{ tally }`. |
+| `GET /api/games` | `{ tallies, allotmentStarted }`: for `solitaire`, `peg-solitaire`, `sudoku`, `draughts` and `pairs`, a tally for each way of playing it (`{ played, won, bestSeconds, fewestMoves, fewestLeft, lastAt }`), and whether the allotment has been started. |
+| `POST /api/games/:game/results` | One finished game of `solitaire`, `peg-solitaire`, `sudoku`, `draughts` or `pairs`: `variant` (`draw-1`, `draw-3`; `english`; `gentle`, `steady`, `testing`; `computer`, `two-player`; `small`, `medium`, `large`), `won`, and optionally `seconds` (0–86,400), `moves` (0–100,000) and `left` (0–100, the pegs left in Peg solitaire). A best time or fewest moves is kept only from a win; the fewest left from any game. Counts stop at 999,999. `400` for a game, a way of playing or a figure that is not one. Returns `{ tally }`. |
 | `DELETE /api/games/:game` | Forgets a game's tally ("Clear the tally"), or, for `allotment`, the whole plot ("Start again"). Returns `{ removed }`. |
 | `GET /api/games/allotment` | `{ plot, now, hemisphere, hemisphereFrom, season, awayMs, started }`: the household's plot worked out to the server's clock, without writing it (or a new plot, not stored, before the first action); `hemisphereFrom` is `setting`, `home place` or `default`. `409` with `details.damaged` when the stored plot cannot be read; it is not replaced. |
 | `POST /api/games/allotment/actions` | One action, stamped with the server's clock (never earlier than the plot's own): `{ type: "sow", bed, crop }`, `water`, `harvest` (each with `bed`, 0–13), `harvestAll`, `collect` (optional `thing`: `hens`, `beehive`, `appleTree`), `sell` (`item`, `count` 1–9,999 or `"all"`), `sellAll`, `buyBed`, `buy` (`thing`), `setHemisphere` (`auto`, `north`, `south`). Answers as the `GET` does. `409` with the reason for an action that cannot be done ("That bed already has carrots in it."); nothing changes. Publishes `games.changed`. |

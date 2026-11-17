@@ -146,7 +146,8 @@ export function Plot({ plot, hemisphere, season, now, local, selected, onBed, on
         }}
         style={place(bedBox(index))}
         className={cn(
-          "absolute flex items-start justify-start rounded-[6px] p-1 outline-offset-2 transition-shadow duration-150 motion-reduce:transition-none",
+          // The label sits astride the bed's top plank, over the path, so that it never covers what is growing.
+          "absolute flex items-start justify-center rounded-[6px] outline-offset-2 transition-shadow duration-150 motion-reduce:transition-none",
           "hover:shadow-[0_0_0_2px_var(--game-soil-edge)]",
           selected === index && "shadow-[0_0_0_3px_var(--primary)] hover:shadow-[0_0_0_3px_var(--primary)]",
         )}
@@ -154,7 +155,7 @@ export function Plot({ plot, hemisphere, season, now, local, selected, onBed, on
         {text ? (
           <span
             className={cn(
-              "tabular rounded-[3px] px-1 text-micro leading-tight font-medium whitespace-nowrap",
+              "tabular -translate-y-1/2 rounded-[3px] px-1 text-micro leading-tight font-medium whitespace-nowrap shadow-[0_0_0_1px_var(--game-soil-edge)]",
               ripe ? "bg-page text-ink" : "bg-page/85 text-ink-muted",
             )}
           >

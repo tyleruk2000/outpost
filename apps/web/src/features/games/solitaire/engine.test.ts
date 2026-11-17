@@ -351,6 +351,17 @@ describe("undo", () => {
     expect(game.now.moves).toBe(0);
   });
 
+  it("takes back a turning over of the waste, leaving the waste exactly as it was", () => {
+    let game = newGame(77, 3);
+    while (game.now.board.stock.length > 0) game = advance(game, turnStock(game.now.board, 3)!.board);
+    const before = game.now;
+    game = advance(game, turnStock(game.now.board, 3)!.board);
+    expect(game.now.board.waste).toEqual([]);
+    expect(game.now.board.stock).toHaveLength(24);
+    game = undo(game);
+    expect(game.now).toEqual(before);
+  });
+
   it("does nothing with nothing to undo", () => {
     const game = newGame(9, 1);
     expect(undo(game)).toBe(game);
