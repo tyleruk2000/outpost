@@ -46,7 +46,7 @@ test.describe("setting up answers and chat, on a phone", () => {
     await expect(getOllama.getByText("curl -fsSL https://ollama.com/install.sh | sh")).toBeVisible();
     const getModel = page.getByRole("region", { name: "Step 2: get a model" });
     await expect(getModel.getByText("ollama pull lfm3:1.7b")).toBeVisible();
-    await expect(getModel.getByRole("list", { name: "Recommended small models" }).getByRole("listitem")).toHaveCount(5);
+    await expect(getModel.getByRole("list", { name: "Recommended small models" }).getByRole("listitem")).toHaveCount(6);
     // The link to Ollama's own page opens in the browser; nothing on this page reaches the internet by itself.
     await getOllama.getByRole("radio", { name: "Mac" }).click();
     const download = getOllama.getByRole("link", { name: /ollama\.com\/download/ });
