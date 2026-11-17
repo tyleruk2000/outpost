@@ -229,7 +229,7 @@ export default function ExplorePage() {
         description="Reference collections you can keep on this server and read without a connection. Choose them one at a time; each shows its real size before anything is fetched. A few reference sheets are included with Outpost and need no download."
         actions={
           catalog.data ? (
-            <div className="flex flex-col gap-1.5 md:items-end">
+            <div className="flex flex-col items-start gap-1.5">
               <Button onClick={() => refresh.mutate()} loading={refresh.isPending}>
                 {refresh.isPending ? null : <RefreshCw />} Refresh catalogue
               </Button>

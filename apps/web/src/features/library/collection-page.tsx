@@ -28,7 +28,7 @@ import { BookContents, firstChapter, useBookContents } from "./book-contents";
 import { useCollection } from "./collection-data";
 import { MoveCollectionDialog, RemoveCollectionDialog } from "./collection-dialogs";
 import { CollectionJobStatus, useCollectionActivity } from "./collection-job";
-import { chapterCount, filesReachable, isBook, kindLabel, openTarget } from "./collection-meta";
+import { chapterCount, filesReachable, isBook, kindLabel, openTarget, plainText } from "./collection-meta";
 
 const collectionsTab = "/library?tab=collections";
 
@@ -130,7 +130,7 @@ function Details({ collection }: { collection: CollectionDto }) {
           {licenceNote ? <span className="mt-0.5 block text-ink-muted">{licenceNote}</span> : null}
         </Fact>
       ) : null}
-      {collection.attribution ? <Fact label="Attribution">{collection.attribution}</Fact> : null}
+      {collection.attribution ? <Fact label="Attribution">{plainText(collection.attribution)}</Fact> : null}
       {homepage ? (
         <Fact label="Source">
           <a href={homepage} target="_blank" rel="noreferrer noopener" className="break-all text-primary underline underline-offset-2">
@@ -355,14 +355,13 @@ export default function CollectionPage() {
         open={updating}
         onOpenChange={setUpdating}
         replaces={collection.status === "missing" ? "missing" : "older"}
+        onAdded={(response) => {
+          // Something that ships with Outpost is replaced on the spot: this page's record has
+          // just been removed, and the new edition is a collection of its own.
+          toast.success(`“${collection.title}” is up to date`);
+          navigate(`/library/collections/${response.collectionId}`, { replace: true });
+        }}
         onStarted={() => {
-          // Something that ships with Outpost is replaced on the spot: there is no download
-          // to follow, and this page's record has just been replaced by the new one.
-          if (entry?.source.type === "bundled") {
-            toast.success(`“${collection.title}” is up to date`);
-            navigate(collectionsTab);
-            return;
-          }
           toast.success(`Downloading “${collection.title}”`, {
             description: "Progress is under Downloads.",
             action: { label: "Open Downloads", onClick: () => navigate("/downloads") },

@@ -72,6 +72,16 @@ export function openTarget(collection: Pick<CollectionDto, "id" | "kind" | "meta
 type Standing = Pick<CollectionDto, "locationAvailable" | "locationName" | "status" | "updateAvailable">;
 
 /** The files are where Outpost expects them and can be read right now. A move reads the original until it is done. */
+/**
+ * A map's attribution is written as markup for the map to draw (links and `&copy;`). Shown
+ * as a fact it is read as words; parsing it as an inert document runs nothing.
+ */
+export function plainText(markup: string): string {
+  if (!/[<&]/.test(markup)) return markup;
+  const text = new DOMParser().parseFromString(markup, "text/html").body.textContent ?? "";
+  return text.replace(/\s+/g, " ").trim();
+}
+
 export function filesReachable(collection: Standing): boolean {
   return collection.locationAvailable && (collection.status === "installed" || collection.status === "moving");
 }
