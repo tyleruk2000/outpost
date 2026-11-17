@@ -32,6 +32,15 @@ test.describe("sun times for a place", () => {
     await page.close();
   });
 
+  test("the panel's five tabs, Sun among them, share one line", async ({ page }) => {
+    await page.goto("/maps");
+    const panel = page.getByRole("complementary", { name: /^Places, routes/ });
+    await expect(panel.getByRole("tab", { name: "Sun" })).toBeVisible();
+    const tops = await panel.getByRole("tab").evaluateAll((tabs) => tabs.map((tab) => Math.round(tab.getBoundingClientRect().top)));
+    expect(tops).toHaveLength(5);
+    expect(new Set(tops).size, `tabs at ${tops.join(", ")}`).toBe(1);
+  });
+
   test("a saved place gives its sun times for today, for another date, and in UTC", async ({ page }) => {
     const errors = watchForErrors(page);
     const { marker } = await api(page, "POST", "/api/maps/markers", { name: "Greenwich meridian", lat: 51.48, lon: 0 });

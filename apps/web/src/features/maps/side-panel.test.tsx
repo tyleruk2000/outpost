@@ -29,7 +29,7 @@ describe("the tab names", () => {
     const list = screen.getByRole("tablist");
     expect(list).toHaveClass("flex-wrap", "overflow-x-visible");
     expect(list).not.toHaveClass("overflow-x-auto");
-    // Named in full (a narrow phone writes "Offline maps" as "Offline", with the full name as the tab's name).
+    // Named in full ("Offline maps" is written "Offline", with the full name as the tab's name).
     expect(screen.getAllByRole("tab").map((tab) => tab.getAttribute("aria-label") ?? tab.textContent)).toEqual([
       "Places128",
       "Routes14",
@@ -37,10 +37,8 @@ describe("the tab names", () => {
       "Offline maps",
       "Sun",
     ]);
-    // Every phone writes the short name, so that the five fit on one line at 390 px (an iPhone) and the lowered sheet stays one line high.
-    const short = screen.getByText("Offline", { exact: true });
-    expect(short).toHaveClass("hidden", "max-md:inline");
-    expect(screen.getByText("Offline maps", { exact: true })).toHaveClass("max-md:hidden");
+    // Written short, so that the five fit on one line in the side panel and at 390 px (an iPhone), and the lowered sheet stays one line high.
+    expect(screen.getByRole("tab", { name: "Offline maps" })).toHaveTextContent(/^Offline$/);
     // Each is tall enough to touch on a phone.
     for (const tab of screen.getAllByRole("tab")) expect(tab).toHaveClass("max-md:min-h-[44px]", "max-md:min-w-[44px]");
   });
