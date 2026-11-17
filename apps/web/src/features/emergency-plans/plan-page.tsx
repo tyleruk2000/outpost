@@ -339,7 +339,7 @@ export default function EmergencyPlanPage() {
               />
             )}
           </Field>
-          <Field label="In your words" hint="Optional: “Storm”, “Chemical works alarm”.">
+          <Field label="In your words" optional hint="Such as “Storm” or “Chemical works alarm”.">
             {(ids) => (
               <Input
                 {...ids}

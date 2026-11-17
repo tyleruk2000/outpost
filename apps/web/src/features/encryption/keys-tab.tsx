@@ -160,7 +160,7 @@ function MakeKeyForm({ onMade, onCancel }: { onMade(made: MadeKey): void; onCanc
           <Field label="Name" hint="Written in the key for everyone you give it to.">
             {(ids) => <Input {...ids} value={name} onChange={(event) => setName(event.target.value)} maxLength={120} required autoFocus />}
           </Field>
-          <Field label="Email address (optional)" hint="Also written in the key. Leave it out if the key is not for email.">
+          <Field label="Email address" optional hint="Also written in the key. Leave it out if the key is not for email.">
             {(ids) => <Input {...ids} type="email" value={email} onChange={(event) => setEmail(event.target.value)} maxLength={200} />}
           </Field>
         </div>

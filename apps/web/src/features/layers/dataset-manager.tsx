@@ -550,7 +550,7 @@ function ImportDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (op
                   />
                 )}
               </Field>
-              <Field label="Name">
+              <Field label="Name" optional>
                 {(ids) => (
                   <Input {...ids} value={title} placeholder={file?.name ?? ""} onChange={(event) => setTitle(event.target.value)} />
                 )}

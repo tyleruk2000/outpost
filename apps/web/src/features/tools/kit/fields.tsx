@@ -88,7 +88,7 @@ export function NumberField({ input, className }: { input: NumberInput; classNam
   const { spec } = input;
   const units = spec.units ?? [];
   return (
-    <Field label={spec.label} hint={spec.hint} error={input.error} className={className}>
+    <Field label={spec.label} optional={spec.optional} hint={spec.hint} error={input.error} className={className}>
       {(ids) => (
         <div className="flex min-w-0 items-center gap-2">
           <input

@@ -261,7 +261,7 @@ export function RepeaterFormDialog({
               <Field label="Listen on, MHz" hint="The repeater's output." error={shown.output}>
                 {text("output", { placeholder: "145.7750", mono: true, inputMode: "decimal" })}
               </Field>
-              <Field label="Transmit on, MHz" hint="Its input. Empty if not known." error={shown.input}>
+              <Field label="Transmit on, MHz" optional hint="Its input. Empty if not known." error={shown.input}>
                 {text("input", { placeholder: "145.1750", mono: true, inputMode: "decimal" })}
               </Field>
             </div>
@@ -287,31 +287,32 @@ export function RepeaterFormDialog({
             </fieldset>
 
             <div className="grid gap-4 sm:grid-cols-3">
-              <Field label="CTCSS tone, Hz" error={shown.ctcss}>
+              <Field label="CTCSS tone, Hz" optional error={shown.ctcss}>
                 {text("ctcss", { placeholder: "94.8", mono: true, inputMode: "decimal" })}
               </Field>
-              <Field label="DCS code" error={shown.dcs}>
+              <Field label="DCS code" optional error={shown.dcs}>
                 {text("dcs", { placeholder: "023", mono: true, inputMode: "numeric", maxLength: 3 })}
               </Field>
-              <Field label="DMR colour code" error={shown.colourCode}>
+              <Field label="DMR colour code" optional error={shown.colourCode}>
                 {text("colourCode", { mono: true, inputMode: "numeric", maxLength: 2 })}
               </Field>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="DMR talkgroups">{text("talkgroups", { maxLength: 500 })}</Field>
-              <Field label="Other access details" hint="A tone burst, a D-STAR module, a Fusion group.">
+              <Field label="DMR talkgroups" optional>{text("talkgroups", { maxLength: 500 })}</Field>
+              <Field label="Other access details" optional hint="A tone burst, a D-STAR module, a Fusion group.">
                 {text("accessNote", { maxLength: 500 })}
               </Field>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-3">
-              <Field label="Town or site">{text("place", { maxLength: 120 })}</Field>
-              <Field label="Region">{text("region", { maxLength: 80 })}</Field>
-              <Field label="Country">{text("country", { maxLength: 80 })}</Field>
+              <Field label="Town or site" optional>{text("place", { maxLength: 120 })}</Field>
+              <Field label="Region" optional>{text("region", { maxLength: 80 })}</Field>
+              <Field label="Country" optional>{text("country", { maxLength: 80 })}</Field>
             </div>
             <div className="grid gap-4 sm:grid-cols-3">
               <Field
                 label="Position"
+              optional
                 hint="Coordinates, a grid reference or a locator. A locator alone puts it at the middle of its square."
                 error={shown.position}
                 className="sm:col-span-2"
@@ -327,15 +328,15 @@ export function RepeaterFormDialog({
                   className="flex-wrap sm:col-span-3"
                 />
               ) : null}
-              <Field label="Aerial above ground, m" error={shown.antenna}>
+              <Field label="Aerial above ground, m" optional error={shown.antenna}>
                 {text("antenna", { mono: true, inputMode: "decimal" })}
               </Field>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-3">
-              <Field label="Keeper">{text("keeper", { maxLength: 80 })}</Field>
-              <Field label="Channel">{text("channel", { maxLength: 40 })}</Field>
-              <Field label="Status">
+              <Field label="Keeper" optional>{text("keeper", { maxLength: 80 })}</Field>
+              <Field label="Channel" optional>{text("channel", { maxLength: 40 })}</Field>
+              <Field label="Status" optional>
                 {(ids) => (
                   <Select
                     {...ids}
@@ -352,7 +353,7 @@ export function RepeaterFormDialog({
                 )}
               </Field>
             </div>
-            <Field label="Notes">
+            <Field label="Notes" optional>
               {(ids) => (
                 <Textarea {...ids} value={draft.notes} onChange={(event) => set("notes", event.target.value)} maxLength={2000} rows={3} />
               )}

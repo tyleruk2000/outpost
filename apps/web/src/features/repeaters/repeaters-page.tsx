@@ -242,10 +242,10 @@ function ListDetailsDialog({ list, onClose }: { list: RepeaterListDto | null; on
             <Field label="Name of the list">
               {(ids) => <Input {...ids} value={name} onChange={(event) => setName(event.target.value)} maxLength={120} required />}
             </Field>
-            <Field label="Who publishes it">
+            <Field label="Who publishes it" optional>
               {(ids) => <Input {...ids} value={source} onChange={(event) => setSource(event.target.value)} maxLength={200} />}
             </Field>
-            <Field label="Where it is published" hint="A web address, for finding a newer copy. Outpost never opens it itself.">
+            <Field label="Where it is published" optional hint="A web address, for finding a newer copy. Outpost never opens it itself.">
               {(ids) => (
                 <Input
                   {...ids}

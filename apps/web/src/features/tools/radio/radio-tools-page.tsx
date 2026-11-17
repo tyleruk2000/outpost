@@ -208,7 +208,7 @@ const plFrequency: NumberSpec = {
 const plDistance: NumberSpec = { id: "radio.fspl.distance", label: "Distance", initial: 10, units: u.units.distance, above: 0 };
 const plPower: NumberSpec = {
   id: "radio.fspl.power",
-  label: "Transmitter power (optional)",
+  label: "Transmitter power",
   initial: 5,
   units: [u.watt, u.mw],
   above: 0,

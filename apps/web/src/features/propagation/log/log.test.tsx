@@ -385,9 +385,9 @@ describe("the contact log", () => {
     fireEvent.click(add);
     expect(within(dialog).getByRole("alert").textContent).toContain("That is not a position");
     fireEvent.change(within(dialog).getByLabelText("Your station: where"), { target: { value: "51.5074, -0.1278" } });
-    fireEvent.change(within(dialog).getByLabelText("Your station: callsign"), { target: { value: "G4AAA" } });
-    fireEvent.change(within(dialog).getByLabelText("The other station: callsign"), { target: { value: "G4BBB" } });
-    fireEvent.change(within(dialog).getByLabelText("Transmitter power, watts"), { target: { value: "5" } });
+    fireEvent.change(within(dialog).getByLabelText("Your station: callsign (optional)"), { target: { value: "G4AAA" } });
+    fireEvent.change(within(dialog).getByLabelText("The other station: callsign (optional)"), { target: { value: "G4BBB" } });
+    fireEvent.change(within(dialog).getByLabelText("Transmitter power, watts (optional)"), { target: { value: "5" } });
     fireEvent.click(add);
     await waitFor(() => expect(server.posted).toHaveLength(1));
     const sent = server.posted[0]!.body as ObservationInput;
@@ -484,7 +484,7 @@ describe("comparing the log with predictions", () => {
     fireEvent.click(screen.getByRole("button", { name: "Compare again" }));
     expect(screen.getByRole("alert").textContent).toBe("Give a smoothed sunspot number between 0 and 300 for March 2014.");
     fireEvent.change(field, { target: { value: "115" } });
-    fireEvent.change(screen.getByLabelText("Power to assume where the log gives none, watts"), { target: { value: "50" } });
+    fireEvent.change(screen.getByLabelText("Power to assume where the log gives none, watts (optional)"), { target: { value: "50" } });
     fireEvent.click(screen.getByRole("button", { name: "Compare again" }));
     await waitFor(() => expect(server.posted).toHaveLength(2));
     expect(server.posted[1]!.body).toMatchObject({ defaultPowerWatts: 50, ssnByMonth: { "2014-03": 115 } });

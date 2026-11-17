@@ -193,7 +193,7 @@ export function HouseholdView({ household }: { household: Household }) {
               return (
                 <li key={member.key} className="grid gap-3 py-4">
                   <div className="flex items-end gap-2">
-                    <Field label={member.kind === "pet" ? "Pet's name" : "Name, if you like"} className="min-w-0 flex-1">
+                    <Field label={member.kind === "pet" ? "Pet's name" : "Name"} optional className="min-w-0 flex-1">
                       {(ids) => (
                         <Input
                           {...ids}

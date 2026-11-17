@@ -330,7 +330,7 @@ export function OwnDeviceDialog({
                 <NumberField label="Draw on standby" unit="W" value={draft.standbyW} onChange={(standbyW) => set({ standbyW })} min={0} />
               </Fields>
             )}
-            <Field label="Note" hint="Where the figure came from, for next time.">
+            <Field label="Note" optional hint="Where the figure came from, for next time.">
               {(ids) => (
                 <Textarea {...ids} value={draft.note} maxLength={2000} rows={2} onChange={(event) => set({ note: event.target.value })} />
               )}
