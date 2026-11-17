@@ -162,6 +162,27 @@ describe("keyword search", () => {
     expect(body.total).toBe(2);
   });
 
+  it("counts every match, not only the page asked for, so that every page can be reached", async () => {
+    const { search } = app.ctx.services;
+    for (let index = 0; index < 30; index += 1) {
+      search.upsert({
+        kind: index % 3 === 0 ? "note" : "document",
+        entityId: `r${index}`,
+        title: `Radio log ${index}`,
+        url: `/library/documents/r${index}`,
+        sections: [{ text: `Radio contact number ${index}.` }],
+      });
+    }
+    const seen = new Set<string>();
+    for (let offset = 0; offset < 30; offset += 2) {
+      const { body } = await app.api("GET", `/api/search?q=radio&limit=2&offset=${offset}`);
+      expect(body.total).toBe(30);
+      for (const result of body.results) seen.add(result.entityId);
+    }
+    expect(seen.size).toBe(30);
+    expect((await app.api("GET", "/api/search?q=radio&limit=2&kinds=note")).body.total).toBe(10);
+  });
+
   it("survives hostile input", async () => {
     for (const q of ['"', "AND OR NOT", "title:*", "a) OR (b", "\\", "NEAR(", "x".repeat(600)]) {
       const response = await app.api("GET", `/api/search?q=${encodeURIComponent(q)}`);

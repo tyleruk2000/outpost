@@ -141,6 +141,18 @@ export function createAnswerStore() {
     controller = mine;
     const current = () => controller === mine;
     set({ ...EMPTY, phase: "finding", question: asked });
+    // While the page is hidden the words are kept to one side and nothing is drawn; they
+    // are drawn at once when it is shown again. The answer itself goes on being written.
+    let held = "";
+    const showHeld = () => {
+      document.removeEventListener("visibilitychange", onShown);
+      if (!held || !current()) return;
+      set({ phase: "writing", loading: false, text: state.text + held });
+      held = "";
+    };
+    const onShown = () => {
+      if (document.visibilityState !== "hidden") showHeld();
+    };
 
     try {
       let response: Response;
@@ -159,6 +171,12 @@ export function createAnswerStore() {
       let ended = false;
       await readEvents(response.body, (event) => {
         if (!current()) return;
+        if (event.type === "delta" && document.visibilityState === "hidden") {
+          if (!held) document.addEventListener("visibilitychange", onShown);
+          held += event.text;
+          return;
+        }
+        showHeld();
         switch (event.type) {
           case "sources":
             set({
@@ -200,6 +218,7 @@ export function createAnswerStore() {
             break;
         }
       });
+      showHeld();
       if (current() && !ended) {
         set({
           phase: "failed",
@@ -209,6 +228,7 @@ export function createAnswerStore() {
         });
       }
     } catch (error) {
+      showHeld();
       if (!current()) return;
       if (mine.signal.aborted) return;
       set({

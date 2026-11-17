@@ -291,8 +291,10 @@ Repeaters are found here too, as results of kind `repeater` whose `url` is
 answers for them itself, in keyword and hybrid modes, unless `kinds` leaves `repeater`
 out or `tag` is given.
 
-Response fields worth knowing: `relaxed` (the search fell back to "any word"),
-`facets` (results per kind), `warnings` (sources that could not answer, with a
+Response fields worth knowing: `total` (every item that matches, of the kinds asked
+for, the same on every page; with search by meaning in use it is at least that many,
+since passages found by meaning alone are counted only as far as the page reached),
+`relaxed` (the search fell back to "any word"), `facets` (results per kind), `warnings` (sources that could not answer, with a
 reason), and per result `url` (the in-app route), `passages` and `sources`.
 
 In one part (`reference=include`), `total`, `facets.reference` and the pages count every
@@ -319,7 +321,7 @@ Types: `SemanticStatus` in `packages/shared/src/semantic.ts`.
 | `POST /api/semantic/test` | Body: `text`. Embeds it once and answers `{ modelId, dimensions, tookMs }`. |
 | `DELETE /api/semantic/models/:modelId` | Deletes every vector of one model. `{ removed }`. |
 | `GET /api/semantic/export` | Downloads vectors as gzip-compressed JSON lines. Query: `model` (a model id; default the current one). |
-| `POST /api/semantic/import` | Body: the exported file itself, with `Content-Type: application/gzip`. Answers `{ modelId, vectorsInFile, passagesUpdated, vectorsWithoutPassage }`. |
+| `POST /api/semantic/import` | Body: the exported file itself, with `Content-Type: application/gzip`. Answers `{ modelId, vectorsInFile, passagesUpdated, vectorsWithoutPassage }`. `400`, with nothing imported, when this Outpost already holds vectors of another size for the file's model. Only this route takes `application/gzip` and `application/octet-stream` bodies. |
 
 The file format is described in
 [search.md](search.md#moving-vectors-between-installations).

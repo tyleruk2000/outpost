@@ -220,7 +220,7 @@ export default function SearchPage() {
             type="search"
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
-            placeholder="Search documents, pages, collections and maps"
+            placeholder="Search everything you keep"
             aria-label="Search your library"
             // biome-ignore lint/a11y/noAutofocus: the search screen exists to be typed into
             autoFocus

@@ -204,8 +204,12 @@ export function registerExplain(app: FastifyInstance, ctx: AppContext): void {
   });
 
   // ── Something to look at: indexed things and their passages ──
-  app.get<{ Querystring: { q?: string } }>("/api/retrieval/entities", async (request): Promise<{ entities: ExplainEntity[] }> => {
-    const q = (request.query.q ?? "").trim().slice(0, 100);
+  app.get("/api/retrieval/entities", async (request): Promise<{ entities: ExplainEntity[] }> => {
+    const q = z
+      .object({ q: z.string().default("") })
+      .parse(request.query)
+      .q.trim()
+      .slice(0, 100);
     const rows = sqlite
       .prepare(
         `SELECT e.kind AS kind, e.entity_id AS entityId, e.title AS title, e.url AS url, count(c.id) AS chunks
@@ -217,10 +221,12 @@ export function registerExplain(app: FastifyInstance, ctx: AppContext): void {
     return { entities: rows };
   });
 
-  app.get<{ Querystring: { kind?: string; entityId?: string } }>(
+  app.get(
     "/api/retrieval/chunks",
     async (request): Promise<{ entity: ExplainEntity; chunks: ExplainChunk[]; chunkSize: number; chunkOverlap: number }> => {
-      const { kind = "", entityId = "" } = request.query;
+      const { kind, entityId } = z
+        .object({ kind: z.string().max(40).default(""), entityId: z.string().max(200).default("") })
+        .parse(request.query);
       const entity = sqlite
         .prepare("SELECT id, kind, entity_id AS entityId, title, url FROM search_entities WHERE kind = ? AND entity_id = ?")
         .get(kind, entityId) as (ExplainEntity & { id: number }) | undefined;

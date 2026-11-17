@@ -163,7 +163,7 @@ function SourceRow({ source, state, startOpen }: { source: AnswerSource; state: 
         [{source.marker}]
       </span>
       <div className="min-w-0">
-        <p className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 text-small">
+        <p className="text-small">
           <span className="min-w-0">
             <kind.icon aria-hidden className="mr-1.5 inline size-3.5 -translate-y-px text-ink-muted" />
             <span className="sr-only">
@@ -177,19 +177,22 @@ function SourceRow({ source, state, startOpen }: { source: AnswerSource; state: 
               <span className="font-medium text-ink">{where}</span>
             )}
           </span>
+        </p>
+        {/* Whether it was cited sits on the same line as the button, so that it is in the same place on every row. */}
+        <div className="mt-0.5 flex items-center justify-between gap-4">
+          <button
+            type="button"
+            aria-expanded={open}
+            aria-controls={id}
+            onClick={() => setOpen((value) => !value)}
+            className="-ml-1.5 rounded-control px-1.5 py-1 text-small font-medium text-primary hover:bg-surface-strong max-md:py-2"
+          >
+            {open ? "Hide the passage" : "Show the passage"}
+          </button>
           {state ? (
             <span className="shrink-0 text-micro text-ink-muted">{state === "cited" ? "Cited in the answer" : "Not cited"}</span>
           ) : null}
-        </p>
-        <button
-          type="button"
-          aria-expanded={open}
-          aria-controls={id}
-          onClick={() => setOpen((value) => !value)}
-          className="-ml-1.5 mt-0.5 rounded-control px-1.5 py-1 text-small font-medium text-primary hover:bg-surface-strong max-md:py-2"
-        >
-          {open ? "Hide the passage" : "Show the passage"}
-        </button>
+        </div>
         {open ? (
           <blockquote id={id} className="mt-1 max-w-[70ch] font-serif text-[0.9375rem] leading-relaxed whitespace-pre-line text-ink">
             {source.quote}
@@ -467,8 +470,7 @@ export function AnswerArea({
           <p className="min-w-56 flex-1 text-small text-ink-muted">
             <span className="font-mono text-[0.8125rem] [overflow-wrap:anywhere] text-ink">{status.model}</span>, a language model{" "}
             {placeWords(status.place, status.server)}, writes a short answer from passages of your documents, notes and books, and cites
-            them. A small model is sometimes wrong, and can say the passages hold no answer when they do: the passages are listed with the
-            answer so that you can check.
+            them. It can be wrong: check it against the passages listed with it.
             {status.place === "elsewhere" ? " The question and those passages are sent to that address." : ""}
           </p>
         </div>

@@ -141,7 +141,7 @@ function SourceRow({ source, cited, startOpen }: { source: AnswerSource; cited: 
         [{source.marker}]
       </span>
       <div className="min-w-0">
-        <p className="flex flex-wrap items-baseline justify-between gap-x-4 text-small">
+        <p className="text-small">
           <span className="min-w-0">
             <kind.icon aria-hidden className="mr-1.5 inline size-3.5 -translate-y-px text-ink-muted" />
             <span className="sr-only">
@@ -159,17 +159,20 @@ function SourceRow({ source, cited, startOpen }: { source: AnswerSource; cited: 
               <span className="font-medium text-ink">{where}</span>
             )}
           </span>
-          {cited === null ? null : <span className="shrink-0 text-micro text-ink-muted">{cited ? "Cited" : "Not cited"}</span>}
         </p>
-        <button
-          type="button"
-          aria-expanded={open}
-          aria-controls={id}
-          onClick={() => setOpen((value) => !value)}
-          className={cn("-ml-1.5 rounded-control px-1.5 py-0.5 text-small font-medium text-primary hover:bg-surface-strong", DISCLOSE)}
-        >
-          {open ? "Hide the passage" : "Show the passage"}
-        </button>
+        {/* Whether it was cited sits on the same line as the button, so that it is in the same place on every row. */}
+        <div className="flex items-center justify-between gap-4">
+          <button
+            type="button"
+            aria-expanded={open}
+            aria-controls={id}
+            onClick={() => setOpen((value) => !value)}
+            className={cn("-ml-1.5 rounded-control px-1.5 py-0.5 text-small font-medium text-primary hover:bg-surface-strong", DISCLOSE)}
+          >
+            {open ? "Hide the passage" : "Show the passage"}
+          </button>
+          {cited === null ? null : <span className="shrink-0 text-micro text-ink-muted">{cited ? "Cited" : "Not cited"}</span>}
+        </div>
         {open ? (
           <blockquote id={id} className="mt-1 max-w-[68ch] font-serif text-[0.9375rem] leading-relaxed whitespace-pre-line text-ink">
             {source.quote}

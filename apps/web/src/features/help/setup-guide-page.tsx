@@ -18,6 +18,7 @@ import {
   SETUP_GUIDE,
   type SystemInfo,
 } from "@outpost/shared";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowUpRight, ChevronRight, Wifi } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { Link, useLocation } from "react-router";
@@ -25,7 +26,7 @@ import { Page, PageHeader } from "@/components/page";
 import { Badge, Segmented } from "@/components/ui/misc";
 import { SETTINGS_MODEL } from "@/features/chat/chat-data";
 import { CommandLine, RecommendedModels } from "@/features/setup/recommended-models";
-import { useSystem } from "@/lib/queries";
+import { api } from "@/lib/api";
 
 const link = "text-primary underline decoration-1 underline-offset-2 hover:decoration-2";
 
@@ -210,7 +211,8 @@ function Section({ section, system, choose, level }: { section: GuideSection; sy
 }
 
 export default function SetupGuidePage() {
-  const info = useSystem();
+  // Only which computer Outpost runs on is read from it, and that does not change: asked once, not every few seconds.
+  const info = useQuery({ queryKey: ["system"], queryFn: () => api.get<SystemInfo>("/api/system"), staleTime: Number.POSITIVE_INFINITY });
   const [chosen, setChosen] = useState<GuideSystem | null>(null);
   const system = chosen ?? likelySystem(info.data);
 

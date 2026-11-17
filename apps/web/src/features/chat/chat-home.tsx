@@ -8,7 +8,7 @@
 import type { ChatConversationSummary } from "@outpost/shared";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ellipsis, PencilLine, Search, Trash2, X } from "lucide-react";
-import { useDeferredValue, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { ErrorState, Notice, Page, PageHeader, Section } from "@/components/page";
@@ -131,10 +131,21 @@ function ConversationRow({
   );
 }
 
+/** `value` once it has stopped changing for `delay` milliseconds. */
+function useSettled(value: string, delay: number): string {
+  const [settled, setSettled] = useState(value);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setSettled(value), delay);
+    return () => window.clearTimeout(timer);
+  }, [value, delay]);
+  return settled;
+}
+
 function Conversations() {
   const client = useQueryClient();
   const [typed, setTyped] = useState("");
-  const q = useDeferredValue(typed.trim());
+  // The list is asked for once typing pauses, not at every key.
+  const q = useSettled(typed.trim(), 220);
   const list = useConversations(q);
   const [renaming, setRenaming] = useState<ChatConversationSummary | null>(null);
   const [deleting, setDeleting] = useState<ChatConversationSummary | null>(null);
