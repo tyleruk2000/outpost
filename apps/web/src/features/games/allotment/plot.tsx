@@ -3,11 +3,17 @@
  * edge laid over it as real buttons, so that every bed can be pressed, tabbed to and
  * named aloud. The drawing is in `scenery.tsx` (the ground, the hedge, the shed and the
  * lasting things) and `crops.tsx` (the beds), every colour a `--game-*` token. The
- * season dresses it; the device's own time of day lights it. Looks only.
+ * season dresses it; the device's own time of day lights it; a wet day greys it and lays
+ * rain over it. Each bed's label says what it is doing: the time left, "Ripe", or why it
+ * waits, with a mark (a crossed-out drop for dry soil, an hourglass for its months), so
+ * that none of it rests on colour. Looks only.
  */
 import {
   type AllotmentState,
+  BUTT_KEEPS_MS,
   bedAt,
+  bedNow,
+  DAY,
   FIRST_GLASS_BED,
   type Hemisphere,
   KEEPING_NAMES,
@@ -15,12 +21,14 @@ import {
   nextBedPrice,
   PRODUCER,
   type ProducerId,
-  readyInMs,
+  RAIN_SOAKS_MS,
+  rainingAt,
   type Season,
-  stageOf,
   THINGS,
   type ThingId,
+  wetDay,
 } from "@outpost/shared/games/allotment";
+import { DropletOff, Hourglass } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { cn, formatNumber, plural } from "@/lib/utils";
 import { boardSurface } from "../kit/frame";
@@ -39,13 +47,15 @@ import {
   Hive,
   LitWindow,
   MarkedOut,
+  Puddles,
+  Rain,
   Shadows,
   Shed,
   TapAndBarrow,
   VIEW,
   WaterButt,
 } from "./scenery";
-import { bedLabel, shortWords } from "./words";
+import { bedLabel, chip } from "./words";
 
 export { VIEW };
 
@@ -81,12 +91,12 @@ export interface PlotProps {
   busy: boolean;
 }
 
-/** A bed's short label: "Ripe", "40 min", or nothing for an empty one. */
-function chip(plot: AllotmentState, index: number, hemisphere: Hemisphere): string | null {
-  const bed = bedAt(plot, index);
-  if (!bed?.crop) return null;
-  if (stageOf(bed) === "ripe") return "Ripe";
-  return shortWords(readyInMs(plot, index, hemisphere) ?? 0);
+/** The weather on the plot at a moment, from the date alone: rain falling, puddles lying, the butt full. */
+export function weatherAt(now: number, hemisphere: Hemisphere) {
+  const day = Math.floor(now / DAY);
+  const raining = rainingAt(now, hemisphere);
+  const since = (soak: number) => [1, 2, 3].some((back) => wetDay(day - back, hemisphere) && now < (day - back + 1) * DAY + soak);
+  return { raining, puddles: raining || since(RAIN_SOAKS_MS), buttFull: raining || since(BUTT_KEEPS_MS) };
 }
 
 const PLACES: ThingId[] = ["waterButt", "compostBin", "greenhouse", "hens", "beehive", "appleTree"];
@@ -96,6 +106,9 @@ export function Plot({ plot, hemisphere, season, now, local, selected, onBed, on
   const month = northMonth(now, hemisphere);
   const sky = skyAt(local, month, hemisphere);
   const dark = sky.phase === "night";
+  const weather = weatherAt(now, hemisphere);
+  // Under cloud there is no sun to throw shadows.
+  const shadow = weather.raining ? null : sky.shadow;
   const winter = season === "winter";
   const has = plot.things;
   const openBeds = Array.from({ length: MAX_OPEN_BEDS }, (_, index) => index);
@@ -131,8 +144,9 @@ export function Plot({ plot, hemisphere, season, now, local, selected, onBed, on
   const captionAtTop = shown !== null && shown.box.y > VIEW.height / 2;
 
   let buttons: ReactNode[] = [...openBeds.filter((index) => index < plot.beds.length), ...glassBeds].map((index) => {
-    const text = chip(plot, index, hemisphere);
-    const ripe = text === "Ripe";
+    const label = chip(plot, index, hemisphere);
+    const ripe = label?.mark === "ripe";
+    const waits = label?.mark === "water" || label?.mark === "season";
     return (
       <button
         key={index}
@@ -152,14 +166,16 @@ export function Plot({ plot, hemisphere, season, now, local, selected, onBed, on
           selected === index && "shadow-[0_0_0_3px_var(--primary)] hover:shadow-[0_0_0_3px_var(--primary)]",
         )}
       >
-        {text ? (
+        {label ? (
           <span
             className={cn(
-              "tabular -translate-y-1/2 rounded-[3px] px-1 text-micro leading-tight font-medium whitespace-nowrap shadow-[0_0_0_1px_var(--game-soil-edge)]",
-              ripe ? "bg-page text-ink" : "bg-page/85 text-ink-muted",
+              "tabular inline-flex -translate-y-1/2 items-center gap-0.5 rounded-[3px] px-1 text-micro leading-tight font-medium whitespace-nowrap shadow-[0_0_0_1px_var(--game-soil-edge)]",
+              ripe || waits ? "bg-page text-ink" : "bg-page/85 text-ink-muted",
             )}
           >
-            {text}
+            {label.mark === "water" ? <DropletOff aria-hidden className="size-3 shrink-0" strokeWidth={2.25} /> : null}
+            {label.mark === "season" ? <Hourglass aria-hidden className="size-3 shrink-0" strokeWidth={2.25} /> : null}
+            {label.text}
           </span>
         ) : null}
       </button>
@@ -227,30 +243,46 @@ export function Plot({ plot, hemisphere, season, now, local, selected, onBed, on
         <Ground season={season} />
         {openBeds.map((index) =>
           index < plot.beds.length ? (
-            <BedDrawing key={index} bed={bedAt(plot, index)!} box={openBedBox(index)} index={index} frost={winter} />
+            <BedDrawing
+              key={index}
+              bed={bedAt(plot, index)!}
+              box={openBedBox(index)}
+              index={index}
+              frost={winter}
+              moist={bedNow(plot, index, hemisphere).moist !== null}
+            />
           ) : (
             <MarkedOut key={index} box={openBedBox(index)} seed={index * 31 + 5} />
           ),
         )}
         {has.greenhouse ? <GreenhouseFloor /> : <MarkedOut box={AT.greenhouse} seed={3} />}
         {glassBeds.map((index) => (
-          <BedDrawing key={index} bed={bedAt(plot, index)!} box={glassBedBox(index)} index={index} frost={false} />
+          <BedDrawing
+            key={index}
+            bed={bedAt(plot, index)!}
+            box={glassBedBox(index)}
+            index={index}
+            frost={false}
+            moist={bedNow(plot, index, hemisphere).moist !== null}
+          />
         ))}
         {has.waterButt ? null : <MarkedOut box={{ x: 76, y: 58, w: 22, h: 30 }} seed={7} />}
         {has.compostBin ? null : <MarkedOut box={{ x: 120, y: 50, w: 42, h: 38 }} seed={9} />}
         {has.hens ? null : <MarkedOut box={{ x: 14, y: 342, w: 138, h: 62 }} seed={17} />}
         {has.beehive ? null : <MarkedOut box={{ x: 206, y: 346, w: 36, h: 40 }} seed={19} />}
         {has.appleTree ? null : <MarkedOut box={{ x: 280, y: 336, w: 56, h: 56 }} seed={23} round />}
-        <Shadows shadow={sky.shadow} footprints={footprints} />
+        {weather.puddles ? <Puddles raining={weather.raining} /> : null}
+        <Shadows shadow={shadow} footprints={footprints} />
         <Edges season={season} />
         <TapAndBarrow season={season} moon={dark} />
         <Shed season={season} />
-        {has.waterButt ? <WaterButt moon={dark} /> : null}
+        {has.waterButt ? <WaterButt moon={dark} full={weather.buttFull} /> : null}
         {has.compostBin ? <CompostBin compost={plot.compost} /> : null}
         {has.greenhouse ? <GreenhouseGlass winter={winter} /> : null}
         {has.hens ? <HenHouse eggs={plot.waiting.eggs} roosting={dark} /> : null}
         {has.beehive ? <Hive honey={plot.waiting.honey} bees={!dark && !winter} /> : null}
         {has.appleTree ? <AppleTree month={month} apples={plot.waiting.apples} season={season} /> : null}
+        {weather.raining ? <Rain /> : null}
         {sky.phase !== "day" ? (
           <rect width={VIEW.width} height={VIEW.height} fill={v(sky.phase)} style={{ mixBlendMode: "multiply" }} pointerEvents="none" />
         ) : null}

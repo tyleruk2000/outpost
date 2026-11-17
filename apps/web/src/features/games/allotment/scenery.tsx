@@ -4,7 +4,8 @@
  * lasting things, drawn as what they are once bought and as pegged-out ground before.
  * The season dresses it (blossom, fallen leaves, frost and a little snow) and the time
  * of day lights it: shadows that lengthen when the sun is low, and a lit shed window
- * under a blue night.
+ * under a blue night. On a wet day the light is grey, rain is drawn across the plot (still,
+ * not falling: nothing on the plot moves at rest) and puddles lie on the paths.
  */
 import type { Season } from "@outpost/shared/games/allotment";
 import type { ReactNode } from "react";
@@ -109,6 +110,14 @@ export function Defs() {
       </pattern>
       <pattern id="allotment-mesh" width={5} height={5} patternUnits="userSpaceOnUse">
         <path d="M0 0 L5 5 M5 0 L0 5" stroke={v("string")} strokeWidth={0.4} opacity={0.75} />
+      </pattern>
+      <pattern id="allotment-rain" width={13} height={17} patternUnits="userSpaceOnUse">
+        <path
+          d="M2 1 l-1.6 4.4 M8.5 6 l-1.6 4.4 M4.6 11.4 l-1.6 4.4 M11.6 13 l-1.2 3.2"
+          stroke={v("rain")}
+          strokeWidth={0.8}
+          strokeLinecap="round"
+        />
       </pattern>
       <radialGradient id="allotment-glow">
         <stop offset="0" stopColor={v("glow")} stopOpacity={0.75} />
@@ -320,7 +329,8 @@ export function TapAndBarrow({ season, moon }: { season: Season; moon: boolean }
 
 // ── The lasting things ─────────────────────────────────────────────────────
 
-export function WaterButt({ moon }: { moon: boolean }) {
+/** The water butt under the shed's gutter: brim-full after rain, low when the dry days have used it. */
+export function WaterButt({ moon, full }: { moon: boolean; full: boolean }) {
   return (
     <g>
       <path d="M71 42 H86 V56" stroke={v("metal-deep")} strokeWidth={2} fill="none" strokeLinejoin="round" />
@@ -328,11 +338,18 @@ export function WaterButt({ moon }: { moon: boolean }) {
       <path d="M77 68H97M77 81H97" stroke={v("metal-deep")} strokeWidth={1.3} />
       <path d="M80 62V87M87 62V88M94 62V87" stroke={v("wood-deep")} strokeWidth={0.5} opacity={0.6} />
       <ellipse cx={87} cy={60} rx={11} ry={4.4} fill={v("wood-deep")} />
-      <ellipse cx={87} cy={60.3} rx={8.6} ry={3.2} fill={v("water")} />
-      {moon ? (
-        <circle cx={89.5} cy={60} r={1.6} fill={v("moon")} />
+      {full ? (
+        <>
+          <ellipse cx={87} cy={60.3} rx={8.6} ry={3.2} fill={v("water")} />
+          {moon ? (
+            <circle cx={89.5} cy={60} r={1.6} fill={v("moon")} />
+          ) : (
+            <path d="M82 60 Q85 58.6 88 59.4" stroke={v("water-light")} strokeWidth={0.8} fill="none" />
+          )}
+        </>
       ) : (
-        <path d="M82 60 Q85 58.6 88 59.4" stroke={v("water-light")} strokeWidth={0.8} fill="none" />
+        // Low: a dark barrel with only a little water at the bottom.
+        <ellipse cx={87.6} cy={61.2} rx={4.4} ry={1.5} fill={v("water")} opacity={0.75} />
       )}
       <rect x={95} y={80} width={4} height={2.4} rx={0.8} fill={v("metal-deep")} />
     </g>
@@ -598,6 +615,44 @@ export function AppleTree({ month, apples, season }: { month: number; apples: nu
           strokeWidth={0.4}
         />
       ) : null}
+    </g>
+  );
+}
+
+const PUDDLES: Array<[number, number, number, number]> = [
+  [40, 102, 9, 2.6],
+  [128, 101.5, 6, 2],
+  [252, 102.6, 11, 2.8],
+  [78, 325, 10, 2.6],
+  [300, 324.5, 7, 2.2],
+  [178, 360, 6, 3.4],
+];
+
+/** Puddles on the paths, after rain and while it falls: still water, with a ring or two where drops land. */
+export function Puddles({ raining }: { raining: boolean }) {
+  return (
+    <g pointerEvents="none">
+      {PUDDLES.map(([x, y, rx, ry]) => (
+        <ellipse key={`${x}-${y}`} cx={x} cy={y} rx={rx} ry={ry} fill={v("water")} opacity={0.5} />
+      ))}
+      {raining ? (
+        <path
+          d={PUDDLES.map(([x, y, rx]) => `M${x - rx * 0.3 - 1.6} ${y}a1.6 0.7 0 1 0 3.2 0a1.6 0.7 0 1 0 -3.2 0`).join("")}
+          stroke={v("water-light")}
+          strokeWidth={0.5}
+          fill="none"
+        />
+      ) : null}
+    </g>
+  );
+}
+
+/** A wet day: grey light over the plot, and rain drawn across it, still. */
+export function Rain() {
+  return (
+    <g pointerEvents="none">
+      <rect width={VIEW.width} height={VIEW.height} fill={v("overcast")} style={{ mixBlendMode: "multiply" }} />
+      <rect width={VIEW.width} height={VIEW.height} fill="url(#allotment-rain)" />
     </g>
   );
 }

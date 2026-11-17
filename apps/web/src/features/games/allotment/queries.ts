@@ -5,18 +5,15 @@
  * from the server's (`clockOffset`), so a device set to the wrong time still shows the
  * plot as it is. The key starts with "games", which the "games.changed" event refreshes
  * when any device changes the plot; nothing else asks the server again, since growth is
- * worked out from the time.
+ * worked out from the time (and the rain from the date).
  */
 import {
   type AllotmentAction,
   type AllotmentResponse,
   type AllotmentState,
-  bedIndices,
   type Hemisphere,
   MINUTE,
-  PRODUCER,
-  PRODUCERS,
-  readyInMs,
+  untilChangeMs,
 } from "@outpost/shared/games/allotment";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
@@ -79,19 +76,12 @@ export function useServerNow(offset: number, nextMs: (now: number) => number): n
 
 /**
  * How long until something on the plot changes that the screen should show: a bed
- * ripening or an egg, a jar or an apple waiting. At most a minute, for the time left on
+ * ripening, drying or being wetted by rain, the rain starting or stopping, the month
+ * turning, or an egg, a jar or an apple waiting. At most a minute, for the time left on
  * each bed and the light; never less than a second.
  */
 export function untilNextChange(plot: AllotmentState, hemisphere: Hemisphere): number {
-  let wait = MINUTE;
-  for (const index of bedIndices(plot)) {
-    const ms = readyInMs(plot, index, hemisphere);
-    if (ms !== null && ms > 0) wait = Math.min(wait, ms);
-  }
-  for (const producer of PRODUCERS) {
-    const { gives, everyMs, cap } = PRODUCER[producer];
-    if (plot.things[producer] && plot.waiting[gives] < cap) wait = Math.min(wait, everyMs - plot.producing[producer]);
-  }
+  const wait = Math.min(MINUTE, untilChangeMs(plot, hemisphere) ?? MINUTE);
   // A moment past the change, so that it has happened when the plot is drawn again.
   return Math.max(1000, Math.ceil(wait) + 50);
 }
