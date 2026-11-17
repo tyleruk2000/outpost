@@ -95,7 +95,7 @@ export const CROP_NOTES: Record<CropId, CropNotes> = {
     cold: "Will not come up in very cold soil: wait for about 10°C",
     water: "Little once growing, except in dry spells. A good soak when they flower, and again two weeks later, swells the pods.",
     facts: [
-      "Peas are legumes: their roots fix nitrogen from the air, so leave the roots in the ground to feed the soil.",
+      "Peas climb: twiggy sticks pushed in between the plants hold them up, and taller kinds need tall, sturdy supports.",
       "Picking the pods often makes the plants form more.",
     ],
     source: rhs("peas"),
@@ -135,7 +135,7 @@ export const CROP_NOTES: Record<CropId, CropNotes> = {
     cold: "Hardy kinds can be sown in autumn and stand the winter",
     water: "Seldom in the ground, but a good soak as they flower, and again two weeks later, gives a much bigger harvest.",
     facts: [
-      "Like peas, broad beans are legumes: their roots add nitrogen to the soil.",
+      "Early sowings want a hardy kind, and fleece or a cloche over them in cold spells.",
       "Sown in late autumn in a mild, sheltered spot, they can be ready as early as May.",
     ],
     source: rhs("broad-beans"),

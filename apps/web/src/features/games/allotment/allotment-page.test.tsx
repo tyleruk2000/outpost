@@ -215,7 +215,8 @@ describe("the allotment screen", () => {
     expect(peas).toHaveAttribute("open");
     expect(peas).toHaveTextContent("SownFebruary to June");
     expect(peas).toHaveTextContent("HarvestedJune to October");
-    expect(peas).toHaveTextContent(/their roots fix nitrogen from the air/);
+    expect(peas).toHaveTextContent(/Their roots take nitrogen from the air/);
+    expect(peas).toHaveTextContent(/twiggy sticks/);
     expect(peas).toHaveTextContent("Legumes, the pea and bean family");
     await user.click(within(almanac).getByText("Potatoes", { selector: "summary *" }));
     const potatoes = within(almanac).getByText("Potatoes", { selector: "summary *" }).closest("details")!;
