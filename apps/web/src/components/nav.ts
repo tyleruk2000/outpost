@@ -124,7 +124,7 @@ export const upkeepNav: NavItem[] = [
     keywords: "disk space drives nas folders",
     children: [
       { to: "/storage/manage", label: "Manage and clean up", icon: ListChecks, keywords: "free space delete remove erase" },
-      { to: "/storage/merge", label: "Bring back from a drive", icon: Undo2, keywords: "merge restore portable" },
+      { to: "/storage/merge", label: "Bring back changes from a drive", icon: Undo2, keywords: "merge restore portable" },
     ],
   },
   // "On this phone", "On this tablet" or "On this computer": what is kept in this browser for when the server is out of reach.
