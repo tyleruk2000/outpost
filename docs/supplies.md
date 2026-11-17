@@ -80,6 +80,110 @@ Days are said with "about", rounded down, to a tenth of a day under ten days and
 whole days from there ("about 2.3 days", "about 23 days"). The figures behind them
 (labels, planning figures) do not support more.
 
+## Energy from USDA FoodData Central
+
+A person adding "rice, 5 kg" should not have to know its calories. When a food is added or
+changed, typing its name offers the foods in USDA FoodData Central's table that match, each
+with its energy per 100 g; choosing one fills it in. The table ships with Outpost, so this
+works on first run with no internet: the search is asked of this Outpost, which holds the
+table, and goes nowhere else.
+
+- **Offered, never filled unasked.** The offers appear under the name once the typing
+  pauses (a quarter of a second), only for food and pet food, and only while the item has
+  no energy figure. Nothing is filled until a food is chosen.
+- **The label wins.** A figure typed from the packet is never replaced: with one there,
+  nothing is offered. Typing over a figure that came from the table makes it the person's
+  own, and the note of the table goes.
+- **The weight.** The table's figures are per 100 g. When the item's unit is itself a
+  weight (g, kg, lb, oz, or one with a number, "500 g"), the weight of one is filled in:
+  5 of "kg" is five lots of 1,000 g, so 5 kg of rice at 365 kcal per 100 g is 18,250 kcal.
+  A pound is 453.59237 g and an ounce a sixteenth of it. For anything else (a tin, a pack,
+  a bag, a litre) the form asks for the weight of one from the label and does not count the
+  item until it is given; it never assumes one. When the food chosen is drained ("canned
+  in water, drained solids") it asks for the drained weight.
+- **Raw, dry, cooked and canned are different entries**, and the offers show the table's
+  own names ("Rice, white, long-grain, regular, raw, unenriched", 365 kcal, against
+  "…, enriched, cooked", 130 kcal), so the choice is in plain sight.
+- **Where the figure came from** is said under the energy ("From USDA FoodData Central (SR
+  Legacy, April 2018), per 100 g of …. Check the label; products differ.") and kept as one
+  line at the end of the item's notes, so that it travels with the item to its page, the
+  CSV and backups. No new column was needed. The line is taken off when the figure is
+  changed by hand.
+- **British names.** The table is American. A short list (`BRITISH_NAMES` in
+  `packages/shared/src/supplies-energy.ts`) also tries the American entry for a British
+  word: aubergine (eggplant), courgette (zucchini), coriander leaves (cilantro), mince
+  (ground beef), plain and self-raising flour (all-purpose, self-rising), porridge oats,
+  crisps, biscuits (cookies), tinned (canned), swede, rocket, double cream, icing sugar,
+  sweetcorn and some forty more. Nothing cleverer: no spelling correction.
+- **The order offered.** Every word typed must be found (the last may be part typed:
+  "lent" finds lentils; plurals are made singular). Foods whose first part is just the
+  words typed ("Rice, …", "Honey") come first, then those with the words further in; a
+  store-cupboard form (a part saying raw, dry, dried or uncooked, or starting "canned")
+  and "plain" or "regular" are put a little higher; dishes from the food groups for fast
+  food, restaurants, baby food and meals, and makers' names (in capitals in SR Legacy),
+  lower. The ranking is tested on twenty everyday British shopping words.
+
+### Days of energy
+
+Under **How long it lasts**, the food is said as days of energy, in the same plain
+sentences as before, and `GET /api/supplies/outlook` gives the same sentences (`energy`):
+
+> Food, by energy: The food holds about 8.6 days of energy for 1 person. That is 21,610
+> kcal in 2 items against 2,500 kcal a day: each person's figure for their age and sex from
+> Public Health England, Government Dietary Recommendations (August 2016).
+>
+> 1 food item has no energy figure and is not counted: Oats. **Give them their energy**
+>
+> This is energy only: it says nothing about protein, vitamins or a diet to live on for
+> long, and the figures are averages, not your packets.
+
+The daily figure is the one already used: Public Health England's table (above), or the
+figure given for a person under Household, and the sentence says which. **Give them their
+energy** opens each item without a figure in turn, with the offers already made for its
+name; saving one opens the next, and Cancel stops.
+
+### The table, and how it was made
+
+USDA FoodData Central publishes five kinds of data
+([download page](https://fdc.nal.usda.gov/download-datasets/), read 17 November 2026):
+
+| Data type | Release | CSV, zipped |
+| --- | --- | --- |
+| Foundation Foods | October 2026 | 4.1 MB |
+| SR Legacy | April 2018, the last ("These data will not be updated") | 6.7 MB as listed (6.1 MB fetched) |
+| FNDDS 2021–2023 (foods as eaten in a US survey) | October 2024 | 200 MB |
+| Branded | October 2026 | 432 MB |
+
+**SR Legacy** was chosen: 7,793 generic foods, each with energy per 100 g, with the raw,
+dry and canned forms a store cupboard holds. Foundation Foods is newer and analysed more
+closely but holds a few hundred foods; FNDDS describes foods as eaten (mostly dishes);
+Branded is hundreds of thousands of American products.
+
+Terms, from the FoodData Central home page (read 17 November 2026): "USDA FoodData Central
+data are in the public domain and they are not copyrighted. They are published under CC0
+1.0 Universal (CC0 1.0). No permission is needed for their use, but we request that users
+list FoodData Central as the source of the data." The citation it asks for: "U.S.
+Department of Agriculture, Agricultural Research Service, Beltsville Human Nutrition
+Research Center. FoodData Central. [Internet]. [cited 17 November 2026]. Available from
+https://fdc.nal.usda.gov/." The site's `robots.txt` disallows nothing.
+
+`apps/server/src/modules/supplies/foods/fdc-sr-legacy.json` (724 kB, 164 kB compressed)
+was made from `FoodData_Central_sr_legacy_food_csv_2018-04.zip` (sha256
+`b80817294b8850530aaedf2e515c02593b1824f763a0ff356e5c2081643e6fd0`), fetched once on 17
+November 2026, by:
+
+    node scripts/build-food-energy.mjs <the unzipped folder> --zip <the .zip>
+
+It keeps, for each food, its FoodData Central id, its description and food group, and four
+figures per 100 g as published: nutrient 1008 (Energy, kcal), 1003 (Protein), 1004 (Total
+lipid (fat)) and 1005 (Carbohydrate, by difference), in grams. Every one of the 7,793 has an
+energy figure. The file records the dataset, its release and the download's checksum.
+Thirteen foods were checked by hand against the CSV files (`apps/server/test/supplies-energy-table.test.ts`).
+The server reads it the first time someone types a food's name, not at start.
+
+These are averages for a kind of food, often American products: a British packet's own
+figure is better, which is why the label always wins.
+
 ## The planning figures, and whose they are
 
 Every figure can be changed by the person, for the household or for one member.
@@ -307,6 +411,9 @@ For other screens (the emergency scenario planner), `GET /api/supplies/outlook`
 answers how long the supplies last and what is missing; see [api.md](api.md#supplies).
 
 ## What was not tested
+
+- Energy from FoodData Central on a real iPhone: the offers, the choosing and the weight
+  were tested in a browser at phone width only.
 
 - A real iPhone's camera, and photos from one. The plain-http state is tested in a
   browser at an address it does not treat as secure; the photo path and the decoder are

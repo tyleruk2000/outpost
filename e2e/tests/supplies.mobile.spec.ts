@@ -85,7 +85,7 @@ test.describe("Supplies on a phone", () => {
     await page.getByRole("tab", { name: "How long it lasts" }).tap();
     // 9 tins at 336 kcal: 3,024 kcal, 1.2 days. 6 litres at 3 a day: 2 days.
     await expect(page.getByText("Food runs out first, in about 1.2 days.", { exact: false })).toBeVisible();
-    await expect(page.getByText(/Counted 3,024 kcal in 1 row against 2,500 kcal a day/)).toBeVisible();
+    await expect(page.getByText(/That is 3,024 kcal in 1 item against 2,500 kcal a day/)).toBeVisible();
 
     // The shopping list: 14,476 kcal short is 44 tins; 15 litres short is 8 bottles.
     await page.getByRole("tab", { name: "Shopping list" }).tap();
