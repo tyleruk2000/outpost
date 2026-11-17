@@ -24,9 +24,10 @@ import { ForecastView } from "./forecast-view";
 import { FloodView, WarningsView } from "./hazards-view";
 import { KeptView } from "./kept-view";
 import { PlacesView } from "./places-view";
+import { RiversView } from "./rivers-view";
 import type { TempUnit, WindUnit } from "./words";
 
-const VIEWS = ["forecast", "warnings", "flood", "climate", "barometer", "places", "kept"] as const;
+const VIEWS = ["forecast", "warnings", "flood", "rivers", "climate", "barometer", "places", "kept"] as const;
 type View = (typeof VIEWS)[number];
 const tab = "min-h-11 md:min-h-0";
 const WIND_KEY = "outpost.weather.wind";
@@ -56,7 +57,9 @@ function preference<T extends string>(key: string, allowed: readonly T[], fallba
 const KIND_WORDS: Record<WeatherKind, string> = {
   forecast: "the forecast",
   warnings: "the UK's warnings",
-  flood: "flood data",
+  flood: "flood warnings",
+  rivers: "river and sea levels",
+  "river-readings": "a station's readings",
   climate: "climate averages",
   solar: "sunshine figures",
 };
@@ -84,6 +87,7 @@ export default function WeatherPage() {
         const copy = new URLSearchParams(current);
         if (next === "forecast") copy.delete("view");
         else copy.set("view", next);
+        copy.delete("station");
         return copy;
       },
       { replace: true },
@@ -129,7 +133,7 @@ export default function WeatherPage() {
     <Page width="wide">
       <PageHeader
         title="Weather and hazards"
-        description="Forecasts, warnings and flood data fetched when you press, and kept here for when there is no connection. Each says how old it is."
+        description="Forecasts, warnings, flood warnings and river levels fetched when you press, and kept here for when there is no connection. Each says how old it is."
         actions={
           <Button size="lg" variant="primary" loading={update.isPending} onClick={() => runUpdate(liveKinds)} disabled={!weather.data}>
             <RefreshCw />
@@ -243,6 +247,9 @@ export default function WeatherPage() {
               <TabsTrigger value="flood" className={tab}>
                 Flood
               </TabsTrigger>
+              <TabsTrigger value="rivers" className={tab}>
+                River and sea levels
+              </TabsTrigger>
               <TabsTrigger value="climate" className={tab}>
                 Climate
               </TabsTrigger>
@@ -272,6 +279,21 @@ export default function WeatherPage() {
             </TabsContent>
             <TabsContent value="flood">
               {place ? <FloodView copy={copyOf("flood", place.id)} source={source("flood")} now={now} /> : null}
+            </TabsContent>
+            <TabsContent value="rivers">
+              {place ? (
+                <RiversView
+                  place={place}
+                  copy={copyOf("rivers", place.id)}
+                  history={copyOf("river-readings", place.id)}
+                  source={source("rivers")}
+                  now={now}
+                  riversKm={weather.data.riversKm}
+                  fetching={update.isPending}
+                  onFetch={() => runUpdate(["rivers"], [place.id])}
+                  stationId={params.get("station")}
+                />
+              ) : null}
             </TabsContent>
             <TabsContent value="climate">
               {place ? (

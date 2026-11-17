@@ -5,6 +5,7 @@ import type {
   PressureUnit,
   ReadingImportResult,
   ReadingsResponse,
+  StationReadings,
   UpdateResponse,
   WeatherKind,
   WeatherPlace,
@@ -51,6 +52,15 @@ export const useUpdatePlace = () =>
 export const useRemovePlace = () => useChange((id: string) => api.delete(`/api/weather/places/${encodeURIComponent(id)}`));
 export const useRemoveCopy = () => useChange((id: string) => api.delete(`/api/weather/kept/${encodeURIComponent(id)}`));
 export const useSetUpdateOnOpen = () => useChange((updateOnOpen: boolean) => api.put("/api/weather/options", { updateOnOpen }));
+/** How far round a place river and sea levels are asked for: kept on the server, for every device. Fetches nothing. */
+export const useSetRiversKm = () => useChange((riversKm: number) => api.put("/api/weather/options", { riversKm }));
+/** A station's last few days of readings, on a press on its own view: it makes Outpost contact the Environment Agency. */
+export const useStationReadings = () =>
+  useChange(
+    (input: { placeId: string; stationId: string }) =>
+      api.post<{ readings: StationReadings }>("/api/weather/river-readings", input).then((data) => data.readings),
+    { quiet: true },
+  );
 
 /** The press that fetches. The only call on this screen that makes Outpost contact anybody. */
 export const useUpdate = () =>

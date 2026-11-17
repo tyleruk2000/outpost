@@ -2,7 +2,8 @@
  * Weather and hazards on a phone: opening it fetches nothing while "also update when I
  * open this screen" is off; a saved place is chosen with its warning region picked from
  * a drop-down; Update now fetches from the stand-in publishers (e2e/tools/fake-dist.mjs,
- * recorded answers) and every copy says how old it is; and barometer readings give a
+ * recorded answers) and every copy says how old it is; river and sea levels are fetched
+ * on a press, and a station's last days on another; and barometer readings give a
  * tendency in the Met Office's words.
  */
 import { api, expect, test, watchForErrors } from "./fixtures";
@@ -72,6 +73,53 @@ test.describe("Weather and hazards on a phone", () => {
 
     const wide = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(wide).toBeLessThanOrEqual(390);
+    expect(errors).toEqual([]);
+  });
+
+  test("fetches river and sea levels on a press, and a station's last days on another", async ({ page }) => {
+    const errors = watchForErrors(page);
+    const outbound: string[] = [];
+    page.on("request", (request) => {
+      const url = request.url();
+      if (url.includes("/api/weather/update") || url.includes("/api/weather/river-readings")) outbound.push(new URL(url).pathname);
+    });
+    await page.goto("/");
+    await clear(page);
+    await api(page, "PUT", "/api/weather/options", { riversKm: 8 });
+    await api(page, "POST", "/api/weather/places", { name: "Lynn", lat: 52.75, lon: 0.4 });
+
+    await page.goto("/prepare/weather?view=rivers");
+    await expect(page.getByText(/River and sea levels have not been fetched for Lynn yet/)).toBeVisible();
+    await expect(page.getByText(/England only/)).toBeVisible();
+    expect(outbound).toEqual([]);
+
+    // The distance is a drop-down; choosing one fetches nothing.
+    await page.getByRole("combobox", { name: "Stations within" }).tap();
+    await page.getByRole("option", { name: "15 km (9 miles)" }).tap();
+    await expect(page.getByRole("combobox", { name: "Stations within" })).toHaveText(/15 km/);
+    expect(outbound).toEqual([]);
+
+    await page.getByRole("button", { name: "Fetch river and sea levels" }).tap();
+    await expect(page.getByRole("heading", { name: "6 stations within 15 km, nearest first" })).toBeVisible();
+    expect(outbound).toEqual(["/api/weather/update"]);
+    await expect(page.getByText("Fetched just now.")).toBeVisible();
+    const tidal = page.locator('[data-station="E47901"]');
+    await expect(tidal.getByText("Tidal", { exact: true })).toBeVisible();
+    await expect(page.locator('[data-station="E21183"]').getByText(/^1\.09 m above Ordnance Datum, measured /)).toBeVisible();
+
+    await page.getByRole("link", { name: /Kilham's Bridge/ }).tap();
+    await expect(page.getByRole("heading", { level: 2, name: "Kilham's Bridge" })).toBeVisible();
+    await page.getByRole("button", { name: "Fetch the last 3 days" }).tap();
+    await expect(page.getByRole("region", { name: /Level at Kilham's Bridge/ })).toBeVisible();
+    expect(outbound).toEqual(["/api/weather/update", "/api/weather/river-readings"]);
+    await page.getByText("The readings as a table").tap();
+    await expect(page.getByRole("columnheader", { name: "Level, mAOD" })).toBeVisible();
+
+    await page.getByRole("link", { name: "All river and sea levels" }).tap();
+    await expect(page.getByRole("heading", { name: "6 stations within 15 km, nearest first" })).toBeVisible();
+    const wide = await page.evaluate(() => document.documentElement.scrollWidth);
+    expect(wide).toBeLessThanOrEqual(390);
+    await api(page, "PUT", "/api/weather/options", { riversKm: 8 });
     expect(errors).toEqual([]);
   });
 

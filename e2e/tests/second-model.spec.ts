@@ -31,7 +31,10 @@ test.describe("A second model (ITU P.533)", () => {
     await expect(list.getByRole("listitem")).toHaveCount(1);
     await page.getByRole("checkbox", { name: "Select ITU-R P.533 ionospheric and noise maps" }).click();
     await page.getByRole("button", { name: "Remove", exact: true }).click();
-    await page.getByRole("dialog", { name: "Remove “ITU-R P.533 ionospheric and noise maps”" }).getByRole("button", { name: "Remove 1 item" }).click();
+    await page
+      .getByRole("dialog", { name: "Remove “ITU-R P.533 ionospheric and noise maps”" })
+      .getByRole("button", { name: "Remove 1 item" })
+      .click();
     await expect(list.getByRole("listitem")).toHaveCount(0);
 
     await page.goto("/radio/propagation");

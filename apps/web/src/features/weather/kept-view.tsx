@@ -8,7 +8,9 @@ import { useRemoveCopy } from "./data";
 const KIND_WORDS = {
   forecast: "Forecast",
   warnings: "UK warnings",
-  flood: "Flood warnings and river levels",
+  flood: "Flood warnings",
+  rivers: "River and sea levels",
+  "river-readings": "River and sea levels, stations' last days",
   climate: "Climate averages",
   solar: "Sunshine on a panel",
 };
