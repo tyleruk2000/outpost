@@ -97,6 +97,10 @@ describe("the screen of what is kept", () => {
     expect(await screen.findByRole("heading", { name: /Nothing is kept on this \w+ yet/ })).toBeInTheDocument();
     expect(screen.getByText(/a page of notes, from its menu/)).toBeInTheDocument();
     expect(screen.getByText(/an area of the map/)).toBeInTheDocument();
+    // The room section does not add up nothing.
+    await screen.findByRole("heading", { name: "Room in this browser" });
+    await waitFor(() => expect(document.body).toHaveTextContent("does not report how much room it allows"));
+    expect(document.body).not.toHaveTextContent("What you have kept takes");
   });
 
   it("lists what is kept with its size and the date of the copy, and marks what the server no longer has", async () => {
