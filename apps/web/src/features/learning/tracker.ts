@@ -179,6 +179,8 @@ export function useLearningTracker(collectionId: string, active: boolean): Learn
   const listed = useCallback(
     (path: string, links: string[], home: boolean) => {
       if (listedOnce.current.has(path)) return;
+      // Only the page on show: an archive's page may name any number of pages it is not.
+      if (visit.current?.path !== path) return;
       // A page of more links than a list of lessons holds is an index; the first page is kept for what it shares with the rest.
       if (!home && (links.length < 2 || links.length > TOPIC_LINKS_MAX)) return;
       const title = visit.current?.path === path ? visit.current.title : "";

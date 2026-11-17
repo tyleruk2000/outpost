@@ -250,6 +250,20 @@ describe("what the reader records", () => {
     expect(writes.at(-1)).toMatchObject({ learner: "Alex", path: "lessons/halves", seconds: 7, opened: true });
   });
 
+  it("passes on a list of links only for the page on show, however many pages an archive's page names", () => {
+    vi.useFakeTimers();
+    hide(false);
+    const { writes, hook } = track("Sam");
+    act(() => hook.result.current.shown("topics/fractions", "Fractions"));
+    for (let i = 0; i < 50; i++) act(() => hook.result.current.listed(`made-up/${i}`, ["a", "b", "c"], false));
+    expect(writes.filter((write) => "links" in write)).toEqual([]);
+    act(() => hook.result.current.listed("topics/fractions", ["a", "b", "c"], false));
+    expect(writes.filter((write) => "links" in write)).toEqual([
+      { collectionId: "c1", path: "topics/fractions", title: "Fractions", links: ["a", "b", "c"], home: false },
+    ]);
+    hook.unmount();
+  });
+
   it("counts a video as watched only when most of it was played, on the page on show", () => {
     hide(false);
     const { hook } = track("Sam");

@@ -529,7 +529,11 @@ device, address or browser is recorded with it.
   nine tenths of the video was played. A page can lie in these messages; the most it can
   do is mark itself watched or make a topic's count wrong.
 - **Limits.** 50 learners, 20,000 pages a learner, two minutes of time a write, and no
-  more than could have passed since the page was last written.
+  more than could have passed since the page was last written. A page's list of links
+  is passed on only for the page on show, and the server keeps at most 2,000 such lists
+  an archive, each of at most 300 links and 64 KB, letting the one seen longest ago go:
+  a page that names made-up pages in a loop cannot fill the disk
+  (`apps/server/test/review2-learning.test.ts`).
 
 ### Downloads (the SSRF guard)
 

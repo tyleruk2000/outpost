@@ -21,11 +21,13 @@ import {
   LEARNERS_MAX,
   LEARNING_PAGES_MAX,
   LEARNING_SECONDS_PER_WRITE_MAX,
+  LEARNING_TOPICS_MAX,
   type LearnerSummary,
   type LearningCourse,
   type LearningKept,
   type LearningPage,
   learnerName,
+  TOPIC_LINKS_BYTES_MAX,
   TOPIC_LINKS_MAX,
 } from "@outpost/shared";
 import type { FastifyInstance } from "fastify";
@@ -420,14 +422,17 @@ export async function registerLearning(app: FastifyInstance, ctx: AppContext, op
     const links = [...new Set(body.links)].filter((link) => link !== body.path);
     // A page of more links than a list of lessons holds is an index or a menu; it is not kept.
     if (links.length > TOPIC_LINKS_MAX && !body.home) return { kept: false };
-    statements.topic.run({
-      archive: key,
-      path: body.path,
-      title: body.title,
-      links: JSON.stringify(links.slice(0, TOPIC_LINKS_MAX * 2)),
-      isHome: body.home ? 1 : 0,
-      at: now(),
-    });
+    // The page reports these and may make them up: what is kept of them is bounded in size and number.
+    const written = JSON.stringify(links.slice(0, TOPIC_LINKS_MAX * 2));
+    if (Buffer.byteLength(written) > TOPIC_LINKS_BYTES_MAX) return { kept: false };
+    sqlite.transaction(() => {
+      statements.topic.run({ archive: key, path: body.path, title: body.title, links: written, isHome: body.home ? 1 : 0, at: now() });
+      sqlite
+        .prepare(
+          "DELETE FROM learning_topics WHERE archive = @archive AND path IN (SELECT path FROM learning_topics WHERE archive = @archive ORDER BY seen_at DESC LIMIT -1 OFFSET @keep)",
+        )
+        .run({ archive: key, keep: LEARNING_TOPICS_MAX });
+    })();
     return { kept: true };
   });
 
