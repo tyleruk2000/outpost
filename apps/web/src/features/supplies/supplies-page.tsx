@@ -7,7 +7,7 @@
  */
 import type { SupplyItemInput } from "@outpost/shared";
 import { FileDown, FileUp, Link2, Plus, ScanBarcode } from "lucide-react";
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { ErrorState, Page, PageHeader } from "@/components/page";
@@ -19,9 +19,11 @@ import { HouseholdView } from "./household-view";
 import { ImportDialog } from "./import-dialog";
 import { ItemDialog } from "./item-form";
 import { OutlookView } from "./outlook-view";
-import { ScannerDialog } from "./scanner-dialog";
 import { ShoppingView } from "./shopping-view";
 import { StockView } from "./stock-view";
+
+// The scanner carries the barcode reader: loaded when Scan is pressed, not with the screen.
+const ScannerDialog = lazy(() => import("./scanner-dialog").then((module) => ({ default: module.ScannerDialog })));
 
 const VIEWS = ["stock", "days", "shopping", "household"] as const;
 type View = (typeof VIEWS)[number];
@@ -132,13 +134,15 @@ export default function SuppliesPage() {
 
       {adding ? <ItemDialog start={adding.start} locations={supplies.data?.locations ?? []} onClose={() => setAdding(null)} /> : null}
       {scanning ? (
-        <ScannerDialog
-          onClose={() => setScanning(false)}
-          onNew={(start) => {
-            setScanning(false);
-            setAdding({ start });
-          }}
-        />
+        <Suspense fallback={null}>
+          <ScannerDialog
+            onClose={() => setScanning(false)}
+            onNew={(start) => {
+              setScanning(false);
+              setAdding({ start });
+            }}
+          />
+        </Suspense>
       ) : null}
       {importing ? <ImportDialog onClose={() => setImporting(false)} /> : null}
     </Page>
