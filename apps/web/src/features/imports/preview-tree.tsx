@@ -22,7 +22,7 @@ function DuplicateBadge({ item, policy }: { item: ImportItem; policy: ImportDupl
   if (!item.duplicateOf) return null;
   if (policy === "copy") return <Badge>Imported again as a copy</Badge>;
   if (policy === "replace" && item.duplicateOf.reason === "imported-before") return <Badge tone="warning">Will be overwritten</Badge>;
-  return <Badge>Already here</Badge>;
+  return <Badge>Already here, left as it is</Badge>;
 }
 
 function Row({

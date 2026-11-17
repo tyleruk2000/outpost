@@ -13,7 +13,7 @@ import {
   Star,
   Trash2,
 } from "lucide-react";
-import { Fragment } from "react";
+import { Fragment, useEffect, useRef } from "react";
 import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
@@ -33,12 +33,29 @@ const saveText: Record<AutosaveStatus["kind"], string> = {
   error: "Not saved",
 };
 
+/**
+ * Whether the page is saved, in words. A screen reader hears only what needs attention
+ * (offline, refused, failed) and the first save after it: "Saving…" and "Saved" come
+ * round every few seconds while someone types, and would talk over the writing.
+ */
 export function SaveState({ status, className }: { status: AutosaveStatus; className?: string }) {
+  const quiet = status.kind === "saving" || status.kind === "saved";
+  const troubled = useRef(false);
+  const spoken = !quiet ? saveText[status.kind] : status.kind === "saved" && troubled.current ? saveText.saved : "";
+  useEffect(() => {
+    if (!quiet) troubled.current = true;
+    else if (status.kind === "saved") troubled.current = false;
+  });
   return (
-    <p role="status" aria-live="polite" className={cn("flex shrink-0 items-center gap-1.5 text-small text-ink-muted", className)}>
-      {status.kind === "offline" ? <CloudOff aria-hidden className="size-4" strokeWidth={1.6} /> : null}
-      {saveText[status.kind]}
-    </p>
+    <>
+      <p className={cn("flex shrink-0 items-center gap-1.5 text-small text-ink-muted", className)}>
+        {status.kind === "offline" ? <CloudOff aria-hidden className="size-4" strokeWidth={1.6} /> : null}
+        {saveText[status.kind]}
+      </p>
+      <span role="status" className="sr-only">
+        {spoken}
+      </span>
+    </>
   );
 }
 

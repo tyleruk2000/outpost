@@ -144,6 +144,24 @@ export function actionLabel(outcome: ImportOutcome): string {
   return "Nothing to import";
 }
 
+/**
+ * What the import button will do, in sentences, said beside it before it is pressed:
+ * what is made and where, what is overwritten, and what is left alone.
+ */
+export function outcomeWords(outcome: ImportOutcome, parentTitle: string | null): string[] {
+  const where = parentTitle ? `under “${parentTitle}”` : "at the top level of your notes";
+  const words: string[] = [];
+  if (outcome.create > 0) words.push(`${plural(outcome.create, "new page")} ${outcome.create === 1 ? "is" : "are"} made ${where}.`);
+  if (outcome.replace > 0)
+    words.push(`${plural(outcome.replace, "page")} from the earlier import ${outcome.replace === 1 ? "is" : "are"} overwritten.`);
+  if (outcome.keep > 0)
+    words.push(`${plural(outcome.keep, "page")} you already have ${outcome.keep === 1 ? "is left as it is" : "are left as they are"}.`);
+  if (outcome.replace === 0) words.push("Nothing is overwritten.");
+  if (outcome.documents > 0)
+    words.push(`${plural(outcome.documents, "PDF")} ${outcome.documents === 1 ? "is" : "are"} added to the library.`);
+  return words;
+}
+
 /** The options to send: `replaceConfirmed` only travels with the choice it belongs to. */
 export function toCommitBody(options: ImportOptions): ImportOptions {
   return {

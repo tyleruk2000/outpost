@@ -116,7 +116,8 @@ export default function ImportPage() {
         description="Bring in notes you already have, from Markdown files, a Notion export or other files. You see exactly what would be created before anything is added."
         actions={
           id ? (
-            <Button asChild variant="ghost">
+            // On a phone the link sits under the words; its arrow lines up with them.
+            <Button asChild variant="ghost" className="max-md:-ml-3.5">
               <Link to="/import">
                 <ArrowLeft /> All imports
               </Link>

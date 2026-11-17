@@ -33,6 +33,7 @@ import {
   fileLabel,
   groupByReason,
   outcomeOf,
+  outcomeWords,
   sourceLabel,
 } from "./preview-model";
 import { PreviewTreeView } from "./preview-tree";
@@ -310,6 +311,16 @@ export function PreviewStep({ dto, analysis, onDiscarded }: { dto: ImportDto; an
           ) : null}
 
           <div className="grid gap-3">
+            {analysis.problems.length === 0 ? (
+              <div className="border-t border-border pt-3">
+                <p className="text-small font-semibold text-ink">When you import</p>
+                <ul className="mt-1 grid gap-0.5 text-small text-ink-muted">
+                  {outcomeWords(outcome, parent?.title ?? null).map((line) => (
+                    <li key={line}>{line}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
             {!gate.allowed && analysis.problems.length === 0 ? (
               <p role="status" className="text-small text-ink-muted">
                 {gate.reason}
