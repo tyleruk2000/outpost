@@ -286,13 +286,9 @@ export function RouteEditor({
           </Notice>
         ) : null}
       </div>
-      <footer className="flex flex-wrap items-center gap-2 border-t border-border px-4 py-3">
-        <Button type="submit" variant="primary" loading={saving} disabled={!ready}>
-          {reshaping ? "Save new shape" : "Save route"}
-        </Button>
-        <Button onClick={onClose}>Cancel</Button>
+      <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-border px-4 py-3">
         {!ready && !saving ? (
-          <span className="text-small text-ink-muted">
+          <span className="mr-auto text-small text-ink-muted">
             {points.length < 2
               ? "A route needs at least two points."
               : reshaping
@@ -300,6 +296,10 @@ export function RouteEditor({
                 : "Give the route a name to save it."}
           </span>
         ) : null}
+        <Button onClick={onClose}>Cancel</Button>
+        <Button type="submit" variant="primary" loading={saving} disabled={!ready}>
+          {reshaping ? "Save new shape" : "Save route"}
+        </Button>
       </footer>
     </form>
   );

@@ -1,20 +1,14 @@
 import { type CollectionDto, formatBytes } from "@outpost/shared";
 import { CircleAlert, CircleArrowUp, Search, Unplug } from "lucide-react";
-import { Fragment, type ReactNode, useState } from "react";
+import { type ReactNode, useState } from "react";
 import { Link } from "react-router";
-import { EmptyState, ErrorState, Rows } from "@/components/page";
+import { EmptyState, ErrorState, Joined, Rows } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/misc";
 import { cn, plural, timeAgo } from "@/lib/utils";
 import { useCollections } from "./collection-data";
 import { type CollectionNote, chapterCount, collectionNote, filesReachable, groupCollections, openTarget } from "./collection-meta";
-
-const Slash = () => (
-  <span aria-hidden className="mx-2 text-border-strong">
-    /
-  </span>
-);
 
 const noteStyles: Record<CollectionNote["tone"], string> = {
   warning: "text-warning",
@@ -70,13 +64,7 @@ function CollectionRow({ collection }: { collection: CollectionDto }) {
           </Link>
         </h3>
         <p className="mt-0.5 text-small text-ink-muted">
-          {meta.map((part, index) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: a fixed, ordered list of facts about one collection
-            <Fragment key={index}>
-              {index > 0 ? <Slash /> : null}
-              {part}
-            </Fragment>
-          ))}
+          <Joined parts={meta} />
         </p>
         {note ? <CollectionNoteLine note={note} className="mt-1.5" /> : null}
       </div>

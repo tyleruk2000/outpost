@@ -526,7 +526,8 @@ export function PrintDialog({
           </div>
         </DialogBody>
 
-        <DialogFooter className="justify-between max-md:flex-col max-md:items-stretch max-md:gap-3">
+        {/* On a phone what is said about the page takes the first line, and the buttons a row of their own under it. */}
+        <DialogFooter className="justify-between max-md:gap-3 max-md:[&>:first-child]:basis-full">
           {made.status === "making" ? (
             <div className="grid min-w-0 flex-1 gap-1.5" role="status">
               <Progress value={made.of ? made.done / made.of : null} tone="lamp" label="Drawing the page" />
@@ -565,7 +566,7 @@ export function PrintDialog({
               Made on this device from the maps installed here. Nothing is sent anywhere.
             </p>
           )}
-          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 max-md:w-full max-md:shrink">
             {made.status === "making" ? (
               <Button
                 onClick={() => {

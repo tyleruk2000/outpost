@@ -497,7 +497,7 @@ export function ImageryArea({
             </>
           ) : null}
         </div>
-        <footer className="flex border-t border-border px-4 py-3">
+        <footer className="flex justify-end border-t border-border px-4 py-3">
           <Button
             variant="primary"
             disabled={!bbox || !name.trim()}
@@ -577,7 +577,7 @@ export function ImageryArea({
             </>
           ) : null}
         </div>
-        <footer className="flex border-t border-border px-4 py-3">
+        <footer className="flex justify-end border-t border-border px-4 py-3">
           <Button
             variant="primary"
             disabled={!scene}
@@ -743,11 +743,11 @@ export function ImageryArea({
             whereRef.current?.querySelector<HTMLElement>('[role="radio"]:not([disabled])')?.focus({ preventScroll: true });
           }}
         />
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <Button onClick={onClose}>Cancel</Button>
           <Button variant="primary" onClick={download} disabled={!canDownload} loading={start.isPending}>
             {estimated ? `Fetch ${formatBytes(estimated.transferBytes)}` : "Fetch"}
           </Button>
-          <Button onClick={onClose}>Cancel</Button>
         </div>
       </footer>
     </div>

@@ -8,10 +8,10 @@ import {
   formatDuration,
 } from "@outpost/shared";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Check, CircleAlert, RotateCw, ShieldAlert, ShieldCheck, ShieldQuestion, WifiOff } from "lucide-react";
+import { Check, CircleAlert, RotateCw, ShieldAlert, ShieldCheck, ShieldQuestion, WifiOff } from "lucide-react";
 import { memo, useMemo } from "react";
 import { Link, useNavigate, useParams } from "react-router";
-import { EmptyState, ErrorState, Notice, Page } from "@/components/page";
+import { BackLink, EmptyState, ErrorState, Notice, Page } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Badge, Skeleton } from "@/components/ui/misc";
 import { ApiError, api } from "@/lib/api";
@@ -46,15 +46,8 @@ const badgeTone: Record<Tone, "neutral" | "lamp" | "success" | "warning" | "dang
   danger: "danger",
 };
 
-function BackLink() {
-  return (
-    <Link
-      to="/downloads"
-      className="-ml-1 inline-flex items-center gap-1.5 rounded-control px-1 py-1 text-small text-ink-muted transition-colors hover:text-ink max-md:min-h-11"
-    >
-      <ArrowLeft aria-hidden className="size-4" /> Downloads
-    </Link>
-  );
+function BackToDownloads() {
+  return <BackLink to="/downloads">Downloads</BackLink>;
 }
 
 /** A figure with its name, small and in a row: speed, time left, when it finishes. */
@@ -253,7 +246,7 @@ export default function DownloadPage() {
   if (detail.isPending) {
     return (
       <Page>
-        <BackLink />
+        <BackToDownloads />
         <div className="mt-4 grid gap-6" aria-busy>
           <Skeleton className="h-9 max-w-[28rem]" />
           <Skeleton className="h-5 max-w-[18rem]" />
@@ -269,7 +262,7 @@ export default function DownloadPage() {
     const missing = detail.error instanceof ApiError && detail.error.status === 404;
     return (
       <Page>
-        <BackLink />
+        <BackToDownloads />
         <div className="mt-6">
           {missing ? (
             <EmptyState
@@ -308,7 +301,7 @@ export default function DownloadPage() {
 
   return (
     <Page>
-      <BackLink />
+      <BackToDownloads />
       <header className="mt-3 mb-9">
         <h1 className="font-title text-title text-ink">{download.title}</h1>
         <p className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-small text-ink-muted">

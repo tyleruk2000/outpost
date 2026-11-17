@@ -1,9 +1,9 @@
 import { ACTIVE_DOWNLOAD_STATES, type CollectionsResponse, type DownloadDto, type DownloadsResponse } from "@outpost/shared";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CircleAlert } from "lucide-react";
-import { Fragment, memo, type ReactNode, useMemo, useState } from "react";
+import { memo, type ReactNode, useMemo, useState } from "react";
 import { Link } from "react-router";
-import { EmptyState, ErrorState, Page, PageHeader, Rows, Section } from "@/components/page";
+import { EmptyState, ErrorState, Joined, Page, PageHeader, Rows, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/misc";
 import { api } from "@/lib/api";
@@ -23,23 +23,16 @@ import { usePlan } from "./use-plan";
 /** How many waiting jobs are listed before the rest are summed up in a line. */
 const JOBS_SHOWN = 8;
 
-const Slash = () => (
-  <span aria-hidden className="mx-2 text-border-strong">
-    /
-  </span>
-);
-
 function MetaLine({ parts, className }: { parts: ReactNode[]; className?: string }) {
-  const present = parts.filter(Boolean);
   return (
     <p className={className ?? "mt-0.5 text-small text-ink-muted"}>
-      {present.map((part, index) => (
-        // biome-ignore lint/suspicious/noArrayIndexKey: a fixed, ordered list of facts about one download
-        <Fragment key={index}>
-          {index > 0 ? <Slash /> : null}
-          <span>{part}</span>
-        </Fragment>
-      ))}
+      {/* Each fact in an element of its own, so that each can be found and read alone. */}
+      <Joined
+        parts={parts.filter(Boolean).map((part, index) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: a fixed, ordered list of facts about one download
+          <span key={index}>{part}</span>
+        ))}
+      />
     </p>
   );
 }

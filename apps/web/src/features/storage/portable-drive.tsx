@@ -266,11 +266,7 @@ function Wizard({ status, onClose, startAt }: { status: PortableStatus; onClose:
           )}
         </DialogBody>
         <DialogFooter className={phoneSheetFooter}>
-          {finished || stopped ? (
-            <Button variant="primary" onClick={onClose}>
-              Done
-            </Button>
-          ) : (
+          {finished || stopped ? null : (
             <>
               <Button onClick={() => cancel.mutate()} loading={cancel.isPending}>
                 Cancel writing
@@ -278,6 +274,11 @@ function Wizard({ status, onClose, startAt }: { status: PortableStatus; onClose:
               <Button onClick={onClose}>Close</Button>
             </>
           )}
+          {finished || stopped ? (
+            <Button variant="primary" onClick={onClose}>
+              Done
+            </Button>
+          ) : null}
         </DialogFooter>
       </>
     );

@@ -166,22 +166,11 @@ describe("one product", () => {
     expect(emoji("x", 'icon: "🎒",')).toHaveLength(1);
   });
 
-  it("puts a dialog's buttons in one row, the main one last", () =>
-    holds(footers, {
-      "features/maps/imagery/panel.tsx": "teammate C: the imagery form's footer is a grid with the main button first",
-      "features/maps/panels/places.tsx": "teammate C: the place form's footer puts Save first",
-      "features/maps/panels/route-editor.tsx": "teammate C: the route editor's footer puts Save first",
-      "features/maps/print/print-dialog.tsx": "teammate C: the print dialog stacks its buttons on a phone",
-      "features/storage/portable-drive.tsx": "teammate C: a portable-drive dialog puts its main button first",
-    }));
+  it("puts a dialog's buttons in one row, the main one last", () => holds(footers));
 
   it("leads back from a screen with one link, one glyph and one look", () =>
     holds(backLinks, {
-      "features/downloads/download-page.tsx": "teammate C: its own back link to Downloads (use PageHeader back)",
-      "features/library/collection-page.tsx": "teammate C: a chevron back link to Collections",
-      "features/library/chapter-nav.tsx": "teammate C: a chevron back to a book's contents, in the link colour",
       "features/library/document-page.tsx": "teammate C: the reader's toolbar (an icon button; may stay, as the reader's own bar)",
-      "features/weather/rivers-view.tsx": "teammate C: its own back link to all river and sea levels, in the link colour",
       "features/notes/note-top-bar.tsx": "the slim bar over a page being written: the arrow and the parent's name, as a breadcrumb",
       "features/kept/kept-note-screen.tsx": "the same slim bar, on a page kept on this device",
       "features/chat/conversation-screen.tsx": "the slim bar over a conversation, as the notes' one",
@@ -190,12 +179,7 @@ describe("one product", () => {
 
   it("calls each thing by one name", () => holds(names));
 
-  it("separates facts about a thing with one separator", () =>
-    holds(separators, {
-      "features/library/collections-panel.tsx": "teammate C: a slash between a collection's facts",
-      "features/library/document-row.tsx": "teammate C: a slash between a document's facts",
-      "features/downloads/downloads-page.tsx": "teammate C: a slash between a download's facts",
-    }));
+  it("separates facts about a thing with one separator", () => holds(separators));
 
   it("says a list is empty with the one empty state", () => holds(emptyStates));
 
@@ -205,11 +189,7 @@ describe("one product", () => {
       "features/understand/understand-page.tsx": "a long stepped page with a contents column at the side on a wide screen (may stay)",
     }));
 
-  it("draws a radio one way", () =>
-    holds(radios, {
-      "features/downloads/choice-list.tsx":
-        "teammate C: its own copy of the radio mark (use RadioItem, which the maps touch rule can tell apart)",
-    }));
+  it("draws a radio one way", () => holds(radios));
 
   it("shows a toast as words, with an icon only for an error", () => {
     holds(toastIcons);

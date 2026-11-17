@@ -240,16 +240,17 @@ export function PlaceEditor({
           ) : null}
         </div>
       </div>
-      <footer className="flex flex-wrap items-center gap-2 border-t border-border px-4 py-3">
-        <Button type="submit" variant="primary" loading={saving} disabled={!draft.name.trim() || !changed}>
-          {saved ? "Save changes" : "Save place"}
-        </Button>
-        <Button onClick={onClose}>{saved && !changed ? "Close" : "Cancel"}</Button>
+      {/* One row, the main button last on the right; deleting stands apart at the left. */}
+      <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-border px-4 py-3">
         {saved ? (
-          <Button variant="danger-ghost" className="ml-auto" onClick={() => setConfirming(true)}>
+          <Button variant="danger-ghost" className="mr-auto" onClick={() => setConfirming(true)}>
             <Trash2 /> Delete
           </Button>
         ) : null}
+        <Button onClick={onClose}>{saved && !changed ? "Close" : "Cancel"}</Button>
+        <Button type="submit" variant="primary" loading={saving} disabled={!draft.name.trim() || !changed}>
+          {saved ? "Save changes" : "Save place"}
+        </Button>
       </footer>
       {saved ? (
         <ConfirmDialog

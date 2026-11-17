@@ -31,10 +31,10 @@ import {
   type WeatherPlace,
   type WeatherSourceInfo,
 } from "@outpost/shared";
-import { ArrowLeft, ChevronRight, CircleAlert, Clock, RefreshCw } from "lucide-react";
+import { ChevronRight, CircleAlert, Clock, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
-import { Notice } from "@/components/page";
+import { BackLink, Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Badge, Select } from "@/components/ui/misc";
 import { errorMessage } from "@/lib/api";
@@ -191,7 +191,7 @@ export function RiversView({
       />
     ) : (
       <div>
-        <BackLink />
+        <BackToRivers />
         <p className="text-body text-ink">That station is not among the river and sea levels kept for {place.name}. Fetch them again.</p>
       </div>
     );
@@ -278,11 +278,11 @@ export function RiversView({
   );
 }
 
-function BackLink() {
+function BackToRivers() {
   return (
-    <Link to="?view=rivers" className="mb-2 inline-flex min-h-11 items-center gap-1.5 text-small text-primary">
-      <ArrowLeft aria-hidden className="size-4" /> All river and sea levels
-    </Link>
+    <BackLink to="?view=rivers" className="mb-2">
+      All river and sea levels
+    </BackLink>
   );
 }
 
@@ -319,7 +319,7 @@ function StationView({
 
   return (
     <div>
-      <BackLink />
+      <BackToRivers />
       <h2 className="font-title text-heading text-ink">{station.label}</h2>
       <p className="text-body text-ink-muted">
         {[station.river, station.town].filter(Boolean).join(", ")}
