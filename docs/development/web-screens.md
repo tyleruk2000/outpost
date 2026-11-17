@@ -130,6 +130,18 @@ there and nowhere else:
   takes `under="/radio"` and draws `ScreensUnder`, which reads the same description.
 - **A screen with an address of its own and nothing else** (a document, a plan) needs no
   entry: it is reached from the list it belongs to.
+- **Its name is its title.** `label` is the screen's own `h1`, word for word, so that
+  the sidebar, the More sheet and the screen agree (`every-screen.spec.ts` checks; Home,
+  "Your library", and the set-up guide are the two listed exceptions).
+- **Give it the words people use for it** in `keywords`: "food" for Supplies, "wifi" for
+  QR codes, "bigger text" for Text size. The quick search's "Go to" list, and the search
+  screen's, find a screen by its name first and then by these (`components/find-places.ts`).
+  Leave a word out rather than send it to a screen that does not answer it.
+  `components/command-palette-words.test.ts` holds a table of everyday words and where
+  each lands: add a line for your screen.
+- **A section of Settings** is one entry of `settingsSections` in `nav.ts`, with the
+  `id` of its `SettingsSection` and its everyday words; the quick search offers it as
+  "Settings: Backup" and opens `/settings#backup`, which comes to rest at that section.
 
 `components/nav.test.tsx` reads the routes from `app.tsx` and fails if a route with no
 parameters is in neither list (the not-found page is the one exception, listed there),
@@ -142,10 +154,19 @@ sharing, location and the service worker's caches are missing or refused, so che
 them before use.
 
 The sidebar has to fit a 13-inch laptop (a window about 700 to 800 px high) with a page
-tree in it. Groups start closed unless every one fits open with room for about eight
-pages of the tree; the group of the screen in view opens by itself; below 880 px of
-height the upkeep list scrolls with the screens and the tree instead of staying at the
-foot. Look at it at those heights when you add a screen.
+tree in it. The upkeep list (Downloads, Storage, On this device, Settings) and the lamp
+stay at the foot, always in view; the screens and the page tree above them scroll as one
+part, and a fade at its foot says when there is more below. Groups start closed unless
+every one fits open with room for about eight pages of the tree; the group of the screen
+in view opens by itself. The four screens of the phone's bottom bar (Home, Library,
+Maps, Notes) come first, with Search, as they are used most. Look at it at 1280 by 720,
+1280 by 800 and 1440 by 900 when you add a screen.
+
+The phone's More sheet holds every screen the four tabs do not, in the sidebar's order
+and its two parts. A screen with others under it is a heading with a button that shows
+them; they are folded away until asked for, except the group of the screen in view, so
+that Storage and Settings are in sight without scrolling on a 390 by 844 phone. Screens
+with none under them sit two to a line while they fit.
 
 ## Every screen has all of its states
 
@@ -278,6 +299,12 @@ not given these buttons. [library.md](../library.md) has the whole of it.
 - **A row of names never scrolls sideways without saying so.** With larger text, or a
   zoomed page, a row that fitted no longer does; let it wrap, so the last name is not
   off the edge. Check a phone layout with the root font size at 20 and 24 px.
+- **Text size** (Settings → Appearance) scales the root font size on one device: 87.5%,
+  100%, 125% or 150% of the size the device is set to, put on the page by
+  `public/pre-paint.js` before anything is drawn (`lib/theme.tsx` keeps it there). Text
+  sized in `rem`, as the scale in `base.css` is, follows it; a screen that holds at 150%
+  and 200% holds at each step; `e2e/tests/shell-large-text.mobile.spec.ts` checks every top-level screen at
+  each.
 - Body text contrast is at least 4.5:1. `text-ink-faint` is for placeholders and
   disabled text only.
 

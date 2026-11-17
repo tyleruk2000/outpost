@@ -55,6 +55,7 @@ test.describe("setting up answers and chat, on a phone", () => {
     expect(await overflow(page)).toBeLessThanOrEqual(1);
     // It is reached from where it is needed, and from the navigation too, under Settings.
     await page.getByRole("button", { name: "More" }).click();
+    // The guide is in view, so the group it is in, under Settings, is open already.
     await expect(
       page.getByRole("dialog", { name: "More" }).getByRole("list", { name: "Under Settings" }).getByRole("link", { name: "Set-up guide" }),
     ).toBeVisible();

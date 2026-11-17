@@ -33,6 +33,8 @@ test.describe("Weather and hazards on a phone", () => {
 
     // Reached from the More sheet, under Preparedness.
     await page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "More" }).tap();
+    // The screens under Preparedness are folded away until asked for.
+    await page.getByRole("dialog", { name: "More" }).getByRole("button", { name: "Show the screens under Preparedness" }).tap();
     await page.getByRole("dialog", { name: "More" }).locator('a[href="/prepare/weather"]').first().tap();
     await expect(page.getByRole("heading", { level: 1, name: "Weather and hazards" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Choose a place for forecasts" })).toBeVisible();

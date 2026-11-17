@@ -67,7 +67,10 @@ export interface NavItem extends ChildScreen {
  * Supplies, "wifi" for QR codes. A word no screen answers ("torch") is left to the library search.
  */
 
-/** Where people read, write and find things. The four of the phone's bottom bar come first, as they are used most. */
+/**
+ * Where people read, write and find things. The four of the phone's bottom bar come first, in its order (Home,
+ * Library, Maps, Notes), with Search, as they are used most; the tree of pages follows the whole list in the sidebar.
+ */
 export const knowledgeNav: NavItem[] = [
   { to: "/", label: "Home", icon: Home, key: "h", keywords: "start" },
   {
@@ -86,6 +89,7 @@ export const knowledgeNav: NavItem[] = [
     key: "l",
     keywords: "documents books ebooks pdf files reading audiobooks learning school course lessons progress khan upload",
   },
+  { to: "/maps", label: "Maps", icon: MapIcon, key: "m", keywords: "map offline places routes gps location directions print sun times" },
   // Importing brings in pages (Markdown, Notion), so it is Notes'.
   {
     to: "/notes",
@@ -95,7 +99,6 @@ export const knowledgeNav: NavItem[] = [
     keywords: "pages write notebook journal diary",
     children: [{ to: "/import", label: "Import", icon: FolderInput, keywords: "import files markdown notion obsidian" }],
   },
-  { to: "/maps", label: "Maps", icon: MapIcon, key: "m", keywords: "map offline places routes gps location directions print sun times" },
   {
     to: "/explore",
     label: "Explore",

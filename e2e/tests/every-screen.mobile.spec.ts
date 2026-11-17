@@ -12,11 +12,17 @@ test.describe("every screen, on a phone", () => {
 
     const tabs = await bar.getByRole("link").evaluateAll((all) => all.map((link) => link.getAttribute("href") ?? ""));
     await bar.getByRole("button", { name: "More" }).click();
-    const more = await sheet
-      .getByRole("list")
-      .first()
-      .getByRole("link")
-      .evaluateAll((all) => all.map((link) => link.getAttribute("href") ?? ""));
+    // The screens under each heading are folded away until asked for: open every group.
+    const closed = sheet.getByRole("button", { name: /^Show the screens under / });
+    while ((await closed.count()) > 0) await closed.first().click();
+    const entries = await sheet.getByRole("link").evaluateAll((all) =>
+      all.map((link) => ({
+        path: link.getAttribute("href") ?? "",
+        under: link.closest("ul[aria-label^='Under ']")?.getAttribute("aria-label")?.slice("Under ".length) ?? null,
+      })),
+    );
+    const more = entries.map((entry) => entry.path);
+    const parentOf = new Map(entries.map((entry) => [entry.path, entry.under]));
     await page.keyboard.press("Escape");
     await expect(sheet).toBeHidden();
     expect([...tabs, ...more]).toEqual(expect.arrayContaining(AT_LEAST.map(([, path]) => path)));
@@ -30,7 +36,11 @@ test.describe("every screen, on a phone", () => {
         await bar.locator(`a[href="${path}"]`).click();
       } else {
         await bar.getByRole("button", { name: "More" }).click();
-        await sheet.locator(`a[href="${path}"]`).first().click();
+        const link = sheet.locator(`a[href="${path}"]`).first();
+        // The group of the screen in view opens by itself; any other is opened by its button.
+        const parent = parentOf.get(path);
+        if (parent && !(await link.isVisible())) await sheet.getByRole("button", { name: `Show the screens under ${parent}` }).click();
+        await link.click();
         await expect(sheet).toBeHidden();
       }
       // Home is where the walk starts, so pressing it changes nothing.

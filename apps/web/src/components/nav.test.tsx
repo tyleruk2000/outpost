@@ -122,7 +122,7 @@ describe("the sidebar", () => {
         .getAllByRole("link")
         .slice(0, 5)
         .map((link) => link.textContent),
-    ).toEqual(["Home", "Search", "Library", "Notes", "Maps"]);
+    ).toEqual(["Home", "Search", "Library", "Maps", "Notes"]);
     // The field that opens the quick search, and the link to the search screen, have names that cannot be confused.
     expect(within(sidebar).getByRole("button", { name: "Quick search" })).toHaveTextContent("Quick search");
     expect(within(knowledge).getByRole("link", { name: "Search" })).toHaveAttribute("href", "/search");

@@ -99,6 +99,29 @@ for (const root of [24, 32]) {
   });
 }
 
+// Settings -> Appearance -> Text size, at each step other than the default (apps/web/src/lib/theme.tsx): put on the page
+// before the first paint by public/pre-paint.js, and held by every top-level screen as the sizes above are.
+for (const [step, root] of [
+  ["smaller", 14],
+  ["larger", 20],
+  ["largest", 24],
+] as const) {
+  test(`every top-level screen fits a phone with Text size set to ${step}`, async ({ page }) => {
+    test.setTimeout(180_000);
+    const errors = watchForErrors(page);
+    await page.addInitScript((value) => localStorage.setItem("outpost.textSize", value), step);
+    for (const path of screens) {
+      await page.goto(path);
+      await expect(page.locator("main h1").first()).toBeVisible();
+      await page.waitForLoadState("networkidle");
+      expect(await page.evaluate(() => getComputedStyle(document.documentElement).fontSize), path).toBe(`${root}px`);
+      expect(await tooWide(page), `${path} with text ${step}`).toEqual([]);
+      expect(await barCut(page), `the bar on ${path} with text ${step}`).toEqual([]);
+    }
+    expect(errors).toEqual([]);
+  });
+}
+
 test.describe("on a 320 px phone", () => {
   test.use({ viewport: { width: 320, height: 640 } });
 

@@ -18,7 +18,7 @@ test.describe("on a phone", () => {
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(overflow).toBeLessThanOrEqual(1);
 
-    await page.getByRole("button", { name: "Search everything" }).click();
+    await page.getByRole("button", { name: "Quick search" }).click();
     await expect(page.getByRole("dialog", { name: "Search and go to" })).toBeVisible();
     expect(errors).toEqual([]);
   });
@@ -73,70 +73,114 @@ test.describe("on a phone", () => {
     const bar = page.getByRole("navigation", { name: "Main" });
     await expect(bar.getByRole("link")).toHaveText(["Home", "Library", "Maps", "Notes"]);
 
-    const others: Array<[string, string]> = [
-      ["Search", "/search"],
-      ["How search works", "/search/how-it-works"],
-      ["Explore", "/explore"],
-      ["Chat", "/chat"],
-      ["Contacts", "/contacts"],
-      ["Messages", "/messages"],
-      ["Encryption", "/encryption"],
-      ["Radio", "/radio"],
-      ["HF propagation", "/radio/propagation"],
-      ["HF coverage", "/radio/coverage"],
-      ["Communication plans", "/radio/plans"],
-      ["Contact log", "/radio/log"],
-      ["Repeaters", "/radio/repeaters"],
-      ["Morse trainer", "/radio/morse"],
-      ["Frequencies to listen to", "/radio/frequencies"],
-      ["Tools", "/tools"],
-      ["Water", "/tools/water"],
-      ["Outdoors", "/tools/outdoors"],
-      ["Radio calculators", "/tools/radio"],
-      ["Building", "/tools/building"],
-      ["Cooking", "/tools/cooking"],
-      ["Power and batteries", "/tools/power"],
-      ["QR codes", "/tools/qr"],
-      ["Devices on this network", "/tools/network"],
-      ["Solar clock", "/tools/solar-clock"],
-      ["Compass", "/tools/compass"],
-      ["Preparedness", "/prepare"],
-      ["Emergency plans", "/prepare/plans"],
-      ["Supplies", "/prepare/supplies"],
-      ["Weather and hazards", "/prepare/weather"],
-      ["Nuclear preparedness", "/prepare/nuclear"],
-      ["Games", "/games"],
-      ["Allotment", "/games/allotment"],
-      ["Solitaire", "/games/solitaire"],
-      ["Peg solitaire", "/games/peg-solitaire"],
-      ["Sudoku", "/games/sudoku"],
-      ["Draughts", "/games/draughts"],
-      ["Pairs", "/games/pairs"],
+    // Grouped as the sidebar is: the screens for finding and reading, then those that look after the library.
+    // A screen with others under it is a heading; the screens under it are folded away until asked for.
+    const groups: Array<[string, string, Array<[string, string]>]> = [
+      ["Search", "/search", [["How search works", "/search/how-it-works"]]],
       // A tab, listed again as the heading of the screen under it.
-      ["Notes", "/notes"],
-      ["Import files", "/import"],
-      ["Downloads", "/downloads"],
-      ["Storage", "/storage"],
-      ["Manage and clean up", "/storage/manage"],
-      ["Bring back changes from a drive", "/storage/merge"],
-      ["On this phone", "/kept"],
-      ["Settings", "/settings"],
-      ["Set-up guide", "/help/search-and-answers"],
+      ["Notes", "/notes", [["Import", "/import"]]],
+      ["Explore", "/explore", []],
+      ["Chat", "/chat", []],
+      ["Contacts", "/contacts", []],
+      ["Messages", "/messages", []],
+      ["Encryption", "/encryption", []],
+      [
+        "Radio",
+        "/radio",
+        [
+          ["HF propagation", "/radio/propagation"],
+          ["HF coverage", "/radio/coverage"],
+          ["Communication plans", "/radio/plans"],
+          ["Contact log", "/radio/log"],
+          ["Repeaters", "/radio/repeaters"],
+          ["Morse trainer", "/radio/morse"],
+          ["Frequencies to listen to", "/radio/frequencies"],
+        ],
+      ],
+      [
+        "Tools",
+        "/tools",
+        [
+          ["Water", "/tools/water"],
+          ["Outdoors", "/tools/outdoors"],
+          ["Radio calculators", "/tools/radio"],
+          ["Building", "/tools/building"],
+          ["Cooking", "/tools/cooking"],
+          ["Power and batteries", "/tools/power"],
+          ["QR codes", "/tools/qr"],
+          ["Devices on this network", "/tools/network"],
+          ["Solar clock", "/tools/solar-clock"],
+          ["Compass", "/tools/compass"],
+        ],
+      ],
+      [
+        "Preparedness",
+        "/prepare",
+        [
+          ["Emergency plans", "/prepare/plans"],
+          ["Supplies", "/prepare/supplies"],
+          ["Weather and hazards", "/prepare/weather"],
+          ["Nuclear preparedness", "/prepare/nuclear"],
+        ],
+      ],
+      [
+        "Games",
+        "/games",
+        [
+          ["Allotment", "/games/allotment"],
+          ["Solitaire", "/games/solitaire"],
+          ["Peg solitaire", "/games/peg-solitaire"],
+          ["Sudoku", "/games/sudoku"],
+          ["Draughts", "/games/draughts"],
+          ["Pairs", "/games/pairs"],
+        ],
+      ],
+      ["Downloads", "/downloads", []],
+      [
+        "Storage",
+        "/storage",
+        [
+          ["Manage and clean up", "/storage/manage"],
+          ["Bring back changes from a drive", "/storage/merge"],
+        ],
+      ],
+      ["On this phone", "/kept", []],
+      ["Settings", "/settings", [["Set-up guide", "/help/search-and-answers"]]],
     ];
     await bar.getByRole("button", { name: "More" }).click();
     const sheet = page.getByRole("dialog", { name: "More" });
-    await expect(sheet.getByRole("list").first().getByRole("link")).toHaveText(others.map(([name]) => name));
-    // The sheet fits the screen, or scrolls inside itself.
+    await expect(sheet.getByRole("navigation").getByRole("link")).toHaveText(groups.map(([name]) => name));
+    // Settings and Storage are in sight without scrolling, and the sheet fits the screen.
     const box = await sheet.boundingBox();
     expect(box!.y).toBeGreaterThanOrEqual(0);
+    for (const name of ["Storage", "Settings"]) {
+      const link = (await sheet.getByRole("link", { name, exact: true }).boundingBox())!;
+      expect(link.y + link.height, `${name} is in sight`).toBeLessThanOrEqual(box!.y + box!.height);
+    }
+    // Each group opens to show the screens under it, in order.
+    for (const [name, , children] of groups) {
+      if (children.length === 0) continue;
+      await sheet.getByRole("button", { name: `Show the screens under ${name}` }).click();
+      await expect(sheet.getByRole("list", { name: `Under ${name}` }).getByRole("link")).toHaveText(children.map(([child]) => child));
+    }
     await page.keyboard.press("Escape");
 
-    for (const [name, path] of others) {
-      await bar.getByRole("button", { name: "More" }).click();
-      await page.getByRole("dialog", { name: "More" }).getByRole("link", { name, exact: true }).click();
-      await expect(page).toHaveURL(new RegExp(`${path.replace(/[/.]/g, "\\$&")}(\\?.*)?$`));
-      await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
-      await expect(page.getByRole("dialog", { name: "More" })).toBeHidden();
+    for (const [name, path, children] of groups) {
+      for (const [entry, to, parent] of [[name, path, null] as const, ...children.map(([child, at]) => [child, at, name] as const)]) {
+        await bar.getByRole("button", { name: "More" }).click();
+        const link = page.getByRole("dialog", { name: "More" }).getByRole("link", { name: entry, exact: true });
+        // The group of the screen in view is open already; any other is opened by its button.
+        if (parent && !(await link.isVisible())) {
+          await page
+            .getByRole("dialog", { name: "More" })
+            .getByRole("button", { name: `Show the screens under ${parent}` })
+            .click();
+        }
+        await link.click();
+        await expect(page).toHaveURL(new RegExp(`${to.replace(/[/.]/g, "\\$&")}(\\?.*)?$`));
+        await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
+        await expect(page.getByRole("dialog", { name: "More" })).toBeHidden();
+      }
     }
 
     // This tab runs the build the server is serving, so there is nothing to reload for.

@@ -1,6 +1,12 @@
 import { AT_LEAST, expectArrived, failing } from "./every-screen";
 import { expect, test, watchForErrors } from "./fixtures";
 
+/**
+ * The screens whose title is not their name in the navigation: Home's is "Your library", a sentence about it, and
+ * the set-up guide's is a sentence too long for a line of the sidebar ("Setting up search by meaning, answers and chat").
+ */
+const TITLED_OTHERWISE = new Set(["/", "/help/search-and-answers"]);
+
 test.describe("every screen, on a wide screen", () => {
   test("is reached from Home by pressing only what the sidebar shows, and each parent screen links to those under it", async ({
     page,
@@ -32,6 +38,8 @@ test.describe("every screen, on a wide screen", () => {
       await sidebar.locator(`nav a[href="${entry.path}"]`).click();
       // Home is where the walk starts, so pressing it changes nothing.
       heading = await expectArrived(page, entry.path, testInfo, index === 0 && entry.path === "/" ? undefined : heading);
+      // The sidebar names each screen by its own title, so that a person knows they are where they pressed.
+      if (!TITLED_OTHERWISE.has(entry.path)) expect(heading, `the title of ${entry.path}`).toBe(entry.name);
       expect(failing(errors), `no error on ${entry.path}`).toEqual([]);
     }
 

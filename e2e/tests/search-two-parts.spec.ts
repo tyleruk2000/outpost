@@ -92,7 +92,7 @@ test.describe("search with a slow reference collection", () => {
   test("the palette lists a person's own match first and the collection's article when it comes", async ({ page }) => {
     await page.goto("/");
     // The button in the sidebar opens the palette too, and is there only once the app is listening.
-    await page.getByRole("button", { name: "Search everything" }).click();
+    await page.getByRole("button", { name: "Quick search" }).click();
     const palette = page.getByRole("dialog", { name: "Search and go to" });
     await expect(palette).toBeVisible();
     // A word of its own, so that nothing is remembered from the test before.

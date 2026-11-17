@@ -32,7 +32,7 @@ export const AT_LEAST: Array<[string, string]> = [
   ["Draughts", "/games/draughts"],
   ["Pairs", "/games/pairs"],
   ["Notes", "/notes"],
-  ["Import files", "/import"],
+  ["Import", "/import"],
   ["Downloads", "/downloads"],
   ["Storage", "/storage"],
   ["Manage and clean up", "/storage/manage"],

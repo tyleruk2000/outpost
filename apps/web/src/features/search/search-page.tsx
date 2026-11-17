@@ -31,8 +31,8 @@ function GoTo({ places }: { places: Place[] }) {
       <ul className="mt-1 divide-y divide-border border-y border-border">
         {places.map((place) => (
           <li key={place.to}>
-            <Link to={place.to} className="group flex min-h-11 items-center gap-3 py-2.5 text-ink">
-              <place.icon aria-hidden className="size-[18px] shrink-0 text-ink-muted" strokeWidth={1.6} />
+            <Link to={place.to} className="group flex min-h-11 items-start gap-3 py-2.5 text-ink">
+              <place.icon aria-hidden className="mt-0.5 size-[18px] shrink-0 text-ink-muted" strokeWidth={1.6} />
               <span className="min-w-0 flex-1">
                 <span className="block font-medium group-hover:underline group-hover:decoration-primary group-hover:underline-offset-4">
                   {place.parent ? <span className="font-normal text-ink-muted">{place.parent.label}:</span> : null}
@@ -43,7 +43,7 @@ function GoTo({ places }: { places: Place[] }) {
                   <span className="mt-0.5 line-clamp-2 block text-small text-ink-muted">{place.about}</span>
                 ) : null}
               </span>
-              <ChevronRight aria-hidden className="size-4 shrink-0 text-ink-faint" />
+              <ChevronRight aria-hidden className="mt-1 size-4 shrink-0 text-ink-faint" />
             </Link>
           </li>
         ))}
@@ -233,7 +233,8 @@ export default function SearchPage() {
   const data = search.data;
   const facets = Object.entries(data?.facets ?? {})
     .filter(([key]) => key !== "reference")
-    .sort((a, b) => b[1] - a[1]);
+    // Most first, and what would have to be downloaded after every kind that is on this device.
+    .sort((a, b) => Number(a[0] === "catalog") - Number(b[0] === "catalog") || b[1] - a[1]);
   // Reference comes last and is there from the first results, so the other tabs never move when its count arrives.
   const referenceTab = data?.referenceToCome || kind === "reference" || reference.results.length > 0;
   const referenceCount = reference.results.length > 0 || reference.status === "done" ? reference.results.length : undefined;

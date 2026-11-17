@@ -8,6 +8,23 @@ Keyword search is always available and needs no set-up. Semantic search is optio
 and off by default. So is reading the text of scanned pages and images
 ([OCR](#scanned-pages-and-images-ocr)).
 
+## Two places to search
+
+- **Quick search** is the field at the top of the sidebar (the magnifying glass in the
+  phone's top bar; <kbd>/</kbd>, or <kbd>Ctrl</kbd> or <kbd>⌘</kbd> <kbd>K</kbd>, from
+  anywhere). It opens over the screen you are on. Under **Go to** it lists the screens
+  of Outpost and the sections of Settings that match what you type, by their names and
+  by the everyday words people use for them: "food" offers Preparedness: Supplies,
+  "backup" opens Settings at its Backup section, "dark mode" Settings at Appearance,
+  "wifi" Tools: QR codes. A word that no screen answers ("torch") offers none. Under
+  that, the best matches in your library, as you type, and **See all results**, which
+  opens the Search screen.
+- **Search** (in the sidebar below that field, and in the phone's More sheet)
+  is the whole screen: every result, a tab for each kind, the reference collections,
+  and Answer from my library. When a screen of Outpost matches what you typed, it is
+  offered at the top under **Go to**, as in quick search: "safe drinking water" offers
+  Tools: Water, which holds the treatment tables.
+
 ## Seeing how it works
 
 **How search works** (the "How were these found?" link under any search, or
@@ -183,6 +200,23 @@ percentage next to a result is relative to the best match of that search, not an
 absolute score.
 
 A PDF result opens at the page of the match.
+
+**What is on this device comes first.** An entry of the catalogue ("Available to
+download") would have to be downloaded before it could be opened, and with the internet
+down it cannot be. So however well one matches, it comes after everything that can be
+opened now: your documents, pages, collections, places, contacts and the rest are
+ranked by the formula above, and catalogue entries after them, ranked the same way
+among themselves. The order holds from one page of results to the next. On the
+**Everything** tab the catalogue entries are listed apart, last of all, under
+**Available to download**: after your own results and after **In reference
+collections** (articles in archives already on this device). That group is added once
+the reference collections have answered, so that nothing moves under your finger when
+it comes. In quick search they are the last group too. The **Available to download**
+tab lists them alone, as before. Measured on the demonstration library (2,306 passages,
+600 searches of 20 queries from one to four words, with this machine busy): 2.8 ms
+median and 8.0 ms at the 90th percentile from asking to answer before, 2.6 to 2.7 ms
+and 8.6 to 8.8 ms after. The query itself takes about 0.7 ms longer on average when a
+word matches more than 800 passages, and the same otherwise.
 
 ### Filters
 

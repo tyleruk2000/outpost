@@ -17,6 +17,8 @@ test.describe("Draughts on a phone", () => {
 
     // Reached from the More sheet, under Games.
     await page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "More" }).tap();
+    // The screens under Games are folded away until asked for.
+    await page.getByRole("dialog", { name: "More" }).getByRole("button", { name: "Show the screens under Games" }).tap();
     await page.getByRole("dialog", { name: "More" }).locator('a[href="/games/draughts"]').first().tap();
     await expect(page.getByRole("heading", { level: 1, name: "Draughts" })).toBeVisible();
 

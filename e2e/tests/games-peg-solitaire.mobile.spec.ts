@@ -17,6 +17,8 @@ test.describe("Peg solitaire on a phone", () => {
 
     // Reached from the More sheet, under Games.
     await page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "More" }).tap();
+    // The screens under Games are folded away until asked for.
+    await page.getByRole("dialog", { name: "More" }).getByRole("button", { name: "Show the screens under Games" }).tap();
     await page
       .getByRole("dialog", { name: "More" })
       .getByRole("list", { name: "Under Games" })
