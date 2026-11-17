@@ -115,18 +115,26 @@ export function useKeyer(enabled: boolean, options: UseKeyerOptions = {}): UseKe
     [decoder, scheduleFlush, syncDecoderState],
   );
 
-  // rAF pump for the automatic keyers
+  // The automatic keyers' edges come from a frame pump that runs only while an element
+  // is under way: a press starts it, and it stops once the keyer is idle again.
+  const pumpRef = useRef<() => void>(() => {});
   useEffect(() => {
     if (!enabled || keyType === "straight") return;
+    const keyer = () => (keyType === "bug" ? bugRef.current : iambicRef.current);
     let raf = 0;
     const loop = (): void => {
-      const now = performance.now();
-      const events = keyType === "bug" ? (bugRef.current?.tick(now) ?? []) : (iambicRef.current?.tick(now) ?? []);
-      processEvents(events);
-      raf = window.requestAnimationFrame(loop);
+      raf = 0;
+      processEvents(keyer()?.tick(performance.now()) ?? []);
+      if (keyer()?.isKeying) raf = window.requestAnimationFrame(loop);
     };
-    raf = window.requestAnimationFrame(loop);
-    return () => window.cancelAnimationFrame(raf);
+    pumpRef.current = () => {
+      if (raf === 0 && keyer()?.isKeying) raf = window.requestAnimationFrame(loop);
+    };
+    pumpRef.current();
+    return () => {
+      window.cancelAnimationFrame(raf);
+      pumpRef.current = () => {};
+    };
   }, [enabled, keyType, processEvents]);
 
   const press = useCallback(
@@ -158,6 +166,7 @@ export function useKeyer(enabled: boolean, options: UseKeyerOptions = {}): UseKe
       }
       const keyer = keyType === "bug" ? bugRef.current : iambicRef.current;
       processEvents(keyer?.setPaddle(paddle, true, now) ?? []);
+      pumpRef.current();
     },
     [decoder, keyType, processEvents, swapPaddles, syncDecoderState, toneHz, volume],
   );
@@ -191,6 +200,7 @@ export function useKeyer(enabled: boolean, options: UseKeyerOptions = {}): UseKe
       const paddle = swapPaddles ? (side === "dit" ? "dah" : "dit") : side;
       const keyer = keyType === "bug" ? bugRef.current : iambicRef.current;
       processEvents(keyer?.setPaddle(paddle, false, now) ?? []);
+      pumpRef.current();
     },
     [decoder, keyType, processEvents, scheduleFlush, swapPaddles, syncDecoderState],
   );

@@ -1,5 +1,5 @@
 /** What the communication plans screens ask the server for. */
-import type { CommunicationPlan, PlanInput, PlanResult, SearchResult } from "@outpost/shared";
+import type { CommunicationPlan, PlanConflictDetails, PlanInput, PlanPatch, PlanResult, SearchResult } from "@outpost/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ApiError, api, errorMessage } from "@/lib/api";
@@ -56,19 +56,39 @@ export function inputOf(plan: CommunicationPlan): PlanInput {
   return input;
 }
 
-/** Saves a change to a plan. The plan on screen is the one the server sent back. */
-export function useSavePlan(id: string) {
+/** The plan as it is now, when a save was refused because it had been changed somewhere else; otherwise null. */
+export function planChangedElsewhere(error: unknown): CommunicationPlan | null {
+  if (!(error instanceof ApiError) || error.status !== 409) return null;
+  const details = error.details as Partial<PlanConflictDetails> | undefined;
+  return details?.reason === "changed-elsewhere" && details.plan ? details.plan : null;
+}
+
+/**
+ * Saves a change to a plan: the fields given, on top of the plan as this screen last had it, and the time that
+ * plan was saved, so that a change made on another device since is not overwritten (the server refuses it, and
+ * `onChangedElsewhere` is told). Saves on one plan go one at a time, each from the plan the one before left.
+ */
+export function useSavePlan(id: string, onChangedElsewhere: (patch: Partial<PlanInput>, theirs: CommunicationPlan) => void) {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (input: PlanInput) =>
-      api.patch<{ plan: CommunicationPlan }>(`/api/radio/communication-plans/${id}`, input).then((data) => data.plan),
+    scope: { id: `communication-plan-${id}` },
+    mutationFn: (patch: Partial<PlanInput>) => {
+      const plan = client.getQueryData<CommunicationPlan>(planKeys.one(id));
+      if (!plan) throw new Error("The plan has not been read yet.");
+      const body: PlanPatch = { ...inputOf(plan), ...patch, baseUpdatedAt: plan.updatedAt };
+      return api.patch<{ plan: CommunicationPlan }>(`/api/radio/communication-plans/${id}`, body).then((data) => data.plan);
+    },
     onSuccess: (plan) => {
       client.setQueryData(planKeys.one(id), plan);
       // What the plan asks may have changed; the kept matrix is asked for again.
       void client.invalidateQueries({ queryKey: planKeys.matrix(id) });
       void client.invalidateQueries({ queryKey: planKeys.all, exact: true });
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error, patch) => {
+      const theirs = planChangedElsewhere(error);
+      if (theirs) onChangedElsewhere(patch, theirs);
+      else toast.error(errorMessage(error));
+    },
   });
 }
 

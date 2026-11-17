@@ -42,13 +42,16 @@ export const useAskCoverage = () =>
 export const fetchCoverage = (key: string) =>
   api.get<{ coverage: CoverageResult }>(`/api/radio/propagation/coverage/${key}`).then((data) => data.coverage);
 
-/** The job working a map out, asked about several times a second while it runs. */
+/**
+ * The job working a map out. The live-events stream refreshes it as the job moves (its key is under
+ * "jobs"); the slow poll is only for when that stream is down.
+ */
 export const useCoverageJob = (id: string | null) =>
   useQuery({
     queryKey: coverageKeys.job(id ?? ""),
     queryFn: () => api.get<{ job: JobDto }>(`/api/jobs/${id}`).then((data) => data.job),
     enabled: id !== null,
-    refetchInterval: (query) => (["succeeded", "failed", "cancelled"].includes(query.state.data?.state ?? "") ? false : 400),
+    refetchInterval: (query) => (["succeeded", "failed", "cancelled"].includes(query.state.data?.state ?? "") ? false : 5_000),
   });
 
 export const stopJob = (id: string) => api.post(`/api/jobs/${id}/cancel`);

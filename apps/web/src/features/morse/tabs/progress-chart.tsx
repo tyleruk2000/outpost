@@ -6,7 +6,8 @@
  * the pointer and the arrow keys, and the same numbers as a table for a screen reader.
  */
 import type { MorseSession, MorseSessionKind } from "@outpost/shared";
-import { type KeyboardEvent, type PointerEvent, useEffect, useId, useRef, useState } from "react";
+import { type KeyboardEvent, type PointerEvent, useId, useState } from "react";
+import { useWidth } from "@/features/radio/use-width";
 import { formatDate, formatDateTime } from "@/lib/utils";
 
 export const KIND_LABELS: Record<MorseSessionKind, string> = {
@@ -28,21 +29,6 @@ const ADVANCE = 90;
 const AXIS_TEXT = "tabular fill-ink-muted text-[11px]";
 const LABEL_TEXT = "fill-ink text-[11px] font-medium";
 const HALF_DAY = 43_200_000;
-
-function useWidth(fallback = 640): [React.RefObject<HTMLDivElement | null>, number] {
-  const ref = useRef<HTMLDivElement | null>(null);
-  const [width, setWidth] = useState(fallback);
-  useEffect(() => {
-    const element = ref.current;
-    if (!element || typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(([entry]) => {
-      if (entry && entry.contentRect.width > 0) setWidth(Math.round(entry.contentRect.width));
-    });
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, []);
-  return [ref, width];
-}
 
 const pct = (accuracy: number) => Math.round(accuracy * 100);
 

@@ -25,7 +25,7 @@ import { desc, eq, inArray } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
-import { badRequest, notFound } from "../../core/errors.ts";
+import { badRequest, conflict, notFound } from "../../core/errors.ts";
 import { newId } from "../../core/ids.ts";
 import { communicationPlans, documents, notes } from "../../db/schema.ts";
 import type { CircuitResult } from "./engine.ts";
@@ -45,6 +45,7 @@ const station = z.object({
 });
 
 const hour = z.number().int().min(1).max(24);
+const changeBase = z.object({ baseUpdatedAt: z.number().int().nonnegative().optional() });
 const bandIds = HF_BANDS.map((band) => band.id) as [string, ...string[]];
 
 const plan = z
@@ -332,6 +333,14 @@ export function registerPlans(app: FastifyInstance, ctx: AppContext, service: Pr
     },
     update(id, body) {
       const before = dto(rowOf(id));
+      // Sent by the screen: the plan's updatedAt as it was read. A plan saved somewhere else since is not overwritten.
+      const { baseUpdatedAt } = changeBase.parse(body);
+      if (baseUpdatedAt !== undefined && baseUpdatedAt !== before.updatedAt) {
+        throw conflict("This plan was changed somewhere else after you opened it. Nothing was saved.", {
+          reason: "changed-elsewhere",
+          plan: before,
+        });
+      }
       const input = checked(body);
       // A change to the name, the notes, the links or the window leaves the matrix as it
       // was; a change to anything the engine is asked about means it must be worked out again.
@@ -346,7 +355,12 @@ export function registerPlans(app: FastifyInstance, ctx: AppContext, service: Pr
           value.solar,
         ]);
       db.update(communicationPlans)
-        .set({ ...values(input), ...(asked(before) === asked(input) ? {} : { resultKey: null }), updatedAt: Date.now() })
+        .set({
+          ...values(input),
+          ...(asked(before) === asked(input) ? {} : { resultKey: null }),
+          // Always later than the time the change was made from, so that two saves in one millisecond are told apart.
+          updatedAt: Math.max(Date.now(), before.updatedAt + 1),
+        })
         .where(eq(communicationPlans.id, id))
         .run();
       ctx.events.publish({ type: "propagation.changed" });

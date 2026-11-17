@@ -131,6 +131,18 @@ interface Server {
   listed: number;
 }
 
+/**
+ * Stands in for the live-events stream, which tells the screen each time a job moves (its query is under "jobs"):
+ * the screen's own poll is only a slow fallback for when that stream is down.
+ */
+let jobEvents: number | undefined;
+function withJobEvents(client: QueryClient): QueryClient {
+  window.clearInterval(jobEvents);
+  jobEvents = window.setInterval(() => void client.invalidateQueries({ queryKey: ["jobs"] }), 300);
+  return client;
+}
+afterEach(() => window.clearInterval(jobEvents));
+
 function show(
   options: {
     observations?: Observation[] | "fails";
@@ -213,7 +225,7 @@ function show(
     }),
   );
   render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+    <QueryClientProvider client={withJobEvents(new QueryClient({ defaultOptions: { queries: { retry: false } } }))}>
       <MemoryRouter>
         <LogPage />
       </MemoryRouter>

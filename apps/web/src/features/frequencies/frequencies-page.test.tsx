@@ -58,6 +58,18 @@ const ENTRIES: FrequencyEntry[] = [
 
 let load: () => Promise<{ entries: FrequencyEntry[]; guides: [] }> = async () => ({ entries: ENTRIES, guides: [] });
 vi.mock("./bundled", () => ({ bundled: () => load() }));
+// Counts how often a row is drawn: each row asks for its status words once per render.
+const drawn = vi.hoisted(() => ({ rows: 0 }));
+vi.mock("./document", async (original) => {
+  const actual = await original<typeof import("./document")>();
+  return {
+    ...actual,
+    statusWords: (...args: Parameters<typeof actual.statusWords>) => {
+      drawn.rows += 1;
+      return actual.statusWords(...args);
+    },
+  };
+});
 
 import FrequenciesPage from "./frequencies-page";
 
@@ -152,6 +164,15 @@ describe("Frequencies to listen to", () => {
     expect(await screen.findByText("Nothing matches")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Clear the filters" }));
     expect(rows()).toHaveLength(3);
+  });
+
+  it("does not draw again the rows a keystroke leaves in place", async () => {
+    renderAt("/radio/frequencies?place=any");
+    await screen.findByText("Last checked 17 November 2026");
+    drawn.rows = 0;
+    fireEvent.change(screen.getByRole("searchbox"), { target: { value: "WWV" } });
+    await vi.waitFor(() => expect(rows()).toEqual(["ts-wwv"]));
+    expect(drawn.rows).toBe(0);
   });
 
   it("opens an entry to show the rest, with its source and the day it was checked; the frequencies are text", async () => {

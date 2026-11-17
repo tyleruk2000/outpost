@@ -9,28 +9,13 @@
  * reader. Colours are the chart tokens; none is added here.
  */
 import { utcLabel } from "@outpost/shared";
-import { type KeyboardEvent, type PointerEvent, type ReactNode, useEffect, useId, useRef, useState } from "react";
+import { type KeyboardEvent, type PointerEvent, type ReactNode, useId, useState } from "react";
+import { useWidth } from "@/features/radio/use-width";
 import { cn } from "@/lib/utils";
 
 const AXIS_TEXT = "tabular fill-ink-muted text-[11px]";
 /** The hours of the day as the engine numbers them: 1 is 01:00 UTC, 24 is midnight at the end of the day. */
 const HOURS = Array.from({ length: 24 }, (_, index) => index + 1);
-
-/** The width a chart has to draw in. Charts are laid out in real pixels so that type stays one size on every screen. */
-function useWidth(fallback = 640): [React.RefObject<HTMLDivElement | null>, number] {
-  const ref = useRef<HTMLDivElement | null>(null);
-  const [width, setWidth] = useState(fallback);
-  useEffect(() => {
-    const element = ref.current;
-    if (!element || typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(([entry]) => {
-      if (entry && entry.contentRect.width > 0) setWidth(Math.round(entry.contentRect.width));
-    });
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, []);
-  return [ref, width];
-}
 
 export function ChartFrame({
   title,

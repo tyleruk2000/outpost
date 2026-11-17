@@ -176,6 +176,11 @@ export class BugKeyer {
     this.t = keyerTimings(wpm, profile);
   }
 
+  /** An automatic dit or the space after it is under way: tick() still has edges to give. */
+  get isKeying(): boolean {
+    return this.state === "mark" || this.state === "space";
+  }
+
   setPaddle(side: PaddleSide, pressed: boolean, at: number): KeyEvent[] {
     const events = this.tick(at);
     if (side === "dit") {

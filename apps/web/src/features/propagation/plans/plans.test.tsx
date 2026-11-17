@@ -225,6 +225,8 @@ function show(
     worked?: PlanResult | "fails";
     engineReady?: boolean;
     found?: Array<{ kind: string; entityId: string; title: string }>;
+    /** Saved on another device just after this screen first read the plan. */
+    movedOn?: Partial<CommunicationPlan>;
   } = {},
 ): Server {
   const server: Server = { patched: [], posted: [], deleted: [] };
@@ -237,9 +239,18 @@ function show(
         new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
       const missing = () => json({ error: { code: "not_found", message: "The communication plan was not found." } }, 404);
       if (init?.method === "PATCH") {
-        const body = JSON.parse(String(init.body)) as PlanInput;
+        const { baseUpdatedAt, ...body } = JSON.parse(String(init.body)) as PlanInput & { baseUpdatedAt?: number };
+        if (baseUpdatedAt !== undefined && baseUpdatedAt !== plan!.updatedAt) {
+          const message = "This plan was changed somewhere else after you opened it. Nothing was saved.";
+          return json({ error: { code: "conflict", message, details: { reason: "changed-elsewhere", plan } } }, 409);
+        }
         server.patched.push(body);
-        plan = { ...plan!, ...body, linked: body.links.map((link) => ({ ...link, title: "Net procedure" })) };
+        plan = {
+          ...plan!,
+          ...body,
+          updatedAt: plan!.updatedAt + 1,
+          linked: body.links.map((link) => ({ ...link, title: "Net procedure" })),
+        };
         return json({ plan });
       }
       if (init?.method === "POST") {
@@ -262,7 +273,15 @@ function show(
       }
       if (pathname.endsWith("/matrix"))
         return options.matrix === null || !plan?.workedOut ? missing() : json({ matrix: options.matrix ?? matrixOf() });
-      if (pathname.startsWith("/api/radio/communication-plans/")) return plan ? json({ plan }) : missing();
+      if (pathname.startsWith("/api/radio/communication-plans/")) {
+        if (!plan) return missing();
+        const read = plan;
+        if (options.movedOn) {
+          plan = { ...plan, ...options.movedOn, updatedAt: plan.updatedAt + 1000 };
+          options.movedOn = undefined;
+        }
+        return json({ plan: read });
+      }
       if (pathname === "/api/radio/propagation/engines")
         return json({
           engines: [{ id: "voacap", name: "VOACAP", ready: options.engineReady ?? true, problem: "A data file is damaged." }],
@@ -464,6 +483,30 @@ describe("a plan", () => {
     await waitFor(() => expect(server.patched).toHaveLength(3));
     expect(server.patched[2]!.name).toBe("Family net, winter");
     expect(await screen.findByRole("heading", { level: 1, name: "Family net, winter" })).toBeInTheDocument();
+  });
+
+  it("does not save over a change made on another device, and lets the person take theirs", async () => {
+    const server = show("/radio/plans/p1", { movedOn: { name: "Changed on the phone" } });
+    fireEvent.click(await screen.findByRole("checkbox", { name: "20 m" }));
+    const notice = await screen.findByText("This plan was changed somewhere else");
+    expect(server.patched).toHaveLength(0);
+    expect(notice.parentElement?.textContent).toMatch(/your last change was not saved/);
+    fireEvent.click(screen.getByRole("button", { name: "Take theirs" }));
+    expect(await screen.findByRole("heading", { level: 1, name: "Changed on the phone" })).toBeInTheDocument();
+    expect(screen.queryByText("This plan was changed somewhere else")).not.toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "20 m" })).not.toBeChecked();
+    expect(server.patched).toHaveLength(0);
+  });
+
+  it("keeps the person's change on top of the other device's when asked", async () => {
+    const server = show("/radio/plans/p1", { movedOn: { name: "Changed on the phone" } });
+    fireEvent.click(await screen.findByRole("checkbox", { name: "20 m" }));
+    await screen.findByText("This plan was changed somewhere else");
+    fireEvent.click(screen.getByRole("button", { name: "Keep my change" }));
+    await waitFor(() => expect(server.patched).toHaveLength(1));
+    // Their name, and my band.
+    expect(server.patched[0]).toMatchObject({ name: "Changed on the phone", bands: ["80m", "40m", "20m"] });
+    expect(await screen.findByRole("heading", { level: 1, name: "Changed on the phone" })).toBeInTheDocument();
   });
 
   it("links a note found by its words, and unlinks it", async () => {

@@ -271,7 +271,7 @@ test.describe("repeaters", () => {
 
     // Once each, in the list and in the count; and the person's tone is still there after the merge.
     await expect(rows).toHaveCount(6);
-    await expect(page.getByText("6 repeaters held on this device, from 2 lists.")).toBeVisible();
+    await expect(page.getByText("6 repeaters kept in Outpost, from 2 lists.")).toBeVisible();
     await expect(rows.first()).toContainText("QZ3AB");
     await expect(rows.first()).toContainText("CTCSS 77.0 Hz");
     await expect(rows.first()).toContainText("Changed by you");

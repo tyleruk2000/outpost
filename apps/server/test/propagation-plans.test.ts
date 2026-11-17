@@ -331,3 +331,40 @@ describeWithVoacapData("a plan", () => {
     expect((await app.api("DELETE", `/api/radio/communication-plans/${made.id}`)).status).toBe(404);
   });
 });
+
+describe("two devices editing one plan", () => {
+  it("refuses a change made from a plan that has moved on since it was read, and says how it is now", async () => {
+    const plan = (await app.api("POST", "/api/radio/communication-plans", family)).body.plan as CommunicationPlan;
+    // The phone and the computer both opened it. The computer saves first.
+    const first = await app.api("PATCH", `/api/radio/communication-plans/${plan.id}`, {
+      ...family,
+      name: "From the computer",
+      baseUpdatedAt: plan.updatedAt,
+    });
+    expect(first.status).toBe(200);
+    // Saved in the same millisecond, the two would not be told apart.
+    expect(first.body.plan.updatedAt).toBeGreaterThan(plan.updatedAt);
+
+    const second = await app.api("PATCH", `/api/radio/communication-plans/${plan.id}`, {
+      ...family,
+      notes: "From the phone",
+      baseUpdatedAt: plan.updatedAt,
+    });
+    expect(second.status).toBe(409);
+    expect(second.body.error.message).toMatch(/changed somewhere else/);
+    expect(second.body.error.details.plan).toMatchObject({ name: "From the computer", notes: family.notes });
+    expect((await app.api("GET", `/api/radio/communication-plans/${plan.id}`)).body.plan.name).toBe("From the computer");
+
+    // From the plan as it is now, the change is kept; with no base at all (an older client), as before.
+    const now = first.body.plan as CommunicationPlan;
+    const third = await app.api("PATCH", `/api/radio/communication-plans/${plan.id}`, {
+      ...family,
+      name: now.name,
+      notes: "From the phone",
+      baseUpdatedAt: now.updatedAt,
+    });
+    expect(third.body.plan).toMatchObject({ name: "From the computer", notes: "From the phone" });
+    expect((await app.api("PATCH", `/api/radio/communication-plans/${plan.id}`, family)).status).toBe(200);
+    await app.api("DELETE", `/api/radio/communication-plans/${plan.id}`);
+  });
+});

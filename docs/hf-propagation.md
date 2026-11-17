@@ -400,7 +400,10 @@ predicted to serve each pair of them at which hour.
    eight stations.
 3. **When, and on what**: the date (the model works by month), the hours of interest in
    UTC (a window may run past midnight), the bands of interest, the mode, and where the
-   sunspot number comes from. Changes are saved as they are made.
+   sunspot number comes from. Changes are saved as they are made. If the plan was
+   saved on another device after this screen read it, the change is not saved over
+   it: the screen says so and offers **Keep my change** (your change on top of the
+   plan as the other device left it) or **Take theirs**.
 4. **Work out the plan.** For every pair of stations the engine is asked for the day
    each way, on every band of the plan: the two directions differ, because the power,
    the antennas and the noise at the two ends differ.

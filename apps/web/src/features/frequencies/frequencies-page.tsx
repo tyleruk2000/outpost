@@ -35,7 +35,7 @@ import {
 } from "@outpost/shared";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronRight, FileDown, Info } from "lucide-react";
-import { type ReactNode, useId, useMemo, useState } from "react";
+import { memo, type ReactNode, useDeferredValue, useId, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { EmptyState, ErrorState, Notice, Page, PageHeader, Rows, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
@@ -51,6 +51,7 @@ import { frequenciesPdf, frequenciesTitle, frequencyLine, scheduleWords, statusW
 import { homeCountry } from "./home-country";
 
 const ANY = "any";
+const NONE: FrequencyEntry[] = [];
 const PATH = "/radio/frequencies";
 const linkClass = "text-primary underline decoration-1 underline-offset-[0.2em] hover:decoration-2";
 
@@ -86,7 +87,8 @@ function ordered(entries: FrequencyEntry[], place: string | null): FrequencyEntr
 /** How many frequencies a row shows before "and N more". */
 const SHOWN = 4;
 
-function FrequencyRow({ entry, today }: { entry: FrequencyEntry; today: string }) {
+/** One entry. Memoised: a keystroke in Find draws only the rows it brings in, not the ones it leaves in place. */
+const FrequencyRow = memo(function FrequencyRow({ entry, today }: { entry: FrequencyEntry; today: string }) {
   const [open, setOpen] = useState(false);
   const detailId = useId();
   const schedule = scheduleState(entry, today);
@@ -132,7 +134,7 @@ function FrequencyRow({ entry, today }: { entry: FrequencyEntry; today: string }
       {open ? <EntryDetail id={detailId} entry={entry} today={today} /> : null}
     </li>
   );
-}
+});
 
 function Term({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -334,6 +336,8 @@ export default function FrequenciesPage() {
   const band = params.get("band") || null;
   const set = params.get("set") || null;
   const text = params.get("q") ?? "";
+  // The box shows each key at once; the list follows when the browser has a moment.
+  const query = useDeferredValue(text);
   const showUnverified = params.get("unverified") === "1";
 
   const change = (key: string, value: string | null) =>
@@ -347,28 +351,28 @@ export default function FrequenciesPage() {
       { replace: true },
     );
 
-  const entries = data.data?.entries ?? [];
+  const entries = data.data?.entries ?? NONE;
   const guides = data.data?.guides ?? [];
   const shown = useMemo(
-    () => ordered(filterFrequencies(entries, { kind, place, band, receiver: set, text, showUnverified }), place),
-    [entries, kind, place, band, set, text, showUnverified],
+    () => ordered(filterFrequencies(entries, { kind, place, band, receiver: set, text: query, showUnverified }), place),
+    [entries, kind, place, band, set, query, showUnverified],
   );
   // Shortwave carries: what the place filter leaves out but is still worth trying from here.
   const far = useMemo(
-    () => ordered(heardFromAfar(entries, { kind, place, band, receiver: set, text, showUnverified }), null),
-    [entries, kind, place, band, set, text, showUnverified],
+    () => ordered(heardFromAfar(entries, { kind, place, band, receiver: set, text: query, showUnverified }), null),
+    [entries, kind, place, band, set, query, showUnverified],
   );
   const places = useMemo(() => placesIn(entries), [entries]);
   const bands = useMemo(() => {
     const used = new Set(entries.flatMap((entry) => entry.bands));
     return FREQUENCY_BANDS.filter((item) => used.has(item.id));
   }, [entries]);
-  const checked = setChecked(entries);
-  const chosen = chosenWords(kind, place, band, set, text);
+  const checked = useMemo(() => setChecked(entries), [entries]);
+  const chosen = chosenWords(kind, place, band, set, query);
   const kindGuides = guides.filter((guide) => (kind ? guide.kind === kind : false));
-  const filtered = kind !== null || place !== null || band !== null || set !== null || text.trim() !== "";
+  const filtered = kind !== null || place !== null || band !== null || set !== null || query.trim() !== "";
   const profile = set ? receiverById(set) : undefined;
-  const unverified = entries.filter((entry) => entry.status === "not-verified").length;
+  const unverified = useMemo(() => entries.filter((entry) => entry.status === "not-verified").length, [entries]);
   const total = showUnverified ? entries.length : entries.length - unverified;
 
   return (

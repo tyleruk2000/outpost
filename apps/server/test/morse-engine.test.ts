@@ -462,6 +462,21 @@ describe("bug + straight key", () => {
     expect(els[els.length - 1]).toEqual({ element: "dah", ms: 250 });
   });
 
+  it("bug says it is keying only while an automatic dit or its space is under way", () => {
+    // The screen pumps frames only while this is true.
+    const k = new BugKeyer(20);
+    expect(k.isKeying).toBe(false);
+    k.setPaddle("dit", true, 0);
+    expect(k.isKeying).toBe(true);
+    k.setPaddle("dit", false, 10);
+    k.tick(119);
+    expect(k.isKeying).toBe(true);
+    k.tick(120);
+    expect(k.isKeying).toBe(false);
+    k.setPaddle("dah", true, 200);
+    expect(k.isKeying).toBe(false);
+  });
+
   it("straight key timestamps the lever verbatim", () => {
     const k = new StraightKey();
     expect(k.set(true, 100)).toEqual([{ type: "down", at: 100 }]);
