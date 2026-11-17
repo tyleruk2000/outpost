@@ -4,7 +4,7 @@
  * disclosure for the rules and what is kept ("About").
  */
 import { ChevronRight } from "lucide-react";
-import type { ReactNode } from "react";
+import { type ReactNode, useLayoutEffect } from "react";
 import { Page, PageHeader } from "@/components/page";
 
 export function GameFrame({
@@ -19,6 +19,11 @@ export function GameFrame({
   actions?: ReactNode;
   children: ReactNode;
 }) {
+  // A game opened from a scrolled list starts at its top. On a phone the window is what scrolls, and a screen
+  // reached inside the app keeps the scroll of the one before; the title was cut off.
+  useLayoutEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
   return (
     <Page width="wide" className="max-md:px-4 max-md:pt-5">
       <PageHeader title={title} description={description} actions={actions} className="mb-5 md:mb-6" />

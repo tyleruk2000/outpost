@@ -11,6 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import GamesPage from "../games-page";
 import { gameScreens } from "../screens";
 import { clearDeviceSave, readDeviceSave, SAVE_AFTER_MS, useDeviceSave, writeDeviceSave } from "./device-save";
+import { GameFrame } from "./frame";
 import { newSeed, seededRng, shuffled } from "./rng";
 import { GameTallyLine, tallyWords } from "./tally";
 
@@ -217,5 +218,19 @@ describe("the Games page", () => {
     expect(links.map((link) => link.getAttribute("href"))).toEqual(gameScreens.map((game) => game.to));
     expect(gameScreens.map((game) => game.label)).toEqual(["Allotment", "Solitaire", "Peg solitaire", "Sudoku", "Draughts", "Pairs"]);
     expect(screen.getByText(/stays on the device it is being played on/)).toBeInTheDocument();
+  });
+});
+
+describe("a game opened from a scrolled list", () => {
+  it("starts at its top, title in view", () => {
+    const scrollTo = vi.fn();
+    vi.stubGlobal("scrollTo", scrollTo);
+    render(
+      <MemoryRouter>
+        <GameFrame title="Pairs">board</GameFrame>
+      </MemoryRouter>,
+    );
+    expect(scrollTo).toHaveBeenCalledWith(0, 0);
+    vi.unstubAllGlobals();
   });
 });
