@@ -46,7 +46,7 @@ import { useEngines, usePlaces, useProfiles } from "../data";
 import { EngineNotReady } from "../engine-data";
 import { BasisNotice } from "../results";
 import { planKeys, useKeptMatrix, useLinkSearch, usePlan, useRemovePlan, useSavePlan, useWorkOut } from "./data";
-import { bandApproximate, choiceWords, pairApproximate, pairNotModelled, planFigure, planMarkdown, saveFile } from "./document";
+import { bandApproximate, choiceWords, pairApproximate, pairNotModelled, planBest, planMarkdown, saveFile } from "./document";
 import { PlanPdfStatus, usePlanPdf } from "./plan-export";
 import { StationDialog } from "./station-dialog";
 
@@ -680,8 +680,8 @@ export default function PlanPage() {
                   const cell = (choice: typeof pick.primary) =>
                     choice ? (
                       <>
-                        <span className="font-medium text-ink">{planBandLabel(choice.bandId)}</span>, {hourRanges(choice.hours)}, up to{" "}
-                        {planFigure(choice.best, byRatio)}
+                        <span className="font-medium text-ink">{planBandLabel(choice.bandId)}</span>, {hourRanges(choice.hours)},{" "}
+                        {planBest(choice.best, byRatio)}
                       </>
                     ) : (
                       "None"

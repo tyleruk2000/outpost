@@ -54,6 +54,10 @@ const dateOf = (iso: string) => new Date(`${iso}T00:00:00Z`);
 /** A two-way figure as it is written: a share of days, or decibels when bands are compared by ratio. */
 export const planFigure = (value: number, byRatio: boolean): string => (byRatio ? `${value.toFixed(1)} dB` : `${Math.round(value * 100)}%`);
 
+/** The best a band reaches, as a summary says it: "up to 62% of days", or "up to 46.0 dB". */
+export const planBest = (value: number, byRatio: boolean, mark = ""): string =>
+  `up to ${mark}${planFigure(value, byRatio)}${byRatio ? "" : " of days"}`;
+
 /**
  * Why a pair has no figures on a band: one of its stations has a wire of a stated length
  * that the engine's model does not describe there (`wireOn`). Null when both antennas
@@ -109,11 +113,11 @@ export function choiceWords(choice: PlanChoice, byRatio: boolean): string {
   return `${planBandLabel(choice.bandId)} (${choice.mhz} MHz)${approximate ? ", approximate" : ""}, ${hourRanges(choice.hours)} UTC. Its ${what} reaches ${planFigure(choice.best, byRatio)}${byRatio ? " in 1 Hz" : " of days"} at ${utcLabel(choice.bestHour)} and averages ${planFigure(choice.mean, byRatio)} over the window.${choice.belowHalf ? " It is below half the days at every hour of the window." : ""}${approximate ? " These figures are approximate: a station's end-fed wire is run on this band as VOACAP's sloping long wire, whose level is unchecked." : ""}`;
 }
 
-/** A recommendation in the summary table: "15 m, approximate, up to ~62%". */
+/** A recommendation in the summary table: "15 m, approximate, up to ~62% of days". */
 const choiceCell = (choice: PlanChoice, byRatio: boolean) =>
   choice.approximate
-    ? `${planBandLabel(choice.bandId)}, approximate, up to ${APPROXIMATE_MARK}${planFigure(choice.best, byRatio)}`
-    : `${planBandLabel(choice.bandId)}, up to ${planFigure(choice.best, byRatio)}`;
+    ? `${planBandLabel(choice.bandId)}, approximate, ${planBest(choice.best, byRatio, APPROXIMATE_MARK)}`
+    : `${planBandLabel(choice.bandId)}, ${planBest(choice.best, byRatio)}`;
 
 /** The plan as blocks of text, in reading order. */
 export function planDocument(plan: CommunicationPlan, result: PlanResult, written: Date): Block[] {

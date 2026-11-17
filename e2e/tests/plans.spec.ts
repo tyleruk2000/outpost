@@ -54,7 +54,7 @@ test.describe("Communication plans", () => {
     const matrix = page.getByRole("table", { name: "The primary and alternate band for each pair of stations" });
     await expect(matrix.getByRole("row")).toHaveCount(4);
     await expect(matrix.getByRole("row", { name: /Home base and Remote shelter/ })).toContainText(/383 km/);
-    await expect(matrix.getByRole("row", { name: /Home base and Gran's house/ })).toContainText(/\d\d m, .*up to \d+%/);
+    await expect(matrix.getByRole("row", { name: /Home base and Gran's house/ })).toContainText(/\d\d m, .*up to \d+% of days/);
     await expect(page.getByText(/by VOACAP Version 16\.\d+W\./)).toBeVisible();
 
     // A note is linked to the plan and travels with it.
@@ -82,7 +82,7 @@ test.describe("Communication plans", () => {
     expect(text).toMatch(/^# Communication plan: Family net\n/);
     expect(text).toContain("The model works by month, so this is a plan for any day of November 2026.");
     expect(text).toContain("It is not a reading of the ionosphere on the day.");
-    expect(text).toMatch(/\| Home base and Remote shelter +\| 383 \| \d\d m, up to \d+% +\|/);
+    expect(text).toMatch(/\| Home base and Remote shelter +\| 383 \| \d\d m, up to \d+% of days +\|/);
     expect(text).toContain("## How the bands were chosen");
     expect(text).toMatch(/\| UTC +\| +08 \| +09 \|/);
     expect(text).toContain("- Net procedure for the family (a note)");
