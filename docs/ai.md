@@ -121,19 +121,22 @@ machine. Outpost suggests a short list of small ones, all of which a Raspberry P
 with 8 GB of memory could hold. The list is **one data file**,
 `packages/shared/src/recommended-models.ts`, which Settings, Chat, the in-app guide
 and [setup-guide.md](setup-guide.md#step-2-get-a-model) all draw from; that is the
-place to bring it up to date, and it says how. As it stood on 2026-11-16:
+place to bring it up to date, and it says how. As it stood on 2026-11-17:
 
 | Model | Download | Memory once loaded | Smallest computer |
 | --- | --- | --- | --- |
-| `llama3.2:3b` (the one to start with) | 2.0 GB | 2.3 GB, measured | 8 GB of memory |
+| `lfm3:1.7b` (the one to start with) | 1.7 GB | 1.7 GB, measured | 4 GB of memory |
+| `llama3.2:3b` | 2.0 GB | 2.3 GB, measured | 8 GB |
 | `llama3.2:1b` | 1.3 GB | 1.5 GB, measured | 4 GB |
 | `gemma3:1b` | 806 MB | about 1.1 GB, estimated | 4 GB |
 | `phi4-mini` | 2.5 GB | about 2.8 GB, estimated | 8 GB |
 | `gemma3:4b` | 3.4 GB | about 3.7 GB, estimated | 8 GB |
 
-Names and download sizes are as Ollama's library pages stated them that day
-(`ollama.com/library/<model>/tags`). "Measured" is what Ollama reported holding for the
-model once loaded with its default 4,096-token context, on an Apple Silicon Mac;
+Names and download sizes are as Ollama's library pages stated them on 2026-11-16
+(`ollama.com/library/<model>/tags`), `lfm3:1.7b`'s on 2026-11-17. "Measured" is what
+Ollama reported holding for the model once loaded with its default 4,096-token context,
+on an Apple Silicon Mac (for `lfm3:1.7b`, with the 8,192-token context used when it
+looks things up, so the larger of its two figures);
 "estimated" is the download size plus 0.3 GB. Which computer each fits is a judgement
 from those figures. **No model has been run on a Raspberry Pi by this project.**
 

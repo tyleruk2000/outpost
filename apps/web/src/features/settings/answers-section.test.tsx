@@ -19,7 +19,7 @@ const ADDRESS = "http://127.0.0.1:11434/v1";
 const base = {
   "answers.enabled": true,
   "answers.endpoint": ADDRESS,
-  "answers.model": "llama3.2:3b",
+  "answers.model": "lfm3:1.7b",
   "answers.temperature": 0.2,
   "answers.contextChars": 6000,
 } as Settings;
@@ -30,7 +30,7 @@ const status = (over: Partial<AnswersStatus> = {}): AnswersStatus => ({
   enabled: true,
   ready: true,
   reason: null,
-  model: "llama3.2:3b",
+  model: "lfm3:1.7b",
   server: "127.0.0.1:11434",
   place: "this-computer",
   busy: false,
@@ -54,7 +54,7 @@ const model = (id: string, sizeBytes: number | null, parameters: string | null, 
   writes,
 });
 const SMALL = model("llama3.2:1b", 1_321_098_329, "1.2B");
-const START = model("llama3.2:3b", 2_019_393_189, "3.2B");
+const START = model("lfm3:1.7b", 1_700_000_000, "1.7B");
 const EMBED = model("nomic-embed-text:latest", 274_302_450, "137M", false);
 const OTHER = model("mistral:7b", 4_372_824_384, "7.2B");
 
@@ -149,12 +149,12 @@ describe("Answers from your library, in Settings: the first level", () => {
   it("is set up in three presses: find, choose, try, and then it is on", async () => {
     const { calls, bodies } = serve({
       status: notSetUp,
-      look: found([SMALL, EMBED, START], "llama3.2:3b"),
+      look: found([SMALL, EMBED, START], "lfm3:1.7b"),
       attempt: {
         ok: true,
         failure: null,
-        message: '"llama3.2:3b" answered: “ready”.',
-        models: ["llama3.2:3b"],
+        message: '"lfm3:1.7b" answered: “ready”.',
+        models: ["lfm3:1.7b"],
         reply: "ready",
         tookMs: 2400,
         saved: true,
@@ -170,13 +170,13 @@ describe("Answers from your library, in Settings: the first level", () => {
     const choice = screen.getByRole("radiogroup", { name: "Model to use" });
     const offered = within(choice).getAllByRole("radio");
     expect(offered.map((radio) => radio.textContent?.split(/(?=Recommended|This one)/)[0])).toEqual([
-      "llama3.2:3b",
+      "lfm3:1.7b",
       "llama3.2:1b",
       "nomic-embed-text:latest",
     ]);
     expect(offered[0]).toBeChecked();
     expect(offered[0]).toHaveTextContent("Recommended to start with");
-    expect(offered[0]).toHaveTextContent("2.0 GB on disk. Takes about 2.3 GB of memory, so it wants a computer with 8 GB.");
+    expect(offered[0]).toHaveTextContent("1.7 GB on disk. Takes about 1.7 GB of memory, so it fits a computer with 4 GB.");
     expect(offered[1]).toHaveTextContent("1.3 GB on disk. Takes about 1.5 GB of memory, so it fits a computer with 4 GB.");
     expect(offered[2]).toHaveTextContent("This one is for searching, not writing. It cannot answer.");
     expect(screen.queryByText("Try it")).not.toBeInTheDocument();
@@ -186,21 +186,21 @@ describe("Answers from your library, in Settings: the first level", () => {
     expect(await screen.findByText(/Outpost asks the model for one word and shows what comes back/)).toBeVisible();
     await userEvent.click(screen.getByRole("button", { name: "Try it" }));
     expect(await screen.findByText("It answered")).toBeVisible();
-    expect(screen.getByText(/"llama3.2:3b" answered: “ready”. Answers and chat are switched on./)).toBeVisible();
+    expect(screen.getByText(/"lfm3:1.7b" answered: “ready”. Answers and chat are switched on./)).toBeVisible();
 
     expect(calls.filter((call) => call.startsWith("POST"))).toEqual(["POST /api/chat/setup/look", "POST /api/chat/setup/try"]);
     // What was found and chosen is what is tried, and the server saves it: this screen saved nothing itself.
-    expect(bodies.at(-1)).toEqual({ address: ADDRESS, model: "llama3.2:3b" });
+    expect(bodies.at(-1)).toEqual({ address: ADDRESS, model: "lfm3:1.7b" });
   });
 
   it("says exactly what went wrong when the try fails, and lets it be tried again or another model chosen", async () => {
     serve({
       status: notSetUp,
-      look: found([START, EMBED], "llama3.2:3b"),
+      look: found([START, EMBED], "lfm3:1.7b"),
       attempt: {
         ok: false,
         failure: "too-slow",
-        message: '"llama3.2:3b" did not answer a one-word request within 1 minute. It may still be loading; try again.',
+        message: '"lfm3:1.7b" did not answer a one-word request within 1 minute. It may still be loading; try again.',
         models: [],
         reply: null,
         tookMs: 60000,
@@ -235,7 +235,7 @@ describe("Answers from your library, in Settings: the first level", () => {
     const notice = await screen.findByRole("status");
     expect(notice).toHaveTextContent("Ollama was not found");
     expect(notice).toHaveTextContent("Nothing answered at 127.0.0.1:11434");
-    expect(notice).toHaveTextContent("The model to get first is llama3.2:3b (2.0 GB).");
+    expect(notice).toHaveTextContent("The model to get first is lfm3:1.7b (1.7 GB).");
     expect(within(notice).getByRole("link", { name: "the guide has the steps" })).toHaveAttribute(
       "href",
       "/help/search-and-answers#get-ollama",
@@ -253,13 +253,13 @@ describe("Answers from your library, in Settings: the first level", () => {
     const names = within(list)
       .getAllByRole("listitem")
       .map((item) => item.querySelector(".font-mono")?.textContent);
-    expect(names).toEqual(["llama3.2:3b", "llama3.2:1b", "gemma3:1b", "phi4-mini", "gemma3:4b"]);
+    expect(names).toEqual(["lfm3:1.7b", "llama3.2:3b", "llama3.2:1b", "gemma3:1b", "phi4-mini", "gemma3:4b"]);
     expect(within(list).getAllByRole("listitem")[0]).toHaveTextContent("Start with this one");
     expect(within(list).getAllByRole("listitem")[0]).toHaveTextContent(
-      "2.0 GB to download. Takes about 2.3 GB of memory, so it wants a computer with 8 GB.",
+      "1.7 GB to download. Takes about 1.7 GB of memory, so it fits a computer with 4 GB.",
     );
-    expect(screen.getByText("ollama pull llama3.2:3b")).toBeVisible();
-    expect(screen.getByRole("button", { name: "Copy: ollama pull llama3.2:3b" })).toBeEnabled();
+    expect(screen.getByText("ollama pull lfm3:1.7b")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Copy: ollama pull lfm3:1.7b" })).toBeEnabled();
     expect(screen.getByText(/listed them on 16 November 2026/)).toBeVisible();
     expect(screen.getByRole("button", { name: "Look again" })).toBeEnabled();
     expect(screen.queryByRole("button", { name: "Use this model" })).not.toBeInTheDocument();
@@ -276,7 +276,7 @@ describe("Answers from your library, in Settings: the first level", () => {
       "Medium-sized: 4.37 GB on disk. Takes about 5 GB of memory, so it wants a computer with 16 GB or more.",
     );
     expect(screen.getByText(/None of these is on Outpost’s short list of small models/)).toBeVisible();
-    expect(screen.getByText("ollama pull llama3.2:3b")).toBeVisible();
+    expect(screen.getByText("ollama pull lfm3:1.7b")).toBeVisible();
     expect(screen.getByRole("button", { name: "Use this model" })).toBeEnabled();
   });
 
@@ -284,7 +284,7 @@ describe("Answers from your library, in Settings: the first level", () => {
     const { calls } = serve({});
     const save = show(base);
 
-    expect(await state()).toHaveTextContent("Ready: answers are written by llama3.2:3b on this computer.");
+    expect(await state()).toHaveTextContent("Ready: answers are written by lfm3:1.7b on this computer.");
     expect(screen.getByRole("switch", { name: "Write answers" })).toBeChecked();
     expect(screen.getByRole("link", { name: "Search" })).toHaveAttribute("href", "/search");
     expect(screen.getByRole("link", { name: "Chat" })).toHaveAttribute("href", "/chat");
@@ -304,13 +304,13 @@ describe("Answers from your library, in Settings: the first level", () => {
   it("says where the model is when it is on another computer", async () => {
     serve({ status: status({ server: "192.168.1.20:11434", place: "local-network" }) });
     show({ ...base, "answers.endpoint": "http://192.168.1.20:11434/v1" });
-    expect(await state()).toHaveTextContent("Ready: answers are written by llama3.2:3b on your network, at 192.168.1.20:11434.");
+    expect(await state()).toHaveTextContent("Ready: answers are written by lfm3:1.7b on your network, at 192.168.1.20:11434.");
   });
 
   it("is one switch while it is set up and off, and asks the model server nothing", async () => {
     const { calls } = serve({ status: status({ enabled: false, ready: false, reason: "Answers are turned off." }) });
     const save = show({ ...base, "answers.enabled": false });
-    expect(await state()).toHaveTextContent("OffTurning it on uses llama3.2:3b on this computer.");
+    expect(await state()).toHaveTextContent("OffTurning it on uses lfm3:1.7b on this computer.");
     expect(calls).not.toContain("GET /api/chat/models");
     await userEvent.click(screen.getByRole("switch", { name: "Write answers" }));
     expect(save).toHaveBeenCalledWith("answers.enabled", true);
@@ -346,7 +346,7 @@ describe("Answers from your library, in Settings: the first level", () => {
 
     const notice = await screen.findByRole("status");
     expect(notice).toHaveTextContent("This model is not on the model server");
-    expect(notice).toHaveTextContent("it no longer has llama3.2:3b. Choose one it has.");
+    expect(notice).toHaveTextContent("it no longer has lfm3:1.7b. Choose one it has.");
     // Straight to the second step, with the server's own list.
     expect(screen.getByText("Found a model server on this computer.")).toBeVisible();
     expect(screen.getByRole("radio", { name: /llama3.2:1b/ })).toBeChecked();
@@ -394,7 +394,7 @@ describe("Answers from your library, in Settings: more options", () => {
     serve({ status: status({ server: "models.example.com", place: "elsewhere", ready: true, reason: null }) });
     show({ ...base, "answers.endpoint": "https://models.example.com/v1" });
     expect(await state()).toHaveTextContent(
-      "Ready: answers are written by llama3.2:3b at models.example.com, which is not on your own network.",
+      "Ready: answers are written by lfm3:1.7b at models.example.com, which is not on your own network.",
     );
     await openMoreOptions();
     const notice = await screen.findByText(/an address that is not on this computer or your home network/);
@@ -450,8 +450,8 @@ describe("Answers from your library, in Settings: more options", () => {
     const save = show(fresh);
     await screen.findByText("Find Ollama");
     await openMoreOptions();
-    await userEvent.type(await screen.findByLabelText("Model"), "llama3.2:3b{Enter}");
-    expect(save).toHaveBeenCalledWith("answers.model", "llama3.2:3b");
+    await userEvent.type(await screen.findByLabelText("Model"), "lfm3:1.7b{Enter}");
+    expect(save).toHaveBeenCalledWith("answers.model", "lfm3:1.7b");
     // The test needs answers switched on, and says so; nothing has been asked of a model server.
     expect(screen.getByRole("button", { name: "Test" })).toBeDisabled();
     expect(screen.getByText(/The test runs once answers are switched on/)).toBeVisible();
@@ -465,7 +465,7 @@ describe("Answers from your library, in Settings: more options", () => {
         ok: false,
         failure: "not-a-chat-model",
         message: '"nomic-embed-text" cannot write text. It is probably an embedding model. Choose a chat model in Settings.',
-        models: ["llama3.2:3b"],
+        models: ["lfm3:1.7b"],
         reply: null,
         tookMs: 40,
       },
@@ -479,7 +479,7 @@ describe("Answers from your library, in Settings: more options", () => {
 
   it("says when the model answers, and how long it took", async () => {
     serve({
-      test: { ok: true, failure: null, message: '"llama3.2:3b" answered: “ready”.', models: ["llama3.2:3b"], reply: "ready", tookMs: 2300 },
+      test: { ok: true, failure: null, message: '"lfm3:1.7b" answered: “ready”.', models: ["lfm3:1.7b"], reply: "ready", tookMs: 2300 },
     });
     show(base);
     await ready();
@@ -509,16 +509,18 @@ describe("Answers from your library, in Settings: more options", () => {
     await openMoreOptions();
     const list = await screen.findByRole("list", { name: "Recommended small models" });
     const rows = within(list).getAllByRole("listitem");
-    expect(rows).toHaveLength(5);
-    expect(rows[0]).toHaveTextContent("llama3.2:3b");
+    expect(rows).toHaveLength(6);
+    expect(rows[0]).toHaveTextContent("lfm3:1.7b");
     expect(rows[0]).toHaveTextContent("On your model server");
-    expect(rows[0]).toHaveTextContent("2.0 GB on disk");
-    expect(rows[1]).toHaveTextContent("On your model server");
-    expect(rows[2]).toHaveTextContent("gemma3:1b");
-    expect(rows[2]).not.toHaveTextContent("On your model server");
-    expect(rows[2]).toHaveTextContent("806 MB to download. Takes about 1.1 GB of memory, so it fits a computer with 4 GB.");
+    expect(rows[0]).toHaveTextContent("1.7 GB on disk");
+    expect(rows[1]).toHaveTextContent("llama3.2:3b");
+    expect(rows[1]).not.toHaveTextContent("On your model server");
+    expect(rows[2]).toHaveTextContent("On your model server");
+    expect(rows[3]).toHaveTextContent("gemma3:1b");
+    expect(rows[3]).not.toHaveTextContent("On your model server");
+    expect(rows[3]).toHaveTextContent("806 MB to download. Takes about 1.1 GB of memory, so it fits a computer with 4 GB.");
     // The server has one of them, so no command is pressed on the person.
-    expect(screen.queryByText("ollama pull llama3.2:3b")).not.toBeInTheDocument();
+    expect(screen.queryByText("ollama pull lfm3:1.7b")).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Ollama’s library" })).toHaveAttribute("href", "https://ollama.com/library");
   });
 });

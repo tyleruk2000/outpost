@@ -13,12 +13,18 @@
  *    implies, or as far as it was seen to do when tried. Nothing here is a benchmark.
  *    The two llama3.2 models were each asked a fixed set of 45 questions over a small
  *    test library through Outpost on 2026-11-16 (docs/ai.md, "Measured with a real
- *    model"); what is said of them here is what that counted. The others have not been run.
+ *    model"); what is said of them here is what that counted. lfm3:1.7b was asked 32 of
+ *    those questions and 16 that need something looked up, with six other models, on
+ *    2026-11-17 (model-trials.ts, shown at /help/which-model); it came out best all
+ *    round, which is why it is the one to start with. gemma3 and phi4-mini have not
+ *    been run.
  *
  * Memory: `memoryGb` is what Ollama reported holding for the model once loaded (its
  * `/api/ps`, which is what `ollama ps` shows) with its default 4,096-token context,
  * where `memoryMeasured` is true: 2.34 GB for llama3.2:3b and 1.46 GB for llama3.2:1b,
- * read on an Apple Silicon Mac with Ollama 0.40.16 on 2026-11-16. Where it is false
+ * read on an Apple Silicon Mac with Ollama 0.40.16 on 2026-11-16. lfm3:1.7b's 1.72 GB
+ * was read on 2026-11-17 with the 8,192-token context used when looking things up, so
+ * it is the larger of its two figures; its name and size were read that day. Where it is false
  * the figure is the download size plus 0.3 GB, which is the larger of what those two
  * came to over their own files. No model has been run on a Raspberry Pi by this
  * project, and "fits" is a judgement from these figures, leaving room for the system
@@ -52,14 +58,25 @@ export const MODEL_LIBRARY_URL = "https://ollama.com/library";
 
 export const RECOMMENDED_MODELS: readonly RecommendedModel[] = [
   {
+    name: "lfm3:1.7b",
+    download: "1.7 GB",
+    memoryGb: 1.7,
+    memoryMeasured: true,
+    fits: "4 GB",
+    suits:
+      "The best all round of the seven models tried through Outpost: it looked things up rightly 15 times in 16, answered 28 of 32 test questions from the library rightly and declined all 13 the library did not hold. It thinks before it answers, so the first word takes a few seconds. Its licence is free for a household; a business with $10 million a year or more in revenue needs another.",
+    start: true,
+    page: "https://ollama.com/library/lfm3",
+  },
+  {
     name: "llama3.2:3b",
     download: "2.0 GB",
     memoryGb: 2.3,
     memoryMeasured: true,
     fits: "8 GB",
     suits:
-      "Its maker says it is good at following instructions and summarising. Asked 45 test questions through Outpost, it answered about nine in ten of those the test library held, citing the right passage, and declined all of those it did not hold.",
-    start: true,
+      "Its maker says it is good at following instructions and summarising. Asked 45 test questions through Outpost, it answered about nine in ten of those the test library held, citing the right passage, and declined all of those it did not hold: the most reliable here on answers from the library, and quicker to its first word. It looked things up rightly 13 times in 16.",
+    start: false,
     page: "https://ollama.com/library/llama3.2",
   },
   {

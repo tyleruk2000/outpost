@@ -24,7 +24,7 @@
  * has no such list, or a model it lists without saying what it can do, is taken to be
  * unable to call tools.
  */
-import type { ChatLookResult, ChatModel, ChatModelsResponse } from "@outpost/shared";
+import { type ChatLookResult, type ChatModel, type ChatModelsResponse, pullCommand, STARTING_MODEL } from "@outpost/shared";
 import { AppError } from "../../core/errors.ts";
 import { type ModelServerAddress, parseModelServerAddress } from "../answers/address.ts";
 import { type ModelTimeouts, openAiChatProvider } from "../answers/provider.ts";
@@ -203,7 +203,7 @@ export async function lookForOllama(
         message:
           models.length > 0
             ? `A model server is running at ${address.host} with ${models.length === 1 ? "one model" : `${models.length} models`}.`
-            : `A model server is running at ${address.host}, but it has no models yet. Fetch one with its own tool, for example: ollama pull llama3.2:3b`,
+            : `A model server is running at ${address.host}, but it has no models yet. Fetch one with its own tool, for example: ${pullCommand(STARTING_MODEL.name)}`,
       };
     } catch {
       // Not there; try the next place it could be.

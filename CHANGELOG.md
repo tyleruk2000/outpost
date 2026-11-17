@@ -1783,6 +1783,14 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   rounded to what their figures support.
 - **Games.** Peg solitaire and Draughts count time only while the board is in view; the
   Sudoku board is wider; the allotment's cards say each thing once.
+- The model to start with is now `lfm3:1.7b`, the best all round of the seven measured:
+  the set-up steps, Settings, Chat and the guide all follow, and it fits a computer with
+  4 GB of memory. `llama3.2:3b` stays on the list as the most reliable on answers from
+  the library.
+- Frequencies to listen to: the shortwave schedules of Radio Romania International and
+  Radio Exterior de España were removed, with every mention of them in the shortwave
+  guide. Their sites allow personal use only, and Outpost is published for anyone to
+  copy. See [docs/sources.md](docs/sources.md).
 
 ### Fixed
 

@@ -124,14 +124,14 @@ describe("the set-up guide, inside Outpost", () => {
   it("gives the exact command for the model to start with, the short list of small models, and the buttons by name", () => {
     show();
     const getModel = screen.getByRole("region", { name: "Step 2: get a model" });
-    expect(within(getModel).getByText("ollama pull llama3.2:3b")).toBeVisible();
-    expect(within(getModel).getByRole("button", { name: "Copy: ollama pull llama3.2:3b" })).toBeEnabled();
+    expect(within(getModel).getByText("ollama pull lfm3:1.7b")).toBeVisible();
+    expect(within(getModel).getByRole("button", { name: "Copy: ollama pull lfm3:1.7b" })).toBeEnabled();
     expect(within(getModel).getByText("ollama ls")).toBeVisible();
     const rows = within(within(getModel).getByRole("list", { name: "Recommended small models" })).getAllByRole("listitem");
     expect(rows).toHaveLength(RECOMMENDED_MODELS.length);
-    expect(rows[0]).toHaveTextContent("llama3.2:3b");
+    expect(rows[0]).toHaveTextContent("lfm3:1.7b");
     expect(rows[0]).toHaveTextContent("Start with this one");
-    expect(getModel).toHaveTextContent("On a computer with 4 GB of memory, get llama3.2:1b instead.");
+    expect(getModel).toHaveTextContent("lfm3:1.7b is the one to start with, and a computer with 4 GB of memory can hold it.");
 
     const back = screen.getByRole("region", { name: "Step 3: come back to Outpost" });
     expect(back).toHaveTextContent("Press Look for Ollama on this computer.");
@@ -201,7 +201,7 @@ describe("the guide's one source", () => {
     const page = guideMarkdown();
     const titles = [...page.matchAll(/^## (.+)$/gm)].map((match) => match[1]);
     expect(titles).toEqual(SETUP_GUIDE.sections.map((section) => section.title));
-    expect(page).toContain("```\n   ollama pull llama3.2:3b\n   ```");
+    expect(page).toContain("```\n   ollama pull lfm3:1.7b\n   ```");
     expect(page).toContain("#### Raspberry Pi");
     for (const model of RECOMMENDED_MODELS) expect(page).toContain(`| \`${model.name}\` | ${model.download} |`);
   });

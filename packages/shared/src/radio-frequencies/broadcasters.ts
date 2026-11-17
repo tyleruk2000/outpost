@@ -11,24 +11,6 @@ import type { FrequencyEntry, FrequencyGuide, FrequencySource } from "../radio-f
 
 const CHECKED = "2026-11-17";
 
-const RRI_B26: FrequencySource = {
-  publisher: "Radio Romania International",
-  title: "RRI 2026-2027 Winter Broadcast Frequencies and ALTERNATIVE Frequencies",
-  url: "https://www.rri.ro/en/useful-information-en/how-to-listen/rri-2026-2027-winter-broadcast-frequencies-and-alternative-frequencies-id1073489.html",
-  checked: CHECKED,
-};
-const RRI_HOW: FrequencySource = {
-  publisher: "Radio Romania International",
-  title: "How to listen (the seasons and the dates each schedule is valid)",
-  url: "https://www.rri.ro/en/useful-information-en/how-to-listen",
-  checked: CHECKED,
-};
-const REE_B26: FrequencySource = {
-  publisher: "RTVE (Radio Exterior de España)",
-  title: "Horario y frecuencias de Radio Exterior (25 de octubre de 2026 a 28 de marzo de 2027)",
-  url: "https://www.rtve.es/play/noticias/20261025/horario-frecuencias-radio-exterior/17265907.shtml",
-  checked: CHECKED,
-};
 const RTI_LISTEN: FrequencySource = {
   publisher: "Radio Taiwan International",
   title: "How to Listen",
@@ -125,84 +107,7 @@ const PROPAGATION_LINK = { to: "/radio/propagation", label: "Is this band open n
 /** The whole shortwave range, for a broadcaster that is on shortwave but publishes no schedule. */
 const SHORTWAVE_RANGE = { khz: 3000, toKhz: 30_000 };
 
-// The B26 season runs from the last Sunday of October 2026 (25 October) to the last Sunday of
-// March 2027 (28 March), when the A27 schedules start.
-
 export const BROADCASTERS: FrequencyEntry[] = [
-  {
-    id: "bc-sw-radio-romania-international",
-    kind: "broadcasters",
-    name: "Radio Romania International, English service",
-    operator: "Radio Romania International (SRR)",
-    what: "Romania's international public broadcaster. Its English programmes go out on shortwave to Western Europe, Africa, North America, Japan and India, with alternative frequencies for when a transmitter fails.",
-    frequencies: [
-      { khz: 9620, hours: "06:30 to 07:00 UTC (Western Europe); 23:00 to 00:00 UTC (Japan)" },
-      { khz: 15460, hours: "12:00 to 13:00 UTC", note: "Western Europe" },
-      { khz: 9570, hours: "18:00 to 19:00 UTC", note: "DRM, Western Europe" },
-      { khz: 7375, hours: "21:30 to 22:00 UTC", note: "Western Europe" },
-      {
-        khz: 7220,
-        hours: "23:00 to 00:00 UTC (Western Europe); 04:00 to 05:00 UTC (west coast of North America)",
-        note: "also the alternative for the east coast of North America, 01:00 to 02:00 UTC",
-      },
-      { khz: 21470, hours: "12:00 to 13:00 UTC (Africa); 06:30 to 07:00 UTC in DRM (India, New Delhi)" },
-      { khz: 7250, hours: "21:30 to 22:00 UTC", note: "east coast of North America" },
-      { khz: 7325, hours: "01:00 to 02:00 UTC", note: "east coast of North America" },
-      { khz: 15250, hours: "04:00 to 05:00 UTC", note: "DRM, India (Mumbai)" },
-      { khz: 9870, hours: "06:30 to 07:00 UTC", note: "alternative, Western Europe" },
-      { khz: 17700, hours: "12:00 to 13:00 UTC", note: "alternative, Western Europe" },
-      { khz: 9770, hours: "18:00 to 19:00 UTC", note: "alternative, Western Europe" },
-      { khz: 6030, hours: "21:30 to 22:00 and 23:00 to 00:00 UTC", note: "alternative, Western Europe" },
-      { khz: 17800, hours: "12:00 to 13:00 UTC", note: "alternative, Africa" },
-      { khz: 7310, hours: "21:30 to 22:00 UTC", note: "alternative, east coast of North America" },
-      { khz: 7410, hours: "04:00 to 05:00 UTC", note: "alternative, west coast of North America" },
-      { khz: 17780, hours: "06:30 to 07:00 UTC", note: "alternative, India (New Delhi)" },
-      { khz: 15210, hours: "04:00 to 05:00 UTC", note: "alternative, India (Mumbai)" },
-    ],
-    modes: ["AM", "DRM"],
-    bands: ["sw-49m", "sw-41m", "sw-31m", "sw-19m", "sw-16m", "sw-13m"],
-    where: ["RO", "cept", "itu-1", "US", "CA", "JP", "IN"],
-    site: "Tiganesti, Romania (Radiocom transmitters)",
-    hours: "Half-hour and hour-long English programmes between 01:00 and 00:00 UTC (see each frequency)",
-    schedule: { season: "Winter 2026 to 2027 (B26), valid 25 October 2026 to 27 March 2027", from: "2026-10-25", until: "2027-03-27" },
-    expect: "News from Romania and the world, then features, in English. The DRM frequencies need a DRM receiver.",
-    reception:
-      "Each frequency is beamed to the area named. Western Europe has five English slots a day; North America has evening and overnight slots.",
-    status: "on-air",
-    notes: [
-      "RRI says Radiocom's transmitters often fail, and that when one does the programme moves quickly to a backup transmitter on the alternative frequency listed; if the usual frequency is silent, try the alternative.",
-      "Also on satellite (Eutelsat 16A, 11,512 MHz vertical) for Europe, North Africa and the Middle East. RRI also broadcasts in other languages; only the English schedule is given here.",
-    ],
-    links: [PROPAGATION_LINK],
-    sources: [RRI_B26, RRI_HOW],
-    aliases: ["RRI", "Radio Romania"],
-  },
-  {
-    id: "bc-sw-radio-exterior-de-espana",
-    kind: "broadcasters",
-    name: "Radio Exterior de España",
-    operator: "RTVE (Radio Nacional de España)",
-    what: "Spain's international radio service, in Spanish, on shortwave to West Africa and the South Atlantic, the Middle East and Indian Ocean, and North and South America.",
-    frequencies: [
-      { khz: 17755, note: "West Africa and the South Atlantic (16 m band)" },
-      { khz: 12030, note: "Middle East and the Indian Ocean (25 m band)" },
-      { khz: 17715, note: "South America (16 m band)" },
-      { khz: 9690, note: "North America (31 m band)" },
-    ],
-    modes: ["AM"],
-    bands: ["sw-31m", "sw-25m", "sw-16m"],
-    where: ["ES", "itu-1", "south-atlantic", "indian-ocean", "itu-2"],
-    hours:
-      "Monday to Friday, 16:00 to 00:00 UTC to Africa and the Middle East (17755 and 12030 kHz) and 19:00 to 03:00 UTC to the Americas (17715 and 9690 kHz); Saturday and Sunday, 15:00 to 00:00 UTC on all four",
-    schedule: { season: "Winter 2026 (B26), 25 October 2026 to 28 March 2027", from: "2026-10-25", until: "2027-03-28" },
-    expect: "Spanish-language news, current affairs and programmes from Radio Nacional de España.",
-    reception: "One frequency for each target area.",
-    status: "on-air",
-    notes: ["Also on satellite for Europe, the Americas, Asia and Africa, and online, around the clock."],
-    links: [PROPAGATION_LINK],
-    sources: [REE_B26],
-    aliases: ["REE", "RNE Radio Exterior", "Radio Exterior"],
-  },
   {
     id: "bc-sw-radio-taiwan-international",
     kind: "broadcasters",
@@ -444,12 +349,12 @@ export const BROADCASTERS_GUIDES: FrequencyGuide[] = [
     kind: "broadcasters",
     title: "Hunting shortwave broadcasts when the schedule is stale",
     paragraphs: [
-      "International broadcasters use a set of shortwave broadcast bands named in metres, and some name the band with each frequency: Radio Exterior de España gives 17755 kHz as the 16 m band, 12030 kHz as the 25 m band and 9690 kHz as the 31 m band. Voice of America gives the conversion: metres = 300000 divided by the frequency in kHz. The bands themselves are listed under Bands, for hunting.",
-      "Which band carries a signal depends on the time of day along the path. Broadcasters' own schedules show the pattern: Radio Romania International's English for Western Europe is on 15460 kHz (19 m) at 12:00 UTC, 9620 kHz (31 m) at 06:30 UTC, and 7375 and 7220 kHz (41 m) at 21:30 and 23:00 UTC; its midday programme for Africa is on 21470 kHz (13 m). By day the sun-lit ionosphere absorbs the lower frequencies (NOAA's Space Weather Prediction Center describes its lowest layer as an absorber of radio waves), so try the higher bands in daylight and the lower ones after dark.",
-      "Schedules change twice a year, with the seasons: the winter (B) schedules now in use run from 25 October 2026 to the end of March 2027 (Radio Romania International: to 27 March 2027; Radio Exterior de España: to 28 March 2027), and the summer (A) schedules from the end of March to late October. A frequency in a list from another season may be silent, or carry a different station. Stations also change frequencies in mid-season: Radio Romania International moves to an alternative frequency when a transmitter fails.",
-      "A broadcaster often uses several frequencies at once, each beamed to a different area or chosen for a different path: Voice of America's English to Africa schedule lists up to six frequencies (shortwave and medium wave) in the same hour, and Radio Exterior de España uses one frequency for each of four target areas. NIST explains the same for its WWV time signal: reception depends on location, time of year, time of day and the frequency, and with several frequencies at least one is likely to be usable at any time.",
-      "So, with a stale schedule: start with the frequencies listed here for your area; if one is silent, try the same station's other frequencies and its alternatives; then tune slowly through the band that suits the hour (higher bands by day, lower by night). A longer aerial helps: Radio Taiwan International suggests pulling out the whip, listening by a window, or clipping 3 to 15 metres of wire to the aerial and taking the other end outdoors.",
+      "International broadcasters use a set of shortwave broadcast bands named in metres. Voice of America gives the conversion: metres = 300000 divided by the frequency in kHz. The bands themselves are listed under Bands, for hunting.",
+      "Which band carries a signal depends on the time of day along the path. By day the sun-lit ionosphere absorbs the lower frequencies (NOAA's Space Weather Prediction Center describes its lowest layer as an absorber of radio waves), so try the higher bands in daylight and the lower ones after dark.",
+      "Schedules change twice a year, with the seasons: the summer (A) schedules start at the end of March and the winter (B) schedules at the end of October. A frequency in a list from another season may be silent, or carry a different station. Stations also change frequencies in mid-season, for example when a transmitter fails.",
+      "A broadcaster often uses several frequencies at once, each beamed to a different area or chosen for a different path: Voice of America's English to Africa schedule lists up to six frequencies (shortwave and medium wave) in the same hour. NIST explains the same for its WWV time signal: reception depends on location, time of year, time of day and the frequency, and with several frequencies at least one is likely to be usable at any time.",
+      "So, with a stale schedule: start with the frequencies listed here for your area; if one is silent, try the same station's other frequencies; then tune slowly through the band that suits the hour (higher bands by day, lower by night). A longer aerial helps: Radio Taiwan International suggests pulling out the whip, listening by a window, or clipping 3 to 15 metres of wire to the aerial and taking the other end outdoors.",
     ],
-    sources: [REE_B26, VOA_FREQUENCIES, RRI_B26, RRI_HOW, NOAA_HF, NIST_WWV, RTI_LISTEN],
+    sources: [VOA_FREQUENCIES, NOAA_HF, NIST_WWV, RTI_LISTEN],
   },
 ];

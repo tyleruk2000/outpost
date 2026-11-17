@@ -1411,7 +1411,7 @@ Regulations on govinfo.gov.
 | --- | --- |
 | Time signals | NIST (WWV, WWVH, WWVB), NPL (MSF), PTB (DCF77), NICT (JJY), ANFR (ALS162), GUM (e-Czas, Poland), the BIPM's annual table of time signals (February and March 2026 returns: HLA, RWM, RBU, RTZ, Beta, MIKES, LOL, BPM), NTSC's bulletin, ITU-R TF.768-4, INRiM, METAS, Royal Museums Greenwich (the pips) |
 | Emergency broadcasting | GOV.UK and Be Ready, Ireland's Be Emergency Ready booklet, Ready.gov, Alert Ready and canada.ca, BBK, oesterreich.gv.at, BABS, Krisinformation and MCF, Statsforvalteren, borger.dk, FMI, kriis.ee and ERR, LRT, HZS ČR, Denk vooruit, centredecrise.be, Radio France's convention with the Ministry of the Interior, Protección Civil, Io non rischio, Yamanashi Prefecture |
-| News broadcasters | Ofcom's transmitter parameters, RTÉ, 2RN, ANFR, Polskie Radio, Antena Satelor, NMHH, 47 CFR Part 73, MIC (Japan), EBC (Brazil), Radio Nacional (Argentina), Český rozhlas, RÚV, Deutschlandradio; for shortwave, RRI, RTVE, RTI, WRMI, Radio Prague International, RFA, RFE/RL, VOV, Channel Africa |
+| News broadcasters | Ofcom's transmitter parameters, RTÉ, 2RN, ANFR, Polskie Radio, Antena Satelor, NMHH, 47 CFR Part 73, MIC (Japan), EBC (Brazil), Radio Nacional (Argentina), Český rozhlas, RÚV, Deutschlandradio; for shortwave, RTI, WRMI, Radio Prague International, RFA, RFE/RL, VOV, Channel Africa |
 | Weather | NWS (NOAA Weather Radio, US marine broadcasts, the radiofax schedule compilation), canada.ca and the Canadian Coast Guard's Radio Aids to Marine Navigation 2026, the MCA's MSI leaflet, the Met Office, Ofcom, NATS's UK AIP and AirNav Ireland's AIP (VOLMET), the IMO NAVTEX Manual and the IHO's WWNWS reports, DWD, Kystverket, Météo-France, ANFR, ICAO regional air navigation plans, Airservices Australia |
 | Distress and calling | Ofcom's distress and safety annex, the MCA (MGN 324), 47 CFR Parts 80 and 87 (govinfo), the UK AIP, Transport Canada's AIM, the Canadian Coast Guard, NSW and Queensland maritime pages, the IMO, NOAA SARSAT, the Wireless Telegraphy Act 2006 |
 | Amateur | IARU Regions 1, 2 and 3 (emergency frequencies page, band plans, the VHF Handbook), ARRL, JARL, WIA, NZART, SARL HAMNET, the Hurricane Watch Net, NCDXF, JS8Call's own source, 47 CFR Part 97 (govinfo) |
@@ -1446,15 +1446,15 @@ club (what sideband sounds like; the word "utility").
   original, unaltered form for non-commercial purposes only"; "You must not adapt,
   modify, transform, or build upon this material without prior written permission."
   Only single frequencies are taken from it, credited, not the plan.
-- Radio Romania International: "The content of this Website cannot be copied, reproduced,
-  republished, recompiled … with the exception of personal, non-commercial use."
-  RTVE reserves the rights of reproduction of its content; the SABC grants use "for your
-  personal, non-commercial use". From these three, only the frequencies and times of
-  the current season's schedule are given, in Outpost's own words, with the source;
-  no text or table is copied. That a list of frequencies and times is a fact and not
-  the broadcaster's text is Outpost's reading, not legal advice; an owner who disagrees
-  can remove those entries (`bc-sw-radio-romania-international`,
-  `bc-sw-radio-exterior-de-espana`).
+- Radio Romania International ("The content of this Website cannot be copied, reproduced,
+  republished, recompiled … with the exception of personal, non-commercial use") and
+  RTVE (which reserves the rights of reproduction of its content): their shortwave
+  schedules were listed at first, frequencies and times only, and were **removed on
+  17 November 2026** by the owner's decision, with every mention of them in the
+  shortwave guide. Outpost is published for anyone to copy, which is more than personal
+  use, so nothing is taken from either site. Their own pages are where to look.
+- The SABC grants use "for your personal, non-commercial use": its entry says only that
+  Channel Africa's shortwave has closed, and gives no schedule.
 - US federal works (NIST, NWS, the CFR) carry no restriction.
 - Natural Earth (countries' boxes, used to find the home place's country) is already in
   this page under reference layers.

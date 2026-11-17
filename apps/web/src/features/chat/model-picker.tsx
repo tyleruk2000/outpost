@@ -3,7 +3,16 @@
  * is Ollama it also says how large each model is, which is most of what decides
  * whether a small computer can run it.
  */
-import { type ChatModel, type ChatModelsResponse, type ChatStatus, formatBytes, trialWord, WHICH_MODEL_PATH } from "@outpost/shared";
+import {
+  type ChatModel,
+  type ChatModelsResponse,
+  type ChatStatus,
+  formatBytes,
+  pullCommand,
+  STARTING_MODEL,
+  trialWord,
+  WHICH_MODEL_PATH,
+} from "@outpost/shared";
 import { Check, ChevronDown, Scale, Settings } from "lucide-react";
 import { DropdownMenu as Primitive } from "radix-ui";
 import { Link } from "react-router";
@@ -84,7 +93,7 @@ export function ModelPicker({
           {list && !list.message && models.length === 0 ? (
             <p className="px-2.5 py-2 text-ink">
               The model server is running but has no models. Fetch one with its own tool, for example{" "}
-              <code className="font-mono text-[0.8125rem]">ollama pull llama3.2:3b</code>.
+              <code className="font-mono text-[0.8125rem]">{pullCommand(STARTING_MODEL.name)}</code>.
             </p>
           ) : null}
           <Primitive.RadioGroup value={models.find((entry) => sameModel(entry.id, current))?.id ?? ""} onValueChange={onChange}>

@@ -4,7 +4,7 @@
  * Outpost suggests. It sits behind "More options" in the section, and can do everything
  * the section could do before it was made simple.
  */
-import type { AnswersStatus, AnswerTestResult, ChatModelsResponse, Settings } from "@outpost/shared";
+import { type AnswersStatus, type AnswerTestResult, type ChatModelsResponse, type Settings, STARTING_MODEL } from "@outpost/shared";
 import { useMutation } from "@tanstack/react-query";
 import { CircleAlert, CircleCheck, RefreshCw } from "lucide-react";
 import { useEffect } from "react";
@@ -120,7 +120,7 @@ export function AnswersOptions({
                 value={model}
                 disabled={disabled}
                 onSave={(value) => save("answers.model", value)}
-                placeholder="For example llama3.2:3b"
+                placeholder={`For example ${STARTING_MODEL.name}`}
                 mono
               />
             )}

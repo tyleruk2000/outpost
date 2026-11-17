@@ -88,21 +88,22 @@ On a Raspberry Pi, use the terminal window from step 1.
 1. Type this and press Enter:
 
    ```
-   ollama pull llama3.2:3b
+   ollama pull lfm3:1.7b
    ```
 
-2. Wait for the download to finish: 2.0 GB. It is done when the line you type on comes back.
+2. Wait for the download to finish: 1.7 GB. It is done when the line you type on comes back.
 3. To see which models Ollama has, type:
 
    ```
    ollama ls
    ```
 
-`llama3.2:3b` is the one to start with. On a computer with 4 GB of memory, get `llama3.2:1b` instead. These are the small models Outpost suggests; all of them suit a laptop or a Raspberry Pi 5 with 8 GB. To get another, put its name in place of `llama3.2:3b` in the command.
+`lfm3:1.7b` is the one to start with, and a computer with 4 GB of memory can hold it. These are the small models Outpost suggests; all of them suit a laptop or a Raspberry Pi 5 with 8 GB. To get another, put its name in place of `lfm3:1.7b` in the command.
 
 | Model | Download | Memory once loaded | Smallest computer | What to expect |
 | --- | --- | --- | --- | --- |
-| `llama3.2:3b` | 2.0 GB | about 2.3 GB (measured) | 8 GB of memory | Its maker says it is good at following instructions and summarising. Asked 45 test questions through Outpost, it answered about nine in ten of those the test library held, citing the right passage, and declined all of those it did not hold. |
+| `lfm3:1.7b` | 1.7 GB | about 1.7 GB (measured) | 4 GB of memory | The best all round of the seven models tried through Outpost: it looked things up rightly 15 times in 16, answered 28 of 32 test questions from the library rightly and declined all 13 the library did not hold. It thinks before it answers, so the first word takes a few seconds. Its licence is free for a household; a business with $10 million a year or more in revenue needs another. |
+| `llama3.2:3b` | 2.0 GB | about 2.3 GB (measured) | 8 GB of memory | Its maker says it is good at following instructions and summarising. Asked 45 test questions through Outpost, it answered about nine in ten of those the test library held, citing the right passage, and declined all of those it did not hold: the most reliable here on answers from the library, and quicker to its first word. It looked things up rightly 13 times in 16. |
 | `llama3.2:1b` | 1.3 GB | about 1.5 GB (measured) | 4 GB of memory | Lighter, for a computer with 4 GB of memory, and not reliable for answers from your library. Asked the same 45 test questions, it got between one in five and one in four of the answerable ones wrong or said the passages held no answer when they did, made up an answer to between one in six and one in two of those the library did not hold, and numbered its sentences as if the numbers were sources (Outpost takes those markers out, or points them at the passage that holds the words). |
 | `gemma3:1b` | 806 MB | about 1.1 GB (estimated) | 4 GB of memory | The smallest here, for when memory is very short; expect short, plain answers and more mistakes. |
 | `phi4-mini` | 2.5 GB | about 2.8 GB (estimated) | 8 GB of memory | About the size of llama3.2:3b; its maker describes it as stronger at reasoning, mathematics and languages other than English. |
@@ -222,13 +223,13 @@ If Ollama is still not found, tell it to listen on the network as in the section
 
    **What it means:** Ollama is running, but step 2 did not finish or the model has been removed.
 
-   **The fix:** On the computer Ollama runs on, type `ollama pull llama3.2:3b`, check with `ollama ls`, and press the button again.
+   **The fix:** On the computer Ollama runs on, type `ollama pull lfm3:1.7b`, check with `ollama ls`, and press the button again.
 
 3. **Outpost says:** The try gives up after a minute, or answers take minutes to start
 
    **What it means:** The model is still being loaded into memory, or it is too large for the computer.
 
-   **The fix:** Try once more: the first request after Ollama starts is the slow one. If it is always slow, get a smaller model from the list in step 2, such as `llama3.2:1b`, and choose it in Outpost.
+   **The fix:** Try once more: the first request after Ollama starts is the slow one. If it is always slow, get a smaller model from the list in step 2, such as `gemma3:1b`, and choose it in Outpost.
 
 ## Other model servers
 
@@ -250,7 +251,7 @@ Every command, setting name, port and model name on this page was read from its 
 - [Ollama: Linux](https://docs.ollama.com/linux): the install command, the 64-bit ARM build, the service called ollama.
 - [Ollama: command line](https://docs.ollama.com/cli): ollama pull, ollama ls.
 - [Ollama: questions and answers](https://docs.ollama.com/faq): the default address 127.0.0.1 and port 11434, OLLAMA_HOST and how to set it on each system.
-- [Ollama: library](https://ollama.com/library): model names and download sizes (the Tags page of llama3.2, gemma3 and phi4-mini).
+- [Ollama: library](https://ollama.com/library): model names and download sizes (the Tags page of lfm3, llama3.2, gemma3 and phi4-mini).
 - [Apple: open Terminal on a Mac](https://support.apple.com/guide/terminal/open-or-quit-terminal-apd5265185d-f365-44cb-8b09-71a064a42125/mac): how to open Terminal.
 - [Microsoft: starting Windows PowerShell](https://learn.microsoft.com/en-us/powershell/scripting/windows-powershell/starting-windows-powershell): how to open PowerShell from the Start menu.
 - [Raspberry Pi: operating system](https://www.raspberrypi.com/documentation/computers/os.html): which Raspberry Pi models run the 64-bit system.
@@ -260,4 +261,4 @@ Every command, setting name, port and model name on this page was read from its 
 - [LM Studio: local server](https://lmstudio.ai/docs/developer/core/server): the Developer tab and the Start server switch.
 - [LM Studio: OpenAI compatibility](https://lmstudio.ai/docs/developer/openai-compat): port 1234 in its examples.
 
-What was tried: step 3 was run against a real Ollama (version 0.40.16) on an Apple Silicon Mac that day, with `llama3.2:3b` and `llama3.2:1b`, and each was asked a few questions. What was not tried: installing Ollama by these steps on any system, Windows, Linux, a Raspberry Pi, Docker, Ollama on another computer, llama.cpp and LM Studio. For those, only the pages above were read.
+What was tried: step 3 was run against a real Ollama (version 0.40.16) on an Apple Silicon Mac that day, with `llama3.2:3b` and `llama3.2:1b`, and each was asked a few questions; `lfm3:1.7b` was run through Outpost on the same Mac the next day. What was not tried: installing Ollama by these steps on any system, Windows, Linux, a Raspberry Pi, Docker, Ollama on another computer, llama.cpp and LM Studio. For those, only the pages above were read.

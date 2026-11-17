@@ -21,7 +21,7 @@ against a primary source and are hidden unless asked for.
 | --- | --- | --- |
 | Time signals | 25 | US, Canada, Mexico, UK, Ireland, Germany, France, Switzerland, Italy, Poland, Finland, Russia, Belarus, Kyrgyzstan, China, Japan, Korea, Australia, Argentina, Brazil, and the ITU regions |
 | Emergency broadcasting | 21 | UK, Ireland, US, Canada, Germany, Austria, Switzerland, Sweden, Norway, Denmark, Finland, Estonia, Lithuania, Czechia, Netherlands, Belgium, France, Spain, Italy, Japan |
-| News broadcasters | 35 | National long and medium wave and FM/DAB for the UK, Ireland, France, Luxembourg, the Isle of Man, Poland, Romania, Hungary, the US, Japan, Brazil and Argentina; international shortwave from Romania, Spain, Taiwan, the US, Czechia, Vietnam and others, with their target areas |
+| News broadcasters | 33 | National long and medium wave and FM/DAB for the UK, Ireland, France, Luxembourg, the Isle of Man, Poland, Romania, Hungary, the US, Japan, Brazil and Argentina; international shortwave from Taiwan, the US, Czechia, Vietnam and others, with their target areas |
 | Weather | 63 | NOAA Weather Radio, Canada, the UK's shipping and coastguard broadcasts, NAVTEX stations in 39 countries and territories, radiofax, VOLMET, US Coast Guard voice, German, French, Norwegian and Monaco broadcasts |
 | Distress and calling | 22 | Worldwide marine, aviation and beacon frequencies, with national detail for the UK, US, Canada, Ireland and Australia |
 | Amateur radio | 31 | IARU Regions 1, 2 and 3, and national emergency frequencies for the UK, Germany, Austria, Switzerland, France, Ireland, the Netherlands, South Africa, Japan, Australia, New Zealand and the US |

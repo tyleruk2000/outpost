@@ -63,7 +63,12 @@ export interface Guide {
 export const SETUP_GUIDE_PATH = "/help/search-and-answers";
 
 const START = STARTING_MODEL.name;
-const SMALLER = "llama3.2:1b";
+/** The lightest of the list that is not the one to start with, for a computer the starting one is slow on. */
+const SMALLER = [...RECOMMENDED_MODELS].filter((model) => model.name !== START).sort((a, b) => a.memoryGb - b.memoryGb)[0]!.name;
+const START_NOTE =
+  STARTING_MODEL.fits === "4 GB"
+    ? `\`${START}\` is the one to start with, and a computer with 4 GB of memory can hold it.`
+    : `\`${START}\` is the one to start with. On a computer with 4 GB of memory, get \`${SMALLER}\` instead.`;
 const INSTALL = "curl -fsSL https://ollama.com/install.sh | sh";
 const LISTEN = "0.0.0.0:11434";
 
@@ -223,7 +228,7 @@ export const SETUP_GUIDE: Guide = {
             },
             {
               kind: "text",
-              text: `\`${START}\` is the one to start with. On a computer with 4 GB of memory, get \`${SMALLER}\` instead. These are the small models Outpost suggests; all of them suit a laptop or a Raspberry Pi 5 with 8 GB. To get another, put its name in place of \`${START}\` in the command.`,
+              text: `${START_NOTE} These are the small models Outpost suggests; all of them suit a laptop or a Raspberry Pi 5 with 8 GB. To get another, put its name in place of \`${START}\` in the command.`,
             },
             { kind: "models" },
             {
@@ -413,7 +418,7 @@ export const SETUP_GUIDE: Guide = {
             {
               label: "Ollama: library",
               url: MODEL_LIBRARY_URL,
-              gave: "model names and download sizes (the Tags page of llama3.2, gemma3 and phi4-mini)",
+              gave: "model names and download sizes (the Tags page of lfm3, llama3.2, gemma3 and phi4-mini)",
             },
             {
               label: "Apple: open Terminal on a Mac",
@@ -459,7 +464,7 @@ export const SETUP_GUIDE: Guide = {
         },
         {
           kind: "text",
-          text: "What was tried: step 3 was run against a real Ollama (version 0.40.16) on an Apple Silicon Mac that day, with `llama3.2:3b` and `llama3.2:1b`, and each was asked a few questions. What was not tried: installing Ollama by these steps on any system, Windows, Linux, a Raspberry Pi, Docker, Ollama on another computer, llama.cpp and LM Studio. For those, only the pages above were read.",
+          text: "What was tried: step 3 was run against a real Ollama (version 0.40.16) on an Apple Silicon Mac that day, with `llama3.2:3b` and `llama3.2:1b`, and each was asked a few questions; `lfm3:1.7b` was run through Outpost on the same Mac the next day. What was not tried: installing Ollama by these steps on any system, Windows, Linux, a Raspberry Pi, Docker, Ollama on another computer, llama.cpp and LM Studio. For those, only the pages above were read.",
         },
       ],
     },

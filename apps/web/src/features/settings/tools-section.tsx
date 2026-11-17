@@ -7,7 +7,7 @@
  * The ordinary switches are settings (`PATCH /api/settings`, as the rest of Settings);
  * the `/mcp` switch is not, because it changes who can read what (`PUT /api/tools/mcp`).
  */
-import { type ChatModelsResponse, type Settings, TOOL_AREAS, type ToolArea } from "@outpost/shared";
+import { type ChatModelsResponse, type Settings, STARTING_MODEL, TOOL_AREAS, type ToolArea } from "@outpost/shared";
 import { useQuery } from "@tanstack/react-query";
 import { CircleAlert, Plus, X } from "lucide-react";
 import { useState } from "react";
@@ -187,7 +187,7 @@ function OffForModels({
           id="tools-off-model"
           value={draft}
           disabled={disabled || names.length >= 50}
-          placeholder={choices[0]?.id ?? "Model name, for example llama3.2:3b"}
+          placeholder={choices[0]?.id ?? `Model name, for example ${STARTING_MODEL.name}`}
           spellCheck={false}
           maxLength={200}
           list={choices.length > 0 ? "tools-off-model-choices" : undefined}
