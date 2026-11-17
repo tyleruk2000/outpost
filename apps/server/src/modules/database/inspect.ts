@@ -104,7 +104,8 @@ const COUNTS: Array<{ id: DatabaseCountId; table: string; sql: string }> = [
   { id: "gameSaves", table: "game_saves", sql: "SELECT count(*) AS n FROM game_saves" },
 ];
 
-function groupOf(table: string): DatabaseGroupId {
+/** The group of the Storage screen a table's bytes are counted in. */
+export function groupOf(table: string): DatabaseGroupId {
   for (const id of GROUP_ORDER) if (id !== "other" && GROUPS[id].includes(table)) return id;
   return "other";
 }

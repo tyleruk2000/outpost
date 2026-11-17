@@ -94,6 +94,17 @@ export async function registerManage(app: FastifyInstance, ctx: AppContext): Pro
       .object({ keys, files: z.enum(["delete", "keep"]).default("delete"), disconnected })
       .strict()
       .parse(request.body);
+    // A person's own files cannot be fetched again. Deleting several in one step is
+    // erasing, held to the same rule: another device may delete them one at a time.
+    if (body.files === "delete" && !eraseRight(request).allowed) {
+      const own = inventory.pick(body.keys).entries.filter((entry) => entry.item.origin === "own");
+      if (own.length > 1) {
+        throw new AppError(
+          "forbidden",
+          `Deleting several of your own files at once can only be done on the computer Outpost runs on. From this device, remove them one at a time, or start Outpost with ${ERASE_OPTION}=true.`,
+        );
+      }
+    }
     return { job: toJobDto(cleanup.startRemove({ scope: "items", ...body })) };
   });
 

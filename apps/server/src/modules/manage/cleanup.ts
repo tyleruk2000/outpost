@@ -612,6 +612,10 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
       sqlite.prepare("DELETE FROM search_entities WHERE kind = 'collection' AND entity_id NOT IN (SELECT id FROM collections)").run();
       sqlite.prepare("DELETE FROM search_entities WHERE kind = 'document' AND entity_id NOT IN (SELECT id FROM documents)").run();
       sqlite.prepare("DELETE FROM search_entities WHERE kind = 'note' AND entity_id NOT IN (SELECT id FROM notes)").run();
+      // The keyword index keeps the words of a deleted passage in its own storage until
+      // its segments are merged, which compacting does not do. Built again from what is
+      // left, it holds none of what was erased.
+      sqlite.exec("INSERT INTO chunks_fts(chunks_fts) VALUES ('rebuild')");
     })();
     personal.settings = db.select({ n: sql<number>`count(*)` }).from(settingsTable).get()?.n ?? 0;
     settings.reset();

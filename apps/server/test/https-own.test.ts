@@ -811,8 +811,15 @@ describe("HTTPS with a certificate of your own", () => {
     expect(said).not.toMatch(/PRIVATE KEY/);
     expect(said).not.toContain(mine.keyPem.split("\n")[1]);
 
-    // PKCS#12 with its password, which crosses in the clear as well. (Here the fields come after the files: order does not matter.)
+    // Giving another in its place would destroy the key in use, which the device may not delete either.
     const file = fs.readFileSync(path.join(FIXTURES, "aes.p12"));
+    const replacing = await w.give([file], { from: phone, password: FIXTURE_PASSWORD, fields: { [PLAIN_HTTP_ACCEPTED_FIELD]: "yes" } });
+    expect(replacing.status).toBe(403);
+    expect(replacing.body.error.message).toMatch(/computer Outpost runs on/);
+    expect(fs.readFileSync(own(w.dir, "privkey.pem"), "utf8")).toContain(mine.keyPem.split("\n")[1]);
+    expect((await w.app.api("DELETE", "/api/https/own")).status).toBe(200);
+
+    // PKCS#12 with its password, which crosses in the clear as well. (Here the fields come after the files: order does not matter.)
     const twelve = await w.give([file], { from: phone, password: FIXTURE_PASSWORD, fields: { [PLAIN_HTTP_ACCEPTED_FIELD]: "yes" } });
     expect(twelve.status).toBe(200);
     expect(twelve.body.own.certificate?.fingerprint).toBe(FIXTURE_FINGERPRINT);

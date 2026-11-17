@@ -849,6 +849,28 @@ describe("where erase everything may be asked from", () => {
     expect((await w.app.api("GET", "/api/manage/cleanup")).body.erase).toMatchObject({ allowed: true, reason: "local" });
   });
 
+  it("does not let another device delete several of the person's own items in one step", async () => {
+    const w = await world({ OUTPOST_LAN_ACCESS: "true", OUTPOST_HOST: "0.0.0.0" });
+    const phone = { remoteAddress: "192.168.1.20" };
+    const keys = [`document:${w.own.documentId}`, `collection:${w.imported.collectionId}`];
+
+    const refused = await w.app.api("POST", "/api/manage/remove", { keys }, phone);
+    expect(refused.status).toBe(403);
+    expect(refused.body.error.message).toMatch(/one at a time/);
+    expect(fs.existsSync(w.own.file)).toBe(true);
+    expect(fs.existsSync(w.imported.file)).toBe(true);
+
+    // Forgetting them, which leaves the files, and removing one, are still open to it.
+    const one = await w.app.api("POST", "/api/manage/remove", { keys: [keys[0]] }, phone);
+    expect(one.status).toBe(200);
+    await finished(w.app, one.body.job.id);
+    expect(fs.existsSync(w.own.file)).toBe(false);
+    const forget = await w.app.api("POST", "/api/manage/remove", { keys: [keys[1]], files: "keep" }, phone);
+    expect(forget.status).toBe(200);
+    await finished(w.app, forget.body.job.id);
+    expect(fs.existsSync(w.imported.file)).toBe(true);
+  });
+
   it("is allowed from anywhere when the person starting Outpost opted in", async () => {
     const w = await world({ OUTPOST_LAN_ACCESS: "true", OUTPOST_HOST: "0.0.0.0", OUTPOST_ALLOW_REMOTE_ERASE: "true" });
     const phone = { remoteAddress: "192.168.1.20" };
