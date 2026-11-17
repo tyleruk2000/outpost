@@ -4,6 +4,8 @@
  * them. Nothing here may import Node or browser APIs.
  */
 export * from "./answers.ts";
+// Audiobooks, on a line of their own so that other additions merge cleanly.
+export * from "./audiobooks.ts";
 export * from "./backup.ts";
 export * from "./catalog.ts";
 export * from "./chat.ts";

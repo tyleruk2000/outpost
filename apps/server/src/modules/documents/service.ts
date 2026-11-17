@@ -32,6 +32,7 @@ import { newId } from "../../core/ids.ts";
 import { type JobRow, PermanentJobError } from "../../core/jobs.ts";
 import { bookChapters, collections, documents, documentTags, tags } from "../../db/schema.ts";
 import type { LocationRow } from "../storage/service.ts";
+import { readAudioFacts } from "./audio-tags.ts";
 import { ExtractionFailure, runExtraction } from "./extract-host.ts";
 import type { Extracted, ExtractedSection, ExtractKind } from "./extract-types.ts";
 import { createExtractedStore } from "./extracted-store.ts";
@@ -63,6 +64,8 @@ const MAX_PDF_BYTES = 512 * 1024 * 1024;
 const STALE_PART_MS = 24 * 60 * 60 * 1000;
 
 const IMAGE_DETAIL = "An image has no text of its own to search. It is stored and shown, and it can still be found by its title and tags.";
+const AUDIO_DETAIL =
+  "A recording's words are not transcribed, so they cannot be searched. It is found by its title, its author and its tags.";
 const NO_TEXT_DETAIL: Record<ExtractKind, string> = {
   pdf: "This PDF has no text of its own. Its pages appear to be scans (pictures of text). The file is stored and can be opened, and it can still be found by its title and tags.",
   epub: "No readable text was found in this book. It may be copy-protected (DRM) or made only of images. It can still be found by its title and tags.",
@@ -348,6 +351,8 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
   function index(row: DocumentRow, sections: ExtractedSection[]): void {
     // A chapter is told apart from other chapters of the same name by its book.
     const book = booksOf([row.id]).get(row.id);
+    // A recording has no text, so its author is what search can find it by. A chapter is found through its book.
+    const byline = !book && row.author && formatForExt(row.ext)?.type === "audio" ? [{ text: `By ${row.author}` }] : [];
     search.upsert({
       kind: SEARCH_KIND,
       entityId: row.id,
@@ -357,7 +362,7 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
       url: `/library/documents/${row.id}`,
       sourcePath: row.relPath,
       tags: tagNames([row.id]).get(row.id) ?? [],
-      sections,
+      sections: [...byline, ...sections],
     });
   }
 
@@ -561,7 +566,11 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
    * Text that OCR read earlier from pages with no text of their own is kept: reading the
    * file again cannot improve on it, and OCR is slow to repeat.
    */
-  function storeExtraction(id: string, kind: ExtractKind | "image", result: Extracted): Promise<DocumentRow["extraction"] | "removed"> {
+  function storeExtraction(
+    id: string,
+    kind: ExtractKind | "image" | "audio",
+    result: Extracted,
+  ): Promise<DocumentRow["extraction"] | "removed"> {
     return exclusive(id, async () => {
       const row = findRow(id);
       if (!row) return "removed";
@@ -576,7 +585,7 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
 
       const textChars = sections.reduce((total, section) => total + section.text.length, 0);
       const extraction = textChars > 0 ? "done" : "unsupported";
-      const reason = kind === "image" ? IMAGE_DETAIL : NO_TEXT_DETAIL[kind];
+      const reason = kind === "image" ? IMAGE_DETAIL : kind === "audio" ? AUDIO_DETAIL : NO_TEXT_DETAIL[kind];
       const detail = (textChars > 0 ? result.notes : [reason, ...result.notes]).join(" ") || null;
       // What OCR could try: the PDF pages that gave no text, or the one picture of an image.
       const scanPages = kind === "pdf" ? (result.pagesWithoutText ?? 0) : kind === "image" && ocr.kindOf(row) ? 1 : 0;
@@ -657,6 +666,15 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
       }
 
       setExtraction(id, "running", null);
+      if (format.type === "audio") {
+        // Only the tags are read: the title and author fill what nobody has filled in.
+        const facts = await readAudioFacts(file, row.ext);
+        const extraction = await storeExtraction(id, "audio", {
+          ...empty,
+          meta: { title: facts.title, author: facts.artist ?? facts.albumArtist },
+        });
+        return { extraction };
+      }
       let result: Extracted;
       try {
         result = await runExtraction(
@@ -724,6 +742,8 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
     ),
     types: sqlite.prepare(`SELECT ext, count(*) AS count FROM documents WHERE ${loose} GROUP BY ext`),
     totals: sqlite.prepare(`SELECT count(*) AS total, coalesce(sum(size_bytes), 0) AS totalBytes FROM documents WHERE ${loose}`),
+    // An audiobook of several files is one book, kept as a collection; the Library offers it under "Audiobooks".
+    audiobooks: sqlite.prepare(`SELECT count(*) AS count FROM collections WHERE json_extract(meta, '$.audiobook') IS NOT NULL`),
   };
   const tagList = sqlite.prepare(
     `SELECT t.id AS id, t.name AS name, count(dt.document_id) AS documentCount
@@ -794,6 +814,8 @@ export function createDocumentsService(ctx: AppContext): DocumentsService {
         const type = formatForExt(row.ext)?.type ?? "text";
         byType.set(type, (byType.get(type) ?? 0) + row.count);
       }
+      const books = (facetStatements.audiobooks.get() as { count: number }).count;
+      if (books > 0) byType.set("audio", (byType.get("audio") ?? 0) + books);
       const totals = facetStatements.totals.get() as { total: number; totalBytes: number };
       return {
         categories: facetStatements.categories.all() as Array<{ name: string; count: number }>,

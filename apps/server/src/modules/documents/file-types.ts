@@ -25,11 +25,11 @@ export interface FileFormat {
 export const SNIFF_BYTES = 8192;
 
 export const SUPPORTED_TYPES_TEXT =
-  "PDF, EPUB, Markdown (.md), plain text (.txt, .csv, .json), HTML, and images (.png, .jpg, .gif, .webp, .svg)";
+  "PDF, EPUB, Markdown (.md), plain text (.txt, .csv, .json), HTML, images (.png, .jpg, .gif, .webp, .svg), and audio (.mp3, .m4a, .m4b, .aac, .ogg, .opus, .flac, .wav)";
 
 const MAX_NAME_LENGTH = 255;
 
-export const DOCUMENT_TYPES = ["pdf", "markdown", "text", "html", "epub", "image"] as const satisfies readonly DocumentType[];
+export const DOCUMENT_TYPES = ["pdf", "markdown", "text", "html", "epub", "image", "audio"] as const satisfies readonly DocumentType[];
 
 function startsWith(head: Buffer, signature: string | number[], offset = 0): boolean {
   const bytes = typeof signature === "string" ? Buffer.from(signature, "latin1") : Buffer.from(signature);
@@ -57,6 +57,16 @@ const isPng = (head: Buffer) => startsWith(head, [0x89, 0x50, 0x4e, 0x47, 0x0d, 
 const isJpeg = (head: Buffer) => startsWith(head, [0xff, 0xd8, 0xff]);
 const isGif = (head: Buffer) => startsWith(head, "GIF87a") || startsWith(head, "GIF89a");
 const isWebp = (head: Buffer) => startsWith(head, "RIFF") && startsWith(head, "WEBP", 8);
+
+// Audio. An MP3 usually opens with its ID3 tag, otherwise with the sync bits of its first frame.
+const isMpegFrame = (head: Buffer) => head.length >= 2 && head[0] === 0xff && (head[1]! & 0xe0) === 0xe0;
+const isMp3 = (head: Buffer) => startsWith(head, "ID3") || isMpegFrame(head);
+// An ADTS stream: twelve sync bits, then layer 0.
+const isAdts = (head: Buffer) => head.length >= 2 && head[0] === 0xff && (head[1]! & 0xf6) === 0xf0;
+const isMp4 = (head: Buffer) => startsWith(head, "ftyp", 4);
+const isOgg = (head: Buffer) => startsWith(head, "OggS");
+const isFlac = (head: Buffer) => startsWith(head, "fLaC") || (startsWith(head, "ID3") && head.includes("fLaC"));
+const isWav = (head: Buffer) => startsWith(head, "RIFF") && startsWith(head, "WAVE", 8);
 
 function isSvg(head: Buffer, complete: boolean): boolean {
   if (!looksLikeUtf8Text(head, complete)) return false;
@@ -89,6 +99,15 @@ const formats: FileFormat[] = [
   { ext: "gif", type: "image", mime: "image/gif", label: "a GIF image", matches: isGif },
   { ext: "webp", type: "image", mime: "image/webp", label: "a WebP image", matches: isWebp },
   { ext: "svg", type: "image", mime: "image/svg+xml", label: "an SVG image", matches: isSvg },
+  { ext: "mp3", type: "audio", mime: "audio/mpeg", label: "an MP3 recording", matches: isMp3 },
+  { ext: "m4a", type: "audio", mime: "audio/mp4", label: "an M4A recording", matches: isMp4 },
+  { ext: "m4b", type: "audio", mime: "audio/mp4", label: "an M4B audiobook", matches: isMp4 },
+  { ext: "aac", type: "audio", mime: "audio/aac", label: "an AAC recording", matches: (head) => isAdts(head) || startsWith(head, "ID3") },
+  { ext: "ogg", type: "audio", mime: "audio/ogg", label: "an Ogg recording", matches: isOgg },
+  { ext: "oga", type: "audio", mime: "audio/ogg", label: "an Ogg recording", matches: isOgg },
+  { ext: "opus", type: "audio", mime: "audio/ogg", label: "an Opus recording", matches: isOgg },
+  { ext: "flac", type: "audio", mime: "audio/flac", label: "a FLAC recording", matches: isFlac },
+  { ext: "wav", type: "audio", mime: "audio/wav", label: "a WAV recording", matches: isWav },
 ];
 
 const byExt = new Map(formats.map((format) => [format.ext, format]));
@@ -186,6 +205,8 @@ export function servedAs(
   if (forceDownload) return { disposition: "attachment", contentType: declared };
   if (format.type === "pdf") return { disposition: "inline", contentType: format.mime };
   if (format.type === "image" && format.ext !== "svg") return { disposition: "inline", contentType: format.mime };
+  // A recording is played in place, from the server, a range at a time.
+  if (format.type === "audio") return { disposition: "inline", contentType: format.mime };
   // Markdown, CSV and JSON are shown as plain text: readable, and never interpreted.
   if (format.type === "text" || format.type === "markdown") return { disposition: "inline", contentType: "text/plain; charset=utf-8" };
   return { disposition: "attachment", contentType: declared };

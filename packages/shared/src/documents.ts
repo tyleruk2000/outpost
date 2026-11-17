@@ -6,7 +6,7 @@
 import type { SavedFrom } from "./webpages.ts";
 
 /** Broad family a file belongs to. Decides how it is viewed and how its text is read. */
-export type DocumentType = "pdf" | "markdown" | "text" | "html" | "epub" | "image";
+export type DocumentType = "pdf" | "markdown" | "text" | "html" | "epub" | "image" | "audio";
 
 /**
  * Where reading a document's text has got to. "unsupported" means the file is stored
