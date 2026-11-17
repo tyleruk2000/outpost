@@ -11,6 +11,7 @@
 import type { FeatureProvenance, PopulationGridResponse, ReferenceLayerId, ReferenceOverlayResponse } from "@outpost/shared";
 import type { ExpressionSpecification } from "maplibre-gl";
 import { tokenToHex } from "@/features/maps/lib/color";
+import { pageKey } from "@/features/maps/lib/place-icons";
 import { MAP_FONTS, type MapTheme, UNDER_LABELS } from "@/features/maps/lib/style";
 import type { LayerSpecification } from "@/features/maps/lib/style-types";
 import type { FeatureCollection } from "@/features/maps/map/overlays";
@@ -33,6 +34,7 @@ export const LAYER_TOKENS: Record<ReferenceLayerId, string> = {
   towns: "--ink",
   historical: "--ink",
   "flood-zones": "--chart-1",
+  food: "--chart-1",
 };
 
 const FALLBACK: Record<string, string> = {
@@ -181,12 +183,24 @@ export function referenceLayers(theme: MapTheme): LayerSpecification[] {
       id: "o-reference-point",
       type: "circle",
       source: REFERENCE_SOURCE,
-      filter: ["==", ["get", "kind"], "point"],
+      filter: ["all", ["==", ["get", "kind"], "point"], ["!=", ["get", "layer"], "food"]],
       paint: {
         "circle-radius": ["case", ring, 7.5, 5],
         "circle-color": ["case", ring, theme.page, ["get", "colour"]],
         "circle-stroke-color": ["case", ring, ["get", "colour"], theme.page],
         "circle-stroke-width": ["case", ring, 2, 1.5],
+      },
+    },
+    {
+      // Food and supplies: a small square in the layer's colour with the kind drawn on it (food-symbols.tsx).
+      id: "o-reference-food",
+      type: "symbol",
+      source: REFERENCE_SOURCE,
+      filter: ["all", ["==", ["get", "kind"], "point"], ["==", ["get", "layer"], "food"]],
+      layout: {
+        "icon-image": ["concat", "food-", ["get", "glyph"], "-", ["downcase", ["slice", ["get", "colour"], 1]], "-", pageKey(theme.page)],
+        "icon-allow-overlap": true,
+        "icon-padding": 0,
       },
     },
     {
@@ -208,7 +222,8 @@ export function referenceLayers(theme: MapTheme): LayerSpecification[] {
         "text-field": ["get", "name"],
         "text-size": 11.5,
         "text-anchor": "top",
-        "text-offset": [0, 0.8],
+        // Below the dot, or below a food and supplies square, which is larger.
+        "text-offset": ["case", ["==", ["get", "layer"], "food"], ["literal", [0, 1.1]], ["literal", [0, 0.8]]],
         "text-max-width": 9,
         "text-optional": true,
       },
@@ -275,6 +290,7 @@ export function referenceData(
         name: point.name,
         colour: colours[point.layer],
         letter: PROVENANCE_LETTER[point.provenance],
+        ...(point.layer === "food" ? { glyph: point.kind.replace(/^food:/, "") } : {}),
       },
       geometry: at(point.lon, point.lat),
     });

@@ -290,6 +290,20 @@ export async function registerLayers(app: FastifyInstance, ctx: AppContext): Pro
     return { feature: detail };
   });
 
+  /** The nearest records of a layer to a point, from what is held: nothing is asked of any source. */
+  app.get("/api/reference/nearest", async (request) => {
+    const query = z
+      .object({
+        lat: z.coerce.number().min(-90).max(90),
+        lon: z.coerce.number().min(-180).max(180),
+        layer: z.enum(REFERENCE_LAYERS).default("food"),
+        kind: z.string().min(1).max(120).optional(),
+        limit: z.coerce.number().int().min(1).max(20).default(5),
+      })
+      .parse(request.query);
+    return service.store.nearest({ ...query, kind: query.kind ?? null });
+  });
+
   app.get("/api/reference/search", async (request) => {
     const { q, limit, ...filter } = searchQuery.parse(request.query);
     return { query: q, hits: service.store.search(q, filter, limit) };
