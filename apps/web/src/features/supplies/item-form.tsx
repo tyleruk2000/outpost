@@ -452,7 +452,12 @@ export function ItemDialog({
             ) : null}
 
             {draft.category === "water" ? (
-              <Field label="Litres in one" optional hint="Without it, this is not counted in the days of water." error={error("litresPerUnit")}>
+              <Field
+                label="Litres in one"
+                optional
+                hint="Without it, this is not counted in the days of water."
+                error={error("litresPerUnit")}
+              >
                 {(ids) => (
                   <Input
                     {...ids}
@@ -468,7 +473,12 @@ export function ItemDialog({
             <details ref={moreRef} className="group rounded-panel border border-border px-4 py-3 open:pb-4">
               <summary className="cursor-pointer text-small font-medium text-ink select-none">More: minimum, barcode, notes</summary>
               <div className="mt-3 grid gap-4">
-                <Field label="Keep at least" optional hint="Fewer than this of it, and it goes on the shopping list." error={error("minimum")}>
+                <Field
+                  label="Keep at least"
+                  optional
+                  hint="Fewer than this of it, and it goes on the shopping list."
+                  error={error("minimum")}
+                >
                   {(ids) => (
                     <Input
                       {...ids}

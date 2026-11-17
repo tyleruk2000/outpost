@@ -254,7 +254,12 @@ function EntryDialog({ onClose }: { onClose: () => void }) {
             </p>
           </fieldset>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Transmitter power, watts" optional hint="Of the transmitting station. Leave empty if not known." error={error("power")}>
+            <Field
+              label="Transmitter power, watts"
+              optional
+              hint="Of the transmitting station. Leave empty if not known."
+              error={error("power")}
+            >
               {(ids) => (
                 <Input
                   {...ids}

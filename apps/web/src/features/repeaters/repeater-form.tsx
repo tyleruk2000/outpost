@@ -298,21 +298,29 @@ export function RepeaterFormDialog({
               </Field>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="DMR talkgroups" optional>{text("talkgroups", { maxLength: 500 })}</Field>
+              <Field label="DMR talkgroups" optional>
+                {text("talkgroups", { maxLength: 500 })}
+              </Field>
               <Field label="Other access details" optional hint="A tone burst, a D-STAR module, a Fusion group.">
                 {text("accessNote", { maxLength: 500 })}
               </Field>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-3">
-              <Field label="Town or site" optional>{text("place", { maxLength: 120 })}</Field>
-              <Field label="Region" optional>{text("region", { maxLength: 80 })}</Field>
-              <Field label="Country" optional>{text("country", { maxLength: 80 })}</Field>
+              <Field label="Town or site" optional>
+                {text("place", { maxLength: 120 })}
+              </Field>
+              <Field label="Region" optional>
+                {text("region", { maxLength: 80 })}
+              </Field>
+              <Field label="Country" optional>
+                {text("country", { maxLength: 80 })}
+              </Field>
             </div>
             <div className="grid gap-4 sm:grid-cols-3">
               <Field
                 label="Position"
-              optional
+                optional
                 hint="Coordinates, a grid reference or a locator. A locator alone puts it at the middle of its square."
                 error={shown.position}
                 className="sm:col-span-2"
@@ -334,8 +342,12 @@ export function RepeaterFormDialog({
             </div>
 
             <div className="grid gap-4 sm:grid-cols-3">
-              <Field label="Keeper" optional>{text("keeper", { maxLength: 80 })}</Field>
-              <Field label="Channel" optional>{text("channel", { maxLength: 40 })}</Field>
+              <Field label="Keeper" optional>
+                {text("keeper", { maxLength: 80 })}
+              </Field>
+              <Field label="Channel" optional>
+                {text("channel", { maxLength: 40 })}
+              </Field>
               <Field label="Status" optional>
                 {(ids) => (
                   <Select
