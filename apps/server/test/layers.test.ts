@@ -124,10 +124,17 @@ describe("imports a person brings", () => {
       expect(response.status, JSON.stringify(parts.filter(Array.isArray))).toBe(400);
       expect(leftInImports()).toEqual(before);
     }
-    // A good one still goes through, whichever order its parts came in.
-    const { payload, headers } = form([csv, ["format", "country-figures-csv"], ["title", "Figures after the file"]]);
-    const accepted = await app.api("POST", "/api/reference/imports", payload, { headers });
-    expect(accepted.status).toBe(200);
+    // A good one still goes through, whichever order its parts came in, and the name it is
+    // given is found without holding the server up on a blocking look at the disk.
+    const exists = vi.spyOn(fs, "existsSync");
+    try {
+      const { payload, headers } = form([csv, ["format", "country-figures-csv"], ["title", "Figures after the file"]]);
+      const accepted = await app.api("POST", "/api/reference/imports", payload, { headers });
+      expect(accepted.status).toBe(200);
+      expect(exists.mock.calls.filter(([file]) => String(file).includes("reference/imports"))).toEqual([]);
+    } finally {
+      exists.mockRestore();
+    }
     await app.ctx.jobs.whenIdle();
     expect(leftInImports().filter((name) => !before.includes(name))).toEqual([expect.stringMatching(/-figures\.csv$/)]);
   });
@@ -585,7 +592,16 @@ describe("downloaded packs", () => {
     });
     const pack = (await packs()).find((entry) => entry.id === result!.collectionId)!;
     expect(pack.records).toBe(0);
-    const layers = (await app.api("GET", "/api/reference/layers")).body;
+    // The grid's summary file is read without holding the server up on one blocking read of all of it.
+    const reads = vi.spyOn(fs, "readFileSync");
+    const layers = await (async () => {
+      try {
+        return (await app.api("GET", "/api/reference/layers")).body;
+      } finally {
+        expect(reads.mock.calls.filter(([file]) => String(file).endsWith(".bin"))).toEqual([]);
+        reads.mockRestore();
+      }
+    })();
     expect(layers.population).toEqual([
       expect.objectContaining({ country: "Luxembourg", year: 2020, available: true, citation: WORLDPOP_CITATION }),
     ]);

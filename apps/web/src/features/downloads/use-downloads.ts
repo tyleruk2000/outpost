@@ -1,6 +1,12 @@
 /** The downloads list, kept live, and the things a person can do to one download. */
-import type { DownloadDto, DownloadResponse, DownloadsResponse } from "@outpost/shared";
-import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  DOWNLOAD_HISTORY_PAGE,
+  type DownloadDto,
+  type DownloadHistoryResponse,
+  type DownloadResponse,
+  type DownloadsResponse,
+} from "@outpost/shared";
+import { type QueryClient, useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef } from "react";
 import { api, errorMessage } from "@/lib/api";
 import { useServerEvent } from "@/lib/events";
@@ -13,10 +19,10 @@ function patchDownload(client: QueryClient, download: DownloadDto): void {
   client.setQueryData<DownloadsResponse>(downloadsKey, (current) => {
     if (!current) return current;
     const index = current.downloads.findIndex((item) => item.id === download.id);
-    if (index === -1) return { downloads: [download, ...current.downloads] };
+    if (index === -1) return { ...current, downloads: [download, ...current.downloads] };
     const downloads = current.downloads.slice();
     downloads[index] = download;
-    return { downloads };
+    return { ...current, downloads };
   });
 }
 
@@ -44,8 +50,9 @@ export function useDownloadUpdates(): (download: DownloadDto) => void {
 }
 
 /**
- * Every download, newest first. Progress events carry the whole download, so the cached
- * list is patched as they arrive and the bar moves without waiting for a refetch.
+ * Every download not finished and the newest page of history, newest first. Progress
+ * events carry the whole download, so the cached list is patched as they arrive and the
+ * bar moves without waiting for a refetch.
  */
 export function useDownloads() {
   const update = useDownloadUpdates();
@@ -57,6 +64,25 @@ export function useDownloads() {
     queryKey: downloadsKey,
     queryFn: () => api.get<DownloadsResponse>("/api/downloads"),
     select: (data) => data.downloads,
+  });
+}
+
+/**
+ * History older than the page that comes with the list, a page at a time, from when it is
+ * first asked for. A download finishing in between moves the pages along by one, so a row
+ * may come twice: the screen keeps one of each.
+ */
+export function useOlderHistory(asked: boolean) {
+  return useInfiniteQuery({
+    queryKey: ["downloads", "history"],
+    queryFn: ({ pageParam }) =>
+      api.get<DownloadHistoryResponse>("/api/downloads/history", { offset: pageParam, limit: DOWNLOAD_HISTORY_PAGE }),
+    initialPageParam: DOWNLOAD_HISTORY_PAGE,
+    getNextPageParam: (last) => {
+      const next = last.offset + last.downloads.length;
+      return last.downloads.length > 0 && next < last.total ? next : undefined;
+    },
+    enabled: asked,
   });
 }
 
@@ -81,7 +107,7 @@ export function useRemoveDownload(id: string) {
     onSuccess: () => {
       // Removal is not announced as a download update, so the lists are refreshed here.
       client.setQueryData<DownloadsResponse>(downloadsKey, (current) =>
-        current ? { downloads: current.downloads.filter((item) => item.id !== id) } : current,
+        current ? { ...current, downloads: current.downloads.filter((item) => item.id !== id) } : current,
       );
       void client.invalidateQueries({ queryKey: ["downloads"] });
       void client.invalidateQueries({ queryKey: ["catalog"] });

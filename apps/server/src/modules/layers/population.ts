@@ -115,7 +115,7 @@ export interface PopulationService {
   ): Promise<{ bbox: Bbox; total: number }>;
   sidecarKey(locationId: string, relPath: string): string;
   forget(sidecarKey: string): void;
-  sets(): PopulationSetDto[];
+  sets(): Promise<PopulationSetDto[]>;
   grid(bbox: Bbox, zoom: number): Promise<PopulationGridResponse>;
   sum(lat: number, lon: number, radiusKm: number): Promise<PopulationSumResponse>;
   close(): Promise<void>;
@@ -131,10 +131,10 @@ export function createPopulationService(
   let stripBytes = 0;
   const sidecarPath = (key: string) => path.join(dir, `${key}.bin`);
 
-  function loadSidecar(key: string): Omit<Grid, "collectionId" | "meta" | "filePath" | "key"> | null {
+  async function loadSidecar(key: string): Promise<Omit<Grid, "collectionId" | "meta" | "filePath" | "key"> | null> {
     let buffer: Buffer;
     try {
-      buffer = fs.readFileSync(sidecarPath(key));
+      buffer = await fs.promises.readFile(sidecarPath(key));
     } catch {
       return null;
     }
@@ -173,16 +173,30 @@ export function createPopulationService(
     };
   }
 
-  function current(): Grid[] {
+  /** Summary files being read, so that two requests at once read each only once. */
+  const loading = new Map<string, ReturnType<typeof loadSidecar>>();
+
+  async function current(): Promise<Grid[]> {
     const seen = new Set<string>();
     const out: Grid[] = [];
     for (const set of installed()) {
       seen.add(set.sidecarKey);
       let grid = grids.get(set.sidecarKey);
       if (!grid) {
-        const loaded = loadSidecar(set.sidecarKey);
+        let load = loading.get(set.sidecarKey);
+        if (!load) {
+          load = loadSidecar(set.sidecarKey).finally(() => loading.delete(set.sidecarKey));
+          loading.set(set.sidecarKey, load);
+        }
+        const loaded = await load;
         if (!loaded) continue;
-        grid = { ...loaded, key: set.sidecarKey, collectionId: set.collectionId, meta: set.meta, filePath: set.filePath };
+        grid = grids.get(set.sidecarKey) ?? {
+          ...loaded,
+          key: set.sidecarKey,
+          collectionId: set.collectionId,
+          meta: set.meta,
+          filePath: set.filePath,
+        };
         grids.set(set.sidecarKey, grid);
       }
       grid.filePath = set.available ? set.filePath : null;
@@ -299,7 +313,7 @@ export function createPopulationService(
           }
           levels.push({ factor, width: w, height: h, data });
         }
-        fs.mkdirSync(dir, { recursive: true });
+        await fs.promises.mkdir(dir, { recursive: true });
         let offset = 0;
         const header = {
           width,
@@ -318,11 +332,11 @@ export function createPopulationService(
         const length = Buffer.alloc(4);
         length.writeUInt32LE(headerBytes.length, 0);
         const temporary = `${sidecarPath(key)}.tmp`;
-        fs.writeFileSync(
+        await fs.promises.writeFile(
           temporary,
           Buffer.concat([Buffer.from(MAGIC, "latin1"), length, headerBytes, ...levels.map((level) => Buffer.from(level.data.buffer))]),
         );
-        fs.renameSync(temporary, sidecarPath(key));
+        await fs.promises.rename(temporary, sidecarPath(key));
         grids.delete(key);
         const bbox: Bbox = [cog.geo.originX, cog.geo.originY - height * pixel, cog.geo.originX + width * pixel, cog.geo.originY];
         return { bbox, total };
@@ -331,9 +345,10 @@ export function createPopulationService(
       }
     },
 
-    sets() {
+    async sets() {
+      const list = await current();
       return installed().map((set) => {
-        const grid = current().find((candidate) => candidate.key === set.sidecarKey);
+        const grid = list.find((candidate) => candidate.key === set.sidecarKey);
         return {
           id: set.collectionId,
           country: set.meta.country,
@@ -347,7 +362,7 @@ export function createPopulationService(
     },
 
     async grid(view, _zoom) {
-      const list = current();
+      const list = await current();
       const cells: PopulationCell[] = [];
       const used: Grid[] = [];
       for (const grid of list) {
@@ -411,7 +426,7 @@ export function createPopulationService(
       const dLat = radiusKm / 110.57;
       const dLon = radiusKm / (111.32 * Math.max(0.01, Math.cos((lat * Math.PI) / 180)));
       const box: Bbox = [lon - dLon, lat - dLat, lon + dLon, lat + dLat];
-      const list = current();
+      const list = await current();
       let people = 0;
       let insideCells = 0;
       let coveredCells = 0;

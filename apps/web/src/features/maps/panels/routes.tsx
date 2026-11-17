@@ -37,7 +37,7 @@ import { MARKER_HEX } from "../lib/palette";
 import { buildProfile, routeOrigin } from "../lib/profile";
 import { EDITABLE_POINTS, editablePoints } from "../lib/route-edit";
 import { trackFacts, trackSummary } from "../lib/tracks";
-import { ColorPicker, Fact } from "../ui";
+import { ColorPicker, Fact, PANEL_ROWS, ShowMoreRow } from "../ui";
 import { ElevationProfile } from "./elevation-profile";
 import { terrainCover } from "./route-editor";
 
@@ -400,6 +400,7 @@ export function RoutesList({
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [exporting, setExporting] = useState(false);
+  const [rows, setRows] = useState(PANEL_ROWS);
   const all = tracks.data ?? [];
 
   const chooser = (
@@ -506,7 +507,7 @@ export function RoutesList({
         {hidden.length > 0 ? `, ${all.filter((track) => hidden.includes(track.id)).length} hidden` : ""}
       </p>
       <ul className="scroll-quiet min-h-0 flex-1 divide-y divide-border overflow-y-auto border-t border-border">
-        {all.map((track) => {
+        {all.slice(0, rows).map((track) => {
           const visible = !hidden.includes(track.id);
           return (
             <li key={track.id} className="flex items-stretch">
@@ -531,6 +532,9 @@ export function RoutesList({
             </li>
           );
         })}
+        {all.length > rows ? (
+          <ShowMoreRow shown={rows} total={all.length} onMore={() => setRows((current) => current + PANEL_ROWS)} />
+        ) : null}
       </ul>
       <ExportDialog open={exporting} onOpenChange={setExporting} tracks={all} markerCount={markerCount} />
     </div>

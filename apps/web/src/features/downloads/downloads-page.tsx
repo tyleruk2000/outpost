@@ -1,14 +1,14 @@
-import { ACTIVE_DOWNLOAD_STATES, type CollectionsResponse, type DownloadDto } from "@outpost/shared";
-import { useQuery } from "@tanstack/react-query";
+import { ACTIVE_DOWNLOAD_STATES, type CollectionsResponse, type DownloadDto, type DownloadsResponse } from "@outpost/shared";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CircleAlert } from "lucide-react";
-import { Fragment, memo, type ReactNode, useMemo } from "react";
+import { Fragment, memo, type ReactNode, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { EmptyState, ErrorState, Page, PageHeader, Rows, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/misc";
 import { api } from "@/lib/api";
 import { useActiveJobs } from "@/lib/queries";
-import { plural, timeAgo } from "@/lib/utils";
+import { formatNumber, plural, timeAgo } from "@/lib/utils";
 import { manageLink } from "../manage/manage-data";
 import { clockAt } from "./charts/time-axis";
 import { DownloadControls, DownloadProgress, RemoveDownloadButton } from "./download-progress";
@@ -17,7 +17,7 @@ import { JobRow } from "./job-row";
 import { PlanControls } from "./plan-controls";
 import { PlanSection } from "./plan-section";
 import { queuePosition, queuePositions, stalledWords } from "./plan-text";
-import { useDownloads } from "./use-downloads";
+import { downloadsKey, useDownloads, useOlderHistory } from "./use-downloads";
 import { usePlan } from "./use-plan";
 
 /** How many waiting jobs are listed before the rest are summed up in a line. */
@@ -172,9 +172,19 @@ export default function DownloadsPage() {
     .filter((item) => ACTIVE_DOWNLOAD_STATES.includes(item.state))
     .sort((a, b) => (stateOrder[a.state] ?? 9) - (stateOrder[b.state] ?? 9) || a.createdAt - b.createdAt);
   const failed = all.filter((item) => item.state === "failed");
-  const history = all
-    .filter((item) => item.state === "completed" || item.state === "cancelled")
-    .sort((a, b) => (b.finishedAt ?? b.updatedAt) - (a.finishedAt ?? a.updatedAt));
+  // History comes a page at a time: the newest with the list, older ones when asked for.
+  const [olderAsked, setOlderAsked] = useState(false);
+  const older = useOlderHistory(olderAsked);
+  // Read beside the list it came with, which is drawn again whenever it changes.
+  const historyTotal = useQueryClient().getQueryData<DownloadsResponse>(downloadsKey)?.historyTotal ?? 0;
+  const history = [
+    ...new Map(
+      [...all, ...(older.data?.pages.flatMap((page) => page.downloads) ?? [])]
+        .filter((item) => item.state === "completed" || item.state === "cancelled")
+        .map((item) => [item.id, item]),
+    ).values(),
+  ].sort((a, b) => (b.finishedAt ?? b.updatedAt) - (a.finishedAt ?? a.updatedAt));
+  const moreHistory = history.length < historyTotal && (!olderAsked || older.hasNextPage || older.isFetching);
   const otherWork = (jobs.data ?? [])
     .filter((job) => job.type !== "download.run")
     .sort((a, b) => Number(b.state === "running") - Number(a.state === "running") || a.createdAt - b.createdAt);
@@ -329,6 +339,16 @@ export default function DownloadsPage() {
                   />
                 ))}
               </Rows>
+              {moreHistory ? (
+                <div className="mt-4 flex flex-wrap items-center gap-3">
+                  <Button onClick={() => (olderAsked ? void older.fetchNextPage() : setOlderAsked(true))} loading={older.isFetching}>
+                    Show more
+                  </Button>
+                  <span className="tabular text-small text-ink-muted">
+                    {formatNumber(history.length)} of {formatNumber(historyTotal)} shown
+                  </span>
+                </div>
+              ) : null}
             </Section>
           ) : null}
         </>

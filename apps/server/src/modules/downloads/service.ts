@@ -15,7 +15,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { DownloadDetail, DownloadDto, DownloadPlan, DownloadPlanItem, JobDto } from "@outpost/shared";
-import { and, desc, eq, inArray, ne } from "drizzle-orm";
+import { and, count, desc, eq, inArray, ne, notInArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
 import { AppError, badRequest, classifyNetworkError, conflict, messageOf, notFound } from "../../core/errors.ts";
@@ -48,6 +48,8 @@ export const OFFLINE_GAVE_UP_MESSAGE =
 type DownloadState = DownloadRow["state"];
 const ACTIVE_STATES: DownloadState[] = ["queued", "running", "verifying", "paused"];
 const isActive = (state: DownloadState) => ACTIVE_STATES.includes(state);
+/** What the Downloads screen calls history. */
+const FINISHED: DownloadState[] = ["completed", "cancelled"];
 
 /** Progress reaches the database and the browser at most this often per download. */
 const PUBLISH_INTERVAL_MS = 500;
@@ -890,6 +892,28 @@ export function createDownloadsService(ctx: AppContext): DownloadsService {
 
     list() {
       return db.select().from(downloads).orderBy(desc(downloads.createdAt), desc(downloads.id)).all();
+    },
+
+    unfinished() {
+      return db
+        .select()
+        .from(downloads)
+        .where(notInArray(downloads.state, FINISHED))
+        .orderBy(desc(downloads.createdAt), desc(downloads.id))
+        .all();
+    },
+
+    history(offset, limit) {
+      const finished = inArray(downloads.state, FINISHED);
+      const rows = db
+        .select()
+        .from(downloads)
+        .where(finished)
+        .orderBy(desc(sql`coalesce(${downloads.finishedAt}, ${downloads.updatedAt})`), desc(downloads.id))
+        .limit(limit)
+        .offset(offset)
+        .all();
+      return { rows, total: db.select({ n: count() }).from(downloads).where(finished).get()?.n ?? 0 };
     },
 
     async start(raw) {

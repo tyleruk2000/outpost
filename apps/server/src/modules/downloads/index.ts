@@ -1,14 +1,35 @@
+import { DOWNLOAD_HISTORY_PAGE, type DownloadHistoryResponse, type DownloadsResponse } from "@outpost/shared";
 import type { FastifyInstance } from "fastify";
+import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
 import { createDownloadsService } from "./service.ts";
 
 export type * from "./types.ts";
 
+const historyQuery = z.object({
+  offset: z.coerce.number().int().min(0).default(0),
+  limit: z.coerce.number().int().min(1).max(200).default(DOWNLOAD_HISTORY_PAGE),
+});
+
 export async function registerDownloads(app: FastifyInstance, ctx: AppContext): Promise<void> {
   const service = createDownloadsService(ctx);
   ctx.services.downloads = service;
 
-  app.get("/api/downloads", async () => ({ downloads: service.list().map(service.toDto) }));
+  // Everything not finished, and the newest page of history: the list grows by a row with
+  // every download ever made, so older history is asked for a page at a time.
+  app.get("/api/downloads", async (): Promise<DownloadsResponse> => {
+    const history = service.history(0, DOWNLOAD_HISTORY_PAGE);
+    return {
+      downloads: [...service.unfinished(), ...history.rows].sort((a, b) => b.createdAt - a.createdAt).map(service.toDto),
+      historyTotal: history.total,
+    };
+  });
+
+  app.get("/api/downloads/history", async (request): Promise<DownloadHistoryResponse> => {
+    const { offset, limit } = historyQuery.parse(request.query);
+    const history = service.history(offset, limit);
+    return { downloads: history.rows.map(service.toDto), total: history.total, offset };
+  });
 
   // Registered before the routes with an :id so that "plan" is never taken for one.
   app.get("/api/downloads/plan", async () => service.plan());

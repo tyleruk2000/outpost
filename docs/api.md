@@ -599,7 +599,8 @@ Types: `packages/shared/src/downloads.ts`.
 
 | Method and path | Purpose |
 | --- | --- |
-| `GET /api/downloads` | Every download, newest first (`DownloadDto[]`), with progress, speed, time remaining and, for failures, `error` and `errorKind`. |
+| `GET /api/downloads` | Every download that has not finished and the 50 most recently finished (completed or cancelled), newest first (`DownloadsResponse`: `downloads`, `DownloadDto[]` with progress, speed, time remaining and, for failures, `error` and `errorKind`; and `historyTotal`, how many have finished all told). |
+| `GET /api/downloads/history` | Finished downloads, most recently finished first, a page at a time (`DownloadHistoryResponse`: `downloads`, `total`, `offset`). Query: `offset`, `limit` (50 by default, at most 200). |
 | `GET /api/downloads/plan` | What the queue is going to do (`DownloadPlan`): what is active, waiting and paused, estimated start and finish times, and whether each storage location has room for what is queued. |
 | `GET /api/downloads/:id` | Everything known about one download (`DownloadDetail`): source and mirror, checksums, destination, timing, recent speed readings, history of state changes, attempts. |
 | `POST /api/downloads/pause-all` | Pauses every active download. `{ paused }`. |
