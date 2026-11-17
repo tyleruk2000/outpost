@@ -328,7 +328,90 @@ merged repeater once.
 - **One repeater** has a screen of its own: what to listen on and transmit on, access,
   modes, status with the date it was said, position with its locator and how exact it
   is, the listed aerial height, distance and bearing from a chosen place, **Show on
-  the map** and **Check line of sight**.
+  the map**, **Check line of sight** and **Estimated range** (below).
+
+### The estimated range
+
+A repeater open on the map has a switch in its card, **Estimated range**, and its own
+screen has a button of the same name that opens the map with it on. It is off until
+switched on, and the choice is remembered on the device. While it is off, or no
+repeater is open, nothing is worked out and nothing is drawn.
+
+**What it is.** An estimate of line of sight only: on each of 72 bearings, 5° apart,
+how far out a station at a stated height above the ground still has line of sight to
+the repeater's aerial, over the terrain installed on this device, out to 100 km. The
+reach on each bearing is joined into one outline, drawn as a thin ink line with a light
+wash inside, labelled "Estimated range" along its edge. Where there is terrain the
+outline is an irregular shape, not a circle. It has no colour of its own, so that it is
+not taken for an HF coverage map (shaded cells) or the nuclear effects (rings in hues).
+
+**How it is worked out.** It is the same test as the line-of-sight check between two
+points (an Earth of 4/3 radius; ground in the way of the straight ray between the two
+aerials blocks it). Walking outward along a bearing, every place is tested at once in
+one pass: seen from the top of the repeater's aerial, with each height lowered by the
+Earth's curve, d² ÷ (2 × k × R), a station is in sight when the slope up to it is at
+least the steepest slope up to any ground nearer in. That is the same condition as
+"nothing between them stands above the ray"; the tests check one against the other
+sample by sample. The ground is read every 100 m out to 25 km and every 250 m from there
+to 100 km, through the same terrain code as the check between two points (tiles whose
+cells are about the size of the step). A bearing ends where the aerial has been out of
+sight for more than 1 km, so a small hollow or a fold in a slope does not end it.
+
+The card then says, in short sentences and no finer than the inputs: the reach on most
+bearings and its range (distances to the whole kilometre from 10 km, the half
+kilometre below that, with miles beside them); the share of the ground inside the
+outline hidden by nearer ground, when it is 5% or more; on how many bearings higher
+ground further out is in sight again, and how far; and on how many it is still in sight
+at 100 km.
+
+**Heights.**
+
+| Height | Used |
+| --- | --- |
+| The repeater's aerial | The aerial height in its list, as listed. Where the list gives none: **10 m**, said on the card as assumed, and changeable there (remembered on the device). 10 m is low on purpose: most repeater aerials are higher, so the outline errs small. |
+| The other station | A choice of three: **Handheld 1.5 m** (held at head height), **Car 2 m** (an aerial on the car's roof), **Roof aerial 8 m** (on a house roof). Handheld is the first choice. |
+| The ground | From installed terrain, under the repeater and along each bearing. Nothing is invented. |
+
+**With no terrain.** Where no terrain is installed under the repeater, the outline is
+the smooth-Earth radio horizon, a plain dashed circle, and the card says so and offers
+**Offline maps**, where terrain comes with a map region. Its radius is
+√(2kRh1) + √(2kRh2), with h1 and h2 the two heights in metres above the ground around
+them, R = 6,371 km and k = 4/3: about **4.12 × (√h1 + √h2) km**. (√(2 × 4/3 × 6,371,008.8 m)
+= 4,121.8 m for each √m.) This is the standard radio-horizon form for an effective Earth
+of 4/3 radius, as radio planning texts give it; the effective-radius factor is the one
+explained under [the line-of-sight sums](maps.md#the-sums). The formula was not checked
+against a published copy during this work: the arithmetic above is what the code does.
+
+**With part of the terrain.** Where terrain is installed under the repeater but runs out
+on some bearings within 100 km, the card says the terrain covers only part of the area.
+On a bearing where it runs out while the aerial is still in sight, the outline stops at
+the last ground known and that part of its edge is dashed: the reach there may be
+longer. Where it runs out only after the aerial is already out of sight, the outline is
+complete, but high ground beyond could still be in sight, and the card says that too.
+
+**What it leaves out.** Transmitter power, aerial gain and pattern, frequency (there is
+no Fresnel zone here, unlike the check between two points), buildings and trees, and
+signals bending over ridges or carried by the weather. A repeater may be heard beyond
+the outline and not heard inside it. The terrain's cells are tens to hundreds of metres
+wide, so a narrow ridge or a cutting can be missed.
+
+**Where and when it runs.** On the server, as one request
+(`GET /api/maps/sight-range`, see [api.md](api.md)): one answer is a few kilobytes,
+where working it out in the browser would mean dozens of profile requests. It is worked
+out once for each place, pair of heights and installed terrain, and kept (the last 32
+answers); moving or zooming the map asks nothing, and a hidden page asks nothing. One
+outline at 100 km over 512-pixel lossless WebP terrain took about 250 to 300 ms on the
+development Mac, with the server never held up for more than about 30 ms at a time
+(the terrain sampler yields between tiles).
+
+The sums are in `packages/shared/src/radio-range.ts`, the request in
+`apps/server/src/modules/maps/sight-range.ts`, the card and the drawing in
+`apps/web/src/features/repeaters/map/`. Tests: `apps/server/test/maps-sight-range.test.ts`
+(flat ground against the formula, the pass against the two-point check, a ridge, a hill
+against a valley, short and long shadows, partial and no terrain, refused input),
+`apps/web/src/features/repeaters/map/range.test.tsx` (the switch off, working, with
+terrain, without, with part, and failed) and `e2e/tests/repeater-range.mobile.spec.ts`
+(switched on from a repeater's screen at phone width over the suite's terrain fixture).
 
 ### Taking a set out
 

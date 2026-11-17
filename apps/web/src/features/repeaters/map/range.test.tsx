@@ -79,7 +79,7 @@ describe("the estimate in words and on the map", () => {
 
 // ── The switch in the repeater's card ───────────────────────────────────────
 
-const engine = { setOverlay: vi.fn(), fitBounds: vi.fn(), getZoom: () => 11 };
+const engine = { setOverlay: vi.fn(), fitBounds: vi.fn(), isInView: () => false };
 const fetched = vi.fn();
 const json = (body: unknown, status = 200) =>
   Promise.resolve(new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } }));

@@ -119,7 +119,10 @@ export function readRange(range: SightRange): RangeReading {
     );
   }
   const capped = range.bearings.filter((bearing) => bearing.limit === "max").length;
-  if (capped > 0) sentences.push(`On ${capped} bearings it is still in sight at ${max}, as far as this looks.`);
+  if (capped > 0)
+    sentences.push(
+      `On ${capped} ${capped === 1 ? "bearing" : "bearings"} it is still in sight at ${max}, where the estimate stops looking.`,
+    );
   const share = range.hiddenShare ?? 0;
   if (share >= 0.05) {
     sentences.push(`About ${Math.round(share * 20) * 5}% of the ground inside the outline is hidden from the aerial by nearer ground.`);

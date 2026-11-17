@@ -18,7 +18,7 @@ import {
 } from "@outpost/shared";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronRight, CircleAlert } from "lucide-react";
-import { type ReactNode, useCallback, useEffect, useId, useRef } from "react";
+import { type ReactNode, type Ref, useCallback, useEffect, useId, useRef } from "react";
 import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Segmented, Spinner, Switch } from "@/components/ui/misc";
@@ -43,8 +43,16 @@ import {
   stationOf,
 } from "./range";
 
-/** How much of the bottom of the map the repeater's card covers on a phone, as in use-repeaters-on-map. */
-const cardCover = () => (window.matchMedia("(min-width: 48rem)").matches ? 0 : 290);
+/**
+ * How much of the bottom of the map the repeater's card covers. On a phone the card sits
+ * over the map, and with the range on it is tall, so it is measured rather than assumed.
+ */
+function cardCover(inside: Element | null): number {
+  if (window.matchMedia("(min-width: 48rem)").matches) return 0;
+  const card = inside?.closest(".outpost-map-card")?.getBoundingClientRect();
+  const map = document.querySelector(".outpost-map")?.getBoundingClientRect();
+  return card && map ? Math.max(0, map.bottom - card.top + 8) : 290;
+}
 
 type Placed = Pick<RepeaterDto, "id" | "lat" | "lon" | "antennaMeters">;
 
@@ -94,25 +102,43 @@ export function useRepeaterRange({
   }, [engine, shown]);
   useEffect(() => () => engine?.setOverlay(RANGE_SOURCE, EMPTY), [engine]);
 
-  // Switched on by a person: once the outline is known, step out until it is all in view (never in closer).
-  const fit = useRef(false);
+  // Switched on by a person: once the outline is known, bring it into view, unless it is in view already. From a
+  // link the map is still flying to the repeater, so whether it is in view now says nothing: it is always fitted.
+  const fit = useRef<"no" | "if-out" | "always">("no");
+  const section = useRef<HTMLElement>(null);
   useEffect(() => {
-    if (!engine || !shown || !fit.current) return;
-    fit.current = false;
-    engine.fitBounds(rangeBounds(shown), { maxZoom: engine.getZoom(), clearBottom: cardCover() });
+    if (!engine || !shown || fit.current === "no") return;
+    const always = fit.current === "always";
+    fit.current = "no";
+    const cover = cardCover(section.current);
+    const [west, south, east, north] = rangeBounds(shown);
+    const corners = [
+      { lat: south, lon: west },
+      { lat: north, lon: east },
+    ];
+    if (always || !corners.every((corner) => engine.isInView(corner, cover)))
+      engine.fitBounds([west, south, east, north], { clearBottom: cover });
   }, [engine, shown]);
 
   const setOn = useCallback(
-    (on: boolean) => {
-      fit.current = on;
+    (on: boolean, from: "switch" | "link" = "switch") => {
+      fit.current = !on ? "no" : from === "link" ? "always" : "if-out";
       setPrefs((current) => ({ ...current, on }));
     },
     [setPrefs],
   );
-  const show = useCallback(() => setOn(true), [setOn]);
+  const show = useCallback(() => setOn(true, "link"), [setOn]);
 
   const control = placed ? (
-    <RangeControl prefs={prefs} onPrefs={setPrefs} onOn={setOn} aerial={aerial} range={range} onOpenOffline={onOpenOffline} />
+    <RangeControl
+      ref={section}
+      prefs={prefs}
+      onPrefs={setPrefs}
+      onOn={(on) => setOn(on)}
+      aerial={aerial}
+      range={range}
+      onOpenOffline={onOpenOffline}
+    />
   ) : null;
   return { control, show };
 }
@@ -120,6 +146,7 @@ export function useRepeaterRange({
 const STATION_OPTIONS = RANGE_STATIONS.map((station) => ({ value: station.id, label: station.name }));
 
 function RangeControl({
+  ref,
   prefs,
   onPrefs,
   onOn,
@@ -127,6 +154,7 @@ function RangeControl({
   range,
   onOpenOffline,
 }: {
+  ref: Ref<HTMLElement>;
   prefs: RangePrefs;
   onPrefs: (next: (current: RangePrefs) => RangePrefs) => void;
   onOn: (on: boolean) => void;
@@ -139,7 +167,7 @@ function RangeControl({
   const reading = range.data ? readRange(range.data) : null;
   const terrain = range.data ? describeRangeTerrain(range.data) : null;
   return (
-    <section aria-label="Estimated range" className="mt-3 border-t border-border pt-2.5">
+    <section ref={ref} aria-label="Estimated range" className="mt-3 border-t border-border pt-2.5">
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
           <label htmlFor={id} className="text-small font-medium text-ink">
