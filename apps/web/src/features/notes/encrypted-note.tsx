@@ -40,7 +40,7 @@ import { MoveDialog } from "./move-dialog";
 import { NoteFooter } from "./note-footer";
 import { PageCover, PageTitle } from "./note-header";
 import { Breadcrumbs, SaveState } from "./note-top-bar";
-import { displayTitle, noteKeys, saveNote, useNoteActions, useNoteTree } from "./notes-data";
+import { displayTitle, noteKeys, refreshNotes, saveNote, useNoteActions, useNoteTree } from "./notes-data";
 import { PageIcon, PageMenuItems } from "./page-bits";
 import { TagEditor } from "./tag-editor";
 import { clearDraft, type PageFields, readDraft, usePageSaver } from "./use-page-saver";
@@ -354,7 +354,7 @@ export default function EncryptedNote({ note }: { note: NoteDetail }) {
       client.setQueryData<NoteResponse>(noteKeys.detail(note.id), (data) =>
         data ? { note: { ...data.note, ...saved, content, encrypted: false } } : data,
       );
-      await client.invalidateQueries({ queryKey: noteKeys.all });
+      await refreshNotes(client);
       toast(`“${displayTitle(title)}” is no longer encrypted.`);
     } catch (failure) {
       toast.error(errorMessage(failure));
