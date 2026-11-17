@@ -115,6 +115,18 @@ describe("the sidetone's audio context", () => {
     tone.dispose();
   });
 
+  it("sleeps soon after a long playback is stopped, not when it would have ended", async () => {
+    const tone = new Sidetone();
+    await tone.ensure();
+    const ctx = contexts[0]!;
+    const handle = tone.playTimeline([{ on: true, ms: 30_000, tokenIndex: 0 }]);
+    await vi.advanceTimersByTimeAsync(1000);
+    handle.stop();
+    await vi.advanceTimersByTimeAsync(2500);
+    expect(ctx.state).toBe("suspended");
+    tone.dispose();
+  });
+
   it("leaves no timer behind once asleep", async () => {
     const tone = new Sidetone();
     await tone.ensure();

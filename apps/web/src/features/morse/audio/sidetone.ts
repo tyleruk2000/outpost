@@ -108,6 +108,8 @@ export class Sidetone {
   private asleep = false;
   /** performance.now() until which something is scheduled to sound. */
   private soundingUntil = 0;
+  /** The playback under way on each envelope (the signal, the interfering station) and the performance.now() it ends at. */
+  private readonly playing = new Map<GainNode, number>();
   /** A straight key or a keyer element is down. */
   private held = false;
   /** Band noise is mixed in, which is meant to be heard between the signals. */
@@ -116,7 +118,7 @@ export class Sidetone {
   private readonly listeners = new Set<() => void>();
   private readonly onVisibility = (): void => {
     if (document.visibilityState === "hidden") {
-      if (!this.held && performance.now() >= this.soundingUntil) this.sleep();
+      if (!this.held && performance.now() >= this.until()) this.sleep();
     } else if (this.noiseOn) this.wake();
   };
 
@@ -208,14 +210,19 @@ export class Sidetone {
     this.armIdle();
   }
 
+  /** When the last sound now scheduled ends. */
+  private until(): number {
+    return Math.max(this.soundingUntil, ...this.playing.values());
+  }
+
   private armIdle(): void {
     window.clearTimeout(this.idleTimer);
     this.idleTimer = undefined;
     if (!this.ctx || this.held || this.asleep || (this.noiseOn && document.visibilityState !== "hidden")) return;
-    const wait = Math.max(0, this.soundingUntil - performance.now()) + IDLE_MS;
+    const wait = Math.max(0, this.until() - performance.now()) + IDLE_MS;
     this.idleTimer = window.setTimeout(() => {
       this.idleTimer = undefined;
-      if (performance.now() < this.soundingUntil) this.armIdle();
+      if (performance.now() < this.until()) this.armIdle();
       else this.sleep();
     }, wait);
   }
@@ -398,7 +405,11 @@ export class Sidetone {
       };
     }
     const peak = options.level ?? (options.channel === "qrm" ? 0.3 : 1);
-    this.sounding(performance.now() + totalMs + 50);
+    const endsAt = performance.now() + totalMs + 50;
+    // A new playback on an envelope replaces the one before it there.
+    this.playing.set(node, endsAt);
+    this.wake();
+    this.armIdle();
     const ctx = this.ctx;
     const gain = node.gain;
     const t0 = ctx.currentTime + 0.05;
@@ -429,6 +440,9 @@ export class Sidetone {
         gain.cancelScheduledValues(now);
         gain.setValueAtTime(gain.value, now);
         gain.linearRampToValueAtTime(0, now + RAMP_S);
+        // Stopped early: it no longer keeps the context awake.
+        if (this.playing.get(node) === endsAt) this.playing.delete(node);
+        this.armIdle();
         finish(false);
       },
       done,
@@ -442,6 +456,7 @@ export class Sidetone {
     this.idleTimer = undefined;
     document.removeEventListener("visibilitychange", this.onVisibility);
     this.asleep = false;
+    this.playing.clear();
     this.osc?.stop();
     this.osc?.disconnect();
     this.keyGain?.disconnect();

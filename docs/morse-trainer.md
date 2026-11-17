@@ -71,6 +71,13 @@ where it has it, otherwise by playing a moment of silence). If sound still canno
 heard, the screen says what to do: tap again, check the silent switch and the volume,
 check the tab is not muted.
 
+To save power the sound is put to sleep two seconds after the last tone ends, and at
+once when the page is hidden with nothing playing; the next key or Play wakes it.
+During QSO practice with band noise it stays awake while the page is shown, since the
+noise is meant to be heard between overs. A drill that is playing when the phone is
+locked plays to its end. The automatic keyers (paddle, single lever, bug) work only
+while an element is being sent, so an open Send tab costs nothing between presses.
+
 ## What is stored, and where
 
 Outpost has no accounts, so there is **one record of progress and one list of sessions
@@ -116,7 +123,9 @@ Routes: [api.md](api.md#morse-trainer).
 
 Tested in the unit, server and end-to-end suites, at desktop and phone width, at a
 plain http address and at a secure one. Not tested, because there was none to hand:
-a real iPhone (the first-tap sound and the silent switch), a real paddle on a USB
+a real iPhone (the first-tap sound, the silent switch, and waking the sound after it
+has been put to sleep without another press, which Safari allows once a page has
+been let play but which was not tried on a phone), a real paddle on a USB
 serial adapter, a game-controller interface and a two-button mouse adapter. The
 end-to-end suite runs with the browser's audio, not listened to.
 
