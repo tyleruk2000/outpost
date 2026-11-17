@@ -1215,6 +1215,25 @@ Everything below is the first version of Outpost. It will be released as 0.1.0.
   keychain made for the purpose; nothing was tried on a real iPhone, Android phone,
   Windows or Linux computer.
 
+#### Tools: Solar clock
+
+- Tools → Solar clock (`/tools/solar-clock`), worked out on the device with no internet,
+  for the home place, a saved place or typed coordinates, on this device's time zone or
+  a UTC offset set by hand. Now: the sun's height and bearing, sundial time beside clock
+  time, the equation of time, the longitude correction, solar noon and the sun's path
+  through the day. Clock recovery: the time to set clocks by from a stick's shadow (two
+  equal shadows, the shortest shadow, its length, its compass bearing) or sunrise on a
+  sea horizon, each with a range worked out from the stated measurement error, what a
+  date a few days out does to it, and better sources. Make a sundial: hour lines for the
+  latitude, true north from a shadow, the correction table for the place, a card-and-
+  pencil dial, and a template PDF. Make a nocturnal: how to use one, a template PDF made
+  for the place's longitude and clock, and a star-clock calculator. Northern hemisphere
+  only for the stars, as the screen says.
+- The sun's altitude and azimuth at an instant, NOAA's refraction model and the moment
+  the sun stands at a height, beside `sunDay` in `features/maps/lib/sun.ts`; sidereal time
+  and the positions of Polaris, Dubhe and Kochab in `features/maps/lib/sky.ts`. All held
+  to the US Naval Observatory's published values in tests.
+
 #### Tools: QR codes and devices on this network
 
 - QR codes: make a code from text or a web address, a Wi-Fi network, a contact (typed

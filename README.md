@@ -181,6 +181,7 @@ language model, and a real model's answers read differently.*
 | Cooking | Roasting times and safe temperatures from UK food-safety guidance, a timer, boiling at altitude, conversions, scaling a recipe. | [Tools](docs/tools.md#cooking) |
 | Power and batteries | Battery runtime from common devices: pick a Raspberry Pi, phones to charge, radios, a router or a NAS from a library of makers' published figures (each with its source), and see how long the battery runs them, how many charges it holds, and what battery a few days would need; keep your own devices for next time. Quick calculators besides (solar, cable size and voltage drop, series and parallel, generator fuel, small electronics), and power plans: a battery system kept by name, worked out into how long it runs and how much solar it needs. Monthly sun hours can be filled in from figures already fetched on Weather and hazards, and the plan says where they came from. | [Power](docs/tools-power.md) |
 | QR codes | Makes a code from text, a web address, a Wi-Fi network, a contact or a saved place, on the device; nothing typed is sent anywhere. | [QR codes](docs/tools-qr-and-network.md#qr-codes-toolsqr) |
+| Solar clock | Where the sun is now at a place; after a power cut, the time to set your clocks by from a stick's shadow (noon, the shadow's length or bearing, sunrise on the sea), with an honest range; a horizontal sundial and a nocturnal to print. Worked out on the device, no internet. | [Solar clock](docs/tools-solar-clock.md) |
 | Devices on this network | Lists what answers on the network the computer running Outpost is on: a NAS, a printer, a Raspberry Pi whose address you have forgotten. Never put in search. A start-up option limits starting a scan to the computer itself. | [Network](docs/tools-qr-and-network.md#devices-on-this-network-toolsnetwork) |
 
 Every calculator shows its answer as you type and says, under **How this is worked
@@ -583,6 +584,7 @@ reaches the internet or a real model server.
 | [Tools](docs/tools.md) | The calculators, with every formula and source |
 | [Power and batteries](docs/tools-power.md) | Calculators and power plans |
 | [QR codes and devices on this network](docs/tools-qr-and-network.md) | The two network tools |
+| [Solar clock](docs/tools-solar-clock.md) | Time from the sun and stars, its formulas, sources and measured accuracy |
 | [Emergency plans](docs/emergency-plans.md) | Plans, templates and their sources, cards |
 | [Supplies](docs/supplies.md) | Stock, the household, barcodes, CSV |
 | [Weather and hazards](docs/weather.md) | What is fetched, from whom, and how old it is |
