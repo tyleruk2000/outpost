@@ -52,7 +52,7 @@ declare module "../../core/context.ts" {
   }
 }
 
-/** Tiles of an installed build never change; a browser may keep them for an hour. */
+/** A browser may keep a tile for an hour, then asks with its ETag whether the same region still answers. */
 const TILE_CACHE_CONTROL = "private, max-age=3600";
 
 const flag = z
@@ -201,16 +201,22 @@ export async function registerMaps(app: FastifyInstance, ctx: AppContext): Promi
   // ── Tiles ──
 
   async function sendTile(
+    request: FastifyRequest,
     reply: FastifyReply,
     tileType: "vector" | "terrain",
     coordinates: [number, number, number] | undefined,
-    raw = false,
   ) {
     if (!coordinates) throw new AppError("not_found", "That is not a map tile address.");
+    const raw = (request.query as { raw?: unknown }).raw === "1";
     const tile = await tiles.getTile(tileType, ...coordinates);
+    // MapLibre treats 204 as "nothing here" and draws the tile empty, without an error. It may
+    // be a drive gone for a moment, so the browser asks again rather than keep the hole.
+    if (!tile) return reply.header("Cache-Control", raw ? "no-store" : "no-cache").status(204).send();
     reply.header("Cache-Control", raw ? "no-store" : TILE_CACHE_CONTROL);
-    // MapLibre treats 204 as "nothing here" and draws the tile empty, without an error.
-    if (!tile) return reply.status(204).send();
+    if (!raw) {
+      reply.header("ETag", tile.etag);
+      if (request.headers["if-none-match"] === tile.etag) return reply.status(304).send();
+    }
     // A phone keeping this tile for later asks for it as stored: still gzipped, and said to be
     // so in a header of our own, because a browser would unpack anything marked Content-Encoding
     // before the page could store it. Kept that way it takes a half to a third of the room.
@@ -219,14 +225,12 @@ export async function registerMaps(app: FastifyInstance, ctx: AppContext): Promi
     return reply.header("Content-Type", tile.contentType).send(tile.data);
   }
 
-  const isRaw = (request: FastifyRequest) => (request.query as { raw?: unknown }).raw === "1";
-
   app.get<TileParams>("/api/maps/tiles/:z/:x/:file", async (request, reply) => {
-    return sendTile(reply, "vector", tileCoordinates(request.params, "mvt"), isRaw(request));
+    return sendTile(request, reply, "vector", tileCoordinates(request.params, "mvt"));
   });
 
   app.get<TileParams>("/api/maps/terrain/:z/:x/:file", async (request, reply) => {
-    return sendTile(reply, "terrain", tileCoordinates(request.params, "(?:webp|png)"), isRaw(request));
+    return sendTile(request, reply, "terrain", tileCoordinates(request.params, "(?:webp|png)"));
   });
 
   // What keeping a box of the map on a phone would fetch. Read-only: the phone does the fetching.

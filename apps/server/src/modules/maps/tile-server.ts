@@ -23,6 +23,8 @@ export interface ServedTile {
   data: Buffer;
   contentType: string;
   contentEncoding: string | undefined;
+  /** Names the archive that answered: the same address answers with other bytes once the regions change. */
+  etag: string;
 }
 
 interface Candidate {
@@ -166,7 +168,7 @@ export function createTileServer(ctx: AppContext): TileServer {
     z: number,
     x: number,
     y: number,
-    read: (archive: LocalArchive) => Promise<T | undefined>,
+    read: (archive: LocalArchive, row: CollectionRow) => Promise<T | undefined>,
   ): Promise<T | undefined> {
     const size = 2 ** z;
     if (
@@ -188,7 +190,7 @@ export function createTileServer(ctx: AppContext): TileServer {
       const archive = await archiveFor(candidate.row);
       if (!archive) continue;
       try {
-        const found = await read(archive);
+        const found = await read(archive, candidate.row);
         if (found !== undefined) return found;
       } catch (error) {
         // A drive pulled out mid-read, or a damaged file: drop the handle and try the next region.
@@ -201,13 +203,14 @@ export function createTileServer(ctx: AppContext): TileServer {
 
   return {
     async getTile(tileType, z, x, y) {
-      return find(tileType, z, x, y, async (archive) => {
+      return find(tileType, z, x, y, async (archive, row) => {
         const data = await archive.getTile(z, x, y);
         return data
           ? {
               data,
               contentType: contentTypeOf(archive.header.tileType),
               contentEncoding: contentEncodingOf(archive.header.tileCompression),
+              etag: `"${row.id}"`,
             }
           : undefined;
       });

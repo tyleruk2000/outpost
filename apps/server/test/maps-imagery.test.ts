@@ -394,7 +394,12 @@ describe("satellite imagery through the API", () => {
       expect(tile.status).toBe(200);
       expect(tile.headers["content-type"]).toBe("image/webp");
       expect(tile.body.subarray(0, 4).toString("latin1")).toBe("RIFF");
-      expect((await raw(app, `/api/maps/imagery/${worldSet.id}/5/0/0.webp`)).status).toBe(204);
+      // A set's tiles never change (another download is another set, at another address): kept, never asked for again.
+      expect(tile.headers["cache-control"]).toBe("private, max-age=31536000, immutable");
+      const outside = await raw(app, `/api/maps/imagery/${worldSet.id}/5/0/0.webp`);
+      expect(outside.status).toBe(204);
+      // "Nothing here" may be a drive gone for a moment: not kept.
+      expect(outside.headers["cache-control"]).toBe("no-cache");
       expect((await raw(app, "/api/maps/imagery/not-a-set/1/0/0.webp")).status).toBe(404);
       expect((await raw(app, `/api/maps/imagery/${worldSet.id}/1/0/..%2F..%2Fx`)).status).toBe(404);
 
