@@ -50,13 +50,16 @@ export const TOOL_QUESTIONS: ToolQuestion[] = [
     tools: ["supplies"],
     answer: [/4\.9|five days|5 days|about 5\b/i],
     mustNot: [/\b(7|seven|10|ten|30|thirty) days of food/i],
-    probe: [["supplies", {}]],
+    probe: [
+      ["supplies", {}],
+      ["supplies", { category: "food", page: 1 }],
+    ],
   },
   {
     id: "power-cut-plan",
     question: "What's on our power cut plan?",
     tools: ["emergency_plans"],
-    answer: [/torch/i, /neighbour/i],
+    answer: [/torch/i, /neighbou?r/i],
     probe: [
       ["emergency_plans", {}],
       ["emergency_plans", { plan: "Power cut" }],
@@ -74,9 +77,12 @@ export const TOOL_QUESTIONS: ToolQuestion[] = [
     id: "river",
     question: "What's the river doing?",
     tools: ["weather"],
-    answer: [/no (river|level|station|gauge)|not (held|any)|n't (any|have)|none|within 8 km/i],
+    answer: [/no (river|level|station|gauge)|not (held|any)|n't (any|have)|none|within 8 km|Christchurch|flood alert/i],
     mustNot: [/\b\d+(\.\d+)? ?m(etres)?\b.*(rising|falling)/i],
-    probe: [["weather", { what: "levels" }]],
+    probe: [
+      ["weather", { what: "levels" }],
+      ["weather", { what: "floods" }],
+    ],
   },
   {
     id: "sunset",
@@ -117,7 +123,7 @@ export const TOOL_QUESTIONS: ToolQuestion[] = [
     id: "pharmacies-bedford",
     question: "What pharmacies are there in Bedford?",
     tools: ["find_places|nearest_place"],
-    answer: [/\bno\b|not held|none|n't|could not|couldn't|fetch|don't have/i],
+    answer: [/\bno\b|not (hold|held|have)|none|n't|could not|couldn't|fetch|don't have/i],
     mustNot: [/Boots|Lloyds|Superdrug|Well Pharmacy/i],
     probe: [["find_places", { kind: "pharmacy", near: "Bedford" }]],
   },

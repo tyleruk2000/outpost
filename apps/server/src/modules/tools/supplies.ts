@@ -46,10 +46,25 @@ export const supplies = defineTool({
       .describe("A kind of supply: food, water, pet food, fuel, medical, hygiene, batteries, equipment, other."),
     page: z.number().int().min(1).max(50).optional().describe("Which page of the stock list, from 1."),
   }),
-  run({ query, category, page }, { ctx, now }) {
+  run({ query: askedQuery, category: askedCategory, page }, { ctx, now }) {
+    // A query that names a kind of supply is that kind: bonsai-2:2b asked for query "food" and was told nothing matched
+    // (docs/ai.md, "Tried with a real model: tools").
+    const namesKind = (words: string) =>
+      SUPPLY_CATEGORIES.some((entry) => entry.id === fold(words).trim() || fold(entry.label) === fold(words).trim());
+    let query = askedQuery;
+    let category = askedCategory;
+    if (query && namesKind(query) && (!category || fold(category).trim() === fold(query).trim())) {
+      category ??= query;
+      query = undefined;
+    }
     const service = ctx.services.supplies;
     const items = service.items();
     if (items.length === 0) return { held: false, text: NOTHING, url: "/prepare/supplies" };
+
+    const daysLine = () => {
+      const outlook = supplyOutlook(items, service.household(), localDay(new Date(now)));
+      return `Outlook for all stock: food ${days(outlook.food.days)}, water ${days(outlook.water.days)}, of ${outlook.daysWanted} days wanted.`;
+    };
 
     if (query || category) {
       const wanted = category ? fold(category).trim() : null;
@@ -71,7 +86,7 @@ export const supplies = defineTool({
       if (rows.length === 0) {
         return {
           held: false,
-          text: `No supplies held match ${asked}. Stock is added under Preparedness → Supplies.`,
+          text: `No supplies held match ${asked}. Stock is added under Preparedness → Supplies.\n${daysLine()}`,
           url: "/prepare/supplies",
         };
       }
@@ -80,7 +95,9 @@ export const supplies = defineTool({
         held: true,
         label: `stock, ${asked}`,
         url: "/prepare/supplies",
-        text: [`Supplies held (${asked}), as recorded in Outpost:`, ...shown.map(stockLine), line].filter(Boolean).join("\n"),
+        // The days figures go with every answer: asked "how many days of food", llama3.2:3b asked for the food
+        // category, and given only the list, made up a number of days (docs/ai.md, "Tried with a real model: tools").
+        text: [`Supplies held (${asked}), as recorded in Outpost:`, ...shown.map(stockLine), line, daysLine()].filter(Boolean).join("\n"),
       };
     }
 

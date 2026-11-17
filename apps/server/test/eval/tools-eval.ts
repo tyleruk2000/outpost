@@ -39,6 +39,7 @@ const { values: options } = parseArgs({
     only: { type: "string" },
     json: { type: "string" },
     probe: { type: "boolean", default: false },
+    rejudge: { type: "string" },
   },
 });
 
@@ -162,7 +163,10 @@ function judge(question: ToolQuestion, row: Omit<Row, "model" | "question" | "ve
     for (const wanted of question.tools) {
       const any = wanted.split("|");
       if (!called.some((name) => any.includes(name)))
-        return { right: false, why: `did not call ${any.join(" or ")}${refused > 0 ? ` with arguments that fitted (${refused} refused)` : ""}` };
+        return {
+          right: false,
+          why: `did not call ${any.join(" or ")}${refused > 0 ? ` with arguments that fitted (${refused} refused)` : ""}`,
+        };
     }
   }
   const text = row.text.replace(/\s+/g, " ");
@@ -192,6 +196,25 @@ async function memoryOf(model: string): Promise<{ bytes: number; context: number
   } catch {
     return null;
   }
+}
+
+if (options.rejudge) {
+  // Ask nothing: judge the replies saved by --json again, by the questions as they now stand.
+  const saved = JSON.parse(fs.readFileSync(options.rejudge, "utf8")) as {
+    rows: Array<Omit<Row, "question" | "verdict"> & { question: { id: string } }>;
+  };
+  const counts = new Map<string, number[]>();
+  for (const row of saved.rows) {
+    const question = TOOL_QUESTIONS.find((entry) => entry.id === row.question.id)!;
+    const verdict = judge(question, row);
+    const tally = counts.get(row.model) ?? [0, 0];
+    tally[0]! += verdict.right ? 1 : 0;
+    tally[1]! += 1;
+    counts.set(row.model, tally);
+    if (!verdict.right) console.log(`${row.model} ${row.question.id} WRONG: ${verdict.why}`);
+  }
+  for (const [model, [right, of]] of counts) console.log(`${model} | ${right} | ${of}`);
+  process.exit(0);
 }
 
 const filled = await filledServer();

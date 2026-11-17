@@ -64,6 +64,8 @@
  *                           offered tools); then answers in words, quoting the first line of
  *                           each answer with its source number: "From Outpost: … [1]."
  *   stand-in-tools-loops    calls search_library {"query":"water"} every round, for ever, while offered tools
+ *   stand-in-tools-as-text  writes its request for a tool into its reply as JSON instead of making it, as llama3.2:1b
+ *                           did when tried with a real Ollama on 2026-11-17
  *   stand-in-no-tools       says only "completion" in /api/tags, and refuses a request carrying
  *                           `tools` with 400 "… does not support tools", as Ollama does
  *                           for a model without the capability
@@ -182,6 +184,7 @@ const MODELS = [
   "stand-in-cites-all",
   "stand-in-tools",
   "stand-in-tools-loops",
+  "stand-in-tools-as-text",
   "stand-in-no-tools",
   "embed-only",
 ];
@@ -254,6 +257,8 @@ function chatReply(model: string, prompt: string, fromPerson: number): string {
   switch (model) {
     case "stand-in-markdown":
       return MARKDOWN_REPLY;
+    case "stand-in-tools-as-text":
+      return 'Let me try again with a different tool. {"name": "weather", "parameters": {"what": "river"}}';
     case "stand-in-long":
     case "stand-in-length":
       return Array.from(

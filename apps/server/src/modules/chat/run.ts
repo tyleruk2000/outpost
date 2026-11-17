@@ -45,6 +45,7 @@ import {
   TOOL_RESULTS_CHARS,
   toolsForReply,
   within,
+  writesToolsAsText,
 } from "./tools.ts";
 
 /** Most passages handed to the model for one question, as for an answer. */
@@ -518,6 +519,15 @@ export function createRunner(ctx: AppContext, store: ChatStore) {
         }
         controller.signal.throwIfAborted();
         moveTo("waiting", null, true);
+      }
+      if (specs.length > 0 && writesToolsAsText(text)) {
+        // Tried with llama3.2:1b on 2026-11-17: it wrote its request for a tool, or a tool's whole description, into its
+        // reply as JSON instead of making the request. Nothing was looked up, and the person is not shown the JSON.
+        text = "";
+        throw new ModelServerError(
+          "other",
+          "The model wrote out a request to look something up as text instead of making it, so nothing was looked up. Small models do this; ask again, or choose a model that looks things up well (see Which model, under Settings).",
+        );
       }
       if (!text.trim()) {
         throw new ModelServerError(

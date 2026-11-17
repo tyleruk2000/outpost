@@ -27,6 +27,17 @@ const call = (name: string, args: unknown, app: TestApp = filled.app) =>
 const today = () => dayOf(Date.now());
 
 describe("find_places", () => {
+  it("reads a query that names a kind held as that kind, as bonsai-2:2b sent it", async () => {
+    const both = await call("find_places", { query: "supermarket", kind: "supermarket", near: "home" });
+    expect(both.held).toBe(true);
+    expect(both.text).toContain("Iceland Gold Street");
+    const alone = await call("find_places", { query: "supermarkets", near: "home" });
+    expect(alone.held).toBe(true);
+    expect(alone.text).toContain("Iceland Gold Street");
+    // Words in a name are still words in a name.
+    expect((await call("find_places", { query: "Tesco", near: "Northampton" })).text).toContain("Tesco Extra Mereway");
+  });
+
   it("lists supermarkets near a town by its place name, nearest first, with address, distance, direction and source", async () => {
     const result = await call("find_places", { kind: "supermarket", near: "Northampton" });
     expect(result.ok).toBe(true);
@@ -174,6 +185,13 @@ describe("nearest_place", () => {
 });
 
 describe("supplies", () => {
+  it("reads a query that names a kind of supply as that kind, and always gives the days", async () => {
+    const result = await call("supplies", { query: "food" });
+    expect(result.held).toBe(true);
+    expect(result.text).toContain("Baked beans");
+    expect(result.text).toMatch(/Outlook for all stock: food 4\.9 days, water 2\.0 days, of 7 days wanted\./);
+  });
+
   it("gives the outlook from the same arithmetic as the Supplies screen", async () => {
     const result = await call("supplies", {});
     const outlook = (await filled.app.api("GET", "/api/supplies/outlook")).body.outlook;

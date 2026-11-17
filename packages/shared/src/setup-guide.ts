@@ -249,6 +249,10 @@ export const SETUP_GUIDE: Guide = {
               kind: "text",
               text: "To use it: on the **Search** screen, type a question and press **Answer from my library**; or open **Chat**.",
             },
+            {
+              kind: "text",
+              text: "Chat can also let the model look things up in Outpost: places on the map, supplies, plans, the weather as last fetched and more. It is off until you switch it on under **Settings → Looking things up in Outpost**, and it needs a model that can call tools: **Which model** (under Settings) says which of the suggested ones do it well.",
+            },
           ],
         },
       ],

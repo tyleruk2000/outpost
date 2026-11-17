@@ -101,3 +101,12 @@ export function lookupSource(result: ToolCallResult, marker: number, sent: strin
 
 /** What makes two calls the same call: the tool and its arguments, as sent. */
 export const callKey = (name: string, args: unknown) => `${name}\u0000${JSON.stringify(args ?? {})}`;
+
+/**
+ * Whether a reply is, or holds, a tool call or a tool's description written out as JSON
+ * rather than made: `{"name": "weather", "parameters": {…}}`, `{"type":"function",…}`.
+ * llama3.2:1b did both when tried (docs/ai.md, "Tried with a real model: tools").
+ */
+export function writesToolsAsText(text: string): boolean {
+  return /\{\s*"(?:type"\s*:\s*"function|name"\s*:\s*"[a-z_]+"\s*,\s*"(?:parameters|arguments)"|function"\s*:\s*[{"])/.test(text);
+}

@@ -222,7 +222,10 @@ export const sunAndCompass = defineTool({
     date: z
       .string()
       .trim()
-      .refine((value) => WHEN.test(value) || value.toLowerCase() in DAY_WORDS, "Give the date as YYYY-MM-DD, or YYYY-MM-DD HH:MM in UTC, or today or tomorrow.")
+      .refine(
+        (value) => WHEN.test(value) || value.toLowerCase() in DAY_WORDS,
+        "Give the date as YYYY-MM-DD, or YYYY-MM-DD HH:MM in UTC, or today or tomorrow.",
+      )
       .optional()
       .describe('YYYY-MM-DD, "today" or "tomorrow"; or YYYY-MM-DD HH:MM (UTC) for the sun\'s position then. Default: now.'),
   }),

@@ -238,6 +238,17 @@ for (const protocol of PROTOCOLS) {
       );
     });
 
+    it("never shows a tool call the model wrote as text: nothing was looked up, and the reply says so", async () => {
+      const s = await station("stand-in-tools-as-text", { ollamaApi: protocol.ollamaApi });
+      const id = await s.open();
+      const reply = await s.exchange(id, "What's the river doing?");
+      expect(reply.state).toBe("failed");
+      expect(reply.text).toBe("");
+      expect(JSON.stringify(reply.blocks)).not.toContain('"parameters"');
+      expect(reply.notice).toMatch(/^The model wrote out a request to look something up as text instead of making it/);
+      expect(lookups(reply)).toHaveLength(0);
+    });
+
     it("stops a model that keeps asking after four rounds, and asks once more with no tools", async () => {
       const s = await station("stand-in-tools-loops", { ollamaApi: protocol.ollamaApi });
       const id = await s.open();

@@ -38,7 +38,7 @@ const ManagePage = lazy(() => import("./features/manage/manage-page"));
 const MergePage = lazy(() => import("./features/merge/merge-page"));
 const SettingsPage = lazy(() => import("./features/settings/settings-page"));
 const SetupGuidePage = lazy(() => import("./features/help/setup-guide-page"));
-const WhichModelPage = lazy(() => import("./features/help/which-model-page"));
+const WhichModelPage = lazy(() => import("./features/chat/which-model-page"));
 const KeptPage = lazy(() => import("./features/kept/kept-page"));
 const RadioPage = lazy(() => import("./features/radio/radio-page"));
 const ToolsPage = lazy(() => import("./features/tools/tools-page"));

@@ -214,8 +214,17 @@ export const findPlaces = defineTool({
     radius_km: z.number().min(0.1).max(100).optional().describe("How far from near to look, in km. Default 10."),
     page: z.number().int().min(1).max(50).optional().describe("Which page of results, from 1."),
   }),
-  run({ query, kind, near, radius_km, page }, { ctx }): ToolAnswer {
+  run({ query: asked, kind: givenKind, near, radius_km, page }, { ctx }): ToolAnswer {
     const held = heldKinds(ctx);
+    // A model often puts the kind in query as well, or only there: bonsai-2:2b asked for query "supermarket" with kind
+    // "supermarket" and was told none were held (docs/ai.md, "Tried with a real model: tools"). A query that names a kind
+    // held is read as that kind, not as words in a name.
+    let query = asked;
+    let kind = givenKind;
+    if (query && ((kind && wordsOf(query) === wordsOf(kind)) || (!kind && matchKinds(query, held).kinds.length > 0))) {
+      kind ??= query;
+      query = undefined;
+    }
     const markers = ctx.services.maps.annotations.listMarkers();
     if (!query && !kind && !near) {
       return {
