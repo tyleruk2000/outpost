@@ -43,7 +43,8 @@ export interface EmergencyPlansService {
   list(): EmergencyPlanSummary[];
   get(id: string): EmergencyPlanResponse;
   create(input: EmergencyPlanInput): EmergencyPlanResponse;
-  update(id: string, input: EmergencyPlanInput): EmergencyPlanResponse;
+  /** Replaces the plan. Throws 409 `conflict` when `baseUpdatedAt` is older than the stored plan. */
+  update(id: string, input: EmergencyPlanInput, baseUpdatedAt?: number): EmergencyPlanResponse;
   copy(id: string): EmergencyPlanResponse;
   remove(id: string): void;
   /** Marks a step done now, or not done. Starts the plan if it was not started. */
@@ -156,6 +157,9 @@ const bodySchema = z
       .default([]),
   })
   .strict();
+
+/** The version a change was made from (`EmergencyPlanUpdate`); the rest of the body is the plan. */
+const baseSchema = z.object({ baseUpdatedAt: z.number().optional() }).passthrough();
 
 const planSchema = z
   .object({
@@ -374,13 +378,20 @@ export async function registerEmergencyPlans(app: FastifyInstance, ctx: AppConte
       changed(id);
       return service.get(id);
     },
-    update(id, input) {
+    update(id, input, baseUpdatedAt) {
       const row = rowOf(id);
+      if (baseUpdatedAt !== undefined && row.updatedAt > baseUpdatedAt) {
+        throw conflict(
+          "This plan was changed somewhere else after you opened it, in another tab or on another device. Your changes were not saved over it; reload to see the newer version.",
+          { current: { updatedAt: row.updatedAt, name: row.name } },
+        );
+      }
       db.update(emergencyPlans)
         .set({
           ...columns(input),
           use: keptTicks(toPlan(row).use, input.body) as unknown as Record<string, unknown>,
-          updatedAt: Date.now(),
+          // Always later than the version it replaces, so a base taken from it is never mistaken for it.
+          updatedAt: Math.max(Date.now(), row.updatedAt + 1),
         })
         .where(eq(emergencyPlans.id, id))
         .run();
@@ -480,7 +491,10 @@ export async function registerEmergencyPlans(app: FastifyInstance, ctx: AppConte
   app.get("/api/emergency-plans", async () => ({ plans: service.list() }));
   app.post("/api/emergency-plans", async (request) => service.create(planSchema.parse(request.body)));
   app.get("/api/emergency-plans/:id", async (request) => service.get(id(request)));
-  app.put("/api/emergency-plans/:id", async (request) => service.update(id(request), planSchema.parse(request.body)));
+  app.put("/api/emergency-plans/:id", async (request) => {
+    const { baseUpdatedAt, ...plan } = baseSchema.parse(request.body);
+    return service.update(id(request), planSchema.parse(plan), baseUpdatedAt);
+  });
   app.delete("/api/emergency-plans/:id", async (request) => {
     service.remove(id(request));
     return { ok: true };

@@ -21,6 +21,20 @@ export interface NuclearScenario extends NuclearScenarioInput {
   updatedAt: number;
 }
 
+/** What `PATCH /api/nuclear/scenarios/:id` takes: the whole scenario, and the version it was changed from. */
+export interface NuclearScenarioUpdate extends NuclearScenarioInput {
+  /**
+   * The `updatedAt` this change was based on. When the stored scenario is newer the
+   * change is refused with 409 `conflict` and `details.current`, so nothing is overwritten.
+   */
+  baseUpdatedAt?: number;
+}
+
+/** `details` of the 409 answer to a change that would overwrite a newer version. */
+export interface NuclearScenarioConflictDetails {
+  current: { updatedAt: number; name: string };
+}
+
 export const SCENARIO_NAME_MAX = 120;
 export const SCENARIO_NOTES_MAX = 8000;
 

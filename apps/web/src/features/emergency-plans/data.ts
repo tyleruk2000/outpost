@@ -3,9 +3,11 @@ import type {
   CommunicationPlan,
   ContactListResponse,
   EmergencyPlan,
+  EmergencyPlanConflictDetails,
   EmergencyPlanInput,
   EmergencyPlanResponse,
   EmergencyPlanSummary,
+  EmergencyPlanUpdate,
   MarkerDto,
   PowerPlan,
   ShoppingLine,
@@ -15,7 +17,7 @@ import type {
 import { localDay } from "@outpost/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { api, errorMessage } from "@/lib/api";
+import { ApiError, api, errorMessage } from "@/lib/api";
 import { plural } from "@/lib/utils";
 
 export const planKeys = {
@@ -65,12 +67,29 @@ export function useCreatePlan() {
   });
 }
 
-export function useSavePlan(id: string) {
+/** The newer version a change was refused for (409 `conflict`), or null for any other failure. */
+export function conflictOf(error: unknown): EmergencyPlanConflictDetails["current"] | null {
+  if (!(error instanceof ApiError) || error.status !== 409) return null;
+  const current = (error.details as Partial<EmergencyPlanConflictDetails> | undefined)?.current;
+  return typeof current?.updatedAt === "number" ? current : null;
+}
+
+/**
+ * Saves the whole plan. `onSaved` hears of the answer before the cache does, so a
+ * screen that keeps its own base never takes its own save for someone else's.
+ * A conflict is left to the screen to show; anything else is said in a toast.
+ */
+export function useSavePlan(id: string, onSaved?: (response: EmergencyPlanResponse) => void) {
   const answer = useAnswer();
   return useMutation({
-    mutationFn: (input: EmergencyPlanInput) => api.put<EmergencyPlanResponse>(`/api/emergency-plans/${id}`, input),
-    onSuccess: answer,
-    onError: (error) => toast.error(errorMessage(error)),
+    mutationFn: (input: EmergencyPlanUpdate) => api.put<EmergencyPlanResponse>(`/api/emergency-plans/${id}`, input),
+    onSuccess: (response) => {
+      onSaved?.(response);
+      answer(response);
+    },
+    onError: (error) => {
+      if (!conflictOf(error)) toast.error(errorMessage(error));
+    },
   });
 }
 

@@ -10,6 +10,7 @@
 import {
   type EmergencyPlanResponse,
   type EmergencyPlanSummary,
+  type EmergencyPlanUpdate,
   haversineMeters,
   type MarkerDto,
   type NuclearScenario,
@@ -23,7 +24,7 @@ import { toast } from "sonner";
 import { EmptyState, ErrorState, Notice, Rows, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Select, Skeleton } from "@/components/ui/misc";
-import { inputOf, planKeys, useCreatePlan, usePlans } from "@/features/emergency-plans/data";
+import { conflictOf, inputOf, planKeys, useCreatePlan, usePlans } from "@/features/emergency-plans/data";
 import { DaysHeld } from "@/features/emergency-plans/supplies-section";
 import { guessEmergencyNumber, planFrom } from "@/features/emergency-plans/words";
 import { api, errorMessage } from "@/lib/api";
@@ -47,13 +48,23 @@ export function distancesFrom(
     .sort((a, b) => a.metres - b.metres);
 }
 
-/** Adds a saved scenario to a plan's links, as an illustration. */
-async function attachScenario(planId: string, scenarioId: string): Promise<EmergencyPlanResponse> {
+/**
+ * Adds a saved scenario to a plan's links, as an illustration. The plan is read and
+ * written back with the version it was read at; if it was changed in between, the
+ * link is added again to the newer version, so nothing anyone else saved is replaced.
+ */
+async function attachScenario(planId: string, scenarioId: string, tries = 2): Promise<void> {
   const { plan } = await api.get<EmergencyPlanResponse>(`/api/emergency-plans/${planId}`);
   const input = inputOf(plan);
-  if (input.body.links.some((link) => link.kind === "scenario" && link.id === scenarioId)) return { plan, resolved: undefined as never };
+  if (input.body.links.some((link) => link.kind === "scenario" && link.id === scenarioId)) return;
   input.body = { ...input.body, links: [...input.body.links, { kind: "scenario", id: scenarioId }] };
-  return api.put<EmergencyPlanResponse>(`/api/emergency-plans/${planId}`, input);
+  const update: EmergencyPlanUpdate = { ...input, baseUpdatedAt: plan.updatedAt };
+  try {
+    await api.put<EmergencyPlanResponse>(`/api/emergency-plans/${planId}`, update);
+  } catch (error) {
+    if (tries > 1 && conflictOf(error)) return attachScenario(planId, scenarioId, tries - 1);
+    throw error;
+  }
 }
 
 export function PlanningPanel({

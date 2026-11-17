@@ -16,6 +16,14 @@ the database a backup holds, counted under Storage → Database ("Preparedness")
 the plan of **Erase everything**, and erased with everything else. Each plan is deleted
 on its own from its screen.
 
+A plan is saved a moment after each change, with the time of the version the change was
+made from. If another tab or device has saved the plan since, nothing is saved over it:
+the screen says so, keeps what was typed, and offers **Keep my version** (saved again on
+top of the newer one) or **Load the other version** (the newer one replaces what is on
+the screen). Saving waits until one is chosen. A change saved elsewhere while this
+screen has nothing unsaved is shown in its place. Ticking a step, a review and an
+opening are not changes to what the plan says, so they never cause this.
+
 ## What a plan holds
 
 Every part may be empty.
@@ -357,7 +365,10 @@ when the plan was last changed, so the same plan makes the same file.
 The nuclear preparedness workspace, and anything else, can use plans through
 `ctx.services.emergencyPlans` on the server (`list`, `get`, `create`, `update`,
 `copy`, `remove`, `tick`, `start`, `mergeTicks`, `reset`, `reviewed`, `opened`, and
-`kept.count` and `kept.eraseAll` for the clean-up) or the routes below. A plan's kind is one of
+`kept.count` and `kept.eraseAll` for the clean-up) or the routes below. A screen that
+changes a plan sends the `updatedAt` it read as `baseUpdatedAt`; the nuclear Plans tab,
+attaching a scenario, reads the plan again and adds its link to the newer version if
+the plan changed in between. A plan's kind is one of
 the known ones or `other` with free text in `kindText` ("Nuclear incident"), so a
 caller can file its plans under its own name and find them by `kind` and `kindText`.
 Its parts are general: ordered steps with phases, people, contacts, places, supplies,

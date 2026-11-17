@@ -1,9 +1,18 @@
-import type { MarkerDto, NuclearScenario } from "@outpost/shared";
+import {
+  type EmergencyPlanResponse,
+  type EmergencyPlanSummary,
+  type EmergencyPlanUpdate,
+  type MarkerDto,
+  type NuclearScenario,
+  PLAN_TEMPLATES,
+  planFromTemplate,
+} from "@outpost/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { PlanMapProps } from "@/features/propagation/map/plan-map";
+import { localId } from "@/lib/utils";
 import NuclearPage from "./nuclear-page";
 
 // The map needs WebGL, which the test's browser has not got. What stands in for it
@@ -124,6 +133,16 @@ interface Options {
   markers?: MarkerDto[] | "fails";
   population?: boolean;
   path?: string;
+  /** Answers a change to a saved scenario, given its body and which change it is (from 1); otherwise it is saved. */
+  onPatch?: (body: Record<string, unknown>, count: number) => { status: number; body: unknown } | undefined;
+  /** What one saved scenario is read as (`GET /api/nuclear/scenarios/:id`). */
+  one?: NuclearScenario;
+  /** Emergency plans: the list, and what each read of `/api/emergency-plans/:id` and each change to it answer. */
+  plans?: {
+    list: EmergencyPlanSummary[];
+    read: (count: number) => EmergencyPlanResponse;
+    put: (count: number) => { status: number; body: unknown };
+  };
 }
 
 function serve(options: Options = {}) {
@@ -141,8 +160,23 @@ function serve(options: Options = {}) {
       if (init?.method === "POST" || init?.method === "PATCH") {
         const body = init.body ? JSON.parse(String(init.body)) : undefined;
         posted.push({ path: pathname, body });
+        if (init.method === "PATCH") {
+          const answer = options.onPatch?.(body, posted.filter((post) => post.path === pathname).length);
+          if (answer) return json(answer.body, answer.status);
+        }
         return json({ ...body, id: "new", createdAt: 5, updatedAt: 5 }, 201);
       }
+      if (options.one && pathname === `/api/nuclear/scenarios/${options.one.id}`) return json(options.one);
+      if (options.plans && pathname.startsWith("/api/emergency-plans/")) {
+        if (init?.method === "PUT") {
+          posted.push({ path: `PUT ${pathname}`, body: JSON.parse(String(init.body)) });
+          const answer = options.plans.put(posted.filter((post) => post.path === `PUT ${pathname}`).length);
+          return json(answer.body, answer.status);
+        }
+        asked.push(`read ${pathname}`);
+        return json(options.plans.read(asked.filter((each) => each === `read ${pathname}`).length));
+      }
+      if (options.plans && pathname === "/api/emergency-plans") return json({ plans: options.plans.list });
       if (pathname === "/api/nuclear/scenarios") {
         if (options.scenarios === "fails") return json({ error: { code: "internal", message: "The database is busy." } }, 500);
         return json({ scenarios: options.scenarios ?? [] });
@@ -314,6 +348,64 @@ describe("Nuclear preparedness", () => {
     });
   });
 
+  describe("a saved scenario changed on another device while open here", () => {
+    const THEIRS = saved.updatedAt + 60_000;
+    const theirs: NuclearScenario = { ...saved, name: "Megaton over the bay (kitchen)", updatedAt: THEIRS };
+    const refusedOnce = (body: Record<string, unknown>, count: number) =>
+      count === 1
+        ? {
+            status: 409,
+            body: {
+              error: {
+                code: "conflict",
+                message:
+                  "This scenario was changed somewhere else after you opened it, in another tab or on another device. Your changes were not saved over it; reload to see the newer version.",
+                details: { current: { updatedAt: THEIRS, name: theirs.name } },
+              },
+            },
+          }
+        : { status: 200, body: { ...saved, ...body, updatedAt: THEIRS + 1000 } };
+
+    async function editSaved() {
+      const server = serve({ scenarios: [saved], onPatch: refusedOnce, one: theirs });
+      openTab(/Saved/);
+      fireEvent.click(await screen.findByRole("button", { name: "Put it on the map" }));
+      fireEvent.change(await screen.findByLabelText("Name"), { target: { value: "Mine" } });
+      fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+      expect(await screen.findByText("This scenario was changed somewhere else")).toBeInTheDocument();
+      const patches = () => server.posted.filter((post) => post.path === "/api/nuclear/scenarios/s1");
+      expect(patches()).toHaveLength(1);
+      expect(patches()[0]!.body).toMatchObject({ name: "Mine", baseUpdatedAt: saved.updatedAt });
+      expect(screen.getByText(/Your version is still here, unsaved, and nothing has been overwritten/)).toBeInTheDocument();
+      expect(screen.getByLabelText("Name")).toHaveValue("Mine");
+      return patches;
+    }
+
+    it("keeps my version by sending it again on top of the newer one", async () => {
+      const patches = await editSaved();
+      fireEvent.click(screen.getByRole("button", { name: "Keep my version" }));
+      await waitFor(() => expect(patches()).toHaveLength(2));
+      expect(patches()[1]!.body).toMatchObject({ name: "Mine", baseUpdatedAt: THEIRS });
+      await waitFor(() => expect(screen.queryByText("This scenario was changed somewhere else")).toBeNull());
+      // The next change builds on the version just saved.
+      fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Mine again" } });
+      fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+      await waitFor(() => expect(patches()).toHaveLength(3));
+      expect(patches()[2]!.body).toMatchObject({ name: "Mine again", baseUpdatedAt: THEIRS + 1000 });
+    });
+
+    it("loads the other version into the form instead", async () => {
+      const patches = await editSaved();
+      fireEvent.click(screen.getByRole("button", { name: "Load the other version" }));
+      await waitFor(() => expect(screen.getByLabelText("Name")).toHaveValue(theirs.name));
+      expect(screen.queryByText("This scenario was changed somewhere else")).toBeNull();
+      expect(patches()).toHaveLength(1);
+      fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+      await waitFor(() => expect(patches()).toHaveLength(2));
+      expect(patches()[1]!.body).toMatchObject({ name: theirs.name, baseUpdatedAt: THEIRS });
+    });
+  });
+
   it("puts a saved scenario on the map beside the one being edited, as B, the selected one at full strength", async () => {
     serve({ scenarios: [saved] });
     fireEvent.click(await screen.findByRole("button", { name: "press the map" }));
@@ -440,6 +532,69 @@ describe("Nuclear preparedness", () => {
     openTab("Records");
     expect(await screen.findByText("No historical records installed")).toBeInTheDocument();
     expect(screen.getByText(/No dataset of historical records is cleared for Outpost to ship/)).toBeInTheDocument();
+  });
+
+  it("attaches a scenario to a plan changed elsewhere in between by adding it to the newer version, not over it", async () => {
+    const template = PLAN_TEMPLATES.find((each) => each.id === "radiation")!;
+    const version = (updatedAt: number, name: string): EmergencyPlanResponse => ({
+      plan: {
+        ...planFromTemplate(template, () => localId()),
+        name,
+        id: "p1",
+        use: { startedAt: null, ticks: {} },
+        reviewedAt: 1,
+        openedAt: null,
+        createdAt: 1,
+        updatedAt,
+      },
+      resolved: { contacts: {}, places: {}, commPlan: undefined, powerPlan: undefined, links: [] },
+    });
+    const { posted } = serve({
+      scenarios: [saved],
+      plans: {
+        list: [
+          {
+            id: "p1",
+            name: "Radiation",
+            kind: "other",
+            kindText: "",
+            templateId: "radiation",
+            scenarios: [],
+            steps: 10,
+            ticked: 0,
+            startedAt: null,
+            reviewedAt: 1,
+            reviewEveryDays: 180,
+            openedAt: null,
+            missing: 0,
+            updatedAt: 10,
+          },
+        ],
+        read: (count) => (count === 1 ? version(10, "Radiation") : version(20, "Radiation (kitchen)")),
+        put: (count) =>
+          count === 1
+            ? {
+                status: 409,
+                body: {
+                  error: {
+                    code: "conflict",
+                    message: "Changed elsewhere.",
+                    details: { current: { updatedAt: 20, name: "Radiation (kitchen)" } },
+                  },
+                },
+              }
+            : { status: 200, body: version(30, "Radiation (kitchen)") },
+      },
+    });
+    openTab("Plans");
+    fireEvent.click(await screen.findByRole("button", { name: `Attach “${saved.name}” to Radiation` }));
+    await waitFor(() => expect(posted.filter((post) => post.path === "PUT /api/emergency-plans/p1")).toHaveLength(2));
+    const [first, second] = posted
+      .filter((post) => post.path === "PUT /api/emergency-plans/p1")
+      .map((post) => post.body as EmergencyPlanUpdate);
+    expect(first).toMatchObject({ name: "Radiation", baseUpdatedAt: 10 });
+    expect(second).toMatchObject({ name: "Radiation (kitchen)", baseUpdatedAt: 20 });
+    expect(second!.body.links).toEqual([{ kind: "scenario", id: saved.id }]);
   });
 
   it("offers a plan from the radiation emergency template in the Plans tab, and says personal places stay on this Outpost", async () => {

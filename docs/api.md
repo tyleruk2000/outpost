@@ -1009,7 +1009,7 @@ what the person typed is kept; the effects are worked out in the browser from
 | Route | What it does |
 | --- | --- |
 | `GET` / `POST /api/nuclear/scenarios` | Saved scenarios, newest change first, as `{ scenarios }`. `POST` body: `name`, `notes`, `lat`, `lon`, `effects` (`{ yieldKt, burst, wind }`: `burst` is `{ kind: "surface" }`, `{ kind: "height", metres }` or `{ kind: "optimum", psi: 20 \| 10 \| 5 \| 2 \| 1 }`; `wind` is `{ fromDegrees, kmh }` or `null`). Returns the scenario, `201`. |
-| `GET` / `PATCH` / `DELETE /api/nuclear/scenarios/:id` | One scenario. `PATCH` takes the whole scenario, as `POST` does. |
+| `GET` / `PATCH` / `DELETE /api/nuclear/scenarios/:id` | One scenario. `PATCH` takes the whole scenario, as `POST` does, and `baseUpdatedAt` (`NuclearScenarioUpdate`): if the stored scenario is newer the answer is `409 conflict` with `details.current` (`{ updatedAt, name }`), and nothing is overwritten. Without it the change is made regardless. |
 | `GET` / `POST /api/nuclear/sets` | Sets of scenarios kept together as they were on the map, as `{ sets }`. `POST` body: `name`, `members` (one to six, each a scenario as above with `letter`, `A` to `F`, each once, and `hidden`). Returns the set, `201`. Nothing about a set as a whole is worked out or answered. |
 | `GET` / `PATCH` / `DELETE /api/nuclear/sets/:id` | One set. `PATCH` takes the whole set. |
 
@@ -1211,7 +1211,7 @@ document and nuclear scenario is now, `null` for one deleted since.
 | `GET /api/emergency-plans` | Every plan, in short (`EmergencyPlanSummary`): steps, ticks, when started, when reviewed, and how many linked contacts or places are missing. |
 | `POST /api/emergency-plans` | Make a plan (`EmergencyPlanInput`). Ids within each list must differ. At most 200 plans. |
 | `GET /api/emergency-plans/:id` | One plan. Changes nothing. |
-| `PUT /api/emergency-plans/:id` | Replace what the plan says. Ticks are kept, except for steps no longer in it. |
+| `PUT /api/emergency-plans/:id` | Replace what the plan says (`EmergencyPlanUpdate`: the plan and `baseUpdatedAt`). If the stored plan is newer than `baseUpdatedAt` the answer is `409 conflict` with `details.current` (`{ updatedAt, name }`), and nothing is overwritten; without it the change is made regardless. Ticks are kept, except for steps no longer in it. |
 | `DELETE /api/emergency-plans/:id` | Delete a plan. What it links to is not touched. |
 | `POST /api/emergency-plans/:id/copy` | A copy, named "(copy)", not in use. |
 | `POST /api/emergency-plans/:id/ticks` | Body: `stepId`, `done`. Ticks a step now (keeping the first time it was ticked) or unticks it; starts the plan if it was not started. Does not change `updatedAt`. |

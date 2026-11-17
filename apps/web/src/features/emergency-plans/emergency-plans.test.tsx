@@ -393,6 +393,91 @@ describe("a plan", () => {
     show("/prepare/plans/p1", <PlanPage />, "/prepare/plans/:id");
     expect(await screen.findByText("Time to look this plan over")).toBeInTheDocument();
   });
+
+  describe("changed on another device while open here", () => {
+    const THEIRS = MADE.getTime() + 60_000;
+    /** The plan as another device left it, and a server that refuses the first change made from the older copy. */
+    function changedElsewhere() {
+      let current = answer();
+      let puts = 0;
+      const json = (body: unknown, status = 200) =>
+        new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+      const server = serve({
+        "/api/emergency-plans/p1": () => json(current),
+        "POST /api/emergency-plans/p1/opened": () => json(current),
+        "PUT /api/emergency-plans/p1": () => {
+          puts += 1;
+          if (puts === 1) {
+            current = answer({ name: "Power cut (from the kitchen)", updatedAt: THEIRS });
+            return json(
+              {
+                error: {
+                  code: "conflict",
+                  message:
+                    "This plan was changed somewhere else after you opened it, in another tab or on another device. Your changes were not saved over it; reload to see the newer version.",
+                  details: { current: { updatedAt: THEIRS, name: "Power cut (from the kitchen)" } },
+                },
+              },
+              409,
+            );
+          }
+          const sent = server.posted.at(-1)!.body as EmergencyPlan;
+          current = answer({ name: sent.name, updatedAt: THEIRS + 1000 * puts });
+          return json(current);
+        },
+        ...others,
+      });
+      return server;
+    }
+    /** The plan's own name: the people in it have names too. */
+    const nameBox = () => screen.getAllByRole("textbox", { name: "Name" })[0]!;
+    const puts = (server: Server) => server.posted.filter((post) => post.path === "PUT /api/emergency-plans/p1");
+
+    async function editName() {
+      show("/prepare/plans/p1", <PlanPage />, "/prepare/plans/:id");
+      const name = (await screen.findAllByRole("textbox", { name: "Name" }))[0]!;
+      await userEvent.clear(name);
+      await userEvent.type(name, "Power cut (mine)");
+      expect(await screen.findByText("This plan was changed somewhere else", {}, { timeout: 3000 })).toBeInTheDocument();
+    }
+
+    it("says so instead of saving over it, and keeps what was typed", async () => {
+      const server = changedElsewhere();
+      await editName();
+      expect(puts(server)).toHaveLength(1);
+      expect(puts(server)[0]!.body).toMatchObject({ name: "Power cut (mine)", baseUpdatedAt: MADE.getTime() });
+      expect(screen.getByText(/Your version is still here, unsaved, and nothing has been overwritten/)).toBeInTheDocument();
+      expect(screen.getByText(/Not saved: this plan was changed somewhere else/)).toBeInTheDocument();
+      expect(nameBox()).toHaveValue("Power cut (mine)");
+      // Typing more does not send anything until a side is chosen.
+      await userEvent.type(nameBox(), "!");
+      await new Promise((resolve) => setTimeout(resolve, 900));
+      expect(puts(server)).toHaveLength(1);
+    });
+
+    it("keeps my version by sending it again on top of the newer one", async () => {
+      const server = changedElsewhere();
+      await editName();
+      await userEvent.click(screen.getByRole("button", { name: "Keep my version" }));
+      await waitFor(() => expect(puts(server)).toHaveLength(2));
+      expect(puts(server)[1]!.body).toMatchObject({ name: "Power cut (mine)", baseUpdatedAt: THEIRS });
+      expect(await screen.findByText(/^Saved\./)).toBeInTheDocument();
+      expect(screen.queryByText("This plan was changed somewhere else")).toBeNull();
+      expect(screen.getByRole("heading", { level: 1, name: "Power cut (mine)" })).toBeInTheDocument();
+    });
+
+    it("loads the other version into the plan instead, and later changes build on it", async () => {
+      const server = changedElsewhere();
+      await editName();
+      await userEvent.click(screen.getByRole("button", { name: "Load the other version" }));
+      await waitFor(() => expect(nameBox()).toHaveValue("Power cut (from the kitchen)"));
+      expect(screen.queryByText("This plan was changed somewhere else")).toBeNull();
+      expect(puts(server)).toHaveLength(1);
+      await userEvent.type(screen.getByRole("textbox", { name: "In your words" }), "Storm");
+      await waitFor(() => expect(puts(server)).toHaveLength(2), { timeout: 3000 });
+      expect(puts(server)[1]!.body).toMatchObject({ name: "Power cut (from the kitchen)", kindText: "Storm", baseUpdatedAt: THEIRS });
+    });
+  });
 });
 
 describe("the cards to print", () => {

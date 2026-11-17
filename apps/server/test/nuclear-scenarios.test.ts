@@ -52,6 +52,40 @@ describe("saved scenarios", () => {
     expect(changed.body.createdAt).toBe(saved.createdAt);
   });
 
+  it("refuse a change made from an older copy, so an edit on another device is not lost", async () => {
+    const opened = (await app.api<NuclearScenario>("GET", `/api/nuclear/scenarios/${saved.id}`)).body;
+    const base = opened.updatedAt;
+    const a = await app.api<NuclearScenario>("PATCH", `/api/nuclear/scenarios/${saved.id}`, { ...surface, name: "A", baseUpdatedAt: base });
+    expect(a.status).toBe(200);
+    expect(a.body.updatedAt).toBeGreaterThan(base);
+
+    const b = await app.api("PATCH", `/api/nuclear/scenarios/${saved.id}`, { ...surface, name: "B", baseUpdatedAt: base });
+    expect(b.status).toBe(409);
+    expect(b.body.error.code).toBe("conflict");
+    expect(b.body.error.details).toEqual({ current: { updatedAt: a.body.updatedAt, name: "A" } });
+    expect(b.body.error.message).toMatch(/changed somewhere else/);
+    expect((await app.api("GET", `/api/nuclear/scenarios/${saved.id}`)).body).toEqual(a.body);
+
+    let current = a.body.updatedAt;
+    for (const name of ["B", "C"]) {
+      const next = await app.api<NuclearScenario>("PATCH", `/api/nuclear/scenarios/${saved.id}`, {
+        ...surface,
+        name,
+        baseUpdatedAt: current,
+      });
+      expect(next.status).toBe(200);
+      expect(next.body.updatedAt).toBeGreaterThan(current);
+      current = next.body.updatedAt;
+    }
+    // Without a base the change is made as before.
+    const forced = {
+      ...surface,
+      name: "Airburst over the quarry",
+      effects: { yieldKt: 20, burst: { kind: "optimum", psi: 5 }, wind: null },
+    };
+    expect((await app.api("PATCH", `/api/nuclear/scenarios/${saved.id}`, forced)).status).toBe(200);
+  });
+
   it("are refused with the model's reason when the model cannot answer them", async () => {
     const tooBig = await app.api("POST", "/api/nuclear/scenarios", { ...surface, effects: { ...surface.effects, yieldKt: 50_000 } });
     expect(tooBig.status).toBe(400);

@@ -274,7 +274,11 @@ at once stops being readable; at the limit the screen says so and "Add another
 scenario" is turned off. A new one is put at the middle of the map; a press moves the
 selected one. Each can be selected to edit, hidden, removed from the map, or saved; a
 saved scenario is put back on the map from the Saved tab, beside the others. On a
-phone the list is the switcher, with a row of letters under the map as well.
+phone the list is the switcher, with a row of letters under the map as well. "Save
+changes" sends the time of the saved version the scenario was opened at; if another tab
+or device has saved it since, nothing is overwritten, and the screen offers **Keep my
+version** or **Load the other version**, as Notes does. Sets are saved without this
+check: the last set saved wins.
 
 - **Telling them apart.** The letter on each ground zero and at the start of every ring
   and contour label is the first cue. The selected scenario is drawn at full strength
@@ -550,6 +554,9 @@ anything the household would do differently.
 ## Tests
 
 - `apps/server/test/nuclear-effects.test.ts`: the model against the book (above).
+- `apps/server/test/nuclear-scenarios.test.ts`: saved scenarios kept as typed, refused
+  with the model's reason, a change from an older copy refused with nothing changed,
+  counted and erased.
 - `apps/server/test/nuclear-final.test.ts`: sets saved, reopened, refused past six or
   with a letter twice; no total in what is stored or answered; a scenario linked to a
   plan, named, missing once deleted, steps unchanged; the radiation template's sources
@@ -566,7 +573,8 @@ anything the household would do differently.
   the PDF; stronger levels more opaque; the selected scenario full, the others quiet);
   `nuclear-page.test.tsx` (up to six scenarios and the limit; select, hide, remove;
   people per ring of the selected scenario only, and no total; the layers, records and
-  plans tabs); `geometry.test.ts`, `form.test.ts`; `print-frames.test.ts` (the PDF's
+  plans tabs; a scenario changed elsewhere, kept or loaded; a scenario attached to a
+  plan changed in between); `geometry.test.ts`, `form.test.ts`; `print-frames.test.ts` (the PDF's
   map frames: rings only, rings and pattern, far-apart scenarios, 70° N, across the
   antimeridian); `print-maps.test.ts` (a picture for each scenario, an overview only for
   several, places only when chosen, no reference layer in the style, no region, a device

@@ -40,7 +40,7 @@ import {
   SCENARIO_LETTERS,
   type ScenarioLetter,
 } from "@outpost/shared";
-import { CloudOff, Eye, EyeOff, PanelRightClose, PanelRightOpen, Plus, Trash2, X } from "lucide-react";
+import { CloudOff, Eye, EyeOff, PanelRightClose, PanelRightOpen, Plus, Trash2, TriangleAlert, X } from "lucide-react";
 import { lazy, type ReactNode, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router";
 import { toast } from "sonner";
@@ -55,9 +55,9 @@ import { useReferenceLayers } from "@/features/layers/use-reference-layers";
 import { useMapOverview, useMapSources, useMarkers } from "@/features/maps/data";
 import { hasImagery } from "@/features/maps/imagery/style";
 import type { MapEngine } from "@/features/maps/map/engine";
-import { errorMessage } from "@/lib/api";
+import { api, errorMessage } from "@/lib/api";
 import { cn, formatDateTime, localId, plural } from "@/lib/utils";
-import { useDeleteScenario, useDeleteSet, useSaveScenario, useSaveSet, useScenarios, useSets } from "./data";
+import { scenarioConflictOf, useDeleteScenario, useDeleteSet, useSaveScenario, useSaveSet, useScenarios, useSets } from "./data";
 import type { Written } from "./document";
 import { COMPASS_POINTS, falloutState, fitArea, fromTowards, pointOf } from "./fallout";
 import { type Checked, checkForm, EMPTY_FORM, type FormField, formOf, type ScenarioForm } from "./form";
@@ -94,7 +94,10 @@ export interface Slot {
   form: ScenarioForm;
   /** The saved scenario it holds, or null for one not saved. */
   savedId: string | null;
+  /** When this scenario was last changed here or saved. */
   updatedAt: number;
+  /** The saved version's `updatedAt` this one was opened or last saved at: sent with a change so that a newer one is not overwritten. */
+  baseUpdatedAt: number;
   hidden: boolean;
   /** Saving was tried: a missing name or place is said from then on. */
   triedSave: boolean;
@@ -106,6 +109,7 @@ const newSlot = (letter: ScenarioLetter, form: ScenarioForm = EMPTY_FORM, savedI
   form,
   savedId,
   updatedAt,
+  baseUpdatedAt: updatedAt,
   hidden: false,
   triedSave: false,
 });
@@ -145,6 +149,9 @@ export default function NuclearPage() {
   const [tab, setTab] = useState("scenario");
   const [deleting, setDeleting] = useState<NuclearScenario | null>(null);
   const [deletingSet, setDeletingSet] = useState<NuclearSet | null>(null);
+  /** A save refused because the scenario was saved elsewhere since it was opened: which slot, and the newer version. */
+  const [conflict, setConflict] = useState<{ key: string; updatedAt: number; name: string } | null>(null);
+  const [choosing, setChoosing] = useState(false);
   const [fit, setFit] = useState<Bbox | null>(null);
   const [engine, setEngine] = useState<MapEngine | null>(null);
 
@@ -275,6 +282,7 @@ export default function NuclearPage() {
           form: formOf(scenario),
           savedId: scenario.id,
           updatedAt: scenario.updatedAt,
+          baseUpdatedAt: scenario.updatedAt,
           triedSave: false,
         }));
         setSelectedKey(blank.key);
@@ -317,18 +325,48 @@ export default function NuclearPage() {
     if (answer.ok) fitTo(answer.result, first, 100);
   }
 
-  async function onSave() {
+  /** Saves the selected scenario; a saved one with the version it was opened at, or `base` to keep this version over a newer one. */
+  async function onSave(base = slot.baseUpdatedAt) {
     patch(selectedKey, (each) => ({ ...each, triedSave: true }));
     if (!checked.input) {
       toast.error("The scenario cannot be saved yet. See what the form says.");
       return;
     }
+    const key = selectedKey;
     try {
-      const saved = await save.mutateAsync({ id: slot.savedId, input: checked.input });
-      patch(selectedKey, (each) => ({ ...each, savedId: saved.id, updatedAt: saved.updatedAt }));
+      const saved = await save.mutateAsync({
+        id: slot.savedId,
+        input: slot.savedId ? { ...checked.input, baseUpdatedAt: base } : checked.input,
+      });
+      patch(key, (each) => ({ ...each, savedId: saved.id, updatedAt: saved.updatedAt, baseUpdatedAt: saved.updatedAt }));
+      setConflict(null);
       toast.success(slot.savedId ? "Changes saved." : "Scenario saved.");
     } catch (error) {
+      const newer = scenarioConflictOf(error);
+      if (newer) setConflict({ key, ...newer });
+      else toast.error(errorMessage(error));
+    }
+  }
+
+  /** After a conflict: puts the newer saved version in the form, in place of this one. */
+  async function loadOther() {
+    if (!slot.savedId) return;
+    const key = selectedKey;
+    setChoosing(true);
+    try {
+      const fresh = await api.get<NuclearScenario>(`/api/nuclear/scenarios/${slot.savedId}`);
+      patch(key, (each) => ({
+        ...each,
+        form: formOf(fresh),
+        updatedAt: fresh.updatedAt,
+        baseUpdatedAt: fresh.updatedAt,
+        triedSave: false,
+      }));
+      setConflict(null);
+    } catch (error) {
       toast.error(errorMessage(error));
+    } finally {
+      setChoosing(false);
     }
   }
 
@@ -523,10 +561,31 @@ export default function NuclearPage() {
                 </Notice>
               ) : null}
               <div className="flex flex-wrap gap-2">
-                <Button variant="primary" onClick={onSave} loading={save.isPending}>
+                <Button variant="primary" onClick={() => void onSave()} loading={save.isPending}>
                   {slot.savedId ? "Save changes" : "Save scenario"}
                 </Button>
               </div>
+              {conflict && conflict.key === slot.key ? (
+                <Notice tone="warning" icon={<TriangleAlert />} title="This scenario was changed somewhere else">
+                  <p>
+                    Another tab or device saved a newer version at {formatDateTime(conflict.updatedAt)}. Your version is still here,
+                    unsaved, and nothing has been overwritten. Choose which one to keep.
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      disabled={choosing || save.isPending}
+                      onClick={() => void onSave(conflict.updatedAt)}
+                    >
+                      Keep my version
+                    </Button>
+                    <Button size="sm" loading={choosing} onClick={() => void loadOther()}>
+                      Load the other version
+                    </Button>
+                  </div>
+                </Notice>
+              ) : null}
               {result && checked.at ? (
                 <>
                   <Results result={result} letter={slot.letter} onFit={() => fitTo(result, checked.at!, 1)} />
