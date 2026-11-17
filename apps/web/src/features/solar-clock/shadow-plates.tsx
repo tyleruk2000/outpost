@@ -107,7 +107,13 @@ export function ShadowPlan({ place, date, stick, mode }: { place: Place; date: I
       : `A plan of the ground with ${figures.marks.length} pegs along a curve ${pole === "true north" ? "north" : "south"} of the stick, one every 15 minutes. The pegs crowd together near the shortest shadow, ${metresWords(figures.noon.length)} long, which points ${pole} from the stick.`;
 
   return (
-    <Plate name={`shadow-plan-${figures.kind}`} maxWidth={30} caption={caption} description={description} height={(box) => layout(box).frame.height}>
+    <Plate
+      name={`shadow-plan-${figures.kind}`}
+      maxWidth={30}
+      caption={caption}
+      description={description}
+      height={(box) => layout(box).frame.height}
+    >
       {(box) => draw(layout(box), box)}
     </Plate>
   );

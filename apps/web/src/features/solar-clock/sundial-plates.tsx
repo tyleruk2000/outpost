@@ -202,12 +202,18 @@ export function GnomonSide({ latitude }: { latitude: number }) {
     const reach = Math.min((width - corner[0] - room) / Math.cos(lat * DEG), (groundY - f * 2.2) / Math.max(Math.sin(lat * DEG), 0.05));
     const poleRight = poleAtX(reach) + f * 0.9 + textWidth("celestial pole", f) <= width;
     const poleAt = polar(corner[0], corner[1], reach, rise);
+    // The drawing is as wide as it needs to be, and centred.
+    const used = Math.min(
+      width,
+      Math.max(poleAt[0] + f * 0.9 + textWidth(poleRight ? "celestial pole" : "celestial", f), back[0] + textWidth("true north", f)) + f,
+    );
+    const dx = (width - used) / 2;
     function poleAtX(distance: number) {
       return polar(corner[0], corner[1], distance, rise)[0];
     }
     return (
-      <g>
-        <Ground x1={left} x2={width - f * 0.5} y={groundY} />
+      <g transform={`translate(${dx.toFixed(1)},0)`}>
+        <Ground x1={left} x2={used - f * 0.5} y={groundY} />
         <polygon
           points={[corner, back, tip].map((p) => p.join(",")).join(" ")}
           className="fill-surface-strong stroke-ink"
@@ -241,7 +247,7 @@ export function GnomonSide({ latitude }: { latitude: number }) {
         <Label at={[left + f * 0.2, groundY + f * 1.5]} anchor="start">
           dial, level
         </Label>
-        <Label at={[width - f * 0.5, groundY + f * 1.5]} anchor="end">
+        <Label at={[used - f * 0.5, groundY + f * 1.5]} anchor="end">
           {`true ${pole}`}
         </Label>
       </g>

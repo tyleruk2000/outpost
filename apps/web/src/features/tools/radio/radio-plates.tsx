@@ -54,12 +54,12 @@ export function AntennaPlate({ kind, total, leg }: { kind: AntennaKind; total: n
     const left = f * 1.2;
     const right = box.width - f * 1.2;
     const y = f * 3;
-    const feedX = kind === "dipole" ? (left + right) / 2 : left + f * 1.6;
+    const feedX = kind === "dipole" ? (left + right) / 2 : left + f * 0.7;
     const wireLeft = kind === "dipole" ? left : feedX;
     return (
       <g>
         <line x1={wireLeft} y1={y} x2={right} y2={y} className="stroke-ink" strokeWidth={2} strokeLinecap="round" />
-        <circle cx={wireLeft} cy={y} r={3} className="fill-page stroke-ink" strokeWidth={1.5} />
+        {kind === "dipole" ? <circle cx={wireLeft} cy={y} r={3} className="fill-page stroke-ink" strokeWidth={1.5} /> : null}
         <circle cx={right} cy={y} r={3} className="fill-page stroke-ink" strokeWidth={1.5} />
         {kind === "dipole" ? (
           <>
@@ -83,12 +83,12 @@ export function AntennaPlate({ kind, total, leg }: { kind: AntennaKind; total: n
               className="fill-page stroke-primary"
               strokeWidth={2}
             />
-            <Label at={[left - f * 0.7, y + f * 1.5]} anchor="start">
+            <Label at={[left + f * 1.1, y + f * 1.5]} anchor="start">
               matching transformer
             </Label>
-            <Line from={[left, y + f * 0.55]} to={[left, y + f * 3.6]} stroke="object" />
-            <Label at={[left + f * 0.6, y + f * 3.1]} anchor="start">
-              coax
+            <Line from={[left, y + f * 0.55]} to={[left, y + f * 4]} stroke="object" />
+            <Label at={[left + f * 1.1, y + f * 3.2]} anchor="start">
+              coax to the radio
             </Label>
             <Dimension from={[feedX, y - f * 1.1]} to={[right, y - f * 1.1]} text={metres(total)} font={f} />
           </>
@@ -102,8 +102,8 @@ export function AntennaPlate({ kind, total, leg }: { kind: AntennaKind; total: n
     const height = Math.min(box.rem * 14, box.width * 0.7);
     const x = box.width * 0.45;
     const top = f * 1;
-    const foot = height - f * 3.2;
     const radial = Math.min(box.width * 0.3, f * 8);
+    const foot = height - radial * 0.32 - f * 2.2;
     return (
       <g>
         <line x1={x} y1={top} x2={x} y2={foot - 4} className="stroke-ink" strokeWidth={2} strokeLinecap="round" />
@@ -116,7 +116,7 @@ export function AntennaPlate({ kind, total, leg }: { kind: AntennaKind; total: n
         <Label at={[x - radial, foot + radial * 0.32 + f * 1.1]} anchor="start">
           radials or a ground plane
         </Label>
-        <Label at={[x - f * 0.7, foot - f * 0.2]} anchor="end">
+        <Label at={[x - f * 0.7, foot - f * 1]} anchor="end">
           feed
         </Label>
       </g>
