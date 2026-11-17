@@ -86,6 +86,8 @@ export interface BoardMessage {
   updatedAt: number;
   edited: { at: number; by: string } | null;
   removed: { at: number; by: string } | null;
+  /** What a transport keeps with it (for a radio link, `MeshMeta`: who sent it, and what became of one written here); null for the household's own. */
+  meta: Record<string, unknown> | null;
 }
 
 export interface BoardMessagesResponse {
@@ -156,7 +158,7 @@ export interface BoardMessageResponse {
 
 /** What `board.changed` carries: enough for a toast, and nothing a refetch would not show. */
 export interface BoardEvent {
-  action: "posted" | "edited" | "removed" | "expired" | "cleared";
+  action: "posted" | "edited" | "removed" | "expired" | "cleared" | "delivery";
   channel: string;
   kind?: BoardKind;
   author?: string;

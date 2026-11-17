@@ -7,7 +7,8 @@
  * New messages arrive by the live-events stream (`board.changed` refreshes every "board"
  * query); nothing polls, and a hidden tab fetches nothing until it is shown.
  */
-import type { BoardCheckInInput, BoardMessage } from "@outpost/shared";
+import { BOARD_CHANNEL, type BoardCheckInInput, type BoardMessage, type MeshChannel, meshTransportOf } from "@outpost/shared";
+import { RadioTower } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { toast } from "sonner";
@@ -16,6 +17,8 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog, Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input, Textarea } from "@/components/ui/input";
 import { Segmented, Skeleton } from "@/components/ui/misc";
+import { setBoardChannel, useMesh, useStoredBoardChannel } from "@/features/mesh/data";
+import { CHANNEL_WARNING } from "@/features/mesh/words";
 import { ApiError, errorMessage } from "@/lib/api";
 import { useClockStyle } from "@/lib/clock";
 import { notify } from "@/lib/notify";
@@ -30,7 +33,12 @@ export default function BoardPage() {
   const name = useDeviceName();
   const [renaming, setRenaming] = useState(false);
   const summary = useBoardSummary();
-  const messages = useBoardMessages();
+  // The radio channels carried, beside Home; none when no radio link is set up (or the server has none to say).
+  const mesh = useMesh();
+  const radioChannels = mesh.data?.channels ?? [];
+  const stored = useStoredBoardChannel();
+  const channel = radioChannels.find((entry) => entry.id === stored) ?? null;
+  const messages = useBoardMessages(channel?.id ?? BOARD_CHANNEL);
   const list = allMessages(messages.data);
   const shown = usePageVisible();
   const [editing, setEditing] = useState<BoardMessage | null>(null);
@@ -41,7 +49,8 @@ export default function BoardPage() {
   const navigate = useNavigate();
 
   // What is on screen while the page is in view has been seen on this device (the line on Home counts from it).
-  const newest = list.at(-1)?.createdAt;
+  // Only Home's: the line on Home counts the household's board, not a radio channel.
+  const newest = channel ? undefined : list.at(-1)?.createdAt;
   useEffect(() => {
     if (shown && newest) markSeen(newest);
   }, [shown, newest]);
@@ -71,13 +80,33 @@ export default function BoardPage() {
         </p>
       )}
 
-      <Section title="Check-ins" description="Each person's latest, so you can see at a glance that everyone is all right.">
-        <CheckInStrip summary={summary.data} />
-        {summary.isError ? <ErrorState error={summary.error} onRetry={() => void summary.refetch()} /> : null}
-        {name ? <CheckInControls name={name} /> : <p className="mt-3 text-small text-ink-muted">Choose a name above to check in.</p>}
-      </Section>
+      {radioChannels.length > 0 ? <ChannelSwitch channels={radioChannels} current={channel} /> : null}
 
-      <Section title="The board" description="Newest at the bottom.">
+      {channel ? (
+        <Section
+          title="Check in by radio"
+          description={`Goes out on ${channel.label} as a message, with your name in front. The household's check-ins are under Home.`}
+        >
+          {name ? (
+            <CheckInControls key={channel.id} name={name} channel={channel} />
+          ) : (
+            <p className="text-small text-ink-muted">Choose a name above to check in.</p>
+          )}
+        </Section>
+      ) : (
+        <Section title="Check-ins" description="Each person's latest, so you can see at a glance that everyone is all right.">
+          <CheckInStrip summary={summary.data} />
+          {summary.isError ? <ErrorState error={summary.error} onRetry={() => void summary.refetch()} /> : null}
+          {name ? <CheckInControls name={name} /> : <p className="mt-3 text-small text-ink-muted">Choose a name above to check in.</p>}
+        </Section>
+      )}
+
+      <Section
+        title={channel ? channel.label : "The board"}
+        description={
+          channel ? "Heard by the radio on this channel, and written here for it. Newest at the bottom." : "Newest at the bottom."
+        }
+      >
         {messages.isPending ? (
           <div className="grid gap-3">
             <Skeleton className="h-14" />
@@ -87,9 +116,15 @@ export default function BoardPage() {
         ) : messages.isError ? (
           <ErrorState error={messages.error} onRetry={() => void messages.refetch()} />
         ) : list.length === 0 ? (
-          <EmptyState title="Nothing on the board yet" compact>
-            A message written here, a check-in or a file sent from a phone shows here for everyone in the household.
-          </EmptyState>
+          channel ? (
+            <EmptyState title={`Nothing on ${channel.label} yet`} compact>
+              A message the radio hears on this channel, or one written here for it, shows here.
+            </EmptyState>
+          ) : (
+            <EmptyState title="Nothing on the board yet" compact>
+              A message written here, a check-in or a file sent from a phone shows here for everyone in the household.
+            </EmptyState>
+          )
         ) : (
           <>
             {messages.hasNextPage ? (
@@ -115,12 +150,15 @@ export default function BoardPage() {
 
       {name ? (
         <>
-          <Section title="Write" className="mt-8">
-            <WriteMessage name={name} />
+          <Section title={channel ? "Write by radio" : "Write"} className="mt-8">
+            <WriteMessage key={channel?.id ?? BOARD_CHANNEL} name={name} channel={channel} />
           </Section>
-          <Section title="Send a file">
-            <SendFile name={name} summary={summary.data} />
-          </Section>
+          {/* A file cannot go by radio. */}
+          {channel ? null : (
+            <Section title="Send a file">
+              <SendFile name={name} summary={summary.data} />
+            </Section>
+          )}
         </>
       ) : null}
 
@@ -131,10 +169,17 @@ export default function BoardPage() {
         onOpenChange={(open) => !open && setRemoving(null)}
         title={removing?.kind === "checkin" ? `Remove ${removing.author}'s check-in?` : `Remove ${removing?.author ?? ""}'s message?`}
         description={
-          <>
-            It is removed for everyone{removing?.file && !removing.file.gone ? `, and “${removing.file.name}” with it` : ""}. The board
-            keeps a line in its place saying that {name ?? "you"} removed it, and when.
-          </>
+          removing && meshTransportOf(removing.channel) ? (
+            <>
+              It is removed from the board here only: what went out by radio cannot be called back. The board keeps a line in its place
+              saying that {name ?? "you"} removed it, and when.
+            </>
+          ) : (
+            <>
+              It is removed for everyone{removing?.file && !removing.file.gone ? `, and “${removing.file.name}” with it` : ""}. The board
+              keeps a line in its place saying that {name ?? "you"} removed it, and when.
+            </>
+          )
         }
         confirmLabel="Remove"
         loading={remove.isPending}
@@ -188,6 +233,36 @@ export default function BoardPage() {
         empties the board.
       </p>
     </Page>
+  );
+}
+
+/** Home and each radio channel carried. The choice is kept on this device. */
+function ChannelSwitch({ channels, current }: { channels: MeshChannel[]; current: MeshChannel | null }) {
+  // Two channels of the same name on the two firmwares are told apart by which.
+  const label = (entry: MeshChannel) =>
+    channels.some((other) => other !== entry && other.label === entry.label)
+      ? `${entry.label} (${entry.transport === "meshtastic" ? "Meshtastic" : "MeshCore"})`
+      : entry.label;
+  return (
+    <div className="mb-8 grid gap-2">
+      <Segmented
+        label="Which board to read and write"
+        value={current?.id ?? BOARD_CHANNEL}
+        onChange={setBoardChannel}
+        options={[
+          { value: BOARD_CHANNEL, label: "Home" },
+          ...channels.map((entry) => ({ value: entry.id, label: label(entry), icon: <RadioTower aria-hidden /> })),
+        ]}
+      />
+      {current ? (
+        <>
+          <p className="text-small text-ink-muted">{CHANNEL_WARNING}</p>
+          {current.linkUp ? null : (
+            <p className="text-small text-warning">The radio link is not up. What is written now is kept here and marked as not gone.</p>
+          )}
+        </>
+      ) : null}
+    </div>
   );
 }
 

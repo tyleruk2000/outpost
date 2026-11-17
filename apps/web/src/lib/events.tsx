@@ -67,6 +67,8 @@ const invalidations: Record<string, string[][]> = {
   "board.changed": [["board"], ["manage"]],
   // A page was marked done, or a learner's progress removed, here or on another device.
   "learning.changed": [["learning"], ["manage"]],
+  // The mesh radio link's state changed: a radio connected or went away, or something was heard.
+  "mesh.changed": [["mesh"]],
   // The background count of what is on disk has finished.
   "manage.changed": [["manage"]],
 };

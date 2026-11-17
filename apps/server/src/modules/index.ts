@@ -29,6 +29,7 @@ import { registerLinks } from "./links/index.ts";
 import { registerManage } from "./manage/index.ts";
 import { registerMaps } from "./maps/index.ts";
 import { registerMerge } from "./merge/index.ts";
+import { registerMesh } from "./mesh/index.ts";
 import { registerMorse } from "./morse/index.ts";
 import { registerNetwork } from "./network/index.ts";
 import { registerNotes } from "./notes/index.ts";
@@ -90,4 +91,6 @@ export const modules: ModuleRegister[] = [
   registerBoard,
   // Learning progress in reference archives (the reader), on a line of its own so that other additions merge cleanly.
   registerLearning,
+  // The mesh radio link, after the board it is a transport of, on a line of its own.
+  registerMesh,
 ];

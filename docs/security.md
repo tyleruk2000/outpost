@@ -981,6 +981,48 @@ Messages ([messages.md](messages.md)) is a board for everyone on the home networ
   sent to a model server. The board makes no outbound request; there are no push
   notifications.
 
+### The mesh radio link
+
+The board's radio channels ([mesh-radio.md](mesh-radio.md)), off until set up. Not tried
+with a real radio.
+
+- **Who may set it up.** Turning a way in on or off, choosing a serial device and opening
+  the broker's port are accepted only from the computer Outpost runs on
+  (`isLocalRequest`); from any other device `PUT /api/mesh/*` answers `403`, unless
+  whoever started Outpost set `OUTPOST_ALLOW_REMOTE_ERASE` (in a container, where no
+  request looks local, that is the way to set it up). A password set from another device
+  that way crosses the network as the page does: in the clear over plain http. The set-up is kept in settings rows
+  that are not in the settings schema, so `PATCH /api/settings` cannot reach it. Every
+  device may read the status and send a test message, as it may post on any channel.
+- **The open port.** With "Outpost is the broker", Outpost listens for MQTT (1883 by
+  default) on the same address as its web server: on every interface when it is open to
+  the network, on 127.0.0.1 otherwise. A connection from an address that is not this
+  computer's or a private home-network one (RFC 1918, link-local, IPv6 unique-local) is
+  closed before anything is read. Who can connect: anything on the home network that
+  knows the user name and password. MQTT here is plain TCP, not TLS: the password and
+  every message cross the home network in the clear, as Meshtastic's own MQTT does
+  without TLS. Do not forward the port on the router.
+- **Limits.** 64 KiB a packet, 8 connections, 20 publishes a second (bursts of 50) per
+  connection, 32 subscriptions, 10 seconds to sign in; a malformed packet, a QoS 2
+  publish or a wildcard in a published topic closes the connection. Nothing is retained,
+  and no session or will is kept.
+- **The passwords.** The broker's is kept as a scrypt hash and checked in constant time;
+  the one Outpost signs in to the household's broker with is kept as it is. Both are in
+  `<data>/mesh/secrets.json` (folder 0700, file 0600, like the HTTPS key), not in the
+  database, so not in a backup or on a portable drive; never logged, never in a reply
+  (which says only whether one is set). Erase-everything deletes the file.
+- **A serial device** is chosen from a list the server makes of the names USB radios get
+  in `/dev`, and checked against that list again before it is opened; a path from a
+  browser is never opened. `stty` is run with `execFile`, an absolute path and fixed
+  arguments.
+- **Addresses typed for the household broker or a MeshCore radio** are host names or IP
+  addresses only (no scheme, port or path), set only from the computer itself; Outpost
+  connects to them only while that way in is set up.
+- **What is not protected.** Anything sent on a radio channel can be read by anyone with
+  a radio on that channel: a default public channel by anyone in range. A channel's key is
+  the radio's, not Outpost's. Anything heard is stored as heard; a radio name proves
+  nothing. Radio text is shown as text, never markup, like the board's.
+
 ### Paths
 
 Content is recorded as *(storage location, relative path)*, and storage locations can

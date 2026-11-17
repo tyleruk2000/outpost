@@ -34,7 +34,7 @@ import { AppError, badRequest, conflict, messageOf, notFound } from "../../core/
 import { newId } from "../../core/ids.ts";
 import { boardFiles, boardMessages } from "../../db/schema.ts";
 import { type BoardFileRow, type BoardFileStore, createBoardFileStore, fileDto } from "./files.ts";
-import type { BoardTransport, IncomingMessage, MessageListener } from "./transport.ts";
+import type { BoardTransport, IncomingMessage, MessageListener, OutgoingCheck } from "./transport.ts";
 
 export type BoardMessageRow = typeof boardMessages.$inferSelect;
 
@@ -186,7 +186,17 @@ export function createBoardService(ctx: AppContext): BoardService {
       updatedAt: row.updatedAt,
       edited: row.editedAt !== null ? { at: row.editedAt, by: row.editedBy ?? "" } : null,
       removed: row.removedAt !== null ? { at: row.removedAt, by: row.removedBy ?? "" } : null,
+      meta: row.meta ?? null,
     };
+  }
+
+  /** A transport that carries the channel may refuse what would not go (too long for a radio, a file). */
+  function check(outgoing: OutgoingCheck): void {
+    for (const transport of transports) {
+      if (!transport.carries(outgoing.channel)) continue;
+      const reason = transport.refuse?.(outgoing);
+      if (reason) throw badRequest(reason);
+    }
   }
 
   const findRow = (id: string) => db.select().from(boardMessages).where(eq(boardMessages.id, id)).get();
@@ -370,6 +380,7 @@ export function createBoardService(ctx: AppContext): BoardService {
     post(input) {
       const author = required(cleanName(input.author), "a name", BOARD_LIMITS.name);
       const body = required(cleanBody(input.body), "a message", BOARD_LIMITS.body);
+      check({ channel: input.channel, kind: "message", author, body });
       const row = insert({
         id: newId(),
         channel: input.channel,
@@ -399,6 +410,7 @@ export function createBoardService(ctx: AppContext): BoardService {
       if (input.status === "other" && !body)
         throw badRequest("Write a few words of your own for this check-in, or choose “I’m safe” or “I need help”.");
       const place = input.place ? cleanLine(input.place, BOARD_LIMITS.place) || null : null;
+      check({ channel: input.channel, kind: "checkin", author, body, status: input.status, place });
       const row = insert({
         id: newId(),
         channel: input.channel,
@@ -431,6 +443,12 @@ export function createBoardService(ctx: AppContext): BoardService {
       if (body.length > BOARD_LIMITS.body) {
         input.stream.resume();
         required(body, "a message", BOARD_LIMITS.body);
+      }
+      try {
+        check({ channel: input.channel, kind: "file", author, body });
+      } catch (error) {
+        input.stream.resume();
+        throw error;
       }
       const createdAt = Date.now();
       const file = await files.save({ stream: input.stream, filename: input.filename, createdAt, expiresAt: expiresFrom(createdAt) });
@@ -467,6 +485,9 @@ export function createBoardService(ctx: AppContext): BoardService {
     edit(id, input) {
       const by = required(cleanName(input.by), "a name", BOARD_LIMITS.name);
       const current = getRow(id);
+      // What went out by radio, or came in by it, is out there as it was: it cannot be changed here, only removed.
+      if (current.channel !== BOARD_CHANNEL)
+        throw badRequest("A message on a radio channel cannot be changed: what went by radio has gone as it was. It can be removed here.");
       if (current.removedAt !== null) {
         throw conflict(`This message was removed by ${current.removedBy || "someone"}, so it cannot be changed.`, {
           updatedAt: current.updatedAt,
@@ -601,8 +622,10 @@ export function createBoardService(ctx: AppContext): BoardService {
     setMeta(id, meta) {
       if (Buffer.byteLength(JSON.stringify(meta)) > META_MAX_BYTES)
         throw new Error("What a transport keeps with a message is at most 4 KB.");
-      getRow(id);
+      const row = getRow(id);
       db.update(boardMessages).set({ meta }).where(eq(boardMessages.id, id)).run();
+      // The screens show what became of it (handed to the radio, failed) without a reload.
+      announce({ action: "delivery", channel: row.channel, kind: row.kind }, id);
     },
 
     onMessage(listener) {

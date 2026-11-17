@@ -7,7 +7,7 @@
  * page; on a plain http page the browser has no way to give it, and the screen says so
  * and where to set up HTTPS.
  */
-import type { BoardCheckInInput, BoardSummaryResponse, CheckInStatus } from "@outpost/shared";
+import { type BoardCheckInInput, type BoardSummaryResponse, type CheckInStatus, type MeshChannel, radioText } from "@outpost/shared";
 import { CircleAlert, MapPin, ShieldCheck } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { Link } from "react-router";
@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input, Textarea } from "@/components/ui/input";
 import { Checkbox, Segmented, Skeleton } from "@/components/ui/misc";
+import { bytesWords, overWords, radioCount } from "@/features/mesh/words";
 import { errorMessage } from "@/lib/api";
 import { useClockStyle } from "@/lib/clock";
 import { notify } from "@/lib/notify";
@@ -63,8 +64,8 @@ const said: Record<CheckInStatus, string> = {
 };
 
 /** The place field and the two one-press check-ins, with "More" for words of your own and a position. */
-export function CheckInControls({ name }: { name: string }) {
-  const checkIn = useCheckIn();
+export function CheckInControls({ name, channel = null }: { name: string; channel?: MeshChannel | null }) {
+  const checkIn = useCheckIn(channel?.id);
   const [place, setPlace] = useState("");
   const [more, setMore] = useState(false);
 
@@ -81,25 +82,48 @@ export function CheckInControls({ name }: { name: string }) {
       },
     );
 
+  // On a radio channel each one-press check-in is counted as it would go, name and place included; the longer of the two decides.
+  const counts = (["safe", "help"] as const).map((status) =>
+    radioCount(channel, radioText({ kind: "checkin", author: name, body: "", status, place })),
+  );
+  const over = counts.find((count) => count?.over) ?? null;
+
   const quick = (status: CheckInStatus) => (event?: FormEvent) => {
     event?.preventDefault();
+    if (over) return;
     send({ status, place: place.trim() || null });
   };
 
   return (
     <>
       <form onSubmit={quick("safe")} className="mt-4 grid gap-3">
-        <Field label="Where you are, in a few words" optional hint="For example “gone to Mum's” or “at work”. Goes with the check-in.">
+        <Field
+          label="Where you are, in a few words"
+          optional
+          hint={
+            counts[1]
+              ? `For example “gone to Mum's”. Goes with the check-in, by radio: ${bytesWords(counts[1].bytes, counts[1].limit)} with “I need help” and your name.`
+              : "For example “gone to Mum's” or “at work”. Goes with the check-in."
+          }
+          error={over ? overWords(over.bytes, over.limit) : undefined}
+        >
           {(ids) => <Input {...ids} value={place} maxLength={120} onChange={(event) => setPlace(event.target.value)} autoComplete="off" />}
         </Field>
         <div className="flex flex-wrap gap-2">
-          <Button type="submit" variant="primary" size="lg" loading={checkIn.isPending && checkIn.variables?.status === "safe"}>
+          <Button
+            type="submit"
+            variant="primary"
+            size="lg"
+            disabled={Boolean(over)}
+            loading={checkIn.isPending && checkIn.variables?.status === "safe"}
+          >
             <ShieldCheck aria-hidden /> I'm safe
           </Button>
           <Button
             size="lg"
             variant="secondary"
             className="text-danger"
+            disabled={Boolean(over)}
             onClick={() => quick("help")()}
             loading={checkIn.isPending && checkIn.variables?.status === "help"}
           >
@@ -116,6 +140,8 @@ export function CheckInControls({ name }: { name: string }) {
         onOpenChange={setMore}
         initialPlace={place}
         pending={checkIn.isPending}
+        name={name}
+        channel={channel}
         onSend={(input) => send(input, () => setMore(false))}
       />
     </>
@@ -127,12 +153,16 @@ function CheckInDialog({
   onOpenChange,
   initialPlace,
   pending,
+  name,
+  channel,
   onSend,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initialPlace: string;
   pending: boolean;
+  name: string;
+  channel: MeshChannel | null;
   onSend: (input: Omit<BoardCheckInInput, "author">) => void;
 }) {
   const [status, setStatus] = useState<CheckInStatus>("other");
@@ -142,6 +172,7 @@ function CheckInDialog({
   const [finding, setFinding] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const secure = positionAvailable();
+  const count = radioCount(channel, radioText({ kind: "checkin", author: name, body: words, status, place }));
 
   const reset = (next: boolean) => {
     if (next) {
@@ -158,12 +189,13 @@ function CheckInDialog({
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setProblem(null);
+    if (count?.over) return;
     if (status === "other" && !words.trim()) {
       setProblem("Write a few words, or choose Safe or Need help.");
       return;
     }
     let position = null;
-    if (withPosition && secure) {
+    if (withPosition && secure && !channel) {
       setFinding(true);
       try {
         position = await currentPosition();
@@ -179,7 +211,14 @@ function CheckInDialog({
 
   return (
     <Dialog open={open} onOpenChange={reset}>
-      <DialogContent title="Check in" description="Goes on the board for everyone in the household, and in the strip at the top.">
+      <DialogContent
+        title="Check in"
+        description={
+          channel
+            ? `Goes out by radio on ${channel.label}, with your name in front, for anyone in range.`
+            : "Goes on the board for everyone in the household, and in the strip at the top."
+        }
+      >
         <form onSubmit={(event) => void submit(event)}>
           <DialogBody className="grid gap-4">
             <Segmented
@@ -192,7 +231,12 @@ function CheckInDialog({
                 { value: "other", label: "Just my words" },
               ]}
             />
-            <Field label="Your words" optional={status !== "other"}>
+            <Field
+              label="Your words"
+              optional={status !== "other"}
+              hint={count ? `${bytesWords(count.bytes, count.limit)}, your name, how you are and the place included.` : undefined}
+              error={count?.over ? overWords(count.bytes, count.limit) : undefined}
+            >
               {(ids) => <Textarea {...ids} value={words} maxLength={2000} rows={3} onChange={(event) => setWords(event.target.value)} />}
             </Field>
             <Field label="Where you are, in a few words" optional>
@@ -200,7 +244,9 @@ function CheckInDialog({
                 <Input {...ids} value={place} maxLength={120} onChange={(event) => setPlace(event.target.value)} autoComplete="off" />
               )}
             </Field>
-            {secure ? (
+            {channel ? (
+              <p className="text-small text-ink-muted">A position does not go by radio.</p>
+            ) : secure ? (
               <div className="flex items-start gap-3 text-small text-ink">
                 <span className="grid size-11 shrink-0 place-content-center md:size-6">
                   <Checkbox id="board-position" checked={withPosition} onCheckedChange={(next) => setWithPosition(next === true)} />
@@ -228,7 +274,7 @@ function CheckInDialog({
             <Button variant="secondary" onClick={() => reset(false)}>
               Cancel
             </Button>
-            <Button type="submit" variant="primary" loading={pending || finding}>
+            <Button type="submit" variant="primary" disabled={Boolean(count?.over)} loading={pending || finding}>
               {finding ? "Finding the position" : "Check in"}
             </Button>
           </DialogFooter>

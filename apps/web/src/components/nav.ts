@@ -149,7 +149,7 @@ export const upkeepNav: NavItem[] = [
     label: "Settings",
     icon: Settings,
     key: ",",
-    keywords: "preferences theme dark light backup https passphrase",
+    keywords: "preferences theme dark light backup https passphrase mesh radio link meshtastic meshcore lora mqtt",
     // How to set up search by meaning, answers and chat (SETUP_GUIDE_PATH): its settings link to it part by part.
     children: [{ to: "/help/search-and-answers", label: "Set-up guide", icon: LifeBuoy, keywords: "help models ollama" }],
   },
