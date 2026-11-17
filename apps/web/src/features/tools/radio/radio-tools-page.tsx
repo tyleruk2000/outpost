@@ -35,6 +35,7 @@ import {
   sMeterReading,
   wattsToDbm,
 } from "./formulas";
+import { AntennaPlate, HorizonPlate } from "./radio-plates";
 import { RADIO_SOURCES as S } from "./sources";
 
 const CALCULATORS = [
@@ -174,6 +175,7 @@ function AntennaCalculator() {
           </>
         ) : null}
       </Result>
+      {result ? <AntennaPlate kind={kind} total={result.total} leg={result.leg} /> : null}
       <HowWorkedOut
         formula={
           <>
@@ -330,6 +332,14 @@ function HorizonCalculator() {
           </p>
         ) : null}
       </Result>
+      {values && total !== null ? (
+        <HorizonPlate
+          heightA={values[0]}
+          heightB={values[1]}
+          horizonA={radioHorizonMeters(values[0])}
+          horizonB={radioHorizonMeters(values[1])}
+        />
+      ) : null}
       <HowWorkedOut
         formula={
           <>

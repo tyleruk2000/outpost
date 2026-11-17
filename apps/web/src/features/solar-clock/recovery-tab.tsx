@@ -22,6 +22,7 @@ import {
   useChoice,
   useNumber,
 } from "../tools/kit";
+import { AnswerOnDay } from "./answer-plate";
 import { type ChosenPlace, NoPlaceYet } from "./place";
 import {
   clockError,
@@ -36,6 +37,7 @@ import {
   timeFromShadowBearing,
   timeFromShadowLength,
 } from "./recovery";
+import { BearingPlan, ShadowPlan, StickSide } from "./shadow-plates";
 import { SOLAR_SOURCES as S } from "./sources";
 import { TimeResult } from "./time-result";
 import { giveOrTake, reading, type ZoneChoice } from "./zone";
@@ -328,6 +330,14 @@ export function RecoveryTab({ place, zone }: { place: ChosenPlace | null; zone: 
               ]}
             </Steps>
           )}
+          {place && date && stick.value !== null && (noonWay === "shortest" || radius.value !== null) ? (
+            <ShadowPlan
+              place={place}
+              date={date}
+              stick={stick.value}
+              mode={noonWay === "equal" ? { kind: "equal", radius: radius.value! } : { kind: "shortest" }}
+            />
+          ) : null}
           <Inputs>
             <NumberField input={stick} />
             {noonWay === "equal" ? <NumberField input={radius} /> : null}
@@ -347,6 +357,9 @@ export function RecoveryTab({ place, zone }: { place: ChosenPlace | null; zone: 
               date={date}
               keepTitle={`Solar noon on ${date} at ${place.name}`}
             />
+          ) : null}
+          {place && date && outcomes?.noon?.ok ? (
+            <AnswerOnDay place={place} date={date} estimate={outcomes.noon.estimate} kind="noon" zone={zone} style={style} />
           ) : null}
           {noonWay === "equal" && place && date && outcomes?.noon?.ok ? (
             <div className="mt-4">
@@ -418,6 +431,7 @@ export function RecoveryTab({ place, zone }: { place: ChosenPlace | null; zone: 
               "Say whether it is morning or afternoon: the same shadow comes twice a day.",
             ]}
           </Steps>
+          {stick.value !== null && shadow.value !== null ? <StickSide stick={stick.value} shadow={shadow.value} /> : null}
           <Inputs>
             <NumberField input={stick} />
             <NumberField input={shadow} />
@@ -433,6 +447,17 @@ export function RecoveryTab({ place, zone }: { place: ChosenPlace | null; zone: 
               style={style}
               date={date}
               keepTitle={`The time from a shadow on ${date} at ${place.name}`}
+            />
+          ) : null}
+          {place && date && outcomes?.length?.ok && stick.value !== null && shadow.value !== null ? (
+            <AnswerOnDay
+              place={place}
+              date={date}
+              estimate={outcomes.length.estimate}
+              kind="height"
+              measured={(Math.atan(stick.value / shadow.value) * 180) / Math.PI}
+              zone={zone}
+              style={style}
             />
           ) : null}
           <HowWorkedOut
@@ -464,6 +489,9 @@ export function RecoveryTab({ place, zone }: { place: ChosenPlace | null; zone: 
               "Type the magnetic declination for where you are, from a recent map's margin. Without it the answer is out by an unknown amount.",
             ]}
           </Steps>
+          {bearing.value !== null && declination.error === null ? (
+            <BearingPlan bearing={bearing.value} declination={declination.value} />
+          ) : null}
           <Inputs>
             <NumberField input={bearing} />
             <NumberField input={declination} />
@@ -478,6 +506,17 @@ export function RecoveryTab({ place, zone }: { place: ChosenPlace | null; zone: 
               style={style}
               date={date}
               keepTitle={`The time from a shadow's bearing on ${date} at ${place.name}`}
+            />
+          ) : null}
+          {place && date && outcomes?.bearing?.ok && bearing.value !== null ? (
+            <AnswerOnDay
+              place={place}
+              date={date}
+              estimate={outcomes.bearing.estimate}
+              kind="bearing"
+              measured={(((bearing.value + 180 + (declination.value ?? 0)) % 360) + 360) % 360}
+              zone={zone}
+              style={style}
             />
           ) : null}
           <HowWorkedOut

@@ -16,10 +16,11 @@ import { dateIn, deviceZone } from "@/features/maps/lib/sun-text";
 import { useClockStyle } from "@/lib/clock";
 import { Calculator, ChoiceField, Formula, HowWorkedOut, Inputs, useChoice } from "../tools/kit";
 import { CLOCK_POSITIONS, type PointerStar, timeFromPointer } from "./nocturnal";
+import { NorthSkyPlate } from "./nocturnal-plate";
 import { type ChosenPlace, NoPlaceYet } from "./place";
 import { SOLAR_SOURCES as S } from "./sources";
 import { nocturnalPdf, nocturnalTitle } from "./templates";
-import { TimeResult } from "./time-result";
+import { TimeResult, timeWords } from "./time-result";
 import { standardOffset, type ZoneChoice } from "./zone";
 
 const STAR_CHOICES = [
@@ -84,6 +85,15 @@ export function NocturnalTab({ place, zone }: { place: ChosenPlace | null; zone:
           </li>
           <li>Read the time where the arm crosses the hour disc.</li>
         </ol>
+        {!south && date && outcome?.ok ? (
+          <NorthSkyPlate
+            place={place}
+            at={outcome.estimate.at}
+            clockWords={(CLOCK_POSITIONS.find((each) => each.value === position)?.label ?? "").replace(/ \(.*\)$/, "").toLowerCase()}
+            timeWords={timeWords(outcome, zone, style, date).figure}
+            dateWords={date}
+          />
+        ) : null}
         <p className="mt-3 max-w-[62ch] text-small text-ink-muted">
           After Royal Museums Greenwich, "What is a nocturnal?", which gives navigators' wooden nocturnals as good to within 15 minutes and
           the stars as most useful between about 40° and 60° north.

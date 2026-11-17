@@ -2,15 +2,18 @@
  * The sun's height through one day at a place, on the chosen clock, with the horizon
  * marked and where the sun is now: one line, one hue, a readout that answers the pointer
  * and the arrow keys, and the same figures as a table for a screen reader. Drawn by hand
- * as SVG like every chart in Outpost (see features/power/soc-chart.tsx).
+ * as SVG like every chart in Outpost (see features/power/soc-chart.tsx), in the diagrams'
+ * language (features/diagrams/plate.tsx): the sun's path in ink, the horizon as ground,
+ * the sun now as its sign in the accent, labels at the small text size.
  */
 import { type KeyboardEvent, type PointerEvent, useEffect, useId, useRef, useState } from "react";
+import { Ground, SunSign } from "@/features/diagrams/plate";
 import { formatBearing } from "@/features/maps/lib/geo";
 import { sunAt } from "@/features/maps/lib/sun";
 import type { ClockStyle } from "@/lib/clock";
 import { clockAt, reading, type ZoneChoice } from "./zone";
 
-const AXIS_TEXT = "tabular fill-ink-muted text-[11px]";
+const AXIS_TEXT = "tabular fill-ink-muted text-small";
 const MINUTE = 60_000;
 const STEP = 10;
 
@@ -54,7 +57,7 @@ export function SunPathChart({
   current,
   zone,
   style,
-  height = 200,
+  height = 220,
 }: {
   points: PathPoint[];
   now: number;
@@ -67,10 +70,10 @@ export function SunPathChart({
   const [ref, width] = useWidth();
   const [at, setAt] = useState<number | null>(null);
   const tableId = useId();
-  const left = 40;
+  const left = 46;
   const right = 12;
-  const top = 10;
-  const bottom = 26;
+  const top = 12;
+  const bottom = 30;
   const highest = Math.max(10, ...points.map((point) => point.altitude));
   const lowest = Math.min(-10, ...points.map((point) => point.altitude));
   const ceiling = Math.ceil(highest / 10) * 10;
@@ -121,23 +124,18 @@ export function SunPathChart({
         >
           {ticks.map((tick) => (
             <g key={tick}>
-              <line
-                x1={left}
-                x2={width - right}
-                y1={y(tick)}
-                y2={y(tick)}
-                style={{ stroke: tick === 0 ? "var(--chart-axis)" : "var(--chart-grid)" }}
-              />
+              {tick === 0 ? null : <line x1={left} x2={width - right} y1={y(tick)} y2={y(tick)} style={{ stroke: "var(--chart-grid)" }} />}
               <text x={left - 6} y={y(tick) + 4} textAnchor="end" className={AXIS_TEXT}>
                 {tick}°
               </text>
             </g>
           ))}
+          <Ground x1={left} x2={width - right} y={y(0)} />
           <text
             x={width - right}
-            y={y(0) - 5}
+            y={y(0) - 7}
             textAnchor="end"
-            className="tabular fill-ink-muted stroke-page text-[11px] [paint-order:stroke] [stroke-width:3px]"
+            className="fill-ink-muted stroke-page text-small [paint-order:stroke] [stroke-linejoin:round] [stroke-width:4px]"
           >
             Horizon
           </text>
@@ -148,7 +146,7 @@ export function SunPathChart({
               <text
                 key={hour}
                 x={x(atHour)}
-                y={height - 8}
+                y={height - 9}
                 textAnchor={hour === 0 ? "start" : hour === 24 ? "end" : "middle"}
                 className={AXIS_TEXT}
               >
@@ -156,24 +154,17 @@ export function SunPathChart({
               </text>
             );
           })}
-          <path d={path} fill="none" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" style={{ stroke: "var(--chart-1)" }} />
+          <path d={path} fill="none" strokeWidth={1.5} strokeLinejoin="round" strokeLinecap="round" className="stroke-ink" />
           <line
             x1={x(at === null ? current.at : point.at)}
             x2={x(at === null ? current.at : point.at)}
             y1={top}
             y2={height - bottom}
-            className="stroke-ink"
+            className={at === null ? "stroke-primary" : "stroke-ink"}
             strokeWidth={1}
-            opacity={at === null ? 0.35 : 1}
+            strokeDasharray={at === null ? "5 3" : undefined}
           />
-          <circle
-            cx={x(current.at)}
-            cy={y(current.altitude)}
-            r={6}
-            strokeWidth={2}
-            className="stroke-page"
-            style={{ fill: "var(--chart-1)" }}
-          />
+          <SunSign at={[x(current.at), y(current.altitude)]} r={7} accent />
           {at !== null ? <circle cx={x(point.at)} cy={y(point.altitude)} r={4} strokeWidth={2} className="stroke-page fill-ink" /> : null}
         </svg>
         <p aria-live="polite" className="tabular min-h-[1.3125rem] text-small text-ink">

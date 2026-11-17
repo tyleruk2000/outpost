@@ -16,6 +16,7 @@ import { Calculator, Formula, HowWorkedOut, Result, ToolScreen } from "../tools/
 import { BearingConverter } from "./bearing-converter";
 import { LiveCompass } from "./live-compass";
 import { NorthsAnswer } from "./norths-answer";
+import { NorthsRose } from "./norths-plates";
 import { COMPASS_SOURCES as S } from "./sources";
 
 const CALCULATORS = [
@@ -72,7 +73,10 @@ export default function CompassPage() {
         intro="True north is along the meridian, magnetic north is where a compass needle points, and grid north is up the lines of an Ordnance Survey map."
       >
         {norths ? (
-          <NorthsAnswer norths={norths} at={now} placeName={origin.name} />
+          <>
+            <NorthsAnswer norths={norths} at={now} placeName={origin.name} />
+            <NorthsRose norths={norths} />
+          </>
         ) : (
           <Result
             label="North here"
