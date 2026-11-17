@@ -148,10 +148,13 @@ export function AppShell({ notesTree, onNewPage }: { notesTree?: ReactNode; onNe
     return () => window.removeEventListener("keydown", onKey);
   }, [navigate, toggleSidebar]);
 
-  // A new screen starts at its top.
+  // A new screen starts at its top. At desktop width the content area scrolls; on a phone
+  // the window does, and a screen opened from a scrolled list used to open part-way down.
   // biome-ignore lint/correctness/useExhaustiveDependencies: runs on every path change by design
   useEffect(() => {
     mainRef.current?.scrollTo?.({ top: 0 });
+    const page = document.scrollingElement;
+    if (page) page.scrollTop = 0;
   }, [location.pathname]);
 
   return (

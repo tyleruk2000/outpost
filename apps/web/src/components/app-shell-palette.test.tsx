@@ -93,6 +93,21 @@ describe("quick search whose part cannot be fetched", () => {
   });
 });
 
+describe("going to another screen", () => {
+  it("starts the new screen at its top, on a phone too, where it is the window that scrolls", async () => {
+    palette.mode = "never";
+    show();
+    // The test's document has no scrolling element of its own: give it one, as a browser has.
+    const page = { scrollTop: 350 };
+    Object.defineProperty(document, "scrollingElement", { configurable: true, value: page });
+    await press({ key: "g" });
+    await press({ key: "m" });
+    expect(screen.getByTestId("where")).toHaveTextContent("/maps");
+    expect(page.scrollTop).toBe(0);
+    Object.defineProperty(document, "scrollingElement", { configurable: true, value: undefined });
+  });
+});
+
 describe("quick search that is still arriving", () => {
   it("does not take the letters typed for it as shortcuts", async () => {
     palette.mode = "never";
