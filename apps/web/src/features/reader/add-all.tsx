@@ -27,7 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/misc";
 import { api, errorMessage } from "@/lib/api";
-import { useServerConnection } from "@/lib/events";
+import { useServerConnection, useServerEvent } from "@/lib/events";
 import { cn, formatNumber, plural } from "@/lib/utils";
 
 /** How long the account of an "add all" that went well stays on the screen without being asked for. */
@@ -83,6 +83,14 @@ export function useAddAll(collectionId: string, asked: ArchiveAddResult["scope"]
     enabled,
   });
   const job = status.data ?? null;
+  // A job's progress events refresh only the shared list of active jobs, so this one's are written in here.
+  useServerEvent("job.updated", ({ id, data }) => {
+    const moved = data as JobDto | undefined;
+    if (!id || !moved?.state) return;
+    client.setQueryData<ArchiveAddStatus>(["jobs", ARCHIVE_ADD_JOB, collectionId], (current) =>
+      current?.job?.id === id ? { ...current, job: moved } : current,
+    );
+  });
   const [dismissed, setDismissed] = useState(() => readDismissed(collectionId));
 
   // Each file the job gets through changes what the lists around it should say.

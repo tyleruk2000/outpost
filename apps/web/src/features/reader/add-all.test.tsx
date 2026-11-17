@@ -1,6 +1,8 @@
 import type { ArchiveAddPlan, ArchiveAddResult, ArchiveDocument, ArchiveDocumentsResponse, JobDto, PageFile } from "@outpost/shared";
-import { cleanup, screen, waitFor, within } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { EventsProvider } from "@/lib/events";
 import { fakeServer, installBrowserStubs, renderScreen } from "../downloads/test-support";
@@ -325,6 +327,60 @@ describe("adding all of them", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("moves its count on with each job event, when the job is in the active list that the events patch", async () => {
+    const sources: Array<{ emit(type: string, data: unknown): void }> = [];
+    vi.stubGlobal(
+      "EventSource",
+      class {
+        onopen: (() => void) | null = null;
+        onerror: (() => void) | null = null;
+        private readonly handlers = new Map<string, (event: MessageEvent<string>) => void>();
+        constructor() {
+          sources.push(this);
+        }
+        addEventListener(type: string, handler: (event: MessageEvent<string>) => void) {
+          this.handlers.set(type, handler);
+        }
+        removeEventListener() {}
+        close() {}
+        emit(type: string, data: unknown) {
+          this.handlers.get(type)?.(new MessageEvent(type, { data: JSON.stringify(data) }));
+        }
+      },
+    );
+    fakeServer({ [`GET ${BASE}/documents`]: listOf(three), [`GET ${BASE}/files/add-all`]: { job: job() } });
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    // The sidebar keeps the active jobs listed, so a progress event patches that list rather than fetching.
+    client.setQueryData(["jobs", "active"], { jobs: [job()] });
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter>
+          <EventsProvider enabled>
+            <DocumentList
+              collectionId="c1"
+              contentBase="/kiwix/open/content/field-library/"
+              description={null}
+              query=""
+              onOpen={vi.fn()}
+              onShowOwnPage={vi.fn()}
+              onClearQuery={vi.fn()}
+            />
+          </EventsProvider>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    const status = await screen.findByRole("region", { name: "Adding to your library" });
+    expect(status).toHaveTextContent("1 of 3");
+    act(() =>
+      sources[0]!.emit("job.updated", {
+        id: "j1",
+        data: job({ progress: { current: 2, total: 3, message: "Adding “Storing grain for a year”" } }),
+      }),
+    );
+    await waitFor(() => expect(status).toHaveTextContent("2 of 3"));
+    expect(status).toHaveTextContent("Adding “Storing grain for a year”");
   });
 
   it("shows each document's place while it runs: in the library, being added, or waiting its turn", async () => {
