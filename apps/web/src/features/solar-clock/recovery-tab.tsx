@@ -22,6 +22,8 @@ import {
   useChoice,
   useNumber,
 } from "../tools/kit";
+import { AnswerOnDay } from "./answer-plate";
+import { ModelDeclinationNote, modelDeclination, useModelDeclination } from "./model-declination";
 import { type ChosenPlace, NoPlaceYet } from "./place";
 import {
   clockError,
@@ -36,6 +38,7 @@ import {
   timeFromShadowBearing,
   timeFromShadowLength,
 } from "./recovery";
+import { BearingPlan, ShadowPlan, StickSide } from "./shadow-plates";
 import { SOLAR_SOURCES as S } from "./sources";
 import { TimeResult } from "./time-result";
 import { giveOrTake, reading, type ZoneChoice } from "./zone";
@@ -101,7 +104,7 @@ const declinationSpec: NumberSpec = {
   min: -60,
   max: 60,
   optional: true,
-  hint: "From a recent map's margin: 1.5 for 1.5° east, −2 for 2° west. Leave empty if you do not know it.",
+  hint: "1.5 for 1.5° east, −2 for 2° west. Empty if you do not know it: the answer is then out by an unknown amount.",
 };
 const compassSpec: NumberSpec = {
   id: "solar-clock.compass",
@@ -172,6 +175,9 @@ export function RecoveryTab({ place, zone }: { place: ChosenPlace | null; zone: 
   const [half, setHalf] = useChoice<"morning" | "afternoon">("solar-clock.half", HALVES, "morning");
   const [event, setEvent] = useChoice<"rise" | "set">("solar-clock.event", EVENTS, "rise");
   const [firstReading, setFirst] = useState("");
+  // The World Magnetic Model's declination for the place and the date typed, offered in the field.
+  const model = useMemo(() => modelDeclination(place, date), [place, date]);
+  useModelDeclination(declination, model);
   const [secondReading, setSecond] = useState("");
 
   const compute = useMemo(() => {
@@ -328,6 +334,14 @@ export function RecoveryTab({ place, zone }: { place: ChosenPlace | null; zone: 
               ]}
             </Steps>
           )}
+          {place && date && stick.value !== null && (noonWay === "shortest" || radius.value !== null) ? (
+            <ShadowPlan
+              place={place}
+              date={date}
+              stick={stick.value}
+              mode={noonWay === "equal" ? { kind: "equal", radius: radius.value! } : { kind: "shortest" }}
+            />
+          ) : null}
           <Inputs>
             <NumberField input={stick} />
             {noonWay === "equal" ? <NumberField input={radius} /> : null}
@@ -347,6 +361,9 @@ export function RecoveryTab({ place, zone }: { place: ChosenPlace | null; zone: 
               date={date}
               keepTitle={`Solar noon on ${date} at ${place.name}`}
             />
+          ) : null}
+          {place && date && outcomes?.noon?.ok ? (
+            <AnswerOnDay place={place} date={date} estimate={outcomes.noon.estimate} kind="noon" zone={zone} style={style} />
           ) : null}
           {noonWay === "equal" && place && date && outcomes?.noon?.ok ? (
             <div className="mt-4">
@@ -418,6 +435,7 @@ export function RecoveryTab({ place, zone }: { place: ChosenPlace | null; zone: 
               "Say whether it is morning or afternoon: the same shadow comes twice a day.",
             ]}
           </Steps>
+          {stick.value !== null && shadow.value !== null ? <StickSide stick={stick.value} shadow={shadow.value} /> : null}
           <Inputs>
             <NumberField input={stick} />
             <NumberField input={shadow} />
@@ -433,6 +451,17 @@ export function RecoveryTab({ place, zone }: { place: ChosenPlace | null; zone: 
               style={style}
               date={date}
               keepTitle={`The time from a shadow on ${date} at ${place.name}`}
+            />
+          ) : null}
+          {place && date && outcomes?.length?.ok && stick.value !== null && shadow.value !== null ? (
+            <AnswerOnDay
+              place={place}
+              date={date}
+              estimate={outcomes.length.estimate}
+              kind="height"
+              measured={(Math.atan(stick.value / shadow.value) * 180) / Math.PI}
+              zone={zone}
+              style={style}
             />
           ) : null}
           <HowWorkedOut
@@ -461,14 +490,18 @@ export function RecoveryTab({ place, zone }: { place: ChosenPlace | null; zone: 
             {[
               "Stand the stick upright on level ground.",
               "Hold the compass level over the line of the shadow, away from metal, and read the bearing from the foot of the stick to the tip.",
-              "Type the magnetic declination for where you are, from a recent map's margin. Without it the answer is out by an unknown amount.",
+              "The magnetic declination for the place and date is filled in from the World Magnetic Model. A recent map's margin is as good; type over it to use your own.",
             ]}
           </Steps>
+          {bearing.value !== null && declination.error === null ? (
+            <BearingPlan bearing={bearing.value} declination={declination.value} />
+          ) : null}
           <Inputs>
             <NumberField input={bearing} />
             <NumberField input={declination} />
             <NumberField input={compass} />
           </Inputs>
+          <ModelDeclinationNote input={declination} model={model} />
           {place && date ? (
             <TimeResult
               outcome={outcomes?.bearing ?? null}
@@ -478,6 +511,17 @@ export function RecoveryTab({ place, zone }: { place: ChosenPlace | null; zone: 
               style={style}
               date={date}
               keepTitle={`The time from a shadow's bearing on ${date} at ${place.name}`}
+            />
+          ) : null}
+          {place && date && outcomes?.bearing?.ok && bearing.value !== null ? (
+            <AnswerOnDay
+              place={place}
+              date={date}
+              estimate={outcomes.bearing.estimate}
+              kind="bearing"
+              measured={(((bearing.value + 180 + (declination.value ?? 0)) % 360) + 360) % 360}
+              zone={zone}
+              style={style}
             />
           ) : null}
           <HowWorkedOut
@@ -491,7 +535,7 @@ export function RecoveryTab({ place, zone }: { place: ChosenPlace | null; zone: 
               </>
             }
             range="Anywhere the sun is up. Weak near sunrise and sunset at high latitudes, where the sun's bearing changes slowly."
-            limits="Outpost has no model of the Earth's magnetic field, so it cannot give the declination. Iron, steel and cars nearby turn a compass."
+            limits="The declination offered is the World Magnetic Model's (as Tools → Compass gives it), the Earth's main field only: magnetic rocks, iron, steel and cars nearby turn a compass further."
             sources={[S.noaa, S.bowditch]}
           />
         </Calculator>

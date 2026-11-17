@@ -339,7 +339,7 @@ export function timeFromShadowBearing(
   const warnings: string[] = [];
   if (declination === null)
     warnings.push(
-      `No magnetic declination was given, so the answer is off by an unknown amount: here and now each degree of declination moves it by about ${minutesText(perDegree)}. A recent map's margin gives the declination; Outpost has no model of the Earth's magnetic field to give it.`,
+      `No magnetic declination was given, so the answer is off by an unknown amount: here and now each degree of declination moves it by about ${minutesText(perDegree)}. The World Magnetic Model's figure for the place and date is offered in the field, as is a recent map's margin.`,
     );
   if (sunAt(at, place.lat, place.lon).apparentAltitude > 70)
     warnings.push("The sun is very high then, so the shadow is short and its bearing hard to read: give the compass error generously.");

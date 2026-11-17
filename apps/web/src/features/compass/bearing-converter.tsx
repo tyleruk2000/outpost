@@ -13,6 +13,7 @@ import {
   useNumber,
 } from "../tools/kit";
 import { threeFigures } from "./live-compass";
+import { MapToCompass } from "./norths-plates";
 import { COMPASS_SOURCES as S } from "./sources";
 
 const bearingSpec: NumberSpec = {
@@ -70,6 +71,18 @@ export function BearingConverter({ norths }: { norths: Norths | null }) {
       >
         To the whole degree, as a hand compass is set.
       </Result>
+      {norths && bearing.value !== null ? (
+        <MapToCompass
+          norths={norths}
+          mapBearing={
+            from === "magnetic"
+              ? (convertBearing(bearing.value, "magnetic", onGrid ? "grid" : "true", offsets!) ?? bearing.value)
+              : from === "true" && onGrid
+                ? (convertBearing(bearing.value, "true", "grid", offsets!) ?? bearing.value)
+                : bearing.value
+          }
+        />
+      ) : null}
       <HowWorkedOut
         formula={
           <>

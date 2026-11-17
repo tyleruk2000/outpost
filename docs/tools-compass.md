@@ -27,9 +27,14 @@ server.
 
   Outside Great Britain there is no grid: the rule is for a map drawn to true north, from
   the declination alone. **Copy** and **Save as a note** keep the answer.
+  Under it, the three norths drawn as a map's margin draws them; the angles between them
+  are drawn a stated whole number of times their size (10 in most of Britain) so that
+  they can be seen, and the figures written on the drawing are the real ones.
 - **Live compass** (see below).
 - **Convert a bearing**: a bearing from one north, from each of the others, to the whole
-  degree.
+  degree, with a drawing of map to compass: the way off the map from the map's north, and
+  the same way from magnetic north as the compass reads it (`norths-plates.tsx`, drawn
+  from the same `northsAt` and `convertBearing` as the words).
 
 Some figures it gives on 17 November 2026 (declination, convergence and grid magnetic
 angle, degrees east; then the rule from map to compass):

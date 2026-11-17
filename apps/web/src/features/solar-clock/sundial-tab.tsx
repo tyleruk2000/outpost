@@ -9,17 +9,27 @@ import { useMemo } from "react";
 import { Notice } from "@/components/page";
 import { madePdf } from "@/features/library/made/made-pdf";
 import { PdfActions } from "@/features/library/made/pdf-actions";
+import { dateIn, deviceZone } from "@/features/maps/lib/sun-text";
+import { useClockStyle } from "@/lib/clock";
 import { Calculator, Formula, HowWorkedOut } from "../tools/kit";
 import { type ChosenPlace, NoPlaceYet } from "./place";
+import { ShadowPlan } from "./shadow-plates";
 import { SOLAR_SOURCES as S } from "./sources";
 import { dialFit, hourLines, signedMinutes, sundialToClock, tableDates } from "./sundial";
+import { DialPlate, GnomonSide } from "./sundial-plates";
 import { canDrawSundial, latitudeWords, longitudeWords, sundialPdf, sundialTitle } from "./templates";
-import { formatOffset, standardOffset, type ZoneChoice } from "./zone";
+import { formatOffset, offsetAt, standardOffset, type ZoneChoice } from "./zone";
 
 const twelve = (hour: number) => `${((hour + 11) % 12) + 1} ${hour < 12 ? "am" : "pm"}`.replace("12 pm", "noon");
 
 export function SundialTab({ place, zone }: { place: ChosenPlace | null; zone: ZoneChoice }) {
   const year = new Date().getUTCFullYear();
+  const style = useClockStyle();
+  // Today, as this device has it: the pictures of the dial and of finding north are drawn for it.
+  const [today, summer] = useMemo(() => {
+    const now = Date.now();
+    return [dateIn(deviceZone(), now), offsetAt(zone, now) - standardOffset(zone, now)] as const;
+  }, [zone]);
   const figures = useMemo(() => {
     if (!place) return null;
     const standard = standardOffset(zone, Date.UTC(year, 0, 1));
@@ -58,6 +68,12 @@ export function SundialTab({ place, zone }: { place: ChosenPlace | null; zone: Z
           <Notice tone="info" title="Inside the polar circle">
             The dial works, but the sun is gone for part of the winter and low for much of the year.
           </Notice>
+        ) : null}
+        {fit !== "none" ? (
+          <>
+            <DialPlate latitude={place.lat} longitude={place.lon} standard={standard} summer={summer} date={today} style={style} />
+            <GnomonSide latitude={place.lat} />
+          </>
         ) : null}
         <table className="mt-4 w-full max-w-md text-small tabular">
           <caption className="sr-only">Hour lines for a horizontal sundial at {latitudeWords(place.lat)}</caption>
@@ -120,6 +136,7 @@ export function SundialTab({ place, zone }: { place: ChosenPlace | null; zone: Z
           </li>
           <li>Level the dial with a spirit level, or a saucer of water.</li>
         </ol>
+        <ShadowPlan place={place} date={today} stick={1} mode={{ kind: "north" }} />
         <p className="mt-3 text-small text-ink-muted">After the Yohkoh Public Outreach Project's "Finding Geographic North".</p>
       </Calculator>
 

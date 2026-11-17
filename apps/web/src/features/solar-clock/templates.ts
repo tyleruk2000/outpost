@@ -13,7 +13,7 @@ import { writePdfPages } from "@/features/maps/print/pdf";
 import { INK, MUTED, type Rgb, type Sheet, type SheetItem } from "@/features/maps/print/sheet";
 import { plainForPdf } from "../tools/kit/sheet";
 import { dateRingAngle, kochabTooth } from "./nocturnal";
-import { dialFit, hourLineAngle, hourLines, signedMinutes, sundialToClock, tableDates } from "./sundial";
+import { dialDrawing, dialFit, signedMinutes, sundialToClock, tableDates } from "./sundial";
 import { formatOffset } from "./zone";
 
 const mm = (value: number) => value * PT_PER_MM;
@@ -139,18 +139,6 @@ export const sundialTitle = (input: SundialInput) => `Horizontal sundial for ${l
 
 const twelveHour = (hour: number) => String(((hour + 11) % 12) + 1);
 
-/** Where a ray from (x, y) at an angle (clockwise from up) leaves a rectangle. */
-function toEdge(x: number, y: number, degrees: number, box: { left: number; top: number; right: number; bottom: number }): number {
-  const dx = Math.sin(degrees * DEG);
-  const dy = -Math.cos(degrees * DEG);
-  const reach: number[] = [];
-  if (dx > 1e-9) reach.push((box.right - x) / dx);
-  if (dx < -1e-9) reach.push((box.left - x) / dx);
-  if (dy > 1e-9) reach.push((box.bottom - y) / dy);
-  if (dy < -1e-9) reach.push((box.top - y) / dy);
-  return Math.min(...reach);
-}
-
 export function sundialSheets(input: SundialInput): Sheet[] {
   const north = input.latitude >= 0;
   const lat = Math.abs(input.latitude);
@@ -170,26 +158,15 @@ export function sundialSheets(input: SundialInput): Sheet[] {
   );
   const box = { left: LEFT + mm(4), top: mm(36), right: LEFT + WIDTH - mm(4), bottom: mm(220) };
   one.push({ kind: "rect", x: box.left, y: box.top, width: box.right - box.left, height: box.bottom - box.top, stroke: INK, lineWidth: 1 });
-  const rootX = (box.left + box.right) / 2;
-  const rootY = box.top + (box.bottom - box.top) * 0.66;
-  // Afternoon lines are on the east side: to the right with north up, to the left with south up.
-  const toPaper = (angle: number) => (north ? angle : -angle);
-  for (const lineAt of hourLines(input.latitude)) {
-    const paper = toPaper(lineAt.angle);
-    const reach = toEdge(rootX, rootY, paper, box) - mm(9);
-    const [x, y] = polar(rootX, rootY, reach, paper);
-    line(one, rootX, rootY, x, y, lineAt.fromNoon === 0 ? 1.4 : 0.8);
-    const [lx, ly] = polar(rootX, rootY, reach + mm(5), paper);
-    text(one, lx, ly + 3.5, twelveHour(lineAt.hour), 10, { bold: true, anchor: "middle" });
-    // Half hours, shorter, after each hour but the last.
-    if (lineAt.fromNoon < hourLines(input.latitude).at(-1)!.fromNoon) {
-      const half = toPaper(hourLineAngle(input.latitude, lineAt.fromNoon + 0.5));
-      const halfReach = toEdge(rootX, rootY, half, box) - mm(9);
-      const [hx1, hy1] = polar(rootX, rootY, halfReach * 0.75, half);
-      const [hx2, hy2] = polar(rootX, rootY, halfReach, half);
-      line(one, hx1, hy1, hx2, hy2, 0.5, MUTED);
-    }
+  // The same layout as the dial drawn on the screen (dialDrawing in sundial.ts).
+  const dial = dialDrawing(input.latitude, box, mm(9), mm(5));
+  const [rootX, rootY] = dial.root;
+  for (const lineAt of dial.hours) {
+    line(one, rootX, rootY, lineAt.end[0], lineAt.end[1], lineAt.fromNoon === 0 ? 1.4 : 0.8);
+    text(one, lineAt.label[0], lineAt.label[1] + 3.5, twelveHour(lineAt.hour), 10, { bold: true, anchor: "middle" });
   }
+  // Half hours, shorter, after each hour but the last.
+  for (const half of dial.halves) line(one, half.from[0], half.from[1], half.to[0], half.to[1], 0.5, MUTED);
   // The gnomon's foot: its slot along the noon line from the centre mark.
   const gnomonBase = Math.min(mm(80), mm(80) / Math.max(Math.tan(lat * DEG), 0.01));
   line(one, rootX - mm(3), rootY, rootX + mm(3), rootY, 1);
