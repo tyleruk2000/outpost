@@ -75,7 +75,13 @@ export const knowledgeNav: NavItem[] = [
     children: [{ to: "/search/how-it-works", label: "How search works", icon: Waypoints }],
   },
   { to: "/explore", label: "Explore", icon: Compass, key: "e", keywords: "catalogue download collections wikipedia kiwix books" },
-  { to: "/library", label: "Library", icon: BookOpen, key: "l", keywords: "documents books pdf files reading" },
+  {
+    to: "/library",
+    label: "Library",
+    icon: BookOpen,
+    key: "l",
+    keywords: "documents books pdf files reading learning school course lessons progress khan",
+  },
   { to: "/maps", label: "Maps", icon: MapIcon, key: "m", keywords: "map offline places routes gps" },
   { to: "/chat", label: "Chat", icon: MessagesSquare, key: "c", keywords: "ask model questions answers" },
   // "a" for address book: "c" is Chat's.

@@ -30,6 +30,8 @@ import { ErrorState, Notice, Page } from "@/components/page";
 import { Highlighted } from "@/components/search-hit";
 import { Button } from "@/components/ui/button";
 import { Skeleton, Tooltip } from "@/components/ui/misc";
+import { ReaderLearning } from "@/features/learning/reader-controls";
+import { useLearningTracker } from "@/features/learning/tracker";
 import { api } from "@/lib/api";
 import { cn, formatNumber } from "@/lib/utils";
 import { ArchiveFile } from "./archive-file";
@@ -110,6 +112,12 @@ export default function ReaderPage() {
   /** On the page that would have drawn the list, which is where Outpost draws it. */
   const listMode = list !== null && (routePath === "" || routePath === list.home);
   const showDocuments = listMode && (!ownPage || query.trim() !== "");
+  // Where the learner got to (features/learning): kept while an archive's own pages are on show.
+  const learning = useLearningTracker(collectionId, ready && !deciding && !listMode);
+  /** The frame was sent to the archive's first address: the next page it reports is the archive's first page. */
+  const awaitingHome = useRef(false);
+  const homePath = useRef<string | null>(null);
+  const [watched, setWatched] = useState<{ path: string; at: number } | null>(null);
 
   // The frame's address is set once per deliberate navigation (opening the reader, a
   // search result, the home button). Links clicked inside the frame change the frame
@@ -119,6 +127,7 @@ export default function ReaderPage() {
     if (!contentBase) return;
     if (shownPath.current === routePath) return;
     shownPath.current = routePath;
+    if (routePath === "") awaitingHome.current = true;
     setFrameSrc(`${contentBase}${encodePath(routePath)}`);
   }, [contentBase, routePath]);
 
@@ -145,6 +154,16 @@ export default function ReaderPage() {
           return undefined;
         }
       };
+      /** A page of the same archive: its address inside it, or nothing. */
+      const pageIn = (pathname: unknown): string | undefined => {
+        if (typeof pathname !== "string" || pathname.length > 2000 || !pathname.startsWith(basePath)) return undefined;
+        try {
+          const path = decodeURIComponent(pathname.slice(basePath.length));
+          return path.split("/").includes("..") || /\p{Cc}/u.test(path) ? undefined : path;
+        } catch {
+          return undefined;
+        }
+      };
       if (!data || typeof data !== "object") return;
       if (data.type === "outpost:reader" && typeof data.path === "string" && data.path.startsWith(basePath)) {
         let path: string;
@@ -154,6 +173,11 @@ export default function ReaderPage() {
           return;
         }
         if (typeof data.title === "string") setArticleTitle(data.title.slice(0, 200));
+        if (awaitingHome.current) {
+          awaitingHome.current = false;
+          homePath.current = path;
+        }
+        learning.shown(path, typeof data.title === "string" ? data.title.slice(0, 200) : "");
         if (path !== shownPath.current) {
           // Another page: its links have not been reported yet.
           setPageFiles([]);
@@ -169,6 +193,21 @@ export default function ReaderPage() {
         if (!path) return;
         if (typeof data.text === "string" && data.text) fileLabels.set(path, data.text.slice(0, 200));
         setSearchParams(withFile(path), OPENED_HERE);
+      } else if (data.type === "outpost:pages" && Array.isArray(data.links)) {
+        // The other pages of the same archive this page links to, for "3 of 5 done in Fractions".
+        const path = pageIn(data.path);
+        if (path === undefined) return;
+        const links = new Set<string>();
+        for (const link of data.links.slice(0, 600)) {
+          const inside = pageIn(link);
+          if (inside !== undefined && inside !== path) links.add(inside);
+        }
+        learning.listed(path, [...links], path === homePath.current);
+      } else if (data.type === "outpost:ended") {
+        // A video on the page played to its end. Only ever taken as a claim about the page on show.
+        const path = pageIn(data.path);
+        const played = typeof (data as { played?: unknown }).played === "number" ? (data as { played: number }).played : 0;
+        if (path !== undefined && path === shownPath.current && learning.ended(path, played)) setWatched({ path, at: Date.now() });
       } else if (data.type === "outpost:links" && Array.isArray(data.links)) {
         const found: PageFile[] = [];
         for (const item of data.links.slice(0, 300) as Array<{ href?: unknown; text?: unknown; inside?: unknown }>) {
@@ -186,7 +225,7 @@ export default function ReaderPage() {
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, [contentBase, collectionId, navigate, setSearchParams, fileLabels]);
+  }, [contentBase, collectionId, navigate, setSearchParams, fileLabels, learning.shown, learning.listed, learning.ended]);
 
   const closeFile = () => {
     if ((location.state as { openedHere?: boolean } | null)?.openedHere) return navigate(-1);
@@ -326,6 +365,11 @@ export default function ReaderPage() {
             </ul>
           ) : null}
         </form>
+        {ready && !deciding && !listMode && collectionId ? (
+          <div className="flex items-center gap-1">
+            <ReaderLearning tracker={learning} collectionId={collectionId} watched={watched} />
+          </div>
+        ) : null}
         <Tooltip label="First page of this collection">
           <Button variant="ghost" size="icon" aria-label="First page of this collection" onClick={() => open("")}>
             <House />

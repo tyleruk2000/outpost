@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { ErrorState, Notice, Page } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/misc";
+import { CarryOn } from "@/features/learning/carry-on";
 import { ApiError, api, errorMessage } from "@/lib/api";
 import { useStorage } from "@/lib/queries";
 import { formatDate, formatDateTime, formatNumber } from "@/lib/utils";
@@ -328,6 +329,7 @@ export default function CollectionPage() {
           <Trash2 /> Remove
         </Button>
       </div>
+      {collection.kind === "zim" && reachable ? <CarryOn collectionId={collection.id} className="mt-4" /> : null}
       {activity.busy ? (
         <p className="mt-2 text-small text-ink-muted">Checking, moving and removing wait until the work below has finished.</p>
       ) : null}
