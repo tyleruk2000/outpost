@@ -6,11 +6,11 @@ import { type CleanupResult, type CleanupStatus, formatBytes, type JobDto } from
 import { useMutation } from "@tanstack/react-query";
 import { Check, CircleAlert, Square, X } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
 import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/misc";
 import { api, errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { timeAgo } from "@/lib/utils";
 import { resultSentences } from "./manage-text";
 
@@ -24,7 +24,7 @@ function isResult(value: unknown): value is CleanupResult {
 function Running({ job }: { job: JobDto }) {
   const stop = useMutation({
     mutationFn: () => api.post(`/api/jobs/${job.id}/cancel`),
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
   const { current, total, message } = job.progress;
   const fraction = total && total > 0 ? current / total : null;

@@ -326,7 +326,7 @@ describe("protecting backups with a passphrase, in Settings", () => {
     const asking = await screen.findByRole("alertdialog", { name: "Restore from this backup?" });
     expect(await within(asking).findByText("This backup is protected")).toBeVisible();
     expect(within(asking).queryByLabelText("Passphrase of this backup")).not.toBeInTheDocument();
-    await userEvent.click(within(asking).getByRole("button", { name: "Check and stage restore" }));
+    await userEvent.click(within(asking).getByRole("button", { name: "Restore after restart" }));
     expect(requests).toEqual([]);
     await userEvent.click(within(asking).getByRole("button", { name: "Cancel" }));
 
@@ -337,7 +337,7 @@ describe("protecting backups with a passphrase, in Settings", () => {
     const again = await screen.findByRole("alertdialog", { name: "Restore from this backup?" });
     expect(within(again).getByText("This backup is protected")).toBeVisible();
     expect(within(again).queryByLabelText("Passphrase of this backup")).not.toBeInTheDocument();
-    await userEvent.click(within(again).getByRole("button", { name: "Check and stage restore" }));
+    await userEvent.click(within(again).getByRole("button", { name: "Restore after restart" }));
     expect(requests).toEqual([]);
   });
 });
@@ -358,13 +358,13 @@ describe("restoring a protected backup", () => {
     const field = await within(asking).findByLabelText("Passphrase of this backup");
     expect(within(asking).getByText(/It is used once, to open the backup, and is not kept\./)).toBeVisible();
     // Nothing is sent without one.
-    await userEvent.click(within(asking).getByRole("button", { name: "Check and stage restore" }));
+    await userEvent.click(within(asking).getByRole("button", { name: "Restore after restart" }));
     expect(within(asking).getByRole("alert")).toHaveTextContent("Type the passphrase this backup was made under.");
     expect(requests).toEqual([]);
 
     // A wrong one is said beside the field, in the server's words, and the file stays chosen.
     await userEvent.type(field, "not it");
-    await userEvent.click(within(asking).getByRole("button", { name: "Check and stage restore" }));
+    await userEvent.click(within(asking).getByRole("button", { name: "Restore after restart" }));
     expect(await within(asking).findByRole("alert")).toHaveTextContent(/^That passphrase does not open this backup\./);
     expect(requests).toHaveLength(1);
     expect(requests[0]).toMatchObject({
@@ -375,7 +375,7 @@ describe("restoring a protected backup", () => {
 
     await userEvent.clear(field);
     await userEvent.type(field, "seven tall ships");
-    await userEvent.click(within(asking).getByRole("button", { name: "Check and stage restore" }));
+    await userEvent.click(within(asking).getByRole("button", { name: "Restore after restart" }));
     await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
     expect(requests[1]!.headers["X-Outpost-Backup-Passphrase"]).toBe(btoa("seven tall ships"));
   });
@@ -418,15 +418,15 @@ describe("restoring a protected backup", () => {
     const asking = await screen.findByRole("alertdialog", { name: "Restore from this backup?" });
     const field = within(asking).getByLabelText("Passphrase of this backup");
     expect(within(asking).getByText(/It was made under an earlier passphrase, not the one in use now\./)).toBeVisible();
-    await userEvent.click(within(asking).getByRole("button", { name: "Check and stage restore" }));
+    await userEvent.click(within(asking).getByRole("button", { name: "Restore after restart" }));
     expect(within(asking).getByRole("alert")).toHaveTextContent("Type the passphrase this backup was made under.");
     expect(requests).toEqual([]);
     await userEvent.type(field, "the new one");
-    await userEvent.click(within(asking).getByRole("button", { name: "Check and stage restore" }));
+    await userEvent.click(within(asking).getByRole("button", { name: "Restore after restart" }));
     expect(await within(asking).findByRole("alert")).toHaveTextContent(/^That passphrase does not open this backup\./);
     await userEvent.clear(field);
     await userEvent.type(field, "the old one");
-    await userEvent.click(within(asking).getByRole("button", { name: "Check and stage restore" }));
+    await userEvent.click(within(asking).getByRole("button", { name: "Restore after restart" }));
     await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
     expect(requests.map((request) => [request.call, request.body])).toEqual([
       ["POST /api/backup/stored/outpost-backup-2026-11-09T03-00-00-000Z-scheduled.zip.enc/restore", { passphrase: "the new one" }],
@@ -438,7 +438,7 @@ describe("restoring a protected backup", () => {
     await userEvent.click(await screen.findByRole("menuitem", { name: "Restore this one" }));
     const plain = await screen.findByRole("alertdialog", { name: "Restore from this backup?" });
     expect(within(plain).queryByLabelText("Passphrase of this backup")).not.toBeInTheDocument();
-    await userEvent.click(within(plain).getByRole("button", { name: "Check and stage restore" }));
+    await userEvent.click(within(plain).getByRole("button", { name: "Restore after restart" }));
     await waitFor(() => expect(requests).toHaveLength(3));
     expect(requests[2]!.body).toEqual({});
   });

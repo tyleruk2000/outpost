@@ -22,8 +22,8 @@ import type {
   RepeatersOverview,
 } from "@outpost/shared";
 import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 import { api, errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 
 export interface LatLon {
   lat: number;
@@ -126,7 +126,7 @@ function useChange<Input, Output>(run: (input: Input) => Promise<Output>) {
   return useMutation({
     mutationFn: run,
     onSuccess: () => client.invalidateQueries({ queryKey: ["repeaters"] }),
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
 }
 

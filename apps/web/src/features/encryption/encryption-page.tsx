@@ -22,29 +22,31 @@ import { TextTab } from "./text-tab";
 const TABS = ["keys", "text", "files", "hand"] as const;
 type TabId = (typeof TABS)[number];
 
-const tabTarget = "max-md:min-h-11";
-
 /** Where HTTPS is switched on. Another screen owns that setting; this one only points at it. */
 export const HTTPS_SETTING = "/settings#https";
 
-/** Said once, above the tabs, on a page opened over plain HTTP: what does not work here, why, and how to get it. */
+/**
+ * Said once, above the tabs, on a page opened over plain HTTP: what does not work here and
+ * where to turn HTTPS on, in a few lines a phone shows whole; the reason behind "Why".
+ */
 function NeedsHttps() {
   return (
     <Notice tone="warning" icon={<TriangleAlert />} title="Keys, text, files and encrypted pages need HTTPS" className="mb-6 max-w-[46rem]">
       <p>
-        This page was opened over plain HTTP ({window.location.host}). Here you cannot make or use a key, encrypt or decrypt text or a file,
-        or open or encrypt an encrypted page of your notes. Browsers only allow the cryptography this needs on a page opened over HTTPS, or
-        on the computer Outpost itself runs on, because over plain HTTP anyone on the network could alter the page on its way to you and
-        take your passphrase.
-      </p>
-      <p className="mt-2">
-        Turn it on under{" "}
+        Turn it on in{" "}
         <Link to={HTTPS_SETTING} className="font-medium text-primary underline underline-offset-2">
           Settings, HTTPS on your network
         </Link>
-        , then open Outpost at its https address. On the computer Outpost runs on, http://localhost works as it is. The ciphers under “By
-        hand” work everywhere.
+        , then open Outpost at its https address. The ciphers under “By hand” work here.
       </p>
+      <details className="mt-1.5">
+        <summary className="min-h-9 cursor-pointer py-1.5 font-medium text-ink max-md:min-h-11 max-md:py-2.5">Why</summary>
+        <p>
+          This page was opened over plain HTTP ({window.location.host}). Browsers only allow the cryptography this needs on a page opened
+          over HTTPS, or on the computer Outpost itself runs on, because over plain HTTP anyone on the network could alter the page on its
+          way to you and take your passphrase. On the computer Outpost runs on, http://localhost works as it is.
+        </p>
+      </details>
     </Notice>
   );
 }
@@ -98,19 +100,11 @@ export default function EncryptionPage() {
         }}
       >
         {/* Wrapped, not scrolled, with large text; a finger's height on a phone. */}
-        <TabsList aria-label="Encryption" className="flex-wrap">
-          <TabsTrigger value="keys" className={tabTarget}>
-            Keys
-          </TabsTrigger>
-          <TabsTrigger value="text" className={tabTarget}>
-            Text
-          </TabsTrigger>
-          <TabsTrigger value="files" className={tabTarget}>
-            Files
-          </TabsTrigger>
-          <TabsTrigger value="hand" className={tabTarget}>
-            By hand
-          </TabsTrigger>
+        <TabsList aria-label="Encryption">
+          <TabsTrigger value="keys">Keys</TabsTrigger>
+          <TabsTrigger value="text">Text</TabsTrigger>
+          <TabsTrigger value="files">Files</TabsTrigger>
+          <TabsTrigger value="hand">By hand</TabsTrigger>
         </TabsList>
         <TabsContent value="keys" className="pt-6 focus:outline-none">
           <ShelfTab>{(shelf) => <KeysTab shelf={shelf} />}</ShelfTab>

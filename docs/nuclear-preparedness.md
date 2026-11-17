@@ -277,8 +277,10 @@ saved scenario is put back on the map from the Saved tab, beside the others. On 
 phone the list is the switcher, with a row of letters under the map as well. "Save
 changes" sends the time of the saved version the scenario was opened at; if another tab
 or device has saved it since, nothing is overwritten, and the screen offers **Keep my
-version** or **Load the other version**, as Notes does. Sets are saved without this
-check: the last set saved wins.
+version** or **Load the other version**, as Notes does. "Save changes to the set" does
+the same for an open set: if the set was saved elsewhere since it was opened, nothing is
+overwritten, and **Keep my version** saves the scenarios on the map over the newer set
+while **Load the other version** puts the newer set on the map in their place.
 
 - **Telling them apart.** The letter on each ground zero and at the start of every ring
   and contour label is the first cue. The selected scenario is drawn at full strength
@@ -558,7 +560,7 @@ anything the household would do differently.
   with the model's reason, a change from an older copy refused with nothing changed,
   counted and erased.
 - `apps/server/test/nuclear-final.test.ts`: sets saved, reopened, refused past six or
-  with a letter twice; no total in what is stored or answered; a scenario linked to a
+  with a letter twice, a change from an older copy refused with nothing changed; no total in what is stored or answered; a scenario linked to a
   plan, named, missing once deleted, steps unchanged; the radiation template's sources
   and verdicts; historical records listed by period and kind; a WorldPop grid imported
   from a file, refused under the wrong country's name; the cell size; a circle over the

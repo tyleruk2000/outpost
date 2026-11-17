@@ -8,9 +8,9 @@ import { Crosshair, MapPin, Route, Search, X } from "lucide-react";
 import { type KeyboardEvent, type ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
 import { Spinner } from "@/components/ui/misc";
 import { errorMessage } from "@/lib/api";
+import { useDebounced } from "@/lib/use-debounced";
 import { cn } from "@/lib/utils";
 import { usePlaceSearch } from "./data";
-import { useDebounced } from "./hooks";
 import { formatDistance, type LatLon } from "./lib/geo";
 import { iconOf } from "./lib/place-icons";
 import { buildSearchResults, type SearchResult } from "./lib/search";
@@ -194,6 +194,9 @@ export function SearchBox({
               );
             })}
           </div>
+          {search.data?.notice && search.data.query === query ? (
+            <p className="px-2.5 py-2 text-small text-ink-muted">{search.data.notice}</p>
+          ) : null}
           {search.isError ? (
             <p role="alert" className="px-2.5 py-2 text-small text-danger">
               {errorMessage(search.error)}
@@ -222,7 +225,7 @@ export function SearchBox({
             </div>
           ) : results.some((result) => result.kind === "place") ? (
             <p className="mt-1 border-t border-border px-2.5 pt-1.5 pb-1 text-micro text-ink-muted">
-              Distances are from the middle of the map. Place names: GeoNames (CC BY 4.0).
+              Distances are from the middle of the map. {(search.data?.credits ?? ["Place names: GeoNames (CC BY 4.0)"]).join(". ")}.
             </p>
           ) : null}
         </div>

@@ -92,6 +92,16 @@ test.describe("at an address that is not secure", () => {
     await expect(page.getByText("Keys, text, files and encrypted pages need HTTPS")).toBeVisible();
     await expect(page.getByRole("link", { name: "Settings, HTTPS on your network" })).toBeVisible();
 
+    // ── Messages: a check-in can carry a position only on a secure page; the board says so, and the rest works.
+    await page.goto("/messages");
+    await page.evaluate(() => localStorage.setItem("outpost.board.name", "Sam"));
+    await page.reload();
+    await page.getByRole("button", { name: "Words of my own…" }).click();
+    const checkIn = page.getByRole("dialog", { name: "Check in" });
+    await expect(checkIn.getByText(/opened over plain http, so the browser does not offer it/)).toBeVisible();
+    await expect(checkIn.getByRole("link", { name: "Settings, HTTPS on your network" })).toHaveAttribute("href", "/settings#https");
+    await page.keyboard.press("Escape");
+
     expect(failing(errors)).toEqual([]);
   });
 

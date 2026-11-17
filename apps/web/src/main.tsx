@@ -7,6 +7,7 @@ import { App } from "./app";
 import { TooltipProvider } from "./components/ui/misc";
 import { registerServiceWorker } from "./features/kept/register";
 import { ApiError } from "./lib/api";
+import { ErrorAnnouncer } from "./lib/notify";
 import { ThemeProvider, useTheme } from "./lib/theme";
 import "./styles/base.css";
 
@@ -61,6 +62,7 @@ createRoot(document.getElementById("root")!).render(
             <App />
           </BrowserRouter>
           <ThemedToaster />
+          <ErrorAnnouncer />
         </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>

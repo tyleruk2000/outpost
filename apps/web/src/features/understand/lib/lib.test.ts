@@ -367,9 +367,16 @@ describe("text helpers", () => {
         "A",
         "Reading mountain weather: a very long title that goes on and on past sixty characters",
       ],
-      ["Water treatment in the field", "Boiling", "Boiling", "Chlorine and chlorine dioxide", null, "3"],
+      ["Water treatment in the field", "Boiling", "Boiling", "APRS: what is that thing?", null, "3"],
     );
-    expect(examples).toEqual(["boiling", "chlorine and chlorine dioxide", "knots for camp and climbing", "weather"]);
+    // Shown as the library writes them, so they read as headings and titles, not as mangled questions; the search box
+    // is given the same words without the punctuation it would read as syntax.
+    expect(examples).toEqual([
+      { label: "Boiling", query: "Boiling" },
+      { label: "APRS: what is that thing?", query: "APRS what is that thing" },
+      { label: "Knots for camp and climbing", query: "Knots for camp and climbing" },
+      { label: "weather", query: "weather" },
+    ]);
     expect(buildExamples([], [])).toEqual([]);
   });
 

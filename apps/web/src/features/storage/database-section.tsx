@@ -7,22 +7,28 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CircleAlert, CircleCheck, RefreshCw } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { Link } from "react-router";
-import { toast } from "sonner";
 import { ErrorState, Notice, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/misc";
 import { api, errorMessage } from "@/lib/api";
+import { useServerConnection } from "@/lib/events";
+import { notify } from "@/lib/notify";
+import { usePageVisible } from "@/lib/page-visible";
 import { formatDateTime, timeAgo } from "@/lib/utils";
 import { countWords, duration, GROUP_WORDS, reclaimBlocked, schemaWords } from "./database-text";
 
-export const useDatabase = () =>
-  useQuery({
+export function useDatabase() {
+  const shown = usePageVisible();
+  const connected = useServerConnection();
+  return useQuery({
     queryKey: ["database"],
     queryFn: () => api.get<DatabaseStatus>("/api/database"),
-    // Looked at again while something is being worked out; otherwise only when the server says it changed.
-    refetchInterval: (query) => (query.state.data?.measuring || query.state.data?.active ? 1500 : false),
+    // The server says when what was being worked out is done (`database.changed`). Asked on a
+    // timer only while that word cannot arrive, and never while the page is hidden.
+    refetchInterval: (query) => (shown && !connected && (query.state.data?.measuring || query.state.data?.active) ? 1500 : false),
   });
+}
 
 /** One fact: its name in the margin on a wide screen, above it on a phone. */
 function Fact({ label, children }: { label: string; children: ReactNode }) {
@@ -124,7 +130,7 @@ function CheckRow({ status }: { status: DatabaseStatus }) {
   const check = useMutation({
     mutationFn: (kind: "quick" | "full") => api.post<DatabaseJobResponse>("/api/database/check", { kind }),
     onSuccess: () => client.invalidateQueries({ queryKey: ["database"] }),
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
   const last = status.lastCheck;
   const running = status.active?.type === "database.check" ? status.active : null;
@@ -194,7 +200,7 @@ function ReclaimRow({ status }: { status: DatabaseStatus }) {
       setConfirming(false);
       return client.invalidateQueries({ queryKey: ["database"] });
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
   const running = status.active?.type === "database.vacuum" ? status.active : null;
   const blocked = reclaimBlocked(status, formatBytes);
@@ -254,7 +260,7 @@ export function DatabaseSection() {
   const again = useMutation({
     mutationFn: () => api.post<DatabaseStatus>("/api/database/contents"),
     onSuccess: (data) => client.setQueryData(["database"], data),
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
   const status = database.data;
 

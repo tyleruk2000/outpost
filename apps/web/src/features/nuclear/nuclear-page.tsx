@@ -56,6 +56,7 @@ import { useMapOverview, useMapSources, useMarkers } from "@/features/maps/data"
 import { hasImagery } from "@/features/maps/imagery/style";
 import type { MapEngine } from "@/features/maps/map/engine";
 import { api, errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { cn, formatDateTime, localId, plural } from "@/lib/utils";
 import { scenarioConflictOf, useDeleteScenario, useDeleteSet, useSaveScenario, useSaveSet, useScenarios, useSets } from "./data";
 import type { Written } from "./document";
@@ -126,6 +127,13 @@ interface Worked {
   refusals: string[];
 }
 
+/** A saved set opened on the map, and the `updatedAt` its changes are saved against. */
+interface OpenSet {
+  id: string;
+  name: string;
+  updatedAt: number;
+}
+
 export default function NuclearPage() {
   const scenarios = useScenarios();
   const sets = useSets();
@@ -141,7 +149,8 @@ export default function NuclearPage() {
 
   const [slots, setSlots] = useState<Slot[]>(() => [newSlot("A")]);
   const [selectedKey, setSelectedKey] = useState<string>(() => slots[0]!.key);
-  const [openSet, setOpenSet] = useState<{ id: string; name: string } | null>(null);
+  /** The saved set on the map, with the version it was opened or last saved at. */
+  const [openSet, setOpenSet] = useState<OpenSet | null>(null);
   const [visible, setVisible] = useState<Visible>(ALL_VISIBLE);
   const [showPlaces, setShowPlaces] = useState(true);
   const [satellite, setSatellite] = useState(false);
@@ -151,6 +160,8 @@ export default function NuclearPage() {
   const [deletingSet, setDeletingSet] = useState<NuclearSet | null>(null);
   /** A save refused because the scenario was saved elsewhere since it was opened: which slot, and the newer version. */
   const [conflict, setConflict] = useState<{ key: string; updatedAt: number; name: string } | null>(null);
+  /** The same for the open set. */
+  const [setsConflict, setSetsConflict] = useState<{ updatedAt: number; name: string } | null>(null);
   const [choosing, setChoosing] = useState(false);
   const [fit, setFit] = useState<Bbox | null>(null);
   const [engine, setEngine] = useState<MapEngine | null>(null);
@@ -240,7 +251,7 @@ export default function NuclearPage() {
   function addSlot(form: ScenarioForm = EMPTY_FORM, savedId: string | null = null, updatedAt = Date.now()) {
     const letter = freeLetter(slots);
     if (!letter) {
-      toast.error(AT_LIMIT);
+      notify.error(AT_LIMIT);
       return null;
     }
     const added = newSlot(letter, form, savedId, updatedAt);
@@ -303,7 +314,7 @@ export default function NuclearPage() {
     handledLink.current = linked;
     const found = scenarios.data.find((each) => each.id === linked);
     if (found) putRef.current(found);
-    else toast.error("That scenario is no longer saved.");
+    else notify.error("That scenario is no longer saved.");
   }, [linked, scenarios.data]);
 
   function openSetOnMap(saved: NuclearSet) {
@@ -318,7 +329,8 @@ export default function NuclearPage() {
     }));
     setSlots(opened);
     setSelectedKey(opened[0]!.key);
-    setOpenSet({ id: saved.id, name: saved.name });
+    setOpenSet({ id: saved.id, name: saved.name, updatedAt: saved.updatedAt });
+    setSetsConflict(null);
     setTab("scenario");
     const first = saved.members.find((member) => !member.hidden) ?? saved.members[0]!;
     const answer = computeEffects(first.effects);
@@ -329,7 +341,7 @@ export default function NuclearPage() {
   async function onSave(base = slot.baseUpdatedAt) {
     patch(selectedKey, (each) => ({ ...each, triedSave: true }));
     if (!checked.input) {
-      toast.error("The scenario cannot be saved yet. See what the form says.");
+      notify.error("The scenario cannot be saved yet. See what the form says.");
       return;
     }
     const key = selectedKey;
@@ -344,7 +356,7 @@ export default function NuclearPage() {
     } catch (error) {
       const newer = scenarioConflictOf(error);
       if (newer) setConflict({ key, ...newer });
-      else toast.error(errorMessage(error));
+      else notify.error(errorMessage(error));
     }
   }
 
@@ -364,17 +376,18 @@ export default function NuclearPage() {
       }));
       setConflict(null);
     } catch (error) {
-      toast.error(errorMessage(error));
+      notify.error(errorMessage(error));
     } finally {
       setChoosing(false);
     }
   }
 
-  async function onSaveSet(name: string, asNew: boolean) {
+  /** Saves the scenarios on the map as a set: changes to the open one with the version it was opened at, or `base` to keep them over a newer one. */
+  async function onSaveSet(name: string, asNew: boolean, base = openSet?.updatedAt) {
     const unready = worked.filter((entry) => !entry.checked.input);
     if (unready.length > 0) {
       setSlots((list) => list.map((each) => ({ ...each, triedSave: true })));
-      toast.error(
+      notify.error(
         `Each scenario needs a name, a ground zero and figures the model can work with before the set is saved: see ${unready.map((entry) => entry.slot.letter).join(", ")}.`,
       );
       return;
@@ -383,12 +396,29 @@ export default function NuclearPage() {
       name,
       members: worked.map((entry) => ({ ...entry.checked.input!, letter: entry.slot.letter, hidden: entry.slot.hidden })),
     };
+    const id = asNew ? null : (openSet?.id ?? null);
     try {
-      const saved = await saveSet.mutateAsync({ id: asNew ? null : (openSet?.id ?? null), input });
-      setOpenSet({ id: saved.id, name: saved.name });
-      toast.success(asNew || !openSet ? "Set saved." : "Changes to the set saved.");
+      const saved = await saveSet.mutateAsync({ id, input: id ? { ...input, baseUpdatedAt: base } : input });
+      setOpenSet({ id: saved.id, name: saved.name, updatedAt: saved.updatedAt });
+      setSetsConflict(null);
+      toast.success(id ? "Changes to the set saved." : "Set saved.");
     } catch (error) {
-      toast.error(errorMessage(error));
+      const newer = id ? scenarioConflictOf(error) : null;
+      if (newer) setSetsConflict(newer);
+      else notify.error(errorMessage(error));
+    }
+  }
+
+  /** After a conflict: puts the newer saved version of the set on the map, in place of this one. */
+  async function loadOtherSet() {
+    if (!openSet) return;
+    setChoosing(true);
+    try {
+      openSetOnMap(await api.get<NuclearSet>(`/api/nuclear/sets/${openSet.id}`));
+    } catch (error) {
+      notify.error(errorMessage(error));
+    } finally {
+      setChoosing(false);
     }
   }
 
@@ -504,21 +534,11 @@ export default function NuclearPage() {
         >
           <Tabs value={tab} onValueChange={setTab}>
             <TabsList>
-              <TabsTrigger value="scenario" className="min-h-11 md:min-h-0">
-                Scenario
-              </TabsTrigger>
-              <TabsTrigger value="saved" className="min-h-11 md:min-h-0">
-                Saved{scenarios.data?.length ? ` (${scenarios.data.length})` : ""}
-              </TabsTrigger>
-              <TabsTrigger value="layers" className="min-h-11 md:min-h-0">
-                Layers
-              </TabsTrigger>
-              <TabsTrigger value="records" className="min-h-11 md:min-h-0">
-                Records
-              </TabsTrigger>
-              <TabsTrigger value="planning" className="min-h-11 md:min-h-0">
-                Plans
-              </TabsTrigger>
+              <TabsTrigger value="scenario">Scenario</TabsTrigger>
+              <TabsTrigger value="saved">Saved{scenarios.data?.length ? ` (${scenarios.data.length})` : ""}</TabsTrigger>
+              <TabsTrigger value="layers">Layers</TabsTrigger>
+              <TabsTrigger value="records">Records</TabsTrigger>
+              <TabsTrigger value="planning">Plans</TabsTrigger>
             </TabsList>
 
             <TabsContent value="scenario" className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-4">
@@ -615,7 +635,10 @@ export default function NuclearPage() {
                 openSet={openSet}
                 count={slots.length}
                 saving={saveSet.isPending}
+                conflict={setsConflict}
+                choosing={choosing}
                 onSave={onSaveSet}
+                onLoadOther={() => void loadOtherSet()}
                 onOpen={openSetOnMap}
                 onDelete={setDeletingSet}
               />
@@ -671,7 +694,7 @@ export default function NuclearPage() {
             setSlots((list) => list.map((each) => (each.savedId === deleting.id ? { ...each, savedId: null } : each)));
             toast.success("Scenario deleted.");
           } catch (error) {
-            toast.error(errorMessage(error));
+            notify.error(errorMessage(error));
           }
           setDeleting(null);
         }}
@@ -689,10 +712,13 @@ export default function NuclearPage() {
           if (!deletingSet) return;
           try {
             await removeSet.mutateAsync(deletingSet.id);
-            if (openSet?.id === deletingSet.id) setOpenSet(null);
+            if (openSet?.id === deletingSet.id) {
+              setOpenSet(null);
+              setSetsConflict(null);
+            }
             toast.success("Set deleted.");
           } catch (error) {
-            toast.error(errorMessage(error));
+            notify.error(errorMessage(error));
           }
           setDeletingSet(null);
         }}
@@ -1015,7 +1041,7 @@ function ScenarioFields({
           and hazards are offered here when one is near ground zero.
         </p>
       </fieldset>
-      <Field label="Notes">
+      <Field label="Notes" optional>
         {(ids) => <Textarea {...ids} value={form.notes} onChange={(event) => set("notes", event.target.value)} rows={3} />}
       </Field>
     </div>
@@ -1333,15 +1359,21 @@ function SetsSection({
   openSet,
   count,
   saving,
+  conflict,
+  choosing,
   onSave,
+  onLoadOther,
   onOpen,
   onDelete,
 }: {
   query: ReturnType<typeof useSets>;
-  openSet: { id: string; name: string } | null;
+  openSet: OpenSet | null;
   count: number;
   saving: boolean;
-  onSave: (name: string, asNew: boolean) => void;
+  conflict: { updatedAt: number; name: string } | null;
+  choosing: boolean;
+  onSave: (name: string, asNew: boolean, base?: number) => void;
+  onLoadOther: () => void;
   onOpen: (set: NuclearSet) => void;
   onDelete: (set: NuclearSet) => void;
 }) {
@@ -1368,6 +1400,27 @@ function SetsSection({
             </Button>
           ) : null}
         </div>
+        {conflict && openSet ? (
+          <Notice tone="warning" icon={<TriangleAlert />} title="This set was changed somewhere else">
+            <p>
+              Another tab or device saved a newer version at {formatDateTime(conflict.updatedAt)}. Your version is still on the map,
+              unsaved, and nothing has been overwritten. Choose which one to keep.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant="primary"
+                disabled={choosing || saving || !name.trim()}
+                onClick={() => onSave(name.trim(), false, conflict.updatedAt)}
+              >
+                Keep my version
+              </Button>
+              <Button size="sm" loading={choosing} onClick={onLoadOther}>
+                Load the other version
+              </Button>
+            </div>
+          </Notice>
+        ) : null}
       </div>
       <div className="mt-4">
         {query.isPending ? (

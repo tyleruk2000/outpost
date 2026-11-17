@@ -7,11 +7,16 @@
  */
 import type { MapAttribution } from "@outpost/shared";
 import { ChevronUp, Copy } from "lucide-react";
-import { Fragment, type ReactNode, useEffect, useRef } from "react";
+import { Fragment, type ReactNode, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Menu, MenuCheckItem, MenuContent, MenuLabel, MenuTrigger } from "@/components/ui/menu";
+import { Menu, MenuCheckItem, MenuContent, MenuLabel, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
+import { copyText } from "@/lib/clipboard";
+import { notify } from "@/lib/notify";
+import { usePageVisible } from "@/lib/page-visible";
 import { cn } from "@/lib/utils";
-import { copyText } from "./hooks";
+import { useGroundHeight } from "./ground-height";
+import { HeightFigure, HeightInMenu } from "./height-readout";
+import { useIsDesktop } from "./hooks";
 import { parseAttribution } from "./lib/attribution";
 import { formatPosition, READOUT_FORMATS, READOUT_LABELS, type ReadoutFormat } from "./lib/coords";
 import { type LatLon, metersPerPixel, scaleBar } from "./lib/geo";
@@ -46,14 +51,25 @@ function CoordinateReadout({
   format,
   onFormatChange,
   below,
+  heights,
 }: {
   engine: MapEngine;
   format: ReadoutFormat;
   onFormatChange: (format: ReadoutFormat) => void;
   /** A line about the same point, under the coordinates on the same surface. */
   below?: ReactNode;
+  heights?: ReadoutHeights;
 }) {
   const text = useRef<HTMLSpanElement>(null);
+  const [opened, setOpened] = useState(false);
+  const desktop = useIsDesktop();
+  const visible = usePageVisible();
+  // On a phone the folded readout has no room for a height: it is read only while the readout is opened.
+  const height = useGroundHeight(engine, {
+    active: Boolean(heights) && visible && (desktop || opened),
+    terrain: heights?.terrain ?? false,
+    opened,
+  });
   const source = useRef<HTMLSpanElement>(null);
   const pointer = useRef<LatLon | null>(null);
 
@@ -84,7 +100,7 @@ function CoordinateReadout({
     const value = text.current?.textContent ?? "";
     if (!value) return;
     if (await copyText(value)) toast.success(`Copied ${value}`);
-    else toast.error("The browser did not allow copying. Select the coordinates and copy them by hand.");
+    else notify.error("The browser did not allow copying. Select the coordinates and copy them by hand.");
   };
 
   return (
@@ -99,11 +115,14 @@ function CoordinateReadout({
         >
           <span className="grid">
             <span ref={source} className="text-micro leading-tight text-ink-muted" />
-            <span ref={text} className="tabular font-mono text-[0.8125rem] leading-tight text-ink" />
+            <span className="tabular font-mono text-[0.8125rem] leading-tight text-ink">
+              <span ref={text} />
+              {heights && desktop ? <HeightFigure reading={height} /> : null}
+            </span>
           </span>
           <Copy aria-hidden className="size-3.5 shrink-0 text-ink-faint group-hover:text-ink" />
         </button>
-        <Menu>
+        <Menu open={opened} onOpenChange={setOpened}>
           <MenuTrigger
             aria-label={`Coordinate format: ${READOUT_LABELS[format]}. Change`}
             title="Coordinate format"
@@ -118,12 +137,26 @@ function CoordinateReadout({
                 {READOUT_LABELS[option]}
               </MenuCheckItem>
             ))}
+            {heights ? (
+              <>
+                <MenuSeparator />
+                <HeightInMenu reading={height} onGetTerrain={heights.onGetTerrain} />
+              </>
+            ) : null}
           </MenuContent>
         </Menu>
       </div>
       {below}
     </div>
   );
+}
+
+/** Given on the Maps screen only: the readout then shows the height of the ground. */
+export interface ReadoutHeights {
+  /** Whether any terrain is installed. */
+  terrain: boolean;
+  /** Opens Offline maps, where terrain comes from. */
+  onGetTerrain?: () => void;
 }
 
 export interface Credit {
@@ -181,6 +214,7 @@ export function MapFooter({
   onFormatChange,
   credits,
   underReadout,
+  heights,
   className,
 }: {
   engine: MapEngine | null;
@@ -189,6 +223,8 @@ export function MapFooter({
   credits: Credit[];
   /** A line about the centre of the map, shown under its coordinates (on a phone, today's sunrise and sunset). */
   underReadout?: ReactNode;
+  /** The height of the ground beside the coordinates (the Maps screen). */
+  heights?: ReadoutHeights;
   className?: string;
 }) {
   return (
@@ -197,7 +233,7 @@ export function MapFooter({
         {engine ? (
           <>
             <div className="pointer-events-auto min-w-0">
-              <CoordinateReadout engine={engine} format={format} onFormatChange={onFormatChange} below={underReadout} />
+              <CoordinateReadout engine={engine} format={format} onFormatChange={onFormatChange} below={underReadout} heights={heights} />
             </div>
             <ScaleBar engine={engine} />
           </>

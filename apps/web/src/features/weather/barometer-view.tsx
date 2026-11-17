@@ -117,7 +117,7 @@ export function BarometerView() {
             {(ids) => <Input {...ids} type="datetime-local" value={when} onChange={(event) => setWhen(event.target.value)} />}
           </Field>
         </div>
-        <Field label="Note (optional)">
+        <Field label="Note" optional>
           {(ids) => <Input {...ids} value={note} maxLength={400} onChange={(event) => setNote(event.target.value)} />}
         </Field>
         {error ? (

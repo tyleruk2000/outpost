@@ -7,11 +7,11 @@ import type { DocumentDto, DocumentOcrResponse, DocumentResponse, DocumentTextRe
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ScanText, X } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
 import { ErrorState } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Progress, Skeleton } from "@/components/ui/misc";
 import { api, errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { useActiveJobs } from "@/lib/queries";
 import { cn, formatNumber, plural } from "@/lib/utils";
 import { documentKeys } from "./document-meta";
@@ -96,12 +96,12 @@ export function useDocumentOcr(document: DocumentDto): DocumentOcr {
       client.setQueryData<DocumentResponse>(documentKeys.detail(document.id), { document: data.document });
       void client.invalidateQueries({ queryKey: ["jobs"] });
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
   const cancel = useMutation({
     mutationFn: () => api.post(`/api/jobs/${job?.id}/cancel`),
     onSuccess: () => client.invalidateQueries({ queryKey: ["jobs"] }),
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
 
   return {

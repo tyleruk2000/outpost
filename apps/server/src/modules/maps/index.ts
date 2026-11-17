@@ -28,9 +28,11 @@ import { createExtractFetcher, createTilesInstaller, EXTRACT_FETCHER } from "./e
 import { MAX_GPX_BYTES } from "./gpx.ts";
 import { createImageryInstaller, type ImageryService, isImageryDownload, registerImagery } from "./imagery/index.ts";
 import { areaSizeQuery, createAreaMeter } from "./kept-area.ts";
+import { registerOsNames } from "./os-names/index.ts";
 import { createPlacesService, datasetSchema, type PlacesService } from "./places.ts";
 import { createPlanner } from "./planner.ts";
 import { removeExtractSidecars } from "./pmtiles/extract.ts";
+import { createPointHeight, pointHeightQuery } from "./point-height.ts";
 import { createRegionsService, estimateSchema, importSchema, type RegionsService, startRegionSchema } from "./regions.ts";
 import { registerRouteFinder } from "./route-finder/index.ts";
 import { createSightRanger, sightRangeQuery } from "./sight-range.ts";
@@ -96,6 +98,7 @@ export async function registerMaps(app: FastifyInstance, ctx: AppContext): Promi
   const annotations = createAnnotationsService(ctx, { elevation });
   const terrainProfile = createTerrainProfiler(elevation, tiles);
   const sightRange = createSightRanger(elevation, tiles);
+  const pointHeight = createPointHeight(elevation);
   const regions = createRegionsService(ctx, { planner, sources });
   const imagery = registerImagery(app, ctx, { client, ...ctx.config.imagery });
   tiles.setImagery(() => imagery.styleSources());
@@ -248,6 +251,14 @@ export async function registerMaps(app: FastifyInstance, ctx: AppContext): Promi
   app.get("/api/maps/terrain-profile", async (request) => {
     const query = terrainProfileQuery.parse(request.query);
     return terrainProfile(query.from, query.to);
+  });
+
+  // The height of the ground at one point, for the readout at the foot of the map. Terrain changes only when a
+  // pack is installed or removed, so a browser may keep an answer for a minute.
+  app.get("/api/maps/height", async (request, reply) => {
+    const query = pointHeightQuery.parse(request.query);
+    reply.header("Cache-Control", "private, max-age=60");
+    return pointHeight(query.at);
   });
 
   // How far out a station stays in sight of an aerial, bearing by bearing, from installed terrain: a repeater's estimated range.
@@ -410,6 +421,9 @@ export async function registerMaps(app: FastifyInstance, ctx: AppContext): Promi
     annotations.removeTrack(request.params.id);
     return { ok: true };
   });
+
+  // Place names for Great Britain from Ordnance Survey (os-names/).
+  registerOsNames(app, ctx, client);
 
   // ── Finding a known route in a route source ──
   registerRouteFinder(app, ctx, { client, annotations, elevation });

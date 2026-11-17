@@ -6,10 +6,17 @@
  */
 import { angleFromPolaris, STARS, type Star, starAt, starPlace } from "@/features/maps/lib/sky";
 import { altitudeCrossing, geometricFromApparent, type IsoDate, sunAt, sunDay } from "@/features/maps/lib/sun";
+import { formatDate } from "@/lib/utils";
 import { type Place, shadowLength } from "./recovery";
 
 const MINUTE = 60_000;
 const DEG = Math.PI / 180;
+
+/** A date as the rest of the app writes one ("17 Nov 2026"), through the shared formatter: midday on that date here. */
+export function dayWords(date: IsoDate): string {
+  const [year, month, day] = date.split("-").map(Number);
+  return formatDate(new Date(year!, month! - 1, day!, 12).getTime());
+}
 
 /** Where the tip of a stick's shadow lies, in metres east and north of the stick's foot. */
 export interface Tip {

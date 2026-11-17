@@ -6,7 +6,9 @@
 import type { FastifyInstance } from "fastify";
 import type { AppContext } from "../core/context.ts";
 import { registerAnswers } from "./answers/index.ts";
+import { registerAudiobooks } from "./audiobooks/index.ts";
 import { registerBackup } from "./backup/index.ts";
+import { registerBoard } from "./board/index.ts";
 import { registerBooks } from "./books/index.ts";
 import { registerCatalog } from "./catalog/index.ts";
 import { registerChat } from "./chat/index.ts";
@@ -22,10 +24,12 @@ import { registerHttps } from "./https/index.ts";
 import { registerImports } from "./imports/index.ts";
 import { registerKiwix } from "./kiwix/index.ts";
 import { registerLayers } from "./layers/index.ts";
+import { registerLearning } from "./learning/index.ts";
 import { registerLinks } from "./links/index.ts";
 import { registerManage } from "./manage/index.ts";
 import { registerMaps } from "./maps/index.ts";
 import { registerMerge } from "./merge/index.ts";
+import { registerMesh } from "./mesh/index.ts";
 import { registerMorse } from "./morse/index.ts";
 import { registerNetwork } from "./network/index.ts";
 import { registerNotes } from "./notes/index.ts";
@@ -81,4 +85,12 @@ export const modules: ModuleRegister[] = [
   registerMorse,
   // Games, on a line of its own so that other additions merge cleanly.
   registerGames,
+  // Audiobooks (Library), after books, on a line of its own so that other additions merge cleanly.
+  registerAudiobooks,
+  // Messages: the household board, on a line of its own so that other additions merge cleanly.
+  registerBoard,
+  // Learning progress in reference archives (the reader), on a line of its own so that other additions merge cleanly.
+  registerLearning,
+  // The mesh radio link, after the board it is a transport of, on a line of its own.
+  registerMesh,
 ];

@@ -12,7 +12,8 @@ import type {
 } from "@outpost/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { useServerEvent } from "@/lib/events";
+import { useServerConnection, useServerEvent } from "@/lib/events";
+import { usePageVisible } from "@/lib/page-visible";
 
 export const mergeKeys = {
   list: ["merge", "list"] as const,
@@ -39,15 +40,19 @@ export const useDriveInspection = (path: string | undefined) =>
 /**
  * One merge, kept current. State changes arrive as `merge.changed`; progress in between
  * comes with the job's own events and is written straight into the cache, so the bar
- * moves with the work. The interval is only a safety net for a dropped event stream.
+ * moves with the work. Only while the event stream is down is the merge asked for every few
+ * seconds, and not while the page is hidden; when the stream comes back every query is
+ * refreshed anyway.
  */
 export function useMerge(id: string | undefined) {
   const client = useQueryClient();
+  const shown = usePageVisible();
+  const connected = useServerConnection();
   const query = useQuery({
     queryKey: mergeKeys.detail(id ?? ""),
     queryFn: () => api.get<MergeResponse>(`/api/merge/${id}`).then((data) => data.merge),
     enabled: Boolean(id),
-    refetchInterval: (current) => (isBusy(current.state.data) ? 3000 : false),
+    refetchInterval: (current) => (shown && !connected && isBusy(current.state.data) ? 3000 : false),
   });
   useServerEvent("job.updated", ({ data }) => {
     const job = data as JobDto | undefined;

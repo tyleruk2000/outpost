@@ -6,31 +6,17 @@
  * language (features/diagrams/plate.tsx): the sun's path in ink, the horizon as ground,
  * the sun now as its sign in the accent, labels at the small text size.
  */
-import { type KeyboardEvent, type PointerEvent, useEffect, useId, useRef, useState } from "react";
+import { type KeyboardEvent, type PointerEvent, useId, useState } from "react";
 import { Ground, SunSign } from "@/features/diagrams/plate";
 import { formatBearing } from "@/features/maps/lib/geo";
 import { sunAt } from "@/features/maps/lib/sun";
 import type { ClockStyle } from "@/lib/clock";
+import { useWidth } from "@/lib/use-width";
 import { clockAt, reading, type ZoneChoice } from "./zone";
 
 const AXIS_TEXT = "tabular fill-ink-muted text-small";
 const MINUTE = 60_000;
 const STEP = 10;
-
-function useWidth(fallback = 640): [React.RefObject<HTMLDivElement | null>, number] {
-  const ref = useRef<HTMLDivElement | null>(null);
-  const [width, setWidth] = useState(fallback);
-  useEffect(() => {
-    const element = ref.current;
-    if (!element || typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(([entry]) => {
-      if (entry && entry.contentRect.width > 0) setWidth(Math.round(entry.contentRect.width));
-    });
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, []);
-  return [ref, width];
-}
 
 export interface PathPoint {
   at: number;
@@ -67,7 +53,7 @@ export function SunPathChart({
   style: ClockStyle;
   height?: number;
 }) {
-  const [ref, width] = useWidth();
+  const [ref, width] = useWidth(640);
   const [at, setAt] = useState<number | null>(null);
   const tableId = useId();
   const left = 46;

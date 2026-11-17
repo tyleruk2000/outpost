@@ -18,8 +18,8 @@ import type {
   TrackWithGeometryDto,
 } from "@outpost/shared";
 import { keepPreviousData, type UseQueryResult, useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 import { api, errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 
 export const mapsKeys = {
   sources: ["maps", "sources"] as const,
@@ -109,7 +109,7 @@ export function useSaveMarker() {
       );
       void client.invalidateQueries({ queryKey: ["maps"] });
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
 }
 
@@ -123,7 +123,7 @@ export function useDeleteMarker() {
       );
       void client.invalidateQueries({ queryKey: ["maps"] });
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
 }
 
@@ -139,7 +139,7 @@ export function useUpdateTrack() {
       client.setQueryData<TrackWithGeometryDto>(mapsKeys.track(track.id), (current) => (current ? { ...current, ...track } : current));
       void client.invalidateQueries({ queryKey: mapsKeys.tracks });
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
 }
 
@@ -190,7 +190,7 @@ export function useDeleteTrack() {
       client.removeQueries({ queryKey: mapsKeys.track(id) });
       void client.invalidateQueries({ queryKey: ["maps"] });
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
 }
 
@@ -250,7 +250,7 @@ export function useRemoveRegion() {
       void client.invalidateQueries({ queryKey: ["collections"] });
       void client.invalidateQueries({ queryKey: ["storage"] });
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
 }
 
@@ -267,7 +267,7 @@ export function useStartPlaces() {
       void client.invalidateQueries({ queryKey: ["downloads"] });
       void client.invalidateQueries({ queryKey: ["maps"] });
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
 }
 
@@ -276,6 +276,6 @@ export function useRemovePlaces() {
   return useMutation({
     mutationFn: (dataset: PlacesDataset) => api.delete<{ ok: true }>(`/api/maps/places/datasets/${dataset.id}`),
     onSuccess: () => void client.invalidateQueries({ queryKey: ["maps"] }),
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
 }

@@ -3,7 +3,7 @@
  * press, and starting a new one from a template drawn from official guidance or from
  * blank.
  */
-import { type EmergencyPlanSummary, PLAN_TEMPLATES, type PlanTemplate, planKindLabel, reviewDue } from "@outpost/shared";
+import { type EmergencyPlanSummary, PLAN_TEMPLATES, type PlanTemplate, planFromTemplate, planKindLabel, reviewDue } from "@outpost/shared";
 import { ChevronRight, ListChecks } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
@@ -17,7 +17,7 @@ import { formatDate, localId, plural } from "@/lib/utils";
 import { useCreatePlan, usePlans } from "./data";
 import { TemplateLicences, templateSources } from "./licences";
 import { HomeWarningLine } from "./warning-line";
-import { blankPlan, guessEmergencyNumber, planFrom } from "./words";
+import { blankPlan, guessEmergencyNumber } from "./words";
 
 function PlanRow({ plan }: { plan: EmergencyPlanSummary }) {
   const review = reviewDue(plan, Date.now());
@@ -67,7 +67,7 @@ function NewPlanDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o
   const number = guessEmergencyNumber();
   const make = () => {
     if (!chosen) return;
-    const input = chosen === "blank" ? blankPlan(name.trim() || "Our plan", number) : planFrom(chosen, localId, number);
+    const input = chosen === "blank" ? blankPlan(name.trim() || "Our plan", number) : planFromTemplate(chosen, localId, number);
     if (name.trim()) input.name = name.trim();
     create.mutate(input, { onSuccess: (response) => navigate(`/prepare/plans/${response.plan.id}`) });
   };

@@ -31,7 +31,8 @@
  *
  * Nothing moves. There is no canvas, no image and no timer; a plate costs nothing at rest.
  */
-import { type ReactNode, useEffect, useId, useRef, useState } from "react";
+import { type ReactNode, useId } from "react";
+import { useWidth } from "@/lib/use-width";
 import { cn } from "@/lib/utils";
 import { type Anchor, arcPath, bisector, chevron, type Point, polar } from "./geometry";
 
@@ -46,27 +47,14 @@ export interface PlateBox {
 
 const FALLBACK_WIDTH = 358;
 
-/** The plate's width and the text size, measured, and measured again when either changes. */
+/**
+ * The plate's width and the text size, measured with the shared `useWidth` and measured
+ * again when either changes: the text size is the width of a hidden span one rem wide.
+ */
 function usePlateBox(): [React.RefObject<HTMLDivElement | null>, React.RefObject<HTMLSpanElement | null>, PlateBox] {
-  const ref = useRef<HTMLDivElement | null>(null);
-  const remRef = useRef<HTMLSpanElement | null>(null);
-  const [box, setBox] = useState<PlateBox>({ width: FALLBACK_WIDTH, rem: 16, font: 14 });
-  useEffect(() => {
-    const element = ref.current;
-    const unit = remRef.current;
-    if (!element || !unit || typeof ResizeObserver === "undefined") return;
-    const measure = () => {
-      const width = Math.round(element.getBoundingClientRect().width);
-      const rem = unit.getBoundingClientRect().width || 16;
-      if (width > 0) setBox((old) => (old.width === width && old.rem === rem ? old : { width, rem, font: rem * 0.875 }));
-    };
-    const observer = new ResizeObserver(measure);
-    observer.observe(element);
-    observer.observe(unit);
-    measure();
-    return () => observer.disconnect();
-  }, []);
-  return [ref, remRef, box];
+  const [ref, width] = useWidth<HTMLDivElement>(FALLBACK_WIDTH);
+  const [remRef, rem] = useWidth<HTMLSpanElement>(16);
+  return [ref, remRef, { width, rem, font: rem * 0.875 }];
 }
 
 export interface PlateProps {

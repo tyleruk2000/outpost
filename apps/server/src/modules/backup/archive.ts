@@ -25,6 +25,8 @@ export { BackupDamaged, BackupLocked };
 export const FORMAT = "outpost-backup";
 /** Folders in the data directory that travel with a backup. */
 export const DATA_FOLDERS = ["attachments", "extracted", "catalog"];
+// Files sent on the household board (modules/board), so that a restored board's files are there.
+DATA_FOLDERS.push("board");
 /** The manifest is a few lines of JSON; anything much larger is not one. */
 const MAX_MANIFEST_BYTES = 64 * 1024;
 const MANIFEST_WITHIN = 8;

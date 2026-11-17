@@ -292,7 +292,7 @@ describe("finding a route", () => {
       "Search sends this name and the edges of the map view to routes.example.org (an example association), which answers from OpenStreetMap. With it goes the name the server's operator asks programs to give, Outpost/0.1.0 (self-hosted offline library; +https://example.org/outpost): the same for every copy of Outpost, and nothing about you or this installation. It needs the internet. A route you add is kept here and works offline.",
     );
     expect(screen.getByRole("link", { name: "The server's terms" })).toHaveAttribute("href", "https://routes.example.org/terms");
-    await userEvent.type(screen.getByLabelText("Name of the route"), "Kestrel");
+    await userEvent.type(screen.getByLabelText("Name of the route (optional)"), "Kestrel");
     // Typing asks nobody: there is no search-as-you-type.
     expect(sent).toEqual([]);
   });
@@ -346,7 +346,7 @@ describe("finding a route", () => {
         ]),
     });
     const { map, onPreview, onNeedMap } = show();
-    await userEvent.type(await screen.findByLabelText("Name of the route"), "kestrel{Enter}");
+    await userEvent.type(await screen.findByLabelText("Name of the route (optional)"), "kestrel{Enter}");
     expect(await screen.findByText("2 results. OpenStreetMap as it was on 15 Nov 2026")).toBeInTheDocument();
     expect(sent).toEqual([
       { path: "/api/maps/route-search", body: { sourceId: "example", text: "kestrel", bbox: [-3.3, 54.4, -3, 54.6] } },
@@ -375,7 +375,7 @@ describe("finding a route", () => {
     const track = { id: "t1", name: "Kestrel Ridge Path" } as TrackDto;
     serve({ search: () => found([result()]), add: () => ({ track, elevation: "none" }) });
     const { onAdded, onPreview, unmount } = show();
-    await userEvent.type(await screen.findByLabelText("Name of the route"), "kestrel{Enter}");
+    await userEvent.type(await screen.findByLabelText("Name of the route (optional)"), "kestrel{Enter}");
     await userEvent.click(await screen.findByRole("button", { name: /Kestrel Ridge Path/ }));
     await userEvent.click(await screen.findByRole("button", { name: "Add to my routes" }));
     await waitFor(() => expect(onAdded).toHaveBeenCalledWith(track));
@@ -408,7 +408,7 @@ describe("finding a route", () => {
       },
     });
     const { onAdded } = show();
-    await userEvent.type(await screen.findByLabelText("Name of the route"), "kestrel{Enter}");
+    await userEvent.type(await screen.findByLabelText("Name of the route (optional)"), "kestrel{Enter}");
     await userEvent.click(await screen.findByRole("button", { name: /Kestrel Ridge Path/ }));
     await userEvent.click(await screen.findByRole("button", { name: "Add to my routes" }));
     await waitFor(() =>
@@ -441,7 +441,7 @@ describe("finding a route", () => {
       screen.getByText("This view is too wide to search. Zoom in to about a day's walk across, or search by name anywhere."),
     ).toBeInTheDocument();
     await userEvent.click(screen.getByRole("radio", { name: "Anywhere" }));
-    await userEvent.type(screen.getByLabelText("Name of the route"), "Kestrel{Enter}");
+    await userEvent.type(screen.getByLabelText("Name of the route (optional)"), "Kestrel{Enter}");
     await waitFor(() => expect(sent).toHaveLength(1));
     // Searching anywhere sends the name and not the map view.
     expect(sent[0]!.body).toEqual({ sourceId: "example", text: "Kestrel" });
@@ -460,7 +460,7 @@ describe("finding a route", () => {
       },
     });
     show();
-    await userEvent.type(await screen.findByLabelText("Name of the route"), "kestrel{Enter}");
+    await userEvent.type(await screen.findByLabelText("Name of the route (optional)"), "kestrel{Enter}");
     const offline = await screen.findByRole("status", { name: "" }).catch(() => null);
     expect(offline).not.toBeNull();
     expect(await screen.findByText("No connection")).toBeInTheDocument();
@@ -479,7 +479,7 @@ describe("finding a route", () => {
   it("says when nothing was found, and offers to look anywhere", async () => {
     serve({ search: (body) => found((body as { bbox?: Bbox }).bbox ? [] : [result()]) });
     show();
-    await userEvent.type(await screen.findByLabelText("Name of the route"), "kestrel{Enter}");
+    await userEvent.type(await screen.findByLabelText("Name of the route (optional)"), "kestrel{Enter}");
     expect(await screen.findByText("Nothing called “kestrel” was found in this map view.")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Search anywhere for it" }));
     expect(await screen.findByRole("button", { name: /Kestrel Ridge Path/ })).toBeInTheDocument();
@@ -509,7 +509,7 @@ describe("finding a route", () => {
           : preview({ ref: { type: "relation", id: 9002 }, name: "Kestrel Way, northern section" }),
     });
     const { onPreview } = show();
-    await userEvent.type(await screen.findByLabelText("Name of the route"), "kestrel way{Enter}");
+    await userEvent.type(await screen.findByLabelText("Name of the route (optional)"), "kestrel way{Enter}");
     await userEvent.click(await screen.findByRole("button", { name: /Kestrel Way/ }));
     expect(await screen.findByText(/keeps this route as 1 section, not as one line/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Add to my routes" })).not.toBeInTheDocument();

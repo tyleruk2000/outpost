@@ -7,11 +7,11 @@
 import type { EmergencyPlanResponse } from "@outpost/shared";
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
-import { toast } from "sonner";
 import { Page } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/misc";
 import { PlanInUse, stateLine } from "@/features/emergency-plans/use-view";
+import { notify } from "@/lib/notify";
 import { formatDateTime, plural, timeAgo } from "@/lib/utils";
 import { DEVICE } from "./device";
 import { type PendingTicks, readKeptPlan, tickOnPhone, ticksOnPhone } from "./plan-copy";
@@ -66,7 +66,7 @@ export default function KeptPlanScreen() {
     // Written to the phone first, then shown: what is on screen is what is kept.
     tickOnPhone(id, stepId, done).then(
       (next) => setFound({ ...found, pending: next }),
-      (error) => toast.error(outOfRoomMessage(error) ?? (error instanceof Error ? error.message : String(error))),
+      (error) => notify.error(outOfRoomMessage(error) ?? (error instanceof Error ? error.message : String(error))),
     );
   };
 

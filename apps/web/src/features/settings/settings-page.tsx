@@ -4,6 +4,8 @@ import { type ReactNode, useEffect } from "react";
 import { useLocation } from "react-router";
 import { ErrorState, Page, PageHeader } from "@/components/page";
 import { Segmented, Skeleton, Switch } from "@/components/ui/misc";
+import { BoardSettingsSection } from "@/features/board/settings-section";
+import { MeshSettingsSection } from "@/features/mesh/mesh-settings-section";
 import { useClockStyle } from "@/lib/clock";
 import { useSettings, useSystem, useUpdateSettings } from "@/lib/queries";
 import { useTheme } from "@/lib/theme";
@@ -11,6 +13,7 @@ import { plural } from "@/lib/utils";
 import { AnswersSection } from "./answers-section";
 import { BackupSection } from "./backup-section";
 import { ClockSetting } from "./clock-setting";
+import { HeightSetting } from "./height-setting";
 import { HttpsSection } from "./https-section";
 import { NumberSetting, SettingRow, SettingsSection, TextSetting } from "./parts";
 import { SemanticSection } from "./semantic-section";
@@ -58,6 +61,8 @@ const SECTIONS = [
   ["semantic", "Search by meaning"],
   ["answers", "Answers"],
   ["maps", "Maps"],
+  ["board", "Message board"],
+  ["mesh", "Mesh radio"],
   ["backup", "Backup"],
   ["automatic-backups", "Automatic backups"],
   ["https", "HTTPS"],
@@ -141,6 +146,7 @@ export default function SettingsPage() {
           }
         />
         <ClockSetting />
+        <HeightSetting />
       </SettingsSection>
 
       {settings.isPending ? (
@@ -323,6 +329,9 @@ export default function SettingsPage() {
             />
           </SettingsSection>
 
+          <BoardSettingsSection settings={s} disabled={disabled} save={save} />
+          <MeshSettingsSection />
+
           <BackupSection />
 
           <HttpsSection settings={s} disabled={disabled} save={save} />
@@ -344,7 +353,7 @@ export default function SettingsPage() {
             : "To let phones and other computers on your network use this library, set "}
           {info?.lanAccess ? null : (
             <>
-              <span className="font-mono text-[0.8125rem] text-ink">OUTPOST_LAN_ACCESS=true</span> in the{" "}
+              <span className="font-mono text-[0.8125rem] [overflow-wrap:anywhere] text-ink">OUTPOST_LAN_ACCESS=true</span> in the{" "}
               <span className="font-mono text-[0.8125rem] text-ink">.env</span> file and restart. There is no sign-in: everyone on that
               network will be able to use and change it.
             </>

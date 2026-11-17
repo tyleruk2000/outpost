@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/misc";
 import { ApiError, api, errorMessage } from "@/lib/api";
 import { useServerEvent } from "@/lib/events";
+import { notify } from "@/lib/notify";
 import { formatDateTime, timeAgo } from "@/lib/utils";
 import { NoteEditor } from "./editor/note-editor";
 import { MoveDialog } from "./move-dialog";
@@ -80,7 +81,8 @@ export function NoteScreen({ id }: { id: string }) {
   // the page is fetched again, except after a save this tab made, which it already has.
   useServerEvent("notes.changed", ({ data }) => {
     if ((data as NoteChangedEvent | undefined)?.origin === TAB_ORIGIN) return;
-    void client.invalidateQueries({ queryKey: noteKeys.detail(id) });
+    // Changes heard while the page was hidden are handed on together when it is shown: one fetch answers them all.
+    void client.invalidateQueries({ queryKey: noteKeys.detail(id) }, { cancelRefetch: false });
   });
 
   if (note.isPending) return <NoteSkeleton />;
@@ -246,14 +248,14 @@ function LoadedNote({ note, reload }: { note: NoteDetail; reload(): Promise<Note
       const attachment = await uploadAttachment(file, note.id);
       if (!attachment.mime.startsWith("image/")) {
         void api.delete(`/api/attachments/${attachment.id}`).catch(() => {});
-        toast.error(`“${file.name}” is not a picture. A cover has to be a picture.`);
+        notify.error(`“${file.name}” is not a picture. A cover has to be a picture.`);
         return;
       }
       setCover({ id: attachment.id, url: attachment.url });
       // Read by the queue after the next render, when the new cover is in `fields`.
       touch("coverAttachmentId");
     } catch (error) {
-      toast.error(errorMessage(error));
+      notify.error(errorMessage(error));
     } finally {
       setCoverUploading(false);
     }
@@ -282,7 +284,7 @@ function LoadedNote({ note, reload }: { note: NoteDetail; reload(): Promise<Note
           : "This page is an ordinary page again, at the top level of your pages.",
       );
     } catch (error) {
-      toast.error(errorMessage(error));
+      notify.error(errorMessage(error));
     }
   };
 

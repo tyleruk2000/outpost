@@ -16,6 +16,7 @@ import { EmptyState, ErrorState, Notice, Page, PageHeader } from "@/components/p
 import { Button } from "@/components/ui/button";
 import { Checkbox, Segmented, Select, Skeleton, Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/misc";
 import { errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { plural } from "@/lib/utils";
 import { BarometerView } from "./barometer-view";
 import { ClimateView } from "./climate-view";
@@ -29,7 +30,6 @@ import type { TempUnit, WindUnit } from "./words";
 
 const VIEWS = ["forecast", "warnings", "flood", "rivers", "climate", "barometer", "places", "kept"] as const;
 type View = (typeof VIEWS)[number];
-const tab = "min-h-11 md:min-h-0";
 const WIND_KEY = "outpost.weather.wind";
 const TEMP_KEY = "outpost.weather.temp";
 
@@ -105,7 +105,7 @@ export default function WeatherPage() {
           else if (done > 0)
             toast.message(`${plural(done, "copy", "copies")} fetched; ${failed.length} could not be. What was kept before is still kept.`);
         },
-        onError: (error) => toast.error(errorMessage(error)),
+        onError: (error) => notify.error(errorMessage(error)),
       },
     );
 
@@ -237,31 +237,15 @@ export default function WeatherPage() {
           </div>
 
           <Tabs value={view} onValueChange={setView}>
-            <TabsList className="mb-6 flex-wrap gap-x-5 gap-y-1 overflow-visible" aria-label="Weather and hazards">
-              <TabsTrigger value="forecast" className={tab}>
-                Forecast
-              </TabsTrigger>
-              <TabsTrigger value="warnings" className={tab}>
-                Warnings
-              </TabsTrigger>
-              <TabsTrigger value="flood" className={tab}>
-                Flood
-              </TabsTrigger>
-              <TabsTrigger value="rivers" className={tab}>
-                River and sea levels
-              </TabsTrigger>
-              <TabsTrigger value="climate" className={tab}>
-                Climate
-              </TabsTrigger>
-              <TabsTrigger value="barometer" className={tab}>
-                Barometer
-              </TabsTrigger>
-              <TabsTrigger value="places" className={tab}>
-                Places
-              </TabsTrigger>
-              <TabsTrigger value="kept" className={tab}>
-                Kept and sources
-              </TabsTrigger>
+            <TabsList className="mb-6" aria-label="Weather and hazards">
+              <TabsTrigger value="forecast">Forecast</TabsTrigger>
+              <TabsTrigger value="warnings">Warnings</TabsTrigger>
+              <TabsTrigger value="flood">Flood</TabsTrigger>
+              <TabsTrigger value="rivers">River and sea levels</TabsTrigger>
+              <TabsTrigger value="climate">Climate</TabsTrigger>
+              <TabsTrigger value="barometer">Barometer</TabsTrigger>
+              <TabsTrigger value="places">Places</TabsTrigger>
+              <TabsTrigger value="kept">Kept and sources</TabsTrigger>
             </TabsList>
             <TabsContent value="forecast">
               {place ? (

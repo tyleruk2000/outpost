@@ -10,8 +10,8 @@ import type {
   ObservationList,
 } from "@outpost/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 import { api, errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 
 export const logKeys = { all: ["propagation", "log"] as const, page: (limit: number) => ["propagation", "log", limit] as const };
 
@@ -27,7 +27,7 @@ function useChange<T, R>(run: (input: T) => Promise<R>, quiet = false) {
   return useMutation({
     mutationFn: run,
     onSuccess: () => void client.invalidateQueries({ queryKey: logKeys.all }),
-    onError: quiet ? undefined : (error) => toast.error(errorMessage(error)),
+    onError: quiet ? undefined : (error) => notify.error(errorMessage(error)),
   });
 }
 

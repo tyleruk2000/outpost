@@ -123,6 +123,7 @@ export function placeLabel(
   taken: Box[],
   bounds: { width: number; height: number },
   clearance = 5,
+  avoid: readonly Obstacle[] = [],
 ): Placed | null {
   const [x, y] = point;
   const side = clearance + font * 0.4;
@@ -137,21 +138,60 @@ export function placeLabel(
     [x + side * 0.6, y + rise, "start"],
     [x - side * 0.6, y + rise, "end"],
   ];
-  return firstFree(tries, text, font, taken, bounds);
+  return firstFree(tries, text, font, taken, bounds, avoid);
 }
 
-/** The first of some places for a label where it is clear of everything taken and inside the plate; it is then taken. */
+/** A drawn line or ring a label must not sit across. */
+export type Obstacle = { kind: "segment"; a: Point; b: Point } | { kind: "ring"; centre: Point; r: number };
+
+/** Whether a box sits across a line or a ring, with `pad` pixels to spare. */
+export function crosses(box: Box, obstacle: Obstacle, pad = 2): boolean {
+  const grown = { x: box.x - pad, y: box.y - pad, width: box.width + 2 * pad, height: box.height + 2 * pad };
+  if (obstacle.kind === "ring") {
+    const [cx, cy] = obstacle.centre;
+    const nearX = Math.max(grown.x, Math.min(cx, grown.x + grown.width));
+    const nearY = Math.max(grown.y, Math.min(cy, grown.y + grown.height));
+    const near = Math.hypot(nearX - cx, nearY - cy);
+    const far = Math.max(
+      ...[
+        [grown.x, grown.y],
+        [grown.x + grown.width, grown.y],
+        [grown.x, grown.y + grown.height],
+        [grown.x + grown.width, grown.y + grown.height],
+      ].map(([x, y]) => Math.hypot(x! - cx, y! - cy)),
+    );
+    return near <= obstacle.r && far >= obstacle.r;
+  }
+  // A segment crosses a box if either end is inside it or it crosses one of its sides.
+  const inside = ([x, y]: Point) => x >= grown.x && x <= grown.x + grown.width && y >= grown.y && y <= grown.y + grown.height;
+  if (inside(obstacle.a) || inside(obstacle.b)) return true;
+  const corners: Point[] = [
+    [grown.x, grown.y],
+    [grown.x + grown.width, grown.y],
+    [grown.x + grown.width, grown.y + grown.height],
+    [grown.x, grown.y + grown.height],
+  ];
+  const side = (p: Point, q: Point, r: Point) => Math.sign((q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]));
+  return corners.some((c, i) => {
+    const d = corners[(i + 1) % 4]!;
+    return side(obstacle.a, obstacle.b, c) !== side(obstacle.a, obstacle.b, d) && side(c, d, obstacle.a) !== side(c, d, obstacle.b);
+  });
+}
+
+/** The first of some places for a label where it is clear of everything taken, crosses no obstacle and is inside the plate; it is then taken. */
 export function firstFree(
   tries: ReadonlyArray<readonly [number, number, Anchor]>,
   text: string,
   font: number,
   taken: Box[],
   bounds: { width: number; height: number },
+  avoid: readonly Obstacle[] = [],
 ): Placed | null {
   for (const [lx, ly, anchor] of tries) {
     const box = labelBox(lx, ly, text, font, anchor);
     if (box.x < 0 || box.y < 0 || box.x + box.width > bounds.width || box.y + box.height > bounds.height) continue;
     if (taken.some((other) => overlaps(box, other, 2))) continue;
+    if (avoid.some((obstacle) => crosses(box, obstacle))) continue;
     taken.push(box);
     return { at: [lx, ly], anchor, box };
   }

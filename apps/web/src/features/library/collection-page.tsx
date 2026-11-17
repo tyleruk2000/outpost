@@ -12,13 +12,16 @@ import {
   Trash2,
   Unplug,
 } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { lazy, type ReactNode, Suspense, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
 import { ErrorState, Notice, Page } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/misc";
+import { CarryOn } from "@/features/learning/carry-on";
 import { ApiError, api, errorMessage } from "@/lib/api";
+import { copyText } from "@/lib/clipboard";
+import { notify } from "@/lib/notify";
 import { useStorage } from "@/lib/queries";
 import { formatDate, formatDateTime, formatNumber } from "@/lib/utils";
 import { languageName, sizeText } from "../explore/catalog";
@@ -28,17 +31,21 @@ import { BookContents, firstChapter, useBookContents } from "./book-contents";
 import { useCollection } from "./collection-data";
 import { MoveCollectionDialog, RemoveCollectionDialog } from "./collection-dialogs";
 import { CollectionJobStatus, useCollectionActivity } from "./collection-job";
-import { chapterCount, filesReachable, isBook, kindLabel, openTarget, plainText } from "./collection-meta";
+import { chapterCount, filesReachable, isAudiobook, isBook, kindLabel, openTarget, plainText } from "./collection-meta";
+
+// An audiobook's page is its player, in place of a book's contents.
+const AudiobookPanel = lazy(() => import("../audiobooks/audiobook-panel"));
 
 const collectionsTab = "/library?tab=collections";
 
-function BackLink() {
+function BackLink({ audiobook = false }: { audiobook?: boolean }) {
   return (
     <Link
-      to={collectionsTab}
-      className="-ml-1 mb-5 inline-flex items-center gap-1 rounded-control text-small text-ink-muted hover:text-ink"
+      // An audiobook is found in the Library under Type: Audiobooks, so that is where back leads.
+      to={audiobook ? "/library?type=audio" : collectionsTab}
+      className="-ml-1 mb-5 inline-flex items-center gap-1 rounded-control text-small text-ink-muted hover:text-ink max-md:min-h-11"
     >
-      <ChevronLeft aria-hidden className="size-4" /> Collections
+      <ChevronLeft aria-hidden className="size-4" /> {audiobook ? "Audiobooks" : "Collections"}
     </Link>
   );
 }
@@ -54,33 +61,6 @@ function Fact({ label, children }: { label: string; children: ReactNode }) {
 
 const text = (value: unknown): string | null => (typeof value === "string" && value.trim() ? value : null);
 
-async function copyText(value: string): Promise<boolean> {
-  try {
-    // Not available when Outpost is reached over plain http on a local network.
-    if (navigator.clipboard) {
-      await navigator.clipboard.writeText(value);
-      return true;
-    }
-  } catch {
-    // Fall through to the older way.
-  }
-  const area = document.createElement("textarea");
-  area.value = value;
-  area.setAttribute("readonly", "");
-  area.style.position = "fixed";
-  area.style.opacity = "0";
-  document.body.append(area);
-  area.select();
-  let copied = false;
-  try {
-    copied = document.execCommand("copy");
-  } catch {
-    copied = false;
-  }
-  area.remove();
-  return copied;
-}
-
 function Checksum({ value }: { value: string }) {
   return (
     <span className="flex items-start gap-2">
@@ -92,7 +72,7 @@ function Checksum({ value }: { value: string }) {
         className="-my-1 shrink-0"
         onClick={async () => {
           if (await copyText(value)) toast.success("Checksum copied");
-          else toast.error("The checksum could not be copied. Select it and copy it by hand.");
+          else notify.error("The checksum could not be copied. Select it and copy it by hand.");
         }}
       >
         <Copy />
@@ -208,7 +188,7 @@ export default function CollectionPage() {
       activity.follow(job);
       void client.invalidateQueries({ queryKey: ["jobs"] });
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
 
   if (query.isPending) return <LoadingCollection />;
@@ -242,8 +222,15 @@ export default function CollectionPage() {
 
   const collection = query.data;
   const book = isBook(collection);
-  // A book is read from its first chapter; everything else from wherever its kind is used.
-  const target = book ? (first ? { to: `/library/documents/${first.documentId}`, label: "Start reading" } : null) : openTarget(collection);
+  const audiobook = isAudiobook(collection);
+  // A book is read from its first chapter; an audiobook is played on this page; everything else from wherever its kind is used.
+  const target = audiobook
+    ? null
+    : book
+      ? first
+        ? { to: `/library/documents/${first.documentId}`, label: "Start reading" }
+        : null
+      : openTarget(collection);
   const reachable = filesReachable(collection);
   const away = !collection.locationAvailable;
   const entry = collection.catalogEntryId ? catalog.data?.entries.find((item) => item.id === collection.catalogEntryId) : undefined;
@@ -253,7 +240,7 @@ export default function CollectionPage() {
 
   return (
     <Page width="reading">
-      <BackLink />
+      <BackLink audiobook={audiobook} />
       <h1 className="font-title text-title text-ink">{collection.title}</h1>
       {collection.description ? <p className="mt-2 text-body text-ink-muted">{collection.description}</p> : null}
 
@@ -304,7 +291,13 @@ export default function CollectionPage() {
         ) : null}
       </div>
 
-      <div className="mt-5 flex flex-wrap items-center gap-2">
+      {audiobook ? (
+        <Suspense fallback={<p className="mt-6 text-small text-ink-muted">Loading the player…</p>}>
+          <AudiobookPanel collectionId={collection.id} />
+        </Suspense>
+      ) : null}
+
+      <div className={audiobook ? "mt-8 flex flex-wrap items-center gap-2" : "mt-5 flex flex-wrap items-center gap-2"}>
         {target ? (
           reachable ? (
             <Button asChild variant="primary">
@@ -328,13 +321,14 @@ export default function CollectionPage() {
           <Trash2 /> Remove
         </Button>
       </div>
+      {collection.kind === "zim" && reachable ? <CarryOn collectionId={collection.id} className="mt-4" /> : null}
       {activity.busy ? (
         <p className="mt-2 text-small text-ink-muted">Checking, moving and removing wait until the work below has finished.</p>
       ) : null}
 
       <CollectionJobStatus activity={activity} className="mt-6" />
 
-      {book ? <BookContents collectionId={collection.id} readable={reachable} expected={chapterCount(collection)} /> : null}
+      {book && !audiobook ? <BookContents collectionId={collection.id} readable={reachable} expected={chapterCount(collection)} /> : null}
 
       <section className="mt-8" aria-labelledby="collection-details">
         <h2 id="collection-details" className="mb-2 text-lead font-semibold text-ink">

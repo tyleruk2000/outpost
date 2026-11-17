@@ -42,7 +42,10 @@ Everything you have already installed or written:
   shadow, and the sundial and nocturnal templates are all worked out on the device (see
   [tools-solar-clock.md](tools-solar-clock.md)). Saved places come from the server; typed
   coordinates need nothing;
-- the games, all six of them (see [games.md](games.md)).
+- the games, all six of them (see [games.md](games.md));
+- the household board, Messages: messages, check-ins and files sent between devices go
+  through Outpost on the home network and nothing else (see [messages.md](messages.md)).
+  It does not wake a locked phone: there are no push notifications.
 
 The web app itself is served by Outpost: its scripts, styles, fonts, PDF viewer
 resources, map fonts and map icons are all local files.
@@ -57,6 +60,7 @@ Only actions that fetch something new. Each happens because a person pressed a b
 | Starting a catalogue download | The hosts listed in the manifests' `downloadHosts`; mirrors they redirect to |
 | Estimating or downloading a map region | `build-metadata.protomaps.dev` and `build.protomaps.com`, or the archive in the `maps.tileSource` setting; for terrain, the `maps.terrainSource` archive |
 | Downloading place names | `download.geonames.org` |
+| **Check the size** and **Download** under Offline maps → Place names for Great Britain | `api.os.uk` (Ordnance Survey's Downloads API), which redirects the download to OS's file store `omseprd1stdstordownload.blob.core.windows.net`. Nothing is sent but the plain client name. See [maps.md](maps.md#place-names-for-great-britain). |
 | **Search** in "Find a route" on the Maps screen, and choosing one of its results | The route source named beside the search: one of the hosts in `catalog/route-sources.json` (as shipped, `ovp.dresel.systems` or `overpass.private.coffee`) or in your own `<data directory>/catalog/routes/route-sources.json`. It is sent the name you typed and, when you search the map view, the edges of the view. A redirect to another host is refused. See [maps.md](maps.md#finding-a-known-route). |
 | **Get the list** (or **Get it again**) for a source on the Repeaters screen, and **Bring up to date** on a list that was fetched | The publisher named beside the source: one of the hosts in `catalog/repeater-sources.json` whose kind is `fetch` (as shipped, `www.irts.ie` and `hearham.com`) or in your own `<data directory>/catalog/repeaters/repeater-sources.json`. One request for the one file. Nothing is sent but the plain client name every download uses ("Outpost (self-hosted offline library)"). A redirect to another host is refused. Opening a publisher's page from the same screen is your browser following a link, not Outpost. See [radio.md](radio.md#where-to-get-a-list). |
 | **Save to library** on a link in a reference page, or adding a page's linked files that are only on the internet | The host named in the link, and whatever it redirects to. This is the one place Outpost fetches from a host that no catalogue manifest lists. The address must be `http` or `https`, must end in a kind of file the library keeps, and must not be on this computer or a private network (unless the server was started with `OUTPOST_ALLOW_PRIVATE_DOWNLOADS=true`). |
@@ -68,6 +72,7 @@ Only actions that fetch something new. Each happens because a person pressed a b
 | **Download a newer table** under HF propagation, Engine and data | `services.swpc.noaa.gov`, for NOAA's solar cycle table. See [hf-propagation.md](hf-propagation.md). |
 | **Download the P.533 maps** for the second HF model | `raw.githubusercontent.com`. See [hf-propagation.md](hf-propagation.md#a-second-model-itu-p533). |
 | **Fetch the registry from the IEEE** under Devices on this network | `standards-oui.ieee.org`, for the list of who made which network card. See [tools-qr-and-network.md](tools-qr-and-network.md#who-made-each-device). |
+| **Download the zip** and **LibriVox page** under Explore → Audiobooks | Nothing, from Outpost: these are links your browser follows to `archive.org` and `librivox.org`. Outpost itself never fetches an audiobook. Playing one in the Library is played from Outpost's own server, with no connection. See [library.md](library.md#audiobooks). |
 | Making a portable drive for a kind of computer for the first time | `nodejs.org` for the Node runtime; `download.kiwix.org` for the reference-collection reader |
 
 Once fetched, the Node runtimes and the reader are cached in the data directory, so

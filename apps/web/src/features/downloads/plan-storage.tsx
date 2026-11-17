@@ -2,10 +2,10 @@ import { type DownloadPlanLocation, formatBytes } from "@outpost/shared";
 import { TriangleAlert } from "lucide-react";
 import { memo, useState } from "react";
 import { Link } from "react-router";
+import { useWidth } from "@/lib/use-width";
 import { cn } from "@/lib/utils";
 import { manageLink } from "../manage/manage-data";
 import { ChartTooltip, TooltipValue } from "./charts/chart-tooltip";
-import { useWidth } from "./charts/use-width";
 import { Swatch } from "./plan-timeline";
 
 interface Part {
@@ -27,7 +27,7 @@ export function driveParts(location: Pick<DownloadPlanLocation, "totalBytes" | "
 }
 
 function Drive({ location }: { location: DownloadPlanLocation }) {
-  const [frame, width] = useWidth<HTMLDivElement>();
+  const [frame, width] = useWidth();
   const [open, setOpen] = useState(false);
   const parts = driveParts(location);
   const total = location.totalBytes ?? 0;

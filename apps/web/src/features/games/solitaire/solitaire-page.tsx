@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Segmented } from "@/components/ui/misc";
 import { plural } from "@/lib/utils";
-import { readDeviceSave, useDeviceSave, writeDeviceSave } from "../kit/device-save";
+import { FOLLOWED_WORDS, readDeviceSave, useDeviceSave, writeDeviceSave } from "../kit/device-save";
 import { GameAbout, GameFrame } from "../kit/frame";
 import { type PlayTime, useEverySecond, usePlayTime } from "../kit/play-time";
 import { useRecordResult } from "../kit/queries";
@@ -102,7 +102,16 @@ export default function SolitairePage() {
   /** The game with the time played since the last move added (none before the first move). */
   const timed = (of: Game): Game => ({ ...of, seconds: of.seconds + time.lap() });
   // Kept a moment after each move and when the screen is hidden or left; a won game is not kept.
-  useDeviceSave(SAVE_KEY, game, (current) => (current.won ? null : { ...current, seconds: current.seconds + time.peek() }));
+  // The same game played in another tab of this browser is followed here; its time already holds this tab's.
+  useDeviceSave(SAVE_KEY, game, (current) => (current.won ? null : { ...current, seconds: current.seconds + time.peek() }), {
+    accept: isGame,
+    onFollow: (other) => {
+      time.lap();
+      setGame(other);
+      setPicked(null);
+      say(FOLLOWED_WORDS);
+    },
+  });
 
   /** A move made: the game it led to, and what to say. A win is posted to the tally here, once. */
   const play = (moved: Game, words: string) => {

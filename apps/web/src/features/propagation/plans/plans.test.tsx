@@ -119,7 +119,7 @@ describe("the plan written out", () => {
     );
     expect(text).toContain("It is not a reading of the ionosphere on the day.");
     expect(text).toContain("| Home base      | 51.51, -0.13 | IO91WM  | 5 W   | Low horizontal dipole, 5 m | Residential |");
-    expect(text).toContain("| Home base and Remote shelter | 383 | 40 m, up to 60% | 80 m, up to 20% |");
+    expect(text).toContain("| Home base and Remote shelter | 383 | 40 m, up to 60% of days | 80 m, up to 20% of days |");
     expect(text).toContain(
       "- Primary: 40 m (7.1 MHz), 08:00 to 12:00 UTC. Its two-way reliability reaches 60% of days at 08:00 and averages 60% over the window.",
     );
@@ -349,8 +349,8 @@ describe("a plan", () => {
     const table = screen.getByRole("table", { name: "The primary and alternate band for each pair of stations" });
     const row = within(table).getByRole("row", { name: /Home base and Remote shelter/ });
     expect(row.textContent).toContain("383 km");
-    expect(row.textContent).toContain("40 m, 08:00 to 12:00, up to 60%");
-    expect(row.textContent).toContain("80 m, 08:00 to 12:00, up to 20%");
+    expect(row.textContent).toContain("40 m, 08:00 to 12:00, up to 60% of days");
+    expect(row.textContent).toContain("80 m, 08:00 to 12:00, up to 20% of days");
     expect(
       screen.getByText(
         /^40 m \(7\.1 MHz\), 08:00 to 12:00 UTC\. Its two-way reliability reaches 60% of days at 08:00 and averages 60% over the window\.$/,

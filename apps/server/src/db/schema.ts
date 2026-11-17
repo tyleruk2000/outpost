@@ -1507,3 +1507,144 @@ export const gameSaves = sqliteTable("game_saves", {
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });
+
+// ── The household board (Messages) ─────────────────────────────────────────
+
+/**
+ * A file sent on the board, to be saved on another device. Its bytes are in the data
+ * directory at `board/<aa>/<id>/<name>`. When it is removed or its days are up the bytes
+ * go and the row stays, with `gone_at`, so that the message that carried it can say so.
+ */
+export const boardFiles = sqliteTable(
+  "board_files",
+  {
+    id: id(),
+    /** The name as sent, made safe for a file system. */
+    filename: text("filename").notNull(),
+    /** The type served with it: always one a browser downloads and never runs. */
+    mime: text("mime").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    sha256: text("sha256").notNull(),
+    /** Relative to the data directory's `board` folder. */
+    relPath: text("rel_path").notNull(),
+    createdAt: createdAt(),
+    /** When it is removed by itself; null keeps it until someone removes it. */
+    expiresAt: integer("expires_at"),
+    /** When its bytes went, and why: "expired" or "removed". */
+    goneAt: integer("gone_at"),
+    goneReason: text("gone_reason", { enum: ["expired", "removed"] }),
+  },
+  (table) => [index("board_files_expires").on(table.expiresAt)],
+);
+
+/**
+ * One message on a channel: the household's own board ("board"), or, later, a channel a
+ * transport (a radio link) carries. A check-in is a message with a status. Removing one
+ * keeps the row with who removed it and when, and empties its words.
+ */
+export const boardMessages = sqliteTable(
+  "board_messages",
+  {
+    id: id(),
+    /** "board" for the household's board; a transport names its own ("meshtastic:LongFast"). */
+    channel: text("channel").notNull(),
+    /** Where it was written: "here" (a device on this Outpost), or the name of the transport it came in by. */
+    source: text("source").notNull(),
+    /** The transport's own id for it, so that one heard twice is kept once. Null for one written here. */
+    externalId: text("external_id"),
+    kind: text("kind", { enum: ["message", "checkin"] }).notNull(),
+    /** The name the person chose on their device. Not proof of anything. */
+    author: text("author").notNull(),
+    body: text("body").notNull(),
+    /** A check-in's status. */
+    status: text("status", { enum: ["safe", "help", "other"] }),
+    /** Where they are, in their own words: "gone to Mum's". */
+    place: text("place"),
+    lat: real("lat"),
+    lon: real("lon"),
+    accuracyM: real("accuracy_m"),
+    fileId: text("file_id").references(() => boardFiles.id, { onDelete: "set null" }),
+    /** What a transport knows about it that the board does not use (a node id, a signal report). */
+    meta: json<Record<string, unknown>>("meta"),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+    editedAt: integer("edited_at"),
+    editedBy: text("edited_by"),
+    removedAt: integer("removed_at"),
+    removedBy: text("removed_by"),
+  },
+  (table) => [
+    index("board_messages_channel_created").on(table.channel, table.createdAt),
+    index("board_messages_author_kind").on(table.kind, table.author),
+    uniqueIndex("board_messages_external").on(table.source, table.externalId),
+  ],
+);
+// ── Learning progress (the reader) ──────────────────────────────────────────
+
+/**
+ * Where each learner got to in a reference archive: one row per learner, archive and
+ * page. A learner is a name chosen on a device, or "" for someone who chose "Just me";
+ * it is not an account and proves nothing about who was holding the device. `archive`
+ * is the archive's own name without its date (`khanacademy_en_all`), so that progress
+ * outlives updating the archive to a newer edition. See docs/learning.md.
+ */
+export const learningPages = sqliteTable(
+  "learning_pages",
+  {
+    id: id(),
+    learner: text("learner").notNull(),
+    archive: text("archive").notNull(),
+    /** The archive's title when this page was last recorded, for when it is no longer installed. */
+    archiveTitle: text("archive_title").notNull(),
+    /** The page's address inside the archive, as the reader's address shows it. */
+    path: text("path").notNull(),
+    title: text("title").notNull().default(""),
+    firstOpenedAt: integer("first_opened_at").notNull(),
+    lastOpenedAt: integer("last_opened_at").notNull(),
+    /** Seconds the page was on show while the reader's tab was visible, in all. */
+    secondsInView: integer("seconds_in_view").notNull().default(0),
+    /** When the learner marked it done, or its video was played through; null when not done. */
+    doneAt: integer("done_at"),
+    /** "marked" (pressed Done) or "watched" (its video played to the end). */
+    doneHow: text("done_how"),
+    /** The last time anything was recorded for it: "where they got to" is the newest. */
+    updatedAt: updatedAt(),
+  },
+  (table) => [
+    uniqueIndex("learning_pages_page_idx").on(table.learner, table.archive, table.path),
+    index("learning_pages_recent_idx").on(table.learner, table.archive, table.updatedAt),
+  ],
+);
+
+/** Time in view by day, for "about 2 hours this week": one row per learner, archive and day. */
+export const learningDays = sqliteTable(
+  "learning_days",
+  {
+    learner: text("learner").notNull(),
+    archive: text("archive").notNull(),
+    /** The server's own calendar day, "2026-11-17". */
+    day: text("day").notNull(),
+    seconds: integer("seconds").notNull().default(0),
+  },
+  (table) => [primaryKey({ columns: [table.learner, table.archive, table.day] })],
+);
+
+/**
+ * What a page of links lists: the other pages of the same archive it links to, as the
+ * reader saw them when someone opened it. The same for every learner, since it is the
+ * archive's shape and not anyone's progress. Used only to say "3 of 5 done in Fractions".
+ */
+export const learningTopics = sqliteTable(
+  "learning_topics",
+  {
+    archive: text("archive").notNull(),
+    path: text("path").notNull(),
+    title: text("title").notNull().default(""),
+    /** The pages it links to, inside the same archive. */
+    links: json<string[]>("links").notNull(),
+    /** It is the archive's first page, whose links (subjects, a menu) are left out of every other page's list. */
+    isHome: integer("is_home", { mode: "boolean" }).notNull().default(false),
+    seenAt: integer("seen_at").notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.archive, table.path] })],
+);

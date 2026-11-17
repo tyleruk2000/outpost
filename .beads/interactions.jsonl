@@ -110,3 +110,4 @@
 {"id":"int-372301f0","kind":"field_change","created_at":"2026-11-17T11:40:44.974122Z","actor":"Tyler Allen","issue_id":"outpost-q17","extra":{"field":"status","new_value":"closed","old_value":"open","reason":"Merged 17 Nov"}}
 {"id":"int-90ccecc3","kind":"field_change","created_at":"2026-11-17T12:05:43.900702Z","actor":"Tyler Allen","issue_id":"outpost-zxx","extra":{"field":"status","new_value":"closed","old_value":"open","reason":"Merged 17 Nov"}}
 {"id":"int-7b0afc18","kind":"field_change","created_at":"2026-11-17T12:09:00.321909Z","actor":"Tyler Allen","issue_id":"outpost-8c3","extra":{"field":"status","new_value":"closed","old_value":"open","reason":"Merged 17 Nov"}}
+{"id":"int-8afdf83b","kind":"field_change","created_at":"2026-11-17T12:15:27.222091Z","actor":"Tyler Allen","issue_id":"outpost-fke","extra":{"field":"status","new_value":"closed","old_value":"open","reason":"Merged 17 Nov"}}

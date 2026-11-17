@@ -32,6 +32,8 @@ export type DatabaseCountId =
   | "emergencyPlans"
   | "morseSessions"
   | "gameSaves"
+  | "boardMessages"
+  | "learningPages"
   | "repeaterLists"
   | "weatherPlaces"
   | "pgpKeys"

@@ -6,12 +6,12 @@
 import { formatBytes, type StorageUsage, type UsageLocation, type UsageResponse, type UsageRow } from "@outpost/shared";
 import { Check, CircleAlert, RefreshCw } from "lucide-react";
 import { Link } from "react-router";
-import { toast } from "sonner";
 import { ErrorState, Notice, Section } from "@/components/page";
 import { StorageBar } from "@/components/storage-bar";
 import { Button } from "@/components/ui/button";
 import { Badge, Skeleton, Spinner, Tooltip } from "@/components/ui/misc";
 import { errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { cn, plural, timeAgo } from "@/lib/utils";
 import { manageLink, useMeasure, useUsage } from "./manage-data";
 import { groupRows, standalone, tallyText, usageGroups, usageNames, usageNote, usageTotal } from "./manage-text";
@@ -214,7 +214,7 @@ export default function SpaceView() {
         </p>
         <div className="flex flex-col gap-1 md:items-end">
           <Button
-            onClick={() => measure.mutate(undefined, { onError: (error) => toast.error(errorMessage(error)) })}
+            onClick={() => measure.mutate(undefined, { onError: (error) => notify.error(errorMessage(error)) })}
             loading={measure.isPending || data.measuring}
           >
             {measure.isPending || data.measuring ? null : <RefreshCw />} Count again

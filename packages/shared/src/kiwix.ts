@@ -11,6 +11,8 @@ export interface ReferenceBook {
   sizeBytes: number;
   /** Address of the book's pages, ending in "/". Append an article path. */
   contentBase: string;
+  /** The same pages at the address the reader's frame uses, and nothing else should. Absent from an older server. */
+  frameBase?: string;
   iconUrl: string | null;
   /** False while it cannot be served: drive disconnected, reader not running, still loading. */
   ready: boolean;

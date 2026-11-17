@@ -33,6 +33,7 @@ import { useSyncExternalStore } from "react";
 import { toast } from "sonner";
 import { regionsCacheKey } from "@/features/maps/lib/tiles";
 import { api } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { localId } from "@/lib/utils";
 import { TILE_ENCODING_HEADER } from "@/sw/rules";
 import { DEVICE } from "./device";
@@ -361,7 +362,7 @@ async function runArea(start: KeptArea, earlier: KeptArea | false): Promise<void
             (again
               ? "The server stopped answering part of the way through. The area is still whole: the tiles that arrived are new and the rest are the copy that was here. Fetch it again when the server is back in reach."
               : "The server stopped answering part of the way through. What was fetched is kept; carry on when it is back in reach."));
-    if (entry.message) toast.error(`“${start.title}” was not finished. ${entry.message}`);
+    if (entry.message) notify.error(`“${start.title}” was not finished. ${entry.message}`);
   }
   publish();
 }

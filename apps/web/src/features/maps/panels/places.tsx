@@ -10,14 +10,14 @@ import { ConfirmDialog } from "@/components/ui/dialog";
 import { Field, Input, Textarea } from "@/components/ui/input";
 import { Skeleton, Switch } from "@/components/ui/misc";
 import { KeepPlacesRow } from "@/features/kept/keep-controls";
+import { copyText } from "@/lib/clipboard";
 import { cn, plural } from "@/lib/utils";
-import { copyText } from "../hooks";
 import { formatPosition, type ReadoutFormat } from "../lib/coords";
 import { formatDistance } from "../lib/geo";
 import { iconOf, isDrawn, PLACE_ICON_NAMES } from "../lib/place-icons";
 import { fold } from "../lib/search";
 import { Locator } from "../radio/locator";
-import { ColorPicker, IconPicker, PlaceMark } from "../ui";
+import { ColorPicker, IconPicker, PANEL_ROWS, PlaceMark, ShowMoreRow } from "../ui";
 import { SunSection } from "./sun";
 
 /** A place as it is being added or changed, before it is saved. */
@@ -242,6 +242,7 @@ export function PlacesList({
   onShowSun?: () => void;
 }) {
   const [filter, setFilter] = useState("");
+  const [rows, setRows] = useState(PANEL_ROWS);
   const all = markers.data ?? [];
   const shown = useMemo(() => {
     const needle = fold(filter);
@@ -299,7 +300,10 @@ export function PlacesList({
           <Search aria-hidden className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-ink-muted" />
           <Input
             value={filter}
-            onChange={(event) => setFilter(event.target.value)}
+            onChange={(event) => {
+              setFilter(event.target.value);
+              setRows(PANEL_ROWS);
+            }}
             placeholder="Filter by name"
             aria-label="Filter saved places by name"
             className="pl-8 text-small"
@@ -318,7 +322,7 @@ export function PlacesList({
         <p className="px-4 py-3 text-small text-ink-muted">No saved place has “{filter}” in its name.</p>
       ) : (
         <ul className="scroll-quiet min-h-0 flex-1 divide-y divide-border overflow-y-auto border-t border-border">
-          {shown.map((marker) => (
+          {shown.slice(0, rows).map((marker) => (
             <li key={marker.id} className="flex items-stretch">
               <button
                 type="button"
@@ -356,6 +360,9 @@ export function PlacesList({
               </button>
             </li>
           ))}
+          {shown.length > rows ? (
+            <ShowMoreRow shown={rows} total={shown.length} onMore={() => setRows((current) => current + PANEL_ROWS)} />
+          ) : null}
         </ul>
       )}
       <KeepPlacesRow count={all.length} />

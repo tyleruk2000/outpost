@@ -52,7 +52,8 @@ export function SudokuGrid({
       role="grid"
       aria-label="Sudoku grid"
       onKeyDown={moveBy}
-      className="mx-auto flex aspect-square w-full max-w-[32rem] flex-col border-2 border-ink-muted bg-page md:mx-0"
+      // On a phone the board reaches into the page's margins, to 8 px from each edge, so that a cell is 40 px or more.
+      className="mx-auto flex aspect-square w-full max-w-[32rem] flex-col border-2 border-ink-muted bg-page max-[33rem]:-mx-2 max-[33rem]:w-[calc(100%+1rem)] md:mx-0"
     >
       {Array.from({ length: 9 }, (_, r) => (
         // biome-ignore lint/a11y/useFocusableInteractive: a row of a grid is not focused itself; its cells are

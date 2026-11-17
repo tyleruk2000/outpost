@@ -20,7 +20,7 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { plural } from "@/lib/utils";
-import { readDeviceSave, useDeviceSave } from "../kit/device-save";
+import { FOLLOWED_WORDS, readDeviceSave, useDeviceSave } from "../kit/device-save";
 import { GameAbout, GameFrame } from "../kit/frame";
 import { usePlayTime } from "../kit/play-time";
 import { useRecordResult } from "../kit/queries";
@@ -75,8 +75,20 @@ export default function PegSolitairePage() {
   const time = usePlayTime(moves > 0 && !over);
   const played = (of: PegGame) => Math.min(86_400, Math.round((of.seconds ?? 0) + time.peek()));
   // Kept a moment after each jump, and when the screen is hidden or left.
-  useDeviceSave(SAVE_KEY, game, (current) =>
-    current.recorded || current.jumps.length === 0 ? current : { ...current, seconds: (current.seconds ?? 0) + time.peek() },
+  // The same game played in another tab of this browser is followed here; its time already holds this tab's.
+  useDeviceSave(
+    SAVE_KEY,
+    game,
+    (current) => (current.recorded || current.jumps.length === 0 ? current : { ...current, seconds: (current.seconds ?? 0) + time.peek() }),
+    {
+      accept: isPegGame,
+      onFollow: (other) => {
+        time.lap();
+        setGame(other);
+        setPicked(null);
+        setNotice(FOLLOWED_WORDS);
+      },
+    },
   );
 
   const targets = useMemo(() => new Set(picked === null ? [] : jumpsFrom(board, picked).map((jump) => jump.to)), [board, picked]);

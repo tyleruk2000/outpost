@@ -9,7 +9,7 @@ import { type Box, labelBox, niceStep, overlaps, polyline, textWidth } from "@/f
 import { Ground, Label, Line, Path, Plate, type PlateBox, Spread, SunSign } from "@/features/diagrams/plate";
 import { type IsoDate, sunAt, sunDay } from "@/features/maps/lib/sun";
 import type { ClockStyle } from "@/lib/clock";
-import { sunThroughDay, unwrapNear, wrapBearing } from "./plates";
+import { dayWords, sunThroughDay, unwrapNear, wrapBearing } from "./plates";
 import type { Estimate, Place } from "./recovery";
 import { timeWords } from "./time-result";
 import { clockAt, type ZoneChoice } from "./zone";
@@ -64,8 +64,8 @@ export function AnswerOnDay({
         : `a bearing of ${Math.round(wrapBearing(figures.value))}°`;
   const caption =
     kind === "noon"
-      ? `The sun's height through ${date} here. Noon is the top of the curve; the band is the range the answer gives, ${words.low} to ${words.high}: the flatter the curve, the wider it is.`
-      : `The sun's ${unit} through ${date} here. Your reading, ${kind === "height" ? `${figures.value.toFixed(1)}°` : `${Math.round(wrapBearing(figures.value))}°`}, meets the curve at ${words.figure}; the band is the range the answer gives, ${words.low} to ${words.high}.`;
+      ? `The sun's height through ${dayWords(date)} here. Noon is the top of the curve; the band is the range the answer gives, ${words.low} to ${words.high}: the flatter the curve, the wider it is.`
+      : `The sun's ${unit} through ${dayWords(date)} here. Your reading, ${kind === "height" ? `${figures.value.toFixed(1)}°` : `${Math.round(wrapBearing(figures.value))}°`}, meets the curve at ${words.figure}; the band is the range the answer gives, ${words.low} to ${words.high}.`;
   const description = `A line chart of the sun's ${unit} against the time of day, from ${clockAt(figures.from, zone, style)} to ${clockAt(figures.to, zone, style)}. ${
     kind === "noon" ? "The curve peaks at" : `A horizontal line at ${what} crosses the curve at`
   } ${words.figure}, marked with the sun's sign, inside a shaded band from ${words.low} to ${words.high}.`;

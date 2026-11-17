@@ -7,12 +7,12 @@ import { type ClearLeftoversResponse, formatBytes, type Leftover, type LeftoverK
 import { CircleAlert } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
-import { toast } from "sonner";
 import { EmptyState, ErrorState, Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Checkbox, Skeleton, Spinner } from "@/components/ui/misc";
 import { errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { plural, timeAgo } from "@/lib/utils";
 import { useClearLeftovers, useLeftovers, useMeasure } from "./manage-data";
 import { cacheCost, leftoverOrder, leftoverWords } from "./manage-text";
@@ -155,7 +155,7 @@ function Group({
                 setSelected(new Set());
                 onCleared(result);
               },
-              onError: (error) => toast.error(errorMessage(error)),
+              onError: (error) => notify.error(errorMessage(error)),
             },
           )
         }
@@ -180,7 +180,7 @@ function Status({ data }: { data: LeftoversResponse }) {
       </p>
       <Button
         size="sm"
-        onClick={() => measure.mutate(undefined, { onError: (error) => toast.error(errorMessage(error)) })}
+        onClick={() => measure.mutate(undefined, { onError: (error) => notify.error(errorMessage(error)) })}
         loading={measure.isPending || data.measuring}
       >
         Look again

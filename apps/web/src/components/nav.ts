@@ -24,6 +24,7 @@ import {
   LockKeyhole,
   type LucideIcon,
   Map as MapIcon,
+  MessageSquareText,
   MessagesSquare,
   NotebookText,
   Puzzle,
@@ -75,11 +76,25 @@ export const knowledgeNav: NavItem[] = [
     children: [{ to: "/search/how-it-works", label: "How search works", icon: Waypoints }],
   },
   { to: "/explore", label: "Explore", icon: Compass, key: "e", keywords: "catalogue download collections wikipedia kiwix books" },
-  { to: "/library", label: "Library", icon: BookOpen, key: "l", keywords: "documents books pdf files reading" },
+  {
+    to: "/library",
+    label: "Library",
+    icon: BookOpen,
+    key: "l",
+    keywords: "documents books pdf files reading learning school course lessons progress khan",
+  },
   { to: "/maps", label: "Maps", icon: MapIcon, key: "m", keywords: "map offline places routes gps" },
   { to: "/chat", label: "Chat", icon: MessagesSquare, key: "c", keywords: "ask model questions answers" },
   // "a" for address book: "c" is Chat's.
   { to: "/contacts", label: "Contacts", icon: Contact, key: "a", keywords: "address book people phone numbers" },
+  // The household board (features/board). "w" for the board on the wall: "m" is Maps'.
+  {
+    to: "/messages",
+    label: "Messages",
+    icon: MessageSquareText,
+    key: "w",
+    keywords: "message board chat note to family check in safe send a file",
+  },
   { to: "/encryption", label: "Encryption", icon: LockKeyhole, key: "k", keywords: "pgp keys cipher one-time pad secret" },
   {
     to: "/radio",
@@ -124,7 +139,7 @@ export const upkeepNav: NavItem[] = [
     keywords: "disk space drives nas folders",
     children: [
       { to: "/storage/manage", label: "Manage and clean up", icon: ListChecks, keywords: "free space delete remove erase" },
-      { to: "/storage/merge", label: "Bring back from a drive", icon: Undo2, keywords: "merge restore portable" },
+      { to: "/storage/merge", label: "Bring back changes from a drive", icon: Undo2, keywords: "merge restore portable" },
     ],
   },
   // "On this phone", "On this tablet" or "On this computer": what is kept in this browser for when the server is out of reach.
@@ -134,7 +149,7 @@ export const upkeepNav: NavItem[] = [
     label: "Settings",
     icon: Settings,
     key: ",",
-    keywords: "preferences theme dark light backup https passphrase",
+    keywords: "preferences theme dark light backup https passphrase mesh radio link meshtastic meshcore lora mqtt",
     // How to set up search by meaning, answers and chat (SETUP_GUIDE_PATH): its settings link to it part by part.
     children: [{ to: "/help/search-and-answers", label: "Set-up guide", icon: LifeBuoy, keywords: "help models ollama" }],
   },

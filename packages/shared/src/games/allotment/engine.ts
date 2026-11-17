@@ -3,13 +3,21 @@
  * `now` in milliseconds, and the server, which is the authority, stamps each action with
  * its own. The web app calls `advance` too, but only to draw growth between fetches.
  *
- * Nothing in here can be lost by waiting. Growth is kept as effective milliseconds of
- * growth per bed, capped at the crop's time (ripe), so a ripe crop waits for ever; the
- * hens, the hive and the tree stop at a small cap; time never runs backwards (a clock
- * that jumps back changes nothing, it never un-grows).
+ * A crop grows only while it is in its own months (`grows` in numbers.ts, the real
+ * British months, moved on six for the south) and its bed is moist. Otherwise it waits,
+ * keeping all the growth it has. A bed is moist while the watering can's water lasts,
+ * and, if it is in the open, on a wet day and for a while after (longer with the water
+ * butt). Whether a day is wet comes from the date alone. Under glass every month is in
+ * season, but no rain falls.
+ *
+ * Nothing in here can be lost by waiting. Growth is kept as milliseconds of growth per
+ * bed, capped at the crop's time (ripe), so a ripe crop waits for ever; nothing dries
+ * out, wilts or goes back; the hens, the hive and the tree stop at a small cap; time
+ * never runs backwards (a clock that jumps back changes nothing, it never un-grows).
  */
 import {
   BASKET_CAP,
+  BUTT_KEEPS_MS,
   bedPrice,
   COIN_CAP,
   COMPOST_BONUS,
@@ -20,7 +28,6 @@ import {
   type CropId,
   DAY,
   GLASS_BEDS,
-  IN_SEASON_RATE,
   ITEM_IDS,
   type ItemId,
   itemPrice,
@@ -28,16 +35,19 @@ import {
   KEEPING_NAMES,
   type KeepingId,
   MAX_OPEN_BEDS,
+  type Month,
   PRODUCER,
   PRODUCERS,
   type ProducerId,
+  RAIN_CHANCE,
+  RAIN_SOAKS_MS,
   type Season,
   START_BEDS,
   START_COINS,
   THING_IDS,
   THINGS,
   type ThingId,
-  WATERED_RATE,
+  WATER_LASTS_MS,
 } from "./numbers.ts";
 
 export type Hemisphere = "north" | "south";
@@ -46,9 +56,10 @@ export const HEMISPHERE_SETTINGS = ["auto", "north", "south"] as const;
 
 export interface Bed {
   crop: CropId | null;
-  /** Effective milliseconds of growth so far, at most the crop's time. */
+  /** Milliseconds of growth so far, at most the crop's time. */
   grown: number;
-  watered: boolean;
+  /** Watered with the can: moist until this moment (0 when never). */
+  wetUntil: number;
   /** Sown with compost: the harvest gives `COMPOST_BONUS` more. */
   composted: boolean;
   sownAt: number | null;
@@ -84,8 +95,11 @@ export const MILESTONES: Record<MilestoneId, string> = {
   aYear: "A year since the plot was started.",
 };
 
+/** The version of the stored plot. 1 was the first; 2 has water that runs out, rain and real seasons. */
+export const ALLOTMENT_STATE_VERSION = 2;
+
 export interface AllotmentState {
-  v: 1;
+  v: 2;
   startedAt: number;
   /** The moment the plot has been advanced to. Never moves backwards. */
   clock: number;
@@ -134,12 +148,14 @@ const YEAR = 365 * DAY;
 const number = (value: number) => value.toLocaleString("en-GB");
 const count = (n: number, one: string, many = `${one}s`) => `${number(n)} ${n === 1 ? one : many}`;
 
-const emptyBed = (): Bed => ({ crop: null, grown: 0, watered: false, composted: false, sownAt: null });
+const emptyBed = (): Bed => ({ crop: null, grown: 0, wetUntil: 0, composted: false, sownAt: null });
 const zeros = <K extends string>(keys: readonly K[]) => Object.fromEntries(keys.map((key) => [key, 0])) as Record<K, number>;
+const freshRecords = () =>
+  Object.fromEntries(CROP_IDS.map((id) => [id, { harvests: 0, produce: 0, firstAt: null }])) as Record<CropId, CropRecord>;
 
 export function newAllotment(now: number): AllotmentState {
   return {
-    v: 1,
+    v: 2,
     startedAt: now,
     clock: now,
     lastActionAt: now,
@@ -152,31 +168,59 @@ export function newAllotment(now: number): AllotmentState {
     producing: zeros(PRODUCERS),
     waiting: zeros(KEEPING_IDS),
     basket: zeros(ITEM_IDS),
-    almanac: {
-      crops: Object.fromEntries(CROP_IDS.map((id) => [id, { harvests: 0, produce: 0, firstAt: null }])) as Record<CropId, CropRecord>,
-      harvests: 0,
-      coinsEarned: 0,
-    },
+    almanac: { crops: freshRecords(), harvests: 0, coinsEarned: 0 },
     milestones: {},
   };
 }
 
 const copy = (state: AllotmentState): AllotmentState => JSON.parse(JSON.stringify(state)) as AllotmentState;
 
-// ── Seasons ────────────────────────────────────────────────────────────────
+// ── Months and seasons ─────────────────────────────────────────────────────
 
-/** The season at a moment, from the UTC month: March to May is spring in the north, autumn in the south. */
-export function seasonAt(now: number, hemisphere: Hemisphere): Season {
+export const MONTH_NAMES = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+] as const;
+
+/**
+ * The month at a moment as Britain has it, 1 to 12: the UTC month in the north, six on in
+ * the south, so that a southern November counts as a British May. Every crop's months are
+ * in these terms.
+ */
+export function monthAt(now: number, hemisphere: Hemisphere): Month {
   const month = new Date(now).getUTCMonth();
-  const shifted = hemisphere === "south" ? (month + 6) % 12 : month;
-  if (shifted >= 2 && shifted <= 4) return "spring";
-  if (shifted >= 5 && shifted <= 7) return "summer";
-  if (shifted >= 8 && shifted <= 10) return "autumn";
+  return ((hemisphere === "south" ? (month + 6) % 12 : month) + 1) as Month;
+}
+
+/** The calendar month a British month falls in for this hemisphere: May is November in the south. */
+export const calendarMonth = (month: Month, hemisphere: Hemisphere): Month =>
+  (hemisphere === "south" ? ((month + 5) % 12) + 1 : month) as Month;
+
+/** The season of a British month: March to May is spring. */
+export function seasonOf(month: Month): Season {
+  if (month >= 3 && month <= 5) return "spring";
+  if (month >= 6 && month <= 8) return "summer";
+  if (month >= 9 && month <= 11) return "autumn";
   return "winter";
 }
 
-/** The start of the next UTC month after `t`: seasons only change there. */
-function nextMonthStart(t: number): number {
+/** The season at a moment, from the UTC month: March to May is spring in the north, autumn in the south. */
+export function seasonAt(now: number, hemisphere: Hemisphere): Season {
+  return seasonOf(monthAt(now, hemisphere));
+}
+
+/** The start of the next UTC month after `t`: the months, and so the seasons, only change there. */
+export function nextMonthStart(t: number): number {
   const date = new Date(t);
   return Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1);
 }
@@ -192,41 +236,124 @@ export function resolveHemisphere(
   return { hemisphere: "north", from: "default" };
 }
 
-export function inSeason(crop: CropId, season: Season, underGlass = false): boolean {
-  return underGlass || CROPS[crop].seasons.includes(season);
+/** Whether a crop grows in a British month: its own months in the open, every month under glass. */
+export function inSeason(crop: CropId, month: Month, underGlass = false): boolean {
+  return underGlass || CROPS[crop].grows.includes(month);
 }
 
-/** How fast a bed grows now: 1, ×1.25 in season, ×1.5 watered. */
-export function growthRate(bed: Bed, season: Season, underGlass: boolean): number {
-  if (!bed.crop) return 0;
-  return (inSeason(bed.crop, season, underGlass) ? IN_SEASON_RATE : 1) * (bed.watered ? WATERED_RATE : 1);
+/** Whether a crop is sown (or planted) in a British month, by the RHS calendar. */
+export const sowingMonth = (crop: CropId, month: Month) => CROPS[crop].sow.includes(month);
+
+/** The next British month, after `month`, that the crop grows in; `month` itself if it grows all year. */
+export function nextGrowingMonth(crop: CropId, month: Month): Month {
+  for (let step = 1; step <= 12; step++) {
+    const m = (((month - 1 + step) % 12) + 1) as Month;
+    if (CROPS[crop].grows.includes(m)) return m;
+  }
+  return month;
 }
+
+/** The last month of the run of growing months that `month` is in. */
+export function lastGrowingMonth(crop: CropId, month: Month): Month {
+  let last = month;
+  for (let step = 1; step < 12; step++) {
+    const m = (((month - 1 + step) % 12) + 1) as Month;
+    if (!CROPS[crop].grows.includes(m)) return last;
+    last = m;
+  }
+  return last;
+}
+
+// ── Rain ───────────────────────────────────────────────────────────────────
+
+/** A well-mixed 32-bit hash of a whole number (Chris Wellons's "lowbias32"), from 0 to 1. */
+function unit(n: number): number {
+  let x = (n ^ 0x5bd1e995) >>> 0;
+  x ^= x >>> 16;
+  x = Math.imul(x, 0x7feb352d);
+  x ^= x >>> 15;
+  x = Math.imul(x, 0x846ca68b);
+  x ^= x >>> 16;
+  return (x >>> 0) / 4_294_967_296;
+}
+
+/**
+ * Whether the UTC day numbered `day` (days since 1970) is wet on the plot. It comes from
+ * the date alone, against that month's chance (`RAIN_CHANCE`, wetter in the household's
+ * autumn and winter), so it is the same on every device, after any absence and after a
+ * reload.
+ */
+export function wetDay(day: number, hemisphere: Hemisphere): boolean {
+  const month = monthAt(day * DAY, hemisphere);
+  return unit(day) < RAIN_CHANCE[month - 1]!;
+}
+
+/** Whether it is raining on the plot at a moment: all through a wet day. */
+export const rainingAt = (now: number, hemisphere: Hemisphere) => wetDay(Math.floor(now / DAY), hemisphere);
+
+/** How long a bed in the open stays moist after a wet day ends: longer with the water butt. */
+export const soaksFor = (state: AllotmentState) => (state.things.waterButt ? BUTT_KEEPS_MS : RAIN_SOAKS_MS);
+
+type Span = readonly [number, number];
+
+/**
+ * The stretches of [a, b) in which a bed is moist, in order and not overlapping: from the
+ * can until `wetUntil`, and, in the open, from the start of each wet day until `soak`
+ * after it ends.
+ */
+function moistSpans(a: number, b: number, wetUntil: number, open: boolean, soak: number, hemisphere: Hemisphere): Span[] {
+  const spans: Span[] = [];
+  let reach = a;
+  const add = (start: number, end: number) => {
+    const from = Math.max(start, reach);
+    const to = Math.min(end, b);
+    if (to <= from) return;
+    const last = spans.at(-1);
+    if (last && last[1] === from) spans[spans.length - 1] = [last[0], to];
+    else spans.push([from, to]);
+    reach = to;
+  };
+  // The can's water started before `a` or at it, so it comes first in order of start.
+  if (wetUntil > a) add(a, wetUntil);
+  if (open) {
+    const first = Math.floor((a - soak) / DAY) - 1;
+    const last = Math.floor((b - 1) / DAY);
+    for (let day = first; day <= last; day++) {
+      if (wetDay(day, hemisphere)) add(day * DAY, (day + 1) * DAY + soak);
+    }
+  }
+  return spans;
+}
+
+const spanTotal = (spans: Span[]) => spans.reduce((sum, [from, to]) => sum + (to - from), 0);
 
 // ── Time ───────────────────────────────────────────────────────────────────
 
-function growBeds(beds: Bed[], underGlass: boolean, season: Season, ms: number) {
+function growBeds(beds: Bed[], open: boolean, month: Month, a: number, b: number, soak: number, hemisphere: Hemisphere) {
   for (const bed of beds) {
-    if (!bed.crop) continue;
+    if (!bed.crop || !inSeason(bed.crop, month, !open)) continue;
     const growMs = CROPS[bed.crop].growMs;
     if (bed.grown >= growMs) continue;
-    bed.grown = Math.min(growMs, bed.grown + ms * growthRate(bed, season, underGlass));
+    bed.grown = Math.min(growMs, bed.grown + spanTotal(moistSpans(a, b, bed.wetUntil, open, soak, hemisphere)));
   }
 }
 
 /**
- * The plot at `now`. Growth is integrated piecewise, split where the month (and so maybe
- * the season) changes, so a year away gives exactly what a year of small steps would.
- * A `now` before the plot's clock changes nothing.
+ * The plot at `now`. Growth is integrated exactly, month by month (the season can only
+ * change at a month's start) and over the moist stretches inside each month, so a year
+ * away gives exactly what a year of small steps would, wherever the beds dry and the rain
+ * comes. A `now` before the plot's clock changes nothing.
  */
 export function advance(state: AllotmentState, now: number, hemisphere: Hemisphere): AllotmentState {
   if (!Number.isFinite(now) || !(now > state.clock)) return state;
   const next = copy(state);
+  const soak = soaksFor(next);
   let t = next.clock;
   while (t < now) {
     const end = Math.min(now, nextMonthStart(t));
-    const season = seasonAt(t, hemisphere);
-    growBeds(next.beds, false, season, end - t);
-    growBeds(next.glassBeds, true, season, end - t);
+    const month = monthAt(t, hemisphere);
+    growBeds(next.beds, true, month, t, end, soak, hemisphere);
+    growBeds(next.glassBeds, false, month, t, end, soak, hemisphere);
     t = end;
   }
   const elapsed = now - next.clock;
@@ -286,24 +413,116 @@ export function stageOf(bed: Bed): BedStage {
   return "growing";
 }
 
-/** How long until a bed is ripe from `now`, through any change of season; 0 when ripe, null when empty. */
+/** How far ahead the engine looks for the next rain or the next change: it never needs more. */
+const LOOK_AHEAD_MS = 60 * DAY;
+
+/** Why a bed is moist now: the can, the rain falling, the soil still wet from it, or the water butt. */
+export type Moisture = "can" | "raining" | "rain" | "butt";
+
+export interface BedNow {
+  stage: BedStage;
+  /** Why the soil is moist, or null when it is dry. */
+  moist: Moisture | null;
+  /** When the soil will next be dry, if it is moist now (within two months; null if not). */
+  dryAt: number | null;
+  /** When rain will next wet it, if it is dry and in the open (within two months). */
+  rainAt: number | null;
+  /** What a crop that is not ripe waits for, or null while it grows. Out of season, only the season will do. */
+  waitsFor: "season" | "water" | null;
+  /** The British month the crop grows again from, when it waits for its season. */
+  resumes: Month | null;
+}
+
+/** What a bed is doing at the plot's clock: moist or dry and why, growing or waiting and for what. */
+export function bedNow(state: AllotmentState, index: number, hemisphere: Hemisphere): BedNow {
+  const bed = bedAt(state, index);
+  const t = state.clock;
+  const stage = bed ? stageOf(bed) : "empty";
+  const none: BedNow = { stage, moist: null, dryAt: null, rainAt: null, waitsFor: null, resumes: null };
+  if (!bed) return none;
+  const open = !isGlassBed(index);
+  const soak = soaksFor(state);
+  const spans = moistSpans(t, t + LOOK_AHEAD_MS, bed.wetUntil, open, soak, hemisphere);
+  const first = spans[0];
+  const moistNow = first !== undefined && first[0] === t;
+  let moist: Moisture | null = null;
+  if (moistNow) {
+    const day = Math.floor(t / DAY);
+    if (open && wetDay(day, hemisphere)) moist = "raining";
+    else if (bed.wetUntil > t) moist = "can";
+    else if (open && wetDay(day - 1, hemisphere) && t < day * DAY + RAIN_SOAKS_MS) moist = "rain";
+    else moist = state.things.waterButt ? "butt" : "rain";
+  }
+  const dryAt = moistNow ? (first[1] < t + LOOK_AHEAD_MS ? first[1] : null) : null;
+  const wet = open ? spans.find(([from]) => from > t) : undefined;
+  const rainAt = !moistNow && wet ? wet[0] : null;
+  let waitsFor: BedNow["waitsFor"] = null;
+  let resumes: Month | null = null;
+  if (bed.crop && stage !== "ripe") {
+    const month = monthAt(t, hemisphere);
+    if (!inSeason(bed.crop, month, !open)) {
+      waitsFor = "season";
+      resumes = nextGrowingMonth(bed.crop, month);
+    } else if (!moistNow) waitsFor = "water";
+  }
+  return { stage, moist, dryAt, rainAt, waitsFor, resumes };
+}
+
+/**
+ * How long until a bed is ripe from the plot's clock, if nobody waters it again: through
+ * the coming rain and any change of season. 0 when ripe; null when empty, or when it will
+ * not ripen in the coming year without water (a dry bed under glass).
+ */
 export function readyInMs(state: AllotmentState, index: number, hemisphere: Hemisphere): number | null {
   const bed = bedAt(state, index);
   if (!bed?.crop) return null;
   let left = CROPS[bed.crop].growMs - bed.grown;
-  let t = state.clock;
-  let ms = 0;
-  // A crop takes at most a few days, so this loop runs once or twice.
-  while (left > 0) {
-    const end = nextMonthStart(t);
-    const rate = growthRate(bed, seasonAt(t, hemisphere), isGlassBed(index));
-    const can = (end - t) * rate;
-    if (can >= left) return ms + left / rate;
-    left -= can;
-    ms += end - t;
+  if (left <= 0) return 0;
+  const open = !isGlassBed(index);
+  const soak = soaksFor(state);
+  const horizon = state.clock + YEAR;
+  for (let t = state.clock; t < horizon; ) {
+    const end = Math.min(horizon, nextMonthStart(t));
+    if (inSeason(bed.crop, monthAt(t, hemisphere), !open)) {
+      for (const [from, to] of moistSpans(t, end, bed.wetUntil, open, soak, hemisphere)) {
+        if (to - from >= left) return from + left - state.clock;
+        left -= to - from;
+      }
+    }
+    // Under glass nothing but the can wets a bed: once its water is used, it will not ripen alone.
+    if (!open && bed.wetUntil <= end) return null;
     t = end;
   }
-  return 0;
+  return null;
+}
+
+/**
+ * How long from the plot's clock until something on it changes that the screen should
+ * show: a bed ripens, dries or is wetted, the rain starts or stops, the month turns, or an
+ * egg, a jar or an apple is ready. Null if nothing will change within two months.
+ */
+export function untilChangeMs(state: AllotmentState, hemisphere: Hemisphere): number | null {
+  const t = state.clock;
+  let soonest = nextMonthStart(t) - t;
+  const take = (at: number | null) => {
+    if (at !== null && at > t) soonest = Math.min(soonest, at - t);
+  };
+  for (const index of bedIndices(state)) {
+    const now = bedNow(state, index, hemisphere);
+    take(now.dryAt);
+    take(now.rainAt);
+    if (now.stage !== "empty" && now.stage !== "ripe" && now.waitsFor === null) {
+      const ready = readyInMs(state, index, hemisphere);
+      if (ready !== null) take(t + ready);
+    }
+  }
+  const day = Math.floor(t / DAY);
+  if (wetDay(day, hemisphere) !== wetDay(day + 1, hemisphere)) take((day + 1) * DAY);
+  for (const producer of PRODUCERS) {
+    const { gives, everyMs, cap } = PRODUCER[producer];
+    if (state.things[producer] && state.waiting[gives] < cap) take(t + everyMs - state.producing[producer]);
+  }
+  return soonest > LOOK_AHEAD_MS ? null : soonest;
 }
 
 /** What is ready: the ripe beds and what is waiting to be collected. */
@@ -317,19 +536,34 @@ export function nextBedPrice(state: AllotmentState): number | null {
   return state.beds.length >= MAX_OPEN_BEDS ? null : bedPrice(state.beds.length);
 }
 
+const ONE: Partial<Record<CropId, string>> = {
+  radishes: "radish",
+  salad: "salad leaf",
+  onions: "onion",
+  peas: "pea pod",
+  carrots: "carrot",
+  kale: "bunch of kale",
+  broadBeans: "broad bean pod",
+  potatoes: "potato",
+  leeks: "leek",
+  garlic: "bulb of garlic",
+};
+const MANY: Partial<Record<CropId, string>> = {
+  peas: "pea pods",
+  kale: "bunches of kale",
+  broadBeans: "broad bean pods",
+  garlic: "bulbs of garlic",
+};
+
 export function itemName(item: ItemId, n: number): string {
   if ((KEEPING_IDS as readonly string[]).includes(item)) {
     const names = KEEPING_NAMES[item as KeepingId];
     return n === 1 ? names.one : names.many;
   }
-  const crop = CROPS[item as CropId];
-  // Salad leaves, beetroot and squash are counted as they are said: "1 squash", "3 beetroot".
-  if (n === 1)
-    return (
-      { radishes: "radish", salad: "salad leaf", peas: "pea pod", carrots: "carrot", potatoes: "potato", leeks: "leek" }[item as string] ??
-      crop.name
-    );
-  return item === "peas" ? "pea pods" : crop.name;
+  const crop = item as CropId;
+  // Beetroot and squash are counted as they are said: "1 squash", "3 beetroot".
+  if (n === 1) return ONE[crop] ?? CROPS[crop].name;
+  return MANY[crop] ?? CROPS[crop].name;
 }
 
 // ── Actions ────────────────────────────────────────────────────────────────
@@ -350,15 +584,15 @@ function pay(state: AllotmentState, price: number, what: string) {
 
 const capCount = (n: number) => Math.min(COUNT_CAP, n);
 
-/** Harvests one ripe bed into the basket, or says why not. */
+/** Harvests one ripe bed into the basket, or says why not. The soil keeps its water. */
 function harvestBed(state: AllotmentState, index: number, now: number) {
   const bed = needBed(state, index);
   if (!bed.crop) throw new AllotmentRefusal(`${bedName(index)} has nothing in it to harvest.`);
   const crop = CROPS[bed.crop];
-  if (bed.grown < crop.growMs) throw new AllotmentRefusal(`The ${crop.name} in ${bedName(index).toLowerCase()} are not ripe yet.`);
+  if (bed.grown < crop.growMs) throw new AllotmentRefusal(`The ${crop.name} in ${bedName(index).toLowerCase()} ${crop.be} not ripe yet.`);
   const gives = crop.yield + (bed.composted ? COMPOST_BONUS : 0);
   if (state.basket[crop.id] + gives > BASKET_CAP)
-    throw new AllotmentRefusal(`The basket holds ${number(state.basket[crop.id])} ${crop.name} already: sell some first.`);
+    throw new AllotmentRefusal(`The basket holds ${number(state.basket[crop.id])} ${itemName(crop.id, 2)} already: sell some first.`);
   state.basket[crop.id] += gives;
   const record = state.almanac.crops[crop.id];
   record.harvests = capCount(record.harvests + 1);
@@ -366,7 +600,7 @@ function harvestBed(state: AllotmentState, index: number, now: number) {
   record.firstAt ??= now;
   state.almanac.harvests = capCount(state.almanac.harvests + 1);
   if (state.things.compostBin) state.compost = Math.min(COMPOST_CAP, state.compost + 1);
-  Object.assign(bed, emptyBed());
+  Object.assign(bed, { ...emptyBed(), wetUntil: bed.wetUntil });
 }
 
 /** Moves what is waiting from one producer into the basket, as much as fits. Returns how many moved. */
@@ -411,7 +645,8 @@ function noteMilestones(state: AllotmentState, now: number) {
 /**
  * Applies one action at `now`: the plot is advanced first, then changed. A refused action
  * throws `AllotmentRefusal` and changes nothing. Every action counts as the household
- * having been there, which ends the "you were away" line.
+ * having been there, which ends the "you were away" line. Sowing out of season is never
+ * refused: the seed waits in the ground for its months.
  */
 export function applyAction(state: AllotmentState, action: AllotmentAction, now: number, hemisphere: Hemisphere): AllotmentState {
   const at = Math.max(now, state.clock);
@@ -425,16 +660,18 @@ export function applyAction(state: AllotmentState, action: AllotmentAction, now:
       if (crop.seed > 0) pay(next, crop.seed, `${crop.name[0]!.toUpperCase()}${crop.name.slice(1)} seed`);
       const composted = next.compost > 0;
       if (composted) next.compost -= 1;
-      Object.assign(bed, { crop: crop.id, grown: 0, watered: next.things.waterButt, composted, sownAt: at });
+      Object.assign(bed, { crop: crop.id, grown: 0, composted, sownAt: at });
       break;
     }
     case "water": {
       const bed = needBed(next, action.bed);
       if (!bed.crop) throw new AllotmentRefusal(`${bedName(action.bed)} has nothing sown in it to water.`);
-      if (bed.watered) throw new AllotmentRefusal(`${bedName(action.bed)} has been watered already.`);
       if (stageOf(bed) === "ripe")
-        throw new AllotmentRefusal(`The ${CROPS[bed.crop].name} in ${bedName(action.bed).toLowerCase()} are ripe already.`);
-      bed.watered = true;
+        throw new AllotmentRefusal(
+          `The ${CROPS[bed.crop].name} in ${bedName(action.bed).toLowerCase()} ${CROPS[bed.crop].be} ripe already.`,
+        );
+      // Watering again tops it up: the bed is moist for the full time from now. Never refused.
+      bed.wetUntil = Math.max(bed.wetUntil, at + WATER_LASTS_MS);
       break;
     }
     case "harvest":
@@ -528,63 +765,120 @@ export function applyAction(state: AllotmentState, action: AllotmentAction, now:
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value);
 const isCount = (value: unknown, max: number) => typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= max;
 const isTime = (value: unknown) => typeof value === "number" && Number.isFinite(value) && value >= 0;
-const hasCounts = (value: unknown, keys: readonly string[], max: number) =>
-  isRecord(value) && keys.every((key) => isCount(value[key], max));
 
-function isBed(value: unknown): value is Bed {
-  if (!isRecord(value) || typeof value.watered !== "boolean" || typeof value.composted !== "boolean") return false;
+/** The crops of the first version of the plot (v1): every one of them is still grown. */
+const V1_CROPS = ["radishes", "salad", "peas", "carrots", "beetroot", "potatoes", "leeks", "squash"] as const;
+const V1_ITEMS = [...V1_CROPS, ...KEEPING_IDS] as const;
+
+function isBed(value: unknown, version: 1 | 2, crops: readonly string[]): boolean {
+  if (!isRecord(value) || typeof value.composted !== "boolean") return false;
+  if (version === 1 ? typeof value.watered !== "boolean" : !isTime(value.wetUntil)) return false;
   if (value.crop === null) return value.grown === 0 && value.sownAt === null;
-  if (typeof value.crop !== "string" || !(CROP_IDS as readonly string[]).includes(value.crop)) return false;
+  if (typeof value.crop !== "string" || !crops.includes(value.crop)) return false;
   const grown = value.grown;
   return (
     typeof grown === "number" && Number.isFinite(grown) && grown >= 0 && grown <= CROPS[value.crop as CropId].growMs && isTime(value.sownAt)
   );
 }
 
-/**
- * A plot read back from storage, checked field by field, or null if any of it is not
- * sound. The server never silently replaces a plot that fails this: it says so.
- */
-export function readAllotment(value: unknown): AllotmentState | null {
-  if (!isRecord(value) || value.v !== 1) return null;
-  const v = value;
-  if (![v.startedAt, v.clock, v.lastActionAt].every(isTime)) return null;
-  if (!(HEMISPHERE_SETTINGS as readonly unknown[]).includes(v.hemisphere)) return null;
-  if (!isCount(v.coins, COIN_CAP)) return null;
-  if (!Array.isArray(v.beds) || v.beds.length < START_BEDS || v.beds.length > MAX_OPEN_BEDS || !v.beds.every(isBed)) return null;
-  if (!isRecord(v.things) || !THING_IDS.every((id) => typeof (v.things as Record<string, unknown>)[id] === "boolean")) return null;
+/** Whether a stored value is a sound plot of the given version, field by field. */
+function sound(v: Record<string, unknown>, version: 1 | 2): boolean {
+  const crops = version === 1 ? V1_CROPS : CROP_IDS;
+  const items = version === 1 ? V1_ITEMS : ITEM_IDS;
+  const bed = (value: unknown) => isBed(value, version, crops);
+  if (![v.startedAt, v.clock, v.lastActionAt].every(isTime)) return false;
+  if (!(HEMISPHERE_SETTINGS as readonly unknown[]).includes(v.hemisphere)) return false;
+  if (!isCount(v.coins, COIN_CAP)) return false;
+  if (!Array.isArray(v.beds) || v.beds.length < START_BEDS || v.beds.length > MAX_OPEN_BEDS || !v.beds.every(bed)) return false;
+  if (!isRecord(v.things) || !THING_IDS.every((id) => typeof (v.things as Record<string, unknown>)[id] === "boolean")) return false;
   const things = v.things as Record<ThingId, boolean>;
-  if (!Array.isArray(v.glassBeds) || v.glassBeds.length !== (things.greenhouse ? GLASS_BEDS : 0) || !v.glassBeds.every(isBed)) return null;
-  if (!isCount(v.compost, COMPOST_CAP)) return null;
-  if (
-    !isRecord(v.producing) ||
-    !PRODUCERS.every(
-      (id) =>
-        isTime((v.producing as Record<string, unknown>)[id]) && ((v.producing as Record<string, number>)[id] ?? 0) < PRODUCER[id].everyMs,
-    )
-  )
-    return null;
-  if (
-    !isRecord(v.waiting) ||
-    !PRODUCERS.every((id) => isCount((v.waiting as Record<string, unknown>)[PRODUCER[id].gives], PRODUCER[id].cap))
-  )
-    return null;
-  if (!hasCounts(v.basket, ITEM_IDS, BASKET_CAP)) return null;
+  if (!Array.isArray(v.glassBeds) || v.glassBeds.length !== (things.greenhouse ? GLASS_BEDS : 0) || !v.glassBeds.every(bed)) return false;
+  if (!isCount(v.compost, COMPOST_CAP)) return false;
+  const producing = v.producing;
+  if (!isRecord(producing) || !PRODUCERS.every((id) => isTime(producing[id]) && (producing[id] as number) < PRODUCER[id].everyMs))
+    return false;
+  const waiting = v.waiting;
+  if (!isRecord(waiting) || !PRODUCERS.every((id) => isCount(waiting[PRODUCER[id].gives], PRODUCER[id].cap))) return false;
+  const basket = v.basket;
+  if (!isRecord(basket) || !items.every((key) => isCount(basket[key], BASKET_CAP))) return false;
   const almanac = v.almanac;
   if (!isRecord(almanac) || !isCount(almanac.harvests, COUNT_CAP) || !isCount(almanac.coinsEarned, COUNT_CAP) || !isRecord(almanac.crops))
-    return null;
-  const crops = almanac.crops;
+    return false;
+  const records = almanac.crops;
   const soundRecord = (record: unknown) =>
     isRecord(record) &&
     isCount(record.harvests, COUNT_CAP) &&
     isCount(record.produce, COUNT_CAP) &&
     (record.firstAt === null || isTime(record.firstAt));
-  if (!CROP_IDS.every((id) => soundRecord(crops[id]))) return null;
+  if (!crops.every((id) => soundRecord(records[id]))) return false;
   if (
     !isRecord(v.milestones) ||
     !Object.entries(v.milestones).every(([key, at]) => (MILESTONE_IDS as readonly string[]).includes(key) && isTime(at))
   )
-    return null;
+    return false;
+  return true;
+}
+
+/**
+ * A plot of the first version brought into the current rules, losing nothing: every coin,
+ * bed, thing bought, crop's growth, basket, almanac count and milestone is kept. A bed
+ * that had been watered is moist for the full `WATER_LASTS_MS` from the plot's clock. The
+ * new crops start with empty records. No crop was dropped, so nothing needs harvesting.
+ */
+function fromVersion1(old: Record<string, unknown>): AllotmentState {
+  const clock = old.clock as number;
+  const bed = (value: unknown): Bed => {
+    const b = value as { crop: CropId | null; grown: number; watered: boolean; composted: boolean; sownAt: number | null };
+    const wet = b.watered && b.crop !== null && b.grown < CROPS[b.crop].growMs;
+    return { crop: b.crop, grown: b.grown, wetUntil: wet ? clock + WATER_LASTS_MS : 0, composted: b.composted, sownAt: b.sownAt };
+  };
+  const almanac = old.almanac as { crops: Record<string, CropRecord>; harvests: number; coinsEarned: number };
+  const basket = old.basket as Record<string, number>;
+  return {
+    v: 2,
+    startedAt: old.startedAt as number,
+    clock,
+    lastActionAt: old.lastActionAt as number,
+    hemisphere: old.hemisphere as HemisphereSetting,
+    coins: old.coins as number,
+    beds: (old.beds as unknown[]).map(bed),
+    glassBeds: (old.glassBeds as unknown[]).map(bed),
+    things: Object.fromEntries(THING_IDS.map((id) => [id, (old.things as Record<string, boolean>)[id]])) as Record<ThingId, boolean>,
+    compost: old.compost as number,
+    producing: Object.fromEntries(PRODUCERS.map((id) => [id, (old.producing as Record<string, number>)[id]])) as Record<ProducerId, number>,
+    waiting: Object.fromEntries(KEEPING_IDS.map((id) => [id, (old.waiting as Record<string, number>)[id] ?? 0])) as Record<
+      KeepingId,
+      number
+    >,
+    basket: Object.fromEntries(ITEM_IDS.map((id) => [id, basket[id] ?? 0])) as Record<ItemId, number>,
+    almanac: {
+      crops: Object.fromEntries(
+        CROP_IDS.map((id) => {
+          const record = almanac.crops[id];
+          return [
+            id,
+            record
+              ? { harvests: record.harvests, produce: record.produce, firstAt: record.firstAt }
+              : { harvests: 0, produce: 0, firstAt: null },
+          ];
+        }),
+      ) as Record<CropId, CropRecord>,
+      harvests: almanac.harvests,
+      coinsEarned: almanac.coinsEarned,
+    },
+    milestones: { ...(old.milestones as Partial<Record<MilestoneId, number>>) },
+  };
+}
+
+/**
+ * A plot read back from storage, checked field by field, or null if any of it is not
+ * sound. A plot of the first version is brought into the current rules. The server never
+ * silently replaces a plot that fails this: it says so.
+ */
+export function readAllotment(value: unknown): AllotmentState | null {
+  if (!isRecord(value)) return null;
+  if (value.v === 1) return sound(value, 1) ? fromVersion1(value) : null;
+  if (value.v !== 2 || !sound(value, 2)) return null;
   return value as unknown as AllotmentState;
 }
 

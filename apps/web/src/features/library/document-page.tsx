@@ -23,6 +23,8 @@ import { EpubReader } from "./epub-reader";
 
 // pdf.js is large and only PDFs need it.
 const PdfViewer = lazy(() => import("./pdf-viewer"));
+// A recording is played, not shown: the audiobook player, with its book around it when it is a chapter.
+const AudioViewer = lazy(() => import("../audiobooks/audio-viewer"));
 
 const DETAILS_KEY = "outpost.document.details";
 // Wide enough for the details to sit beside the document and the viewing controls to fit in the top bar.
@@ -215,6 +217,13 @@ function Viewer({
         />
       </>
     );
+  if (document.type === "audio") {
+    return (
+      <Suspense fallback={<div className="flex-1" aria-busy />}>
+        <AudioViewer key={document.id} document={document} />
+      </Suspense>
+    );
+  }
   // A book is read chapter by chapter, drawn from what the server reads out of it.
   if (document.type === "epub") return <EpubReader key={document.id} document={document} downloadUrl={downloadUrl} />;
   // Keyed, so that going from one chapter to the next starts at the top of the new one.

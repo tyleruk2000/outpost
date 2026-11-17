@@ -13,9 +13,13 @@
  *   /content/<book>/database.js  `var DATABASE = [ … ];`, each entry written the way Python
  *                              prints a dictionary, which is how nautilus writes it
  *   /content/<book>/files/…    the files the list names
+ *   /content/<book>/app        a page that is a small web app: a module script that fetches a data file
  *   /content/<book>/guide      an ordinary page that links to three of those files, as a page of an
  *                              archive made from a web site does. nautilus writes no such page; it is
  *                              here so that one stand-in serves the tests of both kinds of archive
+ *
+ * It also serves a second archive, a small made-up course of topics and lessons, for the
+ * tests of learning progress: see course-archive.ts.
  *
  * Nothing here is copied from nautilus or from any archive: the page, the script, the
  * documents and their words were written for these tests.
@@ -29,6 +33,7 @@ import fs from "node:fs";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
 import { pathToFileURL } from "node:url";
+import { serveCourse } from "./course-archive.ts";
 import { buildPdf } from "./fixtures/documents/builders.ts";
 
 export const NAUTILUS_BOOK = "field-library_en_2026-11";
@@ -159,6 +164,31 @@ export const GUIDE_LINKS: Array<{ file: string; text: string }> = [
   { file: "first aid/splint.pdf", text: "Splinting a forearm" },
 ];
 
+/**
+ * A page that is a small web app, as the archives of video channels are: its code is a
+ * module script and it draws itself from a data file it fetches. In Outpost's sandbox both
+ * are requests from another origin, which the browser keeps from the page unless the
+ * proxy says the page may read its own archive's files.
+ */
+const APP_PAGE = `<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Channel</title>
+    <script type="module" crossorigin src="./assets/app.js"></script>
+  </head>
+  <body><div id="app">Loading…</div></body>
+</html>`;
+const APP_SCRIPT = `// As a request library does before every request, and as an app does to remember a choice:
+// in a sandbox each of these throws unless the reader has put a stand-in there.
+const seen = document.cookie.length;
+localStorage.setItem("seen", String(seen));
+sessionStorage.setItem("lang", "en");
+if (localStorage.getItem("seen") !== "0" || sessionStorage.getItem("lang") !== "en" || localStorage.length !== 1) throw new Error("storage");
+const data = await (await fetch(new URL("../app-data.json", import.meta.url))).json();
+document.getElementById("app").innerHTML = "<h1>" + data.title + "</h1>";`;
+const APP_DATA = JSON.stringify({ title: "Winter prepping videos" });
+
 const GUIDE = `<!DOCTYPE html>
 <html>
   <head>
@@ -278,6 +308,8 @@ export async function startNautilusArchive(options: { port?: number } = {}): Pro
       archive.missing = new Set(asked.getAll("missing"));
       return response.end("ok");
     }
+    // A second archive, a small course, for the tests of learning progress (course-archive.ts).
+    if (serveCourse(request, response)) return;
     const head = request.method === "HEAD";
     (head ? archive.heads : archive.requests).push(url);
     // kiwix-serve sends its own, weaker, sandbox policy; Outpost must replace it.
@@ -326,6 +358,9 @@ export async function startNautilusArchive(options: { port?: number } = {}): Pro
     }
     if (inside === "home") return send("text/html; charset=utf-8", archive.home);
     if (inside === "guide") return send("text/html; charset=utf-8", GUIDE);
+    if (inside === "app") return send("text/html; charset=utf-8", APP_PAGE);
+    if (inside === "assets/app.js") return send("text/javascript", APP_SCRIPT);
+    if (inside === "app-data.json") return send("application/json", APP_DATA);
     if (inside === "nautilus.js") return send("text/javascript", SCRIPT);
     if (inside === "database.js") return archive.database === undefined ? missing() : send("text/javascript", archive.database);
     const name = inside.startsWith("files/") ? inside.slice("files/".length) : "";

@@ -18,6 +18,7 @@ import { ConfirmDialog, Dialog, DialogBody, DialogContent, DialogFooter } from "
 import { Field } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/misc";
 import { ApiError, api, errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { formatDateTime } from "@/lib/utils";
 import { PassphraseInput } from "../encryption/parts";
 import { suggestPassphrase } from "../encryption/passphrase";
@@ -271,7 +272,7 @@ export function BackupProtectionRow({
     },
     onError: (failure) => {
       setStopping(false);
-      toast.error(errorMessage(failure));
+      notify.error(errorMessage(failure));
     },
   });
 

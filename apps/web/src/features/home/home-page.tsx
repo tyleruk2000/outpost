@@ -20,6 +20,7 @@ import { Link, useNavigate } from "react-router";
 import { Contour } from "@/components/contour";
 import { StorageBar } from "@/components/storage-bar";
 import { Progress, Skeleton } from "@/components/ui/misc";
+import { BoardHomeLine } from "@/features/board/elsewhere";
 import { api } from "@/lib/api";
 import { useActiveJobs, useStorage } from "@/lib/queries";
 import { plural, timeAgo } from "@/lib/utils";
@@ -27,7 +28,7 @@ import { plural, timeAgo } from "@/lib/utils";
 function Block({ title, more, children }: { title: string; more?: { to: string; label: string }; children: ReactNode }) {
   return (
     <section className="mt-10 first:mt-0">
-      <div className="mb-2 flex items-baseline justify-between gap-4">
+      <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h2 className="text-lead font-semibold text-ink">{title}</h2>
         {more ? (
           <Link to={more.to} className="flex items-center gap-1 text-small text-primary hover:underline">
@@ -154,6 +155,7 @@ export default function HomePage() {
         <div className="mx-auto w-full max-w-[70rem] px-5 pt-10 pb-9 md:px-10 md:pt-14 md:pb-11">
           <h1 className="font-title text-display text-ink">Your library</h1>
           <div className="mt-3 max-w-[56ch] text-lead text-ink-muted">{summary ?? <Skeleton className="h-6 w-96 max-w-full" />}</div>
+          <BoardHomeLine className="mt-2" />
           {/* biome-ignore lint/a11y/useSemanticElements: a form with role="search" is the search landmark every browser and screen reader knows */}
           <form onSubmit={submit} role="search" className="relative mt-6 max-w-[34rem]">
             <Search aria-hidden className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-ink-muted" />

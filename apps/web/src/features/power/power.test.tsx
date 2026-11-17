@@ -275,7 +275,7 @@ describe("a power plan", () => {
     await waitFor(() => expect(server.put).toHaveLength(1), { timeout: 300 });
     expect(server.put[0]!.name).toBe("Shack, winter");
     expect(server.keptAlive).toEqual([true]);
-    fireEvent.change(screen.getByLabelText("Notes"), { target: { value: "For the winter months." } });
+    fireEvent.change(screen.getByLabelText("Notes (optional)"), { target: { value: "For the winter months." } });
     window.dispatchEvent(new Event("pagehide"));
     await waitFor(() => expect(server.put).toHaveLength(2), { timeout: 300 });
     expect(server.put[1]!.notes).toBe("For the winter months.");

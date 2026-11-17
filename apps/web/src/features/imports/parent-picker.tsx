@@ -3,9 +3,10 @@ import type { NoteLookupItem } from "@outpost/shared";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Command } from "cmdk";
 import { Check, ChevronsUpDown, CornerLeftUp, FileText, Search } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/misc";
 import { errorMessage } from "@/lib/api";
+import { useDebounced } from "@/lib/use-debounced";
 import { cn } from "@/lib/utils";
 import { lookupPages } from "./import-data";
 
@@ -21,16 +22,6 @@ const titleOf = (title: string) => title.trim() || "Untitled";
 const itemClass =
   "flex cursor-default items-center gap-3 rounded-control px-3 py-2 text-small text-ink data-[selected=true]:bg-primary-soft data-[selected=true]:text-primary-soft-ink max-md:py-3 [&_svg]:size-4 [&_svg]:shrink-0";
 
-/** The typed text, once the person has paused: one request per pause rather than per key. */
-function useSettled(value: string, delay = 180): string {
-  const [settled, setSettled] = useState(value);
-  useEffect(() => {
-    const timer = window.setTimeout(() => setSettled(value), delay);
-    return () => window.clearTimeout(timer);
-  }, [value, delay]);
-  return settled;
-}
-
 export function ParentPicker({
   id,
   value,
@@ -42,7 +33,7 @@ export function ParentPicker({
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const settled = useSettled(query.trim());
+  const settled = useDebounced(query.trim(), 180);
   const pages = useQuery({
     queryKey: ["notes", "lookup", settled],
     queryFn: ({ signal }) => lookupPages(settled, signal),

@@ -97,12 +97,23 @@ export interface InstalledRegion {
 export interface PlacesDataset {
   id: string;
   name: string;
-  /** Which GeoNames file it came from: "cities500", "cities15000" or a country code. */
+  /** Which GeoNames file it came from ("cities500", "cities15000" or a country code), or "os-open-names". */
   dataset: string;
   countries: string[];
   count: number;
   sizeBytes: number;
   installedAt: number;
+  /** Who publishes it: GeoNames, or Ordnance Survey (OS Open Names). */
+  source: "geonames" | "os";
+  /** OS Open Names: the edition held, as OS names it ("2026-10"); null for GeoNames. */
+  edition: string | null;
+  /** OS Open Names: whether streets and numbered roads were kept. */
+  roads?: boolean;
+  /** The credit its publisher asks for, as plain text. */
+  credit: string;
+  locationName: string;
+  /** False while the drive holding its file is not connected (the names still work: they are in the database). */
+  available: boolean;
 }
 
 export interface MapOverview {
@@ -308,8 +319,11 @@ export interface DrawnRouteProperties {
 
 export interface PlaceDto {
   id: number;
+  /** GeoNames, or Ordnance Survey's OS Open Names. */
+  source: "geonames" | "os";
   name: string;
   country: string | null;
+  /** GeoNames: the first-level division's code ("ENG"). OS Open Names: the area in words ("Aberystwyth, Ceredigion, Wales"). */
   admin1: string | null;
   featureCode: string | null;
   /** Plain word for what it is: "City", "Mountain", "Lake", … */
@@ -330,6 +344,10 @@ export interface PlaceSearchResponse {
    */
   otherReadings?: ParsedCoordinate[];
   places: PlaceDto[];
+  /** The credits of the sources the places listed came from, as their publishers ask for them. */
+  credits?: string[];
+  /** Something to say about the text: a Northern Ireland postcode, which no installed source covers. */
+  notice?: string;
 }
 
 // ── Coordinates ─────────────────────────────────────────────────────────────
@@ -758,4 +776,13 @@ export function formatDdm(lat: number, lon: number, minutesDigits = 3): string {
     return `${degrees}°${minutes.toFixed(minutesDigits).padStart(3 + minutesDigits, "0")}′${value < 0 ? negative : positive}`;
   };
   return `${part(lat, "N", "S")} ${part(lon, "E", "W")}`;
+}
+
+/** `GET /api/maps/height`: the height of the ground at one point, read from the terrain installed. */
+export interface PointHeight {
+  at: { lat: number; lon: number };
+  /** Metres above sea level as the terrain gives it, to a tenth of a metre; null where no installed terrain covers the point. */
+  heightMeters: number | null;
+  /** How wide the terrain cell the height was read from is, in metres; null with no height. */
+  cellMeters: number | null;
 }

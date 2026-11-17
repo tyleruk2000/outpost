@@ -16,7 +16,7 @@ export {
   useNumber,
   useText,
 } from "./fields";
-export { formatDuration, formatFigure, formatRange, roundSignificant } from "./format";
+export { formatDuration, formatFigure, formatRange, ROUGH_MINUTES_WORDS, roughMinutes, roundSignificant } from "./format";
 export { Calculator, ToolScreen } from "./layout";
 export { type NumberLimits, readNumber } from "./read-number";
 export { Formula, HowWorkedOut, KeepButtons, Result, type Source, SourceList } from "./result";

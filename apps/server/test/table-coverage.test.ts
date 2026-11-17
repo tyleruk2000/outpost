@@ -137,6 +137,15 @@ const TABLES: Record<string, Decision> = {
   network_devices: { group: "other", drive: true },
   network_scans: { group: "other", drive: true },
   game_saves: { group: "other", drive: true },
+  board_messages: { group: "other", drive: "The household board stays with the household's Outpost (docs/portable.md)." },
+  board_files: {
+    group: "other",
+    drive: "Part of the household board; the files themselves are in the data folder, which a drive does not carry.",
+  },
+  // Learning progress (modules/learning). It travels, as the Morse trainer's progress does: a drive is the household's library on the move.
+  learning_pages: { group: "library", drive: true },
+  learning_days: { group: "library", drive: true },
+  learning_topics: { group: "library", drive: true },
 };
 
 /** A word put in every text column, to look for in the full-text indexes' own storage. */

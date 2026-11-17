@@ -169,6 +169,7 @@ const track = (id: string, name: string, extra: Partial<TrackDto> = {}): TrackDt
 });
 const place = (id: number, name: string, extra: Partial<PlaceDto> = {}): PlaceDto => ({
   id,
+  source: "geonames",
   name,
   country: "GB",
   admin1: "WLS",

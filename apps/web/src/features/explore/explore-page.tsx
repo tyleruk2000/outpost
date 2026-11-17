@@ -15,7 +15,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Segmented, Select, Skeleton } from "@/components/ui/misc";
 import { ApiError, api, errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { plural, timeAgo } from "@/lib/utils";
+import { useLibrivoxShelf } from "../audiobooks/audiobook-data";
+// The LibriVox shelf, offered as links (features/audiobooks).
+import { LibrivoxShelf } from "../audiobooks/librivox-shelf";
 import { useDownloads } from "../downloads/use-downloads";
 import { manageLink } from "../manage/manage-data";
 import { type CategoryChoice, countByCategory, filterEntries, type ShowFilter, type SortOrder, sortEntries } from "./catalog";
@@ -125,9 +129,23 @@ export default function ExplorePage() {
   const client = useQueryClient();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
-  const [query, setQuery] = useState("");
-  const [show, setShow] = useState<ShowFilter>("all");
-  const [sort, setSort] = useState<SortOrder>("name");
+  // The filter, what is shown and the order are in the address, as every other filter is, so a reload keeps them.
+  const query = params.get("q") ?? "";
+  const show = showOptions.find((option) => option.value === params.get("show"))?.value ?? "all";
+  const sort = sortOptions.find((option) => option.value === params.get("sort"))?.value ?? "name";
+  const setParam = (key: string, value: string, unset: string) =>
+    setParams(
+      (current) => {
+        const updated = new URLSearchParams(current);
+        if (value === unset) updated.delete(key);
+        else updated.set(key, value);
+        return updated;
+      },
+      { replace: true },
+    );
+  const setQuery = (next: string) => setParam("q", next, "");
+  const setShow = (next: ShowFilter) => setParam("show", next, "all");
+  const setSort = (next: SortOrder) => setParam("sort", next, "name");
   const [downloading, setDownloading] = useState<{ entry: CatalogEntryDto; open: boolean }>();
   // Pages shown of the list below, counted afresh whenever the list itself changes.
   const [pages, setPages] = useState({ list: "", count: 1 });
@@ -164,7 +182,7 @@ export default function ExplorePage() {
       void client.invalidateQueries({ queryKey: ["collections"] });
       return client.invalidateQueries({ queryKey: ["catalog"] });
     },
-    onError: (error, entry) => toast.error(`“${entry.name}” could not be added`, { description: errorMessage(error) }),
+    onError: (error, entry) => notify.error(`“${entry.name}” could not be added`, { description: errorMessage(error) }),
   });
 
   const entries = catalog.data?.entries ?? [];
@@ -173,10 +191,13 @@ export default function ExplorePage() {
   const requested = params.get("category");
   // A link to one entry opens its category unless the address names another.
   const packs = catalog.data?.packs ?? [];
+  const shelfCount = useLibrivoxShelf().data?.books.length ?? 0;
   const category: CategoryChoice =
     requested === "packs" && packs.length > 0
       ? "packs"
-      : (CATALOG_CATEGORIES.find((item) => item.slug === requested)?.slug ?? markedEntry?.category ?? "all");
+      : requested === "audiobooks"
+        ? "audiobooks"
+        : (CATALOG_CATEGORIES.find((item) => item.slug === requested)?.slug ?? markedEntry?.category ?? "all");
 
   const setCategory = (next: CategoryChoice) =>
     setParams((current) => {
@@ -196,6 +217,7 @@ export default function ExplorePage() {
   const navItems: CategoryItem[] = [
     // Packs come first: they are the answer to "where do I start?".
     ...(packs.length > 0 ? [{ slug: "packs" as const, label: "Packs", count: packs.length }] : []),
+    ...(shelfCount > 0 ? [{ slug: "audiobooks" as const, label: "Audiobooks", count: shelfCount }] : []),
     { slug: "all", label: "All collections", count: counts.all ?? 0 },
     // Maps are fetched by region on their own screen, so "0" beside them would be wrong.
     ...categories.map((item) => ({
@@ -206,10 +228,16 @@ export default function ExplorePage() {
   ];
 
   const filtered = query.trim() !== "" || show !== "all";
-  const clearFilters = () => {
-    setQuery("");
-    setShow("all");
-  };
+  const clearFilters = () =>
+    setParams(
+      (current) => {
+        const updated = new URLSearchParams(current);
+        updated.delete("q");
+        updated.delete("show");
+        return updated;
+      },
+      { replace: true },
+    );
 
   const inCategory = category === "all" || category === "packs" ? matching : matching.filter((entry) => entry.category === category);
   const shown = sortEntries(inCategory, sort);
@@ -285,7 +313,9 @@ export default function ExplorePage() {
         <div className="lg:grid lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-x-10">
           <CategoryNav items={navItems} value={category} onChange={setCategory} />
 
-          {category === "packs" ? (
+          {category === "audiobooks" ? (
+            <LibrivoxShelf />
+          ) : category === "packs" ? (
             <div className="min-w-0 max-lg:mt-3">
               <h2 className="text-lead font-semibold text-ink">Packs</h2>
               <p className="mt-1 mb-4 max-w-[68ch] text-small text-ink-muted">
@@ -307,7 +337,7 @@ export default function ExplorePage() {
                 </p>
               ) : null}
               <div className="flex flex-wrap items-center gap-3">
-                <div className="relative min-w-56 flex-1 max-md:basis-full">
+                <div className="relative min-w-[min(100%,14rem)] flex-1 max-md:basis-full">
                   <Search aria-hidden className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-muted" />
                   <Input
                     type="search"
@@ -319,7 +349,7 @@ export default function ExplorePage() {
                   />
                 </div>
                 <Segmented label="Show" value={show} onChange={setShow} options={showOptions} className="max-md:hidden" />
-                <div className="flex gap-3 max-md:basis-full [&>*]:min-w-0 [&>*]:flex-1">
+                <div className="flex min-w-0 gap-3 max-md:basis-full [&>*]:min-w-0 [&>*]:flex-1">
                   <Select
                     aria-label="Show"
                     value={show}

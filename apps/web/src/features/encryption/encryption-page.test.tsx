@@ -42,8 +42,13 @@ describe("over plain HTTP", () => {
     expect(httpsNotices()).toHaveLength(1);
     const notice = httpsNotices()[0]!;
     expect(within(notice).getByText("Keys, text, files and encrypted pages need HTTPS")).toBeInTheDocument();
-    expect(within(notice).getByText(/encrypted page of your notes/)).toBeInTheDocument();
-    expect(within(notice).getByText(/anyone on the network could alter the page/)).toBeInTheDocument();
+    // What does not work and where to turn HTTPS on, in a few words; the reason waits behind "Why".
+    expect(within(notice).getByRole("link", { name: "Settings, HTTPS on your network" }).closest("details")).toBeNull();
+    expect(
+      within(notice)
+        .getByText(/anyone on the network could alter the page/)
+        .closest("details"),
+    ).toHaveTextContent(/^Why/);
     expect(within(notice).getByRole("link", { name: "Settings, HTTPS on your network" })).toHaveAttribute("href", "/settings#https");
 
     for (const name of ["Keys", "Text", "Files"]) {

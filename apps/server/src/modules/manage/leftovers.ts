@@ -192,6 +192,22 @@ export function createLeftovers(ctx: AppContext, inventory: Inventory, survey: S
       });
     }
 
+    // The household board: its messages and the files sent on it, counted from its own records.
+    const board = ctx.services.board.kept.count();
+    if (board.messages > 0 || board.files > 0) {
+      items.push({
+        id: "board:all",
+        kind: "board",
+        title: "Messages and files on the board",
+        detail: null,
+        bytes: board.fileBytes,
+        count: board.messages,
+        locationName: null,
+        href: "/messages",
+        what: "board",
+      });
+    }
+
     // Weather and hazard data fetched for offline use: counted from its own records, so listed without a survey.
     const weather = ctx.services.weather.count();
     if (weather.copies > 0) {
@@ -369,6 +385,10 @@ export function createLeftovers(ctx: AppContext, inventory: Inventory, survey: S
         found.data.runtimes = 0;
       });
       return { title: "Programs fetched for portable drives", bytes, count: 1 };
+    }
+    if (id === "board:all") {
+      const erased = await ctx.services.board.kept.eraseAll();
+      return { title: "Messages and files on the board", bytes: erased.fileBytes, count: erased.messages };
     }
     if (id === "cache:weather") {
       const cleared = ctx.services.weather.clearCopies();

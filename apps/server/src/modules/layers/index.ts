@@ -14,7 +14,7 @@ import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
 import { AppError, badRequest, notFound } from "../../core/errors.ts";
-import { safeFileName } from "../../core/fs-safe.ts";
+import { pathExists, safeFileName } from "../../core/fs-safe.ts";
 import { createHttpClient } from "../../core/http.ts";
 import { registerMultipart } from "../../core/multipart.ts";
 import { TEMPLATES } from "./adapters/imports.ts";
@@ -231,7 +231,7 @@ export async function registerLayers(app: FastifyInstance, ctx: AppContext): Pro
           const folder = "collections/reference/imports";
           await fs.promises.mkdir(ctx.services.storage.resolve(location.id, folder), { recursive: true });
           let relPath = `${folder}/${stamp}-${name}`;
-          for (let n = 2; fs.existsSync(ctx.services.storage.resolve(location.id, relPath)); n += 1)
+          for (let n = 2; await pathExists(ctx.services.storage.resolve(location.id, relPath)); n += 1)
             relPath = `${folder}/${stamp}-${n}-${name}`;
           const target = ctx.services.storage.resolve(location.id, relPath);
           const temp = `${target}.uploading`;

@@ -1,6 +1,6 @@
 /** Names, icons and small facts shared by the document list and the document screen. */
 import type { DocumentDto, DocumentType } from "@outpost/shared";
-import { BookOpen, FileBraces, FileCode, FileSpreadsheet, FileText, FileType, Image, type LucideIcon } from "lucide-react";
+import { BookOpen, FileBraces, FileCode, FileSpreadsheet, FileText, FileType, Headphones, Image, type LucideIcon } from "lucide-react";
 import { plural } from "@/lib/utils";
 
 /** Query keys. They all start with "documents" so `lib/events.tsx` refreshes them on `documents.changed`. */
@@ -16,8 +16,10 @@ export const documentKeys = {
 };
 
 /** What the file picker offers. The server decides for itself; this only saves people a wasted upload. */
-export const ACCEPTED_FILES = ".pdf,.epub,.md,.markdown,.txt,.csv,.json,.html,.htm,.png,.jpg,.jpeg,.gif,.webp,.svg";
-export const SUPPORTED_TYPES = "PDF, EPUB, Markdown, plain text, HTML, CSV, JSON, and images (PNG, JPEG, GIF, WebP, SVG)";
+export const ACCEPTED_FILES =
+  ".pdf,.epub,.md,.markdown,.txt,.csv,.json,.html,.htm,.png,.jpg,.jpeg,.gif,.webp,.svg,.mp3,.m4a,.m4b,.aac,.ogg,.oga,.opus,.flac,.wav";
+export const SUPPORTED_TYPES =
+  "PDF, EPUB, Markdown, plain text, HTML, CSV, JSON, images (PNG, JPEG, GIF, WebP, SVG), and audio (MP3, M4A, M4B, AAC, Ogg, Opus, FLAC, WAV)";
 
 export const typeLabels: Record<DocumentType, { label: string; plural: string; icon: LucideIcon }> = {
   pdf: { label: "PDF", plural: "PDFs", icon: FileText },
@@ -26,6 +28,7 @@ export const typeLabels: Record<DocumentType, { label: string; plural: string; i
   text: { label: "Text", plural: "Text", icon: FileType },
   html: { label: "HTML", plural: "HTML pages", icon: FileCode },
   image: { label: "Image", plural: "Images", icon: Image },
+  audio: { label: "Recording", plural: "Audiobooks", icon: Headphones },
 };
 
 const extLabels: Record<string, { label: string; icon?: LucideIcon }> = {
@@ -56,33 +59,3 @@ export function kindLine(document: Pick<DocumentDto, "type" | "ext" | "pageCount
 /** True while Outpost is still reading a document's text. */
 export const isReading = (document: Pick<DocumentDto, "extraction">) =>
   document.extraction === "pending" || document.extraction === "running";
-
-/**
- * Copies text to the clipboard. Outpost is often reached over plain HTTP on a home
- * network, where the modern clipboard API is not offered, so there is an older path too.
- */
-export async function copyText(text: string): Promise<boolean> {
-  try {
-    if (navigator.clipboard && window.isSecureContext) {
-      await navigator.clipboard.writeText(text);
-      return true;
-    }
-  } catch {
-    // Fall through to the older way.
-  }
-  const area = document.createElement("textarea");
-  area.value = text;
-  area.setAttribute("readonly", "");
-  area.style.position = "fixed";
-  area.style.opacity = "0";
-  document.body.append(area);
-  area.select();
-  let copied = false;
-  try {
-    copied = document.execCommand("copy");
-  } catch {
-    copied = false;
-  }
-  area.remove();
-  return copied;
-}

@@ -6,7 +6,8 @@ data comes from and how it must be credited, using your own map source, markers,
 icons and moving them, sunrise and sunset, the centre of the map, drawing routes, finding a known route by
 name, recording a track as you walk, importing GPX tracks, coordinate formats,
 Maidenhead locators, checking line of sight between two points, repeaters on the map,
-satellite imagery, and offline place search.
+satellite imagery, and offline place search, with place names and postcodes for Great
+Britain from Ordnance Survey.
 
 Outpost draws a vector map in the browser from tiles it serves itself. Once a region
 is installed, viewing it needs no internet connection.
@@ -43,8 +44,8 @@ that has four tabs.
 
 On the map itself:
 
-- The **search box** takes a place name (once place names are downloaded, see
-  [below](#offline-place-search)), coordinates in any of the formats under
+- The **search box** takes a place name, or in Great Britain a postcode (once place
+  names are downloaded, see [below](#offline-place-search)), coordinates in any of the formats under
   [Coordinate formats](#coordinate-formats), a British grid reference, or a Maidenhead
   locator.
 - The **ruler** measures a path you click out, in kilometres and miles, and gives the
@@ -69,6 +70,10 @@ On the map itself:
 - The readout at the bottom shows the centre of the map; choose decimal degrees,
   degrees-minutes-seconds, British National Grid or Maidenhead locator, and copy it.
   With a mouse over the map it gives the pointer's position instead, and says which.
+- **The height of the ground** is written after the coordinates once the pointer has
+  rested ("57.00000, -3.39897 · 100 m"), from the terrain installed; on a phone it is
+  in the readout's opened state only. Metres or feet under Settings, Appearance. See
+  [The height of the ground](#the-height-of-the-ground).
 - **A cross always marks the centre of the map**: the point the readout gives while it
   says "Centre", the Sun tab works its times out for, and a route drawn from the
   keyboard puts its next point. With a mouse over the map the readout gives the
@@ -197,6 +202,73 @@ sizes with the rest of the tests.
 before they share a location. On a plain `http://` LAN address they say so and point to
 **Settings → HTTPS on your network** (see
 [deployment.md](deployment.md#https-on-your-network)).
+
+### The height of the ground
+
+The readout at the foot of the map gives the height of the ground beside the
+coordinates, in the same figures: "57.00000, -3.39897 · 100 m".
+
+- **With a mouse** it is the ground under the pointer, once the pointer has rested for
+  a quarter of a second. While the pointer moves the figure is not shown, so it never
+  belongs to the last place. Opening the readout (the arrow at its end) gives the
+  height at the centre of the map.
+- **On a touch screen** it is the ground at the centre of the map, once the map has
+  stopped moving. **On a phone** there is no room for it in the folded readout, so it
+  is shown only when the readout is opened, with a line on what it is.
+- **Where no terrain covers the point** (none installed, or the point is outside what
+  is), the folded readout shows no height at all, never a zero or a guess. Opened, it
+  says that heights need terrain for the area and offers **Get terrain**, which opens
+  Offline maps. Terrain comes with a map region (see [Terrain](#terrain)).
+- **Over the sea** the figure is whatever the terrain holds there, shown as it is:
+  Outpost does not know where the coast is and puts nothing in its place. What
+  Mapterhorn's tiles hold over open sea was not checked here (no real terrain was
+  looked at for this); the tests use made-up terrain at 0 m and below.
+
+**What the figure is.** It is the height of the ground thereabouts, read from the
+finest terrain installed and blended between the four cells round the point: not a
+surveyed spot height. The opened readout and the figure's tooltip say how wide the
+cells it was read from are. Terrain Outpost downloads has cells of about 11.5 m at
+53° N, but the data behind them is mostly Copernicus GLO-30, a 30 m model (see
+[What it rests on, and its limits](#what-it-rests-on-and-its-limits)), so a summit
+reads a few metres low. Heights are above mean sea level, as the terrain data gives
+it: Outpost's records of the terrain source do not name its vertical datum, so none
+is claimed.
+
+**Metres or feet.** Settings, Appearance, **Heights**: kept in this browser, like the
+theme and the clock, and metres until someone chooses. It is found in the quick search
+under "feet", "metres", "meters", "height", "elevation" and "units". Every height of
+the ground or of a climb on the map screens follows it, through one formatter
+(`apps/web/src/lib/heights.ts`): this readout, a route's elevation profile and its
+ascent, a recording's climb, a place's height in the search list, the line-of-sight
+tool's sentences and chart, and the words of a repeater's range card.
+
+- Heights of the ground and climbs are written to the nearest metre, or the nearest
+  5 feet. Terrain is not good to better than a few metres, so a metre is already finer
+  than the data, and 5 feet (1.5 m) is the nearest round step in feet that does not
+  claim more.
+- Heights above the ground that a person typed or that follow from one (an aerial, a
+  clearance under the ray, the Earth's bulge, a Fresnel radius) are written to a tenth
+  of a metre under 10 m and whole metres above, or to the foot.
+- Where a person types a height (an antenna's or a repeater aerial's), the field stays
+  in metres and says so. Distances are not heights: they are kilometres with miles
+  beside them, as before.
+
+**What it costs.** Nothing is asked while the pointer is not over the map, while the
+page is hidden, while the height could not be shown (a phone with the readout folded),
+or where no terrain is installed at all. A request that a newer point has made
+pointless is cancelled, and the last 32 answers are kept in the page, so going back
+over the same ground asks nothing. The server keeps the last four terrain tiles it
+decoded, so a pointer resting here and there over the same ground is a lookup, not a
+decode. Measured on 17 November 2026 with the made-up terrain of the end-to-end tests
+(64-cell tiles) at 1280 x 800: `/maps` at rest made no requests, visible or hidden, on a
+wide screen and on a phone; a scripted ten-second sweep of the pointer (368 moves, four
+rests of 0.4 s) asked for three heights (the fourth rest was over a card, not the map);
+each answer took 2 to 7 ms. A real 512-cell tile takes tens of milliseconds to decode
+the first time it is read; that was not measured with a real download.
+
+`GET /api/maps/height?at=<lat>,<lon>` answers `{ at, heightMeters, cellMeters }`
+(`PointHeight` in `packages/shared/src/maps.ts`), both null where no installed terrain
+covers the point; see [api.md](api.md).
 
 ## How regions work
 
@@ -588,6 +660,7 @@ their terms, the data model and what was measured, is in
 | Map tiles | The [Protomaps](https://protomaps.com) daily planet build, made from [OpenStreetMap](https://www.openstreetmap.org/copyright) data | ODbL 1.0 | "Protomaps © OpenStreetMap" |
 | Terrain | The [Mapterhorn](https://mapterhorn.com/attribution) planet archive | Various open licences; see mapterhorn.com/attribution | "© Mapterhorn" |
 | Place names | [GeoNames](https://www.geonames.org) | CC BY 4.0 | "Place names: GeoNames (CC BY 4.0)" |
+| Place names, roads and postcodes of Great Britain | Ordnance Survey's [OS Open Names](https://docs.os.uk/os-downloads/products/addresses-and-names-portfolio/os-open-names) | Open Government Licence v3.0 | The statement in the edition's own licence file, "Contains OS data © Crown Copyright and database rights 2026", and "OGL v3.0" |
 | A simple world outline drawn beneath the map, and the boxes of the country presets | Natural Earth 1:110m | Public domain | "Natural Earth" |
 | Map style | Protomaps basemap styles | BSD-3-Clause | |
 | Map label fonts | Noto Sans | SIL Open Font License 1.1 | |
@@ -601,8 +674,10 @@ credit is shown while hill shading or contour lines are on.
 
 ### Attribution you must keep
 
-OpenStreetMap data is licensed under the Open Database Licence, and GeoNames under
-CC BY 4.0. Both require credit wherever the data is shown.
+OpenStreetMap data is licensed under the Open Database Licence, GeoNames under CC BY
+4.0, and OS Open Names under the Open Government Licence, which asks for Ordnance
+Survey's attribution statement with the year of the data. All three require credit
+wherever the data is shown.
 
 - Outpost supplies the credits with the map sources (`GET /api/maps/sources`,
   fields `attribution` and `attributions`) for the map's attribution control. Do not
@@ -611,8 +686,8 @@ CC BY 4.0. Both require credit wherever the data is shown.
   address for each written out (see [Printing a map](#printing-a-map)). Do not crop
   them off.
 - If you publish screenshots or maps printed some other way, include "© OpenStreetMap
-  contributors" and, where terrain or place names appear, the Mapterhorn and GeoNames
-  credits.
+  contributors" and, where terrain or place names appear, the Mapterhorn, GeoNames and
+  Ordnance Survey credits.
 - An imported archive that Outpost did not download is shown with the usual credit.
   If it comes from somewhere else, you are responsible for crediting it correctly.
 
@@ -665,6 +740,11 @@ curl -X POST "http://localhost:8080/api/maps/import" \
 A marker is a named point with an optional note, one of seven colours (teal, amber,
 red, green, blue, violet, slate), one of sixteen icons, a favourite flag, and optionally
 a link to one of your note pages. Markers are found by the app-wide search.
+
+The Places and Routes tabs list fifty at a time, with **Show more** for the next fifty;
+the map draws every one. (`GET /api/maps/markers` and `GET /api/maps/tracks` answer
+whole lists, because the map, the export and every screen that offers a saved place
+need all of them.)
 
 ### Icons
 
@@ -1165,7 +1245,7 @@ first time).
 
 | While recording | |
 | --- | --- |
-| The line | Drawn on the map as you go, with a dot where you are. The map moves with you when you walk off the edge of it; if you move the map to look somewhere else, it stays where you put it. |
+| The line | Drawn on the map as you go, with a dot where you are: brought up to date every five seconds while positions arrive (every one is kept as it comes), and at once on a pause, a stop or when the page is shown again. Redrawing the map at every position kept a phone busy for a change too small to see. The map moves with you when you walk off the edge of it; if you move the map to look somewhere else, it stays where you put it. |
 | Distance | Along the points kept, in kilometres and miles. |
 | Time | Since the first point, by the clock: pauses and rests are in it. |
 | Moving | The part of that time spent covering ground at 1 km/h or more. |
@@ -2079,7 +2159,9 @@ map, and coverage beyond the line-of-sight estimate above.
 
 ## Offline place search
 
-Place search works from GeoNames data that you download once.
+Place search works from GeoNames data that you download once, and in Great Britain also
+from Ordnance Survey's OS Open Names (see
+[Place names for Great Britain](#place-names-for-great-britain)).
 
 | Dataset | What it holds |
 | --- | --- |
@@ -2100,11 +2182,110 @@ matches, by population, and by distance from a point when one is given
 
 ### Limits
 
-- **No street addresses.** GeoNames lists places, not streets, house numbers or
-  postcodes. Searching for "10 High Street" finds nothing.
+- **No house numbers, and no street addresses outside Great Britain.** GeoNames lists
+  places, not streets or postcodes. In Great Britain, OS Open Names adds streets and
+  postcodes (below); "High Street" finds the High Streets nearest the middle of the
+  map, but "10 High Street" finds nothing.
 - No businesses or points of interest beyond the short landmark list.
 - No reverse look-up from a position to a place name.
 - Only installed datasets are searched. Without any, typing a coordinate still works.
+
+## Place names for Great Britain
+
+Ordnance Survey publishes **OS Open Names**, a gazetteer of Great Britain, as OpenData.
+Outpost downloads it on a press and reads it into the same place search as GeoNames:
+**Offline maps → Place names → Place names for Great Britain**.
+
+**What it holds** (October 2026 edition, counted from the file): 1,743,934 postcodes,
+884,116 named roads and 5,161 numbered ones, 43,274 settlements (cities, towns,
+villages, hamlets, parts of towns), 37,025 hills and mountains and some 39,000 other
+landforms (valleys, islands, headlands, corries), 27,000 named waters, 121,000 woods
+and other land cover, stations, ports, airfields, schools, hospitals and the like.
+Each is kept with its name (and its other name where OS gives one: Welsh and English,
+Gaelic and English), what it is in plain words ("Village", "Hill or mountain",
+"Postcode"), its area ("Aberystwyth, Ceredigion, Wales"), and its position. Left out:
+OS's "Section Of Named Road" and "Section Of Numbered Road" records (107,379), which
+repeat a road once for every settlement it passes through.
+
+**Hills.** OS's 1:50 000 Scale Gazetteer, the old list of every name on the Landranger
+maps, was withdrawn long ago. OS Open Names has hills and mountains as a kind of its
+own, and was checked to hold Helvellyn, Scafell Pike and Ben Nevis (with Beinn
+Nibheis). It does not hold every name printed on a Landranger or Explorer map, and it
+gives no heights.
+
+**Postcodes.** Each postcode is one point, which OS describes as "the notional centre
+created from all the addresses within the postcode unit". Search finds one however it
+is typed: "SY23 3BY", "sy233by" and "Sy23 3by" are the same. A postcode typed in part
+finds the area: "SY23" the postcode district and "SY23 3" the sector, each placed at the
+middle of its postcodes, which Outpost works out from the file as it is read. A district
+such as "SY23" is also a grid reference (a 10 km square in Dorset): both are offered.
+Code-Point Open, OS's other postcode product, gives the same points with more about
+each postcode's area; OS Open Names already has what a search needs, so it is not used.
+
+**Not covered:** Northern Ireland, the Isle of Man and the Channel Islands. A postcode
+beginning BT is answered with a sentence saying so.
+
+**How big.** The download is 103 MB (October 2026 edition). Read into Outpost's
+database it takes 519 MB with streets and 366 MB without (measured on this Mac:
+2,956,719 and 2,067,442 rows with their search index). The choice is offered before
+the download, and is the owner's to overturn: streets are kept unless the box is
+cleared. The names are in the database, so they are also in its backups; the zip is a
+file on the chosen storage location, like a map region, and is deleted with the names.
+Reading it took 63 seconds on this Mac; on a Raspberry Pi expect five to ten minutes.
+A search of the whole of it answers in under 5 ms for a word or a postcode; the slowest,
+a two-letter start such as "st", took about 220 ms on this Mac with streets and 50 ms
+without (not measured on a Pi; expect four to eight times as long).
+
+**How current.** OS publishes a new edition every three months (January, April, July
+and October). The tab says which edition is held, and **Check for a newer edition**
+asks OS for the current one. A newer edition is downloaded and read in full and then
+replaces the one held, whole; if it fails, the one held stays as it was.
+
+**Where it comes from, and the terms.** Ordnance Survey's Downloads API at `api.os.uk`,
+which needs no key and no account for OpenData. **Check the size** asks it two things:
+the product's current edition, and the size and MD5 of the CSV file for Great Britain.
+The download is that API's address, which redirects to OS's own file store; a download
+that is cut off asks the API again and carries on from where it stopped. The finished
+file is checked against OS's MD5 before it is read. OS OpenData is under the Open
+Government Licence v3.0, whose one condition is the attribution statement: Outpost reads
+it from the edition's own `Doc/licence.txt` ("Contains OS data © Crown Copyright and
+database rights 2026") and shows it on the map while the names are installed, under the
+search list when an OS result is in it, and in the Offline tab. The terms are quoted in
+[sources.md](sources.md).
+
+**Positions.** OS gives eastings and northings on the National Grid (OSGB36). Outpost
+converts them to WGS 84 latitude and longitude with the seven-parameter Helmert
+transformation in Ordnance Survey's *A guide to coordinate systems in Great Britain*
+(v3.6, section 6.6 and annexes C.2 and D). OS gives its error as "up to 3.5 metres
+(95%)"; Outpost states about 5 m. That is far finer than the difference between where
+two sources put "the centre" of a village. The exact transformation, OSTN15, needs a
+grid file Outpost does not ship. The conversion is tested against OS's worked example
+in annexe D to within a centimetre.
+
+**How results are ordered.** Your own saved places and routes come first, as before.
+Then, in this order, so that nothing lower can outweigh anything higher: a name that is
+exactly what was typed (or exactly one of its other names) before one that only starts
+with it; a place, hill, lake or the like before a road or postcode, because roads share
+names by the thousand (there are about thirty roads called Ambleside, and the town comes
+first even when the map is over one of them); then a score of how well the text matches,
+how big the place is (settlements by kind for OS, by population for GeoNames), and how
+near it is to the middle of the map. A place OS and GeoNames both hold is listed once.
+
+### Terrain from Ordnance Survey: why it was not added
+
+OS Terrain 50, OS's open height data, is a 50 m grid (and 10 m contours made from the
+same source), "verified to be 4m RMSE", updated each July. The terrain Outpost already
+downloads (Mapterhorn) is, over Great Britain, made from 1 m lidar terrain models
+(Environment Agency's LIDAR Composite DTM for England, the Welsh Government's 1 m DTM,
+and the Scottish Government's Phase 1 lidar where it reaches), and elsewhere from
+Copernicus GLO-30 at 30 m; Outpost keeps it to zoom 12, about 12 m a pixel at British
+latitudes. That is finer than Terrain 50 everywhere in Britain, so Terrain 50 would
+make the map coarser, not better, and was not added. Its one real advantage is that it
+is a bare-earth model everywhere, where GLO-30 (used in Scotland outside lidar cover)
+is a surface model that includes forest canopy; its contours are no better than the
+ones Outpost traces, being made from the same 50 m source. Its licence (OGL) is no
+cleaner in practice than Mapterhorn's sources, which are open licences each with its
+credit.
 
 ## Satellite imagery
 

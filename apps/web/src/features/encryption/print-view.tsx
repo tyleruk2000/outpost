@@ -21,7 +21,6 @@
 import { Download, LibraryBig, Printer, Share2, TriangleAlert, X } from "lucide-react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { type CSSProperties, type ReactNode, useEffect, useLayoutEffect, useMemo, useState } from "react";
-import { toast } from "sonner";
 import { Notice } from "@/components/page";
 import { PrintNotice } from "@/components/print-notice";
 import { Button } from "@/components/ui/button";
@@ -38,6 +37,7 @@ import { usePrinting } from "@/lib/printing";
 import { plural } from "@/lib/utils";
 import { AID_PAPER_KEY, AID_PAPERS, type AidPaper, aidPdf, isAidPaper, likelyPaper } from "./paper-aids";
 import "./encryption.css";
+import { notify } from "@/lib/notify";
 
 /** Which paper the PDF was last made for. The only thing this view remembers. */
 const PAPER_KEY = AID_PAPER_KEY;
@@ -116,7 +116,7 @@ export function PrintView({
     } catch (error) {
       // Closing the share sheet without choosing is not a failure.
       if (!(error instanceof DOMException && error.name === "AbortError"))
-        toast.error("This device would not share the file. Save it instead.");
+        notify.error("This device would not share the file. Save it instead.");
     }
   };
 

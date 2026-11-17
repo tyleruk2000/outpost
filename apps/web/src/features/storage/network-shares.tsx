@@ -24,6 +24,7 @@ import { Field } from "@/components/ui/input";
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
 import { Badge, Skeleton } from "@/components/ui/misc";
 import { ApiError, api, errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { cn, timeAgo } from "@/lib/utils";
 import { ConnectShareDialog, type ShareResult, UseShareForm } from "./connect-share";
 import { dialogColumn, PasswordInput, phoneSheet, rememberDescription, SwitchRow } from "./parts";
@@ -171,7 +172,7 @@ function ShareRow({ share }: { share: NetworkShare }) {
       const reason = error instanceof ApiError ? error.details?.reason : undefined;
       // A password problem is fixed by typing it, so go straight there.
       if (reason === "wrong_password" || reason === "needs_password") setAskPassword({ reason: errorMessage(error) });
-      else toast.error(errorMessage(error));
+      else notify.error(errorMessage(error));
     },
   });
   const disconnect = useMutation({

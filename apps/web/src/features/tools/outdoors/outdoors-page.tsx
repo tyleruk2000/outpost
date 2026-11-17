@@ -28,6 +28,8 @@ import {
   NumberField,
   type NumberSpec,
   Result,
+  ROUGH_MINUTES_WORDS,
+  roughMinutes,
   ToolScreen,
   u,
   useChoice,
@@ -128,14 +130,14 @@ function WalkingTimeCalculator() {
       </Inputs>
       <Result
         label="Walking time"
-        figure={shown?.ok ? formatDuration(shown.minutes) : null}
+        figure={shown?.ok ? formatDuration(roughMinutes(shown.minutes)) : null}
         refusal={shown && !shown.ok ? shown.reason : undefined}
         keep={
           time && shown?.ok
             ? {
                 title: `Walking time, ${formatFigure(values![0] / 1000)} km with ${formatFigure(values![1], { decimals: 0 })} m of climb`,
                 lines: [
-                  `${formatDuration(shown.minutes)} (${correction === "tranter" ? "Naismith with Tranter's corrections" : "Naismith"}${time.descent ? ", Langmuir's descent" : ""})`,
+                  `${formatDuration(roughMinutes(shown.minutes))} (${correction === "tranter" ? "Naismith with Tranter's corrections" : "Naismith"}${time.descent ? ", Langmuir's descent" : ""})`,
                   "Without stops.",
                 ],
               }
@@ -144,10 +146,14 @@ function WalkingTimeCalculator() {
       >
         {time && shown?.ok ? (
           <p>
-            {formatDuration(time.flat)} for the distance and {formatDuration(time.ascent)} for the climb
-            {time.descent ? `, ${time.descent > 0 ? "plus" : "less"} ${formatDuration(Math.abs(time.descent))} for the descent` : ""}
-            {correction === "tranter" ? `: ${formatDuration(time.total)} by Naismith, which Tranter's table turns into the time above` : ""}
-            . Stops are not included.
+            {formatDuration(roughMinutes(time.flat))} for the distance and {formatDuration(roughMinutes(time.ascent))} for the climb
+            {time.descent
+              ? `, ${time.descent > 0 ? "plus" : "less"} ${formatDuration(roughMinutes(Math.abs(time.descent)))} for the descent`
+              : ""}
+            {correction === "tranter"
+              ? `: ${formatDuration(roughMinutes(time.total))} by Naismith, which Tranter's table turns into the time above`
+              : ""}
+            . Stops are not included. {ROUGH_MINUTES_WORDS}
           </p>
         ) : null}
       </Result>

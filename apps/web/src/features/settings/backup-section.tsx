@@ -8,11 +8,13 @@ import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { ApiError, api, errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { manageLink } from "../manage/manage-data";
 import { AutomaticBackups } from "./automatic-backups";
 import { BackupProtectionRow, passphraseHeader, passphraseProblem, RestorePassphrase, startsAsProtected } from "./backup-protection";
-import { RESTORE_WORDS, stagedText } from "./backup-text";
+import { stagedText } from "./backup-text";
 import { SettingRow, SettingsSection } from "./parts";
+import { RESTORE_LABEL, RestoreWords } from "./restore-words";
 
 /**
  * Reloads the page once the restarted server answers, rather than after a fixed wait that
@@ -31,7 +33,7 @@ async function reloadWhenBack(): Promise<void> {
     await wait(1000);
     if (await answers()) return window.location.reload();
   }
-  toast.error("Outpost has not come back after two minutes. Check the computer it runs on, then reload this page.");
+  notify.error("Outpost has not come back after two minutes. Check the computer it runs on, then reload this page.");
 }
 
 export function BackupSection() {
@@ -85,7 +87,7 @@ export function BackupSection() {
         return setProblem(errorMessage(error));
       }
       choose(undefined);
-      toast.error(errorMessage(error));
+      notify.error(errorMessage(error));
     },
   });
   const cancel = useMutation({ mutationFn: () => api.delete("/api/backup/restore"), onSuccess: refresh });
@@ -95,7 +97,7 @@ export function BackupSection() {
       toast.message("Outpost is restarting. This page will reload by itself once it is back.");
       void reloadWhenBack();
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
 
   // Restoring replaces everything at once, so it is offered where "erase everything" is.
@@ -161,7 +163,7 @@ export function BackupSection() {
             </p>
             <p className="mt-1 text-ink-muted">
               Whoever starts Outpost can allow it from every device by starting it with{" "}
-              <span className="font-mono text-[0.8125rem]">{right.option}=true</span>.
+              <span className="font-mono text-[0.8125rem] [overflow-wrap:anywhere]">{right.option}=true</span>.
             </p>
           </Notice>
         ) : null}
@@ -193,7 +195,8 @@ export function BackupSection() {
         {status.data && status.data.previousData.length > 0 ? (
           <p className="text-small text-ink-muted">
             Data from before earlier restores is kept in the data directory:{" "}
-            <span className="font-mono text-[0.8125rem] text-ink">{status.data.previousData.join(", ")}</span>. Delete them from{" "}
+            <span className="font-mono text-[0.8125rem] [overflow-wrap:anywhere] text-ink">{status.data.previousData.join(", ")}</span>.
+            Delete them from{" "}
             <Link to={manageLink("leftovers")} className="text-primary underline underline-offset-2">
               Leftovers
             </Link>{" "}
@@ -214,15 +217,16 @@ export function BackupSection() {
           onOpenChange={(open) => !open && !restore.isPending && choose(undefined)}
           title="Restore from this backup?"
           description={
-            <>
-              <p>
-                <span className="font-medium text-ink [overflow-wrap:anywhere]">{chosen?.name}</span> is sent to Outpost and checked first.{" "}
-                {RESTORE_WORDS[0]}
-              </p>
-              <p className="mt-2">{RESTORE_WORDS[1]}</p>
-            </>
+            <RestoreWords
+              lead={
+                <>
+                  <span className="font-medium text-ink [overflow-wrap:anywhere]">{chosen?.name}</span> is sent to Outpost and checked
+                  first.
+                </>
+              }
+            />
           }
-          confirmLabel="Check and stage restore"
+          confirmLabel={RESTORE_LABEL}
           confirmVariant="primary"
           loading={restore.isPending}
           onConfirm={() => {

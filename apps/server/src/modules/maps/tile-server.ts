@@ -10,6 +10,7 @@ import type { Bbox, ImageryStyleSource, InstalledRegion, MapSources, MapTileType
 import type { AppContext } from "../../core/context.ts";
 import type { CollectionRow } from "../collections/service.ts";
 import { isImageryCollection } from "./imagery/index.ts";
+import { placesAttributions } from "./os-names/credit.ts";
 import { contentEncodingOf, contentTypeOf } from "./pmtiles/header.ts";
 import { LocalArchive } from "./pmtiles/reader.ts";
 import { tileToBbox } from "./pmtiles/tiles.ts";
@@ -258,11 +259,11 @@ export function createTileServer(ctx: AppContext): TileServer {
           attribution: ATTRIBUTIONS.terrain.html,
         };
       }
-      const hasPlaces = collections.list({ kind: "places" }).length > 0;
+      const placeNames = collections.list({ kind: "places" });
       const attributions = [
         ...(sources.basemap ? [ATTRIBUTIONS.basemap] : []),
         ...(sources.terrain ? [ATTRIBUTIONS.terrain] : []),
-        ...(hasPlaces ? [ATTRIBUTIONS.places] : []),
+        ...placesAttributions(placeNames),
       ];
       return {
         hasTiles: Boolean(sources.basemap),

@@ -113,6 +113,23 @@ describe("the list of saved places", () => {
     expect(screen.getByRole("button", { name: "Old cairn" }).querySelector("[data-place-icon]")).toHaveAttribute("data-place-icon", "pin");
   });
 
+  it("draws a long list fifty rows at a time, and starts again from fifty when filtered", async () => {
+    const many = Array.from({ length: 120 }, (_, n) => marker(`m${n}`, `Cairn ${String(n).padStart(3, "0")}`));
+    render(<PlacesList markers={loaded(many)} onOpen={() => {}} onToggleFavourite={() => {}} onAdd={() => {}} canAddOnMap />, {
+      wrapper: MemoryRouter,
+    });
+    const rows = () => screen.getAllByRole("button", { name: /^Make Cairn/ }).length;
+    expect(rows()).toBe(50);
+    expect(screen.getByText("50 of 120 shown")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Show more" }));
+    expect(rows()).toBe(100);
+    await userEvent.click(screen.getByRole("button", { name: "Show more" }));
+    expect(rows()).toBe(120);
+    expect(screen.queryByRole("button", { name: "Show more" })).not.toBeInTheDocument();
+    await userEvent.type(screen.getByRole("textbox", { name: "Filter saved places by name" }), "Cairn");
+    expect(rows()).toBe(50);
+  });
+
   it("has no move button when there is no map to move it on", () => {
     render(<PlacesList markers={loaded(places)} onOpen={() => {}} onToggleFavourite={() => {}} onAdd={() => {}} canAddOnMap={false} />, {
       wrapper: MemoryRouter,

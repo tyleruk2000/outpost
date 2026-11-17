@@ -15,8 +15,8 @@ import type {
   ReferenceStartRequest,
 } from "@outpost/shared";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 import { api, errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 
 export const layersKeys = {
   all: ["layers"] as const,
@@ -116,7 +116,7 @@ export function useStartDownloads() {
   return useMutation({
     mutationFn: (request: ReferenceStartRequest) => api.post<{ downloads: DownloadDto[] }>("/api/reference/downloads", request),
     onSuccess: () => client.invalidateQueries({ queryKey: ["downloads"] }),
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
 }
 
@@ -126,7 +126,7 @@ export function useRemovePack() {
     mutationFn: ({ id, deleteFiles }: { id: string; deleteFiles: boolean }) =>
       api.delete<{ ok: true }>(`/api/reference/packs/${id}?deleteFiles=${deleteFiles ? "1" : "0"}`),
     onSuccess: () => client.invalidateQueries({ queryKey: layersKeys.all }),
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
 }
 

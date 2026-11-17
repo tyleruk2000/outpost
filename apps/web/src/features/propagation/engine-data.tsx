@@ -15,6 +15,7 @@ import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { api, errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { cn } from "@/lib/utils";
 import { keys } from "./data";
 
@@ -28,7 +29,7 @@ export function useDownloadEngineData() {
       toast.success(answer.download ? "Fetching VOACAP's data. Progress is under Downloads." : "VOACAP's data is back in place.");
       void client.invalidateQueries({ queryKey: ["propagation"] });
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
 }
 
@@ -94,7 +95,7 @@ export function RemoveEngineData({ data }: { data: EngineDataStatus }) {
       void client.invalidateQueries({ queryKey: keys.engines });
       void client.invalidateQueries({ queryKey: ["propagation"] });
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
   return (
     <>

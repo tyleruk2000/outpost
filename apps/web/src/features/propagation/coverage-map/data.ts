@@ -26,6 +26,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { parseOklch, tokenToHex } from "@/features/maps/lib/color";
 import { api, errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { antennaOf, type PlaceField, todayUtc } from "../data";
 
 export const coverageKeys = {
@@ -64,7 +65,7 @@ function useChange<T>(run: (input: T) => Promise<unknown>, done?: string) {
       void client.invalidateQueries({ queryKey: coverageKeys.overview });
       if (done) toast.success(done);
     },
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
 }
 export const useSaveCoverage = () =>

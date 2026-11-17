@@ -23,6 +23,7 @@ import {
   useNumber,
 } from "../tools/kit";
 import { AnswerOnDay } from "./answer-plate";
+import { ModelDeclinationNote, modelDeclination, useModelDeclination } from "./model-declination";
 import { type ChosenPlace, NoPlaceYet } from "./place";
 import {
   clockError,
@@ -103,7 +104,7 @@ const declinationSpec: NumberSpec = {
   min: -60,
   max: 60,
   optional: true,
-  hint: "From a recent map's margin: 1.5 for 1.5° east, −2 for 2° west. Leave empty if you do not know it.",
+  hint: "1.5 for 1.5° east, −2 for 2° west. Empty if you do not know it: the answer is then out by an unknown amount.",
 };
 const compassSpec: NumberSpec = {
   id: "solar-clock.compass",
@@ -174,6 +175,9 @@ export function RecoveryTab({ place, zone }: { place: ChosenPlace | null; zone: 
   const [half, setHalf] = useChoice<"morning" | "afternoon">("solar-clock.half", HALVES, "morning");
   const [event, setEvent] = useChoice<"rise" | "set">("solar-clock.event", EVENTS, "rise");
   const [firstReading, setFirst] = useState("");
+  // The World Magnetic Model's declination for the place and the date typed, offered in the field.
+  const model = useMemo(() => modelDeclination(place, date), [place, date]);
+  useModelDeclination(declination, model);
   const [secondReading, setSecond] = useState("");
 
   const compute = useMemo(() => {
@@ -486,7 +490,7 @@ export function RecoveryTab({ place, zone }: { place: ChosenPlace | null; zone: 
             {[
               "Stand the stick upright on level ground.",
               "Hold the compass level over the line of the shadow, away from metal, and read the bearing from the foot of the stick to the tip.",
-              "Type the magnetic declination for where you are, from a recent map's margin. Without it the answer is out by an unknown amount.",
+              "The magnetic declination for the place and date is filled in from the World Magnetic Model. A recent map's margin is as good; type over it to use your own.",
             ]}
           </Steps>
           {bearing.value !== null && declination.error === null ? (
@@ -497,6 +501,7 @@ export function RecoveryTab({ place, zone }: { place: ChosenPlace | null; zone: 
             <NumberField input={declination} />
             <NumberField input={compass} />
           </Inputs>
+          <ModelDeclinationNote input={declination} model={model} />
           {place && date ? (
             <TimeResult
               outcome={outcomes?.bearing ?? null}
@@ -530,7 +535,7 @@ export function RecoveryTab({ place, zone }: { place: ChosenPlace | null; zone: 
               </>
             }
             range="Anywhere the sun is up. Weak near sunrise and sunset at high latitudes, where the sun's bearing changes slowly."
-            limits="Outpost has no model of the Earth's magnetic field, so it cannot give the declination. Iron, steel and cars nearby turn a compass."
+            limits="The declination offered is the World Magnetic Model's (as Tools → Compass gives it), the Earth's main field only: magnetic rocks, iron, steel and cars nearby turn a compass further."
             sources={[S.noaa, S.bowditch]}
           />
         </Calculator>

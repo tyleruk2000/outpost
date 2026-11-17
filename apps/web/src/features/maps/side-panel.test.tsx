@@ -27,7 +27,8 @@ describe("the tab names", () => {
       </PanelTabs>,
     );
     const list = screen.getByRole("tablist");
-    expect(list).toHaveClass("flex-wrap", "overflow-x-visible");
+    // The shared TabsList wraps; the panel adds no scrolling of its own.
+    expect(list).toHaveClass("flex-wrap");
     expect(list).not.toHaveClass("overflow-x-auto");
     // Named in full ("Offline maps" is written "Offline", with the full name as the tab's name).
     expect(screen.getAllByRole("tab").map((tab) => tab.getAttribute("aria-label") ?? tab.textContent)).toEqual([

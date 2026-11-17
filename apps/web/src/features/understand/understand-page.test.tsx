@@ -255,8 +255,8 @@ describe("How search works", () => {
   it("shows outlines and invitations before a question, with examples taken from the library", async () => {
     const served = serve();
     show();
-    expect(await screen.findByRole("button", { name: "boiling" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "knots for climbing" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Boiling" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Knots for climbing" })).toBeInTheDocument();
     expect(screen.getByText(/Nothing has been traced yet/)).toBeInTheDocument();
     // Figures that need a trace invite one; they do not show sample data.
     expect(screen.getAllByRole("link", { name: "Trace a question" }).length).toBeGreaterThan(8);

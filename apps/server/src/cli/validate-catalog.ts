@@ -21,6 +21,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { createHttpClient } from "../core/http.ts";
 import { defaultCatalogDir } from "../core/paths.ts";
+import { loadShelf } from "../modules/audiobooks/shelf.ts";
 import { KIWIX_CATALOG_URL } from "../modules/catalog/kiwix.ts";
 import { bundledDirFor, type LoadedCatalog, loadCatalog, manifestJsonSchema } from "../modules/catalog/manifest.ts";
 import { loadPacks } from "../modules/catalog/packs.ts";
@@ -158,6 +159,9 @@ export function validateCatalog(catalogDir: string = defaultCatalogDir, options:
   // So are the sources of repeater lists.
   const repeaterSources = loadRepeaterSources({ catalogDir, dataDir: path.join(catalogDir, ".no-data-directory") });
   for (const problem of repeaterSources.problems) problems.push(`repeater-sources.json: ${problem}`);
+
+  // The LibriVox shelf that Explore offers as links.
+  problems.push(...loadShelf(catalogDir).problems);
 
   if (options.checkSchemaFile ?? true) {
     const file = schemaPath(catalogDir);

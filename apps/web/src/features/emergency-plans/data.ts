@@ -16,8 +16,8 @@ import type {
 } from "@outpost/shared";
 import { localDay } from "@outpost/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 import { ApiError, api, errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { plural } from "@/lib/utils";
 
 export const planKeys = {
@@ -88,7 +88,7 @@ export function useSavePlan(id: string, onSaved?: (response: EmergencyPlanRespon
       answer(response);
     },
     onError: (error) => {
-      if (!conflictOf(error)) toast.error(errorMessage(error));
+      if (!conflictOf(error)) notify.error(errorMessage(error));
     },
   });
 }
@@ -99,7 +99,7 @@ export function usePlanAction(id: string, action: "start" | "reset" | "reviewed"
   return useMutation({
     mutationFn: () => api.post<EmergencyPlanResponse>(`/api/emergency-plans/${id}/${action}`),
     onSuccess: answer,
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
 }
 
@@ -123,7 +123,7 @@ export function useTick(id: string) {
     },
     onError: (error, _input, context) => {
       if (context?.before) client.setQueryData(planKeys.one(id), context.before);
-      toast.error(errorMessage(error));
+      notify.error(errorMessage(error));
     },
     onSuccess: (response) => {
       client.setQueryData(planKeys.one(id), response);
@@ -137,7 +137,7 @@ export function useRemovePlan() {
   return useMutation({
     mutationFn: (id: string) => api.delete(`/api/emergency-plans/${id}`),
     onSuccess: () => void client.invalidateQueries({ queryKey: planKeys.all, exact: true }),
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
 }
 

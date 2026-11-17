@@ -22,12 +22,13 @@ import { type ReactNode, type Ref, useCallback, useEffect, useId, useRef, useSta
 import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Segmented, Spinner, Switch } from "@/components/ui/misc";
-import { useDebounced, useStoredState } from "@/features/maps/hooks";
+import { useStoredState } from "@/features/maps/hooks";
 import type { MapEngine } from "@/features/maps/map/engine";
 import { EMPTY } from "@/features/maps/map/overlays";
 import { NumberField } from "@/features/maps/radio/sight-panel";
 import { mapCard } from "@/features/maps/ui";
 import { api, errorMessage } from "@/lib/api";
+import { useDebounced } from "@/lib/use-debounced";
 import { cn } from "@/lib/utils";
 import {
   aerialOf,

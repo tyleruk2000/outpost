@@ -358,7 +358,7 @@ describe("a plan", () => {
     const dialog = await screen.findByRole("dialog", { name: "Their own number" });
     expect(await within(dialog).findByText(/There are no contacts in Outpost yet/)).toBeInTheDocument();
     expect(within(dialog).queryByText("Or type one in")).toBeNull();
-    expect(within(dialog).queryByLabelText("Phone number")).toBeNull();
+    expect(within(dialog).queryByLabelText("Phone number (optional)")).toBeNull();
   });
 
   it("says how many lines went on the shopping list when it stops part way", async () => {
@@ -473,7 +473,7 @@ describe("a plan", () => {
       await waitFor(() => expect(nameBox()).toHaveValue("Power cut (from the kitchen)"));
       expect(screen.queryByText("This plan was changed somewhere else")).toBeNull();
       expect(puts(server)).toHaveLength(1);
-      await userEvent.type(screen.getByRole("textbox", { name: "In your words" }), "Storm");
+      await userEvent.type(screen.getByLabelText("In your words (optional)"), "Storm");
       await waitFor(() => expect(puts(server)).toHaveLength(2), { timeout: 3000 });
       expect(puts(server)[1]!.body).toMatchObject({ name: "Power cut (from the kitchen)", kindText: "Storm", baseUpdatedAt: THEIRS });
     });

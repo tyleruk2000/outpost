@@ -14,6 +14,7 @@ import { ConfirmDialog } from "@/components/ui/dialog";
 import { Badge, Progress, Skeleton } from "@/components/ui/misc";
 import { formatBboxSize, formatDistance } from "@/features/maps/lib/geo";
 import { errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { formatDateTime, formatNumber, plural } from "@/lib/utils";
 import { continueArea, stopArea, useAreaWork } from "./area";
 import { DEVICE, ON_THIS_DEVICE, runsInstalled } from "./device";
@@ -110,11 +111,11 @@ function KeptRow({ item, outOfReach, onRemove }: { item: KeptItem; outOfReach: b
                   Stop
                 </Button>
               ) : unfinished ? (
-                <Button size="sm" onClick={() => void continueArea(item.id).catch((error) => toast.error(errorMessage(error)))}>
+                <Button size="sm" onClick={() => void continueArea(item.id).catch((error) => notify.error(errorMessage(error)))}>
                   Carry on
                 </Button>
               ) : item.stale || item.mixed ? (
-                <Button size="sm" onClick={() => void continueArea(item.id, true).catch((error) => toast.error(errorMessage(error)))}>
+                <Button size="sm" onClick={() => void continueArea(item.id, true).catch((error) => notify.error(errorMessage(error)))}>
                   Fetch again
                 </Button>
               ) : null}
@@ -379,7 +380,7 @@ export default function KeptPage({ outOfReach = false }: { outOfReach?: boolean 
           removeKept(removing.kind, removing.id)
             .then(
               () => toast(`“${title(removing)}” is no longer kept on this ${DEVICE}.`),
-              (error) => toast.error(errorMessage(error)),
+              (error) => notify.error(errorMessage(error)),
             )
             .finally(() => {
               setBusy(false);

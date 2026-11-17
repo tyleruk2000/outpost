@@ -53,8 +53,8 @@ export function countByCategory(entries: Array<Pick<CatalogEntryDto, "category">
   return counts;
 }
 
-/** A category, everything, or the packs (curated lists across categories). */
-export type CategoryChoice = CatalogCategorySlug | "all" | "packs";
+/** A category, everything, the packs (curated lists across categories), or the LibriVox shelf of audiobooks. */
+export type CategoryChoice = CatalogCategorySlug | "all" | "packs" | "audiobooks";
 
 // ── Wording ──
 

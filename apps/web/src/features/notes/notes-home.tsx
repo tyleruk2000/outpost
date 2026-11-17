@@ -174,7 +174,8 @@ export function NotesHome() {
       ) : tree.isPending ? (
         <ListSkeleton rows={6} />
       ) : (
-        <div className="grid gap-x-16 gap-y-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]">
+        // The side column keeps to under half the width, so that with large text the main one is not squeezed to nothing.
+        <div className="grid gap-x-16 gap-y-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,min(24rem,45%))]">
           <div className="min-w-0">
             {pageCount === 0 ? (
               <EmptyState

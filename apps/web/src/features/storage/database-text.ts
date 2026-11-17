@@ -28,6 +28,8 @@ const COUNT_WORDS: Record<DatabaseCountId, [string, string]> = {
   emergencyPlans: ["emergency plan", "emergency plans"],
   morseSessions: ["Morse practice session", "Morse practice sessions"],
   gameSaves: ["game kept for the household", "games kept for the household"],
+  boardMessages: ["message on the board", "messages on the board"],
+  learningPages: ["page of learning progress", "pages of learning progress"],
   repeaterLists: ["list of repeaters", "lists of repeaters"],
   weatherPlaces: ["weather place", "weather places"],
   pgpKeys: ["PGP key", "PGP keys"],
@@ -52,7 +54,8 @@ export const GROUP_WORDS: Record<DatabaseGroupId, { label: string; detail: strin
   },
   other: {
     label: "Everything else",
-    detail: "Contacts and PGP keys, chat, power plans, devices on the network, the games, settings, the history of work",
+    detail:
+      "Contacts and PGP keys, chat, power plans, devices on the network, the games, the household board, settings, the history of work",
   },
 };
 

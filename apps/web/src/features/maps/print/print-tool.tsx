@@ -12,9 +12,9 @@
  */
 import type { Bbox } from "@outpost/shared";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Segmented, Select } from "@/components/ui/misc";
+import { notify } from "@/lib/notify";
 import { cn } from "@/lib/utils";
 import { useStoredState } from "../hooks";
 import type { ReadoutFormat } from "../lib/coords";
@@ -116,7 +116,7 @@ export default function PrintTool({
     () =>
       engine.on("box", (result) => {
         if (!result.ok) {
-          toast.error(
+          notify.error(
             result.reason === "antimeridian"
               ? "A page cannot cross the 180° meridian. Keep the box to one side of it."
               : "That is too small an area to print. Make the box larger.",

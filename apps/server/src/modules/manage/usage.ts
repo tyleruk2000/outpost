@@ -47,6 +47,10 @@ export function createUsage(ctx: AppContext, inventory: Inventory, survey: Surve
     const attachments = sqlite.prepare("SELECT count(*) AS count, coalesce(sum(size_bytes), 0) AS bytes FROM attachments").get() as Tally;
     row("attachments", latest ? latest.data.attachments : attachments.bytes, attachments.count, latest ? "disk" : "records");
 
+    // Files sent on the household board, kept in the data directory until removed or their days are up.
+    const board = ctx.services.board.files.kept();
+    row("board", latest ? latest.data.board : board.bytes, board.count, latest ? "disk" : "records");
+
     const derived = cleanup.derivedStatus();
     row("database", derived.databaseBytes, null, "disk");
     const passages = (sqlite.prepare("SELECT count(*) AS n FROM chunks").get() as { n: number }).n;

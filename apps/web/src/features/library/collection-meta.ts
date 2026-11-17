@@ -19,6 +19,11 @@ export function isBook(collection: Pick<CollectionDto, "meta">): boolean {
   return typeof collection.meta?.book === "object" && collection.meta.book !== null;
 }
 
+/** True for a book whose chapters are recordings (see features/audiobooks). */
+export function isAudiobook(collection: Pick<CollectionDto, "meta">): boolean {
+  return typeof collection.meta?.audiobook === "object" && collection.meta.audiobook !== null;
+}
+
 /** How many chapters a book has, or null for anything that is not a book. */
 export function chapterCount(collection: Pick<CollectionDto, "meta">): number | null {
   if (!isBook(collection)) return null;
@@ -28,7 +33,7 @@ export function chapterCount(collection: Pick<CollectionDto, "meta">): number | 
 
 /** What a collection is, in a word or two. */
 export const kindLabel = (collection: Pick<CollectionDto, "kind" | "meta">): string =>
-  isBook(collection) ? "Book" : kindLabels[collection.kind];
+  isAudiobook(collection) ? "Audiobook" : isBook(collection) ? "Book" : kindLabels[collection.kind];
 
 type Grouped = Pick<CollectionDto, "kind" | "title" | "meta">;
 

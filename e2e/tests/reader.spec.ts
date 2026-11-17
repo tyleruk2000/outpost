@@ -141,6 +141,21 @@ test.describe("a collection that is a list of documents", () => {
     expect(errors).toEqual([]);
   });
 
+  test("shows a page that is a small web app, and opens it from its own address", async ({ page }) => {
+    // Archives of video channels are like this: a module script that draws the page from a
+    // data file. In the sandbox both are cross-origin requests, and nothing showed.
+    const id = await addArchive(page.request);
+    // Opened by its address, as a reload or a saved link does; many end in ".html".
+    const answer = await page.request.get(`/library/read/${id}/index.html`);
+    expect(answer.status()).toBe(200);
+    expect(answer.headers()["content-type"]).toContain("text/html");
+    await page.goto(`/library/read/${id}/app`);
+    await expect(page.frameLocator("iframe").getByRole("heading", { name: "Winter prepping videos" })).toBeVisible();
+    // The page still has an origin of its own, and Outpost's API still refuses it.
+    const sandbox = await page.locator("iframe").getAttribute("sandbox");
+    expect(sandbox).not.toContain("allow-same-origin");
+  });
+
   test("can still show the collection's own page, which cannot draw its list in the sandbox", async ({ page }) => {
     const errors = watchForErrors(page);
     await page.goto(`/library/read/${id}/home`);

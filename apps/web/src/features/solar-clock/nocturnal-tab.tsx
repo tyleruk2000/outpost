@@ -18,6 +18,7 @@ import { Calculator, ChoiceField, Formula, HowWorkedOut, Inputs, useChoice } fro
 import { CLOCK_POSITIONS, type PointerStar, timeFromPointer } from "./nocturnal";
 import { NorthSkyPlate } from "./nocturnal-plate";
 import { type ChosenPlace, NoPlaceYet } from "./place";
+import { dayWords } from "./plates";
 import { SOLAR_SOURCES as S } from "./sources";
 import { nocturnalPdf, nocturnalTitle } from "./templates";
 import { TimeResult, timeWords } from "./time-result";
@@ -91,7 +92,7 @@ export function NocturnalTab({ place, zone }: { place: ChosenPlace | null; zone:
             at={outcome.estimate.at}
             clockWords={(CLOCK_POSITIONS.find((each) => each.value === position)?.label ?? "").replace(/ \(.*\)$/, "").toLowerCase()}
             timeWords={timeWords(outcome, zone, style, date).figure}
-            dateWords={date}
+            dateWords={dayWords(date)}
           />
         ) : null}
         <p className="mt-3 max-w-[62ch] text-small text-ink-muted">

@@ -39,7 +39,7 @@ export function PanelTabs({
           (its full name is still its accessible name). Where they do not (larger text, a zoomed page, counts in the
           hundreds) the row takes a second line: a name that had slid off the edge of a row that scrolls was a tab nobody found.
           The two lines sit close: each name has its own height to touch, and the map has little enough room there. */}
-      <TabsList className="shrink-0 flex-wrap gap-y-0 overflow-x-visible px-4 max-[23rem]:gap-x-3 max-[23rem]:px-3">
+      <TabsList className="shrink-0 gap-y-0 px-4 max-[23rem]:gap-x-3 max-[23rem]:px-3">
         {PANEL_TABS.map((item) => (
           <TabsTrigger
             key={item}

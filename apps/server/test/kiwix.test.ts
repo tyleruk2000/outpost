@@ -3,6 +3,7 @@ import http from "node:http";
 import type { AddressInfo } from "node:net";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { readerSecret } from "../src/modules/kiwix/index.ts";
 import { bookNameOf, decodeEntities, readZimUuid, renderLibrary } from "../src/modules/kiwix/library.ts";
 import { buildPdf } from "./fixtures/documents/builders.ts";
 import { createTestApp, type TestApp } from "./helpers.ts";
@@ -203,6 +204,8 @@ describe("kiwix integration", () => {
         articleCount: 599,
         ready: true,
         contentBase: `/kiwix/open/content/${BOOK}/`,
+        // The reader's frame alone uses this one: see "the reader proxy" below.
+        frameBase: `/kiwix/${readerSecret(app.ctx.config.dataDir)}/content/${BOOK}/`,
       }),
     ]);
     // The same archive cannot be added twice, and a non-archive not at all.
@@ -323,6 +326,47 @@ describe("the reader proxy", () => {
     expect(response.body.indexOf("outpost:reader")).toBeLessThan(response.body.indexOf("startup.js"));
     expect(response.body).toContain("outpost:file");
     expect(response.body).toContain('<a href="./Clove_hitch">');
+  });
+
+  it("lets a page read its own archive's files only at the secret address the reader frames it at", async () => {
+    const { app } = await setup();
+    // The reader frames an archive under a long random word made once for this installation
+    // and kept in the data folder, so that it is the same after a restart.
+    const secret = readerSecret(app.ctx.config.dataDir);
+    expect(secret).toMatch(/^[A-Za-z0-9_-]{32,}$/);
+    expect(readerSecret(app.ctx.config.dataDir)).toBe(secret);
+    const base = `/kiwix/${secret}/content/${BOOK}/`;
+
+    // A page in the sandbox has an origin of its own, so its module scripts, fonts and
+    // fetches of its own files arrive as cross-origin requests with "Origin: null".
+    const own = await get(app, `${base}image.webp`, { origin: "null" });
+    expect(own.statusCode).toBe(200);
+    expect(own.headers["access-control-allow-origin"]).toBe("null");
+    expect(String(own.headers.vary)).toMatch(/Origin/i);
+    expect(own.headers["access-control-allow-credentials"]).toBeUndefined();
+    // The page itself is still in the sandbox, with nothing said of where it came from.
+    const page = await get(app, `${base}Bowline`);
+    expect(String(page.headers["content-security-policy"])).toContain("sandbox allow-scripts");
+    expect(String(page.headers["content-security-policy"])).not.toContain("allow-same-origin");
+    expect(page.headers["referrer-policy"]).toBe("no-referrer");
+
+    // At the address anyone could guess, nobody is told they may read the answer: not a
+    // sandboxed frame on another site, not a page on another site, not anything.
+    const plain = `/kiwix/open/content/${BOOK}/image.webp`;
+    for (const headers of [{ origin: "null" }, { origin: "http://evil.example" }, {}] as Array<Record<string, string>>) {
+      const response = await get(app, plain, headers);
+      expect(response.statusCode).toBe(200);
+      expect(response.headers["access-control-allow-origin"], JSON.stringify(headers)).toBeUndefined();
+    }
+    // Under the secret, a page that does have an origin is told nothing either.
+    expect((await get(app, `${base}image.webp`, { origin: "http://evil.example" })).headers["access-control-allow-origin"]).toBeUndefined();
+    // A wrong word is not an address at all, and is not sent on to the right one.
+    const wrong = await get(app, `/kiwix/${"x".repeat(32)}/content/${BOOK}/image.webp`, { origin: "null" });
+    expect(wrong.statusCode).toBe(404);
+    expect(wrong.headers.location).toBeUndefined();
+    // The word is never in an answer another site could read: the API's answers carry no such permission.
+    const books = await get(app, "/api/kiwix/books", { origin: "null" });
+    expect(books.headers["access-control-allow-origin"]).toBeUndefined();
   });
 
   it("passes other files through unchanged and forwards range requests", async () => {

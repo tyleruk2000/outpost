@@ -225,6 +225,26 @@ export function PanelHeading({ children, actions, className }: { children: React
 }
 
 /** A tab of the panel while what it shows is on its way. */
+/**
+ * The rows of a side-panel list drawn at first, and added with each "Show more". The map
+ * holds every place and route, but a list of hundreds is not drawn all at once.
+ */
+export const PANEL_ROWS = 50;
+
+/** The last row of a list drawn a page at a time: how many are shown, and the button for more. */
+export function ShowMoreRow({ shown, total, onMore }: { shown: number; total: number; onMore: () => void }) {
+  return (
+    <li className="flex flex-wrap items-center gap-3 px-4 py-3">
+      <Button size="sm" onClick={onMore}>
+        Show more
+      </Button>
+      <span className="tabular text-small text-ink-muted">
+        {shown} of {total} shown
+      </span>
+    </li>
+  );
+}
+
 export function PanelLoading() {
   return (
     <div className="grid gap-3 p-4" aria-busy>

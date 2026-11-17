@@ -105,7 +105,9 @@ function DownloadForm({
         return;
       }
       client.setQueryData<DownloadsResponse>(downloadsKey, (current) =>
-        current ? { downloads: [response.download, ...current.downloads.filter((item) => item.id !== response.download.id)] } : current,
+        current
+          ? { ...current, downloads: [response.download, ...current.downloads.filter((item) => item.id !== response.download.id)] }
+          : current,
       );
       void client.invalidateQueries({ queryKey: ["catalog"] });
       void client.invalidateQueries({ queryKey: ["downloads"] });

@@ -72,7 +72,7 @@ const setSchema = z
   })
   .strict();
 
-/** The version a change was made from (`NuclearScenarioUpdate`); the rest of the body is the scenario. */
+/** The version a change was made from (`NuclearScenarioUpdate`, `NuclearSetUpdate`); the rest of the body is the scenario or set. */
 const baseSchema = z.object({ baseUpdatedAt: z.number().optional() }).passthrough();
 
 const idParams = z.object({ id: z.string().min(1).max(64) });
@@ -218,10 +218,21 @@ export async function registerNuclear(app: FastifyInstance, ctx: AppContext): Pr
 
   app.patch("/api/nuclear/sets/:id", async (request) => {
     const { id } = idParams.parse(request.params);
-    getSet(id);
-    const input = checkedSet(request.body);
+    const current = getSet(id);
+    const { baseUpdatedAt, ...body } = baseSchema.parse(request.body);
+    const input = checkedSet(body);
+    if (baseUpdatedAt !== undefined && current.updatedAt > baseUpdatedAt) {
+      throw conflict(
+        "This set was changed somewhere else after you opened it, in another tab or on another device. Your changes were not saved over it; reload to see the newer version.",
+        { current: { updatedAt: current.updatedAt, name: current.name } },
+      );
+    }
     db.update(nuclearScenarioSets)
-      .set({ name: input.name, members: input.members as unknown as Array<Record<string, unknown>>, updatedAt: Date.now() })
+      .set({
+        name: input.name,
+        members: input.members as unknown as Array<Record<string, unknown>>,
+        updatedAt: Math.max(Date.now(), current.updatedAt + 1),
+      })
       .where(eq(nuclearScenarioSets.id, id))
       .run();
     changed();

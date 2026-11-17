@@ -61,6 +61,8 @@ export interface Survey {
     extracted: number;
     runtimes: number;
     models: number;
+    /** Files sent on the household board. */
+    board: number;
     previous: Array<{ name: string; bytes: number }>;
     snapshots: Array<{ name: string; bytes: number }>;
     other: number;
@@ -228,7 +230,17 @@ export function createSurveyor(ctx: AppContext): Surveyor {
   }
 
   async function surveyData(signal: AbortSignal): Promise<Pick<Survey, "data" | "orphanText">> {
-    const data: Survey["data"] = { attachments: 0, extracted: 0, runtimes: 0, models: 0, previous: [], snapshots: [], other: 0, total: 0 };
+    const data: Survey["data"] = {
+      attachments: 0,
+      extracted: 0,
+      runtimes: 0,
+      models: 0,
+      board: 0,
+      previous: [],
+      snapshots: [],
+      other: 0,
+      total: 0,
+    };
     // Storage that lives inside the data directory (the default "library" folder) is
     // content, counted with its location, not part of Outpost's own data.
     const content = [...config.storageRoots, ...storage.list().map((location) => location.path)];
@@ -244,6 +256,8 @@ export function createSurveyor(ctx: AppContext): Surveyor {
       else if (name === "extracted") data.extracted = bytes;
       else if (name === "runtimes") data.runtimes = bytes;
       else if (name === "models") data.models = bytes;
+      // Files sent on the household board (modules/board).
+      else if (name === "board") data.board = bytes;
       else if (/^before-restore-[0-9A-Za-z-]+$/.test(name)) data.previous.push({ name, bytes });
       else if (/^backup-snapshot-\d+\.db(-journal|-wal|-shm)?$/.test(name)) {
         const stat = await fs.promises.stat(full).catch(() => undefined);

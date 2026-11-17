@@ -740,6 +740,29 @@ takes the new files up within half a minute. A bind mount of a folder a renewal 
 writes to works as well, as long as uid 1000 can read both files. The path Settings
 shows is the one inside the container.
 
+### Mesh radio in a container
+
+For the mesh radio link ([mesh-radio.md](mesh-radio.md)); not tried with a real radio.
+
+- **The broker's port.** With "Outpost is the broker", publish its port as the web port
+  is, in `compose.yaml` under `ports:` (`- "1883:1883"`, or the port chosen in Settings
+  on both sides). Publish it on the home network only; do not forward it on the router.
+- **A USB radio** must be passed through to the container, under the `outpost` service:
+
+  ```yaml
+      devices:
+        - /dev/ttyACM0:/dev/ttyACM0   # the radio as the host names it; ttyUSB0 for some radios
+      group_add:
+        - dialout                     # or the device's group number: stat -c %g /dev/ttyACM0
+  ```
+
+  Outpost lists only devices it can see inside the container. Docker Desktop on a Mac
+  cannot pass a USB device through; run Outpost without Docker there, or use the radio's
+  network port.
+- **Setting it up.** In a container no request looks local, so Settings → Mesh radio can
+  be changed only if Outpost was started with `OUTPOST_ALLOW_REMOTE_ERASE=true`, for the
+  occasion.
+
 ### Backups, moving house, and starting again
 
 - **The `tls` folder is not in a backup download**, and a portable drive does not carry

@@ -15,11 +15,11 @@ import { EmptyState, ErrorState, Notice, Page } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Badge, Skeleton } from "@/components/ui/misc";
 import { ApiError, api } from "@/lib/api";
+import { useWidth } from "@/lib/use-width";
 import { cn, formatDateTime, timeAgo } from "@/lib/utils";
 import { formatMegabits, formatRate, formatSpeed } from "./charts/speed";
 import { SpeedChart } from "./charts/speed-chart";
 import { clockAt, clockTicks, clockTimeWithSeconds } from "./charts/time-axis";
-import { useWidth } from "./charts/use-width";
 import { Checksum, Exact, Fact, Facts, History, Part, Region } from "./detail-parts";
 import { DownloadControls, DownloadProgress, RemoveDownloadButton } from "./download-progress";
 import { describeDownload } from "./download-text";
@@ -167,7 +167,7 @@ function NowPart({ detail, download, onRemoved }: { detail: DownloadDetail; down
  * new readings arrive (every few seconds) and not with every progress event.
  */
 const SpeedPart = memo(function SpeedPart({ detail, state }: { detail: DownloadDetail; state: DownloadDto["state"] }) {
-  const [frame, width] = useWidth<HTMLDivElement>();
+  const [frame, width] = useWidth();
   const readings = useMemo(
     () => detail.speedHistory.map((point) => ({ at: point.at, value: point.bytesPerSecond })),
     [detail.speedHistory],

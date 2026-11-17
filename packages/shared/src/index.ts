@@ -4,7 +4,10 @@
  * them. Nothing here may import Node or browser APIs.
  */
 export * from "./answers.ts";
+// Audiobooks, on a line of their own so that other additions merge cleanly.
+export * from "./audiobooks.ts";
 export * from "./backup.ts";
+export * from "./board.ts";
 export * from "./catalog.ts";
 export * from "./chat.ts";
 export * from "./collections.ts";
@@ -24,11 +27,13 @@ export * from "./imagery.ts";
 export * from "./imports.ts";
 export * from "./kept.ts";
 export * from "./kiwix.ts";
+export * from "./learning.ts";
 export * from "./links.ts";
 export * from "./locator.ts";
 export * from "./manage.ts";
 export * from "./maps.ts";
 export * from "./merge.ts";
+export * from "./mesh.ts";
 export * from "./model-choice.ts";
 export * from "./morse/index.ts";
 export * from "./morse.ts";
@@ -36,6 +41,7 @@ export * from "./network.ts";
 export * from "./notes.ts";
 export * from "./nuclear.ts";
 export * from "./nuclear-effects.ts";
+export * from "./os-names.ts";
 export * from "./portable.ts";
 export * from "./power.ts";
 export * from "./power-devices.ts";

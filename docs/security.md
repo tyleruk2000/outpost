@@ -303,7 +303,7 @@ in the browser. The reasons and the behaviour are in
 | --- | --- | --- |
 | Type checked by content | A file is accepted only if its extension is on the list **and** its first bytes look like that type. The stored MIME type comes from Outpost's table, never from the uploader. | `apps/server/src/modules/documents/file-types.ts`, `apps/server/src/modules/notes/attachments.ts` |
 | Served in a sandbox | Original documents are sent with `Content-Security-Policy: sandbox; default-src 'none'; …`, which gives the response an origin of its own. Note attachments and GPX exports likewise. | `apps/server/src/modules/documents/index.ts`, `notes/index.ts`, `maps/index.ts` |
-| Risky types are downloads | Only PDFs, raster images and plain text are shown in place. HTML, SVG and EPUB documents are offered as downloads; Markdown, CSV and JSON are shown as plain text. | `servedAs` in `documents/file-types.ts` |
+| Risky types are downloads | Only PDFs, raster images, audio (to be played by an `<audio>` element, a range at a time) and plain text are shown in place. HTML, SVG and EPUB documents are offered as downloads; Markdown, CSV and JSON are shown as plain text. | `servedAs` in `documents/file-types.ts` |
 | Markdown is drawn, not rendered | A Markdown file is shown with its formatting, but it is never converted to HTML. The server parses it into a tree of plain values and the web app draws that tree with its own elements, so HTML written in the file is reduced to its words, pictures to their descriptions, and a link to the web survives only if its address is `http`, `https` or `mailto` (it opens in a new tab with `noopener noreferrer`). | `documents/markdown-view.ts`, `features/library/document-markdown.tsx` |
 | Pictures a Markdown file carries are checked and served by Outpost | The one picture a Markdown document shows is one the file itself holds, in its closing lines, under a label of the form `outpost-picture-<number>` (a saved web page keeps its pictures this way). A picture written any other way, at a web address or as a `data:` address in the text, is still only described, and nothing is ever loaded from another site. The tree sent to the browser carries the picture's number and nothing else; the web app builds the address from the document's id and that number, both checked. The server decodes the picture, looks at its first bytes, and sends it only if it is a PNG, JPEG, GIF or WebP image, with the type those bytes show (never the type the file claims, and never SVG), `nosniff`, and the same sandbox policy as an original file. Only the closing run of such lines counts, so a line of the same shape quoted in the middle of a file is text. The lines are megabytes long, so they are never given to the Markdown parser: the text is read without them, and a picture is read from its place in the file, at most 12 MB of encoded data. A file ending in millions of empty lines is looked through for at most 12,000 lines. | `documents/embedded-pictures.ts`, `documents/index.ts`; `apps/server/test/documents-embedded-pictures.test.ts` |
 | Links inside Outpost are looked up, not followed | A Markdown file can also link to a heading of its own (`#heading-words`) or to a catalogue entry or a chapter of its book (`outpost:entry/<entry id>/<chapter key>`). The form is matched exactly; anything else (a path, a query, another scheme, stray characters) is shown as plain words. The server looks the entry up and sends only its own ids for the collection and document it found; the web app checks that each is an id and builds the address itself, so no address written in a file reaches the browser. Such a link can lead only to a document, a book's contents or an Explore entry in Outpost, and opens in the same tab. Heading ids are given a prefix in the page so that a heading cannot take the id of anything else. | `parseOutpostLink` in `documents/markdown-view.ts`, `refTarget` in `features/library/document-markdown.tsx`, `linkTarget` in `catalog/service.ts` |
@@ -313,6 +313,7 @@ in the browser. The reasons and the behaviour are in
 | SVG from a book is never able to act | As elsewhere in Outpost, an SVG is not trusted. A drawing from a book is sent as a download with the sandbox policy, so the only way it is seen is through an `<img>`, where a browser runs no script and loads nothing for it; opened directly it is a file to save. On top of that, a drawing that holds a `script` or `foreignObject` element, an event-handler attribute, a `javascript:` address or declared entities is refused outright. That scan is a second line: it looks for the plain forms, and the sandbox and the `<img>` are what the guarantee rests on. Drawings written into a chapter (inline SVG) are not drawn at all. | `ACTIVE_SVG` in `documents/epub-reader.ts`, `drawing` in `documents/epub-view.ts` |
 | A hostile book costs a bounded amount | The archive limits apply (20,000 entries, 512 MB read per opening, declared and real sizes both checked, encrypted entries refused) and nothing is ever unpacked to disk. On top of them: 2,000 chapters; 2 MB and 120,000 tags for a chapter, since every element costs memory whatever it holds; a chapter nested too deeply to walk is refused rather than read; 4 MB for the package file and the table of contents; 5,000 lines of contents. A chapter is parsed in one go on the server's thread (as a Markdown file is), so two are never in memory being parsed at once. A book that breaks a limit is explained to the person in words; the server carries on. | `documents/epub-reader.ts`, `epub-package.ts`, `zip.ts` |
 | Copy protection is not touched | A book with a rights file, or an `encryption.xml` covering anything but obfuscated fonts, is not opened by the reader and its text is not read for search. Nothing in Outpost decrypts a book. | `isProtected` in `documents/epub-package.ts` |
+| An audiobook's place stays on the device | Where each audiobook was left (book id, chapter's document id, seconds), and the speed chosen, are kept in the browser's `localStorage` and never sent to the server. Only the original files are fetched, from `GET /api/documents/:id/file`. The LibriVox shelf in Explore is links the browser follows; Outpost makes no request to LibriVox or the Internet Archive. | `features/audiobooks/place.ts`, `player.ts` |
 | The reading place stays on the device | How far a person has read is kept in the browser's `localStorage` (book id, chapter number, block number), not on the server. It is read back field by field. | `features/library/epub-data.ts` |
 | Diagrams are shown as images | A fenced block marked `mermaid` is drawn by Mermaid, bundled with the app and loaded only when a document has a diagram. Because any uploaded Markdown file can hold one, the SVG Mermaid makes is never put into the page as markup: it is drawn in a hidden, inert part of the page and shown as an `<img>` with a `blob:` address, where SVG cannot run script, follow links or load anything. Mermaid runs with `securityLevel: "strict"` and `htmlLabels: false` (labels are SVG text), and its `secure` list stops a diagram's own `init` directive or front matter from changing those or its styling. The SVG is also stripped of script, `foreignObject`, links, embedded images, event attributes and outside references before it becomes an image. A block that cannot be drawn is shown as text. The app's Content Security Policy already allowed `img-src blob:`; it was not widened. | `features/library/figures/mermaid-render.ts`, `mermaid-diagram.tsx` |
 | Figures are drawn from checked numbers | A fenced block marked `viz` holds a JSON description of a signal figure. Every field is read by name; numbers are made finite and kept within the range a figure is drawn in, lists are capped, and text is kept as text and cut to length. The figure is then drawn by Outpost's own SVG elements. Anything that is not a figure, or fails while it is drawn, is shown as text. | `features/library/figures/viz-spec.ts`, `radio-viz.tsx` |
@@ -397,10 +398,55 @@ accepts, or load anything from the internet.
 Only a book's pages and its icon can be reached through the proxy; kiwix-serve's own
 search and catalogue cannot. A small script of Outpost's own is placed at the top of
 each page, ahead of the archive's scripts, to tell the reader which page is on show
-and which link was pressed. The reader treats everything it is told as untrusted: each
+and which link was pressed, and, for learning progress, which other pages of the archive it links to and when a video on it has played to the end ([learning progress](#learning-progress)). The reader treats everything it is told as untrusted: each
 field is checked, and nothing the page reports is acted on without a person pressing
 a button. Code: `apps/server/src/modules/kiwix/index.ts`,
 `apps/web/src/features/reader/reader-page.tsx`.
+
+**A page may read its own archive's files, and nothing else may.** To the browser, a
+page in the sandbox has an origin of its own (`null`), so three ordinary things its own
+archive asks for are requests from another origin: scripts loaded as modules, fonts,
+and data fetched by script. A browser keeps the answers to those from the page unless
+the server says the page may have them. Archives whose pages are a small web app, which
+is most collections of videos, therefore showed an empty page. Seen on 17 November 2026
+with a channel archive made by openZIM's youtube scraper: its page is
+`<script type="module" crossorigin …>` and a data file.
+
+Saying "you may read this" (`Access-Control-Allow-Origin: null`) at the plain address
+would have let any page on any site read what the library holds, through a sandboxed
+frame of its own: that address is the same on every Outpost, and archive names are
+public. Nor can the server tell an archive's own page from a stranger's by the request:
+a sandboxed page sends no `Referer` at all (tried, in Chromium, and so the browsers'
+shared specification says). So the reader frames archive pages at a second address,
+`/kiwix/<word>/content/…`, where `<word>` is 32 random characters made once for the
+installation and kept in the data folder (`reader-token`, readable by the server's user
+only). A page's own relative addresses carry the word without the page having been
+given anything; only under it, and only to a request with `Origin: null`, does the proxy
+say the answer may be read. The plain address, `/kiwix/open/content/…`, still works for
+Outpost's own viewer and for links people have kept, and says no such thing.
+
+What this rests on, and its limits:
+
+- **The word is given only to Outpost's own screens** (`frameBase` in
+  `GET /api/kiwix/books`), in answers another site's page cannot read. Anyone on the
+  home network can read it, as they can read the library itself.
+- **An archive's own scripts can see the address they run at**, the word included. A
+  hostile archive could send it out with `window.open` (the sandbox allows pop-ups so
+  that links out can be offered), and whoever received it could then read this library's
+  archives from a page the household later visits. What that gains them is the content
+  of downloaded archives, not notes, contacts or anything behind the API; and it needs a
+  hostile archive to have been installed first. Removing the file `reader-token` and
+  restarting makes a new word.
+- **A page of one archive can read another archive's files**, since both are framed
+  under the same word. They are all the same household's reference shelf.
+- A wrong word is a 404 and is never redirected to the right one. No cookies or
+  credentials are involved. The sandbox itself is unchanged: no `allow-same-origin`,
+  and `Referrer-Policy: no-referrer` as before.
+
+Checked in Chromium by the end-to-end suite (`reader.spec.ts`, "shows a page that is a
+small web app"); **not checked in Safari or Firefox**. Code: `readerSecret` and the
+proxy in `apps/server/src/modules/kiwix/index.ts`; tests in
+`apps/server/test/kiwix.test.ts`.
 
 **What the sandbox costs, and what was done about it.** A page without an origin of
 its own is refused storage by the browser: `indexedDB.open` and `localStorage` throw.
@@ -451,6 +497,39 @@ a restart, no room, a file that fails, paths that are refused),
 `apps/web/src/features/reader/document-list.test.tsx` and
 `e2e/tests/reader.spec.ts`, which also shows the archive's own page being refused
 storage inside the frame.
+
+### Learning progress
+
+The reader records where each learner got to in a reference archive
+([learning.md](learning.md)). What is recorded, for each learner, archive and page: the
+page's address inside the archive and its title, when it was first and last opened, the
+seconds it was on screen while the tab was visible, and whether it was marked done or its
+video played through; and the seconds spent in each archive each day. Nothing else: no
+device, address or browser is recorded with it.
+
+- **Who can see it.** Everyone who can reach Outpost, as with everything else: the
+  Learning view shows everyone's, and the routes answer anyone. A learner is a name
+  chosen on a device, with no password, and the screens say that a name is not proof of
+  who was holding the device. Nothing is recorded on a device until someone has been
+  chosen there, and a device can stop recording.
+- **Where it goes.** The database, so backups and portable drives. It is not put in
+  search and never sent to a model server. A PDF of it added to the library asks first,
+  because that copy is searchable.
+- **The archive's page is no more trusted than before.** The reader learns which page is
+  on show, which other pages of the archive it links to, and that a `<video>` on it
+  played to the end, from the script the proxy already adds to each page. That script
+  only sends messages up to the reader; it does not listen for any, so a page still
+  cannot ask the reader for anything. The frame's `sandbox` attribute and the proxy's
+  policy are unchanged, without `allow-same-origin`; `apps/server/test/learning.test.ts`
+  asserts the policy word for word and that the script holds no listener for messages,
+  and `e2e/tests/learning.mobile.spec.ts` asserts the frame's attribute and the policy in
+  a browser. Every field a page sends is checked: an address must be inside the same
+  book, decode cleanly, and hold no `..` or control characters; at most 600 links are
+  read; a claim that a video ended counts only for the page on show, and only if it says
+  nine tenths of the video was played. A page can lie in these messages; the most it can
+  do is mark itself watched or make a topic's count wrong.
+- **Limits.** 50 learners, 20,000 pages a learner, two minutes of time a write, and no
+  more than could have passed since the page was last written.
 
 ### Downloads (the SSRF guard)
 
@@ -867,6 +946,83 @@ reach Outpost can read and change all of it. What it adds:
   supplies and 40 links to a plan, field lengths as in `PLAN_LIMITS`. A GET changes
   nothing: opening a plan is recorded by a POST the screen sends.
 
+### The household board (Messages)
+
+Messages ([messages.md](messages.md)) is a board for everyone on the home network.
+
+- **What is stored.** Each message's channel, the name it was posted under, its words,
+  and for a check-in its status, any place in words and, if the person ticked it, the
+  device's position, with the times and who changed or removed it. Sent files are kept
+  in the data folder under `board/` until removed or their days are up (7 by default).
+  All of it is in backups, and none of it goes on a portable drive.
+- **Who can read it.** Everyone who can reach Outpost, as with everything else. A name is
+  what a device chose and proves nothing; anyone can post under any name, and change or
+  remove anything. The screen says so. A removed message keeps a line saying who removed
+  it, so a removal is never silent; its words are deleted from the database.
+- **What is not protected.** The words, places and positions are not encrypted, and on
+  plain http they cross the home network in the clear, as everything does
+  ([HTTPS on the home network](#https-on-the-home-network)). There are no private
+  messages. A position is shown to everyone on the network.
+- **Words are never markup.** They are drawn as text; only `http:` and `https:` addresses
+  become links, opened in a new tab with `noopener noreferrer`.
+- **A sent file is never run.** It is not opened, unpacked or read on the server, and is
+  only ever served as a download (`Content-Disposition: attachment`), as
+  `application/octet-stream` unless its first bytes show a PNG, JPEG, GIF or WebP
+  picture (never SVG, which can carry script), with the same `sandbox` policy and
+  `nosniff` as the library's originals. Its name is made safe for a file system (no path
+  separators, no leading dots) and its path goes through `resolveInside`. "Add to
+  library" goes through the library's own checks and asks first.
+- **Limits.** A name 40 characters, a message 10,000, a place 120; 30 posts, check-ins,
+  changes or removals a minute and 30 files an hour from one address (`429` past that);
+  a file 200 MB; at most 100 files and 4 GB kept; the data folder must keep 256 MB free.
+  Every input is checked with zod, and every route that changes something is held to the
+  cross-site rules above.
+- **Not searched, not sent anywhere.** Messages are not added to search and are never
+  sent to a model server. The board makes no outbound request; there are no push
+  notifications.
+
+### The mesh radio link
+
+The board's radio channels ([mesh-radio.md](mesh-radio.md)), off until set up. Not tried
+with a real radio.
+
+- **Who may set it up.** Turning a way in on or off, choosing a serial device and opening
+  the broker's port are accepted only from the computer Outpost runs on
+  (`isLocalRequest`); from any other device `PUT /api/mesh/*` answers `403`, unless
+  whoever started Outpost set `OUTPOST_ALLOW_REMOTE_ERASE` (in a container, where no
+  request looks local, that is the way to set it up). A password set from another device
+  that way crosses the network as the page does: in the clear over plain http. The set-up is kept in settings rows
+  that are not in the settings schema, so `PATCH /api/settings` cannot reach it. Every
+  device may read the status and send a test message, as it may post on any channel.
+- **The open port.** With "Outpost is the broker", Outpost listens for MQTT (1883 by
+  default) on the same address as its web server: on every interface when it is open to
+  the network, on 127.0.0.1 otherwise. A connection from an address that is not this
+  computer's or a private home-network one (RFC 1918, link-local, IPv6 unique-local) is
+  closed before anything is read. Who can connect: anything on the home network that
+  knows the user name and password. MQTT here is plain TCP, not TLS: the password and
+  every message cross the home network in the clear, as Meshtastic's own MQTT does
+  without TLS. Do not forward the port on the router.
+- **Limits.** 64 KiB a packet, 8 connections, 20 publishes a second (bursts of 50) per
+  connection, 32 subscriptions, 10 seconds to sign in; a malformed packet, a QoS 2
+  publish or a wildcard in a published topic closes the connection. Nothing is retained,
+  and no session or will is kept.
+- **The passwords.** The broker's is kept as a scrypt hash and checked in constant time;
+  the one Outpost signs in to the household's broker with is kept as it is. Both are in
+  `<data>/mesh/secrets.json` (folder 0700, file 0600, like the HTTPS key), not in the
+  database, so not in a backup or on a portable drive; never logged, never in a reply
+  (which says only whether one is set). Erase-everything deletes the file.
+- **A serial device** is chosen from a list the server makes of the names USB radios get
+  in `/dev`, and checked against that list again before it is opened; a path from a
+  browser is never opened. `stty` is run with `execFile`, an absolute path and fixed
+  arguments.
+- **Addresses typed for the household broker or a MeshCore radio** are host names or IP
+  addresses only (no scheme, port or path), set only from the computer itself; Outpost
+  connects to them only while that way in is set up.
+- **What is not protected.** Anything sent on a radio channel can be read by anyone with
+  a radio on that channel: a default public channel by anyone in range. A channel's key is
+  the radio's, not Outpost's. Anything heard is stored as heard; a radio name proves
+  nothing. Radio text is shown as text, never markup, like the board's.
+
 ### Paths
 
 Content is recorded as *(storage location, relative path)*, and storage locations can
@@ -902,6 +1058,7 @@ Archives are never trusted to say where their contents go or how large they are.
 | Backup being restored | Only `manifest.json`, `outpost.db` and three known folders are unpacked; anything else is skipped. At most 500,000 entries and 64 GB. Existing files are never overwritten. | `apps/server/src/modules/backup/index.ts` |
 | EPUB being read | Read into memory only, never unpacked to disk. At most 20,000 entries and 512 MB in total; names with `..` or absolute paths are skipped. | `apps/server/src/modules/documents/zip.ts` |
 | ZIP being imported | A name that climbs out of the folder refuses the whole archive. Links and device files are never created. Entry count, total size, per-file size and compression ratio are capped, and declared sizes are checked against the bytes that arrive. | `apps/server/src/modules/imports/extract.ts` |
+| Audiobook zip being added | Unpacked with the importer's code and limits (above) into a folder of its own under the storage location's `documents/.incoming/`, never anywhere else; at most 5,000 entries. Only audio files whose first bytes match their extension are kept and moved into the book's new folder, under names Outpost gives them; everything else is left out and listed. The incoming folder is removed whether the add succeeds or fails. | `apps/server/src/modules/audiobooks/` |
 | Runtime downloads for portable drives | Checked against the publisher's checksum (SHA-256 for Node; the Kiwix project publishes only MD5 for its reader), then exactly one named file is extracted. | `apps/server/src/modules/portable/` |
 
 ### Notes, Markdown and HTML
@@ -1610,6 +1767,7 @@ to the cross-site rules above, except the few `GET`s named there.
 | --- | --- | --- |
 | Catalogue **Refresh**; adding or downloading an entry; installing a pack | `opds.library.kiwix.org`; the manifests' `downloadHosts` and public mirrors they redirect to | `catalog/kiwix.ts`, `catalog/resolve.ts`, `downloads/http-fetcher.ts` |
 | Map region estimate and download; place names | `build-metadata.protomaps.dev`, `build.protomaps.com` or the `maps.tileSource` / `maps.terrainSource` archives; `download.geonames.org` | `maps/source.ts`, `maps/pmtiles/remote.ts`, `maps/places.ts` |
+| Place names for Great Britain: **Check the size**, **Download** | `api.os.uk` (the check is held to it on every hop); the download starts there and follows its redirect to OS's file store, `omseprd1stdstordownload.blob.core.windows.net`; the file is checked against the MD5 `api.os.uk` gives | `maps/os-names/source.ts`, `maps/os-names/index.ts` |
 | Satellite imagery and aerial photographs: **Find pictures**, **Continue**, **Fetch**, **Download** | The fixed hosts in [Satellite imagery](#downloads-the-ssrf-guard) above | `maps/imagery/` |
 | **Search** in "Find a route", and adding a result | The declared route sources | `maps/route-finder/overpass.ts` |
 | Reference data for the map: **Show the size**, **Download** | The sources named in [Reference layers](#reference-layers) | `layers/query-fetcher.ts`, `layers/adapters/` |

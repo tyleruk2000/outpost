@@ -56,9 +56,24 @@ export interface DownloadDto {
   updatedAt: number;
 }
 
+/** Finished downloads (completed or cancelled) sent with the list at first; older ones are asked for a page at a time. */
+export const DOWNLOAD_HISTORY_PAGE = 50;
+
 export interface DownloadsResponse {
-  /** Newest first. */
+  /**
+   * Newest first: every download that has not finished, and the `DOWNLOAD_HISTORY_PAGE`
+   * most recently finished ones.
+   */
   downloads: DownloadDto[];
+  /** How many downloads have finished, all told: more than are listed when there is older history. */
+  historyTotal: number;
+}
+
+/** `GET /api/downloads/history`: finished downloads, most recently finished first. */
+export interface DownloadHistoryResponse {
+  downloads: DownloadDto[];
+  total: number;
+  offset: number;
 }
 
 export interface DownloadResponse {

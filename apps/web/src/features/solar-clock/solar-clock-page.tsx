@@ -16,7 +16,6 @@ import { SundialTab } from "./sundial-tab";
 
 export const SOLAR_TABS = ["now", "recover", "sundial", "nocturnal"] as const;
 export type SolarTab = (typeof SOLAR_TABS)[number];
-const tab = "min-h-11 md:min-h-0";
 
 export default function SolarClockPage() {
   const [params, setParams] = useSearchParams();
@@ -48,19 +47,11 @@ export default function SolarClockPage() {
         {picker}
       </section>
       <Tabs value={active} onValueChange={setTab}>
-        <TabsList className="mb-6 flex-wrap gap-x-5 gap-y-1 overflow-visible" aria-label="Solar clock">
-          <TabsTrigger value="now" className={tab}>
-            Now
-          </TabsTrigger>
-          <TabsTrigger value="recover" className={tab}>
-            Clock recovery
-          </TabsTrigger>
-          <TabsTrigger value="sundial" className={tab}>
-            Make a sundial
-          </TabsTrigger>
-          <TabsTrigger value="nocturnal" className={tab}>
-            Make a nocturnal
-          </TabsTrigger>
+        <TabsList className="mb-6" aria-label="Solar clock">
+          <TabsTrigger value="now">Now</TabsTrigger>
+          <TabsTrigger value="recover">Clock recovery</TabsTrigger>
+          <TabsTrigger value="sundial">Make a sundial</TabsTrigger>
+          <TabsTrigger value="nocturnal">Make a nocturnal</TabsTrigger>
         </TabsList>
         <TabsContent value="now">
           <NowTab place={place} zone={zone} />

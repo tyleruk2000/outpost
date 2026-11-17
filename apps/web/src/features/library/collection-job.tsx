@@ -3,11 +3,11 @@ import { formatBytes, type JobDto } from "@outpost/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CircleAlert, CircleCheck, Info, TriangleAlert, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { toast } from "sonner";
 import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/misc";
 import { api, errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { useActiveJobs } from "@/lib/queries";
 import { isFinished, jobOutcome, MOVE_JOB } from "./collection-meta";
 
@@ -57,7 +57,7 @@ export function useCollectionActivity(collectionId: string): CollectionActivity 
   const cancel = useMutation({
     mutationFn: () => api.post(`/api/jobs/${jobId}/cancel`),
     onSuccess: () => client.invalidateQueries({ queryKey: ["jobs"] }),
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
 
   return {

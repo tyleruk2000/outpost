@@ -10,7 +10,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ellipsis, PencilLine, Search, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
-import { toast } from "sonner";
 import { ErrorState, Notice, Page, PageHeader, Section } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog, Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
@@ -24,6 +23,8 @@ import { Composer } from "./composer";
 import { isMissing, ModelPicker } from "./model-picker";
 import { ChatSetup } from "./setup";
 import "./chat.css";
+import { notify } from "@/lib/notify";
+import { useDebounced } from "@/lib/use-debounced";
 
 const ABOUT = /^(document|note):([0-9A-Za-z]{1,40})$/;
 
@@ -49,7 +50,7 @@ function RenameDialog({ conversation, onClose }: { conversation: ChatConversatio
       storeDetail(client, await chatApi.update(conversation.id, { title: title.trim() }));
       onClose();
     } catch (error) {
-      toast.error(errorMessage(error));
+      notify.error(errorMessage(error));
     } finally {
       setSaving(false);
     }
@@ -131,21 +132,11 @@ function ConversationRow({
   );
 }
 
-/** `value` once it has stopped changing for `delay` milliseconds. */
-function useSettled(value: string, delay: number): string {
-  const [settled, setSettled] = useState(value);
-  useEffect(() => {
-    const timer = window.setTimeout(() => setSettled(value), delay);
-    return () => window.clearTimeout(timer);
-  }, [value, delay]);
-  return settled;
-}
-
 function Conversations() {
   const client = useQueryClient();
   const [typed, setTyped] = useState("");
   // The list is asked for once typing pauses, not at every key.
-  const q = useSettled(typed.trim(), 220);
+  const q = useDebounced(typed.trim(), 220);
   const list = useConversations(q);
   const [renaming, setRenaming] = useState<ChatConversationSummary | null>(null);
   const [deleting, setDeleting] = useState<ChatConversationSummary | null>(null);
@@ -160,7 +151,7 @@ function Conversations() {
       await client.invalidateQueries({ queryKey: ["chat", "list"] });
       setDeleting(null);
     } catch (error) {
-      toast.error(errorMessage(error));
+      notify.error(errorMessage(error));
     } finally {
       setRemoving(false);
     }

@@ -19,7 +19,7 @@ import {
 } from "@/features/diagrams/geometry";
 import { Angle, Arrow, Ground, Label, Line, Mark, Path, Plate, type PlateBox, ScaleBar, SunSign } from "@/features/diagrams/plate";
 import type { IsoDate } from "@/features/maps/lib/sun";
-import { equalShadows, noonWord, shortestShadow, type Tip } from "./plates";
+import { dayWords, equalShadows, noonWord, shortestShadow, type Tip } from "./plates";
 import type { Place } from "./recovery";
 
 const round = (value: number, places = 0) => Number(value.toFixed(places));
@@ -97,10 +97,10 @@ export function ShadowPlan({ place, date, stick, mode }: { place: Place; date: I
   const morningSide = figures.kind === "equal" ? (figures.before.east < 0 ? "west" : "east") : null;
   const caption =
     figures.kind === "equal"
-      ? `Seen from above, north up, on ${date}: the shadow's tip follows the dashed path and touches the circle twice, at the 1st mark in the morning and the 2nd in the afternoon. The line from the stick to halfway between the marks is the noon line, and points ${pole}.`
+      ? `Seen from above, north up, on ${dayWords(date)}: the shadow's tip follows the dashed path and touches the circle twice, at the 1st mark in the morning and the 2nd in the afternoon. The line from the stick to halfway between the marks is the noon line, and points ${pole}.`
       : figures.kind === "shortest"
-        ? `Seen from above, north up, on ${date}: a peg every quarter of an hour from two hours before noon to two after. The shadow shortens, stops and lengthens; the shortest, nearest the stick, is noon. The pegs near it are close together, which is why the moment is hard to pick.`
-        : `Seen from above, north up, drawn for a 1 m stick on ${date}: a mark every quarter of an hour through the middle of the day. The mark nearest the foot of the stick is the shortest shadow, and the line from the stick to it points ${pole}.`;
+        ? `Seen from above, north up, on ${dayWords(date)}: a peg every quarter of an hour from two hours before noon to two after. The shadow shortens, stops and lengthens; the shortest, nearest the stick, is noon. The pegs near it are close together, which is why the moment is hard to pick.`
+        : `Seen from above, north up, drawn for a 1 m stick on ${dayWords(date)}: a mark every quarter of an hour through the middle of the day. The mark nearest the foot of the stick is the shortest shadow, and the line from the stick to it points ${pole}.`;
   const description =
     figures.kind === "equal"
       ? `A plan of the ground. The stick stands at the centre of a circle of radius ${metresWords(figures.radius)}. The tip of its ${metresWords(stick)} shadow traces a curve ${pole === "true north" ? "on the north side of" : "on the south side of"} the stick, touching the circle first on the ${morningSide} side and later on the other. The shortest shadow, at noon, is ${metresWords(figures.noon.length)} long. A line from the stick through the point halfway between the two marks runs ${pole}.`

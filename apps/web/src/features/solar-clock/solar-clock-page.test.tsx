@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeApi, renderScreen } from "../manage/test-support";
 import { toolScreens } from "../tools/screens";
+import { modelDeclination } from "./model-declination";
 import { useMinuteClock } from "./now-tab";
 import SolarClockPage from "./solar-clock-page";
 
@@ -35,6 +36,7 @@ afterEach(() => {
 });
 
 const region = (name: string) => screen.getByRole("region", { name });
+const markerPlace = { lat: marker({}).lat, lon: marker({}).lon };
 
 describe("the Tools registry", () => {
   it("lists the solar clock", () => {
@@ -110,8 +112,20 @@ describe("the solar clock", () => {
     fireEvent.change(within(length).getByRole("textbox", { name: "Length of the shadow" }), { target: { value: "400" } });
     expect(within(length).getByText(/When you measured it, the time was \d\d:\d\d, give or take/)).toBeInTheDocument();
 
-    // The bearing, with no declination: off by an unknown amount.
-    expect(within(region("The time from a shadow's bearing")).getByText(/off by an unknown amount/)).toBeInTheDocument();
+    // The bearing: the declination is offered from the World Magnetic Model for the place and date, and said to be.
+    const bearing = region("The time from a shadow's bearing");
+    const field = within(bearing).getByRole("textbox", { name: /Magnetic declination/ });
+    const model = modelDeclination(markerPlace, "2026-11-17")!;
+    expect(field).toHaveValue(String(model));
+    expect(
+      within(bearing).getByText(/filled in from the World Magnetic Model for this place and date: .*A recent map's margin is as good/),
+    ).toBeInTheDocument();
+    expect(within(bearing).queryByText(/off by an unknown amount/)).not.toBeInTheDocument();
+    // A figure of the person's own stays, and the model's can be put back.
+    fireEvent.change(field, { target: { value: "2" } });
+    expect(field).toHaveValue("2");
+    await user.click(within(bearing).getByRole("button", { name: "Use the model's figure" }));
+    expect(field).toHaveValue(String(model));
     // The date's effect.
     expect(within(region("If the date is not certain")).getByRole("table")).toBeInTheDocument();
     expect(within(region("Better sources")).getByRole("link", { name: "Radio frequencies" })).toHaveAttribute("href", "/radio/frequencies");

@@ -21,13 +21,13 @@ import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/rea
 import { Check, CircleAlert, LibraryBig, Square, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
-import { toast } from "sonner";
 import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/misc";
 import { api, errorMessage } from "@/lib/api";
 import { useServerConnection, useServerEvent } from "@/lib/events";
+import { notify } from "@/lib/notify";
 import { cn, formatNumber, plural } from "@/lib/utils";
 
 /** How long the account of an "add all" that went well stays on the screen without being asked for. */
@@ -114,7 +114,7 @@ export function useAddAll(collectionId: string, asked: ArchiveAddResult["scope"]
   const stop = useMutation({
     mutationFn: () => api.post(`/api/jobs/${job?.id}/cancel`),
     onSuccess: () => client.invalidateQueries({ queryKey: ["jobs"] }),
-    onError: (error) => toast.error(errorMessage(error)),
+    onError: (error) => notify.error(errorMessage(error)),
   });
 
   const result = addResult(job);

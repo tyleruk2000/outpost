@@ -7,6 +7,7 @@ import { useMemo } from "react";
 import { type Anchor, type Box, firstFree, labelBox, overlaps, polar, textWidth } from "@/features/diagrams/geometry";
 import { Angle, Arrow, Ground, Label, Line, Plate, type PlateBox, StarDot } from "@/features/diagrams/plate";
 import { type ClockStyle, clockText } from "@/lib/clock";
+import { dayWords } from "./plates";
 import { dialDrawing, hourLines, signedMinutes, sundialToClock } from "./sundial";
 import { latitudeWords } from "./templates";
 
@@ -44,7 +45,7 @@ export function DialPlate({
     <Plate
       name="dial-plate"
       maxWidth={26}
-      caption={`The dial plate for ${latitudeWords(latitude)}, as the template prints it, seen from above with true ${pole} at the top. The gnomon stands on the noon line. At ${SHOWN} o'clock sundial time the shadow of its sloping edge lies along the ${SHOWN} line; today, ${date}, add ${signedMinutes(correction)}${summer ? " and an hour for summer time" : ""}: the clock reads ${clock}.`}
+      caption={`The dial plate for ${latitudeWords(latitude)}, as the template prints it, seen from above with true ${pole} at the top. The gnomon stands on the noon line. At ${SHOWN} o'clock sundial time the shadow of its sloping edge lies along the ${SHOWN} line; today, ${dayWords(date)}, add ${signedMinutes(correction)}${summer ? " and an hour for summer time" : ""}: the clock reads ${clock}.`}
       description={`A rectangle with hour lines fanning out from a point two thirds of the way down, labelled with the hours ${dialHours(latitude)}. The noon line runs straight up to true ${pole}, the gnomon along it. Morning hours are on the ${north ? "left, the west" : "right, the west"} side. A shadow lies along the ${SHOWN} o'clock line.`}
       height={(box) => layout(box).height}
     >

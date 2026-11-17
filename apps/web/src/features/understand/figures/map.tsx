@@ -1,9 +1,10 @@
 import type { ProjectionPoint, ProjectionResponse } from "@outpost/shared";
 import { type KeyboardEvent, memo, type PointerEvent, useMemo, useRef, useState } from "react";
 import { kindMeta } from "@/components/search-hit";
+import { useWidth } from "@/lib/use-width";
 import { formatNumber, plural } from "@/lib/utils";
 import { COLOR } from "../charts/colors";
-import { AxisNote, HiddenTable, Legend, type Swatch, useMeasure } from "../charts/figure";
+import { AxisNote, HiddenTable, Legend, type Swatch } from "../charts/figure";
 import { Tip, TipBody, useTip } from "../charts/tip";
 import { fitFrame, keptShare, type MapFrame, nearestPoint, tourOrder } from "../lib/map";
 import { formatShare } from "../lib/scale";
@@ -74,7 +75,7 @@ export function mapReading(data: ProjectionResponse): string {
  * similar vectors, as far as two axes can show it.
  */
 export function VectorMap({ data }: { data: ProjectionResponse }) {
-  const [ref, width] = useMeasure<HTMLDivElement>(720);
+  const [ref, width] = useWidth(720);
   const tip = useTip();
   const frameRequest = useRef(0);
   const [active, setActive] = useState<number | null>(null);

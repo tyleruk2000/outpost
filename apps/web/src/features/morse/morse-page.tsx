@@ -27,7 +27,6 @@ const Later = ({ children }: { children: ReactNode }) => <Suspense fallback={<Sk
 
 export const MORSE_TABS = ["receive", "send", "qso", "rbn", "reference", "progress"] as const;
 export type MorseTab = (typeof MORSE_TABS)[number];
-const tab = "min-h-11 md:min-h-0";
 
 export default function MorsePage() {
   useSyncedMorse();
@@ -53,28 +52,18 @@ export default function MorsePage() {
         description="Learn to read Morse by ear and to send it by hand. New to it? Start on Receive with lesson 1, then key it back on Send. Everything here works with no connection."
       />
       <Tabs value={active} onValueChange={setTab}>
-        <TabsList className="mb-6 flex-wrap gap-x-5 gap-y-1 overflow-visible" aria-label="Morse trainer">
-          <TabsTrigger value="receive" className={tab} aria-label={`Receive, Koch lesson ${lesson}`}>
+        <TabsList className="mb-6" aria-label="Morse trainer">
+          <TabsTrigger value="receive" aria-label={`Receive, Koch lesson ${lesson}`}>
             Receive
             <span className="tabular rounded-control bg-surface-strong px-1.5 text-micro font-normal text-ink-muted" aria-hidden>
               L{lesson}
             </span>
           </TabsTrigger>
-          <TabsTrigger value="send" className={tab}>
-            Send
-          </TabsTrigger>
-          <TabsTrigger value="qso" className={tab}>
-            QSO practice
-          </TabsTrigger>
-          <TabsTrigger value="rbn" className={tab}>
-            On the air
-          </TabsTrigger>
-          <TabsTrigger value="reference" className={tab}>
-            Code chart
-          </TabsTrigger>
-          <TabsTrigger value="progress" className={tab}>
-            Progress
-          </TabsTrigger>
+          <TabsTrigger value="send">Send</TabsTrigger>
+          <TabsTrigger value="qso">QSO practice</TabsTrigger>
+          <TabsTrigger value="rbn">On the air</TabsTrigger>
+          <TabsTrigger value="reference">Code chart</TabsTrigger>
+          <TabsTrigger value="progress">Progress</TabsTrigger>
         </TabsList>
         <TabsContent value="receive">
           <ReceiveTab />

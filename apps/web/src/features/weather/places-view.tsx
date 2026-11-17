@@ -16,6 +16,7 @@ import { Badge, Select, Spinner } from "@/components/ui/misc";
 import { useMarkers } from "@/features/maps/data";
 import { NoHomePlace } from "@/features/maps/home-place";
 import { errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { useAddPlace, useRemovePlace, useUpdatePlace } from "./data";
 
 const REGION_OPTIONS = MET_OFFICE_REGIONS.map((region) => ({ value: region.id, label: region.name }));
@@ -115,7 +116,7 @@ function AddPlaceDialog({ chosen, onClose }: { chosen: WeatherPlace[]; onClose: 
     toast.success(`${name} added. Press Update now to fetch its forecast.`);
     onClose();
   };
-  const fail = (error: unknown) => toast.error(errorMessage(error));
+  const fail = (error: unknown) => notify.error(errorMessage(error));
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
@@ -167,7 +168,7 @@ function AddPlaceDialog({ chosen, onClose }: { chosen: WeatherPlace[]; onClose: 
                   },
                   (failure) => {
                     setLocating(false);
-                    toast.error(
+                    notify.error(
                       failure.code === failure.PERMISSION_DENIED
                         ? "The browser was not allowed to give the position."
                         : "The position could not be found.",

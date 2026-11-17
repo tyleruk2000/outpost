@@ -10,7 +10,7 @@ The catalogue itself lives in [`catalog/manifests/`](../catalog/manifests):
 | --- | --- | --- |
 | `kiwix-essentials.json` | A starter selection of archives from the Kiwix library | 61 |
 | `kiwix-more.json` | Further Kiwix archives: programming documentation, more Project Gutenberg shelves, medical and science references, courses, talks, preparedness, and more question-and-answer sites | 89 |
-| `official-publications.json` | Individual PDF handbooks, guides, leaflets and textbooks, each fetched from its publisher's own website | 107 |
+| `official-publications.json` | Individual PDF handbooks, guides, leaflets and textbooks, each fetched from its publisher's own website | 108 |
 | `radio.json` | Radio rules, frequency tables, field guides, broadcast guides and band plans as PDFs from their publishers (38), and five more Kiwix archives | 43 |
 | `outpost-reference.json` | Reference sheets written for Outpost and shipped with it; see [radio.md](radio.md) | 9 |
 | `logbook73.json` | The Radio Engineering Handbook and fifteen radio companion guides, written by this project's author for LogBook73 (MIT) and shipped as books; generated, see [radio.md](radio.md#the-handbook-and-the-radio-guides) | 16 |
@@ -135,6 +135,19 @@ means the source looks worth having and something stopped it, which the row name
 | N14 | US Environmental Protection Agency (epa.gov) | Emergency disinfection of drinking water | **Not listed.** The guidance is a web page; the page links no PDF of its own. | Not applicable. |
 | N15 | Radio sources looked at again | RSGB's repeater list (ukrepeater.net), Summits on the Air, the IARU Region 1 VHF and HF managers' handbooks | **Not listed.** ukrepeater.net's `robots.txt` disallows its data and documents folders and asks for ten seconds between requests; nothing was fetched. A search found no licence for the Summits on the Air rules, only a copyright notice on a copy elsewhere; of its own site only `robots.txt` was read. The IARU handbooks were not fetched: the IARU documents already listed state no licence, and no more "See source" entries were added. | No licence found. |
 | N16 | Not examined | Mountaineering Scotland, the British Mountaineering Council, Mountain Rescue England and Wales, CAWST, Practical Action, Oxfam's technical briefs, the US National Park Service, the US Fire Administration, the US Coast Guard's boating safety site, the remaining FAO and WHO titles | **Thought of and not pursued** for want of time. Only `robots.txt` was read for some of them, and nothing else was fetched. They are named here so that the next pass can start with them. | Not checked. |
+### Audiobooks and the NIOSH Pocket Guide, added on 2026-11-17
+
+Read on 2026-11-17 for two requests: public-domain audiobooks from LibriVox, and the
+NIOSH Pocket Guide to Chemical Hazards. How each was read is in
+[the section below](#what-was-read-on-2026-11-17-for-audiobooks-and-the-niosh-pocket-guide-and-how).
+
+| # | Source | What it is | How Outpost uses it | Licence and terms |
+| --- | --- | --- | --- | --- |
+| AU1 | NIOSH (cdc.gov/niosh) | The US National Institute for Occupational Safety and Health, part of the CDC | **Listed: 1 entry** in `official-publications`: *NIOSH Pocket Guide to Chemical Hazards*, DHHS (NIOSH) Publication No. 2005-149, third printing (September 2007), 454 pages, 6,339,883 bytes. The address was taken from NIOSH's own pages: the [Pocket Guide page](https://www.cdc.gov/niosh/npg/) links "PDF Version" to the publication's page, which links the file. NIOSH also keeps an online edition that it updates more often than the PDF; the entry says so. | The file's own page ii: "This document is in the public domain and may be freely copied or reprinted." CDC's terms as in row 11, whose attribution wording the entry carries. The file names NIOSH as author and carries no copyright notice or outside credit. |
+| AU2 | LibriVox (librivox.org) | Volunteer recordings of public-domain books | **Link out, by decision**: a shelf of 15 books in Explore (`catalog/audiobooks.json`), each with a link to its LibriVox page and to its zip, which the person downloads in their own browser and adds under Library. Outpost never fetches a recording. | The [public domain page](https://librivox.org/pages/public-domain/): "all our recordings are public domain in the USA, but not necessarily in other countries", and "if you are outside the USA, we recommend that you check the copyright status of the work in your country before downloading our recording of it." It explains that LibriVox works under US law because its domain, website and audio files are in the USA. It also says "book summaries, CD cover art, and any other material that goes into our catalog with the audio recordings are in the public domain", which is what lets the shelf hold LibriVox's records. |
+| AU3 | Internet Archive (archive.org), for LibriVox's files | Where LibriVox's audio is hosted | **Not fetched.** LibriVox's [API page](https://librivox.org/api/info) says each book's zip is "Hosted by Archive.org", and its addresses are now archive.org's `/compress/` service, which builds the zip when it is asked. The terms of use could not be read (as row 5), so Outpost does not fetch from archive.org; the shelf's links are followed by the person's browser. | `robots.txt` (read 2026-11-17) disallows only `/control/` and `/report/`. [Terms of use](https://archive.org/about/terms): the page, and its older address `terms.php`, are drawn by a script ("Javascript is required for this site") and could not be read on 2026-11-17. |
+| AU4 | Kiwix library, for LibriVox | The Kiwix feed Outpost already uses | **Nothing to list.** One search of the feed (`entries?q=librivox`) on 2026-11-17 found no book. | Not applicable. |
+
 ### Repeater lists
 
 Read on 2026-11-16 for the repeater database ([radio.md](radio.md#repeaters)), in two
@@ -209,6 +222,7 @@ preview, which shows how the file was read before anything is kept
 | 23 | Geofabrik downloads (download.geofabrik.de) | Regional extracts of raw OpenStreetMap data, updated daily | **Not integrated for map tiles.** The extracts are raw data, not tiles. See [the note below](#geofabrik-extracts-and-what-outpost-uses-instead). Since 2026-11-16 they are read for the reference layers (R4). | [ODbL 1.0](https://download.geofabrik.de/); the service is offered free of charge by Geofabrik. |
 | 24–25 | Natural Earth | Public-domain map data at small scales | **Built in.** The 1:110m data draws the simple world outline beneath the map and the boxes of the country presets. | Public domain, as recorded in [maps.md](maps.md). The Natural Earth terms page did not answer on the day (two time-outs), so it was not read again. |
 | 26 | USGS (usgs.gov) | The US Geological Survey | **Direct: 4 entries** (Topographic Map Symbols; Finding Your Way with Map and Compass; Map Projections: A Working Manual; and, added on 2026-11-16, The Universal Transverse Mercator (UTM) Grid). USGS map and elevation data are not integrated. | The Publications Warehouse [says](https://pubs.usgs.gov/documentation/faq) that PDF files of USGS-published reports are in the public domain, though some illustrations are used with permission. The main usgs.gov site returned an empty page to the catalogue check. |
+| 27a | Ordnance Survey OpenData: OS Open Names (read 2026-11-17) | Settlements, hills and other named features, roads and postcodes of Great Britain, about three million records, republished every three months | **Downloaded on a press** from the [OS Downloads API](https://docs.os.uk/os-apis/accessing-os-apis/os-downloads-api/technical-specification), which "To use the OS OpenData parts of this API, you do not require an API Key": no account, no key. The CSV file (103,312,081 bytes for the October 2026 edition) is read into the place search; see [maps.md](maps.md#place-names-for-great-britain). OS Terrain 50 was read and not added (see maps.md). `api.os.uk` has no robots.txt (it answers the address with the API's own index); docs.os.uk's robots.txt allows all. | [OS OpenData](https://www.ordnancesurvey.co.uk/opendata): "OS OpenData is licensed under the Open Government Licence (OGL) which allows you to use the OS OpenData datasets in any way and for any purpose"; "We simply ask that you acknowledge us with “Contains OS data © Crown Copyright [and database right] (year)”". The file's own `Doc/licence.txt`: "Contains OS data © Crown Copyright and database rights 2026." — Outpost shows this line, from each edition's file, on the map, in the search list and beside the download. [OGL v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/): "You are free to: copy, publish, distribute and transmit the Information; adapt the Information"; "You must … acknowledge the source of the Information in your product or application by including or linking to any attribution statement specified by the Information Provider(s) and, where possible, provide a link to this licence". The test fixture `apps/server/test/fixtures/maps/os-names-sample.ts` holds 44 records copied from the file, with the statement. |
 | 27 | NASA Earthdata Search | A search tool over NASA's Earth-observation datasets | **Not integrated.** It is an interactive search over scientific data files, not a set of documents or map tiles; nothing in it is a single stable file that the library or the map could use as it stands. | NASA's [data use guidance](https://www.earthdata.nasa.gov/engage/open-data-services-software-policies/data-use-guidance) says the data are freely accessible and asks for citation. |
 | C1 | NOAA NCEI and the British Geological Survey, World Magnetic Model 2025 (ncei.noaa.gov) | The model of the Earth's magnetic field used for navigation, 2025.0 to 2030.0: 90 coefficients and their yearly changes | **Built in, shipped**: the coefficient file `WMM.COF` unchanged in `packages/shared/src/wmm-coefficients.ts`, for the declination on Tools → Compass and the map's centre card. Fetched by hand once on 2026-11-17; nothing is fetched at run time. See [The World Magnetic Model and the compass](#the-world-magnetic-model-and-the-compass) and [tools-compass.md](tools-compass.md). | Public domain: "The WMM source code is in the public domain and not licensed or under copyright." Notice given under 17 U.S.C. 403 in the file's header and the docs. |
 | C2 | Ordnance Survey, A guide to coordinate systems in Great Britain (v3.6, 2020) | The National Grid's datum and projection, with formulae and worked examples | **Formulae only**: the map's grid references already follow it; the compass works grid convergence from that projection. The PDF is not shipped. | © OS 2020. Only the published formulae are used; no text or figure is reproduced. `robots.txt` allows `/documents/resources/`. |
@@ -818,6 +832,53 @@ with 310 entries.
   brochure) was downloaded through a throwaway Outpost server started from the
   repository, and both completed at the pinned size and checksum.
 
+## What was read on 2026-11-17 for audiobooks and the NIOSH Pocket Guide, and how
+
+- **Client.** Every request went through Outpost's own client (`apps/server/src/core/http.ts`,
+  user agent "Outpost (self-hosted offline library)"), one at a time, a few seconds apart.
+  No other user agent, browser, mirror, cache or summarising service was used.
+- **NIOSH.** www.cdc.gov's `robots.txt` was read first; it disallows `/niosh/archive/`,
+  which was not visited. Then the [Pocket Guide page](https://www.cdc.gov/niosh/npg/),
+  its "PDF Version" link (`/niosh/docs/2005-149/default.html`, a page that sends the
+  browser on to `/niosh/publications/numbered/2005-149.html`), and that publication page,
+  which links `/niosh/docs/2005-149/pdfs/2005-149.pdf`. The file was fetched once:
+  6,339,883 bytes (the page says "6,192KB"), SHA-256
+  `c008054cef5aae66addaeab70549d4d549de409f3db75df73c5e7c631a674ad9`, 454 pages, its
+  title, edition and public-domain statement read from the file, and it was searched for
+  copyright notices and credits (none). The file was then deleted. `pnpm catalog:validate`
+  passes with 326 entries; `pnpm catalog:validate --online --delay 16` reported 325 of 326
+  resolving, the NIOSH entry among them, and one failure that is not this entry's
+  (`nasa.fastener-design-manual: fetch failed`).
+- **LibriVox, terms first.** `robots.txt` (it allows ordinary clients everywhere but
+  `/uploads/`, `/librivox-validator-books/`, `/public_readers_iframe/` and `/auth/`, and
+  carries the content signals `search=yes,ai-train=no,use=reference`), the public domain
+  page, its note for readers in the European Union (a page about LibriVox not being the
+  German firm Libri; nothing on copyright), the API page and the [API update of
+  16 September 2026](https://librivox.org/2026/09/16/librivox-api-update/). That post
+  says "because all LibriVox recordings are in the Public Domain, third parties – app
+  developers, archivists, streaming channels and curators – are more than welcome to
+  share and re-share them with the world", sets a limit of 500 records a request, and
+  asks "that developers be considerate and separate their requests by several seconds".
+- **What decided it.** A catalogue entry that fetched a book on a press would fetch from
+  archive.org, not from LibriVox: the API names each zip "Hosted by Archive.org". LibriVox
+  welcomes reuse of its recordings, but the Internet Archive's terms could not be read,
+  so it is not clear that a program may fetch its files; and its `/compress/` addresses
+  build each zip on request, so no size or checksum could be pinned as an entry needs.
+  So the smaller thing was done: a link the person follows in their browser, and an
+  importer in the Library for the zip they get.
+- **The shelf.** 28 title searches of LibriVox's API (`/api/feed/audiobooks/?title=^…`,
+  with `extended=1`), five seconds apart. Fifteen books were chosen: three practical, six
+  classics for adults, six for children, a solo reader wherever there was a complete
+  English version with one. `catalog/audiobooks.json` keeps LibriVox's record of each as
+  the API gave it (title, authors, readers, running time, number of files, page and zip
+  addresses) and a one-line summary written for Outpost. Sizes are not in the record and
+  archive.org was not asked: the shelf says "about" a size worked out from the running
+  time at the 64 kbps the zips hold. To make the shelf again, search the API by title for
+  each id in the file and copy the same fields.
+- **Kiwix.** One search of the feed for "librivox"; no result.
+- **Not read.** archive.org's terms (drawn by a script); no other archive.org page was
+  asked for.
+
 ## What was read on 2026-11-16 for repeaters, and how
 
 - **Terms first.** For each publisher its `robots.txt` was read before anything else,
@@ -1011,7 +1072,8 @@ Outpost uses data that has already been through that step:
   region. The underlying data is the same OpenStreetMap data that Geofabrik
   distributes, under the same Open Database Licence.
 - **The world outline** and the boxes of the country presets come from Natural Earth.
-- **Place names** for offline search come from GeoNames.
+- **Place names** for offline search come from GeoNames, and for Great Britain also from
+  Ordnance Survey's OS Open Names (row 27a above).
 
 If you already make your own tiles from a Geofabrik extract, you can point Outpost at
 any PMTiles archive that follows the Protomaps basemap schema. See
@@ -1175,3 +1237,55 @@ from the broadcaster's own page.
 
 **Not used as sources at all**: Wikipedia, hobbyist schedule lists (EiBi, Aoki and the
 like), HFCC data, commercial frequency guides and RepeaterBook.
+
+## The allotment's months and facts (read 2026-11-17)
+
+Games → Allotment ([games.md](games.md#the-crops)) uses real sowing and harvest months for
+its twelve crops, and a few facts about each on its almanac card. Nothing is fetched by
+Outpost and no page or picture is bundled: the months are numbers in
+`packages/shared/src/games/allotment/numbers.ts`, the facts are sentences written for
+Outpost in `notes.ts`, and the pages are plain links behind "Where this comes from".
+
+| What | Where it comes from | How it was read |
+| --- | --- | --- |
+| Sowing, planting and harvest months; hardiness, watering and a few facts for each crop | Royal Horticultural Society, "Grow your own" pages: <https://www.rhs.org.uk/vegetables/radishes/grow-your-own>, and the same address with `salad-leaves`, `onions`, `peas`, `carrots`, `beetroot`, `kale`, `broad-beans`, `potatoes`, `leeks`, `garlic` and `squash` | Each page fetched once on 17 November 2026 with Outpost's own user agent ("Outpost (self-hosted offline library)"), three seconds apart; every one answered 200. The month calendar is in the page's HTML (each month marked active or not, in rows Sow, Plant, Plant out and Harvest), and was read from it. The radishes page was also opened once with the ordinary fetch tool first, whose summary left out the calendar; that was the second request to that page. |
+| The crop families and why rotation matters | RHS, "Crop rotation", <https://www.rhs.org.uk/vegetables/crop-rotation> | Fetched once the same day. Used: the four groups (brassicas, legumes, onions, the potato family, roots), that salads and the squash family can go anywhere, that soil pests and diseases attack one family again and again and decline while it is absent, clubroot in brassicas and onion white rot. |
+| Which pages exist | The RHS sitemaps, <https://www.rhs.org.uk/sitemap_index.xml>, `sitemap-general.xml` and `sitemap-kontent-ai.xml` | Fetched once each, to find the addresses above rather than guess them. |
+| What a robot may read | <https://www.rhs.org.uk/robots.txt> | Read the same day: for all user agents it disallows only `/api/`, Word documents, and paths ending `undefined` or `thank-you`, and names five crawlers that are shut out entirely; no crawl delay. `/vegetables/` is not disallowed. |
+| Terms of reuse | The RHS site's footer and its policies page, <https://www.rhs.org.uk/about-us/what-we-do/policies> | No terms of use or reuse policy is linked: the footer says "© The Royal Horticultural Society 2026", and the policies page lists none for website content. So no prose, table or picture is copied. Outpost keeps only facts (which months; which family; hardy or tender; wants much or little water) and says them in its own words, with the source named and linked. |
+
+The months as the RHS calendars gave them (Sow / Plant / Plant out / Harvest), so that
+they can be checked again: radishes Mar–Sep / – / – / Jan, Feb, Apr–Dec (the winter months
+are winter radishes; the game's salad radishes are harvested April to October, "about four
+to six weeks" after sowing, as the page says); salad leaves Feb–Sep / – / – / Apr–Dec;
+onions Jan–Apr, Aug–Sep / Mar–Apr, Sep–Nov / – / Jun–Sep; peas Feb–Jun / – / Mar–Apr /
+Jun–Oct; carrots Feb–Jul / – / – / May–Nov; beetroot Mar–Jul / – / – / Jun–Oct; kale
+Mar–Jun / – / May–Jul / Oct–Apr; broad beans Feb–May, Oct–Nov / – / Apr–May / May–Aug;
+potatoes – / Mar–May / – / Jun–Oct; leeks Feb–Jun / May–Jul / – / Jan–Mar, Aug–Dec; garlic –
+/ Feb–Mar, Oct–Dec / – / May–Aug; squash Apr–May / – / May–Jun / Jul–Oct.
+
+Only the RHS was used, so no two sources had to be reconciled. Made up for the game, and
+said so on the screen: how fast things grow, prices, how long water lasts and how often it
+rains.
+
+## Mesh radio (read 2026-11-17)
+
+For the mesh radio link ([mesh-radio.md](mesh-radio.md)). Each page was read once, with
+the ordinary fetch tool, on 17 November 2026. Nothing from these projects is bundled or
+fetched by Outpost; they decided what could be built, and how.
+
+| Page | What it says (quoted) | What was concluded |
+| --- | --- | --- |
+| github.com/meshtastic/firmware, `LICENSE` | GNU General Public License, version 3: "The GNU General Public License is a free, copyleft license for software and other kinds of works." | No firmware code is used. |
+| github.com/meshtastic/protobufs, `LICENSE` | The same licence, GPL version 3, dated 29 June 2007. | The `.proto` files and code generated from them are not copied. |
+| meshtastic.org/docs/development/device/client-api/ | Framing: "Byte 0: START1 (0x94)", "Byte 1: START2 (0xc3)", then the length; "Clients connect over TCP on port 4403". It gives no field numbers and refers to `mesh.proto`. | The binary client API was not built: its field numbers are published only in the GPL files. |
+| meshtastic.org/docs/software/integrations/mqtt/ | Topics `msh/REGION/2/e/CHANNELNAME/USERID` and `msh/US/2/json/CHANNELNAME/USERID`; `from` is "the decimal Node ID" and "can thus be used as a stable identifier for a specific node"; "-1 means it was a broadcast message"; to send, "send a JSON message to the topic `msh/US/2/json/mqtt/`" with `from`, optional `to` and `channel`, `type` `"sendtext"` and the text as `payload`, with a channel named "mqtt" with Downlink on; "JSON is not supported on the nRF52 platform." It shows no text message example. | Built: `meshtastic/json.ts`. A text's payload is accepted as a string or as `payload.text`, and this is said to be unconfirmed. |
+| meshtastic.org/docs/legal/licensing-and-trademark/ | "you may not use the Meshtastic Trademarks or any confusingly similar mark as a trademark for your product"; use only if it "does not imply sponsorship or endorsement by Meshtastic"; noncommercial sites must indicate "clearly that it is not affiliated with or endorsed by Meshtastic." | "Works with" wording, and the not-affiliated sentence on the screen and in the docs. No logo. |
+| meshtastic.org/docs/configuration/radio/lora/ ("LoRa Configuration", `#region`) | "This will ensure that you are operating within the legal limits for your area." "Check your national band plan before transmitting." | Linked from the screen; no country's rules are stated by Outpost. |
+| meshtastic.org/robots.txt | `User-agent: *` / `Disallow: /docs/2.7/` | The pages read are not under the disallowed path. |
+| meshtastic.github.io/Meshtastic-Android, "Messages & Channels" | "Maximum length: 200 bytes"; the default LongFast channel "is encrypted with a well-known default key, so anyone running Meshtastic on the same preset can read it"; a broadcast shows "Delivered to mesh" with "no per-recipient acknowledgment". | 200 bytes is the Meshtastic limit; the public-channel warning. Over MQTT JSON no delivery report comes back, so none is claimed. |
+| github.com/meshcore-dev/MeshCore, `license.txt` | "MIT License", "Copyright (c) 2025 Scott Powell / rippleradios.com". | Its documented frames may be implemented. |
+| MeshCore `docs/companion_protocol.md` ("Companion Protocol", "Last Updated: 2026-03-08", companion firmware v1.12.0+) | Commands and answers by byte: app start `0x01`, send channel message `0x03`, get message `0x0A`, channel info `0x1F`/`0x12`, channel message `0x08` and `0x11`, messages waiting `0x83`; little-endian integers, UTF-8 text; messages limited to 133 characters. It says it "may be inaccurate" in places and covers BLE framing only. | Built: `meshcore/frames.ts`, `session.ts`. |
+| MeshCore `src/helpers/ArduinoSerialInterface.cpp` | `if (c == '<') {`; `hdr[0] = '>';`; `hdr[1] = (len & 0xFF);  // LSB`, `hdr[2] = (len >> 8);    // MSB`. | The USB frame format. |
+| MeshCore `src/helpers/esp32/SerialWifiInterface.cpp` | Could not be read: 404 on 17 November 2026. Not got another way. | The network port is assumed to use the USB frames, as the FAQ implies; said to be untested. |
+| MeshCore `docs/faq.md` | "Connect on TCP port 5000 (same as the WiFi companion radio)." Serial examples use `-b 115200`. | Port 5000 by default; 115200 for the USB serial. |

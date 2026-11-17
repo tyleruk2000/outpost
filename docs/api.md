@@ -456,7 +456,7 @@ Types: `packages/shared/src/documents.ts`.
 | Method and path | Purpose |
 | --- | --- |
 | `POST /api/documents` | Uploads one or more files as `multipart/form-data` (at most 200 per request). Optional fields or query parameters: `category`, `tags` (comma separated), `locationId`, `allowDuplicate`, `source` (where the files came from, at most 1,000 characters) and `title` (at most 300 characters, and only with one file: `400` with more). A title that is sent is kept when the file's text is read; without one the title is the file's name until a PDF's or EPUB's own title replaces it. The web app sends `title` and `source` with a PDF it made itself ([library.md](library.md)). Answers `{ results: UploadResult[] }`, one per file with status `created`, `duplicate` or `rejected`; one bad file does not fail the others. |
-| `GET /api/documents` | Lists documents (`DocumentListResponse`). Query: `q` (title or file name), `category`, `tag`, `type` (`pdf`, `markdown`, `text`, `html`, `epub`, `image`), `sort` (`added`, `title`, `size`), `order`, `limit` (50 by default, at most 200), `offset`, `chapters`. The chapters of books are left out unless `q` or `tag` is given: a book is one thing in the library, reached from its collection. `chapters=true` always lists them, `chapters=false` never. A chapter's `book` says which book it is from. |
+| `GET /api/documents` | Lists documents (`DocumentListResponse`). Query: `q` (title or file name), `category`, `tag`, `type` (`pdf`, `markdown`, `text`, `html`, `epub`, `image`, `audio`), `sort` (`added`, `title`, `size`), `order`, `limit` (50 by default, at most 200), `offset`, `chapters`. The chapters of books are left out unless `q` or `tag` is given: a book is one thing in the library, reached from its collection. `chapters=true` always lists them, `chapters=false` never. A chapter's `book` says which book it is from. |
 | `GET /api/documents/facets` | Counts by category, tag and type, with totals (`DocumentFacets`). Chapters of books are not counted. |
 | `GET /api/documents/:id` | `{ document }` (`DocumentDto`). `scanPages` is how many pages have no text of their own (1 for an image), `ocrPages` how many of them OCR has been run on (`null` if never), and `ocrDetail` a sentence about the last OCR run. For a chapter of a book, also `chapter` (`DocumentChapterDto`): the book, the chapter's place in it, and the previous and next chapters. |
 | `PATCH /api/documents/:id` | Body (`DocumentPatch`): `title`, `description`, `category`, `author`, `source`, `language`, `tags`. Omitted fields are left alone; `tags` replaces the whole list. |
@@ -474,10 +474,25 @@ Types: `packages/shared/src/documents.ts`.
 | `POST /api/documents/move` | Body: `locationId`. Moves every document that is not on that location to it, as a job. `{ job, documents }`. |
 | `GET /api/tags` | `{ tags }`: every tag with the number of documents carrying it (`TagDto`). |
 
-Accepted types: PDF, EPUB, Markdown, plain text (`.txt`, `.csv`, `.json`), HTML and
-images (`.png`, `.jpg`, `.gif`, `.webp`, `.svg`). A file must be what its extension
+Accepted types: PDF, EPUB, Markdown, plain text (`.txt`, `.csv`, `.json`), HTML,
+images (`.png`, `.jpg`, `.gif`, `.webp`, `.svg`) and audio (`.mp3`, `.m4a`, `.m4b`,
+`.aac`, `.ogg`, `.oga`, `.opus`, `.flac`, `.wav`), which is served in place with its own
+type so a browser can play it a range at a time. A file must be what its extension
 says. An identical file (same SHA-256) is reported as `duplicate` unless
 `allowDuplicate` is set.
+
+### Audiobooks
+
+An audiobook of several files is a book (a collection whose chapters are documents)
+with `meta.audiobook`; one audio file on its own is a document of type `audio`. Both are
+played from `GET /api/documents/:id/file`. See [library.md](library.md#audiobooks).
+
+| Route | What it does |
+| --- | --- |
+| `GET /api/audiobooks` | `AudiobookListResponse`: every audiobook once (`kind` `book` or `single`), with author, readers, chapter count, running time where known, size and the address of its page. Query: `q` (title, author or reader), `sort` (`added`, the default, or `title`). |
+| `GET /api/audiobooks/:id` | `AudiobookResponse`: a book by its collection id or by any of its chapters' document ids (either gives the whole book), or one audio document on its own. Chapters in order, each with its `fileUrl`, `mime` and running time. `404` for anything that is not an audiobook. |
+| `POST /api/audiobooks` | Multipart: one `.zip`, or one or more audio files; optional fields `title`, `librivoxId` and `locationId` (as fields or in the query). Each file is checked from its first bytes. `202` with `{ job }`: job `audiobook.add` unpacks a zip inside the location's incoming folder (names that climb out of it, absolute names and encrypted entries refuse the zip; links and other files are left out and listed in the result), orders the audio files by track number or name, files them under `collections/audiobooks/<title>/` and records the book. Its result is `AudiobookAddResult`: `collectionId`, `title`, `chapters`, `leftOut`. `400` for a zip together with other files, two zips, or a file that is neither a zip nor audio. |
+| `GET /api/audiobooks/librivox` | `LibrivoxShelfResponse`: the LibriVox shelf from `catalog/audiobooks.json`, each book with `approxBytes` and `inLibrary`. Makes no request to LibriVox or the Internet Archive. |
 
 ## Notes
 
@@ -579,7 +594,7 @@ Types: `packages/shared/src/kiwix.ts`.
 | Method and path | Purpose |
 | --- | --- |
 | `GET /api/kiwix/status` | `{ mode, available, problem, books }` (`ReferenceStatus`). `mode` is `external`, `managed` or `none`. |
-| `GET /api/kiwix/books` | Readable books (`ReferenceBook[]`), each with a `contentBase` address to append an article path to. |
+| `GET /api/kiwix/books` | Readable books (`ReferenceBook[]`), each with a `contentBase` address to append an article path to, and a `frameBase`: the same pages at the address the reader's frame uses (see [Security](security.md#reference-zim-content)). |
 | `GET /api/kiwix/books/:collectionId` | One book, and the `reason` it cannot be read when it cannot. |
 | `GET /api/kiwix/books/:collectionId/suggest` | Up to ten article titles that kiwix-serve suggests for the words, as `{ suggestions: [{ title, path, url }] }`. Query: `q` (at most 200 characters). |
 | `GET /api/kiwix/books/:collectionId/search` | Full-text search inside one book. Query: `q` (at most 300 characters), `offset`, `limit` (20 by default, at most 50). Answers `{ total, results }`, each result with `title`, `path`, `snippet`, `segments` (the snippet in pieces, the matched words marked) and the reader `url`. |
@@ -591,7 +606,7 @@ Types: `packages/shared/src/kiwix.ts`.
 | `POST /api/kiwix/books/:collectionId/files/add-all/plan` | What an "add all" would do. Body, an `ArchiveAddScope`: `{ kind: "list", q? }` for every document of the archive's list (those matching `q`), or `{ kind: "files", files: [{ path, title? }] }` for at most 300 files named one by one. Answers `ArchiveAddPlan`: `{ count, already, bytes, unsized, location: { id, name, freeBytes }, reserveBytes, refusal, ocrAuto }`. `count` files would be copied and `already` are in the library; `bytes` is what those with a known size come to and `unsized` how many have none; `refusal` is why it cannot start, in words, or `null`. Changes nothing. |
 | `POST /api/kiwix/books/:collectionId/files/add-all` | Starts the job that copies them (type `kiwix.add-files`, queue `reference-files`). Same body. Answers `{ job, already }` (`StartArchiveAddResponse`); `already` is true when one was under way for this collection, which is given back instead. A `507` when there is not room, a `409` when everything asked for is in the library, a `502` when the collection cannot be read. The job's progress is `current` of `total` files; it is cancelled with `POST /api/jobs/:id/cancel`; its `result` is an `ArchiveAddResult`: `{ scope, q, wanted, added, addedBytes, already, failed: [{ path, title, reason }], failedMore, notReached, stopped, stoppedReason, locationName }`, kept also when it was cancelled; `stopped` is `null`, `cancelled`, `space` (no room left), `storage` (the location went away) or `unreadable` (the collection did). |
 | `GET /api/kiwix/books/:collectionId/files/add-all` | `{ job }`: the "add all" for this collection that is waiting or running, failing that the last one that ended, or `null`. |
-| `GET` or `HEAD /kiwix/open/*` | The sandboxing proxy for article content. Not under `/api/`. Only `content/…` and a book's icon can be reached. Use the `contentBase` a book reports; the first segment after `/kiwix/` is fixed, and any other value is a `404`. Every answer carries a Content Security Policy `sandbox` without `allow-same-origin`, so a page runs in an origin of its own; a page also gets a small script that tells the reader which article is showing and which files it links to. kiwix-serve's redirects are sent back through the proxy. `502` while kiwix-serve is not answering. |
+| `GET` or `HEAD /kiwix/open/*` | The sandboxing proxy for article content. Not under `/api/`. Only `content/…` and a book's icon can be reached. Use the `contentBase` a book reports; the first segment after `/kiwix/` is `open`, or this installation's own secret word (the one in `frameBase`), under which alone a sandboxed page is told it may read the answer; any other value is a `404`. Every answer carries a Content Security Policy `sandbox` without `allow-same-origin`, so a page runs in an origin of its own; a page also gets a small script that tells the reader which article is showing, which files and which other pages of the archive it links to, and when a video on it has played to the end, and gives the page in-memory stand-ins for the cookies and browser storage a sandbox refuses. kiwix-serve's redirects are sent back through the proxy. `502` while kiwix-serve is not answering. |
 
 ## Downloads
 
@@ -599,7 +614,8 @@ Types: `packages/shared/src/downloads.ts`.
 
 | Method and path | Purpose |
 | --- | --- |
-| `GET /api/downloads` | Every download, newest first (`DownloadDto[]`), with progress, speed, time remaining and, for failures, `error` and `errorKind`. |
+| `GET /api/downloads` | Every download that has not finished and the 50 most recently finished (completed or cancelled), newest first (`DownloadsResponse`: `downloads`, `DownloadDto[]` with progress, speed, time remaining and, for failures, `error` and `errorKind`; and `historyTotal`, how many have finished all told). |
+| `GET /api/downloads/history` | Finished downloads, most recently finished first, a page at a time (`DownloadHistoryResponse`: `downloads`, `total`, `offset`). Query: `offset`, `limit` (50 by default, at most 200). |
 | `GET /api/downloads/plan` | What the queue is going to do (`DownloadPlan`): what is active, waiting and paused, estimated start and finish times, and whether each storage location has room for what is queued. |
 | `GET /api/downloads/:id` | Everything known about one download (`DownloadDetail`): source and mirror, checksums, destination, timing, recent speed readings, history of state changes, attempts. |
 | `POST /api/downloads/pause-all` | Pauses every active download. `{ paused }`. |
@@ -692,6 +708,7 @@ Types: `packages/shared/src/maps.ts`. See [maps.md](maps.md).
 | `GET /api/maps/tiles/:z/:x/:y.mvt` | A vector tile from the best installed region, with `Cache-Control: private, max-age=3600` and an `ETag` naming the region that answered; `304` with no body when `If-None-Match` names the same one. `204` when no region has it, with `Cache-Control: no-cache` (a drive may be gone for a moment). With `?raw=1` a gzipped tile is sent as stored: no `Content-Encoding`, `X-Outpost-Tile-Encoding: gzip` instead, `Cache-Control: no-store` and no `ETag`. That is for a browser keeping the tile itself; see below. |
 | `GET /api/maps/terrain/:z/:x/:y.webp` (or `.png`) | A terrain tile, answered as map tiles are. |
 | `GET /api/maps/terrain-profile` | The ground along the great circle between two points, read from installed terrain (`TerrainProfile` in `packages/shared/src/radio.ts`). Query: `from` and `to`, each `latitude,longitude`. At most 4,096 samples; `heights` holds `null` where no terrain is installed, and `gaps` names those stretches. Points more than 1,000 km apart, or in the same place, are refused with a 400. Nothing is downloaded. See [maps.md](maps.md#line-of-sight). |
+| `GET /api/maps/height` | The height of the ground at one point, read from installed terrain through the same sampler as a route's heights (`PointHeight` in `packages/shared/src/maps.ts`). Query: `at` (`latitude,longitude`). Answers `heightMeters` (metres above sea level as the terrain gives it, to a tenth of a metre) and `cellMeters` (the width of the terrain cell it was read from), both `null` where no installed terrain covers the point. Sent with `Cache-Control: private, max-age=60`. Bad input is a 400. Nothing is downloaded. See [maps.md](maps.md#the-height-of-the-ground). |
 | `GET /api/maps/sight-range` | A repeater's estimated range: how far out a station stays in line of sight of an aerial on each of 72 bearings, from installed terrain (`SightRange` in `packages/shared/src/radio-range.ts`). Query: `at` (`latitude,longitude`), `aerial` and `station` (heights above the ground in metres, 0 to 1,000). Out to 100 km. `coverage` is `terrain`, `partial` or `none`; with `none`, `bearings` is empty and `horizonMeters` is the smooth-Earth radio horizon. Kept for the place, the heights and the terrain installed. Bad input is a 400. Nothing is downloaded. See [radio.md](radio.md#the-estimated-range). |
 | `GET /api/maps/area-size?bbox=west,south,east,north&maxZoom=14&terrain=1` | What keeping that box on a phone would fetch, read from the installed archives' directories without reading a tile (`MapAreaSize`): per layer the number of tiles the installed maps hold in the box, their bytes as stored, and the zoom range, which stops at the deepest zoom installed. `map` is `null` when no detailed map is installed; `terrain` is `null` unless asked for and installed. `400` for a box that is not one; `413` (`too_large`) past 12,000 tile positions in one layer. Changes nothing. |
 
@@ -755,6 +772,8 @@ The live event `layers.changed` is published when a pack is installed, updated o
 | `GET /api/maps/places/datasets` | Installed place-name datasets. |
 | `POST /api/maps/places/datasets` | Downloads one. Body: `dataset` (`cities500`, `cities15000` or `country`), `country` (two letters, with `country`), `locationId?`. `{ download }`. |
 | `DELETE /api/maps/places/datasets/:id` | Removes a dataset and its names. |
+| `POST /api/maps/places/os-names/check` | Asks Ordnance Survey's Downloads API (`api.os.uk`) for the current edition of OS Open Names, the size and MD5 of its CSV file for Great Britain, and says what is held (`OsNamesCheck`: `edition`, `editionLabel`, `sizeBytes`, `md5`, `fileName`, `host`, `installed`, `updateAvailable`, `checkedAt`). The answer is kept for half an hour. `503` (`offline`) or `502` (`upstream`) when OS cannot be reached or read. |
+| `POST /api/maps/places/os-names` | Downloads the edition the last check found, as a job. Body: `locationId?`, `roads?` (default `true`; `false` leaves streets and road numbers out). `{ download }`. `409` with no check in the last half hour, or when that edition (with the same choice of roads) is already installed. A newer edition replaces the one held once it is in. |
 
 ### Markers and tracks
 
@@ -1006,8 +1025,53 @@ unfinished game of Solitaire, Peg solitaire, Sudoku, Draughts or Pairs is never 
 | `GET /api/games` | `{ tallies, allotmentStarted }`: for `solitaire`, `peg-solitaire`, `sudoku`, `draughts` and `pairs`, a tally for each way of playing it (`{ played, won, bestSeconds, fewestMoves, fewestLeft, lastAt }`), and whether the allotment has been started. |
 | `POST /api/games/:game/results` | One finished game of `solitaire`, `peg-solitaire`, `sudoku`, `draughts` or `pairs`: `variant` (`draw-1`, `draw-3`; `english`; `gentle`, `steady`, `testing`; `computer`, `two-player`; `small`, `medium`, `large`), `won`, and optionally `seconds` (0–86,400), `moves` (0–100,000) and `left` (0–100, the pegs left in Peg solitaire). A best time or fewest moves is kept only from a win; the fewest left from any game. Counts stop at 999,999. `400` for a game, a way of playing or a figure that is not one. Returns `{ tally }`. |
 | `DELETE /api/games/:game` | Forgets a game's tally ("Clear the tally"), or, for `allotment`, the whole plot ("Start again"). Returns `{ removed }`. |
-| `GET /api/games/allotment` | `{ plot, now, hemisphere, hemisphereFrom, season, awayMs, started }`: the household's plot worked out to the server's clock, without writing it (or a new plot, not stored, before the first action); `hemisphereFrom` is `setting`, `home place` or `default`. `409` with `details.damaged` when the stored plot cannot be read; it is not replaced. |
-| `POST /api/games/allotment/actions` | One action, stamped with the server's clock (never earlier than the plot's own): `{ type: "sow", bed, crop }`, `water`, `harvest` (each with `bed`, 0–13), `harvestAll`, `collect` (optional `thing`: `hens`, `beehive`, `appleTree`), `sell` (`item`, `count` 1–9,999 or `"all"`), `sellAll`, `buyBed`, `buy` (`thing`), `setHemisphere` (`auto`, `north`, `south`). Answers as the `GET` does. `409` with the reason for an action that cannot be done ("That bed already has carrots in it."); nothing changes. Publishes `games.changed`. |
+| `GET /api/games/allotment` | `{ plot, now, hemisphere, hemisphereFrom, season, awayMs, started }`: the household's plot worked out to the server's clock, without writing it (or a new plot, not stored, before the first action); `hemisphereFrom` is `setting`, `home place` or `default`. The plot is version 2 (`plot.v`): each bed is `{ crop, grown, wetUntil, composted, sownAt }`, where `wetUntil` is when the can's water runs out (0 when never watered; version 1 had a `watered` flag instead). A stored version 1 plot is answered in the version 2 shape, and written in it at the next action. `409` with `details.damaged` when the stored plot cannot be read; it is not replaced. |
+| `POST /api/games/allotment/actions` | One action, stamped with the server's clock (never earlier than the plot's own): `{ type: "sow", bed, crop }`, `water`, `harvest` (each with `bed`, 0–13), `harvestAll`, `collect` (optional `thing`: `hens`, `beehive`, `appleTree`), `sell` (`item`, `count` 1–9,999 or `"all"`), `sellAll`, `buyBed`, `buy` (`thing`), `setHemisphere` (`auto`, `north`, `south`). Answers as the `GET` does. `409` with the reason for an action that cannot be done ("That bed already has carrots in it."); nothing changes. Sowing a crop out of its months is never refused (it waits), and watering is never refused for a bed with a crop that is not ripe (it tops the water up to 12 hours). Publishes `games.changed`. |
+
+## Messages (the household board)
+
+Types: `packages/shared/src/board.ts`; see [messages.md](messages.md). Every message
+belongs to a `channel` (`board` is the household's own; the pattern is
+`^[a-z0-9][a-z0-9:._-]{0,63}$`) and has a `source` (`here`, or a transport's name).
+Names, words and places are plain text, never markup. Each address may post, check in,
+change or remove 30 times a minute and send 30 files an hour; past that, `429` with
+`details.retryAfterSeconds`. Every change publishes `board.changed` with
+`{ action, channel, kind?, author?, excerpt?, status? }`.
+
+| Route | What it does |
+| --- | --- |
+| `GET /api/board/messages` | `{ messages, older }`: a page of a channel's history, oldest first. Query: `channel` (default `board`), `before` (a message id: the page before it), `limit` (1–200, default 50). `older` is the id to pass as `before` for the page before, or null. `404` for a `before` that is not in the channel. |
+| `GET /api/board/messages/:id` | `{ message }`. |
+| `GET /api/board/summary` | `{ checkIns, people, newSince, newestAt, fileDays, limits }`: each person's latest check-in on the household's board (the household's people first, then anyone else), the names to offer a device choosing one, how many messages are newer than `since` (a query parameter, milliseconds), the newest message's time, how many days sent files are kept (0: until removed), and the limits. |
+| `POST /api/board/messages` | `{ author, body, channel? }`. A name of 1–40 characters (longer is cut; control characters removed) and 1–10,000 characters of words. Returns `{ message }`. |
+| `POST /api/board/check-ins` | `{ author, status: "safe" \| "help" \| "other", body?, place?, position?, channel? }`. `other` needs words. `place` up to 120 characters; `position` is `{ lat, lon, accuracyM }` (`accuracyM` may be null). Returns `{ message }`. |
+| `PATCH /api/board/messages/:id` | `{ by, body?, place?, status?, baseUpdatedAt }`: anyone may change any message; it records who and when. `place` and `status` only for a check-in. `409` when `baseUpdatedAt` is not the message's `updatedAt` (changed elsewhere meanwhile) or the message was removed; nothing changes. |
+| `POST /api/board/messages/:id/remove` | `{ by }`: removes a message for everyone. Its words, place, position and file go; the row stays with `removed: { by, at }`. Removing it again changes nothing. |
+| `POST /api/board/files` | `multipart/form-data`: the fields `author`, `body` (optional) and `channel` (optional), then one file of up to 200 MB. `413` over the size, `507` when the board already keeps 100 files or 4 GB, or the data folder lacks room, `400` for an empty file or fields after the file. Returns `{ message }` with `file: { id, name, sizeBytes, picture, expiresAt, gone, url }`. |
+| `GET /api/board/files/:id` | The file, always as `Content-Disposition: attachment`, with `Content-Security-Policy: sandbox; default-src 'none'`, `nosniff`, and `application/octet-stream` unless its first bytes show a PNG, JPEG, GIF or WebP picture. `404` once it is gone. |
+| `POST /api/board/files/:id/library` | Copies the file into the library through the same path as any file added there. Returns `{ status: "created" \| "duplicate", document }`. |
+
+Setting: `board.fileDays` (0–365, default 7; 0 keeps files until removed), through
+`PATCH /api/settings`.
+
+## Learning progress
+
+Types: `packages/shared/src/learning.ts`. Where each learner got to in a reference
+archive, written by the reader ([learning.md](learning.md)). A `learner` is a name of at
+most 40 characters (spaces tidied), or `""` for "Just me"; it proves nothing. Progress is
+kept under the archive's name without its date. `collectionId` must be an installed ZIM
+collection (`404` otherwise); `path` is the page's address inside it, at most 2,000
+characters, never holding `..` or control characters (`400`).
+
+| Method and path | Purpose |
+| --- | --- |
+| `POST /api/learning/visits` | A page left, hidden, or still open after a minute. Body: `learner`, `collectionId`, `path`, `title`, `seconds` (0–86,400), `opened` (the first write of a visit). The seconds added are held to two minutes and to the time since the page was last written plus five seconds. `409` beyond 50 learners. Returns `{ page }`. |
+| `POST /api/learning/done` | Marks a page done or not. Body: `learner`, `collectionId`, `path`, `title`, `done`, `how` (`marked`, the default, or `watched`). A page marked by hand stays `marked` when its video then ends. Returns `{ page }`. Publishes `learning.changed`. |
+| `POST /api/learning/topics` | The pages of the same archive a page links to: `collectionId`, `path`, `title`, `links` (at most 600), `home`. A page of more than 300 links that is not the first page is not kept (`{ kept: false }`). |
+| `GET /api/learning/page` | `{ page }` for `learner`, `collectionId`, `path`, or `null`. Changes nothing. |
+| `GET /api/learning/learners` | `{ learners: [{ name, courses, pages, lastAt }], household }`: everyone with progress, the most recent first, and the household's people from Supplies and the emergency plans. |
+| `GET /api/learning/progress` | `{ courses, weekFrom }` for `learner=<name>` or `everyone=1` (one is required), optionally one `collectionId`. Each course: `{ learner, archive, title, collectionId, last: { path, title, at }, pagesOpened, pagesDone, secondsThisWeek, secondsInAll, topics: [{ path, title, listed, done }] }`; `collectionId` is `null` when the archive is not installed now. `weekFrom` is Monday at midnight by the server's clock. |
+| `DELETE /api/learning/progress` | Removes `learner=<name>`'s progress, or `everyone=1`'s (and the topic lists). Returns `{ removed: { learners, pages } }`. Publishes `learning.changed`. |
 
 ## Nuclear preparedness
 
@@ -1020,7 +1084,7 @@ what the person typed is kept; the effects are worked out in the browser from
 | `GET` / `POST /api/nuclear/scenarios` | Saved scenarios, newest change first, as `{ scenarios }`. `POST` body: `name`, `notes`, `lat`, `lon`, `effects` (`{ yieldKt, burst, wind }`: `burst` is `{ kind: "surface" }`, `{ kind: "height", metres }` or `{ kind: "optimum", psi: 20 \| 10 \| 5 \| 2 \| 1 }`; `wind` is `{ fromDegrees, kmh }` or `null`). Returns the scenario, `201`. |
 | `GET` / `PATCH` / `DELETE /api/nuclear/scenarios/:id` | One scenario. `PATCH` takes the whole scenario, as `POST` does, and `baseUpdatedAt` (`NuclearScenarioUpdate`): if the stored scenario is newer the answer is `409 conflict` with `details.current` (`{ updatedAt, name }`), and nothing is overwritten. Without it the change is made regardless. |
 | `GET` / `POST /api/nuclear/sets` | Sets of scenarios kept together as they were on the map, as `{ sets }`. `POST` body: `name`, `members` (one to six, each a scenario as above with `letter`, `A` to `F`, each once, and `hidden`). Returns the set, `201`. Nothing about a set as a whole is worked out or answered. |
-| `GET` / `PATCH` / `DELETE /api/nuclear/sets/:id` | One set. `PATCH` takes the whole set. |
+| `GET` / `PATCH` / `DELETE /api/nuclear/sets/:id` | One set. `PATCH` takes the whole set, as `POST` does, and `baseUpdatedAt` (`NuclearSetUpdate`): if the stored set is newer the answer is `409 conflict` with `details.current` (`{ updatedAt, name }`), and nothing is overwritten. Without it the change is made regardless. |
 
 A scenario the model cannot answer (a yield outside 1 kiloton to 10 megatons, a height
 above 12,000 m or above the blast curves' scaled 5,000 feet, a wind outside 8 to 45
@@ -1233,6 +1297,22 @@ document and nuclear scenario is now, `null` for one deleted since.
 | `POST /api/emergency-plans/:id/reset` | Clear the ticks and the start. |
 | `POST /api/emergency-plans/:id/reviewed` | Mark it looked over now. |
 | `POST /api/emergency-plans/:id/opened` | Record that it was opened now (sent by the screens when a person opens one). |
+
+## Mesh radio
+
+Types: `packages/shared/src/mesh.ts`; see [mesh-radio.md](mesh-radio.md). Radio channels
+are board channels (`meshtastic:longfast`, `meshcore:0`): read and written with the
+board's own routes, where a message too long for the radio, a file, or an edit is
+refused with `400`. A message's `meta` carries `MeshMeta` (`node`, `snr`, `hops`,
+`delivery`). Status changes publish `mesh.changed`.
+
+| Route | What it does |
+| --- | --- |
+| `GET /api/mesh` | `MeshResponse`: each way in's set-up (passwords only as `passwordSet`) and status, the radio channels carried, `right` (whether this request may change it), `inContainer`, `lanAccess`. |
+| `GET /api/mesh/devices` | `{ devices, platform }`: devices in `/dev` with the names USB radios get. Made by the server; nothing in the request is a path. |
+| `PUT /api/mesh/meshtastic` | Body `MeshtasticInput`: `mode` (`off`, `broker`, `client`), `broker` `{ port, userName, password? }`, `client` `{ host, port, userName, password?, rootTopic }`, `channels` `[{ name, index }]`. A password left out keeps the one set; `""` removes it. Starts, restarts or stops the link and answers `MeshResponse`. `403` from any device but the computer Outpost runs on; `400` for a broker without a password, an address that is not one, a channel listed twice. |
+| `PUT /api/mesh/meshcore` | Body `MeshCoreInput`: `mode` (`off`, `serial`, `tcp`), `device` (one from `/api/mesh/devices`), `host`, `port`, `channels` (slots). `403` as above; `400` for a device not listed now. |
+| `POST /api/mesh/test` | Body `{ channel, author }`: posts "Test message from Outpost" on a carried radio channel, as `POST /api/board/messages` would. `{ message }`. |
 
 ## Everything else
 

@@ -20,6 +20,7 @@ import type { MapEngine } from "@/features/maps/map/engine";
 import { detailLabel } from "@/features/maps/panels/add-region";
 import { Fact, PanelHeading } from "@/features/maps/ui";
 import { errorMessage } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { formatNumber, plural } from "@/lib/utils";
 import { areaRefusal, dismissAreaWork, measureArea, roomLeft, startArea, stopArea, useAreaWork } from "./area";
 import { DEVICE, DeviceIcon, KEEP_ON_THIS_DEVICE } from "./device";
@@ -28,7 +29,7 @@ import { keepingSupported, outOfRoomMessage, removeKept, useKept } from "./store
 
 const KEPT_PATH = "/kept";
 const HTTPS_SETTINGS = "/settings#https";
-const failed = (error: unknown) => toast.error(outOfRoomMessage(error) ?? errorMessage(error));
+const failed = (error: unknown) => notify.error(outOfRoomMessage(error) ?? errorMessage(error));
 
 /** What a keeping action says where this browser cannot keep anything (a plain http address): why, and where to put it right. */
 export const KEEPING_NEEDS_HTTPS = `Keeping things on this ${DEVICE} needs Outpost opened at an HTTPS address, which this one is not. Settings, “HTTPS on your network”, says how to give it one.`;
@@ -104,7 +105,7 @@ export function KeepNoteMenuItem({ note }: { note: NoteRef }) {
               { id: working },
             );
           },
-          (error) => toast.error(outOfRoomMessage(error) ?? errorMessage(error), { id: working }),
+          (error) => notify.error(outOfRoomMessage(error) ?? errorMessage(error), { id: working }),
         );
       }}
     >

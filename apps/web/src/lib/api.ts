@@ -46,7 +46,22 @@ async function parse<T>(response: Response): Promise<T> {
   throw new ApiError(response.status, "http", `The server answered with an error (${response.status}).`);
 }
 
-async function request<T>(method: string, path: string, options: { query?: Query; body?: unknown; signal?: AbortSignal } = {}): Promise<T> {
+/** Browsers refuse a keepalive request with a larger body than this. */
+const KEEPALIVE_LIMIT = 60_000;
+
+interface RequestOptions {
+  /**
+   * Lets the request finish after the page has gone: for the save made as a page is hidden
+   * or closed. A body too large for keepalive is sent the ordinary way, and may be cut off.
+   */
+  keepalive?: boolean;
+}
+
+async function request<T>(
+  method: string,
+  path: string,
+  options: { query?: Query; body?: unknown; signal?: AbortSignal } & RequestOptions = {},
+): Promise<T> {
   const headers: Record<string, string> = { Accept: "application/json", "X-Outpost-Request": "1" };
   let body: BodyInit | undefined;
   if (options.body instanceof FormData) {
@@ -55,6 +70,7 @@ async function request<T>(method: string, path: string, options: { query?: Query
     headers["Content-Type"] = "application/json";
     body = JSON.stringify(options.body);
   }
+  const keepalive = options.keepalive === true && typeof body === "string" && body.length <= KEEPALIVE_LIMIT;
   let response: Response;
   try {
     response = await fetch(withQuery(path, options.query), {
@@ -63,6 +79,7 @@ async function request<T>(method: string, path: string, options: { query?: Query
       body,
       signal: options.signal,
       credentials: "same-origin",
+      ...(keepalive ? { keepalive } : {}),
     });
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") throw error;
@@ -145,8 +162,8 @@ export const api = {
   get: <T>(path: string, query?: Query, signal?: AbortSignal) => request<T>("GET", path, { query, signal }),
   post: <T>(path: string, body?: unknown, query?: Query, signal?: AbortSignal) =>
     request<T>("POST", path, { body: body ?? {}, query, signal }),
-  patch: <T>(path: string, body: unknown) => request<T>("PATCH", path, { body }),
-  put: <T>(path: string, body: unknown) => request<T>("PUT", path, { body }),
+  patch: <T>(path: string, body: unknown, options?: RequestOptions) => request<T>("PATCH", path, { body, ...options }),
+  put: <T>(path: string, body: unknown, options?: RequestOptions) => request<T>("PUT", path, { body, ...options }),
   delete: <T>(path: string, query?: Query) => request<T>("DELETE", path, { query }),
   upload: <T>(path: string, form: FormData, query?: Query) => request<T>("POST", path, { body: form, query }),
   stream,
