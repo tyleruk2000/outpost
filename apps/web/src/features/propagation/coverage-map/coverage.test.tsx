@@ -110,6 +110,18 @@ interface Server {
   deleted: string[];
 }
 
+/**
+ * Stands in for the live-events stream, which tells the screen each time a job moves (its query is under "jobs"):
+ * the screen's own poll is only a slow fallback for when that stream is down.
+ */
+let jobEvents: number | undefined;
+function withJobEvents(client: QueryClient): QueryClient {
+  window.clearInterval(jobEvents);
+  jobEvents = window.setInterval(() => void client.invalidateQueries({ queryKey: ["jobs"] }), 300);
+  return client;
+}
+afterEach(() => window.clearInterval(jobEvents));
+
 function showPage(
   options: {
     engineReady?: boolean;
@@ -161,7 +173,7 @@ function showPage(
     }),
   );
   render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+    <QueryClientProvider client={withJobEvents(new QueryClient({ defaultOptions: { queries: { retry: false } } }))}>
       <MemoryRouter initialEntries={["/radio/coverage"]}>
         <Routes>
           <Route path="/radio/coverage" element={<CoveragePage />} />
