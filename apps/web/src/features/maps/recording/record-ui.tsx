@@ -72,6 +72,45 @@ export function useNow(ticking: boolean): number {
   return now;
 }
 
+/**
+ * How often the line on the map follows a recording while fixes arrive. Each redraw of the
+ * map costs frames and processor time, and a fix a second redrawn at once kept a phone
+ * busy for nothing anyone looks at that closely; every fix is still kept as it arrives.
+ */
+export const REDRAW_EVERY_MS = 5_000;
+
+/**
+ * `value`, handed on at most once every `ms`: a change after a quiet spell at once, later
+ * ones together at the end of the wait. When `now` changes (the recording is paused or
+ * stopped, the page is shown) the latest value is handed on straight away.
+ */
+export function useAtMostEvery<T>(value: T, ms: number, now: unknown): T {
+  const [handed, setHanded] = useState(value);
+  const last = useRef(0);
+  const latest = useRef(value);
+  latest.current = value;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a change of `now` is what asks for the latest value
+  useEffect(() => {
+    last.current = Date.now();
+    setHanded(latest.current);
+  }, [now]);
+  useEffect(() => {
+    if (Object.is(value, handed)) return;
+    const hand = () => {
+      last.current = Date.now();
+      setHanded(latest.current);
+    };
+    const wait = last.current + ms - Date.now();
+    if (wait <= 0) {
+      hand();
+      return;
+    }
+    const timer = window.setTimeout(hand, wait);
+    return () => window.clearTimeout(timer);
+  }, [value, handed, ms]);
+  return handed;
+}
+
 /** A ring with a dot in it: "record". The dot is the lamp while a recording is live. */
 function RecordGlyph({ live }: { live: boolean }) {
   return (
@@ -714,15 +753,18 @@ export function TrackRecording({ engine, onShowTrack }: { engine: MapEngine | nu
     void recorder.init();
   }, [recorder]);
 
-  // The line so far, and where it ends while it is live.
-  // Out of sight nothing is drawn, so the line is handed to the map when the page is shown again.
+  // The line so far, and where it ends while it is live: redrawn at most every few seconds
+  // while recording, and at once on a pause or a stop. Out of sight nothing is drawn, so the
+  // line is handed to the map when the page is shown again.
   const visible = usePageVisible();
-  // biome-ignore lint/correctness/useExhaustiveDependencies: the revision says when the line has changed
+  const recording = state.phase === "recording";
+  const drawn = useAtMostEvery(state, recording ? REDRAW_EVERY_MS : 0, `${state.phase}|${visible}`);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `drawn` says when to draw; what is drawn is the recorder's latest
   useEffect(() => {
     if (!engine || !visible) return;
-    const head = state.phase === "recording" ? state.position : null;
-    engine.setOverlay("o-recording", recordingData(recorder.displayLines(), head));
-  }, [engine, recorder, visible, state.lineRevision, state.phase, state.position]);
+    const latest = recorder.getSnapshot();
+    engine.setOverlay("o-recording", recordingData(recorder.displayLines(), latest.phase === "recording" ? latest.position : null));
+  }, [engine, recorder, visible, drawn]);
 
   // The first position after starting or resuming brings the map to where the walker is.
   const shown = useRef(false);
