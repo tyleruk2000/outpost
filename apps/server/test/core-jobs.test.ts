@@ -75,6 +75,41 @@ describe("the job runner", () => {
     await queue.close();
   });
 
+  it("logs a job whose end could not be written, and goes on to the next, with nothing left unhandled", async () => {
+    const errors: Array<[unknown, string]> = [];
+    const watched = {
+      ...log,
+      error: (details: unknown, message: string) => errors.push([details, message]),
+    } as unknown as FastifyBaseLogger;
+    const db = openDatabase(":memory:");
+    open.push(db.sqlite);
+    const queue = new JobQueue(db.db, new EventBus(), watched);
+    queue.register("work", { queue: "work", run: async () => ({ ok: true }) });
+    // The database refuses to write how the first job ended, and then how its failure ended
+    // (as a full disk would), and then works again.
+    const writes = queue as unknown as { update(id: string, patch: { state?: string }): void };
+    const update = writes.update.bind(queue);
+    let refused = 0;
+    vi.spyOn(writes, "update").mockImplementation((id, patch) => {
+      if (id === first.id && patch.state !== undefined && patch.state !== "running" && refused < 2) {
+        refused += 1;
+        throw new Error("database or disk is full");
+      }
+      update(id, patch);
+    });
+    const first = queue.enqueue("work", {}, { title: "First" });
+    queue.start();
+    const second = queue.enqueue("work", {}, { title: "Second" });
+    await queue.whenIdle(2000);
+    expect(refused).toBe(2);
+    expect(errors).toContainEqual([
+      { job: first.id, err: expect.objectContaining({ message: "database or disk is full" }) },
+      "the job runner could not record a job's end",
+    ]);
+    expect(queue.get(second.id)).toMatchObject({ state: "succeeded", result: { ok: true } });
+    await queue.close();
+  });
+
   it("runs two of the same job one after the other on a queue of one", async () => {
     const { queue } = queueOn();
     let running = 0;
