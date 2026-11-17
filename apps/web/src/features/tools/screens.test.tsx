@@ -129,7 +129,8 @@ describe("the radio screen", () => {
     show(<RadioToolsPage />);
     expect(screen.getByRole("heading", { level: 1, name: "Radio calculators" })).toBeInTheDocument();
     // 142.4 ÷ 7.1 = 20.06 m, in two legs.
-    expect(within(section("Antenna lengths")).getByText("10.03 m")).toBeInTheDocument();
+    // The answer (the drawing under it carries the same figures as labels).
+    expect(within(section("Antenna lengths")).getByText("10.03 m", { selector: "p" })).toBeInTheDocument();
     expect(within(section("Cable loss")).getByText(/dB$/)).toBeInTheDocument();
   });
 
