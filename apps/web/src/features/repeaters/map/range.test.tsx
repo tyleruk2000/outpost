@@ -79,7 +79,7 @@ describe("the estimate in words and on the map", () => {
 
 // ── The switch in the repeater's card ───────────────────────────────────────
 
-const engine = { setOverlay: vi.fn(), fitBounds: vi.fn(), isInView: () => false };
+const engine = { setOverlay: vi.fn(), fitBounds: vi.fn() };
 const fetched = vi.fn();
 const json = (body: unknown, status = 200) =>
   Promise.resolve(new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } }));
@@ -87,13 +87,26 @@ const json = (body: unknown, status = 200) =>
 function Harness({ antennaMeters, onOpenOffline }: { antennaMeters: number | null; onOpenOffline?: () => void }) {
   const range = useRepeaterRange({
     engine: engine as unknown as MapEngine,
-    repeater: { id: "r1", ...AT, antennaMeters },
+    repeater: { id: "r1", callsign: "QZ3RNG", ...AT, antennaMeters },
     onOpenOffline,
   });
-  return <div>{range.control}</div>;
+  return (
+    <div>
+      {range.folded ?? (
+        <>
+          {range.foldButton}
+          {range.control}
+        </>
+      )}
+    </div>
+  );
 }
 
-function show(antennaMeters: number | null = 15, onOpenOffline = vi.fn()) {
+/** A wide screen unless asked for a phone: the card folds to one line only on a phone. */
+function show(antennaMeters: number | null = 15, onOpenOffline = vi.fn(), phone = false) {
+  vi.spyOn(window, "matchMedia").mockImplementation(
+    (query: string) => ({ matches: !phone, media: query, addEventListener() {}, removeEventListener() {} }) as unknown as MediaQueryList,
+  );
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={client}>
@@ -101,6 +114,11 @@ function show(antennaMeters: number | null = 15, onOpenOffline = vi.fn()) {
     </QueryClientProvider>,
   );
   return { onOpenOffline };
+}
+
+/** Once an outline is drawn the card is folded to one line; this opens it out again. */
+async function unfold() {
+  await userEvent.click(await screen.findByRole("button", { name: "Show the details" }));
 }
 
 const drawn = () => engine.setOverlay.mock.calls.filter(([, data]) => data.features.length > 0);
@@ -112,13 +130,15 @@ beforeEach(() => {
   fetched.mockReset();
   vi.stubGlobal("fetch", fetched);
 });
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
 
 describe("the estimated range switch", () => {
   it("is off at first, and then asks nothing and draws nothing", () => {
     show();
     expect(screen.getByRole("switch", { name: "Estimated range" })).not.toBeChecked();
-    expect(screen.getByText("Where its aerial is in line of sight over the ground.")).toBeInTheDocument();
     expect(fetched).not.toHaveBeenCalled();
     expect(drawn()).toEqual([]);
   });
@@ -136,14 +156,18 @@ describe("the estimated range switch", () => {
     expect(Object.fromEntries(url.searchParams)).toEqual({ at: "57.00000,-3.40000", aerial: "15", station: "1.5" });
     // The heights and the limit are said, the listed height as listed.
     expect(
-      screen.getByText(/Repeater aerial 15 m above the ground, as listed\. Handheld 1\.5 m: held at head height\. Out to 100 km/),
+      screen.getByText(
+        /Line of sight only\. Repeater aerial 15 m above the ground, as listed\. Handheld 1\.5 m: held at head height\. Out to 100 km/,
+      ),
     ).toBeInTheDocument();
 
     answer(await json(range("terrain")));
-    expect(await screen.findByText("In sight to about 18 km (11 mi) on most bearings.")).toBeInTheDocument();
+    // Drawn, the card folds to one line and the outline is brought into view.
+    await unfold();
+    expect(screen.getByText("In sight to about 18 km (11 mi) on most bearings.")).toBeInTheDocument();
     expect(drawn()).toHaveLength(1);
     expect(engine.fitBounds).toHaveBeenCalledTimes(1);
-    expect(screen.queryByRole("button", { name: "Offline maps" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Get terrain in Offline maps" })).toBeNull();
     // What it is not, behind one disclosure.
     await userEvent.click(screen.getByText("What this is, and is not"));
     expect(
@@ -165,11 +189,13 @@ describe("the estimated range switch", () => {
     fetched.mockReturnValue(json(range("none")));
     const { onOpenOffline } = show(null);
     await userEvent.click(screen.getByRole("switch", { name: "Estimated range" }));
-    expect(await screen.findByText("Without terrain: the smooth-Earth radio horizon, about 18 km (11 mi).")).toBeInTheDocument();
+    await unfold();
+    expect(screen.getByText("Without terrain: the smooth-Earth radio horizon, about 18 km (11 mi).")).toBeInTheDocument();
     expect(screen.getByText(/assumed: its list gives no height/)).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "Repeater aerial" })).toHaveValue("10");
     expect(new URL(String(fetched.mock.calls[0]![0]), "http://outpost.test").searchParams.get("aerial")).toBe("10");
-    await userEvent.click(screen.getByRole("button", { name: "Offline maps" }));
+    expect(screen.getByText("No terrain is held here, so it is a plain circle.")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Get terrain in Offline maps" }));
     expect(onOpenOffline).toHaveBeenCalled();
   });
 
@@ -177,12 +203,16 @@ describe("the estimated range switch", () => {
     fetched.mockReturnValue(json(range("partial", (bearing) => (bearing < 30 ? { limit: "terrain", reachMeters: 9000 } : {}))));
     show();
     await userEvent.click(screen.getByRole("switch", { name: "Estimated range" }));
+    await unfold();
+    expect(screen.getByText("Terrain covers only part of the area within 100 km (62 mi).")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Get terrain in Offline maps" })).toBeInTheDocument();
+    // The fuller account is behind the disclosure.
+    await userEvent.click(screen.getByText("What this is, and is not"));
     expect(
-      await screen.findByText(
+      screen.getByText(
         "Terrain is held for only part of the area within 100 km (62 mi). On 6 of 72 bearings it runs out while the aerial is still in sight, so the outline stops short there and is dashed.",
       ),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Offline maps" })).toBeInTheDocument();
+    ).toBeVisible();
   });
 
   it("says when it could not be worked out, and tries again", async () => {
@@ -192,6 +222,26 @@ describe("the estimated range switch", () => {
     expect(await screen.findByText("The range could not be worked out")).toBeInTheDocument();
     fetched.mockReturnValue(json(range("terrain")));
     await userEvent.click(screen.getByRole("button", { name: "Try again" }));
-    expect(await screen.findByText("In sight to about 18 km (11 mi) on most bearings.")).toBeInTheDocument();
+    await unfold();
+    expect(screen.getByText("In sight to about 18 km (11 mi) on most bearings.")).toBeInTheDocument();
+  });
+
+  it("folds the card to one line once the outline is drawn, on a phone as on a wide screen, and unfolds it again", async () => {
+    fetched.mockReturnValue(json(range("terrain")));
+    show(15, vi.fn(), true);
+    await userEvent.click(screen.getByRole("switch", { name: "Estimated range" }));
+    const folded = await screen.findByRole("region", { name: "QZ3RNG: estimated range" });
+    expect(folded).toHaveTextContent(/QZ3RNG\s*In sight to about 18 km$/);
+    expect(screen.queryByRole("radio", { name: "Handheld" })).toBeNull();
+    expect(engine.fitBounds).toHaveBeenCalledTimes(1);
+    await userEvent.click(screen.getByRole("button", { name: "Show the details" }));
+    expect(screen.getByRole("radio", { name: "Handheld" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Show less" }));
+    expect(screen.getByRole("region", { name: "QZ3RNG: estimated range" })).toBeInTheDocument();
+    // Switched off from the folded card: the card opens out again and the outline goes.
+    await userEvent.click(screen.getByRole("switch", { name: "Estimated range" }));
+    expect(screen.getByRole("switch", { name: "Estimated range" })).not.toBeChecked();
+    expect(screen.queryByRole("region", { name: "QZ3RNG: estimated range" })).toBeNull();
+    expect(engine.setOverlay.mock.calls.at(-1)![1].features).toEqual([]);
   });
 });

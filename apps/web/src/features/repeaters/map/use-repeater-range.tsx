@@ -17,8 +17,8 @@ import {
   type SightRange,
 } from "@outpost/shared";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronRight, CircleAlert } from "lucide-react";
-import { type ReactNode, type Ref, useCallback, useEffect, useId, useRef } from "react";
+import { ChevronDown, ChevronRight, ChevronUp, CircleAlert, X } from "lucide-react";
+import { type ReactNode, type Ref, useCallback, useEffect, useId, useRef, useState } from "react";
 import { Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Segmented, Spinner, Switch } from "@/components/ui/misc";
@@ -26,7 +26,9 @@ import { useDebounced, useStoredState } from "@/features/maps/hooks";
 import type { MapEngine } from "@/features/maps/map/engine";
 import { EMPTY } from "@/features/maps/map/overlays";
 import { NumberField } from "@/features/maps/radio/sight-panel";
+import { mapCard } from "@/features/maps/ui";
 import { api, errorMessage } from "@/lib/api";
+import { cn } from "@/lib/utils";
 import {
   aerialOf,
   DEFAULT_RANGE_PREFS,
@@ -44,17 +46,27 @@ import {
 } from "./range";
 
 /**
- * How much of the bottom of the map the repeater's card covers. On a phone the card sits
- * over the map, and with the range on it is tall, so it is measured rather than assumed.
+ * The part of the map the repeater's card leaves clear, measured: on a phone the card
+ * spans the width of the map at its foot, on a wide screen it stands at the top right
+ * beside the map's tools. Of the room above the card, below it and beside it, the
+ * largest is the room the outline is fitted into.
  */
-function cardCover(inside: Element | null): number {
-  if (window.matchMedia("(min-width: 48rem)").matches) return 0;
+function cardClearance(inside: Element | null): { keepClear?: { top?: number; right?: number; bottom?: number } } {
   const card = inside?.closest(".outpost-map-card")?.getBoundingClientRect();
   const map = document.querySelector(".outpost-map")?.getBoundingClientRect();
-  return card && map ? Math.max(0, map.bottom - card.top + 8) : 290;
+  if (!card || !map) return {};
+  const above = { bottom: Math.max(0, map.bottom - card.top + 8) };
+  const below = { top: Math.max(0, card.bottom - map.top + 8) };
+  const beside = { right: Math.max(0, map.right - card.left + 8) };
+  const room = [
+    { keep: above, area: map.width * (card.top - map.top) },
+    { keep: below, area: map.width * (map.bottom - card.bottom) },
+    { keep: beside, area: (card.left - map.left) * map.height },
+  ];
+  return { keepClear: room.reduce((best, next) => (next.area > best.area ? next : best)).keep };
 }
 
-type Placed = Pick<RepeaterDto, "id" | "lat" | "lon" | "antennaMeters">;
+type Placed = Pick<RepeaterDto, "id" | "callsign" | "lat" | "lon" | "antennaMeters">;
 
 export function useSightRange(at: { lat: number; lon: number } | null, aerial: number, station: number) {
   const where = at ? `${at.lat.toFixed(5)},${at.lon.toFixed(5)}` : "";
@@ -72,6 +84,12 @@ export function useSightRange(at: { lat: number; lon: number } | null, aerial: n
 export interface RepeaterRange {
   /** The switch and what it says, for the repeater's card; null for a repeater with no position. */
   control: ReactNode | null;
+  /** A button for the card's header that folds the card to one line, while the range is on. */
+  foldButton: ReactNode | null;
+  /** The card folded to one line (callsign, the answer in a few words, the switch), or null when it is not folded. */
+  folded: ReactNode | null;
+  /** Classes for the repeater's card: while the range is on, on a wide screen, it scrolls inside a greatest height rather than growing over the map. */
+  cardClass: string | undefined;
   /** Switches the range on and brings the outline into view once it is worked out: what a link from the repeater's page does. */
   show(): void;
 }
@@ -80,14 +98,18 @@ export function useRepeaterRange({
   engine,
   repeater,
   onOpenOffline,
+  onClose,
 }: {
   engine: MapEngine | null;
   /** The repeater that is open on the map, or null when none is. */
   repeater: Placed | null;
   /** Opens the part of the map's panel where terrain is downloaded. */
   onOpenOffline?: () => void;
+  /** Closes the repeater's card. */
+  onClose?: () => void;
 }): RepeaterRange {
   const [prefs, setPrefs] = useStoredState<RangePrefs>(RANGE_KEY, isRangePrefs, DEFAULT_RANGE_PREFS);
+  const [folded, setFolded] = useState(false);
   const placed = repeater && repeater.lat !== null && repeater.lon !== null ? { lat: repeater.lat, lon: repeater.lon } : null;
   const aerial = aerialOf(repeater?.antennaMeters ?? null, prefs);
   // A height being typed is asked about once the typing stops.
@@ -102,45 +124,71 @@ export function useRepeaterRange({
   }, [engine, shown]);
   useEffect(() => () => engine?.setOverlay(RANGE_SOURCE, EMPTY), [engine]);
 
-  // Switched on by a person: once the outline is known, bring it into view, unless it is in view already. From a
-  // link the map is still flying to the repeater, so whether it is in view now says nothing: it is always fitted.
-  const fit = useRef<"no" | "if-out" | "always">("no");
-  const section = useRef<HTMLElement>(null);
+  // Switched on, or another repeater opened with it on: once the outline is known the card folds to one line, so
+  // that there is room to see it, and the outline is brought into the part of the map the card leaves clear.
+  const pending = useRef(false);
+  const card = useRef<HTMLElement | null>(null);
+  const id = repeater?.id;
   useEffect(() => {
-    if (!engine || !shown || fit.current === "no") return;
-    const always = fit.current === "always";
-    fit.current = "no";
-    const cover = cardCover(section.current);
-    const [west, south, east, north] = rangeBounds(shown);
-    const corners = [
-      { lat: south, lon: west },
-      { lat: north, lon: east },
-    ];
-    if (always || !corners.every((corner) => engine.isInView(corner, cover)))
-      engine.fitBounds([west, south, east, north], { clearBottom: cover });
-  }, [engine, shown]);
+    if (id && prefs.on) pending.current = true;
+    if (!id) setFolded(false);
+  }, [id, prefs.on]);
+  useEffect(() => {
+    if (!engine || !shown || !pending.current) return;
+    if (!folded) {
+      setFolded(true);
+      return;
+    }
+    pending.current = false;
+    engine.fitBounds(rangeBounds(shown), cardClearance(card.current));
+  }, [engine, shown, folded]);
 
   const setOn = useCallback(
-    (on: boolean, from: "switch" | "link" = "switch") => {
-      fit.current = !on ? "no" : from === "link" ? "always" : "if-out";
+    (on: boolean) => {
+      pending.current = on;
+      if (!on) setFolded(false);
       setPrefs((current) => ({ ...current, on }));
     },
     [setPrefs],
   );
-  const show = useCallback(() => setOn(true, "link"), [setOn]);
+  const show = useCallback(() => setOn(true), [setOn]);
+  const keep = useCallback((element: HTMLElement | null) => {
+    if (element) card.current = element;
+  }, []);
 
+  const reading = range.data ? readRange(range.data) : null;
   const control = placed ? (
-    <RangeControl
-      ref={section}
-      prefs={prefs}
-      onPrefs={setPrefs}
-      onOn={(on) => setOn(on)}
-      aerial={aerial}
-      range={range}
-      onOpenOffline={onOpenOffline}
-    />
+    <RangeControl ref={keep} prefs={prefs} onPrefs={setPrefs} onOn={setOn} aerial={aerial} range={range} onOpenOffline={onOpenOffline} />
   ) : null;
-  return { control, show };
+  const foldButton =
+    placed && prefs.on ? (
+      <Button variant="ghost" size="icon-sm" aria-label="Show less" aria-expanded onClick={() => setFolded(true)} className="-mt-1">
+        <ChevronDown />
+      </Button>
+    ) : null;
+  const short = range.isPending ? "Working out the range" : range.isError ? "The range could not be worked out" : (reading?.short ?? "");
+  const foldedCard =
+    placed && prefs.on && folded && repeater ? (
+      // Two short lines: the callsign with the switch and the buttons, then the answer in a few words. Kept that
+      // small so that it fits in the room a phone gives a card even with large text, and leaves the map clear.
+      <section ref={keep} aria-label={`${repeater.callsign}: estimated range`} className={cn(mapCard, "py-1.5")}>
+        <div className="flex items-center gap-2">
+          <h2 className="min-w-0 flex-1 text-body font-semibold text-ink">{repeater.callsign}</h2>
+          <Switch aria-label="Estimated range" checked={prefs.on} onCheckedChange={setOn} className="max-md:my-[10px]" />
+          <Button variant="ghost" size="icon-sm" aria-label="Show the details" aria-expanded={false} onClick={() => setFolded(false)}>
+            <ChevronUp />
+          </Button>
+          {onClose ? (
+            <Button variant="ghost" size="icon-sm" aria-label="Close this repeater" onClick={onClose} className="-mr-1.5">
+              <X />
+            </Button>
+          ) : null}
+        </div>
+        <p className="tabular text-small text-ink-muted">{short}</p>
+      </section>
+    ) : null;
+  const cardClass = placed && prefs.on ? "md:max-h-[min(40rem,80vh)] md:overflow-y-auto md:overscroll-contain" : undefined;
+  return { control, foldButton, folded: foldedCard, cardClass, show };
 }
 
 const STATION_OPTIONS = RANGE_STATIONS.map((station) => ({ value: station.id, label: station.name }));
@@ -154,7 +202,7 @@ function RangeControl({
   range,
   onOpenOffline,
 }: {
-  ref: Ref<HTMLElement>;
+  ref: Ref<HTMLElement | null> | ((element: HTMLElement | null) => void);
   prefs: RangePrefs;
   onPrefs: (next: (current: RangePrefs) => RangePrefs) => void;
   onOn: (on: boolean) => void;
@@ -168,26 +216,20 @@ function RangeControl({
   const terrain = range.data ? describeRangeTerrain(range.data) : null;
   return (
     <section ref={ref} aria-label="Estimated range" className="mt-3 border-t border-border pt-2.5">
-      <div className="flex items-start gap-3">
-        <div className="min-w-0 flex-1">
-          <label htmlFor={id} className="text-small font-medium text-ink">
-            Estimated range
-          </label>
-          <p className="text-small text-ink-muted">Where its aerial is in line of sight over the ground.</p>
-        </div>
-        <Switch id={id} checked={prefs.on} onCheckedChange={onOn} className="mt-0.5 max-md:my-[10px]" />
+      <div className="flex items-center gap-3">
+        <label htmlFor={id} className="min-w-0 flex-1 text-small font-medium text-ink">
+          Estimated range
+        </label>
+        <Switch id={id} checked={prefs.on} onCheckedChange={onOn} className="max-md:my-[10px]" />
       </div>
       {prefs.on ? (
         <div className="mt-2.5 grid grid-cols-[minmax(0,1fr)] gap-2.5">
-          <div className="grid gap-1.5">
-            <span className="text-small font-medium text-ink">The other station</span>
-            <Segmented
-              label="The other station"
-              value={prefs.station}
-              onChange={(next) => onPrefs((current) => ({ ...current, station: next }))}
-              options={STATION_OPTIONS}
-            />
-          </div>
+          <Segmented
+            label="The other station"
+            value={prefs.station}
+            onChange={(next) => onPrefs((current) => ({ ...current, station: next }))}
+            options={STATION_OPTIONS}
+          />
           {aerial.listed ? null : (
             <div className="max-w-44">
               <NumberField
@@ -201,7 +243,7 @@ function RangeControl({
             </div>
           )}
           <p className="tabular text-small text-ink-muted">
-            Repeater aerial {formatHeight(aerial.meters)} above the ground,{" "}
+            Line of sight only. Repeater aerial {formatHeight(aerial.meters)} above the ground,{" "}
             {aerial.listed ? "as listed" : "assumed: its list gives no height"}. {station.name} {formatHeight(station.meters)}:{" "}
             {station.about}. Out to {formatReach(RANGE_MAX_METERS)}.
           </p>
@@ -227,18 +269,19 @@ function RangeControl({
             ) : reading ? (
               <div className="grid gap-1 text-small">
                 <p className="font-medium text-ink">{reading.title}</p>
-                {reading.sentences.map((sentence) => (
-                  <p key={sentence} className="text-ink-muted">
-                    {sentence}
+                {reading.note ? (
+                  <p className="text-ink-muted">
+                    {reading.note}{" "}
+                    {onOpenOffline ? (
+                      <button
+                        type="button"
+                        onClick={onOpenOffline}
+                        className="font-medium text-primary underline underline-offset-2 hover:no-underline max-md:inline-flex max-md:min-h-11 max-md:items-center"
+                      >
+                        Get terrain in Offline maps
+                      </button>
+                    ) : null}
                   </p>
-                ))}
-                {reading.needsTerrain && onOpenOffline ? (
-                  <div className="mt-1.5">
-                    <Button size="sm" onClick={onOpenOffline}>
-                      Offline maps
-                    </Button>
-                    <p className="mt-1 text-small text-ink-muted">Terrain comes with a map region, under Offline maps.</p>
-                  </div>
                 ) : null}
               </div>
             ) : null}
@@ -249,7 +292,11 @@ function RangeControl({
               <ChevronRight aria-hidden className="size-4 text-ink-muted transition-transform duration-150 group-open:rotate-90" />
               What this is, and is not
             </summary>
-            <div className="grid gap-1.5 pb-1 pl-6 text-small text-ink-muted">
+            {/* The long account scrolls inside the card rather than growing it over the map. */}
+            <div className="scroll-quiet grid max-h-56 gap-1.5 overflow-y-auto pb-1 pl-6 text-small text-ink-muted">
+              {reading?.sentences.map((sentence) => (
+                <p key={sentence}>{sentence}</p>
+              ))}
               <p>
                 An estimate of line of sight only: on each of {RANGE_BEARINGS} bearings, how far out a station at the height above stays in
                 sight of the repeater's aerial over the ground, on an Earth of 4/3 radius, as the line-of-sight check uses.

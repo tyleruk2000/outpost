@@ -357,12 +357,19 @@ to 100 km, through the same terrain code as the check between two points (tiles 
 cells are about the size of the step). A bearing ends where the aerial has been out of
 sight for more than 1 km, so a small hollow or a fold in a slope does not end it.
 
-The card then says, in short sentences and no finer than the inputs: the reach on most
-bearings and its range (distances to the whole kilometre from 10 km, the half
-kilometre below that, with miles beside them); the share of the ground inside the
-outline hidden by nearer ground, when it is 5% or more; on how many bearings higher
-ground further out is in sight again, and how far; and on how many it is still in sight
-at 100 km.
+**On screen.** Once the outline is drawn the card folds to two short lines (the
+callsign with the switch, a button to open it out and the close button; then the answer
+in a few words, such as "About 68 km, terrain partial"), and the map is fitted round the
+outline in the part the card leaves clear: above it on a phone, below or beside it on a
+wide screen, whichever is larger. Opened out, the card says the heights and the limit,
+the answer in one sentence (distances to the whole kilometre from 10 km, the half
+kilometre below that, with miles beside them), and one more line where the terrain is
+partial or missing. The rest is behind **What this is, and is not**, which scrolls
+inside the card: the share of the ground inside the outline hidden by nearer ground,
+when it is 5% or more; on how many bearings higher ground further out is in sight
+again, and how far; on how many it is still in sight at 100 km; and what the estimate
+leaves out. On a wide screen the opened card scrolls inside a greatest height rather
+than growing over the map.
 
 **Heights.**
 
@@ -373,8 +380,8 @@ at 100 km.
 | The ground | From installed terrain, under the repeater and along each bearing. Nothing is invented. |
 
 **With no terrain.** Where no terrain is installed under the repeater, the outline is
-the smooth-Earth radio horizon, a plain dashed circle, and the card says so and offers
-**Offline maps**, where terrain comes with a map region. Its radius is
+the smooth-Earth radio horizon, a plain dashed circle, and the card says so with a link,
+**Get terrain in Offline maps**, where terrain comes with a map region. Its radius is
 √(2kRh1) + √(2kRh2), with h1 and h2 the two heights in metres above the ground around
 them, R = 6,371 km and k = 4/3: about **4.12 × (√h1 + √h2) km**. (√(2 × 4/3 × 6,371,008.8 m)
 = 4,121.8 m for each √m.) This is the standard radio-horizon form for an effective Earth
@@ -410,8 +417,10 @@ The sums are in `packages/shared/src/radio-range.ts`, the request in
 (flat ground against the formula, the pass against the two-point check, a ridge, a hill
 against a valley, short and long shadows, partial and no terrain, refused input),
 `apps/web/src/features/repeaters/map/range.test.tsx` (the switch off, working, with
-terrain, without, with part, and failed) and `e2e/tests/repeater-range.mobile.spec.ts`
-(switched on from a repeater's screen at phone width over the suite's terrain fixture).
+terrain, without, with part, failed, and the card folding), and
+`e2e/tests/repeater-range.mobile.spec.ts` and `repeater-range.spec.ts` (switched on over
+the suite's terrain fixture at 390 and 1280 px wide: the outline at least 120 px across
+on screen and none of it under the card).
 
 ### Taking a set out
 

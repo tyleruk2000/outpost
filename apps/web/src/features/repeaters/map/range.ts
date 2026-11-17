@@ -70,6 +70,9 @@ export function formatReach(meters: number): string {
   return `${formatNumber(shown)} km (${formatNumber(roughMiles)} mi)`;
 }
 
+/** A reach as `formatReach` gives it, without the miles: for the card folded to one line. */
+export const formatKm = (meters: number) => formatReach(meters).replace(/ \(.*\)$/, "");
+
 /** Heights to a tenth of a metre below 10 m, whole metres above. */
 export function formatHeight(meters: number): string {
   return `${meters < 9.95 ? Number(meters.toFixed(1)) : Math.round(meters)} m`;
@@ -84,7 +87,11 @@ export interface RangeReading {
   coverage: SightRange["coverage"];
   /** The answer in a sentence. */
   title: string;
-  /** What else is worth knowing about this outline, shortest first. */
+  /** The answer in a few words, for the card folded to one line. */
+  short: string;
+  /** What the outline rests on, when that is less than the terrain all round: one short sentence, said beside the answer. */
+  note: string | null;
+  /** What else is worth knowing about this outline, shortest first: said behind the disclosure. */
   sentences: string[];
   /** Where terrain could be got, when there is too little of it. */
   needsTerrain: boolean;
@@ -93,9 +100,12 @@ export interface RangeReading {
 export function readRange(range: SightRange): RangeReading {
   const max = formatReach(range.maxMeters);
   if (range.coverage === "none") {
+    const horizon = Math.min(range.horizonMeters, range.maxMeters);
     return {
       coverage: "none",
-      title: `Without terrain: the smooth-Earth radio horizon, about ${formatReach(Math.min(range.horizonMeters, range.maxMeters))}.`,
+      title: `Without terrain: the smooth-Earth radio horizon, about ${formatReach(horizon)}.`,
+      short: `No terrain: about ${formatKm(horizon)}`,
+      note: "No terrain is held here, so it is a plain circle.",
       sentences: [
         "No terrain is held under this repeater, so the circle is drawn as if the ground were flat all round. Hills will cut it short in places and stretch it in others.",
       ],
@@ -134,7 +144,15 @@ export function readRange(range: SightRange): RangeReading {
       `Higher ground beyond the outline is in sight again on ${further.length} ${further.length === 1 ? "bearing" : "bearings"}, up to ${formatReach(furthest)} away.`,
     );
   }
-  return { coverage: range.coverage, title, sentences, needsTerrain: range.coverage === "partial" };
+  const partial = range.coverage === "partial";
+  return {
+    coverage: range.coverage,
+    title,
+    short: partial ? `About ${formatKm(typical)}, terrain partial` : `In sight to about ${formatKm(typical)}`,
+    note: partial ? `Terrain covers only part of the area within ${max}.` : null,
+    sentences,
+    needsTerrain: partial,
+  };
 }
 
 /** How the ground was read, in one sentence: the steps and the size of the terrain's cells. */

@@ -64,6 +64,8 @@ function RepeaterCard({
   onSight,
   onClose,
   range,
+  action,
+  className,
 }: {
   detail: RepeaterDetailResponse;
   /** Where distance and bearing are measured from, and what that place is called. */
@@ -72,6 +74,10 @@ function RepeaterCard({
   onClose: () => void;
   /** The estimated range's switch and words; see use-repeater-range. */
   range: ReactNode;
+  /** A button beside the close button: the estimated range's fold. */
+  action?: ReactNode;
+  /** Classes for the card, from the estimated range: a greatest height on a wide screen while it is on. */
+  className?: string;
 }) {
   const { repeater, list } = detail;
   const source = sourceOf(list);
@@ -80,7 +86,7 @@ function RepeaterCard({
   const locator = repeater.locator || (placed ? (toMaidenhead(repeater.lat!, repeater.lon!, 6) ?? "") : "");
   const meters = placed && from ? haversineMeters(from.position.lat, from.position.lon, repeater.lat!, repeater.lon!) : null;
   return (
-    <MapCard title={repeater.callsign} onClose={onClose} closeLabel="Close this repeater">
+    <MapCard title={repeater.callsign} onClose={onClose} closeLabel="Close this repeater" action={action} className={className}>
       <p className="tabular mt-0.5 text-body text-ink">
         <span className="font-mono text-[0.9375rem]">{formatMHz(repeater.outputHz)} MHz</span>, {shiftWords(repeater)}
       </p>
@@ -165,7 +171,12 @@ export function useRepeatersOnMap({
   const selectedAt = selected && selected.lat !== null && selected.lon !== null ? { lat: selected.lat, lon: selected.lon } : null;
   const ringLat = selectedAt?.lat;
   const ringLon = selectedAt?.lon;
-  const range = useRepeaterRange({ engine, repeater: browsing && on && selectedId && selected ? selected : null, onOpenOffline });
+  const range = useRepeaterRange({
+    engine,
+    repeater: browsing && on && selectedId && selected ? selected : null,
+    onOpenOffline,
+    onClose: () => setSelectedId(null),
+  });
   useEffect(() => {
     if (!engine) return;
     const ring = ringLat !== undefined && ringLon !== undefined ? { lat: ringLat, lon: ringLon } : null;
@@ -301,13 +312,15 @@ export function useRepeatersOnMap({
       );
     } else if (selectedId && detail.data) {
       const from = here ? { position: here, name: "where you are" } : centre ? { position: centre, name: "the middle of the map" } : null;
-      card = (
+      card = range.folded ?? (
         <RepeaterCard
           detail={detail.data}
           from={from}
           onSight={selectedAt ? () => sightFrom(here ? { position: here, name: "Where you are" } : null) : undefined}
           onClose={() => setSelectedId(null)}
           range={range.control}
+          action={range.foldButton}
+          className={range.cardClass}
         />
       );
     } else if (overview.data && overview.data.withPosition === 0 && !emptyDismissed) {
