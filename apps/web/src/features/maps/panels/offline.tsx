@@ -35,6 +35,7 @@ import type { MapEngine } from "../map/engine";
 import { PanelHeading, PanelLoading } from "../ui";
 import { AddRegion, detailLabel } from "./add-region";
 import { DestinationPicker, useDestination } from "./destination";
+import { isOsNamesDownload, OsNamesSection } from "./os-names";
 
 /** What the panel was opened to do, when it was opened from elsewhere on the screen. */
 export type OfflineIntent = { type: "add"; presetId?: string } | { type: "places" } | { type: "imagery" } | { type: "reference" } | null;
@@ -196,14 +197,17 @@ const DATASET_CHOICES = [
 ] as const;
 
 function PlaceNames({
-  datasets,
-  downloads,
+  datasets: allDatasets,
+  downloads: allDownloads,
   sectionRef,
 }: {
   datasets: PlacesDataset[];
   downloads: DownloadDto[];
   sectionRef: React.RefObject<HTMLElement | null>;
 }) {
+  // Ordnance Survey's place names have a part of their own below (os-names.tsx).
+  const datasets = allDatasets.filter((dataset) => dataset.source !== "os");
+  const downloads = allDownloads.filter((download) => !isOsNamesDownload(download));
   const [choice, setChoice] = useState<(typeof DATASET_CHOICES)[number]["value"]>();
   const [country, setCountry] = useState<string>();
   const [removing, setRemoving] = useState<PlacesDataset>();
@@ -319,6 +323,7 @@ function PlaceNames({
           Download place names
         </Button>
       </div>
+      <OsNamesSection datasets={allDatasets} downloads={allDownloads} />
 
       <ConfirmDialog
         open={Boolean(removing)}

@@ -82,6 +82,8 @@ const envSchema = z.object({
   OUTPOST_FLOOD_ZONES_URL: z.string().url().optional(),
   // For tests: a local folder in place of OurAirports' data repository, holding airports.csv and airport-frequencies.csv.
   OUTPOST_OURAIRPORTS_URL: z.string().url().optional(),
+  // For tests: a local server in place of Ordnance Survey's Downloads API (modules/maps/os-names/source.ts).
+  OUTPOST_OS_DOWNLOADS_URL: z.string().url().optional(),
 });
 
 export interface Config {
@@ -163,6 +165,8 @@ export interface Config {
   floodZonesUrl?: string;
   /** For tests: the folder that stands in for OurAirports' data repository (it ends in a slash). */
   ourAirportsUrl?: string;
+  /** For tests: Ordnance Survey's Downloads API address in place of api.os.uk's; unset in use. */
+  osDownloadsUrl?: string;
   /** Stand-ins for satellite imagery's publishers, for tests; unset in use. */
   imagery?: {
     endpoints?: {
@@ -266,6 +270,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     weatherStandIn: parsed.OUTPOST_WEATHER_STAND_IN,
     floodZonesUrl: parsed.OUTPOST_FLOOD_ZONES_URL,
     ourAirportsUrl: parsed.OUTPOST_OURAIRPORTS_URL,
+    osDownloadsUrl: parsed.OUTPOST_OS_DOWNLOADS_URL,
   };
 }
 

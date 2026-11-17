@@ -50,7 +50,9 @@ export function countryName(code: string | null): string | null {
   }
 }
 
-export function placeRegion(place: Pick<PlaceDto, "country" | "admin1">): string | null {
+export function placeRegion(place: Pick<PlaceDto, "country" | "admin1"> & { source?: PlaceDto["source"] }): string | null {
+  // OS Open Names gives the area in words: "Aberystwyth, Ceredigion, Wales".
+  if (place.source === "os") return place.admin1;
   const country = countryName(place.country);
   const nation = place.country === "GB" && place.admin1 ? UK_NATIONS[place.admin1] : undefined;
   return nation && country ? `${nation}, ${country}` : country;
@@ -123,9 +125,15 @@ export function buildSearchResults(input: SearchInput): SearchResult[] {
   if (needle.length === 0) return results;
 
   const readings = input.coordinate ? [input.coordinate, ...(input.otherReadings ?? [])] : [];
+  // "SY23" is a grid reference and a postcode district; with OS place names installed, the
+  // postcode is what a person in Britain most likely means, so it is listed first.
+  const first = input.places[0];
+  const postcodeFirst =
+    first?.featureCode?.startsWith("os:Postcode") === true && fold(first.name).replace(/\s/g, "") === needle.replace(/\s/g, "");
+  const typed: SearchResult[] = [];
   readings.forEach((coordinate, index) => {
     const position = { lat: coordinate.lat, lon: coordinate.lon };
-    results.push({
+    typed.push({
       kind: "coordinate",
       key: index === 0 ? "coordinate" : `coordinate-${index}`,
       title:
@@ -138,6 +146,7 @@ export function buildSearchResults(input: SearchInput): SearchResult[] {
       coordinate,
     });
   });
+  if (!postcodeFirst) results.push(...typed);
 
   const limit = input.ownLimit ?? 4;
   for (const marker of input.markers.filter((item) => fold(item.name).includes(needle)).slice(0, limit)) {
@@ -176,5 +185,6 @@ export function buildSearchResults(input: SearchInput): SearchResult[] {
       place,
     });
   }
+  if (postcodeFirst) results.splice(results.findIndex((result) => result.kind === "place") + 1, 0, ...typed);
   return results;
 }

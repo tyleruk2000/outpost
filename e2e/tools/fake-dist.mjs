@@ -16,6 +16,7 @@ import path from "node:path";
 import { gzipSync } from "node:zlib";
 import { serveOurAirportsStandIn } from "../../apps/server/test/fixtures/layers/ourairports-stand-in.ts";
 import { createImageryStandIn } from "../../apps/server/test/fixtures/maps/imagery-stand-in.ts";
+import { createOsNamesStandIn } from "../../apps/server/test/fixtures/maps/os-names-sample.ts";
 import { createOverpassStandIn } from "../../apps/server/test/fixtures/maps/overpass-answers.ts";
 import { serveP533StandIn } from "../../apps/server/test/fixtures/propagation/p533-maps-stand-in.ts";
 import { createRepeaterSourceStandIn } from "../../apps/server/test/fixtures/repeaters/source-stand-in.ts";
@@ -59,6 +60,8 @@ const voacapFiles = new Set(JSON.parse(fs.readFileSync(path.join(voacapHome, "co
 const repeaterSource = createRepeaterSourceStandIn();
 // Satellite imagery's publishers: NASA's world picture, the Sentinel-2 search and one scene.
 const imagery = createImageryStandIn(() => `http://127.0.0.1:${port}`);
+// Ordnance Survey's Downloads API and its file store, serving a small real sample of OS Open Names.
+const osNames = createOsNamesStandIn(() => `http://127.0.0.1:${port}`);
 
 http
   .createServer((request, response) => {
@@ -81,6 +84,7 @@ http
     if (request.url?.startsWith("/imagery/")) return imagery.handle(request, response);
     // OurAirports' airports.csv and airport-frequencies.csv (apps/server/test/fixtures/layers).
     if (request.url?.startsWith("/ourairports/")) return serveOurAirportsStandIn(request, response);
+    if (request.url?.startsWith("/os-downloads/") || request.url?.startsWith("/os-files/")) return osNames.handle(request, response);
     if (request.url === "/files/field-manual.bin") {
       response.setHeader("Content-Length", FIELD_MANUAL.length);
       return response.end(FIELD_MANUAL);

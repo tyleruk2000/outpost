@@ -28,6 +28,7 @@ import { createExtractFetcher, createTilesInstaller, EXTRACT_FETCHER } from "./e
 import { MAX_GPX_BYTES } from "./gpx.ts";
 import { createImageryInstaller, type ImageryService, isImageryDownload, registerImagery } from "./imagery/index.ts";
 import { areaSizeQuery, createAreaMeter } from "./kept-area.ts";
+import { registerOsNames } from "./os-names/index.ts";
 import { createPlacesService, datasetSchema, type PlacesService } from "./places.ts";
 import { createPlanner } from "./planner.ts";
 import { removeExtractSidecars } from "./pmtiles/extract.ts";
@@ -420,6 +421,9 @@ export async function registerMaps(app: FastifyInstance, ctx: AppContext): Promi
     annotations.removeTrack(request.params.id);
     return { ok: true };
   });
+
+  // Place names for Great Britain from Ordnance Survey (os-names/).
+  registerOsNames(app, ctx, client);
 
   // ── Finding a known route in a route source ──
   registerRouteFinder(app, ctx, { client, annotations, elevation });

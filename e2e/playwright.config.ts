@@ -342,6 +342,7 @@ export default defineConfig({
       OUTPOST_WEATHER_STAND_IN: `http://127.0.0.1:${filesPort}/weather`,
       // OurAirports' data repository (airports and their frequencies), stood in for by the file server above.
       OUTPOST_OURAIRPORTS_URL: `http://127.0.0.1:${filesPort}/ourairports/`,
+      OUTPOST_OS_DOWNLOADS_URL: `http://127.0.0.1:${filesPort}/os-downloads/`,
       // The made-up name the "not secure" projects use; for this test server only.
       OUTPOST_ALLOWED_HOSTS: notSecureHost,
     }),
