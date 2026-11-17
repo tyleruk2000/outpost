@@ -9,11 +9,15 @@ export * from "./audiobooks.ts";
 export * from "./backup.ts";
 export * from "./board.ts";
 export * from "./catalog.ts";
+// What Explore and the catalogue tool match entries by, on a line of its own.
+export * from "./catalog-match.ts";
 export * from "./chat.ts";
 export * from "./collections.ts";
 export * from "./common.ts";
 export * from "./compass.ts";
 export * from "./contacts.ts";
+// The country a point is in, from the Natural Earth boxes, on a line of its own.
+export * from "./country-at.ts";
 export * from "./database.ts";
 export * from "./documents.ts";
 export * from "./downloads.ts";
@@ -64,6 +68,8 @@ export * from "./semantic.ts";
 export * from "./setup-guide.ts";
 export * from "./shares.ts";
 export * from "./storage.ts";
+// The sun's day and position, on a line of its own so that other additions merge cleanly.
+export * from "./sun.ts";
 export * from "./supplies.ts";
 export * from "./supplies-energy.ts";
 export * from "./system.ts";

@@ -121,7 +121,19 @@ export function replyAsNote(input: ReplyNote): NoteDoc {
   const closing: PMNode[] =
     input.sources.length > 0
       ? [
-          { type: "heading", attrs: { level: 3 }, content: [text("Passages the model was given")] },
+          {
+            type: "heading",
+            attrs: { level: 3 },
+            content: [
+              text(
+                input.sources.every((source) => source.kind === "lookup")
+                  ? "What the model looked up in Outpost"
+                  : input.sources.some((source) => source.kind === "lookup")
+                    ? "Passages the model was given, and what it looked up in Outpost"
+                    : "Passages the model was given",
+              ),
+            ],
+          },
           {
             type: "orderedList",
             content: input.sources.map((source) => ({ type: "listItem", content: [paragraph(sourceLink(source))] })),

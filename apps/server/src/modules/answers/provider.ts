@@ -276,6 +276,12 @@ export function openAiChatProvider(
         `The model server at ${host} has no model called "${model}". Check the name in Settings, or fetch the model with your model server's own tool.`,
       );
     }
+    if (/does not support tools/i.test(message)) {
+      return new ModelServerError(
+        "other",
+        `The model server says "${model}" cannot look things up (it does not support tools). Add it under Settings → Looking things up → Models not to offer tools to, or choose another model.`,
+      );
+    }
     if (type === "not_supported_error" || /does not support (chat|generate|completion)/i.test(message)) {
       return new ModelServerError(
         "not-a-chat-model",
