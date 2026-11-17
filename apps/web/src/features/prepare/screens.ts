@@ -20,7 +20,7 @@ export const prepareScreens: SectionScreen[] = [
     to: "/prepare/supplies",
     label: "Supplies",
     icon: Package,
-    keywords: "food water stock pantry stockpile cupboard tins kit barcode shopping list how long days",
+    keywords: "food water stock pantry stockpile cupboard tins kit barcode shopping list how long days calories kcal energy",
     about:
       "Food, water and kit kept at home: how many days they last for your household, what to use first, and what to buy. Scan barcodes to find things.",
   },

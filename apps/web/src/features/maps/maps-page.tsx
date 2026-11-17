@@ -523,6 +523,13 @@ export default function MapsPage() {
     if (restoredDraft) toast("The route you were drawing is back as you left it. It has not been saved yet.");
   }, [restoredDraft]);
 
+  // A tab named in the address (/maps?tab=layers, from the quick search) is opened, once for each arrival.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once for each arrival, not on every change of the panel
+  useEffect(() => {
+    const tab = new URLSearchParams(location.search).get("tab");
+    if (tab && (PANEL_TABS as readonly string[]).includes(tab)) showPanel(tab as PanelTab);
+  }, [location.key]);
+
   // Links from the app-wide search: /maps?marker=… and /maps?track=…, and plain camera links.
   const handledLink = useRef<string | undefined>(undefined);
   useEffect(() => {

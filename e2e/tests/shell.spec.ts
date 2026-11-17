@@ -38,6 +38,26 @@ test.describe("the shell", () => {
     await expect(page.getByRole("heading", { name: "Settings", level: 1 })).toBeVisible();
   });
 
+  test("goes from quick search to a place inside a screen: a section of Settings, the map's Layers tab", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    const open = async (words: string) => {
+      await page.getByRole("button", { name: "Quick search" }).click();
+      const palette = page.getByRole("dialog", { name: "Search and go to" });
+      await palette.getByRole("combobox").fill(words);
+      await expect(palette.getByRole("option").first()).toBeVisible();
+      await page.keyboard.press("Enter");
+    };
+    await open("mesh");
+    await expect(page).toHaveURL(/\/settings#mesh$/);
+    await expect(page.getByRole("heading", { name: "Mesh radio", level: 2 })).toBeInViewport();
+    await open("text size");
+    await expect(page).toHaveURL(/\/settings#text-size$/);
+    await open("supermarket");
+    await expect(page).toHaveURL(/\/maps\?tab=layers$/);
+    await expect(page.getByRole("tab", { name: "Layers" })).toHaveAttribute("aria-selected", "true");
+  });
+
   test("remembers the theme and the collapsed sidebar", async ({ page }) => {
     await page.goto("/settings");
     await page.getByRole("radio", { name: "Dark" }).click();

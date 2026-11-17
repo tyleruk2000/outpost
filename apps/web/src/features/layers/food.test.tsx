@@ -152,11 +152,12 @@ describe("under the food and supplies switch", () => {
     const list = await screen.findByRole("list", { name: "Nearest to the middle of the map" });
     const rows = within(list).getAllByRole("button");
     expect(rows[0]).toHaveTextContent("Booths");
-    expect(rows[0]).toHaveTextContent("420 m");
+    expect(rows[0]).toHaveTextContent("420 m (0.26 mi)");
     expect(rows[0]).toHaveTextContent("284° WNW");
     // A tap with no name is called by its kind.
     expect(rows[1]).toHaveTextContent("Drinking water");
-    expect(rows[1]).toHaveTextContent("3.42 km");
+    // Miles beside kilometres, as everywhere else on the map.
+    expect(rows[1]).toHaveTextContent("3.42 km (2.13 mi)");
     await userEvent.click(rows[0]!);
     expect(onOpen).toHaveBeenCalledWith(1, { lat: 54.6, lon: -3.14 });
     expect(get).toHaveBeenCalledWith("/api/reference/nearest?lat=54.6000&lon=-3.1350&layer=food&limit=5");
@@ -181,7 +182,7 @@ describe("under the food and supplies switch", () => {
       async (path: string) => (path.startsWith("/api/maps/markers") ? { markers: [] } : { ...NEAREST, hits: [] }) as never,
     );
     const empty = render(section());
-    expect(await screen.findByText(/Nothing is held within 100 km of the middle of the map/)).toBeInTheDocument();
+    expect(await screen.findByText(/Nothing is held within 100 km \(62\.1 mi\) of the middle of the map/)).toBeInTheDocument();
     empty.unmount();
 
     vi.spyOn(api, "get").mockImplementation(async (path: string) => {

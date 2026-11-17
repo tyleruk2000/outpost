@@ -9,7 +9,7 @@ import { FOOD_KINDS, FOOD_WORDS, homePlaceOf, type ReferenceLayerSummary } from 
 import { Select, Skeleton } from "@/components/ui/misc";
 import { useMarkers } from "@/features/maps/data";
 import { useStoredState } from "@/features/maps/hooks";
-import { formatBearing, formatDistance, type LatLon } from "@/features/maps/lib/geo";
+import { formatBearing, formatDistanceWithMiles, type LatLon } from "@/features/maps/lib/geo";
 import { cn, formatNumber } from "@/lib/utils";
 import { useNearest } from "./data";
 import { FoodMark } from "./food-symbols";
@@ -110,7 +110,7 @@ export function FoodSection({
           <p className="mt-1 text-small text-danger">The nearest could not be worked out. Try again in a moment.</p>
         ) : nearest.data.hits.length === 0 ? (
           <p className="mt-1 text-small text-ink-muted">
-            {alone ? `No ${aloneLabel} is held` : "Nothing is held"} within {formatDistance(nearest.data.withinMeters)} of {originName}.
+            {alone ? `No ${aloneLabel} is held` : "Nothing is held"} within {formatDistanceWithMiles(nearest.data.withinMeters)} of {originName}.
             Fetch the area under Manage reference data.
           </p>
         ) : (
@@ -128,7 +128,7 @@ export function FoodSection({
                     {!alone && hit.name ? <span className="block truncate text-ink-muted">{hit.kindLabel}</span> : null}
                   </span>
                   <span className="tabular shrink-0 text-right text-ink">
-                    {formatDistance(hit.distanceMeters)}
+                    {formatDistanceWithMiles(hit.distanceMeters)}
                     <span className="block text-ink-muted">{formatBearing(hit.bearingDegrees)}</span>
                     <span className="sr-only"> from {originName}</span>
                   </span>

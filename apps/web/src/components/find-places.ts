@@ -3,7 +3,7 @@
  * search page's. A place is a screen of the navigation (nav.ts) or a section of Settings, and
  * is found by its name, the name of the screen it is under, and the everyday words given for it.
  */
-import { type ChildScreen, everyScreen, type NavItem, settingsSections, upkeepNav } from "./nav";
+import { type ChildScreen, everyScreen, knowledgeNav, mapSections, type NavItem, settingsSections, upkeepNav } from "./nav";
 
 export interface Place extends ChildScreen {
   key?: string;
@@ -13,10 +13,22 @@ export interface Place extends ChildScreen {
 }
 
 const settings = upkeepNav.find((item) => item.to === "/settings")!;
+const maps = knowledgeNav.find((item) => item.to === "/maps")!;
 
-/** Every screen, each followed by the screens under it, then each section of Settings ("Settings: Backup"). */
+/**
+ * Every screen, each followed by the screens under it, then the tabs of Maps found by their own
+ * words ("Maps: Layers"), then each section of Settings ("Settings: Backup").
+ */
 export const everyPlace: Place[] = [
   ...everyScreen,
+  ...mapSections.map((section) => ({
+    to: `/maps?tab=${section.id}`,
+    label: section.label,
+    icon: maps.icon,
+    keywords: section.keywords,
+    parent: maps,
+    section: true,
+  })),
   ...settingsSections.map((section) => ({
     to: `/settings#${section.id}`,
     label: section.label,
@@ -100,18 +112,26 @@ export function placeName(place: Pick<Place, "label" | "parent">): string {
 }
 
 /**
- * The places that match what was typed, best first: those whose name alone has every word,
- * then those that need their everyday words too, each in the order of the navigation.
+ * The places that match what was typed, best first: those whose name alone has every word, then
+ * those whose everyday words hold what was typed as it was typed, then those that need their
+ * everyday words in any other way, each in the order of the navigation.
  */
 export function findPlaces(typed: string, places: Place[] = everyPlace): Place[] {
   const byName: Place[] = [];
+  const byPhrase: Place[] = [];
   const byWords: Place[] = [];
+  const phrase = typedWords(typed).join(" ");
   for (const place of places) {
     // "settings" alone is the Settings screen, not each of its fifteen sections as well.
     if (place.section && !matchesSome(`${place.label} ${place.keywords ?? ""}`, typed)) continue;
     const name = `${place.parent ? `${place.parent.label} ` : ""}${place.label}`;
     if (matchesWords(name, typed)) byName.push(place);
-    else if (place.keywords && matchesWords(`${name} ${place.keywords}`, typed)) byWords.push(place);
+    else if (place.keywords && matchesWords(`${name} ${place.keywords}`, typed)) {
+      // Its everyday words have just what was typed, whole ("shop", "drinking water"), before
+      // one that only has words beginning with it ("shopping list").
+      if (phrase && ` ${wordsOf(place.keywords).join(" ")} `.includes(` ${phrase} `)) byPhrase.push(place);
+      else byWords.push(place);
+    }
   }
-  return [...byName, ...byWords];
+  return [...byName, ...byPhrase, ...byWords];
 }
