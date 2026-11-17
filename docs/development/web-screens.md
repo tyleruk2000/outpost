@@ -149,7 +149,15 @@ foot. Look at it at those heights when you add a screen.
 
 - Use TanStack Query. **Query keys start with the feature name** (`["documents", …]`),
   because `lib/events.tsx` refreshes queries by that prefix when the server says
-  something changed. Add your event to the `invalidations` map there if it is missing.
+  something changed. Add your event to the `invalidations` map there if it is missing,
+  and list only the keys the event can really change: every key listed is fetched
+  again on every open screen that shows it, each time the event arrives.
+- **Do not poll what an event reports.** No `refetchInterval` on a list the server
+  announces changes to. A screen that follows one job may poll it while it runs, and
+  stops when it ends. Nothing refetches in a hidden tab: `lib/events.tsx` marks what
+  changed while a tab is hidden and fetches it when the tab is shown, and closes the
+  stream after a minute hidden. A job's progress is patched into the shared active-jobs
+  list (`useActiveJobs`) from the event, without a fetch.
 - Types come from `@outpost/shared`. Do not redeclare API shapes.
 - Mutations: `useMutation`, invalidate the affected keys on success, toast on error.
 - Long work is a server job; show it with `Progress` fed by real numbers. Never fake

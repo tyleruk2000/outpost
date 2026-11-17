@@ -21,6 +21,10 @@ export function runningBuild(root: Document = document): string | null {
  * to say why. This asks the server now and then which build it serves, and when that is
  * no longer this one, offers a reload. It never reloads by itself: someone may be
  * half-way through writing a note.
+ *
+ * It does not poll. A new build means the server was restarted, which ends the
+ * live-events stream; when the stream is back, every query is fetched again
+ * (`lib/events.tsx`), this one with them.
  */
 export function UpdateNotice({ running = runningBuild() }: { running?: string | null }) {
   const served = useQuery({
@@ -28,8 +32,6 @@ export function UpdateNotice({ running = runningBuild() }: { running?: string | 
     queryFn: () => api.get<{ web?: string | null }>("/api/health"),
     enabled: running !== null,
     staleTime: 60_000,
-    refetchInterval: 5 * 60_000,
-    refetchOnWindowFocus: true,
     refetchOnReconnect: true,
     retry: false,
   });

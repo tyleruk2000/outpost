@@ -77,6 +77,21 @@ that retrying cannot fix. A handler that is cancelled part of the way through wo
 that cannot be undone throws `StoppedWithResult` with an account of what it had done;
 the job is still cancelled, and keeps that account as its result.
 
+The runner does not poll. It starts work when a job is queued, resumed or released,
+when a slot frees and when a queue's concurrency changes, and sets one timer for the
+earliest job told to wait (a retry). A handler that throws, whatever it throws, fails
+its job (or queues it to retry) and the queue goes on.
+
+### At rest
+
+Outpost is meant to be left on for months on a Raspberry Pi, perhaps on a battery, so
+a server with nobody using it should do nothing. No `setInterval` that wakes on a fixed
+tick to find nothing to do: schedule a timer for the next time something is due, or
+react to an event (`ctx.events`), and `unref()` it. A timer that has to repeat (a
+check of something outside Outpost that sends no event) runs no more often than its
+result can matter to a person, stops when what it watches is not in use, and does
+nothing that publishes an event unless something a person would see has changed.
+
 ### Worker threads
 
 A worker is a file named `<name>.worker.ts` beside the module that owns it, found with

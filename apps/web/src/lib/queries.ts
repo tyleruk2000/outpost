@@ -4,8 +4,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api, errorMessage } from "./api";
 
-export const useSystem = () =>
-  useQuery({ queryKey: ["system"], queryFn: () => api.get<SystemInfo>("/api/system"), refetchInterval: 15_000 });
+// Not polled: memory and load are figures read in passing, taken when a screen opens, and the
+// queue counts in it are fetched again when a job starts or ends (lib/events.tsx).
+export const useSystem = () => useQuery({ queryKey: ["system"], queryFn: () => api.get<SystemInfo>("/api/system") });
 
 export const useStorage = () =>
   useQuery({ queryKey: ["storage", "locations"], queryFn: () => api.get<StorageLocationsResponse>("/api/storage/locations") });

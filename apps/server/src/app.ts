@@ -130,7 +130,12 @@ export async function buildApp(config: Config): Promise<BuiltApp> {
   if (fs.existsSync(indexFile)) {
     await app.register(fastifyStatic, {
       root: config.webDir,
-      setHeaders(reply, file) {
+      // The build writes a gzip and a Brotli copy beside each file worth compressing
+      // (apps/web/compress-plugin.ts); the one the browser accepts is sent as it is, so no
+      // response is compressed on the fly.
+      preCompressed: true,
+      setHeaders(reply, served) {
+        const file = served.replace(/\.(br|gz)$/, "");
         if (file.endsWith(".html")) {
           reply.header("Content-Security-Policy", APP_CSP);
           reply.header("Cache-Control", "no-cache");
@@ -193,6 +198,13 @@ export async function buildApp(config: Config): Promise<BuiltApp> {
     clearTimeout(cut);
     await (jobsStopped ?? ctx.jobs.close());
     for (const close of ctx.onClose.reverse()) await close();
+    // What SQLite learnt about the queries asked of it is kept for the next start; closing
+    // then copies the write-ahead log into the database and removes it.
+    try {
+      sqlite.pragma("optimize");
+    } catch (error) {
+      app.log.warn({ err: error }, "the database could not be tuned before closing");
+    }
     sqlite.close();
   });
 

@@ -27,6 +27,9 @@ export function openDatabase(file: string) {
   // Keep the page cache modest so a Raspberry Pi with 4 GB stays comfortable.
   sqlite.pragma("cache_size = -32000");
   sqlite.pragma("temp_store = MEMORY");
+  // After a large write (an import, a restore) the write-ahead log is cut back to this
+  // size once it has been copied into the database, rather than kept at its largest.
+  sqlite.pragma("journal_size_limit = 67108864");
 
   const db = drizzle(sqlite, { schema });
   migrate(db, { migrationsFolder: migrationsDir });

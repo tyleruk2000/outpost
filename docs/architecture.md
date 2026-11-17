@@ -74,6 +74,19 @@ the reason "shutdown", which leaves their rows running for the next start to que
 again; run the modules' close callbacks; close the database; exit. The process exits
 after `EXIT_LIMIT_MS` whether or not that finished.
 
+A fault nothing else caught (`core/faults.ts`): a rejected promise nobody handled is
+logged and the server carries on, because it ends only the piece of work it came from;
+an uncaught exception is logged and the server stops in that same order and exits with
+code 1, because the process may be half-way through a change, and Docker's restart
+policy (or whatever supervises it) starts it again.
+
+At rest, with nobody using it, the server sets no timer of its own on a fixed tick
+except a few checks of things outside it that send no event (storage locations, HTTPS,
+scheduled backups, network shares: see each module). The job runner sets a timer only
+for a job told to wait. Open live-events streams share one 50-second keep-alive, which
+stops with the last of them. The web app's files are compressed once, at build time,
+and sent as they are; fingerprinted files are cached by browsers for a year.
+
 CPU-heavy parsing (PDF text) runs in a worker thread so that one large document cannot
 stall the HTTP server. OCR does the same, on a queue of its own that runs one document
 at a time. So does the built-in embedding model, in a worker that stays loaded while it

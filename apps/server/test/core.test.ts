@@ -83,10 +83,22 @@ describe("network guards", () => {
       "fd00::1",
       "::ffff:10.0.0.1",
       "0.0.0.0",
+      // IPv4 addresses carried inside IPv6 ones, written every way they can be.
+      "::ffff:7f00:1",
+      "::ffff:0:127.0.0.1",
+      "::ffff:0:a00:1",
+      "::ffff:0:192.168.1.10",
+      "0:0:0:0:0:ffff:0a00:0001",
+      // Ways through to IPv4 that Outpost does not follow at all, whatever they carry.
+      "64:ff9b::8.8.8.8",
+      "64:ff9b::7f00:1",
+      "2002:c0a8:010a::1",
+      "2002:0808:0808::1",
+      "2001:0:4136:e378:8000:63bf:3fff:fdd2",
     ]) {
       expect(isPublicAddress(address), address).toBe(false);
     }
-    for (const address of ["1.1.1.1", "93.184.216.34", "2606:4700:4700::1111"]) {
+    for (const address of ["1.1.1.1", "93.184.216.34", "2606:4700:4700::1111", "::ffff:1.1.1.1", "::ffff:101:101", "::ffff:0:1.1.1.1"]) {
       expect(isPublicAddress(address), address).toBe(true);
     }
   });
@@ -128,6 +140,16 @@ describe("request security", () => {
     expect((await app.api("GET", "/api/health")).body.web).toBe("index-Ab_1-x.js");
     const rebind = await app.app.inject({ method: "GET", url: "/api/health", headers: { host: "attacker.example" } });
     expect(rebind.statusCode).toBe(403);
+  });
+
+  it("refuses a request whose Origin is not an address, as a refusal and not a fault", async () => {
+    app = await createTestApp();
+    // `null` is what a sandboxed page or a file opened from disk sends.
+    for (const origin of ["null", "not a url", "http://"]) {
+      const response = await app.api("PATCH", "/api/settings", {}, { headers: { origin } });
+      expect(response.status, origin).toBe(403);
+      expect(response.body.error.code, origin).toBe("forbidden");
+    }
   });
 
   it("rejects state-changing requests that do not come from the app", async () => {

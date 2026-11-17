@@ -1,5 +1,6 @@
 /** Health, live events, background jobs, settings and a plain account of resource use. */
 import fs from "node:fs";
+import type { ServerResponse } from "node:http";
 import os from "node:os";
 import path from "node:path";
 import { sql } from "drizzle-orm";
@@ -15,6 +16,9 @@ import type { Settings } from "../settings/service.ts";
 import { detectHost } from "../storage/shares/host.ts";
 
 export { VERSION };
+
+/** How often an open live-events stream is sent a comment line, so a quiet one is not cut. */
+export const EVENTS_HEARTBEAT_MS = 50_000;
 
 export async function registerSystem(app: FastifyInstance, ctx: AppContext): Promise<void> {
   const { settings } = ctx.services;
@@ -78,7 +82,15 @@ export async function registerSystem(app: FastifyInstance, ctx: AppContext): Pro
     };
   });
 
-  // Server-sent events: one long-lived response per open tab.
+  // Server-sent events: one long-lived response per open tab. A comment line now and then
+  // keeps a reverse proxy from cutting a stream that has been quiet (nginx's default limit
+  // is a minute) and lets the server notice a tab that went away without saying so. One
+  // timer serves every open stream, and none runs while no tab is open.
+  const streams = new Set<ServerResponse>();
+  let heartbeat: NodeJS.Timeout | undefined;
+  const beat = () => {
+    for (const stream of streams) stream.write(": keep-alive\n\n");
+  };
   app.get("/api/events", (request, reply) => {
     reply.hijack();
     reply.raw.writeHead(200, {
@@ -91,10 +103,17 @@ export async function registerSystem(app: FastifyInstance, ctx: AppContext): Pro
     const unsubscribe = ctx.events.subscribe((event) => {
       reply.raw.write(`event: ${event.type}\ndata: ${JSON.stringify({ id: event.id, data: event.data })}\n\n`);
     });
-    const heartbeat = setInterval(() => reply.raw.write(": keep-alive\n\n"), 25_000);
-    heartbeat.unref();
+    streams.add(reply.raw);
+    if (!heartbeat) {
+      heartbeat = setInterval(beat, EVENTS_HEARTBEAT_MS);
+      heartbeat.unref();
+    }
     const close = () => {
-      clearInterval(heartbeat);
+      streams.delete(reply.raw);
+      if (streams.size === 0 && heartbeat) {
+        clearInterval(heartbeat);
+        heartbeat = undefined;
+      }
       unsubscribe();
       if (!reply.raw.writableEnded) reply.raw.end();
     };

@@ -2,10 +2,12 @@
 import "./core/v8-flags.ts";
 import { buildApp } from "./app.ts";
 import { loadConfig } from "./config.ts";
+import { watchForFaults } from "./core/faults.ts";
 import { closeThenExit } from "./core/stop.ts";
 
 const config = loadConfig();
 const { app } = await buildApp(config);
+watchForFaults(app);
 
 // Asked once, the server stops in order and exits (core/stop.ts). Asked again while it is
 // doing so, the listener is gone and the signal ends the process at once.

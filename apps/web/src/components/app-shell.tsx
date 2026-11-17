@@ -1,13 +1,16 @@
-import { type ReactNode, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { lazy, type ReactNode, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router";
 import { ReachNotice } from "@/features/kept/reach";
 import { RecordingIndicator } from "@/features/maps/recording/indicator";
-import { CommandPalette } from "./command-palette";
 import { MobileNav } from "./mobile-nav";
 import { allNav } from "./nav";
+import { ScreenErrorBoundary } from "./screen-error";
 import { Sidebar } from "./sidebar";
 import { Skeleton } from "./ui/misc";
 import { UpdateNotice } from "./update-notice";
+
+// Quick search is fetched the first time it is opened, not with every page of the app.
+const CommandPalette = lazy(() => import("./command-palette").then((module) => ({ default: module.CommandPalette })));
 
 function isTyping(target: EventTarget | null): boolean {
   const element = target as HTMLElement | null;
@@ -32,6 +35,9 @@ export function AppShell({ notesTree, onNewPage }: { notesTree?: ReactNode; onNe
   const navigate = useNavigate();
   const location = useLocation();
   const [paletteOpen, setPaletteOpen] = useState(false);
+  // Kept mounted once opened, so that it closes with its animation and opens at once the next time.
+  const [paletteWanted, setPaletteWanted] = useState(false);
+  if (paletteOpen && !paletteWanted) setPaletteWanted(true);
   const [collapsed, setCollapsed] = useState(() => {
     try {
       return localStorage.getItem("outpost.sidebar") === "collapsed";
@@ -115,11 +121,17 @@ export function AppShell({ notesTree, onNewPage }: { notesTree?: ReactNode; onNe
         <UpdateNotice />
         <RecordingIndicator />
         <ReachNotice />
-        <Suspense fallback={<PageFallback />}>
-          <Outlet />
-        </Suspense>
+        <ScreenErrorBoundary path={location.pathname}>
+          <Suspense fallback={<PageFallback />}>
+            <Outlet />
+          </Suspense>
+        </ScreenErrorBoundary>
       </main>
-      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} onNewPage={onNewPage} />
+      {paletteWanted ? (
+        <Suspense fallback={null}>
+          <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} onNewPage={onNewPage} />
+        </Suspense>
+      ) : null}
     </div>
   );
 }
