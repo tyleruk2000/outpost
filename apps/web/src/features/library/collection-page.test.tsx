@@ -1,8 +1,8 @@
+import type { CatalogEntryDto } from "@outpost/shared";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Route, Routes } from "react-router";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import type { CatalogEntryDto } from "@outpost/shared";
 import { collection, entry, fakeServer, installBrowserStubs, location, renderScreen } from "../downloads/test-support";
 import CollectionPage from "./collection-page";
 import CollectionsPanel from "./collections-panel";
