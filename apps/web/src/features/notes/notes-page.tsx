@@ -14,14 +14,15 @@ type ScreenModule = typeof import("./note-screen");
 let screenModule: ScreenModule | null = null;
 let screenLoading: Promise<ScreenModule> | null = null;
 function loadNoteScreen(): Promise<ScreenModule> {
-  screenLoading ??= import("./note-screen").then(
-    (module) => (screenModule = module),
-    (error: unknown) => {
-      screenLoading = null;
-      throw error;
-    },
-  );
-  return screenLoading;
+  if (screenLoading) return screenLoading;
+  // The failure is handled apart from the import: Vite moves a `.then` chained on an import() inside its
+  // preloading, and when a style sheet the editor needs fails to load that `.then` never runs.
+  const loading = import("./note-screen").then((module) => (screenModule = module));
+  screenLoading = loading;
+  loading.catch(() => {
+    if (screenLoading === loading) screenLoading = null;
+  });
+  return loading;
 }
 
 function useNoteScreen(wanted: boolean): { module: ScreenModule | null; error: unknown; retry(): void } {
