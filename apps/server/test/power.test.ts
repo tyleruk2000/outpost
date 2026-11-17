@@ -5,7 +5,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import { type CleanupResult, newPowerPlan, type PowerPlan, type PowerPlanInput } from "@outpost/shared";
+import { type CleanupResult, newPowerPlan, POWER_PLANS_MAX, type PowerPlan, type PowerPlanInput } from "@outpost/shared";
 import Database from "better-sqlite3";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createTestApp, type TestApp } from "./helpers.ts";
@@ -146,5 +146,17 @@ describe("power plans", () => {
     expect(job?.state).toBe("succeeded");
     expect((job!.result as CleanupResult).personal?.powerPlans).toBe(2);
     expect((await app.api("GET", "/api/power/plans")).body.plans).toEqual([]);
+  });
+
+  it("keeps no more than POWER_PLANS_MAX plans, so that the list stays a list, and says so on a new one or a copy", async () => {
+    const input = shack();
+    for (let made = 0; made < POWER_PLANS_MAX; made += 1) app.ctx.services.power.create({ ...input, name: `Plan ${made}` });
+    const refused = await app.api("POST", "/api/power/plans", input);
+    expect(refused.status).toBe(400);
+    expect(refused.body.error.message).toMatch(new RegExp(`already ${POWER_PLANS_MAX} power plans`));
+    const first = app.ctx.services.power.list()[0]!;
+    expect((await app.api("POST", `/api/power/plans/${first.id}/copy`)).status).toBe(400);
+    expect(app.ctx.services.power.kept.count()).toBe(POWER_PLANS_MAX);
+    app.ctx.services.power.kept.eraseAll();
   });
 });

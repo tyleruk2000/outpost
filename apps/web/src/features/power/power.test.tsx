@@ -12,6 +12,7 @@ import PowerPage from "./power-page";
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
+  Reflect.deleteProperty(document, "visibilityState");
 });
 
 function planOf(patch: Partial<PowerPlan> = {}): PowerPlan {
@@ -45,6 +46,10 @@ function planOf(patch: Partial<PowerPlan> = {}): PowerPlan {
 
 interface Server {
   put: PowerPlanInput[];
+  /** Whether each save asked to outlive the page (`keepalive`). */
+  keptAlive: boolean[];
+  /** The most saves under way at the same moment. */
+  mostAtOnce: number;
   posted: unknown[];
   devices: unknown[];
   /** What the plan's sun-hours control asked of the weather module, in order. */
@@ -61,9 +66,12 @@ function show(
     markers?: Array<{ id: string; name: string; lat: number; lon: number; icon: string }>;
     /** What PVGIS says when asked: figures unless this is set. */
     pvgisFails?: string;
+    /** How long the server takes over each save. */
+    putDelayMs?: number;
   } = {},
 ): Server {
-  const server: Server = { put: [], posted: [], devices: [], weatherAsked: [] };
+  const server: Server = { put: [], keptAlive: [], mostAtOnce: 0, posted: [], devices: [], weatherAsked: [] };
+  let saving = 0;
   let plan = options.plan ?? planOf();
   // What Weather and hazards holds, which a fetch from the plan adds to.
   const weather = (options.weather ?? { places: [], kept: [], sources: [], updateOnOpen: false, now: Date.now() }) as {
@@ -88,6 +96,11 @@ function show(
       if (pathname === "/api/power/plans/p1" && init?.method === "PUT") {
         const body = JSON.parse(String(init.body)) as PowerPlanInput;
         server.put.push(body);
+        server.keptAlive.push(init.keepalive === true);
+        saving += 1;
+        server.mostAtOnce = Math.max(server.mostAtOnce, saving);
+        if (options.putDelayMs) await new Promise((resolve) => setTimeout(resolve, options.putDelayMs));
+        saving -= 1;
         plan = { ...plan, ...body };
         return json({ plan });
       }
@@ -195,7 +208,9 @@ describe("a power plan", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "Shack" })).toBeInTheDocument();
     // 15 W × 24 h + 15.2 Wh for the radio.
     expect(screen.getByText("375 Wh")).toBeInTheDocument();
-    expect(screen.getByText(/Real batteries deliver less when cold/)).toBeInTheDocument();
+    expect(screen.getByText(/Real batteries deliver less when cold/)).toHaveTextContent(
+      /general information: no substitute for the wiring regulations/,
+    );
     expect(screen.getByText(/Duty cycle 10.0%/)).toBeInTheDocument();
     expect(screen.getByText(/Not checked: give the battery's rated discharge current/)).toBeInTheDocument();
     expect(await screen.findByText("Save as PDF")).toBeInTheDocument();
@@ -229,6 +244,34 @@ describe("a power plan", () => {
       origin: { library: "common", id: "raspberry-pi-5", state: "typical", figures: { watts: 4.08 } },
     });
   });
+
+  it("saves a change at once when the page is hidden or closed, in a request that outlives the page", async () => {
+    const server = show("/tools/power/plans/p1");
+    fireEvent.change(await screen.findByLabelText("Name"), { target: { value: "Shack, winter" } });
+    expect(server.put).toHaveLength(0);
+    Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "hidden" });
+    document.dispatchEvent(new Event("visibilitychange"));
+    // Well inside the moment an ordinary change waits before it is saved.
+    await waitFor(() => expect(server.put).toHaveLength(1), { timeout: 300 });
+    expect(server.put[0]!.name).toBe("Shack, winter");
+    expect(server.keptAlive).toEqual([true]);
+    fireEvent.change(screen.getByLabelText("Notes"), { target: { value: "For the winter months." } });
+    window.dispatchEvent(new Event("pagehide"));
+    await waitFor(() => expect(server.put).toHaveLength(2), { timeout: 300 });
+    expect(server.put[1]!.notes).toBe("For the winter months.");
+  });
+
+  it("sends one save at a time, and a change made while one is under way follows it", async () => {
+    const server = show("/tools/power/plans/p1", { putDelayMs: 1200 });
+    const name = await screen.findByLabelText("Name");
+    fireEvent.change(name, { target: { value: "Shack A" } });
+    await waitFor(() => expect(server.put).toHaveLength(1), { timeout: 2000 });
+    fireEvent.change(name, { target: { value: "Shack AB" } });
+    await waitFor(() => expect(server.put).toHaveLength(2), { timeout: 4000 });
+    expect(server.mostAtOnce).toBe(1);
+    expect(server.put.map((put) => put.name)).toEqual(["Shack A", "Shack AB"]);
+    await waitFor(() => expect(screen.getByText("Saved.")).toBeInTheDocument(), { timeout: 3000 });
+  }, 10_000);
 
   it("refuses a load with a figure missing, saying which", async () => {
     show("/tools/power/plans/p1");

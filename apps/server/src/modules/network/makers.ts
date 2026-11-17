@@ -65,32 +65,35 @@ export interface MakersStore {
   remove(): void;
 }
 
+/**
+ * The file is read from disk once, the first time it is needed, and kept in memory with
+ * its size and date: the screen's data is asked for often, and the file changes only
+ * through `replace` and `remove` here.
+ */
 export function createMakersStore(dir: string): MakersStore {
   const file = path.join(dir, MAKERS_FILE);
-  let loaded: Map<string, string> | null = null;
+  let loaded: { makers: Map<string, string>; fetchedAt: number; bytes: number } | null | undefined;
 
-  const load = (): Map<string, string> => {
-    if (loaded) return loaded;
+  const load = () => {
+    if (loaded !== undefined) return loaded;
     try {
-      loaded = parseMakers(fs.readFileSync(file, "utf8"));
+      const stat = fs.statSync(file);
+      loaded = { makers: parseMakers(fs.readFileSync(file, "utf8")), fetchedAt: stat.mtimeMs, bytes: stat.size };
     } catch {
-      loaded = new Map();
+      loaded = null;
     }
     return loaded;
   };
 
   return {
     lookup(mac) {
-      if (!fs.existsSync(file) && !loaded?.size) return null;
-      return load().get(mac.replace(/:/g, "").slice(0, 6).toLowerCase()) ?? null;
+      return load()?.makers.get(mac.replace(/:/g, "").slice(0, 6).toLowerCase()) ?? null;
     },
     info() {
-      try {
-        const stat = fs.statSync(file);
-        return { present: true, entries: load().size, fetchedAt: stat.mtimeMs, bytes: stat.size };
-      } catch {
-        return { present: false, entries: 0, fetchedAt: null, bytes: null };
-      }
+      const kept = load();
+      return kept
+        ? { present: true, entries: kept.makers.size, fetchedAt: kept.fetchedAt, bytes: kept.bytes }
+        : { present: false, entries: 0, fetchedAt: null, bytes: null };
     },
     replace(bytes) {
       const parsed = parseMakers(bytes.toString("utf8"));
@@ -99,7 +102,7 @@ export function createMakersStore(dir: string): MakersStore {
       const part = `${file}.part`;
       fs.writeFileSync(part, bytes);
       fs.renameSync(part, file);
-      loaded = parsed;
+      loaded = { makers: parsed, fetchedAt: fs.statSync(file).mtimeMs, bytes: bytes.byteLength };
       return parsed.size;
     },
     remove() {

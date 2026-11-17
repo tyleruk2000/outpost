@@ -10,12 +10,12 @@
  * (`ctx.services.power.kept`, used by modules/manage), and is in the database a backup
  * copies.
  */
-import { POWER_PLAN_MAX_LOADS, type PowerPlan, type PowerPlanInput } from "@outpost/shared";
+import { POWER_PLAN_MAX_LOADS, POWER_PLANS_MAX, type PowerPlan, type PowerPlanInput } from "@outpost/shared";
 import { asc, eq } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { AppContext } from "../../core/context.ts";
-import { notFound } from "../../core/errors.ts";
+import { badRequest, notFound } from "../../core/errors.ts";
 import { newId } from "../../core/ids.ts";
 import { powerPlans } from "../../db/schema.ts";
 import { registerPowerDevices } from "./devices.ts";
@@ -167,6 +167,8 @@ type System = Omit<PowerPlanInput, "name" | "notes">;
 export async function registerPower(app: FastifyInstance, ctx: AppContext): Promise<void> {
   const { db } = ctx;
   const changed = () => ctx.events.publish({ type: "power.changed" });
+  const countPlans = ctx.sqlite.prepare<[], { n: number }>("SELECT count(*) AS n FROM power_plans");
+  const deletePlans = ctx.sqlite.prepare("DELETE FROM power_plans");
   const toPlan = (row: Row): PowerPlan => ({
     id: row.id,
     name: row.name,
@@ -189,6 +191,7 @@ export async function registerPower(app: FastifyInstance, ctx: AppContext): Prom
       return toPlan(row);
     },
     create(input) {
+      if (service.kept.count() >= POWER_PLANS_MAX) throw badRequest(`There are already ${POWER_PLANS_MAX} power plans. Delete one first.`);
       const now = Date.now();
       const id = newId();
       db.insert(powerPlans)
@@ -216,10 +219,10 @@ export async function registerPower(app: FastifyInstance, ctx: AppContext): Prom
       changed();
     },
     kept: {
-      count: () => (ctx.sqlite.prepare("SELECT count(*) AS n FROM power_plans").get() as { n: number }).n,
+      count: () => countPlans.get()!.n,
       eraseAll() {
         const had = service.kept.count();
-        ctx.sqlite.prepare("DELETE FROM power_plans").run();
+        deletePlans.run();
         changed();
         return had;
       },

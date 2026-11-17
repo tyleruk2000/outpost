@@ -8,7 +8,9 @@ each linkable (`?tab=recover`, `?tab=sundial`, `?tab=nocturnal`):
   bearing, sundial time beside clock time, the equation of time today, the longitude
   correction for the clock's zone, today's solar noon in clock time, and the sun's path
   through the day as a chart. It says that it trusts the device's clock, and points to
-  clock recovery for when that is what is in doubt.
+  clock recovery for when that is what is in doubt. The clock is read again at the turn
+  of each minute (the tab shows minutes and tenths of a degree, which change no faster),
+  not at all while the page is hidden, and at once when it is shown again.
 - **Clock recovery**: for after a power cut, with no internet and perhaps no signal.
   From a typed date, the place and something measured with a stick, level ground,
   string and a ruler, the time to set the clocks by, with a range and one sentence on
@@ -55,7 +57,7 @@ time); sunrise 12 minutes for a week (the declination).
 A time is written to no more figures than its range deserves: to the minute when it is
 good to 3 minutes, to 5 minutes up to 20, to 10 up to an hour, to a quarter beyond; the
 range's ends are rounded outwards. **Better sources** points to radio time signals
-(`/radio/frequencies`, built on another branch the same night and not tested from here),
+(a link to Radio frequencies, `/radio/frequencies`),
 a GPS receiver, and a phone that has had signal.
 
 ## Formulas and sources
@@ -142,6 +144,5 @@ template made twice is the same file.
   on a compass) are Outpost's guesses at careful work, said as such on the screen.
 - The templates were looked at as rendered PDFs, not printed, cut out or used. A real
   nocturnal has not been made from one, and the sundial's gnomon thickness is left out.
-- The link to `/radio/frequencies` goes to a screen built on another branch.
 - Screens were looked at in headless Chromium at 390 px and 1,360 px, light and dark;
   not on a real phone.

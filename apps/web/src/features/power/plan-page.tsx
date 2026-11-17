@@ -45,12 +45,18 @@ const shortDate = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "sho
 /** "Power plan, Shack, 16 Nov 2026" */
 export const powerPlanTitle = (plan: PowerPlan) => `Power plan, ${plan.name}, ${shortDate.format(new Date(plan.updatedAt))}`;
 
-/** Keeps a draft of the plan and saves it a moment after the last change. */
+/**
+ * Keeps a draft of the plan and saves it a moment after the last change, one save at a
+ * time so that an older one never lands after a newer one. What is waiting is saved at
+ * once when the page is hidden or closed, and when it is left.
+ */
 function useDraft(plan: PowerPlan | undefined) {
   const save = useSavePowerPlan(plan?.id ?? "");
+  const { mutateAsync } = save;
   const [draft, setDraft] = useState<PowerPlanInput | null>(null);
   const pending = useRef<PowerPlanInput | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSave = useRef<Promise<void>>(Promise.resolve());
   const loadedId = useRef<string | null>(null);
   useEffect(() => {
     if (plan && loadedId.current !== plan.id) {
@@ -58,41 +64,75 @@ function useDraft(plan: PowerPlan | undefined) {
       setDraft(inputOf(plan));
     }
   }, [plan]);
-  /** Saves what is waiting now; resolves once it is saved (or at once when nothing is waiting). */
-  const flush = useCallback(async () => {
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = null;
-    // A plan always has a name: one emptied while typing waits for the next.
-    if (pending.current?.name.trim()) {
-      const input = { ...pending.current, name: pending.current.name.trim() };
-      pending.current = null;
-      await save.mutateAsync(input).catch(() => undefined);
-    }
-  }, [save]);
+  /** Saves what is waiting; resolves once it is saved (or at once when nothing is waiting). */
+  const flush = useCallback(
+    (leaving = false) => {
+      if (timer.current) clearTimeout(timer.current);
+      timer.current = null;
+      const send = async () => {
+        // A plan always has a name: one emptied while typing waits for the next.
+        const waiting = pending.current;
+        if (!waiting?.name.trim()) return;
+        pending.current = null;
+        await mutateAsync({ input: { ...waiting, name: waiting.name.trim() }, leaving }).catch(() => undefined);
+      };
+      // A page being hidden or closed may not run again, so its save goes now rather than after the one under way.
+      const next = leaving ? send() : lastSave.current.then(send);
+      lastSave.current = next;
+      return next;
+    },
+    [mutateAsync],
+  );
   const flushRef = useRef(flush);
   flushRef.current = flush;
-  useEffect(() => () => void flushRef.current(), []);
+  useEffect(() => {
+    const hidden = () => {
+      if (document.visibilityState === "hidden") void flushRef.current(true);
+    };
+    const closing = () => void flushRef.current(true);
+    document.addEventListener("visibilitychange", hidden);
+    window.addEventListener("pagehide", closing);
+    return () => {
+      document.removeEventListener("visibilitychange", hidden);
+      window.removeEventListener("pagehide", closing);
+      void flushRef.current();
+    };
+  }, []);
   const change = (next: PowerPlanInput) => {
     setDraft(next);
     pending.current = next;
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => void flushRef.current(), SAVE_AFTER_MS);
   };
+  /** Drops what is waiting: the plan is being deleted. */
+  const discard = () => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = null;
+    pending.current = null;
+  };
   const state = draft && !draft.name.trim() ? "unnamed" : pending.current || save.isPending ? "saving" : save.isError ? "failed" : "saved";
-  return { draft, change, state, flush };
+  return { draft, change, state, flush, discard };
 }
 
 export default function PowerPlanPage() {
   const { id = "" } = useParams();
   const plan = usePowerPlan(id);
-  const { draft, change, state, flush } = useDraft(plan.data);
+  const { draft, change, state, flush, discard } = useDraft(plan.data);
   const copy = useCopyPowerPlan();
   const remove = useRemovePowerPlan();
   const navigate = useNavigate();
   const [editing, setEditing] = useState<PowerLoad | "new" | null>(null);
   const [removing, setRemoving] = useState<PowerLoad | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const answers = useMemo(() => (draft ? workOut(draft) : null), [draft]);
+  // The answers do not depend on the name or the notes: typing those works nothing out again and leaves the chart as it is.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: keyed on the parts of the plan the answers are worked out from
+  const worked = useMemo(() => {
+    if (!draft) return null;
+    const answers = workOut(draft);
+    const month = chartMonth(answers);
+    return { answers, month, run: simulate(draft, month, 3) };
+  }, [draft?.battery, draft?.loads, draft?.inverter, draft?.usb, draft?.solar, draft?.charger, draft?.cableRatingA]);
+  const answers = worked?.answers ?? null;
 
   // The PDF is made from the plan as saved, so that the file and the library's copy say what is kept.
   const saved = plan.data;
@@ -137,8 +177,7 @@ export default function PowerPlanPage() {
   /** A field left empty keeps the figure it had: a plan always has one. */
   const keep = <T,>(value: number | null, apply: (value: number) => T) => (value === null ? undefined : apply(value));
   const hasAc = draft.loads.some((load) => load.supply === "ac");
-  const month = chartMonth(answers);
-  const run = simulate(draft, month, 3);
+  const { month, run } = worked!;
   const floor = 1 - draft.battery.usableDod;
   const over = [
     answers.peak.battery.over ? `more than the ${figure(answers.peak.battery.limit!, 0)} A the battery is rated to give` : null,
@@ -698,7 +737,10 @@ export default function PowerPlanPage() {
         title={`Delete ${saved.name}?`}
         description={`The plan and its ${plural(draft.loads.length, "load")} are deleted. A PDF of it already added to the library stays there.`}
         confirmLabel="Delete plan"
-        onConfirm={() => remove.mutate(saved.id, { onSuccess: () => navigate("/tools/power") })}
+        onConfirm={() => {
+          discard();
+          remove.mutate(saved.id, { onSuccess: () => navigate("/tools/power") });
+        }}
       />
       {remove.isError ? <Notice tone="danger">{errorMessage(remove.error)}</Notice> : null}
     </Page>

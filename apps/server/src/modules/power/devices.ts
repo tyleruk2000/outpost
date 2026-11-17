@@ -90,6 +90,8 @@ function tidy(input: OwnDeviceInput): OwnDeviceInput {
 export function registerPowerDevices(app: FastifyInstance, ctx: AppContext): void {
   const { db } = ctx;
   const changed = () => ctx.events.publish({ type: "power.changed" });
+  const countDevices = ctx.sqlite.prepare<[], { n: number }>("SELECT count(*) AS n FROM power_devices");
+  const deleteDevices = ctx.sqlite.prepare("DELETE FROM power_devices");
 
   const service: PowerDevicesService = {
     list: () => db.select().from(powerDevices).orderBy(asc(powerDevices.name)).all().map(toDevice),
@@ -123,10 +125,10 @@ export function registerPowerDevices(app: FastifyInstance, ctx: AppContext): voi
       db.delete(powerDevices).where(eq(powerDevices.id, id)).run();
       changed();
     },
-    count: () => (ctx.sqlite.prepare("SELECT count(*) AS n FROM power_devices").get() as { n: number }).n,
+    count: () => countDevices.get()!.n,
     eraseAll() {
       const had = service.count();
-      ctx.sqlite.prepare("DELETE FROM power_devices").run();
+      deleteDevices.run();
       changed();
       return had;
     },

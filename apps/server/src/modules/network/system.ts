@@ -110,6 +110,9 @@ export function realSystem(run: CommandRunner = runCommand, platform: NodeJS.Pla
   const avahiPath = kind === "linux" ? firstThere(["/usr/bin/avahi-browse", "/bin/avahi-browse"]) : null;
   const avahiResolve = kind === "linux" ? firstThere(["/usr/bin/avahi-resolve", "/bin/avahi-resolve"]) : null;
   const dnsSd = kind === "macos" ? firstThere(["/usr/bin/dns-sd"]) : null;
+  // Looked for once, here, rather than on each request for the screen's data.
+  const procArp = kind === "linux" && fs.existsSync("/proc/net/arp");
+  const procRoute = kind === "linux" && fs.existsSync("/proc/net/route");
 
   // Whether ping works without special rights is only known by trying it: once, on loopback, which sends nothing onto the network.
   let pingWorks: Promise<boolean> | null = null;
@@ -137,12 +140,12 @@ export function realSystem(run: CommandRunner = runCommand, platform: NodeJS.Pla
             : kind === "linux"
               ? ipPath
                 ? "ip neigh show"
-                : fs.existsSync("/proc/net/arp")
+                : procArp
                   ? "/proc/net/arp (IPv4 only)"
                   : null
               : null,
         announcements: dnsSd ? "dns-sd (Bonjour)" : avahiPath ? "avahi-browse (Avahi)" : null,
-        router: kind === "macos" ? "route -n get default" : kind === "linux" && fs.existsSync("/proc/net/route") ? "/proc/net/route" : null,
+        router: kind === "macos" ? "route -n get default" : procRoute ? "/proc/net/route" : null,
       };
     },
     async ping(address, timeoutMs) {

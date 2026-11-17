@@ -4,7 +4,7 @@
  * the arrow keys, and the same figures as a table for a screen reader. Drawn by hand as
  * SVG like every chart in Outpost (see features/propagation/charts.tsx).
  */
-import { type KeyboardEvent, type PointerEvent, useEffect, useId, useRef, useState } from "react";
+import { type KeyboardEvent, memo, type PointerEvent, useEffect, useId, useRef, useState } from "react";
 
 const AXIS_TEXT = "tabular fill-ink-muted text-[11px]";
 
@@ -27,7 +27,18 @@ function useWidth(fallback = 640): [React.RefObject<HTMLDivElement | null>, numb
 export const hourLabel = (index: number): string =>
   `Day ${Math.floor(index / 24) + 1}, ${String(index % 24).padStart(2, "0")}:00 to ${String((index % 24) + 1).padStart(2, "0")}:00`;
 
-export function SocChart({ soc, floor, name, height = 200 }: { soc: number[]; floor: number; name: string; height?: number }) {
+/** Drawn again only when its figures change, not each time the plan around it is typed in. */
+export const SocChart = memo(function SocChart({
+  soc,
+  floor,
+  name,
+  height = 200,
+}: {
+  soc: number[];
+  floor: number;
+  name: string;
+  height?: number;
+}) {
   const [ref, width] = useWidth();
   const [at, setAt] = useState<number | null>(null);
   const tableId = useId();
@@ -154,4 +165,4 @@ export function SocChart({ soc, floor, name, height = 200 }: { soc: number[]; fl
       </div>
     </div>
   );
-}
+});

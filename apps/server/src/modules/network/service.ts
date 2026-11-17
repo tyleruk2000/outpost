@@ -124,6 +124,7 @@ export function createNetworkService(ctx: AppContext) {
   const activeMakersJob = (): JobRow | undefined =>
     ctx.jobs.list({ states: ["queued", "running", "paused"], types: [MAKERS_JOB], limit: 5 })[0];
 
+  const countDevices = sqlite.prepare<[], { n: number }>("SELECT count(*) AS n FROM network_devices");
   const scans = () => db.select().from(networkScans).orderBy(desc(networkScans.finishedAt)).limit(2).all();
 
   function summary(row: typeof networkScans.$inferSelect | undefined): NetworkScanSummary | null {
@@ -404,7 +405,7 @@ export function createNetworkService(ctx: AppContext) {
     devices,
     csv: () => devicesCsv(devices()),
     /** Devices remembered, for "Manage and clean up" and the Storage screen. */
-    count: () => db.select({ id: networkDevices.id }).from(networkDevices).all().length,
+    count: () => countDevices.get()!.n,
     /** Everything this feature keeps: the devices, their names and notes, and the record of scans. */
     eraseAll(): number {
       const removed = sqlite.transaction(() => {

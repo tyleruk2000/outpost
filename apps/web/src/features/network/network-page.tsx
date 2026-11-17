@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog, Dialog, DialogBody, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Field, Input, Textarea } from "@/components/ui/input";
 import { Badge, Progress, Skeleton } from "@/components/ui/misc";
-import { copyText } from "@/features/storage/parts";
+import { copyText } from "@/features/downloads/copy";
 import { formatDate, plural } from "@/lib/utils";
 import {
   useFetchMakers,

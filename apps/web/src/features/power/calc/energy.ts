@@ -33,8 +33,6 @@ export function bank(volts: number, ampHours: number, series: number, parallel: 
   };
 }
 
-export const wattHoursOf = (ampHours: number, volts: number): number => ampHours * volts;
-
 export interface Runtime {
   /** What can be taken out, watt-hours: capacity × usable share × efficiency. */
   deliveredWh: number;
