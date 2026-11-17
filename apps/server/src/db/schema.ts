@@ -1489,3 +1489,21 @@ export const networkScans = sqliteTable("network_scans", {
   newDevices: integer("new_devices").notNull(),
   goneDevices: integer("gone_devices").notNull(),
 });
+
+// ── Games ───────────────────────────────────────────────────────────────────
+
+/**
+ * What the games keep for the household (there are no accounts): one row per game. The
+ * allotment's row holds its whole plot; each other game's holds its tally of games
+ * played and won. An unfinished game of cards, Sudoku, draughts or pairs is not here: it
+ * stays on the device it is being played on.
+ */
+export const gameSaves = sqliteTable("game_saves", {
+  /** The game's id: "allotment", "patience", "sudoku", "draughts" or "pairs". */
+  id: id(),
+  state: json<Record<string, unknown>>("state").notNull(),
+  /** Goes up by one each time the row is written, so that two writes at once cannot both win. */
+  version: integer("version").notNull().default(1),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+});

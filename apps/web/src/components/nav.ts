@@ -26,6 +26,7 @@ import {
   Map as MapIcon,
   MessagesSquare,
   NotebookText,
+  Puzzle,
   RadioReceiver,
   RadioTower,
   Search,
@@ -36,6 +37,7 @@ import {
   Waypoints,
   Wrench,
 } from "lucide-react";
+import { gameScreens } from "@/features/games/screens";
 import { DeviceIcon, ON_THIS_DEVICE } from "@/features/kept/device";
 import { prepareScreens } from "@/features/prepare/screens";
 import { toolScreens } from "@/features/tools/screens";
@@ -95,6 +97,8 @@ export const knowledgeNav: NavItem[] = [
   // "o" for tOols and "y" for readY: the obvious letters are taken.
   { to: "/tools", label: "Tools", icon: Wrench, key: "o", children: toolScreens },
   { to: "/prepare", label: "Preparedness", icon: ShieldCheck, key: "y", children: prepareScreens },
+  // Games, drawn from features/games/screens.ts. "b" for board games: "g" begins every shortcut.
+  { to: "/games", label: "Games", icon: Puzzle, key: "b", children: gameScreens },
   // Last, so that the tree of pages sits under it in the sidebar. Importing brings in pages (Markdown, Notion), so it is Notes'.
   { to: "/notes", label: "Notes", icon: NotebookText, key: "n", children: [{ to: "/import", label: "Import files", icon: FolderInput }] },
 ];

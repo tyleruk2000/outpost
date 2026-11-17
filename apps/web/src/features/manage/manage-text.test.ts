@@ -161,6 +161,26 @@ describe("what a removal says before it happens", () => {
     );
     expect(personalWords({ ...none, morse: { sessions: 0, progress: 0 } })).toBe("Also erased: the history of downloads and other work.");
   });
+
+  it("counts what the games keep among the person's own things", () => {
+    const none = {
+      pages: 0,
+      attachments: { count: 0, bytes: 0 },
+      places: 0,
+      routes: 0,
+      contacts: 0,
+      conversations: 0,
+      repeaters: 0,
+      repeaterLists: 0,
+      settings: 0,
+      vectors: 0,
+      previous: { count: 0, bytes: 0 },
+    };
+    expect(personalWords({ ...none, games: { saves: 3 } })).toBe(
+      "Also erased: 3 games kept for the household and the history of downloads and other work.",
+    );
+    expect(personalWords({ ...none, games: { saves: 0 } })).toBe("Also erased: the history of downloads and other work.");
+  });
 });
 
 describe("the account of a clean-up", () => {
@@ -213,6 +233,11 @@ describe("the account of a clean-up", () => {
         }),
       )[0],
     ).toBe("Erased 1 Morse practice session with the trainer's progress and settings and the history.");
+    expect(
+      resultSentences(
+        result({ scope: "everything", personal: { ...personal, conversations: 0, repeaters: 0, repeaterLists: 0, games: { saves: 1 } } }),
+      )[0],
+    ).toBe("Erased 1 game kept for the household and the history.");
   });
 
   it("says when it was stopped and how much it had not reached, and when there was nothing to do", () => {

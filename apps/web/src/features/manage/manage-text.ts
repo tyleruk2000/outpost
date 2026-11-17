@@ -6,6 +6,7 @@ import {
   type CleanupPlan,
   type CleanupResult,
   formatBytes,
+  type GamesKept,
   type LeftoverKind,
   type ManagedItem,
   type ManagedKind,
@@ -263,6 +264,12 @@ export function morseWords(morse: MorseKept | undefined): string | null {
   return progress ? `${sessions} with the trainer's progress and settings` : sessions;
 }
 
+/** "3 games kept for the household" (the allotment, and each game's tally), or null when there is nothing. */
+export function gamesWords(games: GamesKept | undefined): string | null {
+  if (!games || games.saves === 0) return null;
+  return plural(games.saves, "game kept for the household", "games kept for the household");
+}
+
 /** "2 weather places, 140 barometer readings and 6 fetched forecasts and warnings", leaving out what there is none of; null when there is nothing. */
 export function weatherWords(weather: WeatherKept | undefined): string | null {
   if (!weather) return null;
@@ -301,6 +308,8 @@ export function personalWords(personal: NonNullable<CleanupPlan["personal"]>): s
   if ((personal.emergencyPlans ?? 0) > 0) parts.push(plural(personal.emergencyPlans ?? 0, "emergency plan"));
   const morse = morseWords(personal.morse);
   if (morse) parts.push(morse);
+  const games = gamesWords(personal.games);
+  if (games) parts.push(games);
   if (personal.settings > 0) parts.push(plural(personal.settings, "changed setting"));
   if (personal.vectors > 0) parts.push(plural(personal.vectors, "semantic vector"));
   parts.push("the history of downloads and other work");
@@ -353,6 +362,7 @@ export function resultSentences(result: CleanupResult): string[] {
       weatherWords(weather),
       (result.personal.emergencyPlans ?? 0) > 0 ? plural(result.personal.emergencyPlans ?? 0, "emergency plan") : null,
       morseWords(result.personal.morse),
+      gamesWords(result.personal.games),
       settings > 0 ? plural(settings, "changed setting") : null,
       "the history",
     ].filter((part): part is string => part !== null);

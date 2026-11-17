@@ -16,6 +16,8 @@ export * from "./downloads.ts";
 export * from "./emergency-plans.ts";
 export * from "./emergency-templates.ts";
 export * from "./encryption.ts";
+export * from "./games/allotment/index.ts";
+export * from "./games.ts";
 export * from "./home-place.ts";
 export * from "./https.ts";
 export * from "./imagery.ts";

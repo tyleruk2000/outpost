@@ -30,7 +30,8 @@ export type DatabaseCountId =
   | "scenarios"
   | "pressureReadings"
   | "emergencyPlans"
-  | "morseSessions";
+  | "morseSessions"
+  | "gameSaves";
 
 /** Where the bytes go, in a few plain groups of tables. */
 export type DatabaseGroupId = "search" | "meaning" | "library" | "notes" | "maps" | "radio" | "prepare" | "other";

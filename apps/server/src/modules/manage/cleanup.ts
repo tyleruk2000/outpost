@@ -267,6 +267,7 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
         weather: ctx.services.weather.count(),
         emergencyPlans: ctx.services.emergencyPlans.kept.count(),
         morse: ctx.services.morse.kept.count(),
+        games: ctx.services.games.kept.count(),
         settings: count("SELECT count(*) AS n FROM settings"),
         vectors: count("SELECT count(*) AS n FROM embeddings"),
         previous: previousData(),
@@ -529,6 +530,7 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
       weather: { places: 0, readings: 0, copies: 0, copyBytes: 0 },
       emergencyPlans: 0,
       morse: { sessions: 0, progress: 0 },
+      games: { saves: 0 },
       settings: 0,
     };
     personal.attachments = (sqlite.prepare("SELECT count(*) AS n FROM attachments").get() as { n: number }).n;
@@ -584,6 +586,8 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
     personal.emergencyPlans = ctx.services.emergencyPlans.kept.eraseAll();
     // The Morse trainer: its progress, settings and practice sessions.
     personal.morse = ctx.services.morse.kept.eraseAll();
+    // The games: the allotment and each game's tally.
+    personal.games = ctx.services.games.kept.eraseAll();
 
     // Whatever is left belongs to records that no longer exist: attachments no page
     // used, import reports, history, vectors, and the settings.
@@ -649,7 +653,7 @@ export function createCleanup(ctx: AppContext, inventory: Inventory, survey: Sur
         // From here on nothing can be stopped half-way in a state worth keeping.
         run.progress({
           message:
-            "Erasing notes, places, routes, contacts, conversations, repeaters, radio plans and logs, power plans and devices, supplies, emergency plans, Morse practice, and settings",
+            "Erasing notes, places, routes, contacts, conversations, repeaters, radio plans and logs, power plans and devices, supplies, emergency plans, Morse practice, the games, and settings",
         });
         await erasePersonal(result);
         await eraseDataFolders(result);

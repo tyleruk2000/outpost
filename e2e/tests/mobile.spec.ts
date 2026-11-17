@@ -101,6 +101,12 @@ test.describe("on a phone", () => {
       ["Supplies", "/prepare/supplies"],
       ["Weather and hazards", "/prepare/weather"],
       ["Nuclear preparedness", "/prepare/nuclear"],
+      ["Games", "/games"],
+      ["Allotment", "/games/allotment"],
+      ["Patience", "/games/patience"],
+      ["Sudoku", "/games/sudoku"],
+      ["Draughts", "/games/draughts"],
+      ["Pairs", "/games/pairs"],
       // A tab, listed again as the heading of the screen under it.
       ["Notes", "/notes"],
       ["Import files", "/import"],

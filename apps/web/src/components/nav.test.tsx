@@ -178,6 +178,21 @@ describe("the quick search's Go to list", () => {
   });
 });
 
+describe("the Games section", () => {
+  it("lists its five games under it, in order, each with a quick-search entry", () => {
+    const games = allNav.find((item) => item.to === "/games")!;
+    expect(games.children!.map((child) => [child.label, child.to])).toEqual([
+      ["Allotment", "/games/allotment"],
+      ["Patience", "/games/patience"],
+      ["Sudoku", "/games/sudoku"],
+      ["Draughts", "/games/draughts"],
+      ["Pairs", "/games/pairs"],
+    ]);
+    expect(allNav.map((item) => item.to).indexOf("/games")).toBe(allNav.map((item) => item.to).indexOf("/prepare") + 1);
+    expect(everyScreen.filter((item) => item.parent?.to === "/games")).toHaveLength(5);
+  });
+});
+
 describe("the Radio screen", () => {
   it("links to every screen the navigation puts under Radio", () => {
     render(
