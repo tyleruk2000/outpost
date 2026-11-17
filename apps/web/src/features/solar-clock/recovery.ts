@@ -108,7 +108,8 @@ function noonDay(place: Place, date: IsoDate): { noon: number; refusal: string |
  * noon the sun's height barely changes, so the shadow does too.
  */
 export function noonByShortestShadow(place: Place, date: IsoDate, stick: number, markError: number): Outcome {
-  if (!(stick > 0) || !(markError > 0)) return { ok: false, reason: "The stick's height and the marking error must both be more than nothing." };
+  if (!(stick > 0) || !(markError > 0))
+    return { ok: false, reason: "The stick's height and the marking error must both be more than nothing." };
   const { noon, refusal } = noonDay(place, date);
   if (refusal) return { ok: false, reason: refusal };
   const lengthAt = (t: number) => shadowLength(stick, sunAt(noon + t, place.lat, place.lon).apparentAltitude);
@@ -148,7 +149,12 @@ export function noonByEqualShadows(place: Place, date: IsoDate, stick: number, r
     };
   }
   const apparent = Math.atan(stick / radius) / DEG;
-  if (apparent < 3) return { ok: false, reason: "A circle that wide is only reached with the sun near the horizon, where the shadow is too faint and too long. Draw a smaller one." };
+  if (apparent < 3)
+    return {
+      ok: false,
+      reason:
+        "A circle that wide is only reached with the sun near the horizon, where the shadow is too faint and too long. Draw a smaller one.",
+    };
   const height = geometricFromApparent(apparent);
   const before = altitudeCrossing(place.lat, place.lon, date, height, -1);
   const after = altitudeCrossing(place.lat, place.lon, date, height, 1);
@@ -213,8 +219,10 @@ export function timeFromShadowLength(
   half: HalfDay,
   markError: number,
 ): Outcome {
-  if (!(stick > 0) || !(shadow > 0) || !(markError >= 0)) return { ok: false, reason: "The stick and its shadow must both be longer than nothing." };
-  if (markError >= stick || markError >= shadow) return { ok: false, reason: "The marking error must be smaller than the stick and the shadow." };
+  if (!(stick > 0) || !(shadow > 0) || !(markError >= 0))
+    return { ok: false, reason: "The stick and its shadow must both be longer than nothing." };
+  if (markError >= stick || markError >= shadow)
+    return { ok: false, reason: "The marking error must be smaller than the stick and the shadow." };
   const side = half === "morning" ? -1 : 1;
   const day = sunDay(place.lat, place.lon, date);
   const highestApparent = day.noonAltitude + refraction(day.noonAltitude);
@@ -230,7 +238,8 @@ export function timeFromShadowLength(
   if (apparent < 3) {
     return {
       ok: false,
-      reason: "The sun is less than 3° high for a shadow that long. So near the horizon the shadow is faint, the air bends the light by an uncertain amount, and the answer would be no use. Measure when the sun is higher.",
+      reason:
+        "The sun is less than 3° high for a shadow that long. So near the horizon the shadow is faint, the air bends the light by an uncertain amount, and the answer would be no use. Measure when the sun is higher.",
     };
   }
   const when = (seen: number): number | null => {
@@ -241,7 +250,11 @@ export function timeFromShadowLength(
   const early = when(side === -1 ? Math.max(apparentLow, 0.5) : Math.min(apparentHigh, highestApparent));
   const late = when(side === -1 ? Math.min(apparentHigh, highestApparent) : Math.max(apparentLow, 0.5));
   if (at === null || early === null || late === null) {
-    return { ok: false, reason: "The sun does not stand at that height on this side of noon on this date here. Check the date and whether it was morning or afternoon." };
+    return {
+      ok: false,
+      reason:
+        "The sun does not stand at that height on this side of noon on this date here. Check the date and whether it was morning or afternoon.",
+    };
   }
   const { low, high } = widen(at, Math.min(early, late), Math.max(early, late));
   const range = (high - low) / 2 / MINUTE;
@@ -308,7 +321,8 @@ export function timeFromShadowBearing(
   declination: number | null,
   compassError: number,
 ): Outcome {
-  if (!Number.isFinite(shadowBearing) || !(compassError >= 0)) return { ok: false, reason: "Type the shadow's bearing in degrees, 0 to 360." };
+  if (!Number.isFinite(shadowBearing) || !(compassError >= 0))
+    return { ok: false, reason: "Type the shadow's bearing in degrees, 0 to 360." };
   const sunBearing = (((shadowBearing + 180 + (declination ?? 0)) % 360) + 360) % 360;
   const at = whenSunBears(place, date, sunBearing);
   if (at === null) {
@@ -354,7 +368,8 @@ export const horizonDip = (eyeHeight: number) => (1.76 * Math.sqrt(Math.max(0, e
  * upwards then, so a little error in height is a long one in time.
  */
 export function timeFromSeaHorizon(place: Place, date: IsoDate, event: "rise" | "set", eyeHeight: number): Outcome {
-  if (!(eyeHeight >= 0) || eyeHeight > 1000) return { ok: false, reason: "Give the height of your eye above the sea in metres, 0 to 1,000." };
+  if (!(eyeHeight >= 0) || eyeHeight > 1000)
+    return { ok: false, reason: "Give the height of your eye above the sea in metres, 0 to 1,000." };
   const side = event === "rise" ? -1 : 1;
   const height = -0.833 - horizonDip(eyeHeight);
   const at = altitudeCrossing(place.lat, place.lon, date, height, side);

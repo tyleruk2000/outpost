@@ -49,7 +49,8 @@ export interface HourLine {
 export function hourLines(latitude: number): HourLine[] {
   const span = dialHalfSpan(latitude);
   const lines: HourLine[] = [];
-  for (let fromNoon = -span; fromNoon <= span; fromNoon += 1) lines.push({ fromNoon, hour: 12 + fromNoon, angle: hourLineAngle(latitude, fromNoon) });
+  for (let fromNoon = -span; fromNoon <= span; fromNoon += 1)
+    lines.push({ fromNoon, hour: 12 + fromNoon, angle: hourLineAngle(latitude, fromNoon) });
   return lines;
 }
 

@@ -56,6 +56,7 @@ const CookingToolsPage = lazy(() => import("./features/tools/cooking/cooking-pag
 const NuclearPage = lazy(() => import("./features/nuclear/nuclear-page"));
 const QrPage = lazy(() => import("./features/qr/qr-page"));
 const NetworkPage = lazy(() => import("./features/network/network-page"));
+const SolarClockPage = lazy(() => import("./features/solar-clock/solar-clock-page"));
 const PropagationPage = lazy(() => import("./features/propagation/propagation-page"));
 const PlansPage = lazy(() => import("./features/propagation/plans/plans-page"));
 const PlanPage = lazy(() => import("./features/propagation/plans/plan-page"));
@@ -149,6 +150,7 @@ export function App() {
           <Route path="prepare/nuclear" element={<NuclearPage />} />
           <Route path="tools/qr" element={<QrPage />} />
           <Route path="tools/network" element={<NetworkPage />} />
+          <Route path="tools/solar-clock" element={<SolarClockPage />} />
           <Route path="prepare/weather" element={<WeatherPage />} />
           <Route path="prepare/plans" element={<EmergencyPlansPage />} />
           <Route path="prepare/plans/:id" element={<EmergencyPlanPage />} />

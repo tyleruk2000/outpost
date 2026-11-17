@@ -4,9 +4,10 @@
  * device's zone is wrong or it is not the device being set. And times written to the
  * precision a method deserves. Pure, apart from asking the browser for its zone.
  */
-import { type ClockStyle, clockText } from "@/lib/clock";
+
 import { type IsoDate, utcToDate } from "@/features/maps/lib/sun";
 import { formatOffset, formatShortDate, zoneOffsetMinutes } from "@/features/maps/lib/sun-text";
+import { type ClockStyle, clockText } from "@/lib/clock";
 
 const MINUTE = 60_000;
 
@@ -43,10 +44,18 @@ export function reading(choice: ZoneChoice, ms: number): { date: IsoDate; minute
 }
 
 /** "12:07", or "00:12 on 18 Nov" when it falls on another day than `date`. Rounded to `step` minutes. */
-export function clockAt(ms: number, choice: ZoneChoice, style: ClockStyle, date?: IsoDate, step = 1): string {
+export function clockAt(
+  ms: number,
+  choice: ZoneChoice,
+  style: ClockStyle,
+  date?: IsoDate,
+  step = 1,
+  direction: "nearest" | "down" | "up" = "nearest",
+): string {
   const { minutes } = reading(choice, ms);
+  const round = direction === "down" ? Math.floor : direction === "up" ? Math.ceil : Math.round;
   // Rounded on the clock's own face, so that rounding past midnight moves the day on.
-  const shown = reading(choice, ms + (Math.round(minutes / step) * step - minutes) * MINUTE);
+  const shown = reading(choice, ms + (round(minutes / step) * step - minutes) * MINUTE);
   const whole = Math.round(shown.minutes) % 1440;
   const text = clockText(Math.floor(whole / 60), whole % 60, style);
   return date && shown.date !== date ? `${text} on ${formatShortDate(shown.date)}` : text;

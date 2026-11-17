@@ -47,7 +47,9 @@ describe("the star clock", () => {
 
   it("says when the answer falls in daylight", () => {
     // Midsummer in Edinburgh: whatever the reading, the night is short; 12 o'clock is in daylight then.
-    const results = CLOCK_POSITIONS.map((position) => timeFromPointer({ lat: 55.95, lon: -3.19 }, "2026-06-21", "dubhe", Number(position.value) / 2));
+    const results = CLOCK_POSITIONS.map((position) =>
+      timeFromPointer({ lat: 55.95, lon: -3.19 }, "2026-06-21", "dubhe", Number(position.value) / 2),
+    );
     expect(results.some((result) => result.ok && result.estimate.warnings.some((warning) => /not be dark/.test(warning)))).toBe(true);
   });
 
@@ -68,7 +70,7 @@ describe("the star clock", () => {
 describe("the printed nocturnal", () => {
   /** Clock hours from midnight (UTC here) at an instant, −12 to 12. */
   const fromMidnight = (ms: number) => {
-    const hours = ((ms / 3_600_000) % 24 + 24) % 24;
+    const hours = (((ms / 3_600_000) % 24) + 24) % 24;
     return hours > 12 ? hours - 24 : hours;
   };
 
@@ -91,7 +93,7 @@ describe("the printed nocturnal", () => {
   it("moves the dates round by about a degree a day, anticlockwise, a full turn in a year", () => {
     const a = dateRingAngle("2026-03-01", 0, 0);
     const b = dateRingAngle("2026-03-02", 0, 0);
-    expect(((a - b + 360) % 360)).toBeCloseTo(0.986, 2);
+    expect((a - b + 360) % 360).toBeCloseTo(0.986, 2);
     expect(Math.abs(dateRingAngle("2027-03-01", 0, 0) - a)).toBeLessThan(1.5);
   });
 

@@ -13,8 +13,9 @@
  * every nocturnal, takes Polaris to be at the pole; that costs it a few minutes at
  * most, which the tests measure. Pure.
  */
-import { addDays, dateToUtc, type IsoDate, sunAt, sunDay } from "@/features/maps/lib/sun";
+
 import { angleFromPolaris, localSiderealHours, STARS, type Star, starAt, starPlace } from "@/features/maps/lib/sky";
+import { addDays, dateToUtc, type IsoDate, sunAt, sunDay } from "@/features/maps/lib/sun";
 import type { Estimate, Outcome, Place } from "./recovery";
 
 const MINUTE = 60_000;
@@ -31,7 +32,8 @@ export const POINTER_STARS: Record<PointerStar, { star: Star; words: string }> =
 export const CLOCK_POSITIONS: Array<{ value: string; label: string }> = Array.from({ length: 24 }, (_, half) => {
   const hour = Math.floor(half / 2);
   const shown = hour === 0 ? 12 : hour;
-  const label = half % 2 === 0 ? `${shown} o'clock${hour === 0 ? " (straight up)" : hour === 6 ? " (straight down)" : ""}` : `Half past ${shown}`;
+  const label =
+    half % 2 === 0 ? `${shown} o'clock${hour === 0 ? " (straight up)" : hour === 6 ? " (straight down)" : ""}` : `Half past ${shown}`;
   return { value: String(half), label };
 });
 
