@@ -10,11 +10,12 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { ManagedKind, Tally, UsageId, UsageLocation, UsageResponse, UsageRow } from "@outpost/shared";
-import { ne } from "drizzle-orm";
+import { inArray } from "drizzle-orm";
 import type { AppContext } from "../../core/context.ts";
 import { downloads as downloadsTable } from "../../db/schema.ts";
 import type { Cleanup } from "./cleanup.ts";
 import type { Inventory } from "./inventory.ts";
+import { UNFINISHED } from "./leftovers.ts";
 import type { Surveyor } from "./survey.ts";
 
 const CONTENT_KINDS: ManagedKind[] = ["zim", "map", "terrain", "places", "sheet", "file", "model", "dataset", "document"];
@@ -62,7 +63,12 @@ export function createUsage(ctx: AppContext, inventory: Inventory, survey: Surve
       "disk",
     );
 
-    const unfinished = db.select().from(downloadsTable).where(ne(downloadsTable.state, "completed")).all();
+    // The same downloads the list of leftovers gives: one still arriving is not left over.
+    const unfinished = db
+      .select()
+      .from(downloadsTable)
+      .where(inArray(downloadsTable.state, [...UNFINISHED]))
+      .all();
     let partial = 0;
     let partialMeasured = unfinished.length > 0;
     for (const download of unfinished) {

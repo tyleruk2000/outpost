@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { api, errorMessage } from "@/lib/api";
 import { useServerConnection } from "@/lib/events";
 import { plural } from "@/lib/utils";
+import { usePageShown } from "../chat/use-page-shown";
 import type { Reading } from "./charts/scale";
 import { downloadsKey } from "./use-downloads";
 
@@ -13,7 +14,11 @@ import { downloadsKey } from "./use-downloads";
 export const planKey = ["downloads", "plan"] as const;
 export const detailKey = (id: string) => ["downloads", "detail", id] as const;
 
-/** The server does not push the plan or the details; while something is moving they are asked for again this often. */
+/**
+ * The server does not push the plan or the details; while something is moving and the
+ * page can be seen they are asked for again this often. A hidden page sets no timer at
+ * all, and is brought up to date when it is shown (React Query asks again then).
+ */
 const REFRESH_MS = 2500;
 
 /**
@@ -22,25 +27,27 @@ const REFRESH_MS = 2500;
  * which the live events announce.
  */
 export function usePlan(options: { enabled?: boolean } = {}) {
+  const shown = usePageShown();
   return useQuery({
     queryKey: planKey,
     queryFn: () => api.get<DownloadPlan>("/api/downloads/plan"),
     enabled: options.enabled ?? true,
     refetchInterval: (query) => {
       const counts = query.state.data?.counts;
-      return counts && counts.active > 0 ? REFRESH_MS : false;
+      return shown && counts && counts.active > 0 ? REFRESH_MS : false;
     },
   });
 }
 
 /** Everything known about one download; refreshed while it is transferring or being checked. A queued one changes state by event. */
 export function useDownloadDetail(id: string) {
+  const shown = usePageShown();
   return useQuery({
     queryKey: detailKey(id),
     queryFn: () => api.get<DownloadDetail>(`/api/downloads/${encodeURIComponent(id)}`),
     refetchInterval: (query) => {
       const state = query.state.data?.download.state;
-      return state === "running" || state === "verifying" ? REFRESH_MS : false;
+      return shown && (state === "running" || state === "verifying") ? REFRESH_MS : false;
     },
   });
 }

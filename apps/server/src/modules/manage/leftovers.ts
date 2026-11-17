@@ -21,7 +21,8 @@ import { STALE_UPLOAD_MS, type Surveyor } from "./survey.ts";
 
 /** How many of one kind are listed one by one. */
 const LISTED = 200;
-const UNFINISHED = ["failed", "cancelled", "paused"] as const;
+/** Downloads that have stopped: what arrived of them is left over until they are carried on or cleared. */
+export const UNFINISHED = ["failed", "cancelled", "paused"] as const;
 const PREVIOUS_DATA = /^before-restore-[0-9A-Za-z-]+$/;
 const SNAPSHOT = /^backup-snapshot-\d+\.db(-journal|-wal|-shm)?$/;
 
