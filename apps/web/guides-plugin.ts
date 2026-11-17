@@ -103,7 +103,9 @@ async function build(): Promise<Built> {
     markdownBlocks(source: string, options: { link?: (url: string, label: Inline[]) => Inline[] | undefined }): Block[];
   };
   const { GUIDES } = (await load("apps/web/src/features/help/guides.ts")) as { GUIDES: GuideEntry[] };
-  const { SETUP_GUIDE } = (await load("packages/shared/src/setup-guide.ts")) as { SETUP_GUIDE: { title: string; sections: SetupSection[] } };
+  const { SETUP_GUIDE } = (await load("packages/shared/src/setup-guide.ts")) as {
+    SETUP_GUIDE: { title: string; sections: SetupSection[] };
+  };
 
   const byFile = new Map(GUIDES.map((guide, index) => [guide.file, { guide, chapter: index + 1 }]));
   const days = changedDays();
@@ -141,8 +143,8 @@ async function build(): Promise<Built> {
     };
     const parsed = markdownBlocks(source, { link });
     const headings = parsed.filter((block) => block.t === "heading" && block.id);
-    const title = guide.own ? SETUP_GUIDE.title : words(headings.find((block) => block.depth === 1)?.c as Inline[]) || guide.slug;
-    if (guide.own) {
+    const title = words(headings.find((block) => block.depth === 1)?.c as Inline[]) || guide.slug;
+    if (guide.own && guide.file === "setup-guide.md") {
       // Its page draws the guide from the structured source; the Markdown written from it gives the words of its headings.
       const ids = new Map<string, string>();
       const sections: Section[] = [];
@@ -160,9 +162,14 @@ async function build(): Promise<Built> {
         if (id) byWords.set(heading.id!, id);
       }
       anchors.set(guide.slug, byWords);
-      index[guide.slug] = { title, sections, ...(days.has(guide.file) ? { changed: days.get(guide.file) } : {}) };
+      index[guide.slug] = { title: SETUP_GUIDE.title, sections, ...(days.has(guide.file) ? { changed: days.get(guide.file) } : {}) };
     } else {
       anchors.set(guide.slug, new Map(headings.map((heading) => [heading.id!, heading.id!])));
+      if (guide.own) {
+        // A screen of its own, with the same words as this page: found by the page's title, and opened at its top.
+        index[guide.slug] = { title, sections: [], ...(days.has(guide.file) ? { changed: days.get(guide.file) } : {}) };
+        continue;
+      }
       // The page's own first heading is the screen's title. Under it, "##" is the guide's second level of heading,
       // which the reader draws from depth 1: each heading moves up one, so the page reads h1, h2, h3 as the file does.
       const body = parsed[0]?.t === "heading" && parsed[0].depth === 1 ? parsed.slice(1) : parsed;

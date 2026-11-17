@@ -254,8 +254,9 @@ describe("Settings, Mesh radio", () => {
     });
     show();
     expect(await screen.findByText(/No likely radio is plugged in/)).toBeInTheDocument();
-    expect(screen.getByText(/the device must be passed through to it by the container's own settings/)).toHaveTextContent(
-      "docs/deployment.md",
+    expect(screen.getByRole("link", { name: "Mesh radio in a container" })).toHaveAttribute(
+      "href",
+      "/help/deployment#h-mesh-radio-in-a-container",
     );
     expect(screen.getByRole("button", { name: /Refresh/ })).toBeInTheDocument();
   });

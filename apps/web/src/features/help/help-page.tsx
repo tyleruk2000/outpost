@@ -3,9 +3,10 @@
  * household thinks of them. Each guide is a page of docs/, word for word, read when the app
  * was built (guides.ts says which). The ones for people changing the code are folded away.
  */
+
+import { GUIDE_INDEX } from "virtual:outpost-guides";
 import { ChevronRight } from "lucide-react";
 import { Link } from "react-router";
-import { GUIDE_INDEX } from "virtual:outpost-guides";
 import { Disclosure, Page, PageHeader, Rows, Section } from "@/components/page";
 import { GUIDE_GROUPS, GUIDES, type Guide, guidePath } from "./guides";
 

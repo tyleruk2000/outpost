@@ -14,7 +14,8 @@
   margin-left: 0.15em;
   vertical-align: 0.05em;
   background-color: currentColor;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 7h10v10'/%3E%3Cpath d='M7 17 17 7'/%3E%3C/svg%3E")
+  mask:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 7h10v10'/%3E%3Cpath d='M7 17 17 7'/%3E%3C/svg%3E")
     no-repeat center / contain;
 }
 
@@ -22,19 +23,20 @@
  * The browser's own print: the guide alone, black on white, every part laid out, and the
  * address of each link that leaves Outpost written after it, since paper cannot follow it.
  */
+/* Rules outside a layer, so they win over the utility classes without !important. */
 @media print {
   body:has(.guide-print) :has(> #content) > :not(#content),
   .guide-print .guide-chrome,
   .guide-print header a,
   .guide-print button {
-    display: none !important;
+    display: none;
   }
 
   body:has(.guide-print),
   .guide-print,
   .guide-print * {
-    color: black !important;
-    background: transparent !important;
+    color: black;
+    background: transparent;
   }
 
   .guide-print {
@@ -43,7 +45,7 @@
   }
 
   .guide-print section {
-    content-visibility: visible !important;
+    content-visibility: visible;
   }
 
   .guide-print .doc-table {

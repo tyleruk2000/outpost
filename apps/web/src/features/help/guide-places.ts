@@ -10,9 +10,10 @@
  * Guides are Outpost's own pages, not the household's library, so they are not put in the
  * library's search index and are never sent to a model server.
  */
+
+import type { GuideIndexEntry } from "virtual:outpost-guides";
 import { BookMarked } from "lucide-react";
 import { useEffect, useState } from "react";
-import type { GuideIndexEntry } from "virtual:outpost-guides";
 import { everyPlace, matchesWords, type Place } from "@/components/find-places";
 import { GUIDES, guidePath } from "./guides";
 
@@ -47,7 +48,13 @@ export function findGuides(typed: string, index: Index | null): Place[] {
     }
     for (const [id, title] of entry.sections) {
       if (matchesWords(title, typed)) {
-        sections.push({ to: sectionPath(guide.slug, id), label: title, icon: BookMarked, parent: { to, label: entry.title }, section: true });
+        sections.push({
+          to: sectionPath(guide.slug, id),
+          label: title,
+          icon: BookMarked,
+          parent: { to, label: entry.title },
+          section: true,
+        });
       }
     }
   }

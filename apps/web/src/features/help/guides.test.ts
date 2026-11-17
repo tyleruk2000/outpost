@@ -4,8 +4,9 @@
  * The words are read from docs/ when the app is built (apps/web/guides-plugin.ts), here
  * as in the app, so these tests read the same guides a person does.
  */
-import type { MarkdownBlock, MarkdownInline } from "@outpost/shared";
+
 import { GUIDE_DOCS, GUIDE_INDEX, GUIDE_LOADERS, GUIDE_PROBLEMS } from "virtual:outpost-guides";
+import type { MarkdownBlock, MarkdownInline } from "@outpost/shared";
 import { describe, expect, it } from "vitest";
 import { everyPlace } from "@/components/find-places";
 import { findGuides, sectionPath } from "./guide-places";
@@ -87,7 +88,8 @@ describe("the guides under Help", () => {
       expect(blocks.some((block) => block.t === "figure")).toBe(false);
     }
     expect(chapters).toBeGreaterThan(100);
-  });
+    // Every guide's words, each a module made from docs/ the first time it is asked for.
+  }, 60_000);
 
   it("turns a link to a file of the repository into a link to it on GitHub", async () => {
     const security = (await GUIDE_LOADERS.security!()).default;

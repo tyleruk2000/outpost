@@ -7,6 +7,211 @@ Outpost is one server process plus, for reference collections such as Wikipedia,
 helper process (kiwix-serve). See [architecture.md](architecture.md) for how the parts
 fit together.
 
+## What has been tried, and what has not
+
+Read this before relying on any step below. Outpost is developed and used every day on
+a Mac with Apple Silicon, from source, as the packaged app, and as the full Docker
+Compose stack. The test suites are run by hand on that Mac. **Nothing else has been
+tried**: not a Raspberry Pi, not Linux on a PC, not an Intel Mac, not Windows, not a NAS.
+The steps for those were written from their makers' documentation and from what the
+same steps do on the Mac, and each section says so. The two scripts for a Raspberry Pi
+in `deploy/pi/` have been checked only for syntax and with `--dry-run` on a Mac. If a
+step does not do what this page says, [troubleshooting.md](troubleshooting.md) has the
+messages Outpost and the scripts print, and what to do about each.
+
+## From a Mac to a Raspberry Pi, step by step
+
+For a person who has Outpost running on a Mac, a Raspberry Pi 5 (or 4) still in its box,
+and has not used Docker before. Each step says what to type, what you should see, and
+what to do if you do not see it. **None of this has been run on a real Pi**: see
+[above](#what-has-been-tried-and-what-has-not). The Pi does the same as any Linux
+computer would from step 4 on, using the script described under
+[Raspberry Pi 4 and 5](#raspberry-pi-4-and-5).
+
+### What you need
+
+- The Pi, its power supply, and a microSD card of 32 GB or more. For a large library,
+  an SSD that connects over USB 3 as well (see [Raspberry Pi 4 and 5](#raspberry-pi-4-and-5)
+  for why).
+- The Mac, on the same home network as the Pi will be.
+- The internet, for steps 1 to 4 only: they download Raspberry Pi OS, Docker, Outpost
+  and the map fonts and search model it is built with. After that the Pi needs none.
+- About an hour. The first build on the Pi is the slow part.
+
+### 1. Put Raspberry Pi OS on the card
+
+On the Mac, install **Raspberry Pi Imager** from
+<https://www.raspberrypi.com/documentation/computers/os.html>, put the card in, and
+write **Raspberry Pi OS (64-bit)** to it. A 64-bit system is required: Outpost has no
+32-bit build, and the install script stops on a 32-bit one. When Imager offers to
+change the settings before writing, set:
+
+- a host name (this page uses `outpost`),
+- a user name and password of your own,
+- your Wi-Fi network and your country (or plug the Pi into the router with a cable),
+- and turn on SSH, so that the Mac can type commands on the Pi.
+
+Put the card in the Pi and switch it on. The first start takes a few minutes.
+
+### 2. Reach the Pi from the Mac
+
+On the Mac, open **Terminal** (in Applications → Utilities) and type, with the user name
+you chose:
+
+```bash
+ssh yourname@outpost.local
+```
+
+The first time, it asks whether to trust the Pi: type `yes`, then the Pi's password.
+You should then see a prompt that ends with `outpost:~ $`. Everything typed from now on
+runs on the Pi.
+
+If it says the name could not be resolved, find the Pi's address in your router's list
+of devices and use that instead (`ssh yourname@192.168.1.30`, with your own address).
+
+Check that the system is the 64-bit one:
+
+```bash
+uname -m
+```
+
+It should print `aarch64`. Anything else means the card has a 32-bit system: write it
+again with the 64-bit one.
+
+### 3. Get Outpost onto the Pi
+
+```bash
+sudo apt update && sudo apt install -y git
+git clone https://github.com/tyleruk2000/outpost.git
+cd outpost
+```
+
+The clone should end with a line about resolving deltas and `done`. Use the same version
+of Outpost here as on the Mac (on the Mac, `git pull` in its folder first), or a backup
+from the Mac may be refused as made by a newer Outpost.
+
+### 4. Run the install script
+
+First see what it would do; nothing is changed:
+
+```bash
+./deploy/pi/install.sh --dry-run --install-docker --lan --https
+```
+
+Then run it for real:
+
+```bash
+./deploy/pi/install.sh --install-docker --lan --https
+```
+
+It asks for your password where it needs `sudo`. What each option does is under
+[Raspberry Pi 4 and 5](#raspberry-pi-4-and-5): in short, `--install-docker` installs
+Docker, `--lan` lets phones on your network use Outpost, and `--https` gets the Pi ready
+for an `https` address later. You should see, one after another:
+
+- `Installing Docker Engine and the Compose plugin from Docker's apt repository.` (only
+  if Docker is not there yet)
+- `Creating .env from .env.example.`
+- `Letting other devices on the network reach Outpost …`
+- `Publishing the HTTPS port (compose.override.yaml).`
+- `Building and starting Outpost. The first build downloads map fonts and the search model and can take a long time on a Pi.`
+  This is the slow part. Docker prints a great deal while it builds.
+- `Waiting for Outpost to answer.`
+- `Fetching VOACAP's coefficients for the HF propagation planner (15 files, 559 kB).`
+- `Outpost is running.`, then the addresses to open it at, one of them
+  `On your network: http://192.168.1.30:8080` with the Pi's own address.
+
+If it stops with a message instead, [troubleshooting.md](troubleshooting.md#the-raspberry-pi-scripts)
+lists each one. Then check from the Pi itself:
+
+```bash
+docker compose ps
+curl http://localhost:8080/api/health
+```
+
+The first should list `outpost` and `kiwix` as running; the second prints
+`{"status":"ok","version":"…"}`. If `docker` says permission denied, sign out of the Pi
+(`exit`) and `ssh` in again: the script adds you to the `docker` group, which counts from
+your next sign-in. Until then, put `sudo` before `docker`.
+
+### 5. Open it from a phone
+
+On a phone or the Mac, on the same network, open the address the script printed under
+"On your network", for example `http://192.168.1.30:8080`. You should see Outpost's
+Home, empty. `http://outpost.local:8080` also works on a device that can look up
+`.local` names.
+
+Write the address down, or add it to the phone's Home Screen. To have location on the
+map and things kept on the phone, turn on [HTTPS on your network](#https-on-your-network)
+once everything else works.
+
+### 6. Bring your library across
+
+What you have on the Mac is in two parts, and each moves its own way
+([storage.md](storage.md#backing-up) says which is which):
+
+- **Outpost's own records**: notes, contacts, settings, saved places, the search index
+  and the list of what is in the library. These travel in a **backup**.
+- **The files themselves**: documents, collections and maps, on their storage locations.
+  A backup does not carry them; it records where they were.
+
+**The records.** On the Mac, open **Settings → Backup** and press **Download backup**.
+Restoring replaces everything at once, so Outpost allows it only at the computer it
+runs on, and in Docker no request counts as coming from that computer. So, on the Pi,
+allow it for the occasion:
+
+```bash
+echo "OUTPOST_ALLOW_REMOTE_ERASE=true" >> .env
+docker compose up -d
+```
+
+Then, from the Mac's browser at the Pi's address, open **Settings → Backup**, choose
+**Restore from a backup**, pick the file, and confirm with **Restore after restart**.
+Press **Restart now** when it is offered. When Outpost is back, take the permission
+away again: delete that line from `.env` (`nano .env`, then Ctrl-O, Enter, Ctrl-X) and
+run `docker compose up -d`. A backup protected by a passphrase can only be restored from
+another device over `https`; restore an unprotected one, or turn HTTPS on first.
+
+**The files**, depending on where they are now. Open **Storage** on the Mac to see the
+folder of each location.
+
+- **On a NAS.** Mount the same share on the Pi, in both services of `compose.yaml`
+  (examples under [A share mounted by Docker](storage.md#a-share-mounted-by-docker)),
+  run `docker compose up -d`, then in Outpost open **Storage → Add location** and pick
+  the folder. Outpost finds its marker file and the documents and collections in it are
+  available again.
+- **On the Mac's own disk or a drive plugged into it.** Copy each location's folder,
+  whole, onto the SSD for the Pi (Finder's copy keeps the hidden marker file
+  `.outpost-location.json`). Plug the SSD into the Pi, mount it at a fixed place and
+  add it to both services (see [Linux](#linux-x86-64-and-arm64)), then **Storage → Add
+  location** as above.
+
+Until a location is added again, Storage shows it as disconnected; nothing is lost.
+
+A [portable drive](portable.md) is a different thing: a complete copy of Outpost that
+runs from a USB drive on another computer, the Pi included, without installing it. It is
+for taking a library away and bringing back what was written there, not for moving an
+installation.
+
+### 7. If you take the Pi away from home: its own Wi-Fi network
+
+With no router, phones can still reach the Pi over a Wi-Fi network the Pi makes itself.
+`deploy/pi/hotspot.sh` sets that up; it is explained, with what to know before relying
+on it, under
+[A box you can carry](#a-box-you-can-carry-the-install-script-and-a-wi-fi-network-of-the-pis-own).
+In short, with a screen and keyboard on the Pi or a network cable (turning the hotspot
+on cuts off an SSH session that runs over Wi-Fi):
+
+```bash
+sudo ./deploy/pi/hotspot.sh on --ssid "Outpost"
+```
+
+It asks for a password of 8 to 63 characters, twice, says what it is about to do and
+asks `Go ahead? [y/N]` (type `y`), and then says
+`The "Outpost" network is on.` with the addresses to open from a phone that has joined
+it: `http://10.42.0.1:8080`. `sudo ./deploy/pi/hotspot.sh off` puts the Pi back on your
+home Wi-Fi.
+
 ## Docker Compose quick start
 
 You need Docker with the Compose plugin (`docker compose version` should print a

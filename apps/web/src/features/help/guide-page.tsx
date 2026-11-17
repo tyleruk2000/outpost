@@ -9,10 +9,11 @@
  * and commands of a guide do not fit its page. The browser's own print gives a clean copy
  * instead (guide.css hides the navigation and the buttons).
  */
+
+import { GUIDE_INDEX, GUIDE_LOADERS, type GuideIndexEntry } from "virtual:outpost-guides";
 import { useQuery } from "@tanstack/react-query";
 import { lazy, Suspense } from "react";
 import { Link, useParams } from "react-router";
-import { GUIDE_INDEX, GUIDE_LOADERS, type GuideIndexEntry } from "virtual:outpost-guides";
 import { Disclosure, ErrorState, Joined, JumpLinks, Page, PageHeader } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/misc";
@@ -118,7 +119,11 @@ function MarkdownGuide({ guide, entry }: { guide: Guide; entry: GuideIndexEntry 
 function NoGuide() {
   return (
     <Page width="reading">
-      <PageHeader back={back} title="There is no guide at this address" description="It may have been renamed, or the address was typed with a mistake in it." />
+      <PageHeader
+        back={back}
+        title="There is no guide at this address"
+        description="It may have been renamed, or the address was typed with a mistake in it."
+      />
       <Button variant="primary" asChild>
         <Link to="/help">See every guide</Link>
       </Button>
