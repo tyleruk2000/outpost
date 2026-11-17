@@ -301,6 +301,8 @@ export interface ReferenceScope {
   countries?: string[];
   /** A box drawn on the map. */
   bbox?: Bbox;
+  /** Geofabrik extracts by their ids in its index (`us/ohio`, `bayern`): a country's state, Land or county. */
+  regions?: string[];
 }
 
 export interface ReferenceEstimateRequest {
@@ -326,6 +328,10 @@ export interface ReferenceEstimateItem {
   host: string;
   /** An installed pack this would replace. */
   replaces: string | null;
+  /** A rough allowance for what stays in Outpost's database once the file is read, where the source can say better than the download's size. */
+  databaseBytes?: number;
+  /** For a file that need not be kept once read (a Geofabrik extract): whether it is kept unless the person says otherwise. */
+  fileKeptByDefault?: boolean;
 }
 
 export interface ReferenceEstimate {
@@ -344,6 +350,8 @@ export interface ReferenceStartRequest {
   estimateId: string;
   keys: string[];
   locationId?: string;
+  /** For a Geofabrik extract: keep the downloaded file once it is read (true), or only the places read from it (false). */
+  keepFile?: boolean;
 }
 
 /** An installed pack: one downloaded or imported file and the records read from it. */
@@ -633,4 +641,32 @@ export interface ReferenceCatalogueResponse {
   /** Sources the specification names that are linked only, with why. */
   linked: Array<{ id: string; name: string; url: string; why: string; termsQuote: string; termsRead: string }>;
   countries: Array<{ code: string; name: string; bbox: Bbox }>;
+}
+
+/** One extract in Geofabrik's index that a person can choose: a country, or a part of one (a state, a Land, a county). */
+export interface ReferenceRegionDto {
+  /** Geofabrik's id (`us/ohio`, `bayern`, `germany`). */
+  id: string;
+  /** In English where Geofabrik gives it, otherwise as Geofabrik names it (`Bayern`). */
+  name: string;
+  /** The country it is in, as two letters; null where Geofabrik gives none. */
+  country: string | null;
+  /** The extract it is part of, or null for a country. */
+  parent: string | null;
+  /** 0 for a country, 1 for its parts, 2 for their parts. */
+  depth: number;
+}
+
+/** Geofabrik's list of extracts as kept on this device (`GET /api/reference/regions`). */
+export interface ReferenceRegionsResponse {
+  /** False until a person has pressed to read the list. */
+  held: boolean;
+  /** When it was read, as a time. */
+  readAt: number | null;
+  /** Where it was read from. */
+  source: string;
+  /** Countries first in the order of their names, each followed by its parts. */
+  regions: ReferenceRegionDto[];
+  /** Regions to offer first, worked out from what is held (the home place, packs already held); nothing is asked. */
+  suggested: Array<{ id: string; why: string }>;
 }

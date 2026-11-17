@@ -495,10 +495,13 @@ export function createReferenceStore(ctx: AppContext, providerName: (id: string)
       lon: number | null;
       props: string;
     }>;
+    // One OpenStreetMap object is the same record whether it came by Overpass or in a Geofabrik extract.
     const sameRecord = sqlite.prepare(
-      `SELECT id FROM reference_features WHERE provider = ? AND source_id = ? AND collection_id != ? AND collection_id NOT LIKE 'pending:%'
+      `SELECT id FROM reference_features WHERE provider IN (?, ?) AND source_id = ? AND collection_id != ? AND collection_id NOT LIKE 'pending:%'
        AND duplicate_of IS NULL LIMIT 1`,
     );
+    const sameSource = (provider: string): [string, string] =>
+      provider === "osm" || provider === "osm-extract" ? ["osm", "osm-extract"] : [provider, provider];
     // An OpenStreetMap object that names its Wikidata item, and the item itself.
     const byWikidata = sqlite.prepare(
       `SELECT id FROM reference_features WHERE provider = 'wikidata' AND source_id = ? AND collection_id NOT LIKE 'pending:%' AND duplicate_of IS NULL LIMIT 1`,
@@ -515,7 +518,7 @@ export function createReferenceStore(ctx: AppContext, providerName: (id: string)
     let done = 0;
     for (const row of rows) {
       let original: number | undefined;
-      original = (sameRecord.get(row.provider, row.sourceId, collectionId) as { id: number } | undefined)?.id;
+      original = (sameRecord.get(...sameSource(row.provider), row.sourceId, collectionId) as { id: number } | undefined)?.id;
       if (original === undefined && (row.provider === "osm" || row.provider === "osm-extract")) {
         const wikidata = (JSON.parse(row.props) as Record<string, string>).wikidata;
         if (wikidata && /^Q\d+$/.test(wikidata)) {

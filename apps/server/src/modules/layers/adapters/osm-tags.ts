@@ -28,6 +28,8 @@ export const OSM_LAYERS: OsmLayer[] = ["military", "nuclear", "hospitals", "emer
  * shops is more than a public server should be asked for at once.
  */
 export const OVERPASS_LAYERS: OsmLayer[] = [...OSM_LAYERS, "food"];
+/** The layers a Geofabrik extract can be read for: the five, and food and supplies when it is chosen. */
+export const EXTRACT_LAYERS: OsmLayer[] = [...OSM_LAYERS, "food"];
 
 export const MILITARY_VALUES = [
   "base",

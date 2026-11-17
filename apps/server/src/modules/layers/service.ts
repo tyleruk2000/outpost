@@ -10,16 +10,18 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import type {
-  ReferenceCatalogueResponse,
-  ReferenceEstimate,
-  ReferenceEstimateRequest,
-  ReferenceImportFormat,
-  ReferenceImportResult,
-  ReferenceLayerId,
-  ReferenceLayersResponse,
-  ReferencePackDto,
-  ReferenceStartRequest,
+import {
+  formatBytes,
+  type ReferenceCatalogueResponse,
+  type ReferenceEstimate,
+  type ReferenceEstimateRequest,
+  type ReferenceImportFormat,
+  type ReferenceImportResult,
+  type ReferenceLayerId,
+  type ReferenceLayersResponse,
+  type ReferencePackDto,
+  type ReferenceRegionsResponse,
+  type ReferenceStartRequest,
 } from "@outpost/shared";
 import type { AppContext } from "../../core/context.ts";
 import { AppError, badRequest, conflict, notFound } from "../../core/errors.ts";
@@ -33,6 +35,7 @@ import { createBabsAdapter } from "./adapters/babs.ts";
 import { createFloodZonesAdapter } from "./adapters/flood-zones.ts";
 import { createFsaAdapter } from "./adapters/fsa.ts";
 import { createGeofabrikAdapter } from "./adapters/geofabrik.ts";
+import { countryAt, createRegionIndex, type RegionIndex, regionNamed } from "./adapters/geofabrik-regions.ts";
 import { provider as importProvider, readImport } from "./adapters/imports.ts";
 import { createNaturalEarthAdapter } from "./adapters/natural-earth.ts";
 import { createOurAirportsAdapter } from "./adapters/ourairports.ts";
@@ -48,6 +51,8 @@ import type { EstimatedItem, ReadResult, ReferenceAdapter, ReferenceMeta } from 
 const ESTIMATE_TTL_MS = 30 * 60_000;
 /** A rough allowance for one record in the database, with its indexes. */
 const DATABASE_BYTES_PER_RECORD = 700;
+
+const area = (box: [number, number, number, number]) => (box[2] - box[0]) * (box[3] - box[1]);
 
 /** What is kept in a pack's collection meta. */
 export interface PackMeta extends ReferenceMeta {
@@ -101,6 +106,11 @@ export interface LayersService {
   layers(): Promise<ReferenceLayersResponse>;
   installer: Installer;
   packTitles(): Map<string, { title: string }>;
+  /** Geofabrik's regions as kept, with those to offer first for a point (the home place); asks nothing. */
+  regions(point: { lat: number; lon: number } | null): ReferenceRegionsResponse;
+  /** Reads Geofabrik's list of regions again, on a person's press. */
+  refreshRegions(signal?: AbortSignal): Promise<ReferenceRegionsResponse>;
+  regionIndex: RegionIndex;
   close(): Promise<void>;
 }
 
@@ -142,12 +152,13 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
   );
 
   const deps = { ctx, client };
+  const regionIndex = createRegionIndex(ctx, client);
   const adapters = new Map<string, ReferenceAdapter>(
     [
       createNaturalEarthAdapter(deps),
       createOurAirportsAdapter(deps),
       createOverpassAdapter(deps),
-      createGeofabrikAdapter(deps),
+      createGeofabrikAdapter(deps, regionIndex),
       createWikidataAdapter(deps),
       createWorldPopAdapter(deps, population),
       createBabsAdapter(deps),
@@ -317,6 +328,34 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
 
     const replaced = replacedBy(meta);
     const provider = PROVIDERS.find((entry) => entry.id === providerId) ?? importProvider;
+    // Only the places read out are kept: the extract gives way to a short record of what it was, deleted once the pack is in.
+    const placesOnly = input.adapter !== "import" && meta.origin === "download" && meta.options?.keep === "places";
+    let kept = { relPath: input.relPath, sizeBytes: input.sizeBytes, sha256: input.sha256 };
+    const notes = [...(result.notes ?? [])];
+    if (placesOnly) {
+      const relPath = input.relPath.replace(/(\.osm)?\.pbf$/, "") + ".read.json";
+      const record = JSON.stringify(
+        {
+          what: "The record of an OpenStreetMap extract Outpost read and then deleted, keeping only the places read from it (in its database).",
+          source: meta.sourceUrl,
+          md5: meta.md5 ?? null,
+          file: path.basename(input.relPath),
+          bytes: input.sizeBytes,
+          layers: meta.layers,
+          places: sink.count,
+          dataOf: result.publishedAt,
+          readAt: new Date(retrievedAt).toISOString(),
+          licence: "ODbL 1.0, © OpenStreetMap contributors; extract by Geofabrik GmbH",
+        },
+        null,
+        2,
+      );
+      await fs.promises.writeFile(storage.resolve(input.locationId, relPath), record);
+      kept = { relPath, sizeBytes: Buffer.byteLength(record), sha256: null };
+      notes.push(
+        `Only the places were kept: the ${formatBytes(input.sizeBytes)} extract was deleted once read. Updating this pack downloads it again.`,
+      );
+    }
     const packMeta: PackMeta = {
       ...meta,
       scope: scopeOf(meta),
@@ -329,7 +368,7 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
       skipped: sink.skipped,
       problems: sink.problems,
       ...(result.extra ? { extra: result.extra } : {}),
-      ...(result.notes ? { notes: result.notes } : {}),
+      ...(notes.length > 0 ? { notes } : {}),
       ...(providerId === "worldpop" ? { sidecar: meta.options?.sidecar } : {}),
     };
     const firstPublisher = input.adapter === "import" ? (meta.options?.publisher ?? AS_IN_FILE) : provider.publisher;
@@ -346,12 +385,13 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
       attribution: provider.name,
       version: result.version ?? new Date(retrievedAt).toISOString().slice(0, 10),
       locationId: input.locationId,
-      relPath: input.relPath,
-      sizeBytes: input.sizeBytes,
-      ...(input.sha256 ? { sha256: input.sha256 } : {}),
+      relPath: kept.relPath,
+      sizeBytes: kept.sizeBytes,
+      ...(kept.sha256 ? { sha256: kept.sha256 } : {}),
       meta: { dataset: "reference", reference: packMeta } as CollectionMeta,
     });
     store.adopt(input.owner, collection.id, replaced);
+    if (placesOnly) await fs.promises.rm(input.filePath, { force: true });
     const duplicates = await store.findDuplicates(collection.id);
     for (const old of replaced) {
       const row = collections.get(old);
@@ -359,7 +399,7 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
       const oldMeta = packMetaOf(row);
       // A downloaded file is Outpost's to tidy; a file the person brought is theirs.
       await collections.remove(old, {
-        deleteFiles: oldMeta?.origin === "download" && storage.isAvailable(row.locationId) && row.relPath !== input.relPath,
+        deleteFiles: oldMeta?.origin === "download" && storage.isAvailable(row.locationId) && row.relPath !== kept.relPath,
       });
     }
     changed();
@@ -434,7 +474,7 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
       estimates.set(estimateId, { request, items, at: Date.now() });
       const totalBytes = items.reduce((sum, item) => sum + item.bytes, 0);
       const databaseBytes = items.reduce(
-        (sum, item) => sum + (item.records ?? Math.round(item.bytes / 400)) * DATABASE_BYTES_PER_RECORD,
+        (sum, item) => sum + (item.databaseBytes ?? (item.records ?? Math.round(item.bytes / 400)) * DATABASE_BYTES_PER_RECORD),
         0,
       );
       const caution = adapter.provider.caution;
@@ -448,7 +488,7 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
       };
     },
 
-    async start({ estimateId, keys, locationId }) {
+    async start({ estimateId, keys, locationId, keepFile }) {
       const estimate = estimates.get(estimateId);
       if (!estimate || Date.now() - estimate.at > ESTIMATE_TTL_MS)
         throw new AppError("conflict", "That estimate is more than half an hour old or was not made here. Estimate again.");
@@ -459,18 +499,22 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
         if (!item) throw badRequest("That item is not part of the estimate.");
         const spec = adapter.download!(estimate.request, item);
         const { query, ...partial } = (spec.meta ?? {}) as Partial<ReferenceMeta> & { query?: unknown };
+        // A file that need not be kept once read: kept or not as the person chose, or as the source says by default.
+        const keep =
+          item.fileKeptByDefault === undefined ? undefined : (keepFile ?? item.fileKeptByDefault) ? "file" : "places";
+        const options = partial.options || keep ? { ...partial.options, ...(keep ? { keep } : {}) } : undefined;
         const reference: ReferenceMeta = {
           provider: adapter.provider.id,
           key,
           title: item.title,
           layers: partial.layers ?? item.layers,
-          request: estimate.request,
+          request: partial.request ?? estimate.request,
           countries: partial.countries ?? estimate.request.scope.countries ?? [],
           bbox: partial.bbox !== undefined ? partial.bbox : (estimate.request.scope.bbox ?? null),
           sourceUrl: partial.sourceUrl ?? null,
           origin: "download",
           ...(partial.md5 ? { md5: partial.md5 } : {}),
-          ...(partial.options ? { options: partial.options } : {}),
+          ...(options ? { options } : {}),
         };
         try {
           started.push(
@@ -618,6 +662,42 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
       }
       return { layers: store.summary(providerNames), population: await population.sets(), credits: [...credits.values()] };
     },
+
+    regions(point) {
+      const listed = regionIndex.response([]);
+      const suggested: ReferenceRegionsResponse["suggested"] = [];
+      if (point && listed.held) {
+        const offer = (id: string, why: string) => {
+          if (!suggested.some((entry) => entry.id === id) && listed.regions.some((region) => region.id === id)) suggested.push({ id, why });
+        };
+        // Regions already held whose file's box holds the point, smallest first.
+        const held = installedPacks()
+          .filter(({ meta }) => meta.provider === "osm-extract" && meta.options?.region && meta.bbox)
+          .filter(({ meta }) => {
+            const [west, south, east, north] = meta.bbox!;
+            return point.lon >= west && point.lon <= east && point.lat >= south && point.lat <= north;
+          })
+          .sort((a, b) => area(a.meta.bbox!) - area(b.meta.bbox!));
+        for (const { meta } of held) offer(meta.options!.region!, "Held already, and holds the home place");
+        const country = countryAt(point.lat, point.lon);
+        if (country) {
+          // The regions layer, where it is held, names the home place's state or Land.
+          const names = store.at({ layers: ["regions"], lat: point.lat, lon: point.lon }).map((hit) => hit.name);
+          const region = regionNamed(listed.regions, country, names);
+          if (region) offer(region.id, "Holds the home place");
+          const whole = listed.regions.find((entry) => entry.depth === 0 && entry.country === country);
+          if (whole) offer(whole.id, "The home place's country");
+        }
+      }
+      return { ...listed, suggested };
+    },
+
+    async refreshRegions(signal) {
+      await regionIndex.refresh(signal);
+      return regionIndex.response([]);
+    },
+
+    regionIndex,
 
     packTitles() {
       return new Map(installedPacks().map(({ row }) => [row.id, { title: row.title }]));
