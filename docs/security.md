@@ -229,7 +229,8 @@ address book for phones, which cannot change anything by any method; see
 Code: the `onRequest` hook in `apps/server/src/core/guard.ts`.
 
 Every response also carries `X-Content-Type-Options: nosniff`,
-`Referrer-Policy: no-referrer`, `Cross-Origin-Opener-Policy: same-origin` and
+`Referrer-Policy: no-referrer` (pages from ZIM archives have a policy of their own: see
+[Reference (ZIM) content](#reference-zim-content)), `Cross-Origin-Opener-Policy: same-origin` and
 `X-Frame-Options: SAMEORIGIN`. API responses are sent with `Cache-Control: no-store`. At a plain
 `http://` address other than this computer's own (a phone on the home network), a
 browser ignores `Cross-Origin-Opener-Policy` and Chrome writes a line saying so in its
@@ -401,6 +402,34 @@ and which link was pressed. The reader treats everything it is told as untrusted
 field is checked, and nothing the page reports is acted on without a person pressing
 a button. Code: `apps/server/src/modules/kiwix/index.ts`,
 `apps/web/src/features/reader/reader-page.tsx`.
+
+**A page may read its own archive's files, and nothing else may.** To the browser, a
+page in the sandbox has an origin of its own (`null`), so three ordinary things its own
+archive asks for are requests from another origin: scripts loaded as modules, fonts,
+and data fetched by script. A browser keeps the answers to those from the page unless
+the server says the page may have them. Archives whose pages are a small web app, which
+is most collections of videos, therefore showed an empty page. Seen on 17 November 2026
+with a channel archive made by openZIM's youtube scraper: its page is
+`<script type="module" crossorigin …>` and a data file.
+
+The proxy now answers `Access-Control-Allow-Origin: null`, but only to a request that
+(1) says `Origin: null`, and (2) carries a `Referer` naming a page of **the same
+archive on this same Outpost**. The second is what keeps this closed to everyone else:
+a page on another site can put a sandboxed frame of its own on screen and so send
+`Origin: null`, but it cannot make the browser name one of Outpost's archive pages as
+where the request came from. A page of one archive cannot read another archive's files
+this way, and Outpost's own screens never ask this way. To make (2) possible, archive
+pages are now sent with `Referrer-Policy: strict-origin-when-cross-origin` instead of
+`no-referrer`: within this Outpost a page says which page asked; to any other site it
+would say only Outpost's bare address (`http://192.168.1.20:8080/`), never a page. In
+practice nothing reaches another site from an archive page: the policy's `default-src`
+forbids loading from elsewhere, and a link out is stopped and offered by the reader, not
+followed. No cookies or credentials are involved, and the sandbox itself is unchanged:
+no `allow-same-origin`. Checked in Chromium by the end-to-end suite (`reader.spec.ts`,
+"shows a page that is a small web app"); **not checked in Safari or Firefox**, which
+would at worst send no `Referer` and leave such an archive's page empty as before.
+Code: `askedByOwnArchivePage` in `apps/server/src/modules/kiwix/index.ts`; tests in
+`apps/server/test/kiwix.test.ts`.
 
 **What the sandbox costs, and what was done about it.** A page without an origin of
 its own is refused storage by the browser: `indexedDB.open` and `localStorage` throw.

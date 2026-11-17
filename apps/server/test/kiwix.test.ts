@@ -314,7 +314,6 @@ describe("the reader proxy", () => {
     expect(csp).not.toContain("allow-same-origin");
     expect(csp).toContain("default-src 'self' http://localhost");
     expect(response.headers["access-control-allow-origin"]).toBeUndefined();
-    expect(response.headers["referrer-policy"]).toBe("no-referrer");
     expect(response.headers.etag).toBe('"abc"');
     // The bridge is added inside <head>, and the page's own relative links are untouched.
     expect(response.body).toMatch(/outpost:reader[\s\S]*<\/head>/);
@@ -323,6 +322,43 @@ describe("the reader proxy", () => {
     expect(response.body.indexOf("outpost:reader")).toBeLessThan(response.body.indexOf("startup.js"));
     expect(response.body).toContain("outpost:file");
     expect(response.body).toContain('<a href="./Clove_hitch">');
+  });
+
+  it("lets an archive's own page read that archive's files, and nothing else read them", async () => {
+    const { app } = await setup();
+    const file = `/kiwix/open/content/${BOOK}/image.webp`;
+    const ownPage = `http://localhost/kiwix/open/content/${BOOK}/Bowline`;
+    // A page in the sandbox has an origin of its own, so its module scripts, fonts and
+    // fetches of its own files arrive as cross-origin requests with "Origin: null".
+    const own = await get(app, file, { origin: "null", referer: ownPage });
+    expect(own.statusCode).toBe(200);
+    expect(own.headers["access-control-allow-origin"]).toBe("null");
+    expect(String(own.headers.vary)).toMatch(/Origin/i);
+    expect(String(own.headers.vary)).toMatch(/Referer/i);
+    expect(own.headers["access-control-allow-credentials"]).toBeUndefined();
+
+    // Anything else is told nothing, so a browser keeps the answer from it.
+    const refused: Array<Record<string, string>> = [
+      // No word of where it came from: another site's sandboxed frame, a data: page, a file on disk.
+      { origin: "null" },
+      // A page on another site, and one pretending by its path alone.
+      { origin: "null", referer: "http://evil.example/kiwix/open/content/" + BOOK + "/Bowline" },
+      { origin: "http://evil.example", referer: ownPage },
+      // A page of another archive on this Outpost.
+      { origin: "null", referer: "http://localhost/kiwix/open/content/another-book_en/Home" },
+      // Outpost's own screens do not read archive files this way.
+      { origin: "null", referer: "http://localhost/library/read/abc/Bowline" },
+      { origin: "null", referer: "not a url" },
+      {},
+    ];
+    for (const headers of refused) {
+      const response = await get(app, file, headers);
+      expect(response.headers["access-control-allow-origin"], JSON.stringify(headers)).toBeUndefined();
+    }
+    // An archive page says where a request came from only to this same Outpost: to any
+    // other site it gives the bare origin, never the page's address.
+    const page = await get(app, `/kiwix/open/content/${BOOK}/Bowline`);
+    expect(page.headers["referrer-policy"]).toBe("strict-origin-when-cross-origin");
   });
 
   it("passes other files through unchanged and forwards range requests", async () => {

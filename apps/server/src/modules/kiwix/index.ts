@@ -85,6 +85,38 @@ const SANDBOX = "sandbox allow-scripts allow-forms allow-popups allow-popups-to-
  */
 const BRIDGE = `<script>(function(){try{var G=Element.prototype.getAttribute,P=function(m){parent.postMessage(m,"*")};var F=/\\.(pdf|epub)$/i,X=/\\.(pdf|epub|txt|md|markdown)$/i;var R=function(a){var h=G.call(a,"href");if(h==null)return null;try{var u=new URL(h,location.href);return u.protocol==="http:"||u.protocol==="https:"?u:null}catch(x){return null}};var T=function(a){return(a.textContent||"").replace(/\\s+/g," ").trim().slice(0,200)};var s=function(){P({type:"outpost:reader",path:location.pathname,hash:location.hash,title:document.title})};var l=function(){try{var o=[],n={},a=document.querySelectorAll("a[href]");for(var i=0;i<a.length&&o.length<300;i++){var u=R(a[i]);if(!u)continue;var w=u.host===location.host;if(!(w?F:X).test(u.pathname))continue;u.hash="";var k=w?u.pathname:u.href;if(n[k])continue;n[k]=1;o.push({href:k,inside:w,text:T(a[i])})}P({type:"outpost:links",path:location.pathname,links:o})}catch(e){}};s();addEventListener("DOMContentLoaded",function(){s();l()});addEventListener("hashchange",s);addEventListener("click",function(e){var a=e.target&&e.target.closest&&e.target.closest("a[href]");if(!a)return;var u=R(a);if(!u)return;if(u.host!==location.host){e.preventDefault();P({type:"outpost:external",href:u.href})}else if(F.test(u.pathname)){e.preventDefault();P({type:"outpost:file",path:u.pathname,text:T(a)})}},true)}catch(e){}})();</script>`;
 
+/**
+ * Whether a request for a file of an archive was made by a page of that same archive, here.
+ *
+ * A proxied page runs in a sandbox with an origin of its own, so to the browser its own
+ * scripts loaded as modules, its fonts and its fetches of its own data are requests from
+ * another origin ("Origin: null"), and the answers are kept from the page unless the server
+ * says it may have them. Archives whose pages are a small web app (most video collections)
+ * showed nothing at all for that reason. Saying so to every "null" origin would let any
+ * page on any site, through a sandboxed frame of its own, read what this library holds; so
+ * it is said only when the browser also reports that the request came from a page of the
+ * same archive on this same Outpost, which another site's page cannot make it say.
+ */
+export function askedByOwnArchivePage(
+  headers: { origin?: string | string[]; referer?: string | string[]; host?: string | string[] },
+  prefix: string,
+  rest: string,
+): boolean {
+  if (headers.origin !== "null" || typeof headers.referer !== "string" || typeof headers.host !== "string") return false;
+  let from: URL;
+  try {
+    from = new URL(headers.referer);
+  } catch {
+    return false;
+  }
+  if (from.host !== headers.host) return false;
+  const content = `${prefix}/content/`;
+  if (!from.pathname.startsWith(content) || !rest.startsWith("content/")) return false;
+  const book = (path: string) => path.split("/")[0] ?? "";
+  const asked = book(rest.slice("content/".length));
+  return asked !== "" && asked === book(from.pathname.slice(content.length));
+}
+
 const MAX_HTML_BYTES = 32 * 1024 * 1024;
 /** The fixed first segment of reference-content addresses, kept so that links people have saved go on working. */
 const CONTENT_TOKEN = "open";
@@ -641,10 +673,15 @@ export async function registerKiwix(app: FastifyInstance, ctx: AppContext): Prom
       }
       reply
         .header("Content-Security-Policy", `default-src 'self' ${origin} data: blob: 'unsafe-inline' 'unsafe-eval'; ${SANDBOX}`)
-        .header("Referrer-Policy", "no-referrer")
+        // To this Outpost a page says which of its pages asked (which is how its own files
+        // are told from another site's request, below); to anywhere else, the origin alone.
+        .header("Referrer-Policy", "strict-origin-when-cross-origin")
+        .header("Vary", "Origin, Referer")
         .header("X-Content-Type-Options", "nosniff")
         .header("Cache-Control", "private, max-age=3600")
         .removeHeader("X-Frame-Options");
+
+      if (askedByOwnArchivePage(request.headers, prefix, rest)) reply.header("Access-Control-Allow-Origin", "null");
 
       // kiwix-serve redirects to its own addresses; send the browser back through the proxy.
       const location = response.headers.get("location");

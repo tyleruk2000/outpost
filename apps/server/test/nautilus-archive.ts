@@ -13,6 +13,7 @@
  *   /content/<book>/database.js  `var DATABASE = [ … ];`, each entry written the way Python
  *                              prints a dictionary, which is how nautilus writes it
  *   /content/<book>/files/…    the files the list names
+ *   /content/<book>/app        a page that is a small web app: a module script that fetches a data file
  *   /content/<book>/guide      an ordinary page that links to three of those files, as a page of an
  *                              archive made from a web site does. nautilus writes no such page; it is
  *                              here so that one stand-in serves the tests of both kinds of archive
@@ -158,6 +159,25 @@ export const GUIDE_LINKS: Array<{ file: string; text: string }> = [
   { file: "grain.pdf", text: "Storing grain for a year" },
   { file: "first aid/splint.pdf", text: "Splinting a forearm" },
 ];
+
+/**
+ * A page that is a small web app, as the archives of video channels are: its code is a
+ * module script and it draws itself from a data file it fetches. In Outpost's sandbox both
+ * are requests from another origin, which the browser keeps from the page unless the
+ * proxy says the page may read its own archive's files.
+ */
+const APP_PAGE = `<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Channel</title>
+    <script type="module" crossorigin src="./assets/app.js"></script>
+  </head>
+  <body><div id="app">Loading…</div></body>
+</html>`;
+const APP_SCRIPT = `const data = await (await fetch(new URL("../app-data.json", import.meta.url))).json();
+document.getElementById("app").innerHTML = "<h1>" + data.title + "</h1>";`;
+const APP_DATA = JSON.stringify({ title: "Winter prepping videos" });
 
 const GUIDE = `<!DOCTYPE html>
 <html>
@@ -326,6 +346,9 @@ export async function startNautilusArchive(options: { port?: number } = {}): Pro
     }
     if (inside === "home") return send("text/html; charset=utf-8", archive.home);
     if (inside === "guide") return send("text/html; charset=utf-8", GUIDE);
+    if (inside === "app") return send("text/html; charset=utf-8", APP_PAGE);
+    if (inside === "assets/app.js") return send("text/javascript", APP_SCRIPT);
+    if (inside === "app-data.json") return send("application/json", APP_DATA);
     if (inside === "nautilus.js") return send("text/javascript", SCRIPT);
     if (inside === "database.js") return archive.database === undefined ? missing() : send("text/javascript", archive.database);
     const name = inside.startsWith("files/") ? inside.slice("files/".length) : "";
