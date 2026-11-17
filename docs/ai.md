@@ -796,7 +796,9 @@ note, with its sources. (Conversations in Chat are another matter: they are kept
 - When a source is safety-critical, a warning sits above the answer and those
   passages are open without being asked for.
 - **Stop** ends the answer; what was written stays, marked unfinished. Closing the
-  tab does the same. The model server is told to stop too: Outpost closes its
+  tab does the same. Hiding it does not: in a background tab or on a locked phone the
+  answer goes on being written but is not drawn, and everything that arrived is drawn
+  as soon as the page is shown again. The model server is told to stop too: Outpost closes its
   connection to it.
 - Failures are said in words: the server is not reachable, the model is not there or
   cannot write, the prompt was too long, the model took too long, or the server
@@ -839,6 +841,10 @@ rule about which addresses may be contacted, with the same one-at-a-time turn.
 - **A reply belongs to the server, not the tab.** If the phone sleeps or the tab is
   closed, the reply goes on being written and is there when you come back, on any
   device. Only Stop, deleting the conversation, a failure or a time limit ends it.
+  While the page is hidden (a background tab, a locked phone) the screen stops
+  watching the reply and stops counting seconds; shown again, it picks the reply up as
+  it then stands. The server reads a reply into its formatted parts only while someone
+  is watching, or asks for the conversation.
 - **Regenerate** throws the last reply away and writes it again. **Edit** puts your
   last message back in the box; sending replaces it and its reply. Only the last
   exchange can be changed.
@@ -851,6 +857,7 @@ rule about which addresses may be contacted, with the same one-at-a-time turn.
   count and quantisation, which is most of what decides whether a small computer can
   run it.
 - **Find** a conversation by name on the Chat screen once there are more than five.
+  The list is asked for once typing pauses, not at every key.
   **Delete** asks first, and removes the conversation for everyone.
 
 ### With or without your library

@@ -146,6 +146,9 @@ them." In the API response this is `relaxed: true`.
 | Installed collections | Title, publisher and description |
 | Catalogue entries | The entries listed in Explore, so you can find something to download |
 | Map markers and tracks | Names and notes |
+| Contacts | Name, title and organisation, tags, phone numbers, email and postal addresses, callsign, channels, the emergency note and the contact's own note |
+| Repeaters | Callsign, town and frequency, from the repeater list itself (not split into passages; up to 50 found) |
+| Places in reference layers | Names of the features in installed reference packs, opened on the map (up to 30 found) |
 | Reference articles | Articles inside installed ZIM archives; see [below](#reference-collections-in-results) |
 
 Pages in the notes trash, and your own page templates, are not searched.
