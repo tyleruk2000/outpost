@@ -6,6 +6,8 @@
  * accepted only from that computer (`core/local.ts`), because each opens a port or a
  * device on it; the passwords set with them then never cross the network either. Every
  * device may see the status and send a test message, as it may post on any channel.
+ * Whoever starts Outpost may allow it from every device with OUTPOST_ALLOW_REMOTE_ERASE,
+ * as for HTTPS's authority; in a container, where no request looks local, that is the way.
  */
 import {
   BOARD_LIMITS,
@@ -62,7 +64,9 @@ export async function registerMesh(app: FastifyInstance, ctx: AppContext): Promi
 
   const right = (request: FastifyRequest): MeshRight => {
     const by = localBy(request.raw, ctx.config);
-    return by ? { allowed: true, localBy: by } : { allowed: false };
+    if (by) return { allowed: true, localBy: by };
+    // In a container no request looks local; whoever starts Outpost can allow it from other devices, as for its other dangerous settings.
+    return { allowed: ctx.config.allowRemoteErase };
   };
   const mustBeLocal = (request: FastifyRequest) => {
     if (!right(request).allowed)

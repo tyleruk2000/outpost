@@ -167,7 +167,15 @@ The interface is in `apps/server/src/modules/board/transport.ts`, on
 - `setMeta(id, meta)`: what a transport keeps with a message (a delivery report), at most
   4 KB as JSON.
 
-No radio code is part of this feature.
+- A transport may also `refuse` what it cannot carry before it is stored (too long for a
+  radio, a file): the person is told why and nothing is kept or cut.
+- A message on a channel other than `board` cannot be changed, only removed (what went
+  by radio has gone as it was). `setMeta` announces `board.changed` with the action
+  `delivery`, so screens show what became of a message without a reload.
+
+The mesh radio link ([mesh-radio.md](mesh-radio.md)) is the transport built on this:
+Meshtastic by MQTT in JSON mode and MeshCore's companion protocol, with radio channels
+beside **Home** on this screen.
 
 ## What has and has not been tested
 

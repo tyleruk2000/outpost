@@ -1255,6 +1255,22 @@ document and nuclear scenario is now, `null` for one deleted since.
 | `POST /api/emergency-plans/:id/reviewed` | Mark it looked over now. |
 | `POST /api/emergency-plans/:id/opened` | Record that it was opened now (sent by the screens when a person opens one). |
 
+## Mesh radio
+
+Types: `packages/shared/src/mesh.ts`; see [mesh-radio.md](mesh-radio.md). Radio channels
+are board channels (`meshtastic:longfast`, `meshcore:0`): read and written with the
+board's own routes, where a message too long for the radio, a file, or an edit is
+refused with `400`. A message's `meta` carries `MeshMeta` (`node`, `snr`, `hops`,
+`delivery`). Status changes publish `mesh.changed`.
+
+| Route | What it does |
+| --- | --- |
+| `GET /api/mesh` | `MeshResponse`: each way in's set-up (passwords only as `passwordSet`) and status, the radio channels carried, `right` (whether this request may change it), `inContainer`, `lanAccess`. |
+| `GET /api/mesh/devices` | `{ devices, platform }`: devices in `/dev` with the names USB radios get. Made by the server; nothing in the request is a path. |
+| `PUT /api/mesh/meshtastic` | Body `MeshtasticInput`: `mode` (`off`, `broker`, `client`), `broker` `{ port, userName, password? }`, `client` `{ host, port, userName, password?, rootTopic }`, `channels` `[{ name, index }]`. A password left out keeps the one set; `""` removes it. Starts, restarts or stops the link and answers `MeshResponse`. `403` from any device but the computer Outpost runs on; `400` for a broker without a password, an address that is not one, a channel listed twice. |
+| `PUT /api/mesh/meshcore` | Body `MeshCoreInput`: `mode` (`off`, `serial`, `tcp`), `device` (one from `/api/mesh/devices`), `host`, `port`, `channels` (slots). `403` as above; `400` for a device not listed now. |
+| `POST /api/mesh/test` | Body `{ channel, author }`: posts "Test message from Outpost" on a carried radio channel, as `POST /api/board/messages` would. `{ message }`. |
+
 ## Everything else
 
 Any other `GET` address without a file extension returns the web app, so that in-app

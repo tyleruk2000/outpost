@@ -1124,3 +1124,25 @@ from the broadcaster's own page.
 
 **Not used as sources at all**: Wikipedia, hobbyist schedule lists (EiBi, Aoki and the
 like), HFCC data, commercial frequency guides and RepeaterBook.
+
+## Mesh radio (read 2026-11-17)
+
+For the mesh radio link ([mesh-radio.md](mesh-radio.md)). Each page was read once, with
+the ordinary fetch tool, on 17 November 2026. Nothing from these projects is bundled or
+fetched by Outpost; they decided what could be built, and how.
+
+| Page | What it says (quoted) | What was concluded |
+| --- | --- | --- |
+| github.com/meshtastic/firmware, `LICENSE` | GNU General Public License, version 3: "The GNU General Public License is a free, copyleft license for software and other kinds of works." | No firmware code is used. |
+| github.com/meshtastic/protobufs, `LICENSE` | The same licence, GPL version 3, dated 29 June 2007. | The `.proto` files and code generated from them are not copied. |
+| meshtastic.org/docs/development/device/client-api/ | Framing: "Byte 0: START1 (0x94)", "Byte 1: START2 (0xc3)", then the length; "Clients connect over TCP on port 4403". It gives no field numbers and refers to `mesh.proto`. | The binary client API was not built: its field numbers are published only in the GPL files. |
+| meshtastic.org/docs/software/integrations/mqtt/ | Topics `msh/REGION/2/e/CHANNELNAME/USERID` and `msh/US/2/json/CHANNELNAME/USERID`; `from` is "the decimal Node ID" and "can thus be used as a stable identifier for a specific node"; "-1 means it was a broadcast message"; to send, "send a JSON message to the topic `msh/US/2/json/mqtt/`" with `from`, optional `to` and `channel`, `type` `"sendtext"` and the text as `payload`, with a channel named "mqtt" with Downlink on; "JSON is not supported on the nRF52 platform." It shows no text message example. | Built: `meshtastic/json.ts`. A text's payload is accepted as a string or as `payload.text`, and this is said to be unconfirmed. |
+| meshtastic.org/docs/legal/licensing-and-trademark/ | "you may not use the Meshtastic Trademarks or any confusingly similar mark as a trademark for your product"; use only if it "does not imply sponsorship or endorsement by Meshtastic"; noncommercial sites must indicate "clearly that it is not affiliated with or endorsed by Meshtastic." | "Works with" wording, and the not-affiliated sentence on the screen and in the docs. No logo. |
+| meshtastic.org/docs/configuration/radio/lora/ ("LoRa Configuration", `#region`) | "This will ensure that you are operating within the legal limits for your area." "Check your national band plan before transmitting." | Linked from the screen; no country's rules are stated by Outpost. |
+| meshtastic.org/robots.txt | `User-agent: *` / `Disallow: /docs/2.7/` | The pages read are not under the disallowed path. |
+| meshtastic.github.io/Meshtastic-Android, "Messages & Channels" | "Maximum length: 200 bytes"; the default LongFast channel "is encrypted with a well-known default key, so anyone running Meshtastic on the same preset can read it"; a broadcast shows "Delivered to mesh" with "no per-recipient acknowledgment". | 200 bytes is the Meshtastic limit; the public-channel warning. Over MQTT JSON no delivery report comes back, so none is claimed. |
+| github.com/meshcore-dev/MeshCore, `license.txt` | "MIT License", "Copyright (c) 2025 Scott Powell / rippleradios.com". | Its documented frames may be implemented. |
+| MeshCore `docs/companion_protocol.md` ("Companion Protocol", "Last Updated: 2026-03-08", companion firmware v1.12.0+) | Commands and answers by byte: app start `0x01`, send channel message `0x03`, get message `0x0A`, channel info `0x1F`/`0x12`, channel message `0x08` and `0x11`, messages waiting `0x83`; little-endian integers, UTF-8 text; messages limited to 133 characters. It says it "may be inaccurate" in places and covers BLE framing only. | Built: `meshcore/frames.ts`, `session.ts`. |
+| MeshCore `src/helpers/ArduinoSerialInterface.cpp` | `if (c == '<') {`; `hdr[0] = '>';`; `hdr[1] = (len & 0xFF);  // LSB`, `hdr[2] = (len >> 8);    // MSB`. | The USB frame format. |
+| MeshCore `src/helpers/esp32/SerialWifiInterface.cpp` | Could not be read: 404 on 17 November 2026. Not got another way. | The network port is assumed to use the USB frames, as the FAQ implies; said to be untested. |
+| MeshCore `docs/faq.md` | "Connect on TCP port 5000 (same as the WiFi companion radio)." Serial examples use `-b 115200`. | Port 5000 by default; 115200 for the USB serial. |
