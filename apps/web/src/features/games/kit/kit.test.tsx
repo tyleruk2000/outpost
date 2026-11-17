@@ -222,15 +222,25 @@ describe("the Games page", () => {
 });
 
 describe("a game opened from a scrolled list", () => {
-  it("starts at its top, title in view", () => {
+  // Where the page starts is the shell's: it goes to the top of every new screen (components/app-shell.tsx,
+  // tested in app-shell-palette.test.tsx). What the frame owns is that the top is the title, with the way back.
+  it("has its title and the way back to Games above the board, and leaves the scrolling to the shell", () => {
     const scrollTo = vi.fn();
     vi.stubGlobal("scrollTo", scrollTo);
     render(
-      <MemoryRouter>
-        <GameFrame title="Pairs">board</GameFrame>
+      <MemoryRouter initialEntries={["/games/pairs"]}>
+        <GameFrame title="Pairs">
+          <div data-testid="board">board</div>
+        </GameFrame>
       </MemoryRouter>,
     );
-    expect(scrollTo).toHaveBeenCalledWith(0, 0);
+    const title = screen.getByRole("heading", { level: 1, name: "Pairs" });
+    const back = screen.getByRole("link", { name: /Games/ });
+    expect(back).toHaveAttribute("href", "/games");
+    const board = screen.getByTestId("board");
+    expect(back.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(title.compareDocumentPosition(board) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(scrollTo).not.toHaveBeenCalled();
     vi.unstubAllGlobals();
   });
 });

@@ -217,6 +217,7 @@ describe("Frequencies to listen to", () => {
     const dialog = await screen.findByRole("dialog", { name: "This list as a PDF" });
     expect(within(dialog).getByText(/2 entries: Time signals/)).toBeInTheDocument();
     expect(within(dialog).getByRole("button", { name: /Add to library/ })).toBeInTheDocument();
-    expect(within(dialog).getByText(/Save as PDF/)).toBeInTheDocument();
+    // The button, not the line beneath the buttons that says what each one does.
+    expect(await within(dialog).findByRole("link", { name: "Save as PDF" })).toBeInTheDocument();
   });
 });

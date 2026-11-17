@@ -103,7 +103,7 @@ describe("the water screen", () => {
     expect(within(purification).getByText("3 minutes")).toBeInTheDocument();
     expect(within(purification).getByText("16 drops (1/4 tsp)")).toBeInTheDocument();
     // The printable sheet is offered with the shared buttons.
-    expect(within(purification).getByText(/Save as PDF/)).toBeInTheDocument();
+    expect(await within(purification).findByRole("link", { name: "Save as PDF" })).toBeInTheDocument();
   });
 
   it("works out rain from a roof as a range over the two published coefficients", () => {
@@ -214,11 +214,11 @@ describe("the cooking screen", () => {
     }
   });
 
-  it("quotes the FSA's temperatures and offers them as a sheet", () => {
+  it("quotes the FSA's temperatures and offers them as a sheet", async () => {
     show(<CookingPage />);
     const safe = section("Safe cooking temperatures");
     expect(within(safe).getByText("70°C (158°F)")).toBeInTheDocument();
-    expect(within(safe).getByText(/Save as PDF/)).toBeInTheDocument();
+    expect(await within(safe).findByRole("link", { name: "Save as PDF" })).toBeInTheDocument();
   });
 
   it("keeps the From unit of weight and of volume when switching between them", async () => {
