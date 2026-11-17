@@ -278,6 +278,29 @@ describe("a location that goes away and comes back", () => {
     expect(await w.schedule()).toMatchObject({ waiting: null, lastFailure: null });
   });
 
+  it("sleeps until the next time something is due, rather than looking every minute", async () => {
+    const w = await world();
+    const { backups } = w.app.ctx.services;
+    backups.tick();
+    expect(backups.nextWake()).toBeNull();
+
+    await choose(w);
+    expect(backups.nextWake()).toBe(at(1, 3));
+    await w.goTo(at(1, 3));
+    expect(backupJobs(w).map((job) => job.state)).toEqual(["succeeded"]);
+    expect(backups.nextWake()).toBe(at(2, 3));
+
+    // A failure is tried again when its wait is over, which comes before the next day's time.
+    fs.rmSync(w.folder, { force: true, recursive: true });
+    fs.writeFileSync(w.folder, "not a folder");
+    await w.goTo(at(2, 3));
+    expect(backupJobs(w).at(-1)?.state).toBe("failed");
+    expect(backups.nextWake()).toBe(at(2, 3) + RETRY_AFTER_FAILURE_MS);
+
+    await w.app.api("PATCH", "/api/backup/schedule", { locationId: null });
+    expect(backups.nextWake()).toBeNull();
+  });
+
   it("will not follow a link named like its folder", async () => {
     const w = await world();
     await choose(w);

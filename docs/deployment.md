@@ -171,7 +171,8 @@ What happens when you turn it on:
   authority may sign for, and `localhost`.
 - A second listener answers on port 8443 (`OUTPOST_HTTPS_PORT`), on the same address as
   the HTTP one, and serves the same app and API under the same rules.
-- Every 30 seconds Outpost looks at the computer's addresses and the certificate's age.
+- Every five minutes (every 30 seconds while something stands in the way, such as the
+  port being taken) Outpost looks at the computer's addresses and the certificate's age.
   If an address has changed (a router handing out a new one, a different network) or
   the certificate has under 30 days left, a new server certificate is issued and used at
   once. Devices trust the authority, not the server certificate, so they have nothing to

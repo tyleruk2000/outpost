@@ -111,7 +111,16 @@ real one.
 
 Locations are checked every 30 seconds (the `storage.checkIntervalSeconds` setting,
 5 to 3600), when Outpost starts, and whenever someone chooses **Check drives** on the
-Storage screen.
+Storage screen. The regular check looks at each location where it was recorded; for one
+that is already disconnected, the search of every storage root for its marker is made at
+most every ten minutes, so an unplugged drive does not mean a walk of the roots twice a
+minute. **Check drives** and a start always search.
+
+Only what you would call a change is announced to open screens: a location being
+disconnected or coming back, moving, or holding a different disk. Free space is
+recorded once it has moved by 256 MiB or half a per cent of the disk (whichever is
+more) and shown the next time the list is read, but it is not announced, because on a
+disk in use it moves all the time.
 
 ### Moving a library to another disk or folder
 
@@ -166,6 +175,17 @@ depends on where Outpost runs, and the screen says which applies.
 | In Docker | Outpost cannot: a container only sees what Docker gives it. The same form writes out the Compose lines to add. |
 | Directly on Linux | Outpost cannot: mounting needs root. The same form writes out the `/etc/fstab` line and the credentials-file steps. |
 | Windows, or from a portable drive | Nothing is offered. Mount the share with the operating system, inside a storage root. |
+
+"In Docker" means in any container. Outpost takes itself to be in one by the same signs
+the local-only rule uses (`containerReason` in `apps/server/src/core/local.ts`, listed in
+[security.md](security.md)): `OUTPOST_IN_CONTAINER`, Docker's `/.dockerenv`, Podman's
+`/run/.containerenv`, the `container` variable that Podman, LXC and systemd-nspawn set,
+Kubernetes's `KUBERNETES_SERVICE_HOST`, or a container's control group or root file
+system. What was tested where: each sign (Docker, Podman, LXC, Kubernetes) is tested
+against made-up files and variables (`test/storage-shares.test.ts`,
+`test/local.test.ts`); none was tried in a real container when this was written. An image built
+from this repository's Dockerfile always has the first sign, since it sets
+`OUTPOST_IN_CONTAINER`. Away from Linux only the variables count.
 
 ### On a Mac
 
@@ -538,7 +558,7 @@ are stated beside it:
   start to finish. Reading goes on: on the test database, pages kept answering in 1 to
   11 ms throughout. Every request that would change something is refused with a
   message saying why, and work that would write waits: no job starts on any other
-  queue (a scheduled backup is made at the next minute after), and a backup cannot
+  queue (a scheduled backup that falls due meanwhile is made within a minute of the end), and a backup cannot
   take its copy of the database. It took 1.4 seconds on an idle machine and 3.9
   seconds under load for the 306 MB file; expect a few times as long as the full check.
 - **It is refused while any job is running** (a backup, an import, an index build, a
@@ -593,8 +613,10 @@ Measuring means walking folders, which on a network share with thousands of docu
 takes a while. So it runs in the background, never more than one at a time, and the
 screen says when the figures were taken and when a new count is under way. A row that
 has never been counted says "Counting" rather than showing a guess. **Count again**
-starts a count now; otherwise a count is at most five minutes old, and a new one starts
-when you look after something has changed.
+starts a count now. Otherwise a new count starts when you look after something has
+changed in Outpost (a download, an upload, a removal, a location coming or going), or
+when the last count is more than an hour old, for files changed by hand. Opening the
+screen again does not by itself walk the folders again.
 
 A location that is not connected shows what Outpost last knew (how much of its own was
 there, the free space when it was last seen, and when that was) and says it is
@@ -924,7 +946,9 @@ storage location. It is off until you choose a location.
 - **When.** Every day, or every week on a day you choose, at a time you choose, by the
   clock of the computer Outpost runs on. The first one is made at the next such time
   after you choose, not at once. **Back up now** makes one whenever you like and does
-  not change the schedule.
+  not change the schedule. Between backups the schedule sleeps until the next time one
+  is due (or a failed one is to be tried again), looking again at least every six hours
+  in case the computer's clock was changed meanwhile; it does not wake every minute.
 - **How it is made.** Each backup is a job (it shows under Downloads with the other
   background work). The database is copied with SQLite's online backup, which gives one
   consistent state even while notes are being saved. The file is written as

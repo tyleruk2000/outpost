@@ -999,3 +999,25 @@ describe("erase everything", () => {
     expect((await app.api("GET", "/api/search?q=QZ3HAND")).body.results).toEqual([]);
   });
 });
+
+describe("when what is stored is counted again", () => {
+  it("does not walk the folders again just because a screen asked, unless something changed or an hour has gone", async () => {
+    app = await createTestApp();
+    const first = await measured(app);
+    const start = Date.now();
+    const clock = vi.spyOn(Date, "now");
+
+    clock.mockReturnValue(start + 10 * 60_000);
+    expect((await app.api<UsageResponse>("GET", "/api/manage/usage")).body).toMatchObject({ measuring: false, measuredAt: first.measuredAt });
+
+    // Something changed in Outpost: the next look counts again.
+    app.ctx.events.publish({ type: "documents.changed" });
+    expect((await app.api<UsageResponse>("GET", "/api/manage/usage")).body.measuring).toBe(true);
+    clock.mockRestore();
+    const second = await measured(app);
+
+    // Nothing changed, but files may have been changed by hand: an hour later it counts again.
+    vi.spyOn(Date, "now").mockReturnValue(second.measuredAt! + 61 * 60_000);
+    expect((await app.api<UsageResponse>("GET", "/api/manage/usage")).body.measuring).toBe(true);
+  });
+});

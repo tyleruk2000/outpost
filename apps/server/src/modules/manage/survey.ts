@@ -27,7 +27,12 @@ export const SETTLE_MS = 10 * 60 * 1000;
 export const STALE_UPLOAD_MS = 24 * 60 * 60 * 1000;
 /** How many leftover files are remembered one by one; the rest are only counted. */
 const KEEP_FILES = 2000;
-const FRESH_MS = 5 * 60 * 1000;
+/**
+ * Counting walks every folder. A screen asking is not a reason to count again: something
+ * changing in Outpost is (see `touch`), and so is this long passing, for files changed by
+ * hand. "Count again" counts at once.
+ */
+const FRESH_MS = 60 * 60 * 1000;
 const RESCAN_GAP_MS = 20_000;
 const INCOMING = "documents/.incoming";
 

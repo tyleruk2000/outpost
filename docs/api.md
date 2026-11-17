@@ -112,7 +112,7 @@ When the server is stopping it sends `server.stopping` and ends the stream; a br
 | `job.updated` | A background job changes state or progress | job id / the job (`JobDto`) |
 | `download.updated` | A download changes state or progress | download id / the download |
 | `download.removed` | A download is removed from the list | download id |
-| `storage.changed` | A location is added, changed, removed, connected or disconnected | |
+| `storage.changed` | A location is added, changed, removed, connected or disconnected, or found at a new path. Not sent for free space moving. | |
 | `settings.changed` | Settings are saved | |
 | `documents.changed` | A document is added, changed or removed | document id, when one |
 | `notes.changed` | A page is created, changed, moved, trashed or restored | page id |
@@ -1071,7 +1071,7 @@ book is one item, keyed by its collection, with its documents listed in `documen
 
 | Method and path | Purpose |
 | --- | --- |
-| `GET /api/manage/usage` | What is taking the space (`UsageResponse`): `rows` by kind, each with `bytes` (null while still being counted), `count`, `basis` (`records`, `disk` or `estimate`), `disconnectedBytes` and `within` (set when the row is part of another, as passages and vectors are part of the database); `locations` with capacity, free space, what Outpost's records say is there and what was measured on disk (null when not connected); `dataDir`; `measuredAt` and `measuring`. Starts a count in the background if the last is more than five minutes old or something has changed. |
+| `GET /api/manage/usage` | What is taking the space (`UsageResponse`): `rows` by kind, each with `bytes` (null while still being counted), `count`, `basis` (`records`, `disk` or `estimate`), `disconnectedBytes` and `within` (set when the row is part of another, as passages and vectors are part of the database); `locations` with capacity, free space, what Outpost's records say is there and what was measured on disk (null when not connected); `dataDir`; `measuredAt` and `measuring`. Starts a count in the background if something has changed in Outpost since the last, or the last is more than an hour old. |
 | `POST /api/manage/measure` | Checks drives and starts a count now. Same answer as above. |
 | `GET /api/manage/items` | Everything installed: `{ items: ManagedItem[] }`, each with `key`, `kind` (`zim`, `map`, `terrain`, `places`, `sheet`, `file`, `model`, `document`), `origin` (`downloaded` or `own`), size, date added, location and whether it is connected, `state` (`ok`, `missing`, `damaged`, `busy`) and `busyReason`. |
 | `POST /api/manage/plan` | What a removal would do, by the rules of the removal itself. Changes nothing. Body: `{ scope: "items", keys, files?, disconnected? }`, `{ scope: "downloaded", disconnected? }` or `{ scope: "everything" }`. Answers a `CleanupPlan`: `changes`, `remove` (count and bytes), `byKind`, `byLocation` (deleted and staying, per location), `own`, `linkedDocuments`, `disconnected` and `outside` (with file paths), `refused` (with reasons), `downloads`, and for `everything` `personal`. |

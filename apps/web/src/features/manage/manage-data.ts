@@ -19,9 +19,11 @@ export const MANAGE_PATH = "/storage/manage";
 export type ManageView = "space" | "installed" | "leftovers" | "clean-up";
 export const manageLink = (view: ManageView = "space") => (view === "space" ? MANAGE_PATH : `${MANAGE_PATH}?view=${view}`);
 
-/** While the server is still counting, ask again now and then in case the event was missed. */
-const whileMeasuring = (query: { state: { data?: { measuring: boolean; measuredAt: number | null } } }) =>
-  query.state.data && (query.state.data.measuring || query.state.data.measuredAt === null) ? 3000 : false;
+/**
+ * While the server is still counting, ask again now and then in case the event was missed.
+ * Not when there is no count and none under way: a count that failed is not retried every few seconds.
+ */
+const whileMeasuring = (query: { state: { data?: { measuring: boolean } } }) => (query.state.data?.measuring ? 3000 : false);
 
 export const useUsage = () =>
   useQuery({ queryKey: ["manage", "usage"], queryFn: () => api.get<UsageResponse>("/api/manage/usage"), refetchInterval: whileMeasuring });

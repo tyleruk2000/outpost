@@ -108,7 +108,12 @@ function useWait(error: unknown): number {
     setLeft(seconds);
     if (seconds <= 0) return;
     const until = Date.now() + seconds * 1000;
-    const timer = window.setInterval(() => setLeft(Math.max(0, Math.ceil((until - Date.now()) / 1000))), 1000);
+    const timer = window.setInterval(() => {
+      const remaining = Math.max(0, Math.ceil((until - Date.now()) / 1000));
+      setLeft(remaining);
+      // The wait is over: nothing is left to count.
+      if (remaining === 0) window.clearInterval(timer);
+    }, 1000);
     return () => window.clearInterval(timer);
   }, [seconds]);
   return left;

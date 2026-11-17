@@ -910,6 +910,19 @@ describe("HTTPS on the home network", () => {
     expect(replaced.body.authority?.fingerprint).not.toBe(before.authority?.fingerprint);
   });
 
+  it("looks again every few minutes while all is well, and every half minute while something is wrong", async () => {
+    const squatter = net.createServer();
+    await new Promise<void>((resolve) => squatter.listen(0, "127.0.0.1", resolve));
+    cleanups.push(() => new Promise<void>((resolve) => squatter.close(() => resolve())));
+    const fine = await start();
+    expect(fine.app.ctx.services.https.checksEvery()).toBeNull();
+    await fine.on();
+    expect(fine.app.ctx.services.https.checksEvery()).toBe(5 * 60_000);
+    const taken = await start({ OUTPOST_HTTPS_PORT: String((squatter.address() as AddressInfo).port) });
+    await taken.on();
+    expect(taken.app.ctx.services.https.checksEvery()).toBe(30_000);
+  });
+
   it("says so when the port is taken, and keeps serving plain HTTP", async () => {
     const squatter = net.createServer();
     await new Promise<void>((resolve) => squatter.listen(0, "127.0.0.1", resolve));

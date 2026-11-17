@@ -55,8 +55,14 @@ import { createTlsStore, OWN_FILES } from "./store.ts";
 const DAY = 24 * 60 * 60 * 1000;
 /** A server certificate is replaced once it has this long left. */
 const RENEW_BEFORE = 30 * DAY;
-/** How often the names this server is reached by, and the certificate's age, are looked at again. */
-const CHECK_EVERY = 30_000;
+/**
+ * How often the names this server is reached by, and the certificate's age, are looked at
+ * again while HTTPS is running as it should. No event says that the computer's addresses
+ * have changed, so this is a timer; a few minutes is soon enough for a new address.
+ */
+const CHECK_EVERY = 5 * 60_000;
+/** How often while something stands in the way (the port is taken, a file is missing), so that putting it right is seen soon. */
+const CHECK_EVERY_WHILE_WRONG = 30_000;
 /** More names than this on one certificate means something is wrong with the list. */
 const MOST_NAMES = 40;
 /** How long requests in progress are given when the listener is stopped. */
@@ -113,6 +119,8 @@ export interface HttpsService {
   check(): Promise<void>;
   /** Resolves when nothing is being started, stopped or re-issued. */
   whenSettled(): Promise<void>;
+  /** How often `check` runs by itself just now, or null when it does not. For tests. */
+  checksEvery(): number | null;
 }
 
 declare module "../../core/context.ts" {
@@ -478,20 +486,22 @@ export function createHttpsService(app: FastifyInstance, ctx: AppContext): Https
           : code
             ? listenProblem(error as NodeJS.ErrnoException)
             : `HTTPS could not start: ${messageOf(error)}`;
-      // It is tried again every half minute; the log hears about it once.
+      // It is tried again every half minute (CHECK_EVERY_WHILE_WRONG); the log hears about it once.
       if (problem !== said) ctx.log.warn(`HTTPS: ${problem}`);
     }
     watch(true);
   }
 
+  let period: number | null = null;
   function watch(on: boolean): void {
-    if (on && !timer) {
-      timer = setInterval(() => void check(), CHECK_EVERY);
-      timer.unref();
-    } else if (!on && timer) {
-      clearInterval(timer);
-      timer = undefined;
-    }
+    const wanted = on ? (problem || ownProblem ? CHECK_EVERY_WHILE_WRONG : CHECK_EVERY) : null;
+    if (wanted === period) return;
+    clearInterval(timer);
+    timer = undefined;
+    period = wanted;
+    if (wanted === null) return;
+    timer = setInterval(() => void check(), wanted);
+    timer.unref();
   }
 
   /** Everything Settings shows that can move: which certificate is presented, whether the listener is up, and what is wrong. */
@@ -713,6 +723,7 @@ export function createHttpsService(app: FastifyInstance, ctx: AppContext): Https
     },
 
     check: () => check(),
+    checksEvery: () => period,
     async whenSettled() {
       // Work can be added while waiting, so wait until the queue stops moving.
       for (let seen: Promise<void> | undefined; seen !== queue; ) {

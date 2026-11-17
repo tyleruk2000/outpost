@@ -24,8 +24,8 @@ export function recentWindow(firstAt: number | undefined, now: number): { second
  * Total download speed over the last few minutes, as measured in this browser since
  * the screen was opened. The present figure is stated in text; the line gives it context.
  */
-export const PlanThroughput = memo(function PlanThroughput({ limit }: { limit: number | null }) {
-  const readings = useThroughput();
+export const PlanThroughput = memo(function PlanThroughput({ limit, transferring }: { limit: number | null; transferring: boolean }) {
+  const readings = useThroughput(transferring);
   const connected = useServerConnection();
   const last = readings[readings.length - 1];
   const now = last?.at ?? Date.now();
@@ -65,7 +65,7 @@ export const PlanThroughput = memo(function PlanThroughput({ limit }: { limit: n
         height={164}
         label={`Total download speed over the last ${agoLabel(seconds).replace(" ago", "")}`}
         timeLabel={(at) => agoLabel((now - at) / 1000)}
-        placeholder={readings.length < ENOUGH ? "Collecting readings…" : undefined}
+        placeholder={readings.length < ENOUGH ? (transferring ? "Collecting readings…" : "Nothing is transferring") : undefined}
         tableCaption="Total download speed, averaged over each 15 seconds"
         tableBucketSeconds={15}
       />

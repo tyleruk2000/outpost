@@ -238,8 +238,14 @@ export default function StoragePage() {
   const client = useQueryClient();
   const [adding, setAdding] = useState(false);
   const refresh = useMutation({
-    mutationFn: () => api.post("/api/storage/refresh"),
-    onSuccess: () => client.invalidateQueries({ queryKey: ["storage"] }),
+    mutationFn: () => api.post<{ locations: StorageLocation[] }>("/api/storage/refresh"),
+    onSuccess: (result) => {
+      // Said either way: a press that changes nothing on screen still needs an answer.
+      const away = result.locations.filter((location) => location.status !== "available").length;
+      if (away === 0) toast.success(result.locations.length === 1 ? "Checked: the location is connected." : "Checked: every location is connected.");
+      else toast.warning(`Checked: ${plural(away, "location")} cannot be reached.`);
+      return client.invalidateQueries({ queryKey: ["storage"] });
+    },
     onError: (error) => toast.error(errorMessage(error)),
   });
 

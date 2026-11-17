@@ -506,6 +506,33 @@ describe("where Outpost runs", () => {
     expect(detectHost({ OUTPOST_IN_CONTAINER: "1" }, "darwin")).toEqual({ os: "macos", inContainer: true });
   });
 
+  // The same signs the local-only rule uses (core/local.ts containerReason), so that the
+  // two never disagree about where Outpost runs. Made-up files: see the note in docs/storage.md.
+  const none = { exists: () => false, read: () => null };
+  const only = (contents: Record<string, string>) => ({
+    exists: (file: string) => file in contents,
+    read: (file: string) => contents[file] ?? null,
+  });
+  it.each([
+    ["Docker", {}, only({ "/.dockerenv": "" })],
+    ["Podman", {}, only({ "/run/.containerenv": "" })],
+    ["Podman, by the variable it sets", { container: "podman" }, none],
+    ["LXC", { container: "lxc" }, none],
+    ["LXC, by its control group", {}, only({ "/proc/self/cgroup": "0::/lxc.payload.outpost/init.scope\n" })],
+    ["Kubernetes", { KUBERNETES_SERVICE_HOST: "10.96.0.1" }, none],
+    ["a Kubernetes control group", {}, only({ "/proc/self/cgroup": "0::/kubepods/besteffort/pod1234/0123456789ab\n" })],
+  ])("knows it is in a container under %s", (_what, env, files) => {
+    expect(detectHost(env, "linux", files)).toEqual({ os: "linux", inContainer: true });
+    expect(shareHostMode(detectHost(env, "linux", files), { portable: false })).toBe("docker");
+  });
+
+  it("does not take a plain Linux computer for a container", () => {
+    expect(detectHost({}, "linux", only({ "/proc/self/cgroup": "0::/user.slice/user-1000.slice/session-2.scope\n" }))).toEqual({
+      os: "linux",
+      inContainer: false,
+    });
+  });
+
   it("tells the web app in the system information", async () => {
     app = await createTestApp();
     const { body } = await app.api("GET", "/api/system");
