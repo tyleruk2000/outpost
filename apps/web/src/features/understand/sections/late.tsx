@@ -315,7 +315,10 @@ export function ModelSection() {
         </p>
         <p>
           To build something of your own on the same passages, ask Outpost for the context directly. The request below returns the numbered
-          sources and their citation records, without a prompt around them. The file <code>docs/ai.md</code> in the Outpost repository
+          sources and their citation records, without a prompt around them. The guide{" "}
+          <Link to="/help/answers#h-the-api" className="text-primary underline decoration-1 underline-offset-2 hover:decoration-2">
+            Answers from your library
+          </Link>{" "}
           describes the rest.
         </p>
         <pre>

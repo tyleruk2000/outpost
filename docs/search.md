@@ -28,6 +28,14 @@ and off by default. So is reading the text of scanned pages and images
   offered at the top under **Go to**, as in quick search: "safe drinking water" offers
   Tools: Water, which holds the treatment tables.
 
+**The guides under Help** (these pages of Outpost's documentation, inside the app) are
+found under **Go to** too, after the screens and at most six at a time: by each guide's
+name, its everyday words, and the names of its sections. "raspberry pi" offers the part
+of the guide to installing Outpost about the Raspberry Pi, and "restore a backup" the
+parts about restoring. They are Outpost's own pages, not part of your library, so they
+are not in the library's search index, are not among its results, and are never sent
+to a model server to answer a question.
+
 ## Seeing how it works
 
 **How search works** (the "How were these found?" link under any search, or

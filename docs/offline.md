@@ -46,6 +46,12 @@ Everything you have already installed or written:
 - the household board, Messages: messages, check-ins and files sent between devices go
   through Outpost on the home network and nothing else (see [messages.md](messages.md)).
   It does not wake a locked phone: there are no push notifications.
+- Help: these pages of Outpost's documentation, from installing it to troubleshooting,
+  built into the app from `docs/` when it is built, so they are the same words as the
+  repository's. Each guide is loaded when it is opened. A link in them to another
+  guide stays inside Outpost; a link to a web site, or to a file of the repository on
+  GitHub, is marked with an arrow and needs the internet. Not the screens that are
+  out of reach of the server (below): a guide is served by Outpost like any other screen.
 
 The web app itself is served by Outpost: its scripts, styles, fonts, PDF viewer
 resources, map fonts and map icons are all local files.

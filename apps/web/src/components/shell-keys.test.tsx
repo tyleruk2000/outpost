@@ -105,7 +105,7 @@ describe("the phone's bottom bar", () => {
       within(upkeep)
         .getAllByRole("link")
         .map((link) => link.textContent),
-    ).toEqual(["Downloads", "Storage", "On this computer", "Settings"]);
+    ).toEqual(["Downloads", "Storage", "On this computer", "Settings", "Help"]);
     // The four tabs are not here again, except Notes, as the heading of the screen under it.
     const names = within(knowledge)
       .getAllByRole("link")
