@@ -56,7 +56,8 @@ describe("error toasts", () => {
       });
     const found = sources(root)
       .filter((file) => !file.endsWith(path.join("lib", "notify.tsx")))
-      .filter((file) => /\btoast\.error\s*\(/.test(fs.readFileSync(file, "utf8")))
+      // Any use, not only a call: `const show = help ? toast.error : toast` is one too.
+      .filter((file) => /\btoast\.error\b/.test(fs.readFileSync(file, "utf8")))
       .map((file) => path.relative(root, file));
     expect(found).toEqual([]);
   });

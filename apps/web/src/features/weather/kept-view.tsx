@@ -1,6 +1,7 @@
 /** What is kept on the server from each publisher, with its size, and the publishers themselves: what is sent to each, and their terms. */
 import { formatBytes, freshness, type KeptCopy, type WeatherPlace, type WeatherSourceInfo } from "@outpost/shared";
 import { Trash2 } from "lucide-react";
+import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
 import { formatDateTime } from "@/lib/utils";
 import { useRemoveCopy } from "./data";
@@ -68,7 +69,14 @@ export function KeptView({
         </h3>
         <p className="mb-2 text-small text-ink-muted">
           Outpost asks these publishers only when you press a button here, or open this screen with "also update when I open this screen"
-          ticked. Their terms were read on the date given; docs/sources.md quotes them.
+          ticked. Their terms were read on the date given;{" "}
+          <Link
+            to="/help/sources#h-weather-and-hazards-read-on-2026-11-16"
+            className="text-primary underline decoration-1 underline-offset-2 hover:decoration-2"
+          >
+            the guide to sources
+          </Link>{" "}
+          quotes them.
         </p>
         <ul className="divide-y divide-border border-y border-border">
           {sources.map((source) => (

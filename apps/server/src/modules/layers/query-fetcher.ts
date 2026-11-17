@@ -29,6 +29,10 @@ export interface QuerySpec {
   accept: string;
   /** Larger answers are refused. */
   maxBytes: number;
+  /** The name Outpost gives: the project's (REFERENCE_USER_AGENT) unless the source is asked under Outpost's plain name. */
+  userAgent?: string;
+  /** Headers the source needs (the Food Standards Agency's API wants the version it is asked in). */
+  headers?: Record<string, string>;
 }
 
 export function createQueryFetcher(client: HttpClient, options: { gapMs?: number; busyMs?: number } = {}): Fetcher {
@@ -77,7 +81,8 @@ export function createQueryFetcher(client: HttpClient, options: { gapMs?: number
         method: spec.method,
         ...(spec.body !== undefined ? { body: spec.body } : {}),
         headers: {
-          "user-agent": REFERENCE_USER_AGENT,
+          ...spec.headers,
+          "user-agent": spec.userAgent ?? REFERENCE_USER_AGENT,
           accept: spec.accept,
           ...(spec.method === "POST" ? { "content-type": "application/x-www-form-urlencoded; charset=UTF-8" } : {}),
         },

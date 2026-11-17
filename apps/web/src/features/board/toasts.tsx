@@ -9,6 +9,7 @@ import { useRef } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { toast } from "sonner";
 import { useServerEvent } from "@/lib/events";
+import { notify } from "@/lib/notify";
 import { plural } from "@/lib/utils";
 import { deviceName } from "./data";
 
@@ -36,7 +37,8 @@ export function BoardToasts() {
           : last.kind === "checkin"
             ? `${last.author} checked in${last.status === "safe" ? ": safe" : last.status === "help" ? ": needs help" : ""}`
             : `${last.author}: ${last.excerpt ?? ""}`;
-      const show = help ? toast.error : toast;
+      // Someone needing help is said at once, with the alert's mark, as an error is.
+      const show = help ? notify.error : toast;
       show(help && events.length > 1 ? `${help.author} needs help. ${words}.` : words, {
         action: { label: "Open", onClick: () => navigate("/messages") },
       });

@@ -122,7 +122,8 @@ export function Segmented<T extends string>({
         <TogglePrimitive.Item
           key={option.value}
           value={option.value}
-          className="flex h-8 items-center gap-1.5 rounded-[3px] px-3 text-small font-medium text-ink-muted transition-colors hover:text-ink data-[state=on]:bg-page data-[state=on]:text-ink data-[state=on]:shadow-[0_0_0_1px_var(--border-strong)] max-md:h-11 [&_svg]:size-4"
+          // Grows to fill its line once the choices wrap, so a choice left alone on a line is not a stray box.
+          className="flex h-8 grow items-center justify-center gap-1.5 rounded-[3px] px-3 text-small font-medium text-ink-muted transition-colors hover:text-ink data-[state=on]:bg-page data-[state=on]:text-ink data-[state=on]:shadow-[0_0_0_1px_var(--border-strong)] max-md:h-11 [&_svg]:size-4"
         >
           {option.icon}
           {option.label}

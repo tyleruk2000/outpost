@@ -32,6 +32,9 @@ const screens = [
   "/storage",
   "/kept",
   "/settings",
+  "/help",
+  // One long guide, with its tables and commands.
+  "/help/deployment",
 ];
 
 /** What reaches past the right of the screen inside the page, as in radio-large-text.mobile.spec.ts. */
@@ -114,6 +117,46 @@ for (const [step, root] of [
     for (const path of screens) {
       await page.goto(path);
       await expect(page.locator("main h1").first()).toBeVisible();
+      await page.waitForLoadState("networkidle");
+      expect(await page.evaluate(() => getComputedStyle(document.documentElement).fontSize), path).toBe(`${root}px`);
+      expect(await tooWide(page), `${path} with text ${step}`).toEqual([]);
+      expect(await barCut(page), `the bar on ${path} with text ${step}`).toEqual([]);
+    }
+    expect(errors).toEqual([]);
+  });
+}
+
+/** Screens and tabs added on 17 November, at each step of Text size and at 200%: not top-level, so not in the list above. */
+const addedToday = [
+  "/tools/compass",
+  "/games/allotment",
+  "/tools/solar-clock?tab=recover",
+  "/prepare/weather?view=rivers",
+  "/prepare/supplies?view=days",
+  "/library?tab=learning",
+  "/settings#mesh",
+  "/maps?tab=layers",
+];
+
+for (const [step, root] of [
+  ["smaller", 14],
+  ["larger", 20],
+  ["largest", 24],
+  ["200%", 32],
+] as const) {
+  test(`the screens added on 17 November fit a phone with the text ${step}`, async ({ page }) => {
+    test.setTimeout(180_000);
+    const errors = watchForErrors(page);
+    if (step === "200%")
+      await page.addInitScript((size) => {
+        const apply = () => document.documentElement.style.setProperty("font-size", `${size}px`, "important");
+        if (document.documentElement) apply();
+        document.addEventListener("DOMContentLoaded", apply);
+      }, root);
+    else await page.addInitScript((value) => localStorage.setItem("outpost.textSize", value), step);
+    for (const path of addedToday) {
+      await page.goto(path);
+      await expect(page.locator("main h1, main [role=tablist]").first()).toBeVisible();
       await page.waitForLoadState("networkidle");
       expect(await page.evaluate(() => getComputedStyle(document.documentElement).fontSize), path).toBe(`${root}px`);
       expect(await tooWide(page), `${path} with text ${step}`).toEqual([]);

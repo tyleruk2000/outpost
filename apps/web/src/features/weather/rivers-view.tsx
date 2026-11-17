@@ -35,12 +35,12 @@ import {
 import { ChevronRight, CircleAlert, Clock, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
-import { BackLink, Joined, Notice } from "@/components/page";
+import { BackLink, Disclosure, Joined, Notice } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/misc";
 import { errorMessage } from "@/lib/api";
 import { formatTimeOfDay } from "@/lib/clock";
-import { formatDateTime, plural } from "@/lib/utils";
+import { formatDate, formatDateTime, plural } from "@/lib/utils";
 import { AgeLine, Credit } from "./age-line";
 import { useSetRiversKm, useStationReadings } from "./data";
 import { TimeLine } from "./time-chart";
@@ -56,6 +56,18 @@ export const measuredText = (t: number, now: number): string => {
   const today = new Date(t).toDateString() === new Date(now).toDateString();
   return `measured ${today ? formatTimeOfDay(t) : formatDateTime(t)} (${ago})`;
 };
+
+/**
+ * When, short enough for a station's row on a phone: the time today, the day before then. How long ago
+ * goes on the row's line of state, so that the level's line stays one line.
+ */
+export const measuredShort = (t: number, now: number): string => {
+  const today = new Date(t).toDateString() === new Date(now).toDateString();
+  return today ? formatTimeOfDay(t) : formatDate(t);
+};
+
+/** "3 hours ago", or "just now". */
+const agoWords = (t: number, now: number): string => (now - t < 60_000 ? "just now" : `${ageWords(Math.max(0, now - t))} ago`);
 
 /** "Rising 0.05 m over the 3 hours to 11:15 (Outpost's reading of the figures held)". */
 export function trendText(trend: TrendResult): string {
@@ -135,6 +147,7 @@ function StationRow({ station, fetchedAt, now }: { station: RiverLevelStation; f
   const parts = [
     state ? <span key="state">{STATE_SHORT[state]}</span> : null,
     latest ? trendShort(levelTrend(station.recent)) : null,
+    latest ? agoWords(latest.t, now) : null,
     stopped ? (
       <span key="stopped" className="text-warning">
         Not reporting
@@ -153,15 +166,24 @@ function StationRow({ station, fetchedAt, now }: { station: RiverLevelStation; f
         className="flex min-h-11 items-center gap-2 rounded-control text-ink hover:text-primary focus-visible:outline-2 focus-visible:outline-focus"
       >
         <span className="min-w-0 flex-1">
-          <span className="font-semibold">{station.label}</span>
-          {station.river ? <span>, {station.river}</span> : null}
-          <span className="text-ink-muted"> · {station.distanceKm} km away</span>
+          <Joined
+            parts={[
+              <span key="name">
+                <span className="font-semibold">{station.label}</span>
+                {station.river ? `, ${station.river}` : null}
+              </span>,
+              // The heading over the list says "nearest first": the distance is enough.
+              <span key="far" className="text-ink-muted">
+                {station.distanceKm} km
+              </span>,
+            ]}
+          />
         </span>
         <ChevronRight aria-hidden className="size-4 shrink-0 text-ink-muted" />
       </Link>
       {latest ? (
         <p className="tabular text-small text-ink">
-          {levelText(latest.v, station.unit)}, {measuredText(latest.t, now)}
+          {levelText(latest.v, station.unit)}, {measuredShort(latest.t, now)}
         </p>
       ) : (
         <p className="text-small text-ink-muted">{station.readingsNote ?? "No reading is held for this station."}</p>
@@ -263,9 +285,8 @@ export function RiversView({
                   <StationRow key={station.id} station={station} fetchedAt={copy.fetchedAt} now={now} />
                 ))}
               </ul>
-              <details className="mt-4 max-w-[70ch] text-small">
-                <summary className="min-h-11 cursor-pointer py-2 font-medium text-primary">What the figures mean</summary>
-                <div className="grid gap-2 text-ink">
+              <Disclosure summary="What the figures mean" className="mt-4 max-w-[70ch]">
+                <div className="grid gap-2">
                   <p>
                     A level is in metres above a fixed point, which the Agency names: Ordnance Datum (mAOD), the level heights on Ordnance
                     Survey maps are measured from, or the station's own datum (mASD), chosen for that gauge. Levels at two stations measured
@@ -289,7 +310,7 @@ export function RiversView({
                     flood risk is higher, so a latest reading several hours old is ordinary.
                   </p>
                 </div>
-              </details>
+              </Disclosure>
             </>
           )}
         </>
@@ -343,10 +364,13 @@ function StationView({
       <BackToRivers />
       <h2 className="font-title text-heading text-ink">{station.label}</h2>
       <p className="text-body text-ink-muted">
-        {[station.river, station.town].filter(Boolean).join(", ")}
-        {station.river || station.town ? " · " : ""}
-        {station.distanceKm} km from {place.name}
-        {station.tidal ? " · tidal" : ""}
+        <Joined
+          parts={[
+            [station.river, station.town].filter(Boolean).join(", "),
+            `${station.distanceKm} km from ${place.name}`,
+            station.tidal ? "tidal" : null,
+          ]}
+        />
       </p>
       <p className="mt-2 max-w-[70ch] text-small text-ink">
         Levels here are {DATUM_WORDS[datum]} ({station.unit}).
@@ -468,8 +492,7 @@ function StationView({
                     </li>
                   ) : null}
                 </ul>
-                <details className="text-small">
-                  <summary className="min-h-11 cursor-pointer py-2 font-medium text-primary">The readings as a table</summary>
+                <Disclosure summary="The readings as a table">
                   <div className="max-h-96 overflow-y-auto">
                     <table className="tabular w-full max-w-md text-left">
                       <thead>
@@ -494,7 +517,7 @@ function StationView({
                       </tbody>
                     </table>
                   </div>
-                </details>
+                </Disclosure>
               </>
             )}
           </div>

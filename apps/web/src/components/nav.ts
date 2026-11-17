@@ -9,6 +9,7 @@
  */
 import {
   AudioWaveform,
+  BookMarked,
   BookOpen,
   ClipboardList,
   Compass,
@@ -31,7 +32,6 @@ import {
   Radio,
   RadioReceiver,
   RadioTower,
-  Scale,
   Search,
   Settings,
   ShieldCheck,
@@ -90,7 +90,13 @@ export const knowledgeNav: NavItem[] = [
     key: "l",
     keywords: "documents books ebooks pdf files reading audiobooks learning school course lessons progress khan upload",
   },
-  { to: "/maps", label: "Maps", icon: MapIcon, key: "m", keywords: "map offline places routes gps location directions print sun times" },
+  {
+    to: "/maps",
+    label: "Maps",
+    icon: MapIcon,
+    key: "m",
+    keywords: "map offline places routes gps location directions print sun times postcode grid reference",
+  },
   // Importing brings in pages (Markdown, Notion), so it is Notes'.
   {
     to: "/notes",
@@ -180,13 +186,15 @@ export const upkeepNav: NavItem[] = [
     // How to set up search by meaning, answers and chat (SETUP_GUIDE_PATH): its settings link to it part by part.
     children: [
       { to: "/help/search-and-answers", label: "Set-up guide", icon: LifeBuoy, keywords: "help models ollama install" },
-      {
-        to: "/help/which-model",
-        label: "Which model",
-        icon: Scale,
-        keywords: "model which model choose llm ollama pi raspberry compare tried measured",
-      },
     ],
+  },
+  // The guides, made from docs/ (features/help/guides.ts); each guide is a page of its own, found by the quick search. "i" for information: "h" is Home's.
+  {
+    to: "/help",
+    label: "Help",
+    icon: BookMarked,
+    key: "i",
+    keywords: "guide guides manual how to install deploy raspberry pi docker set up instructions documentation troubleshooting",
   },
 ];
 
@@ -217,6 +225,8 @@ export const settingsSections: SettingsSection[] = [
   { id: "semantic", label: "Search by meaning", inContents: true, keywords: "semantic embeddings vectors model" },
   { id: "answers", label: "Answers", inContents: true, keywords: "ai language model ollama llm" },
   { id: "tools", label: "Looking things up", inContents: true, keywords: "tools mcp model context protocol llm look up claude code" },
+  { id: "tools-switch", label: "Let the model look things up in Outpost", keywords: "tools llm chat look up places supplies plans weather ai" },
+  { id: "tools-mcp-switch", label: "Let other programs use these tools (MCP)", keywords: "mcp model context protocol claude code vs code tools llm" },
   { id: "maps", label: "Maps", inContents: true, keywords: "map source terrain tiles" },
   { id: "board", label: "Message board", inContents: true, keywords: "messages files keep" },
   { id: "mesh", label: "Mesh radio", inContents: true, keywords: "meshtastic meshcore lora mqtt radio link mesh off grid messages" },
@@ -230,6 +240,19 @@ export const settingsSections: SettingsSection[] = [
     keywords: "wifi wi-fi network lan phones share sharing household password sign in accounts",
   },
   { id: "about", label: "This installation", inContents: true, keywords: "version update memory processor about" },
+];
+
+/**
+ * Tabs of the Maps screen that the quick search goes to by their own words, each at
+ * /maps?tab=id: "supermarket" is a map layer, not a screen of its own.
+ */
+export const mapSections: Array<{ id: string; label: string; keywords: string }> = [
+  {
+    id: "layers",
+    label: "Layers",
+    keywords:
+      "food shops shop supermarket grocer pharmacy chemist drinking water tap airports airfields population reference layers nearest",
+  },
 ];
 
 /** The screens at the top level, the ones with a shortcut. */

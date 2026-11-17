@@ -13,10 +13,13 @@ and off by default. So is reading the text of scanned pages and images
 - **Quick search** is the field at the top of the sidebar (the magnifying glass in the
   phone's top bar; <kbd>/</kbd>, or <kbd>Ctrl</kbd> or <kbd>⌘</kbd> <kbd>K</kbd>, from
   anywhere). It opens over the screen you are on. Under **Go to** it lists the screens
-  of Outpost and the sections of Settings that match what you type, by their names and
-  by the everyday words people use for them: "food" offers Preparedness: Supplies,
-  "backup" opens Settings at its Backup section, "dark mode" Settings at Appearance,
-  "wifi" Tools: QR codes. A word that no screen answers ("torch") offers none. Under
+  of Outpost, the sections of Settings and the map's Layers tab that match what you type,
+  by their names and by the everyday words people use for them: "food" offers
+  Preparedness: Supplies, "backup" opens Settings at its Backup section, "dark mode"
+  Settings at Appearance, "wifi" Tools: QR codes, "supermarket" the map's Layers tab. A
+  screen whose name has the words comes first, then one whose everyday words have them
+  just as typed ("shop"), then one whose words only begin with them ("shopping list").
+  A word that no screen answers ("torch") offers none. Under
   that, the best matches in your library, as you type, and **See all results**, which
   opens the Search screen.
 - **Search** (in the sidebar below that field, and in the phone's More sheet)
@@ -24,6 +27,14 @@ and off by default. So is reading the text of scanned pages and images
   and Answer from my library. When a screen of Outpost matches what you typed, it is
   offered at the top under **Go to**, as in quick search: "safe drinking water" offers
   Tools: Water, which holds the treatment tables.
+
+**The guides under Help** (these pages of Outpost's documentation, inside the app) are
+found under **Go to** too, after the screens and at most six at a time: by each guide's
+name, its everyday words, and the names of its sections. "raspberry pi" offers the part
+of the guide to installing Outpost about the Raspberry Pi, and "restore a backup" the
+parts about restoring. They are Outpost's own pages, not part of your library, so they
+are not in the library's search index, are not among its results, and are never sent
+to a model server to answer a question.
 
 ## Seeing how it works
 

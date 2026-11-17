@@ -20,6 +20,8 @@ import type {
   HistoricalRecordsResponse,
   HistoricalRecordType,
   LayerSearchHit,
+  NearestHit,
+  NearestResponse,
   ReferenceCell,
   ReferenceFeatureDetail,
   ReferenceFilter,
@@ -30,10 +32,11 @@ import type {
   ReferenceShape,
   ReferenceSourceInfo,
 } from "@outpost/shared";
-import { haversineMeters, ownValue } from "@outpost/shared";
+import { FOOD_KINDS, haversineMeters, initialBearingDeg, ownValue } from "@outpost/shared";
 import type { Statement } from "better-sqlite3";
 import type { AppContext } from "../../core/context.ts";
 import { yieldToEventLoop } from "../../core/event-loop.ts";
+import { classifyFood, foodFacts, foodKindSql, SAME_SHOP_POSTCODE_METRES, sameShop } from "./adapters/food-tags.ts";
 import { splitFrequencies } from "./adapters/ourairports-frequencies.ts";
 import { kindLabel } from "./kinds.ts";
 import type { FeatureSink, GeoJsonGeometry, NewCountryFigure, NewFeature } from "./types.ts";
@@ -54,6 +57,8 @@ const FLOOD_ZOOM = 11;
 const FLOOD_SHAPE_LIMIT = 3_000;
 /** Other layers' areas are drawn from this zoom in. */
 const SHAPE_ZOOM = 9;
+/** The nearest list looks this far and no further. */
+export const NEAREST_WITHIN_METRES = 100_000;
 /** How far apart two records of one thing from different sources may be placed. */
 const SAME_PLACE_METRES = 1_000;
 
@@ -271,6 +276,11 @@ export interface ReferenceStore {
   summary(providerNames: Map<string, string>): ReferenceLayerSummary[];
   countsOf(collectionId: string): { records: number; duplicates: number; figures: number; layers: ReferenceLayerId[] };
   figures(country?: string): CountryFigureDto[];
+  /**
+   * The nearest records of a layer to a point, from what is held: of one kind (by any of
+   * its roles), or the nearest of each kind. Within `NEAREST_WITHIN_METRES` only.
+   */
+  nearest(query: { lat: number; lon: number; layer: ReferenceLayerId; kind: string | null; limit: number }): NearestResponse;
   /** Historical records for the records browser, by period and then name. */
   historical(query: { recordType: HistoricalRecordType | null; limit: number; offset: number }): HistoricalRecordsResponse;
   owners(): string[];
@@ -423,7 +433,14 @@ export function createReferenceStore(ctx: AppContext, providerName: (id: string)
     list("layer", filter.layers);
     list("country", filter.countries);
     list("provider", filter.providers);
-    list("kind", filter.kinds);
+    if (filter.kinds && filter.kinds.length > 0) {
+      // A place in the food and supplies layer is found under each kind it is mapped as, not only the one it is kept under.
+      const roles = filter.kinds.map((kind) => foodKindSql(kind, alias)).filter((sql): sql is string => sql !== null);
+      parts.push(
+        `(${alias}.kind IN (${filter.kinds.map(() => "?").join(",")})${roles.length > 0 ? ` OR (${alias}.layer = 'food' AND (${roles.join(" OR ")}))` : ""})`,
+      );
+      args.push(...filter.kinds);
+    }
     return { sql: parts.join(" AND "), args };
   };
 
@@ -491,7 +508,7 @@ export function createReferenceStore(ctx: AppContext, providerName: (id: string)
        AND collection_id NOT LIKE 'pending:%' AND duplicate_of IS NULL AND id != ? LIMIT 1`,
     );
     const near = sqlite.prepare(
-      `SELECT f.id AS id, f.name AS name, f.lat AS lat, f.lon AS lon ${rtreeJoin}
+      `SELECT f.id AS id, f.name AS name, f.lat AS lat, f.lon AS lon, f.provider AS provider, f.props AS props ${rtreeJoin}
        WHERE ${rtreeWhere} AND f.layer = ? AND f.provider != ? AND f.collection_id != ? AND f.collection_id NOT LIKE 'pending:%' AND f.duplicate_of IS NULL`,
     );
     let found = 0;
@@ -512,6 +529,40 @@ export function createReferenceStore(ctx: AppContext, providerName: (id: string)
       }
       if (original === undefined && row.provider === "wikidata") {
         original = (linksTo.get(row.sourceId, row.id) as { id: number } | undefined)?.id;
+      }
+      if (original === undefined && row.layer === "food" && row.lat !== null && row.lon !== null && row.name) {
+        // A shop in two sources: its own, stricter test (food-tags.ts), as shops of one chain stand close together.
+        const dLat = SAME_SHOP_POSTCODE_METRES / 111_000;
+        const dLon = dLat / Math.max(0.05, Math.cos((row.lat * Math.PI) / 180));
+        const props = JSON.parse(row.props) as Record<string, string>;
+        const match = (
+          near.all(row.lon - dLon, row.lon + dLon, row.lat - dLat, row.lat + dLat, row.layer, row.provider, collectionId) as Array<{
+            id: number;
+            name: string;
+            lat: number;
+            lon: number;
+            provider: string;
+            props: string;
+          }>
+        )
+          .map((candidate) => ({ candidate, metres: haversineMeters(row.lat!, row.lon!, candidate.lat, candidate.lon) }))
+          .sort((a, b) => a.metres - b.metres)
+          .find(({ candidate, metres }) =>
+            sameShop(
+              { provider: row.provider, name: row.name, props },
+              { provider: candidate.provider, name: candidate.name, props: JSON.parse(candidate.props) as Record<string, string> },
+              metres,
+            ),
+          )?.candidate;
+        if (match) {
+          // The mapped record leads, as it says what kind of shop it is and when it opens; the Agency's is listed beside it.
+          if (row.provider !== "fsa" && match.provider === "fsa") markDuplicate.run(row.id, match.id);
+          else markDuplicate.run(match.id, row.id);
+          found += 1;
+        }
+        done += 1;
+        if (done % 2_000 === 0) await yieldToEventLoop();
+        continue;
       }
       if (original === undefined && row.lat !== null && row.lon !== null && row.name) {
         const dLat = SAME_PLACE_METRES / 111_000;
@@ -678,7 +729,10 @@ export function createReferenceStore(ctx: AppContext, providerName: (id: string)
         total = cells.reduce((sum, cell) => sum + cell.count, 0);
       }
       // Areas: those of the area layers at any zoom, the rest from close in, and never more than the limit.
-      const shapeLayers = filter.layers.filter((layer) => layer !== "flood-zones" && (AREA_LAYERS.has(layer) || zoom >= SHAPE_ZOOM));
+      // A shop's building outline adds nothing to its mark: food and supplies are drawn as marks only.
+      const shapeLayers = filter.layers.filter(
+        (layer) => layer !== "flood-zones" && layer !== "food" && (AREA_LAYERS.has(layer) || zoom >= SHAPE_ZOOM),
+      );
       const tolerance = (360 / (256 * 2 ** Math.max(0, zoom))) * 0.75;
       const shapesOf = (layers: ReferenceLayerId[], limit: number): ReferenceShape[] | null => {
         const shapeWhere = filterSql({ ...filter, layers });
@@ -801,6 +855,9 @@ export function createReferenceStore(ctx: AppContext, providerName: (id: string)
         lon: primary.lon,
         bbox,
         ...splitFrequencies(primary.provider, primary.layer, JSON.parse(primary.props) as Record<string, string>),
+        ...(primary.layer === "food"
+          ? { food: foodFacts(primary.provider, primary.kind, JSON.parse(primary.props) as Record<string, string>) }
+          : {}),
         provenance: primary.provenance,
         source: sourceInfo(primary, packs),
         alsoFrom: others.map((other) => sourceInfo(other, packs)),
@@ -890,6 +947,63 @@ export function createReferenceStore(ctx: AppContext, providerName: (id: string)
            FROM country_figures WHERE collection_id NOT LIKE 'pending:%' ${country ? "AND country = ?" : ""} ORDER BY country, indicator, year`,
       ).all(...(country ? [country] : [])) as CountryFigureDto[];
       return rows;
+    },
+
+    nearest({ lat, lon, layer, kind, limit }) {
+      const kinds = kind ? [kind] : layer === "food" ? FOOD_KINDS.map((entry) => entry.kind as string) : [];
+      const where = filterSql({ layers: [layer], ...(kind ? { kinds: [kind] } : {}) });
+      const statement = prepared(
+        `SELECT f.id AS id, f.name AS name, f.kind AS kind, f.provider AS provider, f.lat AS lat, f.lon AS lon, f.props AS props
+           ${rtreeJoin} WHERE ${rtreeWhere} AND ${where.sql} LIMIT 20000`,
+      );
+      const wanted = kind ? limit : 1;
+      type Row = { id: number; name: string; kind: string; provider: string; lat: number; lon: number; props: string };
+      let best = new Map<string, Array<{ row: Row; metres: number }>>();
+      // Look close first, and further only while a kind wanted has fewer than it should.
+      for (const radius of [2_000, 10_000, 30_000, NEAREST_WITHIN_METRES]) {
+        const dLat = radius / 111_000;
+        const dLon = dLat / Math.max(0.05, Math.cos((lat * Math.PI) / 180));
+        const rows = statement.all(lon - dLon, lon + dLon, lat - dLat, lat + dLat, ...where.args) as Row[];
+        best = new Map();
+        for (const row of rows) {
+          const metres = haversineMeters(lat, lon, row.lat, row.lon);
+          if (metres > radius) continue;
+          // Every kind the record is: a fuel station with a shop is the nearest shop too.
+          const roles =
+            layer === "food" && row.provider !== "fsa"
+              ? [row.kind, ...(classifyFood(JSON.parse(row.props) as Record<string, string>)?.kinds ?? [])]
+              : [row.kind];
+          for (const role of new Set(roles)) {
+            if (!kinds.includes(role) && kinds.length > 0) continue;
+            const list = best.get(role) ?? [];
+            list.push({ row, metres });
+            best.set(role, list);
+          }
+        }
+        const enough = kinds.length > 0 && kinds.every((entry) => (best.get(entry)?.length ?? 0) >= wanted);
+        if (enough) break;
+      }
+      const hits: NearestHit[] = [];
+      const order = kinds.length > 0 ? kinds : [...best.keys()];
+      for (const role of order) {
+        const list = (best.get(role) ?? []).sort((a, b) => a.metres - b.metres || a.row.id - b.row.id).slice(0, wanted);
+        for (const { row, metres } of list) {
+          hits.push({
+            id: row.id,
+            name: row.name,
+            kind: role,
+            kindLabel: kindLabel(role),
+            provider: row.provider,
+            lat: row.lat,
+            lon: row.lon,
+            distanceMeters: Math.round(metres),
+            bearingDegrees: Math.round(initialBearingDeg({ lat, lon }, { lat: row.lat, lon: row.lon })) % 360,
+          });
+        }
+      }
+      // One of each kind: nearest first, so the list reads as "what is closest".
+      if (!kind) hits.sort((a, b) => a.distanceMeters - b.distanceMeters);
+      return { kind, withinMeters: NEAREST_WITHIN_METRES, hits };
     },
 
     historical({ recordType, limit, offset }) {

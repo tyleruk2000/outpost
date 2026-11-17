@@ -204,7 +204,7 @@ Where it exists, as of 16 November 2026:
 
 - **Chrome on Android** (since Chrome 80), and only on a page opened over **https**, in
   the top-level page, after a tap. Outpost's own HTTPS ([Settings → HTTPS on your
-  network](deployment.md#https-on-the-home-network)) provides an https address;
+  network](deployment.md#https-on-your-network)) provides an https address;
   Chromium's source says Chrome on Android uses certificate authorities the user added,
   but nobody has tried the picker over Outpost's certificate on a real phone.
 - **Not** in Safari on an iPhone (it is behind an experimental flag that is off by

@@ -60,7 +60,7 @@ test.describe("the household board on two phones", () => {
       await expect(sam.page.getByText("You checked in as safe.")).toBeVisible();
 
       const strip = alex.page.getByRole("list", { name: "Latest check-ins" });
-      await expect(strip.getByRole("listitem").filter({ hasText: "Sam:" })).toContainText(/safe, gone to Mum's, \d\d:\d\d today/);
+      await expect(strip.getByRole("listitem").filter({ hasText: "Sam:" })).toContainText(/safe · gone to Mum's · \d\d:\d\d today/);
 
       // A file from Sam's phone.
       const content = "Milk\nBread\nAA batteries\n";

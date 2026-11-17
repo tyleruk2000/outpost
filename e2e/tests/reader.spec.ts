@@ -248,7 +248,7 @@ test.describe("a collection that is a list of documents", () => {
       await expect(words).toContainText("Nothing is downloaded from the internet.");
       await expect(words).toContainText(/The collection keeps its copy, so adding the other 7 uses [\d.]+ kB more \([\d.]+ [GT]B free\)\./);
       // Each line says how large its file is.
-      await expect(page.getByRole("listitem").filter({ hasText: "Boiling water to make it safe" })).toContainText(/PDF\s*\/\s*\d+ bytes/);
+      await expect(page.getByRole("listitem").filter({ hasText: "Boiling water to make it safe" })).toContainText(/PDF\s*·[\s,]*\d+ bytes/);
 
       await page.getByRole("button", { name: "Add the other 7 to library" }).click();
       const dialog = page.getByRole("dialog", { name: "Add 7 documents to your library?" });

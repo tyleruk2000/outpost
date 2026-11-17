@@ -1,6 +1,7 @@
 /** Turning OpenStreetMap objects, however they were read, into reference features. */
 import type { Bbox } from "@outpost/shared";
 import type { FeatureSink, GeoJsonGeometry, NewFeature } from "../types.ts";
+import { classifyFood } from "./food-tags.ts";
 import { classifyOsm, keptTags, type OsmLayer, osmName } from "./osm-tags.ts";
 
 export interface OsmObject {
@@ -25,8 +26,14 @@ export function osmFeature(
   object: OsmObject,
   options: { layers: Set<OsmLayer>; country: string | null; publishedAt: string | null },
 ): NewFeature | null {
-  const found = classifyOsm(object.tags);
-  if (!found || !options.layers.has(found.layer)) return null;
+  let found: { layer: OsmLayer; kind: string } | null = classifyOsm(object.tags);
+  if (found && !options.layers.has(found.layer)) found = null;
+  // Food and supplies is looked for only when it was asked for, and after the other layers.
+  if (!found && options.layers.has("food")) {
+    const food = classifyFood(object.tags);
+    if (food) found = { layer: "food", kind: food.kind };
+  }
+  if (!found) return null;
   const { name, altNames } = osmName(object.tags);
   let geometry: GeoJsonGeometry | null = null;
   let accuracy = "As mapped in OpenStreetMap: a point";

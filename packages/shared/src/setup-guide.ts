@@ -499,7 +499,8 @@ export function memoryWords(model: { memoryGb: number; memoryMeasured: boolean }
 // ── The same guide as a Markdown page ──────────────────────────────────────
 
 function blockMarkdown(block: GuideBlock, depth: number): string[] {
-  const fence = (command: string) => ["```", command, "```"];
+  // One line each, so that a command of several lines inside a numbered step is indented whole and stays in the step.
+  const fence = (command: string) => ["```", ...command.split("\n"), "```"];
   switch (block.kind) {
     case "text":
       return [block.text, ""];

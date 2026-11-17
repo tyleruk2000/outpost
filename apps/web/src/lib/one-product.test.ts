@@ -185,7 +185,6 @@ describe("one product", () => {
 
   it("links to the sections of a screen in one way", () =>
     holds(jumpLinks, {
-      "features/solar-clock/recovery-tab.tsx": "outside builder: the parts of clock recovery",
       "features/understand/understand-page.tsx": "a long stepped page with a contents column at the side on a wide screen (may stay)",
     }));
 

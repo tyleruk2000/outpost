@@ -31,6 +31,7 @@ import type { CollectionRow } from "../collections/service.ts";
 import type { DownloadRow, Installer } from "../downloads/types.ts";
 import { createBabsAdapter } from "./adapters/babs.ts";
 import { createFloodZonesAdapter } from "./adapters/flood-zones.ts";
+import { createFsaAdapter } from "./adapters/fsa.ts";
 import { createGeofabrikAdapter } from "./adapters/geofabrik.ts";
 import { provider as importProvider, readImport } from "./adapters/imports.ts";
 import { createNaturalEarthAdapter } from "./adapters/natural-earth.ts";
@@ -151,6 +152,7 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
       createWorldPopAdapter(deps, population),
       createBabsAdapter(deps),
       createFloodZonesAdapter(deps),
+      createFsaAdapter(deps),
     ].map((adapter) => [adapter.provider.id, adapter]),
   );
 
@@ -593,6 +595,12 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
             provider: "ea-flood-zones",
             text: "Flood zones: © Environment Agency copyright and/or database right 2025, OGL v3.0",
             url: "https://www.data.gov.uk/dataset/flood-map-for-planning-flood-zones1",
+          });
+        } else if (meta.provider === "fsa") {
+          credits.set("fsa", {
+            provider: "fsa",
+            text: "Food businesses: Food Standards Agency, Open Government Licence v3.0",
+            url: "https://ratings.food.gov.uk/open-data",
           });
         } else if (meta.provider === "babs") {
           credits.set("babs", {

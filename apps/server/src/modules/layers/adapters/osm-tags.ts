@@ -17,9 +17,17 @@
  */
 import type { ReferenceLayerId } from "@outpost/shared";
 import { cleanText as routeCleanText } from "../../maps/route-finder/overpass.ts";
+import { FOOD_KEPT_TAGS, foodOverpassFilters } from "./food-tags.ts";
 
-export type OsmLayer = Extract<ReferenceLayerId, "military" | "nuclear" | "hospitals" | "emergency" | "shelters">;
+export type OsmLayer = Extract<ReferenceLayerId, "military" | "nuclear" | "hospitals" | "emergency" | "shelters" | "food">;
+/** The layers a request for "all" means, and the layers read from a Geofabrik extract. */
 export const OSM_LAYERS: OsmLayer[] = ["military", "nuclear", "hospitals", "emergency", "shelters"];
+/**
+ * The layers that can be asked of an Overpass server. Food and supplies is asked for only
+ * when it is chosen, and only for an area about a county across (overpass.ts): a country's
+ * shops is more than a public server should be asked for at once.
+ */
+export const OVERPASS_LAYERS: OsmLayer[] = [...OSM_LAYERS, "food"];
 
 export const MILITARY_VALUES = [
   "base",
@@ -103,6 +111,8 @@ export function overpassFilters(layer: OsmLayer): string[] {
         '["amenity"="shelter"]["shelter_type"="bomb_shelter"]',
         '["emergency"="assembly_point"]',
       ];
+    case "food":
+      return foodOverpassFilters();
   }
 }
 
@@ -148,6 +158,7 @@ export const KEPT_OSM_TAGS = new Set([
   "description",
   "note",
   "source",
+  ...FOOD_KEPT_TAGS,
 ]);
 
 /** Text fit to show: no control or direction characters, spaces collapsed, cut to length; empty if there is none. */
