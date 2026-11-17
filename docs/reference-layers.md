@@ -250,13 +250,16 @@ licence (the Unlicense: public domain).
   certain, the ICAO abbreviations TWR, GND, APP, DEP, ARR, DEL, INFO, RDO and RDR and the
   same words typed out; anything else, such as `CLD` or `A/D`, is shown as given) and the
   frequency in MHz with three decimals at least, tower first, then ATIS, AFIS, FIS and
-  information, then the rest in the file's order. On a wider screen the list scrolls
-  inside the card; on a phone it scrolls with the card. Under it, in a line: from
-  OurAirports, a community-maintained public-domain dataset, as of the file's date; not
-  for navigation or flight planning, and may be out of date or wrong; rules on listening
-  differ by country. Behind one disclosure: that Outpost has not checked them, the radio
-  screens' own line on listening to aviation traffic, and a link to the VHF air band in
-  Frequencies to listen to. An airport the file has no rows for says "No frequencies
+  information, then the rest in the file's order, one line each where it fits. They come
+  first on the card, straight under what the place is, in a list about five rows high
+  that scrolls inside the card, so that at 390 × 844 a phone shows the name, four or
+  five rows and the caution. Under it, in a line: not for navigation or flight planning,
+  OurAirports' community list as of the file's date may be out of date or wrong. Behind
+  one disclosure: that it is a community-maintained public-domain dataset Outpost has
+  not checked, the radio screens' own line on listening to aviation traffic, and a link
+  to the VHF air band in Frequencies to listen to. The card folds to one line (the name
+  and how many frequencies), as a repeater's card does, and opening a record from the
+  Layers tab on a phone lowers the sheet for it. An airport the file has no rows for says "No frequencies
   listed", not that there are none. An airport from a pack installed before frequencies
   were fetched, or whose frequencies could not be fetched, says they are not held yet and
   links to Reference data for the map, where updating the pack gets them.

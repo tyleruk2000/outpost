@@ -507,14 +507,14 @@ of work. It shows:
 - **Where:** the file's path, as the screen shows the folders of storage locations, and
   the free space on the drive it is on. Below 256 MB free (the reserve Outpost keeps
   on every location) it says the drive is nearly full.
-- **Size:** the file, and the write-ahead log beside it (recent changes not yet folded
-  into the file).
+- **Size:** the file, and the recent changes kept beside it (SQLite's write-ahead log)
+  that are not yet folded into the file.
 - **What is in it:** counts named as the rest of the app names them (documents,
   passages in the search index, passages read for search by meaning, pages of notes,
   attachments, saved places, routes, place names, records in the map's reference
   layers, contacts, PGP keys, chat conversations, repeaters and lists of repeaters,
   communication plans, logged contacts, profiles, saved predictions, power plans and
-  devices, rows of supplies, weather places and barometer readings, emergency plans,
+  devices, items of supplies, weather places and barometer readings, emergency plans,
   saved nuclear effects scenarios, devices found on the network, Morse practice
   sessions, games kept), and where the bytes go in eight groups: search index, search
   by meaning, library records, notes, maps (with the reference layers and nuclear
@@ -522,9 +522,13 @@ of work. It shows:
   weather), everything else (contacts and keys, chat, power, network devices, games,
   settings, the history of work), plus the unused pages.
 - **State:** how many of the layout changes (migrations) this version of Outpost knows
-  have been made, the SQLite version, the journal mode, and the last backup written to
-  a storage location, scheduled or with **Back up now**. A backup downloaded from
-  Settings is not recorded anywhere, so it is not shown.
+  have been made, and the last backup written to a storage location, scheduled or with
+  **Back up now**. A backup downloaded from Settings is recorded under Settings, Backup
+  (the last one made, with its name and size), not here.
+- **Technical details**, behind a disclosure: the SQLite version and journal mode, how
+  the contents were measured (`dbstat`, or counting rows), the migrations applied, the
+  free pages, and the names of the checks (`quick_check`, `integrity_check`) and of
+  reclaiming (`VACUUM`). Everything above it is said in a household's words.
 
 ### How the figures are measured, and what it costs to look
 

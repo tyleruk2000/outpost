@@ -183,7 +183,11 @@ through `POST /api/weather/update`, the same route this screen uses. See
 ## River and sea levels
 
 The **River and sea levels** view lists the Environment Agency's measuring stations near
-the place chosen (home by default), nearest first, on a press. Each shows:
+the place chosen (home by default), nearest first, on a press. Each station is a row of
+at most three lines on a phone: the station and how far away; the level, what it is
+measured from and when; and its state in one line ("Within its typical range ·
+steady"). The explanations below are said once, under **What the figures mean**, and a
+station's own page says them in full. Each row shows:
 
 - the river or coast it is on and how far away it is;
 - its latest level, with the time it was measured and how long ago that is;
