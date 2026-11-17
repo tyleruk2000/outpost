@@ -209,7 +209,14 @@ describe("semantic and hybrid search", () => {
   it("refuses vectors for a model it holds already at another size, and keeps the ones it has", async () => {
     await buildIndex();
     const before = app.ctx.services.semantic.index.count("test:concepts");
-    const header = { format: "outpost-embeddings", version: 1, modelId: "test:concepts", provider: "test", model: "concepts", dimensions: 8 };
+    const header = {
+      format: "outpost-embeddings",
+      version: 1,
+      modelId: "test:concepts",
+      provider: "test",
+      model: "concepts",
+      dimensions: 8,
+    };
     const vector = Buffer.from(new Float32Array(8).fill(0.5).buffer).toString("base64");
     const response = await app.app.inject({
       method: "POST",
