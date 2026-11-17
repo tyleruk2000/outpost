@@ -5,13 +5,14 @@
  * The name is chosen once on each device and kept there (`outpost.board.name`); it can
  * be changed at any time. It proves nothing, and the screen says so.
  */
-import { type BoardMessageResponse, type BoardSummaryResponse, formatBytes } from "@outpost/shared";
+import { type BoardMessageResponse, type BoardSummaryResponse, formatBytes, type MeshChannel, radioText } from "@outpost/shared";
 import { Paperclip, Send, X } from "lucide-react";
 import { type FormEvent, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Textarea } from "@/components/ui/input";
 import { Progress } from "@/components/ui/misc";
+import { bytesWords, overWords, radioCount } from "@/features/mesh/words";
 import { errorMessage, uploadWithProgress } from "@/lib/api";
 import { setDeviceName, usePost, useReplace } from "./data";
 
@@ -65,19 +66,26 @@ export function ChooseName({ people, current, onDone }: { people: string[]; curr
   );
 }
 
-export function WriteMessage({ name }: { name: string }) {
+export function WriteMessage({ name, channel = null }: { name: string; channel?: MeshChannel | null }) {
   const [text, setText] = useState("");
-  const post = usePost();
+  const post = usePost(channel?.id);
+  const count = radioCount(channel, radioText({ kind: "message", author: name, body: text }));
+  const blocked = !text.trim() || Boolean(count?.over);
   const submit = (event?: FormEvent) => {
     event?.preventDefault();
-    if (!text.trim()) return;
+    if (blocked) return;
     post.mutate({ author: name, body: text }, { onSuccess: () => setText(""), onError: (error) => toast.error(errorMessage(error)) });
   };
   return (
     <form onSubmit={submit} className="grid gap-2">
       <Field
-        label={`Write a message as ${name}`}
-        hint="Text pasted here can be picked up on any other device: it is a message like any other."
+        label={channel ? `Write a message on ${channel.label} as ${name}` : `Write a message as ${name}`}
+        hint={
+          count
+            ? `${bytesWords(count.bytes, count.limit)}, your name in front included. Radio text is short, and counted in bytes: an accented letter takes two, an emoji four.`
+            : "Text pasted here can be picked up on any other device: it is a message like any other."
+        }
+        error={count?.over ? overWords(count.bytes, count.limit) : undefined}
       >
         {(ids) => (
           <Textarea
@@ -95,10 +103,10 @@ export function WriteMessage({ name }: { name: string }) {
       </Field>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="tabular text-micro text-ink-muted">
-          {text.length > 9_000 ? `${(10_000 - text.length).toLocaleString("en-GB")} characters left` : ""}
+          {!channel && text.length > 9_000 ? `${(10_000 - text.length).toLocaleString("en-GB")} characters left` : ""}
         </span>
-        <Button type="submit" variant="primary" loading={post.isPending} disabled={!text.trim()}>
-          <Send aria-hidden /> Post
+        <Button type="submit" variant="primary" loading={post.isPending} disabled={blocked}>
+          <Send aria-hidden /> {channel ? "Send by radio" : "Post"}
         </Button>
       </div>
     </form>

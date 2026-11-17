@@ -76,6 +76,7 @@ const message = (over: Partial<BoardMessage> = {}): BoardMessage => ({
   updatedAt: Date.now() - 60_000,
   edited: null,
   removed: null,
+  meta: null,
   ...over,
 });
 

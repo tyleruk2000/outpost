@@ -65,6 +65,8 @@ const invalidations: Record<string, string[][]> = {
   "games.changed": [["games"], ["manage"]],
   // A message, check-in or file on the household board was posted, changed, removed or expired, here or on another device.
   "board.changed": [["board"], ["manage"]],
+  // The mesh radio link's state changed: a radio connected or went away, or something was heard.
+  "mesh.changed": [["mesh"]],
   // The background count of what is on disk has finished.
   "manage.changed": [["manage"]],
 };

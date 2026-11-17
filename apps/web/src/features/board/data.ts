@@ -106,15 +106,24 @@ export function currentPosition(): Promise<{ lat: number; lon: number; accuracyM
 
 // ── From the server ──
 
-const MESSAGES = ["board", "messages", BOARD_CHANNEL];
+/** The key of one channel's history: "board" for Home, or a radio channel ("meshtastic:longfast"). */
+export const messagesKey = (channel: string) => ["board", "messages", channel];
 
-export function useBoardMessages() {
+/** Home is asked for as before, with no channel named; a radio channel by name. */
+const channelQuery = (channel: string) => (channel === BOARD_CHANNEL ? {} : { channel });
+
+export function useBoardMessages(channel: string = BOARD_CHANNEL, options: { enabled?: boolean } = {}) {
   return useInfiniteQuery({
-    queryKey: MESSAGES,
-    queryFn: ({ pageParam }) => api.get<BoardMessagesResponse>("/api/board/messages", pageParam ? { before: pageParam } : undefined),
+    queryKey: messagesKey(channel),
+    queryFn: ({ pageParam }) =>
+      api.get<BoardMessagesResponse>("/api/board/messages", {
+        ...channelQuery(channel),
+        ...(pageParam ? { before: pageParam } : {}),
+      }),
     initialPageParam: null as string | null,
     // "Next" is further back in time: the pages are drawn in reverse, the oldest on top.
     getNextPageParam: (page) => page.older,
+    enabled: options.enabled ?? true,
   });
 }
 
@@ -130,11 +139,11 @@ export const useBoardSummary = (since?: number | null) =>
     queryFn: () => api.get<BoardSummaryResponse>("/api/board/summary", since ? { since } : undefined),
   });
 
-/** Puts a message the server sent back in place in the loaded pages, so the screen changes before the event's refetch. */
+/** Puts a message the server sent back in place in its channel's loaded pages, so the screen changes before the event's refetch. */
 function useReplace() {
   const client = useQueryClient();
   return (message: BoardMessage, add: boolean) => {
-    client.setQueryData<InfiniteData<BoardMessagesResponse>>(MESSAGES, (data) => {
+    client.setQueryData<InfiniteData<BoardMessagesResponse>>(messagesKey(message.channel || BOARD_CHANNEL), (data) => {
       if (!data) return data;
       const pages = data.pages.map((page) => ({
         ...page,
@@ -148,18 +157,22 @@ function useReplace() {
   };
 }
 
-export function usePost() {
+/** Home's posts are sent as before, with no channel named; a radio channel's name it. */
+const withChannel = <T extends object>(input: T, channel: string) => (channel === BOARD_CHANNEL ? input : { ...input, channel });
+
+export function usePost(channel: string = BOARD_CHANNEL) {
   const replace = useReplace();
   return useMutation({
-    mutationFn: (input: { author: string; body: string }) => api.post<BoardMessageResponse>("/api/board/messages", input),
+    mutationFn: (input: { author: string; body: string }) =>
+      api.post<BoardMessageResponse>("/api/board/messages", withChannel(input, channel)),
     onSuccess: ({ message }) => replace(message, true),
   });
 }
 
-export function useCheckIn() {
+export function useCheckIn(channel: string = BOARD_CHANNEL) {
   const replace = useReplace();
   return useMutation({
-    mutationFn: (input: BoardCheckInInput) => api.post<BoardMessageResponse>("/api/board/check-ins", input),
+    mutationFn: (input: BoardCheckInInput) => api.post<BoardMessageResponse>("/api/board/check-ins", withChannel(input, channel)),
     onSuccess: ({ message }) => replace(message, true),
   });
 }

@@ -5,6 +5,7 @@ import { useLocation } from "react-router";
 import { ErrorState, Page, PageHeader } from "@/components/page";
 import { Segmented, Skeleton, Switch } from "@/components/ui/misc";
 import { BoardSettingsSection } from "@/features/board/settings-section";
+import { MeshSettingsSection } from "@/features/mesh/mesh-settings-section";
 import { useClockStyle } from "@/lib/clock";
 import { useSettings, useSystem, useUpdateSettings } from "@/lib/queries";
 import { useTheme } from "@/lib/theme";
@@ -60,6 +61,7 @@ const SECTIONS = [
   ["answers", "Answers"],
   ["maps", "Maps"],
   ["board", "Message board"],
+  ["mesh", "Mesh radio"],
   ["backup", "Backup"],
   ["automatic-backups", "Automatic backups"],
   ["https", "HTTPS"],
@@ -326,6 +328,7 @@ export default function SettingsPage() {
           </SettingsSection>
 
           <BoardSettingsSection settings={s} disabled={disabled} save={save} />
+          <MeshSettingsSection />
 
           <BackupSection />
 

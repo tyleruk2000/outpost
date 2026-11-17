@@ -7,7 +7,7 @@
  * http and https, opened in a new tab without telling the other site where from), and
  * nothing else. A removed message keeps its place and says who removed it and when.
  */
-import { type BoardMessage, formatBytes } from "@outpost/shared";
+import { type BoardMessage, formatBytes, type MeshMeta, meshTransportOf } from "@outpost/shared";
 import {
   CircleAlert,
   Copy,
@@ -17,6 +17,7 @@ import {
   MapPin,
   MoreHorizontal,
   Pencil,
+  RadioTower,
   ShieldCheck,
   TextSelect,
   Trash2,
@@ -26,6 +27,7 @@ import { Link } from "react-router";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Menu, MenuContent, MenuItem, MenuTrigger } from "@/components/ui/menu";
+import { deliveryWords, nodeName } from "@/features/mesh/words";
 import { formatTimeOfDay } from "@/lib/clock";
 import { cn, formatDate } from "@/lib/utils";
 import { isLong, linkPieces, whenWritten } from "./words";
@@ -178,6 +180,12 @@ export function MessageRow({
   const long = isLong(message.body);
   const time = <time dateTime={new Date(message.createdAt).toISOString()}>{whenWritten(message.createdAt)}</time>;
   const canCopy = message.body.length > 0;
+  // A radio channel's message: heard by radio, or written here to go out by it. It cannot be changed once sent; removing it removes it here only.
+  const radio = meshTransportOf(message.channel) !== null;
+  const meta = message.meta as MeshMeta | null;
+  const heard = message.source !== "here";
+  const node = heard ? nodeName(meta) : null;
+  const delivery = radio && !heard && !message.removed ? deliveryWords(meta) : null;
 
   let content: ReactNode;
   if (message.removed) {
@@ -221,6 +229,12 @@ export function MessageRow({
             <FileLine message={message} onAddToLibrary={onAddToLibrary} />
           </div>
         ) : null}
+        {delivery ? (
+          <p className={cn("mt-1 flex items-baseline gap-1.5 text-micro", delivery.failed ? "text-danger" : "text-ink-muted")}>
+            {delivery.failed ? <CircleAlert aria-hidden className="size-3.5 shrink-0 translate-y-0.5" /> : null}
+            {delivery.text}
+          </p>
+        ) : null}
         {message.edited ? (
           <p className="mt-1 text-micro text-ink-muted">
             Changed by {message.edited.by} at {whenWritten(message.edited.at)}
@@ -233,7 +247,18 @@ export function MessageRow({
   return (
     <li className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1 py-3 md:grid-cols-[9.5rem_minmax(0,1fr)_auto] md:gap-x-5">
       <header className="flex min-w-0 flex-wrap items-baseline gap-x-2 text-small md:block">
-        <span className="font-semibold break-words text-ink">{message.author}</span>
+        <span className="font-semibold break-words text-ink">{node?.name ?? message.author}</span>
+        {node?.short ? (
+          <span className="rounded-full bg-surface-strong px-1.5 font-mono text-micro text-ink-muted" title="Short name on the radio">
+            {node.short}
+          </span>
+        ) : null}
+        {heard ? (
+          <span className="inline-flex items-center gap-1 text-micro text-ink-muted md:flex">
+            <RadioTower aria-hidden className="size-3.5 shrink-0" />
+            by radio
+          </span>
+        ) : null}
         <span className="tabular text-micro text-ink-muted md:block">{time}</span>
       </header>
       <div className="col-span-2 row-start-2 min-w-0 md:col-span-1 md:col-start-2 md:row-start-1">{content}</div>
@@ -245,7 +270,7 @@ export function MessageRow({
             <Button
               size="icon-sm"
               variant="ghost"
-              aria-label={`What to do with ${message.author}'s ${message.kind === "checkin" ? "check-in" : "message"}`}
+              aria-label={`What to do with ${node?.name ?? message.author}'s ${message.kind === "checkin" ? "check-in" : "message"}`}
               className="-my-1 col-start-2 row-start-1 md:col-start-3"
             >
               <MoreHorizontal aria-hidden />
@@ -258,9 +283,11 @@ export function MessageRow({
                 {navigator.clipboard && window.isSecureContext ? "Copy the words" : "Select the words"}
               </MenuItem>
             ) : null}
-            <MenuItem disabled={!name} onSelect={onEdit}>
-              <Pencil aria-hidden /> Change
-            </MenuItem>
+            {radio ? null : (
+              <MenuItem disabled={!name} onSelect={onEdit}>
+                <Pencil aria-hidden /> Change
+              </MenuItem>
+            )}
             <MenuItem danger disabled={!name} onSelect={onRemove}>
               <Trash2 aria-hidden /> Remove
             </MenuItem>
