@@ -436,7 +436,8 @@ export function createLayersService(ctx: AppContext, client: HttpClient): Layers
 
     async start({ estimateId, keys, locationId }) {
       const estimate = estimates.get(estimateId);
-      if (!estimate) throw new AppError("conflict", "That estimate is more than half an hour old or was not made here. Estimate again.");
+      if (!estimate || Date.now() - estimate.at > ESTIMATE_TTL_MS)
+        throw new AppError("conflict", "That estimate is more than half an hour old or was not made here. Estimate again.");
       const adapter = adapters.get(estimate.request.provider)!;
       const started: DownloadRow[] = [];
       for (const key of keys) {

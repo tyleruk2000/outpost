@@ -797,6 +797,29 @@ describe("downloading through the download manager from an Overpass server", () 
     const started = await app.api("POST", "/api/reference/downloads", { estimateId: "nothing", keys: ["x"] });
     expect(started.status).toBe(409);
   });
+
+  it("will not start from an estimate more than half an hour old, even when no other has been made since", async () => {
+    declare("local-test");
+    const estimate = await app.api("POST", "/api/reference/estimate", {
+      provider: "osm",
+      clientNameAgreed: true,
+      scope: { countries: ["LU"] },
+      layers: ["military"],
+    });
+    expect(estimate.status).toBe(200);
+    const now = Date.now();
+    const clock = vi.spyOn(Date, "now").mockReturnValue(now + 31 * 60_000);
+    try {
+      const started = await app.api("POST", "/api/reference/downloads", {
+        estimateId: estimate.body.estimateId,
+        keys: ["osm:military:LU"],
+      });
+      expect(started.status).toBe(409);
+      expect(started.body.error.message).toMatch(/more than half an hour old/);
+    } finally {
+      clock.mockRestore();
+    }
+  });
 });
 
 describe("a query answer that cannot be written", () => {
