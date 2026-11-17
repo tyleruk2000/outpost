@@ -95,7 +95,9 @@ export function CodeChartTab() {
             Prosigns
           </h3>
           <p className="mt-1 text-small text-ink-muted">Each is sent as one run, with no gaps between its letters.</p>
-          {/* With large text the three columns are wider than a phone: the table scrolls in its own box, not the page. */}
+          {/* On a phone each meaning is under its code rather than in a third column (one or the other is shown, so it is
+              read once). With very large text even two columns can be wider than a phone: the table then scrolls in its
+              own box, not the page. */}
           <section
             aria-label="Table of prosigns"
             // biome-ignore lint/a11y/noNoninteractiveTabindex: a box that scrolls must be reachable to be scrolled with the keyboard
@@ -111,7 +113,7 @@ export function CodeChartTab() {
                   <th scope="col" className="py-1.5 pr-4 font-medium">
                     Code
                   </th>
-                  <th scope="col" className="py-1.5 font-medium">
+                  <th scope="col" className="py-1.5 font-medium max-sm:hidden">
                     Meaning
                   </th>
                 </tr>
@@ -122,10 +124,13 @@ export function CodeChartTab() {
                     <th scope="row" className="py-1.5 pr-4 font-mono font-semibold text-ink">
                       {prosign.sign}
                     </th>
-                    <td className="py-1.5 pr-4 font-mono tracking-widest whitespace-nowrap text-ink">
-                      <Code code={prosign.code} />
+                    <td className="py-1.5 pr-4 text-ink">
+                      <span className="font-mono tracking-widest whitespace-nowrap">
+                        <Code code={prosign.code} />
+                      </span>
+                      <span className="block text-small text-ink-muted sm:hidden">{prosign.meaning}</span>
                     </td>
-                    <td className="py-1.5 text-ink">{prosign.meaning}</td>
+                    <td className="py-1.5 text-ink max-sm:hidden">{prosign.meaning}</td>
                   </tr>
                 ))}
               </tbody>
