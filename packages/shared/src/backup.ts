@@ -43,7 +43,16 @@ export const BACKUP_PASSPHRASE_SHORT = 12;
 /** The request header an uploaded backup's passphrase travels in: its UTF-8 bytes, in base64. */
 export const BACKUP_PASSPHRASE_HEADER = "X-Outpost-Backup-Passphrase";
 
+/** A backup saved from Settings: when it had been sent in full, its file name, and its size. */
+export interface BackupDownloaded {
+  at: number;
+  name: string;
+  bytes: number;
+}
+
 export interface BackupStatus {
+  /** The last backup saved from Settings, or null when none has been. */
+  lastDownload: BackupDownloaded | null;
   restorePending: boolean;
   /** Folders of data kept from before earlier restores. */
   previousData: string[];
