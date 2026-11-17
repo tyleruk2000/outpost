@@ -34,6 +34,22 @@ export interface BoardTransport {
   carries(channel: string): boolean;
   /** Called once a message posted here on a channel it carries has been stored. */
   send(message: BoardMessage): void | Promise<void>;
+  /**
+   * Asked before a message is stored on a channel it carries: the reason it cannot go
+   * (too long for the radio, a file), in words for a person, or null. A reason refuses
+   * the message; nothing is stored and nothing is cut.
+   */
+  refuse?(outgoing: OutgoingCheck): string | null;
+}
+
+/** What `refuse` is asked about. */
+export interface OutgoingCheck {
+  channel: string;
+  kind: "message" | "checkin" | "file";
+  author: string;
+  body: string;
+  status?: CheckInStatus | null;
+  place?: string | null;
 }
 
 /** A message that came in by a transport. */

@@ -26,6 +26,7 @@ import { registerLayers } from "./layers/index.ts";
 import { registerLinks } from "./links/index.ts";
 import { registerManage } from "./manage/index.ts";
 import { registerMaps } from "./maps/index.ts";
+import { registerMesh } from "./mesh/index.ts";
 import { registerMerge } from "./merge/index.ts";
 import { registerMorse } from "./morse/index.ts";
 import { registerNetwork } from "./network/index.ts";
@@ -84,4 +85,6 @@ export const modules: ModuleRegister[] = [
   registerGames,
   // Messages: the household board, on a line of its own so that other additions merge cleanly.
   registerBoard,
+  // The mesh radio link, after the board it is a transport of, on a line of its own.
+  registerMesh,
 ];
