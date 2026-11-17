@@ -26,7 +26,8 @@ import {
   utcLabel,
   wireOn,
 } from "@outpost/shared";
-import { FileDown, Unlink } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { FileDown, TriangleAlert, Unlink } from "lucide-react";
 import { useEffect, useId, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
@@ -43,7 +44,7 @@ import { APPROXIMATE_SIGN, HourGrid } from "../charts";
 import { useEngines, usePlaces, useProfiles } from "../data";
 import { EngineNotReady } from "../engine-data";
 import { BasisNotice } from "../results";
-import { inputOf, useKeptMatrix, useLinkSearch, usePlan, useRemovePlan, useSavePlan, useWorkOut } from "./data";
+import { planKeys, useKeptMatrix, useLinkSearch, usePlan, useRemovePlan, useSavePlan, useWorkOut } from "./data";
 import { bandApproximate, choiceWords, pairApproximate, pairNotModelled, planFigure, planMarkdown, saveFile } from "./document";
 import { PlanPdfStatus, usePlanPdf } from "./plan-export";
 import { StationDialog } from "./station-dialog";
@@ -338,7 +339,17 @@ export default function PlanPage() {
   const engines = useEngines();
   const profiles = useProfiles();
   const places = usePlaces();
-  const save = useSavePlan(id);
+  // A change refused because the plan was saved on another device meanwhile: the change, and the plan as it is now.
+  const [clash, setClash] = useState<{ patch: Partial<PlanInput>; theirs: CommunicationPlan } | null>(null);
+  const client = useQueryClient();
+  const save = useSavePlan(id, (patch, theirs) => setClash({ patch, theirs }));
+  /** Takes the plan as it is now; with `mine`, puts this screen's change on top of it. */
+  const settle = (mine: boolean) => {
+    if (!clash) return;
+    client.setQueryData(planKeys.one(id), clash.theirs);
+    if (mine) save.mutate(clash.patch, { onSuccess: () => toast.success("Your change was saved over theirs.") });
+    setClash(null);
+  };
   const remove = useRemovePlan();
   const work = useWorkOut(id);
   const kept = useKeptMatrix(id, plan.data?.workedOut === true);
@@ -384,7 +395,7 @@ export default function PlanPage() {
   }
 
   const engine = engines.data?.[0];
-  const change = (patch: Partial<PlanInput>) => save.mutate({ ...inputOf(current), ...patch });
+  const change = (patch: Partial<PlanInput>) => save.mutate(patch);
   const result = current.workedOut ? (work.data ?? kept.data ?? null) : null;
   const byRatio = result ? result.mode.requiredSnrDbHz === null : modeById(current.mode).requiredSnrDb === null;
   const hours = planHours(current.fromUtc, current.toUtc);
@@ -422,6 +433,22 @@ export default function PlanPage() {
         }
       />
       <PlanPdfStatus file={pdf} className="-mt-4 mb-6" />
+      {clash ? (
+        <Notice tone="warning" icon={<TriangleAlert />} title="This plan was changed somewhere else" className="mb-6">
+          <p>
+            Someone saved it on another device after this screen read it, so your last change was not saved. Keep yours to save it over
+            theirs, or take theirs to see the plan as they left it.
+          </p>
+          <span className="mt-3 flex flex-wrap gap-2">
+            <Button size="sm" variant="primary" onClick={() => settle(true)}>
+              Keep my change
+            </Button>
+            <Button size="sm" onClick={() => settle(false)}>
+              Take theirs
+            </Button>
+          </span>
+        </Notice>
+      ) : null}
       <EngineNotReady engine={engine} title="The propagation engine cannot run, so the plan cannot be worked out" className="mb-6">
         The plan itself can still be written and changed.
       </EngineNotReady>
@@ -726,7 +753,6 @@ export default function PlanPage() {
           onSave={(station) =>
             save.mutate(
               {
-                ...inputOf(current),
                 stations:
                   editing === "new"
                     ? [...current.stations, station]
@@ -746,10 +772,7 @@ export default function PlanPage() {
         loading={save.isPending}
         onConfirm={() =>
           removing &&
-          save.mutate(
-            { ...inputOf(current), stations: current.stations.filter((item) => item.id !== removing.id) },
-            { onSuccess: () => setRemoving(null) },
-          )
+          save.mutate({ stations: current.stations.filter((item) => item.id !== removing.id) }, { onSuccess: () => setRemoving(null) })
         }
       />
       <ConfirmDialog

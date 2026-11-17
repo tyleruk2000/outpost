@@ -63,6 +63,18 @@ export interface PlanInput {
   links: PlanLink[];
 }
 
+/** A change to a plan, as the screen sends it. */
+export interface PlanPatch extends PlanInput {
+  /** `updatedAt` of the plan as it was read. A plan saved somewhere else since is not overwritten: the answer is a conflict. */
+  baseUpdatedAt?: number;
+}
+
+/** The details of that conflict: the plan as it is now. */
+export interface PlanConflictDetails {
+  reason: "changed-elsewhere";
+  plan: CommunicationPlan;
+}
+
 export interface CommunicationPlan extends PlanInput {
   id: string;
   linked: PlanLinked[];
