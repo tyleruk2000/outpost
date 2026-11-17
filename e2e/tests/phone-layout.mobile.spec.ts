@@ -241,6 +241,9 @@ test.describe("saving a place on a phone", () => {
 
     // The on-screen keyboard leaves 420 px: the sheet rises and the field is above the bottom bar.
     await page.setViewportSize({ width: 390, height: 420 });
+    // A phone's keyboard is told to the page as a resize of the visual viewport; Chromium emulating a phone does not
+    // send one when Playwright changes the size, so it is sent here.
+    await page.evaluate(() => window.visualViewport?.dispatchEvent(new Event("resize")));
     await page.waitForTimeout(700);
     const field = (await name.boundingBox())!;
     const bar = (await page.locator('nav[aria-label="Main"]').boundingBox())!;
