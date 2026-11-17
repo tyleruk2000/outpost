@@ -121,6 +121,20 @@ describe("the allotment screen", () => {
     expect(await screen.findByRole("button", { name: "Sell 6 radishes for 6 coins" })).toBeInTheDocument();
   });
 
+  it("says what each pegged-out place is waiting for", async () => {
+    const user = userEvent.setup();
+    serve(newAllotment(NOW), { started: false });
+    show();
+    const butt = await screen.findByRole("button", { name: "Water butt, not bought yet: 40 coins at the stall" });
+    expect(screen.getByRole("button", { name: "Ground for bed 5, not dug yet: 25 coins at the stall" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Greenhouse, not bought yet: 500 coins at the stall" })).toBeInTheDocument();
+    await user.click(butt);
+    expect(butt).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText("Marked out for the water butt. Every new sowing starts watered. 40 coins at the stall.")).toBeInTheDocument();
+    await user.click(butt);
+    expect(screen.queryByText(/Marked out for the water butt/)).toBeNull();
+  });
+
   it("says a refusal in the server's own words", async () => {
     const user = userEvent.setup();
     serve(newAllotment(NOW), { refuse: "The next bed costs 25 coins; you have 10." });

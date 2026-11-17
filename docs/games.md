@@ -140,8 +140,12 @@ winter; southern, six months on. The hemisphere is northern unless the home plac
 saved place with the home icon) is south of the equator; a switch on the screen
 (Automatic, Northern, Southern) overrides it. Growth over a long absence is worked out
 piece by piece across season changes. The season changes how the plot looks (the grass,
-the tree in blossom, fruit or bare, frost in winter), and the device's own time of day
-lays a light wash over it at dusk and at night.
+fresh, deep, going gold or frosted but always green; blossom, apples or bare boughs;
+fallen leaves in autumn, frost and a little snow along the hedge in winter), and the
+device's own time of day lights it, against a day as long as the month's: shadows that
+lengthen when the sun is low, a warm cast at dawn and dusk, and a blue night with the
+shed window lit. A lasting thing not yet bought, and the next bed to dig, are pegged out
+on the ground; each is a button that says what it is for and what it costs.
 
 ## Solitaire
 
