@@ -108,6 +108,24 @@ describe("going to another screen", () => {
   });
 });
 
+describe("arriving at a named place on a screen", () => {
+  it("leaves the scrolling to the screen, which goes to that place itself", () => {
+    const page = { scrollTop: 350 };
+    Object.defineProperty(document, "scrollingElement", { configurable: true, value: page });
+    render(
+      <MemoryRouter initialEntries={["/help/search-and-answers#answers-and-chat"]}>
+        <Routes>
+          <Route element={<AppShell onNewPage={() => {}} />}>
+            <Route path="*" element={<h1>Guide</h1>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    );
+    expect(page.scrollTop).toBe(350);
+    Object.defineProperty(document, "scrollingElement", { configurable: true, value: undefined });
+  });
+});
+
 describe("quick search that is still arriving", () => {
   it("does not take the letters typed for it as shortcuts", async () => {
     palette.mode = "never";

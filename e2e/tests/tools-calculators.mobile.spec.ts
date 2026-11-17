@@ -66,7 +66,8 @@ test.describe("the calculators, on a phone", () => {
     await antenna.getByRole("combobox", { name: "Fill in a band" }).click();
     await page.getByRole("option", { name: /^20 m/ }).click();
     await expect(antenna.getByRole("textbox", { name: "Frequency", exact: true })).toHaveValue("14.18");
-    await expect(antenna.getByText("5.02 m", { exact: true })).toBeVisible();
+    // The answer, and the same figure on the drawing of the antenna beside it.
+    await expect(antenna.getByText("5.02 m", { exact: true }).first()).toBeVisible();
     expect(errors).toEqual([]);
   });
 

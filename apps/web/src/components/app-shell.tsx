@@ -153,8 +153,9 @@ export function AppShell({ notesTree, onNewPage }: { notesTree?: ReactNode; onNe
   // biome-ignore lint/correctness/useExhaustiveDependencies: runs on every path change by design
   useEffect(() => {
     mainRef.current?.scrollTo?.({ top: 0 });
+    // Not when the address names a place on the screen ("…#backup"): the screen goes there itself.
     const page = document.scrollingElement;
-    if (page) page.scrollTop = 0;
+    if (page && !location.hash) page.scrollTop = 0;
   }, [location.pathname]);
 
   return (
