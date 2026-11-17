@@ -106,7 +106,8 @@ export function createMeshtasticLink(ctx: AppContext, store: MeshStore, secrets:
       return;
     }
     if (uplink.type === "nodeinfo") {
-      const id = uplink.id ?? uplink.from;
+      // Kept under the radio that sent it: a nodeinfo naming another radio's id would rename that radio.
+      const id = uplink.from;
       const known = heard.nodes[id];
       if (!known || known.longName !== uplink.longName || known.shortName !== uplink.shortName) {
         heard = {

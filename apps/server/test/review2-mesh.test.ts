@@ -5,7 +5,9 @@
 import net from "node:net";
 import { afterEach, describe, expect, it } from "vitest";
 import { createBroker, type MqttBroker } from "../src/modules/mesh/mqtt/broker.ts";
+import { createClient } from "../src/modules/mesh/mqtt/client.ts";
 import { encodePacket, type Packet, PacketReader } from "../src/modules/mesh/mqtt/packets.ts";
+import { createTestApp } from "./helpers.ts";
 
 const PORT = 9207;
 const USER = "radio";
@@ -91,5 +93,47 @@ describe("Outpost's MQTT broker against a device guessing", () => {
     // The ninth from the same address, still within the ten seconds to sign in, is refused rather than every slot being taken.
     const results = await Promise.all(squatters.map((socket) => closed(socket, 300)));
     expect(results.filter(Boolean).length).toBeGreaterThan(0);
+  });
+});
+
+describe("Meshtastic names heard over the air", () => {
+  it("names a radio only from its own nodeinfo, never from one that claims another radio's id", async () => {
+    const app = await createTestApp({}, undefined, { voacapData: false });
+    const radio = createClient({
+      host: "127.0.0.1",
+      port: 9208,
+      clientId: "!a1b2c3d4",
+      userName: USER,
+      password: PASSWORD,
+      subscriptions: [],
+      backoff: { firstMs: 100, maxMs: 400 },
+      log: quiet,
+    });
+    try {
+      const set = await app.api("PUT", "/api/mesh/meshtastic", {
+        mode: "broker",
+        broker: { port: 9208, userName: USER, password: PASSWORD },
+        channels: [{ name: "LongFast", index: 0 }],
+      });
+      expect(set.status, JSON.stringify(set.body)).toBe(200);
+      radio.start();
+      for (let i = 0; i < 100 && radio.status().state !== "connected"; i++) await new Promise((r) => setTimeout(r, 30));
+      const topic = "msh/EU_868/2/json/LongFast/!a1b2c3d4";
+      const publish = (value: object) => radio.publish(topic, Buffer.from(JSON.stringify(value)), 1);
+      // The real radio !0000beef calls itself Dad.
+      await publish({ from: 0xbeef, id: 1, type: "nodeinfo", payload: { id: "!0000beef", longname: "Dad", shortname: "DAD" }, to: -1 });
+      // Another radio in range sends a nodeinfo of its own that claims Dad's id.
+      await publish({ from: 0xbad, id: 2, type: "nodeinfo", payload: { id: "!0000beef", longname: "Not Dad", shortname: "X" }, to: -1 });
+      await publish({ from: 0xbeef, id: 3, type: "text", payload: { text: "Home by six" }, channel: 0, to: -1 });
+      let rows = app.ctx.services.board.list({ channel: "meshtastic:longfast" }).messages;
+      for (let i = 0; i < 100 && rows.length === 0; i++) {
+        await new Promise((r) => setTimeout(r, 30));
+        rows = app.ctx.services.board.list({ channel: "meshtastic:longfast" }).messages;
+      }
+      expect(rows[0]?.author).toBe("Dad");
+    } finally {
+      await radio.stop();
+      await app.close();
+    }
   });
 });
