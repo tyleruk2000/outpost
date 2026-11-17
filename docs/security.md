@@ -1407,7 +1407,8 @@ a stand-in model that obeys a planted instruction to prove the rest holds anyway
 Outside the prompt:
 
 - **Nothing in an answer is acted on.** The model has no tools, no memory and no
-  second turn; its output goes to one place, the screen.
+  second turn; its output goes to one place, the screen. (In Chat a model may be
+  allowed to *read* through tools: see [Tools a model can call](#tools-a-model-can-call).)
 - **An answer is drawn as words.** It is never converted to HTML or rendered as
   Markdown. The web app cuts it into plain text, emphasis (`**…**`) and citation
   markers, and draws each with its own elements. An address in an answer stays text: it
@@ -1475,6 +1476,49 @@ The end-to-end suite has the stand-in write a reply containing a link, a picture
 no link, picture or script element and that nothing ran.
 
 Code: `apps/server/src/modules/chat/`, `apps/web/src/features/chat/`.
+
+#### Tools a model can call
+
+With **Let the model look things up in Outpost** switched on (off by default), Chat
+offers a model that says it can call tools a set of read-only tools
+(`modules/tools/`, listed in [ai.md](ai.md#looking-things-up-in-outpost)). What follows
+holds for them and for the same tools over `/mcp`.
+
+| | |
+| --- | --- |
+| **They read, and only read.** | No tool creates, changes or removes anything, queues a job, starts a download, or makes any request to the internet or the network. `test/tools-readonly.test.ts` runs every tool in the registry (so a new one is covered by being added) while `fetch`, `http`/`https`, undici, sockets, the job queue, downloads and live events fail the test if touched, and checks that SQLite counted no change. Two reads that wrote were found and avoided: the catalogue's list matches installed archives to entries (a write), so the tool reads it with that turned off; a propagation result marks itself used, so the tool reads the saved rows instead. |
+| **What is never readable** | Contacts; private keys and anything under Encryption; notes' encrypted pages (no text of them is in the index); the board's files; network-share credentials; settings that are secrets; the network scan. `read_passage` reads documents and notes only, by kind, so a contact's passage in the search index cannot be read by number. |
+| **Run on the server** | The model asks; the server checks the name against the tools offered, checks the arguments against the tool's schema, and runs it. The browser never runs a tool. A name not offered (including one whose area is switched off) is refused in the same words as one that does not exist. |
+| **Where the answers go** | To the model server, as passages do: the one address in `answers.endpoint`, under the same own-network rule. If that is another machine, so is what the tools return. Settings says so at the switch. |
+| **Bounded** | At most 3,000 characters an answer, three calls a round, four rounds a reply, then one last request with no tools. Stop ends it at once. |
+| **Text that gives orders** | A tool's answer can hold words a person or a published dataset wrote (a place's name, a board message, a plan's step). They are sent as numbered sources, like passages, and the worst they can do is the same: steer the model's words. They cannot make anything happen, because nothing but reading is possible. |
+| **Who can switch it** | Anyone who can open Outpost, as every other setting: the household is one trust group. The board's messages are off unless a person turns that area on. |
+
+#### The MCP endpoint
+
+`/mcp` serves the same tools, under the same area switches, to programs that speak the
+Model Context Protocol. It changes who can read what, so:
+
+- It is **off by default**, and its switch is not an ordinary setting: it is changed only
+  by a request from the computer Outpost runs on (`isLocalRequest`, `PUT /api/tools/mcp`),
+  and is kept outside the settings schema so that `PATCH /api/settings` cannot reach it.
+  Erasing everything, or putting settings back to their defaults, turns it off.
+- With it on, any program on the home network that speaks MCP can ask, and **whatever
+  that program is connected to receives the answers**: a desktop assistant using a model
+  in the cloud would send the household's supplies and plans there. The switch says so.
+- `/mcp` is outside `/api/`, so the `X-Outpost-Request` header does not protect it. It has
+  its own rules: the Host check every route has; an `Origin` that is not this server, or
+  `Sec-Fetch-Site` other than `same-origin` or `none`, is refused (a page on another site
+  cannot call it); the body must be `application/json`, which a page on another site cannot
+  send without a preflight Outpost never approves; a request from an address that is not
+  loopback, private, link-local or unique-local is refused, as is one carrying a forwarding
+  header (where it came from cannot be told); and each address has an allowance (20 at
+  once, 60 a minute). Carrier-grade NAT addresses (`100.64.0.0/10`, where Tailscale puts
+  machines) are refused.
+- There are **no tokens or accounts**: the house has none, and none were invented for this.
+  Anyone who can reach `/mcp` while it is on can use it.
+
+Code: `apps/server/src/modules/tools/mcp.ts`; [mcp.md](mcp.md).
 
 ### Backup and restore
 

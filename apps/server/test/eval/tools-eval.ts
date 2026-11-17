@@ -28,9 +28,15 @@ import fs from "node:fs";
 import type { AddressInfo } from "node:net";
 import { parseArgs } from "node:util";
 import type { AnswerSource, ChatConversationDetail, ChatMessage } from "@outpost/shared";
+import { TOOL_QUESTIONS as SHOWN_QUESTIONS } from "../../../../packages/shared/src/model-trials.ts";
 import { filledServer } from "../fixtures/tools/filled.ts";
 import type { TestApp } from "../helpers.ts";
 import { TOOL_QUESTIONS, type ToolQuestion } from "./tool-questions.ts";
+
+// The Which model screen lists these questions from its own data file: they must be the same words.
+if (JSON.stringify(SHOWN_QUESTIONS) !== JSON.stringify(TOOL_QUESTIONS.map((question) => question.question))) {
+  throw new Error("TOOL_QUESTIONS in packages/shared/src/model-trials.ts no longer matches tool-questions.ts.");
+}
 
 const { values: options } = parseArgs({
   options: {

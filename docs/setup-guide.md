@@ -119,6 +119,8 @@ Names and download sizes are as Ollama's library listed them on 16 November 2026
 
 To use it: on the **Search** screen, type a question and press **Answer from my library**; or open **Chat**.
 
+Chat can also let the model look things up in Outpost: places on the map, supplies, plans, the weather as last fetched and more. It is off until you switch it on under **Settings → Looking things up in Outpost**, and it needs a model that can call tools: **Which model** (under Settings) says which of the suggested ones do it well.
+
 ## When Ollama is on a different computer from Outpost
 
 As installed, Ollama answers only the computer it runs on (address `127.0.0.1`, port `11434`). To let an Outpost on another computer use it, set `OLLAMA_HOST` to `0.0.0.0:11434` on the computer Ollama runs on.
