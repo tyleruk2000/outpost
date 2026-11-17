@@ -111,20 +111,26 @@ export function useAudiobookPlayer(book: AudiobookDto, startAt?: string): Player
   /** Whether the chapter being loaded should start playing by itself (the next one, after the last ended). */
   const autoplay = useRef(false);
   const lastSaved = useRef(0);
+  /** Set once the person has played or moved in the book here: opening it and leaving keeps nothing. */
+  const touched = useRef(false);
 
-  const position = useCallback((): number => {
-    const audio = audioRef.current;
+  // The element may be passed in: when the screen is left, React has let go of the ref before the last save.
+  const position = useCallback((element?: HTMLAudioElement | null): number => {
+    const audio = element ?? audioRef.current;
     if (pendingSeek.current !== null) return pendingSeek.current;
     return audio ? audio.currentTime : 0;
   }, []);
 
-  const save = useCallback(() => {
-    const { book: current, index: at } = live.current;
-    const here = current.chapters[at];
-    if (!here) return;
-    lastSaved.current = Date.now();
-    savePlace(current.id, here.documentId, position());
-  }, [position]);
+  const save = useCallback(
+    (element?: HTMLAudioElement | null) => {
+      const { book: current, index: at } = live.current;
+      const here = current.chapters[at];
+      if (!here) return;
+      lastSaved.current = Date.now();
+      savePlace(current.id, here.documentId, position(element));
+    },
+    [position],
+  );
 
   const updatePositionState = useCallback(() => {
     const audio = audioRef.current;
@@ -193,6 +199,7 @@ export function useAudiobookPlayer(book: AudiobookDto, startAt?: string): Player
       if (!audio.paused && Date.now() - lastSaved.current >= SAVE_EVERY_MS) save();
     };
     const onPlay = () => {
+      touched.current = true;
       setPlaying(true);
       setFinished(false);
       if (hasMediaSession()) navigator.mediaSession.playbackState = "playing";
@@ -250,10 +257,10 @@ export function useAudiobookPlayer(book: AudiobookDto, startAt?: string): Player
   // ── Leaving, hiding, coming back ──
   useEffect(() => {
     const onVisibility = () => {
-      if (document.hidden) save();
+      if (document.hidden && touched.current) save();
       else if (audioRef.current && pendingSeek.current === null) setTime(audioRef.current.currentTime);
     };
-    const onPageHide = () => save();
+    const onPageHide = () => touched.current && save();
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("pagehide", onPageHide);
     const audio = audioRef.current;
@@ -261,7 +268,7 @@ export function useAudiobookPlayer(book: AudiobookDto, startAt?: string): Player
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("pagehide", onPageHide);
       // Leaving the screen stops the book where it is, and remembers the place.
-      if (audio && !audio.ended && audio.getAttribute("src")) save();
+      if (touched.current && audio && !audio.ended && audio.getAttribute("src")) save(audio);
       audio?.pause();
       audio?.removeAttribute("src");
     };
@@ -299,6 +306,7 @@ export function useAudiobookPlayer(book: AudiobookDto, startAt?: string): Player
     if (!audio) return;
     const length = Number.isFinite(audio.duration) ? audio.duration : null;
     const target = Math.max(0, length ? Math.min(seconds, length) : seconds);
+    touched.current = true;
     if (pendingSeek.current !== null) pendingSeek.current = target;
     else audio.currentTime = target;
     setTime(target);
@@ -311,6 +319,7 @@ export function useAudiobookPlayer(book: AudiobookDto, startAt?: string): Player
       const audio = audioRef.current;
       const { book: current, index: at } = live.current;
       if (next < 0 || next >= current.chapters.length) return;
+      touched.current = true;
       save();
       setFinished(false);
       autoplay.current = options.play ?? Boolean(audio && !audio.paused);

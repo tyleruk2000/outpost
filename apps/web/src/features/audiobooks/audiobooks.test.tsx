@@ -138,6 +138,22 @@ describe("the player", () => {
     expect(window.localStorage.getItem("outpost.audiobooks.speed")).toBe("1.5");
   });
 
+  it("keeps the place when the screen is left while playing", async () => {
+    const view = renderScreen(<AudiobookPlayer book={book()} />);
+    loaded();
+    await userEvent.click(screen.getByRole("button", { name: "Play" }));
+    at(50);
+    view.unmount();
+    expect(readPlace("b1")).toMatchObject({ documentId: "d1", seconds: 50 });
+  });
+
+  it("keeps nothing when a book is only opened and left", () => {
+    const view = renderScreen(<AudiobookPlayer book={book()} />);
+    loaded();
+    view.unmount();
+    expect(readPlace("b1")).toBeUndefined();
+  });
+
   it("resumes where this device left off", () => {
     savePlace("b1", "d2", 125);
     renderScreen(<AudiobookPlayer book={book()} />);

@@ -34,6 +34,7 @@ export function AudiobookPlayer({
   startAt,
   showTitle = true,
   showByline = true,
+  showLicenceNote = true,
 }: {
   book: AudiobookDto;
   /** A chapter to begin with, by its document. */
@@ -42,6 +43,8 @@ export function AudiobookPlayer({
   showTitle?: boolean;
   /** False where the page already says who wrote and reads it. */
   showByline?: boolean;
+  /** False where the page's details already quote the publisher's licence note. */
+  showLicenceNote?: boolean;
 }) {
   const player = useAudiobookPlayer(book, startAt);
   const { chapter, index, time, duration, playing, problem } = player;
@@ -206,7 +209,7 @@ export function AudiobookPlayer({
         </section>
       ) : null}
 
-      <LicenceLine licence={book.licence} note={book.licenceNote} className="mt-8" />
+      <LicenceLine licence={book.licence} note={showLicenceNote ? book.licenceNote : null} className="mt-8" />
       {book.sourceUrl ? (
         <p className="mt-2 text-small text-ink-muted">
           From{" "}

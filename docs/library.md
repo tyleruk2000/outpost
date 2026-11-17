@@ -1,7 +1,7 @@
 # The library, and PDFs made in Outpost
 
 The document library holds the files a person has added: PDFs, EPUB books, Markdown,
-text, HTML and images. Each file is checked to be what its name says, given a checksum,
+text, HTML, images and audio (see [Audiobooks](#audiobooks)). Each file is checked to be what its name says, given a checksum,
 refused if the library already holds the same bytes, stored on a storage location, read
 for its text as a background job, and indexed for search. It is opened in Outpost's own
 readers, it is in backups, and it travels on a portable drive. The routes are in
@@ -9,8 +9,148 @@ readers, it is in backups, and it travels on a portable drive. The routes are in
 [security.md](security.md#files-people-upload), where files are kept in
 [storage.md](storage.md), and how search reads them in [search.md](search.md).
 
-This page is about one thing: **a PDF that Outpost makes can be added to the library
-from the screen that made it.**
+This page is about two things: **audiobooks**, and **a PDF that Outpost makes**, which can
+be added to the library from the screen that made it.
+
+## Audiobooks
+
+Public-domain audiobooks, such as LibriVox's, kept on the server and played in the
+browser from it. This is audiobooks, kept simple: not a media server.
+
+### Getting one
+
+- **From LibriVox, through Explore → Audiobooks.** A starter shelf of fifteen books,
+  three practical, six classics for adults and six for children, each with its
+  readers, running time, number of files, an approximate size (worked out from the
+  running time at the 64 kbps of LibriVox's zips: LibriVox does not state the size and
+  the Internet Archive was not asked), a line about it and its licence. **Download the
+  zip** is a link your browser follows; **Add the downloaded zip** then takes the file
+  from your device. Outpost never fetches a recording itself: LibriVox's files are
+  hosted by the Internet Archive, whose terms of use could not be read, and their zips
+  are built on request so no size or checksum can be pinned. The reading of the terms is
+  in [sources.md](sources.md#audiobooks-and-the-niosh-pocket-guide-added-on-2026-11-17).
+  On an iPhone, Safari saves the zip to Files → Downloads, where the picker finds it.
+- **Library → Documents, Type: Audiobooks → Add audiobook.** A zip of a book's
+  chapters, or a book's audio files chosen together (MP3, M4A, M4B, AAC, Ogg, Opus,
+  FLAC, WAV), with an optional title. The files are sent with a progress bar; the
+  server then unpacks and files them as a job, which the window follows (closing it does
+  not stop it).
+- **Add documents** takes one audio file as an ordinary document. It plays the same way,
+  as a book of one chapter.
+
+### What adding a zip does
+
+- It is unpacked into a folder of its own under the storage location's
+  `documents/.incoming/`, with the same code and limits as an import
+  ([security.md](security.md#archives)): a name that climbs out of the folder, an
+  absolute name or a password refuses the whole zip; links and special files are never
+  created; sizes and compression ratios are capped. That folder is always removed
+  afterwards.
+- Only audio files whose first bytes match their extension are kept. Everything else (a
+  cover picture, a text file) is left out and listed when the job ends.
+- **Order.** When every file has a track number (and disc number, where given) and no
+  two are the same, the tags decide; otherwise the file names do, in natural order
+  ("Chapter 2" before "Chapter 10").
+- **Names.** A chapter's title is its own title tag, or else its file name. The book's
+  title is what you typed, else LibriVox's title for a book recognised from the shelf,
+  else the album tag all the files agree on, else the zip's name. The author is
+  LibriVox's, or the artist (or album artist) all the files agree on. Readers are
+  LibriVox's, or a tag named for a reader (`NARRATOR` or `READER`, ID3 `TXXX` with
+  either, MP4 `©nrt`). Nothing is guessed: a field the sources do not give, or disagree
+  about, is left empty.
+- **Recognising a LibriVox book.** A zip whose name is that of a shelf book's zip (a
+  browser's " (1)" on a second download is allowed for), or one added with **Add the
+  downloaded zip**, and whose number of audio files is the number LibriVox lists, takes
+  LibriVox's record: title, authors, readers, page, and its licence statement:
+  "Public domain in the United States", with LibriVox's own words on other countries.
+  A book not recognised is given no licence: the files do not say.
+- The files go to `collections/audiobooks/<title>/`, named `001 <original name>` and so
+  on, and are recorded as a book: one collection, one document per chapter in order
+  (`book_chapters`), with `meta.audiobook` holding the author, readers, each chapter's
+  running time and the LibriVox match. No new table was needed. Removing it under the
+  book's page removes its files; Check files and Move work as for any book.
+
+Tags and running times are read by Outpost's own small reader
+(`apps/server/src/modules/documents/audio-tags.ts`): ID3 versions 1 to 2.4 and, for an
+MP3's running time, the frame count of a Xing, Info or VBRI header, or else the bitrate of
+a constant-bitrate file; MP4 atoms (M4A, M4B); Vorbis comments in Ogg (Vorbis, Opus) and
+FLAC; a WAV file's INFO list. It reads at most the first 4 MB and the last 128 KB of a
+file. Chapters marked inside one M4B file are not read: such a book plays as one long
+chapter.
+
+### Where it is in the Library
+
+Under **Library → Documents, Type: Audiobooks**: each book once, however many files it
+has, with its author and reader, chapters, running time and size, and "started on this
+device" once it has been. The type filter is the way in, not a section of its own; a
+line above the documents says how many audiobooks there are and shows them. A book is
+also listed under Collections, as an audiobook. **Search** finds a book by its title,
+author and reader (they are its description), a chapter by its title, and one recording
+by its title and author. The words spoken are not transcribed, so they are not searched.
+
+### Playing
+
+A book's page (and an audio document's page; a chapter opened from search plays its
+book from that chapter) has the player: the chapter and where you are in it, a
+position bar, **Back 30** and **Forward 30** seconds, **Play** and **Pause**,
+**Previous** and **Next** chapter, **Speed** (0.75× to 2×, remembered on the device),
+and the chapters, each with its running time; pressing one plays it. At the end of a
+chapter the next one follows.
+
+- **From the server, a range at a time.** The player is a plain `<audio>` element given
+  the document's file address, which answers byte ranges; nothing is transcoded.
+  Whether a file plays is the browser's to say (`canPlayType`, and its own error): one it
+  cannot play says so, names the kind of file, and offers it to download. Safari, for
+  instance, has not always played Ogg.
+- **Your place**, per book, is kept in the browser's own storage on this device
+  (`outpost.audiobooks.places`, up to 200 books), never on the server: on pause, on a
+  change of chapter, when the page is hidden or left, and at most every five seconds
+  while playing. Opening a book and leaving keeps nothing. Coming back, the book is at
+  that chapter and second, and the button says **Resume**. When the last chapter ends,
+  the place is forgotten and the book starts again from the beginning.
+- **The lock screen.** Where the browser has the Media Session API, the chapter, book and
+  author are shown on the lock screen and in the notification shade, with play, pause,
+  30 seconds back and forward, previous and next chapter, and seeking. It does not need
+  a secure page; where it is missing the player works without it.
+- **With the screen off.** A plain `<audio>` element is what phones keep playing when
+  locked or in the background; no Web Audio is used. The next chapter is started from
+  the `ended` event, which is what lets it follow on with the screen off where the
+  browser allows that.
+- **Leaving the page stops the book** where it is (and keeps the place). There is no
+  player that follows you round the app.
+
+**Power.** The player has no timer. While nothing plays, nothing runs. While it plays,
+the time on screen follows the element's own `timeupdate` and is not redrawn while the
+page is hidden. Measured on 17 November 2026 (headless Chromium at phone width, the
+packaged app, an Apple M2 Max): a book's page, the Audiobooks list and Explore's
+Audiobooks at rest, 0% of a core, no frames, no requests; playing, about 0.5% of a core
+with the page visible and 0.1% hidden, and no requests but the file's own ranges. The
+server's cost at rest with books held: 0%.
+
+### Not tested
+
+- **On a real phone.** Lock-screen controls, playing with the screen off and the next
+  chapter following on while locked were not tried on an iPhone or an Android phone; the
+  end-to-end test runs in a browser set up as a Pixel 7
+  (`e2e/tests/audiobooks.mobile.spec.ts`), and the Media Session part is tested against
+  a stand-in in a web test.
+- **With a real LibriVox zip.** No recording was downloaded while this was built (see
+  [sources.md](sources.md)). The tests use small files written for them: WAV, MP3, Ogg,
+  FLAC and M4B with their tags. That LibriVox's zips arrive with the names on the shelf
+  rests on the zip addresses LibriVox's API gives.
+- On a Raspberry Pi.
+
+### Code
+
+| | |
+| --- | --- |
+| Audio file types, served in place | `apps/server/src/modules/documents/file-types.ts` |
+| Tags and running times | `apps/server/src/modules/documents/audio-tags.ts` |
+| Receiving, the add job, the list, the shelf | `apps/server/src/modules/audiobooks/` |
+| The shelf's data | `catalog/audiobooks.json` |
+| The player, its place on the device, the lists, the add window | `apps/web/src/features/audiobooks/` |
+
+
 
 ## Where Outpost makes a PDF
 

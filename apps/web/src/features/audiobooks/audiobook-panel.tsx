@@ -23,7 +23,7 @@ export default function AudiobookPanel({ collectionId }: { collectionId: string 
   }
   return (
     <div className="mt-3">
-      <AudiobookPlayer key={book.data.id} book={book.data} showTitle={false} showByline={false} />
+      <AudiobookPlayer key={book.data.id} book={book.data} showTitle={false} showByline={false} showLicenceNote={false} />
     </div>
   );
 }
