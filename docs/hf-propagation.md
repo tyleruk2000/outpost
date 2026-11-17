@@ -204,9 +204,9 @@ basis, and the planner says so.
 
 All four were read on 16 November 2026.
 
-**Signal-to-noise needed, dB** and **In a bandwidth of, Hz** are each used whenever they are filled in. A
+**Signal-to-noise, dB** and **Bandwidth, Hz** are each used whenever they are filled in. A
 bandwidth typed on its own is applied to the mode's starting figure: CW with 500 in
-**In a bandwidth of, Hz** and **Signal-to-noise needed, dB** left empty is asked as 24 dB in 500 Hz, which is
+**Bandwidth, Hz** and **Signal-to-noise, dB** left empty is asked as 24 dB in 500 Hz, which is
 24 + 10·log10(500) = 51 dB in 1 Hz. The answer then lists the mode as your own
 bandwidth with the published figure, because 24 dB in 500 Hz is not what the guide
 states.

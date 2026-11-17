@@ -502,7 +502,7 @@ export default function PlanPage() {
 
       <Section title="When, and on what" description="Changes are saved as you make them.">
         {/* A column that may be narrower than the hours side by side in it, which with large text on a phone are wider than the screen. */}
-        <div className="grid grid-cols-[minmax(0,1fr)] gap-x-8 gap-y-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-x-8 gap-y-4 md:grid-cols-2 xl:grid-cols-3">
           <Field label="Name of the plan">
             {(ids) => (
               <Input

@@ -104,7 +104,7 @@ describe("the form", () => {
   });
 
   it("asks in the bandwidth the form shows when only the bandwidth is filled in", () => {
-    // CW with "Signal-to-noise needed, dB" left empty, as its hint invites, and 500 typed in "In a bandwidth of, Hz".
+    // CW with "Signal-to-noise, dB" left empty, as its hint invites, and 500 typed in "Bandwidth, Hz".
     const built = requestOf({ ...exampleForm(), mode: "cw", referenceBandwidthHz: "500" }, []);
     if (!("request" in built)) throw new Error("expected a request");
     expect(built.request.referenceBandwidthHz).toBe(500);
