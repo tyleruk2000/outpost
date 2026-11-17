@@ -3,7 +3,7 @@ import { Monitor, Moon, Sun } from "lucide-react";
 import { type ReactNode, useEffect } from "react";
 import { useLocation } from "react-router";
 import { settingsSections } from "@/components/nav";
-import { ErrorState, Page, PageHeader } from "@/components/page";
+import { ErrorState, JumpLinks, Page, PageHeader } from "@/components/page";
 import { Segmented, Skeleton, Switch } from "@/components/ui/misc";
 import { BoardSettingsSection } from "@/features/board/settings-section";
 import { useClockStyle } from "@/lib/clock";
@@ -59,25 +59,6 @@ function queueText(queue: string, counts: { running: number; queued: number; pau
  */
 const SECTIONS = settingsSections.filter((section) => section.inContents);
 
-function Contents() {
-  return (
-    <nav aria-label="Sections of Settings" className="-mt-4 mb-6">
-      <ul className="flex flex-wrap gap-x-5 text-small">
-        {SECTIONS.map(({ id, label }) => (
-          <li key={id}>
-            <a
-              href={`#${id}`}
-              className="inline-flex min-h-11 items-center text-ink-muted underline decoration-border-strong underline-offset-4 hover:text-primary hover:decoration-primary md:min-h-8"
-            >
-              {label}
-            </a>
-          </li>
-        ))}
-      </ul>
-    </nav>
-  );
-}
-
 export default function SettingsPage() {
   const settings = useSettings();
   const system = useSystem();
@@ -115,7 +96,7 @@ export default function SettingsPage() {
   return (
     <Page>
       <PageHeader title="Settings" under="/settings" />
-      <Contents />
+      <JumpLinks label="Sections of Settings" items={SECTIONS} />
 
       <SettingsSection id="appearance" title="Appearance" description="Saved in this browser, so each device can have its own.">
         <SettingRow
