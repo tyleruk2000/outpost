@@ -810,12 +810,13 @@ readings. What it sends, and to whom:
 | --- | --- | --- |
 | `api.open-meteo.com` | Update now; or opening the screen with the tick on | A place's latitude and longitude, rounded to two decimal places (about 1 km), and the fixed list of figures wanted |
 | `www.metoffice.gov.uk` | The same | Nothing about the person or their places: the one feed for the whole UK |
-| `environment.data.gov.uk` | The same | A place's latitude and longitude to two decimal places and a distance (15 km, 8 km); then the reference of each of up to five river gauges the answer named |
+| `environment.data.gov.uk` | The same | A place's latitude and longitude to two decimal places and a distance (15 km for flood warnings; for river and sea levels the distance chosen, 3 to 25 km); then the level measure of each of up to ten stations the answer named |
+| `environment.data.gov.uk` | "Fetch the last 3 days" on a station's view, under River and sea levels | The station's level measure and a start time; no position |
 | `power.larc.nasa.gov` | "Fetch the averages for this place" only | A place's latitude and longitude to two decimal places |
 | `re.jrc.ec.europa.eu` | The same | A place's latitude and longitude to two decimal places |
 
-- **Only on a press.** The one route that fetches, `POST /api/weather/update`, is a
-  `POST`, so `core/guard.ts` lets only Outpost's own pages cause it (a test checks that
+- **Only on a press.** The routes that fetch, `POST /api/weather/update` and
+  `POST /api/weather/river-readings` (a station's last days), are `POST`s, so `core/guard.ts` lets only Outpost's own pages cause them (a test checks that
   a request without its header is refused and reaches no publisher). Nothing runs on a
   timer. **Also update when I open this screen** is off until a person ticks it. Ticked,
   it is stored on the server, and **every opening of the screen, on every device, makes
