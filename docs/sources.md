@@ -210,6 +210,55 @@ preview, which shows how the file was read before anything is kept
 | 24–25 | Natural Earth | Public-domain map data at small scales | **Built in.** The 1:110m data draws the simple world outline beneath the map and the boxes of the country presets. | Public domain, as recorded in [maps.md](maps.md). The Natural Earth terms page did not answer on the day (two time-outs), so it was not read again. |
 | 26 | USGS (usgs.gov) | The US Geological Survey | **Direct: 4 entries** (Topographic Map Symbols; Finding Your Way with Map and Compass; Map Projections: A Working Manual; and, added on 2026-11-16, The Universal Transverse Mercator (UTM) Grid). USGS map and elevation data are not integrated. | The Publications Warehouse [says](https://pubs.usgs.gov/documentation/faq) that PDF files of USGS-published reports are in the public domain, though some illustrations are used with permission. The main usgs.gov site returned an empty page to the catalogue check. |
 | 27 | NASA Earthdata Search | A search tool over NASA's Earth-observation datasets | **Not integrated.** It is an interactive search over scientific data files, not a set of documents or map tiles; nothing in it is a single stable file that the library or the map could use as it stands. | NASA's [data use guidance](https://www.earthdata.nasa.gov/engage/open-data-services-software-policies/data-use-guidance) says the data are freely accessible and asks for citation. |
+| C1 | NOAA NCEI and the British Geological Survey, World Magnetic Model 2025 (ncei.noaa.gov) | The model of the Earth's magnetic field used for navigation, 2025.0 to 2030.0: 90 coefficients and their yearly changes | **Built in, shipped**: the coefficient file `WMM.COF` unchanged in `packages/shared/src/wmm-coefficients.ts`, for the declination on Tools → Compass and the map's centre card. Fetched by hand once on 2026-11-17; nothing is fetched at run time. See [The World Magnetic Model and the compass](#the-world-magnetic-model-and-the-compass) and [tools-compass.md](tools-compass.md). | Public domain: "The WMM source code is in the public domain and not licensed or under copyright." Notice given under 17 U.S.C. 403 in the file's header and the docs. |
+| C2 | Ordnance Survey, A guide to coordinate systems in Great Britain (v3.6, 2020) | The National Grid's datum and projection, with formulae and worked examples | **Formulae only**: the map's grid references already follow it; the compass works grid convergence from that projection. The PDF is not shipped. | © OS 2020. Only the published formulae are used; no text or figure is reproduced. `robots.txt` allows `/documents/resources/`. |
+
+### The World Magnetic Model and the compass
+
+Read on 2026-11-17, one request each, with an honest client name. NOAA's `robots.txt`
+(www.ncei.noaa.gov) disallows only `/data*`, `/orders*` and some `/access/crn/` paths;
+none of the pages below is under them.
+
+- [The model's page](https://www.ncei.noaa.gov/products/world-magnetic-model): "The WMM
+  source code is in the public domain and not licensed or under copyright." "The
+  information and software may be used freely by the public." "As required by 17 U.S.C.
+  403, third parties producing copyrighted works consisting predominantly of the material
+  produced by U.S. government agencies must provide notice with such work(s) identifying
+  the U.S. Government material incorporated and stating that such material is not subject
+  to copyright protection." The current model: "The current version (WMM2025) was released
+  on December 17, 2024"; its input dates are "2025.0 to 2030.0"; "the current model
+  expires on December 31, 2029". How to cite it: "NOAA NCEI Geomagnetic Modeling Team;
+  British Geological Survey. 2024: World Magnetic Model 2025. NOAA National Centers for
+  Environmental Information. https://doi.org/10.25921/aqfd-sd83."
+- [The coefficients](https://www.ncei.noaa.gov/products/world-magnetic-model/wmm-coefficients),
+  reached from the model's page through a voluntary survey page, which was not filled in:
+  `WMM2025COF.zip` (42,887 bytes), holding `WMM.COF` (header "2025.0 WMM-2025
+  11/13/2024", 90 rows) and a list of 100 test values.
+- [The published test values](https://www.ncei.noaa.gov/sites/default/files/2025-02/WMM2025_TEST_VALUES.txt)
+  (12 rows, 2,652 bytes), kept with the 100 from the package in
+  `apps/server/test/fixtures/wmm/`.
+- The technical report, Chulliat, A. et al. (2025), "The US/UK World Magnetic Model for
+  2025-2030: Technical Report", https://doi.org/10.25923/prbc-s316, read from NOAA's
+  library (library.oarcloud.noaa.gov, which has no `robots.txt`): section 1.2 for the
+  equations, Table 3b for a worked example, Table 3d for a worked example of UTM grid
+  convergence, section 1.8 for the blackout and caution zones, section 1.10 for the
+  precision a new implementation must reach ("correct to within 0.1 nT"), section 3.4
+  for the error model of the declination.
+
+The model is made jointly with the British Geological Survey; its copy was not used. The
+coefficient file is put in the repository unchanged by
+`scripts/write-wmm-coefficients.mjs`, so that WMM2030 can be put in the same way at the
+end of 2029.
+
+The Ordnance Survey's [guide to coordinate systems](https://www.ordnancesurvey.co.uk/documents/resources/guide-coordinate-systems-great-britain.pdf)
+was read the same day (its `robots.txt` disallows only licence pages and search). It gives
+the projection's formulae and a worked example of them, but no worked figures for grid
+convergence, so the convergence is checked against NOAA's UTM example and the projection's
+own properties instead ([tools-compass.md](tools-compass.md#tests)).
+
+The [W3C Device Orientation and Motion](https://www.w3.org/TR/orientation-event/)
+specification was read for the orientation angles, its compass-heading example and
+"Interfaces are now only available in secure contexts."
 
 ### Satellite imagery
 

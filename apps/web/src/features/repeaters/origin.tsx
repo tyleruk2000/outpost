@@ -43,10 +43,14 @@ export const lastMapCentre = (): LatLon | null => {
   return view ? { lat: view.lat, lon: view.lon } : null;
 };
 
-export function useOrigin(initial?: LatLon | null): Origin {
+/**
+ * `keys` names where this browser remembers the choice, so that another screen (Tools →
+ * Compass) can use the same chooser and remember its own.
+ */
+export function useOrigin(initial?: LatLon | null, keys: { choice: string; typed: string } = { choice: KEY, typed: TYPED_KEY }): Origin {
   const markers = useMarkers();
-  const [stored, setChoice] = useStoredState<OriginChoice>(KEY, isString, "home");
-  const [typed, setTyped] = useStoredState(TYPED_KEY, isString, "");
+  const [stored, setChoice] = useStoredState<OriginChoice>(keys.choice, isString, "home");
+  const [typed, setTyped] = useStoredState(keys.typed, isString, "");
   const list = markers.data ?? [];
   const home = list.find((item) => item.icon === "home");
   const choice = stored === "home" ? (home ? `place:${home.id}` : "none") : stored;

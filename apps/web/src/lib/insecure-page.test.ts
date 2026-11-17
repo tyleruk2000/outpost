@@ -54,6 +54,13 @@ describe("features that only a secure page has", () => {
     // page, and some browsers list game controllers only on one. The panel says which is missing and points to Settings.
     { what: "Web Serial", use: /\.serial\b[^\n]*\.requestPort\(|serial\.requestPort\(/, guard: /isSecureContext/ },
     { what: "game controllers", use: /navigator\.getGamepads\(/, guard: /isSecureContext/ },
+    // The live compass (features/compass/live-heading.ts): browsers fire orientation events only on a secure page, and iOS asks
+    // permission only from a press there. The card says a live compass needs HTTPS and a phone, and points to Settings.
+    {
+      what: "the device's orientation",
+      use: /addEventListener\(\s*"deviceorientation(absolute)?"|DeviceOrientationEvent\b[^\n]*requestPermission/,
+      guard: /isSecureContext/,
+    },
   ];
 
   it("are used only after looking for them", () => {
@@ -88,6 +95,7 @@ describe("features that only a secure page has", () => {
       "web locks",
       "Web Serial",
       "game controllers",
+      "the device's orientation",
     ]);
   });
 });

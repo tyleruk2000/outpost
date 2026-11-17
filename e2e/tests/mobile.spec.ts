@@ -98,6 +98,7 @@ test.describe("on a phone", () => {
       ["QR codes", "/tools/qr"],
       ["Devices on this network", "/tools/network"],
       ["Solar clock", "/tools/solar-clock"],
+      ["Compass", "/tools/compass"],
       ["Preparedness", "/prepare"],
       ["Emergency plans", "/prepare/plans"],
       ["Supplies", "/prepare/supplies"],

@@ -76,6 +76,10 @@ On the map itself:
   [The centre of the map](#the-centre-of-the-map).
 - On a phone, **today's sunrise and sunset** for the centre are written under the
   readout while the sheet is lowered; touch the line for the rest of the day.
+- Beside them, **"Magnetic 0.6° W"**: magnetic north's angle from true north at the
+  centre, from the World Magnetic Model; touch it for Tools → Compass at that point, with
+  grid north and what to add or subtract between map and compass ([tools-compass.md](tools-compass.md)).
+  On a wide screen it is always under the readout.
 - Right-click (or press and hold) for the position and its locator, "Save a place here",
   "Measure from here", "Draw a route from here", "Sun times here" and "Copy coordinates".
 - A place, a found position and where you are each have a **Sun** line of their own:
